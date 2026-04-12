@@ -11,17 +11,6 @@ type channelParts = Util.SQS.channelParts
 
 let connect = CommandTopicChannel_SQS.connect
 
-// Encode the full message body that CommandTopic_Callback expects:
-// {id: string, meta: ..., command: commandPayload}
-let encodeMessage = (cmdJson: Reventless.Message.commandJson): JSON.t =>
-  JSON.Encode.object(
-    Dict.fromArray([
-      ("id", JSON.Encode.string(cmdJson.id)),
-      ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
-      ("command", cmdJson.commandJson),
-    ]),
-  )
-
 let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   callbackEvent,
   'context,
@@ -79,27 +68,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
             ReventlessCore.CommandTopic.Pending({msgId: cmdJson.meta.msgId})
           )
         | Some(handleCmds) =>
-          let items = jsons->Array.map((cmdJson: Reventless.Message.commandJson) => {
-            let reference = cmdJson.meta.msgId
-            let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
-              command: encodeMessage(cmdJson),
-              reference,
-            }
-            item
-          })
-          let results = await handleCmds(Stream.fromIterable(items))->Effect.runPromise
-          jsons->Array.mapWithIndex((cmdJson, i) => {
-            let msgId = cmdJson.meta.msgId
-            switch results->Array.get(i) {
-            | Some(Error(msg)) =>
-              ReventlessCore.CommandTopic.Rejected({
-                msgId,
-                errorCode: "Conflict",
-                errorDetail: Some(msg),
-              })
-            | _ => ReventlessCore.CommandTopic.Accepted({msgId, eventCount: 0})
-            }
-          })
+          await ReventlessCore.CommandTopic.runInlineAndCollect(jsons, handleCmds)
         }
       }
       Some(publishJsonsAndWait)

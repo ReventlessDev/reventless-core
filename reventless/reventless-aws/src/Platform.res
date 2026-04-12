@@ -239,6 +239,15 @@ module MakeWithConfig = (
       ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
     ) =>
       Aggregate_Builder_Single.Make(Spec, Behavior, EventMappings)
+    /** Async variant — uses FIFO SQS channel, commands return `CommandPending`. */
+    module MakeAsync = (
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
+    ): (
+      ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
+    ) =>
+      Aggregate_Builder_Single_Async.Make(Spec, Behavior, EventMappings)
   }
 
   module ReadModel = {
@@ -372,6 +381,13 @@ module MakeWithConfig = (
       ReventlessInfra.StateChangeSlice.T
         with module Spec = Spec
     ) => StateChangeSlice_Builder.Make(Spec)
+    /** Async variant — uses FIFO SQS channel, commands return `CommandPending`. */
+    module MakeAsync = (Spec: Reventless.StateChangeSlice.Spec): (
+      ReventlessInfra.StateChangeSlice.T with module Spec = Spec
+    ) => {
+      include StateChangeSlice_Builder.Make(Spec)
+      let isAsync = true
+    }
   }
 
   module StateViewSlice = {
@@ -686,6 +702,7 @@ module MakeWithConfig = (
     DcbEventLogStorage.DynamoDb,
     EventTopicPublisher.DynamoDbStream,
     CommandTopicChannel.SQS_Sync,
+    CommandTopicChannel.SQS_Async,
     {
       let silent = false
       let splitApi = Config.splitApi

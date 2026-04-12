@@ -23,5 +23,6 @@ module Make = (HooksConfig: ReventlessCore.Plugin_Helpers.HooksConfig) => {
     DcbEventLogStorage.DynamoDb,
     EventTopicPublisher.DynamoDbStream,
     CommandTopicChannel.SQS_Sync,
+    CommandTopicChannel.SQS_Async,
   )
 }

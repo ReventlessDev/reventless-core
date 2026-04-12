@@ -33,6 +33,7 @@ module Make = (
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
   DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
+  DcbCommandTopicChannelAsync: CommandTopic_Adapter.Channel,
   Config: Config,
 ) => {
   include Builder_Helpers
@@ -115,6 +116,7 @@ module Make = (
       DcbEventLogStorage,
       DcbEventTopicPublisher,
       DcbCommandTopicChannel,
+      DcbCommandTopicChannelAsync,
       AdminRuntimeBuilder,
       Config,
     )

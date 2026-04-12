@@ -31,6 +31,7 @@ module Make = (
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
   DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
+  DcbCommandTopicChannelAsync: CommandTopic_Adapter.Channel,
 ): (Plugin.T with type api = ApiSpec.api and type role = ApiSpec.role) => {
   type api = ApiSpec.api
   type role = ApiSpec.role
@@ -85,6 +86,7 @@ module Make = (
       DcbEventLogStorage,
       DcbEventTopicPublisher,
       DcbCommandTopicChannel,
+      DcbCommandTopicChannelAsync,
       PluginRuntimeBuilder,
       Spec,
     )

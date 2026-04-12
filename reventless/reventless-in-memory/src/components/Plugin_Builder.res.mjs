@@ -20,6 +20,7 @@ function Make(Bus) {
     let RemoteChannel = CommandTopicRemoteChannel_InMemory$ReventlessInMemory.Make(Bus);
     let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
     let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+    let $$let$1 = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
     let include = Plugin_Builder$ReventlessCore.Make({
       runtimeOps: InMemory_PluginSpec$ReventlessInMemory.runtimeOps,
       resourceNaming: InMemory_PluginSpec$ReventlessInMemory.resourceNaming,
@@ -43,6 +44,8 @@ function Make(Bus) {
       finish: PluginRuntimeBuilder.finish
     })(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
       make: $$let.make
+    })({
+      make: $$let$1.make
     });
     return {
       EventCollectorChannel: EventCollectorChannel,

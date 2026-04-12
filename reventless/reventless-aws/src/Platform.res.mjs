@@ -50,7 +50,9 @@ import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLo
 import * as Aggregate_Builder_NoResolver$ReventlessAws from "./components/Aggregate_Builder_NoResolver.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
+import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
+import * as Aggregate_Builder_Single_Async$ReventlessAws from "./components/Aggregate_Builder_Single_Async.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
@@ -179,8 +181,10 @@ function MakeWithConfig(Config) {
     apiRole: appSyncApiRole
   };
   let Make = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
+  let MakeAsync = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
   let Aggregate = {
-    Make: Make
+    Make: Make,
+    MakeAsync: MakeAsync
   };
   let Make$1 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings));
   let ReadModel = {
@@ -286,8 +290,17 @@ function MakeWithConfig(Config) {
     publishQueueUrl: publishQueueUrl
   });
   let Make$5 = StateChangeSlice_Builder$ReventlessAws.Make;
+  let MakeAsync$1 = Spec => {
+    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec);
+    return {
+      Spec: include.Spec,
+      isAsync: true,
+      make: include.make
+    };
+  };
   let StateChangeSlice = {
-    Make: Make$5
+    Make: Make$5,
+    MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
@@ -514,6 +527,8 @@ function MakeWithConfig(Config) {
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
   }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
     make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
+  })({
+    make: CommandTopicChannel_SQS_Async$ReventlessAws.make
   })({
     silent: false,
     splitApi: Config.splitApi,
@@ -918,8 +933,10 @@ function Make($star) {
     apiRole: appSyncApiRole
   };
   let Make$1 = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
+  let MakeAsync = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
   let Aggregate = {
-    Make: Make$1
+    Make: Make$1,
+    MakeAsync: MakeAsync
   };
   let Make$2 = Spec => (Mappings => ReadModel_Builder_Single$ReventlessAws.Make(Spec)(Mappings));
   let ReadModel = {
@@ -1025,8 +1042,17 @@ function Make($star) {
     publishQueueUrl: publishQueueUrl
   });
   let Make$6 = StateChangeSlice_Builder$ReventlessAws.Make;
+  let MakeAsync$1 = Spec => {
+    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec);
+    return {
+      Spec: include.Spec,
+      isAsync: true,
+      make: include.make
+    };
+  };
   let StateChangeSlice = {
-    Make: Make$6
+    Make: Make$6,
+    MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
@@ -1252,6 +1278,8 @@ function Make($star) {
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
   }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
     make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
+  })({
+    make: CommandTopicChannel_SQS_Async$ReventlessAws.make
   })({
     silent: false,
     splitApi: true,

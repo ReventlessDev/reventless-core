@@ -26,6 +26,8 @@ let slice = AddCategorySlice.make(~dcbEventLog=log, ~publishJsons=publishJsonsOu
 */
 module type T = {
   module Spec: Reventless.StateChangeSlice.Spec
+  /** `true` when built with `Platform.StateChangeSlice.MakeAsync` — uses FIFO channel, returns `CommandPending`. */
+  let isAsync: bool
   type component = Component.t<t, outputs, operations>
   let make: (
     ~dcbEventLog: DcbEventLog.component,

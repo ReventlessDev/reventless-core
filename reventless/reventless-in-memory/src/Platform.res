@@ -348,6 +348,16 @@ module MakeWithConfig = (
       Behavior,
       EventMappings,
     )
+    /** Async variant — in-memory uses the same channel (no FIFO distinction). */
+    module MakeAsync = (
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: ReventlessInfra.EventMapper.Mappings with module Target := Spec,
+    ): (ReventlessInfra.Aggregate.T with type api = unit) => AggregateMaker.Make(
+      Spec,
+      Behavior,
+      EventMappings,
+    )
   }
 
   module ReadModel = {
@@ -459,6 +469,13 @@ module MakeWithConfig = (
     module Make = (Spec: Reventless.StateChangeSlice.Spec): (
       ReventlessInfra.StateChangeSlice.T with module Spec = Spec
     ) => StateChangeSlice_Builder.Make(Spec)
+    /** Async variant — in-memory uses the same channel (no FIFO distinction). */
+    module MakeAsync = (Spec: Reventless.StateChangeSlice.Spec): (
+      ReventlessInfra.StateChangeSlice.T with module Spec = Spec
+    ) => {
+      include StateChangeSlice_Builder.Make(Spec)
+      let isAsync = true
+    }
   }
 
   module StateViewSlice = {
@@ -541,6 +558,7 @@ module MakeWithConfig = (
     ),
     DcbEventLogStorage_InMemory.Make(Bus),
     EventTopicPublisher_InMemory.Make(Bus),
+    CommandTopicChannel_InMemory.Make(Bus),
     CommandTopicChannel_InMemory.Make(Bus),
     {
       let silent = Config.silent

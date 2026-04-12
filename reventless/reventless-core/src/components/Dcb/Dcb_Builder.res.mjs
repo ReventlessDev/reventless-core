@@ -7,6 +7,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
@@ -32,7 +33,7 @@ let toRelativePath = (function toRelativePath(moduleUrl) {
       if (fs.existsSync(path.join(dir, 'lerna.json'))) break;
       dir = path.dirname(dir);
     }
-    return path.relative(dir, sliceReal).replace(/\\.mjs$/, '.res');
+    return path.relative(dir, sliceReal).replace(/\.mjs$/, '.res');
   } catch(e) {
     return moduleUrl.replace('file://', '');
   }
@@ -68,12 +69,14 @@ let emptyResult = {
 };
 
 function Make(DcbEventLogStorage) {
-  return DcbEventTopicPublisher => (DcbCommandTopicChannel => (RuntimeBuilder => (HooksConfig => {
+  return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
     let construct = (name, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts) => {
       let hasDcb = stateChangeSlices.length !== 0 || stateViewSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0;
       if (!hasDcb) {
         return emptyResult;
       }
+      let syncSlices = stateChangeSlices.filter(M => !M.isAsync);
+      let asyncSlices = stateChangeSlices.filter(M => M.isAsync);
       let produced = stateChangeSlices.map(Sc => [
         Sc.Spec.name,
         Sc.Spec.eventSchema
@@ -126,16 +129,49 @@ function Make(DcbEventLogStorage) {
       let dcbCommandTopic = DcbCommandTopic.make(childName + `-dcb-command-topic`, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbCommandTopicCreated, hook => hook(dcbCommandTopic));
       let publishJsons = Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => ops.publishJsons);
-      let stateChangeSlicesOutputs = Object.fromEntries(stateChangeSlices.map(StateChangeSlice => {
+      let name$1 = childName + "Async";
+      let DcbAsyncCommandTopic = CommandTopic_Builder$ReventlessCore.Make({
+        Id: Id$Reventless.$$String,
+        name: name$1,
+        commandSchema: S.json
+      })(DcbCommandTopicChannelAsync);
+      let asyncDcbCommandTopicOpt;
+      if (asyncSlices.length !== 0) {
+        let t = DcbAsyncCommandTopic.make(childName + `-dcb-async-command-topic`, opts);
+        Stdlib_Option.forEach(HooksConfig.hooks.onDcbCommandTopicCreated, hook => hook(t));
+        asyncDcbCommandTopicOpt = Primitive_option.some(t);
+      } else {
+        asyncDcbCommandTopicOpt = undefined;
+      }
+      let stateChangeSlicesOutputs = Object.fromEntries(syncSlices.map(StateChangeSlice => {
         let ch = StateChangeSlice.make(dcbEventLog, publishJsons, opts);
         return [
           StateChangeSlice.Spec.name,
           Component$ReventlessCore.outputs(ch)
         ];
       }));
+      let asyncStateChangeSlicesOutputs;
+      if (asyncDcbCommandTopicOpt !== undefined) {
+        let asyncPublishJsons = Component$ReventlessCore.operations(Primitive_option.valFromOption(asyncDcbCommandTopicOpt)).apply(ops => ops.publishJsons);
+        asyncStateChangeSlicesOutputs = Object.fromEntries(asyncSlices.map(StateChangeSlice => {
+          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, opts);
+          return [
+            StateChangeSlice.Spec.name,
+            Component$ReventlessCore.outputs(ch)
+          ];
+        }));
+      } else {
+        asyncStateChangeSlicesOutputs = {};
+      }
       let registerResolver = HooksConfig.hooks.mutationResolverHook;
       if (registerResolver !== undefined) {
-        stateChangeSlices.forEach(S => {
+        syncSlices.forEach(S => {
+          let commandSchema = S.Spec.commandSchema;
+          if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema);
+          }
+        });
+        asyncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
             return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema);
@@ -145,7 +181,7 @@ function Make(DcbEventLogStorage) {
       let bindHandler = HooksConfig.hooks.mutationBindHook;
       if (bindHandler !== undefined) {
         Component$ReventlessCore.operations(dcbCommandTopic).apply(ops => {
-          stateChangeSlices.forEach(S => {
+          syncSlices.forEach(S => {
             let commandSchema = S.Spec.commandSchema;
             if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
               return;
@@ -155,6 +191,19 @@ function Make(DcbEventLogStorage) {
             bindHandler(fieldName, generateCommand);
           });
         });
+        if (asyncDcbCommandTopicOpt !== undefined) {
+          Component$ReventlessCore.operations(Primitive_option.valFromOption(asyncDcbCommandTopicOpt)).apply(asyncOps => {
+            asyncSlices.forEach(S => {
+              let commandSchema = S.Spec.commandSchema;
+              if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+                return;
+              }
+              let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
+              let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(asyncOps.publishJsons, asyncOps.publishJsonsAndWait, S.Spec.name, S.Spec.commandSchema, "StateChangeSlice", false);
+              bindHandler(fieldName, generateCommand);
+            });
+          });
+        }
       }
       stateViewSlices.forEach(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, undefined);
@@ -271,6 +320,7 @@ function Make(DcbEventLogStorage) {
         };
       });
       let dcbResources = Object.values(stateChangeSlicesOutputs).flatMap(outputs => outputs.resources).concat(Object.values(inboundTranslationSlicesOutputs).flatMap(outputs => outputs.resources));
+      let asyncDcbResources = Object.values(asyncStateChangeSlicesOutputs).flatMap(outputs => outputs.resources);
       let inboundFieldNames = inboundTranslationSliceData.map(param => param[1]);
       let inboundSchemas = inboundTranslationSliceData.map(param => param[3]);
       let dcbMutationData = Stdlib_Array.filterMap(stateChangeSlices, S => {
@@ -315,7 +365,14 @@ function Make(DcbEventLogStorage) {
         }
       };
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbSlicesCreated, hook => hook(dcbEventLog));
-      let dcbRuntimeSetup = () => RuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, undefined, undefined, dcbCommandTopic);
+      let dcbRuntimeSetup = () => {
+        RuntimeBuilder.forDcbCommandTopic(dcbHandler, dcbConnectFn, undefined, undefined, dcbCommandTopic);
+        Stdlib_Option.forEach(asyncDcbCommandTopicOpt, asyncDcbCommandTopic => {
+          let asyncDcbHandler = DcbAsyncCommandTopic.makeFilteringHandler(asyncDcbCommandTopic);
+          let asyncDcbConnectFn = runtime => DcbAsyncCommandTopic.connect(runtime, asyncDcbResources, asyncDcbCommandTopic);
+          RuntimeBuilder.forDcbCommandTopic(asyncDcbHandler, asyncDcbConnectFn, undefined, undefined, asyncDcbCommandTopic);
+        });
+      };
       let mutationEntriesFromSlices = Stdlib_Array.filterMap(stateChangeSlices, S => {
         let commandSchema = S.Spec.commandSchema;
         if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
@@ -381,7 +438,7 @@ function Make(DcbEventLogStorage) {
       let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.eventSchema);
       return {
         dcbEventLogOutputs: Component$ReventlessCore.outputs(dcbEventLog),
-        stateChangeSlicesOutputs: stateChangeSlicesOutputs,
+        stateChangeSlicesOutputs: Object.fromEntries(Object.entries(stateChangeSlicesOutputs).concat(Object.entries(asyncStateChangeSlicesOutputs))),
         stateViewSlicesOutputs: stateViewSlicesOutputs,
         automationSlicesOutputs: automationSlicesOutputs,
         outboundTranslationSlicesOutputs: outboundTranslationSlicesOutputs,
@@ -399,7 +456,7 @@ function Make(DcbEventLogStorage) {
     return {
       construct: construct
     };
-  })));
+  }))));
 }
 
 export {

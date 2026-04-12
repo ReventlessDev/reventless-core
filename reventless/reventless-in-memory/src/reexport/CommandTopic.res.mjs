@@ -10,6 +10,10 @@ let acceptedResultChannel = CommandTopic$ReventlessCore.acceptedResultChannel;
 
 let reportAccepted = CommandTopic$ReventlessCore.reportAccepted;
 
+let encodeCommandJson = CommandTopic$ReventlessCore.encodeCommandJson;
+
+let runInlineAndCollect = CommandTopic$ReventlessCore.runInlineAndCollect;
+
 let callHandlerWithArray = CommandTopic$ReventlessCore.callHandlerWithArray;
 
 let extractTypeNamesFromSchema = CommandTopic$ReventlessCore.extractTypeNamesFromSchema;
@@ -29,6 +33,8 @@ export {
   NotPublishedToChannel,
   acceptedResultChannel,
   reportAccepted,
+  encodeCommandJson,
+  runInlineAndCollect,
   callHandlerWithArray,
   extractTypeNamesFromSchema,
   globalRegistry,

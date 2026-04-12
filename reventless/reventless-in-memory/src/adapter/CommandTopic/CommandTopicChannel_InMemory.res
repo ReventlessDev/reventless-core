@@ -8,20 +8,6 @@ module Make = (Bus: InMemory_Bus.T) => {
   type runtimeParts = RuntimeEnvironment_InMemory.parts
   type channelParts = {name: string}
 
-  // Encode the full message body that CommandTopic_Callback expects:
-  // {id: string, meta: ..., command: commandPayload}
-  let encodeMessage = (cmdJson: Reventless.Message.commandJson): JSON.t =>
-    JSON.Encode.object(
-      Dict.fromArray([
-        ("id", JSON.Encode.string(cmdJson.id)),
-        (
-          "meta",
-          cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema),
-        ),
-        ("command", cmdJson.commandJson),
-      ]),
-    )
-
   // Extract aggregate id (used as reference) from the full message body
   let decodeId = (body: JSON.t): string =>
     switch body {
@@ -54,7 +40,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       let _ =
         await jsons
         ->Array.map(async (cmdJson: Reventless.Message.commandJson) => {
-          await Bus.dispatchCommand(name, encodeMessage(cmdJson))
+          await Bus.dispatchCommand(name, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
         })
         ->Promise.all
     }
@@ -64,8 +50,6 @@ module Make = (Bus: InMemory_Bus.T) => {
       ->Stream.grouped(10)
       ->Stream.runForEach(jsons => Effect.promise(() => publishJsons(jsons)))
 
-    // Runs commands inline via the captured handler and maps results to commandOutcome.
-    // Error(_) → Rejected(Conflict); otherwise Accepted with entityId/eventCount from side-channel.
     let publishJsonsAndWait: ReventlessCore.CommandTopic.publishJsonsAndWait = async jsons => {
       switch handleCmdsRef.contents {
       | None =>
@@ -75,37 +59,7 @@ module Make = (Bus: InMemory_Bus.T) => {
           ReventlessCore.CommandTopic.Pending({msgId: cmdJson.meta.msgId})
         )
       | Some(handleCmds) =>
-        let items = jsons->Array.map((cmdJson: Reventless.Message.commandJson) => {
-          let reference = cmdJson.meta.msgId
-          let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
-            command: encodeMessage(cmdJson),
-            reference,
-          }
-          item
-        })
-        // Set up side-channel to collect entityId/eventCount populated by StateChangeSlice_Callback
-        let acceptedResults: dict<ReventlessCore.CommandTopic.acceptedResult> = Dict.make()
-        ReventlessCore.CommandTopic.acceptedResultChannel.contents = Some(
-          (reference, result) => acceptedResults->Dict.set(reference, result),
-        )
-        let results =
-          await handleCmds(Stream.fromIterable(items))->Effect.runPromise
-        ReventlessCore.CommandTopic.acceptedResultChannel.contents = None
-        jsons->Array.mapWithIndex((cmdJson, i) => {
-          let msgId = cmdJson.meta.msgId
-          switch results->Array.get(i) {
-          | Some(Error(msg)) =>
-            ReventlessCore.CommandTopic.Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
-          | _ =>
-            let ar = acceptedResults->Dict.get(msgId)->Option.getOr({eventCount: 0})
-            switch ar.entityId {
-            | Some(entityId) =>
-              ReventlessCore.CommandTopic.Accepted({msgId, entityId, eventCount: ar.eventCount})
-            | None =>
-              ReventlessCore.CommandTopic.Accepted({msgId, eventCount: ar.eventCount})
-            }
-          }
-        })
+        await ReventlessCore.CommandTopic.runInlineAndCollect(jsons, handleCmds)
       }
     }
 

@@ -2,6 +2,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (
   StateChangeSlice.T with module Spec = Spec
 ) => {
   module Spec = Spec
+  let isAsync = false
   type component = StateChangeSlice.component
   module Callback = StateChangeSlice_Callback.Make(Spec)
 

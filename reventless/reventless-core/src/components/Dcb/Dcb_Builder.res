@@ -13,7 +13,7 @@ let toRelativePath: string => string = %raw(`function toRelativePath(moduleUrl) 
       if (fs.existsSync(path.join(dir, 'lerna.json'))) break;
       dir = path.dirname(dir);
     }
-    return path.relative(dir, sliceReal).replace(/\\.mjs$/, '.res');
+    return path.relative(dir, sliceReal).replace(/\.mjs$/, '.res');
   } catch(e) {
     return moduleUrl.replace('file://', '');
   }
@@ -49,6 +49,7 @@ module Make = (
   DcbEventLogStorage: DcbEventLog_Adapter.Storage,
   DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
   DcbCommandTopicChannel: CommandTopic_Adapter.Channel,
+  DcbCommandTopicChannelAsync: CommandTopic_Adapter.Channel,
   RuntimeBuilder: PluginRuntime_Builder.T,
   HooksConfig: Plugin_Helpers.HooksConfig,
 ) => {
@@ -69,6 +70,10 @@ module Make = (
       outboundTranslationSlices->Array.length > 0 ||
       inboundTranslationSlices->Array.length > 0
     if hasDcb {
+        // Partition slices by channel mode (set by MakeAsync vs Make)
+        let syncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)) => !M.isAsync)
+        let asyncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)) => M.isAsync)
+
         // Run validation: check produced vs consumed event compatibility
         let produced =
           stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) =>
@@ -142,7 +147,7 @@ module Make = (
           hook(dcbEventLog->Obj.magic)
         )
 
-        // Create shared CommandTopic for all StateChangeSlices
+        // Create sync CommandTopic for sync StateChangeSlices (and all other DCB slice types)
         module DcbCommandTopicSpec = {
           module Id = Reventless.Id.String
           let name = childName
@@ -165,18 +170,64 @@ module Make = (
           ->Component.operations
           ->Pulumi.Output.apply(ops => ops.publishJsons)
 
+        // Create FIFO CommandTopic for async StateChangeSlices (only if any are configured)
+        module DcbCommandTopicSpecAsync = {
+          module Id = Reventless.Id.String
+          let name = childName ++ "Async"
+          @schema
+          type command = JSON.t
+        }
+        module DcbAsyncCommandTopic = CommandTopic_Builder.Make(
+          DcbCommandTopicSpecAsync,
+          DcbCommandTopicChannelAsync,
+        )
+        let asyncDcbCommandTopicOpt = if asyncSlices->Array.length > 0 {
+          let t = DcbAsyncCommandTopic.make(~name=`${childName}-dcb-async-command-topic`, ~opts)
+          HooksConfig.hooks.onDcbCommandTopicCreated->Option.forEach(hook => hook(t->Obj.magic))
+          Some(t)
+        } else {
+          None
+        }
+
         let stateChangeSlicesOutputs =
-          stateChangeSlices
+          syncSlices
           ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
             let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~opts)
             (StateChangeSlice.Spec.name, ch->Component.outputs)
           })
           ->Dict.fromArray
 
+        // Create async slice components using the FIFO CommandTopic's publishJsons
+        let asyncStateChangeSlicesOutputs =
+          switch asyncDcbCommandTopicOpt {
+          | None => Dict.make()
+          | Some(asyncDcbCommandTopic) =>
+            let asyncPublishJsons =
+              asyncDcbCommandTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
+            asyncSlices
+            ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
+              let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons=asyncPublishJsons, ~opts)
+              (StateChangeSlice.Spec.name, ch->Component.outputs)
+            })
+            ->Dict.fromArray
+          }
+
         // Phase 1: Register DCB mutation SDL + resolver stubs via platform hook
         switch HooksConfig.hooks.mutationResolverHook {
         | Some(registerResolver) =>
-          stateChangeSlices->Array.forEach((
+          syncSlices->Array.forEach((
+            module(S: StateChangeSlice.T),
+          ) => {
+            let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
+            if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
+              registerResolver(
+                ~kind=Dcb,
+                ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
+                ~commandSchema,
+              )
+            }
+          })
+          asyncSlices->Array.forEach((
             module(S: StateChangeSlice.T),
           ) => {
             let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
@@ -192,13 +243,15 @@ module Make = (
         }
 
         // Phase 2: Bind generateCommand to resolver stubs when publishJsons resolves
+        // Sync slices use sync CommandTopic ops (publishJsonsAndWait → CommandAccepted/Rejected)
+        // Async slices use async CommandTopic ops (publishJsons only → CommandPending)
         switch HooksConfig.hooks.mutationBindHook {
         | Some(bindHandler) =>
           let _ =
             dcbCommandTopic
             ->Component.operations
             ->Pulumi.Output.apply(ops => {
-              stateChangeSlices->Array.forEach((
+              syncSlices->Array.forEach((
                 module(S: StateChangeSlice.T),
               ) => {
                 let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
@@ -216,6 +269,32 @@ module Make = (
                 }
               })
             })
+          switch asyncDcbCommandTopicOpt {
+          | None => ()
+          | Some(asyncDcbCommandTopic) =>
+            let _ =
+              asyncDcbCommandTopic
+              ->Component.operations
+              ->Pulumi.Output.apply(asyncOps => {
+                asyncSlices->Array.forEach((
+                  module(S: StateChangeSlice.T),
+                ) => {
+                  let commandSchema = S.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema
+                  if !(ApiNoApiHelpers.isNoApi(commandSchema)) {
+                    let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+                    let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
+                      ~publishJsons=asyncOps.publishJsons,
+                      ~publishJsonsAndWait=?asyncOps.publishJsonsAndWait,
+                      ~serviceName=S.Spec.name,
+                      ~commandSchema=S.Spec.commandSchema->Obj.magic,
+                      ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+                      ~stripIdFromParams=false,
+                    )
+                    bindHandler(~field=fieldName, ~generateCommand)
+                  }
+                })
+              })
+          }
         | None => ()
         }
 
@@ -333,7 +412,7 @@ module Make = (
         // + AppSync direct invocations (CommandGenerator.payload format)
         let dcbHandlerBase = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
 
-        // Shared generateCommand for AppSync direct invocations — all StateChangeSlices
+        // Shared generateCommand for AppSync direct invocations — all sync StateChangeSlices
         // share the same DCB CommandTopic's publishJsons, so a single function suffices.
         // commandSchema validation is skipped (permissive JSON.t schema) because AppSync
         // already validates input against the SDL.
@@ -391,7 +470,7 @@ module Make = (
             composite->Obj.magic
           })
 
-        // Resources the Lambda needs access to
+        // Resources the sync Lambda needs access to
         let dcbResources = Array.concat(
           stateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources),
           inboundTranslationSlicesOutputs
@@ -399,12 +478,16 @@ module Make = (
           ->Array.flatMap(outputs => outputs.resources),
         )
 
+        // Resources the async Lambda needs access to
+        let asyncDcbResources =
+          asyncStateChangeSlicesOutputs->Dict.valuesToArray->Array.flatMap(outputs => outputs.resources)
+
         let inboundFieldNames =
           inboundTranslationSliceData->Array.map(((_, fieldName, _, _)) => fieldName)
         let inboundSchemas = inboundTranslationSliceData->Array.map(((_, _, _, schema)) => schema)
 
         // Collect DCB mutation field names + TAGs for AppSync resolver creation
-        // (excludes @noApi slices)
+        // (excludes @noApi slices — includes both sync and async)
         let dcbMutationData =
           stateChangeSlices->Array.filterMap((
             module(S: StateChangeSlice.T),
@@ -459,11 +542,26 @@ module Make = (
           hook(dcbEventLog->Obj.magic)
         )
 
-        let dcbRuntimeSetup = () =>
+        let dcbRuntimeSetup = () => {
           dcbCommandTopic->RuntimeBuilder.forDcbCommandTopic(
             ~handler=dcbHandler,
             ~connect=dcbConnectFn,
           )
+          // Set up async CommandTopic Lambda if any async slices are configured
+          asyncDcbCommandTopicOpt->Option.forEach(asyncDcbCommandTopic => {
+            let asyncDcbHandler = DcbAsyncCommandTopic.makeFilteringHandler(asyncDcbCommandTopic)
+            let asyncDcbConnectFn = (~runtime) =>
+              DcbAsyncCommandTopic.connect(
+                ~runtime,
+                ~resources=asyncDcbResources,
+                asyncDcbCommandTopic,
+              )
+            asyncDcbCommandTopic->RuntimeBuilder.forDcbCommandTopic(
+              ~handler=asyncDcbHandler->Obj.magic,
+              ~connect=asyncDcbConnectFn,
+            )
+          })
+        }
 
         // DCB-specific API schema entries
         let mutationEntriesFromSlices =
@@ -556,7 +654,12 @@ module Make = (
 
         {
           dcbEventLogOutputs: Some(dcbEventLog->Component.outputs),
-          stateChangeSlicesOutputs,
+          stateChangeSlicesOutputs: Dict.fromArray(
+            Array.concat(
+              stateChangeSlicesOutputs->Dict.toArray,
+              asyncStateChangeSlicesOutputs->Dict.toArray,
+            ),
+          ),
           stateViewSlicesOutputs,
           automationSlicesOutputs,
           outboundTranslationSlicesOutputs,

@@ -1135,7 +1135,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 **Key differences from aggregate plugin composition:**
 - **`Platform.StateChangeSlice.Make`** instead of aggregate + behavior
 - **`Platform.StateViewSlice.Make`** instead of read model + projection mappings
-- **DCB slice arrays** (`~stateChangeSlices`, `~stateViewSlices`, etc.) passed directly to `Plugin.make` — empty arrays can be omitted
+- **DCB slice arrays** (`~stateChangeSlices`, `~stateViewSlices`, etc.) passed directly to `Plugin.make` — empty arrays can be omitted. Use `Platform.StateChangeSlice.MakeAsync(Spec)` instead of `Make(Spec)` for high-contention slices; `MakeAsync` slices use a FIFO queue and return `CommandPending`, while `Make` slices use the sync channel and return `CommandAccepted` / `CommandRejected`. Both go in the same `~stateChangeSlices` array.
 
 ---
 

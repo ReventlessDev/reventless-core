@@ -6,7 +6,7 @@ The Plugin component supports an optional DCB (Dynamic Consistency Boundary) eve
 
 ```d2
 Client: Client { class: client }
-SQS: "SQS FIFO Queue\n(DCB Command Topic)" { class: command-topic }
+SQS: "SQS Queue\n(DCB Command Topic)" { class: command-topic }
 Handler: "filteringHandler\n(Lambda Function)"
 Slice1: CreateItem Slice { class: state-change-slice }
 Slice2: RenameItem Slice { class: state-change-slice }
@@ -34,7 +34,7 @@ Reduce -> Decide
 Decide -> Append
 ```
 
-One SQS FIFO queue per plugin receives all commands. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type. Slices that don't handle a command type are never called.
+The DCB command topic is a standard SQS queue by default (sync slices built with `Platform.StateChangeSlice.Make` return `CommandAccepted` / `CommandRejected`). Slices built with `Platform.StateChangeSlice.MakeAsync` use a separate FIFO queue and return `CommandPending`; both types go in the same `~stateChangeSlices` array at the `Plugin.make` call site. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type; both queues share the same handler registry.
 
 ## Module Types
 

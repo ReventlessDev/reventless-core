@@ -58,6 +58,7 @@ function Make(Spec) {
   }, opts);
   return {
     Spec: Spec,
+    isAsync: false,
     make: make
   };
 }

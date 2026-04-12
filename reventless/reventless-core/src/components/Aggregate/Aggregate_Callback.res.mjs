@@ -8,6 +8,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
+import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
 
 function Make(Spec) {
   return Behavior => (Ops => {
@@ -99,25 +100,36 @@ function Make(Spec) {
                 event: event
               }));
             }).flat() : Stdlib_JsError.throwWithMessage(result._0);
-          if (events.length === 0) {
-            return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
-              TAG: "Ok",
-              _0: references.map(reference => ({
-                TAG: "Ok",
-                _0: reference
-              }))
-            }));
-          }
-          let eventCount = events.length.toString();
-          let eventDetails = events.map(event$p => {
-            let json = Message$ReventlessCore.encode(event$p.event, Spec.eventSchema);
-            let name = Message$ReventlessCore.variantNameOfJson(json);
-            let id = Spec.Id.toString(event$p.id);
-            return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
-          }).join(", ");
-          let eventJsons = events.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
-          return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, events))), appendResult => {
-            if (appendResult.TAG === "Ok") {
+          if (events.length !== 0) {
+            let eventCount = events.length.toString();
+            let eventDetails = events.map(event$p => {
+              let json = Message$ReventlessCore.encode(event$p.event, Spec.eventSchema);
+              let name = Message$ReventlessCore.variantNameOfJson(json);
+              let id = Spec.Id.toString(event$p.id);
+              return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
+            }).join(", ");
+            let eventJsons = events.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
+            return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, events))), appendResult => {
+              if (appendResult.TAG !== "Ok") {
+                if (appendResult._0.includes("conflict")) {
+                  return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
+                    TAG: "Error",
+                    _0: "conflict"
+                  }));
+                } else {
+                  return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr), () => ({
+                    TAG: "Ok",
+                    _0: references.map(reference => ({
+                      TAG: "Error",
+                      _0: reference
+                    }))
+                  }));
+                }
+              }
+              references.forEach(reference => CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
+                entityId: idStr,
+                eventCount: events.length
+              }));
               return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: id=` + idStr), () => ({
                 TAG: "Ok",
                 _0: references.map(reference => ({
@@ -125,21 +137,19 @@ function Make(Spec) {
                   _0: reference
                 }))
               }));
-            } else if (appendResult._0.includes("conflict")) {
-              return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
-                TAG: "Error",
-                _0: "conflict"
-              }));
-            } else {
-              return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr), () => ({
-                TAG: "Ok",
-                _0: references.map(reference => ({
-                  TAG: "Error",
-                  _0: reference
-                }))
-              }));
-            }
-          });
+            });
+          }
+          references.forEach(reference => CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
+            entityId: idStr,
+            eventCount: 0
+          }));
+          return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
+            TAG: "Ok",
+            _0: references.map(reference => ({
+              TAG: "Ok",
+              _0: reference
+            }))
+          }));
         });
       });
     };

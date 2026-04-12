@@ -18,7 +18,7 @@ import * as EventCollector_Builder$ReventlessCore from "../components/EventColle
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 function Make(RuntimeEnvironment) {
-  return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (AdminRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (Config => {
+  return EventCollectorChannel => (QueryEngineAdapter => (ClonerRunner => (AdminRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (Config => {
     let MakeEventCollectorHelper = RE => (ECC => (RB => {
       let AdminEventCollector = EventCollector_Builder$ReventlessCore.Make(RE)(ECC);
       let make = (name, eventTopics, opts) => {
@@ -59,7 +59,7 @@ function Make(RuntimeEnvironment) {
     let construct = (param, extensionPoints, aggregates, readModels, scheduler, resourceNaming, api, apiRole, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices) => {
       let name = "Admin";
       let opts = {};
-      let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(AdminRuntimeBuilder)({
+      let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(AdminRuntimeBuilder)({
         hooks: Config.hooks
       });
       let dcbResult = DcbBuilder.construct(name, name, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
@@ -179,7 +179,7 @@ function Make(RuntimeEnvironment) {
       MakeEventCollectorHelper: MakeEventCollectorHelper,
       construct: construct
     };
-  })))))));
+  }))))))));
 }
 
 export {

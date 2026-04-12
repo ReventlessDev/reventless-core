@@ -21,7 +21,7 @@ Use DCB Slices when:
 
 ```d2
 Client: Client { class: client }
-CommandTopic: "DCB Command Topic\n(SQS FIFO)" { class: command-topic }
+CommandTopic: "DCB Command Topic\n(SQS)" { class: command-topic }
 FilteringHandler: "Filtering Handler\n(Lambda)"
 Slice1: AddProduct Slice { class: state-change-slice }
 Slice2: ChangeProductName Slice { class: state-change-slice }

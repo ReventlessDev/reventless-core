@@ -73,6 +73,12 @@ module type T = {
       Behavior: Reventless.Behavior.T with module Spec := Spec,
       EventMappings: EventMapper.Mappings with module Target := Spec,
     ) => Aggregate.T with type api = api
+    /** Async variant — uses FIFO channel, returns `CommandPending`. */
+    module MakeAsync: (
+      Spec: Reventless.Aggregate.Spec,
+      Behavior: Reventless.Behavior.T with module Spec := Spec,
+      EventMappings: EventMapper.Mappings with module Target := Spec,
+    ) => Aggregate.T with type api = api
   }
 
   /** Factory for read model (query-side projection) components. */
@@ -136,6 +142,9 @@ module type T = {
   /** Factory for DCB write-side state-change slice components. */
   module StateChangeSlice: {
     module Make: (Spec: Reventless.StateChangeSlice.Spec) => StateChangeSlice.T
+      with module Spec = Spec
+    /** Async variant — uses FIFO channel, returns `CommandPending`. */
+    module MakeAsync: (Spec: Reventless.StateChangeSlice.Spec) => StateChangeSlice.T
       with module Spec = Spec
   }
 

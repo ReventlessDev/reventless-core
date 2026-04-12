@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../src/adapter/InMemory_Bus.res.mjs";
 import * as CommandTopicChannel_InMemory$ReventlessInMemory from "../../src/adapter/CommandTopic/CommandTopicChannel_InMemory.res.mjs";
@@ -19,16 +20,14 @@ let testMeta = {
 };
 
 describe("CommandTopicChannel_InMemory", () => {
-  describe("encodeMessage", () => {
+  describe("encodeCommandJson", () => {
     test("produces {id, meta, command} JSON shape", async () => {
-      let TestBus = InMemory_Bus$ReventlessInMemory.Make({});
-      let TestChannel = CommandTopicChannel_InMemory$ReventlessInMemory.Make(TestBus);
       let cmdJson = {
         id: "agg-1",
         meta: testMeta,
         commandJson: "DoSomething"
       };
-      let encoded = TestChannel.encodeMessage(cmdJson);
+      let encoded = CommandTopic$ReventlessCore.encodeCommandJson(cmdJson);
       let dict;
       dict = typeof encoded === "object" && encoded !== null && !Array.isArray(encoded) ? encoded : ({});
       expect(dict["id"]).toEqual("agg-1");

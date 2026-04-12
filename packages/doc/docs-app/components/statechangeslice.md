@@ -46,7 +46,7 @@ DCBArchitecture: DCB Architecture {
   class: plugin-area
 
   Client: Client { class: client }
-  SQS: SQS FIFO Queue { class: aws-service }
+  SQS: SQS Queue { class: aws-service }
   Lambda: DCB Lambda { class: aws-service }
   FilteringHandler: Filtering Handler
   Registry: Global Registry

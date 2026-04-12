@@ -30,7 +30,7 @@ import * as Heartbeat_Builder$ReventlessCore from "../Heartbeat/Heartbeat_Builde
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
 function Make(Spec) {
-  return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => {
+  return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => {
     let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
@@ -56,7 +56,7 @@ function Make(Spec) {
           parent: opts_parent
         };
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
-        let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(PluginRuntimeBuilder)({
+        let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PluginRuntimeBuilder)({
           hooks: Spec.hooks
         });
         let dcbResult = DcbBuilder.construct(extra$1, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
@@ -374,7 +374,7 @@ function Make(Spec) {
     return {
       make: make
     };
-  }))))))))));
+  })))))))))));
 }
 
 let PluginExtensionPointSpec;

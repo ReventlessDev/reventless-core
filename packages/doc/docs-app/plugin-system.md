@@ -217,7 +217,7 @@ See [Extension component](./components/extension.md) for full documentation.
 | `~extensionPoints` | `array<module(ExtensionPoint.T)>` | No | Public API surfaces for cross-plugin communication |
 | `~extensions` | `array<module(Extension.Blueprint)>` | No | Extension blueprints — auto-merged by EP, named after the plugin |
 | `~tasks` | `array<module(Task.T)>` | No | Scheduled or triggered tasks |
-| `~stateChangeSlices` | `array<module(StateChangeSlice.T)>` | No | DCB write-side slices |
+| `~stateChangeSlices` | `array<module(StateChangeSlice.T)>` | No | DCB write-side slices — build with `Make` (sync, `CommandAccepted`/`CommandRejected`) or `MakeAsync` (FIFO, `CommandPending`) |
 | `~stateViewSlices` | `array<module(StateViewSlice.T)>` | No | DCB read-side slices |
 | `~automationSlices` | `array<module(AutomationSlice.T)>` | No | DCB automation slices |
 | `~outboundTranslationSlices` | `array<module(OutboundTranslationSlice.T)>` | No | DCB outbound translation slices |

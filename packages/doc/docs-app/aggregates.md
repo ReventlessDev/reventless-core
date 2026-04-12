@@ -292,6 +292,47 @@ Platform.makePlatform(
 )
 ```
 
+## High-Contention Aggregates — `MakeAsync`
+
+By default, `Platform.Aggregate.Make` uses a standard SQS queue. Commands are processed synchronously within the Lambda invocation, and mutations return `CommandAccepted` or `CommandRejected` immediately.
+
+For aggregates with very high write throughput (e.g. a shared inventory counter or a hot-partition entity), you can opt into an async FIFO queue with `Platform.Aggregate.MakeAsync`:
+
+```rescript
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // Standard aggregate — mutation returns CommandAccepted | CommandRejected
+  module ProductAggregate = Platform.Aggregate.Make(
+    Product,
+    ProductBehavior,
+    ReventlessInfra.NoEventMappings.Make(Product),
+  )
+
+  // High-contention aggregate — mutation returns CommandPending immediately
+  module InventoryAggregate = Platform.Aggregate.MakeAsync(
+    Inventory,
+    InventoryBehavior,
+    ReventlessInfra.NoEventMappings.Make(Inventory),
+  )
+
+  let make = () =>
+    Platform.Plugin.make(
+      ~name="Catalog",
+      ~heartbeatInterval=60,
+      ~aggregates=[module(ProductAggregate), module(InventoryAggregate)],
+    )
+}
+```
+
+Both variants go in the same `~aggregates` array — the channel choice is encoded in the builder. In the AWS platform, `MakeAsync` provisions a FIFO SQS queue and its own Lambda. In the in-memory platform, both `Make` and `MakeAsync` behave identically.
+
+When a command is dispatched to a `MakeAsync` aggregate, the mutation returns:
+
+```graphql
+{ commandPending: { msgId: "..." } }
+```
+
+The client receives the `msgId` and can poll or subscribe for the eventual outcome. Use `MakeAsync` only when you have measured contention on a specific aggregate — the default synchronous path is simpler to reason about and provides immediate feedback.
+
 ## Next Steps
 
 - [Plugin System Overview](./plugin-system.md) - Understand the full plugin system

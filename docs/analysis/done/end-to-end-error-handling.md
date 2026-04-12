@@ -806,3 +806,108 @@ The composite key value (`"tenant-a/prod-123"`) is then returned in `acceptedRes
   For completeness: if EP dispatch were made end-to-end synchronous (waiting for all target aggregate decisions), returning `entityId` would require returning an array of outcomes — one per target. That is a richer API design beyond the current `CommandResult` union and not in scope here.
 - **Cross-entity array tag queries**: `PlaceOrder` has `productId: array<string>`. The query has one clause per product ID plus the `orderId` clause. `getPartitionTagValue` correctly finds `orderId` from the clause whose tag key matches the partition tag — array tags land in separate clauses and do not interfere.
 - **Composite partition key extraction**: uses `DcbTag.extractTags` on the command value rather than reading from the query, because `buildQueryFromCommand` does not preserve composite-member tags as individual clauses. The command value is available in `handleSingleCommand` as `command'.command`, so this is straightforward.
+
+---
+
+## 9. Channel Configuration Granularity: Aggregates vs StateChangeSlices
+
+### 9.1 How Aggregates Are Configured
+
+Each AWS runtime builder for aggregates hardcodes a channel module at the top level:
+
+```rescript
+// AggregateRuntime_Builder_Single.res
+module CommandTopicChannel = CommandTopicChannel.SQS_Sync
+```
+
+This flows down through the functor stack: `Aggregate_Builder.Make` receives the channel module and passes it to `CommandTopic_Builder.Make`, which calls `Channel.make(~name, ~opts)` to create the concrete channel. In principle, different aggregate types could use different channels, though the AWS builders currently all default to `SQS_Sync`.
+
+The available options are:
+
+| Channel | Queue | Mutation result | Use when |
+|---|---|---|---|
+| `SQS_Sync` (default) | Standard SQS | `CommandAccepted` \| `CommandRejected` | User-facing CRUD — inline synchronous result |
+| `SQS_Async` | FIFO SQS | `CommandPending` | High-contention writes where FIFO ordering matters more than a synchronous result |
+
+### 9.2 How StateChangeSlices Are Configured
+
+StateChangeSlices are grouped at plugin construction time into two arrays: sync (standard SQS, `CommandAccepted` / `CommandRejected`) and async (FIFO SQS, `CommandPending`):
+
+```rescript
+// Plugin.make — explicit grouping at the call site
+Plugin.make(
+  ~stateChangeSlices=[module(AddProductSlice), module(RenameCategorySlice)],
+  ~asyncStateChangeSlices=[module(HighContentionSlice)],  // opt-in to FIFO
+  ...
+)
+```
+
+`Dcb_Builder.Make` accepts **two** `CommandTopic_Adapter.Channel` functor parameters — one for sync slices, one for async slices. Both are always required for type-checking, but a CommandTopic (and the backing SQS queue) is only provisioned when the corresponding slice array is non-empty. Platforms that never use async slices simply pass the same channel twice and no FIFO queue is created.
+
+### 9.3 Why the Contention Model Differs
+
+The "high-contention" concern has a different character for each component type:
+
+**Aggregates** process all commands for a given instance sequentially in one Lambda invocation (commands are grouped by aggregate ID before replay/process/append). Under high write volume to the same instance, concurrent Lambdas can produce conflicting sequence numbers. `SQS_Async` (FIFO) solves this by serialising dispatch: at most one command for a given message group is in-flight at a time, eliminating the retry loop for aggregate conflicts.
+
+**StateChangeSlices** use optimistic concurrency with a conditional-append condition and a retry loop (up to `maxRetries = 3`). Conflicts are expected and handled in-process — no Lambda-level queuing is needed. `SQS_Async` would reduce retry frequency (at most one command in-flight per partition) but would remove the synchronous `CommandAccepted` / `CommandRejected` response, which is the primary value of the DCB path's `publishJsonsAndWait`. The built-in retry loop is the idiomatic DCB contention strategy.
+
+**Summary**: `SQS_Async` is the right escape valve for aggregates under high write pressure. For StateChangeSlices, the optimistic concurrency + retry model is the intended high-contention strategy; `SQS_Async` would trade away synchronous results without removing the need for conflict handling.
+
+### 9.4 Per-Slice Channel Configuration — Implemented
+
+**Status: Implemented (Step 10).**
+
+The critical insight proved correct: **the handler registry does not need to be split** — `makeFilteringHandler` routes commands by type name from `CommandTopic_Helpers.globalRegistry`, which is consulted regardless of which CommandTopic (and therefore which SQS queue) the command arrived on. Both the sync and async CommandTopics share the same registry and the same handler functions. The only split is where the *mutation resolver* enqueues the command.
+
+#### Implemented design: two CommandTopics, explicit array grouping
+
+`Dcb_Builder.Make` was extended to accept a second channel parameter:
+
+```rescript
+module Make = (
+  DcbEventLogStorage: DcbEventLog_Adapter.Storage,
+  DcbEventTopicPublisher: EventTopic_Adapter.Publisher,
+  DcbCommandTopicChannel: CommandTopic_Adapter.Channel,           // sync
+  DcbCommandTopicChannelAsync: CommandTopic_Adapter.Channel,      // async (FIFO)
+  RuntimeBuilder: PluginRuntime_Builder.T,
+  HooksConfig: Plugin_Helpers.HooksConfig,
+)
+```
+
+Rather than a per-slice `dispatchMode` annotation (which would have required PPX changes), the implementation uses **explicit array separation** at the `construct()` call site:
+
+```rescript
+DcbBuilder.construct(
+  ~stateChangeSlices=[module(AddProductSlice), module(RenameCategorySlice)],
+  ~asyncStateChangeSlices=[module(HighContentionSlice)],
+  ...
+)
+```
+
+This is simpler, requires no PPX changes, and makes the grouping visible at the call site. The previous concern about "PPX must ship first" does not apply.
+
+Phase 2 routing:
+- `stateChangeSlices` → sync `dcbCommandTopic.ops.publishJsonsAndWait` → `CommandAccepted | CommandRejected`
+- `asyncStateChangeSlices` → async `dcbAsyncCommandTopic.ops.publishJsons` → `CommandPending`
+
+#### `derivedPartitionTag` — no new spec field needed
+
+The concern about needing `let derivedPartitionTag` on `StateChangeSlice.T` was resolved: `StateChangeSlice_Callback.Make(Spec)` **already computes** `derivedPartitionTag` at functor init time from `Spec.eventSchema`:
+
+```rescript
+// Inside StateChangeSlice_Callback.Make — computed once at functor init
+let derivedPartitionTag = Reventless.DcbTag.derivePartitionTag([
+  (Spec.name, Spec.moduleUrl, Spec.eventSchema->S.castToUnknown),
+])
+```
+
+This is used for `entityId` extraction in `handleSingleCommand` — it derives the partition key value from the command, which becomes the `entityId` in `CommandAccepted`. No new field on the module type and no PPX injection required.
+
+#### FIFO group key (future work)
+
+The dynamic FIFO group key (partition tag value as `MessageGroupId`) was not implemented in this step — the async path currently uses the standard `publishJsons` without per-message group keys. If per-entity FIFO ordering is needed in the future, `CommandTopicChannel_SQS_Async` would need to accept a group key per message. The `derivedPartitionTag` already computed in `StateChangeSlice_Callback` provides all the information needed to extract it from the command JSON.
+
+#### Breaking change at platform level
+
+Every `Dcb_Builder.Make(...)` call site gained a second required channel parameter. Platforms that only use sync slices pass the same channel twice — no FIFO queue is provisioned because `asyncStateChangeSlices` defaults to `[]`.

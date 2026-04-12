@@ -108,6 +108,9 @@ module Make = (
         }
         switch events {
         | [] =>
+          references->Array.forEach(reference =>
+            CommandTopic_Helpers.reportAccepted(reference, {entityId: idStr, eventCount: 0})
+          )
           EffectLogger.logInfo(~comp, `no events produced: id=${idStr}`)->Effect.map(
             _ => Ok(references->Array.map(reference => Ok(reference))),
           )
@@ -129,6 +132,12 @@ module Make = (
             appendResult =>
               switch appendResult {
               | Ok(_) =>
+                references->Array.forEach(reference =>
+                  CommandTopic_Helpers.reportAccepted(reference, {
+                    entityId: idStr,
+                    eventCount: generatedEvents'->Array.length,
+                  })
+                )
                 EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(
                   _ => Ok(references->Array.map(reference => Ok(reference))),
                 )

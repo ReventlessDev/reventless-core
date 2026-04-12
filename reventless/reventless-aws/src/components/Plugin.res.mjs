@@ -11,6 +11,7 @@ import * as EventCollectorChannel_SQS$ReventlessAws from "../adapter/EventCollec
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "../adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
+import * as CommandTopicChannel_SQS_Async$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as CommandTopicRemoteChannel_SQS$ReventlessAws from "../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.mjs";
 import * as HeartbeatRunner_CloudWatchEvents$ReventlessAws from "../adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
@@ -42,6 +43,8 @@ function Make(HooksConfig) {
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
   }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
     make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
+  })({
+    make: CommandTopicChannel_SQS_Async$ReventlessAws.make
   });
 }
 

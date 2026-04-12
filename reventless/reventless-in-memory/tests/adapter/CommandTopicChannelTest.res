@@ -1,5 +1,5 @@
 // Unit tests for CommandTopicChannel_InMemory.
-// Covers encodeMessage, decodeId, publishJsons, and connect wiring.
+// Covers encodeCommandJson (shared helper), decodeId, publishJsons, and connect wiring.
 
 open AsyncTest
 open AsyncTest.Expect
@@ -16,16 +16,14 @@ let testMeta: Reventless.Message.meta = {
 }
 
 describe("CommandTopicChannel_InMemory", () => {
-  describe("encodeMessage", () => {
+  describe("encodeCommandJson", () => {
     testPromise("produces {id, meta, command} JSON shape", async () => {
-      module TestBus = InMemory_Bus.Make()
-      module TestChannel = CommandTopicChannel_InMemory.Make(TestBus)
       let cmdJson: Reventless.Message.commandJson = {
         id: "agg-1",
         meta: testMeta,
         commandJson: JSON.Encode.string("DoSomething"),
       }
-      let encoded = TestChannel.encodeMessage(cmdJson)
+      let encoded = ReventlessCore.CommandTopic.encodeCommandJson(cmdJson)
       let dict = switch encoded {
       | JSON.Object(d) => d
       | _ => Dict.make()

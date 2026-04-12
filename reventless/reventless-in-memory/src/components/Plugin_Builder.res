@@ -31,5 +31,6 @@ module Make = (Bus: InMemory_Bus.T, HooksConfig: ReventlessCore.Plugin_Helpers.H
     DcbEventLogStorage_InMemory.Make(Bus),
     EventTopicPublisher_InMemory.Make(Bus),
     CommandTopicChannel_InMemory.Make(Bus),
+    CommandTopicChannel_InMemory.Make(Bus),
   )
 }

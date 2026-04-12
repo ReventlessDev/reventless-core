@@ -43,6 +43,12 @@ DCB slices are passed directly as optional labeled arrays to `Plugin.make`. No s
 
 Empty arrays can simply be omitted (all args are optional).
 
+The channel choice (sync vs. async) is encoded in the slice builder, not in a separate array:
+- **`Platform.StateChangeSlice.Make(Spec)`** (default): backed by a standard SQS queue; mutation waits for `decide` inline and returns `CommandAccepted` or `CommandRejected` immediately.
+- **`Platform.StateChangeSlice.MakeAsync(Spec)`**: backed by a FIFO SQS queue; mutation returns `CommandPending` and the command is processed asynchronously. Use for slices where throughput requirements make synchronous per-request replay impractical.
+
+Both variants go in the same `~stateChangeSlices` array. Commands are routed by type name to whichever handler registered for them, regardless of which queue they arrived on.
+
 ### `StateChangeSlice.Spec`
 
 Each slice independently declares its `consumedEvent` (what it reads) and `producedEvent` (what it writes). These need not be the same type — a slice can consume a payload-less variant (e.g., `| ProductAdded`) and produce a full variant (e.g., `| ProductAdded({productId, name, ...})`).
@@ -374,6 +380,22 @@ let make = () =>
   )
 ```
 
+If a slice has very high write contention (e.g. a global counter or a hot partition), build it with `MakeAsync`. Its mutations return `CommandPending` instead of `CommandAccepted`:
+
+```rescript
+module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
+module GlobalCounterSlice = Platform.StateChangeSlice.MakeAsync(GlobalCounter)  // FIFO queue, CommandPending
+
+Platform.Plugin.make(
+  ~name="Catalog",
+  ~heartbeatInterval=60,
+  ~stateChangeSlices=[
+    module(AddProductSlice),
+    module(GlobalCounterSlice),   // high contention — partitioned internally by MakeAsync
+  ],
+  ...
+)
+
 ## Plugin Outputs
 
 ```rescript
@@ -397,14 +419,16 @@ When DCB is configured, `Dcb_Builder.Make.construct` (invoked by `Plugin_Builder
 
 1. **Validates event compatibility** — `DcbValidation.validateProducedAndConsumed` checks that every consumed event TAG has a matching producer, payloads are equivalent across producers, and consumed fields are subsets of produced fields
 2. **Extracts tagged fields** from all slices' schemas to determine DynamoDB secondary index names
-3. **Derives the partition tag** via `DcbTag.derivePartitionTag` — auto-selects when unambiguous, requires `DcbTag.partition` annotation when a variant has multiple tags
+3. **Derives the partition tag** via `DcbTag.derivePartitionTag` — auto-selects when unambiguous, requires `@partitionTag` annotation when a variant has multiple tags
 4. **Creates one `DcbEventLog`** using the plugin name, extracted indexes, and partition tag
-4. **Creates one `DcbCommandTopic`** — typed as `command = JSON.t` (accepts all JSON)
-5. **Constructs each `StateChangeSlice`** — passes shared resources; each slice registers its JSON handler in the global registry
-6. **Constructs each `StateViewSlice`** — each slice gets its own QueryDb and subscribes to DcbEventLog events
-7. **Constructs AutomationSlices, OutboundTranslationSlices, InboundTranslationSlices**
-8. **Calls `DcbCommandTopic.makeFilteringHandler`** — wires `filteringHandler` to the SQS channel
-9. **Creates the Lambda** and connects it to SQS
+5. **Creates the sync `DcbCommandTopic`** (standard SQS) — provisioned if any sync slices present
+6. **Creates the async `DcbCommandTopic`** (FIFO SQS) — only provisioned if any `MakeAsync` slices are present
+7. **Constructs each sync `StateChangeSlice`** — passes sync `publishJsons`; each slice registers its JSON handler in the global registry
+8. **Constructs each async `StateChangeSlice`** — passes async `publishJsons`; handlers go into the same global registry
+9. **Constructs each `StateViewSlice`** — each slice gets its own QueryDb and subscribes to DcbEventLog events
+10. **Constructs AutomationSlices, OutboundTranslationSlices, InboundTranslationSlices**
+11. **Calls `makeFilteringHandler`** on both CommandTopics — both use the same global handler registry
+12. **Creates one Lambda per CommandTopic** that has slices assigned to it
 
 ```rescript
 // Inside Dcb_Builder.Make.construct:
@@ -434,26 +458,51 @@ let partitionTag = Reventless.DcbTag.derivePartitionTag(producedSchemas)
 module DcbEventLogMaker = DcbEventLog_Builder.Make(DcbEventLogStorage, DcbEventTopicPublisher)
 let dcbEventLog = DcbEventLogMaker.make(~name, ~indexes, ~partitionTag, ~opts)
 
+// 5. Sync CommandTopic (standard SQS) — always created
 module DcbCommandTopicMaker = CommandTopic_Builder.Make(DcbCommandTopicSpec, DcbCommandTopicChannel)
 let dcbCommandTopic = DcbCommandTopicMaker.make(~name=`${childName}-dcb-command-topic`, ~opts)
 
 let publishJsons =
   dcbCommandTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
 
-// 5. Each StateChangeSlice.make registers its handler in the global registry
-stateChangeSlices->Array.map((module(Slice: StateChangeSlice.T)) => {
+// Partition stateChangeSlices by channel mode (MakeAsync sets isAsync = true)
+let syncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)) => !M.isAsync)
+let asyncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)) => M.isAsync)
+
+// 6. Async CommandTopic (FIFO SQS) — only created if any MakeAsync slices present
+module DcbCommandTopicSpecAsync = { let name = childName ++ "Async"; @schema type command = JSON.t }
+module DcbAsyncCommandTopicMaker = CommandTopic_Builder.Make(DcbCommandTopicSpecAsync, DcbCommandTopicChannelAsync)
+let asyncDcbCommandTopicOpt = if asyncSlices->Array.length > 0 {
+  Some(DcbAsyncCommandTopicMaker.make(~name=`${childName}-dcb-async-command-topic`, ~opts))
+} else { None }
+
+// 7. Each sync StateChangeSlice.make registers its handler in the global registry
+syncSlices->Array.map((module(Slice: StateChangeSlice.T)) => {
   Slice.make(~dcbEventLog, ~publishJsons, ~opts)
 })
 
-// 6. Each StateViewSlice.make creates its own QueryDb and subscribes
+// 8. Each async StateChangeSlice uses the FIFO CommandTopic's publishJsons
+asyncDcbCommandTopicOpt->Option.forEach(asyncTopic => {
+  let asyncPublishJsons = asyncTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
+  asyncSlices->Array.map((module(Slice: StateChangeSlice.T)) => {
+    Slice.make(~dcbEventLog, ~publishJsons=asyncPublishJsons, ~opts)
+  })
+})
+
+// 9. Each StateViewSlice.make creates its own QueryDb and subscribes
 stateViewSlices->Array.map((module(Slice: StateViewSlice.T)) => {
   Slice.make(~dcbEventLog, ~opts)
 })
 
-// 8. Capture handler before DcbCommandTopic escapes scope
+// 11-12. One Lambda per CommandTopic
 let dcbHandler = DcbCommandTopicMaker.makeFilteringHandler(dcbCommandTopic)
-let dcbRuntimeSetup = () =>
+let dcbRuntimeSetup = () => {
   dcbCommandTopic->PluginRuntimeBuilder.forDcbCommandTopic(~handler=dcbHandler, ~connect=dcbConnectFn)
+  asyncDcbCommandTopicOpt->Option.forEach(asyncTopic => {
+    let asyncHandler = DcbAsyncCommandTopicMaker.makeFilteringHandler(asyncTopic)
+    asyncTopic->PluginRuntimeBuilder.forDcbCommandTopic(~handler=asyncHandler->Obj.magic, ~connect=asyncConnectFn)
+  })
+}
 ```
 
 ### Schema-Based Handler Registration
@@ -529,7 +578,7 @@ Unlike StateChangeSlice which handles commands and decides on events, StateViewS
 
 ### `Plugin_Builder.Make` Functor Parameters
 
-The functor requires three DCB-specific adapters alongside the standard ones:
+The functor requires four DCB-specific adapters alongside the standard ones:
 
 ```rescript
 module Make = (
@@ -542,13 +591,14 @@ module Make = (
   PluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
   HeartbeatRunner: Heartbeat_Adapter.Runner ...,
   PluginRuntimeBuilder: PluginRuntime_Builder.T ...,
-  DcbEventLogStorage: DcbEventLog_Adapter.Storage,       // e.g. DynamoDB adapter
-  DcbEventTopicPublisher: EventTopic_Adapter.Publisher,  // e.g. SNS adapter
-  DcbCommandTopicChannel: CommandTopic_Adapter.Channel,  // e.g. SQS FIFO adapter
+  DcbEventLogStorage: DcbEventLog_Adapter.Storage,            // e.g. DynamoDB adapter
+  DcbEventTopicPublisher: EventTopic_Adapter.Publisher,       // e.g. DynamoDB Stream → SNS
+  DcbCommandTopicChannel: CommandTopic_Adapter.Channel,       // sync (standard SQS)
+  DcbCommandTopicChannelAsync: CommandTopic_Adapter.Channel,  // async (FIFO SQS)
 ): Plugin.T with type api = ApiSpec.api and type role = ApiSpec.role
 ```
 
-These are always required as functor parameters even if a specific plugin instance doesn't use DCB (all slice arrays default to `[]` at the `make` call site).
+All four DCB adapters are always required as functor parameters even if a specific plugin instance doesn't use DCB (all slice arrays default to `[]` at the `make` call site, so no queues are provisioned). Platforms that never use async slices can safely pass the same channel module for both `DcbCommandTopicChannel` and `DcbCommandTopicChannelAsync`.
 
 ## Build-Time Validation
 

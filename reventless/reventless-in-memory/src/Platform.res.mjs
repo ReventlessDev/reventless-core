@@ -349,8 +349,19 @@ function MakeWithConfig(Config) {
       finish: $$let.finish
     };
   }));
+  let MakeAsync = Spec => (Behavior => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  }));
   let Aggregate = {
-    Make: Make
+    Make: Make,
+    MakeAsync: MakeAsync
   };
   let Make$1 = Spec => (Mappings => {
     let $$let = ReadModelMaker.Make(Spec)(Mappings);
@@ -433,8 +444,17 @@ function MakeWithConfig(Config) {
   };
   let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
   let Make$5 = StateChangeSlice_Builder$ReventlessInMemory.Make;
+  let MakeAsync$1 = Spec => {
+    let include = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec);
+    return {
+      Spec: include.Spec,
+      isAsync: true,
+      make: include.make
+    };
+  };
   let StateChangeSlice = {
-    Make: Make$5
+    Make: Make$5,
+    MakeAsync: MakeAsync$1
   };
   let Make$6 = Spec => StateViewSliceMaker.Make(Spec);
   let StateViewSlice = {
@@ -477,6 +497,7 @@ function MakeWithConfig(Config) {
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
   let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+  let $$let$1 = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
@@ -493,6 +514,8 @@ function MakeWithConfig(Config) {
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
     make: $$let.make
+  })({
+    make: $$let$1.make
   })({
     silent: Config.silent,
     splitApi: Config.splitApi,
@@ -1335,8 +1358,19 @@ function Make($star) {
       finish: $$let.finish
     };
   }));
+  let MakeAsync = Spec => (Behavior => (EventMappings => {
+    let $$let = AggregateMaker.Make(Spec)(Behavior)(EventMappings);
+    return {
+      Spec: $$let.Spec,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  }));
   let Aggregate = {
-    Make: Make$1
+    Make: Make$1,
+    MakeAsync: MakeAsync
   };
   let Make$2 = Spec => (Mappings => {
     let $$let = ReadModelMaker.Make(Spec)(Mappings);
@@ -1419,8 +1453,17 @@ function Make($star) {
   };
   let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
   let Make$6 = StateChangeSlice_Builder$ReventlessInMemory.Make;
+  let MakeAsync$1 = Spec => {
+    let include = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec);
+    return {
+      Spec: include.Spec,
+      isAsync: true,
+      make: include.make
+    };
+  };
   let StateChangeSlice = {
-    Make: Make$6
+    Make: Make$6,
+    MakeAsync: MakeAsync$1
   };
   let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
   let StateViewSlice = {
@@ -1462,6 +1505,7 @@ function Make($star) {
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
   let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+  let $$let$1 = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
@@ -1478,6 +1522,8 @@ function Make($star) {
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
     make: $$let.make
+  })({
+    make: $$let$1.make
   })({
     silent: false,
     splitApi: true,
