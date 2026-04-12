@@ -211,8 +211,7 @@ ${mutations}
     let p = s => log.info(~comp=label, s)
     let d = diagnostics()
     p("Diagnostics")
-    p(`  Types (${d.typeCount->Int.toString}):`)
-    d.registeredTypeDefinitions->Array.forEach(t => p(`    - ${t}`))
+    p(`  Types: ${d.typeCount->Int.toString}`)
     p(
       `  Mutations: ${d.sdlMutationCount->Int.toString} SDL fields, ${d.resolverMutationCount->Int.toString} resolvers`,
     )

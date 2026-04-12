@@ -184,7 +184,7 @@ function start(portOpt, param) {
     });
     res.end(sdlContent);
   });
-  server.listen(port, () => log.info("GraphQL", undefined, `listening on http://localhost:` + port.toString() + `/graphql (SDL: /sdl)`));
+  server.listen(port, () => log.info("GraphQL:Domain", undefined, `listening on http://localhost:` + port.toString() + `/graphql (SDL: /sdl)`));
   activeServer.contents = Primitive_option.some(server);
 }
 
@@ -243,7 +243,7 @@ function rebuildSchema(baseFragment, pluginFragments) {
     });
     res.end(sdlContent);
   });
-  server.listen(4000, () => log.info("GraphQL", undefined, "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)"));
+  server.listen(4000, () => log.info("GraphQL:Domain", undefined, "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)"));
   activeServer.contents = Primitive_option.some(server);
 }
 
@@ -285,11 +285,11 @@ function getLiveSdl() {
 function printLiveSdl() {
   let sdl = getLiveSdl();
   if (sdl !== undefined) {
-    log.info("GraphQL", undefined, "Live SDL:");
+    log.info("GraphQL:Domain", undefined, "Live SDL:");
     console.log(sdl);
     return;
   } else {
-    return log.info("GraphQL", undefined, "no active schema");
+    return log.info("GraphQL:Domain", undefined, "no active schema");
   }
 }
 
@@ -351,17 +351,12 @@ function diagnostics() {
 }
 
 function printDiagnostics() {
-  let p = s => log.info("GraphQL", undefined, s);
+  let p = s => log.info("GraphQL:Domain", undefined, s);
   let d = diagnostics();
   p("Diagnostics");
-  p(`  Types (` + d.typeCount.toString() + `):`);
-  d.registeredTypeDefinitions.forEach(t => p(`    - ` + t));
+  p(`  Types: ` + d.typeCount.toString());
   p(`  Mutations: ` + d.sdlMutationCount.toString() + ` SDL fields, ` + d.resolverMutationCount.toString() + ` resolvers`);
-  d.registeredMutationFields.forEach(f => p(`    SDL: ` + f));
-  d.registeredMutationResolvers.forEach(r => p(`    Resolver: ` + r));
   p(`  Queries: ` + d.sdlQueryCount.toString() + ` SDL fields, ` + d.resolverQueryCount.toString() + ` resolvers`);
-  d.registeredQueryFields.forEach(f => p(`    SDL: ` + f));
-  d.registeredQueryResolvers.forEach(r => p(`    Resolver: ` + r));
   if (d.mismatches.length !== 0) {
     p(`  Mismatches (` + d.mismatches.length.toString() + `):`);
     d.mismatches.forEach(m => p(`    ⚠ ` + m));

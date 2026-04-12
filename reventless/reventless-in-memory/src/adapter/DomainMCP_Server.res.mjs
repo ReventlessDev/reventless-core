@@ -150,7 +150,7 @@ function createServerInstance(identity) {
     let toolName = req.params.name;
     let args = Stdlib_Option.getOr(req.params.arguments, null);
     if (debug) {
-      log.info("MCP", undefined, `tools/call: ` + toolName);
+      log.info("MCP:Domain", undefined, `tools/call: ` + toolName);
     }
     let match = tools.contents[toolName];
     if (match !== undefined) {
@@ -190,19 +190,19 @@ function createServerInstance(identity) {
   McpSdk_Helpers.onReadResource(server, async req => {
     let uri = req.params.uri;
     if (debug) {
-      log.info("MCP", undefined, `resources/read: ` + uri);
+      log.info("MCP:Domain", undefined, `resources/read: ` + uri);
     }
     let matchedResource = Object.values(resources.contents).find(param => uri.includes(param.definition.name));
     if (matchedResource !== undefined) {
       if (debug) {
-        log.debug("MCP", undefined, `matched resource: ` + matchedResource.definition.name);
+        log.debug("MCP:Domain", undefined, `matched resource: ` + matchedResource.definition.name);
       }
       return await matchedResource.handler(uri);
     }
     let matchedTemplate = Object.values(resourceTemplates.contents).find(param => uri.includes(param.definition.name));
     if (matchedTemplate !== undefined) {
       if (debug) {
-        log.debug("MCP", undefined, `matched template: ` + matchedTemplate.definition.name);
+        log.debug("MCP:Domain", undefined, `matched template: ` + matchedTemplate.definition.name);
       }
       return await matchedTemplate.handler(uri);
     } else {
@@ -263,19 +263,19 @@ function start(portOpt, param) {
     })();
   });
   httpServer.listen(port, () => {
-    log.info("MCP", undefined, `listening on http://localhost:` + port.toString() + `/mcp`);
+    log.info("MCP:Domain", undefined, `listening on http://localhost:` + port.toString() + `/mcp`);
     if (!debug) {
       return;
     }
     let toolNames = Object.keys(tools.contents);
     let resourceNames = Object.keys(resources.contents);
     let templateNames = Object.keys(resourceTemplates.contents);
-    log.info("MCP", undefined, `tools (` + toolNames.length.toString() + `):`);
-    toolNames.forEach(t => log.info("MCP", undefined, `  - ` + t));
-    log.info("MCP", undefined, `resources (` + resourceNames.length.toString() + `):`);
-    resourceNames.forEach(r => log.info("MCP", undefined, `  - ` + r));
-    log.info("MCP", undefined, `resource templates (` + templateNames.length.toString() + `):`);
-    templateNames.forEach(r => log.info("MCP", undefined, `  - ` + r));
+    log.info("MCP:Domain", undefined, `tools (` + toolNames.length.toString() + `):`);
+    toolNames.forEach(t => log.info("MCP:Domain", undefined, `  - ` + t));
+    log.info("MCP:Domain", undefined, `resources (` + resourceNames.length.toString() + `):`);
+    resourceNames.forEach(r => log.info("MCP:Domain", undefined, `  - ` + r));
+    log.info("MCP:Domain", undefined, `resource templates (` + templateNames.length.toString() + `):`);
+    templateNames.forEach(r => log.info("MCP:Domain", undefined, `  - ` + r));
   });
   activeServer.contents = Primitive_option.some(httpServer);
 }
@@ -309,12 +309,12 @@ function diagnostics() {
 
 function printDiagnostics() {
   let d = diagnostics();
-  log.info("MCP", undefined, "diagnostics");
-  log.info("MCP", undefined, `  tools (` + d.toolCount.toString() + `):`);
-  d.registeredTools.forEach(t => log.info("MCP", undefined, `    - ` + t));
-  log.info("MCP", undefined, `  resources (` + d.resourceCount.toString() + `):`);
-  d.registeredResources.forEach(r => log.info("MCP", undefined, `    - ` + r));
-  log.info("MCP", undefined, `  server running: ` + (
+  log.info("MCP:Domain", undefined, "diagnostics");
+  log.info("MCP:Domain", undefined, `  tools (` + d.toolCount.toString() + `):`);
+  d.registeredTools.forEach(t => log.info("MCP:Domain", undefined, `    - ` + t));
+  log.info("MCP:Domain", undefined, `  resources (` + d.resourceCount.toString() + `):`);
+  d.registeredResources.forEach(r => log.info("MCP:Domain", undefined, `    - ` + r));
+  log.info("MCP:Domain", undefined, `  server running: ` + (
     d.serverRunning ? "yes" : "no"
   ));
 }

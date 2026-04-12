@@ -303,17 +303,6 @@ let make = (~label: string="MCP"): t => {
 
     httpServer->McpSdk.listen(port, () => {
       log.info(~comp=label, `listening on http://localhost:${port->Int.toString}/mcp`)
-      if debug {
-        let toolNames = tools.contents->Dict.keysToArray
-        let resourceNames = resources.contents->Dict.keysToArray
-        let templateNames = resourceTemplates.contents->Dict.keysToArray
-        log.info(~comp=label, `tools (${toolNames->Array.length->Int.toString}):`)
-        toolNames->Array.forEach(t => log.info(~comp=label, `  - ${t}`))
-        log.info(~comp=label, `resources (${resourceNames->Array.length->Int.toString}):`)
-        resourceNames->Array.forEach(r => log.info(~comp=label, `  - ${r}`))
-        log.info(~comp=label, `resource templates (${templateNames->Array.length->Int.toString}):`)
-        templateNames->Array.forEach(r => log.info(~comp=label, `  - ${r}`))
-      }
     })
     activeServer.contents = Some(httpServer)
   }

@@ -77,7 +77,7 @@ function queryFieldNamesForSliceQueryDb(plugin, queryDbName, connectionSpecOpt) 
 }
 
 function adminField(name) {
-  return `Admin_` + name;
+  return `Platform_` + name;
 }
 
 export {

@@ -252,21 +252,7 @@ function make(labelOpt) {
         }
       })();
     });
-    httpServer.listen(port, () => {
-      log.info(label, undefined, `listening on http://localhost:` + port.toString() + `/mcp`);
-      if (!debug) {
-        return;
-      }
-      let toolNames = Object.keys(tools.contents);
-      let resourceNames = Object.keys(resources.contents);
-      let templateNames = Object.keys(resourceTemplates.contents);
-      log.info(label, undefined, `tools (` + toolNames.length.toString() + `):`);
-      toolNames.forEach(t => log.info(label, undefined, `  - ` + t));
-      log.info(label, undefined, `resources (` + resourceNames.length.toString() + `):`);
-      resourceNames.forEach(r => log.info(label, undefined, `  - ` + r));
-      log.info(label, undefined, `resource templates (` + templateNames.length.toString() + `):`);
-      templateNames.forEach(r => log.info(label, undefined, `  - ` + r));
-    });
+    httpServer.listen(port, () => log.info(label, undefined, `listening on http://localhost:` + port.toString() + `/mcp`));
     activeServer.contents = Primitive_option.some(httpServer);
   };
   let stop = () => {

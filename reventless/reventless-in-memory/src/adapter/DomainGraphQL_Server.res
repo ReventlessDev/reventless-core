@@ -184,7 +184,7 @@ let start = (~port: int=4000, ()) => {
     }
   })
   server->YG.listen(port, () =>
-    log.info(~comp="GraphQL", `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`)
+    log.info(~comp="GraphQL:Domain", `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`)
   )
   activeServer.contents = Some(server)
 }
@@ -244,7 +244,7 @@ let rebuildSchema = (
     }
   })
   server->YG.listen(4000, () =>
-    log.info(~comp="GraphQL", "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)")
+    log.info(~comp="GraphQL:Domain", "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)")
   )
   activeServer.contents = Some(server)
 }
@@ -282,9 +282,9 @@ let getLiveSdl = () => activeSchema.contents->Option.map(YG.printSchema)
 let printLiveSdl = () =>
   switch getLiveSdl() {
   | Some(sdl) =>
-    log.info(~comp="GraphQL", "Live SDL:")
+    log.info(~comp="GraphQL:Domain", "Live SDL:")
     Console.log(sdl)
-  | None => log.info(~comp="GraphQL", "no active schema")
+  | None => log.info(~comp="GraphQL:Domain", "no active schema")
   }
 
 type diagnostics = GraphQL_ServerInstance.diagnostics
@@ -360,21 +360,16 @@ let diagnostics = (): diagnostics => {
 }
 
 let printDiagnostics = () => {
-  let p = s => log.info(~comp="GraphQL", s)
+  let p = s => log.info(~comp="GraphQL:Domain", s)
   let d = diagnostics()
   p("Diagnostics")
-  p(`  Types (${d.typeCount->Int.toString}):`)
-  d.registeredTypeDefinitions->Array.forEach(t => p(`    - ${t}`))
+  p(`  Types: ${d.typeCount->Int.toString}`)
   p(
     `  Mutations: ${d.sdlMutationCount->Int.toString} SDL fields, ${d.resolverMutationCount->Int.toString} resolvers`,
   )
-  d.registeredMutationFields->Array.forEach(f => p(`    SDL: ${f}`))
-  d.registeredMutationResolvers->Array.forEach(r => p(`    Resolver: ${r}`))
   p(
     `  Queries: ${d.sdlQueryCount->Int.toString} SDL fields, ${d.resolverQueryCount->Int.toString} resolvers`,
   )
-  d.registeredQueryFields->Array.forEach(f => p(`    SDL: ${f}`))
-  d.registeredQueryResolvers->Array.forEach(r => p(`    Resolver: ${r}`))
   if d.mismatches->Array.length > 0 {
     p(`  Mismatches (${d.mismatches->Array.length->Int.toString}):`)
     d.mismatches->Array.forEach(m => p(`    ⚠ ${m}`))

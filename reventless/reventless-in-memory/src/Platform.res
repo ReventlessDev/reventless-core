@@ -53,6 +53,10 @@ module MakeWithConfig = (
   // Domain = plugin-facing (default); Platform = admin/core (split mode).
   let currentDeployTarget: ref<apiTarget> = ref(Domain)
 
+  // Track which GraphQL servers have had admin schema (Plugin queries/mutations) registered.
+  // Prevents double-registration when makePlatform and deployPlugin both target the same server.
+  let adminRegisteredServers: ref<array<GraphQL_ServerInstance.t>> = ref([])
+
   // Relay support record for domain QueryDbs (platform QueryDbs pass None).
   let domainRelaySupport: QueryDbResolvers_GraphQL.relaySupport = {
     encodeGlobalId: DomainGraphQL_Server.encodeGlobalId,
@@ -730,6 +734,14 @@ module MakeWithConfig = (
       PlatformGraphQL_Server.start(~port=4001, ())
       PlatformMCP_Server.start(~port=3002, ())
     }
+    if graphqlDebug {
+      DomainGraphQL_Server.printDiagnostics()
+      DomainMCP_Server.printDiagnostics()
+      if Config.splitApi {
+        PlatformGraphQL_Server.printDiagnostics()
+        PlatformMCP_Server.printDiagnostics()
+      }
+    }
   }
 
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
@@ -937,6 +949,7 @@ module MakeWithConfig = (
       }
     )
     platformGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+    adminRegisteredServers.contents->Array.push(platformGraphQL)
 
     // Register admin Plugin queries and mutations as MCP resources and tools.
     let pluginQueryHandler = async (_resourceName, uri) => {
@@ -992,14 +1005,11 @@ module MakeWithConfig = (
       ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
       ~resolvers=Dict.make(),
     )
-    // In split mode, also inject Relay base types into the platform server so platform
-    // plugins that call registerTypes with Node-implementing types compile correctly.
+    // In split mode, inject Relay base types (Node interface, PageInfo) into the platform
+    // server so SDL fragments compile. The node(id) query is Domain-only — the Platform
+    // API is consumed by admin tools and agents, not Relay clients.
     if Config.splitApi {
       PlatformGraphQL_Server.registerTypes(~sdlTypes=ReventlessCore.GraphQL_Stitcher.relayBaseTypes)
-      PlatformGraphQL_Server.registerQueries(
-        ~sdlFields=ReventlessCore.GraphQL_Stitcher.relayBaseQueries,
-        ~resolvers=Dict.make(),
-      )
     }
 
     // Reset deploy target to Domain after admin registration is done.
@@ -1013,13 +1023,6 @@ module MakeWithConfig = (
       DomainMCP_Server.start()
     }
 
-    // Print schema diagnostics when GRAPHQL_DEBUG is set.
-    if graphqlDebug {
-      DomainGraphQL_Server.printDiagnostics()
-      if Config.splitApi {
-        PlatformGraphQL_Server.printDiagnostics()
-      }
-    }
   }
 
   let deployPlatform = (~version) => {
@@ -1116,10 +1119,11 @@ module MakeWithConfig = (
     // Set the active deploy target so resolveTargetGraphQL/MCP() and QueryDb serverRef/relayRef
     // route registrations to the correct server. Mirrors AWS resolveTargetApi() pattern.
     currentDeployTarget.contents = apiTarget
-    // Update QueryDb server/relay refs to match the target.
-    module QR = QueryDbResolvers_GraphQL.Make(Bus)
-    QR.serverRef.contents = resolveTargetGraphQL()
-    QR.relayRef.contents = switch apiTarget {
+    // Update QueryDb server/relay refs on the shared StateViewSliceMaker.QueryDbResolvers instance.
+    // Do NOT create a new QueryDbResolvers_GraphQL.Make(Bus) here — that would be a different
+    // module instance from the one StateViewSlice_Builder captured, leaving its refs unchanged.
+    StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL()
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = switch apiTarget {
     | Domain => Some(domainRelaySupport)
     | Platform => None
     }
@@ -1165,41 +1169,44 @@ module MakeWithConfig = (
     ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
 
     // Register admin schema to the correct target (domain or platform).
-    // resolveTargetGraphQL() returns the right server based on currentDeployTarget.
+    // Skip if already registered by makePlatform (both target the same server).
     let adminGraphQL = resolveTargetGraphQL()
-    let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
-      ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-    )
-    adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
-
-    let queryResolvers = Dict.make()
-    let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
-    queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args, _ctx): JSON.t =>
-      JSON.Encode.null
-    )
-    queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
-      Dict.fromArray([
-        ("nextToken", JSON.Encode.null),
-        ("scannedCount", JSON.Encode.int(0)),
-        ("items", []->JSON.Encode.array),
-      ])->JSON.Encode.object
-    )
-    adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
-
-    let mutationResolvers = Dict.make()
-    let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
-    let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
-    adminMutationFieldNames->Array.forEach(field =>
-      mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
-        JSON.Encode.string("ok")
+    if !(adminRegisteredServers.contents->Array.some(s => s === adminGraphQL)) {
+      let baseParts = ReventlessCore.GraphQL_Stitcher.decode(
+        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
       )
-    )
-    adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+      adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
+
+      let queryResolvers = Dict.make()
+      let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+      queryResolvers->Dict.set(adminQueryEntry.singleFieldName, async (_root, _args, _ctx): JSON.t =>
+        JSON.Encode.null
+      )
+      queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
+        Dict.fromArray([
+          ("nextToken", JSON.Encode.null),
+          ("scannedCount", JSON.Encode.int(0)),
+          ("items", []->JSON.Encode.array),
+        ])->JSON.Encode.object
+      )
+      adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+
+      let mutationResolvers = Dict.make()
+      let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
+      let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
+      adminMutationFieldNames->Array.forEach(field =>
+        mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
+          JSON.Encode.string("ok")
+        )
+      )
+      adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+      adminRegisteredServers.contents->Array.push(adminGraphQL)
+    }
 
     // Reset deploy target back to Domain for subsequent calls.
     currentDeployTarget.contents = Domain
-    QR.serverRef.contents = DomainGraphQL_Server.asInterface
-    QR.relayRef.contents = Some(domainRelaySupport)
+    StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server.asInterface
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = Some(domainRelaySupport)
 
     // Seed the Plugin QueryDb so this plugin appears in plugin queries.
     seedPluginQueryDb(~pluginComponents=[pluginComponent])

@@ -172,8 +172,7 @@ type Mutation {
     let p = s => log.info(label, undefined, s);
     let d = diagnostics();
     p("Diagnostics");
-    p(`  Types (` + d.typeCount.toString() + `):`);
-    d.registeredTypeDefinitions.forEach(t => p(`    - ` + t));
+    p(`  Types: ` + d.typeCount.toString());
     p(`  Mutations: ` + d.sdlMutationCount.toString() + ` SDL fields, ` + d.resolverMutationCount.toString() + ` resolvers`);
     p(`  Queries: ` + d.sdlQueryCount.toString() + ` SDL fields, ` + d.resolverQueryCount.toString() + ` resolvers`);
     if (d.mismatches.length !== 0) {

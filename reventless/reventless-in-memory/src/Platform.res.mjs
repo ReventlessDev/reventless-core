@@ -46,7 +46,6 @@ import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateVi
 import * as AutomationSlice_Builder$ReventlessInMemory from "./components/AutomationSlice_Builder.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as GraphQL_InMemory_Adapter$ReventlessInMemory from "./adapter/Api/GraphQL_InMemory_Adapter.res.mjs";
-import * as QueryDbResolvers_GraphQL$ReventlessInMemory from "./adapter/QueryDb/QueryDbResolvers_GraphQL.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_InMemory$ReventlessInMemory from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 import * as RuntimeEnvironment_InMemory$ReventlessInMemory from "./adapter/Runtime/RuntimeEnvironment_InMemory.res.mjs";
@@ -81,6 +80,9 @@ function MakeWithConfig(Config) {
   });
   let currentDeployTarget = {
     contents: "Domain"
+  };
+  let adminRegisteredServers = {
+    contents: []
   };
   let domainRelaySupport = {
     encodeGlobalId: DomainGraphQL_Server$ReventlessInMemory.encodeGlobalId,
@@ -677,7 +679,17 @@ function MakeWithConfig(Config) {
       DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
       DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
       PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
-      return PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
+      PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
+    }
+    if (graphqlDebug) {
+      DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
+      DomainMCP_Server$ReventlessInMemory.printDiagnostics();
+      if (Config.splitApi) {
+        PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
+        return PlatformMCP_Server$ReventlessInMemory.printDiagnostics();
+      } else {
+        return;
+      }
     }
   };
   let makePlatform = (version, plugins) => {
@@ -839,6 +851,7 @@ function MakeWithConfig(Config) {
       }
     });
     platformGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    adminRegisteredServers.contents.push(platformGraphQL);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
@@ -875,20 +888,11 @@ function MakeWithConfig(Config) {
     DomainGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     if (Config.splitApi) {
       PlatformGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
-      PlatformGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     }
     currentDeployTarget.contents = "Domain";
     if (!Config.splitApi) {
       DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
-      DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
-    }
-    if (graphqlDebug) {
-      DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
-      if (Config.splitApi) {
-        return PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
-      } else {
-        return;
-      }
+      return DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     }
   };
   let deployPlatform = version => {
@@ -957,11 +961,10 @@ function MakeWithConfig(Config) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     log.info("Platform", undefined, `deployPlugin v` + version);
     currentDeployTarget.contents = apiTarget;
-    let QR = QueryDbResolvers_GraphQL$ReventlessInMemory.Make(Bus);
-    QR.serverRef.contents = resolveTargetGraphQL();
+    StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
     let tmp;
     tmp = apiTarget === "Domain" ? domainRelaySupport : undefined;
-    QR.relayRef.contents = tmp;
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = tmp;
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -986,36 +989,39 @@ function MakeWithConfig(Config) {
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let adminGraphQL = resolveTargetGraphQL();
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
-    adminGraphQL.registerTypes(baseParts.types);
-    let queryResolvers = {};
-    let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
-    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
-      [
-        "nextToken",
-        null
-      ],
-      [
-        "scannedCount",
-        0
-      ],
-      [
-        "items",
-        []
-      ]
-    ]);
-    adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    let mutationResolvers = {};
-    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
-    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
-    adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
-    });
-    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    if (!adminRegisteredServers.contents.some(s => s === adminGraphQL)) {
+      let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(Config.cloner));
+      adminGraphQL.registerTypes(baseParts.types);
+      let queryResolvers = {};
+      let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
+      queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
+      queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
+        [
+          "nextToken",
+          null
+        ],
+        [
+          "scannedCount",
+          0
+        ],
+        [
+          "items",
+          []
+        ]
+      ]);
+      adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
+      let mutationResolvers = {};
+      let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
+      let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+      adminMutationFieldNames.forEach(field => {
+        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+      });
+      adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+      adminRegisteredServers.contents.push(adminGraphQL);
+    }
     currentDeployTarget.contents = "Domain";
-    QR.serverRef.contents = DomainGraphQL_Server$ReventlessInMemory.asInterface;
-    QR.relayRef.contents = domainRelaySupport;
+    StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server$ReventlessInMemory.asInterface;
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     seedPluginQueryDb([pluginComponent]);
     firePluginDeployedHooks(builtInfos.contents);
     if (!Config.splitApi) {
@@ -1065,6 +1071,9 @@ function Make($star) {
   });
   let currentDeployTarget = {
     contents: "Domain"
+  };
+  let adminRegisteredServers = {
+    contents: []
   };
   let domainRelaySupport = {
     encodeGlobalId: DomainGraphQL_Server$ReventlessInMemory.encodeGlobalId,
@@ -1654,6 +1663,12 @@ function Make($star) {
     DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
     PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
+    if (graphqlDebug) {
+      DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
+      DomainMCP_Server$ReventlessInMemory.printDiagnostics();
+      PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
+      return PlatformMCP_Server$ReventlessInMemory.printDiagnostics();
+    }
   };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
@@ -1814,6 +1829,7 @@ function Make($star) {
       }
     });
     platformGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    adminRegisteredServers.contents.push(platformGraphQL);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
@@ -1849,12 +1865,7 @@ function Make($star) {
     DomainGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     PlatformGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
-    PlatformGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     currentDeployTarget.contents = "Domain";
-    if (graphqlDebug) {
-      DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
-      return PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
-    }
   };
   let deployPlatform = version => {
     log.info("Platform", undefined, `deployPlatform v` + version);
@@ -1920,11 +1931,10 @@ function Make($star) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     log.info("Platform", undefined, `deployPlugin v` + version);
     currentDeployTarget.contents = apiTarget;
-    let QR = QueryDbResolvers_GraphQL$ReventlessInMemory.Make(Bus);
-    QR.serverRef.contents = resolveTargetGraphQL();
+    StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
     let tmp;
     tmp = apiTarget === "Domain" ? domainRelaySupport : undefined;
-    QR.relayRef.contents = tmp;
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = tmp;
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -1949,36 +1959,39 @@ function Make($star) {
     let pluginComponent = plugin.make();
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     let adminGraphQL = resolveTargetGraphQL();
-    let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
-    adminGraphQL.registerTypes(baseParts.types);
-    let queryResolvers = {};
-    let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
-    queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
-      [
-        "nextToken",
-        null
-      ],
-      [
-        "scannedCount",
-        0
-      ],
-      [
-        "items",
-        []
-      ]
-    ]);
-    adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    let mutationResolvers = {};
-    let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
-    let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
-    adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
-    });
-    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    if (!adminRegisteredServers.contents.some(s => s === adminGraphQL)) {
+      let baseParts = GraphQL_Stitcher$ReventlessCore.decode(AdminApi$ReventlessCore.baseFragment(false));
+      adminGraphQL.registerTypes(baseParts.types);
+      let queryResolvers = {};
+      let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
+      queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
+      queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
+        [
+          "nextToken",
+          null
+        ],
+        [
+          "scannedCount",
+          0
+        ],
+        [
+          "items",
+          []
+        ]
+      ]);
+      adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
+      let mutationResolvers = {};
+      let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
+      let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
+      adminMutationFieldNames.forEach(field => {
+        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+      });
+      adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+      adminRegisteredServers.contents.push(adminGraphQL);
+    }
     currentDeployTarget.contents = "Domain";
-    QR.serverRef.contents = DomainGraphQL_Server$ReventlessInMemory.asInterface;
-    QR.relayRef.contents = domainRelaySupport;
+    StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server$ReventlessInMemory.asInterface;
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     seedPluginQueryDb([pluginComponent]);
     firePluginDeployedHooks(builtInfos.contents);
     return Component$ReventlessCore.outputs(pluginComponent);
