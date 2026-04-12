@@ -22,7 +22,7 @@ function clearCommandInterceptor() {
   commandInterceptorHook.contents = undefined;
 }
 
-function makeGenerateCommand(publishJsons, serviceName, commandSchema, componentKind, $staropt$star) {
+function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, $staropt$star) {
   return payload => {
     let stripIdFromParams = $staropt$star !== undefined ? $staropt$star : true;
     return Effect.flatMap(Effect.tap(Effect.sync(() => {
@@ -71,11 +71,22 @@ function makeGenerateCommand(publishJsons, serviceName, commandSchema, component
       let interceptEffect = interceptor !== undefined ? Effect.promise(() => interceptor(payload.identity, serviceName, componentKind, payload.command, payload.arguments)) : Effect.succeed("Allow");
       return Effect.flatMap(interceptEffect, interceptResult => {
         if (typeof interceptResult !== "object") {
-          return Effect.map(Effect.promise(() => publishJsons([{
-              id: id,
-              meta: meta,
-              commandJson: commandJson
-            }])), () => meta.msgId);
+          if (publishJsonsAndWait !== undefined) {
+            return Effect.map(Effect.promise(() => publishJsonsAndWait([{
+                id: id,
+                meta: meta,
+                commandJson: commandJson
+              }])), outcomes => outcomes[0]);
+          } else {
+            return Effect.map(Effect.promise(() => publishJsons([{
+                id: id,
+                meta: meta,
+                commandJson: commandJson
+              }])), () => ({
+              TAG: "Pending",
+              msgId: meta.msgId
+            }));
+          }
         } else {
           return Stdlib_JsError.throwWithMessage(interceptResult._0);
         }
@@ -86,7 +97,7 @@ function makeGenerateCommand(publishJsons, serviceName, commandSchema, component
 
 function Make(Spec) {
   return AggregateSpec => {
-    let generateCommand = makeGenerateCommand(Spec.publishJsons, AggregateSpec.name, AggregateSpec.commandSchema, "Aggregate", undefined);
+    let generateCommand = makeGenerateCommand(Spec.publishJsons, Spec.publishJsonsAndWait, AggregateSpec.name, AggregateSpec.commandSchema, "Aggregate", undefined);
     return {
       generateCommand: generateCommand
     };

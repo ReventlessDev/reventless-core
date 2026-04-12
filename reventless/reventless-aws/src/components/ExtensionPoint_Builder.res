@@ -1,4 +1,4 @@
-module CommandTopicChannel = CommandTopicChannel.SQS
+module CommandTopicChannel = CommandTopicChannel.SQS_Sync
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module ExtensionPointRuntimeBuilder = ExtensionPointRuntime_Builder_PerExtensionPoint
 

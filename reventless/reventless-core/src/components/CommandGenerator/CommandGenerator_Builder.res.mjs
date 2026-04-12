@@ -46,9 +46,10 @@ function Make(Spec) {
       };
       Component$ReventlessCore.setOutputs(commandGenerator, cgOutputs);
     };
-    let makeHandler = publishJsons => {
+    let makeHandler = (publishJsons, publishJsonsAndWait) => {
       let Callback = CommandGenerator_Callback$ReventlessCore.Make({
-        publishJsons: publishJsons
+        publishJsons: publishJsons,
+        publishJsonsAndWait: publishJsonsAndWait
       })(Spec);
       return Resolvers.handleResolversEvent(Callback.generateCommand);
     };

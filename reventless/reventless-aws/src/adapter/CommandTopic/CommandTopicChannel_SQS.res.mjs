@@ -5,6 +5,7 @@ import * as Aws from "@pulumi/aws";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
+import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as SQS_Queue$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SQS/SQS_Queue.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
@@ -45,6 +46,7 @@ function make(name, opts) {
       let publishJsons = CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(resolvedQueue, "SQS");
       return stream => Stream$1.runForEach(Stream.grouped(stream, 10), jsons => Effect.promise(() => publishJsons(jsons)));
     }),
+    publishJsonsAndWait: Pulumi.output(undefined),
     handleChannelEvent: handleCommands => resolvedQueueOutput.apply(resolvedQueue => CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(resolvedQueue, handleCommands)),
     connect: connect
   };

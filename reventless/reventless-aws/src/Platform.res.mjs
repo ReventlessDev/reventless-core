@@ -48,7 +48,7 @@ import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollect
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as Aggregate_Builder_NoResolver$ReventlessAws from "./components/Aggregate_Builder_NoResolver.res.mjs";
-import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
+import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
@@ -513,7 +513,7 @@ function MakeWithConfig(Config) {
     make: EventCollectorChannel_SQS$ReventlessAws.make,
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
   }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
-    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+    make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
   })({
     silent: false,
     splitApi: Config.splitApi,
@@ -1251,7 +1251,7 @@ function Make($star) {
     make: EventCollectorChannel_SQS$ReventlessAws.make,
     connect: EventCollectorChannel_SQS$ReventlessAws.connect
   }))(DcbEventLogStorage_DynamoDb$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
-    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+    make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
   })({
     silent: false,
     splitApi: true,

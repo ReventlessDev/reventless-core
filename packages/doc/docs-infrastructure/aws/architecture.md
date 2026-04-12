@@ -115,7 +115,7 @@ let make: Reventless.EventLog_Adapter.storageMaker = (~name, ~opts) => {
 
 ### Example: CommandTopic Adapter
 
-```rescript title="CommandTopicChannel_SQS_FIFO.res"
+```rescript title="CommandTopicChannel_SQS_Async.res (FIFO, fire-and-forget)"
 let make: Reventless.CommandTopic_Adapter.channelMaker = (~name, ~opts=?) => {
   let queue = PulumiAws.SQS.Queue.make(
     ~name,

@@ -1,4 +1,4 @@
-module CommandTopicChannel = CommandTopicChannel.SQS
+module CommandTopicChannel = CommandTopicChannel.SQS_Sync
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
 type context = PulumiAws.Lambda.context

@@ -27,9 +27,9 @@ The **CommandTopic** is the message queue component that delivers commands to Ag
 
 ## Purpose and Responsibilities
 
-- **Responsibility**: Queue commands for delivery to Aggregates; ensure FIFO ordering per aggregate; provide exactly-once delivery guarantees; handle retries and dead letter processing
+- **Responsibility**: Deliver commands to Aggregates with typed results; support synchronous execution (with immediate `CommandResult` feedback) and async fire-and-forget (with FIFO ordering guarantees)
 - **In**: Commands from API (via CommandGenerator), EventMapper, Extensions, or ExtensionPoints
-- **Out**: Commands to Aggregate command handlers
+- **Out**: Commands to Aggregate command handlers; `CommandResult` outcomes back to callers
 
 ## Component Spec
 
@@ -67,7 +67,7 @@ To create a CommandTopic module you have to provide the spec and a channel adapt
 ```rescript title="Customer_Aggregate.res"
 module CustomerCommandTopic = Reventless.CommandTopic_Builder.Make(
   Customer,
-  CommandTopicChannel_SQS_FIFO,
+  CommandTopicChannel.SQS_Sync,  // default — synchronous result
 )
 
 let commandTopic = CustomerCommandTopic.make(
@@ -75,6 +75,13 @@ let commandTopic = CustomerCommandTopic.make(
   ~opts=pulumiOptions,
 )
 ```
+
+The channel adapter controls whether the mutation returns an immediate `CommandResult` or a `CommandPending` response:
+
+| Channel | Queue type | Mutation return | Use when |
+|---------|-----------|-----------------|----------|
+| `CommandTopicChannel.SQS_Sync` | Standard SQS | `CommandAccepted` or `CommandRejected` | Default — user-facing CRUD |
+| `CommandTopicChannel.SQS_Async` | FIFO SQS | `CommandPending` | High-contention or internal automation |
 
 ### CommandTopic Operations
 
@@ -191,6 +198,45 @@ AggComponent.CommandProcessor -> AggComponent.EventLog: 4. events { class: event
 2. Lambda is triggered when messages arrive
 3. Handler decodes commands and calls the Aggregate's command handler
 4. Aggregate processes commands and appends events to EventLog
+
+## CommandResult
+
+Every GraphQL mutation returns a `CommandResult` union. The variant depends on which channel the CommandTopic is configured with:
+
+```graphql
+union CommandResult = CommandAccepted | CommandRejected | CommandPending
+
+type CommandAccepted {
+  msgId: ID!
+}
+
+type CommandRejected {
+  msgId: ID!
+  errorCode: String!    # Spec.error variant name, e.g. "AlreadyExists"
+  errorDetail: String   # full serialized Spec.error JSON (for debugging)
+}
+
+type CommandPending {
+  msgId: ID!            # use msgId to subscribe for the eventual result
+}
+```
+
+- **`CommandAccepted`** — command was valid, business rules passed, events committed (`SQS_Sync`)
+- **`CommandRejected`** — `decide` returned `Error` — business rule violated; state unchanged (`SQS_Sync`)
+- **`CommandPending`** — command queued fire-and-forget; result not yet known (`SQS_Async`)
+
+Client example:
+
+```graphql
+mutation RegisterCustomer($id: ID!, $email: String!, $address: String!) {
+  registerCustomer(id: $id, email: $email, address: $address) {
+    __typename
+    ... on CommandAccepted { msgId }
+    ... on CommandRejected { msgId errorCode errorDetail }
+    ... on CommandPending  { msgId }
+  }
+}
+```
 
 ## Command Structure
 

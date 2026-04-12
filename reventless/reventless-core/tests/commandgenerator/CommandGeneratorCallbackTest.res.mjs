@@ -15,9 +15,19 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
       expect(publishedCmd.commandJson).toEqual("Create");
     });
-    test("returns a non-empty msgId string", async () => {
+    test("returns a Pending outcome with non-empty msgId", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-1", "Create");
-      let msgId = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
+      let outcome = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
+      let msgId;
+      switch (outcome.TAG) {
+        case "Accepted" :
+        case "Rejected" :
+          msgId = "";
+          break;
+        case "Pending" :
+          msgId = outcome.msgId;
+          break;
+      }
       expect(msgId.length > 0).toBe(true);
     });
     test("meta.service equals AggregateSpec.name", async () => {
@@ -28,8 +38,18 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
     });
     test("meta.msgId equals meta.correlationId", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-1", "Create");
-      let msgId = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
+      let outcome = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
+      let msgId;
+      switch (outcome.TAG) {
+        case "Accepted" :
+        case "Rejected" :
+          msgId = "";
+          break;
+        case "Pending" :
+          msgId = outcome.msgId;
+          break;
+      }
       expect([
         publishedCmd.meta.msgId,
         publishedCmd.meta.correlationId

@@ -144,10 +144,11 @@ module MakeWithConfig = (
               meta: {ip: [], user: identity.userId, info: `mcp/tools/${toolName}`},
               identity,
             }
-            await generateCommand(payload)->Effect.runPromise
-          | None => `error: no handler for ${toolName}`
+            let outcome = await generateCommand(payload)->Effect.runPromise
+            outcome->CommandGeneratorResolvers_GraphQL.commandOutcomeToJson->JSON.stringify
+          | None => `{"error":"no handler for ${toolName}"}`
           }
-        | None => `error: no handler for ${toolName}`
+        | None => `{"error":"no handler for ${toolName}"}`
         }
       })
 

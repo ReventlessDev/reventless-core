@@ -199,10 +199,10 @@ All runtime builders currently hardcode a channel. Update them to use `CommandTo
 
 ## Status
 
-- [ ] Step 1 — Fix StateChangeSlice NACKing bug
-- [ ] Step 2 — Add `commandOutcome` type and `publishJsonsAndWait` to channel adapter
-- [ ] Step 3 — Add `CommandResult` SDL types; update `CommandGenerator` return type
-- [ ] Step 4 — `CommandTopicChannel_InMemory`: expose `publishJsonsAndWait`
-- [ ] Step 5 — Rename/split AWS channel adapters (`SQS_Sync` / `SQS_Async`)
-- [ ] Step 6 — Switch runtime builder defaults to `SQS_Sync`
-- [ ] Step 7 — Update examples and documentation
+- [x] Step 1 — Fix StateChangeSlice NACKing bug
+- [x] Step 2 — Add `commandOutcome` type and `publishJsonsAndWait` to channel adapter
+- [x] Step 3 — Add `CommandResult` SDL types; update `CommandGenerator` return type
+- [x] Step 4 — `CommandTopicChannel_InMemory`: expose `publishJsonsAndWait`
+- [x] Step 5 — Rename/split AWS channel adapters (`SQS_Sync` / `SQS_Async`)
+- [x] Step 6 — Switch runtime builder defaults to `SQS_Sync`
+- [x] Step 7 — Update examples and documentation

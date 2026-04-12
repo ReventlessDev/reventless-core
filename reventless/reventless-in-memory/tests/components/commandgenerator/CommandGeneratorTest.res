@@ -20,7 +20,7 @@ describe("CommandGenerator_Builder.Make:", () => {
   describe("makeHandler:", () => {
     jestTest("CreateCGItem payload publishes correct commandJson", async () => {
       // Resolve the handler from the Output wrapper
-      let handler = await CGMaker.makeHandler(~publishJsons=mockPublish)->TestRunner.resolve
+      let handler = await CGMaker.makeHandler(~publishJsons=mockPublish, ~publishJsonsAndWait=None)->TestRunner.resolve
 
       // Build payload: arguments must include id AND the command fields (name).
       // generateCommand stringifies arguments, slices off id (index 0), uses the rest as params.

@@ -98,8 +98,8 @@ function Make(Spec) {
       }
       let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
       return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `decide error=` + errorJson), () => ({
-        TAG: "Error",
-        _0: errorJson
+        TAG: "Ok",
+        _0: "rejected"
       }));
     });
     return attempt(3);

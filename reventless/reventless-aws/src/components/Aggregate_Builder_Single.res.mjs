@@ -4,7 +4,7 @@ import * as Util_Bundle$ReventlessAws from "../util/Util_Bundle.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as Aggregate_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Builder.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
-import * as CommandTopicChannel_SQS_FIFO$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.mjs";
+import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogStorage_DynamoDbStream$ReventlessAws from "../adapter/EventLog/EventLogStorage_DynamoDbStream.res.mjs";
 import * as AggregateRuntime_Builder_Single$ReventlessAws from "../adapter/Runtime/AggregateRuntime_Builder_Single.res.mjs";
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
@@ -23,13 +23,13 @@ function Make(Spec) {
       asEventHandler: prim => prim,
       asEffectHandler: prim => prim
     })(CommandGeneratorResolvers_AppSync$ReventlessAws)({
-      make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+      make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
     })(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)({
       make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
       connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
     })({
       CommandTopicChannel: {
-        make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+        make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
       },
       EventCollectorChannel: {
         make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,

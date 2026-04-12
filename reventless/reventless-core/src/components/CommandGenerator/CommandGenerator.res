@@ -14,8 +14,8 @@ external asEvent: 'a => event = "%identity"
 
 let metaInfo = event => (event->asEvent).meta->Option.map(({info}) => info)
 
-type commandGenerator = payload => Effect.t<string, unit, unit>
-type effectEventHandler<'context> = Runtime.effectHandler<payload, 'context, string, unit>
+type commandGenerator = payload => Effect.t<CommandTopic.commandOutcome, unit, unit>
+type effectEventHandler<'context> = Runtime.effectHandler<payload, 'context, CommandTopic.commandOutcome, unit>
 
 type publishJsons = CommandTopic.publishJsons
 
@@ -33,7 +33,10 @@ module type T = {
     component,
   ) => unit
 
-  let makeHandler: (~publishJsons: publishJsons) => Pulumi.Output.t<effectEventHandler<'context>>
+  let makeHandler: (
+    ~publishJsons: publishJsons,
+    ~publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>,
+  ) => Pulumi.Output.t<effectEventHandler<'context>>
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }

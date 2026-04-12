@@ -48,14 +48,13 @@ module Make = (
         switch commandGeneratorHandlers->Dict.get(info) {
         | Some(handler) =>
           EffectLogger.logDebug(~comp, `found CommandGenerator handler for ${info}`)->Effect.runSync
-          await runEffect(~correlationId?, handler(event->CommandGenerator.asPayload, context))
+          let _ = await runEffect(~correlationId?, handler(event->CommandGenerator.asPayload, context))
         | None =>
           let available = commandGeneratorHandlers->Dict.keysToArray->Array.join(",")
           EffectLogger.logWarn(
             ~comp,
             `no handler found: ${info} available=[${available}]`,
           )->Effect.runSync
-          ""
         }
       | _ =>
         let _ = await event
@@ -91,7 +90,6 @@ module Make = (
           }
         })
         ->Promise.all
-        ""
       }
     }
 

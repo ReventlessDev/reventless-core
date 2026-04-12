@@ -1,3 +1,8 @@
+// FIFO SQS-backed CommandTopic channel with fire-and-forget semantics.
+// Opt-in for high-contention aggregates and internal automation where
+// ordering guarantees matter more than synchronous command results.
+// Mutations return CommandPending — the client subscribes for the eventual result.
+
 type callbackEvent = PulumiAws.SQS.Queue.event
 type runtimeParts = Util.Lambda.runtimeParts
 type channelParts = Util.SQS.channelParts
@@ -46,9 +51,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
       stream =>
         stream
         ->Stream.grouped(10)
-        ->Stream.runForEach(jsons =>
-          Effect.promise(() => publishJsons(jsons))
-        )
+        ->Stream.runForEach(jsons => Effect.promise(() => publishJsons(jsons)))
     }),
     publishJsonsAndWait: None->Pulumi.Output.make,
     connect,

@@ -10,6 +10,7 @@ and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {
   resources: array<ReventlessInfra.Adapter.resource>,
   publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
   publishJsonsStream: Pulumi.Output.t<ReventlessInfra.CommandTopic.publishJsonsStream>,
+  publishJsonsAndWait: Pulumi.Output.t<option<CommandTopic.publishJsonsAndWait>>,
   handleChannelEvent: CommandTopic.jsonCommandsHandler => Pulumi.Output.t<
     Runtime.effectHandler<'callbackEvent, 'context, unit, string>,
   >,

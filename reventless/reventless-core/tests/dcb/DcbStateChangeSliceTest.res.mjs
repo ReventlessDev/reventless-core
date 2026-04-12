@@ -110,7 +110,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
       0
     ]);
   }));
-  Jest.describe("handleCommands - decide returns Error", () => Jest.testPromise("CreateItem when item exists returns Error", undefined, async () => {
+  Jest.describe("handleCommands - decide returns Error", () => Jest.testPromise("CreateItem when item exists returns Ok (business-rule violations ACK, not NACK)", undefined, async () => {
     await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
@@ -122,7 +122,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
         name: "Duplicate"
       })])));
     return Jest.Expect.toEqual(Jest.Expect.expect(results), [{
-        TAG: "Error",
+        TAG: "Ok",
         _0: "ref-2"
       }]);
   }));
@@ -211,7 +211,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
         }
       ]);
     });
-    Jest.testPromise("mixed success and failure", undefined, async () => {
+    Jest.testPromise("mixed: new item succeeds, duplicate item ACKs as Ok (business-rule violation)", undefined, async () => {
       await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-0", {
           TAG: "CreateItem",
           itemId: "item-1",
@@ -235,7 +235,7 @@ Jest.describe("StateChangeSlice_Callback:", () => {
           _0: "ref-1"
         },
         {
-          TAG: "Error",
+          TAG: "Ok",
           _0: "ref-2"
         }
       ]);

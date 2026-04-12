@@ -36,6 +36,58 @@ let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
 let capitalize = s =>
   s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
+// -- CommandResult SDL types --------------------------------------------------
+// Registered once per server (guards against duplicate registration after reset).
+
+let commandResultSdl = `union CommandResult = CommandAccepted | CommandRejected | CommandPending
+
+type CommandAccepted {
+  msgId: ID!
+}
+
+type CommandRejected {
+  msgId: ID!
+  errorCode: String!
+  errorDetail: String
+}
+
+type CommandPending {
+  msgId: ID!
+}`
+
+let ensureCommandResultTypes = (server: GraphQL_ServerInstance.t) => {
+  if !(server.buildSdl()->String.includes("CommandAccepted")) {
+    server.registerTypes(~sdlTypes=[commandResultSdl])
+  }
+}
+
+let commandOutcomeToJson = (outcome: ReventlessCore.CommandTopic.commandOutcome): JSON.t =>
+  switch outcome {
+  | Accepted({msgId}) =>
+    JSON.Object(
+      Dict.fromArray([
+        ("__typename", JSON.String("CommandAccepted")),
+        ("msgId", JSON.String(msgId)),
+      ]),
+    )
+  | Rejected({msgId, errorCode, errorDetail}) =>
+    JSON.Object(
+      Dict.fromArray([
+        ("__typename", JSON.String("CommandRejected")),
+        ("msgId", JSON.String(msgId)),
+        ("errorCode", JSON.String(errorCode)),
+        ("errorDetail", errorDetail->Option.map(s => JSON.String(s))->Option.getOr(JSON.Null)),
+      ]),
+    )
+  | Pending({msgId}) =>
+    JSON.Object(
+      Dict.fromArray([
+        ("__typename", JSON.String("CommandPending")),
+        ("msgId", JSON.String(msgId)),
+      ]),
+    )
+  }
+
 let extractCommandName = (fieldName: string) => {
   let parts = fieldName->String.split("_")
   parts->Array.get(parts->Array.length - 1)->Option.getOr(fieldName)->capitalize
@@ -51,8 +103,8 @@ let extractVariantSchema = (commandSchema: S.t<unknown>, ~index=0) =>
 
 let deriveSdlField = (~fieldName, variantSchema: S.t<unknown>) =>
   switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(~fieldName, variantSchema) {
-  | Some(field) => field
-  | None => `  ${fieldName}: String!`
+  | Some(field) => field->String.replace(": String!", ": CommandResult!")
+  | None => `  ${fieldName}: CommandResult!`
   }
 
 // -- Per-field handler refs ---------------------------------------------------
@@ -66,6 +118,7 @@ let handlerRefs: dict<ref<option<CommandGenerator.commandGenerator>>> = Dict.mak
 // Output.apply chains fire. Registers SDL + resolver stubs in GraphQL_Server.
 
 let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
+  ensureCommandResultTypes(server)
   // Aggregate commands target a specific instance — prepend id: ID!
   let sdlFields = fields->Array.mapWithIndex((field, i) => {
     let sdl = deriveSdlField(~fieldName=field, extractVariantSchema(commandSchema, ~index=i))
@@ -91,8 +144,8 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: G
           meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
           identity,
         }
-        let result = await generateCommand(payload)->Effect.runPromise
-        result->JSON.Encode.string
+        let outcome = await generateCommand(payload)->Effect.runPromise
+        outcome->commandOutcomeToJson
       | None => JSON.Encode.null
       }
     }
@@ -108,6 +161,7 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: G
 // ID field (e.g., itemId) instead of a separate id: ID! parameter.
 
 let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
+  ensureCommandResultTypes(server)
   let variantSchema = extractVariantSchema(commandSchema)
   let sdlFields = [deriveSdlField(~fieldName, variantSchema)]
 
@@ -157,8 +211,8 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: Gr
         meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
         identity,
       }
-      let result = await generateCommand(payload)->Effect.runPromise
-      result->JSON.Encode.string
+      let outcome = await generateCommand(payload)->Effect.runPromise
+      outcome->commandOutcomeToJson
     | None => JSON.Encode.null
     }
   }

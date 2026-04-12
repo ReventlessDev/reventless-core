@@ -12,6 +12,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
     publish: publish,
     publishJsons: CommandTopic.publishJsons,
     publishJsonsStream: CommandTopic.publishJsonsStream,
+    publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>,
   }
   type component = Component.t<CommandTopic.t, CommandTopic.outputs, operations>
 
@@ -77,9 +78,9 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
     self->CommandTopic_Adapter.setChannel(channel)
 
     self->Component.setOperations(
-      (channel.publishJsons, channel.publishJsonsStream)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((publishJsons, publishJsonsStream)) => {
+      (channel.publishJsons, channel.publishJsonsStream, channel.publishJsonsAndWait)
+      ->Pulumi.Output.all3
+      ->Pulumi.Output.apply(((publishJsons, publishJsonsStream, publishJsonsAndWait)) => {
         module Ops = {
           let publishJsons = publishJsons
         }
@@ -89,6 +90,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Channel: CommandTopic_Adapt
           publish: Operations.publish,
           publishJsons: Operations.publishJsons,
           publishJsonsStream: publishJsonsStream,
+          publishJsonsAndWait,
         }
       }),
     )

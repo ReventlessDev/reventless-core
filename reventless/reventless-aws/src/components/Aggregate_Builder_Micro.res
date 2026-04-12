@@ -1,5 +1,5 @@
 module CommandGeneratorResolvers = CommandGeneratorResolvers.AppSync
-module CommandTopicChannel = CommandTopicChannel.SQS_FIFO
+module CommandTopicChannel = CommandTopicChannel.SQS_Sync
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 

@@ -48,10 +48,11 @@ module Make = (
     let _ = commandGenerator->Component.setOutputs(cgOutputs)
   }
 
-  let makeHandler = (~publishJsons) => {
+  let makeHandler = (~publishJsons, ~publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>) => {
     module Callback = CommandGenerator_Callback.Make(
       {
         let publishJsons = publishJsons
+        let publishJsonsAndWait = publishJsonsAndWait
       },
       Spec,
     )

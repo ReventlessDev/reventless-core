@@ -685,7 +685,7 @@ module MakeWithConfig = (
     PluginRuntime_Builder.Make(EventCollectorChannel),
     DcbEventLogStorage.DynamoDb,
     EventTopicPublisher.DynamoDbStream,
-    CommandTopicChannel.SQS_FIFO,
+    CommandTopicChannel.SQS_Sync,
     {
       let silent = false
       let splitApi = Config.splitApi

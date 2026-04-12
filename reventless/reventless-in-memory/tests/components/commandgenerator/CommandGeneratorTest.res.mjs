@@ -10,7 +10,7 @@ describe("CommandGenerator_Builder.Make:", () => {
   beforeEach(() => CommandGeneratorFixtures$ReventlessInMemory.resetMocks());
   describe("makeHandler:", () => {
     test("CreateCGItem payload publishes correct commandJson", async () => {
-      let handler = await TestRunner$ReventlessInMemory.resolve(CommandGeneratorFixtures$ReventlessInMemory.CGMaker.makeHandler(CommandGeneratorFixtures$ReventlessInMemory.mockPublish));
+      let handler = await TestRunner$ReventlessInMemory.resolve(CommandGeneratorFixtures$ReventlessInMemory.CGMaker.makeHandler(CommandGeneratorFixtures$ReventlessInMemory.mockPublish, undefined));
       let payload_arguments = {
         id: "item-1",
         name: "widget"

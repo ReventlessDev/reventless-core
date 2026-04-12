@@ -59,6 +59,7 @@ module MockPublishSpec: CommandGenerator_Callback.Spec = {
   let publishJsons: CommandGenerator.publishJsons = async cmds => {
     capturedCmds := capturedCmds.contents->Array.concat(cmds)
   }
+  let publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait> = None
 }
 
 // ─────────────────────────────────────────────────────────────

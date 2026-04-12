@@ -67,7 +67,8 @@ function Make(Spec) {
       self.channel = channel;
       Component$ReventlessCore.setOperations(self, Pulumi.all([
         channel.publishJsons,
-        channel.publishJsonsStream
+        channel.publishJsonsStream,
+        channel.publishJsonsAndWait
       ]).apply(param => {
         let Ops = {
           publishJsons: param[0]
@@ -76,7 +77,8 @@ function Make(Spec) {
         return {
           publish: Operations.publish,
           publishJsons: Operations.publishJsons,
-          publishJsonsStream: param[1]
+          publishJsonsStream: param[1],
+          publishJsonsAndWait: param[2]
         };
       }));
       let outputs = {

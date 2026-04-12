@@ -85,7 +85,8 @@ async function publishJsons(cmds) {
 }
 
 let MockPublishSpec = {
-  publishJsons: publishJsons
+  publishJsons: publishJsons,
+  publishJsonsAndWait: undefined
 };
 
 let TestGenerator = CommandGenerator_Callback$ReventlessCore.Make(MockPublishSpec)({

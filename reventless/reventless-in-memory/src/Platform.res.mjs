@@ -130,11 +130,11 @@ function MakeWithConfig(Config) {
     mcp.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
       let handlerRef = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handlerRefs[toolName];
       if (handlerRef === undefined) {
-        return `error: no handler for ` + toolName;
+        return `{"error":"no handler for ` + toolName + `"}`;
       }
       let generateCommand = handlerRef.contents;
       if (generateCommand === undefined) {
-        return `error: no handler for ` + toolName;
+        return `{"error":"no handler for ` + toolName + `"}`;
       }
       let payload_meta = {
         ip: [],
@@ -147,7 +147,8 @@ function MakeWithConfig(Config) {
         meta: payload_meta,
         identity: identity
       };
-      return await Effect.runPromise(generateCommand(payload));
+      let outcome = await Effect.runPromise(generateCommand(payload));
+      return JSON.stringify(CommandGeneratorResolvers_GraphQL$ReventlessInMemory.commandOutcomeToJson(outcome));
     });
     mcp.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
@@ -1115,11 +1116,11 @@ function Make($star) {
     mcp.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
       let handlerRef = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.handlerRefs[toolName];
       if (handlerRef === undefined) {
-        return `error: no handler for ` + toolName;
+        return `{"error":"no handler for ` + toolName + `"}`;
       }
       let generateCommand = handlerRef.contents;
       if (generateCommand === undefined) {
-        return `error: no handler for ` + toolName;
+        return `{"error":"no handler for ` + toolName + `"}`;
       }
       let payload_meta = {
         ip: [],
@@ -1132,7 +1133,8 @@ function Make($star) {
         meta: payload_meta,
         identity: identity
       };
-      return await Effect.runPromise(generateCommand(payload));
+      let outcome = await Effect.runPromise(generateCommand(payload));
+      return JSON.stringify(CommandGeneratorResolvers_GraphQL$ReventlessInMemory.commandOutcomeToJson(outcome));
     });
     mcp.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");

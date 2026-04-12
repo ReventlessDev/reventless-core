@@ -36,18 +36,75 @@ function Make(Bus) {
     }
   };
   let make = (name, param) => {
+    let handleCmdsRef = {
+      contents: undefined
+    };
     let publishJsons = async jsons => {
       await Promise.all(jsons.map(async cmdJson => await Bus.dispatchCommand(name, encodeMessage(cmdJson))));
     };
     let publishJsonsStream = stream => Stream$1.runForEach(Stream.grouped(stream, 10), jsons => Effect.promise(() => publishJsons(jsons)));
-    let handleChannelEvent = handleCmds => Pulumi.output((fullBody, _ctx) => {
-      let reference = decodeId(fullBody);
-      let item = {
-        command: fullBody,
-        reference: reference
-      };
-      return Effect.map(handleCmds(Stream$1.fromIterable([item])), param => {});
-    });
+    let publishJsonsAndWait = async jsons => {
+      let handleCmds = handleCmdsRef.contents;
+      if (handleCmds !== undefined) {
+        let items = jsons.map(cmdJson => {
+          let reference = cmdJson.meta.msgId;
+          return {
+            command: encodeMessage(cmdJson),
+            reference: reference
+          };
+        });
+        let results = await Effect.runPromise(handleCmds(Stream$1.fromIterable(items)));
+        return jsons.map((cmdJson, i) => {
+          let msgId = cmdJson.meta.msgId;
+          let match = results[i];
+          if (match !== undefined) {
+            if (match.TAG === "Ok") {
+              if (match._0 === "rejected") {
+                return {
+                  TAG: "Rejected",
+                  msgId: msgId,
+                  errorCode: "BusinessRuleViolation",
+                  errorDetail: undefined
+                };
+              } else {
+                return {
+                  TAG: "Accepted",
+                  msgId: msgId
+                };
+              }
+            } else {
+              return {
+                TAG: "Rejected",
+                msgId: msgId,
+                errorCode: "Conflict",
+                errorDetail: match._0
+              };
+            }
+          } else {
+            return {
+              TAG: "Accepted",
+              msgId: msgId
+            };
+          }
+        });
+      }
+      await publishJsons(jsons);
+      return jsons.map(cmdJson => ({
+        TAG: "Pending",
+        msgId: cmdJson.meta.msgId
+      }));
+    };
+    let handleChannelEvent = handleCmds => {
+      handleCmdsRef.contents = handleCmds;
+      return Pulumi.output((fullBody, _ctx) => {
+        let reference = decodeId(fullBody);
+        let item = {
+          command: fullBody,
+          reference: reference
+        };
+        return Effect.map(handleCmds(Stream$1.fromIterable([item])), param => {});
+      });
+    };
     let connect = (param, channel, runtime, param$1, param$2) => {
       Bus.registerCommandHandler(channel.parts.name, async (json, ctx) => {
         let handler = await Effect.runPromise(Deferred.await(runtime.parts.handlerDeferred));
@@ -62,6 +119,7 @@ function Make(Bus) {
       resources: [],
       publishJsons: Pulumi.output(publishJsons),
       publishJsonsStream: Pulumi.output(publishJsonsStream),
+      publishJsonsAndWait: Pulumi.output(publishJsonsAndWait),
       handleChannelEvent: handleChannelEvent,
       connect: connect
     };

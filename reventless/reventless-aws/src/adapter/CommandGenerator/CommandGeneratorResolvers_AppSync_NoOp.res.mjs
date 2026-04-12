@@ -4,7 +4,10 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 
 function handleResolversEvent(_generateCommand) {
-  return Pulumi.output((_event, _context) => Effect.succeed(""));
+  return Pulumi.output((_event, _context) => Effect.succeed({
+    TAG: "Pending",
+    msgId: ""
+  }));
 }
 
 function make(param, param$1, param$2, param$3, param$4, param$5, param$6) {

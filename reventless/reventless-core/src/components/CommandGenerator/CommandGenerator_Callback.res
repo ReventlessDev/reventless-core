@@ -23,6 +23,7 @@ let clearCommandInterceptor = () => {
 
 module type Spec = {
   let publishJsons: CommandGenerator.publishJsons
+  let publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>
 }
 
 module type T = {
@@ -31,6 +32,7 @@ module type T = {
 
 let makeGenerateCommand = (
   ~publishJsons: CommandGenerator.publishJsons,
+  ~publishJsonsAndWait: option<CommandTopic.publishJsonsAndWait>=?,
   ~serviceName: string,
   ~commandSchema: S.t<unknown>,
   ~componentKind: commandComponentKind,
@@ -101,8 +103,14 @@ let makeGenerateCommand = (
         interceptEffect->Effect.flatMap(interceptResult =>
           switch interceptResult {
           | Allow =>
-            Effect.promise(() => publishJsons([{id, meta, commandJson}]))
-            ->Effect.map(_ => meta.msgId)
+            switch publishJsonsAndWait {
+            | Some(publishAndWait) =>
+              Effect.promise(() => publishAndWait([{id, meta, commandJson}]))
+              ->Effect.map(outcomes => outcomes->Array.getUnsafe(0))
+            | None =>
+              Effect.promise(() => publishJsons([{id, meta, commandJson}]))
+              ->Effect.map(_ => CommandTopic.Pending({msgId: meta.msgId}))
+            }
           | Deny(msg) =>
             JsError.throwWithMessage(msg)
           }
@@ -123,6 +131,7 @@ module Make = (
 ): T => {
   let generateCommand = makeGenerateCommand(
     ~publishJsons=Spec.publishJsons,
+    ~publishJsonsAndWait=?Spec.publishJsonsAndWait,
     ~serviceName=AggregateSpec.name,
     ~commandSchema=AggregateSpec.commandSchema->S.castToUnknown,
     ~componentKind=Aggregate,

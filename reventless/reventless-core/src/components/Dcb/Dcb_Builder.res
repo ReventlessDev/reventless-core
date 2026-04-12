@@ -206,6 +206,7 @@ module Make = (
                   let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
                   let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
                     ~publishJsons=ops.publishJsons,
+                    ~publishJsonsAndWait=?ops.publishJsonsAndWait,
                     ~serviceName=S.Spec.name,
                     ~commandSchema=S.Spec.commandSchema->Obj.magic,
                     ~componentKind=CommandGenerator_Callback.StateChangeSlice,
@@ -342,6 +343,7 @@ module Make = (
           ->Pulumi.Output.apply(ops =>
             CommandGenerator_Callback.makeGenerateCommand(
               ~publishJsons=ops.publishJsons,
+              ~publishJsonsAndWait=?ops.publishJsonsAndWait,
               ~serviceName=name,
               ~commandSchema=S.json->S.castToUnknown,
               ~componentKind=CommandGenerator_Callback.StateChangeSlice,

@@ -71,6 +71,7 @@ let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
           Effect.promise(() => publishJsons(jsons))
         )
     }),
+    publishJsonsAndWait: None->Pulumi.Output.make,
     connect,
     handleChannelEvent: handleCommands =>
       resolvedQueueOutput->Pulumi.Output.apply(resolvedQueue =>

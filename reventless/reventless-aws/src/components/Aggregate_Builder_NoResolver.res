@@ -4,7 +4,7 @@
 // ExtensionPoint, not through GraphQL mutations.
 
 module CommandGeneratorResolvers = CommandGeneratorResolvers_AppSync_NoOp
-module CommandTopicChannel = CommandTopicChannel.SQS_FIFO
+module CommandTopicChannel = CommandTopicChannel.SQS_Sync
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module AggregateRuntimeBuilder = AggregateRuntime_Builder_Single

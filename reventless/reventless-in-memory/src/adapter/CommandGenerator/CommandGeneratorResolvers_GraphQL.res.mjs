@@ -29,6 +29,74 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+let commandResultSdl = `union CommandResult = CommandAccepted | CommandRejected | CommandPending
+
+type CommandAccepted {
+  msgId: ID!
+}
+
+type CommandRejected {
+  msgId: ID!
+  errorCode: String!
+  errorDetail: String
+}
+
+type CommandPending {
+  msgId: ID!
+}`;
+
+function ensureCommandResultTypes(server) {
+  if (!server.buildSdl().includes("CommandAccepted")) {
+    return server.registerTypes([commandResultSdl]);
+  }
+}
+
+function commandOutcomeToJson(outcome) {
+  switch (outcome.TAG) {
+    case "Accepted" :
+      return Object.fromEntries([
+        [
+          "__typename",
+          "CommandAccepted"
+        ],
+        [
+          "msgId",
+          outcome.msgId
+        ]
+      ]);
+    case "Rejected" :
+      return Object.fromEntries([
+        [
+          "__typename",
+          "CommandRejected"
+        ],
+        [
+          "msgId",
+          outcome.msgId
+        ],
+        [
+          "errorCode",
+          outcome.errorCode
+        ],
+        [
+          "errorDetail",
+          Stdlib_Option.getOr(Stdlib_Option.map(outcome.errorDetail, s => (s)), null)
+        ]
+      ]);
+    case "Pending" :
+      return Object.fromEntries([
+        [
+          "__typename",
+          "CommandPending"
+        ],
+        [
+          "msgId",
+          outcome.msgId
+        ]
+      ]);
+  }
+}
+
 function extractCommandName(fieldName) {
   let parts = fieldName.split("_");
   return capitalize(Stdlib_Option.getOr(parts[parts.length - 1 | 0], fieldName));
@@ -46,15 +114,16 @@ function extractVariantSchema(commandSchema, indexOpt) {
 function deriveSdlField(fieldName, variantSchema) {
   let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema);
   if (field !== undefined) {
-    return field;
+    return field.replace(": String!", ": CommandResult!");
   } else {
-    return `  ` + fieldName + `: String!`;
+    return `  ` + fieldName + `: CommandResult!`;
   }
 }
 
 let handlerRefs = {};
 
 function register(fields, commandSchema, server) {
+  ensureCommandResultTypes(server);
   let sdlFields = fields.map((field, i) => {
     let sdl = deriveSdlField(field, extractVariantSchema(commandSchema, i));
     if (sdl.includes("(")) {
@@ -87,7 +156,7 @@ function register(fields, commandSchema, server) {
         meta: payload_meta,
         identity: identity
       };
-      return await Effect.runPromise(generateCommand(payload));
+      return commandOutcomeToJson(await Effect.runPromise(generateCommand(payload)));
     };
     resolvers[field] = resolver;
   });
@@ -95,6 +164,7 @@ function register(fields, commandSchema, server) {
 }
 
 function registerDcb(fieldName, commandSchema, server) {
+  ensureCommandResultTypes(server);
   let variantSchema = extractVariantSchema(commandSchema, undefined);
   let sdlFields = [deriveSdlField(fieldName, variantSchema)];
   let constructorNames = DcbTag$Reventless.extractEventTypes(commandSchema);
@@ -131,7 +201,7 @@ function registerDcb(fieldName, commandSchema, server) {
       meta: payload_meta,
       identity: identity
     };
-    return await Effect.runPromise(generateCommand(payload));
+    return commandOutcomeToJson(await Effect.runPromise(generateCommand(payload)));
   };
   let resolvers = {};
   resolvers[fieldName] = resolver;
@@ -173,6 +243,9 @@ function make(param, param$1, fields, param$2, param$3, param$4, param$5) {
 export {
   extractIdentity,
   capitalize,
+  commandResultSdl,
+  ensureCommandResultTypes,
+  commandOutcomeToJson,
   extractCommandName,
   extractVariantSchema,
   deriveSdlField,

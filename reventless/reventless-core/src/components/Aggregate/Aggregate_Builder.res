@@ -102,7 +102,7 @@ module Make = (
     commandTopic->Pulumi.Output.flatMap(commandTopic =>
       commandTopic
       ->Component.operations
-      ->Pulumi.Output.apply(({publishJsons}) => {
+      ->Pulumi.Output.apply(({publishJsons, publishJsonsAndWait}) => {
         let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
         switch HooksConfig.hooks.mutationBindHook {
         | Some(bindHandler) =>
@@ -115,6 +115,7 @@ module Make = (
             }
           let generateCommand = CommandGenerator_Callback.makeGenerateCommand(
             ~publishJsons,
+            ~publishJsonsAndWait=?publishJsonsAndWait,
             ~serviceName=Spec.name,
             ~commandSchema=Spec.commandSchema->S.castToUnknown,
             ~componentKind=CommandGenerator_Callback.Aggregate,
@@ -124,7 +125,7 @@ module Make = (
           // AWS: use adapter-driven forCommandGenerator (creates Lambda + policies)
           let resources = (commandTopic->Component.outputs).resources
           commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
-            ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
+            ~handler=SpecificCommandGenerator.makeHandler(~publishJsons, ~publishJsonsAndWait),
             ~connect=SpecificCommandGenerator.connect(commandGenerator, ~api, ~resources, ...),
           )
         }

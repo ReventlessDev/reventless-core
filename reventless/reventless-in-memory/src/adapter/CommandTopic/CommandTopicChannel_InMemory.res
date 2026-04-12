@@ -44,6 +44,12 @@ module Make = (Bus: InMemory_Bus.T) => {
     channelParts,
     runtimeParts,
   > = (~name, ~opts as _=?) => {
+    // Captured when handleChannelEvent is called; used by publishJsonsAndWait to
+    // run the handler inline and collect typed outcomes without going through the bus.
+    let handleCmdsRef: ref<
+      option<ReventlessCore.CommandTopic.jsonCommandsHandler>,
+    > = ref(None)
+
     let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async jsons => {
       let _ =
         await jsons
@@ -56,13 +62,47 @@ module Make = (Bus: InMemory_Bus.T) => {
     let publishJsonsStream: ReventlessInfra.CommandTopic.publishJsonsStream = stream =>
       stream
       ->Stream.grouped(10)
-      ->Stream.runForEach(jsons =>
-        Effect.promise(() => publishJsons(jsons))
-      )
+      ->Stream.runForEach(jsons => Effect.promise(() => publishJsons(jsons)))
+
+    // Runs commands inline via the captured handler and maps results to commandOutcome.
+    // Ok("ok") → Accepted; Ok("rejected") → Rejected; Error(_) → Rejected(Conflict).
+    // Note: business-rule rejection details require callback-level propagation (future work).
+    let publishJsonsAndWait: ReventlessCore.CommandTopic.publishJsonsAndWait = async jsons => {
+      switch handleCmdsRef.contents {
+      | None =>
+        // Handler not yet registered — fall back to fire-and-forget, return Pending
+        let _ = await publishJsons(jsons)
+        jsons->Array.map(cmdJson =>
+          ReventlessCore.CommandTopic.Pending({msgId: cmdJson.meta.msgId})
+        )
+      | Some(handleCmds) =>
+        let items = jsons->Array.map((cmdJson: Reventless.Message.commandJson) => {
+          let reference = cmdJson.meta.msgId
+          let item: ReventlessInfra.CommandTopic.topicItem<JSON.t> = {
+            command: encodeMessage(cmdJson),
+            reference,
+          }
+          item
+        })
+        let results =
+          await handleCmds(Stream.fromIterable(items))->Effect.runPromise
+        jsons->Array.mapWithIndex((cmdJson, i) => {
+          let msgId = cmdJson.meta.msgId
+          switch results->Array.get(i) {
+          | Some(Ok("rejected")) =>
+            ReventlessCore.CommandTopic.Rejected({msgId, errorCode: "BusinessRuleViolation", errorDetail: None})
+          | Some(Error(msg)) =>
+            ReventlessCore.CommandTopic.Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
+          | _ => ReventlessCore.CommandTopic.Accepted({msgId: msgId})
+          }
+        })
+      }
+    }
 
     let handleChannelEvent = (
       handleCmds: ReventlessCore.CommandTopic.jsonCommandsHandler,
-    ): Pulumi.Output.t<ReventlessCore.Runtime.effectHandler<callbackEvent, 'context, unit, string>> =>
+    ): Pulumi.Output.t<ReventlessCore.Runtime.effectHandler<callbackEvent, 'context, unit, string>> => {
+      handleCmdsRef.contents = Some(handleCmds)
       (
         (fullBody: JSON.t, _ctx) => {
           // Pass the full body as `command` — that's what handleJsonCommands decodes
@@ -71,6 +111,7 @@ module Make = (Bus: InMemory_Bus.T) => {
           handleCmds(Stream.fromIterable([item]))->Effect.map(_ => ())
         }
       )->Pulumi.Output.make
+    }
 
     let connect: ReventlessCore.CommandTopic_Adapter.connect<
       callbackEvent,
@@ -91,6 +132,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       resources: [],
       publishJsons: publishJsons->Pulumi.Output.make,
       publishJsonsStream: publishJsonsStream->Pulumi.Output.make,
+      publishJsonsAndWait: Some(publishJsonsAndWait)->Pulumi.Output.make,
       handleChannelEvent,
       connect,
     }

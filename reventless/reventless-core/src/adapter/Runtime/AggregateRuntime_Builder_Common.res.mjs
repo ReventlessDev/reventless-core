@@ -27,11 +27,11 @@ function Make(RuntimeEnvironment) {
         let handler = commandGeneratorHandlers[info];
         if (handler !== undefined) {
           Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `found CommandGenerator handler for ` + info));
-          return await runEffect(correlationId, handler(event, context));
+          await runEffect(correlationId, handler(event, context));
+          return;
         }
         let available = Object.keys(commandGeneratorHandlers).join(",");
-        Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `no handler found: ` + info + ` available=[` + available + `]`));
-        return "";
+        return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `no handler found: ` + info + ` available=[` + available + `]`));
       }
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource(event)).map(async param => {
         let event = param[1];
@@ -51,7 +51,6 @@ function Make(RuntimeEnvironment) {
         let available = Object.keys(commandTopicHandlers).concat(Object.keys(eventCollectorHandlers)).join(",");
         return Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `no handler found: ` + urn + ` available=[` + available + `]`));
       }));
-      return "";
     });
     let getRuntimeSpec = aggregate => Stdlib_Option.getOr(runtimeSpecs[Stdlib_Option.getOr(aggregate.__name, "Unnamed")], {
       aggregate: aggregate,

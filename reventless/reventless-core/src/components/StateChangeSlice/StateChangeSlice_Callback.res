@@ -127,9 +127,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
           )
         | Error(error) =>
           let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)->JSON.stringify
-          EffectLogger.logError(~comp, `decide error=${errorJson}`)->Effect.map(_ => Error(
-            errorJson,
-          ))
+          EffectLogger.logError(~comp, `decide error=${errorJson}`)->Effect.map(_ => Ok("rejected"))
         }
       )
 

@@ -75,7 +75,7 @@ describe("StateChangeSlice_Callback:", () => {
   })
 
   describe("handleCommands - decide returns Error", () => {
-    testPromise("CreateItem when item exists returns Error", async () => {
+    testPromise("CreateItem when item exists returns Ok (business-rule violations ACK, not NACK)", async () => {
       // First create the item
       let _ = await TestHandler.handleCommands(
         testDcbEventLog,
@@ -83,7 +83,7 @@ describe("StateChangeSlice_Callback:", () => {
           makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
         ]),
       )->Effect.runPromise
-      // Try to create again
+      // Try to create again — decide returns Error, but handler returns Ok("rejected") to avoid infinite SQS retry
       let results = await TestHandler.handleCommands(
         testDcbEventLog,
         Stream.fromIterable([
@@ -91,7 +91,7 @@ describe("StateChangeSlice_Callback:", () => {
         ]),
       )->Effect.runPromise
 
-      expect(results)->toEqual([Error("ref-2")])
+      expect(results)->toEqual([Ok("ref-2")])
     })
   })
 
@@ -156,7 +156,7 @@ describe("StateChangeSlice_Callback:", () => {
       expect(results)->toEqual([Ok("ref-1"), Ok("ref-2")])
     })
 
-    testPromise("mixed success and failure", async () => {
+    testPromise("mixed: new item succeeds, duplicate item ACKs as Ok (business-rule violation)", async () => {
       // Create item-1 first
       let _ = await TestHandler.handleCommands(
         testDcbEventLog,
@@ -164,7 +164,7 @@ describe("StateChangeSlice_Callback:", () => {
           makeTopicItem("ref-0", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Existing"})),
         ]),
       )->Effect.runPromise
-      // Batch: create item-2 (ok) and duplicate item-1 (error)
+      // Batch: create item-2 (ok) and duplicate item-1 (business-rule violation → Ok, not Error)
       let results = await TestHandler.handleCommands(
         testDcbEventLog,
         Stream.fromIterable([
@@ -176,7 +176,7 @@ describe("StateChangeSlice_Callback:", () => {
         ]),
       )->Effect.runPromise
 
-      expect(results)->toEqual([Ok("ref-1"), Error("ref-2")])
+      expect(results)->toEqual([Ok("ref-1"), Ok("ref-2")])
     })
 
     testPromise("empty batch returns empty array", async () => {

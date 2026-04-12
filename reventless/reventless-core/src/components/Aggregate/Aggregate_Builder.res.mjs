@@ -46,6 +46,7 @@ function Make(Spec) {
       return commandTopic;
     });
     let createCommandGenerator = (commandTopic, api, name, opts) => Output$Pulumi.flatMap(commandTopic, commandTopic => Component$ReventlessCore.operations(commandTopic).apply(param => {
+      let publishJsonsAndWait = param.publishJsonsAndWait;
       let publishJsons = param.publishJsons;
       let commandGenerator = SpecificCommandGenerator.make(name, opts);
       let bindHandler = HooksConfig.hooks.mutationBindHook;
@@ -54,11 +55,11 @@ function Make(Spec) {
         let fields = registeredFields !== undefined ? (
             registeredFields.length !== 0 ? registeredFields : []
           ) : [];
-        let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, Spec.name, Spec.commandSchema, "Aggregate", undefined);
+        let generateCommand = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, publishJsonsAndWait, Spec.name, Spec.commandSchema, "Aggregate", undefined);
         fields.forEach(field => bindHandler(field, generateCommand));
       } else {
         let resources = Component$ReventlessCore.outputs(commandTopic).resources;
-        AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(publishJsons), none => SpecificCommandGenerator.connect(api, resources, none, commandGenerator), undefined, undefined, commandGenerator);
+        AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(publishJsons, publishJsonsAndWait), none => SpecificCommandGenerator.connect(api, resources, none, commandGenerator), undefined, undefined, commandGenerator);
       }
       return commandGenerator;
     }));

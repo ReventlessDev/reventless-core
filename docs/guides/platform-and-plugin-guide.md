@@ -230,6 +230,39 @@ Conventions:
 - All types use `@schema` for serialization
 - Error variants for domain validation failures
 
+#### Command Channel Configuration
+
+By default all aggregates use `CommandTopicChannel.SQS_Sync` — a standard SQS queue where the handler runs inline during the mutation, so the client receives an immediate `CommandResult`:
+
+```graphql
+# All mutations return the same union regardless of channel
+mutation AddProduct($id: ID!, $name: String!) {
+  addProduct(id: $id, name: $name) {
+    __typename
+    ... on CommandAccepted { msgId }
+    ... on CommandRejected { msgId errorCode errorDetail }
+    ... on CommandPending  { msgId }
+  }
+}
+```
+
+For high-contention aggregates where FIFO ordering is more important than synchronous results, opt in to the async channel:
+
+```rescript
+// Explicit opt-in — async channel, returns CommandPending
+module InventoryAggregate = Platform.Aggregate.Make(
+  Inventory,
+  InventoryBehavior,
+  ReventlessInfra.NoEventMappings.Make(Inventory),
+  // ~commandTopicChannel=CommandTopicChannel.SQS_Async,  // (future: per-aggregate channel override)
+)
+```
+
+| Channel | Queue | Mutation result | Use when |
+|---------|-------|----------------|----------|
+| `SQS_Sync` (default) | Standard SQS | `CommandAccepted` \| `CommandRejected` | User-facing CRUD, payment commands |
+| `SQS_Async` | FIFO SQS | `CommandPending` | High-contention writes, internal automation |
+
 ---
 
 ### Behaviors
