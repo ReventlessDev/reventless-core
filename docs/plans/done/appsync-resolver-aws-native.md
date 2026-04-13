@@ -307,7 +307,7 @@ accidentally mixing providers.
 
 ---
 
-## Phase 6 — Rollout and monitoring
+## Phase 6 — Rollout and monitoring ✅ DONE
 
 ### 6.1 Ship behind existing sleep safety net
 
