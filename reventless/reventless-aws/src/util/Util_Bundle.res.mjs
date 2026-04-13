@@ -128,7 +128,12 @@ function buildCodeArchive(entryPointModule, packageDirs) {
     archiveContents[`node_modules/` + pkgName] = createFilteredPackageArchive(pkgRoot);
   });
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = hashString(reExportCode + Object.keys(allPackageDirs).join(","));
+  let pkgVersions = Object.entries(allPackageDirs).map(param => {
+    let pkgJsonText = Fs.readFileSync(Path.join(param[1], "package.json"), "utf-8");
+    let version = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(JSON.parse(pkgJsonText)), obj => obj["version"]), Stdlib_JSON.Decode.string), "unknown");
+    return param[0] + `@` + version;
+  }).join(",");
+  let sourceCodeHash = hashString(reExportCode + pkgVersions);
   return {
     code: code,
     sourceCodeHash: sourceCodeHash

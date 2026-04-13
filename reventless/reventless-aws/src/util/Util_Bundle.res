@@ -192,6 +192,23 @@ let buildCodeArchive = (~entryPointModule: string, ~packageDirs: dict<string>): 
     )
   })
   let code = Pulumi.Archive.assetArchive(archiveContents)
-  let sourceCodeHash = hashString(reExportCode ++ allPackageDirs->Dict.keysToArray->Array.join(","))
+  // Include each package's version in the hash so Pulumi redeploys when
+  // a bundled package is updated (e.g. effect 3.19.19 → 3.21.0).
+  let pkgVersions =
+    allPackageDirs
+    ->Dict.toArray
+    ->Array.map(((pkgName, pkgRoot)) => {
+      let pkgJsonText = readFileSync(join2(pkgRoot, "package.json"), "utf-8")
+      let version =
+        pkgJsonText
+        ->JSON.parseOrThrow
+        ->JSON.Decode.object
+        ->Option.flatMap(obj => obj->Dict.get("version"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr("unknown")
+      `${pkgName}@${version}`
+    })
+    ->Array.join(",")
+  let sourceCodeHash = hashString(reExportCode ++ pkgVersions)
   {code, sourceCodeHash}
 }
