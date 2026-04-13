@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@pulumi/aws": "~7.19.0",
+    "@pulumi/aws-native": "^1.48.0",
     "@reventlessdev/rescript-aws-sdk": "^2.2.0-alpha.6",
     "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.6"
   },

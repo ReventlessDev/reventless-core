@@ -1,4 +1,10 @@
 open PulumiAws.AppSync
+// Shadow PulumiAws.AppSync.Resolver with the aws-native-backed adapter so
+// resolver creation uses the Cloud Control API. The CFN handler internally
+// waits for schema -> resolver propagation, avoiding the
+// `NotFoundException: No field named X` race we hit with the classic provider.
+// See docs/plans/appsync-resolver-aws-native.md.
+module Resolver = AppSync_Resolver_Native
 open Reventless.ReadModel
 
 type api = Types.AppSync.api
@@ -338,7 +344,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     | None => [resolverByIdSingle, resolverAll]
     }
     Array.flat([mainResolvers, resolversByIndex, idResolvers, idsResolvers])
-    ->Array.map(Util.AppSync.toResource)
+    ->Array.map(Util.AppSync.toResourceNative)
   }
 
   {resources: [], resourcesMaker}

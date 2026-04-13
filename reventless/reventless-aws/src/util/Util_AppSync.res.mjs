@@ -16,7 +16,20 @@ function toResource(param) {
   })), undefined, undefined, Pulumi.output("aws:appsync:Resolver"), undefined, undefined);
 }
 
+function toResourceNative(param) {
+  let id = param.id;
+  return Adapter$ReventlessInfra.make(id, id, param.resolverArn, id.apply(param => AWS$ReventlessAws.AppSync.service), Pulumi.all([
+    param.typeName,
+    param.fieldName
+  ]).apply(param => ({
+    TAG: "ApiResolver",
+    typeName: param[0],
+    fieldName: param[1]
+  })), undefined, undefined, Pulumi.output("aws-native:appsync:Resolver"), undefined, undefined);
+}
+
 export {
   toResource,
+  toResourceNative,
 }
 /* @pulumi/pulumi Not a pure module */
