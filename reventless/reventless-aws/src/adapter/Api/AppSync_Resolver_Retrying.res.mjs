@@ -59,6 +59,8 @@ function isFieldNotFoundError(jsErr) {
   }
 }
 
+let jsThrow = (e => { throw e });
+
 async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelayMsOpt, makeCall) {
   let attempt = attemptOpt !== undefined ? attemptOpt : 0;
   let maxAttempts = maxAttemptsOpt !== undefined ? maxAttemptsOpt : 6;
@@ -82,6 +84,9 @@ async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelay
       return await runWithRaceRetry(attempt + 1 | 0, maxAttempts, cappedDelay, maxDelayMs, makeCall);
     }
     console.log(`[AppSync_Resolver_Retrying] giving up after ` + attempt.toString() + ` attempts: ` + name + `: ` + msg);
+    if (jsExn !== undefined) {
+      return jsThrow(Primitive_option.valFromOption(jsExn));
+    }
     throw exn;
   }
 }
@@ -125,18 +130,45 @@ function extractArn(resp) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(resp.resolver, r => r.resolverArn), "unknown-arn");
 }
 
+function makeOuts(resolverArn, inputs) {
+  let base_apiId = inputs.apiId;
+  let base_typeName = inputs.typeName;
+  let base_fieldName = inputs.fieldName;
+  let base_kind = inputs.kind;
+  let base_code = inputs.code;
+  let base = {
+    resolverArn: resolverArn,
+    apiId: base_apiId,
+    typeName: base_typeName,
+    fieldName: base_fieldName,
+    kind: base_kind,
+    code: base_code
+  };
+  let ds = inputs.dataSourceName;
+  let withDs;
+  if (ds !== undefined) {
+    let newrecord = {...base};
+    newrecord.dataSourceName = ds;
+    withDs = newrecord;
+  } else {
+    withDs = base;
+  }
+  let fns = inputs.functions;
+  if (fns === undefined) {
+    return withDs;
+  }
+  let newrecord$1 = {...withDs};
+  newrecord$1.functions = fns;
+  return newrecord$1;
+}
+
 async function create(inputs) {
   let sdk = await getSdk();
   let client = await getClient();
   let arn = await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.CreateResolverCommand, buildSdkInput(inputs))).then(extractArn));
   return {
     id: arn,
-    outs: {
-      resolverArn: arn,
-      apiId: inputs.apiId,
-      typeName: inputs.typeName,
-      fieldName: inputs.fieldName
-    }
+    outs: makeOuts(arn, inputs)
   };
 }
 
@@ -145,12 +177,7 @@ async function update(id, _olds, news) {
   let client = await getClient();
   await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.UpdateResolverCommand, buildSdkInput(news))));
   return {
-    outs: {
-      resolverArn: id,
-      apiId: news.apiId,
-      typeName: news.typeName,
-      fieldName: news.fieldName
-    }
+    outs: makeOuts(id, news)
   };
 }
 
@@ -180,12 +207,14 @@ async function delete_(id, props) {
   return await client.send(newOf1(sdk.DeleteResolverCommand, deleteInput));
 }
 
+let isDefined = (x => x !== undefined && x !== null);
+
 function diff_(_id, olds, news) {
   let replaces = Stdlib_Array.filterMap([
-    olds.apiId !== news.apiId ? "apiId" : undefined,
-    olds.typeName !== news.typeName ? "typeName" : undefined,
-    olds.fieldName !== news.fieldName ? "fieldName" : undefined,
-    olds.kind !== news.kind ? "kind" : undefined
+    isDefined(olds.apiId) && olds.apiId !== news.apiId ? "apiId" : undefined,
+    isDefined(olds.typeName) && olds.typeName !== news.typeName ? "typeName" : undefined,
+    isDefined(olds.fieldName) && olds.fieldName !== news.fieldName ? "fieldName" : undefined,
+    isDefined(olds.kind) && olds.kind !== news.kind ? "kind" : undefined
   ], x => x);
   let changes = replaces.length !== 0 || olds.code !== news.code || Primitive_object.notequal(olds.dataSourceName, news.dataSourceName) || Primitive_object.notequal(olds.functions, news.functions);
   return {
@@ -258,13 +287,16 @@ export {
   getSdk,
   getClient,
   isFieldNotFoundError,
+  jsThrow,
   runWithRaceRetry,
   buildSdkInput,
   extractArn,
+  makeOuts,
   create,
   update,
   parseArn,
   delete_,
+  isDefined,
   diff_,
   read_,
   provider,

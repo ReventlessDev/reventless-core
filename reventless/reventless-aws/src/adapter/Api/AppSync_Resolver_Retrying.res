@@ -137,6 +137,9 @@ let isFieldNotFoundError = (jsErr: JsExn.t): bool =>
 
 @val external setTimeout: (unit => unit, int) => int = "setTimeout"
 
+/** Throws a JavaScript exception directly (bypasses the ReScript exn wrapper). */
+let jsThrow: JsExn.t => 'a = %raw(`e => { throw e }`)
+
 /** Hand-rolled retry on `NotFoundException / No field named` with capped
     exponential backoff:
 
@@ -191,7 +194,13 @@ let rec runWithRaceRetry = async (
       Console.log(
         `[AppSync_Resolver_Retrying] giving up after ${attempt->Int.toString} attempts: ${name}: ${msg}`,
       )
-      throw(exn)
+      // Re-throw the original JavaScript error so Pulumi can display its message.
+      // throw(exn) would rethrow the ReScript exception wrapper (RE_EXN_ID), which
+      // has no `.message` property and causes Pulumi to display "error: undefined".
+      switch jsExn {
+      | Some(e) => jsThrow(e)
+      | None => throw(exn)
+      }
     }
   }
 }
@@ -236,15 +245,45 @@ let extractArn = (resp: sdkResolverResult): string =>
 
 // ── Dynamic provider method types ─────────────────────────────────────────────
 
-// Include resolver coordinates in outs so that the delete handler can retrieve them
-// even if the provider code is later re-serialised (Pulumi passes outs, not inputs, to delete).
-type createOuts = {resolverArn: string, apiId: string, typeName: string, fieldName: string}
+// Pulumi passes OUTPUTS (not inputs) to diff/delete/update handlers, so all fields
+// that diff_ compares must be stored in createOuts/updateResult.outs, otherwise
+// olds.fieldX is undefined at diff time and `undefined != newValue` is always true
+// in JavaScript — causing every deploy to trigger a delete+recreate.
+type createOuts = {
+  resolverArn: string,
+  apiId: string,
+  typeName: string,
+  fieldName: string,
+  kind: string,
+  code: string,
+  dataSourceName?: string,
+  functions?: array<string>,
+}
 type createResult = {id: string, outs: createOuts}
 type updateResult = {outs: createOuts}
 type diffResult = {changes: bool, replaces: array<string>, deleteBeforeReplace: bool}
 type readResult = {id: string, props: providerInputs}
 
 // ── Provider methods ──────────────────────────────────────────────────────────
+
+let makeOuts = (resolverArn: string, inputs: providerInputs): createOuts => {
+  let base: createOuts = {
+    resolverArn,
+    apiId: inputs.apiId,
+    typeName: inputs.typeName,
+    fieldName: inputs.fieldName,
+    kind: inputs.kind,
+    code: inputs.code,
+  }
+  let withDs = switch inputs.dataSourceName {
+  | Some(ds) => {...base, dataSourceName: ds}
+  | None => base
+  }
+  switch inputs.functions {
+  | Some(fns) => {...withDs, functions: fns}
+  | None => withDs
+  }
+}
 
 let create = async (inputs: providerInputs): createResult => {
   let sdk = await getSdk()
@@ -254,7 +293,7 @@ let create = async (inputs: providerInputs): createResult => {
     ->sendCreate(newOf1(sdk.createCtor, inputs->buildSdkInput))
     ->Promise.thenResolve(extractArn)
   )
-  {id: arn, outs: {resolverArn: arn, apiId: inputs.apiId, typeName: inputs.typeName, fieldName: inputs.fieldName}}
+  {id: arn, outs: makeOuts(arn, inputs)}
 }
 
 let update = async (id: string, _olds: providerInputs, news: providerInputs): updateResult => {
@@ -263,8 +302,8 @@ let update = async (id: string, _olds: providerInputs, news: providerInputs): up
   let _ = await runWithRaceRetry(() =>
     client->sendUpdate(newOf1(sdk.updateCtor, news->buildSdkInput))
   )
-  // ARN is stable across updates — preserve resolver coordinates in outs
-  {outs: {resolverArn: id, apiId: news.apiId, typeName: news.typeName, fieldName: news.fieldName}}
+  // ARN is stable across updates
+  {outs: makeOuts(id, news)}
 }
 
 /** Parse apiId, typeName, fieldName from the resolver ARN.
@@ -291,16 +330,24 @@ let delete_ = async (id: string, props: providerInputs): unit => {
   await client->sendDelete(newOf1(sdk.deleteCtor, deleteInput))
 }
 
+// Guard against undefined in olds for resources created with older code that did not
+// store all fields in createOuts. In JavaScript `undefined !== value` evaluates to
+// true, which would incorrectly flag every such field as requiring replacement.
+let isDefined: string => bool = %raw(`x => x !== undefined && x !== null`)
+
 /** Returns `true` for fields whose change requires delete+recreate.
     AppSync does not allow renaming the API, type, field, or kind in-place. */
 let diff_ = (_id: string, olds: providerInputs, news: providerInputs): diffResult => {
   let replaces =
     [
-      if olds.apiId != news.apiId {Some("apiId")} else {None},
-      if olds.typeName != news.typeName {Some("typeName")} else {None},
-      if olds.fieldName != news.fieldName {Some("fieldName")} else {None},
-      if olds.kind != news.kind {Some("kind")} else {None},
+      if isDefined(olds.apiId) && olds.apiId != news.apiId {Some("apiId")} else {None},
+      if isDefined(olds.typeName) && olds.typeName != news.typeName {Some("typeName")} else {None},
+      if isDefined(olds.fieldName) && olds.fieldName != news.fieldName {Some("fieldName")} else {None},
+      if isDefined(olds.kind) && olds.kind != news.kind {Some("kind")} else {None},
     ]->Array.filterMap(x => x)
+  // For in-place update detection (non-replace changes): compare as-is.
+  // If olds is from old state (missing fields), this may trigger an unnecessary
+  // update, but that is safe — the update simply re-applies the resolver.
   let changes =
     replaces->Array.length > 0 ||
     olds.code != news.code ||
