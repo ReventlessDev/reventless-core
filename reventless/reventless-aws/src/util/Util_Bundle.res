@@ -115,6 +115,8 @@ let hashString = (str: string): string =>
 let isSkippedDir = (n: string) =>
   n == "node_modules" ||
   n == "lib" ||
+  n == "cjs" ||
+  n == "dts" ||
   n == "tests" ||
   n == "test" ||
   n == "__mocks__" ||
@@ -131,7 +133,7 @@ let rec walkDir = (dir: string, prefix: string, assets: dict<Pulumi.Archive.asse
         let newPrefix = prefix == "" ? entryName : prefix ++ "/" ++ entryName
         walkDir(join2(dir, entryName), newPrefix, assets)
       }
-    } else if entryName == "package.json" || entryName->String.endsWith(".mjs") {
+    } else if entryName == "package.json" || entryName->String.endsWith(".mjs") || entryName->String.endsWith(".js") {
       let relPath = prefix == "" ? entryName : prefix ++ "/" ++ entryName
       assets->Dict.set(
         relPath,
@@ -159,6 +161,12 @@ type codeArchive = {
 /**
  * Build a Lambda code AssetArchive with a static re-export entry point and optional user packages.
  * Centralises the archive-building pattern used by every runtime builder.
+ *
+ * When @reventlessdev/reventless-aws is bundled, effect is automatically co-bundled.
+ * The entry points in reventless-aws import effect statically, and ESM resolution
+ * walks up from /var/task/node_modules/reventless-aws/... — it never reaches the
+ * Lambda layer at /opt/nodejs/node_modules. Bundling effect alongside ensures it
+ * is found at /var/task/node_modules/effect.
  */
 let buildCodeArchive = (~entryPointModule: string, ~packageDirs: dict<string>): codeArchive => {
   let reExportCode = `export { handler } from "${entryPointModule}";`
@@ -167,13 +175,23 @@ let buildCodeArchive = (~entryPointModule: string, ~packageDirs: dict<string>): 
     "index.mjs",
     Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
   )
-  packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+  // Co-bundle effect whenever reventless-aws is bundled (see comment above).
+  let allPackageDirs =
+    if packageDirs->Dict.has("@reventlessdev/reventless-aws") &&
+      !(packageDirs->Dict.has("effect")) {
+      let dirs = packageDirs->Dict.copy
+      dirs->Dict.set("effect", resolvePackageRoot("effect"))
+      dirs
+    } else {
+      packageDirs
+    }
+  allPackageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
     archiveContents->Dict.set(
       `node_modules/${pkgName}`,
       createFilteredPackageArchive(pkgRoot)->Pulumi.Archive.archiveToAssetOrArchive,
     )
   })
   let code = Pulumi.Archive.assetArchive(archiveContents)
-  let sourceCodeHash = hashString(reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","))
+  let sourceCodeHash = hashString(reExportCode ++ allPackageDirs->Dict.keysToArray->Array.join(","))
   {code, sourceCodeHash}
 }

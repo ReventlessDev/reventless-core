@@ -78,7 +78,7 @@ function hashString(str) {
 }
 
 function isSkippedDir(n) {
-  if (n === "node_modules" || n === "lib" || n === "tests" || n === "test" || n === "__mocks__" || n === "__tests__" || n === ".git") {
+  if (n === "node_modules" || n === "lib" || n === "cjs" || n === "dts" || n === "tests" || n === "test" || n === "__mocks__" || n === "__tests__" || n === ".git") {
     return true;
   } else {
     return n === "coverage";
@@ -98,7 +98,7 @@ function walkDir(dir, prefix, assets) {
       let newPrefix = prefix === "" ? entryName : prefix + "/" + entryName;
       return walkDir(Path.join(dir, entryName), newPrefix, assets);
     }
-    if (!(entryName === "package.json" || entryName.endsWith(".mjs"))) {
+    if (!(entryName === "package.json" || entryName.endsWith(".mjs") || entryName.endsWith(".js"))) {
       return;
     }
     let relPath = prefix === "" ? entryName : prefix + "/" + entryName;
@@ -116,11 +116,19 @@ function buildCodeArchive(entryPointModule, packageDirs) {
   let reExportCode = `export { handler } from "` + entryPointModule + `";`;
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
-  Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
+  let allPackageDirs;
+  if ("@reventlessdev/reventless-aws" in packageDirs && !("effect" in packageDirs)) {
+    let dirs = Object.assign({}, packageDirs);
+    dirs["effect"] = resolvePackageRoot("effect");
+    allPackageDirs = dirs;
+  } else {
+    allPackageDirs = packageDirs;
+  }
+  Stdlib_Dict.forEachWithKey(allPackageDirs, (pkgRoot, pkgName) => {
     archiveContents[`node_modules/` + pkgName] = createFilteredPackageArchive(pkgRoot);
   });
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = hashString(reExportCode + Object.keys(packageDirs).join(","));
+  let sourceCodeHash = hashString(reExportCode + Object.keys(allPackageDirs).join(","));
   return {
     code: code,
     sourceCodeHash: sourceCodeHash
