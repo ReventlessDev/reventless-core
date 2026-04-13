@@ -113,7 +113,7 @@ describe("Split mode — empty base fragment", () => {
     expect(sdl)->toContain("MyPlugin_Item_Create")
     expect(sdl)->toContain("MyPlugin_Item")
     // Should NOT contain admin fields
-    expect(sdl)->not_->toContain("Admin_Plugin")
+    expect(sdl)->not_->toContain("Platform_Plugin")
   })
 
   test("stitching admin base without plugins produces only admin fields", () => {
@@ -122,6 +122,6 @@ describe("Split mode — empty base fragment", () => {
       ~baseFragment=adminBase,
       ~pluginFragments=[],
     )
-    expect(sdl)->toContain("Admin_Plugin")
+    expect(sdl)->toContain("Platform_Plugin")
   })
 })
