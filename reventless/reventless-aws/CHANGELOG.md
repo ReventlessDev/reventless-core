@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.50 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** co-bundle effect with reventless-aws to fix ESM resolution in Lambda ([29ea07d](https://github.com/ReventlessDev/reventless-core/commit/29ea07d059f09a9844bbad901773c4f5f8046c7f))
+* **aws:** prevent resolver replace cascade and fix error display in AppSync_Resolver_Retrying ([7dec70d](https://github.com/ReventlessDev/reventless-core/commit/7dec70d5f3b35930b82bbfbb22e5b0aa66f6784e))
+
+
 # 3.0.0-alpha.49 (2026-04-13)
 
 ### Bug Fixes
