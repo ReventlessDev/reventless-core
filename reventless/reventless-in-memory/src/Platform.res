@@ -763,6 +763,54 @@ module MakeWithConfig = (
     }
   }
 
+  // -- Admin mutation helpers --------------------------------------------------
+  // Transform SDL mutation fields so their return type is CommandResult! instead
+  // of the String! placeholder that GraphQL_FragmentGenerator emits.
+  let adminMutationSdl = (mutations: array<string>): array<string> =>
+    mutations->Array.map(field => {
+      let suffix = ": String!"
+      let n = field->String.length - suffix->String.length
+      if n > 0 && field->String.endsWith(suffix) {
+        field->String.slice(~start=0, ~end=n) ++ ": CommandResult!"
+      } else {
+        field
+      }
+    })
+
+  // Build a CommandAccepted JSON object for admin mutation responses.
+  let commandAccepted = (~msgId, ~entityId=?) =>
+    Dict.fromArray([
+      ("__typename", JSON.Encode.string("CommandAccepted")),
+      ("msgId", JSON.Encode.string(msgId)),
+      ("entityId", entityId->Option.map(JSON.Encode.string)->Option.getOr(JSON.Encode.null)),
+      ("eventCount", JSON.Encode.int(0)),
+    ])->JSON.Encode.object
+
+  // Build a Relay connection JSON object for admin list query responses.
+  let connectionResponse = (items: array<JSON.t>): JSON.t => {
+    let edges =
+      items->Array.mapWithIndex((item, i) =>
+        Dict.fromArray([("node", item), ("cursor", Int.toString(i)->JSON.Encode.string)])->JSON.Encode.object
+      )
+    let hasItems = edges->Array.length > 0
+    Dict.fromArray([
+      ("edges", edges->JSON.Encode.array),
+      (
+        "pageInfo",
+        Dict.fromArray([
+          ("hasNextPage", JSON.Encode.bool(false)),
+          ("hasPreviousPage", JSON.Encode.bool(false)),
+          ("startCursor", hasItems ? JSON.Encode.string("0") : JSON.Encode.null),
+          (
+            "endCursor",
+            hasItems ? JSON.Encode.string(Int.toString(edges->Array.length - 1)) : JSON.Encode.null,
+          ),
+        ])->JSON.Encode.object,
+      ),
+      ("totalCount", JSON.Encode.int(items->Array.length)),
+    ])->JSON.Encode.object
+  }
+
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
     log.info(~comp="Platform", `v${version}`)
     log.info(
@@ -885,11 +933,7 @@ module MakeWithConfig = (
       | Some(scanAll) => scanAll()
       | None => []
       }
-      Dict.fromArray([
-        ("nextToken", JSON.Encode.null),
-        ("scannedCount", JSON.Encode.int(items->Array.length)),
-        ("items", items->JSON.Encode.array),
-      ])->JSON.Encode.object
+      connectionResponse(items)
     })
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
@@ -946,7 +990,7 @@ module MakeWithConfig = (
         }
       | None => log.warn(~comp="Admin", `${field}(${id}): Plugin QueryDb not registered`)
       }
-      msgId->JSON.Encode.string
+      commandAccepted(~msgId, ~entityId=id)
     }
 
     // Real resolvers for admin mutations — update plugin state in QueryDb.
@@ -963,11 +1007,12 @@ module MakeWithConfig = (
     adminMutationFieldNames->Array.forEach(field =>
       if mutationResolvers->Dict.get(field)->Option.isNone {
         mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
-          JSON.Encode.string("ok")
+          commandAccepted(~msgId=ReventlessCore.Message.uuid())
         )
       }
     )
-    platformGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+    CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(platformGraphQL)
+    platformGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
     adminRegisteredServers.contents->Array.push(platformGraphQL)
 
     // Register admin Plugin queries and mutations as MCP resources and tools.
@@ -1083,11 +1128,7 @@ module MakeWithConfig = (
       JSON.Encode.null
     )
     queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
-      Dict.fromArray([
-        ("nextToken", JSON.Encode.null),
-        ("scannedCount", JSON.Encode.int(0)),
-        ("items", []->JSON.Encode.array),
-      ])->JSON.Encode.object
+      connectionResponse([])
     )
     adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
@@ -1096,10 +1137,11 @@ module MakeWithConfig = (
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
     adminMutationFieldNames->Array.forEach(field =>
       mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
-        JSON.Encode.string("ok")
+        commandAccepted(~msgId=ReventlessCore.Message.uuid())
       )
     )
-    adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+    CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(adminGraphQL)
+    adminGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
 
     currentDeployTarget.contents = Domain
 
@@ -1202,11 +1244,7 @@ module MakeWithConfig = (
         JSON.Encode.null
       )
       queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
-        Dict.fromArray([
-          ("nextToken", JSON.Encode.null),
-          ("scannedCount", JSON.Encode.int(0)),
-          ("items", []->JSON.Encode.array),
-        ])->JSON.Encode.object
+        connectionResponse([])
       )
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
@@ -1215,10 +1253,11 @@ module MakeWithConfig = (
       let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
       adminMutationFieldNames->Array.forEach(field =>
         mutationResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t =>
-          JSON.Encode.string("ok")
+          commandAccepted(~msgId=ReventlessCore.Message.uuid())
         )
       )
-      adminGraphQL.registerMutations(~sdlFields=baseParts.mutations, ~resolvers=mutationResolvers)
+      CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(adminGraphQL)
+      adminGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
       adminRegisteredServers.contents->Array.push(adminGraphQL)
     }
 

@@ -107,7 +107,13 @@ let extractVariantSchema = (commandSchema: S.t<unknown>, ~index=0) =>
 
 let deriveSdlField = (~fieldName, variantSchema: S.t<unknown>) =>
   switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(~fieldName, variantSchema) {
-  | Some(field) => field->String.replace(": String!", ": CommandResult!")
+  | Some(field) =>
+    // deriveMutationFieldFromObject always ends with ": String!" as the return type.
+    // Replace only the trailing suffix — NOT the first occurrence, which would corrupt
+    // String argument types (e.g. `name: String!` → `name: CommandResult!`).
+    let returnTypeSuffix = ": String!"
+    let n = field->String.length - returnTypeSuffix->String.length
+    field->String.slice(~start=0, ~end=n) ++ ": CommandResult!"
   | None => `  ${fieldName}: CommandResult!`
   }
 

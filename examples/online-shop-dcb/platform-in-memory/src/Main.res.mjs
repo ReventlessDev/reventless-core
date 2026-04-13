@@ -20,6 +20,8 @@ Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
   }
 ]);
 
+Platform.startServers();
+
 export {
   Platform,
   Catalog,

@@ -716,6 +716,77 @@ function MakeWithConfig(Config) {
       }
     }
   };
+  let adminMutationSdl = mutations => mutations.map(field => {
+    let suffix = ": String!";
+    let n = field.length - suffix.length | 0;
+    if (n > 0 && field.endsWith(suffix)) {
+      return field.slice(0, n) + ": CommandResult!";
+    } else {
+      return field;
+    }
+  });
+  let commandAccepted = (msgId, entityId) => Object.fromEntries([
+    [
+      "__typename",
+      "CommandAccepted"
+    ],
+    [
+      "msgId",
+      msgId
+    ],
+    [
+      "entityId",
+      Stdlib_Option.getOr(Stdlib_Option.map(entityId, prim => prim), null)
+    ],
+    [
+      "eventCount",
+      0
+    ]
+  ]);
+  let connectionResponse = items => {
+    let edges = items.map((item, i) => Object.fromEntries([
+      [
+        "node",
+        item
+      ],
+      [
+        "cursor",
+        i.toString()
+      ]
+    ]));
+    let hasItems = edges.length !== 0;
+    return Object.fromEntries([
+      [
+        "edges",
+        edges
+      ],
+      [
+        "pageInfo",
+        Object.fromEntries([
+          [
+            "hasNextPage",
+            false
+          ],
+          [
+            "hasPreviousPage",
+            false
+          ],
+          [
+            "startCursor",
+            hasItems ? "0" : null
+          ],
+          [
+            "endCursor",
+            hasItems ? (edges.length - 1 | 0).toString() : null
+          ]
+        ])
+      ],
+      [
+        "totalCount",
+        items.length
+      ]
+    ]);
+  };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
@@ -780,21 +851,7 @@ function MakeWithConfig(Config) {
     };
     queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
-      let items = scanAll !== undefined ? scanAll() : [];
-      return Object.fromEntries([
-        [
-          "nextToken",
-          null
-        ],
-        [
-          "scannedCount",
-          items.length
-        ],
-        [
-          "items",
-          items
-        ]
-      ]);
+      return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {
@@ -861,7 +918,7 @@ function MakeWithConfig(Config) {
       } else {
         log.warn("Admin", undefined, field + `(` + id + `): Plugin QueryDb not registered`);
       }
-      return msgId;
+      return commandAccepted(msgId, id);
     };
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
@@ -870,11 +927,12 @@ function MakeWithConfig(Config) {
     mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
-        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+        mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
         return;
       }
     });
-    platformGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(platformGraphQL);
+    platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
@@ -938,28 +996,16 @@ function MakeWithConfig(Config) {
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
-      [
-        "nextToken",
-        null
-      ],
-      [
-        "scannedCount",
-        0
-      ],
-      [
-        "items",
-        []
-      ]
-    ]);
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+      mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
     });
-    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(adminGraphQL);
+    adminGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     currentDeployTarget.contents = "Domain";
     adminGraphQL.start(Config.splitApi ? 4001 : 4000, undefined);
     adminMCP.start(Config.splitApi ? 3002 : 3001, undefined);
@@ -1019,28 +1065,16 @@ function MakeWithConfig(Config) {
       let queryResolvers = {};
       let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
       queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
-      queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
-        [
-          "nextToken",
-          null
-        ],
-        [
-          "scannedCount",
-          0
-        ],
-        [
-          "items",
-          []
-        ]
-      ]);
+      queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
       adminMutationFieldNames.forEach(field => {
-        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+        mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
       });
-      adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+      CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(adminGraphQL);
+      adminGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
       adminRegisteredServers.contents.push(adminGraphQL);
     }
     currentDeployTarget.contents = "Domain";
@@ -1718,6 +1752,77 @@ function Make($star) {
       return PlatformMCP_Server$ReventlessInMemory.printDiagnostics();
     }
   };
+  let adminMutationSdl = mutations => mutations.map(field => {
+    let suffix = ": String!";
+    let n = field.length - suffix.length | 0;
+    if (n > 0 && field.endsWith(suffix)) {
+      return field.slice(0, n) + ": CommandResult!";
+    } else {
+      return field;
+    }
+  });
+  let commandAccepted = (msgId, entityId) => Object.fromEntries([
+    [
+      "__typename",
+      "CommandAccepted"
+    ],
+    [
+      "msgId",
+      msgId
+    ],
+    [
+      "entityId",
+      Stdlib_Option.getOr(Stdlib_Option.map(entityId, prim => prim), null)
+    ],
+    [
+      "eventCount",
+      0
+    ]
+  ]);
+  let connectionResponse = items => {
+    let edges = items.map((item, i) => Object.fromEntries([
+      [
+        "node",
+        item
+      ],
+      [
+        "cursor",
+        i.toString()
+      ]
+    ]));
+    let hasItems = edges.length !== 0;
+    return Object.fromEntries([
+      [
+        "edges",
+        edges
+      ],
+      [
+        "pageInfo",
+        Object.fromEntries([
+          [
+            "hasNextPage",
+            false
+          ],
+          [
+            "hasPreviousPage",
+            false
+          ],
+          [
+            "startCursor",
+            hasItems ? "0" : null
+          ],
+          [
+            "endCursor",
+            hasItems ? (edges.length - 1 | 0).toString() : null
+          ]
+        ])
+      ],
+      [
+        "totalCount",
+        items.length
+      ]
+    ]);
+  };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
@@ -1782,21 +1887,7 @@ function Make($star) {
     };
     queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
-      let items = scanAll !== undefined ? scanAll() : [];
-      return Object.fromEntries([
-        [
-          "nextToken",
-          null
-        ],
-        [
-          "scannedCount",
-          items.length
-        ],
-        [
-          "items",
-          items
-        ]
-      ]);
+      return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {
@@ -1863,7 +1954,7 @@ function Make($star) {
       } else {
         log.warn("Admin", undefined, field + `(` + id + `): Plugin QueryDb not registered`);
       }
-      return msgId;
+      return commandAccepted(msgId, id);
     };
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
@@ -1872,11 +1963,12 @@ function Make($star) {
     mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
-        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+        mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
         return;
       }
     });
-    platformGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(platformGraphQL);
+    platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
     let pluginQueryHandler = async (_resourceName, uri) => {
       let segments = uri.split("/");
@@ -1934,28 +2026,16 @@ function Make($star) {
     let queryResolvers = {};
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
-      [
-        "nextToken",
-        null
-      ],
-      [
-        "scannedCount",
-        0
-      ],
-      [
-        "items",
-        []
-      ]
-    ]);
+    queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     adminMutationFieldNames.forEach(field => {
-      mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+      mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
     });
-    adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+    CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(adminGraphQL);
+    adminGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     currentDeployTarget.contents = "Domain";
     adminGraphQL.start(4001, undefined);
     adminMCP.start(3002, undefined);
@@ -2013,28 +2093,16 @@ function Make($star) {
       let queryResolvers = {};
       let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
       queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
-      queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => Object.fromEntries([
-        [
-          "nextToken",
-          null
-        ],
-        [
-          "scannedCount",
-          0
-        ],
-        [
-          "items",
-          []
-        ]
-      ]);
+      queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
       let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
       adminMutationFieldNames.forEach(field => {
-        mutationResolvers[field] = async (_root, _args, _ctx) => "ok";
+        mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
       });
-      adminGraphQL.registerMutations(baseParts.mutations, mutationResolvers);
+      CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(adminGraphQL);
+      adminGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
       adminRegisteredServers.contents.push(adminGraphQL);
     }
     currentDeployTarget.contents = "Domain";

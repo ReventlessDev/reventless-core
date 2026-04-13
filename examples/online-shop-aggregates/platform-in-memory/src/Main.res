@@ -7,3 +7,5 @@ Platform.makePlatform(
   ~version=Reventless.PackageVersion.fromCwd(),
   ~plugins=[module(Catalog), module(Ordering)],
 )
+
+Platform.startServers()

@@ -123,11 +123,11 @@ function extractVariantSchema(commandSchema, indexOpt) {
 
 function deriveSdlField(fieldName, variantSchema) {
   let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema);
-  if (field !== undefined) {
-    return field.replace(": String!", ": CommandResult!");
-  } else {
+  if (field === undefined) {
     return `  ` + fieldName + `: CommandResult!`;
   }
+  let n = field.length - ": String!".length | 0;
+  return field.slice(0, n) + ": CommandResult!";
 }
 
 let handlerRefs = {};
