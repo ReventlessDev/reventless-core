@@ -345,7 +345,7 @@ export function response(ctx) {
 `->Pulumi.Input.make
 
       let field = ReventlessCore.AdminApi.cloneMutationEntry.fieldNames->Array.getUnsafe(0)
-      let resolver = AppSync.Resolver.makeUnitJsResolver(
+      let resolver = AppSync_Resolver_Retrying.makeUnitJsResolver(
         ~name=field,
         ~api,
         ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
@@ -355,7 +355,7 @@ export function response(ctx) {
         ~opts?,
       )
 
-      [resolver->Util_AppSync.toResource]
+      [resolver->Util_AppSync.toResourceNative]
     })
 
   {resources: resources}

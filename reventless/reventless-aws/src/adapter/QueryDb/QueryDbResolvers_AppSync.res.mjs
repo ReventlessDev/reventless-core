@@ -11,7 +11,7 @@ import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aw
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as NodeResolver_AppSync$ReventlessAws from "./NodeResolver_AppSync.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
-import * as AppSync_Resolver_Native$ReventlessAws from "../Api/AppSync_Resolver_Native.res.mjs";
+import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 
 let queryInterceptorConfig = {
   contents: undefined
@@ -55,11 +55,11 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
   let makeQueryResolver = (resolverName, field, code) => {
     let match = queryInterceptorConfig.contents;
     if (match === undefined) {
-      return AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", field, code, opts);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", field, code, opts);
     }
     let interceptorFn = AppSync_Function$PulumiAws.makeJs(resolverName + "Interceptor", api, match.dataSourceName, interceptorCode(name$1), opts);
     let queryFn = AppSync_Function$PulumiAws.makeJs(resolverName + "Query", api, dataSourceName, code, opts);
-    return AppSync_Resolver_Native$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", field, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, [
+    return AppSync_Resolver_Retrying$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", field, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, [
       interceptorFn,
       queryFn
     ], opts);
@@ -86,13 +86,13 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
         let authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(resolverName + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDb$ReventlessCore.getLocalStorageResources(allQueryDbs, match.tableName)).name, apiRole, opts);
         let authFunction = AppSync_Function$PulumiAws.makeJs(resolverName + "Auth", api, authDataSource.name, AppSync_Resolver_Functions$PulumiAws.authorizeIndexedAccess(index, match.group), opts);
         let queryFunction = AppSync_Function$PulumiAws.makeJs(resolverName, api, dataSourceName, AppSync_Resolver_Functions$PulumiAws.queryByIndexFiltered(index, idField), opts);
-        return AppSync_Resolver_Native$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", fieldName, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, [
+        return AppSync_Resolver_Retrying$ReventlessAws.makePipelineJsResolver(resolverName, api, "Query", fieldName, AppSync_Resolver_Functions$PulumiAws.pipelinePassThrough, [
           authFunction,
           queryFunction
         ], opts);
       }
       let sortField = indexConfig.subIdField;
-      return AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", fieldName, sortField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIndexSortFiltered(index, idField, sortField) : AppSync_Resolver_Functions$PulumiAws.queryByIndexFiltered(index, idField), opts);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(resolverName, api, dataSourceName, "Query", fieldName, sortField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIndexSortFiltered(index, idField, sortField) : AppSync_Resolver_Functions$PulumiAws.queryByIndexFiltered(index, idField), opts);
     });
     let storageResource = (pluginName, tableName) => Adapter$ReventlessCore.outputToResource(Util_DynamoDb$ReventlessAws.findResourceInOutput(Plugin_Helpers$ReventlessCore.getStorageResources(allQueryDbs, pluginName, tableName)));
     let generateCode = (storageResource, template) => storageResource.name.apply(realTableName => template(realTableName));
@@ -148,14 +148,14 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
               )
           );
       }
-      return AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(field), api, dataSourceName, name$1, field, tmp, opts);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(field), api, dataSourceName, name$1, field, tmp, opts);
     });
     let idsResolvers = idsResolverConfigs.map(config => {
       let target = config.target;
       let match = config.source;
       let idsField = match.idsField;
       let storageResource$1 = storageResource(target.pluginName, target.tableName);
-      return AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(idsField), api, dataSourceName, name$1, match.resolvedField, generateCode(storageResource$1, none => AppSync_Resolver_Functions$PulumiAws.resolveIds(none, idsField, target.subIdField)), opts);
+      return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(idsField), api, dataSourceName, name$1, match.resolvedField, generateCode(storageResource$1, none => AppSync_Resolver_Functions$PulumiAws.resolveIds(none, idsField, target.subIdField)), opts);
     });
     let mainResolvers = resolverByIdMultiple !== undefined ? [
         resolverByIdSingle,

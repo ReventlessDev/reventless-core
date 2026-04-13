@@ -69,7 +69,7 @@ let make = (
   )
 
   let _resolvers = fieldNames->Array.forEach(fieldName => {
-    let _ = PulumiAws.AppSync.Resolver.makeUnitJsResolver(
+    let _ = AppSync_Resolver_Retrying.makeUnitJsResolver(
       ~name=fieldName->String.capitalize,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,

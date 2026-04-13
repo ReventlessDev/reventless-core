@@ -14,9 +14,9 @@ import * as Util_Vpc$ReventlessAws from "../../util/Util_Vpc.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
-import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as GetSecretVersion$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
+import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {
   let cluster = new (Aws.ecs.Cluster)(name, undefined, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);
@@ -215,7 +215,7 @@ export const handler = async (event) => {
       serviceRoleArn: dataSourceRole.arn
     }, opts);
     let field = AdminApi$ReventlessCore.cloneMutationEntry.fieldNames[0];
-    let resolver = AppSync_Resolver$PulumiAws.makeUnitJsResolver(field, api, dataSource.name, "Mutation", field, `import { util } from '@aws-appsync/utils';
+    let resolver = AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(field, api, dataSource.name, "Mutation", field, `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   return {
     operation: 'Invoke',
@@ -233,7 +233,7 @@ export function response(ctx) {
   return ctx.result;
 }
 `, opts);
-    return [Util_AppSync$ReventlessAws.toResource(resolver)];
+    return [Util_AppSync$ReventlessAws.toResourceNative(resolver)];
   });
   return {
     resources: resources

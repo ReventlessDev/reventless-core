@@ -134,7 +134,7 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
       let parts = field->String.split("_")
       parts->Array.get(parts->Array.length - 1)->Option.getOr(field)->String.capitalize
     }
-    PulumiAws.AppSync.Resolver.makeUnitJsResolver(
+    AppSync_Resolver_Retrying.makeUnitJsResolver(
       ~name=field->String.capitalize,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
@@ -145,7 +145,7 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
     )
   })
 
-  let resources = resolvers->Array.map(Util_AppSync.toResource)
+  let resources = resolvers->Array.map(Util_AppSync.toResourceNative)
 
   {resources: resources}
 }
@@ -219,7 +219,7 @@ let makeDcb = (
   )
 
   let _resolvers = Array.zip(fieldNames, tags)->Array.forEach(((fieldName, tag)) => {
-    let _ = PulumiAws.AppSync.Resolver.makeUnitJsResolver(
+    let _ = AppSync_Resolver_Retrying.makeUnitJsResolver(
       ~name=fieldName->String.capitalize,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,

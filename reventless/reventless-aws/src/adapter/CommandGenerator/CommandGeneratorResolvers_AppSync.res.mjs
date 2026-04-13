@@ -11,11 +11,11 @@ import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
-import * as AppSync_Resolver$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Adapter.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
+import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
 
 function handleResolversEvent(generateCommand) {
   return Pulumi.output((event, _context) => generateCommand(event));
@@ -75,9 +75,9 @@ function make(name, api, fields, param, runtime, resources, opts) {
   let resolvers = fields.map(field => {
     let parts = field.split("_");
     let commandName = Stdlib_String.capitalize(Stdlib_Option.getOr(parts[parts.length - 1 | 0], field));
-    return AppSync_Resolver$PulumiAws.makeUnitJsResolver(Stdlib_String.capitalize(field), api, dataSource.name, "Mutation", field, AppSync_Resolver_Functions$PulumiAws.invokeCommandGenerator(commandName), opts$1);
+    return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(field), api, dataSource.name, "Mutation", field, AppSync_Resolver_Functions$PulumiAws.invokeCommandGenerator(commandName), opts$1);
   });
-  let resources$1 = resolvers.map(Util_AppSync$ReventlessAws.toResource);
+  let resources$1 = resolvers.map(Util_AppSync$ReventlessAws.toResourceNative);
   return {
     resources: resources$1
   };
@@ -111,7 +111,7 @@ function makeDcb(api, runtime, fieldNames, tags, opts) {
   }, opts$1);
   Stdlib_Array.zip(fieldNames, tags).forEach(param => {
     let fieldName = param[0];
-    AppSync_Resolver$PulumiAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeDcbMutation(param[1]), opts$1);
+    AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeDcbMutation(param[1]), opts$1);
   });
 }
 

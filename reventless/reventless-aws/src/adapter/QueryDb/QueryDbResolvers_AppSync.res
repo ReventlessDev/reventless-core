@@ -1,10 +1,11 @@
 open PulumiAws.AppSync
-// Shadow PulumiAws.AppSync.Resolver with the aws-native-backed adapter so
-// resolver creation uses the Cloud Control API. The CFN handler internally
-// waits for schema -> resolver propagation, avoiding the
-// `NotFoundException: No field named X` race we hit with the classic provider.
-// See docs/plans/appsync-resolver-aws-native.md.
-module Resolver = AppSync_Resolver_Native
+// Shadow PulumiAws.AppSync.Resolver with the retrying dynamic-provider adapter
+// so resolver creation calls the AppSync SDK directly and retries
+// `NotFoundException: No field named X` (the schema-propagation race) with
+// exponential backoff. Replaces AppSync_Resolver_Native (aws-native provider)
+// which exhibited the same race in production.
+// See docs/plans/appsync-resolver-aws-native-retry.md.
+module Resolver = AppSync_Resolver_Retrying
 open Reventless.ReadModel
 
 type api = Types.AppSync.api
