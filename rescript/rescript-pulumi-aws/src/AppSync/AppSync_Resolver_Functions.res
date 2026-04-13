@@ -121,8 +121,8 @@ ${resultResponseCode}
     Returns a Relay `{ edges, pageInfo }` shape reusing the entity's `Connection` type. */
 let queryItemsWithSortConditions = (sortField: string) =>
   `${importUtil}
-const encodeCursor = (skValue) => Buffer.from(skValue).toString('base64');
-const decodeCursor = (cursor) => Buffer.from(cursor, 'base64').toString('utf8');
+const encodeCursor = (skValue) => util.base64Encode(skValue);
+const decodeCursor = (cursor) => util.base64Decode(cursor);
 export function request(ctx) {
   const args = ctx.args;
   const filter = args.filter ?? {};
@@ -278,6 +278,10 @@ export function request(ctx) {
 ${resultResponseCode}
 `->Pulumi.Input.make
 
+// AppSync JS runtime restrictions (APPSYNC_JS 1.0.0):
+//   - No `for` loops (for/for-of/for-in all fail validation)
+//   - No String() / .toString() — use '' + value instead
+//   - Object.keys().forEach() works for iteration
 let queryByIndexFiltered = (~index: string, ~idField: string) =>
   `${importUtil}
 export function request(ctx) {
@@ -290,9 +294,10 @@ export function request(ctx) {
   let expression = '';
   const names = {};
   const values = {};
-  for (const [key, value] of Object.entries(args)) {
-    if (key === '${idField}' || key === 'limit' || key === 'nextToken' || key === 'forward') continue;
-    if (value == null || value === '') continue;
+  Object.keys(args).forEach(key => {
+    const value = args[key];
+    if (key === '${idField}' || key === 'limit' || key === 'nextToken' || key === 'forward') return;
+    if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
       if (value === true) {
@@ -300,28 +305,24 @@ export function request(ctx) {
         names['#deleted'] = 'deleted';
         values[':false'] = false;
       }
-    } else if (Array.isArray(value)) {
-      names['#' + key] = key;
-      for (const item of value) {
-        if (expression && !expression.endsWith('AND')) expression += ' AND';
-        expression += ' contains(#' + key + ', :' + item + ')';
-        values[':' + item] = String(item);
-      }
     } else {
       expression += ' contains(#' + key + ', :' + key + ')';
       names['#' + key] = key;
-      values[':' + key] = String(value);
+      values[':' + key] = '' + value;
     }
-  }
-  return {
+  });
+  const result = {
     operation: 'Query',
     query,
-    ...(expression ? { filter: { expression, expressionNames: names, expressionValues: util.dynamodb.toMapValues(values) } } : {}),
     index: '${index}',
     limit: (args.limit ?? 50),
     nextToken: (args.nextToken ?? null),
     scanIndexForward: (args.forward ?? true)
   };
+  if (expression) {
+    result.filter = { expression, expressionNames: names, expressionValues: util.dynamodb.toMapValues(values) };
+  }
+  return result;
 }
 ${resultResponseCode}
 `->Pulumi.Input.make
@@ -347,9 +348,10 @@ export function request(ctx) {
   let expression = '';
   const names = {};
   const values = {};
-  for (const [key, value] of Object.entries(args)) {
-    if (key === '${idField}' || key === '${sortField}' || key === 'limit' || key === 'nextToken' || key === 'forward') continue;
-    if (value == null || value === '') continue;
+  Object.keys(args).forEach(key => {
+    const value = args[key];
+    if (key === '${idField}' || key === '${sortField}' || key === 'limit' || key === 'nextToken' || key === 'forward') return;
+    if (value == null || value === '') return;
     if (expression) expression += ' AND';
     if (key === 'hideDeleted') {
       if (value === true) {
@@ -357,28 +359,24 @@ export function request(ctx) {
         names['#deleted'] = 'deleted';
         values[':false'] = false;
       }
-    } else if (Array.isArray(value)) {
-      names['#' + key] = key;
-      for (const item of value) {
-        if (expression && !expression.endsWith('AND')) expression += ' AND';
-        expression += ' contains(#' + key + ', :' + item + ')';
-        values[':' + item] = String(item);
-      }
     } else {
       expression += ' contains(#' + key + ', :' + key + ')';
       names['#' + key] = key;
-      values[':' + key] = String(value);
+      values[':' + key] = '' + value;
     }
-  }
-  return {
+  });
+  const result = {
     operation: 'Query',
     query,
-    ...(expression ? { filter: { expression, expressionNames: names, expressionValues: util.dynamodb.toMapValues(values) } } : {}),
     index: '${index}',
     limit: (args.limit ?? 50),
     nextToken: (args.nextToken ?? null),
     scanIndexForward: (args.forward ?? true)
   };
+  if (expression) {
+    result.filter = { expression, expressionNames: names, expressionValues: util.dynamodb.toMapValues(values) };
+  }
+  return result;
 }
 ${resultResponseCode}
 `->Pulumi.Input.make

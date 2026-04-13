@@ -382,6 +382,20 @@ function MakeWithConfig(Config) {
       TableName: tableName
     }));
   };
+  let hooksApiRef = {
+    contents: undefined
+  };
+  let hooksApiRoleRef = {
+    contents: undefined
+  };
+  let resolveHookedApi = () => {
+    let match = hooksApiRef.contents;
+    if (match !== undefined) {
+      return match.val;
+    } else {
+      return resolveTargetApi();
+    }
+  };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let match = currentDeployTarget.contents;
@@ -510,8 +524,8 @@ function MakeWithConfig(Config) {
       })));
     });
   };
-  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveTargetApi(), param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveTargetApi(), param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
@@ -541,12 +555,6 @@ function MakeWithConfig(Config) {
   let hooks_scheduler = {
     contents: undefined
   };
-  let hooks_api = {
-    contents: undefined
-  };
-  let hooks_apiRole = {
-    contents: undefined
-  };
   let hooks = {
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
@@ -557,8 +565,8 @@ function MakeWithConfig(Config) {
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
-    api: hooks_api,
-    apiRole: hooks_apiRole
+    api: hooksApiRef,
+    apiRole: hooksApiRoleRef
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
     hooks: hooks
@@ -622,8 +630,8 @@ function MakeWithConfig(Config) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
+    hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = Config.splitApi ? AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {}) : [
         domainApi,
         domainApiRole
@@ -687,8 +695,8 @@ function MakeWithConfig(Config) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
+    hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = Config.splitApi ? AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {}) : [
         domainApi,
         domainApiRole
@@ -842,8 +850,8 @@ function MakeWithConfig(Config) {
     hooks_scheduler.contents = scheduler;
     let targetApi = resolveTargetApi();
     let targetApiRole = resolveTargetApiRole();
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
+    hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
+    hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
@@ -1188,6 +1196,20 @@ function Make($star) {
       TableName: tableName
     }));
   };
+  let hooksApiRef = {
+    contents: undefined
+  };
+  let hooksApiRoleRef = {
+    contents: undefined
+  };
+  let resolveHookedApi = () => {
+    let match = hooksApiRef.contents;
+    if (match !== undefined) {
+      return match.val;
+    } else {
+      return resolveTargetApi();
+    }
+  };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let match = currentDeployTarget.contents;
@@ -1316,8 +1338,8 @@ function Make($star) {
       })));
     });
   };
-  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveTargetApi(), param.runtime, param.fieldNames, param.opts);
-  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveTargetApi(), param.runtime, param.fieldNames, param.tags, param.opts);
+  let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
+  let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
     let outputs = Component$ReventlessCore.outputs(dcbEventLogUnknown);
     let tableResource = outputs.resources[0];
@@ -1347,12 +1369,6 @@ function Make($star) {
   let hooks_scheduler = {
     contents: undefined
   };
-  let hooks_api = {
-    contents: undefined
-  };
-  let hooks_apiRole = {
-    contents: undefined
-  };
   let hooks = {
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
@@ -1363,8 +1379,8 @@ function Make($star) {
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
-    api: hooks_api,
-    apiRole: hooks_apiRole
+    api: hooksApiRef,
+    apiRole: hooksApiRoleRef
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
     hooks: hooks
@@ -1428,8 +1444,8 @@ function Make($star) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
+    hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -1482,8 +1498,8 @@ function Make($star) {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
+    hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -1623,8 +1639,8 @@ function Make($star) {
     hooks_scheduler.contents = scheduler;
     let targetApi = resolveTargetApi();
     let targetApiRole = resolveTargetApiRole();
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
+    hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
+    hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());

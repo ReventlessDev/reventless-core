@@ -132,7 +132,10 @@ async function create(inputs) {
   return {
     id: arn,
     outs: {
-      resolverArn: arn
+      resolverArn: arn,
+      apiId: inputs.apiId,
+      typeName: inputs.typeName,
+      fieldName: inputs.fieldName
     }
   };
 }
@@ -143,22 +146,37 @@ async function update(id, _olds, news) {
   await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.UpdateResolverCommand, buildSdkInput(news))));
   return {
     outs: {
-      resolverArn: id
+      resolverArn: id,
+      apiId: news.apiId,
+      typeName: news.typeName,
+      fieldName: news.fieldName
     }
   };
 }
 
-async function delete_(_id, props) {
+function parseArn(arn) {
+  let parts = arn.split("/");
+  let match = parts[1];
+  let match$1 = parts[3];
+  let match$2 = parts[5];
+  if (match !== undefined && match$1 !== undefined && match$2 !== undefined) {
+    return {
+      apiId: match,
+      typeName: match$1,
+      fieldName: match$2
+    };
+  }
+}
+
+async function delete_(id, props) {
   let sdk = await getSdk();
   let client = await getClient();
-  let deleteInput_apiId = props.apiId;
-  let deleteInput_typeName = props.typeName;
-  let deleteInput_fieldName = props.fieldName;
-  let deleteInput = {
-    apiId: deleteInput_apiId,
-    typeName: deleteInput_typeName,
-    fieldName: deleteInput_fieldName
-  };
+  let parsed = parseArn(id);
+  let deleteInput = parsed !== undefined ? parsed : ({
+      apiId: props.apiId,
+      typeName: props.typeName,
+      fieldName: props.fieldName
+    });
   return await client.send(newOf1(sdk.DeleteResolverCommand, deleteInput));
 }
 
@@ -245,6 +263,7 @@ export {
   extractArn,
   create,
   update,
+  parseArn,
   delete_,
   diff_,
   read_,

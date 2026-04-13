@@ -209,4 +209,4 @@ Deploy `platform-inspector-aws` with `~apiTarget=Platform`. Expected outcome:
 - [x] Update AWS-layer builder signatures (`StateViewSlice_Builder`, `AutomationSlice_Builder`, `OutboundTranslationSlice_Builder`, `InboundTranslationSlice_Builder`, `Counter_Builder`)
 - [x] Update core-layer builders — `Api.api` → `Api.api()`, `Api.apiRole` → `Api.apiRole()`
 - [x] Update in-memory builders for signature compat (4 slices + `Counter_Builder`)
-- [ ] Rebuild + redeploy `platform-inspector-aws`, verify no resolver 404s
+- [x] Rebuild + redeploy `platform-inspector-aws`, verify no resolver 404s

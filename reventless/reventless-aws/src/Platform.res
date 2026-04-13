@@ -483,18 +483,33 @@ module MakeWithConfig = (
     let _ = await PutCommand.send(PutCommand.make({PutCommand.tableName, item}))
   }
 
+  // Define api/apiRole refs before the hooks record so the hook closures can capture
+  // them directly. This is necessary because the dcbAppSyncResolverHook and
+  // inboundAppSyncResolverHook fire inside a deferred Pulumi.Output.apply callback
+  // (in Plugin_Builder.builderOutputs), AFTER deployPlugin has returned and reset
+  // currentDeployTarget to Domain. Reading hooks.apiRef directly gives the correct
+  // targetApi that was set before plugin.make() and is never reset.
+  let hooksApiRef: ref<option<ReventlessCore.Plugin_Helpers.hookedValue<unknown>>> = ref(None)
+  let hooksApiRoleRef: ref<option<ReventlessCore.Plugin_Helpers.hookedValue<unknown>>> = ref(None)
+
+  let resolveHookedApi = (): Types.AppSync.api =>
+    switch hooksApiRef.contents {
+    | Some({val}) => Obj.magic(val)
+    | None => resolveTargetApi()
+    }
+
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
     // Platform context — populated by makePlatform/deployPlugin before plugin build.
     scheduler: ref(None),
-    api: ref(None),
-    apiRole: ref(None),
+    api: hooksApiRef,
+    apiRole: hooksApiRoleRef,
     inboundAppSyncResolverHook: ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->asLambdaRuntime
       InboundTranslationResolvers_AppSync.make(
-        ~api=resolveTargetApi(),
+        ~api=resolveHookedApi(),
         ~runtime=runtimeTyped,
         ~fieldNames,
         ~opts,
@@ -504,7 +519,7 @@ module MakeWithConfig = (
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->asLambdaRuntime
       CommandGeneratorResolvers_AppSync.makeDcb(
-        ~api=resolveTargetApi(),
+        ~api=resolveHookedApi(),
         ~runtime=runtimeTyped,
         ~fieldNames,
         ~tags,

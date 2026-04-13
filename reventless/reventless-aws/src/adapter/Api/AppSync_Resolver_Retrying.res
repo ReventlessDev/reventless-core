@@ -236,7 +236,9 @@ let extractArn = (resp: sdkResolverResult): string =>
 
 // ── Dynamic provider method types ─────────────────────────────────────────────
 
-type createOuts = {resolverArn: string}
+// Include resolver coordinates in outs so that the delete handler can retrieve them
+// even if the provider code is later re-serialised (Pulumi passes outs, not inputs, to delete).
+type createOuts = {resolverArn: string, apiId: string, typeName: string, fieldName: string}
 type createResult = {id: string, outs: createOuts}
 type updateResult = {outs: createOuts}
 type diffResult = {changes: bool, replaces: array<string>, deleteBeforeReplace: bool}
@@ -252,7 +254,7 @@ let create = async (inputs: providerInputs): createResult => {
     ->sendCreate(newOf1(sdk.createCtor, inputs->buildSdkInput))
     ->Promise.thenResolve(extractArn)
   )
-  {id: arn, outs: {resolverArn: arn}}
+  {id: arn, outs: {resolverArn: arn, apiId: inputs.apiId, typeName: inputs.typeName, fieldName: inputs.fieldName}}
 }
 
 let update = async (id: string, _olds: providerInputs, news: providerInputs): updateResult => {
@@ -261,17 +263,30 @@ let update = async (id: string, _olds: providerInputs, news: providerInputs): up
   let _ = await runWithRaceRetry(() =>
     client->sendUpdate(newOf1(sdk.updateCtor, news->buildSdkInput))
   )
-  // ARN is stable across updates — return the existing id
-  {outs: {resolverArn: id}}
+  // ARN is stable across updates — preserve resolver coordinates in outs
+  {outs: {resolverArn: id, apiId: news.apiId, typeName: news.typeName, fieldName: news.fieldName}}
 }
 
-let delete_ = async (_id: string, props: providerInputs): unit => {
+/** Parse apiId, typeName, fieldName from the resolver ARN.
+    ARN format: arn:aws:appsync:{region}:{account}:apis/{apiId}/types/{typeName}/resolvers/{fieldName}
+    Pulumi dynamic providers pass OUTPUTS (not inputs) to delete, so props.apiId etc. may be
+    undefined. The ARN passed as `id` is always available and contains all needed identifiers. */
+let parseArn = (arn: string): option<sdkDeleteInput> => {
+  let parts = arn->String.split("/")
+  switch (parts->Array.get(1), parts->Array.get(3), parts->Array.get(5)) {
+  | (Some(apiId), Some(typeName), Some(fieldName)) => Some({apiId, typeName, fieldName})
+  | _ => None
+  }
+}
+
+let delete_ = async (id: string, props: providerInputs): unit => {
   let sdk = await getSdk()
   let client = await getClient()
-  let deleteInput: sdkDeleteInput = {
-    apiId: props.apiId,
-    typeName: props.typeName,
-    fieldName: props.fieldName,
+  // Prefer parsing from the ARN since Pulumi passes outputs (not inputs) to delete handlers.
+  // Fall back to props fields for backward compat with older state that stores inputs in outs.
+  let deleteInput: sdkDeleteInput = switch parseArn(id) {
+  | Some(parsed) => parsed
+  | None => {apiId: props.apiId, typeName: props.typeName, fieldName: props.fieldName}
   }
   await client->sendDelete(newOf1(sdk.deleteCtor, deleteInput))
 }
