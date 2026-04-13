@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.24 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** route slice builder resolvers to correct API target ([7485159](https://github.com/ReventlessDev/reventless-core/commit/7485159f415d4720dd4e567d2ffef1335db432e6))
+
+
 # 3.0.0-alpha.23 (2026-04-12)
 
 ### Features

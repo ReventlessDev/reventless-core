@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.14 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** correct API routing for DCB/inbound resolvers and AppSync JS runtime compat ([6ef9260](https://github.com/ReventlessDev/reventless-core/commit/6ef926087404a013b0c6e166fa35aa497a3b3050))
+* **aws:** fall back to .github/layer-arn[-{stack}].txt when REVENTLESS_LAYER_ARN is unset ([98ba46a](https://github.com/ReventlessDev/reventless-core/commit/98ba46a28427b390d81380b069bcf1eec066c1a0))
+### Features
+
+* **api:** use aws-native AppSync Resolver to fix schema propagation race ([7009a65](https://github.com/ReventlessDev/reventless-core/commit/7009a65f115c1dd549c49cf33461537407fecbb6))
+
+
 # 2.4.0-alpha.13 (2026-04-12)
 
 ### Features

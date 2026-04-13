@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.3.0-alpha.7 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** retry AppSync CreateResolver on schema-propagation 404s ([8e1d19b](https://github.com/ReventlessDev/reventless-core/commit/8e1d19b5d63c3590339d5d281971081d1ed7356f))
+
+
 # 2.3.0-alpha.6 (2026-04-06)
 
 ### Bug Fixes

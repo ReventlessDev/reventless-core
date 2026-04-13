@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.8 (2026-04-13)
+
+### Dependency Updates
+
+* **@reventlessdev/rescript-pulumi-pulumi** updated to `^2.3.0-alpha.7`
+
+
 # 3.0.0-alpha.7 (2026-04-06)
 
 ### Bug Fixes

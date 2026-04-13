@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.49 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** correct API routing for DCB/inbound resolvers and AppSync JS runtime compat ([6ef9260](https://github.com/ReventlessDev/reventless-core/commit/6ef926087404a013b0c6e166fa35aa497a3b3050))
+* **aws:** defer all AppSync resolver creation into resourcesMaker ([c6c8ba2](https://github.com/ReventlessDev/reventless-core/commit/c6c8ba2878b7ed67965882ddf6d3c468780e88b6))
+* **aws:** fall back to .github/layer-arn[-{stack}].txt when REVENTLESS_LAYER_ARN is unset ([98ba46a](https://github.com/ReventlessDev/reventless-core/commit/98ba46a28427b390d81380b069bcf1eec066c1a0))
+* **aws:** fix runtime builder bugs and extract archive-building helper ([bdb7dc0](https://github.com/ReventlessDev/reventless-core/commit/bdb7dc0a03aaaccd6e95d649c32028ac2d3026ee))
+* **aws:** retry AppSync CreateResolver on schema-propagation 404s ([8e1d19b](https://github.com/ReventlessDev/reventless-core/commit/8e1d19b5d63c3590339d5d281971081d1ed7356f))
+* **aws:** route slice builder resolvers to correct API target ([7485159](https://github.com/ReventlessDev/reventless-core/commit/7485159f415d4720dd4e567d2ffef1335db432e6))
+* **aws:** update AppSync_AdapterTest to match Platform_ prefix rename ([e6b2dd2](https://github.com/ReventlessDev/reventless-core/commit/e6b2dd212a0c406bd3ae6f7544827b8295ba1325))
+### Features
+
+* **api:** use aws-native AppSync Resolver to fix schema propagation race ([7009a65](https://github.com/ReventlessDev/reventless-core/commit/7009a65f115c1dd549c49cf33461537407fecbb6))
+### Performance Improvements
+
+* **aws:** skip AppSync schema push when SDL is unchanged ([5b5f30a](https://github.com/ReventlessDev/reventless-core/commit/5b5f30a402f99898739f494528ac0ca47ec1c27d))
+
+
 # 3.0.0-alpha.48 (2026-04-12)
 
 ### Features

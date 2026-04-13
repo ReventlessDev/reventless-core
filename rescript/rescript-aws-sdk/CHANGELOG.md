@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.2.0-alpha.7 (2026-04-13)
+
+### Performance Improvements
+
+* **aws:** skip AppSync schema push when SDL is unchanged ([5b5f30a](https://github.com/ReventlessDev/reventless-core/commit/5b5f30a402f99898739f494528ac0ca47ec1c27d))
+
+
 # 2.2.0-alpha.6 (2026-04-06)
 
 ### Bug Fixes

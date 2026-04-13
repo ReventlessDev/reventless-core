@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-interop",
-  "version": "3.0.0-alpha.7",
+  "version": "3.0.0-alpha.8",
   "description": "Versioned cross-plugin contract types and compatibility validation for Reventless",
   "license": "MIT",
   "jest": {
@@ -21,7 +21,7 @@
     "dev": "jest --watchAll"
   },
   "dependencies": {
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.6",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.7",
     "sury": "^11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"
   },
