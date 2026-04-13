@@ -37,7 +37,7 @@ let clientInstance = ref(None)
   - maxAttempts: 3,
   - connectionTimeout: 1000ms
   - requestTimeout: 5000ms
-  - convertEmptyValues: true
+  - convertEmptyValues: false
 
   use `Raw.client` if you want to set alternative configuration
 */
@@ -47,7 +47,7 @@ let client = () =>
     let docClient = DynamoDb_DynamoDb.client()->Raw.client(
       {
         marshallOptions: {
-          convertEmptyValues: true,
+          convertEmptyValues: false,
         },
       },
       (),

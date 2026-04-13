@@ -20,7 +20,7 @@ function client() {
   }
   let docClient$1 = LibDynamodb.DynamoDBDocumentClient.from(DynamoDb_DynamoDb$AwsSdk.client(), {
     marshallOptions: {
-      convertEmptyValues: true
+      convertEmptyValues: false
     }
   });
   clientInstance.contents = Primitive_option.some(docClient$1);
