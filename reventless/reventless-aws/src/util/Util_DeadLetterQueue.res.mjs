@@ -48,7 +48,7 @@ let code = new (Pulumi.asset.AssetArchive)(archiveContents);
 
 let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(entryPointCode);
 
-let layers = Stdlib_Option.getOr(Stdlib_Option.map(process.env.REVENTLESS_LAYER_ARN, arn => [arn]), []);
+let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
 
 let handler = new (Aws.lambda.Function)(name, {
   handler: "index.handler",
