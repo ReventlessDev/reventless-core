@@ -59,6 +59,16 @@ function isFieldNotFoundError(jsErr) {
   }
 }
 
+function isAlreadyExistsError(jsErr) {
+  let match = jsErr.name;
+  let match$1 = Stdlib_JsExn.message(jsErr);
+  if ((match == null) || match !== "BadRequestException" || match$1 === undefined) {
+    return false;
+  } else {
+    return match$1.includes("Only one resolver is allowed");
+  }
+}
+
 let jsThrow = (e => { throw e });
 
 async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelayMsOpt, makeCall) {
@@ -165,7 +175,23 @@ function makeOuts(resolverArn, inputs) {
 async function create(inputs) {
   let sdk = await getSdk();
   let client = await getClient();
-  let arn = await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.CreateResolverCommand, buildSdkInput(inputs))).then(extractArn));
+  let arn;
+  try {
+    arn = await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.CreateResolverCommand, buildSdkInput(inputs))).then(extractArn));
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    let handled = Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isAlreadyExistsError);
+    if (handled) {
+      arn = extractArn(await client.send(newOf1(sdk.UpdateResolverCommand, buildSdkInput(inputs))));
+    } else {
+      let jsExn = Stdlib_JsExn.fromException(exn);
+      if (jsExn !== undefined) {
+        arn = jsThrow(Primitive_option.valFromOption(jsExn));
+      } else {
+        throw exn;
+      }
+    }
+  }
   return {
     id: arn,
     outs: makeOuts(arn, inputs)
@@ -287,6 +313,7 @@ export {
   getSdk,
   getClient,
   isFieldNotFoundError,
+  isAlreadyExistsError,
   jsThrow,
   runWithRaceRetry,
   buildSdkInput,

@@ -125,6 +125,14 @@ let isFieldNotFoundError = (jsErr: JsExn.t): bool =>
   | _ => false
   }
 
+/** Returns `true` iff AppSync rejected the create because a resolver for that
+    field already exists (Pulumi state / AppSync divergence). */
+let isAlreadyExistsError = (jsErr: JsExn.t): bool =>
+  switch (jsErr->exnName, JsExn.message(jsErr)) {
+  | (Some("BadRequestException"), Some(msg)) => msg->String.includes("Only one resolver is allowed")
+  | _ => false
+  }
+
 // ── Retry helper ─────────────────────────────────────────────────────────────
 //
 // Pulumi serialises the dynamic provider object (and its entire closure of
@@ -288,11 +296,31 @@ let makeOuts = (resolverArn: string, inputs: providerInputs): createOuts => {
 let create = async (inputs: providerInputs): createResult => {
   let sdk = await getSdk()
   let client = await getClient()
-  let arn = await runWithRaceRetry(() =>
-    client
-    ->sendCreate(newOf1(sdk.createCtor, inputs->buildSdkInput))
-    ->Promise.thenResolve(extractArn)
-  )
+  let arn =
+    try {
+      await runWithRaceRetry(() =>
+        client
+        ->sendCreate(newOf1(sdk.createCtor, inputs->buildSdkInput))
+        ->Promise.thenResolve(extractArn)
+      )
+    } catch {
+    | exn =>
+      // If the resolver already exists (AppSync / Pulumi state divergence from a
+      // previous partial deploy), update it to match desired config and adopt its ARN.
+      // This makes create idempotent and lets stuck stacks recover without manual intervention.
+      let handled =
+        exn->JsExn.fromException->Option.mapOr(false, isAlreadyExistsError)
+      if handled {
+        let resp = await client->sendUpdate(newOf1(sdk.updateCtor, inputs->buildSdkInput))
+        extractArn(resp)
+      } else {
+        let jsExn = exn->JsExn.fromException
+        switch jsExn {
+        | Some(e) => jsThrow(e)
+        | None => throw(exn)
+        }
+      }
+    }
   {id: arn, outs: makeOuts(arn, inputs)}
 }
 
