@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.52 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** include package versions in sourceCodeHash to detect dependency updates ([437937e](https://github.com/ReventlessDev/reventless-core/commit/437937e8a1927cb42899693f7247d7e80c4775c0))
+* **aws:** remove legacy stack export names (Phase 5 of dual-api-architecture) ([a9b483d](https://github.com/ReventlessDev/reventless-core/commit/a9b483d5029303425a2892862d394a4253af95cb))
+* **aws:** rename AppSync APIs to DomainApi/PlatformApi with Pulumi auto-hash suffix ([38b76a0](https://github.com/ReventlessDev/reventless-core/commit/38b76a0f1579352aa6531008d56bbe01fb604434))
+
+
 # 3.0.0-alpha.51 (2026-04-13)
 
 ### Bug Fixes

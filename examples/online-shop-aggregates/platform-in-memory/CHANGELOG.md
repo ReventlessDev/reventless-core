@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.14 (2026-04-13)
+
+### Bug Fixes
+
+* **in-memory:** fix GraphQL schema and resolver bugs in platform servers ([0376941](https://github.com/ReventlessDev/reventless-core/commit/0376941af84501ab9f0b63f1a673e6f510fe3886))
+
+
 # 1.0.0-alpha.13 (2026-04-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-in-memory

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.2.0-alpha.8 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** store empty strings as DynamoDB String instead of NULL ([4ceb4f6](https://github.com/ReventlessDev/reventless-core/commit/4ceb4f6716debb1759b43600d032b2207269b35f))
+
+
 # 2.2.0-alpha.7 (2026-04-13)
 
 ### Performance Improvements

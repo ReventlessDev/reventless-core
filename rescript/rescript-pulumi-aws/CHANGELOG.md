@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.15 (2026-04-13)
+
+### Dependency Updates
+
+* **@reventlessdev/rescript-aws-sdk** updated to `^2.2.0-alpha.8`
+
+
 # 2.4.0-alpha.14 (2026-04-13)
 
 ### Bug Fixes
