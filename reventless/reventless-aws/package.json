@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-aws",
-  "version": "3.0.0-alpha.50",
+  "version": "3.0.0-alpha.51",
   "description": "AWS adapters for Reventless",
   "license": "MIT",
   "scripts": {

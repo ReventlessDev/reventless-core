@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.51 (2026-04-13)
+
+### Bug Fixes
+
+* **aws:** fix off-by-one and misleading log messages in AppSync_Resolver_Retrying ([b30a70f](https://github.com/ReventlessDev/reventless-core/commit/b30a70f9a2afe44f67c1ccc6a205e64770141d51))
+* **aws:** make AppSync resolver create idempotent on state/AppSync divergence ([85afaa9](https://github.com/ReventlessDev/reventless-core/commit/85afaa9a35d0ea9849edd3d958fde1cbde058d14))
+
+
 # 3.0.0-alpha.50 (2026-04-13)
 
 ### Bug Fixes
