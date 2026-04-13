@@ -102,15 +102,15 @@ module MakeWithConfig = (
       stackRef->Pulumi.StackReference.getOutput("default")
 
     // ── Domain API (application mutations) ──────────────────────────────────
-    let apiIdOutput: Pulumi.Output.t<option<string>> =
-      stackRef->Pulumi.StackReference.getOutput("apiId")
-    let apiEndpointOutput: Pulumi.Output.t<option<string>> =
-      stackRef->Pulumi.StackReference.getOutput("apiEndpoint")
-    let apiRoleArnOutput: Pulumi.Output.t<option<string>> =
-      stackRef->Pulumi.StackReference.getOutput("apiRoleArn")
+    let domainApiIdOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("domainApiId")
+    let domainApiEndpointOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("domainApiEndpoint")
+    let domainApiRoleArnOutput: Pulumi.Output.t<option<string>> =
+      stackRef->Pulumi.StackReference.getOutput("domainApiRoleArn")
 
     let phantomApi: Types.AppSync.api =
-      (apiIdOutput, apiEndpointOutput, defaultOutput)
+      (domainApiIdOutput, domainApiEndpointOutput, defaultOutput)
       ->Pulumi.Output.all3
       ->Pulumi.Output.apply(((directId, directEndpoint, default)) => {
         let apiId = switch directId {
@@ -118,7 +118,7 @@ module MakeWithConfig = (
         | None =>
           default
           ->Option.flatMap(d => d->JSON.Decode.object)
-          ->Option.flatMap(d => d->Dict.get("apiId"))
+          ->Option.flatMap(d => d->Dict.get("domainApiId"))
           ->Option.flatMap(v => v->JSON.Decode.string)
           ->Option.getOrThrow
         }
@@ -127,34 +127,31 @@ module MakeWithConfig = (
         | None =>
           default
           ->Option.flatMap(d => d->JSON.Decode.object)
-          ->Option.flatMap(d => d->Dict.get("apiEndpoint"))
+          ->Option.flatMap(d => d->Dict.get("domainApiEndpoint"))
           ->Option.flatMap(v => v->JSON.Decode.string)
           ->Option.getOrThrow(
-            ~message="Platform stack does not export 'apiEndpoint' — redeploy the platform stack first",
+            ~message="Platform stack does not export 'domainApiEndpoint' — redeploy the platform stack first",
           )
         }
         makePhantomApi(apiId, apiEndpoint)
       })
     let phantomRole: Types.AppSync.role =
-      (apiRoleArnOutput, defaultOutput)
+      (domainApiRoleArnOutput, defaultOutput)
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply(((direct, default)) => {
-        let apiRoleArn = switch direct {
+        let domainApiRoleArn = switch direct {
         | Some(arn) => arn
         | None =>
           default
           ->Option.flatMap(d => d->JSON.Decode.object)
-          ->Option.flatMap(d => d->Dict.get("apiRoleArn"))
+          ->Option.flatMap(d => d->Dict.get("domainApiRoleArn"))
           ->Option.flatMap(v => v->JSON.Decode.string)
           ->Option.getOrThrow
         }
-        makePhantomRole(apiRoleArn)
+        makePhantomRole(domainApiRoleArn)
       })
 
     // ── Platform API (admin / Platform_Sync* resolvers) ─────────────────────
-    // Reads the new Phase 1 exports: platformApiId, platformApiEndpoint, platformApiRoleArn.
-    // Falls back to domain API values when the platform stack has not yet been
-    // redeployed with those exports (rolling migration backward compat).
     let platformApiIdOutput: Pulumi.Output.t<option<string>> =
       stackRef->Pulumi.StackReference.getOutput("platformApiId")
     let platformApiEndpointOutput: Pulumi.Output.t<option<string>> =
@@ -163,9 +160,9 @@ module MakeWithConfig = (
       stackRef->Pulumi.StackReference.getOutput("platformApiRoleArn")
 
     let phantomPlatformApi: Types.AppSync.api =
-      (platformApiIdOutput, platformApiEndpointOutput, apiIdOutput, apiEndpointOutput, defaultOutput)
-      ->Pulumi.Output.all5
-      ->Pulumi.Output.apply(((directPlatId, directPlatEndpoint, directDomainId, directDomainEndpoint, default)) => {
+      (platformApiIdOutput, platformApiEndpointOutput, defaultOutput)
+      ->Pulumi.Output.all3
+      ->Pulumi.Output.apply(((directPlatId, directPlatEndpoint, default)) => {
         let getFromDefault = key =>
           default
           ->Option.flatMap(d => d->JSON.Decode.object)
@@ -174,21 +171,17 @@ module MakeWithConfig = (
         let platformApiId =
           directPlatId
           ->Option.orElse(getFromDefault("platformApiId"))
-          ->Option.orElse(directDomainId)
-          ->Option.orElse(getFromDefault("apiId"))
           ->Option.getOrThrow
         let platformApiEndpoint =
           directPlatEndpoint
           ->Option.orElse(getFromDefault("platformApiEndpoint"))
-          ->Option.orElse(directDomainEndpoint)
-          ->Option.orElse(getFromDefault("apiEndpoint"))
           ->Option.getOrThrow
         makePhantomApi(platformApiId, platformApiEndpoint)
       })
     let phantomPlatformRole: Types.AppSync.role =
-      (platformApiRoleArnOutput, apiRoleArnOutput, defaultOutput)
-      ->Pulumi.Output.all3
-      ->Pulumi.Output.apply(((directPlat, directDomain, default)) => {
+      (platformApiRoleArnOutput, defaultOutput)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((directPlat, default)) => {
         let getFromDefault = key =>
           default
           ->Option.flatMap(d => d->JSON.Decode.object)
@@ -197,8 +190,6 @@ module MakeWithConfig = (
         let platformApiRoleArn =
           directPlat
           ->Option.orElse(getFromDefault("platformApiRoleArn"))
-          ->Option.orElse(directDomain)
-          ->Option.orElse(getFromDefault("apiRoleArn"))
           ->Option.getOrThrow
         makePhantomRole(platformApiRoleArn)
       })
@@ -914,11 +905,7 @@ module MakeWithConfig = (
         })
       )
 
-      // Legacy exports (kept until Phase 5).
-      Pulumi.Pulumi.export("coreApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
-      Pulumi.Pulumi.export("coreApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
-
-      // New named exports — Platform API (split mode).
+      // Platform API exports (split mode).
       Pulumi.Pulumi.export("platformApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
@@ -928,7 +915,7 @@ module MakeWithConfig = (
       )
       Pulumi.Pulumi.export("platformApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
     } else {
-      // New named exports — Platform API equals Domain API in unified mode.
+      // Platform API exports (unified mode — same resource as Domain API).
       Pulumi.Pulumi.export("platformApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
@@ -939,17 +926,7 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("platformApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
     }
 
-    // Domain API exports — legacy names kept until Phase 5.
-    Pulumi.Pulumi.export("apiId", domainApi->Pulumi.Output.flatMap(api => api.id))
-    Pulumi.Pulumi.export(
-      "apiEndpoint",
-      domainApi->Pulumi.Output.flatMap(api =>
-        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
-      ),
-    )
-    Pulumi.Pulumi.export("apiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
-
-    // New named exports — Domain API.
+    // Domain API exports.
     Pulumi.Pulumi.export("domainApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "domainApiEndpoint",
@@ -1124,11 +1101,7 @@ module MakeWithConfig = (
         })
       )
 
-      // Legacy exports (kept until Phase 5).
-      Pulumi.Pulumi.export("coreApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
-      Pulumi.Pulumi.export("coreApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
-
-      // New named exports — Platform API (split mode).
+      // Platform API exports (split mode).
       Pulumi.Pulumi.export("platformApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
@@ -1150,7 +1123,7 @@ module MakeWithConfig = (
         ~pluginFragments=[],
       )
 
-      // New named exports — Platform API equals Domain API in unified mode.
+      // Platform API exports (unified mode — same resource as Domain API).
       Pulumi.Pulumi.export("platformApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
@@ -1161,17 +1134,7 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("platformApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
     }
 
-    // Domain API exports — legacy names kept until Phase 5.
-    Pulumi.Pulumi.export("apiId", domainApi->Pulumi.Output.flatMap(api => api.id))
-    Pulumi.Pulumi.export(
-      "apiEndpoint",
-      domainApi->Pulumi.Output.flatMap(api =>
-        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
-      ),
-    )
-    Pulumi.Pulumi.export("apiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
-
-    // New named exports — Domain API.
+    // Domain API exports.
     Pulumi.Pulumi.export("domainApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "domainApiEndpoint",

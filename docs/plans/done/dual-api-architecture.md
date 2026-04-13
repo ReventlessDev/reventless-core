@@ -206,7 +206,7 @@ The module aliases (`module DomainGraphQL = GraphQL_Server`, `module DomainMCP =
 
 ---
 
-## Phase 5 — Retire legacy stack export names
+## Phase 5 — Retire legacy stack export names ✓
 
 **Prerequisites:** All plugin stacks that read stack reference outputs have migrated to the new field names (`domainApiId`, `domainApiEndpoint`, `platformApiId`, etc.).
 
@@ -405,7 +405,7 @@ mcpSchemaRegistrationHook: (~resources, ~tools) =>
 - [x] Phase 4e-ii: Plugin QueryDb seeding from `deployPlugin` — shared helper extracted
 - [x] Phase 4e-iii: `onPluginDeployed` hook from `deployPlugin` — shared helper extracted
 - [x] Phase 4f: Rename `admin*` → `platform*` / `domain*` throughout in-memory Platform
-- [ ] Phase 5: Remove legacy stack export names and deprecated aliases (prerequisite: all plugin stacks migrated)
+- [x] Phase 5: Remove legacy stack export names and deprecated aliases (prerequisite: all plugin stacks migrated)
 - [x] Phase 6a: Extract `GraphQL_Server_Intf.t` shared interface type
 - [x] Phase 6b: Create `DomainGraphQL_Server`, `PlatformGraphQL_Server`, `DomainMCP_Server`, `PlatformMCP_Server` singletons
 - [x] Phase 6c: Refactor adapters to accept `~server` / `~relay` parameters

@@ -104,27 +104,27 @@ function MakeWithConfig(Config) {
   if (platformStackRef !== undefined) {
     let stackRef = Primitive_option.valFromOption(platformStackRef);
     let defaultOutput = stackRef.getOutput("default");
-    let apiIdOutput = stackRef.getOutput("apiId");
-    let apiEndpointOutput = stackRef.getOutput("apiEndpoint");
-    let apiRoleArnOutput = stackRef.getOutput("apiRoleArn");
+    let domainApiIdOutput = stackRef.getOutput("domainApiId");
+    let domainApiEndpointOutput = stackRef.getOutput("domainApiEndpoint");
+    let domainApiRoleArnOutput = stackRef.getOutput("domainApiRoleArn");
     let phantomApi = Pulumi.all([
-      apiIdOutput,
-      apiEndpointOutput,
+      domainApiIdOutput,
+      domainApiEndpointOutput,
       defaultOutput
     ]).apply(param => {
       let $$default = param[2];
       let directEndpoint = param[1];
       let directId = param[0];
-      let apiId = directId !== undefined ? directId : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["apiId"]), v => Stdlib_JSON.Decode.string(v)), undefined);
-      let apiEndpoint = directEndpoint !== undefined ? directEndpoint : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["apiEndpoint"]), v => Stdlib_JSON.Decode.string(v)), "Platform stack does not export 'apiEndpoint' — redeploy the platform stack first");
+      let apiId = directId !== undefined ? directId : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["domainApiId"]), v => Stdlib_JSON.Decode.string(v)), undefined);
+      let apiEndpoint = directEndpoint !== undefined ? directEndpoint : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["domainApiEndpoint"]), v => Stdlib_JSON.Decode.string(v)), "Platform stack does not export 'domainApiEndpoint' — redeploy the platform stack first");
       return makePhantomApi(apiId, apiEndpoint);
     });
     let phantomRole = Pulumi.all([
-      apiRoleArnOutput,
+      domainApiRoleArnOutput,
       defaultOutput
     ]).apply(param => {
       let direct = param[0];
-      return makePhantomRole(direct !== undefined ? direct : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["apiRoleArn"]), v => Stdlib_JSON.Decode.string(v)), undefined));
+      return makePhantomRole(direct !== undefined ? direct : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["domainApiRoleArn"]), v => Stdlib_JSON.Decode.string(v)), undefined));
     });
     let platformApiIdOutput = stackRef.getOutput("platformApiId");
     let platformApiEndpointOutput = stackRef.getOutput("platformApiEndpoint");
@@ -132,24 +132,21 @@ function MakeWithConfig(Config) {
     let phantomPlatformApi = Pulumi.all([
       platformApiIdOutput,
       platformApiEndpointOutput,
-      apiIdOutput,
-      apiEndpointOutput,
-      defaultOutput
-    ]).apply(param => {
-      let $$default = param[4];
-      let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
-      let platformApiId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(param[0], getFromDefault("platformApiId")), param[2]), getFromDefault("apiId")), undefined);
-      let platformApiEndpoint = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(param[1], getFromDefault("platformApiEndpoint")), param[3]), getFromDefault("apiEndpoint")), undefined);
-      return makePhantomApi(platformApiId, platformApiEndpoint);
-    });
-    let phantomPlatformRole = Pulumi.all([
-      platformApiRoleArnOutput,
-      apiRoleArnOutput,
       defaultOutput
     ]).apply(param => {
       let $$default = param[2];
       let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
-      return makePhantomRole(Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(param[0], getFromDefault("platformApiRoleArn")), param[1]), getFromDefault("apiRoleArn")), undefined));
+      let platformApiId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("platformApiId")), undefined);
+      let platformApiEndpoint = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[1], getFromDefault("platformApiEndpoint")), undefined);
+      return makePhantomApi(platformApiId, platformApiEndpoint);
+    });
+    let phantomPlatformRole = Pulumi.all([
+      platformApiRoleArnOutput,
+      defaultOutput
+    ]).apply(param => {
+      let $$default = param[1];
+      let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
+      return makePhantomRole(Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("platformApiRoleArn")), undefined));
     });
     match = [
       phantomApi,
@@ -674,8 +671,6 @@ function MakeWithConfig(Config) {
           console.log("[makePlatform] core-api schema is ACTIVE");
         });
       }));
-      Pulumi$Pulumi.$$export("coreApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
-      Pulumi$Pulumi.$$export("coreApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
@@ -684,9 +679,6 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     }
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
@@ -785,8 +777,6 @@ function MakeWithConfig(Config) {
           console.log("[deployPlatform] core-api schema is ACTIVE");
         });
       }));
-      Pulumi$Pulumi.$$export("coreApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
-      Pulumi$Pulumi.$$export("coreApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
@@ -797,9 +787,6 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     }
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
@@ -919,27 +906,27 @@ function Make($star) {
   if (platformStackRef !== undefined) {
     let stackRef = Primitive_option.valFromOption(platformStackRef);
     let defaultOutput = stackRef.getOutput("default");
-    let apiIdOutput = stackRef.getOutput("apiId");
-    let apiEndpointOutput = stackRef.getOutput("apiEndpoint");
-    let apiRoleArnOutput = stackRef.getOutput("apiRoleArn");
+    let domainApiIdOutput = stackRef.getOutput("domainApiId");
+    let domainApiEndpointOutput = stackRef.getOutput("domainApiEndpoint");
+    let domainApiRoleArnOutput = stackRef.getOutput("domainApiRoleArn");
     let phantomApi = Pulumi.all([
-      apiIdOutput,
-      apiEndpointOutput,
+      domainApiIdOutput,
+      domainApiEndpointOutput,
       defaultOutput
     ]).apply(param => {
       let $$default = param[2];
       let directEndpoint = param[1];
       let directId = param[0];
-      let apiId = directId !== undefined ? directId : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["apiId"]), v => Stdlib_JSON.Decode.string(v)), undefined);
-      let apiEndpoint = directEndpoint !== undefined ? directEndpoint : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["apiEndpoint"]), v => Stdlib_JSON.Decode.string(v)), "Platform stack does not export 'apiEndpoint' — redeploy the platform stack first");
+      let apiId = directId !== undefined ? directId : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["domainApiId"]), v => Stdlib_JSON.Decode.string(v)), undefined);
+      let apiEndpoint = directEndpoint !== undefined ? directEndpoint : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d["domainApiEndpoint"]), v => Stdlib_JSON.Decode.string(v)), "Platform stack does not export 'domainApiEndpoint' — redeploy the platform stack first");
       return makePhantomApi(apiId, apiEndpoint);
     });
     let phantomRole = Pulumi.all([
-      apiRoleArnOutput,
+      domainApiRoleArnOutput,
       defaultOutput
     ]).apply(param => {
       let direct = param[0];
-      return makePhantomRole(direct !== undefined ? direct : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["apiRoleArn"]), v => Stdlib_JSON.Decode.string(v)), undefined));
+      return makePhantomRole(direct !== undefined ? direct : Stdlib_Option.getOrThrow(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["domainApiRoleArn"]), v => Stdlib_JSON.Decode.string(v)), undefined));
     });
     let platformApiIdOutput = stackRef.getOutput("platformApiId");
     let platformApiEndpointOutput = stackRef.getOutput("platformApiEndpoint");
@@ -947,24 +934,21 @@ function Make($star) {
     let phantomPlatformApi = Pulumi.all([
       platformApiIdOutput,
       platformApiEndpointOutput,
-      apiIdOutput,
-      apiEndpointOutput,
-      defaultOutput
-    ]).apply(param => {
-      let $$default = param[4];
-      let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
-      let platformApiId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(param[0], getFromDefault("platformApiId")), param[2]), getFromDefault("apiId")), undefined);
-      let platformApiEndpoint = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(param[1], getFromDefault("platformApiEndpoint")), param[3]), getFromDefault("apiEndpoint")), undefined);
-      return makePhantomApi(platformApiId, platformApiEndpoint);
-    });
-    let phantomPlatformRole = Pulumi.all([
-      platformApiRoleArnOutput,
-      apiRoleArnOutput,
       defaultOutput
     ]).apply(param => {
       let $$default = param[2];
       let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
-      return makePhantomRole(Stdlib_Option.getOrThrow(Stdlib_Option.orElse(Stdlib_Option.orElse(Stdlib_Option.orElse(param[0], getFromDefault("platformApiRoleArn")), param[1]), getFromDefault("apiRoleArn")), undefined));
+      let platformApiId = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("platformApiId")), undefined);
+      let platformApiEndpoint = Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[1], getFromDefault("platformApiEndpoint")), undefined);
+      return makePhantomApi(platformApiId, platformApiEndpoint);
+    });
+    let phantomPlatformRole = Pulumi.all([
+      platformApiRoleArnOutput,
+      defaultOutput
+    ]).apply(param => {
+      let $$default = param[1];
+      let getFromDefault = key => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
+      return makePhantomRole(Stdlib_Option.getOrThrow(Stdlib_Option.orElse(param[0], getFromDefault("platformApiRoleArn")), undefined));
     });
     match = [
       phantomApi,
@@ -1482,14 +1466,9 @@ function Make($star) {
         console.log("[makePlatform] core-api schema is ACTIVE");
       });
     }));
-    Pulumi$Pulumi.$$export("coreApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
-    Pulumi$Pulumi.$$export("coreApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
@@ -1581,14 +1560,9 @@ function Make($star) {
         console.log("[deployPlatform] core-api schema is ACTIVE");
       });
     }));
-    Pulumi$Pulumi.$$export("coreApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
-    Pulumi$Pulumi.$$export("coreApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
