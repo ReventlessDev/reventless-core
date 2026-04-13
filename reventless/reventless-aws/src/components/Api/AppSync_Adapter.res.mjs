@@ -169,8 +169,7 @@ function makeApiResource(name, opts) {
     assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
   }, customOpts);
   let graphQLApi = new (Aws.appsync.GraphQLApi)(name, {
-    authenticationType: "AWS_IAM",
-    name: name
+    authenticationType: "AWS_IAM"
   }, customOpts);
   return [
     Pulumi.output(graphQLApi),

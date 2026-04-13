@@ -33,12 +33,12 @@ let getApiConfig = () =>
 // Split API outputs — populated by makePlatform when splitApi=true.
 // Access via getSplitApiOutputs() after makePlatform has been called.
 type splitApiOutputs = {
-  coreApi: Types.AppSync.api,
-  coreRole: Types.AppSync.role,
+  platformApi: Types.AppSync.api,
+  platformApiRole: Types.AppSync.role,
 }
 let splitApiOutputsRef: ref<option<splitApiOutputs>> = ref(None)
 
-/** Returns the core API outputs created in split mode.
+/** Returns the Platform API outputs created in split mode.
     Call after `makePlatform` — returns `None` in unified mode. */
 let getSplitApiOutputs = () => splitApiOutputsRef.contents
 
@@ -88,7 +88,7 @@ module MakeWithConfig = (
 
   let (domainApi, domainApiRole, platformApi, platformApiRole) = switch platformStackRef {
   | None =>
-    let (api, role) = AppSync_Adapter.makeApiResource(~name="api", ~opts={})
+    let (api, role) = AppSync_Adapter.makeApiResource(~name="DomainApi", ~opts={})
     // In platform/monolithic mode the platform API is not yet known — it is created
     // during deployPlatform/makePlatform and the ref is updated there.
     (api, role, api, role)
@@ -836,28 +836,28 @@ module MakeWithConfig = (
     // Phase 2: create the Platform API resource early — before Admin.construct —
     // so admin resolvers are attached to the correct API in split mode.
     // In unified mode this is the same resource as the Domain API.
-    let (coreApiOutput, coreRoleOutput) = if Config.splitApi {
-      AppSync_Adapter.makeApiResource(~name="core-api", ~opts={})
+    let (platformApi, platformApiRole) = if Config.splitApi {
+      AppSync_Adapter.makeApiResource(~name="PlatformApi", ~opts={})
     } else {
       (domainApi, domainApiRole)
     }
 
     // Update splitApiOutputsRef and apiConfig with the now-known Platform API.
     if Config.splitApi {
-      splitApiOutputsRef := Some({coreApi: coreApiOutput, coreRole: coreRoleOutput})
+      splitApiOutputsRef := Some({platformApi, platformApiRole})
       switch apiConfigRef.contents {
       | Some(c) =>
         apiConfigRef := Some({
           domainApi: c.domainApi,
           domainApiRole: c.domainApiRole,
-          platformApi: coreApiOutput,
-          platformApiRole: coreRoleOutput,
+          platformApi: platformApi,
+          platformApiRole: platformApiRole,
         })
       | None => ()
       }
     }
 
-    // Phase 2: Admin resolvers go on the Platform API (coreApiOutput) in split mode,
+    // Phase 2: Admin resolvers go on the Platform API (platformApi) in split mode,
     // on the shared Domain API in unified mode.
     let _admin = Admin.construct(
       ~version,
@@ -866,8 +866,8 @@ module MakeWithConfig = (
       ~readModels=[module(PluginReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
-      ~api=coreApiOutput,
-      ~apiRole=coreRoleOutput,
+      ~api=platformApi,
+      ~apiRole=platformApiRole,
       ~stateChangeSlices=[],
       ~stateViewSlices=[],
       ~automationSlices=[],
@@ -899,7 +899,7 @@ module MakeWithConfig = (
         ~baseFragment=adminBaseFragment,
         ~pluginFragments=[],
       )
-      let _ = coreApiOutput->Pulumi.Output.flatMap(api =>
+      let _ = platformApi->Pulumi.Output.flatMap(api =>
         api.id->Pulumi.Output.flatMap(apiId => {
           Console.log(`[makePlatform] Pushing admin schema to core-api ${apiId}`)
           let client = AppSync_Adapter.getClient()
@@ -914,19 +914,19 @@ module MakeWithConfig = (
         })
       )
 
-      // Legacy exports (kept until Phase 4).
-      Pulumi.Pulumi.export("coreApiId", coreApiOutput->Pulumi.Output.flatMap(api => api.id))
-      Pulumi.Pulumi.export("coreApiRoleArn", coreRoleOutput->Pulumi.Output.flatMap(role => role.arn))
+      // Legacy exports (kept until Phase 5).
+      Pulumi.Pulumi.export("coreApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
+      Pulumi.Pulumi.export("coreApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
 
       // New named exports — Platform API (split mode).
-      Pulumi.Pulumi.export("platformApiId", coreApiOutput->Pulumi.Output.flatMap(api => api.id))
+      Pulumi.Pulumi.export("platformApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
-        coreApiOutput->Pulumi.Output.flatMap(api =>
+        platformApi->Pulumi.Output.flatMap(api =>
           api.uris->Pulumi.Output.apply(uris => uris.graphQL)
         ),
       )
-      Pulumi.Pulumi.export("platformApiRoleArn", coreRoleOutput->Pulumi.Output.flatMap(role => role.arn))
+      Pulumi.Pulumi.export("platformApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
     } else {
       // New named exports — Platform API equals Domain API in unified mode.
       Pulumi.Pulumi.export("platformApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
@@ -939,7 +939,7 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("platformApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
     }
 
-    // Domain API exports — legacy names kept until Phase 4.
+    // Domain API exports — legacy names kept until Phase 5.
     Pulumi.Pulumi.export("apiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "apiEndpoint",
@@ -970,22 +970,22 @@ module MakeWithConfig = (
     // Phase 2: create the Platform API resource early — before Admin.construct —
     // so admin resolvers are attached to the correct API in split mode.
     // In unified mode this is the same resource as the Domain API.
-    let (coreApiOutput, coreRoleOutput) = if Config.splitApi {
-      AppSync_Adapter.makeApiResource(~name="core-api", ~opts={})
+    let (platformApi, platformApiRole) = if Config.splitApi {
+      AppSync_Adapter.makeApiResource(~name="PlatformApi", ~opts={})
     } else {
       (domainApi, domainApiRole)
     }
 
     // Update splitApiOutputsRef and apiConfig with the now-known Platform API.
     if Config.splitApi {
-      splitApiOutputsRef := Some({coreApi: coreApiOutput, coreRole: coreRoleOutput})
+      splitApiOutputsRef := Some({platformApi, platformApiRole})
       switch apiConfigRef.contents {
       | Some(c) =>
         apiConfigRef := Some({
           domainApi: c.domainApi,
           domainApiRole: c.domainApiRole,
-          platformApi: coreApiOutput,
-          platformApiRole: coreRoleOutput,
+          platformApi: platformApi,
+          platformApiRole: platformApiRole,
         })
       | None => ()
       }
@@ -1039,7 +1039,7 @@ module MakeWithConfig = (
       })
     })
 
-    // Phase 2: Admin resolvers go on the Platform API (coreApiOutput) in split mode,
+    // Phase 2: Admin resolvers go on the Platform API (platformApi) in split mode,
     // on the shared Domain API in unified mode.
     let admin = Admin.construct(
       ~version,
@@ -1048,8 +1048,8 @@ module MakeWithConfig = (
       ~readModels=[module(PluginReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
-      ~api=coreApiOutput,
-      ~apiRole=coreRoleOutput,
+      ~api=platformApi,
+      ~apiRole=platformApiRole,
       ~stateChangeSlices=[],
       ~stateViewSlices=[],
       ~automationSlices=[],
@@ -1100,7 +1100,7 @@ module MakeWithConfig = (
     if Config.splitApi {
       // Split mode: push admin schema to the Platform (core) API.
       // Plugin API (domainApi) only gets plugin schema — no admin fields.
-      // coreApiOutput was created above before Admin.construct.
+      // platformApi was created above before Admin.construct.
       let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
         ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
         ~group="Admin",
@@ -1109,7 +1109,7 @@ module MakeWithConfig = (
         ~baseFragment=adminBaseFragment,
         ~pluginFragments=[],
       )
-      let _ = coreApiOutput->Pulumi.Output.flatMap(api =>
+      let _ = platformApi->Pulumi.Output.flatMap(api =>
         api.id->Pulumi.Output.flatMap(apiId => {
           Console.log(`[deployPlatform] Pushing admin schema to core-api ${apiId}`)
           let client = AppSync_Adapter.getClient()
@@ -1124,19 +1124,19 @@ module MakeWithConfig = (
         })
       )
 
-      // Legacy exports (kept until Phase 4).
-      Pulumi.Pulumi.export("coreApiId", coreApiOutput->Pulumi.Output.flatMap(api => api.id))
-      Pulumi.Pulumi.export("coreApiRoleArn", coreRoleOutput->Pulumi.Output.flatMap(role => role.arn))
+      // Legacy exports (kept until Phase 5).
+      Pulumi.Pulumi.export("coreApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
+      Pulumi.Pulumi.export("coreApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
 
       // New named exports — Platform API (split mode).
-      Pulumi.Pulumi.export("platformApiId", coreApiOutput->Pulumi.Output.flatMap(api => api.id))
+      Pulumi.Pulumi.export("platformApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
-        coreApiOutput->Pulumi.Output.flatMap(api =>
+        platformApi->Pulumi.Output.flatMap(api =>
           api.uris->Pulumi.Output.apply(uris => uris.graphQL)
         ),
       )
-      Pulumi.Pulumi.export("platformApiRoleArn", coreRoleOutput->Pulumi.Output.flatMap(role => role.arn))
+      Pulumi.Pulumi.export("platformApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
     } else {
       // Unified mode: push admin schema to the shared API.
       // Plugin schema fragments are pushed at runtime via PluginExtensionPoint.
@@ -1161,7 +1161,7 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("platformApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
     }
 
-    // Domain API exports — legacy names kept until Phase 4.
+    // Domain API exports — legacy names kept until Phase 5.
     Pulumi.Pulumi.export("apiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "apiEndpoint",
@@ -1208,10 +1208,10 @@ module MakeWithConfig = (
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       )
       let resolvedDomainApiRoleArn = domainApiRole->Pulumi.Output.flatMap(role => role.arn)
-      let resolvedPlatformApiEndpoint = coreApiOutput->Pulumi.Output.flatMap(api =>
+      let resolvedPlatformApiEndpoint = platformApi->Pulumi.Output.flatMap(api =>
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       )
-      let resolvedPlatformApiRoleArn = coreRoleOutput->Pulumi.Output.flatMap(role => role.arn)
+      let resolvedPlatformApiRoleArn = platformApiRole->Pulumi.Output.flatMap(role => role.arn)
       // Collect admin aggregate + read model resources.
       let adminResourcesOutput =
         admin.aggregatesOutputs

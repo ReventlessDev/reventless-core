@@ -224,12 +224,12 @@ let makeApiResource = (
     ~opts=Some(customOpts),
   )
 
-  // Create the AppSync GraphQL API (schema pushed at runtime via updateSchema)
+  // Create the AppSync GraphQL API (schema pushed at runtime via updateSchema).
+  // No explicit name in args — Pulumi auto-names the AWS resource as "{name}-{hash}".
   let graphQLApi = AppSync.GraphQLApi.make(
     ~name,
     ~args={
       AppSync.GraphQLApi.authenticationType: AppSync.GraphQLApi.AWS_IAM->Pulumi.Input.make,
-      name: name->Pulumi.Input.make,
     },
     ~opts=Some(customOpts),
   )
