@@ -64,11 +64,11 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       queryFn
     ], opts);
   };
-  let resolverByIdSingle = includeIdParam ? makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Functions$PulumiAws.getItemById) : makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, AppSync_Resolver_Functions$PulumiAws.listAllItems);
-  let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", AppSync_Resolver_Functions$PulumiAws.queryItemsWithSortConditions(sortField))) : undefined;
   let fieldNameForAll = registryEntry !== undefined ? registryEntry.listFieldName : name$1 + "s";
-  let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection : AppSync_Resolver_Functions$PulumiAws.listAllItems);
   let resourcesMaker = allQueryDbs => {
+    let resolverByIdSingle = includeIdParam ? makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, subIdField !== undefined ? AppSync_Resolver_Functions$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Functions$PulumiAws.getItemById) : makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle), fieldNameForSingle, AppSync_Resolver_Functions$PulumiAws.listAllItems);
+    let resolverByIdMultiple = includeIdParam ? Stdlib_Option.map(subIdField, sortField => makeQueryResolver(Stdlib_String.capitalize(fieldNameForSingle) + "Items", fieldNameForSingle + "Items", AppSync_Resolver_Functions$PulumiAws.queryItemsWithSortConditions(sortField))) : undefined;
+    let resolverAll = makeQueryResolver(Stdlib_String.capitalize(fieldNameForAll), fieldNameForAll, connectionSpec ? AppSync_Resolver_Functions$PulumiAws.listAllItemsConnection : AppSync_Resolver_Functions$PulumiAws.listAllItems);
     let resolversByIndex = indexes.map(indexConfig => {
       let index = indexConfig.index;
       let stripLeadingBy = s => {
@@ -157,23 +157,23 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       let storageResource$1 = storageResource(target.pluginName, target.tableName);
       return AppSync_Resolver$PulumiAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(idsField), api, dataSourceName, name$1, match.resolvedField, generateCode(storageResource$1, none => AppSync_Resolver_Functions$PulumiAws.resolveIds(none, idsField, target.subIdField)), opts);
     });
+    let mainResolvers = resolverByIdMultiple !== undefined ? [
+        resolverByIdSingle,
+        resolverByIdMultiple,
+        resolverAll
+      ] : [
+        resolverByIdSingle,
+        resolverAll
+      ];
     return [
+      mainResolvers,
       resolversByIndex,
       idResolvers,
       idsResolvers
     ].flat().map(Util_AppSync$ReventlessAws.toResource);
   };
-  let resolvers = resolverByIdMultiple !== undefined ? [
-      resolverByIdSingle,
-      resolverByIdMultiple,
-      resolverAll
-    ] : [
-      resolverByIdSingle,
-      resolverAll
-    ];
-  let resources = resolvers.map(Util_AppSync$ReventlessAws.toResource);
   return {
-    resources: resources,
+    resources: [],
     resourcesMaker: resourcesMaker
   };
 }

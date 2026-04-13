@@ -121,50 +121,52 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     }
 
-  let resolverByIdSingle = if includeIdParam {
-    makeQueryResolver(
-      ~resolverName=fieldNameForSingle->String.capitalize,
-      ~field=fieldNameForSingle->Pulumi.Input.make,
-      ~code=switch subIdField {
-      | Some(sortField) => Resolver.Functions.queryByIdSort(sortField)
-      | None => Resolver.Functions.getItemById
-      },
-    )
-  } else {
-    makeQueryResolver(
-      ~resolverName=fieldNameForSingle->String.capitalize,
-      ~field=fieldNameForSingle->Pulumi.Input.make,
-      ~code=Resolver.Functions.listAllItems,
-    )
-  }
-
-  let resolverByIdMultiple = if includeIdParam {
-    subIdField->Option.map(sortField =>
-      makeQueryResolver(
-        ~resolverName=fieldNameForSingle->String.capitalize ++ "Items",
-        ~field=(fieldNameForSingle ++ "Items")->Pulumi.Input.make,
-        ~code=Resolver.Functions.queryItemsWithSortConditions(sortField),
-      )
-    )
-  } else {
-    None
-  }
-
   let fieldNameForAll = switch registryEntry {
   | Some({listFieldName}) => listFieldName
   | None => name ++ "s"
   }
-  let resolverAll = makeQueryResolver(
-    ~resolverName=fieldNameForAll->String.capitalize,
-    ~field=fieldNameForAll->Pulumi.Input.make,
-    ~code=if connectionSpec {
-      Resolver.Functions.listAllItemsConnection
-    } else {
-      Resolver.Functions.listAllItems
-    },
-  )
 
+  // All resolver resources are deferred into resourcesMaker so they are only
+  // created inside builderOutputs.apply(...) — which depends on schemaPushed.
+  // This prevents a race condition where AppSync resolvers are deployed before
+  // the schema push completes and the new fields are ACTIVE in AppSync.
   let resourcesMaker: ReventlessCore.QueryDb.resolversResourcesMaker = allQueryDbs => {
+    let resolverByIdSingle = if includeIdParam {
+      makeQueryResolver(
+        ~resolverName=fieldNameForSingle->String.capitalize,
+        ~field=fieldNameForSingle->Pulumi.Input.make,
+        ~code=switch subIdField {
+        | Some(sortField) => Resolver.Functions.queryByIdSort(sortField)
+        | None => Resolver.Functions.getItemById
+        },
+      )
+    } else {
+      makeQueryResolver(
+        ~resolverName=fieldNameForSingle->String.capitalize,
+        ~field=fieldNameForSingle->Pulumi.Input.make,
+        ~code=Resolver.Functions.listAllItems,
+      )
+    }
+    let resolverByIdMultiple = if includeIdParam {
+      subIdField->Option.map(sortField =>
+        makeQueryResolver(
+          ~resolverName=fieldNameForSingle->String.capitalize ++ "Items",
+          ~field=(fieldNameForSingle ++ "Items")->Pulumi.Input.make,
+          ~code=Resolver.Functions.queryItemsWithSortConditions(sortField),
+        )
+      )
+    } else {
+      None
+    }
+    let resolverAll = makeQueryResolver(
+      ~resolverName=fieldNameForAll->String.capitalize,
+      ~field=fieldNameForAll->Pulumi.Input.make,
+      ~code=if connectionSpec {
+        Resolver.Functions.listAllItemsConnection
+      } else {
+        Resolver.Functions.listAllItems
+      },
+    )
     let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
       // Strip a leading "by" from the index name before capitalizing to avoid
       // double "By" in the generated field name (e.g. index "byPlugin" → "ByPlugin",
@@ -331,15 +333,13 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     })
 
-    Array.flat([resolversByIndex, idResolvers, idsResolvers])->Array.map(Util.AppSync.toResource)
+    let mainResolvers = switch resolverByIdMultiple {
+    | Some(r) => [resolverByIdSingle, r, resolverAll]
+    | None => [resolverByIdSingle, resolverAll]
+    }
+    Array.flat([mainResolvers, resolversByIndex, idResolvers, idsResolvers])
+    ->Array.map(Util.AppSync.toResource)
   }
 
-  let resolvers = switch resolverByIdMultiple {
-  | Some(resolverByIdMultiple) => [resolverByIdSingle, resolverByIdMultiple, resolverAll]
-  | None => [resolverByIdSingle, resolverAll]
-  } // TODO add other resolvers (from maker)
-
-  let resources = resolvers->Array.map(Util.AppSync.toResource)
-
-  {resources, resourcesMaker}
+  {resources: [], resourcesMaker}
 }
