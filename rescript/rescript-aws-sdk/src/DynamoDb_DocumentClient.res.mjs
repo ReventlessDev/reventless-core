@@ -298,9 +298,20 @@ function send$6(command) {
   return client().send(command);
 }
 
-let ScanCommand = {
+let GetCommand = {
   Raw: Raw$7,
   send: send$6
+};
+
+let Raw$8 = {};
+
+function send$7(command) {
+  return client().send(command);
+}
+
+let ScanCommand = {
+  Raw: Raw$8,
+  send: send$7
 };
 
 export {
@@ -320,6 +331,7 @@ export {
   $$delete,
   TransactWriteCommand,
   QueryCommand,
+  GetCommand,
   ScanCommand,
 }
 /* Stdlib_JsExn Not a pure module */

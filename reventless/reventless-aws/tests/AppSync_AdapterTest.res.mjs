@@ -6,6 +6,20 @@ import * as AppSync_Adapter$ReventlessAws from "../src/components/Api/AppSync_Ad
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
 
+describe("AppSync_Adapter.sha256Hex", () => {
+  test("returns a 64-character hex string", () => {
+    let hash = AppSync_Adapter$ReventlessAws.sha256Hex("hello");
+    expect(hash.length).toBe(64);
+  });
+  test("is stable — same input produces same digest", () => {
+    let sdl = "type Query { ping: String }";
+    expect(AppSync_Adapter$ReventlessAws.sha256Hex(sdl)).toBe(AppSync_Adapter$ReventlessAws.sha256Hex(sdl));
+  });
+  test("differs for inputs that differ by one character", () => {
+    expect(AppSync_Adapter$ReventlessAws.sha256Hex("type Query { ping: String }")).not.toBe(AppSync_Adapter$ReventlessAws.sha256Hex("type Query { pong: String }"));
+  });
+});
+
 let decodeFragment = GraphQL_Stitcher$ReventlessCore.decode;
 
 describe("AppSync_Adapter.injectAwsAuthAll", () => {

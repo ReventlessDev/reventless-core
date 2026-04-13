@@ -435,6 +435,31 @@ module MakeWithConfig = (
   // In-memory hooks (mutationResolverHook etc.) are absent (optional = None).
   let deploySchemaPrefix = "deploy-schema:"
   let deploySchemaPlatformPrefix = "deploy-schema-platform:"
+  let deploySchemaHashPrefix = "deploy-schema-hash:"
+
+  let readSchemaHash = async (~tableName: string, ~apiId: string): option<string> => {
+    open AwsSdk.DynamoDb.DocumentClient
+    let key = Dict.fromArray([("id", `${deploySchemaHashPrefix}${apiId}`->JSON.Encode.string)])
+    try {
+      let result = await GetCommand.send(GetCommand.make({GetCommand.tableName, key}))
+      result.item
+      ->Option.flatMap(item => item->JSON.Decode.object)
+      ->Option.flatMap(d => d->Dict.get("hash"))
+      ->Option.flatMap(v => v->JSON.Decode.string)
+    } catch {
+    | _ => None
+    }
+  }
+
+  let writeSchemaHash = async (~tableName: string, ~apiId: string, ~hash: string): unit => {
+    open AwsSdk.DynamoDb.DocumentClient
+    let item =
+      Dict.fromArray([
+        ("id", `${deploySchemaHashPrefix}${apiId}`->JSON.Encode.string),
+        ("hash", hash->JSON.Encode.string),
+      ])->JSON.Encode.object
+    let _ = await PutCommand.send(PutCommand.make({PutCommand.tableName, item}))
+  }
 
   // Returns the AppSync API to attach resolvers/schema to for the current deploy target.
   let resolveTargetApi = () =>
@@ -622,17 +647,34 @@ module MakeWithConfig = (
                 ~baseFragment,
                 ~pluginFragments=allPluginFragments,
               )
-              Console.log(
-                `[preResolversSchemaHook] Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments)`,
-              )
-              let client = AppSync_Adapter.getClient()
-              let _ = await client->AppSync_Adapter.startSchemaCreation({
-                apiId,
-                definition: sdl,
-              })
-              Console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE")
-              await AppSync_Adapter.waitForSchemaActive(client, apiId)
-              Console.log("[preResolversSchemaHook] Schema is ACTIVE")
+              let currentHash = AppSync_Adapter.sha256Hex(sdl)
+              let storedHash = switch tableNameOpt {
+              | Some(tn) => await readSchemaHash(~tableName=tn, ~apiId)
+              | None => None
+              }
+              switch storedHash {
+              | Some(prev) if prev == currentHash =>
+                Console.log(
+                  `[preResolversSchemaHook] SDL unchanged (hash ${currentHash->String.slice(~start=0, ~end=12)}…), skipping push`,
+                )
+              | _ =>
+                Console.log(
+                  `[preResolversSchemaHook] Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
+                )
+                let client = AppSync_Adapter.getClient()
+                let _ = await client->AppSync_Adapter.startSchemaCreation({
+                  apiId,
+                  definition: sdl,
+                })
+                Console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE")
+                await AppSync_Adapter.waitForSchemaActive(client, apiId)
+                Console.log("[preResolversSchemaHook] Schema is ACTIVE")
+                switch tableNameOpt {
+                | Some(tn) =>
+                  await writeSchemaHash(~tableName=tn, ~apiId, ~hash=currentHash)
+                | None => ()
+                }
+              }
             })
             ->Pulumi.Output.fromPromise
           })

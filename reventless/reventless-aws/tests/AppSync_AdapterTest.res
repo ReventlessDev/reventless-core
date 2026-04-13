@@ -1,5 +1,23 @@
 open TestHelpers
 
+describe("AppSync_Adapter.sha256Hex", () => {
+  test("returns a 64-character hex string", () => {
+    let hash = AppSync_Adapter.sha256Hex("hello")
+    expect(hash->String.length)->toBe(64)
+  })
+
+  test("is stable — same input produces same digest", () => {
+    let sdl = "type Query { ping: String }"
+    expect(AppSync_Adapter.sha256Hex(sdl))->toBe(AppSync_Adapter.sha256Hex(sdl))
+  })
+
+  test("differs for inputs that differ by one character", () => {
+    let sdlA = "type Query { ping: String }"
+    let sdlB = "type Query { pong: String }"
+    expect(AppSync_Adapter.sha256Hex(sdlA))->not_->toBe(AppSync_Adapter.sha256Hex(sdlB))
+  })
+})
+
 // Helper to decode a schema fragment for inspection.
 let decodeFragment = (fragment: Reventless.Plugin.apiSchemaFragment) =>
   ReventlessCore.GraphQL_Stitcher.decode(fragment)

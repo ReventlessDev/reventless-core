@@ -326,6 +326,38 @@ function MakeWithConfig(Config) {
   let Api = {
     Make: Make$6
   };
+  let deploySchemaHashPrefix = "deploy-schema-hash:";
+  let readSchemaHash = async (tableName, apiId) => {
+    let key = Object.fromEntries([[
+        "id",
+        deploySchemaHashPrefix + apiId
+      ]]);
+    try {
+      let result = await DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+        TableName: tableName,
+        Key: key
+      }));
+      return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(result.Item, item => Stdlib_JSON.Decode.object(item)), d => d["hash"]), v => Stdlib_JSON.Decode.string(v));
+    } catch (exn) {
+      return;
+    }
+  };
+  let writeSchemaHash = async (tableName, apiId, hash) => {
+    let item = Object.fromEntries([
+      [
+        "id",
+        deploySchemaHashPrefix + apiId
+      ],
+      [
+        "hash",
+        hash
+      ]
+    ]);
+    await DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+      Item: item,
+      TableName: tableName
+    }));
+  };
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;
     if (match === "Domain") {
@@ -445,7 +477,13 @@ function MakeWithConfig(Config) {
         let baseFragment;
         baseFragment = match === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
-        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments)`);
+        let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
+        let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
+        if (storedHash !== undefined && storedHash === currentHash) {
+          console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…), skipping push`);
+          return;
+        }
+        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
         await AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
           apiId: apiId,
@@ -454,6 +492,9 @@ function MakeWithConfig(Config) {
         console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
         console.log("[preResolversSchemaHook] Schema is ACTIVE");
+        if (tableNameOpt !== undefined) {
+          return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+        }
       })));
     });
   };
@@ -1077,6 +1118,38 @@ function Make($star) {
   let Api = {
     Make: Make$7
   };
+  let deploySchemaHashPrefix = "deploy-schema-hash:";
+  let readSchemaHash = async (tableName, apiId) => {
+    let key = Object.fromEntries([[
+        "id",
+        deploySchemaHashPrefix + apiId
+      ]]);
+    try {
+      let result = await DynamoDb_DocumentClient$AwsSdk.GetCommand.send(new LibDynamodb.GetCommand({
+        TableName: tableName,
+        Key: key
+      }));
+      return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(result.Item, item => Stdlib_JSON.Decode.object(item)), d => d["hash"]), v => Stdlib_JSON.Decode.string(v));
+    } catch (exn) {
+      return;
+    }
+  };
+  let writeSchemaHash = async (tableName, apiId, hash) => {
+    let item = Object.fromEntries([
+      [
+        "id",
+        deploySchemaHashPrefix + apiId
+      ],
+      [
+        "hash",
+        hash
+      ]
+    ]);
+    await DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+      Item: item,
+      TableName: tableName
+    }));
+  };
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;
     if (match === "Domain") {
@@ -1196,7 +1269,13 @@ function Make($star) {
         let baseFragment;
         baseFragment = match === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
-        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments)`);
+        let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
+        let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
+        if (storedHash !== undefined && storedHash === currentHash) {
+          console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…), skipping push`);
+          return;
+        }
+        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
         await AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
           apiId: apiId,
@@ -1205,6 +1284,9 @@ function Make($star) {
         console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
         console.log("[preResolversSchemaHook] Schema is ACTIVE");
+        if (tableNameOpt !== undefined) {
+          return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+        }
       })));
     });
   };

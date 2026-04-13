@@ -2,6 +2,7 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Aws from "@pulumi/aws";
+import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
@@ -12,6 +13,10 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
+
+function sha256Hex(input) {
+  return Nodecrypto.createHash("sha256").update(input).digest("hex");
+}
 
 function startSchemaCreation(client, input) {
   return client.send(new ClientAppsync.StartSchemaCreationCommand(input));
@@ -193,6 +198,7 @@ function updateSchema(api, baseFragment, pluginFragments) {
 }
 
 export {
+  sha256Hex,
   startSchemaCreation,
   waitForSchemaActive,
   deploySchemaWithRetry,

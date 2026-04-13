@@ -790,6 +790,43 @@ module QueryCommand = {
   let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
+module GetCommand = {
+  /*** see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-lib-dynamodb/Class/GetCommand/ */
+
+  type t
+
+  type input = {
+    @as("TableName")
+    tableName: string,
+    @as("Key")
+    key: dict<JSON.t>,
+    @as("ConsistentRead")
+    consistentRead?: bool,
+    @as("ExpressionAttributeNames")
+    expressionAttributeNames?: dict<string>,
+    @as("ProjectionExpression")
+    projectionExpression?: string,
+    @as("ReturnConsumedCapacity")
+    returnConsumedCapacity?: returnConsumedCapacity,
+  }
+
+  type output = {
+    @as("$metadata") metadata: Metadata.t,
+    @as("Item") item?: JSON.t,
+    @as("ConsumedCapacity") consumedCapacity?: consumedCapacity,
+  }
+
+  @new @module("@aws-sdk/lib-dynamodb")
+  external make: input => t = "GetCommand"
+
+  module Raw = {
+    @send
+    external send: (client, t) => promise<output> = "send"
+  }
+
+  let send: t => promise<output> = command => Raw.send(client(), command)
+}
+
 
 module ScanCommand = {
   /*** see: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-lib-dynamodb/Class/ScanCommand/ */
