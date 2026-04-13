@@ -391,6 +391,8 @@ function Make(DcbEventLogStorage) {
       let stateViewEntries = stateViewSlices.map(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, undefined);
         let subIdField = Stdlib_Option.map(V.Spec.subIdConfig, c => c.subIdField);
+        let indexes = V.Spec.config.indexes;
+        let indexQueries = indexes.length !== 0 ? indexes : undefined;
         return {
           singleFieldName: qn.singleFieldName,
           listFieldName: qn.listFieldName,
@@ -399,7 +401,8 @@ function Make(DcbEventLogStorage) {
           authorization: undefined,
           includeIdParam: qn.includeIdParam,
           connectionSpec: true,
-          subIdField: subIdField
+          subIdField: subIdField,
+          indexQueries: indexQueries
         };
       });
       let automationEntries = automationSlices.map(A => {

@@ -48,11 +48,13 @@ let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
 //      "type TypeName {" → "TypeName"
 let extractLeadingName = (str: string): string => {
   let trimmed = str->String.trim
-  // Remove "type " or "enum " prefix if present
+  // Remove "type ", "enum ", or "input " prefix if present
   let afterType = if trimmed->String.startsWith("type ") {
     trimmed->String.slice(~start=5, ~end=trimmed->String.length)->String.trim
   } else if trimmed->String.startsWith("enum ") {
     trimmed->String.slice(~start=5, ~end=trimmed->String.length)->String.trim
+  } else if trimmed->String.startsWith("input ") {
+    trimmed->String.slice(~start=6, ~end=trimmed->String.length)->String.trim
   } else {
     trimmed
   }

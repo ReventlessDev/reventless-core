@@ -262,6 +262,24 @@ let generate = (
     | None => ()
     }
 
+    // By-index connection queries — generated for each GSI on the entry
+    switch entry.indexQueries {
+    | Some(indexes) =>
+      let connectionTypeName = entry.returnTypeName ++ "Connection"
+      indexes->Array.forEach(({index}) => {
+        let stripped = if index->String.startsWith("by") && index->String.length > 2 {
+          index->String.slice(~start=2, ~end=index->String.length)
+        } else {
+          index
+        }
+        let fieldName = entry.singleFieldName ++ "By" ++ stripped->String.capitalize
+        queries->Array.push(
+          `  ${fieldName}(id: ID!, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`,
+        )
+      })
+    | None => ()
+    }
+
     if connectionSpec {
       // Relay Connection spec: Edge + Connection types
       let connectionTypeName = entry.returnTypeName ++ "Connection"

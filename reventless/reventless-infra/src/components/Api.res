@@ -47,6 +47,8 @@ type querySchemaEntry = {
   connectionSpec?: bool,
   /** When set, generates a `{singleFieldName}ById` sort-key query with sort condition args. */
   subIdField?: string,
+  /** When set, generates `{singleFieldName}By{Index}` connection query fields for each GSI. */
+  indexQueries?: array<Reventless.ReadModel.indexConfig>,
 }
 
 /**

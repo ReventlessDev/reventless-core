@@ -592,6 +592,8 @@ module Make = (
         ) => {
           let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
           let subIdField = V.Spec.subIdConfig->Option.map(c => c.subIdField)
+          let indexes = V.Spec.config.indexes
+          let indexQueries = if indexes->Array.length > 0 {Some(indexes)} else {None}
           {
             ReventlessInfra.Api.singleFieldName: qn.singleFieldName,
             listFieldName: qn.listFieldName,
@@ -601,6 +603,7 @@ module Make = (
             includeIdParam: qn.includeIdParam,
             connectionSpec: true,
             subIdField: ?subIdField,
+            indexQueries: ?indexQueries,
           }
         })
 

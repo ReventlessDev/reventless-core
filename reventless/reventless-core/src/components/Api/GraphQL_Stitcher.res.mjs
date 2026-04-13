@@ -59,7 +59,9 @@ function decode(fragment) {
 
 function extractLeadingName(str) {
   let trimmed = str.trim();
-  let afterType = trimmed.startsWith("type ") || trimmed.startsWith("enum ") ? trimmed.slice(5, trimmed.length).trim() : trimmed;
+  let afterType = trimmed.startsWith("type ") || trimmed.startsWith("enum ") ? trimmed.slice(5, trimmed.length).trim() : (
+      trimmed.startsWith("input ") ? trimmed.slice(6, trimmed.length).trim() : trimmed
+    );
   return Stdlib_Option.getOr(Stdlib_Option.getOr(Stdlib_Option.getOr(afterType.split("(")[0], "").trim().split(" ")[0], "").trim().split("{")[0], "").trim();
 }
 
