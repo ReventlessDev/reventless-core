@@ -15,8 +15,8 @@ module EventCollectorRuntimeBuilder = {
 }
 
 module Make = (Api: {
-  let api: Types.AppSync.api
-  let apiRole: Types.AppSync.role
+  let api: unit => Types.AppSync.api
+  let apiRole: unit => Types.AppSync.role
 }) => {
   module Inner = ReventlessCore.OutboundTranslationSlice_Builder.Make(
     RuntimeEnvironment,

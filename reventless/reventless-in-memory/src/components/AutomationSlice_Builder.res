@@ -13,8 +13,8 @@ module Make = (Bus: InMemory_Bus.T) => {
 
   // InMemory api/apiRole are both unit
   module Api = {
-    let api = ()
-    let apiRole = ()
+    let api = () => ()
+    let apiRole = () => ()
   }
 
   module CoreMaker = ReventlessCore.AutomationSlice_Builder.Make(

@@ -8,9 +8,11 @@ import * as InboundTranslationSlice_Builder$ReventlessCore from "@reventlessdev/
 function Make(Bus) {
   let QueryDbStorage = QueryDbStorage_InMemory$ReventlessInMemory.Make(Bus);
   let QueryDbResolvers = QueryDbResolvers_GraphQL$ReventlessInMemory.Make(Bus);
+  let api = () => {};
+  let apiRole = () => {};
   let Api = {
-    api: undefined,
-    apiRole: undefined
+    api: api,
+    apiRole: apiRole
   };
   let CoreMaker = InboundTranslationSlice_Builder$ReventlessCore.Make(QueryDbStorage)({
     make: QueryDbResolvers.make

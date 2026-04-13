@@ -55,7 +55,7 @@ function Make(RuntimeEnvironment) {
         let opts = {
           parent: opts_parent
         };
-        let queryDb = SpecificQueryDb.make(Api.api, Api.apiRole, undefined, opts);
+        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, opts);
         let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
         let allEventTopics = Object.fromEntries([[
             Spec.name,

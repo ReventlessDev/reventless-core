@@ -14,8 +14,8 @@ module Make = (
   EventCollectorRuntimeBuilder: EventCollectorRuntime_Builder.T
     with module EventCollectorChannel = EventCollectorChannel,
   Api: {
-    let api: QueryDbStorage.api
-    let apiRole: QueryDbStorage.role
+    let api: unit => QueryDbStorage.api
+    let apiRole: unit => QueryDbStorage.role
   },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
@@ -64,7 +64,7 @@ module Make = (
     let construct = (~dcbEventLog: DcbEventLog.component, ~publishJsons, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
-      let queryDb = SpecificQueryDb.make(~api=Api.api, ~apiRole=Api.apiRole, ~opts)
+      let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
 
       let dcbEventTopicOutputs: EventTopic.outputs = (dcbEventLog->Component.outputs).eventTopic
       let allEventTopics = Dict.fromArray([(Spec.name, dcbEventTopicOutputs)])

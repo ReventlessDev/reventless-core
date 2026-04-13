@@ -86,7 +86,7 @@ module MakeWithConfig = (
     }: PulumiAws.IAM.Role.t)
   }
 
-  let (appSyncApi, appSyncApiRole, platformApiForConfig, platformApiRoleForConfig) = switch platformStackRef {
+  let (domainApi, domainApiRole, platformApi, platformApiRole) = switch platformStackRef {
   | None =>
     let (api, role) = AppSync_Adapter.makeApiResource(~name="api", ~opts={})
     // In platform/monolithic mode the platform API is not yet known — it is created
@@ -208,23 +208,45 @@ module MakeWithConfig = (
 
   // Expose api/apiRole as Platform.T value bindings so DCB slice builders
   // can access them through the platform interface.
-  let api = appSyncApi
-  let apiRole = appSyncApiRole
+  let api = domainApi
+  let apiRole = domainApiRole
 
   // Populate apiConfig with both domain and platform API references.
   // In platform/monolithic mode, platformApi starts as domainApi and is updated
   // by deployPlatform/makePlatform once the core API resource is created (split mode).
   let () = apiConfigRef := Some({
-    domainApi: appSyncApi,
-    domainApiRole: appSyncApiRole,
-    platformApi: platformApiForConfig,
-    platformApiRole: platformApiRoleForConfig,
+    domainApi: domainApi,
+    domainApiRole: domainApiRole,
+    platformApi: platformApi,
+    platformApiRole: platformApiRole,
   })
 
-  // Local module alias so sub-builders that require {api, apiRole} can reference it.
+  // Returns the AppSync API/role to attach resolvers to for the current deploy target.
+  // Hoisted above ApiConfig so the module can reference them as thunks.
+  let resolveTargetApi = () =>
+    switch currentDeployTarget.contents {
+    | Domain => domainApi
+    | Platform =>
+      switch apiConfigRef.contents {
+      | Some({platformApi}) => platformApi
+      | None => domainApi // fallback: platform API not yet constructed
+      }
+    }
+
+  let resolveTargetApiRole = () =>
+    switch currentDeployTarget.contents {
+    | Domain => domainApiRole
+    | Platform =>
+      switch apiConfigRef.contents {
+      | Some({platformApiRole}) => platformApiRole
+      | None => domainApiRole
+      }
+    }
+
+  // Thunk-based ApiConfig — evaluated at make() time, reads currentDeployTarget set by deployPlugin.
   module ApiConfig = {
-    let api = appSyncApi
-    let apiRole = appSyncApiRole
+    let api = resolveTargetApi
+    let apiRole = resolveTargetApiRole
   }
 
   module Aggregate = {
@@ -461,17 +483,6 @@ module MakeWithConfig = (
     let _ = await PutCommand.send(PutCommand.make({PutCommand.tableName, item}))
   }
 
-  // Returns the AppSync API to attach resolvers/schema to for the current deploy target.
-  let resolveTargetApi = () =>
-    switch currentDeployTarget.contents {
-    | Domain => appSyncApi
-    | Platform =>
-      switch apiConfigRef.contents {
-      | Some({platformApi}) => platformApi
-      | None => appSyncApi // fallback: platform API not yet constructed
-      }
-    }
-
   let hooks: ReventlessCore.Plugin_Helpers.platformHooks = {
     // AWS uses Interstack for admin extension points — leave ref at empty dict.
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
@@ -514,11 +525,11 @@ module MakeWithConfig = (
       // Platform plugins use a separate "deploy-schema-platform:" namespace and the Core API,
       // so their cumulative schema is kept independent from the Domain API's schema.
       let (schemaPrefix, targetApi) = switch currentDeployTarget.contents {
-      | Domain => (deploySchemaPrefix, appSyncApi)
+      | Domain => (deploySchemaPrefix, domainApi)
       | Platform =>
         let api = switch apiConfigRef.contents {
         | Some({platformApi}) => platformApi
-        | None => appSyncApi // fallback: Core API not yet constructed
+        | None => domainApi // fallback: Core API not yet constructed
         }
         (deploySchemaPlatformPrefix, api)
       }
@@ -804,8 +815,8 @@ module MakeWithConfig = (
     // can read them without app plugins having to pass them through.
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(appSyncApi->wrapHookedValue)
-    hooks.apiRole := Some(appSyncApiRole->wrapHookedValue)
+    hooks.api := Some(domainApi->wrapHookedValue)
+    hooks.apiRole := Some(domainApiRole->wrapHookedValue)
 
     // Phase 2: create the Platform API resource early — before Admin.construct —
     // so admin resolvers are attached to the correct API in split mode.
@@ -813,7 +824,7 @@ module MakeWithConfig = (
     let (coreApiOutput, coreRoleOutput) = if Config.splitApi {
       AppSync_Adapter.makeApiResource(~name="core-api", ~opts={})
     } else {
-      (appSyncApi, appSyncApiRole)
+      (domainApi, domainApiRole)
     }
 
     // Update splitApiOutputsRef and apiConfig with the now-known Platform API.
@@ -903,43 +914,43 @@ module MakeWithConfig = (
       Pulumi.Pulumi.export("platformApiRoleArn", coreRoleOutput->Pulumi.Output.flatMap(role => role.arn))
     } else {
       // New named exports — Platform API equals Domain API in unified mode.
-      Pulumi.Pulumi.export("platformApiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
+      Pulumi.Pulumi.export("platformApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
-        appSyncApi->Pulumi.Output.flatMap(api =>
+        domainApi->Pulumi.Output.flatMap(api =>
           api.uris->Pulumi.Output.apply(uris => uris.graphQL)
         ),
       )
-      Pulumi.Pulumi.export("platformApiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+      Pulumi.Pulumi.export("platformApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
     }
 
     // Domain API exports — legacy names kept until Phase 4.
-    Pulumi.Pulumi.export("apiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
+    Pulumi.Pulumi.export("apiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "apiEndpoint",
-      appSyncApi->Pulumi.Output.flatMap(api =>
+      domainApi->Pulumi.Output.flatMap(api =>
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       ),
     )
-    Pulumi.Pulumi.export("apiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+    Pulumi.Pulumi.export("apiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
 
     // New named exports — Domain API.
-    Pulumi.Pulumi.export("domainApiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
+    Pulumi.Pulumi.export("domainApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "domainApiEndpoint",
-      appSyncApi->Pulumi.Output.flatMap(api =>
+      domainApi->Pulumi.Output.flatMap(api =>
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       ),
     )
-    Pulumi.Pulumi.export("domainApiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+    Pulumi.Pulumi.export("domainApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
   }
 
   let deployPlatform = (~version) => {
     Console.log(`[Platform:deployPlatform] v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(appSyncApi->wrapHookedValue)
-    hooks.apiRole := Some(appSyncApiRole->wrapHookedValue)
+    hooks.api := Some(domainApi->wrapHookedValue)
+    hooks.apiRole := Some(domainApiRole->wrapHookedValue)
 
     // Phase 2: create the Platform API resource early — before Admin.construct —
     // so admin resolvers are attached to the correct API in split mode.
@@ -947,7 +958,7 @@ module MakeWithConfig = (
     let (coreApiOutput, coreRoleOutput) = if Config.splitApi {
       AppSync_Adapter.makeApiResource(~name="core-api", ~opts={})
     } else {
-      (appSyncApi, appSyncApiRole)
+      (domainApi, domainApiRole)
     }
 
     // Update splitApiOutputsRef and apiConfig with the now-known Platform API.
@@ -970,15 +981,15 @@ module MakeWithConfig = (
     // for all active schema fragments, stitches them with the admin base, and
     // pushes the combined schema to AppSync via the SDK.
     //
-    // The closure captures appSyncApiId (a Pulumi Output). Pulumi serializes
+    // The closure captures domainApiId (a Pulumi Output). Pulumi serializes
     // captured Outputs into the CallbackFunction Lambda; at runtime, Output.get
     // returns the resolved string synchronously.
-    let appSyncApiId = appSyncApi->Pulumi.Output.flatMap(api => api.id)
+    let domainApiId = domainApi->Pulumi.Output.flatMap(api => api.id)
 
     module PluginExtensionPoint = Plugin_ExtensionPoint_Builder.MakeWithConfig({
       let updateApiSchema = Some(async (queryEngine: Reventless.QueryEngine.operations) => {
         open Reventless.QueryEngine.Filter
-        let apiId = appSyncApiId->Pulumi.Output.get
+        let apiId = domainApiId->Pulumi.Output.get
         let plugins = await queryEngine.scan(
           ~readModelName="Plugin",
           ~filterConfigs=[("status", Contains, String("Connected"))],
@@ -1065,7 +1076,7 @@ module MakeWithConfig = (
       (),
     )
     PluginRuntime_Builder.registerConfig(
-      ~appSyncApiId,
+      ~appSyncApiId=domainApiId,
       ~pluginReadModelTableName?,
       ~clonerEnabled=Config.cloner,
       (),
@@ -1073,7 +1084,7 @@ module MakeWithConfig = (
 
     if Config.splitApi {
       // Split mode: push admin schema to the Platform (core) API.
-      // Plugin API (appSyncApi) only gets plugin schema — no admin fields.
+      // Plugin API (domainApi) only gets plugin schema — no admin fields.
       // coreApiOutput was created above before Admin.construct.
       let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
         ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
@@ -1119,41 +1130,41 @@ module MakeWithConfig = (
         ~group="Admin",
       )
       let _ = AppSync_Adapter.updateSchema(
-        ~api=appSyncApi,
+        ~api=domainApi,
         ~baseFragment=adminBaseFragment,
         ~pluginFragments=[],
       )
 
       // New named exports — Platform API equals Domain API in unified mode.
-      Pulumi.Pulumi.export("platformApiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
+      Pulumi.Pulumi.export("platformApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
         "platformApiEndpoint",
-        appSyncApi->Pulumi.Output.flatMap(api =>
+        domainApi->Pulumi.Output.flatMap(api =>
           api.uris->Pulumi.Output.apply(uris => uris.graphQL)
         ),
       )
-      Pulumi.Pulumi.export("platformApiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+      Pulumi.Pulumi.export("platformApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
     }
 
     // Domain API exports — legacy names kept until Phase 4.
-    Pulumi.Pulumi.export("apiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
+    Pulumi.Pulumi.export("apiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "apiEndpoint",
-      appSyncApi->Pulumi.Output.flatMap(api =>
+      domainApi->Pulumi.Output.flatMap(api =>
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       ),
     )
-    Pulumi.Pulumi.export("apiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+    Pulumi.Pulumi.export("apiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
 
     // New named exports — Domain API.
-    Pulumi.Pulumi.export("domainApiId", appSyncApi->Pulumi.Output.flatMap(api => api.id))
+    Pulumi.Pulumi.export("domainApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
     Pulumi.Pulumi.export(
       "domainApiEndpoint",
-      appSyncApi->Pulumi.Output.flatMap(api =>
+      domainApi->Pulumi.Output.flatMap(api =>
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       ),
     )
-    Pulumi.Pulumi.export("domainApiRoleArn", appSyncApiRole->Pulumi.Output.flatMap(role => role.arn))
+    Pulumi.Pulumi.export("domainApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
 
     // Export Plugin RM table name so plugin stacks can query existing plugins
     // for cumulative schema stitching (preResolversSchemaHook).
@@ -1178,10 +1189,10 @@ module MakeWithConfig = (
     // Fire onPlatformDeployed hook with resolved platform metadata.
     switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
     | Some(hook) =>
-      let resolvedDomainApiEndpoint = appSyncApi->Pulumi.Output.flatMap(api =>
+      let resolvedDomainApiEndpoint = domainApi->Pulumi.Output.flatMap(api =>
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       )
-      let resolvedDomainApiRoleArn = appSyncApiRole->Pulumi.Output.flatMap(role => role.arn)
+      let resolvedDomainApiRoleArn = domainApiRole->Pulumi.Output.flatMap(role => role.arn)
       let resolvedPlatformApiEndpoint = coreApiOutput->Pulumi.Output.flatMap(api =>
         api.uris->Pulumi.Output.apply(uris => uris.graphQL)
       )
@@ -1251,8 +1262,10 @@ module MakeWithConfig = (
     // Each plugin stack creates its own scheduler (closures can't cross stacks).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
-    hooks.api := Some(appSyncApi->wrapHookedValue)
-    hooks.apiRole := Some(appSyncApiRole->wrapHookedValue)
+    let targetApi = resolveTargetApi()
+    let targetApiRole = resolveTargetApiRole()
+    hooks.api := Some(targetApi->wrapHookedValue)
+    hooks.apiRole := Some(targetApiRole->wrapHookedValue)
 
     module P = unpack(plugin)
     let pluginComponent = P.make()

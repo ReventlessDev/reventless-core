@@ -6,8 +6,8 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 module EventCollectorRuntimeBuilder = AutomationSliceRuntime_Builder_Single
 
 module Make = (Api: {
-  let api: Types.AppSync.api
-  let apiRole: Types.AppSync.role
+  let api: unit => Types.AppSync.api
+  let apiRole: unit => Types.AppSync.role
 }) => {
   module Inner = ReventlessCore.AutomationSlice_Builder.Make(
     RuntimeEnvironment,

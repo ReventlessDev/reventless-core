@@ -59,8 +59,8 @@ function Make(QueryDbStorage) {
           config: config$1,
           subIdConfig: undefined
         })(QueryDbStorage)(QueryDb_Adapter$ReventlessCore.NoResolvers(QueryDbStorage));
-        let referencesDb = ReferencesDb.make(Api.api, Api.apiRole, ttl$1, opts);
-        let countsDb = CountsDb.make(Api.api, Api.apiRole, ttl$1, opts);
+        let referencesDb = ReferencesDb.make(Api.api(), Api.apiRole(), ttl$1, opts);
+        let countsDb = CountsDb.make(Api.api(), Api.apiRole(), ttl$1, opts);
         let handler = Component$ReventlessCore.operations(countsDb).apply(param => {
           let Callback = Counter_Callback$ReventlessCore.Make({
             name: extra$1,

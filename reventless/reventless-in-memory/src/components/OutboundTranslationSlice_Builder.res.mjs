@@ -13,9 +13,11 @@ function Make(Bus) {
   let EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_InMemory$ReventlessInMemory.Make(Bus)(EventCollectorChannel);
   let QueryDbStorage = QueryDbStorage_InMemory$ReventlessInMemory.Make(Bus);
   let QueryDbResolvers = QueryDbResolvers_GraphQL$ReventlessInMemory.Make(Bus);
+  let api = () => {};
+  let apiRole = () => {};
   let Api = {
-    api: undefined,
-    apiRole: undefined
+    api: api,
+    apiRole: apiRole
   };
   let CoreMaker = OutboundTranslationSlice_Builder$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,

@@ -10,8 +10,8 @@ module Make = (
     with type api = QueryDbStorage.api
     and type role = QueryDbStorage.role,
   Api: {
-    let api: QueryDbStorage.api
-    let apiRole: QueryDbStorage.role
+    let api: unit => QueryDbStorage.api
+    let apiRole: unit => QueryDbStorage.role
   },
 ) => {
   module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (
@@ -53,7 +53,7 @@ module Make = (
     let construct = (~publishJsons, self, _name) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
-      let queryDb = SpecificQueryDb.make(~api=Api.api, ~apiRole=Api.apiRole, ~opts)
+      let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
 
       // Resolve publishJsons so it's available for receive
       let publishJsonsRef: ref<option<ReventlessInfra.CommandTopic.publishJsons>> = ref(None)

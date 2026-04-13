@@ -168,17 +168,41 @@ function MakeWithConfig(Config) {
       role
     ];
   }
-  let appSyncApiRole = match[1];
-  let appSyncApi = match[0];
+  let domainApiRole = match[1];
+  let domainApi = match[0];
   apiConfigRef.contents = {
-    domainApi: appSyncApi,
-    domainApiRole: appSyncApiRole,
+    domainApi: domainApi,
+    domainApiRole: domainApiRole,
     platformApi: match[2],
     platformApiRole: match[3]
   };
+  let resolveTargetApi = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return domainApi;
+    }
+    let match$1 = apiConfigRef.contents;
+    if (match$1 !== undefined) {
+      return match$1.platformApi;
+    } else {
+      return domainApi;
+    }
+  };
+  let resolveTargetApiRole = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return domainApiRole;
+    }
+    let match$1 = apiConfigRef.contents;
+    if (match$1 !== undefined) {
+      return match$1.platformApiRole;
+    } else {
+      return domainApiRole;
+    }
+  };
   let ApiConfig = {
-    api: appSyncApi,
-    apiRole: appSyncApiRole
+    api: resolveTargetApi,
+    apiRole: resolveTargetApiRole
   };
   let Make = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
   let MakeAsync = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
@@ -358,18 +382,6 @@ function MakeWithConfig(Config) {
       TableName: tableName
     }));
   };
-  let resolveTargetApi = () => {
-    let match = currentDeployTarget.contents;
-    if (match === "Domain") {
-      return appSyncApi;
-    }
-    let match$1 = apiConfigRef.contents;
-    if (match$1 !== undefined) {
-      return match$1.platformApi;
-    } else {
-      return appSyncApi;
-    }
-  };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let match = currentDeployTarget.contents;
@@ -377,11 +389,11 @@ function MakeWithConfig(Config) {
     if (match === "Domain") {
       match$1 = [
         "deploy-schema:",
-        appSyncApi
+        domainApi
       ];
     } else {
       let match$2 = apiConfigRef.contents;
-      let api = match$2 !== undefined ? match$2.platformApi : appSyncApi;
+      let api = match$2 !== undefined ? match$2.platformApi : domainApi;
       match$1 = [
         "deploy-schema-platform:",
         api
@@ -610,11 +622,11 @@ function MakeWithConfig(Config) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = Config.splitApi ? AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {}) : [
-        appSyncApi,
-        appSyncApiRole
+        domainApi,
+        domainApiRole
       ];
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -660,26 +672,26 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(coreApiOutput, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(coreRoleOutput, role => role.arn));
     } else {
-      Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-      Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-      Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+      Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+      Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+      Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     }
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = Config.splitApi ? AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {}) : [
-        appSyncApi,
-        appSyncApiRole
+        domainApi,
+        domainApiRole
       ];
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -698,9 +710,9 @@ function MakeWithConfig(Config) {
         };
       }
     }
-    let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let domainApiId = Output$Pulumi.flatMap(domainApi, api => api.id);
     let updateApiSchema = async queryEngine => {
-      let apiId = appSyncApiId.get();
+      let apiId = domainApiId.get();
       let plugins = await queryEngine.scan("Plugin", [[
           "status",
           "Contains",
@@ -749,7 +761,7 @@ function MakeWithConfig(Config) {
       pluginReadModelTableName = undefined;
     }
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, Config.cloner, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (Config.splitApi) {
       let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
@@ -772,17 +784,17 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(coreRoleOutput, role => role.arn));
     } else {
       let adminBaseFragment$1 = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-      AppSync_Adapter$ReventlessAws.updateSchema(appSyncApi, adminBaseFragment$1, []);
-      Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-      Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-      Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+      AppSync_Adapter$ReventlessAws.updateSchema(domainApi, adminBaseFragment$1, []);
+      Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+      Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+      Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     }
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     if (pluginReadModelTableName !== undefined) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
@@ -791,8 +803,8 @@ function MakeWithConfig(Config) {
     if (hook === undefined) {
       return;
     }
-    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL));
-    let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(appSyncApiRole, role => role.arn);
+    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
     let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(coreApiOutput, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(coreRoleOutput, role => role.arn);
     let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
@@ -828,8 +840,10 @@ function MakeWithConfig(Config) {
     currentDeployTarget.contents = apiTarget;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
+    let targetApi = resolveTargetApi();
+    let targetApiRole = resolveTargetApiRole();
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
@@ -838,8 +852,8 @@ function MakeWithConfig(Config) {
     return pluginOutputs;
   };
   return {
-    api: appSyncApi,
-    apiRole: appSyncApiRole,
+    api: domainApi,
+    apiRole: domainApiRole,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,
@@ -961,17 +975,41 @@ function Make($star) {
       role
     ];
   }
-  let appSyncApiRole = match[1];
-  let appSyncApi = match[0];
+  let domainApiRole = match[1];
+  let domainApi = match[0];
   apiConfigRef.contents = {
-    domainApi: appSyncApi,
-    domainApiRole: appSyncApiRole,
+    domainApi: domainApi,
+    domainApiRole: domainApiRole,
     platformApi: match[2],
     platformApiRole: match[3]
   };
+  let resolveTargetApi = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return domainApi;
+    }
+    let match$1 = apiConfigRef.contents;
+    if (match$1 !== undefined) {
+      return match$1.platformApi;
+    } else {
+      return domainApi;
+    }
+  };
+  let resolveTargetApiRole = () => {
+    let match = currentDeployTarget.contents;
+    if (match === "Domain") {
+      return domainApiRole;
+    }
+    let match$1 = apiConfigRef.contents;
+    if (match$1 !== undefined) {
+      return match$1.platformApiRole;
+    } else {
+      return domainApiRole;
+    }
+  };
   let ApiConfig = {
-    api: appSyncApi,
-    apiRole: appSyncApiRole
+    api: resolveTargetApi,
+    apiRole: resolveTargetApiRole
   };
   let Make$1 = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
   let MakeAsync = Spec => (Behavior => (EventMappings => Aggregate_Builder_Single_Async$ReventlessAws.Make(Spec)(Behavior)(EventMappings)));
@@ -1150,18 +1188,6 @@ function Make($star) {
       TableName: tableName
     }));
   };
-  let resolveTargetApi = () => {
-    let match = currentDeployTarget.contents;
-    if (match === "Domain") {
-      return appSyncApi;
-    }
-    let match$1 = apiConfigRef.contents;
-    if (match$1 !== undefined) {
-      return match$1.platformApi;
-    } else {
-      return appSyncApi;
-    }
-  };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let match = currentDeployTarget.contents;
@@ -1169,11 +1195,11 @@ function Make($star) {
     if (match === "Domain") {
       match$1 = [
         "deploy-schema:",
-        appSyncApi
+        domainApi
       ];
     } else {
       let match$2 = apiConfigRef.contents;
-      let api = match$2 !== undefined ? match$2.platformApi : appSyncApi;
+      let api = match$2 !== undefined ? match$2.platformApi : domainApi;
       match$1 = [
         "deploy-schema-platform:",
         api
@@ -1402,8 +1428,8 @@ function Make($star) {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -1445,19 +1471,19 @@ function Make($star) {
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(coreApiOutput, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(coreApiOutput, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(coreRoleOutput, role => role.arn));
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
     let match = AppSync_Adapter$ReventlessAws.makeApiResource("core-api", {});
     let coreRoleOutput = match[1];
     let coreApiOutput = match[0];
@@ -1474,9 +1500,9 @@ function Make($star) {
         platformApiRole: coreRoleOutput
       };
     }
-    let appSyncApiId = Output$Pulumi.flatMap(appSyncApi, api => api.id);
+    let domainApiId = Output$Pulumi.flatMap(domainApi, api => api.id);
     let updateApiSchema = async queryEngine => {
-      let apiId = appSyncApiId.get();
+      let apiId = domainApiId.get();
       let plugins = await queryEngine.scan("Plugin", [[
           "status",
           "Contains",
@@ -1524,7 +1550,7 @@ function Make($star) {
       pluginReadModelTableName = undefined;
     }
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, appSyncApiId, false, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, false, undefined);
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
     Output$Pulumi.flatMap(coreApiOutput, api => Output$Pulumi.flatMap(api.id, apiId => {
@@ -1544,12 +1570,12 @@ function Make($star) {
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(coreApiOutput, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(coreApiOutput, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(coreRoleOutput, role => role.arn));
-    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
-    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(appSyncApi, api => api.id));
-    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL)));
-    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(appSyncApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("apiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("apiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("apiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
+    Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
+    Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
     if (pluginReadModelTableName !== undefined) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
@@ -1558,8 +1584,8 @@ function Make($star) {
     if (hook === undefined) {
       return;
     }
-    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(appSyncApi, api => api.uris.apply(uris => uris.GRAPHQL));
-    let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(appSyncApiRole, role => role.arn);
+    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
     let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(coreApiOutput, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(coreRoleOutput, role => role.arn);
     let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
@@ -1595,8 +1621,10 @@ function Make($star) {
     currentDeployTarget.contents = apiTarget;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
-    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApi);
-    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(appSyncApiRole);
+    let targetApi = resolveTargetApi();
+    let targetApiRole = resolveTargetApiRole();
+    hooks_api.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApi);
+    hooks_apiRole.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
@@ -1622,8 +1650,8 @@ function Make($star) {
     Make: include$2.Make
   };
   return {
-    api: appSyncApi,
-    apiRole: appSyncApiRole,
+    api: domainApi,
+    apiRole: domainApiRole,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
     ExtensionPoint: ExtensionPoint,

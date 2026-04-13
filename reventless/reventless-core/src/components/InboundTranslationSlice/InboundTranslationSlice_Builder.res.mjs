@@ -37,7 +37,7 @@ function Make(QueryDbStorage) {
         let opts = {
           parent: opts_parent
         };
-        let queryDb = SpecificQueryDb.make(Api.api, Api.apiRole, undefined, opts);
+        let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, opts);
         let publishJsonsRef = {
           contents: undefined
         };
