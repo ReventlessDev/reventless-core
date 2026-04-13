@@ -186,7 +186,7 @@ let rec runWithRaceRetry = async (
       attempt < maxAttempts && jsExn->Option.mapOr(false, isFieldNotFoundError)
     if isRetryable {
       Console.log(
-        `[AppSync_Resolver_Retrying] retry ${attempt->Int.toString}/${maxAttempts->Int.toString} after ${delayMs->Int.toString}ms: ${name}: ${msg}`,
+        `[AppSync_Resolver_Retrying] attempt ${(attempt + 1)->Int.toString}/${maxAttempts->Int.toString} failed, retrying in ${delayMs->Int.toString}ms: ${name}: ${msg}`,
       )
       let _ = await Promise.make((resolve, _) => setTimeout(resolve, delayMs)->ignore)
       let nextDelay = delayMs * 2
@@ -199,9 +199,13 @@ let rec runWithRaceRetry = async (
         makeCall,
       )
     } else {
-      Console.log(
-        `[AppSync_Resolver_Retrying] giving up after ${attempt->Int.toString} attempts: ${name}: ${msg}`,
-      )
+      // Only log when we exhausted retries on a retryable error — not on the
+      // first non-retryable failure, which the caller may handle itself.
+      if attempt > 0 {
+        Console.log(
+          `[AppSync_Resolver_Retrying] giving up after ${(attempt + 1)->Int.toString} attempts: ${name}: ${msg}`,
+        )
+      }
       // Re-throw the original JavaScript error so Pulumi can display its message.
       // throw(exn) would rethrow the ReScript exception wrapper (RE_EXN_ID), which
       // has no `.message` property and causes Pulumi to display "error: undefined".

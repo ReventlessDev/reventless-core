@@ -85,7 +85,7 @@ async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelay
     let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(jsExn, Stdlib_JsExn.message), "(no message)");
     let isRetryable = attempt < maxAttempts && Stdlib_Option.mapOr(jsExn, false, isFieldNotFoundError);
     if (isRetryable) {
-      console.log(`[AppSync_Resolver_Retrying] retry ` + attempt.toString() + `/` + maxAttempts.toString() + ` after ` + delayMs.toString() + `ms: ` + name + `: ` + msg);
+      console.log(`[AppSync_Resolver_Retrying] attempt ` + (attempt + 1 | 0).toString() + `/` + maxAttempts.toString() + ` failed, retrying in ` + delayMs.toString() + `ms: ` + name + `: ` + msg);
       await new Promise((resolve, param) => {
         setTimeout(resolve, delayMs);
       });
@@ -93,7 +93,9 @@ async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelay
       let cappedDelay = nextDelay > maxDelayMs ? maxDelayMs : nextDelay;
       return await runWithRaceRetry(attempt + 1 | 0, maxAttempts, cappedDelay, maxDelayMs, makeCall);
     }
-    console.log(`[AppSync_Resolver_Retrying] giving up after ` + attempt.toString() + ` attempts: ` + name + `: ` + msg);
+    if (attempt > 0) {
+      console.log(`[AppSync_Resolver_Retrying] giving up after ` + (attempt + 1 | 0).toString() + ` attempts: ` + name + `: ` + msg);
+    }
     if (jsExn !== undefined) {
       return jsThrow(Primitive_option.valFromOption(jsExn));
     }
