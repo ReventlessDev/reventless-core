@@ -734,7 +734,7 @@ module MakeWithConfig = (
           ),
           extensionWirings: [],
         }
-        hook(deployedInfo)
+        let _ = hook(deployedInfo)
       | None => ()
       }
     })

@@ -683,22 +683,28 @@ function MakeWithConfig(Config) {
     let environment = Pulumi.getStack();
     builtInfos.forEach(info => {
       let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
-      if (hook !== undefined) {
-        return hook({
-          name: info.name,
-          version: info.version,
-          environment: environment,
-          stackName: environment,
-          components: info.components.map(c => ({
-            name: c.name,
-            kind: c.kind,
-            schema: c.schema,
-            resources: [],
-            subComponents: []
-          })),
-          extensionWirings: []
-        });
+      if (hook === undefined) {
+        return;
       }
+      let deployedInfo_name = info.name;
+      let deployedInfo_version = info.version;
+      let deployedInfo_components = info.components.map(c => ({
+        name: c.name,
+        kind: c.kind,
+        schema: c.schema,
+        resources: [],
+        subComponents: []
+      }));
+      let deployedInfo_extensionWirings = [];
+      let deployedInfo = {
+        name: deployedInfo_name,
+        version: deployedInfo_version,
+        environment: environment,
+        stackName: environment,
+        components: deployedInfo_components,
+        extensionWirings: deployedInfo_extensionWirings
+      };
+      hook(deployedInfo);
     });
   };
   let startServers = () => {
@@ -1728,22 +1734,28 @@ function Make($star) {
     let environment = Pulumi.getStack();
     builtInfos.forEach(info => {
       let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
-      if (hook !== undefined) {
-        return hook({
-          name: info.name,
-          version: info.version,
-          environment: environment,
-          stackName: environment,
-          components: info.components.map(c => ({
-            name: c.name,
-            kind: c.kind,
-            schema: c.schema,
-            resources: [],
-            subComponents: []
-          })),
-          extensionWirings: []
-        });
+      if (hook === undefined) {
+        return;
       }
+      let deployedInfo_name = info.name;
+      let deployedInfo_version = info.version;
+      let deployedInfo_components = info.components.map(c => ({
+        name: c.name,
+        kind: c.kind,
+        schema: c.schema,
+        resources: [],
+        subComponents: []
+      }));
+      let deployedInfo_extensionWirings = [];
+      let deployedInfo = {
+        name: deployedInfo_name,
+        version: deployedInfo_version,
+        environment: environment,
+        stackName: environment,
+        components: deployedInfo_components,
+        extensionWirings: deployedInfo_extensionWirings
+      };
+      hook(deployedInfo);
     });
   };
   let startServers = () => {

@@ -472,9 +472,9 @@ type pluginDeployedInfo = {
   extensionWirings: array<extensionWiring>,
 }
 
-let onPluginDeployedHook: ref<option<pluginDeployedInfo => unit>> = ref(None)
+let onPluginDeployedHook: ref<option<pluginDeployedInfo => promise<unit>>> = ref(None)
 
-let registerOnPluginDeployed = (hook: pluginDeployedInfo => unit) => {
+let registerOnPluginDeployed = (hook: pluginDeployedInfo => promise<unit>) => {
   onPluginDeployedHook.contents = Some(hook)
 }
 
@@ -1270,8 +1270,9 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       })
     )
 
-    // Collect all resolved components and fire the hook.
-    let _ =
+    // Collect all resolved components, fire the hook, and export the resulting
+    // Output<unit> at top level so Pulumi blocks on the hook's Promise.
+    let hookOutput =
       (
         pluginOutputs.id,
         pluginOutputs.version,
@@ -1304,6 +1305,9 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
           hook(info)
         })
       )
+      ->Pulumi.Output.flatMap(p => p->Pulumi.Output.fromPromise)
+
+    Pulumi.Pulumi.export("_pluginDeployedSync", hookOutput)
   | None => ()
   }
 }

@@ -679,7 +679,7 @@ function exportPluginOutputs(pluginOutputs) {
       };
     });
   }));
-  Output$Pulumi.flatMap(Pulumi.all([
+  let hookOutput = Output$Pulumi.flatMap(Output$Pulumi.flatMap(Pulumi.all([
     pluginOutputs.id,
     pluginOutputs.version,
     resolveAggregates,
@@ -702,7 +702,7 @@ function exportPluginOutputs(pluginOutputs) {
       resolveExtensionWirings
     ]).apply(param => {
       let name = id.split("@")[0];
-      hook({
+      return hook({
         name: name,
         version: version,
         environment: Pulumi.getStack(),
@@ -721,7 +721,8 @@ function exportPluginOutputs(pluginOutputs) {
         extensionWirings: param[5]
       });
     });
-  });
+  }), p => p);
+  Pulumi$Pulumi.$$export("_pluginDeployedSync", hookOutput);
 }
 
 let addEventMapperFns = Builder_Helpers$ReventlessCore.addEventMapperFns;
