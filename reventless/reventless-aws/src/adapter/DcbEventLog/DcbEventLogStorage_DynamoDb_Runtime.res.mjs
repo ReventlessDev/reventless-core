@@ -116,32 +116,29 @@ function fromItem(item) {
 
 async function queryBySingleTag(table, tagKey, tagValue, after) {
   let indexName = tagToAttributeName(tagKey);
-  let keyConditionExpression = indexName + ` = :val`;
   let expressionAttributeValues = Object.fromEntries([[
       ":val",
       tagValue
     ]]);
   let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      "#pos > :after",
+      indexName + ` = :val AND #pos > :after`,
       Object.fromEntries([[
           "#pos",
           "position"
         ]])
     ]) : [
-      undefined,
+      indexName + ` = :val`,
       undefined
     ];
   let queryParams_TableName = table.name;
   let queryParams_ExpressionAttributeNames = match[1];
   let queryParams_ExpressionAttributeValues = expressionAttributeValues;
-  let queryParams_FilterExpression = match[0];
   let queryParams_IndexName = indexName;
-  let queryParams_KeyConditionExpression = keyConditionExpression;
+  let queryParams_KeyConditionExpression = match[0];
   let queryParams = {
     TableName: queryParams_TableName,
     ExpressionAttributeNames: queryParams_ExpressionAttributeNames,
     ExpressionAttributeValues: queryParams_ExpressionAttributeValues,
-    FilterExpression: queryParams_FilterExpression,
     IndexName: queryParams_IndexName,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
@@ -155,26 +152,24 @@ async function queryByCompositeTags(table, tags, after) {
       composite
     ]]);
   let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      "#pos > :after",
+      "tag_composite = :composite AND #pos > :after",
       Object.fromEntries([[
           "#pos",
           "position"
         ]])
     ]) : [
-      undefined,
+      "tag_composite = :composite",
       undefined
     ];
   let queryParams_TableName = table.name;
   let queryParams_ExpressionAttributeNames = match[1];
   let queryParams_ExpressionAttributeValues = expressionAttributeValues;
-  let queryParams_FilterExpression = match[0];
   let queryParams_IndexName = "tag_composite";
-  let queryParams_KeyConditionExpression = "tag_composite = :composite";
+  let queryParams_KeyConditionExpression = match[0];
   let queryParams = {
     TableName: queryParams_TableName,
     ExpressionAttributeNames: queryParams_ExpressionAttributeNames,
     ExpressionAttributeValues: queryParams_ExpressionAttributeValues,
-    FilterExpression: queryParams_FilterExpression,
     IndexName: queryParams_IndexName,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
@@ -194,11 +189,6 @@ async function scanWithFilter(table, eventTypes, after) {
     });
     filterParts.push(`(` + typeConditions.join(" OR ") + `)`);
   }
-  if (after !== undefined) {
-    expressionAttributeNames["#pos"] = "position";
-    expressionAttributeValues[":after"] = after;
-    filterParts.push("#pos > :after");
-  }
   let filterExpression = filterParts.length !== 0 ? filterParts.join(" AND ") : undefined;
   let hasAttributeValues = Object.keys(expressionAttributeValues).length !== 0;
   let hasAttributeNames = Object.keys(expressionAttributeNames).length !== 0;
@@ -211,7 +201,12 @@ async function scanWithFilter(table, eventTypes, after) {
     ExpressionAttributeValues: scanParams_ExpressionAttributeValues,
     FilterExpression: filterExpression
   };
-  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
+  let rawItems = await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
+  if (after !== undefined) {
+    return rawItems.filter(item => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), obj => obj["position"]), Stdlib_JSON.Decode.string), false, pos => Primitive_string.compare(pos, after) > 0));
+  } else {
+    return rawItems;
+  }
 }
 
 async function queryByPartitionKey(table, partitionKey, after) {
@@ -220,25 +215,23 @@ async function queryByPartitionKey(table, partitionKey, after) {
       partitionKey
     ]]);
   let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      "#pos > :after",
+      "id = :pk AND #pos > :after",
       Object.fromEntries([[
           "#pos",
           "position"
         ]])
     ]) : [
-      undefined,
+      "id = :pk",
       undefined
     ];
   let queryParams_TableName = table.name;
   let queryParams_ExpressionAttributeNames = match[1];
   let queryParams_ExpressionAttributeValues = expressionAttributeValues;
-  let queryParams_FilterExpression = match[0];
-  let queryParams_KeyConditionExpression = "id = :pk";
+  let queryParams_KeyConditionExpression = match[0];
   let queryParams = {
     TableName: queryParams_TableName,
     ExpressionAttributeNames: queryParams_ExpressionAttributeNames,
     ExpressionAttributeValues: queryParams_ExpressionAttributeValues,
-    FilterExpression: queryParams_FilterExpression,
     KeyConditionExpression: queryParams_KeyConditionExpression
   };
   return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
@@ -423,25 +416,23 @@ function queryByPartitionKeyStream(table, partitionKey, after) {
       partitionKey
     ]]);
   let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      "#pos > :after",
+      "id = :pk AND #pos > :after",
       Object.fromEntries([[
           "#pos",
           "position"
         ]])
     ]) : [
-      undefined,
+      "id = :pk",
       undefined
     ];
   let baseParams_TableName = table.name;
   let baseParams_ExpressionAttributeNames = match[1];
   let baseParams_ExpressionAttributeValues = expressionAttributeValues;
-  let baseParams_FilterExpression = match[0];
-  let baseParams_KeyConditionExpression = "id = :pk";
+  let baseParams_KeyConditionExpression = match[0];
   let baseParams = {
     TableName: baseParams_TableName,
     ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
-    FilterExpression: baseParams_FilterExpression,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
   return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
@@ -467,26 +458,24 @@ function queryBySingleTagStream(table, tagKey, tagValue, after) {
       tagValue
     ]]);
   let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      "#pos > :after",
+      indexName + ` = :val AND #pos > :after`,
       Object.fromEntries([[
           "#pos",
           "position"
         ]])
     ]) : [
-      undefined,
+      indexName + ` = :val`,
       undefined
     ];
   let baseParams_TableName = table.name;
   let baseParams_ExpressionAttributeNames = match[1];
   let baseParams_ExpressionAttributeValues = expressionAttributeValues;
-  let baseParams_FilterExpression = match[0];
   let baseParams_IndexName = indexName;
-  let baseParams_KeyConditionExpression = indexName + ` = :val`;
+  let baseParams_KeyConditionExpression = match[0];
   let baseParams = {
     TableName: baseParams_TableName,
     ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
-    FilterExpression: baseParams_FilterExpression,
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
@@ -513,26 +502,24 @@ function queryByCompositeTagsStream(table, tags, after) {
       composite
     ]]);
   let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      "#pos > :after",
+      "tag_composite = :composite AND #pos > :after",
       Object.fromEntries([[
           "#pos",
           "position"
         ]])
     ]) : [
-      undefined,
+      "tag_composite = :composite",
       undefined
     ];
   let baseParams_TableName = table.name;
   let baseParams_ExpressionAttributeNames = match[1];
   let baseParams_ExpressionAttributeValues = expressionAttributeValues;
-  let baseParams_FilterExpression = match[0];
   let baseParams_IndexName = "tag_composite";
-  let baseParams_KeyConditionExpression = "tag_composite = :composite";
+  let baseParams_KeyConditionExpression = match[0];
   let baseParams = {
     TableName: baseParams_TableName,
     ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
-    FilterExpression: baseParams_FilterExpression,
     IndexName: baseParams_IndexName,
     KeyConditionExpression: baseParams_KeyConditionExpression
   };
@@ -565,11 +552,6 @@ function scanWithFilterStream(table, eventTypes, after) {
     });
     filterParts.push(`(` + typeConditions.join(" OR ") + `)`);
   }
-  if (after !== undefined) {
-    expressionAttributeNames["#pos"] = "position";
-    expressionAttributeValues[":after"] = after;
-    filterParts.push("#pos > :after");
-  }
   let filterExpression = filterParts.length !== 0 ? filterParts.join(" AND ") : undefined;
   let hasAttributeValues = Object.keys(expressionAttributeValues).length !== 0;
   let hasAttributeNames = Object.keys(expressionAttributeNames).length !== 0;
@@ -582,7 +564,7 @@ function scanWithFilterStream(table, eventTypes, after) {
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
     FilterExpression: filterExpression
   };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
+  let baseStream = Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
       let newrecord = {...baseParams};
@@ -596,6 +578,11 @@ function scanWithFilterStream(table, eventTypes, after) {
     Stdlib_Option.getOr(result.Items, []),
     Stdlib_Option.map(result.LastEvaluatedKey, key => key)
   ]));
+  if (after !== undefined) {
+    return Stream$1.filter(baseStream, item => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), obj => obj["position"]), Stdlib_JSON.Decode.string), false, pos => Primitive_string.compare(pos, after) > 0));
+  } else {
+    return baseStream;
+  }
 }
 
 function executeQueryItemStream(table, queryItem, after) {

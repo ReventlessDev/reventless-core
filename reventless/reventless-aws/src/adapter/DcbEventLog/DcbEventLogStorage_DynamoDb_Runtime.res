@@ -145,17 +145,16 @@ let queryBySingleTag = async (
   ~after: option<string>=?,
 ) => {
   let indexName = tagToAttributeName(tagKey)
-  let keyConditionExpression = `${indexName} = :val`
 
   let expressionAttributeValues = Dict.fromArray([
     (":val", tagValue->JSON.Encode.string),
   ])
 
-  let (filterExpression, expressionAttributeNames) = switch after {
-  | None => (None, None)
+  let (keyConditionExpression, expressionAttributeNames) = switch after {
+  | None => (`${indexName} = :val`, None)
   | Some(afterPos) => {
       expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+      (`${indexName} = :val AND #pos > :after`, Some(Dict.fromArray([("#pos", "position")])))
     }
   }
 
@@ -164,7 +163,6 @@ let queryBySingleTag = async (
     indexName: indexName,
     keyConditionExpression: keyConditionExpression,
     expressionAttributeValues: expressionAttributeValues,
-    ?filterExpression,
     ?expressionAttributeNames,
   }
 
@@ -178,17 +176,16 @@ let queryByCompositeTags = async (
 ) => {
   let composite = compositeTagKey(tags)
   let indexName = "tag_composite"
-  let keyConditionExpression = "tag_composite = :composite"
 
   let expressionAttributeValues = Dict.fromArray([
     (":composite", composite->JSON.Encode.string),
   ])
 
-  let (filterExpression, expressionAttributeNames) = switch after {
-  | None => (None, None)
+  let (keyConditionExpression, expressionAttributeNames) = switch after {
+  | None => ("tag_composite = :composite", None)
   | Some(afterPos) => {
       expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+      ("tag_composite = :composite AND #pos > :after", Some(Dict.fromArray([("#pos", "position")])))
     }
   }
 
@@ -197,7 +194,6 @@ let queryByCompositeTags = async (
     indexName: indexName,
     keyConditionExpression: keyConditionExpression,
     expressionAttributeValues: expressionAttributeValues,
-    ?filterExpression,
     ?expressionAttributeNames,
   }
 
@@ -228,16 +224,6 @@ let scanWithFilter = async (
     }
   }
 
-  // Add position filter
-  switch after {
-  | None => ()
-  | Some(afterPos) => {
-      expressionAttributeNames->Dict.set("#pos", "position")
-      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      filterParts->Array.push("#pos > :after")
-    }
-  }
-
   let filterExpression = if filterParts->Array.length > 0 {
     Some(filterParts->Array.join(" AND "))
   } else {
@@ -254,7 +240,20 @@ let scanWithFilter = async (
     expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
   }
 
-  await scanStream(scanParams)->Stream.runCollect->Effect.runPromise
+  // position cannot appear in FilterExpression (it is the table's sort key).
+  // Collect all items first, then filter by position in application code.
+  let rawItems = await scanStream(scanParams)->Stream.runCollect->Effect.runPromise
+  switch after {
+  | None => rawItems
+  | Some(afterPos) =>
+    rawItems->Array.filter(item =>
+      item
+      ->JSON.Decode.object
+      ->Option.flatMap(obj => obj->Dict.get("position"))
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.mapOr(false, pos => String.compare(pos, afterPos) > 0.)
+    )
+  }
 }
 
 // --- Partition Key Query (direct table query, no GSI) ---
@@ -264,16 +263,15 @@ let queryByPartitionKey = async (
   partitionKey: string,
   ~after: option<string>=?,
 ) => {
-  let keyConditionExpression = "id = :pk"
   let expressionAttributeValues = Dict.fromArray([
     (":pk", partitionKey->JSON.Encode.string),
   ])
 
-  let (filterExpression, expressionAttributeNames) = switch after {
-  | None => (None, None)
+  let (keyConditionExpression, expressionAttributeNames) = switch after {
+  | None => ("id = :pk", None)
   | Some(afterPos) => {
       expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+      ("id = :pk AND #pos > :after", Some(Dict.fromArray([("#pos", "position")])))
     }
   }
 
@@ -281,7 +279,6 @@ let queryByPartitionKey = async (
     tableName: table.name,
     keyConditionExpression: keyConditionExpression,
     expressionAttributeValues: expressionAttributeValues,
-    ?filterExpression,
     ?expressionAttributeNames,
   }
 
@@ -526,18 +523,17 @@ let queryByPartitionKeyStream = (
   let expressionAttributeValues = Dict.fromArray([
     (":pk", partitionKey->JSON.Encode.string),
   ])
-  let (filterExpression, expressionAttributeNames) = switch after {
-  | None => (None, None)
+  let (keyConditionExpression, expressionAttributeNames) = switch after {
+  | None => ("id = :pk", None)
   | Some(afterPos) => {
       expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+      ("id = :pk AND #pos > :after", Some(Dict.fromArray([("#pos", "position")])))
     }
   }
   let baseParams: QueryCommand.input = {
     tableName: table.name,
-    keyConditionExpression: "id = :pk",
+    keyConditionExpression: keyConditionExpression,
     expressionAttributeValues: expressionAttributeValues,
-    ?filterExpression,
     ?expressionAttributeNames,
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
@@ -568,19 +564,18 @@ let queryBySingleTagStream = (
 ) => {
   let indexName = tagToAttributeName(tagKey)
   let expressionAttributeValues = Dict.fromArray([(":val", tagValue->JSON.Encode.string)])
-  let (filterExpression, expressionAttributeNames) = switch after {
-  | None => (None, None)
+  let (keyConditionExpression, expressionAttributeNames) = switch after {
+  | None => (`${indexName} = :val`, None)
   | Some(afterPos) => {
       expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+      (`${indexName} = :val AND #pos > :after`, Some(Dict.fromArray([("#pos", "position")])))
     }
   }
   let baseParams: QueryCommand.input = {
     tableName: table.name,
     indexName: indexName,
-    keyConditionExpression: `${indexName} = :val`,
+    keyConditionExpression: keyConditionExpression,
     expressionAttributeValues: expressionAttributeValues,
-    ?filterExpression,
     ?expressionAttributeNames,
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
@@ -612,19 +607,18 @@ let queryByCompositeTagsStream = (
   let expressionAttributeValues = Dict.fromArray([
     (":composite", composite->JSON.Encode.string),
   ])
-  let (filterExpression, expressionAttributeNames) = switch after {
-  | None => (None, None)
+  let (keyConditionExpression, expressionAttributeNames) = switch after {
+  | None => ("tag_composite = :composite", None)
   | Some(afterPos) => {
       expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (Some("#pos > :after"), Some(Dict.fromArray([("#pos", "position")])))
+      ("tag_composite = :composite AND #pos > :after", Some(Dict.fromArray([("#pos", "position")])))
     }
   }
   let baseParams: QueryCommand.input = {
     tableName: table.name,
     indexName: "tag_composite",
-    keyConditionExpression: "tag_composite = :composite",
+    keyConditionExpression: keyConditionExpression,
     expressionAttributeValues: expressionAttributeValues,
-    ?filterExpression,
     ?expressionAttributeNames,
   }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
@@ -669,15 +663,6 @@ let scanWithFilterStream = (
     }
   }
 
-  switch after {
-  | None => ()
-  | Some(afterPos) => {
-      expressionAttributeNames->Dict.set("#pos", "position")
-      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      filterParts->Array.push("#pos > :after")
-    }
-  }
-
   let filterExpression = if filterParts->Array.length > 0 {
     Some(filterParts->Array.join(" AND "))
   } else {
@@ -694,7 +679,9 @@ let scanWithFilterStream = (
     expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
   }
 
-  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
+  // position cannot appear in FilterExpression (it is the table's sort key).
+  // Filter by position in application code after each page is fetched.
+  let baseStream = Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
       ~catch=DynamoDb_Error.classify,
       () => {
@@ -712,6 +699,18 @@ let scanWithFilterStream = (
       result.lastEvaluatedKey->Option.map(key => Some(key)),
     ))
   )
+
+  switch after {
+  | None => baseStream
+  | Some(afterPos) =>
+    baseStream->Stream.filter(item =>
+      item
+      ->JSON.Decode.object
+      ->Option.flatMap(obj => obj->Dict.get("position"))
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.mapOr(false, pos => String.compare(pos, afterPos) > 0.)
+    )
+  }
 }
 
 let executeQueryItemStream = (
