@@ -3,7 +3,7 @@
 
 open ReventlessInfra.ExtensionMapping
 
-module DemandMapping = {
+module Mapping = {
   module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
   module Delegate = RecordProductDemand
 

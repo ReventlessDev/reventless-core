@@ -114,7 +114,7 @@ Each plugin gets an `-aws` package alongside its agnostic package. The platform 
 my-app/
 ├── catalog-spec/
 ├── catalog/
-│   ├── src/CatalogPlugin.res
+│   ├── src/Plugin.res
 │   ├── tests/
 │   ├── package.json
 │   └── rescript.json
@@ -164,7 +164,7 @@ Platform.deployPlatform(~version=Reventless.PackageVersion.fromCwd())
 
 ```rescript
 module Platform = ReventlessAws.Platform.Make()
-module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
+module Catalog = CatalogPlugin.Plugin.Make(Platform)
 
 Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCwd(),
@@ -181,8 +181,8 @@ Key points:
 ```rescript
 module Platform = ReventlessInMemory.Platform.Make()
 
-module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
-module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)
+module Catalog = CatalogPlugin.Plugin.Make(Platform)
+module Ordering = OrderingPlugin.Plugin.Make(Platform)
 
 Platform.makePlatform(
   ~version=Reventless.PackageVersion.fromCwd(),

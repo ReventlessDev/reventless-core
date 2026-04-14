@@ -337,23 +337,26 @@ let project = event =>
 
 Slices are built through the platform's builder functors. The shared CommandTopic and DcbEventLog are injected by the plugin at deploy time.
 
+`src/Plugin.res` is **auto-generated** by `generate-plugin` (from `reventless-spec`) before each build — no hand-authored composition root needed. The generator discovers all slice specs from their parent folder names and produces:
+
 ```rescript
-module CatalogPlugin = {
-  module Make = (Platform: ReventlessInfra.Platform.T) => {
-    module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-    module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
-    module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory)
-    module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory)
-    module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory)
+// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // StateChangeSlices
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory)
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory)
 
-    module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
-    module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView)
+  // StateViewSlices
+  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
+  module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView)
 
-    module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)
+  // InboundTranslationSlices
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)
 
-    // ...
-  }
-}
+  // ...
 ```
 
 ### 4. Create the plugin

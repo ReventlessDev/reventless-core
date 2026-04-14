@@ -3,7 +3,7 @@
 
 open ReventlessInfra.ExtensionMapping
 
-module ProductMapping = {
+module Mapping = {
   module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
   module Delegate = CatalogProduct
 

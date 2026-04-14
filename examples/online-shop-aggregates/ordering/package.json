@@ -4,6 +4,8 @@
   "description": "Online Shop example — Ordering plugin (Customer & Order aggregates)",
   "license": "MIT",
   "scripts": {
+    "generate": "generate-plugin src/",
+    "prebuild": "npm run generate",
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",

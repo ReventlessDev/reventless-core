@@ -2,10 +2,8 @@
 // Multi-source read model: combines events from two aggregates.
 // Source 1: Product — initialises the entry on Added.
 // Source 2: ProductDemand — increments / decrements the order count.
-
 open Reventless.Message
 open Reventless.Projection
-
 module ProductMapping = Mapping.Make(
   Product,
   ProductDemandReadModel,
@@ -19,7 +17,6 @@ module ProductMapping = Mapping.Make(
       }
   },
 )
-
 module ProductDemandMapping = Mapping.Make(
   ProductDemand,
   ProductDemandReadModel,

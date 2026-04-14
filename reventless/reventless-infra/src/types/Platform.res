@@ -93,7 +93,6 @@ module type T = {
   module ExtensionPoint: {
     module Make: (
       Mapping: ExtensionPointMapping.Mapping,
-      Config: {let moduleUrl: string},
     ) => ExtensionPoint.T
 
     /** Two-mapping variant — merges per-slice EP mappings. */
@@ -101,7 +100,6 @@ module type T = {
       Mapping1: ExtensionPointMapping.Mapping,
       Mapping2: ExtensionPointMapping.Mapping
         with module ExtensionPoint = Mapping1.ExtensionPoint,
-      Config: {let moduleUrl: string},
     ) => ExtensionPoint.T
 
     /** Three-mapping variant — merges per-slice EP mappings. */
@@ -111,7 +109,6 @@ module type T = {
         with module ExtensionPoint = Mapping1.ExtensionPoint,
       Mapping3: ExtensionPointMapping.Mapping
         with module ExtensionPoint = Mapping1.ExtensionPoint,
-      Config: {let moduleUrl: string},
     ) => ExtensionPoint.T
 
     /** Multi-mapping variant with full control over name and mappings array. */

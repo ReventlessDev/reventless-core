@@ -291,12 +291,12 @@ Add `generate-plugin` CLI usage section:
 
 | Phase | Status |
 |---|---|
-| Phase 1 — Convention changes | ⬜ Not started |
-| Phase 2 — Drop Config from ExtensionPoint.Make | ⬜ Not started |
-| Phase 3 — Config.res | ⬜ Not started |
-| Phase 4 — Discovery.res | ⬜ Not started |
-| Phase 5 — Pairing.res | ⬜ Not started |
-| Phase 6 — Codegen.res | ⬜ Not started |
-| Phase 7 — PluginGenerator.res entry point | ⬜ Not started |
-| Phase 8 — Wire into example plugins | ⬜ Not started |
-| Phase 9 — Documentation | ⬜ Not started |
+| Phase 1 — Convention changes | ✅ Done |
+| Phase 2 — Drop Config from ExtensionPoint.Make | ✅ Done |
+| Phase 3 — Config.res | ✅ Done |
+| Phase 4 — Discovery.res | ✅ Done |
+| Phase 5 — Pairing.res | ✅ Done |
+| Phase 6 — Codegen.res | ✅ Done |
+| Phase 7 — PluginGenerator.res entry point | ✅ Done |
+| Phase 8 — Wire into example plugins | ✅ Done |
+| Phase 9 — Documentation | ✅ Done |

@@ -603,7 +603,7 @@ let _ = ReventlessInMemory.TestRunner.setup()  // activate Pulumi mock mode
 module Platform = ReventlessInMemory.Platform.Make(Bus)
 
 // Apply the plugin functor
-module Catalog = CatalogPlugin.Make(Platform)
+module Catalog = CatalogPlugin.Plugin.Make(Platform)
 ```
 
 The `InMemory_Bus.Make()` call creates a fresh, isolated message bus. All
@@ -636,10 +636,10 @@ module Platform = ReventlessAws.Platform.Make()
 
 // Apply the plugin functor — identical call to the test version
 module Catalog  = CatalogPlugin.Make(Platform)
-module Ordering = OrderingPlugin.Make(Platform)
+module Ordering = OrderingPlugin.Plugin.Make(Platform)
 ```
 
-The `CatalogPlugin.Make` call is identical in tests and in production. Only
+The `CatalogPlugin.Plugin.Make` call is identical in tests and in production. Only
 the `Platform` module changes.
 
 ### Why a single composition root matters
@@ -770,13 +770,13 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 module Bus      = ReventlessInMemory.InMemory_Bus.Make()
 let _           = ReventlessInMemory.TestRunner.setup()
 module Platform = ReventlessInMemory.Platform.Make(Bus)
-module Items    = ItemsPlugin.Make(Platform)
+module Items    = ItemsPlugin.Plugin.Make(Platform)
 ```
 
 **index.res** — AWS for production
 ```rescript
 module Platform = ReventlessAws.Platform.Make()
-module Items    = ItemsPlugin.Make(Platform)
+module Items    = ItemsPlugin.Plugin.Make(Platform)
 ```
 
 ---

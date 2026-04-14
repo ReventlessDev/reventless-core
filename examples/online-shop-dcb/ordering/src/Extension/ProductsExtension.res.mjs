@@ -27,7 +27,7 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
     }];
 }
 
-let ProductMapping = {
+let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
@@ -35,6 +35,6 @@ let ProductMapping = {
 };
 
 export {
-  ProductMapping,
+  Mapping,
 }
 /* No side effect */

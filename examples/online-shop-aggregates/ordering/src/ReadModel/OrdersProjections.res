@@ -1,9 +1,7 @@
 // Order projection mappings.
 // Maps Order aggregate events to Orders read model state changes.
-
 open Reventless.Message
 open Reventless.Projection
-
 module OrderMapping = Mapping.Make(
   Order,
   OrdersReadModel,

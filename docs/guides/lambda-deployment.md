@@ -79,7 +79,7 @@ Aggregates, ReadModels, and ExtensionPoints require AWS-specific builders that r
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  CatalogPlugin.res (Layer 2 — platform-agnostic)    │
+│  Plugin.res (auto-generated, Layer 2 — platform-agnostic)  │
 │    Platform.Aggregate.Make(Category, ...)           │
 │    Platform.StateViewSlice.Make(ProductsView)       │
 └────────────────────┬────────────────────────────────┘
@@ -240,8 +240,7 @@ ordering/                          # Platform-agnostic (Layer 1+2)
 │   │   ├── Aggregate/
 │   │   ├── StateChangeSlice/
 │   │   └── StateViewSlice/
-│   └── Plugin/
-│       └── OrderingPlugin.res     # Plugin functor (Layer 2)
+│   └── Plugin.res                 # Auto-generated (Layer 2)
 ├── tests/
 │   └── E2E/OrderingE2ETest.res    # Uses in-memory platform
 └── package.json                   # deps: reventless-spec, reventless-infra
@@ -332,7 +331,7 @@ The in-memory platform replaces all AWS services with in-process equivalents bui
 
 ```rescript
 module Platform = ReventlessInMemory.Platform.Make()
-module Ordering = OrderingPlugin.Make(Platform)  // uses the platform-agnostic plugin
+module Ordering = OrderingPlugin.Plugin.Make(Platform)  // uses the platform-agnostic plugin
 
 Platform.makePlatform(
   ~version="test",
@@ -371,7 +370,7 @@ describe("Catalog E2E", () => {
     let splitApi = false
     let cloner = false
   })
-  module Catalog = CatalogPlugin.Make(Platform)
+  module Catalog = CatalogPlugin.Plugin.Make(Platform)
 
   // Force async Output chains to resolve before tests run
   beforeAllAsync(async () => {
@@ -388,7 +387,7 @@ describe("Catalog E2E", () => {
 
 - **`beforeAllAsync`** must resolve Output chains before the first test (handler registration is async)
 - **Topic names** follow the pattern: `Spec.name ++ ComponentType.toName(suffix)` (e.g., `"CatalogEventTopic"`)
-- Platform-agnostic plugin files (`CatalogPlugin.res`) are used for tests — they go through `Platform.T` and work with in-memory
+- The auto-generated `Plugin.res` (Layer 2) is used for tests — it goes through `Platform.T` and works with in-memory
 - `_Aws.res` plugin files are never tested with in-memory (they import `ReventlessAws` directly)
 
 ---

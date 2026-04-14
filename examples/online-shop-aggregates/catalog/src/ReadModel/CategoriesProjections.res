@@ -1,9 +1,7 @@
 // Category projection mappings.
 // Maps Category aggregate events to Categories read model state changes.
-
 open Reventless.Message
 open Reventless.Projection
-
 module CategoryMapping = Mapping.Make(
   Category,
   CategoriesReadModel,

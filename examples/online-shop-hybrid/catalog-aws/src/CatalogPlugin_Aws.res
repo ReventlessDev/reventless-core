@@ -72,7 +72,7 @@ module Make = (
 
   // ── Extension (standard — via Platform) ──────────────────────
   module OrdersExtensionMaker = Platform.Extension.Make(
-    CatalogPlugin.OrdersExtension.DemandMapping,
+    CatalogPlugin.OrdersExtension.Mapping,
   )
 
   // ── Hybrid Plugin Assembly ───────────────────────────────────

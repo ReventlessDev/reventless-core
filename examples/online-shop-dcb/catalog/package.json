@@ -4,6 +4,8 @@
   "description": "Online Shop example — Catalog bounded context (Product & Category) using the DCB pattern",
   "license": "MIT",
   "scripts": {
+    "generate": "generate-plugin src/",
+    "prebuild": "npm run generate",
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",

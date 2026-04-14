@@ -120,6 +120,19 @@ Component structure pattern (documented in `packages/doc/docs-framework/inner-wo
 
 See the documentation for detailed explanations and examples using EventLog as a complete example.
 
+### Plugin Composition Roots
+
+Plugin packages (`examples/*/catalog/`, `examples/*/ordering/`, etc.) contain a **generated** composition root at `src/Plugin.res`. This file is produced by `generate-plugin` (from `reventless-spec`) before each build:
+
+- `prebuild` script runs `generate-plugin src/` automatically before `rescript build`
+- `src/plugin.json` (optional) sets the plugin name and heartbeat interval
+- The generator scans `src/` by folder name (e.g. `Aggregate/`, `StateChangeSlice/`) and wires all discovered components
+- `src/Plugin.res` is committed to git — CI compiles it directly without re-running the generator
+
+Plugin modules are referenced from the platform as `<Namespace>.Plugin.Make(Platform)` (e.g. `CatalogPlugin.Plugin.Make(Platform)`).
+
+**Convention:** Each `Extension/` file exposes its mapping as `module Mapping` (not a descriptively named variant). The generator references it as `ExtensionFile.Mapping`.
+
 ### Adapter Pattern
 
 The framework separates **deploy-time** (Pulumi infrastructure) from **runtime** (Lambda handlers):

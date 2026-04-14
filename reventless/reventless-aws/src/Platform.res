@@ -279,7 +279,6 @@ module MakeWithConfig = (
   module ExtensionPoint = {
     module Make = (
       Mapping: ReventlessInfra.ExtensionPointMapping.Mapping,
-      Config: {let moduleUrl: string},
     ): ReventlessInfra.ExtensionPoint.T => {
       module Spec = Mapping.ExtensionPoint
       module CompiledMapping = ReventlessInfra.ExtensionPointMapping.Make(Mapping)
@@ -287,7 +286,7 @@ module MakeWithConfig = (
         module type Mapping = ReventlessInfra.ExtensionPointMapping.T
           with module ExtensionPoint := Spec
         let name = Mapping.Delegate.name
-        let moduleUrl = Config.moduleUrl
+        let moduleUrl = Spec.moduleUrl
         let mappings: array<module(Mapping)> = [module(CompiledMapping)]
       }
       module Inner = ExtensionPoint_Builder.Make(Spec, Mappings, {
@@ -300,7 +299,6 @@ module MakeWithConfig = (
       Mapping1: ReventlessInfra.ExtensionPointMapping.Mapping,
       Mapping2: ReventlessInfra.ExtensionPointMapping.Mapping
         with module ExtensionPoint = Mapping1.ExtensionPoint,
-      Config: {let moduleUrl: string},
     ): ReventlessInfra.ExtensionPoint.T => {
       module Spec = Mapping1.ExtensionPoint
       module CM1 = ReventlessInfra.ExtensionPointMapping.Make(Mapping1)
@@ -310,7 +308,7 @@ module MakeWithConfig = (
           with module ExtensionPoint := Spec
         let name =
           Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
-        let moduleUrl = Config.moduleUrl
+        let moduleUrl = Spec.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2)]
       }
       module Inner = ExtensionPoint_Builder.Make(Spec, Mappings, {
@@ -325,7 +323,6 @@ module MakeWithConfig = (
         with module ExtensionPoint = Mapping1.ExtensionPoint,
       Mapping3: ReventlessInfra.ExtensionPointMapping.Mapping
         with module ExtensionPoint = Mapping1.ExtensionPoint,
-      Config: {let moduleUrl: string},
     ): ReventlessInfra.ExtensionPoint.T => {
       module Spec = Mapping1.ExtensionPoint
       module CM1 = ReventlessInfra.ExtensionPointMapping.Make(Mapping1)
@@ -340,7 +337,7 @@ module MakeWithConfig = (
           Mapping2.Delegate.name ++
           "+" ++
           Mapping3.Delegate.name
-        let moduleUrl = Config.moduleUrl
+        let moduleUrl = Spec.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2), module(CM3)]
       }
       module Inner = ExtensionPoint_Builder.Make(Spec, Mappings, {

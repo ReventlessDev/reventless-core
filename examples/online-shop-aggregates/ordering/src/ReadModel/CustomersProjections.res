@@ -1,9 +1,7 @@
 // Customer projection mappings.
 // Maps Customer aggregate events to Customers read model state changes.
-
 open Reventless.Message
 open Reventless.Projection
-
 module CustomerMapping = Mapping.Make(
   Customer,
   CustomersReadModel,

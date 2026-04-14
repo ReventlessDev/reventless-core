@@ -55,7 +55,7 @@ module Make = (
 
   // ── Extension (standard — via Platform) ──────────────────────
   module ProductsExtensionMaker = Platform.Extension.Make(
-    OrderingPlugin.ProductsExtension.ProductMapping,
+    OrderingPlugin.ProductsExtension.Mapping,
   )
 
   // ── Extension Point ───────────────────────────────────────────

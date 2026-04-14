@@ -1,9 +1,7 @@
 // AvailableProducts projection mappings.
 // Maps CatalogProduct aggregate events to the AvailableProducts read model.
-
 open Reventless.Message
 open Reventless.Projection
-
 module CatalogProductMapping = Mapping.Make(
   CatalogProduct,
   AvailableProductsReadModel,

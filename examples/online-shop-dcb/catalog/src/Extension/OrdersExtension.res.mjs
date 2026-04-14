@@ -26,7 +26,7 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
     }];
 }
 
-let DemandMapping = {
+let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
   mapIncomingEvent: mapIncomingEvent,
@@ -34,6 +34,6 @@ let DemandMapping = {
 };
 
 export {
-  DemandMapping,
+  Mapping,
 }
 /* No side effect */

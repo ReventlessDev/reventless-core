@@ -1,9 +1,7 @@
 // Product projection mappings.
 // Maps Product aggregate events to Products read model state changes.
-
 open Reventless.Message
 open Reventless.Projection
-
 module ProductMapping = Mapping.Make(
   Product,
   ProductsReadModel,
