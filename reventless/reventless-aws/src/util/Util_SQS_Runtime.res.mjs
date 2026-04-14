@@ -2,6 +2,7 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as SQS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS.res.mjs";
+import * as Nodecrypto from "node:crypto";
 import * as Effect$1 from "effect/Effect";
 import * as SQS_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS_Helpers.res.mjs";
 import * as ClientSqs from "@aws-sdk/client-sqs";
@@ -16,6 +17,14 @@ function toResolvedQueue(param) {
   };
 }
 
+function safeGroupId(id) {
+  if (id.length <= 128) {
+    return id;
+  } else {
+    return Nodecrypto.createHash("sha256").update(id).digest("hex");
+  }
+}
+
 function sendMessage(queue, delay, messageBody) {
   return SQS_Helpers$AwsSdk.sendMessage(queue.id, messageBody, undefined, undefined, delay);
 }
@@ -28,7 +37,7 @@ function send(queue, queueService, commandJson) {
   let messageBody = Message$ReventlessCore.toMessageBody(commandJson);
   return Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => {
     if (queueService === "SQS_FIFO") {
-      return sendFifoMessage(queue, commandJson.delay, commandJson.id, messageBody);
+      return sendFifoMessage(queue, commandJson.delay, safeGroupId(commandJson.id), messageBody);
     } else {
       return sendMessage(queue, commandJson.delay, messageBody);
     }
@@ -42,7 +51,7 @@ function makeEntry(queueService, commandJson) {
   let messageId = commandJson.meta.msgId;
   let messageBody = Message$ReventlessCore.toMessageBody(commandJson);
   if (queueService === "SQS_FIFO") {
-    return SQS_Helpers$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, commandJson.delay);
+    return SQS_Helpers$AwsSdk.makeBatchEntryFifo(safeGroupId(commandJson.id), messageBody, messageId, commandJson.delay);
   } else {
     return SQS_Helpers$AwsSdk.makeBatchEntry(messageBody, messageId, commandJson.delay);
   }
@@ -125,6 +134,7 @@ let deleteMessagesMaxRetries = 5;
 
 export {
   toResolvedQueue,
+  safeGroupId,
   sendMessage,
   sendFifoMessage,
   send,

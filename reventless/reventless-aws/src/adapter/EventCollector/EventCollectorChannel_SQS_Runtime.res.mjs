@@ -76,7 +76,7 @@ function enqueueEvent(queue, delay, _id, messageBody) {
 }
 
 function enqueueFifoEvent(queue, delay, id, messageBody) {
-  return Effect.runPromise(Effect.map(Effect.flatMap(Effect.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody))), () => {}));
+  return Effect.runPromise(Effect.map(Effect.flatMap(Effect.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, Util_SQS_Runtime$ReventlessAws.safeGroupId(id), messageBody))), () => {}));
 }
 
 export {

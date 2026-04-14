@@ -82,7 +82,7 @@ let enqueueFifoEvent = (queue: Util_SQS_Runtime.resolvedQueue, delay, id, messag
   )
   ->Effect.flatMap(_ =>
     Effect.promise(() =>
-      queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)
+      queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=Util_SQS_Runtime.safeGroupId(id), messageBody)
     )
   )
   ->Effect.map(_ => ())
