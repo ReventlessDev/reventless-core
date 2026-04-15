@@ -602,6 +602,12 @@ type platformHooks = {
   scheduler: ref<option<Pulumi.Output.t<Scheduler.operations>>>,
   api: ref<option<hookedValue<unknown>>>,
   apiRole: ref<option<hookedValue<unknown>>>,
+  // Current deploy target, set by deployPlugin before plugin.make() is called.
+  // "Domain" (default) → resolvers/schema go to the DomainApi.
+  // "Platform" → resolvers/schema go to the PlatformApi.
+  // Plugin_Builder captures this synchronously when constructing pluginDefinition
+  // to avoid the async-reset race (deployPlugin resets to "Domain" after make()).
+  deployTarget: ref<string>,
 }
 
 // Default hooks — no callbacks, empty platform context.
@@ -610,6 +616,7 @@ let noHooks: platformHooks = {
   scheduler: ref(None),
   api: ref(None),
   apiRole: ref(None),
+  deployTarget: ref("Domain"),
 }
 
 // Functor parameter wrapper for platformHooks.

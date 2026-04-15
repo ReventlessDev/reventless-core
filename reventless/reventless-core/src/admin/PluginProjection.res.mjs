@@ -41,14 +41,14 @@ function project(param) {
       let pluginDef = event._0;
       let extensions$1 = pluginDef.extensions;
       let extensionPoints$1 = pluginDef.extensionPoints;
-      let version$1 = pluginDef.version;
-      let name$1 = pluginDef.name;
       let eventCollector$1 = pluginDef.eventCollector;
+      let base_name = pluginDef.name;
+      let base_version = pluginDef.version;
       let base_extensionPointNames = extensionPoints$1.map(extensionPoint => extensionPoint.name);
       let base_extensionNames = extensions$1.map(extension => extension.extensionPointName);
       let base = {
-        name: name$1,
-        version: version$1,
+        name: base_name,
+        version: base_version,
         eventCollector: eventCollector$1,
         extensionPoints: extensionPoints$1,
         extensionPointNames: base_extensionPointNames,
@@ -59,18 +59,23 @@ function project(param) {
         apiSchemaFragment: undefined
       };
       let frag = pluginDef.apiSchemaFragment;
-      let state = frag !== undefined ? ({
-          name: name$1,
-          version: version$1,
-          eventCollector: eventCollector$1,
-          extensionPoints: extensionPoints$1,
-          extensionPointNames: base_extensionPointNames,
-          extensionNames: base_extensionNames,
-          extensions: extensions$1,
-          status: "Connected",
-          statusChange: statusChange,
-          apiSchemaFragment: frag
-        }) : base;
+      let withFrag;
+      if (frag !== undefined) {
+        let newrecord = {...base};
+        newrecord.apiSchemaFragment = frag;
+        withFrag = newrecord;
+      } else {
+        withFrag = base;
+      }
+      let target = pluginDef.apiTarget;
+      let state;
+      if (target !== undefined) {
+        let newrecord$1 = {...withFrag};
+        newrecord$1.apiTarget = target;
+        state = newrecord$1;
+      } else {
+        state = withFrag;
+      }
       return {
         TAG: "Set",
         _0: id,
@@ -81,26 +86,25 @@ function project(param) {
       let extensions$2 = pluginDef$1.extensions;
       let extensionPoints$2 = pluginDef$1.extensionPoints;
       let eventCollector$2 = pluginDef$1.eventCollector;
-      let applyFrag = s => {
+      let applyFragAndTarget = s => {
         let frag = pluginDef$1.apiSchemaFragment;
+        let withFrag;
         if (frag !== undefined) {
-          return {
-            name: s.name,
-            version: s.version,
-            eventCollector: s.eventCollector,
-            extensionPoints: s.extensionPoints,
-            extensionPointNames: s.extensionPointNames,
-            extensionNames: s.extensionNames,
-            extensions: s.extensions,
-            status: s.status,
-            statusChange: s.statusChange,
-            apiSchemaFragment: frag
-          };
+          let newrecord = {...s};
+          newrecord.apiSchemaFragment = frag;
+          withFrag = newrecord;
         } else {
-          return s;
+          withFrag = s;
         }
+        let target = pluginDef$1.apiTarget;
+        if (target === undefined) {
+          return withFrag;
+        }
+        let newrecord$1 = {...withFrag};
+        newrecord$1.apiTarget = target;
+        return newrecord$1;
       };
-      let defaultState = applyFrag({
+      let defaultState = applyFragAndTarget({
         name: pluginDef$1.name,
         version: pluginDef$1.version,
         eventCollector: eventCollector$2,
@@ -116,18 +120,10 @@ function project(param) {
         TAG: "UpdateWithDefault",
         _0: id,
         _1: defaultState,
-        _2: state => applyFrag({
-          name: state.name,
-          version: state.version,
-          eventCollector: state.eventCollector,
-          extensionPoints: state.extensionPoints,
-          extensionPointNames: state.extensionPointNames,
-          extensionNames: state.extensionNames,
-          extensions: state.extensions,
-          status: "Connected",
-          statusChange: statusChange,
-          apiSchemaFragment: state.apiSchemaFragment
-        })
+        _2: state => {
+          let newrecord = {...state};
+          return applyFragAndTarget((newrecord.statusChange = statusChange, newrecord.status = "Connected", newrecord));
+        }
       };
     case "Disconnected" :
       let match$1 = event._0;
@@ -167,18 +163,12 @@ function project(param) {
           statusChange: statusChange,
           apiSchemaFragment: undefined
         },
-        _2: state => ({
-          name: state.name,
-          version: state.version,
-          eventCollector: state.eventCollector,
-          extensionPoints: state.extensionPoints,
-          extensionPointNames: state.extensionPointNames,
-          extensionNames: state.extensionNames,
-          extensions: state.extensions,
-          status: "Inactive",
-          statusChange: statusChange,
-          apiSchemaFragment: state.apiSchemaFragment
-        })
+        _2: state => {
+          let newrecord = {...state};
+          newrecord.statusChange = statusChange;
+          newrecord.status = "Inactive";
+          return newrecord;
+        }
       };
     case "IncompatiblePluginDetected" :
       return "Ignore";
@@ -198,18 +188,12 @@ function project(param) {
       statusChange: statusChange,
       apiSchemaFragment: undefined
     },
-    _2: state => ({
-      name: state.name,
-      version: state.version,
-      eventCollector: state.eventCollector,
-      extensionPoints: state.extensionPoints,
-      extensionPointNames: state.extensionPointNames,
-      extensionNames: state.extensionNames,
-      extensions: state.extensions,
-      status: "Disconnected",
-      statusChange: statusChange,
-      apiSchemaFragment: state.apiSchemaFragment
-    })
+    _2: state => {
+      let newrecord = {...state};
+      newrecord.statusChange = statusChange;
+      newrecord.status = "Disconnected";
+      return newrecord;
+    }
   };
 }
 

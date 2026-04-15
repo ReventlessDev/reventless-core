@@ -398,23 +398,23 @@ function MakeWithConfig(Config) {
   };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
-    let match = currentDeployTarget.contents;
-    let match$1;
-    if (match === "Domain") {
-      match$1 = [
+    let capturedDeployTarget = currentDeployTarget.contents;
+    let match;
+    if (capturedDeployTarget === "Domain") {
+      match = [
         "deploy-schema:",
         domainApi
       ];
     } else {
-      let match$2 = apiConfigRef.contents;
-      let api = match$2 !== undefined ? match$2.platformApi : domainApi;
-      match$1 = [
+      let match$1 = apiConfigRef.contents;
+      let api = match$1 !== undefined ? match$1.platformApi : domainApi;
+      match = [
         "deploy-schema-platform:",
         api
       ];
     }
-    let targetApi = match$1[1];
-    let schemaPrefix = match$1[0];
+    let targetApi = match[1];
+    let schemaPrefix = match[0];
     let pluginRmTableNameOutput;
     if (platformStackRef !== undefined) {
       let stackRef = Primitive_option.valFromOption(platformStackRef);
@@ -499,9 +499,8 @@ function MakeWithConfig(Config) {
         return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
-        let match = currentDeployTarget.contents;
         let baseFragment;
-        baseFragment = match === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+        baseFragment = capturedDeployTarget === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
         let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
         let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
@@ -555,6 +554,9 @@ function MakeWithConfig(Config) {
   let hooks_scheduler = {
     contents: undefined
   };
+  let hooks_deployTarget = {
+    contents: "Domain"
+  };
   let hooks = {
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
@@ -566,7 +568,8 @@ function MakeWithConfig(Config) {
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     api: hooksApiRef,
-    apiRole: hooksApiRoleRef
+    apiRole: hooksApiRoleRef,
+    deployTarget: hooks_deployTarget
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
     hooks: hooks
@@ -726,7 +729,13 @@ function MakeWithConfig(Config) {
         ]], 1000);
       let fragments = Stdlib_Array.filterMap(plugins, json => {
         try {
-          return S.parseOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema).apiSchemaFragment;
+          let state = S.parseOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          let match = state.apiTarget;
+          if (match === "Platform") {
+            return;
+          } else {
+            return state.apiSchemaFragment;
+          }
         } catch (exn) {
           return;
         }
@@ -836,6 +845,9 @@ function MakeWithConfig(Config) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
     currentDeployTarget.contents = apiTarget;
+    let tmp;
+    tmp = apiTarget === "Domain" ? "Domain" : "Platform";
+    hooks_deployTarget.contents = tmp;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
     let targetApi = resolveTargetApi();
@@ -1202,23 +1214,23 @@ function Make($star) {
   };
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
-    let match = currentDeployTarget.contents;
-    let match$1;
-    if (match === "Domain") {
-      match$1 = [
+    let capturedDeployTarget = currentDeployTarget.contents;
+    let match;
+    if (capturedDeployTarget === "Domain") {
+      match = [
         "deploy-schema:",
         domainApi
       ];
     } else {
-      let match$2 = apiConfigRef.contents;
-      let api = match$2 !== undefined ? match$2.platformApi : domainApi;
-      match$1 = [
+      let match$1 = apiConfigRef.contents;
+      let api = match$1 !== undefined ? match$1.platformApi : domainApi;
+      match = [
         "deploy-schema-platform:",
         api
       ];
     }
-    let targetApi = match$1[1];
-    let schemaPrefix = match$1[0];
+    let targetApi = match[1];
+    let schemaPrefix = match[0];
     let pluginRmTableNameOutput;
     if (platformStackRef !== undefined) {
       let stackRef = Primitive_option.valFromOption(platformStackRef);
@@ -1303,9 +1315,8 @@ function Make($star) {
         return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
-        let match = currentDeployTarget.contents;
         let baseFragment;
-        baseFragment = match === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
+        baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
         let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
         let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
@@ -1359,6 +1370,9 @@ function Make($star) {
   let hooks_scheduler = {
     contents: undefined
   };
+  let hooks_deployTarget = {
+    contents: "Domain"
+  };
   let hooks = {
     preResolversSchemaHook: hooks_preResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
@@ -1370,7 +1384,8 @@ function Make($star) {
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     api: hooksApiRef,
-    apiRole: hooksApiRoleRef
+    apiRole: hooksApiRoleRef,
+    deployTarget: hooks_deployTarget
   };
   let PluginBuilderImpl = Plugin$ReventlessAws.Make({
     hooks: hooks
@@ -1514,7 +1529,13 @@ function Make($star) {
         ]], 1000);
       let fragments = Stdlib_Array.filterMap(plugins, json => {
         try {
-          return S.parseOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema).apiSchemaFragment;
+          let state = S.parseOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          let match = state.apiTarget;
+          if (match === "Platform") {
+            return;
+          } else {
+            return state.apiSchemaFragment;
+          }
         } catch (exn) {
           return;
         }
@@ -1615,6 +1636,9 @@ function Make($star) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
     currentDeployTarget.contents = apiTarget;
+    let tmp;
+    tmp = apiTarget === "Domain" ? "Domain" : "Platform";
+    hooks_deployTarget.contents = tmp;
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
     hooks_scheduler.contents = scheduler;
     let targetApi = resolveTargetApi();

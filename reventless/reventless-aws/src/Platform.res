@@ -493,6 +493,7 @@ module MakeWithConfig = (
     scheduler: ref(None),
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
+    deployTarget: ref("Domain"),
     inboundAppSyncResolverHook: ({runtime, fieldNames, externalInputSchemas: _, opts}) => {
       let runtimeTyped: ReventlessCore.Runtime.environment<Util.Lambda.runtimeParts> =
         runtime->asLambdaRuntime
@@ -523,11 +524,17 @@ module MakeWithConfig = (
     preResolversSchemaHook: (~name, pluginFragment) => {
       Console.log(`[preResolversSchemaHook] Pushing schema for plugin ${name} to AppSync`)
 
+      // Capture deploy target synchronously — deployPlugin resets currentDeployTarget to
+      // Domain after P.make() returns, before any Pulumi.Output async callbacks run.
+      // All three values (capturedDeployTarget, schemaPrefix, targetApi) must be captured
+      // here so the async Promise.then callback below uses the correct target.
+      let capturedDeployTarget = currentDeployTarget.contents
+
       // Select DynamoDB key prefix and target AppSync API based on the current deploy target.
       // Domain plugins use "deploy-schema:" and the Domain API (default behaviour).
       // Platform plugins use a separate "deploy-schema-platform:" namespace and the Core API,
       // so their cumulative schema is kept independent from the Domain API's schema.
-      let (schemaPrefix, targetApi) = switch currentDeployTarget.contents {
+      let (schemaPrefix, targetApi) = switch capturedDeployTarget {
       | Domain => (deploySchemaPrefix, domainApi)
       | Platform =>
         let api = switch apiConfigRef.contents {
@@ -641,7 +648,9 @@ module MakeWithConfig = (
               // - Platform target: always include admin base (the Core API owns admin ops).
               // - Domain target, split mode: empty base (admin lives on Core API).
               // - Domain target, unified mode: include admin base (single API has everything).
-              let baseFragment = switch currentDeployTarget.contents {
+              // Use capturedDeployTarget (set synchronously above) — currentDeployTarget has
+              // been reset to Domain by deployPlugin before this async callback runs.
+              let baseFragment = switch capturedDeployTarget {
               | Platform =>
                 AppSync_Adapter.injectAwsAuthAll(
                   ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
@@ -987,7 +996,12 @@ module MakeWithConfig = (
         let fragments = plugins->Array.filterMap(json =>
           try {
             let state = json->S.parseOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
-            state.apiSchemaFragment
+            // Exclude Platform-target plugins — their schema belongs on the PlatformApi,
+            // not the DomainApi. Absent apiTarget defaults to "Domain".
+            switch state.apiTarget {
+            | Some("Platform") => None
+            | _ => state.apiSchemaFragment
+            }
           } catch {
           | _ => None
           }
@@ -1234,6 +1248,10 @@ module MakeWithConfig = (
   let deployPlugin = (~version, ~plugin: module(PluginMaker), ~apiTarget=Domain) => {
     Console.log(`[Platform:deployPlugin] v${version}`)
     currentDeployTarget := apiTarget
+    // Expose deploy target via hooks so Plugin_Builder can stamp pluginDefinition.apiTarget.
+    // This must be set before P.make() and is captured synchronously by Plugin_Builder
+    // (same timing requirement as hooks.api/apiRole).
+    hooks.deployTarget := switch apiTarget { | Domain => "Domain" | Platform => "Platform" }
     // Each plugin stack creates its own scheduler (closures can't cross stacks).
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)

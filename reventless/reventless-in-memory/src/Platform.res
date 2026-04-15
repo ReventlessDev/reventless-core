@@ -100,6 +100,7 @@ module MakeWithConfig = (
     scheduler: ref(None),
     api: ref(None),
     apiRole: ref(None),
+    deployTarget: ref("Domain"),
     // Phase 1: register SDL + resolver stub synchronously.
     // Pass the resolved server so the correct target (domain or platform) receives the schema.
     mutationResolverHook: (~kind, ~fields, ~commandSchema) => {

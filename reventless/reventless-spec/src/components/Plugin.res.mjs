@@ -35,7 +35,8 @@ let pluginDefinitionSchema = S.schema(s => ({
   extensions: s.m(S.array(extensionDefinitionSchema)),
   eventCollector: s.m(S.string),
   extensionProtocols: s.m(S.array(extensionProtocolSchema)),
-  apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema)
+  apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema),
+  apiTarget: s.m(S.option(S.string))
 }));
 
 let nameSchema = S.string;

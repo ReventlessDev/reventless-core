@@ -422,6 +422,11 @@ module Make = (
           ~opts,
         )
 
+        // Capture deployTarget synchronously before the Pulumi.Output.apply callback.
+        // deployPlugin resets hooks.deployTarget to "Domain" after P.make() returns,
+        // so reading it inside the async callback would always yield "Domain".
+        let capturedDeployTarget = Spec.hooks.deployTarget.contents
+
         let pluginDefinition =
           (extensionPointsDefinitions, eventCollectorUrn)
           ->Pulumi.Output.all2
@@ -434,6 +439,7 @@ module Make = (
             eventCollector: eventCollectorUrn,
             extensionProtocols: [],
             apiSchemaFragment: Some(apiSchemaFragment),
+            apiTarget: capturedDeployTarget,
           })
 
         switch coreSetup {

@@ -34,18 +34,27 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           statusChange,
           apiSchemaFragment: None,
         }
-        let state = switch pluginDef.apiSchemaFragment {
+        let withFrag = switch pluginDef.apiSchemaFragment {
         | Some(frag) => {...base, apiSchemaFragment: Some(frag)}
         | None => base
         }
+        let state = switch pluginDef.apiTarget {
+        | Some(target) => {...withFrag, apiTarget: target}
+        | None => withFrag
+        }
         Set(id, state)
       | Reconnected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        let applyFrag = (s: PluginReadModelSpec.state) =>
-          switch pluginDef.apiSchemaFragment {
+        let applyFragAndTarget = (s: PluginReadModelSpec.state) => {
+          let withFrag = switch pluginDef.apiSchemaFragment {
           | Some(frag) => {...s, apiSchemaFragment: Some(frag)}
           | None => s
           }
-        let defaultState = applyFrag({
+          switch pluginDef.apiTarget {
+          | Some(target) => {...withFrag, apiTarget: target}
+          | None => withFrag
+          }
+        }
+        let defaultState = applyFragAndTarget({
           name,
           version,
           eventCollector,
@@ -60,7 +69,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
         UpdateWithDefault(
           id,
           defaultState,
-          state => applyFrag({...state, status: Connected, statusChange}),
+          state => applyFragAndTarget({...state, status: Connected, statusChange}),
         )
       | Disconnected({name, version, eventCollector, extensionPoints, extensions})
       | Activated({name, version, eventCollector, extensionPoints, extensions}) =>

@@ -6,6 +6,7 @@ let noHooks: ReventlessCore.Plugin_Helpers.platformHooks = {
   scheduler: ref(None),
   api: ref(None),
   apiRole: ref(None),
+  deployTarget: ref("Domain"),
 }
 
 // MakeWithHooks — full version used by the Platform (passes hook callbacks to core builder).

@@ -268,6 +268,7 @@ function Make(Spec) {
           let EventCollectorHelper = Plugin_Helpers$ReventlessCore.MakeEventCollectorHelper(RuntimeEnvironment)(EventCollectorChannel)(PluginRuntimeBuilder);
           let match$3 = EventCollectorHelper.make(childName, eventTopics, opts);
           let eventCollector = match$3[0];
+          let capturedDeployTarget = Spec.hooks.deployTarget.contents;
           let pluginDefinition = Pulumi.all([
             extensionPointsDefinitions,
             match$3[2]
@@ -279,7 +280,8 @@ function Make(Spec) {
             extensions: extensionsDefinitions,
             eventCollector: param[1],
             extensionProtocols: [],
-            apiSchemaFragment: apiSchemaFragment
+            apiSchemaFragment: apiSchemaFragment,
+            apiTarget: capturedDeployTarget
           }));
           if (coreSetup !== undefined) {
             let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);

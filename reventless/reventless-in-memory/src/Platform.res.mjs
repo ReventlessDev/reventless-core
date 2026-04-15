@@ -317,6 +317,9 @@ function MakeWithConfig(Config) {
   let hooks_apiRole = {
     contents: undefined
   };
+  let hooks_deployTarget = {
+    contents: "Domain"
+  };
   let hooks = {
     mutationResolverHook: hooks_mutationResolverHook,
     mutationBindHook: hooks_mutationBindHook,
@@ -327,7 +330,8 @@ function MakeWithConfig(Config) {
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     api: hooks_api,
-    apiRole: hooks_apiRole
+    apiRole: hooks_apiRole,
+    deployTarget: hooks_deployTarget
   };
   let AggregateMaker = Aggregate_Builder$ReventlessInMemory.MakeWithHooks(Bus)({
     hooks: hooks
@@ -893,31 +897,13 @@ function MakeWithConfig(Config) {
           }
           if (exit === 1) {
             let previousStatus = statusToString(state.status);
-            let updated_name = state.name;
-            let updated_version = state.version;
-            let updated_eventCollector = state.eventCollector;
-            let updated_extensionPoints = state.extensionPoints;
-            let updated_extensionPointNames = state.extensionPointNames;
-            let updated_extensionNames = state.extensionNames;
-            let updated_extensions = state.extensions;
-            let updated_statusChange = {
+            let newrecord = {...state};
+            newrecord.statusChange = {
               at: new Date().toISOString(),
               by: "in-memory"
             };
-            let updated_apiSchemaFragment = state.apiSchemaFragment;
-            let updated = {
-              name: updated_name,
-              version: updated_version,
-              eventCollector: updated_eventCollector,
-              extensionPoints: updated_extensionPoints,
-              extensionPointNames: updated_extensionPointNames,
-              extensionNames: updated_extensionNames,
-              extensions: updated_extensions,
-              status: newStatus,
-              statusChange: updated_statusChange,
-              apiSchemaFragment: updated_apiSchemaFragment
-            };
-            let entry = S.reverseConvertToJsonOrThrow(updated, PluginReadModelSpec$ReventlessCore.stateSchema);
+            newrecord.status = newStatus;
+            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
           }
@@ -1369,6 +1355,9 @@ function Make($star) {
   let hooks_apiRole = {
     contents: undefined
   };
+  let hooks_deployTarget = {
+    contents: "Domain"
+  };
   let hooks = {
     mutationResolverHook: hooks_mutationResolverHook,
     mutationBindHook: hooks_mutationBindHook,
@@ -1379,7 +1368,8 @@ function Make($star) {
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
     api: hooks_api,
-    apiRole: hooks_apiRole
+    apiRole: hooks_apiRole,
+    deployTarget: hooks_deployTarget
   };
   let AggregateMaker = Aggregate_Builder$ReventlessInMemory.MakeWithHooks(Bus)({
     hooks: hooks
@@ -1938,31 +1928,13 @@ function Make($star) {
           }
           if (exit === 1) {
             let previousStatus = statusToString(state.status);
-            let updated_name = state.name;
-            let updated_version = state.version;
-            let updated_eventCollector = state.eventCollector;
-            let updated_extensionPoints = state.extensionPoints;
-            let updated_extensionPointNames = state.extensionPointNames;
-            let updated_extensionNames = state.extensionNames;
-            let updated_extensions = state.extensions;
-            let updated_statusChange = {
+            let newrecord = {...state};
+            newrecord.statusChange = {
               at: new Date().toISOString(),
               by: "in-memory"
             };
-            let updated_apiSchemaFragment = state.apiSchemaFragment;
-            let updated = {
-              name: updated_name,
-              version: updated_version,
-              eventCollector: updated_eventCollector,
-              extensionPoints: updated_extensionPoints,
-              extensionPointNames: updated_extensionPointNames,
-              extensionNames: updated_extensionNames,
-              extensions: updated_extensions,
-              status: newStatus,
-              statusChange: updated_statusChange,
-              apiSchemaFragment: updated_apiSchemaFragment
-            };
-            let entry = S.reverseConvertToJsonOrThrow(updated, PluginReadModelSpec$ReventlessCore.stateSchema);
+            newrecord.status = newStatus;
+            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
           }

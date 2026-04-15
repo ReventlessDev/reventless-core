@@ -81,5 +81,9 @@ type pluginDefinition = {
   // Uses @s.matches(apiSchemaFragmentOptionSchema) — js_nullable creates T | null
   // (not T | undefined | null), which passes sury's jsonableValidation inside union variants.
   apiSchemaFragment: @s.matches(apiSchemaFragmentOptionSchema) option<apiSchemaFragment>,
+  // API target for schema routing in split-API mode.
+  // "Domain" (default/absent) → fragment goes to the DomainApi.
+  // "Platform" → fragment goes to the PlatformApi; excluded from DomainApi runtime schema.
+  apiTarget?: string,
 }
 

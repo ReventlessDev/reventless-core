@@ -9,192 +9,112 @@ let PluginProjectionTest = ProjectionTest$ReventlessCore.Make(PluginProjection$R
 PluginProjectionTest.describe("PluginProjection:", () => {
   PluginProjectionTest.test("UnknownPluginDetected", undefined, () => PluginProjectionTest.thenNoState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), "UnknownPluginDetected")));
   PluginProjectionTest.test("UnknownPluginDetected (already detected)", undefined, () => PluginProjectionTest.thenNoState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents(["UnknownPluginDetected"]), "UnknownPluginDetected")));
-  PluginProjectionTest.test("Connected", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents(["UnknownPluginDetected"]), {
-    TAG: "Connected",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Connected (not detected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
-    TAG: "Connected",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Disconnected", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
-    "UnknownPluginDetected",
-    {
+  PluginProjectionTest.test("Connected", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents(["UnknownPluginDetected"]), {
       TAG: "Connected",
       _0: PluginFixtures$ReventlessCore.pluginDefinition
-    }
-  ]), {
-    TAG: "Disconnected",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Disconnected (not connected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
-    TAG: "Disconnected",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Deactivated", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
-    "UnknownPluginDetected",
-    {
+    }), (newrecord.status = "Connected", newrecord));
+  });
+  PluginProjectionTest.test("Connected (not detected before)", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
       TAG: "Connected",
       _0: PluginFixtures$ReventlessCore.pluginDefinition
-    }
-  ]), {
-    TAG: "Deactivated",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Inactive",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Deactivated (not connected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
-    TAG: "Deactivated",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Inactive",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Activated", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
+    }), (newrecord.status = "Connected", newrecord));
+  });
+  PluginProjectionTest.test("Disconnected", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
+      "UnknownPluginDetected",
+      {
+        TAG: "Connected",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      }
+    ]), {
+      TAG: "Disconnected",
       _0: PluginFixtures$ReventlessCore.pluginDefinition
-    },
-    {
+    }), (newrecord.status = "Disconnected", newrecord));
+  });
+  PluginProjectionTest.test("Disconnected (not connected before)", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
+      TAG: "Disconnected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinition
+    }), (newrecord.status = "Disconnected", newrecord));
+  });
+  PluginProjectionTest.test("Deactivated", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
+      "UnknownPluginDetected",
+      {
+        TAG: "Connected",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      }
+    ]), {
       TAG: "Deactivated",
       _0: PluginFixtures$ReventlessCore.pluginDefinition
-    }
-  ]), {
-    TAG: "Activated",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Activated (not deactivated before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
-    TAG: "Activated",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Disconnected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Reconnected (after activated)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: PluginFixtures$ReventlessCore.pluginDefinition
-    },
-    {
+    }), (newrecord.status = "Inactive", newrecord));
+  });
+  PluginProjectionTest.test("Deactivated (not connected before)", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
       TAG: "Deactivated",
       _0: PluginFixtures$ReventlessCore.pluginDefinition
-    },
-    {
+    }), (newrecord.status = "Inactive", newrecord));
+  });
+  PluginProjectionTest.test("Activated", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
+      "UnknownPluginDetected",
+      {
+        TAG: "Connected",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      },
+      {
+        TAG: "Deactivated",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      }
+    ]), {
       TAG: "Activated",
       _0: PluginFixtures$ReventlessCore.pluginDefinition
-    }
-  ]), {
-    TAG: "Reconnected",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
-  PluginProjectionTest.test("Reconnected (not disconnected before)", undefined, () => PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
-    TAG: "Reconnected",
-    _0: PluginFixtures$ReventlessCore.pluginDefinition
-  }), {
-    name: PluginFixtures$ReventlessCore.state.name,
-    version: PluginFixtures$ReventlessCore.state.version,
-    eventCollector: PluginFixtures$ReventlessCore.state.eventCollector,
-    extensionPoints: PluginFixtures$ReventlessCore.state.extensionPoints,
-    extensionPointNames: PluginFixtures$ReventlessCore.state.extensionPointNames,
-    extensionNames: PluginFixtures$ReventlessCore.state.extensionNames,
-    extensions: PluginFixtures$ReventlessCore.state.extensions,
-    status: "Connected",
-    statusChange: PluginFixtures$ReventlessCore.state.statusChange,
-    apiSchemaFragment: PluginFixtures$ReventlessCore.state.apiSchemaFragment
-  }));
+    }), (newrecord.status = "Disconnected", newrecord));
+  });
+  PluginProjectionTest.test("Activated (not deactivated before)", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
+      TAG: "Activated",
+      _0: PluginFixtures$ReventlessCore.pluginDefinition
+    }), (newrecord.status = "Disconnected", newrecord));
+  });
+  PluginProjectionTest.test("Reconnected (after activated)", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
+      "UnknownPluginDetected",
+      {
+        TAG: "Connected",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      },
+      {
+        TAG: "Deactivated",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      },
+      {
+        TAG: "Activated",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      }
+    ]), {
+      TAG: "Reconnected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinition
+    }), (newrecord.status = "Connected", newrecord));
+  });
+  PluginProjectionTest.test("Reconnected (not disconnected before)", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([]), {
+      TAG: "Reconnected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinition
+    }), (newrecord.status = "Connected", newrecord));
+  });
 });
 
 export {

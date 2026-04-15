@@ -342,11 +342,16 @@ let noHooks_apiRole = {
   contents: undefined
 };
 
+let noHooks_deployTarget = {
+  contents: "Domain"
+};
+
 let noHooks = {
   adminExtensionPoints: noHooks_adminExtensionPoints,
   scheduler: noHooks_scheduler,
   api: noHooks_api,
-  apiRole: noHooks_apiRole
+  apiRole: noHooks_apiRole,
+  deployTarget: noHooks_deployTarget
 };
 
 let NoopHooksConfig = {
