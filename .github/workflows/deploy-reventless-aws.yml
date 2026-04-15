@@ -299,6 +299,7 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.platform.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --non-interactive
           pulumi preview --stack "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
 
       - name: Pulumi up (push)
@@ -309,6 +310,7 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.platform.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --non-interactive
           pulumi up --stack "$BRANCH" --yes --cwd "$DEPLOY_DIR" --non-interactive
 
   # ---------------------------------------------------------------------------
@@ -425,6 +427,7 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --non-interactive
           OUTPUT=$(pulumi preview --stack "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive 2>&1) || true
           echo "$OUTPUT"
           # Save output for PR comment
@@ -472,6 +475,7 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --non-interactive
           pulumi up --stack "$BRANCH" --yes --cwd "$DEPLOY_DIR" --non-interactive
 
   # ---------------------------------------------------------------------------
