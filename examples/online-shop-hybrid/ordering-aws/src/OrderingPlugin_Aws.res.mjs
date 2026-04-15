@@ -167,8 +167,8 @@ function Make(Platform) {
       commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
       moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl
     },
-    mapIncomingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapIncomingEvent,
-    mapOutgoingEvent: ProductsExtension$OrderingPlugin.ProductMapping.mapOutgoingEvent
+    mapIncomingEvent: ProductsExtension$OrderingPlugin.Mapping.mapIncomingEvent,
+    mapOutgoingEvent: ProductsExtension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
   let OrdersEPMappingT = ExtensionPointMapping$ReventlessInfra.Make({
     ExtensionPoint: {

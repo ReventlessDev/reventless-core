@@ -14,7 +14,7 @@ let Ordering = OrderingPlugin_Aws.Make(Platform);
 
 Platform.deployPlugin(PackageVersion$Reventless.fromCaller(), {
   make: Ordering.make
-});
+}, undefined);
 
 let $$default = Pulumi$Pulumi.getOutputs();
 

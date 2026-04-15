@@ -14,7 +14,7 @@ let Catalog = CatalogPlugin_Aws.Make(Platform);
 
 Platform.deployPlugin(PackageVersion$Reventless.fromCaller(), {
   make: Catalog.make
-});
+}, undefined);
 
 let $$default = Pulumi$Pulumi.getOutputs();
 

@@ -205,8 +205,8 @@ function Make(Platform) {
       commandSchema: RecordProductDemand$CatalogPlugin.commandSchema,
       moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl
     },
-    mapIncomingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapIncomingEvent,
-    mapOutgoingEvent: OrdersExtension$CatalogPlugin.DemandMapping.mapOutgoingEvent
+    mapIncomingEvent: OrdersExtension$CatalogPlugin.Mapping.mapIncomingEvent,
+    mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
   let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoryReadModel], undefined, [
     AddProductSlice,
