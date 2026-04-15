@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.53 (2026-04-15)
+
+### Bug Fixes
+
+* **dcb:** move position filter from FilterExpression to KeyConditionExpression ([2c83b94](https://github.com/ReventlessDev/reventless-core/commit/2c83b941bcb22bf9f7cc2f052a3a4be264132e83))
+* **sqs:** cap MessageGroupId at 128 chars using SHA-256 hash ([af246a7](https://github.com/ReventlessDev/reventless-core/commit/af246a71cc6c110a821e8a3cd6180149dbf90b33))
+### Features
+
+* zero-touch plugin assembly — generate Plugin.res from folder structure ([73ea654](https://github.com/ReventlessDev/reventless-core/commit/73ea654ab9a73f15ea7e18631e8194bfe0f4580f))
+
+
 # 3.0.0-alpha.52 (2026-04-13)
 
 ### Bug Fixes

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.48 (2026-04-15)
+
+### Bug Fixes
+
+* make onPluginDeployedHook async so Pulumi blocks on hook Promise ([b79def0](https://github.com/ReventlessDev/reventless-core/commit/b79def025dae4542f8c5c63b84e1b68999511ff6))
+
+
 # 3.0.0-alpha.47 (2026-04-13)
 
 ### Bug Fixes
