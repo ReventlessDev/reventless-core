@@ -410,9 +410,24 @@ let diff_ = (_id: string, olds: providerInputs, news: providerInputs): diffResul
   {changes, replaces, deleteBeforeReplace: true}
 }
 
-// Minimal read — returns existing state unchanged.
-// pulumi refresh does not need to detect AppSync resolver drift in practice.
-let read_ = async (id: string, props: providerInputs): readResult => {id, props}
+/** Read live state for `pulumi refresh`.
+    Returns `None` (compiled to `undefined`) when the resolver or its parent
+    AppSync API no longer exists, so Pulumi removes the resource from state
+    instead of leaving it stuck. */
+let read_ = async (id: string, props: providerInputs): option<readResult> => {
+  let sdk = await getSdk()
+  let client = await getClient()
+  let getInput: sdkDeleteInput = switch parseArn(id) {
+  | Some(parsed) => parsed
+  | None => {apiId: props.apiId, typeName: props.typeName, fieldName: props.fieldName}
+  }
+  try {
+    let _ = await client->sendGet(newOf1(sdk.getCtor, getInput))
+    Some({id, props})
+  } catch {
+  | exn if exn->JsExn.fromException->Option.mapOr(false, isAlreadyDeletedError) => None
+  }
+}
 
 // Provider as a plain JS object (no Pulumi Output captures — all state via inputs/olds/news)
 let provider = {
