@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.57 (2026-04-15)
+
+### Bug Fixes
+
+* **reventless-aws:** detect missing AppSync API in read for pulumi refresh ([f27ba62](https://github.com/ReventlessDev/reventless-core/commit/f27ba628dd4721a6c7d4a25310a95b4239b184f5))
+
+
 # 3.0.0-alpha.56 (2026-04-15)
 
 ### Bug Fixes
