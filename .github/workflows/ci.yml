@@ -20,97 +20,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Commented out for faster CI - re-enable if needed
-  # lint-and-format:
-  #   name: Lint & Format Check
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v6
-  #       with:
-  #         fetch-depth: 0
-
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v6
-  #       with:
-  #         node-version: "22.17.1"
-  #         cache: "npm"
-  #         registry-url: "https://npm.pkg.github.com"
-
-  #     - name: Install dependencies
-  #       run: npm ci
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - name: Lint code
-  #       run: npm run lint || echo "No lint script configured"
-  #       if: always()
-
-  #     - name: Check formatting
-  #       run: npm run format:check || echo "No format:check script configured"
-  #       if: always()
-
-  #     - name: Validate package.json files
-  #       run: |
-  #         find packages -name "package.json" -exec npm pkg fix {} \;
-  #         git diff --exit-code || (echo "package.json files need fixing" && exit 1)
-
-  type-check-and-build:
-    name: Type Check & Build
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
-    # needs: lint-and-format  # Commented out - lint job disabled
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Check if PPX Linux binary is present
-        id: ppx_check
-        run: |
-          if [ -f packages/reventless-ppx/ppx-linux.exe ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Setup OCaml (fallback — ppx-linux.exe missing)
-        if: steps.ppx_check.outputs.present == 'false'
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: "5.2.x"
-          dune-cache: true
-
-      - name: Build reventless-ppx for Linux (fallback)
-        if: steps.ppx_check.outputs.present == 'false'
-        run: |
-          opam install . --deps-only --yes
-          opam exec -- dune build
-          cp _build/default/bin/bin.exe ../ppx-linux.exe
-          chmod +x ../ppx-linux.exe
-        working-directory: packages/reventless-ppx/src
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22.17.1"
-          cache: "npm"
-          registry-url: "https://npm.pkg.github.com"
-
-      - name: Install dependencies
-        run: npm ci
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Type check
-        run: npm run type-check 2>/dev/null || echo "No type-check script configured"
-        if: always()
-
-      - name: Build all packages
-        run: npm run build
-
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    needs: type-check-and-build
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -240,17 +152,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build all packages
+        id: build
         if: steps.affected.outputs.select != 'none'
         run: npm run build
 
       - name: Run unit tests (all)
-        if: steps.affected.outputs.select == 'all'
+        if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'
         run: npm run test
         env:
           CI: true
 
       - name: Run unit tests (affected only)
-        if: steps.affected.outputs.select == 'some'
+        if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'some'
         run: |
           echo "Running tests for: ${{ steps.affected.outputs.projects }}"
           NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' npx jest --silent ${{ steps.affected.outputs.projects }}
@@ -262,179 +175,21 @@ jobs:
         run: echo "No test-mapped packages changed — skipping tests"
 
       - name: Run integration tests
-        if: steps.affected.outputs.select != 'none'
+        if: success() && steps.affected.outputs.select != 'none'
         run: npm run test:integration
         continue-on-error: true
-
-      # Commented out for faster CI - re-enable if needed
-      # - name: Generate coverage report
-      #   run: npm run test:coverage 2>/dev/null || echo "No test:coverage script configured"
-      #   if: always()
-
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v4
-      #   if: always()
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     files: ./coverage/lcov.info
-      #     fail_ci_if_error: false
-
-  # Commented out for faster CI - security.yml workflow already handles this
-  # security-scan:
-  #   name: Security & Quality Scan
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v6
-
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v6
-  #       with:
-  #         node-version: "22.17.1"
-  #         cache: "npm"
-  #         registry-url: "https://npm.pkg.github.com"
-
-  #     - name: Install dependencies
-  #       run: npm ci
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - name: Run npm audit
-  #       run: npm audit --audit-level=moderate
-  #       continue-on-error: true
-
-  #     - name: Run security scan with Snyk
-  #       uses: snyk/actions/node@master
-  #       env:
-  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-  #       with:
-  #         args: --severity-threshold=high
-  #       continue-on-error: true
-
-  #     - name: Check for known vulnerabilities
-  #       run: |
-  #         npx audit-ci --config .audit-ci.json
-  #       continue-on-error: true
-
-  # Commented out for faster CI - run weekly or on-demand instead
-  # dependency-check:
-  #   name: Dependency Analysis
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v6
-
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v6
-  #       with:
-  #         node-version: "22.17.1"
-  #         cache: "npm"
-
-  #     - name: Analyze dependencies
-  #       run: |
-  #         npx depcheck --ignores="@types/*,eslint-*,prettier,@rescript/*,lerna,rescript"
-  #         npx npm-check-updates --target minor
-
-  #     - name: Check for circular dependencies
-  #       run: |
-  #         npx madge --circular --extensions js,mjs,res packages/ -x '@rescript/std'
-
-  # Commented out for faster CI - duplicates type-check-and-build job
-  # build-matrix:
-  #   name: Build Matrix Test
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v6
-
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v6
-  #       with:
-  #         node-version: "22.17.1"
-  #         cache: "npm"
-  #         registry-url: "https://npm.pkg.github.com"
-
-  #     - name: Install dependencies
-  #       run: npm ci
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  #     - name: Build packages
-  #       run: npm run build
-
-  #     - name: Run basic tests
-  #       run: npm run test:unit
-  #       continue-on-error: true
-
-  # Commented out for faster CI - run on PR only or weekly
-  # validate-monorepo:
-  #   name: Validate Monorepo Structure
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v6
-
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v6
-  #       with:
-  #         node-version: "22.17.1"
-  #         cache: "npm"
-
-  #     - name: Validate Lerna configuration
-  #       run: |
-  #         npx lerna list --all
-  #         npx lerna ls --graph
-
-  #     - name: Check package dependencies
-  #       run: |
-  #         # Validate that internal dependencies use workspace protocol
-  #         # Note: This check is informational only - packages use npm workspaces
-  #         node -e "
-  #           const fs = require('fs');
-  #           const path = require('path');
-  #           const packages = fs.readdirSync('packages');
-  #           let hasErrors = false;
-  #
-  #           packages.forEach(pkg => {
-  #             const pkgPath = path.join('packages', pkg, 'package.json');
-  #             if (fs.existsSync(pkgPath)) {
-  #               const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-  #               const deps = {...(pkgJson.dependencies || {}), ...(pkgJson.devDependencies || {})};
-  #
-  #               Object.keys(deps).forEach(dep => {
-  #                 if (dep.startsWith('@reventless/') && !deps[dep].startsWith('workspace:')) {
-  #                   console.warn(\`Package \${pkg} should use workspace protocol for \${dep}\`);
-  #                   hasErrors = true;
-  #                 }
-  #               });
-  #             }
-  #           });
-  #
-  #           if (hasErrors) {
-  #             console.log('Note: Using npm workspaces instead of workspace: protocol');
-  #           }
-  #         "
 
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [
-        # lint-and-format,    # Commented out for speed
-        type-check-and-build,
-        test,
-        # security-scan,      # Commented out - runs in security.yml
-        # dependency-check,   # Commented out for speed
-        # validate-monorepo,  # Commented out for speed
-      ]
+    needs: [build-and-test]
     if: always()
     steps:
       - name: Check all jobs status
         run: |
-          echo "Type Check & Build: ${{ needs.type-check-and-build.result }}"
-          echo "Test: ${{ needs.test.result }}"
+          echo "Build & Test: ${{ needs.build-and-test.result }}"
 
-          if [[ "${{ needs.type-check-and-build.result }}" == "failure" ||
-                "${{ needs.test.result }}" == "failure" ]]; then
+          if [[ "${{ needs.build-and-test.result }}" == "failure" ]]; then
             echo "❌ CI pipeline failed"
             exit 1
           else

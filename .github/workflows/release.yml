@@ -76,8 +76,8 @@ jobs:
         run: |
           opam install . --deps-only --yes
           opam exec -- dune build
-          cp _build/default/bin/bin.exe ../../bin
-          chmod +x ../../bin
+          cp _build/default/bin/bin.exe ../ppx-linux.exe
+          chmod +x ../ppx-linux.exe
         working-directory: packages/reventless-ppx/src
 
       - name: Check for releasable changes
