@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.56 (2026-04-15)
+
+### Bug Fixes
+
+* **reventless-aws:** ignore NotFoundException on AppSync resolver delete ([e4e7eff](https://github.com/ReventlessDev/reventless-core/commit/e4e7eff97acfa599a9a370396770ad9a9879dbe7))
+
+
 # 3.0.0-alpha.55 (2026-04-15)
 
 ### Dependency Updates
