@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.17 (2026-04-15)
+
+### Bug Fixes
+
+* **examples:** rebuild stale hybrid aws plugin compiled artifacts ([e649490](https://github.com/ReventlessDev/reventless-core/commit/e649490584f1a029f51019a286ae569242d95b0d))
+
+
 # 1.0.0-alpha.16 (2026-04-15)
 
 ### Features
