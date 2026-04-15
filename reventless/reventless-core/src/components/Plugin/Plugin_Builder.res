@@ -439,7 +439,7 @@ module Make = (
             eventCollector: eventCollectorUrn,
             extensionProtocols: [],
             apiSchemaFragment: Some(apiSchemaFragment),
-            apiTarget: capturedDeployTarget,
+            apiTarget: Some(capturedDeployTarget),
           })
 
         switch coreSetup {

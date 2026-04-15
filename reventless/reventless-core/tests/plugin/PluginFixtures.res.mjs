@@ -14,7 +14,8 @@ let pluginDefinition = {
     }],
   eventCollector: "eventCollector",
   extensionProtocols: [],
-  apiSchemaFragment: undefined
+  apiSchemaFragment: undefined,
+  apiTarget: undefined
 };
 
 let state_name = pluginDefinition.name;
@@ -58,7 +59,8 @@ let pluginDefinition2 = {
   extensions: [],
   eventCollector: "eventCollector",
   extensionProtocols: [],
-  apiSchemaFragment: undefined
+  apiSchemaFragment: undefined,
+  apiTarget: undefined
 };
 
 export {

@@ -58,6 +58,8 @@ type apiSchemaFragment = {encoded: string, protocol: string}
 // JSON-safe and passes jsonableValidation in all contexts.
 @module("sury/src/Sury.res.mjs") external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
 let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
+// js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
+let stringOptionSchema = _jsNullable(S.string, ())
 
 /**
 The self-description of a deployed plugin, persisted in the plugin's event store.
@@ -82,8 +84,10 @@ type pluginDefinition = {
   // (not T | undefined | null), which passes sury's jsonableValidation inside union variants.
   apiSchemaFragment: @s.matches(apiSchemaFragmentOptionSchema) option<apiSchemaFragment>,
   // API target for schema routing in split-API mode.
-  // "Domain" (default/absent) → fragment goes to the DomainApi.
-  // "Platform" → fragment goes to the PlatformApi; excluded from DomainApi runtime schema.
-  apiTarget?: string,
+  // None/"Domain" → fragment goes to the DomainApi (default).
+  // Some("Platform") → fragment goes to the PlatformApi; excluded from DomainApi runtime schema.
+  // Uses @s.matches(stringOptionSchema) — js_nullable creates string | null (not string | undefined),
+  // which passes sury's jsonableValidation inside union variant payloads.
+  apiTarget: @s.matches(stringOptionSchema) option<string>,
 }
 

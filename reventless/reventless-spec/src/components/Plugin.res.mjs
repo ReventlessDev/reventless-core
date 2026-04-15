@@ -27,6 +27,8 @@ let apiSchemaFragmentSchema = S.schema(s => ({
 
 let apiSchemaFragmentOptionSchema = SuryResMjs.js_nullable(apiSchemaFragmentSchema);
 
+let stringOptionSchema = SuryResMjs.js_nullable(S.string);
+
 let pluginDefinitionSchema = S.schema(s => ({
   id: s.m(S.string),
   name: s.m(S.string),
@@ -36,7 +38,7 @@ let pluginDefinitionSchema = S.schema(s => ({
   eventCollector: s.m(S.string),
   extensionProtocols: s.m(S.array(extensionProtocolSchema)),
   apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema),
-  apiTarget: s.m(S.option(S.string))
+  apiTarget: s.m(stringOptionSchema)
 }));
 
 let nameSchema = S.string;
@@ -51,6 +53,7 @@ export {
   extensionProtocolSchema,
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
+  stringOptionSchema,
   pluginDefinitionSchema,
 }
 /* extensionPointDefinitionSchema Not a pure module */

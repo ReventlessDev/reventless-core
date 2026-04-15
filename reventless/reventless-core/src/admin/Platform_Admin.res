@@ -76,6 +76,7 @@ module Make = (
           eventCollector: "NOT-SET",
           extensionProtocols: [],
           apiSchemaFragment: None,
+          apiTarget: None,
         }
 
         module Callback = Admin_Callback.Make({

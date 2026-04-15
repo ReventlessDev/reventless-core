@@ -7,6 +7,7 @@ let pluginDefinition = {
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: None,
+  apiTarget: None,
 }
 
 let state: PluginReadModelSpec.state = {
@@ -36,4 +37,5 @@ let pluginDefinition2 = {
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: None,
+  apiTarget: None,
 }

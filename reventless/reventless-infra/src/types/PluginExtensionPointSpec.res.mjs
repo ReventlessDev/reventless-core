@@ -95,6 +95,8 @@ let apiSchemaFragmentSchema = Plugin$Reventless.apiSchemaFragmentSchema;
 
 let apiSchemaFragmentOptionSchema = Plugin$Reventless.apiSchemaFragmentOptionSchema;
 
+let stringOptionSchema = Plugin$Reventless.stringOptionSchema;
+
 let pluginDefinitionSchema = Plugin$Reventless.pluginDefinitionSchema;
 
 let timeoutSchema = S.int;
@@ -108,6 +110,7 @@ export {
   extensionProtocolSchema,
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
+  stringOptionSchema,
   pluginDefinitionSchema,
   timeoutSchema,
   forwardCommandSchema,
