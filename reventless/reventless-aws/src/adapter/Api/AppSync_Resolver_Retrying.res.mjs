@@ -59,6 +59,18 @@ function isFieldNotFoundError(jsErr) {
   }
 }
 
+function isAlreadyDeletedError(jsErr) {
+  let match = jsErr.name;
+  let match$1 = Stdlib_JsExn.message(jsErr);
+  if ((match == null) || match !== "NotFoundException" || match$1 === undefined) {
+    return false;
+  } else if (match$1.includes("API not found")) {
+    return true;
+  } else {
+    return match$1.includes("No resolver found");
+  }
+}
+
 function isAlreadyExistsError(jsErr) {
   let match = jsErr.name;
   let match$1 = Stdlib_JsExn.message(jsErr);
@@ -232,7 +244,15 @@ async function delete_(id, props) {
       typeName: props.typeName,
       fieldName: props.fieldName
     });
-  return await client.send(newOf1(sdk.DeleteResolverCommand, deleteInput));
+  try {
+    return await client.send(newOf1(sdk.DeleteResolverCommand, deleteInput));
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    if (Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isAlreadyDeletedError)) {
+      return;
+    }
+    throw exn;
+  }
 }
 
 let isDefined = (x => x !== undefined && x !== null);
@@ -315,6 +335,7 @@ export {
   getSdk,
   getClient,
   isFieldNotFoundError,
+  isAlreadyDeletedError,
   isAlreadyExistsError,
   jsThrow,
   runWithRaceRetry,

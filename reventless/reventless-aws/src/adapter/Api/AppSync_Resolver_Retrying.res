@@ -125,6 +125,24 @@ let isFieldNotFoundError = (jsErr: JsExn.t): bool =>
   | _ => false
   }
 
+/** Returns `true` iff a delete should be treated as a no-op because the
+    target resource no longer exists in AWS.  Covers two cases:
+
+    - `"API not found."` — the AppSync API itself was already deleted (e.g.
+      manually in the console or by a prior teardown); the resolver cannot
+      exist without its parent API.
+    - `"No resolver found"` — the API exists but the resolver was already
+      removed (diverged Pulumi state).
+
+    In both cases the desired end-state (resolver absent) is already reached,
+    so the Pulumi delete should succeed. */
+let isAlreadyDeletedError = (jsErr: JsExn.t): bool =>
+  switch (jsErr->exnName, JsExn.message(jsErr)) {
+  | (Some("NotFoundException"), Some(msg)) =>
+    msg->String.includes("API not found") || msg->String.includes("No resolver found")
+  | _ => false
+  }
+
 /** Returns `true` iff AppSync rejected the create because a resolver for that
     field already exists (Pulumi state / AppSync divergence). */
 let isAlreadyExistsError = (jsErr: JsExn.t): bool =>
@@ -359,7 +377,11 @@ let delete_ = async (id: string, props: providerInputs): unit => {
   | Some(parsed) => parsed
   | None => {apiId: props.apiId, typeName: props.typeName, fieldName: props.fieldName}
   }
-  await client->sendDelete(newOf1(sdk.deleteCtor, deleteInput))
+  try {
+    await client->sendDelete(newOf1(sdk.deleteCtor, deleteInput))
+  } catch {
+  | exn if exn->JsExn.fromException->Option.mapOr(false, isAlreadyDeletedError) => ()
+  }
 }
 
 // Guard against undefined in olds for resources created with older code that did not
