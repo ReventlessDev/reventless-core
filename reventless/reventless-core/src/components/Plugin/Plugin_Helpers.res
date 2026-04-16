@@ -517,28 +517,9 @@ let clearOnPlatformDeployed = () => {
   onPlatformDeployedHook.contents = None
 }
 
-// ---------------------------------------------------------------------------
-// Resolver error hook — fires when a generateCommand resolver receives a
-// command type that cannot be decoded against the registered command schema.
-// Fire-and-forget: hook returns unit, async work is the consumer's concern.
-// ---------------------------------------------------------------------------
-type resolverErrorInfo = {
-  pluginName: string,
-  componentName: string,
-  /** The GraphQL mutation field / command topic tag that was attempted. */
-  attemptedCommandType: string,
-  timestamp: string,
-}
-
-let onResolverErrorHook: ref<option<resolverErrorInfo => unit>> = ref(None)
-
-let registerOnResolverError = (hook: resolverErrorInfo => unit) => {
-  onResolverErrorHook.contents = Some(hook)
-}
-
-let clearOnResolverError = () => {
-  onResolverErrorHook.contents = None
-}
+// Resolver error hook has moved to Plugin_ResolverError to keep it on the
+// runtime-safe import chain (CommandGenerator_Callback runs in Lambda; this
+// module pulls in Pulumi for deploy-time helpers).
 
 // ---------------------------------------------------------------------------
 // Shared parameter types for hooks that carry structured data.

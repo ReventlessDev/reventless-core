@@ -9,7 +9,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
+import * as Plugin_ResolverError$ReventlessCore from "../Plugin/Plugin_ResolverError.res.mjs";
 
 let commandInterceptorHook = {
   contents: undefined
@@ -66,7 +66,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
         val = Message$ReventlessCore.decode(commandJson, commandSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
-        let hook = Plugin_Helpers$ReventlessCore.onResolverErrorHook.contents;
+        let hook = Plugin_ResolverError$ReventlessCore.onResolverErrorHook.contents;
         if (hook !== undefined) {
           hook({
             pluginName: "",

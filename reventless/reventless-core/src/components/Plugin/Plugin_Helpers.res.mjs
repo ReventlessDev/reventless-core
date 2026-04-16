@@ -318,18 +318,6 @@ function clearOnPlatformDeployed() {
   onPlatformDeployedHook.contents = undefined;
 }
 
-let onResolverErrorHook = {
-  contents: undefined
-};
-
-function registerOnResolverError(hook) {
-  onResolverErrorHook.contents = hook;
-}
-
-function clearOnResolverError() {
-  onResolverErrorHook.contents = undefined;
-}
-
 let queryFieldNamesRegistry = {
   contents: {}
 };
@@ -847,9 +835,6 @@ export {
   onPlatformDeployedHook,
   registerOnPlatformDeployed,
   clearOnPlatformDeployed,
-  onResolverErrorHook,
-  registerOnResolverError,
-  clearOnResolverError,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,
   noHooks,

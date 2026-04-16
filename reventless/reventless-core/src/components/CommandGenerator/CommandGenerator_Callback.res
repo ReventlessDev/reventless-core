@@ -124,7 +124,7 @@ let makeGenerateCommand = (
           }
         )
       | exception err =>
-        switch Plugin_Helpers.onResolverErrorHook.contents {
+        switch Plugin_ResolverError.onResolverErrorHook.contents {
         | Some(hook) =>
           hook({
             pluginName: "",
