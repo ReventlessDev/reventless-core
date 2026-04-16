@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.53 (2026-04-16)
+
+### Bug Fixes
+
+* **core:** extract resolver error hook to keep runtime free of Pulumi ([aa82c95](https://github.com/ReventlessDev/reventless-core/commit/aa82c95710a185847d6eef3298dd45d451862d3c))
+* **graphql:** emit input types for nested mutation args; pass dataSourceName on subs ([9dc7107](https://github.com/ReventlessDev/reventless-core/commit/9dc7107328327470396cfe6e1e775846fee98992))
+
+
 # 3.0.0-alpha.52 (2026-04-16)
 
 ### Bug Fixes
