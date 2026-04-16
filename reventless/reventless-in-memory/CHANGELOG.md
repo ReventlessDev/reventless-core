@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.28 (2026-04-16)
+
+### Features
+
+* **plugin-hooks:** implement Groups A-E of plugin-hook-metadata-and-schema-extensions ([4e95782](https://github.com/ReventlessDev/reventless-core/commit/4e957824d31666643a357873cba0403d52dd80b4))
+* **subscriptions:** implement GraphQL subscriptions across AWS + in-memory ([a25a3b8](https://github.com/ReventlessDev/reventless-core/commit/a25a3b8928a465b7ba8de7b06e44425e206a1fcd))
+
+
 # 3.0.0-alpha.27 (2026-04-15)
 
 ### Bug Fixes
