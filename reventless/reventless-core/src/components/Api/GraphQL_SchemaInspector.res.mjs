@@ -19,9 +19,11 @@ function inspectObjectType(typeName, schema) {
 
 function inspectMutationFields(fieldPrefix, commandSchema) {
   let fields = [];
+  let collectedTypes = [];
+  let seenTypes = new Set();
   switch (commandSchema.type) {
     case "object" :
-      Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldPrefix, commandSchema), field => {
+      Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldPrefix, collectedTypes, seenTypes, commandSchema), field => {
         fields.push(field);
       });
       break;
@@ -30,7 +32,7 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
       commandSchema.anyOf.forEach((variantSchema, i) => {
         let name = constructorNames[i];
         let fieldName = name !== undefined ? fieldPrefix + `_` + name : fieldPrefix + `_Variant` + i.toString();
-        Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema), field => {
+        Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema), field => {
           fields.push(field);
         });
       });

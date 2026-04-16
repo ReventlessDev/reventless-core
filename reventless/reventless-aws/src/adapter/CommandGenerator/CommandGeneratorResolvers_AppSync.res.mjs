@@ -78,7 +78,7 @@ function make(name, api, fields, param, runtime, resources, opts) {
     let commandName = Stdlib_String.capitalize(Stdlib_Option.getOr(parts[parts.length - 1 | 0], field));
     return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(field), api, dataSource.name, "Mutation", field, AppSync_Resolver_Functions$PulumiAws.invokeCommandGenerator(commandName), opts$1);
   });
-  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fields, opts$1);
+  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fields, dataSource.name, opts$1);
   let resources$1 = resolvers.map(Util_AppSync$ReventlessAws.toResourceNative);
   return {
     resources: resources$1
@@ -115,7 +115,7 @@ function makeDcb(api, runtime, fieldNames, tags, opts) {
     let fieldName = param[0];
     AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeDcbMutation(param[1]), opts$1);
   });
-  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, opts$1);
+  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, dataSource.name, opts$1);
 }
 
 export {

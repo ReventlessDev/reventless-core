@@ -38,6 +38,58 @@ function buildQuery(mutation, variablesDict) {
   return `mutation { ` + mutation + `(` + args + `) }`;
 }
 
+async function sendQuery(endpoint, region, queryString) {
+  let url = new URL(endpoint);
+  let hostname = url.hostname;
+  let path = url.pathname;
+  let body = JSON.stringify(Object.fromEntries([[
+      "query",
+      queryString
+    ]]));
+  let credProvider = CredentialProviderNode.defaultProvider();
+  let signer = new SignatureV4.SignatureV4({
+    service: "appsync",
+    region: region,
+    credentials: credProvider,
+    sha256: sha256
+  });
+  let headers = Object.fromEntries([
+    [
+      "content-type",
+      "application/json"
+    ],
+    [
+      "host",
+      hostname
+    ]
+  ]);
+  let request = {
+    method: "POST",
+    hostname: hostname,
+    path: path,
+    headers: headers,
+    body: body
+  };
+  let signed = await signer.sign(request);
+  let response = await fetch(endpoint, {
+    method: "POST",
+    headers: signed.headers,
+    body: signed.body
+  });
+  let json = await response.json();
+  let d = Stdlib_JSON.Decode.object(json);
+  if (d === undefined) {
+    return;
+  }
+  let errors = d["errors"];
+  if (errors !== undefined) {
+    console.error(`[Util_AppSync_Caller] query errors: ` + JSON.stringify(errors));
+    return;
+  } else {
+    return d["data"];
+  }
+}
+
 async function sendMutation(endpoint, region, mutation, variables) {
   let url = new URL(endpoint);
   let hostname = url.hostname;
@@ -97,6 +149,7 @@ export {
   sha256,
   jsonToLiteral,
   buildQuery,
+  sendQuery,
   sendMutation,
 }
 /* sha256 Not a pure module */

@@ -4,10 +4,12 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 
-function fromSchemaType(_required, _st, collectedTypes, seenTypes) {
+function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) {
   while (true) {
+    let asInputOpt = _asInputOpt;
     let st = _st;
     let required = _required;
+    let asInput = asInputOpt !== undefined ? asInputOpt : false;
     let bang = required ? "!" : "";
     if (typeof st !== "object") {
       switch (st) {
@@ -26,16 +28,17 @@ function fromSchemaType(_required, _st, collectedTypes, seenTypes) {
       switch (st.TAG) {
         case "Nullable" :
           _st = st._0;
+          _asInputOpt = asInput;
           _required = false;
           continue;
         case "ArrayOf" :
-          let itemType = fromSchemaType(true, st._0, collectedTypes, seenTypes);
+          let itemType = fromSchemaType(true, asInput, st._0, collectedTypes, seenTypes);
           return `[` + itemType + `]` + bang;
         case "ObjectRef" :
           let name = st._0;
           if (!seenTypes.has(name)) {
             seenTypes.add(name);
-            let typeDef = objectRefToGraphQL(name, st._1, collectedTypes, seenTypes);
+            let typeDef = objectRefToGraphQL(asInput, name, st._1, collectedTypes, seenTypes);
             collectedTypes.push(typeDef);
           }
           return name + bang;
@@ -52,17 +55,19 @@ function fromSchemaType(_required, _st, collectedTypes, seenTypes) {
   };
 }
 
-function objectRefToGraphQL(typeName, fields, collectedTypes, seenTypes) {
+function objectRefToGraphQL(asInputOpt, typeName, fields, collectedTypes, seenTypes) {
+  let asInput = asInputOpt !== undefined ? asInputOpt : false;
   let fieldStrs = Object.entries(fields).map(param => {
-    let gqlType = fromSchemaType(true, param[1], collectedTypes, seenTypes);
+    let gqlType = fromSchemaType(true, asInput, param[1], collectedTypes, seenTypes);
     return `  ` + param[0] + `: ` + gqlType;
   }).join("\n");
-  return `type ` + typeName + ` {\n` + fieldStrs + `\n}`;
+  let keyword = asInput ? "input" : "type";
+  return keyword + ` ` + typeName + ` {\n` + fieldStrs + `\n}`;
 }
 
 function deriveFieldType(parentTypeName, fieldName, required, fieldSchema, collectedTypes, seenTypes) {
   let st = SchemaType$ReventlessCore.fromSury(parentTypeName, fieldName, fieldSchema);
-  return fromSchemaType(required, st, collectedTypes, seenTypes);
+  return fromSchemaType(required, undefined, st, collectedTypes, seenTypes);
 }
 
 function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOpt, schema) {
@@ -89,7 +94,7 @@ function deriveObjectTypeWithNested(typeName, excludeFieldsOpt, includeIdParamOp
   let collectedTypes = [];
   let seenTypes = new Set();
   seenTypes.add(typeName);
-  let mainType = objectRefToGraphQL(typeName, filteredFields, collectedTypes, seenTypes);
+  let mainType = objectRefToGraphQL(undefined, typeName, filteredFields, collectedTypes, seenTypes);
   let mainTypeWithId = includeIdParam ? mainType.replace(`type ` + typeName + ` {\n`, `type ` + typeName + ` implements Node {\n  id: ID!\n`) : mainType;
   return collectedTypes.concat([mainTypeWithId]);
 }
@@ -134,15 +139,13 @@ function deriveConnectionQueryField(listFieldName, singularTypeName) {
   return `  ` + listFieldName + `(first: Int, after: String, last: Int, before: String): ` + singularTypeName + `Connection!`;
 }
 
-function deriveMutationFieldFromObject(fieldName, variantSchema) {
+function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema) {
   let fields = SchemaType$ReventlessCore.fromSuryObject(fieldName, variantSchema);
   if (fields === undefined) {
     return;
   }
-  let collectedTypes = [];
-  let seenTypes = new Set();
   let args = Object.entries(fields).map(param => {
-    let gqlType = fromSchemaType(true, param[1], collectedTypes, seenTypes);
+    let gqlType = fromSchemaType(true, true, param[1], collectedTypes, seenTypes);
     return param[0] + `: ` + gqlType;
   }).join(", ");
   let argsPart = args.length > 0 ? `(` + args + `)` : "";
@@ -160,7 +163,7 @@ function generate(mutationEntries, queryEntries) {
       case "object" :
         let fieldName = Stdlib_Option.getOr(entry.fieldNames[0], "");
         if (fieldName.length > 0) {
-          return Stdlib_Option.forEach(deriveMutationFieldFromObject(fieldName, schema), field => {
+          return Stdlib_Option.forEach(deriveMutationFieldFromObject(fieldName, types, seenTypes, schema), field => {
             mutations.push(field);
           });
         } else {
@@ -170,7 +173,7 @@ function generate(mutationEntries, queryEntries) {
         schema.anyOf.forEach((variantSchema, i) => {
           let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
           if (fieldName.length > 0) {
-            return Stdlib_Option.forEach(deriveMutationFieldFromObject(fieldName, variantSchema), field => {
+            return Stdlib_Option.forEach(deriveMutationFieldFromObject(fieldName, types, seenTypes, variantSchema), field => {
               let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);
               mutations.push(withId);
             });

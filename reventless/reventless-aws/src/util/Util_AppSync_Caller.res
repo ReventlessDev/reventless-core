@@ -110,6 +110,47 @@ let buildQuery = (~mutation: string, ~variablesDict: dict<JSON.t>): string => {
 // JSON.stringifyAny (mirrors how JSON.stringify drops undefined object keys).
 // Returns a promise — callers fire-and-forget with `let _ = sendMutation(...)`.
 
+// Signs and sends a GraphQL query; returns the `data` object or None on error.
+// ~queryString must be a complete "query { field(...) { ... } }" string.
+let sendQuery = async (~endpoint: string, ~region: string, ~queryString: string): option<JSON.t> => {
+  let url = parseUrl(endpoint)
+  let hostname: string = (url)["hostname"]
+  let path: string = (url)["pathname"]
+
+  let body =
+    Dict.fromArray([("query", queryString->JSON.Encode.string)])
+    ->JSON.Encode.object
+    ->JSON.stringify
+
+  let credProvider = defaultProvider()
+  let signer = makeSigner({
+    service: "appsync",
+    region,
+    credentials: credProvider,
+    sha256,
+  })
+
+  let headers: dict<string> = Dict.fromArray([
+    ("content-type", "application/json"),
+    ("host", hostname),
+  ])
+
+  let request: httpRequest = {method: "POST", hostname, path, headers, body}
+  let signed = await signer->signRequest(request)
+  let response = await fetch(endpoint, {method: "POST", headers: signed.headers, body: signed.body})
+  let json = await response->responseJson
+  switch json->JSON.Decode.object {
+  | Some(d) =>
+    switch d->Dict.get("errors") {
+    | Some(errors) =>
+      Console.error(`[Util_AppSync_Caller] query errors: ${errors->JSON.stringify}`)
+      None
+    | None => d->Dict.get("data")
+    }
+  | None => None
+  }
+}
+
 let sendMutation = async (~endpoint: string, ~region: string, ~mutation: string, ~variables: 'a) => {
   let url = parseUrl(endpoint)
   let hostname: string = (url)["hostname"]

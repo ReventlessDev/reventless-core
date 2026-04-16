@@ -3,9 +3,9 @@
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "./AppSync_Resolver_Retrying.res.mjs";
 
-function make(api, mutationFields, opts) {
+function make(api, mutationFields, dataSourceName, opts) {
   mutationFields.forEach(field => {
-    AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + Stdlib_String.capitalize(field), api, "on" + field, undefined, opts);
+    AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + Stdlib_String.capitalize(field), api, "on" + field, dataSourceName, undefined, opts);
   });
 }
 

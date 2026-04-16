@@ -7,7 +7,7 @@ let receiveRegistry = {};
 let pendingQueueRegistry = {};
 
 function register(fieldName, externalInputSchema, server) {
-  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, externalInputSchema);
+  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, [], new Set(), externalInputSchema);
   let sdlFields = field !== undefined ? [field] : [`  ` + fieldName + `: String!`];
   let pendingQueue = {
     contents: []

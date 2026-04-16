@@ -147,8 +147,14 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
 
   // Source C: create Subscription.onX resolver for each mutation field.
   // @aws_subscribe in the SDL (emitted by Plugin_SubscriptionSchema) handles
-  // delivery — no data source is needed here.
-  CommandSubscriptionResolvers_AppSync.make(~api, ~mutationFields=fields, ~opts)
+  // delivery. AWS requires a dataSourceName even on UNIT subscription resolvers,
+  // so we reuse the mutation's data source (its code never executes for subs).
+  CommandSubscriptionResolvers_AppSync.make(
+    ~api,
+    ~mutationFields=fields,
+    ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+    ~opts,
+  )
 
   let resources = resolvers->Array.map(Util_AppSync.toResourceNative)
 
@@ -236,5 +242,10 @@ let makeDcb = (
   })
 
   // Source C: create Subscription.onX resolver for each DCB mutation field.
-  CommandSubscriptionResolvers_AppSync.make(~api, ~mutationFields=fieldNames, ~opts)
+  CommandSubscriptionResolvers_AppSync.make(
+    ~api,
+    ~mutationFields=fieldNames,
+    ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+    ~opts,
+  )
 }

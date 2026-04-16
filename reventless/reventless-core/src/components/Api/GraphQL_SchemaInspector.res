@@ -26,6 +26,8 @@ let inspectObjectType = (~typeName: string, schema: S.t<'a>): option<string> => 
 let inspectMutationFields = (~fieldPrefix: string, commandSchema: S.t<'a>): array<string> => {
   let schema = commandSchema->S.castToUnknown
   let fields: array<string> = []
+  let collectedTypes: array<string> = []
+  let seenTypes = Set.make()
   switch schema {
   | Union({anyOf}) =>
     let constructorNames = Reventless.DcbTag.extractEventTypes(commandSchema)
@@ -36,12 +38,16 @@ let inspectMutationFields = (~fieldPrefix: string, commandSchema: S.t<'a>): arra
       }
       GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
         ~fieldName,
+        ~collectedTypes,
+        ~seenTypes,
         variantSchema,
       )->Option.forEach(field => fields->Array.push(field))
     })
   | Object(_) =>
     GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
       ~fieldName=fieldPrefix,
+      ~collectedTypes,
+      ~seenTypes,
       schema,
     )->Option.forEach(field => fields->Array.push(field))
   | _ => ()

@@ -416,7 +416,7 @@ function MakeWithConfig(Config) {
       }
       let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
-      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", `{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`, customOpts);
+      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", undefined, `{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
       let eventTopicOutputs = Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]);
@@ -1253,7 +1253,7 @@ function Make($star) {
       }
       let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
-      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", `{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`, customOpts);
+      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", undefined, `{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
       let eventTopicOutputs = Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]);

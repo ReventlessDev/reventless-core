@@ -4,7 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../Api/GraphQL_FragmentGenerator.res.mjs";
 
-function sourceCFields(mutationEntries) {
+function sourceCFields(mutationEntries, collectedTypes, seenTypes) {
   let fields = [];
   mutationEntries.forEach(entry => {
     let schema = entry.commandSchema;
@@ -12,7 +12,7 @@ function sourceCFields(mutationEntries) {
       case "object" :
         let fieldName = Stdlib_Option.getOr(entry.fieldNames[0], "");
         if (fieldName.length > 0) {
-          return Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, schema), field => {
+          return Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, schema), field => {
             let sub = "  on" + fieldName + field.slice(2 + fieldName.length | 0, field.length);
             let subWithDirective = sub.replace(": String!", `: String\n    @aws_subscribe(mutations: ["` + fieldName + `"])`);
             fields.push(subWithDirective);
@@ -24,7 +24,7 @@ function sourceCFields(mutationEntries) {
         schema.anyOf.forEach((variantSchema, i) => {
           let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
           if (fieldName.length > 0) {
-            return Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema), field => {
+            return Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema), field => {
               let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);
               let sub = "  on" + fieldName + withId.slice(2 + fieldName.length | 0, withId.length);
               let subWithDirective = sub.replace(": String!", `: String\n    @aws_subscribe(mutations: ["` + fieldName + `"])`);
@@ -73,7 +73,9 @@ function sourceAFieldsAndTypes(eventLogEntries) {
 }
 
 function generate(mutationEntries, queryEntries, eventLogEntries) {
-  let cFields = sourceCFields(mutationEntries);
+  let mutationTypes = [];
+  let mutationSeen = new Set();
+  let cFields = sourceCFields(mutationEntries, mutationTypes, mutationSeen);
   let bFields = sourceBFields(queryEntries);
   let match = sourceAFieldsAndTypes(eventLogEntries);
   return {
@@ -82,7 +84,10 @@ function generate(mutationEntries, queryEntries, eventLogEntries) {
       bFields,
       match[0]
     ].flat(),
-    extraTypes: match[1]
+    extraTypes: [
+      match[1],
+      mutationTypes
+    ].flat()
   };
 }
 

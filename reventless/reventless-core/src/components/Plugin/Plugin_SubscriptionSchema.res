@@ -12,7 +12,11 @@ open ReventlessInfra.Api
 // Generated from the same mutation entries as the query/mutation SDL so that
 // field names and argument types are always in sync.
 
-let sourceCFields = (~mutationEntries: array<mutationSchemaEntry>): array<string> => {
+let sourceCFields = (
+  ~mutationEntries: array<mutationSchemaEntry>,
+  ~collectedTypes: array<string>,
+  ~seenTypes: Set.t<string>,
+): array<string> => {
   let fields: array<string> = []
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema
@@ -21,7 +25,12 @@ let sourceCFields = (~mutationEntries: array<mutationSchemaEntry>): array<string
       anyOf->Array.forEachWithIndex((variantSchema, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
-          GraphQL_FragmentGenerator.deriveMutationFieldFromObject(~fieldName, variantSchema)
+          GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
+            ~fieldName,
+            ~collectedTypes,
+            ~seenTypes,
+            variantSchema,
+          )
           ->Option.forEach(field => {
             // Mirror what generate does: prepend id: ID! to the arg list.
             let withId = if field->String.includes("(") {
@@ -50,7 +59,12 @@ let sourceCFields = (~mutationEntries: array<mutationSchemaEntry>): array<string
     | Object(_) =>
       let fieldName = entry.fieldNames->Array.get(0)->Option.getOr("")
       if fieldName->String.length > 0 {
-        GraphQL_FragmentGenerator.deriveMutationFieldFromObject(~fieldName, schema)
+        GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
+          ~fieldName,
+          ~collectedTypes,
+          ~seenTypes,
+          schema,
+        )
         ->Option.forEach(field => {
           let sub =
             "  on" ++
@@ -132,11 +146,17 @@ let generate = (
   ~queryEntries: array<querySchemaEntry>,
   ~eventLogEntries: array<eventLogSchemaEntry>,
 ): result => {
-  let cFields = sourceCFields(~mutationEntries)
+  let mutationTypes: array<string> = []
+  let mutationSeen: Set.t<string> = Set.make()
+  let cFields = sourceCFields(
+    ~mutationEntries,
+    ~collectedTypes=mutationTypes,
+    ~seenTypes=mutationSeen,
+  )
   let bFields = sourceBFields(~queryEntries)
   let (aFields, aTypes) = sourceAFieldsAndTypes(~eventLogEntries)
   {
     subscriptionFields: Array.flat([cFields, bFields, aFields]),
-    extraTypes: aTypes,
+    extraTypes: Array.flat([aTypes, mutationTypes]),
   }
 }

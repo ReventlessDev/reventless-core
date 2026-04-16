@@ -26,6 +26,8 @@ let pendingQueueRegistry: dict<ref<array<pendingCall>>> = Dict.make()
 let register = (~fieldName: string, ~externalInputSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
   let sdlFields = switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
     ~fieldName,
+    ~collectedTypes=[],
+    ~seenTypes=Set.make(),
     externalInputSchema,
   ) {
   | Some(field) => [field]

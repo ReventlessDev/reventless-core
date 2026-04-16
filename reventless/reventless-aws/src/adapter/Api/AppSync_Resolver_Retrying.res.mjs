@@ -330,14 +330,25 @@ export function response(ctx) {
 }`;
 }
 
-function makeSubscriptionResolver(name, api, field, subscriptionFilter, opts) {
-  return makeResolver(name, {
-    apiId: Output$Pulumi.flatMap(api, a => a.id),
+function makeSubscriptionResolver(name, api, field, dataSourceName, subscriptionFilter, opts) {
+  let baseProps_apiId = Output$Pulumi.flatMap(api, a => a.id);
+  let baseProps_code = makeSubscriptionResolverCode(subscriptionFilter);
+  let baseProps = {
+    apiId: baseProps_apiId,
     typeName: "Subscription",
     fieldName: field,
     kind: "UNIT",
-    code: makeSubscriptionResolverCode(subscriptionFilter)
-  }, opts);
+    code: baseProps_code
+  };
+  let props;
+  if (dataSourceName !== undefined) {
+    let newrecord = {...baseProps};
+    newrecord.dataSourceName = dataSourceName;
+    props = newrecord;
+  } else {
+    props = baseProps;
+  }
+  return makeResolver(name, props, opts);
 }
 
 function makeUnitJsResolver(name, api, dataSourceName, type_, field, code, opts) {

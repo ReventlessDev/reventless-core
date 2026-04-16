@@ -106,7 +106,12 @@ let extractVariantSchema = (commandSchema: S.t<unknown>, ~index=0) =>
   }
 
 let deriveSdlField = (~fieldName, variantSchema: S.t<unknown>) =>
-  switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(~fieldName, variantSchema) {
+  switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
+    ~fieldName,
+    ~collectedTypes=[],
+    ~seenTypes=Set.make(),
+    variantSchema,
+  ) {
   | Some(field) =>
     // deriveMutationFieldFromObject always ends with ": String!" as the return type.
     // Replace only the trailing suffix — NOT the first occurrence, which would corrupt

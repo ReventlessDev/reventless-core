@@ -8,6 +8,7 @@ open ReventlessInfra.Api
 
 let rec fromSchemaType = (
   ~required: bool,
+  ~asInput: bool=false,
   st: SchemaType.schemaType,
   collectedTypes: array<string>,
   seenTypes: Set.t<string>,
@@ -19,14 +20,14 @@ let rec fromSchemaType = (
   | ScalarBoolean => `Boolean${bang}`
   | ScalarBigInt => `String${bang}`
   | EntityId => `ID${bang}`
-  | Nullable(inner) => fromSchemaType(~required=false, inner, collectedTypes, seenTypes)
+  | Nullable(inner) => fromSchemaType(~required=false, ~asInput, inner, collectedTypes, seenTypes)
   | ArrayOf(item) =>
-    let itemType = fromSchemaType(~required=true, item, collectedTypes, seenTypes)
+    let itemType = fromSchemaType(~required=true, ~asInput, item, collectedTypes, seenTypes)
     `[${itemType}]${bang}`
   | ObjectRef(name, fields) =>
     if !(seenTypes->Set.has(name)) {
       seenTypes->Set.add(name)
-      let typeDef = objectRefToGraphQL(name, fields, collectedTypes, seenTypes)
+      let typeDef = objectRefToGraphQL(~asInput, name, fields, collectedTypes, seenTypes)
       collectedTypes->Array.push(typeDef)
     }
     `${name}${bang}`
@@ -42,6 +43,7 @@ let rec fromSchemaType = (
 }
 
 and objectRefToGraphQL = (
+  ~asInput: bool=false,
   typeName: string,
   fields: dict<SchemaType.schemaType>,
   collectedTypes: array<string>,
@@ -51,11 +53,12 @@ and objectRefToGraphQL = (
     fields
     ->Dict.toArray
     ->Array.map(((fieldName, fieldType)) => {
-      let gqlType = fromSchemaType(~required=true, fieldType, collectedTypes, seenTypes)
+      let gqlType = fromSchemaType(~required=true, ~asInput, fieldType, collectedTypes, seenTypes)
       `  ${fieldName}: ${gqlType}`
     })
     ->Array.join("\n")
-  `type ${typeName} {\n${fieldStrs}\n}`
+  let keyword = asInput ? "input" : "type"
+  `${keyword} ${typeName} {\n${fieldStrs}\n}`
 }
 
 // ── Legacy bridge: sury → GraphQL via SchemaType ─────────────────────────────
@@ -162,17 +165,23 @@ let deriveConnectionQueryField = (
 
 let deriveMutationFieldFromObject = (
   ~fieldName: string,
+  ~collectedTypes: array<string>,
+  ~seenTypes: Set.t<string>,
   variantSchema: S.t<unknown>,
 ): option<string> =>
   switch SchemaType.fromSuryObject(~typeName=fieldName, variantSchema) {
   | Some(fields) =>
-    let collectedTypes: array<string> = []
-    let seenTypes = Set.make()
     let args =
       fields
       ->Dict.toArray
       ->Array.map(((argName, argType)) => {
-        let gqlType = fromSchemaType(~required=true, argType, collectedTypes, seenTypes)
+        let gqlType = fromSchemaType(
+          ~required=true,
+          ~asInput=true,
+          argType,
+          collectedTypes,
+          seenTypes,
+        )
         `${argName}: ${gqlType}`
       })
       ->Array.join(", ")
@@ -199,7 +208,12 @@ let generate = (
       anyOf->Array.forEachWithIndex((variantSchema, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
-          deriveMutationFieldFromObject(~fieldName, variantSchema)
+          deriveMutationFieldFromObject(
+            ~fieldName,
+            ~collectedTypes=types,
+            ~seenTypes,
+            variantSchema,
+          )
           ->Option.forEach(field => {
             let withId = if field->String.includes("(") {
               field->String.replace(`${fieldName}(`, `${fieldName}(id: ID!, `)
@@ -213,7 +227,12 @@ let generate = (
     | Object(_) =>
       let fieldName = entry.fieldNames->Array.get(0)->Option.getOr("")
       if fieldName->String.length > 0 {
-        deriveMutationFieldFromObject(~fieldName, schema)
+        deriveMutationFieldFromObject(
+          ~fieldName,
+          ~collectedTypes=types,
+          ~seenTypes,
+          schema,
+        )
         ->Option.forEach(field => mutations->Array.push(field))
       }
     | _ => ()

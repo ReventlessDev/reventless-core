@@ -502,20 +502,23 @@ let makeSubscriptionResolver = (
   ~name,
   ~api: Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>,
   ~field,
+  ~dataSourceName: option<Pulumi.Input.t<string>>=?,
   ~subscriptionFilter: option<string>=?,
   ~opts: option<Pulumi.CustomResourceOptions.t>=?,
-) =>
-  makeResolver(
-    ~name,
-    ~props={
-      apiId: api->Pulumi.Output.flatMap(a => a.id)->Pulumi.Output.asInput,
-      typeName: "Subscription"->Pulumi.Input.make,
-      fieldName: field->Pulumi.Input.make,
-      kind: "UNIT"->Pulumi.Input.make,
-      code: makeSubscriptionResolverCode(~filter=subscriptionFilter)->Pulumi.Input.make,
-    },
-    ~opts,
-  )
+) => {
+  let baseProps: constructorProps = {
+    apiId: api->Pulumi.Output.flatMap(a => a.id)->Pulumi.Output.asInput,
+    typeName: "Subscription"->Pulumi.Input.make,
+    fieldName: field->Pulumi.Input.make,
+    kind: "UNIT"->Pulumi.Input.make,
+    code: makeSubscriptionResolverCode(~filter=subscriptionFilter)->Pulumi.Input.make,
+  }
+  let props = switch dataSourceName {
+  | Some(ds) => {...baseProps, dataSourceName: ds}
+  | None => baseProps
+  }
+  makeResolver(~name, ~props, ~opts)
+}
 
 let makeUnitJsResolver = (
   ~name,

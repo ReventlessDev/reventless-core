@@ -122,7 +122,7 @@ function extractVariantSchema(commandSchema, indexOpt) {
 }
 
 function deriveSdlField(fieldName, variantSchema) {
-  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, variantSchema);
+  let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, [], new Set(), variantSchema);
   if (field === undefined) {
     return `  ` + fieldName + `: CommandResult!`;
   }
