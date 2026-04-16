@@ -1,20 +1,121 @@
 # Chapters in Event Modeling: Analysis for Reventless
 
-## What is a Chapter?
+## Two Distinct Uses of "Chapter"
 
-A **chapter** is a temporal segmentation pattern for event streams, closely related to (and often synonymous with) the **"Closing the Books"** pattern from accounting. The core idea is borrowed from double-entry bookkeeping: at the end of each period (month, quarter, year), accountants summarize all transactions into a closing balance, verify it, and use that summary as the opening balance for the next period. The full transaction history of prior periods is no longer needed for day-to-day operations.
+The term "chapter" in the context of Event Modeling covers two related but distinct ideas that are worth separating clearly:
 
-Applied to event sourcing, a chapter represents a **bounded temporal segment** of an event stream with a defined beginning and end. Instead of maintaining a single ever-growing stream per entity or per domain, the stream is divided into discrete lifecycle periods — chapters — each opened by a domain event and closed by another.
+1. **Structural chapters** — a way to organize and segment a large event model into comprehensible, independently-navigable sections. This is a modeling and code organization concern. It does not require any additional infrastructure and is already well-supported in Reventless.
 
-### The Metaphor
+2. **Temporal chapters ("Closing the Books")** — a pattern borrowed from accounting where an event stream is divided into bounded time periods. Each period closes with a summary event and opens fresh, keeping active working sets small. This is a performance, retention, and lifecycle concern. It requires explicit modeling and additional infrastructure.
 
-Think of an entity's event history as a book. Without chapters, it is a single unbroken wall of text. With chapters, the narrative is segmented into meaningful periods. Each chapter:
+These two uses are often conflated. The key insight is: **you can adopt structural chapters without ever implementing temporal chapters.** Structural organization is always beneficial; temporal chapters are an optional optimization for long-lived entities with high event volumes.
+
+---
+
+## Part 1: Structural Chapters — Organizing Large Event Models
+
+### What It Is
+
+As a Reventless application grows, the event model diagram — and the corresponding code — can become difficult to navigate. Structural chapters are simply a way to segment the model into named, cohesive groups. In a diagram, this looks like horizontal bands (swimlanes) or labelled sections. In code, it maps directly to folder organization within a plugin.
+
+This is purely an organizational tool. There is no runtime behavior associated with structural chapters. They improve developer comprehension, team ownership, and navigability without adding infrastructure complexity.
+
+### How Reventless Supports This Natively
+
+Reventless already treats folder structure as the primary organizational unit. The `generate-plugin` tool and `reventless-ppx` both read folder names to classify components — this means that how you structure your source folders directly shapes the generated plugin composition and the boilerplate the PPX injects.
+
+#### Folder-Based Slice Organization
+
+The online-shop-dcb example demonstrates the pattern:
+
+```
+catalog/src/
+├── Category/                       ← structural chapter: Category domain
+│   ├── StateChangeSlice/
+│   │   ├── AddCategory.res
+│   │   ├── ArchiveCategory.res
+│   │   └── RenameCategory.res
+│   └── StateViewSlice/
+│       └── CategoriesView.res
+├── Product/                        ← structural chapter: Product domain
+│   ├── StateChangeSlice/
+│   │   ├── AddProduct.res
+│   │   ├── ChangeProductPrice.res
+│   │   └── RecordProductDemand.res
+│   ├── StateViewSlice/
+│   │   ├── ProductsView.res
+│   │   └── ProductDemandView.res
+│   └── InboundTranslationSlice/
+│       └── ImportProduct.res
+├── Extension/
+│   └── OrdersExtension.res
+└── ExtensionPoint/
+    └── ProductsExtensionPointMapping.res
+```
+
+The `generate-plugin` tool recognizes slice folder names (`StateChangeSlice/`, `StateViewSlice/`, `AutomationSlice/`, `InboundTranslationSlice/`, `OutboundTranslationSlice/`, `Aggregate/`, `ReadModel/`, `ExtensionPoint/`, `Extension/`, `Task/`) regardless of the parent folder — so grouping slices under `Category/` or `Product/` is purely for developer organization and has no effect on how the plugin is wired.
+
+#### PPX Boilerplate Reduction
+
+The `@@reventless.spec` PPX attribute, when applied to a `.res` file in a recognized slice folder, automatically injects:
+
+- `let name` — derived from the filename (e.g., `AddProduct.res` → `"AddProduct"`)
+- `module Id` — standard ID module
+- `let moduleUrl` — source location binding
+- For `StateViewSlice/` files: `open Reventless.Projection` (brings `Set`, `Update`, `UpdateWithDefault`, `Delete` into scope) and `let config = config(); let subIdConfig = None`
+- For `*ExtensionPointMapping*` files: `open ReventlessInfra.ExtensionPointMapping` (brings `PublishEvent`, `PublishCommand`, `Call` into scope)
+- For files with `*Id: string` fields: `@s.matches(DcbTag.string)` — DCB tag annotations, applied automatically for all files inside `*Slice/` folders
+
+The `@@reventless.behavior` attribute on behavior files automatically:
+- Opens and aliases the corresponding spec module (derived from filename by stripping `Behavior` suffix)
+- Injects `let moduleUrl`
+
+This means the folder structure is not just organizational documentation — it directly determines which PPX injections apply and what the plugin generator produces.
+
+#### The Swimlane Model
+
+Structural chapters also appear as horizontal swimlanes in event modeling diagrams. Reventless already formalizes these swimlanes as distinct slice types in `Plugin.DcbSpec`:
+
+```
+StateChangeSlices  ← command handling, write side
+StateViewSlices    ← projections, read side
+AutomationSlices   ← event-to-command (internal policies)
+InboundTranslationSlices   ← external → internal
+OutboundTranslationSlices  ← internal → external
+```
+
+This is a structural chapter pattern that is already implemented. It cleanly separates concerns and provides natural team boundaries.
+
+### When Structural Chapters Are Sufficient
+
+For most applications, structural chapters alone provide all the organizational benefit needed:
+
+- The plugin generates correctly regardless of subdirectory grouping
+- Developers can navigate by domain area (`Category/`, `Product/`) or by slice type (all `StateChangeSlice/` files)
+- The event model diagram can be annotated with chapter boundaries as a documentation aid
+- No runtime cost, no additional infrastructure
+
+**Structural chapters should always be used.** They cost nothing and make the codebase significantly easier to navigate as it grows.
+
+---
+
+## Part 2: Temporal Chapters ("Closing the Books") — Optional
+
+### What It Is
+
+A **temporal chapter** is a bounded lifecycle segment of an event stream. The concept is borrowed from double-entry bookkeeping: at the end of each accounting period, all transactions are summarized into a closing balance. That summary becomes the opening balance of the next period. The prior period's transaction detail is no longer needed for day-to-day operations.
+
+Applied to event sourcing, a temporal chapter represents a **bounded time segment** of an entity's event stream, with a defined beginning and end:
 
 - **Opens** with a summary event carrying forward the essential state from prior chapters
 - **Contains** the events that occurred during that period
-- **Closes** with a closing event that summarizes the chapter's final state
+- **Closes** with a closing event summarizing the chapter's final state
 
-The closed chapter becomes immutable and archivable. The new chapter starts fresh with only the carried-forward summary, keeping the active working set small.
+The closed chapter becomes immutable and archivable. The new chapter starts fresh, keeping the active working set small.
+
+### The Metaphor
+
+Think of an entity's event history as a book. Without temporal chapters, it is a single unbroken wall of text. With chapters, the narrative is segmented into meaningful periods.
 
 ### Concrete Examples
 
@@ -26,61 +127,62 @@ The closed chapter becomes immutable and archivable. The new chapter starts fres
 | Subscription | Billing cycle | `CycleStarted(plan, balance)` | `CycleCompleted(invoice)` |
 | Inventory | Stock-take period | `PeriodOpened(currentStock)` | `PeriodClosed(reconciledStock)` |
 
-## What is it Used For?
+### This Pattern Is Optional
 
-### 1. Performance — Keeping Streams Short
+Temporal chapters add significant modeling complexity. They are justified only when:
 
-The primary motivation. When state is reconstructed by loading events and folding them, a stream with thousands of events becomes a performance bottleneck. Chapters ensure the active segment only contains events from the current period, typically tens to hundreds of events rather than thousands.
+- An entity is **long-lived** with a high and ongoing rate of events (thousands or more)
+- There are **natural business boundaries** that align with chapter transitions (shifts, billing cycles, fiscal periods)
+- Replay performance or event log storage has become an actual, measured bottleneck
 
-### 2. Data Retention and Archival
+For most entities — orders, tasks, short-lived workflows — temporal chapters are not needed. The event stream terminates naturally (an order is fulfilled, a task is completed) before volume becomes a concern.
+
+**The structural chapter pattern from Part 1 is always useful. Temporal chapters are an optimization applied selectively.**
+
+### What Temporal Chapters Are Used For
+
+#### 1. Performance — Keeping Streams Short
+
+The primary motivation. When state is reconstructed by replaying events, a stream with thousands of events becomes a performance bottleneck. Temporal chapters ensure the active segment contains only events from the current period — typically tens to hundreds of events rather than thousands.
+
+#### 2. Data Retention and Archival
 
 Closed chapters can be moved to cold storage (S3, archive tables) while the active chapter remains in the hot path. This is a natural fit for compliance requirements (GDPR right to erasure of old periods, regulatory retention windows).
 
-### 3. Natural Business Boundaries
+#### 3. Natural Business Boundaries as First-Class Concepts
 
-Many business processes have inherent temporal boundaries that chapters simply make explicit: fiscal periods, shifts, billing cycles, seasons. Making these boundaries first-class in the event model aligns the technical model with how the business thinks.
+Many business processes have inherent temporal boundaries that chapters make explicit: fiscal periods, shifts, billing cycles, seasons. Making these boundaries first-class in the event model aligns the technical model with how the business thinks.
 
-### 4. Schema Evolution
+#### 4. Schema Evolution
 
-Shorter streams make schema migration easier. When a chapter closes, the summary event can be written using the latest schema version, eliminating the need to support reading old event formats within the active chapter.
+When a chapter closes, the summary event can be written using the latest schema version, eliminating the need to support reading old event formats within the active chapter.
 
-### 5. Conflict Reduction
+#### 5. Conflict Reduction
 
-In high-contention scenarios, shorter event histories mean fewer events to check for optimistic concurrency conflicts, reducing the likelihood of retries.
+Shorter event histories mean fewer events to check for optimistic concurrency conflicts, reducing the likelihood of retries in high-contention scenarios.
 
-## Advantages
+### Advantages
 
 1. **Bounded replay cost**: State reconstruction reads only the current chapter, with predictable and bounded event counts.
-
-2. **Natural archival**: Closed chapters are immutable artifacts that can be compressed, moved to cold storage, or even deleted after a retention period.
-
-3. **Domain alignment**: The model reflects real business concepts (shifts, periods, cycles) rather than being a purely technical concern.
-
-4. **Simpler snapshots**: The chapter's opening summary event IS the snapshot — no separate snapshot infrastructure needed. Snapshots are events, not a database optimization hack.
-
+2. **Natural archival**: Closed chapters are immutable artifacts that can be compressed, moved to cold storage, or deleted after a retention period.
+3. **Domain alignment**: The model reflects real business concepts (shifts, periods, cycles).
+4. **Simpler snapshots**: The chapter's opening summary event IS the snapshot — no separate snapshot infrastructure needed.
 5. **Cleaner schema evolution**: Each new chapter can adopt the latest schema version in its opening event.
 
-6. **Reduced contention**: Shorter event histories have fewer events to check for concurrency conflicts.
-
-## Consequences and Trade-offs
+### Consequences and Trade-offs
 
 1. **Added modeling complexity**: Every entity needs explicit lifecycle analysis. The modeler must identify when chapters open and close, what state carries forward, and what gets left behind.
-
-2. **Cross-chapter queries become harder**: Questions like "what happened to entity X across all time?" require reading multiple chapters or maintaining a separate all-time projection.
-
-3. **Carry-forward logic is critical**: The summary/opening event must capture ALL state needed for the next chapter. Missing a field means that information is lost from the active working set (though still available in archived chapters).
-
-4. **Chapter transition is a complex operation**: Closing one chapter and opening the next must be atomic or carefully orchestrated. Race conditions during transition can cause events to land in the wrong chapter.
-
-5. **Not universally applicable**: Some entities don't have natural temporal boundaries (e.g., a user profile). Forcing artificial chapters on these can add complexity without clear benefit.
-
-6. **Read model rebuild**: Rebuilding projections from scratch requires reading all chapters in sequence, not just the current one.
+2. **Cross-chapter queries become harder**: Questions spanning all time require reading multiple chapters or a separate all-time projection.
+3. **Carry-forward logic is critical**: The summary/opening event must capture ALL state needed for the next chapter. Missing a field means that information is lost from the active working set.
+4. **Chapter transition is a complex operation**: Closing one chapter and opening the next must be atomic or carefully orchestrated.
+5. **Not universally applicable**: Some entities don't have natural temporal boundaries (e.g., a user profile). Forcing artificial chapters on these adds complexity without clear benefit.
+6. **Read model rebuild**: Rebuilding projections from scratch requires reading all chapters in sequence.
 
 ---
 
-## Chapters in the Two Approaches: Aggregates vs. DCB
+## Temporal Chapters in the Two Approaches: Aggregates vs. DCB
 
-Reventless supports two fundamentally different event sourcing paradigms. Chapters apply to both, but the mechanics, trade-offs, and implementation strategies differ significantly.
+Reventless supports two fundamentally different event sourcing paradigms. Temporal chapters apply to both, but the mechanics, trade-offs, and implementation strategies differ significantly.
 
 ### Recap: How the Two Approaches Differ
 
@@ -91,11 +193,10 @@ Reventless supports two fundamentally different event sourcing paradigms. Chapte
 | **State reconstruction** | Replay all events for one aggregate ID | Query tag-filtered events, build ephemeral decision model |
 | **Concurrency** | Per-stream sequence number (implicit sharding) | Optimistic locking via conditional append on tag queries |
 | **Consistency boundary** | Static — fixed to the aggregate | Dynamic — defined by each command's query |
-| **Event scope** | Each aggregate type has its own event type | One event union per DcbEventLog, shared across all slices |
 
-### Chapters for Aggregate-Based Event Sourcing
+### Temporal Chapters for Aggregate-Based Event Sourcing
 
-In the aggregate world, chapters are a **natural fit** because streams are already per-entity. The pattern maps directly:
+In the aggregate world, temporal chapters are a **natural fit** because streams are already per-entity. The pattern maps directly:
 
 #### Stream Identity Strategies
 
@@ -137,13 +238,13 @@ The aggregate's `Behavior` module gains chapter awareness:
 - Performance optimization for aggregates where replay becomes a bottleneck
 - **Not needed** for short-lived aggregates (e.g., orders that go through a finite workflow and then freeze)
 
-### Chapters for DCB-Based Event Sourcing
+### Temporal Chapters for DCB-Based Event Sourcing
 
 In the DCB world, there are no per-entity streams to segment. The single shared event log and dynamic consistency boundaries create a fundamentally different challenge.
 
 #### The Core Tension
 
-DCB's power comes from **dynamic queries** — each StateChangeSlice reads exactly the events it needs via tag-based filtering. The consistency boundary is defined by the query, not by a stream. Chapters must work within this model without destroying its flexibility.
+DCB's power comes from **dynamic queries** — each StateChangeSlice reads exactly the events it needs via tag-based filtering. The consistency boundary is defined by the query, not by a stream. Temporal chapters must work within this model without destroying its flexibility.
 
 #### Option A: Global Log Chapters (Log-Level Segmentation)
 
@@ -158,7 +259,7 @@ Chapter 3: positions 25001–current (2024-Q3)
 Each chapter boundary includes **summary events** that carry forward the current state of all active entities. StateChangeSlices only query within the current chapter.
 
 **Pros**: Simple conceptually. Bounded read windows. Clear archival boundaries.
-**Cons**: Summary events must capture state for ALL entities — potentially very large. Chapter transitions affect the entire system. Doesn't align well with per-entity lifecycles. A single entity with high activity forces global chapter rotation.
+**Cons**: Summary events must capture state for ALL entities — potentially very large. Chapter transitions affect the entire system. Doesn't align well with per-entity lifecycles.
 
 #### Option B: Entity-Level Chapters via Tags (Entity-Level Segmentation)
 
@@ -188,14 +289,14 @@ Combine entity-level chapter events with periodic log rotation:
 
 #### DCB-Specific Complication: Cross-Entity Decision Models
 
-A key DCB strength is that a StateChangeSlice can read events from **multiple entities** in a single query. For example, an `AddProduct` slice might check both product existence AND category existence before allowing a product to be added. With chapters, each entity may be at a different chapter boundary. The StateChangeSlice must:
+A key DCB strength is that a StateChangeSlice can read events from **multiple entities** in a single query. With temporal chapters, each entity may be at a different chapter boundary. The StateChangeSlice must:
 - Find the latest `ChapterOpened` for each entity involved in the query
 - Use the earliest of those positions as its `after` cursor
 - Or maintain a separate chapter index per entity and merge results
 
 This is significantly more complex than the aggregate case where each entity has its own isolated stream.
 
-### Comparison: Chapters in Both Approaches
+### Comparison: Temporal Chapters in Both Approaches
 
 | Aspect | Aggregates | DCB |
 |--------|-----------|-----|
@@ -204,40 +305,25 @@ This is significantly more complex than the aggregate case where each entity has
 | **Implementation complexity** | Low — contained within aggregate component | High — cross-cutting concern touching DcbEventLog, all slices |
 | **Carry-forward state** | Aggregate state (well-defined, single type) | Decision model per slice (multiple slices may need different summaries for the same entity) |
 | **Cross-entity impact** | None — chapters are per-aggregate | Significant — cross-entity queries must reconcile chapter boundaries |
-| **Event union impact** | None — chapter events can be separate from domain events | Chapter events must be part of the shared event union or handled as meta-events |
 | **Concurrency during transition** | Low risk — per-entity stream isolation | High risk — chapter closing for one entity may conflict with commands from other slices |
 | **When it makes sense** | Long-lived aggregates with many events | Large shared logs with entities that accumulate many events |
-
-### Commonalities
-
-Despite the different mechanics, both approaches share:
-
-1. **The same domain modeling question**: What state needs to carry forward? This is a domain design decision regardless of the technical approach.
-
-2. **The same schema evolution benefit**: Chapter boundaries are natural points to introduce new schema versions.
-
-3. **The same archival pattern**: Closed chapters → cold storage → active chapter stays hot.
-
-4. **The same lifecycle analysis requirement**: The modeler must identify natural temporal boundaries in the business domain.
-
-5. **The same read model concern**: Projections/EventCollectors need access to full event history across chapters for rebuilds, regardless of whether the write side uses aggregates or DCB.
 
 ---
 
 ## Alternative Approaches to Structuring Events
 
-Chapters are one way to manage growing event histories and organize slices, but they are not the only approach. Especially in DCB-based systems where a single event log can serve dozens of slices, the question of **how to structure and organize events** has multiple dimensions.
+Temporal chapters are one way to manage growing event histories, but they are not the only approach. Especially in DCB-based systems, the question of **how to structure and organize events** has multiple dimensions.
 
 ### The DCB Structuring Problem
 
 In a DCB-based Reventless application, the event log grows along two axes:
 
-1. **Depth**: More events per entity over time (the chapter problem)
-2. **Breadth**: More entity types and slices sharing the same log (the organization problem)
+1. **Depth**: More events per entity over time (the temporal chapter problem)
+2. **Breadth**: More entity types and slices sharing the same log (the structural organization problem)
 
-The current Reventless DCB example (`online-shop-dcb`) already shows this: the Catalog plugin has one `CatalogEventLog` containing events for Products, Categories, AND ProductDemand — with 8 StateChangeSlices, 3 StateViewSlices, and translation slices all operating on the same log. As the domain grows, this single event union becomes a wide, complex type.
+The online-shop-dcb example already shows this: the Catalog plugin has one `CatalogEventLog` containing events for Products, Categories, AND ProductDemand — with multiple StateChangeSlices, StateViewSlices, and translation slices all operating on the same log. As the domain grows, this single event union becomes a wide, complex type.
 
-The following approaches address different aspects of this problem. They are not mutually exclusive — many can be combined.
+The following approaches address different aspects. They are not mutually exclusive — many can be combined.
 
 ### Approach 1: Multiple DcbEventLogs per Plugin (Domain Partitioning)
 
@@ -256,17 +342,15 @@ Each log has a smaller event union and fewer slices. Tag-based filtering becomes
 - Smaller event unions — easier to understand and maintain
 - Natural DynamoDB partitioning — separate tables, separate capacity
 - Independent scaling per domain area
-- Slices only subscribe to the events they care about
-- Reduced secondary index breadth — fewer tag types per log
+- Reduced secondary index breadth
 
 **Cons**:
-- **Loses cross-entity consistency** — the core DCB advantage. If `AddProduct` needs to check category existence, and category events are in a different log, the conditional append can't span both logs. The consistency boundary is limited to a single log.
-- More infrastructure to manage — multiple DynamoDB tables, more Pulumi resources
-- Cross-log queries require a separate coordination mechanism (similar to cross-plugin extension points)
+- **Loses cross-entity consistency** — the core DCB advantage. If `AddProduct` needs to check category existence, and category events are in a different log, the conditional append can't span both logs.
+- More infrastructure to manage
 
-**When to use**: When entities within a plugin are truly independent and rarely need cross-entity consistency guarantees. This is essentially using DCB at the micro level (per-area) rather than the macro level (per-plugin).
+**When to use**: When entities within a plugin are truly independent and rarely need cross-entity consistency guarantees.
 
-**Reventless impact**: Already supported — a plugin can have multiple `DcbEventLog` instances. The trade-off is that slices reading from different logs cannot share a consistency boundary.
+**Reventless impact**: Already supported — a plugin can have multiple `DcbEventLog` instances.
 
 ### Approach 2: Hierarchical Tag Namespaces
 
@@ -279,57 +363,14 @@ Tags:
   domain:demand / entity:prod-1
 ```
 
-Slices query with domain-prefixed tags. The log remains shared (preserving cross-entity consistency) but events are logically partitioned by a tag namespace.
+**Pros**: Single log — full DCB consistency preserved. Organizational clarity without infrastructure changes.
+**Cons**: Doesn't solve the growing event union problem. Doesn't help with event accumulation over time.
 
-**Pros**:
-- Single log — full DCB consistency preserved
-- Organizational clarity without infrastructure changes
-- secondary index queries can use the domain tag for pre-filtering
-
-**Cons**:
-- Doesn't solve the growing event union problem (all events still in one type)
-- Doesn't help with depth (event accumulation over time)
-- Tag proliferation — more tags per event, more secondary index columns
-
-**When to use**: When you need cross-entity consistency but want better logical organization. Good for documentation and developer orientation, less impactful for runtime performance.
-
-**Reventless impact**: Purely a convention — no framework changes needed. Could be formalized with a `DcbTag.namespace` helper.
+**Reventless impact**: Purely a convention — no framework changes needed.
 
 ### Approach 3: Event Categorization by Slice Type (Swimlanes)
 
-Organize slices and their events by **slice type** rather than by entity:
-
-```
-Write slices (StateChangeSlices):
-  Command handling → produces events
-
-Read slices (StateViewSlices):
-  Event projection → produces query results
-
-Automation slices:
-  Event → Command (internal automation)
-
-Translation slices:
-  External events → Internal commands (inbound)
-  Internal events → External commands (outbound)
-```
-
-This is the **event modeling swimlane** approach, where the event model diagram organizes slices into horizontal lanes by their pattern type (Command, View, Automation, Translation). Each lane represents a different concern.
-
-**Pros**:
-- Aligns with event modeling methodology
-- Clear separation of responsibilities
-- Natural team boundaries — write-side team vs. read-side team
-- Already reflected in Reventless' `Plugin.DcbSpec` structure (separate arrays for stateChangeSlices, stateViewSlices, automationSlices, translationSlices)
-
-**Cons**:
-- Organizational only — doesn't affect runtime event storage or performance
-- Doesn't address event depth or log growth
-- Doesn't help with the event union size
-
-**When to use**: Always — this is a modeling/organizational pattern, not a runtime optimization. It helps developers navigate large systems.
-
-**Reventless impact**: Already implemented in the plugin structure. Could be enhanced with better documentation and tooling.
+Already implemented in Reventless via the `Plugin.DcbSpec` structure (separate arrays for stateChangeSlices, stateViewSlices, automationSlices, translationSlices). This is the structural chapter pattern from Part 1.
 
 ### Approach 4: Event Type Subsetting (Slice-Scoped Event Types)
 
@@ -347,26 +388,14 @@ type event =
 type relevantEvent = ProductAdded(...) | CategoryAdded(...)
 ```
 
-Each StateChangeSlice declares which event types it reads and writes. The framework uses this declaration to optimize queries (only fetch matching event types) and to provide type safety (the `reduce` function only handles relevant events).
+**Pros**: Type-safe. Query optimization. Explicit dependencies between slices and events.
+**Cons**: ReScript's type system makes variant subsetting verbose.
 
-**Pros**:
-- Type-safe — each slice only sees events it understands
-- Query optimization — tag queries include `eventTypes` filter
-- Documentation — explicit dependencies between slices and events
-- Composability — adding a new event type doesn't affect unrelated slices
-
-**Cons**:
-- Requires a mapping between the full event union and per-slice subsets
-- ReScript's type system makes this verbose (variant subsetting isn't native)
-- The DCB read still returns the full union — filtering happens at the framework level
-
-**When to use**: As systems grow beyond a handful of slices and the event union exceeds ~15-20 variants.
-
-**Reventless impact**: Partially supported — `DcbTag.query` already accepts `eventTypes` for filtering. Could be formalized in `StateChangeSlice.Spec` as a required declaration.
+**Reventless impact**: Partially supported — `DcbTag.query` accepts `eventTypes` for filtering. Could be formalized in `StateChangeSlice.Spec` as a required declaration.
 
 ### Approach 5: Snapshots as a Technical Optimization
 
-Rather than the domain-driven chapter approach, use **infrastructure-level snapshots** that are transparent to domain logic:
+Rather than the domain-driven temporal chapter approach, use **infrastructure-level snapshots** transparent to domain logic:
 
 ```
 EventLog stores events normally.
@@ -382,63 +411,23 @@ On next read, the slice:
   3. Folds those events on top of the snapshot state
 ```
 
-**Pros**:
-- Transparent to domain logic — no changes to specs, behaviors, or slices
-- Solves the depth problem without requiring lifecycle modeling
-- Can be added/removed without changing the event model
-- Works for entities without natural temporal boundaries
+**Pros**: Transparent to domain logic. Solves the depth problem without requiring lifecycle modeling. Works for entities without natural temporal boundaries.
+**Cons**: Separate infrastructure. Schema changes require snapshot invalidation. Not a domain concept.
 
-**Cons**:
-- Separate infrastructure (snapshot store, background process, consistency management)
-- Snapshots can become stale if the background process falls behind
-- Schema changes require snapshot invalidation and rebuild
-- Not a domain concept — purely technical debt management
-- "Snapshots solve a problem that rarely exists" — the performance concern often doesn't materialize until very high event counts
-
-**When to use**: As a last resort for performance optimization, after domain modeling (chapters) and query optimization (secondary index tuning) have been exhausted.
-
-**Reventless impact**: Requires new infrastructure — snapshot store adapter, background snapshot builder, snapshot-aware read operations. A significant cross-cutting change.
+**When to use**: As a last resort for performance optimization, after domain modeling (temporal chapters) and query optimization have been exhausted.
 
 ### Approach 6: Event Log per Bounded Context with Cross-Context Extensions
 
-This is the approach Reventless already takes at the **plugin level**: each plugin has its own DcbEventLog (or set of aggregates), and cross-plugin communication happens via extension points.
+This is the approach Reventless already takes at the **plugin level**: each plugin has its own DcbEventLog (or set of aggregates), and cross-plugin communication happens via extension points. The question is whether this pattern should be applied **within** a plugin as well.
 
-The question is whether this pattern should be applied **within** a plugin as well — splitting one plugin into smaller bounded contexts, each with its own event log, connected by internal extension points.
-
-```
-CatalogPlugin/
-  ProductContext/
-    ProductEventLog
-    AddProduct (StateChangeSlice)
-    ProductsView (StateViewSlice)
-  CategoryContext/
-    CategoryEventLog
-    AddCategory (StateChangeSlice)
-    CategoriesView (StateViewSlice)
-  Integration/
-    ProductCategoryExtension (ensures product's category exists)
-```
-
-**Pros**:
-- Maximum isolation between concerns
-- Each context scales independently
-- Clean bounded context boundaries within a plugin
-
-**Cons**:
-- Loses the DCB single-log consistency guarantee across contexts
-- More infrastructure overhead
-- Cross-context consistency requires eventual consistency patterns (extension points, sagas)
-- May be over-engineering for a small domain
-
-**When to use**: When a plugin has grown large enough that different entity types truly represent separate bounded contexts with independent lifecycles.
-
-**Reventless impact**: Already supported — a plugin can contain multiple DcbEventLogs and extension points. The trade-off is architectural complexity.
+**Reventless impact**: Already supported — a plugin can contain multiple DcbEventLogs and extension points.
 
 ### Comparison Matrix
 
 | Approach | Addresses Depth | Addresses Breadth | Preserves DCB Consistency | Domain-Driven | Implementation Effort |
 |----------|:-:|:-:|:-:|:-:|:-:|
-| **Chapters** | Yes | No | Depends on option | Yes | High |
+| **Structural Chapters (folder org.)** | No | Yes (organizational) | Yes | Yes | Already done |
+| **Temporal Chapters (closing the books)** | Yes | No | Depends on option | Yes | High |
 | **Multiple Logs** | No | Yes | No (per-log only) | Somewhat | Medium |
 | **Tag Namespaces** | No | Yes (logical) | Yes | No | Low |
 | **Swimlanes** | No | Yes (organizational) | N/A | Yes | Already done |
@@ -450,59 +439,47 @@ CatalogPlugin/
 
 For a growing DCB-based Reventless application:
 
-1. **Start with**: Swimlanes (already built into plugin structure) + Event type subsetting (formalize in specs)
-2. **When depth becomes an issue**: Add chapters (entity-level, Option B) for long-lived entities
-3. **When breadth becomes an issue**: Consider multiple DcbEventLogs or context splitting — but only when cross-entity consistency is truly not needed across the split
-4. **As a last resort**: Infrastructure snapshots for entities where chapters don't fit (no natural temporal boundary)
+1. **Start with**: Structural chapters (folder organization, already built into plugin structure) + Swimlane organization (already built) + Event type subsetting (formalize in specs)
+2. **When breadth becomes an issue**: Consider multiple DcbEventLogs or context splitting — but only when cross-entity consistency is truly not needed across the split
+3. **When depth becomes an issue**: Add temporal chapters (entity-level, Option B) for long-lived entities with natural business lifecycle boundaries
+4. **As a last resort**: Infrastructure snapshots for entities where temporal chapters don't fit (no natural temporal boundary)
 
 ---
 
 ## Relationship to DCB EventLog Partitioning
 
-The analysis in [dcb-eventlog-partitioning-improvement.md](dcb-eventlog-partitioning-improvement.md) recommends moving from the current single-partition design (`id="dcb"`) to **primary-tag partitioning** (`id="<tagKey>:<tagValue>"`), where each entity gets its own DynamoDB partition. This architectural change has profound implications for how chapters would work in DCB — it largely resolves the "core tension" described above and makes entity-level chapters (Option B) the natural and clearly preferred approach.
+The analysis in [dcb-eventlog-partitioning-improvement.md](dcb-eventlog-partitioning-improvement.md) recommends moving from the current single-partition design (`id="dcb"`) to **primary-tag partitioning** (`id="<tagKey>:<tagValue>"`), where each entity gets its own DynamoDB partition. This architectural change has profound implications for how temporal chapters would work in DCB.
 
-### How Partitioning Changes the Chapter Landscape
+### How Partitioning Changes the Temporal Chapter Landscape
 
 #### The Single-Partition World (Current)
 
-In the current design, all events live in one DynamoDB partition keyed by `id="dcb"`. Chapters must be implemented as tagged events within this flat log. Finding the latest `ChapterOpened` event for an entity requires a secondary index query. The shared partition means chapter-closing writes for one entity compete with regular command writes for all other entities. This is the world where Options A, B, and C all have significant trade-offs.
+In the current design, all events live in one DynamoDB partition keyed by `id="dcb"`. Temporal chapters must be implemented as tagged events within this flat log. Finding the latest `ChapterOpened` event for an entity requires a secondary index query. The shared partition means chapter-closing writes for one entity compete with regular command writes for all other entities.
 
 #### The Primary-Tag-Partitioned World (Recommended)
 
 With primary-tag partitioning, each entity already has its own physical partition (e.g., `id="productId:prod-1"`). This changes everything:
 
-1. **Entity-level chapters become trivial to locate.** Finding the latest `ChapterOpened` event is a simple backward scan within the entity's own partition — no secondary index needed, no cross-partition query. The partition is already scoped to the entity.
+1. **Entity-level chapters become trivial to locate.** Finding the latest `ChapterOpened` event is a simple backward scan within the entity's own partition — no secondary index needed.
 
-2. **Option A (global log chapters) becomes irrelevant.** There is no longer a single global log to segment. Each entity partition is its own mini-log. Global chapter boundaries would require coordinating across all partitions — the opposite of what partitioning achieves.
+2. **Option A (global log chapters) becomes irrelevant.** There is no longer a single global log to segment.
 
-3. **Option B (entity-level chapters) aligns perfectly.** Each entity's partition contains only that entity's events. A `ChapterOpened`/`ChapterClosed` event pair within the partition naturally segments it. The `~after` position parameter works directly — `after: <ChapterOpened position>` skips all pre-chapter events within the partition.
+3. **Option B (entity-level chapters) aligns perfectly.** Each entity's partition contains only that entity's events. The `~after` position parameter works directly — `after: <ChapterOpened position>` skips all pre-chapter events within the partition.
 
-4. **Option C (hybrid with log rotation) simplifies to partition archival.** Instead of rotating a global log, individual entity partitions can be archived independently. A partition with only closed chapters and no recent activity can be moved to cold storage while active partitions remain hot.
+4. **Option C (hybrid with log rotation) simplifies to partition archival.** Individual entity partitions can be archived independently.
 
-### Synergies Between Partitioning and Chapters
+### Synergies Between Partitioning and Temporal Chapters
 
 | Concern | Single Partition + Chapters | Primary-Tag Partition + Chapters |
 |---------|---------------------------|----------------------------------|
-| **Finding latest chapter** | secondary index query across all events | Backward scan within entity partition |
+| **Finding latest chapter** | Secondary index query across all events | Backward scan within entity partition |
 | **Chapter closing atomicity** | Competes with all writers | DynamoDB transaction within one partition (atomic) |
 | **Archival granularity** | Must archive entire log or nothing | Archive per-entity partition independently |
-| **Chapter position index** | Dedicated table/secondary index required | Not needed — partition IS the index |
-| **Cross-entity decision models** | Chapter positions from multiple entities via secondary index | Each entity's partition queried independently; chapter position found per-partition |
 | **Concurrency during transition** | High risk — all entities share one partition | Low risk — only that entity's commands contend |
-
-### Impact on Chapter Implementation Phases
-
-The partitioning analysis proposes a phased migration (Phases 1–4 in the partitioning doc). Chapter implementation should be **sequenced after** partitioning, because partitioning dramatically simplifies chapters:
-
-- **Phase D1 (Chapter foundation)** becomes easier: no chapter position index needed — the entity partition provides it natively. The `DcbEventLog.read(~query, ~after)` interface already works per-partition.
-
-- **Phase D2 (StateChangeSlice integration)** is unchanged: the slice spec still needs `summary`/`initFromSummary`/`toSummary`. But the runtime implementation is simpler because finding the chapter start is a local partition operation.
-
-- **Phase D3 (Storage optimization)** aligns with partitioning's archival story: per-entity partitions with only closed chapters can be archived to S3 using DynamoDB's export or TTL. No need for a separate archival mechanism beyond what partitioning already enables.
 
 ### The Chapter-Closing Operation Under Partitioning
 
-The partitioning analysis shows that DynamoDB transactions can atomically read-check-write within a single partition (up to 100 items). This directly enables **atomic chapter closing**:
+DynamoDB transactions can atomically read-check-write within a single partition (up to 100 items). This directly enables **atomic chapter closing**:
 
 ```
 TransactWriteItems (within partition "productId:prod-1"):
@@ -511,38 +488,32 @@ TransactWriteItems (within partition "productId:prod-1"):
   3. Put: ChapterOpened { carryForward: { ... } }
 ```
 
-This eliminates the race condition concern from the chapter analysis. Without partitioning, chapter closing in the shared log competes with all writers. With partitioning, it only competes with commands for the same entity — and the transaction makes it atomic.
-
-### Cross-Entity Decision Models: Already Addressed
-
-The partitioning analysis identifies cross-entity queries as rare and recommends secondary index-based fallback or targeted single-partition reads. The same applies to cross-entity chapter concerns:
-
-- If a StateChangeSlice queries multiple entities, each entity's partition is queried independently. Each query can independently skip to the latest chapter opening within its partition.
-- The k-way merge infrastructure (already described in the partitioning doc) handles merging results across partitions, respecting per-partition chapter boundaries.
-- No need for a unified cross-entity chapter index — each partition manages its own chapters.
+This eliminates the race condition concern. Without partitioning, chapter closing in the shared log competes with all writers. With partitioning, it only competes with commands for the same entity — and the transaction makes it atomic.
 
 ### Revised Recommendation
 
-Given the partitioning analysis, the recommended approach for DCB chapters simplifies to:
+Given the partitioning analysis, the recommended approach for DCB temporal chapters simplifies to:
 
 1. **Implement primary-tag partitioning first** (as recommended in the partitioning analysis)
-2. **Then add entity-level chapters (Option B)** as simple per-partition events — no special infrastructure beyond the partition itself
+2. **Then add entity-level temporal chapters (Option B)** as simple per-partition events — no special infrastructure beyond the partition itself
 3. **Skip Option A entirely** — global log chapters are incompatible with partitioned storage
-4. **Option C reduces to per-partition archival** — archive dormant entity partitions to cold storage, no need for a separate log rotation mechanism
+4. **Option C reduces to per-partition archival** — archive dormant entity partitions to cold storage
 
-This sequencing means chapters become a lightweight addition on top of partitioning, rather than a complex standalone feature built against the current single-partition design.
+This sequencing means temporal chapters become a lightweight addition on top of partitioning, rather than a complex standalone feature.
 
 ---
 
 ## Implementation: What Has to Be Built
 
-### For Aggregate-Based Chapters
+Structural chapters (folder organization, swimlanes, PPX conventions) are already fully supported. The following phases concern **temporal chapters (closing the books)** only.
+
+### For Aggregate-Based Temporal Chapters
 
 #### Phase A1: Aggregate Chapter Support
 
 1. **Extend `Aggregate.Spec` (optional fields)**
    - `type summary` — the carry-forward state type
-   - `summarySchema: S.t<summary>` — sury schema for serialization
+   - `summarySchema: S.t<summary>` — summary schema for serialization
    - `initFromSummary: summary => state` — initialize from a chapter opening
    - `toSummary: state => summary` — compute summary for chapter closing
 
@@ -556,9 +527,9 @@ This sequencing means chapters become a lightweight addition on top of partition
    - Reads current state, computes summary, appends `ChapterClosed` + `ChapterOpened`
    - Could be an automation or a manual trigger
 
-### For DCB-Based Chapters
+### For DCB-Based Temporal Chapters
 
-> **Prerequisite**: DCB chapters should be implemented **after** primary-tag partitioning (see [dcb-eventlog-partitioning-improvement.md](dcb-eventlog-partitioning-improvement.md)). Partitioning gives each entity its own DynamoDB partition, which makes chapters a lightweight per-partition addition rather than a complex cross-cutting feature. The phases below assume partitioning is already in place.
+> **Prerequisite**: DCB temporal chapters should be implemented **after** primary-tag partitioning (see [dcb-eventlog-partitioning-improvement.md](dcb-eventlog-partitioning-improvement.md)). The phases below assume partitioning is already in place.
 
 #### Phase D1: Foundation
 
@@ -569,66 +540,64 @@ This sequencing means chapters become a lightweight addition on top of partition
 
 2. **Chapter-aware `DcbEventLog.read`**
    - Enhance the read operation to optionally start from the latest chapter opening
-   - With primary-tag partitioning, finding the latest `ChapterOpened` is a backward scan within the entity's own partition — no separate index or secondary index needed
+   - With primary-tag partitioning, finding the latest `ChapterOpened` is a backward scan within the entity's own partition
    - The existing `~after` parameter provides the interface — the adapter finds the chapter start position internally
 
 #### Phase D2: StateChangeSlice Integration
 
-4. **StateChangeSlice chapter support**
+3. **StateChangeSlice chapter support**
    - Extend `StateChangeSlice.Spec` with optional:
      - `type summary` — the carry-forward state type
      - `initFromSummary: summary => decisionModel` — initialize from a chapter opening
      - `toSummary: decisionModel => summary` — compute summary for chapter closing
    - Modify `StateChangeSlice_Builder` to use chapter-aware reads when summary types are defined
+   - The PPX (`@@reventless.spec` on slice files) could auto-detect `type summary` presence and generate appropriate wiring
 
-5. **Chapter closing automation slice**
+4. **Chapter closing automation slice**
    - A new automation or scheduled slice that closes chapters
    - Must handle the read-compute-append cycle atomically
    - Must handle concurrency during the closing window
 
 #### Phase D3: Storage Optimization
 
-6. **Archival adapter**
+5. **Archival adapter**
    - `DcbEventLog` adapter extension for archiving closed chapters to cold storage (S3)
    - DynamoDB TTL configuration for pre-chapter events
    - Archive reader for cross-chapter queries and read model rebuilds
 
-7. **In-memory adapter support**
+6. **In-memory adapter support**
    - Update `DcbEventLogStorage_InMemory` to support chapter-aware reads
    - Chapter position index in memory for testing
-
-### For Event Type Subsetting (Both Approaches)
-
-8. **Formalize event type declarations in StateChangeSlice.Spec**
-   - Required `let relevantEventTypes: array<string>` field
-   - Framework uses this to optimize DcbTag queries
-   - Type-level enforcement via a filtered variant type (aspirational — ReScript limitation)
 
 ### Estimated Scope
 
 | Phase | Components Affected | Complexity |
 |-------|-------------------|------------|
-| A1 (Aggregate chapters) | `reventless-spec`, `EventLog`, `Aggregate` | Medium |
+| Structural chapters | None — already implemented via PPX + generate-plugin | Done |
+| A1 (Aggregate temporal chapters) | `reventless-spec`, `EventLog`, `Aggregate` | Medium |
 | D1 (DCB foundation) | `reventless-spec`, `DcbEventLog`, adapters | Low-Medium (after partitioning) |
 | D2 (DCB slice integration) | `StateChangeSlice`, `StateChangeSlice_Builder` | High |
 | D3 (Storage optimization) | `reventless-aws`, `reventless-in-memory` | Medium |
-| Event subsetting | `StateChangeSlice.Spec`, `DcbEventLog_Operations` | Low-Medium |
 
-### Open Questions
+### Open Questions (Temporal Chapters Only)
 
-1. **Should chapters be transparent to domain logic?** If chapter events are infrastructure-level, domain slices don't need to know about them. But this requires the framework to handle carry-forward automatically, which means the framework needs to understand domain state shapes.
+1. **Should temporal chapters be transparent to domain logic?** If chapter events are infrastructure-level, domain slices don't need to know about them. But this requires the framework to handle carry-forward automatically, which means the framework needs to understand domain state shapes.
 
-2. **How does this interact with cross-entity DCB queries?** A StateChangeSlice that reads events from multiple entities (e.g., checking both product and category existence) would need chapter positions for each entity. The query complexity increases.
+2. **Is the carry-forward state the same as the decision model?** In many cases yes, but some decision models include derived/computed fields that don't need to be persisted. The `summary` type might be a subset of `decisionModel`.
 
-3. **Is the carry-forward state the same as the decision model?** In many cases yes, but some decision models include derived/computed fields that don't need to be persisted. The `summary` type might be a subset of `decisionModel`.
+3. **Can temporal chapters work without explicit domain modeling?** An infrastructure-only approach could periodically snapshot the result of replaying all events for an entity and store it as a synthetic `ChapterOpened` event. This is effectively an automatic snapshot mechanism — simpler but less aligned with domain concepts.
 
-4. **Can chapters work without explicit domain modeling?** An infrastructure-only approach could periodically snapshot the result of replaying all events for an entity and store it as a synthetic `ChapterOpened` event. This is effectively an automatic snapshot mechanism — simpler but less aligned with domain concepts.
+4. **What's the minimum viable temporal chapter?** Perhaps starting with just entity-level chapter events and position-based skipping (Phase D1 + partial D2) delivers most of the performance benefit without the full archival infrastructure.
 
-5. **What's the minimum viable chapter?** Perhaps starting with just entity-level chapter events and position-based skipping (Phase D1 + partial D2) delivers most of the performance benefit without the full archival infrastructure.
+5. **Multiple DcbEventLogs vs. temporal chapters**: For a plugin where some entity groups are truly independent, is splitting into multiple logs a better first step than implementing temporal chapters? It's simpler to implement and may defer the need for temporal chapters entirely.
 
-6. **Should event subsetting be enforced or advisory?** Strict enforcement means a slice that doesn't declare its event types won't compile. Advisory means it's used for query optimization but the full union is still accessible. The former is safer; the latter is more pragmatic during early development.
+6. **How does this interact with cross-entity DCB queries?** A StateChangeSlice that reads events from multiple entities would need chapter positions for each entity. The query complexity increases.
 
-7. **Multiple DcbEventLogs vs. chapters**: For a plugin where some entity groups are truly independent, is splitting into multiple logs a better first step than implementing chapters? It's simpler to implement and may defer the need for chapters entirely.
+---
+
+## Related Analyses
+
+- [event-modeling-json-reventless-conversion.md](event-modeling-json-reventless-conversion.md) — How the Dilger JSON schema maps to Reventless components. Neither chapter type is represented in the JSON schema: structural chapters round-trip via `slice.context` dotted naming convention; temporal chapters are entirely absent and must be added manually post-import.
 
 ---
 

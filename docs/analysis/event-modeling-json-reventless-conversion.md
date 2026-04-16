@@ -6,13 +6,15 @@ Martin Dilger (Nebulit / eventmodelers.de) created a JSON schema for Event Model
 
 ### 1.1 Adoption and Standardization Status
 
-**Dilger's schema is not a standard.** It has very low adoption (19 GitHub stars, 2 forks, single commit from 2025-10-17) and is used almost exclusively within Nebulit's own Miro toolkit and code generator. No other project was found that imports, validates against, or generates this schema. Adam Dymitruk's eventmodeling.org does not reference or endorse any JSON schema — the site is purely conceptual.
+**Dilger's schema is not a standard.** It has very low adoption (19 GitHub stars, 2 forks, single commit from 2025-10-17 — no subsequent development as of April 2026) and is used almost exclusively within Nebulit's own Miro toolkit and code generator. No other project was found that imports, validates against, or generates this schema. Adam Dymitruk's eventmodeling.org does not reference or endorse any JSON schema — the site is purely conceptual.
+
+The companion CLI ([embuilder-node](https://github.com/dilgerma/embuilder-node)) is actively maintained (latest `0.1.52`, March 2026), but it is a template/prompt installer — the actual code generation runs in a closed Docker image (`nebulit/generators`) that is not publicly available. The schema file itself has had zero changes since its initial commit.
 
 The event modeling community has **no agreed-upon interchange format**. The landscape is fragmented:
 
 | Project | Format | Notes |
 |---------|--------|-------|
-| **dilgerma/event-modeling-spec** | JSON Schema (Draft 07) | Nebulit's Miro toolkit. 19 stars. Single commit (2025-10-17). |
+| **dilgerma/event-modeling-spec** | JSON Schema (Draft 07) | Nebulit's Miro toolkit. 19 stars. Single commit (2025-10-17). No version field. |
 | **SamHatoum/event-modeling-spec** | Zod/TypeScript → JSON Schema | Independent, unrelated schema with same repo name. 6 stars. |
 | **err0r500/fairway-spec** | CUE language | DSL for vertical slices with validation rules. |
 | **waiteperspectives/eml** | Custom DSL (Rust) | Text DSL compiled to SVG diagrams. 19 stars. |
@@ -149,6 +151,8 @@ Everything is organized around **vertical slices**, not aggregates or bounded co
 
 **Note on Reventless approaches**: Reventless supports three architectural approaches — **Aggregate** (traditional event-sourced aggregates with Behavior), **DCB** (Dynamic Consistency Boundary with StateChangeSlice/StateViewSlice/AutomationSlice/TranslationSlices), and **Hybrid** (mixing both in the same plugin). All three share the same `initialState/evolve/decide` naming convention. The JSON schema's slice-centric structure maps most naturally to the DCB approach.
 
+**Note on chapters**: Martin Dilger uses "chapter" to mean structural grouping of slices on the board (a `timeline` node in the board backup format). This structural chapter concept is lost when exporting to code-generation JSON — the `sliceGroups` placeholder in `config.json` is never populated. See [Section 2.3](#23-chapters-structural-and-temporal) for full details including the temporal chapter concept ("Closing the Books"), which is unrelated to Dilger's usage and also absent from the schema.
+
 ### 2.2 Example: AddProduct Slice in JSON
 
 ```json
@@ -243,6 +247,66 @@ Everything is organized around **vertical slices**, not aggregates or bounded co
 }
 ```
 
+### 2.3 Chapters: Structural and Temporal
+
+**Important clarification on terminology**: When Martin Dilger uses the word "chapter" in his YouTube videos and Nebulit documentation, he means it in the **structural** sense only — a named section of the event modeling board that groups related slices. He is **not** referring to the temporal "Closing the Books" pattern from event sourcing. See [chapters-in-event-modeling.md](chapters-in-event-modeling.md) for the full analysis of both chapter types.
+
+#### Dilger's "Chapter" — What It Is and Where It Lives
+
+In the Nebulit board tool, a chapter is a **named timeline frame** — the primary top-level container on the board. Each chapter is a grid with rows (actor lane, interaction lane, swimlane, spec lane) and columns (one per slice). It gives a section of the board a business-meaningful name like `"Checkout"` or `"Registration"`.
+
+Technically it is a `timeline` node in the **internal board backup format** (`eventmodel-backup-*.json`):
+
+```json
+{
+  "type": "timeline",
+  "data": {
+    "label": "Checkout",
+    "rows": [
+      { "type": "actor", "label": "Actor" },
+      { "type": "interaction", "label": "Interaction" },
+      { "type": "swimlane", "label": "Swimlane" },
+      { "type": "spec", "label": "Spec Lane" }
+    ],
+    "columns": [ ... ],
+    "cells": [ ... ]
+  }
+}
+```
+
+**Chapters do not survive into the code-generation JSON export.** The published `eventmodeling.schema.json` (the schema this document analyses) has no chapter field — the export format is a flat `slices[]` array. The companion `config.json` used by `embuilder-node` has a `sliceGroups: []` field that appears to be the placeholder for chapters, but it is always empty in practice across all published sample repos. The chapter grouping is currently lost at export time.
+
+This means the gap is **in the tooling**, not in the concept. Dilger's chapters are structural — they just aren't serialized into the code-generation format yet.
+
+#### Structural Chapters in Reventless
+
+In Reventless, structural chapters map to **subfolders inside a plugin's `src/` directory** (`Category/`, `Product/`). The `generate-plugin` tool and `reventless-ppx` both use folder names to classify components, so folder structure is the primary expression of structural chapters in code.
+
+Since `sliceGroups` is unused in the JSON, the only available hook for round-tripping chapter information is the **`context` field on slices** — a free-text, unconstrained string. It can encode the chapter name by convention:
+
+**Import convention**: Parse `slice.context` for chapter grouping:
+- Dotted (e.g., `"Catalog.Product"`) → plugin `Catalog`, subfolder `Product/`
+- Simple (e.g., `"Catalog"`) → plugin `Catalog`, no subfolder
+
+This produces the structural chapter folder hierarchy that `reventless-ppx` then uses to inject correct boilerplate (DCB tag annotations, `open Reventless.Projection` for StateViewSlice files, etc.).
+
+**Export convention**: Write `"<PluginName>.<EntityGroupFolder>"` as the `context` (e.g., `catalog/src/Product/` → `"context": "Catalog.Product"`).
+
+If/when `sliceGroups` in `config.json` is populated by the Nebulit tooling, that would be the correct field to use instead of encoding chapters into the `context` string.
+
+#### Temporal Chapters ("Closing the Books")
+
+Temporal chapters — where an entity's event stream is divided into bounded time periods with carry-forward summary events — are a separate event sourcing concept. **Dilger does not use "chapter" in this sense.** This pattern is entirely absent from the JSON schema and the Nebulit board format.
+
+When translating from JSON, temporal chapters cannot be inferred. They must be added by the developer after import, selectively and only for long-lived entities with natural business lifecycle boundaries.
+
+**Summary table**:
+
+| Chapter Type | In Board Backup (`eventmodel-backup-*.json`) | In Code-Gen JSON (`eventmodeling.schema.json`) | Reventless Mapping | Import Strategy |
+|---|---|---|---|---|
+| **Structural (Dilger's "chapter")** | `timeline` node with `label` | Lost — `sliceGroups: []` placeholder unused | Subfolder in `src/` (e.g., `Product/`) | Use `slice.context` by convention |
+| **Temporal ("Closing the Books")** | Not present | Not present | Optional `type summary` + `initFromSummary`/`toSummary` in Spec | Cannot be inferred — added manually post-import |
+
 ---
 
 ## 3. Gap Analysis: What Each Side Cannot Express
@@ -272,6 +336,9 @@ The JSON schema was designed for visual Event Modeling (the methodology), not fo
 | **Platform composition** | Assembles plugins with version | No top-level composition |
 | **Heartbeat interval** | Per-plugin polling configuration | No infrastructure config |
 | **sury/schema annotations** | `@schema`, `@s.matches` for serialization | No serialization concept |
+| **PPX-injected boilerplate** (`@@reventless.spec`, `@@reventless.behavior`) | Auto-injects `let name`, `module Id`, `let moduleUrl`, DCB tag annotations, `open Reventless.Projection` etc. based on folder/filename | No equivalent — the JSON has no concept of code generation conventions |
+| **Folder-based structural chapters** | Slices grouped by entity subfolder (`Category/`, `Product/`) — recognized by `generate-plugin` and `reventless-ppx` | `slice.context` (free string) can encode this by convention, but is not structured |
+| **Temporal chapters ("Closing the Books")** | Optional `type summary` + `initFromSummary`/`toSummary` in Aggregate.Spec or StateChangeSlice.Spec — carry-forward state across bounded time periods | Not present — no chapter boundaries, summary events, or lifecycle periods |
 | **Api component** (GraphQL schema generation, stitching, MCP schema) | Auto-generated GraphQL API from read model schemas with fragment stitching | `apiEndpoint` exists but is a flat string, not a structured config |
 
 ### 3.2 Event Modeling JSON Concepts Missing from Reventless
@@ -301,7 +368,8 @@ Some concepts exist in both but map imperfectly:
 |---------|-----------|--------------------|----|
 | **Aggregate identity** | `module Id = Id.String` (abstract type) | `idAttribute: true` on a field | JSON marks which field is the ID; Reventless has a separate module-level identity type |
 | **Aggregate grouping** | Plugin → aggregates array / dcbSpec | `slice.aggregates[]` strings + `element.aggregate` string | JSON uses flat string refs; Reventless uses typed module composition |
-| **Bounded context** | Plugin name | `slice.context` / `element.modelContext` | 1:1 mapping possible but plugin carries more semantics (deployment unit, heartbeat, etc.) |
+| **Bounded context / plugin** | Plugin name | `slice.context` / `element.modelContext` | 1:1 mapping possible but plugin carries more semantics (deployment unit, heartbeat, etc.) |
+| **Structural chapter (entity group)** | Subfolder in `src/` (e.g., `Product/`, `Category/`) | `slice.context` dotted suffix (e.g., `"Catalog.Product"`) — by convention only | JSON has no structured grouping below the plugin/context level; the subfolder convention must be agreed externally |
 | **Command → Event flow** | `decide` function (both aggregate Behavior and StateChangeSlice) | `dependencies[]` with INBOUND/OUTBOUND | JSON captures the connection but not the logic |
 | **Event → ReadModel flow** | Projection Mapping / StateViewSlice `project` | `dependencies[]` from event to readmodel | JSON captures the connection but not the projection rules |
 | **Cross-boundary communication** | ExtensionPoint + Extension with typed mapping | Elements with `context: "EXTERNAL"` + dependencies | JSON has no formal protocol — just "external" markers |
@@ -355,7 +423,7 @@ Some concepts exist in both but map imperfectly:
 
 5. **Map cross-plugin connections**: Extension point mappings → dependencies between elements with `context: "EXTERNAL"`.
 
-6. **Set context**: Plugin name → `context` on all slices in that plugin.
+6. **Set context with structural chapter encoding**: For each slice, set `context` as `"<PluginName>.<EntityGroupFolder>"` if the slice file lives under an entity-group subfolder (e.g., `src/Product/StateChangeSlice/AddProduct.res` → `"Catalog.Product"`). This encodes the structural chapter into the JSON so it round-trips correctly on reimport. If there is no entity-group subfolder, use the plugin name alone.
 
 7. **Generate specifications** from test files if available (parse Jest test structure for Given/When/Then patterns), or leave `specifications: []`.
 
@@ -371,6 +439,7 @@ Some concepts exist in both but map imperfectly:
 | DCB tags (beyond `idAttribute`) | Could use `tags[]` on fields for non-ID tagged fields, but this is non-standard. |
 | Translation rules (inbound/outbound) | None — automation slices appear but without internal structure. |
 | EP/Extension protocol and mappings | External dependencies capture connections but not the mapping functions. |
+| Temporal chapters (summary events, carry-forward state) | None — no JSON representation exists. Chapter boundaries are a Reventless-only concern (see [chapters-in-event-modeling.md](chapters-in-event-modeling.md)). |
 
 ### 5.2 Event Modeling JSON → Reventless (import)
 
@@ -379,36 +448,51 @@ Some concepts exist in both but map imperfectly:
 
 **Workflow**:
 
-1. **Group slices by context**: The `context` field on each slice maps to a Reventless plugin. Create one plugin package per unique context value.
+1. **Group slices by context and structural chapter**: Parse `slice.context`:
+   - If dotted (e.g., `"Catalog.Product"`): the first segment is the plugin name (`Catalog`), remaining segments form the subfolder path (`Product/`). This encodes a **structural chapter** — the entity-group folder that `generate-plugin` and `reventless-ppx` will use for boilerplate injection.
+   - If undotted (e.g., `"Catalog"`): use as plugin name with no subfolder grouping.
+   - Create one plugin package per unique first segment.
 
 2. **Determine approach**: Default to DCB (since the JSON schema's `sliceType` maps naturally to DCB components). User can override to Aggregate approach, or use a Hybrid approach (independent entities as aggregates, interdependent entities as DCB slices sharing a `DcbEventLog`).
 
 3. **Build shared event log** (DCB): Create a `DcbEventLog` for the plugin. Each slice declares its own `producedEvent` and `consumedEvent` types. Infer DCB tags from `idAttribute: true` fields → generate `@s.matches(DcbTag.string)` annotations on command and produced event fields.
 
-4. **Generate StateChangeSlices**: For each `STATE_CHANGE` slice:
+4. **Generate StateChangeSlices**: For each `STATE_CHANGE` slice, place the file at `src/<chapter>/<SliceName>/StateChangeSlice/<SliceName>.res`. Open with `@@reventless.spec` — the PPX will auto-inject `let name`, `module Id`, `let moduleUrl`, and DCB tag annotations based on the `*Slice/` folder context:
    - Command from `commands[]` → `@schema type command` variant
-   - Produced events from `events[]` → `@schema type producedEvent` variant (with DCB tag annotations)
-   - Consumed events inferred from dependencies → `@schema type consumedEvent` variant (payload-less or partial as appropriate)
+   - Produced events from `events[]` → `@schema type producedEvent` variant (DCB tag annotations auto-injected by PPX for `*Id` fields)
+   - Consumed events inferred from dependencies → `@schema type consumedEvent` variant
    - Generate **skeleton** `state`, `initialState`, `evolve`, `decide` with TODO placeholders
 
-5. **Generate StateViewSlices**: For each `STATE_VIEW` slice:
-   - State from `readmodels[].fields` → `@schema type state` record
+5. **Generate StateViewSlices**: Place at `src/<chapter>/<SliceName>/StateViewSlice/<SliceName>.res`. Open with `@@reventless.spec` — the PPX auto-injects `open Reventless.Projection`, `let config = config()`, `let subIdConfig = None`:
+   - State from `readmodels[].fields` → `@schema type state` record (with `@id` annotation on the identity field)
    - Consumed events from dependencies → `@schema type consumedEvent` variant
    - Generate **skeleton** `project` function with TODO placeholders
 
-6. **Generate AutomationSlices**: For each `AUTOMATION` slice:
+6. **Generate AutomationSlices**: Place at `src/<chapter>/<SliceName>/AutomationSlice/<SliceName>.res`. Open with `@@reventless.spec`:
    - Extract trigger event and target command from `dependencies`
-   - Consumed events from dependencies → `@schema type consumedEvent` variant
    - Generate **skeleton** `todoItem` type, `collect`, `resolve`, `process`, `maxRetries`, `heartbeatInterval` with TODO placeholders
 
 7. **Infer cross-context connections**: Elements with `context: "EXTERNAL"` or dependencies to other contexts:
    - Generate `-spec` package with ExtensionPoint definition
-   - Generate Extension mapping skeleton
+   - Generate Extension mapping skeleton at `src/ExtensionPoint/<Name>ExtensionPointMapping.res` (PPX auto-injects `open ReventlessInfra.ExtensionPointMapping`)
 
 8. **Generate test skeletons** from `specifications[]`:
    - Each specification → Jest `test` (async) with Given (events to replay), When (command to send), Then (expected events or errors)
 
-9. **Generate Plugin.res wiring** and **Main.res platform assembly**.
+9. **Do NOT generate Plugin.res** — this file is auto-generated by the `generate-plugin` prebuild script by scanning the folder structure. The structural chapter folder hierarchy created in steps 4–7 is all that is needed.
+
+**What PPX eliminates from code generation** (no longer needs to be written or generated):
+
+| Boilerplate | PPX Handles It |
+|-------------|----------------|
+| `let name = "SliceName"` | `@@reventless.spec` derives from filename |
+| `module Id` | `@@reventless.spec` auto-injects |
+| `let moduleUrl` | Both `@@reventless.spec` and `@@reventless.behavior` auto-inject |
+| `@s.matches(DcbTag.string)` on `*Id` fields | Auto-applied in all `*Slice/` folders |
+| `open Reventless.Projection` + `let config = config(); let subIdConfig = None` | Auto-injected for `StateViewSlice/` files |
+| `open ReventlessInfra.ExtensionPointMapping` | Auto-injected for `*ExtensionPointMapping*` files |
+| `open Spec; module Spec = Spec` in Behavior files | `@@reventless.behavior` handles it |
+| `Plugin.res` wiring | `generate-plugin` prebuild script |
 
 **Gaps requiring manual completion**:
 
@@ -424,6 +508,7 @@ Some concepts exist in both but map imperfectly:
 | `collect`/`resolve`/`process` | Automation slice internals — which events trigger, which resolve, how to process |
 | `translate` function | Translation rules for inbound/outbound slices |
 | Extension mapping functions | `mapIncomingEvent` / `mapOutgoingEvent` implementations |
+| Temporal chapters | Not inferable from JSON — add `type summary` + `initFromSummary`/`toSummary` manually for long-lived entities after import (see [chapters-in-event-modeling.md](chapters-in-event-modeling.md)) |
 
 ### 5.3 Round-Trip Fidelity
 
@@ -432,9 +517,10 @@ Some concepts exist in both but map imperfectly:
 Lossless elements:
 - Command and event names
 - Field names and basic types
-- Slice/component names and grouping by context
+- Slice/component names and grouping by context (plugin)
 - Cross-component connections (which command produces which events)
 - `idAttribute` → DCB tag on identity fields
+- Structural chapters: subfolder grouping → `slice.context` dotted suffix → subfolder grouping
 
 Lost in round-trip:
 - Ephemeral state logic (evolve/decide) — must be re-implemented
@@ -446,6 +532,7 @@ Lost in round-trip:
 - Extension point mapping functions
 - Plugin-level config (heartbeat interval)
 - Complex field types (`option<T>`, variant types, abstract types)
+- **Temporal chapters entirely** — no round-trip possible; must be re-added manually after reimport
 
 Gained in round-trip:
 - Given/When/Then specifications (if the visual tool added them)
@@ -504,3 +591,13 @@ The JSON serves as the **initial bootstrap** from visual design. The Reventless 
 4. **Syncing specifications**: When the code evolves beyond the initial JSON import, should specifications be synced back to the JSON? Or should test scenarios live exclusively in `.res` test files after the initial bootstrap?
 
 5. **Hybrid approach detection**: Could the import step automatically suggest which entities should be aggregates vs. DCB slices based on cross-entity dependency analysis in the JSON? Entities with no shared events across slices are candidates for the aggregate approach; entities with overlapping events suggest DCB.
+
+6. **Encoding temporal chapters in JSON extensions?** If teams want to design temporal chapter boundaries in the Miro toolkit, the schema would need a custom extension (e.g., `x-reventless-chapterBoundary: true` on specific event elements). This would allow the import step to generate the `type summary` + `initFromSummary`/`toSummary` skeletons automatically. However, this breaks schema compatibility with any other consumer of Dilger's format.
+
+7. **Structural chapter detection from `slice.aggregates[]`**: When importing, could the `aggregates[]` string array on each slice be used to suggest entity-group subfolder names (structural chapters), rather than relying entirely on `slice.context`? Entities that appear across many slices at similar timeline positions are natural structural chapter candidates.
+
+---
+
+## Related Analyses
+
+- [chapters-in-event-modeling.md](chapters-in-event-modeling.md) — Full analysis of both structural chapters (folder organization, swimlanes, PPX conventions — already implemented) and temporal chapters ("Closing the Books" — optional, not in JSON schema). The two chapter types have very different implications for the import/export workflow described here.
