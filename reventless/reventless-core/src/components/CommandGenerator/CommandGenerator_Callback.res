@@ -124,6 +124,16 @@ let makeGenerateCommand = (
           }
         )
       | exception err =>
+        switch Plugin_Helpers.onResolverErrorHook.contents {
+        | Some(hook) =>
+          hook({
+            pluginName: "",
+            componentName: serviceName,
+            attemptedCommandType: commandJson->Message.variantNameOfJson,
+            timestamp: Message.nowAsISOString(),
+          })
+        | None => ()
+        }
         JsError.throwWithMessage(
           `Error: Couldn't decode ${commandJson->JSON.stringify}: ${err
             ->JSON.stringifyAny

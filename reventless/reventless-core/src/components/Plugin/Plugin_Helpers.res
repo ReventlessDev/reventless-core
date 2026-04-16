@@ -468,6 +468,13 @@ type pluginDeployedInfo = {
   version: string,
   environment: string,
   stackName: string,
+  deployedAt: string,
+  actor: string,
+  deploymentId: string,
+  kind?: pluginKind,
+  displayName?: string,
+  vendor?: string,
+  architectureType?: architectureType,
   components: array<pluginDeployedComponent>,
   extensionWirings: array<extensionWiring>,
 }
@@ -508,6 +515,29 @@ let registerOnPlatformDeployed = (hook: platformDeployedInfo => unit) => {
 
 let clearOnPlatformDeployed = () => {
   onPlatformDeployedHook.contents = None
+}
+
+// ---------------------------------------------------------------------------
+// Resolver error hook — fires when a generateCommand resolver receives a
+// command type that cannot be decoded against the registered command schema.
+// Fire-and-forget: hook returns unit, async work is the consumer's concern.
+// ---------------------------------------------------------------------------
+type resolverErrorInfo = {
+  pluginName: string,
+  componentName: string,
+  /** The GraphQL mutation field / command topic tag that was attempted. */
+  attemptedCommandType: string,
+  timestamp: string,
+}
+
+let onResolverErrorHook: ref<option<resolverErrorInfo => unit>> = ref(None)
+
+let registerOnResolverError = (hook: resolverErrorInfo => unit) => {
+  onResolverErrorHook.contents = Some(hook)
+}
+
+let clearOnResolverError = () => {
+  onResolverErrorHook.contents = None
 }
 
 // ---------------------------------------------------------------------------
@@ -1057,6 +1087,18 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
   // Fire onPluginDeployed hook with fully resolved resource data.
   switch onPluginDeployedHook.contents {
   | Some(hook) =>
+    // Read deployment provenance from env vars synchronously (before Output.apply).
+    let actor =
+      processEnv
+      ->Dict.get("GITHUB_ACTOR")
+      ->Option.orElse(processEnv->Dict.get("CI_COMMIT_AUTHOR"))
+      ->Option.orElse(processEnv->Dict.get("USER"))
+      ->Option.getOr("local")
+    let deploymentId =
+      processEnv
+      ->Dict.get("GITHUB_SHA")
+      ->Option.orElse(processEnv->Dict.get("CI_COMMIT_SHA"))
+      ->Option.getOr(Date.make()->Date.toISOString)
     let schemaFor = name =>
       componentSchemaRegistry.contents->Dict.get(name)->Option.getOr({})
     let resolveAggregates = pluginOutputs.aggregates->Pulumi.Output.flatMap(aggs =>
@@ -1301,11 +1343,19 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
         ->Pulumi.Output.all6
         ->Pulumi.Output.apply(((svs, autos, ots, its, dcb, wirings)) => {
           let name = id->String.split("@")->Array.getUnsafe(0)
+          let meta = pluginMetadataRegistry.contents
           let info: pluginDeployedInfo = {
             name,
             version,
             environment: Pulumi.Pulumi.getStackName(),
             stackName: Pulumi.Pulumi.getStackName(),
+            deployedAt: Date.make()->Date.toISOString,
+            actor,
+            deploymentId,
+            kind: ?meta->Option.flatMap(m => m.kind),
+            displayName: ?meta->Option.flatMap(m => m.displayName),
+            vendor: ?meta->Option.flatMap(m => m.vendor),
+            architectureType: ?meta->Option.flatMap(m => m.architectureType),
             components: Array.flat([aggs, rms, eps, scs, svs, autos, ots, its, dcb]),
             extensionWirings: wirings,
           }

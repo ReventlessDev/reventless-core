@@ -21,7 +21,10 @@ function Make(Spec) {
   let encodeEvent = event => {
     let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(event), undefined));
     let match = Message$ReventlessCore.splitMessage(json);
-    let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, event);
+    let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, event).concat([{
+        key: "originatorSlice",
+        value: Spec.name
+      }]);
     return {
       eventType: match[0],
       data: match[1],

@@ -17,6 +17,7 @@ import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as Interstack$ReventlessCore from "../../util/Interstack.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 import * as Dcb_Builder$ReventlessCore from "../Dcb/Dcb_Builder.res.mjs";
+import * as SchemaWalker$ReventlessCore from "./SchemaWalker.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as ExportMeta$ReventlessInterop from "@reventlessdev/reventless-interop/src/ExportMeta.res.mjs";
 import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
@@ -144,10 +145,14 @@ function Make(Spec) {
           let schema_commandTypes = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
           let schema_eventTypes = DcbTag$Reventless.extractEventTypes(M.Spec.eventSchema);
           let schema_errorTypes = DcbTag$Reventless.extractEventTypes(M.Spec.errorSchema);
+          let schema_commandSchemas = [SchemaWalker$ReventlessCore.walk(M.Spec.name + ".command", M.Spec.commandSchema)];
+          let schema_eventSchemas = [SchemaWalker$ReventlessCore.walk(M.Spec.name + ".event", M.Spec.eventSchema)];
           let schema = {
             commandTypes: schema_commandTypes,
             eventTypes: schema_eventTypes,
-            errorTypes: schema_errorTypes
+            errorTypes: schema_errorTypes,
+            commandSchemas: schema_commandSchemas,
+            eventSchemas: schema_eventSchemas
           };
           Plugin_Helpers$ReventlessCore.componentSchemaRegistry.contents[M.Spec.name] = schema;
           return {
@@ -188,9 +193,14 @@ function Make(Spec) {
         ].flat();
         let hook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
         if (hook !== undefined) {
+          let meta = Plugin_Helpers$ReventlessCore.pluginMetadataRegistry.contents;
           hook({
             name: extra$1,
             version: version,
+            kind: Stdlib_Option.flatMap(meta, m => m.kind),
+            displayName: Stdlib_Option.flatMap(meta, m => m.displayName),
+            vendor: Stdlib_Option.flatMap(meta, m => m.vendor),
+            architectureType: Stdlib_Option.flatMap(meta, m => m.architectureType),
             components: components
           });
         }

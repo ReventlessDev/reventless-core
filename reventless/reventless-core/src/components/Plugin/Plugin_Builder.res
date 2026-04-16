@@ -232,6 +232,12 @@ module Make = (
           commandTypes: extractTypes(M.Spec.commandSchema),
           eventTypes: extractTypes(M.Spec.eventSchema),
           errorTypes: extractTypes(M.Spec.errorSchema),
+          commandSchemas: [
+            SchemaWalker.walk(M.Spec.name ++ ".command", M.Spec.commandSchema),
+          ],
+          eventSchemas: [
+            SchemaWalker.walk(M.Spec.name ++ ".event", M.Spec.eventSchema),
+          ],
         }
         Plugin_Helpers.componentSchemaRegistry.contents->Dict.set(M.Spec.name, schema)
         ({name: M.Spec.name, kind: "Aggregate", schema}: Plugin_Helpers.pluginBuiltComponent)
@@ -267,7 +273,17 @@ module Make = (
       ])
 
       switch Plugin_Helpers.onPluginBuiltHook.contents {
-      | Some(hook) => hook({name, version, components})
+      | Some(hook) =>
+        let meta = Plugin_Helpers.pluginMetadataRegistry.contents
+        hook({
+          name,
+          version,
+          kind: ?meta->Option.flatMap(m => m.kind),
+          displayName: ?meta->Option.flatMap(m => m.displayName),
+          vendor: ?meta->Option.flatMap(m => m.vendor),
+          architectureType: ?meta->Option.flatMap(m => m.architectureType),
+          components,
+        })
       | None => ()
       }
     }

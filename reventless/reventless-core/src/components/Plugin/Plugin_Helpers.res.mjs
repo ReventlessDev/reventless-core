@@ -318,6 +318,18 @@ function clearOnPlatformDeployed() {
   onPlatformDeployedHook.contents = undefined;
 }
 
+let onResolverErrorHook = {
+  contents: undefined
+};
+
+function registerOnResolverError(hook) {
+  onResolverErrorHook.contents = hook;
+}
+
+function clearOnResolverError() {
+  onResolverErrorHook.contents = undefined;
+}
+
 let queryFieldNamesRegistry = {
   contents: {}
 };
@@ -531,6 +543,8 @@ function exportPluginOutputs(pluginOutputs) {
   if (hook === undefined) {
     return;
   }
+  let actor = Stdlib_Option.getOr(Stdlib_Option.orElse(Stdlib_Option.orElse(process.env["GITHUB_ACTOR"], process.env["CI_COMMIT_AUTHOR"]), process.env["USER"]), "local");
+  let deploymentId = Stdlib_Option.getOr(Stdlib_Option.orElse(process.env["GITHUB_SHA"], process.env["CI_COMMIT_SHA"]), new Date().toISOString());
   let schemaFor = name => Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry.contents[name], {});
   let resolveAggregates = Output$Pulumi.flatMap(pluginOutputs.aggregates, aggs => Pulumi.all(Object.entries(aggs).map(param => {
     let name = param[0];
@@ -707,11 +721,19 @@ function exportPluginOutputs(pluginOutputs) {
       resolveExtensionWirings
     ]).apply(param => {
       let name = id.split("@")[0];
+      let meta = Plugin_BuiltHook$ReventlessCore.pluginMetadataRegistry.contents;
       return hook({
         name: name,
         version: version,
         environment: Pulumi.getStack(),
         stackName: Pulumi.getStack(),
+        deployedAt: new Date().toISOString(),
+        actor: actor,
+        deploymentId: deploymentId,
+        kind: Stdlib_Option.flatMap(meta, m => m.kind),
+        displayName: Stdlib_Option.flatMap(meta, m => m.displayName),
+        vendor: Stdlib_Option.flatMap(meta, m => m.vendor),
+        architectureType: Stdlib_Option.flatMap(meta, m => m.architectureType),
         components: [
           aggs,
           rms,
@@ -768,6 +790,12 @@ let filterNoApiVariants = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants;
 
 let componentSchemaRegistry = Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry;
 
+let pluginMetadataRegistry = Plugin_BuiltHook$ReventlessCore.pluginMetadataRegistry;
+
+let registerPluginMetadata = Plugin_BuiltHook$ReventlessCore.registerPluginMetadata;
+
+let clearPluginMetadata = Plugin_BuiltHook$ReventlessCore.clearPluginMetadata;
+
 let onPluginBuiltHook = Plugin_BuiltHook$ReventlessCore.onPluginBuiltHook;
 
 let registerOnPluginBuilt = Plugin_BuiltHook$ReventlessCore.registerOnPluginBuilt;
@@ -807,6 +835,9 @@ export {
   createTasks,
   MakeEventCollectorHelper,
   componentSchemaRegistry,
+  pluginMetadataRegistry,
+  registerPluginMetadata,
+  clearPluginMetadata,
   onPluginBuiltHook,
   registerOnPluginBuilt,
   clearOnPluginBuilt,
@@ -816,6 +847,9 @@ export {
   onPlatformDeployedHook,
   registerOnPlatformDeployed,
   clearOnPlatformDeployed,
+  onResolverErrorHook,
+  registerOnResolverError,
+  clearOnResolverError,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,
   noHooks,

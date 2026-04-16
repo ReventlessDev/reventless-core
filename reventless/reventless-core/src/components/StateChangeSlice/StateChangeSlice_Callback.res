@@ -21,7 +21,9 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
   let encodeEvent = (event: Spec.event): ReventlessInfra.DcbEventLog.rawEvent => {
     let json = event->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
     let (eventType, data) = json->Message.splitMessage
-    let tags = Reventless.DcbTag.extractTags(Spec.eventSchema, event)
+    let tags =
+      Reventless.DcbTag.extractTags(Spec.eventSchema, event)
+      ->Array.concat([{Reventless.DcbTag.key: "originatorSlice", value: Spec.name}])
     {eventType, data: JSON.Object(data), tags}
   }
 

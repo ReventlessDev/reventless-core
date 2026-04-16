@@ -724,6 +724,13 @@ module MakeWithConfig = (
           version: info.version,
           environment,
           stackName: environment,
+          deployedAt: Date.make()->Date.toISOString,
+          actor: "local",
+          deploymentId: Date.make()->Date.toISOString,
+          kind: ?info.kind,
+          displayName: ?info.displayName,
+          vendor: ?info.vendor,
+          architectureType: ?info.architectureType,
           components: info.components->Array.map(
             (c): ReventlessCore.Plugin_Helpers.pluginDeployedComponent => {
               name: c.name,

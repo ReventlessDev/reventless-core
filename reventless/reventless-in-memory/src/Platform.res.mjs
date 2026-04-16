@@ -692,6 +692,12 @@ function MakeWithConfig(Config) {
       }
       let deployedInfo_name = info.name;
       let deployedInfo_version = info.version;
+      let deployedInfo_deployedAt = new Date().toISOString();
+      let deployedInfo_deploymentId = new Date().toISOString();
+      let deployedInfo_kind = info.kind;
+      let deployedInfo_displayName = info.displayName;
+      let deployedInfo_vendor = info.vendor;
+      let deployedInfo_architectureType = info.architectureType;
       let deployedInfo_components = info.components.map(c => ({
         name: c.name,
         kind: c.kind,
@@ -705,6 +711,13 @@ function MakeWithConfig(Config) {
         version: deployedInfo_version,
         environment: environment,
         stackName: environment,
+        deployedAt: deployedInfo_deployedAt,
+        actor: "local",
+        deploymentId: deployedInfo_deploymentId,
+        kind: deployedInfo_kind,
+        displayName: deployedInfo_displayName,
+        vendor: deployedInfo_vendor,
+        architectureType: deployedInfo_architectureType,
         components: deployedInfo_components,
         extensionWirings: deployedInfo_extensionWirings
       };
@@ -1729,6 +1742,12 @@ function Make($star) {
       }
       let deployedInfo_name = info.name;
       let deployedInfo_version = info.version;
+      let deployedInfo_deployedAt = new Date().toISOString();
+      let deployedInfo_deploymentId = new Date().toISOString();
+      let deployedInfo_kind = info.kind;
+      let deployedInfo_displayName = info.displayName;
+      let deployedInfo_vendor = info.vendor;
+      let deployedInfo_architectureType = info.architectureType;
       let deployedInfo_components = info.components.map(c => ({
         name: c.name,
         kind: c.kind,
@@ -1742,6 +1761,13 @@ function Make($star) {
         version: deployedInfo_version,
         environment: environment,
         stackName: environment,
+        deployedAt: deployedInfo_deployedAt,
+        actor: "local",
+        deploymentId: deployedInfo_deploymentId,
+        kind: deployedInfo_kind,
+        displayName: deployedInfo_displayName,
+        vendor: deployedInfo_vendor,
+        architectureType: deployedInfo_architectureType,
         components: deployedInfo_components,
         extensionWirings: deployedInfo_extensionWirings
       };

@@ -5,6 +5,18 @@ let componentSchemaRegistry = {
   contents: {}
 };
 
+let pluginMetadataRegistry = {
+  contents: undefined
+};
+
+function registerPluginMetadata(metadata) {
+  pluginMetadataRegistry.contents = metadata;
+}
+
+function clearPluginMetadata() {
+  pluginMetadataRegistry.contents = undefined;
+}
+
 let onPluginBuiltHook = {
   contents: undefined
 };
@@ -19,6 +31,9 @@ function clearOnPluginBuilt() {
 
 export {
   componentSchemaRegistry,
+  pluginMetadataRegistry,
+  registerPluginMetadata,
+  clearPluginMetadata,
   onPluginBuiltHook,
   registerOnPluginBuilt,
   clearOnPluginBuilt,
