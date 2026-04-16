@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.51 (2026-04-16)
+
+### Bug Fixes
+
+* **graphql:** include subId field as required arg in single-item query schema ([cc1a924](https://github.com/ReventlessDev/reventless-core/commit/cc1a9249deb8d89d24db2d3e05dd0adf5698822c))
+
+
 # 3.0.0-alpha.50 (2026-04-15)
 
 ### Bug Fixes
