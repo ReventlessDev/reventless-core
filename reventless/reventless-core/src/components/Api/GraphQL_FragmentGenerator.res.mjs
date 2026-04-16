@@ -113,10 +113,14 @@ function deriveItemsQueryField(singleFieldName, returnTypeName, filterTypeName) 
   return `  ` + singleFieldName + `Items(id: ID!, filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + returnTypeName + `Connection!`;
 }
 
-function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt) {
+function deriveObjectQueryField(singleFieldName, typeName, includeIdParamOpt, subIdField) {
   let includeIdParam = includeIdParamOpt !== undefined ? includeIdParamOpt : true;
   if (includeIdParam) {
-    return `  ` + singleFieldName + `(id: ID!): ` + typeName;
+    if (subIdField !== undefined) {
+      return `  ` + singleFieldName + `(id: ID!, ` + subIdField + `: String!): ` + typeName;
+    } else {
+      return `  ` + singleFieldName + `(id: ID!): ` + typeName;
+    }
   } else {
     return `  ` + singleFieldName + `: ` + typeName;
   }
@@ -189,7 +193,7 @@ function generate(mutationEntries, queryEntries) {
         types.push(t);
       });
     }
-    let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName, includeIdParam);
+    let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName, includeIdParam, entry.subIdField);
     queries.push(singleField);
     let listFieldName = entry.listFieldName;
     let _sf = entry.subIdField;

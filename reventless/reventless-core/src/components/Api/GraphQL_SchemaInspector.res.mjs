@@ -42,7 +42,7 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
 function inspectQueryFields(name, typeName, stateSchema) {
   let types = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectTypeWithNested(typeName, undefined, undefined, stateSchema);
   let typeDef = types[types.length - 1 | 0];
-  let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName, undefined);
+  let singleQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveObjectQueryField(name, typeName, undefined, undefined);
   let pluralName = name + "s";
   let listQuery = GraphQL_FragmentGenerator$ReventlessCore.deriveListQueryField(pluralName, pluralName);
   return {

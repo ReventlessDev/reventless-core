@@ -135,9 +135,13 @@ let deriveObjectQueryField = (
   ~singleFieldName: string,
   ~typeName: string,
   ~includeIdParam: bool=true,
+  ~subIdField: option<string>=?,
 ): string =>
   if includeIdParam {
-    `  ${singleFieldName}(id: ID!): ${typeName}`
+    switch subIdField {
+    | Some(sortField) => `  ${singleFieldName}(id: ID!, ${sortField}: String!): ${typeName}`
+    | None => `  ${singleFieldName}(id: ID!): ${typeName}`
+    }
   } else {
     `  ${singleFieldName}: ${typeName}`
   }
@@ -240,6 +244,7 @@ let generate = (
       ~singleFieldName=entry.singleFieldName,
       ~typeName=entry.returnTypeName,
       ~includeIdParam,
+      ~subIdField=?entry.subIdField,
     )
     queries->Array.push(singleField)
 
