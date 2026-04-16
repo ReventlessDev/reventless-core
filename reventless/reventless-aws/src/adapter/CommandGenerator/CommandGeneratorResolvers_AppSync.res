@@ -145,6 +145,11 @@ let make: ReventlessCore.CommandGenerator_Adapter.resolversMaker<api, Util.Lambd
     )
   })
 
+  // Source C: create Subscription.onX resolver for each mutation field.
+  // @aws_subscribe in the SDL (emitted by Plugin_SubscriptionSchema) handles
+  // delivery — no data source is needed here.
+  CommandSubscriptionResolvers_AppSync.make(~api, ~mutationFields=fields, ~opts)
+
   let resources = resolvers->Array.map(Util_AppSync.toResourceNative)
 
   {resources: resources}
@@ -229,4 +234,7 @@ let makeDcb = (
       ~opts,
     )
   })
+
+  // Source C: create Subscription.onX resolver for each DCB mutation field.
+  CommandSubscriptionResolvers_AppSync.make(~api, ~mutationFields=fieldNames, ~opts)
 }

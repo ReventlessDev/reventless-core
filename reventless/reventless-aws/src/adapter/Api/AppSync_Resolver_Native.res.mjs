@@ -16,6 +16,28 @@ function makeUnitJsResolver(name, api, dataSourceName, type_, field, code, opts)
   }, opts);
 }
 
+function makeSubscriptionResolverCode(filter) {
+  let filterLine = filter !== undefined ? `\n  ctx.extensions.setSubscriptionFilter(` + filter + `);` : "";
+  return `export function request(ctx) {` + filterLine + `
+  return { payload: null };
+}
+
+export function response(ctx) {
+  return ctx.result;
+}`;
+}
+
+function makeSubscriptionResolver(name, api, field, subscriptionFilter, opts) {
+  return new (AwsNative.appsync.Resolver)(name, {
+    apiId: Output$Pulumi.flatMap(api, a => a.id),
+    typeName: "Subscription",
+    fieldName: field,
+    kind: "UNIT",
+    code: makeSubscriptionResolverCode(subscriptionFilter),
+    runtime: AwsNative_AppSync_Resolver$PulumiAws.appsyncJs
+  }, opts);
+}
+
 function makePipelineJsResolver(name, api, type_, field, code, functions, opts) {
   return new (AwsNative.appsync.Resolver)(name, {
     apiId: Output$Pulumi.flatMap(api, a => a.id),
@@ -38,6 +60,8 @@ export {
   Native,
   Functions,
   makeUnitJsResolver,
+  makeSubscriptionResolverCode,
+  makeSubscriptionResolver,
   makePipelineJsResolver,
 }
 /* Output-Pulumi Not a pure module */

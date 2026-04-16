@@ -17,6 +17,10 @@ function encode(parts) {
     [
       "queries",
       parts.queries.map(prim => prim)
+    ],
+    [
+      "subscriptions",
+      parts.subscriptions.map(prim => prim)
     ]
   ]));
   return {
@@ -31,7 +35,8 @@ function decode(fragment) {
     return {
       types: [],
       mutations: [],
-      queries: []
+      queries: [],
+      subscriptions: []
     };
   }
   let getString = key => {
@@ -53,7 +58,8 @@ function decode(fragment) {
   return {
     types: getString("types"),
     mutations: getString("mutations"),
-    queries: getString("queries")
+    queries: getString("queries"),
+    subscriptions: getString("subscriptions")
   };
 }
 
@@ -127,14 +133,29 @@ function stitch(baseFragment, pluginFragments) {
       }
     });
   });
+  let seenSubscriptionFields = new Set();
+  let allSubscriptions = [];
+  parts.forEach(param => {
+    param.subscriptions.forEach(field => {
+      let fieldName = extractLeadingName(field);
+      if (seenSubscriptionFields.has(fieldName)) {
+        console.warn(`[GraphQL_Stitcher] Duplicate subscription field — skipped: ` + fieldName);
+      } else {
+        seenSubscriptionFields.add(fieldName);
+        allSubscriptions.push(field);
+      }
+    });
+  });
   let typesSdl = allTypes.join("\n\n");
   let mutationsSdl = allMutations.length !== 0 ? `type Mutation {\n` + allMutations.join("\n") + `\n}` : "type Mutation {\n  _noop: String\n}";
   let queriesSdl = allQueries.length !== 0 ? `type Query {\n` + allQueries.join("\n") + `\n}` : "type Query {\n  _noop: String\n}";
-  let sdlParts = [
+  let subscriptionsSdl = allSubscriptions.length !== 0 ? `type Subscription {\n` + allSubscriptions.join("\n") + `\n}` : undefined;
+  let sdlParts = Stdlib_Array.filterMap([
     typesSdl,
     queriesSdl,
-    mutationsSdl
-  ].filter(p => p.length > 0);
+    mutationsSdl,
+    subscriptionsSdl
+  ], x => x);
   return sdlParts.join("\n\n");
 }
 

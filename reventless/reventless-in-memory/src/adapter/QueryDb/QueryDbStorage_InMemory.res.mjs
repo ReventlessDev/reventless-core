@@ -81,6 +81,7 @@ function Make(Bus) {
       let subMap = getOrCreateSubMap(id);
       subMap[subKey] = state;
       syncAll();
+      Bus.publishStateChange(name, state);
       return {
         TAG: "Ok",
         _0: undefined
@@ -94,6 +95,7 @@ function Make(Bus) {
         subMap[subKey] = state;
       });
       syncAll();
+      batch.forEach(param => Bus.publishStateChange(name, param[1]));
       return {
         TAG: "Ok",
         _0: undefined

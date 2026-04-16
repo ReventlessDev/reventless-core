@@ -324,6 +324,7 @@ let generate = (
         ("types", JSON.Encode.array(types->Array.map(JSON.Encode.string))),
         ("mutations", JSON.Encode.array(mutations->Array.map(JSON.Encode.string))),
         ("queries", JSON.Encode.array(queries->Array.map(JSON.Encode.string))),
+        ("subscriptions", JSON.Encode.array([])),
       ]),
     )->JSON.stringify
 

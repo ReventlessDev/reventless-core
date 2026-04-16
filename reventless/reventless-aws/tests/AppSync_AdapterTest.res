@@ -105,6 +105,7 @@ describe("Split mode — empty base fragment", () => {
       types: [],
       mutations: [],
       queries: [],
+      subscriptions: [],
     })
     let parts = decodeFragment(emptyFragment)
     expect(parts.types)->toHaveLength(0)
@@ -117,11 +118,13 @@ describe("Split mode — empty base fragment", () => {
       types: [],
       mutations: [],
       queries: [],
+      subscriptions: [],
     })
     let pluginFragment = ReventlessCore.GraphQL_Stitcher.encode({
       types: [`type MyPlugin_Item { id: ID! }`],
       mutations: [`MyPlugin_Item_Create(id: ID!): String`],
       queries: [`MyPlugin_Item(id: ID!): MyPlugin_Item`],
+      subscriptions: [],
     })
     let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
       ~baseFragment=emptyBase,

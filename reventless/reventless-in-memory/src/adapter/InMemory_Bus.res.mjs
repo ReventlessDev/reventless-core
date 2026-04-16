@@ -161,6 +161,16 @@ function Impl(C) {
     dcbEventLogReadRegistry.contents[name] = read;
   };
   let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
+  let stateChangeListeners = {
+    contents: {}
+  };
+  let subscribeToStateChanges = (name, callback) => {
+    let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
+    stateChangeListeners.contents[name] = listeners.concat([callback]);
+  };
+  let publishStateChange = (name, state) => {
+    Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(state));
+  };
   let reset = () => {
     let shutdownAll = Effect.map(Effect.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -175,6 +185,7 @@ function Impl(C) {
     queryDbStreamRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
+    stateChangeListeners.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -192,6 +203,8 @@ function Impl(C) {
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,
     getDcbEventLogRead: getDcbEventLogRead,
+    publishStateChange: publishStateChange,
+    subscribeToStateChanges: subscribeToStateChanges,
     reset: reset
   };
 }
@@ -342,6 +355,16 @@ function Make($star) {
     dcbEventLogReadRegistry.contents[name] = read;
   };
   let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
+  let stateChangeListeners = {
+    contents: {}
+  };
+  let subscribeToStateChanges = (name, callback) => {
+    let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
+    stateChangeListeners.contents[name] = listeners.concat([callback]);
+  };
+  let publishStateChange = (name, state) => {
+    Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(state));
+  };
   let reset = () => {
     let shutdownAll = Effect.map(Effect.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -356,6 +379,7 @@ function Make($star) {
     queryDbStreamRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
+    stateChangeListeners.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -373,6 +397,8 @@ function Make($star) {
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,
     getDcbEventLogRead: getDcbEventLogRead,
+    publishStateChange: publishStateChange,
+    subscribeToStateChanges: subscribeToStateChanges,
     reset: reset
   };
 }
@@ -523,6 +549,16 @@ function MakeSilent($star) {
     dcbEventLogReadRegistry.contents[name] = read;
   };
   let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
+  let stateChangeListeners = {
+    contents: {}
+  };
+  let subscribeToStateChanges = (name, callback) => {
+    let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
+    stateChangeListeners.contents[name] = listeners.concat([callback]);
+  };
+  let publishStateChange = (name, state) => {
+    Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(state));
+  };
   let reset = () => {
     let shutdownAll = Effect.map(Effect.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -537,6 +573,7 @@ function MakeSilent($star) {
     queryDbStreamRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
+    stateChangeListeners.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -554,6 +591,8 @@ function MakeSilent($star) {
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,
     getDcbEventLogRead: getDcbEventLogRead,
+    publishStateChange: publishStateChange,
+    subscribeToStateChanges: subscribeToStateChanges,
     reset: reset
   };
 }
@@ -702,6 +741,16 @@ function MakeBounded(C) {
     dcbEventLogReadRegistry.contents[name] = read;
   };
   let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents[name];
+  let stateChangeListeners = {
+    contents: {}
+  };
+  let subscribeToStateChanges = (name, callback) => {
+    let listeners = Stdlib_Option.getOr(stateChangeListeners.contents[name], []);
+    stateChangeListeners.contents[name] = listeners.concat([callback]);
+  };
+  let publishStateChange = (name, state) => {
+    Stdlib_Option.getOr(stateChangeListeners.contents[name], []).forEach(cb => cb(state));
+  };
   let reset = () => {
     let shutdownAll = Effect.map(Effect.all(Object.values(eventHubs.contents).map(hub => PubSub.shutdown(hub)), {
       concurrency: "unbounded"
@@ -716,6 +765,7 @@ function MakeBounded(C) {
     queryDbStreamRegistry.contents = {};
     eventLogReplayRegistry.contents = {};
     dcbEventLogReadRegistry.contents = {};
+    stateChangeListeners.contents = {};
   };
   return {
     publishEvent: publishEvent,
@@ -733,6 +783,8 @@ function MakeBounded(C) {
     getEventLogReplay: getEventLogReplay,
     registerDcbEventLogRead: registerDcbEventLogRead,
     getDcbEventLogRead: getDcbEventLogRead,
+    publishStateChange: publishStateChange,
+    subscribeToStateChanges: subscribeToStateChanges,
     reset: reset
   };
 }

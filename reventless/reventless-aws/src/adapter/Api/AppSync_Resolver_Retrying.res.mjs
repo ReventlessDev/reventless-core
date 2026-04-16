@@ -319,6 +319,27 @@ function makeResolver(name, props, opts) {
   return new IndexJs.Resource(provider, name, props, finalOpts);
 }
 
+function makeSubscriptionResolverCode(filter) {
+  let filterLine = filter !== undefined ? `\n  ctx.extensions.setSubscriptionFilter(` + filter + `);` : "";
+  return `export function request(ctx) {` + filterLine + `
+  return { payload: null };
+}
+
+export function response(ctx) {
+  return ctx.result;
+}`;
+}
+
+function makeSubscriptionResolver(name, api, field, subscriptionFilter, opts) {
+  return makeResolver(name, {
+    apiId: Output$Pulumi.flatMap(api, a => a.id),
+    typeName: "Subscription",
+    fieldName: field,
+    kind: "UNIT",
+    code: makeSubscriptionResolverCode(subscriptionFilter)
+  }, opts);
+}
+
 function makeUnitJsResolver(name, api, dataSourceName, type_, field, code, opts) {
   return makeResolver(name, {
     apiId: Output$Pulumi.flatMap(api, a => a.id),
@@ -369,6 +390,8 @@ export {
   provider,
   makeResolver,
   Functions,
+  makeSubscriptionResolverCode,
+  makeSubscriptionResolver,
   makeUnitJsResolver,
   makePipelineJsResolver,
 }

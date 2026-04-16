@@ -157,6 +157,7 @@ module Make = (
           mutationEntries: allMutationEntries,
           queryEntries: allQueryEntries,
           eventLogEntries: dcbResult.eventLogEntries,
+          subscriptionFields: [],
         })
       | None => ()
       }

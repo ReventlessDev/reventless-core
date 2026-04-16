@@ -249,6 +249,10 @@ function generate(mutationEntries, queryEntries) {
     [
       "queries",
       queries.map(prim => prim)
+    ],
+    [
+      "subscriptions",
+      []
     ]
   ]));
   return {

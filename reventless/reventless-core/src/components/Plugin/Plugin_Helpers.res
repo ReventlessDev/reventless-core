@@ -581,6 +581,19 @@ type mcpRegistrationParams = {
   mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
   eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
+  /** Subscription SDL field strings from the plugin fragment (Sources A, B, C).
+      Used by the in-memory platform to register yoga WebSocket subscription resolvers. */
+  subscriptionFields: array<string>,
+}
+
+// Subscription infrastructure hook params — fired after allQueryDbs and allEventTopics
+// are assembled inside builderOutputs.  Lets the AWS platform wire StateTopic and
+// EventLogSubscription Lambdas without touching reventless-core.
+type subscriptionInfraParams = {
+  allQueryDbs: ReventlessInfra.QueryDb.allOutputs,
+  allEventTopics: dict<ReventlessInfra.EventTopic.outputs>,
+  eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
+  opts: Pulumi.ComponentResource.options,
 }
 
 // ---------------------------------------------------------------------------
@@ -608,6 +621,9 @@ type platformHooks = {
   inboundMutationBindReceiveHook?: (~fieldName: string, ~receive: JSON.t => promise<result<array<string>, string>>) => unit,
   // GraphQL type definitions.
   schemaTypeRegistrationHook?: array<string> => unit,
+  // Subscription infrastructure (AWS): wire StateTopic + EventLogSubscription Lambdas.
+  // Fired inside builderOutputs after allQueryDbs and allEventTopics are assembled.
+  subscriptionInfraHook?: subscriptionInfraParams => unit,
   // MCP tools and resources.
   mcpSchemaRegistrationHook?: mcpRegistrationParams => unit,
   // ── AppSync resolver creation (AWS) ───────────────────────────────────

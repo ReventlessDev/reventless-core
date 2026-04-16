@@ -59,9 +59,11 @@ let decodeGlobalId = (globalId: string): option<(string, string)> =>
 
 let mutationResolvers: ref<dict<resolverFn>> = ref(Dict.make())
 let queryResolvers: ref<dict<resolverFn>> = ref(Dict.make())
+let subscriptionResolvers: ref<dict<resolverFn>> = ref(Dict.make())
 
 let mutationFields: ref<array<string>> = ref([])
 let queryFields: ref<array<string>> = ref([])
+let subscriptionFields: ref<array<string>> = ref([])
 let typeDefinitions: ref<array<string>> = ref([])
 
 let registerMutations = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
@@ -72,6 +74,13 @@ let registerMutations = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>
 let registerQueries = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
   queryFields.contents = queryFields.contents->Array.concat(sdlFields)
   resolvers->Dict.toArray->Array.forEach(((k, v)) => queryResolvers.contents->Dict.set(k, v))
+}
+
+let registerSubscriptions = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
+  subscriptionFields.contents = subscriptionFields.contents->Array.concat(sdlFields)
+  resolvers->Dict.toArray->Array.forEach(((k, v)) =>
+    subscriptionResolvers.contents->Dict.set(k, v)
+  )
 }
 
 /** Look up a registered mutation resolver by field name (used by MCP_Server). */
@@ -151,9 +160,15 @@ ${queries}
 type Mutation {
 ${mutations}
 }`
-  typesSdl->String.length > 0
-    ? typesSdl ++ "\n\n" ++ queriesMutationsSdl
-    : queriesMutationsSdl
+  let subscriptionsSdl =
+    subscriptionFields.contents->Array.length > 0
+      ? `\n\ntype Subscription {\n${subscriptionFields.contents->Array.join("\n")}\n}`
+      : ""
+  let base =
+    typesSdl->String.length > 0
+      ? typesSdl ++ "\n\n" ++ queriesMutationsSdl
+      : queriesMutationsSdl
+  base ++ subscriptionsSdl
 }
 
 let start = (~port: int=4000, ()) => {
@@ -165,6 +180,9 @@ let start = (~port: int=4000, ()) => {
   let resolvers = Dict.make()
   resolvers->Dict.set("Query", queryResolvers.contents)
   resolvers->Dict.set("Mutation", mutationResolvers.contents)
+  if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
+    resolvers->Dict.set("Subscription", subscriptionResolvers.contents)
+  }
   let sdl = buildSdl()
   lastFullSdl.contents = Some(sdl)
   let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
@@ -228,6 +246,9 @@ let rebuildSchema = (
   let resolvers = Dict.make()
   resolvers->Dict.set("Query", queryResolvers.contents)
   resolvers->Dict.set("Mutation", mutationResolvers.contents)
+  if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
+    resolvers->Dict.set("Subscription", subscriptionResolvers.contents)
+  }
   let schema = YG.createSchema({"typeDefs": fullSdl, "resolvers": resolvers})
   activeSchema.contents = Some(schema)
   let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": debug, "maskedErrors": !debug})
@@ -253,8 +274,10 @@ let rebuildSchema = (
 let reset = () => {
   mutationResolvers.contents = Dict.make()
   queryResolvers.contents = Dict.make()
+  subscriptionResolvers.contents = Dict.make()
   mutationFields.contents = []
   queryFields.contents = []
+  subscriptionFields.contents = []
   typeDefinitions.contents = []
   nodeTypeRegistry.contents = Dict.make()
   nodeResolverCallback.contents = None
@@ -393,6 +416,7 @@ let printDiagnostics = () => {
 let asInterface: GraphQL_ServerInstance.t = {
   registerMutations,
   registerQueries,
+  registerSubscriptions,
   registerTypes,
   getMutationResolver,
   getQueryResolver,

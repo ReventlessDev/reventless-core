@@ -80,7 +80,8 @@ function Make(RuntimeEnvironment) {
             pluginName: "Admin",
             mutationEntries: allMutationEntries,
             queryEntries: allQueryEntries,
-            eventLogEntries: dcbResult.eventLogEntries
+            eventLogEntries: dcbResult.eventLogEntries,
+            subscriptionFields: []
           });
         }
       }

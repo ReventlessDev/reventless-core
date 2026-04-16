@@ -127,8 +127,8 @@ Three distinct event sources can feed GraphQL subscriptions. They differ in what
 │  Source A: Domain events from EventLog / DcbEventLog               │
 │                                                                    │
 │  Aggregate.append() → SNS EventTopic → Lambda Subscriber           │
-│                        (EventTopicPublisher_SNS)    │               │
-│                                                     ▼               │
+│                        (EventTopicPublisher_SNS)    │              │
+│                                                     ▼              │
 │                                             AppSync Realtime Push  │
 └────────────────────────────────────────────────────────────────────┘
 
@@ -137,8 +137,8 @@ Three distinct event sources can feed GraphQL subscriptions. They differ in what
 │                                                                    │
 │  QueryDb write → DynamoDB Stream → StateTopic Lambda               │
 │  (QueryDbStorage_DynamoDbStream)         (StateTopic_AppSync)      │
-│                                                     │               │
-│                                                     ▼               │
+│                                                     │              │
+│                                                     ▼              │
 │                                             AppSync Realtime Push  │
 └────────────────────────────────────────────────────────────────────┘
 

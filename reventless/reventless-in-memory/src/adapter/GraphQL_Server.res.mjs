@@ -14,15 +14,21 @@ let mutationResolvers = DomainGraphQL_Server$ReventlessInMemory.mutationResolver
 
 let queryResolvers = DomainGraphQL_Server$ReventlessInMemory.queryResolvers;
 
+let subscriptionResolvers = DomainGraphQL_Server$ReventlessInMemory.subscriptionResolvers;
+
 let mutationFields = DomainGraphQL_Server$ReventlessInMemory.mutationFields;
 
 let queryFields = DomainGraphQL_Server$ReventlessInMemory.queryFields;
+
+let subscriptionFields = DomainGraphQL_Server$ReventlessInMemory.subscriptionFields;
 
 let typeDefinitions = DomainGraphQL_Server$ReventlessInMemory.typeDefinitions;
 
 let registerMutations = DomainGraphQL_Server$ReventlessInMemory.registerMutations;
 
 let registerQueries = DomainGraphQL_Server$ReventlessInMemory.registerQueries;
+
+let registerSubscriptions = DomainGraphQL_Server$ReventlessInMemory.registerSubscriptions;
 
 let getMutationResolver = DomainGraphQL_Server$ReventlessInMemory.getMutationResolver;
 
@@ -85,11 +91,14 @@ export {
   decodeGlobalId,
   mutationResolvers,
   queryResolvers,
+  subscriptionResolvers,
   mutationFields,
   queryFields,
+  subscriptionFields,
   typeDefinitions,
   registerMutations,
   registerQueries,
+  registerSubscriptions,
   getMutationResolver,
   getQueryResolver,
   registerTypes,

@@ -128,7 +128,7 @@ module MakeWithConfig = (
     schemaTypeRegistrationHook: sdlTypes => resolveTargetGraphQL().registerTypes(~sdlTypes),
     // MCP tools and resources — registered during plugin construction.
     // See the large lambda below; it references Bus for QueryDb lookups.
-    mcpSchemaRegistrationHook: ({pluginName, mutationEntries, queryEntries, eventLogEntries}) => {
+    mcpSchemaRegistrationHook: ({pluginName, mutationEntries, queryEntries, eventLogEntries, subscriptionFields}) => {
       let mcp = resolveTargetMCP()
       mcp.registerToolsFromEntries(~pluginName, ~mutationEntries, ~commandHandler=async (
         toolName,
@@ -322,6 +322,44 @@ module MakeWithConfig = (
           }
         },
       )
+
+      // Wire GraphQL WebSocket subscriptions (Sources A and B) into the yoga PubSub.
+      // Only registers when the plugin fragment has subscription fields.
+      if subscriptionFields->Array.length > 0 {
+        open GraphQL_SubscriptionResolvers_InMemory
+        let server = resolveTargetGraphQL()
+
+        // Source A: bridge each EventTopic bus topic → yoga PubSub channel
+        eventLogEntries->Array.forEach(entry =>
+          bridgeSourceA(
+            ~subscribeToEvents=Bus.subscribeToEvents,
+            ~displayName=entry.displayName,
+            ~busTopicName=entry.busKey,
+          )
+        )
+
+        // Source B: bridge each QueryDb state-change → yoga PubSub channel
+        // Recover the ReadModel Spec.name (Bus key) from the query field names registry.
+        queryEntries->Array.forEach(entry => {
+          let readModelName =
+            ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+            ->Dict.toArray
+            ->Array.find(((_, qn)) => qn.returnTypeName == entry.returnTypeName)
+            ->Option.map(((specName, _)) => specName)
+            ->Option.getOr(entry.returnTypeName)
+          bridgeSourceB(
+            ~subscribeToStateChanges=Bus.subscribeToStateChanges,
+            ~readModelName,
+            ~returnTypeName=entry.returnTypeName,
+          )
+        })
+
+        // Register subscription SDL fields and resolvers with the GraphQL server
+        let makeEntry = topic => ({fieldName: topic, topic}: subscriptionEntry)
+        let sourceAEntries = eventLogEntries->Array.map(e => makeEntry(sourceATopic(e.displayName)))
+        let sourceBEntries = queryEntries->Array.map(e => makeEntry(sourceBTopic(e.returnTypeName)))
+        registerAll(~server, ~sdlFields=subscriptionFields, ~sourceAEntries, ~sourceBEntries)
+      }
     },
   }
 
@@ -506,6 +544,7 @@ module MakeWithConfig = (
     types: [],
     mutations: [],
     queries: [],
+    subscriptions: [],
   })
 
   module Api = {

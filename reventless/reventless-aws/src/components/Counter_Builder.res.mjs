@@ -8,7 +8,9 @@ import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "../adapter/QueryDb
 
 function Make(Api) {
   return Config => {
-    let Inner = Counter_Builder$ReventlessCore.Make(QueryDbStorage_DynamoDbStream$ReventlessAws)(Api)({
+    let Inner = Counter_Builder$ReventlessCore.Make({
+      make: QueryDbStorage_DynamoDbStream$ReventlessAws.make
+    })(Api)({
       make: CounterHandler_DynamoDbStream$ReventlessAws.make
     });
     let make = (name, jsonEventsHandler, ttl, opts) => {

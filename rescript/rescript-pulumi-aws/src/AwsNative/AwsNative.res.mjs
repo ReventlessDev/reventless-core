@@ -2,7 +2,9 @@
 
 
 let AppSync = {
-  Resolver: undefined
+  Resolver: undefined,
+  Api: undefined,
+  ChannelNamespace: undefined
 };
 
 export {

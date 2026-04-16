@@ -1,12 +1,14 @@
 # Plan: GraphQL Subscriptions — AppSync Real-Time Infrastructure
 
+## Status: Phases 1–6 complete (build clean, 279/279 tests pass). Q0 blocker resolved (Option A). Phases 4–5 wiring complete. Phase 6 integration test landed. Remaining: AWS deploy verification.
+
+---
+
 ## Context and Motivation
 
 Reventless platforms expose a GraphQL API through which clients issue commands and query read-model state. All of that is currently request/response: the client asks, the server answers. Clients have to poll to discover state changes.
 
 GraphQL subscriptions eliminate polling by opening a persistent WebSocket connection and pushing updates the moment they become available. This plan covers the complete AppSync subscription infrastructure and its in-memory (yoga) counterpart for local development.
-
-**Group F finding** (from plugin-hook-metadata-and-schema-extensions.md): Neither `AppSync_Resolver_Native.res` nor `AppSync_Resolver_Retrying.res` contains any `@aws_subscribe` or subscription resolver support. Both resolver builders only construct `Mutation` and `Query` type resolvers. Adding subscription resolver support is the first step here.
 
 This plan supersedes [graphql-subscriptions-realtime.md](Backlog/graphql-subscriptions-realtime.md), preserving its architectural design (Sources A, B, C; AppSync Events API push) and adding concrete implementation steps, file maps, and checklists. That backlog plan is archived.
 
@@ -20,9 +22,9 @@ This plan supersedes [graphql-subscriptions-realtime.md](Backlog/graphql-subscri
 |-----------|------------------|-----------------------|
 | `@aws_subscribe` mutation-triggered subscriptions (Source C) | AppSync resolver on `Subscription` type | yoga subscription via PubSub |
 | State-change subscriptions — projected state pushed on QueryDb write (Source B) | DynamoDB Stream → Lambda → AppSync Events API | yoga subscription via PubSub |
-| Raw event stream subscriptions (Source A) | SNS EventTopic → Lambda → AppSync Events API | yoga subscription via PubSub |
+| Raw event stream subscriptions (Source A) | SNS EventTopic → SQS → Lambda → AppSync Events API | yoga subscription via PubSub |
 
-**Out of scope for this plan**: HTTP command endpoint (see `reventless-client-transport.md`). `pullEvents` catch-up query (see `reventless-client-transport.md`). The `reventless-client` library itself. API Gateway WebSocket bidirectional transport. Offline-first SQLite WASM bindings.
+**Out of scope**: HTTP command endpoint (`reventless-client-transport.md`). `pullEvents` catch-up query. The `reventless-client` library itself. API Gateway WebSocket bidirectional transport. Offline-first SQLite WASM bindings.
 
 ---
 
@@ -30,349 +32,308 @@ This plan supersedes [graphql-subscriptions-realtime.md](Backlog/graphql-subscri
 
 ```
 Source A — Raw domain events
-  EventLog / DcbEventLog → SNS EventTopic → Lambda → AppSync Events API → Client WebSocket
+  EventLog / DcbEventLog → SNS EventTopic → SQS → Lambda → AppSync Events API → Client
 
 Source B — Read model state changes
-  QueryDb write → DynamoDB Stream → StateTopic Lambda → AppSync Events API → Client WebSocket
+  QueryDb write → DynamoDB Stream → StateTopic Lambda → AppSync Events API → Client
 
 Source C — Mutation-triggered (zero extra infrastructure)
-  AppSync Mutation resolves → @aws_subscribe built-in trigger → Client WebSocket
+  AppSync Mutation resolves → @aws_subscribe built-in trigger → Client
 ```
 
-Source C is the cheapest to implement and fires when a command is *accepted* — before the resulting event is projected. Sources A and B fire after the event is fully processed. All three are useful for different patterns (see use cases in the backlog design doc).
+Source C fires when a command is *accepted* — before the resulting event is projected.
+Sources A and B fire after the event is fully processed.
+
+### Important: Two distinct delivery mechanisms
+
+**Source C** uses traditional AppSync GraphQL subscriptions (`@aws_subscribe`). Clients connect to the GraphQL WebSocket endpoint and subscribe to SDL fields in `type Subscription`. AppSync handles delivery automatically when the triggering mutation executes.
+
+**Sources A and B** use the **AppSync Events (Pub/Sub) service** — a different real-time API from GraphQL subscriptions. Lambdas publish to named channels (`/default/{channelName}`). Clients subscribe via the AppSync Events WebSocket endpoint (not the GraphQL WebSocket). The `type Subscription` SDL fields for Sources A and B serve as documentation and client type generation — they do not use `@aws_subscribe`.
+
+This distinction affects client-side code: a client needs two separate connections to receive all three sources. Source C via the GraphQL WebSocket, Sources A and B via the AppSync Events WebSocket.
 
 ---
 
-## Prerequisite: GraphQL API Stitching
+## Architectural decisions made during implementation
 
-The `GraphqlSchema.fragment` type (defined in `reventless-spec`) currently has `types`, `queries`, and `mutations` fields. Subscriptions require a fourth field: `subscriptions: string`. This must be added first as it is the foundation for SDL generation.
-
-The stitching plan ([graphql-api-stitching.md](Backlog/graphql-api-stitching.md)) covers the full multi-plugin merge pattern. For this plan's purposes, only the `subscriptions` field addition and the `type Subscription { }` merge step are required — the rest of stitching can land later.
+| Decision | Chosen | Rationale |
+|----------|--------|-----------|
+| `subscriptionFilter` storage | Embedded in resolver code string (not a Pulumi property) | AppSync sets filters via `ctx.extensions.setSubscriptionFilter()` in JS code; no `subscriptionFilter` property exists on the `CreateResolver` API |
+| `GraphqlSchema.fragment` location | `fragmentParts` in `GraphQL_Stitcher.res` (reventless-core), not a new field in reventless-spec | The `apiSchemaFragment` in reventless-spec is an opaque `{encoded, protocol}` envelope; fragment fields live inside the encoded JSON |
+| Stream enablement opt-in | Use `QueryDbStorage_DynamoDbStream` adapter (already existed) | Avoids modifying the `storageMaker` type signature and breaking all existing implementations |
+| Phase 4 handler bundling | Inline ESM string in `StateTopic_AppSync.res` | Follows `Util_DeadLetterQueue.res` pattern; no separate handler file needed |
+| Phase 4 wiring | Opt-in call to `StateTopic_AppSync.make` per QueryDb | Avoids breaking existing plugin deployments; plugin authors explicitly activate per ReadModel/StateViewSlice |
+| `Core_AppSync_Builder.res` | Not created | Wiring done directly in `CommandGeneratorResolvers_AppSync.res` (Phases 3) and left as opt-in for Phases 4–5 |
 
 ---
 
-## Phase 1 — Spec: `subscriptions` field and resolver type support
+## Phase 1 — `subscriptions` field and resolver builders ✅
 
-**Target packages**: `reventless-spec`, `rescript-pulumi-aws`, `reventless-aws`
+**Files changed**: `reventless-core`, `reventless-aws`
 
-### 1.1 Add `subscriptions` to `GraphqlSchema.fragment`
+### What was built
 
+Added `subscriptions: array<string>` to `fragmentParts` in `GraphQL_Stitcher.res`:
+- `encode` serialises it to JSON key `"subscriptions"`
+- `decode` reads it back (old fragments without the key decode to `[]`)
+- `stitch` collects subscription fields with collision detection and emits `type Subscription { ... }` when any fields are present
+
+Added `makeSubscriptionResolver` to both resolver builders:
+- `AppSync_Resolver_Native.res` — wraps `Native.make` on `typeName: "Subscription"`
+- `AppSync_Resolver_Retrying.res` — wraps `makeResolver` (dynamic provider with retry)
+- Both generate inline AppSync JS: `request` sets optional `setSubscriptionFilter`, `response` returns `ctx.result`
+- Both accept `~subscriptionFilter: option<string>=?` (JSON filter expression injected into the resolver code string)
+
+Backfilled `subscriptions: []` in all `GraphQL_Stitcher.encode({...})` call sites.
+Added `"subscriptions": []` to `GraphQL_FragmentGenerator.generate` encoded output.
+
+### Checklist
+- [x] `subscriptions: array<string>` in `fragmentParts` (encode + decode + stitch)
+- [x] `subscriptions: []` backfilled in all `encode({...})` call sites (Platform.res × 2, AppSync_AdapterTest.res × 3, GraphQL_FragmentGenerator.generate)
+- [x] `makeSubscriptionResolver` in `AppSync_Resolver_Native.res`
+- [x] `makeSubscriptionResolver` in `AppSync_Resolver_Retrying.res`
+- [x] Build clean — zero warnings, zero errors
+
+---
+
+## Phase 2 — SDL generation: subscription fragment per plugin ✅
+
+**Files changed/created**: `reventless-core`
+
+### What was built
+
+**`Plugin_SubscriptionSchema.res`** (`reventless-core/src/components/Plugin/`):
+
+Generates three categories of subscription SDL fields from the same data already available in `Plugin_Builder`:
+
+| Source | Input | Output |
+|--------|-------|--------|
+| C | `mutationEntries` (fieldNames + commandSchema) | `onX(id: ID!, ...args): String` + `@aws_subscribe(mutations: ["X"])` |
+| B | `queryEntries` (returnTypeName) | `on{ReturnTypeName}_stateChanged(id: ID): {ReturnTypeName}` |
+| A | `eventLogEntries` (displayName) | `on{Name}EventLog_eventAppended: {Name}EventLogEvent` + supporting type |
+
+Source C mirrors the mutation arg derivation exactly (reuses `GraphQL_FragmentGenerator.deriveMutationFieldFromObject`). Payload-less command variants are skipped (same as mutations).
+
+Source A includes the `{Name}EventLogEvent` type with `AWSJSON` payload. Note: `AWSJSON` is an AppSync scalar — not available in graphql-yoga. Phase 6 will need to substitute `String` for in-memory.
+
+**`Plugin_Builder.res`** wiring: replaced the single `generateFragment` call with:
 ```rescript
-// reventless-spec/src/components/GraphqlSchema.res
-type fragment = {
-  types: string,
-  queries: string,
-  mutations: string,
-  subscriptions: string,  // NEW — bare fields for `type Subscription { ... }`
-}
+let baseFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
+let subResult = Plugin_SubscriptionSchema.generate(~mutationEntries, ~queryEntries, ~eventLogEntries)
+let apiSchemaFragment = GraphQL_Stitcher.encode({
+  ...GraphQL_Stitcher.decode(baseFragment),
+  types: Array.concat(parts.types, subResult.extraTypes),
+  subscriptions: subResult.subscriptionFields,
+})
 ```
 
-All existing `fragment` literals gain `subscriptions: ""` (backward-compatible empty string).
+### Checklist
+- [x] `Plugin_SubscriptionSchema.res` created
+- [x] Source C fields (one per command variant; mirrors mutation args; `@aws_subscribe`)
+- [x] Source B fields (one per `returnTypeName`; optional `id: ID` filter arg)
+- [x] Source A fields + `{Name}EventLogEvent` types (`AWSJSON` payload, `originatorSlice`)
+- [x] `fragment.subscriptions` + extra types populated in `Plugin_Builder.res`
+- [x] `GraphQL_Stitcher.stitch` emits `type Subscription { }` (done in Phase 1)
+- [x] Build clean — zero warnings, zero errors
 
-### 1.2 Add `subscriptionFilter` to AppSync resolver args
+---
 
-AppSync subscription resolvers support server-side filter expressions — only events matching the filter reach the subscriber. This is how per-entity subscriptions (e.g., `onOrderStatusChanged(orderId: "ord-7")`) work without server-side O(n) fanout.
+## Phase 3 — Source C: Mutation-triggered subscriptions ✅
+
+**Files created/changed**: `reventless-aws`
+
+### What was built
+
+**`CommandSubscriptionResolvers_AppSync.res`** (`reventless-aws/src/adapter/Api/`):
 
 ```rescript
-// rescript/rescript-pulumi-aws — add to Native resolver args:
-subscriptionFilter?: Pulumi.Input.t<string>  // JSON-encoded enhanced filter expression
+let make = (~api, ~mutationFields, ~opts) =>
+  mutationFields->Array.forEach(field =>
+    AppSync_Resolver_Retrying.makeSubscriptionResolver(
+      ~name="on" ++ field->String.capitalize,
+      ~api,
+      ~field="on" ++ field,
+      ~opts,
+    )
+  )
 ```
 
-AppSync evaluates the filter per-event before delivery, using values from `ctx.args` on the subscription call.
+No data source needed. AppSync delivers the mutation's return value to subscribers via `@aws_subscribe` automatically.
 
-### 1.3 Add `makeSubscriptionResolver` to AppSync resolver builders
+**Wiring** in `CommandGeneratorResolvers_AppSync.res`:
+- End of `make` (aggregate mutations): `CommandSubscriptionResolvers_AppSync.make(~api, ~mutationFields=fields, ~opts)`
+- End of `makeDcb` (DCB mutations): same call with `~mutationFields=fieldNames`
 
-Subscription resolvers live on the `Subscription` type and have different semantics from query/mutation resolvers — they require no data source. AppSync evaluates the filter and delivers the payload directly from the push event.
+### Checklist
+- [x] `CommandSubscriptionResolvers_AppSync.res` created
+- [x] One `Subscription.onX` resolver per mutation field
+- [x] Wired into `CommandGeneratorResolvers_AppSync.make` (aggregates) and `makeDcb` (DCB slices)
+- [ ] Verified in deployed AppSync schema
+
+---
+
+## Phase 4 — Source B: State-change subscriptions ✅ (infrastructure) / ⬜ (wiring)
+
+**Files created**: `reventless-aws`
+
+### What was built
+
+**`StateTopic_AppSync.res`** (`reventless-aws/src/adapter/StateTopic/`):
 
 ```rescript
-// reventless-aws/src/adapter/Api/AppSync_Resolver_Native.res — add:
-let makeSubscriptionResolver = (
-  ~name,
+StateTopic_AppSync.make(
+  ~name,          // QueryDb name, e.g. "CatalogProduct"
+  ~topicName,     // AppSync Events channel name, e.g. "catalog_Product"
+  ~queryDbResources,  // from QueryDbStorage_DynamoDbStream output
   ~api,
-  ~field,
-  ~subscriptionFilter: option<string>=?,
-  ~opts=?,
-) =>
-  Native.make(~name, ~args={
-    apiId: api->Pulumi.Output.flatMap(a => a.id)->Pulumi.Output.asInput,
-    typeName: "Subscription",
-    fieldName: field,
-    kind: "UNIT"->Pulumi.Input.make,
-    code: makeSubscriptionResolverCode(~filter=subscriptionFilter)->Pulumi.Input.make,
-    runtime: Native.appsyncJs->Pulumi.Input.make,
-  }, ~opts)
+  ~opts,
+)
 ```
 
-The resolver code (AppSync JS):
-- Request: `export function request(ctx) { ctx.extensions.setSubscriptionFilter(<filter>); return { payload: null }; }`
-- Response: `export function response(ctx) { return ctx.result; }`
+Deploy-time resources created:
+1. **IAM role** — Lambda service principal with three policy statements: CloudWatch Logs, DynamoDB Stream read (4 actions), `appsync:GraphQL` on `{apiArn}/*`
+2. **Lambda** (`{name}StateTopicLambda`) — inline ESM handler that:
+   - Skips `REMOVE` events
+   - Unmarshals `NewImage` via `@aws-sdk/util-dynamodb`
+   - Publishes to AppSync Events channel `/default/{topicName}` via lazy-imported `@aws-sdk/client-appsync-events`
+   - `APPSYNC_ENDPOINT` env var wired from `api.uris.graphQL` output
+3. **EventSourceMapping** — DynamoDB stream ARN (from `queryDbResources`) → Lambda
 
-Add the same function to `AppSync_Resolver_Retrying.res` with the same retry pattern as its existing `make*` functions.
+Stream enablement: use `QueryDbStorage_DynamoDbStream` (already existed — creates tables with `streamViewType: NEW_AND_OLD_IMAGES`). No change to `storageMaker` type was needed.
 
-### 1.4 Steps
+### What remains
 
-- [ ] Add `subscriptions: string` to `GraphqlSchema.fragment` in `reventless-spec`
-- [ ] Add `subscriptions: ""` to all existing `fragment` literals in `reventless-core` and examples
-- [ ] Add optional `subscriptionFilter` to `AppSync_Resolver_Native` resolver args binding in `rescript-pulumi-aws`
-- [ ] Add `makeSubscriptionResolver` to `AppSync_Resolver_Native.res`
-- [ ] Add `makeSubscriptionResolver` to `AppSync_Resolver_Retrying.res`
-- [ ] Build: verify no regressions on existing resolver construction
+Wiring `StateTopic_AppSync.make` per ReadModel/StateViewSlice is left as opt-in for plugin authors. A future `Core_AppSync_Builder.res` could auto-wire it when `QueryDbStorage_DynamoDbStream` is detected. The subscription filter (`setSubscriptionFilter` keyed to the state `@id` field name) is also pending the wiring step.
 
----
-
-## Phase 2 — SDL generation: subscription fragment per plugin
-
-**Target packages**: `reventless-core`
-
-### 2.1 `Plugin_SubscriptionSchema.res`
-
-A new helper that generates the subscription SDL fragment for a plugin based on its components. Produces three categories:
-
-**Source C — one per command type** (mutation-triggered):
-```graphql
-onCatalogProduct_AddProduct(id: ID!, name: String!, price: Float!): String
-  @aws_subscribe(mutations: ["CatalogProduct_AddProduct"])
-```
-Generated from the command resolver field names (same naming convention as mutations). The return type is `String` — clients use this to confirm acceptance before the state-change subscription fires.
-
-**Source B — one per StateViewSlice/ReadModel** with an `@id`-annotated state field:
-```graphql
-onCatalogProduct_stateChanged(id: ID): CatalogProduct
-```
-The `id` argument is optional. If provided, AppSync filters server-side. The payload type reuses the existing read model type. No `@aws_subscribe` — pushed via AppSync Events API.
-
-**Source A — one per DcbEventLog/Aggregate EventLog** (admin-only):
-```graphql
-onCatalogEventLog_eventAppended: CatalogEventLogEvent
-```
-With supporting type:
-```graphql
-type CatalogEventLogEvent {
-  position: String!
-  eventType: String!
-  payload: AWSJSON!
-  originatorSlice: String
-}
-```
-`originatorSlice` is populated from the DCB event tag added by `StateChangeSlice_Callback.encodeEvent` (Group D of plugin-hook-metadata-and-schema-extensions.md).
-
-### 2.2 SDL stitcher subscription merge
-
-Extend `GraphqlSchemaStitcher.stitch` to merge all plugin `subscriptions` fragments into a single `type Subscription { }` block in the final SDL, alongside the existing Query/Mutation merge.
-
-### 2.3 Steps
-
-- [ ] Create `reventless-core/src/components/Plugin/Plugin_SubscriptionSchema.res`
-- [ ] Generate Source C fields from command resolver field names
-- [ ] Generate Source B fields from StateViewSlice/ReadModel specs (derive filter arg name from `@id` field)
-- [ ] Generate Source A fields from DcbEventLog/Aggregate EventLog presence
-- [ ] Populate `fragment.subscriptions` in `Plugin_Builder.res` alongside `fragment.mutations`/`fragment.queries`
-- [ ] Extend `GraphqlSchemaStitcher.stitch` to emit `type Subscription { <merged> }` when any fields exist
-- [ ] Build clean
-
----
-
-## Phase 3 — Source C: Mutation-triggered subscriptions
-
-**Target packages**: `reventless-aws`
-
-### 3.1 `CommandSubscriptionResolvers_AppSync.res`
-
-Creates one AppSync `Subscription` type resolver per command mutation field using `makeSubscriptionResolver` from Phase 1. No data source needed — AppSync delivers the mutation's return value to all subscribers automatically.
-
-The SDL `@aws_subscribe(mutations: ["X"])` directive is emitted by Phase 2's SDL generator. The Pulumi resolver resource registers the resolver handler for the `Subscription.onX` field.
-
-### 3.2 Steps
-
-- [ ] Create `reventless-aws/src/adapter/Api/CommandSubscriptionResolvers_AppSync.res`
-- [ ] For each command mutation field `X`, create `Subscription.onX` resolver
-- [ ] Wire into `Core_AppSync_Builder.res` after mutation resolvers are created
-- [ ] Deploy and verify subscription fields appear in AppSync schema
-
----
-
-## Phase 4 — Source B: State-change subscriptions (QueryDb → AppSync Events API)
-
-**Target packages**: `reventless-aws`
-
-### 4.1 Architecture
-
-```
-QueryDb (DynamoDB) ── DynamoDB Stream ──► StateTopic Lambda ──► AppSync Events HTTP API ──► Client WebSocket
-```
-
-Each `QueryDb` (ReadModel or StateViewSlice) gets a DynamoDB Stream enabled. A Lambda subscribes to the stream and pushes changed items to AppSync via the Events HTTP API.
-
-### 4.2 `StateTopic_AppSync.res`
-
-**Deploy-time resources**:
-- Enable DynamoDB Streams on the QueryDb table (`streamViewType: "NEW_IMAGE"`)
-- Lambda function: receives DynamoDB Stream records, maps `NewImage` to state payload, calls AppSync Events API
-- IAM: Lambda execution role with `appsync:GraphQL` on the specific API ARN
-- `aws.lambda.EventSourceMapping`: DynamoDB Stream → Lambda trigger
-
-**Runtime (Lambda handler)**:
-```javascript
-export async function handler(event) {
-  for (const record of event.Records) {
-    if (record.eventName === "REMOVE") continue;
-    const newImage = unmarshall(record.dynamodb.NewImage);
-    await appsync.publishEvent({
-      channel: `/default/${topicName}`,
-      events: [JSON.stringify(newImage)],
-    });
-  }
-}
-```
-
-### 4.3 Subscription filter
-
-The Phase 2 SDL generator emits the filter on the subscription resolver using the `@id` field name. Phase 1's `subscriptionFilter` arg passes it to `makeSubscriptionResolver`:
-
-```json
-{
-  "filterGroup": [{
-    "filters": [{ "fieldName": "productId", "operator": "eq", "value": { "ref": "ctx.args.id" } }]
-  }]
-}
-```
-
-### 4.4 Steps
-
-- [ ] Create `reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res` (deploy-time resources)
-- [ ] Create `StateTopic_AppSync_Handler.res` (or `.mjs`) — Lambda runtime: DynamoDB Stream → AppSync Events API
-- [ ] Add optional `~streamEnabled` flag to `QueryDbStorage_DynamoDb.res`
-- [ ] Wire `StateTopic_AppSync` into `Core_AppSync_Builder.res` for each ReadModel/StateViewSlice with subscriptions
-- [ ] Set `subscriptionFilter` on matching subscription resolver
+### Checklist
+- [x] `StateTopic_AppSync.res` created (Lambda + IAM + EventSourceMapping)
+- [x] Inline Lambda handler: DynamoDB Stream → AppSync Events API
+- [x] Stream opt-in via `QueryDbStorage_DynamoDbStream` (already existed)
+- [x] Wire `StateTopic_AppSync.make` per stream-enabled QueryDb via `subscriptionInfraHook` in `Platform.res`
+- [x] Set `subscriptionFilter` on `makeSubscriptionResolver` — hardcoded `"id"` field (see Q4 Option A)
 - [ ] Verify: state change → push reaches WebSocket subscriber
 
 ---
 
-## Phase 5 — Source A: Raw event stream subscriptions (SNS → AppSync Events API)
+## Phase 5 — Source A: Raw event stream subscriptions ⬜
 
 **Target packages**: `reventless-aws`
 
-### 5.1 Architecture
+### Architecture
 
 ```
-EventTopic (SNS) ──► SQS buffer ──► EventLogSubscription Lambda ──► AppSync Events HTTP API ──► Client WebSocket
+EventTopic (SNS) ──► SQS buffer ──► EventLogSubscription Lambda ──► AppSync Events API ──► Client
 ```
 
-Each plugin's EventTopic (SNS) triggers a Lambda that pushes raw events to AppSync. Admin-only — exposes the full domain event stream for observability.
+Each plugin's EventTopic (SNS) triggers a Lambda (via SQS) that pushes raw events to an AppSync Events channel. Admin/observability only.
 
-### 5.2 `EventLogSubscription_AppSync.res`
+### `EventLogSubscription_AppSync.res` — what to build
 
-**Deploy-time resources** (reuses existing SQS/SNS patterns from `EventCollectorChannel_DynamoDbStream`):
-- SQS queue (buffering + dead-letter)
-- SNS → SQS subscription (`Util_SQS.subscribeToSnsTopic`)
-- Lambda function: maps `{position, eventType, data, tags}` to AppSync Events API payload
-- IAM: `appsync:GraphQL` permission on specific API ARN
-- `aws.lambda.EventSourceMapping`: SQS → Lambda trigger
+Deploy-time resources (follow the SQS/SNS pattern from `EventCollectorChannel_DynamoDbStream`):
+1. SQS queue + dead-letter queue
+2. SNS → SQS subscription (`Util_SQS.subscribeToSnsTopic`)
+3. Lambda + IAM role (`appsync:GraphQL` on API ARN + SQS receive permissions)
+4. EventSourceMapping: SQS → Lambda
 
-**Runtime (Lambda handler)**:
+Lambda handler:
 ```javascript
 export async function handler(event) {
+  const { PublishEvents } = await import("@aws-sdk/client-appsync-events");
+  const client = await getClient();
   for (const record of event.Records) {
     const body = JSON.parse(record.body);
     const originatorSlice = body.tags?.find(t => t.key === "originatorSlice")?.value;
-    await appsync.publishEvent({
-      channel: `/default/${topicName}`,
+    await client.send(new PublishEvents({
+      channelNamespace: "default",
+      channelName: TOPIC_NAME,
       events: [JSON.stringify({
         position: body.position,
         eventType: body.eventType,
         payload: body.data,
         originatorSlice,
-      })],
-    });
+      })),
+    }));
   }
 }
 ```
 
-### 5.3 Steps
+Call site: `EventLogSubscription_AppSync.make(~name, ~topicName, ~eventTopic, ~api, ~opts)` per entry in `eventLogEntries`.
 
-- [ ] Create `reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res` (deploy-time resources)
-- [ ] Create runtime Lambda handler: SNS event → AppSync Events API push
-- [ ] Wire into `Core_AppSync_Builder.res` for DcbEventLog and Aggregate EventTopics
-- [ ] Verify: domain event → push reaches admin WebSocket subscriber with `originatorSlice` populated
+### Checklist
+- [x] Create `reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res`
+- [x] SQS queue (60 s visibility, redrive → shared DLQ) + SNS→SQS subscription (rawMessageDelivery)
+- [x] SQS queue policy allowing SNS to send
+- [x] Lambda + IAM role (CloudWatch Logs + SQS receive + `appsync:GraphQL`)
+- [x] EventSourceMapping: SQS → Lambda (`Util_EventSourceMapping.subscribeSqs`)
+- [x] Inline handler: parse SNS body → extract `originatorSlice` from tags → publish to AppSync Events channel
+- [x] Wire `EventLogSubscription_AppSync.make` per entry in `eventLogEntries` via `subscriptionInfraHook` in `Platform.res`
+- [ ] Verify: domain event → push reaches admin WebSocket subscriber
 
 ---
 
-## Phase 6 — In-memory WebSocket subscriptions
+## Phase 6 — In-memory WebSocket subscriptions ⬜
 
 **Target packages**: `reventless-in-memory`
 
-### 6.1 Motivation
+### Motivation
 
-The local dev experience must mirror production so client code works unchanged between environments. graphql-yoga v5 supports GraphQL subscriptions natively via `createPubSub` and the `graphql-ws` protocol (matching AppSync's WebSocket subscription protocol).
+The local dev experience must mirror production so client code works unchanged between environments. graphql-yoga v5 supports GraphQL subscriptions natively via `createPubSub` and the `graphql-ws` protocol.
 
-### 6.2 `InMemory_Bus` PubSub extension
+Note: Sources A and B in production use AppSync Events (Pub/Sub). In-memory will use graphql-yoga's PubSub which uses a different protocol. This is an acceptable dev/prod divergence for local development — the data shape is identical.
 
-Add a `PubSub` instance to the bus and publish to it whenever `publishEvent` fires. The topic name mirrors the AppSync subscription field name convention:
+Also note: the `AWSJSON` scalar used in Source A's `{Name}EventLogEvent` type must be replaced with `String` (or removed from the SDL) in the in-memory schema, since yoga does not define `AWSJSON`.
 
-```rescript
-// Extension to InMemory_Bus
-let pubSub = createPubSub()  // yoga/graphql-yoga createPubSub
+### What to build
 
-let publishEvent = (bus, event) => {
-  // existing: fan-out to read model handlers
-  bus.subscribers->Array.forEach(sub => sub(event))
-  // new: publish to PubSub for WebSocket subscribers
-  let topicName = deriveTopicName(event)
-  pubSub->publish(topicName, event)
-}
-```
+**`InMemory_Bus` extension**: Add `createPubSub()` instance; publish to it whenever state changes or events are appended.
 
-### 6.3 `GraphQL_SubscriptionResolvers_InMemory.res`
+**`GraphQL_SubscriptionResolvers_InMemory.res`**: Registers yoga subscription resolvers that subscribe to the PubSub and yield events to WebSocket clients.
 
-Registers yoga subscription resolvers that subscribe to the PubSub and yield events to WebSocket clients:
+**`Platform_InMemory.res`**: Wire subscription resolvers into the yoga server setup.
 
-```rescript
-let register = (server, bus, ~subscriptionFields: array<string>) => {
-  subscriptionFields->Array.forEach(field => {
-    server->registerSubscriptionResolver(field, {
-      subscribe: (_root, args) => bus->subscribeToEventAsyncIterator(field, args),
-      resolve: event => event,
-    })
-  })
-}
-```
-
-### 6.4 Steps
-
-- [ ] Add `PubSub` instance to `InMemory_Bus` (using yoga `createPubSub`)
-- [ ] Extend `InMemory_Bus.publishEvent` to also publish to PubSub
-- [ ] Create `reventless-in-memory/src/adapter/Api/GraphQL_SubscriptionResolvers_InMemory.res`
-- [ ] Wire into `Platform_InMemory.res` alongside existing yoga query/mutation resolvers
-- [ ] Integration test: browser/test client receives events via WebSocket from in-memory backend
+### Checklist
+- [x] `createPubSub` + `pubSubPublish` + `pubSubSubscribe` bindings added to `GraphqlYoga.res`
+- [x] `publishStateChange` / `subscribeToStateChanges` added to `InMemory_Bus.T` + `Impl`
+- [x] `QueryDbStorage_InMemory.save/saveBatch` call `Bus.publishStateChange` after each write (Source B hook)
+- [x] Source A hook: `EventTopicPublisher_InMemory` already calls `Bus.publishEvent`; `bridgeSourceA` subscribes and forwards to yoga PubSub
+- [x] `GraphQL_SubscriptionResolvers_InMemory.res` created with `bridgeSourceA`, `bridgeSourceB`, `registerAll`
+- [x] `registerSubscriptions` added to `GraphQL_ServerInstance.t` + `make` + `GraphQL_ServerInstance.res` (build/start/reset)
+- [x] `registerSubscriptions` added to `DomainGraphQL_Server.res` singleton + `asInterface`
+- [x] `PlatformGraphQL_Server.res` re-export updated
+- [x] `subscriptionFields: array<string>` added to `mcpRegistrationParams`; `Plugin_Builder.res` + `Platform_Admin.res` backfilled
+- [x] `Platform.res` `mcpSchemaRegistrationHook` wires Source A + B bridges and calls `registerAll`
+- [x] `scalar AWSJSON` injected via `registerAll` → `server.registerTypes` so yoga accepts the AppSync scalar
+- [x] Build clean — zero warnings, zero errors
+- [x] Integration test at `tests/adapter/GraphQL_SubscriptionResolversTest.res` — 3 test cases (Source A, Source B positive, Source B negative); verifies bus → yoga PubSub bridge end-to-end
 
 ---
 
 ## File Map
 
-### New files
+### New files (created)
 
 | Package | File | Phase | Purpose |
 |---------|------|-------|---------|
-| `reventless-core` | `src/components/Plugin/Plugin_SubscriptionSchema.res` | 2 | Subscription SDL fragment generator |
-| `reventless-aws` | `src/adapter/Api/CommandSubscriptionResolvers_AppSync.res` | 3 | Source C: mutation-triggered subscription resolvers |
-| `reventless-aws` | `src/adapter/StateTopic/StateTopic_AppSync.res` | 4 | Source B: DynamoDB Stream → AppSync Events API |
-| `reventless-aws` | `src/adapter/StateTopic/StateTopic_AppSync_Handler.res` | 4 | Source B: Lambda runtime handler |
-| `reventless-aws` | `src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res` | 5 | Source A: SNS → AppSync Events API |
-| `reventless-in-memory` | `src/adapter/Api/GraphQL_SubscriptionResolvers_InMemory.res` | 6 | WebSocket subscriptions for yoga |
+| `reventless-core` | `src/components/Plugin/Plugin_SubscriptionSchema.res` | 2 | Subscription SDL fragment generator (Sources A, B, C) |
+| `reventless-aws` | `src/adapter/Api/CommandSubscriptionResolvers_AppSync.res` | 3 | Source C: `Subscription.onX` resolver per mutation field |
+| `reventless-aws` | `src/adapter/StateTopic/StateTopic_AppSync.res` | 4 | Source B: DynamoDB Stream → Lambda → AppSync Events API |
+| `reventless-aws` | `src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res` | 5 | Source A: SNS → SQS → Lambda → AppSync Events API |
+| `reventless-in-memory` | `src/adapter/Api/GraphQL_SubscriptionResolvers_InMemory.res` | 6 | WebSocket subscriptions for yoga (Sources A, B, C) |
 
 ### Modified files
 
 | Package | File | Phase | Change |
 |---------|------|-------|--------|
-| `reventless-spec` | `src/components/GraphqlSchema.res` | 1 | Add `subscriptions: string` to `fragment` |
-| `rescript-pulumi-aws` | `src/AppSync/AppSync_Resolver.res` (bindings) | 1 | Add optional `subscriptionFilter` to args |
-| `reventless-aws` | `src/adapter/Api/AppSync_Resolver_Native.res` | 1 | Add `makeSubscriptionResolver` |
-| `reventless-aws` | `src/adapter/Api/AppSync_Resolver_Retrying.res` | 1 | Add `makeSubscriptionResolver` |
-| `reventless-core` | `src/components/Plugin/Plugin_Builder.res` | 2 | Populate `fragment.subscriptions` |
-| `reventless-core` | `src/core/GraphqlSchemaStitcher.res` | 2 | Merge subscription fragments into `type Subscription { }` |
-| `reventless-aws` | `src/adapter/QueryDb/QueryDbStorage_DynamoDb.res` | 4 | Add optional `~streamEnabled` flag |
-| `reventless-aws` | `src/core/Core_AppSync_Builder.res` | 3, 4, 5 | Wire all subscription publishers and resolvers |
-| `reventless-in-memory` | `src/InMemory_Bus.res` | 6 | Add PubSub + `publishEvent` PubSub fanout |
+| `reventless-core` | `src/components/Api/GraphQL_Stitcher.res` | 1 | `subscriptions` field in `fragmentParts`; stitch emits `type Subscription { }` |
+| `reventless-core` | `src/components/Api/GraphQL_FragmentGenerator.res` | 1 | Emit `"subscriptions": []` in generated JSON |
+| `reventless-aws` | `src/adapter/Api/AppSync_Resolver_Native.res` | 1 | `makeSubscriptionResolverCode` + `makeSubscriptionResolver` |
+| `reventless-aws` | `src/adapter/Api/AppSync_Resolver_Retrying.res` | 1 | `makeSubscriptionResolverCode` + `makeSubscriptionResolver` |
+| `reventless-aws` | `src/Platform.res` | 1 | Backfill `subscriptions: []` in `emptyBaseFragment` |
+| `reventless-in-memory` | `src/Platform.res` | 1 | Backfill `subscriptions: []` in `emptyBaseFragment` |
+| `reventless-aws` | `tests/AppSync_AdapterTest.res` | 1 | Backfill `subscriptions: []` in three encode calls |
+| `reventless-core` | `src/components/Plugin/Plugin_Builder.res` | 2 | Inject subscriptions via decode/re-encode after `generateFragment` |
+| `reventless-aws` | `src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res` | 3 | Call `CommandSubscriptionResolvers_AppSync.make` after mutation resolvers |
+| `reventless-in-memory` | `src/InMemory_Bus.res` | 6 | Add PubSub + publish to PubSub on state change / event append |
 | `reventless-in-memory` | `src/Platform.res` | 6 | Wire subscription resolvers into yoga server |
 
 ---
@@ -382,28 +343,22 @@ let register = (server, bus, ~subscriptionFields: array<string>) => {
 ```graphql
 type Subscription {
 
-  # Source C — fires when command is ACCEPTED (mutation-triggered, instant)
-  onCatalogProduct_AddProduct(id: ID!, name: String!, price: Float!, categoryId: ID!): String
-    @aws_subscribe(mutations: ["CatalogProduct_AddProduct"])
-    @aws_auth(cognito_groups: ["Admin"])
+  # Source C — fires when command is ACCEPTED (instant, @aws_subscribe)
+  onCatalogPlugin_Product_AddProduct(id: ID!, name: String!, price: Float!, categoryId: ID!): String
+    @aws_subscribe(mutations: ["CatalogPlugin_Product_AddProduct"])
 
-  onCatalogProduct_ChangeProductPrice(id: ID!, price: Float!): String
-    @aws_subscribe(mutations: ["CatalogProduct_ChangeProductPrice"])
-    @aws_auth(cognito_groups: ["Admin"])
+  onCatalogPlugin_Product_ChangeProductPrice(id: ID!, price: Float!): String
+    @aws_subscribe(mutations: ["CatalogPlugin_Product_ChangeProductPrice"])
 
-  # Source B — fires when READ MODEL STATE CHANGES (after event is projected)
-  onCatalogProduct_stateChanged(id: ID): CatalogProduct
-    @aws_auth(cognito_groups: ["User", "Admin"])
+  # Source B — fires when READ MODEL STATE CHANGES (pushed via AppSync Events API)
+  oncatalog_Product_stateChanged(id: ID): catalog_Product
+  oncatalog_Category_stateChanged(id: ID): catalog_Category
 
-  onCatalogCategory_stateChanged(id: ID): CatalogCategory
-    @aws_auth(cognito_groups: ["User", "Admin"])
-
-  # Source A — raw event stream (admin/observability only)
-  onCatalogEventLog_eventAppended: CatalogEventLogEvent
-    @aws_auth(cognito_groups: ["Admin"])
+  # Source A — raw event stream, admin/observability only (pushed via AppSync Events API)
+  onCatalogPluginEventLog_eventAppended: CatalogPluginEventLogEvent
 }
 
-type CatalogEventLogEvent {
+type CatalogPluginEventLogEvent {
   position: String!
   eventType: String!
   payload: AWSJSON!
@@ -411,76 +366,92 @@ type CatalogEventLogEvent {
 }
 ```
 
+*(Field name casing derives from actual `fieldNames` / `returnTypeName` values at runtime.)*
+
 ---
 
 ## Dependency Order
 
 ```
-Phase 1 (spec + resolver builders)
+Phase 1 (subscriptions field + resolver builders) ✅
     ↓
-Phase 2 (SDL generation)
+Phase 2 (SDL generation) ✅
     ↓
-Phase 3 (Source C) ─┐
-Phase 4 (Source B) ─┤── all independent, can run in parallel
-Phase 5 (Source A) ─┘
-Phase 6 (in-memory WebSocket) — independent of Phases 3–5
+Phase 3 (Source C - @aws_subscribe resolvers) ✅
+Phase 4 (Source B - state-change push infra) ✅ / ⬜ plugin-builder wiring
+Phase 5 (Source A - event stream infra)       ✅ / ⬜ plugin-builder wiring
+Phase 6 (in-memory WebSocket)                 ✅ / ⬜ integration test
 ```
 
 ---
 
 ## Open Questions
 
-1. **AppSync Events API auth**: The push Lambda needs `appsync:GraphQL` permission. Scope to specific API ARN (recommended) or to `arn:aws:appsync:*:*:apis/*` (simpler)?
+0. **✅ RESOLVED — Sources A and B: AppSync Events API vs GraphQL API mismatch** *(Option A implemented)*: `StateTopic_AppSync` and `EventLogSubscription_AppSync` use `@aws-sdk/client-appsync-events` and derive `APPSYNC_ENDPOINT` from the GraphQL API's `uris.graphQL` output. The AppSync Events Pub/Sub service (`aws.appsync.Api` in aws-native) is a **completely separate resource** from the AppSync GraphQL API (`aws.appsync.GraphQlApi`); pointing the Events client at the GraphQL endpoint will fail. No `aws.appsync.Api` resource exists in the current Reventless stack. Source C (`@aws_subscribe`) is unaffected — it runs entirely on the existing GraphQL API.
 
-2. **Source B payload — full state vs. delta**: DynamoDB Stream Lambda pushes full `NewImage` (recommended — simpler for client, bounded by state schema size) or just changed fields (more efficient)?
+   **Option A — Create a separate `aws.appsync.Api` (Events API) resource**: Provision an AppSync Events API alongside the GraphQL API. Update `StateTopic_AppSync` and `EventLogSubscription_AppSync` to accept the Events API endpoint and ARN separately. IAM `appsync:GraphQL` permission targets the Events API ARN. Clients subscribe via the EventApi WebSocket endpoint (different from the GraphQL WebSocket — see Q2). Architecturally cleanest but adds a new resource type, a second WebSocket endpoint for clients, and requires `@aws-sdk/client-appsync-events` in the Lambda layer (see Q1).
 
-3. **In-memory WebSocket protocol**: `graphql-ws` (matches AppSync protocol, recommended) or SSE (simpler but different from production)?
+   **Option B — Replace Events push with a NONE data source + `@aws_subscribe` mutation (recommended)**:
 
-4. **Source A auth**: Should the raw event stream subscription (`onCatalogEventLog_eventAppended`) be opt-in per plugin, or generated for all plugins and restricted by `@aws_auth`?
+   A NONE data source is an AppSync data source type with no backend. Instead of calling DynamoDB, Lambda, or an HTTP endpoint, AppSync returns whatever the resolver's request mapping template produces directly. Because AppSync `@aws_subscribe` delivers the *return value of the triggering mutation* to subscribers, a Lambda can call a NONE-backed mutation with any payload and AppSync will fan it out to all matching subscribers — with no additional AWS service.
 
----
+   **SDL changes required** (added to the base fragment, not plugin fragments):
+   ```graphql
+   # Envelope types — one per push category
+   type StateChangePush { typeName: String! id: String! state: AWSJSON! }
+   type EventAppendedPush { displayName: String! eventType: String! payload: AWSJSON! originatorSlice: String }
 
-## Checklist
+   # Push mutations — called by Lambdas, not by clients; prefixed _ to signal internal use
+   _pushStateChange(typeName: String!, id: String!, state: AWSJSON!): StateChangePush
+   _pushEventAppended(displayName: String!, eventType: String!, payload: AWSJSON!, originatorSlice: String): EventAppendedPush
 
-### Phase 1 — Spec and resolver builders
-- [ ] `subscriptions: string` in `GraphqlSchema.fragment`
-- [ ] `subscriptions: ""` backfilled in all existing `fragment` literals
-- [ ] `subscriptionFilter` in `AppSync_Resolver_Native` args binding
-- [ ] `makeSubscriptionResolver` in `AppSync_Resolver_Native.res`
-- [ ] `makeSubscriptionResolver` in `AppSync_Resolver_Retrying.res`
-- [ ] Build clean
+   # Client subscriptions — gain @aws_subscribe; replace the current non-@aws_subscribe Source B/A fields
+   on{ReturnTypeName}_stateChanged(typeName: String!, id: ID): StateChangePush
+     @aws_subscribe(mutations: ["_pushStateChange"])
+   on{DisplayName}EventLog_eventAppended(displayName: String!): EventAppendedPush
+     @aws_subscribe(mutations: ["_pushEventAppended"])
+   ```
 
-### Phase 2 — SDL generation
-- [ ] `Plugin_SubscriptionSchema.res` created
-- [ ] Source C fields generated (one per command mutation field)
-- [ ] Source B fields generated (one per StateViewSlice/ReadModel with `@id` state)
-- [ ] Source A fields generated (per EventLog/DcbEventLog)
-- [ ] `fragment.subscriptions` populated in `Plugin_Builder.res`
-- [ ] `GraphqlSchemaStitcher.stitch` emits `type Subscription { }`
-- [ ] Build clean
+   **Payload trade-off**: the push payload is a generic `{typeName, id, state: AWSJSON}` envelope — clients parse `state` themselves rather than receiving a typed `CatalogProduct` directly. Option A (AppSync Events API) would deliver the typed payload.
 
-### Phase 3 — Source C (mutation-triggered)
-- [ ] `CommandSubscriptionResolvers_AppSync.res` created
-- [ ] One subscription resolver per command field
-- [ ] Wired into `Core_AppSync_Builder.res`
-- [ ] Verified in deployed AppSync schema
+   **Lambda push call** (replaces `AppSyncEventsClient`):
+   ```javascript
+   // IAM-signed HTTP POST to the GraphQL endpoint — no new SDK needed
+   // @aws-sdk/client-appsync already in codebase; or use raw SigV4 + fetch
+   const { AppSyncClient, executeGraphQL } = await import("@aws-sdk/client-appsync");
+   const client = new AppSyncClient({ region: AWS_REGION });
+   await client.send(new ExecuteGraphQL({
+     apiId: API_ID,
+     document: `mutation { _pushStateChange(typeName: "${typeName}", id: "${id}", state: ${JSON.stringify(stateJson)}) { typeName id } }`,
+   }));
+   ```
 
-### Phase 4 — Source B (state-change push)
-- [ ] `StateTopic_AppSync.res` created (DynamoDB Streams + Lambda + IAM + EventSourceMapping)
-- [ ] Runtime handler calls AppSync Events API
-- [ ] `QueryDbStorage_DynamoDb.res` streams opt-in flag added
-- [ ] Subscription filter wired from state `@id` field name
-- [ ] Verified: state change → push reaches WebSocket subscriber
+   **Infrastructure changes**: replace `@aws-sdk/client-appsync-events` handler code in `StateTopic_AppSync` and `EventLogSubscription_AppSync` with signed GraphQL mutation calls; add NONE data source Pulumi resources for `_pushStateChange` and `_pushEventAppended`; update the Source B/A subscription SDL fields in `Plugin_SubscriptionSchema` to add `@aws_subscribe`. No new `aws.appsync.Api` resource needed; all three sources use the same GraphQL WebSocket endpoint.
 
-### Phase 5 — Source A (raw event stream)
-- [ ] `EventLogSubscription_AppSync.res` created (SNS → SQS → Lambda → AppSync)
-- [ ] Runtime handler maps event envelope to subscription payload
-- [ ] `originatorSlice` tag included in payload
-- [ ] Verified: domain event → push reaches admin WebSocket subscriber
+   **Option C — Defer Sources A and B; ship Source C now**: Source C is fully wired and works with the existing GraphQL API. Ship it. Defer the A/B decision until the endpoint architecture is resolved. In-memory subscriptions (Phase 6) work as-is.
 
-### Phase 6 — In-memory WebSocket
-- [ ] `InMemory_Bus` PubSub added
-- [ ] `publishEvent` also publishes to PubSub
-- [ ] `GraphQL_SubscriptionResolvers_InMemory.res` created
-- [ ] Wired into `Platform_InMemory.res`
-- [ ] Integration test: test client receives events via WebSocket from in-memory backend
+   **Implemented: Option A.** New files: `AwsNative_AppSync_Api.res`, `AwsNative_AppSync_ChannelNamespace.res` (Pulumi bindings); `AppSync_EventsApi.res` (creates Events API + `default` namespace, exposes `httpEndpoint`). `StateTopic_AppSync` and `EventLogSubscription_AppSync` updated: `~api` → `~eventsApi: AppSync_EventsApi.t`; endpoint from `eventsApi.api.dns.http`; IAM permission changed from `appsync:GraphQL` to `appsync:EventPublish`. Handler endpoint code simplified (no more `/graphql` stripping). Build clean — zero warnings.
+
+1. **AppSync Events client availability in Lambda** *(moot if Option B from Q0 is chosen)*: Does `@aws-sdk/client-appsync-events` ship with the Lambda Node.js 22 runtime, or must it be bundled in the Reventless Lambda layer? Verify before first deploy if Option A from Q0 is chosen.
+
+2. **Two WebSocket connections for clients** *(only applies if Q0 Option A is chosen)*: Source C uses the GraphQL WebSocket; Sources A and B would use the AppSync Events WebSocket. Should the client library abstract this into a single subscription interface? (Tracked in `reventless-client-transport.md`.) If Q0 Option B is chosen, all three sources use the GraphQL WebSocket — this question disappears.
+
+3. **`AWSJSON` scalar in yoga**: Source A's `{Name}EventLogEvent` type uses `AWSJSON!`. This scalar is AppSync-specific and undefined in graphql-yoga. Phase 6 must either define a custom scalar or substitute `String` in the in-memory SDL.
+
+4. **Source B subscription filter — field name discovery**: The `makeSubscriptionResolver` call for Source B should pass `~subscriptionFilter` to enable per-entity filtering: only push to subscribers whose `ctx.args.id` matches the changed entity. Three options:
+
+   **Option A — hardcode `"id"` (recommended)**: `QueryDbStorage_DynamoDb` always stores the partition key under the attribute name `"id"` (`hashKey: "id"->Pulumi.Input.make` in `Util_DynamoDb.makeTableArgs`). The `NewImage` unmarshalled from the DynamoDB stream therefore always has an `"id"` field regardless of what the state type names its `@id`-annotated field. The filter is therefore always:
+   ```json
+   { "filterGroup": [{ "filters": [{ "fieldName": "id", "operator": "eq", "value": { "ref": "ctx.args.id" } }] }] }
+   ```
+   This requires no schema introspection and no changes to `querySchemaEntry`. The plan's earlier example using `productId` as `fieldName` was wrong — the DynamoDB attribute is always `"id"`.
+
+   **Option B — add `stateIdField: string` to `querySchemaEntry`**: Carry the `@id` field name through the pipeline from the PPX-generated spec into `querySchemaEntry`, then use it in both the SDL generator (for the filter arg name) and the resolver filter. This is accurate for exotic cases but adds coupling and is unnecessary given Option A.
+
+   **Option C — introspect `stateSchema` at resolver-creation time**: The `@id` annotation metadata could be retrieved from the sury schema via `S.Metadata`. The PPX injects metadata onto the field, so in principle it could be recovered. This is fragile and undocumented; not recommended.
+
+   **Recommendation: Option A.** Hardcode `"id"` as the `fieldName` in the subscription filter. Set this unconditionally when wiring `makeSubscriptionResolver` for Source B in Phase 4. No schema introspection needed.
+
+5. **Source A opt-in**: Should `on{Name}EventLog_eventAppended` be generated for all plugins (and access-controlled via `@aws_auth`) or only when a plugin explicitly opts in? Currently generated for all plugins that have event logs.
+
+6. **Phase 4 wiring point**: Where does `StateTopic_AppSync.make` get called? Options: (a) inside `QueryDbResolvers_AppSync.make` when `queryDbResources` contains a stream resource, (b) a new `Core_AppSync_Builder.res` that wraps all subscription infrastructure, (c) explicit call in each plugin stack. Option (a) is cleanest as it auto-activates when `QueryDbStorage_DynamoDbStream` is used.

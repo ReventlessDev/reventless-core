@@ -29,6 +29,7 @@ import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-inf
 import * as ExtensionPoint$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ExtensionPoint.res.mjs";
 import * as Heartbeat_Builder$ReventlessCore from "../Heartbeat/Heartbeat_Builder.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
+import * as Plugin_SubscriptionSchema$ReventlessCore from "./Plugin_SubscriptionSchema.res.mjs";
 
 function Make(Spec) {
   return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => {
@@ -115,7 +116,15 @@ function Make(Spec) {
           }
           Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = qn$1;
         });
-        let apiSchemaFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
+        let baseFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
+        let subResult = Plugin_SubscriptionSchema$ReventlessCore.generate(mutationEntries, queryEntries, eventLogEntries);
+        let parts = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
+        let apiSchemaFragment = GraphQL_Stitcher$ReventlessCore.encode({
+          types: parts.types.concat(subResult.extraTypes),
+          mutations: parts.mutations,
+          queries: parts.queries,
+          subscriptions: subResult.subscriptionFields
+        });
         Stdlib_Option.forEach(Spec.hooks.schemaTypeRegistrationHook, registerTypes => {
           let parts = GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment);
           registerTypes(parts.types);
@@ -124,7 +133,8 @@ function Make(Spec) {
           pluginName: extra$1,
           mutationEntries: mutationEntries,
           queryEntries: queryEntries,
-          eventLogEntries: eventLogEntries
+          eventLogEntries: eventLogEntries,
+          subscriptionFields: GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment).subscriptions
         }));
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
@@ -301,6 +311,12 @@ function Make(Spec) {
           }
           let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);
+          Stdlib_Option.forEach(Spec.hooks.subscriptionInfraHook, hook => hook({
+            allQueryDbs: allQueryDbs,
+            allEventTopics: allEventTopics,
+            eventLogEntries: eventLogEntries,
+            opts: opts
+          }));
           let SpecificHeartbeat = Heartbeat_Builder$ReventlessCore.Make(HeartbeatRunner);
           let heartbeat = SpecificHeartbeat.make(childName, opts);
           let handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToPluginExtensionPoint);

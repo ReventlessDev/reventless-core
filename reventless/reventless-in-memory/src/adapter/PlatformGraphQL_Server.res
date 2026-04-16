@@ -13,6 +13,7 @@ let instance: GraphQL_ServerInstance.t = GraphQL_ServerInstance.make(~label="Gra
 // Re-export all instance functions for module-style access.
 let registerMutations = instance.registerMutations
 let registerQueries = instance.registerQueries
+let registerSubscriptions = instance.registerSubscriptions
 let registerTypes = instance.registerTypes
 let getMutationResolver = instance.getMutationResolver
 let getQueryResolver = instance.getQueryResolver

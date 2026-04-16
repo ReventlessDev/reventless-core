@@ -484,6 +484,39 @@ let makeResolver = (
 
 module Functions = PulumiAws.AppSync.Resolver.Functions
 
+let makeSubscriptionResolverCode = (~filter: option<string>): string => {
+  let filterLine = switch filter {
+  | None => ""
+  | Some(f) => `\n  ctx.extensions.setSubscriptionFilter(${f});`
+  }
+  `export function request(ctx) {${filterLine}
+  return { payload: null };
+}
+
+export function response(ctx) {
+  return ctx.result;
+}`
+}
+
+let makeSubscriptionResolver = (
+  ~name,
+  ~api: Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>,
+  ~field,
+  ~subscriptionFilter: option<string>=?,
+  ~opts: option<Pulumi.CustomResourceOptions.t>=?,
+) =>
+  makeResolver(
+    ~name,
+    ~props={
+      apiId: api->Pulumi.Output.flatMap(a => a.id)->Pulumi.Output.asInput,
+      typeName: "Subscription"->Pulumi.Input.make,
+      fieldName: field->Pulumi.Input.make,
+      kind: "UNIT"->Pulumi.Input.make,
+      code: makeSubscriptionResolverCode(~filter=subscriptionFilter)->Pulumi.Input.make,
+    },
+    ~opts,
+  )
+
 let makeUnitJsResolver = (
   ~name,
   ~api: Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>,

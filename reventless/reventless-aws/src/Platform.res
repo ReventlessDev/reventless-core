@@ -212,6 +212,14 @@ module MakeWithConfig = (
     platformApiRole: platformApiRole,
   })
 
+  // AppSync Events API — companion to the GraphQL API for Sources A and B subscriptions.
+  // Created only in platform/monolithic mode (platformStackRef = None).
+  // Plugin mode support (StackReference import) can be added later.
+  let domainEventsApiOpt: option<AppSync_EventsApi.t> =
+    platformStackRef->Option.isNone
+      ? Some(AppSync_EventsApi.make(~name="DomainEventsApi", ~opts={}))
+      : None
+
   // Returns the AppSync API/role to attach resolvers to for the current deploy target.
   // Hoisted above ApiConfig so the module can reference them as thunks.
   let resolveTargetApi = () =>
@@ -417,6 +425,7 @@ module MakeWithConfig = (
     types: [],
     mutations: [],
     queries: [],
+    subscriptions: [],
   })
 
   module Api = {
@@ -742,6 +751,62 @@ module MakeWithConfig = (
         Console.warn("Platform: heartbeat EP channel has no resources")
       }
     },
+
+    // Phase 4 + 5: wire StateTopic and EventLogSubscription Lambdas per plugin.
+    // Only active when the Events API resource exists (platform/monolithic mode).
+    subscriptionInfraHook: ?domainEventsApiOpt->Option.map(eventsApi =>
+      (params: ReventlessCore.Plugin_Helpers.subscriptionInfraParams) => {
+        let {allQueryDbs, allEventTopics, eventLogEntries, opts} = params
+        let customOpts =
+          opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+        let graphqlApi = resolveHookedApi()
+
+        // Phase 4: StateTopic per stream-enabled QueryDb
+        allQueryDbs->Dict.forEachWithKey((_, readModelName) => {
+          if QueryDbStorage_DynamoDbStream.streamRegistry.contents->Set.has(readModelName) {
+            let returnTypeName =
+              ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+              ->Dict.get(readModelName)
+              ->Option.map(qn => qn.returnTypeName)
+              ->Option.getOr(readModelName)
+            StateTopic_AppSync.make(
+              ~readModelName,
+              ~topicName=returnTypeName,
+              ~allQueryDbs,
+              ~eventsApi,
+              ~opts=customOpts,
+            )
+            // Source B subscription resolver with server-side id-based filter
+            let _ = AppSync_Resolver_Retrying.makeSubscriptionResolver(
+              ~name="on" ++ returnTypeName ++ "StateChanged",
+              ~api=graphqlApi,
+              ~field="on" ++ returnTypeName ++ "_stateChanged",
+              ~subscriptionFilter=`{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`,
+              ~opts=customOpts,
+            )
+          }
+        })
+
+        // Phase 5: EventLogSubscription per event log entry
+        eventLogEntries->Array.forEach(entry => {
+          // Aggregate EventTopics are keyed by Spec.name (= displayName).
+          // DCB EventTopic is keyed by busKey (= pluginName ++ "DcbEventLog").
+          let eventTopicOutputs =
+            allEventTopics
+            ->Dict.get(entry.displayName)
+            ->Option.orElse(allEventTopics->Dict.get(entry.busKey))
+          eventTopicOutputs->Option.forEach(outputs =>
+            EventLogSubscription_AppSync.make(
+              ~name=entry.displayName,
+              ~topicName=entry.displayName,
+              ~eventTopicOutputs=outputs,
+              ~eventsApi,
+              ~opts=customOpts,
+            )
+          )
+        })
+      }
+    ),
   }
 
   // Apply Plugin functor with the platform hooks, then constrain the result to Plugin.T.

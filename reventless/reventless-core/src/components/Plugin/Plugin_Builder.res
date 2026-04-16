@@ -179,7 +179,20 @@ module Make = (
       Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(R.Spec.name, qn)
     })
 
-    let apiSchemaFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
+    let apiSchemaFragment = {
+      let baseFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
+      let subResult = Plugin_SubscriptionSchema.generate(
+        ~mutationEntries,
+        ~queryEntries,
+        ~eventLogEntries,
+      )
+      let parts = GraphQL_Stitcher.decode(baseFragment)
+      GraphQL_Stitcher.encode({
+        ...parts,
+        types: Array.concat(parts.types, subResult.extraTypes),
+        subscriptions: subResult.subscriptionFields,
+      })
+    }
 
     // Register type definitions via platform hook (e.g. GraphQL in-memory)
     Spec.hooks.schemaTypeRegistrationHook->Option.forEach(registerTypes => {
@@ -194,6 +207,7 @@ module Make = (
         mutationEntries,
         queryEntries,
         eventLogEntries,
+        subscriptionFields: GraphQL_Stitcher.decode(apiSchemaFragment).subscriptions,
       })
     )
 
@@ -513,6 +527,13 @@ module Make = (
         )
 
         let resolvers = allQueryDbs->createResolvers
+
+        // Wire subscription infrastructure (StateTopic, EventLogSubscription) after resolvers.
+        // Gives the AWS platform access to allQueryDbs, allEventTopics, and eventLogEntries
+        // without coupling reventless-core to reventless-aws.
+        Spec.hooks.subscriptionInfraHook->Option.forEach(hook =>
+          hook({allQueryDbs, allEventTopics, eventLogEntries, opts})
+        )
 
         module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner)
         let heartbeat = SpecificHeartbeat.make(~name=childName, ~opts)

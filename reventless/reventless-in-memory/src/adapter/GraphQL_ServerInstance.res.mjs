@@ -24,10 +24,16 @@ function make(labelOpt) {
   let queryResolvers = {
     contents: {}
   };
+  let subscriptionResolvers = {
+    contents: {}
+  };
   let mutationFields = {
     contents: []
   };
   let queryFields = {
+    contents: []
+  };
+  let subscriptionFields = {
     contents: []
   };
   let typeDefinitions = {
@@ -54,6 +60,12 @@ function make(labelOpt) {
       queryResolvers.contents[param[0]] = param[1];
     });
   };
+  let registerSubscriptions = (sdlFields, resolvers) => {
+    subscriptionFields.contents = subscriptionFields.contents.concat(sdlFields);
+    Object.entries(resolvers).forEach(param => {
+      subscriptionResolvers.contents[param[0]] = param[1];
+    });
+  };
   let registerTypes = sdlTypes => {
     typeDefinitions.contents = typeDefinitions.contents.concat(sdlTypes);
   };
@@ -69,11 +81,9 @@ function make(labelOpt) {
 type Mutation {
 ` + mutations + `
 }`;
-    if (typesSdl.length > 0) {
-      return typesSdl + "\n\n" + queriesMutationsSdl;
-    } else {
-      return queriesMutationsSdl;
-    }
+    let subscriptionsSdl = subscriptionFields.contents.length !== 0 ? `\n\ntype Subscription {\n` + subscriptionFields.contents.join("\n") + `\n}` : "";
+    let base = typesSdl.length > 0 ? typesSdl + "\n\n" + queriesMutationsSdl : queriesMutationsSdl;
+    return base + subscriptionsSdl;
   };
   let stop = () => {
     let server = activeServer.contents;
@@ -89,6 +99,9 @@ type Mutation {
     let resolvers = {};
     resolvers["Query"] = queryResolvers.contents;
     resolvers["Mutation"] = mutationResolvers.contents;
+    if (Object.keys(subscriptionResolvers.contents).length !== 0) {
+      resolvers["Subscription"] = subscriptionResolvers.contents;
+    }
     let sdl = buildSdl();
     lastFullSdl.contents = sdl;
     let schema = GraphqlYoga.createSchema({
@@ -109,8 +122,10 @@ type Mutation {
   let reset = () => {
     mutationResolvers.contents = {};
     queryResolvers.contents = {};
+    subscriptionResolvers.contents = {};
     mutationFields.contents = [];
     queryFields.contents = [];
+    subscriptionFields.contents = [];
     typeDefinitions.contents = [];
     activeSchema.contents = undefined;
     lastFullSdl.contents = undefined;
@@ -197,6 +212,7 @@ type Mutation {
   return {
     registerMutations: registerMutations,
     registerQueries: registerQueries,
+    registerSubscriptions: registerSubscriptions,
     registerTypes: registerTypes,
     getMutationResolver: getMutationResolver,
     getQueryResolver: getQueryResolver,

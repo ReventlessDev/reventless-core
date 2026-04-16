@@ -7,7 +7,12 @@ import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStre
 import * as QueryDbStorage_DynamoDb$ReventlessAws from "./QueryDbStorage_DynamoDb.res.mjs";
 import * as QueryDbStorage_DynamoDb_Runtime$ReventlessAws from "./QueryDbStorage_DynamoDb_Runtime.res.mjs";
 
+let streamRegistry = {
+  contents: new Set()
+};
+
 function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
+  streamRegistry.contents.add(name);
   let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType);
   let table = Util_DynamoDbStream$ReventlessAws.makeTable(QueryDbStorage_DynamoDb$ReventlessAws.attributes(subIdField, indexes), QueryDbStorage_DynamoDb$ReventlessAws.globalSecondaryIndexes(indexes), ttl, subIdField, "NEW_AND_OLD_IMAGES", tags, opts, name);
   return {
@@ -26,6 +31,7 @@ function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
 }
 
 export {
+  streamRegistry,
   make,
 }
-/* AWS_Tags-ReventlessAws Not a pure module */
+/* streamRegistry Not a pure module */

@@ -100,6 +100,15 @@ module type T = {
     ) => promise<ReventlessCore.DcbEventLog_Adapter.rawReadResult>,
   >
 
+  // Subscription push hooks — used by GraphQL_SubscriptionResolvers_InMemory to bridge
+  // QueryDb writes and EventTopic publishes into a yoga PubSub for WebSocket delivery.
+  //
+  // Source B (state changes): QueryDbStorage_InMemory calls publishStateChange after
+  //   every save/delete so subscription listeners receive the updated state.
+  //   ~name is the QueryDb/ReadModel Spec.name; ~state is the saved JSON item.
+  let publishStateChange: (~name: string, ~state: JSON.t) => unit
+  let subscribeToStateChanges: (string, JSON.t => unit) => unit
+
   let reset: unit => unit
 }
 
@@ -294,6 +303,20 @@ module Impl = (C: BusConfig): T => {
     dcbEventLogReadRegistry.contents->Dict.set(name, read)
   let getDcbEventLogRead = name => dcbEventLogReadRegistry.contents->Dict.get(name)
 
+  // Source B state-change hook — per QueryDb name, zero or more listeners.
+  let stateChangeListeners: ref<dict<array<JSON.t => unit>>> = ref(Dict.make())
+
+  let subscribeToStateChanges = (name, callback) => {
+    let listeners = stateChangeListeners.contents->Dict.get(name)->Option.getOr([])
+    stateChangeListeners.contents->Dict.set(name, Array.concat(listeners, [callback]))
+  }
+
+  let publishStateChange = (~name, ~state) =>
+    stateChangeListeners.contents
+    ->Dict.get(name)
+    ->Option.getOr([])
+    ->Array.forEach(cb => cb(state))
+
   let reset = () => {
     // Shut down all hubs — PubSub.shutdown interrupts Stream.fromQueue consumers,
     // causing Stream.runForEach to complete and Effect.scoped to close the subscription.
@@ -313,6 +336,7 @@ module Impl = (C: BusConfig): T => {
     queryDbStreamRegistry := Dict.make()
     eventLogReplayRegistry := Dict.make()
     dcbEventLogReadRegistry := Dict.make()
+    stateChangeListeners := Dict.make()
   }
 }
 

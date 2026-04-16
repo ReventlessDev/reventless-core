@@ -1,0 +1,237 @@
+// EventLogSubscription_AppSync.res
+// Source A: raw event stream subscriptions (SNS EventTopic → AppSync Events API).
+//
+// Creates deploy-time resources for one EventLog entry (aggregate or DCB):
+//   SNS EventTopic ──► SQS buffer ──► Lambda ──► AppSync Events channel
+//
+// Usage in the plugin builder (once per entry in eventLogEntries):
+//   EventLogSubscription_AppSync.make(
+//     ~name="CatalogPlugin",           // displayName from eventLogSchemaEntry
+//     ~topicName="CatalogPlugin",      // AppSync Events channel name (matches displayName)
+//     ~eventTopicOutputs,              // EventTopic.outputs (resources[0] is the SNS topic)
+//     ~api,
+//     ~opts,
+//   )
+
+open PulumiAws
+
+// ── Handler code ─────────────────────────────────────────────────────────────
+//
+// Receives SNS-via-SQS records (rawMessageDelivery=true → body IS the event JSON).
+// Publishes {position, eventType, payload, originatorSlice} to AppSync Events channel.
+// The "originatorSlice" tag is injected by StateChangeSlice_Callback.encodeEvent.
+
+let makeHandlerCode = (~topicName: string): string => `
+import { AppSyncEventsClient, PublishEvents } from "@aws-sdk/client-appsync-events";
+
+const TOPIC_NAME = "${topicName}";
+const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT;
+const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
+
+let _client = null;
+
+async function getClient() {
+  if (_client) return _client;
+  _client = new AppSyncEventsClient({ endpoint: APPSYNC_ENDPOINT, region: AWS_REGION });
+  return _client;
+}
+
+export async function handler(event) {
+  const client = await getClient();
+  for (const record of event.Records) {
+    let body;
+    try {
+      body = JSON.parse(record.body);
+    } catch (e) {
+      console.error("EventLogSubscription: failed to parse record body", record.body, e);
+      continue;
+    }
+    const originatorSlice = body.tags?.find(t => t.key === "originatorSlice")?.value;
+    const payload = {
+      position: body.position,
+      eventType: body.eventType,
+      payload: body.data,
+      originatorSlice: originatorSlice ?? null,
+    };
+    await client.send(new PublishEvents({
+      channelNamespace: "default",
+      channelName: TOPIC_NAME,
+      events: [JSON.stringify(payload)],
+    }));
+  }
+}
+`
+
+// ── Deploy-time resource builder ──────────────────────────────────────────────
+
+let make = (
+  ~name: string,
+  ~topicName: string,
+  ~eventTopicOutputs: ReventlessInfra.EventTopic.outputs,
+  ~eventsApi: AppSync_EventsApi.t,
+  ~opts: Pulumi.CustomResourceOptions.t,
+) => {
+  // SQS buffer queue with redrive to shared dead-letter queue
+  let queue = SQS.Queue.make(
+    ~name=name ++ "EventLogSubQueue",
+    ~args={
+      SQS.Queue.visibilityTimeoutSeconds: 60->Pulumi.Input.make,
+      redrivePolicy: Util_DeadLetterQueue.queue.arn
+      ->Pulumi.Output.apply(dlqArn =>
+        SQS.Queue.RedrivePolicy.make(~deadLetterTargetArn=dlqArn, ~maxReceiveCount=5)
+      )
+      ->Pulumi.Output.asInput,
+      sqsManagedSseEnabled: false->Pulumi.Input.make,
+    },
+    ~opts,
+  )
+
+  // SQS queue policy — allow SNS to send messages
+  let snsResource = eventTopicOutputs.resources->Array.getUnsafe(0)
+  let _ =
+    (queue.arn, queue.id)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((queueArn, queueId)) => {
+      open PolicyDocument
+      let _queuePolicy = SQS.QueuePolicy.make(
+        ~name=name ++ "EventLogSubQueuePolicy",
+        ~args={
+          queueUrl: queueId->Pulumi.Input.make,
+          policy: PolicyDocument.make(
+            ~id=name ++ "EventLogSubQueuePolicy",
+            ~statements=[
+              {
+                sid: "AllowSNSSend",
+                principal: Principals({service: PrincipalIds([AWS.SNS.principal])}),
+                effect: Allow,
+                actions: Actions(["sqs:SendMessage"]),
+                resources: Resource(queueArn),
+                conditions: {
+                  arnEquals: [
+                    ("aws:SourceArn", ConditionValues([snsResource.urn->Pulumi.Output.get])),
+                  ]->Dict.fromArray,
+                },
+              },
+            ],
+          )
+          ->PolicyDocument.toJsonString
+          ->Pulumi.Input.make,
+        },
+        ~opts=Some(opts),
+      )
+    })
+
+  // SNS → SQS subscription (raw delivery so body IS the event JSON)
+  let _subscription = Util_SQS.subscribeToSnsTopic(
+    ~queue,
+    ~targetName=name ++ "EventLogSub",
+    ~sourceName=snsResource.name->Pulumi.Output.get,
+    ~topic=snsResource,
+    ~opts,
+  )
+
+  // IAM role for the Lambda
+  let lambdaRole = IAM.Role.makeWithDefaultPolicy(
+    ~name=name ++ "EventLogSubRole",
+    ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+    ~opts,
+  )
+
+  // IAM policy: SQS receive + AppSync Events publish
+  let _ =
+    (
+      queue.arn,
+      eventsApi.api.apiArn,
+    )
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((queueArn, apiArn)) => {
+      open PolicyDocument
+      let _rolePolicy = IAM.RolePolicy.make(
+        ~name=name ++ "EventLogSubPolicy",
+        ~args={
+          IAM.RolePolicy.policy: PolicyDocument.make(
+            ~id=name ++ "EventLogSubPolicy",
+            ~statements=[
+              {
+                sid: "AllowLambdaLogging",
+                effect: Allow,
+                actions: Action("logs:*"),
+                resources: Resource("arn:aws:logs:*:*:*"),
+              },
+              {
+                sid: "AllowReceiveSQS",
+                effect: Allow,
+                actions: Actions([
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage",
+                  "sqs:GetQueueAttributes",
+                ]),
+                resources: Resource(queueArn),
+              },
+              {
+                sid: "AllowPublishAppSyncEvents",
+                effect: Allow,
+                actions: Action("appsync:EventPublish"),
+                resources: Resource(apiArn ++ "/*"),
+              },
+            ],
+          )
+          ->PolicyDocument.toJsonString
+          ->Pulumi.Input.make,
+          role: lambdaRole.id->Pulumi.Output.asInput,
+        },
+        ~opts,
+      )
+    })
+
+  // Lambda function — processes SQS records (SNS events) → AppSync Events channel
+  let handlerCode = makeHandlerCode(~topicName)
+  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+  archiveContents->Dict.set(
+    "index.mjs",
+    Pulumi.Asset.stringAsset(handlerCode)->Pulumi.Archive.assetToAssetOrArchive,
+  )
+  let code = Pulumi.Archive.assetArchive(archiveContents)
+  let sourceCodeHash = Util_Bundle.hashString(handlerCode)
+
+  let layers =
+    Lambda.reventlessLayerArn
+    ->Option.map(arn => [arn->Pulumi.Input.make])
+    ->Option.getOr([])
+    ->Pulumi.Input.make
+
+  let appsyncEndpoint = AppSync_EventsApi.httpEndpoint(eventsApi)
+
+  let lambda = Lambda.Function.make(
+    ~name=name ++ "EventLogSubLambda",
+    ~args={
+      handler: "index.handler"->Pulumi.Input.make,
+      runtime: "nodejs22.x"->Pulumi.Input.make,
+      code: code->Pulumi.Input.make,
+      sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
+      role: lambdaRole.arn->Pulumi.Output.asInput,
+      memorySize: 128->Pulumi.Input.make,
+      timeout: 30->Pulumi.Input.make,
+      layers,
+      tags: AWS.Tags.make(~name=name ++ "EventLogSub", ReventlessCore.EventTopic.componentType),
+      environment: (
+        {
+          Lambda.Function.variables: Dict.fromArray([
+            ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
+            ("APPSYNC_ENDPOINT", appsyncEndpoint->Pulumi.Output.asInput),
+          ]),
+        }: Lambda.Function.functionEnvironment
+      )->Pulumi.Input.make,
+    },
+    ~opts,
+  )
+
+  // EventSourceMapping: SQS → Lambda
+  let lambdaOutput = lambda->Pulumi.Output.make
+  let _esm = Util_EventSourceMapping.subscribeSqs(
+    ~lambda=lambdaOutput,
+    ~name=name ++ "EventLogSubESM",
+    ~queue,
+    ~opts,
+  )
+}

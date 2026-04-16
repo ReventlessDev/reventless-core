@@ -3,4 +3,8 @@
     (e.g. AppSync Resolver's internal schema-propagation wait). */
 module AppSync = {
   module Resolver = AwsNative_AppSync_Resolver
+  /** AppSync Events (Pub/Sub) API — distinct from the GraphQL API. */
+  module Api = AwsNative_AppSync_Api
+  /** Channel namespace within an AppSync Events API. */
+  module ChannelNamespace = AwsNative_AppSync_ChannelNamespace
 }

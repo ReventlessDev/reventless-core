@@ -91,3 +91,31 @@ external close: (httpServer, unit => unit) => unit = "close"
 /** Returns the canonical SDL string from a live GraphQL schema object. */
 @module("graphql")
 external printSchema: schema => string = "printSchema"
+
+// ─── PubSub (for WebSocket subscriptions) ────────────────────────────────
+
+/**
+ * An opaque graphql-yoga PubSub instance.
+ * Created with `createPubSub()` and shared between the subscription resolver
+ * and any code that publishes state changes or events.
+ */
+type pubSub
+
+/**
+ * Creates a new PubSub instance.
+ * Exposes `publish(topic, payload)` and `subscribe(topic)` (returns AsyncIterable).
+ * One instance per server is sufficient — topic names disambiguate channels.
+ */
+@module("graphql-yoga")
+external createPubSub: unit => pubSub = "createPubSub"
+
+/** Publish a payload to all active subscribers of `topic`. */
+@send external pubSubPublish: (pubSub, string, JSON.t) => unit = "publish"
+
+/**
+ * Subscribe to `topic`. Returns an `AsyncIterable<JSON.t>` that the
+ * subscription resolver's `subscribe` function returns to graphql-yoga.
+ * Typed as `'a` so it can be passed directly to the yoga resolver machinery
+ * without an intermediate binding for AsyncIterable.
+ */
+@send external pubSubSubscribe: (pubSub, string) => 'a = "subscribe"

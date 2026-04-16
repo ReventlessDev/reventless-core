@@ -8,6 +8,8 @@ let registerMutations = instance.registerMutations;
 
 let registerQueries = instance.registerQueries;
 
+let registerSubscriptions = instance.registerSubscriptions;
+
 let registerTypes = instance.registerTypes;
 
 let getMutationResolver = instance.getMutationResolver;
@@ -36,6 +38,7 @@ export {
   instance,
   registerMutations,
   registerQueries,
+  registerSubscriptions,
   registerTypes,
   getMutationResolver,
   getQueryResolver,

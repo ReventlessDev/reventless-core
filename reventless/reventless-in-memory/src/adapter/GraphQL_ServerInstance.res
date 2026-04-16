@@ -30,6 +30,7 @@ type diagnostics = {
 type t = {
   registerMutations: (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => unit,
   registerQueries: (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => unit,
+  registerSubscriptions: (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => unit,
   registerTypes: (~sdlTypes: array<string>) => unit,
   getMutationResolver: string => option<resolverFn>,
   getQueryResolver: string => option<resolverFn>,
@@ -59,8 +60,10 @@ let extractFieldName = (sdlField: string): string => {
 let make = (~label: string="GraphQL"): t => {
   let mutationResolvers: ref<dict<resolverFn>> = ref(Dict.make())
   let queryResolvers: ref<dict<resolverFn>> = ref(Dict.make())
+  let subscriptionResolvers: ref<dict<resolverFn>> = ref(Dict.make())
   let mutationFields: ref<array<string>> = ref([])
   let queryFields: ref<array<string>> = ref([])
+  let subscriptionFields: ref<array<string>> = ref([])
   let typeDefinitions: ref<array<string>> = ref([])
   let activeServer: ref<option<YG.httpServer>> = ref(None)
   let activeSchema: ref<option<YG.schema>> = ref(None)
@@ -74,6 +77,13 @@ let make = (~label: string="GraphQL"): t => {
   let registerQueries = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
     queryFields.contents = queryFields.contents->Array.concat(sdlFields)
     resolvers->Dict.toArray->Array.forEach(((k, v)) => queryResolvers.contents->Dict.set(k, v))
+  }
+
+  let registerSubscriptions = (~sdlFields: array<string>, ~resolvers: dict<resolverFn>) => {
+    subscriptionFields.contents = subscriptionFields.contents->Array.concat(sdlFields)
+    resolvers->Dict.toArray->Array.forEach(((k, v)) =>
+      subscriptionResolvers.contents->Dict.set(k, v)
+    )
   }
 
   let registerTypes = (~sdlTypes: array<string>) => {
@@ -105,9 +115,15 @@ ${queries}
 type Mutation {
 ${mutations}
 }`
-    typesSdl->String.length > 0
-      ? typesSdl ++ "\n\n" ++ queriesMutationsSdl
-      : queriesMutationsSdl
+    let subscriptionsSdl =
+      subscriptionFields.contents->Array.length > 0
+        ? `\n\ntype Subscription {\n${subscriptionFields.contents->Array.join("\n")}\n}`
+        : ""
+    let base =
+      typesSdl->String.length > 0
+        ? typesSdl ++ "\n\n" ++ queriesMutationsSdl
+        : queriesMutationsSdl
+    base ++ subscriptionsSdl
   }
 
   let stop = () =>
@@ -123,6 +139,9 @@ ${mutations}
     let resolvers = Dict.make()
     resolvers->Dict.set("Query", queryResolvers.contents)
     resolvers->Dict.set("Mutation", mutationResolvers.contents)
+    if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
+      resolvers->Dict.set("Subscription", subscriptionResolvers.contents)
+    }
     let sdl = buildSdl()
     lastFullSdl.contents = Some(sdl)
     let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
@@ -143,8 +162,10 @@ ${mutations}
   let reset = () => {
     mutationResolvers.contents = Dict.make()
     queryResolvers.contents = Dict.make()
+    subscriptionResolvers.contents = Dict.make()
     mutationFields.contents = []
     queryFields.contents = []
+    subscriptionFields.contents = []
     typeDefinitions.contents = []
     activeSchema.contents = None
     lastFullSdl.contents = None
@@ -238,6 +259,7 @@ ${mutations}
   {
     registerMutations,
     registerQueries,
+    registerSubscriptions,
     registerTypes,
     getMutationResolver,
     getQueryResolver,

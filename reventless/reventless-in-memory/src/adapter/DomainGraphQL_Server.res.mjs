@@ -41,11 +41,19 @@ let queryResolvers = {
   contents: {}
 };
 
+let subscriptionResolvers = {
+  contents: {}
+};
+
 let mutationFields = {
   contents: []
 };
 
 let queryFields = {
+  contents: []
+};
+
+let subscriptionFields = {
   contents: []
 };
 
@@ -64,6 +72,13 @@ function registerQueries(sdlFields, resolvers) {
   queryFields.contents = queryFields.contents.concat(sdlFields);
   Object.entries(resolvers).forEach(param => {
     queryResolvers.contents[param[0]] = param[1];
+  });
+}
+
+function registerSubscriptions(sdlFields, resolvers) {
+  subscriptionFields.contents = subscriptionFields.contents.concat(sdlFields);
+  Object.entries(resolvers).forEach(param => {
+    subscriptionResolvers.contents[param[0]] = param[1];
   });
 }
 
@@ -143,11 +158,9 @@ function buildSdl() {
 type Mutation {
 ` + mutations + `
 }`;
-  if (typesSdl.length > 0) {
-    return typesSdl + "\n\n" + queriesMutationsSdl;
-  } else {
-    return queriesMutationsSdl;
-  }
+  let subscriptionsSdl = subscriptionFields.contents.length !== 0 ? `\n\ntype Subscription {\n` + subscriptionFields.contents.join("\n") + `\n}` : "";
+  let base = typesSdl.length > 0 ? typesSdl + "\n\n" + queriesMutationsSdl : queriesMutationsSdl;
+  return base + subscriptionsSdl;
 }
 
 function start(portOpt, param) {
@@ -159,6 +172,9 @@ function start(portOpt, param) {
   let resolvers = {};
   resolvers["Query"] = queryResolvers.contents;
   resolvers["Mutation"] = mutationResolvers.contents;
+  if (Object.keys(subscriptionResolvers.contents).length !== 0) {
+    resolvers["Subscription"] = subscriptionResolvers.contents;
+  }
   let sdl = buildSdl();
   lastFullSdl.contents = sdl;
   let schema = GraphqlYoga.createSchema({
@@ -220,6 +236,9 @@ function rebuildSchema(baseFragment, pluginFragments) {
   let resolvers = {};
   resolvers["Query"] = queryResolvers.contents;
   resolvers["Mutation"] = mutationResolvers.contents;
+  if (Object.keys(subscriptionResolvers.contents).length !== 0) {
+    resolvers["Subscription"] = subscriptionResolvers.contents;
+  }
   let schema = GraphqlYoga.createSchema({
     typeDefs: fullSdl,
     resolvers: resolvers
@@ -250,8 +269,10 @@ function rebuildSchema(baseFragment, pluginFragments) {
 function reset() {
   mutationResolvers.contents = {};
   queryResolvers.contents = {};
+  subscriptionResolvers.contents = {};
   mutationFields.contents = [];
   queryFields.contents = [];
+  subscriptionFields.contents = [];
   typeDefinitions.contents = [];
   nodeTypeRegistry.contents = {};
   nodeResolverCallback.contents = undefined;
@@ -380,6 +401,7 @@ function printDiagnostics() {
 let asInterface = {
   registerMutations: registerMutations,
   registerQueries: registerQueries,
+  registerSubscriptions: registerSubscriptions,
   registerTypes: registerTypes,
   getMutationResolver: getMutationResolver,
   getQueryResolver: getQueryResolver,
@@ -402,11 +424,14 @@ export {
   decodeGlobalId,
   mutationResolvers,
   queryResolvers,
+  subscriptionResolvers,
   mutationFields,
   queryFields,
+  subscriptionFields,
   typeDefinitions,
   registerMutations,
   registerQueries,
+  registerSubscriptions,
   getMutationResolver,
   getQueryResolver,
   registerTypes,

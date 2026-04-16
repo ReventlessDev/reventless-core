@@ -96,6 +96,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       let subMap = getOrCreateSubMap(id)
       subMap->Dict.set(subKey, state)
       syncAll()
+      Bus.publishStateChange(~name, ~state)
       Ok()
     }
 
@@ -106,6 +107,8 @@ module Make = (Bus: InMemory_Bus.T) => {
         subMap->Dict.set(subKey, state)
       })
       syncAll()
+      // Notify subscribers for each saved item
+      batch->Array.forEach(((_, state, _)) => Bus.publishStateChange(~name, ~state))
       Ok()
     }
 

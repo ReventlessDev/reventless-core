@@ -6,6 +6,7 @@ type fragmentParts = {
   types: array<string>,
   mutations: array<string>,
   queries: array<string>,
+  subscriptions: array<string>,
 }
 
 let encode = (parts: fragmentParts): Reventless.Plugin.apiSchemaFragment => {
@@ -15,6 +16,7 @@ let encode = (parts: fragmentParts): Reventless.Plugin.apiSchemaFragment => {
         ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
         ("mutations", JSON.Encode.array(parts.mutations->Array.map(JSON.Encode.string))),
         ("queries", JSON.Encode.array(parts.queries->Array.map(JSON.Encode.string))),
+        ("subscriptions", JSON.Encode.array(parts.subscriptions->Array.map(JSON.Encode.string))),
       ]),
     )->JSON.stringify
   {Reventless.Plugin.encoded, protocol: "graphql"}
@@ -22,7 +24,7 @@ let encode = (parts: fragmentParts): Reventless.Plugin.apiSchemaFragment => {
 
 let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
   switch fragment.encoded->JSON.parseOrThrow->JSON.Decode.object {
-  | None => {types: [], mutations: [], queries: []}
+  | None => {types: [], mutations: [], queries: [], subscriptions: []}
   | Some(dict) =>
     let getString = (key): array<string> =>
       switch dict->Dict.get(key) {
@@ -39,6 +41,7 @@ let decode = (fragment: Reventless.Plugin.apiSchemaFragment): fragmentParts => {
       types: getString("types"),
       mutations: getString("mutations"),
       queries: getString("queries"),
+      subscriptions: getString("subscriptions"),
     }
   }
 }
@@ -164,6 +167,22 @@ let stitch = (
     })
   )
 
+  // Collect all subscription fields — detect collisions by field name
+  let seenSubscriptionFields: Set.t<string> = Set.make()
+  let allSubscriptions: array<string> = []
+
+  parts->Array.forEach(({subscriptions}) =>
+    subscriptions->Array.forEach(field => {
+      let fieldName = extractLeadingName(field)
+      if seenSubscriptionFields->Set.has(fieldName) {
+        Console.warn(`[GraphQL_Stitcher] Duplicate subscription field — skipped: ${fieldName}`)
+      } else {
+        seenSubscriptionFields->Set.add(fieldName)
+        allSubscriptions->Array.push(field)
+      }
+    })
+  )
+
   // Build the final SDL
   let typesSdl = allTypes->Array.join("\n\n")
 
@@ -177,6 +196,14 @@ let stitch = (
       ? `type Query {\n${allQueries->Array.join("\n")}\n}`
       : "type Query {\n  _noop: String\n}"
 
-  let sdlParts = [typesSdl, queriesSdl, mutationsSdl]->Array.filter(p => p->String.length > 0)
+  let subscriptionsSdl =
+    allSubscriptions->Array.length > 0
+      ? Some(`type Subscription {\n${allSubscriptions->Array.join("\n")}\n}`)
+      : None
+
+  let sdlParts =
+    [Some(typesSdl), Some(queriesSdl), Some(mutationsSdl), subscriptionsSdl]->Array.filterMap(
+      x => x,
+    )
   sdlParts->Array.join("\n\n")
 }
