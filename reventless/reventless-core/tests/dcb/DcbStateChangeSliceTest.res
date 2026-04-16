@@ -59,7 +59,10 @@ describe("StateChangeSlice_Callback:", () => {
       )->Effect.runPromise
       let storedEvent = mock.getEvents()->Array.getUnsafe(0)
 
-      expect(storedEvent.tags)->toEqual([{Reventless.DcbTag.key: "itemId", value: "item-1"}])
+      expect(storedEvent.tags)->toEqual([
+        {Reventless.DcbTag.key: "itemId", value: "item-1"},
+        {Reventless.DcbTag.key: "originatorSlice", value: "TestStateChangeSlice"},
+      ])
     })
   })
 

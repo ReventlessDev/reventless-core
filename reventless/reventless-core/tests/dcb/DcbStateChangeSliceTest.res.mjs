@@ -91,10 +91,16 @@ Jest.describe("StateChangeSlice_Callback:", () => {
           name: "Test"
         })])));
       let storedEvent = mock.getEvents()[0];
-      return Jest.Expect.toEqual(Jest.Expect.expect(storedEvent.tags), [{
+      return Jest.Expect.toEqual(Jest.Expect.expect(storedEvent.tags), [
+        {
           key: "itemId",
           value: "item-1"
-        }]);
+        },
+        {
+          key: "originatorSlice",
+          value: "TestStateChangeSlice"
+        }
+      ]);
     });
   });
   Jest.describe("handleCommands - decide returns Ok([])", () => Jest.testPromise("NoOp returns Ok without storing events", undefined, async () => {
