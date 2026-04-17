@@ -79,6 +79,12 @@ type fetchInit = {
 // GraphQL accepts the same literals as JSON for scalars and arrays;
 // input-object fields use unquoted keys (same as JS object shorthand).
 // This lets us call any mutation without declaring variable types.
+//
+// graphqlEnum wraps a string so jsonToLiteral renders it without quotes,
+// which is required for GraphQL enum arguments (e.g. kind: Domain, not
+// kind: "Domain").
+let graphqlEnum = (name: string): JSON.t =>
+  JSON.Encode.object(Dict.fromArray([("__enum", JSON.Encode.string(name))]))
 
 let rec jsonToLiteral = (value: JSON.t): string =>
   switch value {
@@ -90,8 +96,13 @@ let rec jsonToLiteral = (value: JSON.t): string =>
   | Null => "null"
   | Array(arr) => `[${arr->Array.map(jsonToLiteral)->Array.join(", ")}]`
   | Object(obj) =>
-    let pairs = obj->Dict.toArray->Array.map(((k, v)) => `${k}: ${jsonToLiteral(v)}`)
-    `{${pairs->Array.join(", ")}}`
+    // {__enum: "Value"} encodes a GraphQL enum literal (rendered without quotes).
+    switch obj->Dict.get("__enum") {
+    | Some(String(enumVal)) => enumVal
+    | _ =>
+      let pairs = obj->Dict.toArray->Array.map(((k, v)) => `${k}: ${jsonToLiteral(v)}`)
+      `{${pairs->Array.join(", ")}}`
+    }
   }
 
 let buildQuery = (~mutation: string, ~variablesDict: dict<JSON.t>): string => {

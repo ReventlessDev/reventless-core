@@ -8,6 +8,13 @@ import * as CredentialProviderNode from "@aws-sdk/credential-provider-node";
 
 let sha256 = HashNode.Hash.bind(null, "sha256");
 
+function graphqlEnum(name) {
+  return Object.fromEntries([[
+      "__enum",
+      name
+    ]]);
+}
+
 function jsonToLiteral(value) {
   if (value === null) {
     return "null";
@@ -28,6 +35,10 @@ function jsonToLiteral(value) {
     case "number" :
       return value.toString();
     case "object" :
+      let match = value["__enum"];
+      if (typeof match === "string") {
+        return match;
+      }
       let pairs = Object.entries(value).map(param => param[0] + `: ` + jsonToLiteral(param[1]));
       return `{` + pairs.join(", ") + `}`;
   }
@@ -147,6 +158,7 @@ async function sendMutation(endpoint, region, mutation, variables) {
 
 export {
   sha256,
+  graphqlEnum,
   jsonToLiteral,
   buildQuery,
   sendQuery,
