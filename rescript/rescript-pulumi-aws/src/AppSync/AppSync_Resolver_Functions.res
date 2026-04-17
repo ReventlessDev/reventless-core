@@ -127,7 +127,7 @@ export function request(ctx) {
   const args = ctx.args;
   const filter = args.filter ?? {};
   const isBackward = args.last != null;
-  const expressionNames = { '#id': 'id', '#sk': '${sortField}' };
+  const expressionNames = { '#id': 'id' };
   const expressionValues = { ':id': util.dynamodb.toDynamoDB(args.id) };
   let skCondition;
   if (filter.eq != null) {
@@ -158,6 +158,7 @@ export function request(ctx) {
     const cursorCond = '#sk > :cursor';
     skCondition = skCondition ? \`(\${skCondition}) AND \${cursorCond}\` : cursorCond;
   }
+  if (skCondition) expressionNames['#sk'] = '${sortField}';
   const expression = skCondition ? \`#id = :id AND \${skCondition}\` : '#id = :id';
   const orderDesc = filter.order === 'DESC';
   const scanForward = isBackward ? orderDesc : !orderDesc;
