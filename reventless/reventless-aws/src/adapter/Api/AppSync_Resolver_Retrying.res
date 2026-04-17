@@ -349,11 +349,35 @@ let create = async (inputs: providerInputs): createResult => {
 let update = async (id: string, _olds: providerInputs, news: providerInputs): updateResult => {
   let sdk = await getSdk()
   let client = await getClient()
-  let _ = await runWithRaceRetry(() =>
-    client->sendUpdate(newOf1(sdk.updateCtor, news->buildSdkInput))
-  )
-  // ARN is stable across updates
-  {outs: makeOuts(id, news)}
+  let arn =
+    try {
+      let _ = await runWithRaceRetry(() =>
+        client->sendUpdate(newOf1(sdk.updateCtor, news->buildSdkInput))
+      )
+      // ARN is stable across updates — reuse the existing id
+      id
+    } catch {
+    | exn =>
+      // If the resolver was deleted from AppSync (e.g. by a schema replacement),
+      // fall back to CreateResolver so the resource is transparently recreated.
+      let handled =
+        exn->JsExn.fromException->Option.mapOr(false, isAlreadyDeletedError)
+      if handled {
+        let resp = await runWithRaceRetry(() =>
+          client
+          ->sendCreate(newOf1(sdk.createCtor, news->buildSdkInput))
+          ->Promise.thenResolve(extractArn)
+        )
+        resp
+      } else {
+        let jsExn = exn->JsExn.fromException
+        switch jsExn {
+        | Some(e) => jsThrow(e)
+        | None => throw(exn)
+        }
+      }
+    }
+  {outs: makeOuts(arn, news)}
 }
 
 /** Parse apiId, typeName, fieldName from the resolver ARN.
@@ -411,23 +435,16 @@ let diff_ = (_id: string, olds: providerInputs, news: providerInputs): diffResul
 }
 
 /** Read live state for `pulumi refresh`.
-    Returns `None` (compiled to `undefined`) when the resolver or its parent
-    AppSync API no longer exists, so Pulumi removes the resource from state
-    instead of leaving it stuck. */
-let read_ = async (id: string, props: providerInputs): option<readResult> => {
-  let sdk = await getSdk()
-  let client = await getClient()
-  let getInput: sdkDeleteInput = switch parseArn(id) {
-  | Some(parsed) => parsed
-  | None => {apiId: props.apiId, typeName: props.typeName, fieldName: props.fieldName}
-  }
-  try {
-    let _ = await client->sendGet(newOf1(sdk.getCtor, getInput))
-    Some({id, props})
-  } catch {
-  | exn if exn->JsExn.fromException->Option.mapOr(false, isAlreadyDeletedError) => None
-  }
-}
+    Always reports the resolver as present so Pulumi keeps it in state.
+    Actual divergence (resolver deleted by a schema replacement) is handled
+    transparently by the `update` fallback that recreates the resolver on the
+    next `pulumi up`.  Returning `None` here would signal Pulumi to remove the
+    resource from state, but Pulumi ≤3.224.0 crashes with
+    "Cannot read properties of undefined (reading 'id')" when the provider's
+    `read` returns `undefined` — the handler accesses `result.id` before the
+    nil-check.  Avoiding `None` sidesteps the bug without a node_modules patch. */
+let read_ = async (id: string, _props: providerInputs): option<readResult> =>
+  Some({id, props: _props})
 
 // Provider as a plain JS object (no Pulumi Output captures — all state via inputs/olds/news)
 let provider = {

@@ -215,9 +215,26 @@ async function create(inputs) {
 async function update(id, _olds, news) {
   let sdk = await getSdk();
   let client = await getClient();
-  await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.UpdateResolverCommand, buildSdkInput(news))));
+  let arn;
+  try {
+    await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.UpdateResolverCommand, buildSdkInput(news))));
+    arn = id;
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    let handled = Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isAlreadyDeletedError);
+    if (handled) {
+      arn = await runWithRaceRetry(undefined, undefined, undefined, undefined, () => client.send(newOf1(sdk.CreateResolverCommand, buildSdkInput(news))).then(extractArn));
+    } else {
+      let jsExn = Stdlib_JsExn.fromException(exn);
+      if (jsExn !== undefined) {
+        arn = jsThrow(Primitive_option.valFromOption(jsExn));
+      } else {
+        throw exn;
+      }
+    }
+  }
   return {
-    outs: makeOuts(id, news)
+    outs: makeOuts(arn, news)
   };
 }
 
@@ -272,28 +289,11 @@ function diff_(_id, olds, news) {
   };
 }
 
-async function read_(id, props) {
-  let sdk = await getSdk();
-  let client = await getClient();
-  let parsed = parseArn(id);
-  let getInput = parsed !== undefined ? parsed : ({
-      apiId: props.apiId,
-      typeName: props.typeName,
-      fieldName: props.fieldName
-    });
-  try {
-    await client.send(newOf1(sdk.GetResolverCommand, getInput));
-    return {
-      id: id,
-      props: props
-    };
-  } catch (raw_exn) {
-    let exn = Primitive_exceptions.internalToException(raw_exn);
-    if (Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isAlreadyDeletedError)) {
-      return;
-    }
-    throw exn;
-  }
+async function read_(id, _props) {
+  return {
+    id: id,
+    props: _props
+  };
 }
 
 let provider = {
