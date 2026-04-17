@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.61 (2026-04-17)
+
+### Bug Fixes
+
+* **reventless-aws:** recover AppSync resolvers deleted by schema replacement ([63dbb32](https://github.com/ReventlessDev/reventless-core/commit/63dbb32988beb5a84bf08c7b8ffe519f14573d43))
+### Features
+
+* **reventless-aws:** add graphqlEnum helper for AppSync enum arguments ([0087235](https://github.com/ReventlessDev/reventless-core/commit/008723590863de53d1ee3ea13d2dcf454d0292a4))
+
+
 # 3.0.0-alpha.60 (2026-04-16)
 
 ### Bug Fixes

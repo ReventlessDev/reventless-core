@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.17 (2026-04-17)
+
+### Bug Fixes
+
+* **rescript-pulumi-aws:** only add #sk to ExpressionAttributeNames when sort condition is used ([e95d1f7](https://github.com/ReventlessDev/reventless-core/commit/e95d1f7639f09c26631e325dd0f27350d03a4357))
+
+
 # 2.4.0-alpha.16 (2026-04-16)
 
 ### Features
