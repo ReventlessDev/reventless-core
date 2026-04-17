@@ -12,69 +12,30 @@ open ReventlessInfra.Api
 // Generated from the same mutation entries as the query/mutation SDL so that
 // field names and argument types are always in sync.
 
+// AppSync subscriptions have a hard limit of 5 input arguments.
+// Source C subscriptions only use `id` for server-side filtering (ctx.args.id),
+// so all subscription fields are generated with a single optional `id: ID` arg
+// regardless of how many args the corresponding mutation carries.
 let sourceCFields = (
   ~mutationEntries: array<mutationSchemaEntry>,
-  ~collectedTypes: array<string>,
-  ~seenTypes: Set.t<string>,
 ): array<string> => {
   let fields: array<string> = []
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema
     switch schema {
     | Union({anyOf}) =>
-      anyOf->Array.forEachWithIndex((variantSchema, i) => {
+      anyOf->Array.forEachWithIndex((_, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
-          GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
-            ~fieldName,
-            ~collectedTypes,
-            ~seenTypes,
-            variantSchema,
-          )
-          ->Option.forEach(field => {
-            // Mirror what generate does: prepend id: ID! to the arg list.
-            let withId = if field->String.includes("(") {
-              field->String.replace(`${fieldName}(`, `${fieldName}(id: ID!, `)
-            } else {
-              field->String.replace(`${fieldName}:`, `${fieldName}(id: ID!):`)
-            }
-            // Rename "  fieldName..." → "  onfieldName..." by slicing past "  fieldName".
-            let sub =
-              "  on" ++
-              fieldName ++
-              withId->String.slice(
-                ~start=2 + fieldName->String.length,
-                ~end=withId->String.length,
-              )
-            // Append @aws_subscribe after the full field definition.
-            // Replacing ": String!" would match String! args before the return type.
-            let subWithDirective =
-              sub ++ `\n    @aws_subscribe(mutations: ["${fieldName}"])`
-            fields->Array.push(subWithDirective)
-          })
+          let sub = `  on${fieldName}(id: ID): String!\n    @aws_subscribe(mutations: ["${fieldName}"])`
+          fields->Array.push(sub)
         }
       })
     | Object(_) =>
       let fieldName = entry.fieldNames->Array.get(0)->Option.getOr("")
       if fieldName->String.length > 0 {
-        GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
-          ~fieldName,
-          ~collectedTypes,
-          ~seenTypes,
-          schema,
-        )
-        ->Option.forEach(field => {
-          let sub =
-            "  on" ++
-            fieldName ++
-            field->String.slice(
-              ~start=2 + fieldName->String.length,
-              ~end=field->String.length,
-            )
-          let subWithDirective =
-            sub ++ `\n    @aws_subscribe(mutations: ["${fieldName}"])`
-          fields->Array.push(subWithDirective)
-        })
+        let sub = `  on${fieldName}(id: ID): String!\n    @aws_subscribe(mutations: ["${fieldName}"])`
+        fields->Array.push(sub)
       }
     | _ => ()
     }
@@ -141,17 +102,11 @@ let generate = (
   ~queryEntries: array<querySchemaEntry>,
   ~eventLogEntries: array<eventLogSchemaEntry>,
 ): result => {
-  let mutationTypes: array<string> = []
-  let mutationSeen: Set.t<string> = Set.make()
-  let cFields = sourceCFields(
-    ~mutationEntries,
-    ~collectedTypes=mutationTypes,
-    ~seenTypes=mutationSeen,
-  )
+  let cFields = sourceCFields(~mutationEntries)
   let bFields = sourceBFields(~queryEntries)
   let (aFields, aTypes) = sourceAFieldsAndTypes(~eventLogEntries)
   {
     subscriptionFields: Array.flat([cFields, bFields, aFields]),
-    extraTypes: Array.flat([aTypes, mutationTypes]),
+    extraTypes: aTypes,
   }
 }
