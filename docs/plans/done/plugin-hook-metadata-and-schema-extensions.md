@@ -1,5 +1,7 @@
 # Plan: Plugin Hook Metadata and Schema Extensions
 
+**Status: Groups A–F all complete. Plan ready to move to done/.**
+
 This plan covers six independent groups of changes to the core framework. Each group extends
 the data that the plugin hooks (`onPluginBuilt`, `onPluginDeployed`) expose to consumers,
 or adds a new hook point. All changes are backward-compatible.
@@ -294,13 +296,13 @@ file). The state schema is available via the slice spec. These are passed direct
 
 ### C.5 Steps
 
-- [ ] Add `fieldSchema`, `typeSchema` types to `Plugin_BuiltHook.res`
-- [ ] Add `commandSchemas?`, `eventSchemas?`, `stateSchema?` to `pluginDeployedSchema`
-- [ ] Implement `SchemaWalker.res`: `describeSchema`, `extractFieldsFromProperties`, `walkSchema`
-- [ ] Implement hash computation (SHA3-256 or BLAKE3 over sorted field tuples)
-- [ ] Call `walkSchema` for each command type and event type in `Plugin_Builder.res` where schemas are constructed
-- [ ] Build: verify output for the online-shop example plugins
-- [ ] Test: field names and hashes match expected values for a known command type
+- [x] Add `fieldSchema`, `typeSchema` types to `Plugin_BuiltHook.res`
+- [x] Add `commandSchemas?`, `eventSchemas?`, `stateSchema?` to `pluginDeployedSchema`
+- [x] Implement `SchemaWalker.res`: `describeSchema`, `extractFieldsFromProperties`, `walkSchema`
+- [x] Implement hash computation (SHA256 over sorted field tuples via HashObj)
+- [x] Call `walkSchema` for each command type and event type in `Plugin_Builder.res` where schemas are constructed
+- [x] Build: clean (no warnings)
+- [x] Test: 19 tests in `tests/plugin/SchemaWalkerTest.res` — record, variant, hash, scalar cases
 
 ---
 
