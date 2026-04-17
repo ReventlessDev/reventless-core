@@ -14,7 +14,7 @@ function sourceCFields(mutationEntries, collectedTypes, seenTypes) {
         if (fieldName.length > 0) {
           return Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, schema), field => {
             let sub = "  on" + fieldName + field.slice(2 + fieldName.length | 0, field.length);
-            let subWithDirective = sub.replace(": String!", `: String\n    @aws_subscribe(mutations: ["` + fieldName + `"])`);
+            let subWithDirective = sub + (`\n    @aws_subscribe(mutations: ["` + fieldName + `"])`);
             fields.push(subWithDirective);
           });
         } else {
@@ -27,7 +27,7 @@ function sourceCFields(mutationEntries, collectedTypes, seenTypes) {
             return Stdlib_Option.forEach(GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema), field => {
               let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);
               let sub = "  on" + fieldName + withId.slice(2 + fieldName.length | 0, withId.length);
-              let subWithDirective = sub.replace(": String!", `: String\n    @aws_subscribe(mutations: ["` + fieldName + `"])`);
+              let subWithDirective = sub + (`\n    @aws_subscribe(mutations: ["` + fieldName + `"])`);
               fields.push(subWithDirective);
             });
           }

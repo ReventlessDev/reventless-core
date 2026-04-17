@@ -46,12 +46,10 @@ let sourceCFields = (
                 ~start=2 + fieldName->String.length,
                 ~end=withId->String.length,
               )
-            // Replace ": String!" return type with the subscription variant.
+            // Append @aws_subscribe after the full field definition.
+            // Replacing ": String!" would match String! args before the return type.
             let subWithDirective =
-              sub->String.replace(
-                ": String!",
-                `: String\n    @aws_subscribe(mutations: ["${fieldName}"])`,
-              )
+              sub ++ `\n    @aws_subscribe(mutations: ["${fieldName}"])`
             fields->Array.push(subWithDirective)
           })
         }
@@ -74,10 +72,7 @@ let sourceCFields = (
               ~end=field->String.length,
             )
           let subWithDirective =
-            sub->String.replace(
-              ": String!",
-              `: String\n    @aws_subscribe(mutations: ["${fieldName}"])`,
-            )
+            sub ++ `\n    @aws_subscribe(mutations: ["${fieldName}"])`
           fields->Array.push(subWithDirective)
         })
       }

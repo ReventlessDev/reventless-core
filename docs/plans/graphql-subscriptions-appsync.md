@@ -1,6 +1,8 @@
 # Plan: GraphQL Subscriptions — AppSync Real-Time Infrastructure
 
-## Status: Phases 1–6 complete (build clean, 279/279 tests pass). Q0 blocker resolved (Option A). Phases 4–5 wiring complete. Phase 6 integration test landed. Remaining: AWS deploy verification.
+## Status: Phases 1–6 complete. Source C verified in AWS (all @aws_subscribe fields correct after SDL bug fix). Sources B and A not yet end-to-end tested (requires QueryDbStorage_DynamoDbStream + monolithic deployment).
+
+### Bug fixed (2026-04-18): `Plugin_SubscriptionSchema.sourceCFields` used `String.replace(": String!", ...)` which replaced the first occurrence — hitting String! args before the return type. Fixed to `sub ++ @aws_subscribe directive` (append at end). Deployed fragments and pushed corrected schema.
 
 ---
 
@@ -168,7 +170,7 @@ No data source needed. AppSync delivers the mutation's return value to subscribe
 - [x] `CommandSubscriptionResolvers_AppSync.res` created
 - [x] One `Subscription.onX` resolver per mutation field
 - [x] Wired into `CommandGeneratorResolvers_AppSync.make` (aggregates) and `makeDcb` (DCB slices)
-- [ ] Verified in deployed AppSync schema
+- [x] Verified in deployed AppSync schema (all 28 Source C fields have @aws_subscribe; UNIT resolvers confirmed)
 
 ---
 
@@ -211,7 +213,7 @@ Wiring `StateTopic_AppSync.make` per ReadModel/StateViewSlice is left as opt-in 
 - [x] Stream opt-in via `QueryDbStorage_DynamoDbStream` (already existed)
 - [x] Wire `StateTopic_AppSync.make` per stream-enabled QueryDb via `subscriptionInfraHook` in `Platform.res`
 - [x] Set `subscriptionFilter` on `makeSubscriptionResolver` — hardcoded `"id"` field (see Q4 Option A)
-- [ ] Verify: state change → push reaches WebSocket subscriber
+- [ ] Verify: state change → push reaches WebSocket subscriber (requires QueryDbStorage_DynamoDbStream + monolithic stack)
 
 ---
 
@@ -267,7 +269,7 @@ Call site: `EventLogSubscription_AppSync.make(~name, ~topicName, ~eventTopic, ~a
 - [x] EventSourceMapping: SQS → Lambda (`Util_EventSourceMapping.subscribeSqs`)
 - [x] Inline handler: parse SNS body → extract `originatorSlice` from tags → publish to AppSync Events channel
 - [x] Wire `EventLogSubscription_AppSync.make` per entry in `eventLogEntries` via `subscriptionInfraHook` in `Platform.res`
-- [ ] Verify: domain event → push reaches admin WebSocket subscriber
+- [ ] Verify: domain event → push reaches admin WebSocket subscriber (requires monolithic stack; plugin mode deferred per plan)
 
 ---
 
