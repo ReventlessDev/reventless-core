@@ -51,8 +51,8 @@ The given-when-then pattern relies on two key setup functions:
 
 | Function | Purpose |
 |----------|---------|
-| [`givenEvents(events)`](packages/reventless/test-helper/BehaviorTest.res) | Sets up the initial event history for the aggregate. This represents the current state of the aggregate before executing the command being tested. |
-| [`whenCmd(command)`](packages/reventless/test-helper/BehaviorTest.res) | Executes the specified command against the aggregate with the given event history. This is the action being tested. |
+| [`givenEvents(events)`] | Sets up the initial event history for the aggregate. This represents the current state of the aggregate before executing the command being tested. |
+| [`whenCmd(command)`] | Executes the specified command against the aggregate with the given event history. This is the action being tested. |
 
 **Available Assertions:**
 
@@ -101,8 +101,8 @@ describe("PluginProjection:", () => {
 
 | Function | Purpose |
 |----------|---------|
-| [`givenEvents(events)`](packages/reventless/test-helper/ProjectionTest.res) | Sets up the initial event history that will be used to build the projection state before applying the test event. |
-| [`whenEvent(event)`](packages/reventless/test-helper/ProjectionTest.res) | Applies the specified event to the projection, triggering the state transformation logic being tested. |
+| [`givenEvents(events)`] | Sets up the initial event history that will be used to build the projection state before applying the test event. |
+| [`whenEvent(event)`] | Applies the specified event to the projection, triggering the state transformation logic being tested. |
 
 **Available Assertions:**
 
@@ -154,9 +154,9 @@ describe("MyEventMapping:", () => {
 
 | Function | Purpose |
 |----------|---------|
-| [`givenSourceEvents(events)`](packages/reventless/test-helper/EventMappingTest.res) | Sets up the initial event history for the source aggregate. |
-| [`givenTargetEvents(events)`](packages/reventless/test-helper/EventMappingTest.res) | Sets up the initial event history for the target aggregate. |
-| [`whenSourceCmd(id, command)`](packages/reventless/test-helper/EventMappingTest.res) | Executes a command on the source aggregate with the given ID, which may trigger event mappings to the target aggregate. |
+| [`givenSourceEvents(events)`] | Sets up the initial event history for the source aggregate. |
+| [`givenTargetEvents(events)`] | Sets up the initial event history for the target aggregate. |
+| [`whenSourceCmd(id, command)`] | Executes a command on the source aggregate with the given ID, which may trigger event mappings to the target aggregate. |
 
 **Available Assertions:**
 

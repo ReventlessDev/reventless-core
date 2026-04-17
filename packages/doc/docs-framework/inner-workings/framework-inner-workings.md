@@ -91,7 +91,7 @@ To effectively work with Reventless, understanding these architectural patterns 
 If you're contributing to the framework or creating custom components:
 
 1. Read the [Component Structure Pattern](./component-structure-pattern.md) guide thoroughly
-2. Study existing components like [`EventLog`](../../packages/reventless/src/components/EventLog/) for reference
+2. Study existing components like `EventLog` for reference
 3. Follow the established patterns for consistency
 4. Ensure proper separation between interface, construction, and runtime logic
 

@@ -7,7 +7,7 @@ draft: false
 For a short summary of EventTopic, see [Reventless Components Overview.](../component-overview.md#eventtopic)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`EventTopic.res`](../../reventless/src/components/EventTopic/EventTopic.res)), builder logic ([`EventTopic_Builder.res`](../../reventless/src/components/EventTopic/EventTopic_Builder.res)), adapter interface ([`EventTopic_Adapter.res`](../../reventless/src/components/EventTopic/EventTopic_Adapter.res)), and runtime operations ([`EventTopic_Operations.res`](../../reventless/src/components/EventTopic/EventTopic_Operations.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`EventTopic.res`), builder logic (`EventTopic_Builder.res`), adapter interface (`EventTopic_Adapter.res`), and runtime operations (`EventTopic_Operations.res`).
 :::
 
 ## Overview

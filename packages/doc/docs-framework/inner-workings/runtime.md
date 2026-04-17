@@ -31,7 +31,7 @@ The Runtime Environment abstraction provides three key capabilities:
 
 ### Module Type Definition
 
-The core runtime environment is defined in [`Runtime.res`](../../packages/reventless/src/adapter/Runtime/Runtime.res):
+The core runtime environment is defined in `Runtime.res`:
 
 ```rescript
 module type Environment = {
@@ -46,7 +46,7 @@ module type Environment = {
 
 ### AWS Lambda Implementation
 
-The AWS Lambda implementation ([`RuntimeEnvironment_Lambda.res`](../../packages/reventless-aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res)) provides:
+The AWS Lambda implementation (`RuntimeEnvironment_Lambda.res`) provides:
 
 ```rescript
 type event = PulumiAws.Lambda.CallbackFunction.event
@@ -380,7 +380,7 @@ let groupBySource = (event: event) => {
 
 ### Using Single Strategy
 
-From [`Aggregate_Builder_Single.res`](../../packages/reventless-aws/src/components/Aggregate_Builder_Single.res):
+From `Aggregate_Builder_Single.res`:
 
 ```rescript
 module CommandTopicChannel = CommandTopicChannel.SQS
@@ -410,7 +410,7 @@ include Reventless.Aggregate_Builder.Make(
 
 ### Using PerAggregate Strategy
 
-From [`Aggregate_Builder_PerAggregate.res`](../../packages/reventless-aws/src/components/Aggregate_Builder_PerAggregate.res):
+From `Aggregate_Builder_PerAggregate.res`:
 
 ```rescript
 module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_PerAggregate.Make(
@@ -422,7 +422,7 @@ module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_PerAggregat
 
 ### Using Micro Strategy
 
-From [`Aggregate_Builder_Micro.res`](../../packages/reventless-aws/src/components/Aggregate_Builder_Micro.res):
+From `Aggregate_Builder_Micro.res`:
 
 ```rescript
 module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_Micro.Make(

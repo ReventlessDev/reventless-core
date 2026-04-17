@@ -7,7 +7,7 @@ draft: false
 For a short summary of an ExtensionPoint, see [Reventless Components Overview.](../component-overview.md#extensionpoint)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`ExtensionPoint.res`](../../reventless/src/components/ExtensionPoint/ExtensionPoint.res)), builder logic ([`ExtensionPoint_Builder.res`](../../reventless/src/components/ExtensionPoint/ExtensionPoint_Builder.res)), runtime operations ([`ExtensionPoint_Operations.res`](../../reventless/src/components/ExtensionPoint/ExtensionPoint_Operations.res)), and callbacks ([`ExtensionPoint_Callback.res`](../../reventless/src/components/ExtensionPoint/ExtensionPoint_Callback.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`ExtensionPoint.res`), builder logic (`ExtensionPoint_Builder.res`), runtime operations (`ExtensionPoint_Operations.res`), and callbacks (`ExtensionPoint_Callback.res`).
 :::
 
 ## Overview

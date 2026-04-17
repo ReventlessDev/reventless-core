@@ -7,7 +7,7 @@ draft: false
 For a short summary of an Extension, see [Reventless Components Overview.](../component-overview.md#extension)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`Extension.res`](../../reventless/src/components/Extension/Extension.res)), builder logic ([`Extension_Builder.res`](../../reventless/src/components/Extension/Extension_Builder.res)), and runtime operations ([`Extension_Operations.res`](../../reventless/src/components/Extension/Extension_Operations.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`Extension.res`), builder logic (`Extension_Builder.res`), and runtime operations (`Extension_Operations.res`).
 :::
 
 ## Overview

@@ -72,7 +72,7 @@ type state = {
 }
 ```
 
-For the full annotation reference see [`docs/guides/reventless-ppx.md`](../../../docs/guides/reventless-ppx.md) and the [QueryDb key design guide](../../../docs/guides/querydb-key-design-guide.md).
+For the full annotation reference see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
 
 Custom indexes can also be added by explicitly declaring `let config`:
 

@@ -22,7 +22,7 @@ Key characteristics:
 
 ### Core Resource Type
 
-The [`resource`](packages/reventless-spec/src/adapter/Adapter.res:1-7) type from Adapter.res defines the standard structure:
+The `resource` type from `Adapter.res` defines the standard structure:
 
 ```rescript
 type resource = {
@@ -43,7 +43,7 @@ type resource = {
 
 ### Resources Collection
 
-The [`resources`](packages/reventless-spec/src/adapter/Adapter.res:9) type is defined as:
+The `resources` type is defined as:
 ```rescript
 type resources = dict<resource>
 ```
@@ -116,7 +116,7 @@ let queueUrl = (commandTopic.resources->Array.getUnsafe(0)).id
 
 ## AWS Service Types
 
-The framework supports multiple AWS services, defined in [`AWS.res`](packages/reventless-aws/src/adapter/AWS.res:3-16):
+The framework supports multiple AWS services, defined in `AWS.res`:
 
 | Service Type | Description | Used By |
 |-------------|-------------|---------|
@@ -139,7 +139,7 @@ Each service module provides:
 
 ## Resource Helper Functions
 
-The [`Adapter.res`](packages/reventless/src/adapter/Adapter.res) file provides utility functions for working with resources:
+The `Adapter.res` file provides utility functions for working with resources:
 
 ### Resolved Resources
 
@@ -172,7 +172,7 @@ Key conversion functions include:
 
 Components can filter resources by service type to discover specific resource types from dependencies:
 
-From [`Adapter_Helpers.res`](packages/reventless-aws/src/adapter/Adapter_Helpers.res):
+From `Adapter_Helpers.res`:
 ```rescript
 let dynamoDbResources = resources =>
   resources->filterSupportedResolvedResources([

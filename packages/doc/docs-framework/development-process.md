@@ -388,8 +388,8 @@ git push origin beta
 
 ## Additional Resources
 
-- [RELEASE.md](../../RELEASE.md) - Detailed release process documentation
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) - Contribution guidelines
+- `RELEASE.md` - Detailed release process documentation
+- `CONTRIBUTING.md` - Contribution guidelines
 - [Conventional Commits Specification](https://conventionalcommits.org/)
 - [Semantic Versioning](https://semver.org/)
 - [Lerna Documentation](https://lerna.js.org/)

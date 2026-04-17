@@ -7,7 +7,7 @@ draft: false
 For a short summary of StateChangeSlice, see [Reventless Components Overview.](../component-overview.md#statechangeslice)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`StateChangeSlice.res`](../../reventless/src/components/StateChangeSlice/StateChangeSlice.res)), builder logic ([`StateChangeSlice_Builder.res`](../../reventless/src/components/StateChangeSlice/StateChangeSlice_Builder.res)), and callback/handler logic ([`StateChangeSlice_Callback.res`](../../reventless/src/components/StateChangeSlice/StateChangeSlice_Callback.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`StateChangeSlice.res`), builder logic (`StateChangeSlice_Builder.res`), and callback/handler logic (`StateChangeSlice_Callback.res`).
 :::
 
 ## Overview
@@ -105,7 +105,7 @@ module type Spec = {
 |-------|------|-------------|
 | `name` | `string` | Unique identifier for this slice |
 | `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
-| `command` | `@schema` [type](./rescript-syntax.md#ppx) | Command type using `@schema` [ppx](./rescript-syntax.md#ppx) for auto-generated schema |
+| `command` | `@schema` [type](../rescript-syntax.md#ppx) | Command type using `@schema` [ppx](../rescript-syntax.md#ppx) for auto-generated schema |
 | `error` | `@schema type` | Error type for command processing failures |
 | `state` | `type` | The state type built from accumulated events |
 | `initialState` | `state` | Starting state for new aggregates/entities |
@@ -179,9 +179,9 @@ The query is built automatically from the command schema via `DcbTag.buildQueryF
 - **Scalar tagged fields** (e.g., `itemId: string` auto-tagged by PPX) — all tags go into a single AND clause (single-entity query)
 - **Tagged array fields** (e.g., `productId: array<string>` auto-tagged on elements) — each element becomes its own OR clause (cross-entity query)
 
-No configuration is needed — the schema determines the query mode automatically. See the [Cross-Entity Queries section in the Platform Guide](/guides/platform-and-plugin-guide#cross-entity-queries-tagged-arrays) for a full example.
+No configuration is needed — the schema determines the query mode automatically.
 
-When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key, or `@compositePartitionTag` on multiple fields to form a composite key joined in declaration order — see the [PPX guide](/guides/reventless-ppx#partitiontag-notag-dcbtag--field-level-dcb-tag-control).
+When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key, or `@compositePartitionTag` on multiple fields to form a composite key joined in declaration order — see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
 
 ## Error Handling
 
@@ -252,7 +252,7 @@ The StateChangeSlice reuses resources from the shared DcbEventLog:
 - **[Plugin](./plugin.md)** - Hosts DCB slices and creates shared infrastructure
 - **[EventCollector](./eventcollector.md)** - Consumes events from DcbEventLog
 - **[ReadModel](./readmodel.md)** - Builds read models from DcbEventLog events
-- **[Event Modeling: Usage](./event-modeling-statechangeslice-usage.md)** - How to use StateChangeSlice in your application
+- **[Usage Guide](../concepts/statechangeslice-usage.md)** - How to use StateChangeSlice in your application
 
 ## AWS Implementation
 

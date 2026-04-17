@@ -81,7 +81,7 @@ Create a `rescript.json` in your project root with the PPX flags. The `reventles
 }
 ```
 
-The PPX auto-injects boilerplate (`let name`, DCB tag annotations, and more) so you can focus on domain logic. See the [Reventless PPX Guide](/guides/reventless-ppx) for details.
+The PPX auto-injects boilerplate (`let name`, DCB tag annotations, and more) so you can focus on domain logic. See [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations) for details.
 
 ### Choose a Cloud Provider
 

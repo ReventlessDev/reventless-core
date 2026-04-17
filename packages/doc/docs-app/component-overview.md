@@ -293,6 +293,51 @@ aggregate -> event: many { class: event-flow }
 
 [Read more about the Aggregate component.](./components/aggregate.md)
 
+### StateChangeSlice
+
+The **StateChangeSlice** is the DCB equivalent of an Aggregate. It handles Commands by reading a decision state from the shared DcbEventLog (scoped to a partition key), applying business rules, and appending new Events. Multiple StateChangeSlices share the same DcbEventLog, enabling cross-entity consistency.
+
+```d2
+direction: right
+
+command: Command { class: msg-command }
+slice: StateChangeSlice { class: state-change-slice }
+eventlog: DcbEventLog { class: event-log }
+event: Event { class: msg-event }
+
+command -> slice: 1 { class: command-flow }
+eventlog -> slice: "decision state" { class: event-flow }
+slice -> eventlog: "append" { class: event-flow }
+slice -> event: many { class: event-flow }
+```
+
+- **responsibility**: enforce business rules against a scoped decision model; append Events to DcbEventLog with optimistic concurrency
+- **in**: Command, Events from DcbEventLog (scoped by partition tag)
+- **out**: Events appended to DcbEventLog
+
+[Read more about the StateChangeSlice component.](./components/statechangeslice.md)
+
+### StateViewSlice
+
+The **StateViewSlice** is the DCB equivalent of a ReadModel. It subscribes to the shared DcbEventLog, projects events into a QueryDb table, and serves read queries. Unlike a ReadModel it does not need a separate EventCollector — it reads directly from the DcbEventLog.
+
+```d2
+direction: right
+
+eventlog: DcbEventLog { class: event-log }
+slice: StateViewSlice { class: state-view-slice }
+querydb: QueryDb { class: query-db }
+
+eventlog -> slice: events { class: event-flow }
+slice -> querydb: "project" { class: projection-flow }
+```
+
+- **responsibility**: project DcbEventLog events into query-optimised state; serve read queries
+- **in**: Events from DcbEventLog
+- **out**: State in QueryDb
+
+[Read more about the StateViewSlice component.](./components/stateviewslice.md)
+
 ### AutomationSlice
 
 The **AutomationSlice** implements the Event Modeling **Automation** pattern (TODO List Pattern) for DCB-based plugins. It subscribes to a shared DcbEventLog, accumulates pending work items into a TODO list, processes them exactly once by issuing commands, and marks items as completed when resolution events arrive.

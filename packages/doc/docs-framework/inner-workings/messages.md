@@ -32,8 +32,8 @@ Messages provide several key benefits:
 
 The typical message flow in reventless follows this pattern:
 
-1. **Client** sends a [`command'`](packages/reventless-spec/src/Message.res:34) to express intent
-2. **Aggregate** processes the command and produces [`event'`](packages/reventless-spec/src/Message.res:20) instances
+1. **Client** sends a `command'` to express intent
+2. **Aggregate** processes the command and produces `event'` instances
 3. **EventLog** persists the events for durability
 4. **EventTopic** publishes events to interested subscribers
 5. **ReadModels** consume events to update their projections
@@ -42,17 +42,17 @@ The typical message flow in reventless follows this pattern:
 
 Reventless defines several core message types:
 
-- **[`meta`](packages/reventless-spec/src/Message.res:5)**: Metadata for tracing and correlation
-- **[`context`](packages/reventless-spec/src/Message.res:15)**: Command processing context
-- **[`event'<'id, 'event>`](packages/reventless-spec/src/Message.res:20)**: Structured event with metadata
-- **[`command'<'id, 'command>`](packages/reventless-spec/src/Message.res:34)**: Structured command with metadata
-- **[`commandJson`](packages/reventless-spec/src/Message.res:41)**: Serialized command for transport
+- **`meta`**: Metadata for tracing and correlation
+- **`context`**: Command processing context
+- **`event'<'id, 'event>`**: Structured event with metadata
+- **`command'<'id, 'command>`**: Structured command with metadata
+- **`commandJson`**: Serialized command for transport
 
 ## Core Message Types
 
 ### Meta Type (`meta`)
 
-The [`meta`](packages/reventless-spec/src/Message.res:5) type provides essential metadata for every message in the system.
+The `meta` type provides essential metadata for every message in the system.
 
 ```rescript
 type meta = {
@@ -72,12 +72,12 @@ type meta = {
 
 **Usage Patterns**:
 - Every message carries meta information
-- [`correlationId`](packages/reventless-spec/src/Message.res:11) links causally related messages
-- [`msgId`](packages/reventless-spec/src/Message.res:10) provides unique identification for each message
+- `correlationId` links causally related messages
+- `msgId` provides unique identification for each message
 
 ### Context Type (`context`)
 
-The [`context`](packages/reventless-spec/src/Message.res:15) type provides processing context to command handlers.
+The `context` type provides processing context to command handlers.
 
 ```rescript
 type context = {
@@ -98,7 +98,7 @@ type context = {
 
 ### Event' Type (`event'<'id, 'event>`)
 
-The [`event'`](packages/reventless-spec/src/Message.res:20) type represents structured events with full metadata.
+The `event'` type represents structured events with full metadata.
 
 ```rescript
 type event'<'id, 'event> = {
@@ -121,7 +121,7 @@ type event'<'id, 'event> = {
 
 ### Command' Type (`command'<'id, 'command>`)
 
-The [`command'`](packages/reventless-spec/src/Message.res:34) type represents structured commands with metadata.
+The `command'` type represents structured commands with metadata.
 
 ```rescript
 type command'<'id, 'command> = {
@@ -144,7 +144,7 @@ type command'<'id, 'command> = {
 
 ### CommandJson Type (`commandJson`)
 
-The [`commandJson`](packages/reventless-spec/src/Message.res:41) type represents serialized commands for transport.
+The `commandJson` type represents serialized commands for transport.
 
 ```rescript
 type commandJson = {
@@ -187,9 +187,9 @@ ET -> RM: event' { class: projection-flow }
 ```
 
 This flow demonstrates:
-1. **Client** creates and sends a [`command'`](packages/reventless-spec/src/Message.res:34)
+1. **Client** creates and sends a `command'`
 2. **CommandTopic** routes the command to the appropriate aggregate
-3. **Aggregate** processes the command and produces [`event'`](packages/reventless-spec/src/Message.res:20) instances
+3. **Aggregate** processes the command and produces `event'` instances
 4. **EventLog** persists events for durability and replay
 5. **EventTopic** publishes events to subscribers
 6. **ReadModel** consumes events to update projections
@@ -216,9 +216,9 @@ EM -> C2 { class: command-flow }
 ```
 
 **Key Principles**:
-- Original commands set [`correlationId`](packages/reventless-spec/src/Message.res:11) equal to their [`msgId`](packages/reventless-spec/src/Message.res:10)
-- Resulting events maintain the original [`correlationId`](packages/reventless-spec/src/Message.res:11)
-- New commands triggered by events use the triggering event's [`msgId`](packages/reventless-spec/src/Message.res:10) as their [`correlationId`](packages/reventless-spec/src/Message.res:11)
+- Original commands set `correlationId` equal to their `msgId`
+- Resulting events maintain the original `correlationId`
+- New commands triggered by events use the triggering event's `msgId` as their `correlationId`
 
 ### Message Transformation
 
@@ -240,7 +240,7 @@ EJSON -> EVT2: decode
 ```
 
 **Transformation Types**:
-- **Serialization**: [`command'`](packages/reventless-spec/src/Message.res:34) to [`commandJson`](packages/reventless-spec/src/Message.res:41) for transport
+- **Serialization**: `command'` to `commandJson` for transport
 - **Encoding/Decoding**: Type-safe conversion to/from JSON
 - **Schema Evolution**: Handling version changes in message formats
 
@@ -370,7 +370,7 @@ let followupCommand = {
 
 ### Message Creation
 
-#### [`generateMeta()`](packages/reventless/src/Message.res:173)
+#### `generateMeta()`
 Creates message metadata with proper defaults and unique identifiers.
 
 ```rescript
@@ -383,14 +383,14 @@ let meta = Message.generateMeta(~service="CustomerService", ~user="john.doe")
 // Generates unique msgId and sets correlationId to the same value
 ```
 
-#### [`uuid()`](packages/reventless/src/Message.res:45)
+#### `uuid()`
 Generates unique identifiers for messages and entities.
 
 ```rescript
 let uuid: unit => string
 ```
 
-#### [`nowAsISOString()`](packages/reventless/src/Message.res:54)
+#### `nowAsISOString()`
 Creates ISO timestamp strings for message timing.
 
 ```rescript
@@ -400,7 +400,7 @@ let nowAsISOString: unit => string
 
 ### Message Encoding/Decoding
 
-#### [`encode()`](packages/reventless/src/Message.res:20) / [`decode()`](packages/reventless/src/Message.res:19)
+#### `encode()` / `decode()`
 Schema-based serialization for type-safe message handling.
 
 ```rescript
@@ -408,7 +408,7 @@ let encode: ('a, S.t<'a>) => Js.Json.t
 let decode: (Js.Json.t, S.t<'a>) => 'a
 ```
 
-#### [`encodeEvent'()`](packages/reventless/src/Message.res:40) / [`decodeEvent'()`](packages/reventless/src/Message.res:35)
+#### `encodeEvent'()` / `decodeEvent'()`
 Specialized encoding/decoding for event messages.
 
 ```rescript
@@ -416,7 +416,7 @@ let encodeEvent': (event'<'id, 'event>, S.t<'id>, S.t<'event>) => Js.Json.t
 let decodeEvent': (Js.Json.t, S.t<'id>, S.t<'event>) => event'<'id, 'event>
 ```
 
-#### [`encodeCommand'()`](packages/reventless/src/Message.res:42) / [`decodeCommand'()`](packages/reventless/src/Message.res:37)
+#### `encodeCommand'()` / `decodeCommand'()`
 Specialized encoding/decoding for command messages.
 
 ```rescript
@@ -426,7 +426,7 @@ let decodeCommand': (Js.Json.t, S.t<'id>, S.t<'command>) => command'<'id, 'comma
 
 ### Message Analysis
 
-#### [`serviceNameOfMsg()`](packages/reventless/src/Message.res:74)
+#### `serviceNameOfMsg()`
 Extracts the service name from a message JSON.
 
 ```rescript
@@ -439,14 +439,14 @@ let serviceName = Message.serviceNameOfMsg(messageJson)
 // Returns: Some("CustomerService") or None if parsing fails
 ```
 
-#### [`eventNameOfEvent'Json()`](packages/reventless/src/Message.res:106)
+#### `eventNameOfEvent'Json()`
 Gets the event type name from an event message JSON.
 
 ```rescript
 let eventNameOfEvent'Json: Js.Json.t => string
 ```
 
-#### [`variantNameOfJson()`](packages/reventless/src/Message.res:92)
+#### `variantNameOfJson()`
 Extracts variant information from JSON representations.
 
 ```rescript
@@ -457,7 +457,7 @@ let variantNameOfJson: Js.Json.t => string
 
 ### Message Splitting and Combining
 
-#### [`splitMessage()`](packages/reventless/src/Message.res:228)
+#### `splitMessage()`
 Decomposes messages into type and payload components.
 
 ```rescript
@@ -470,7 +470,7 @@ let (messageType, payload) = Message.splitMessage(messageJson)
 // Returns: ("CustomerCreated", {name: "John", email: "john@example.com"})
 ```
 
-#### [`combineMessage()`](packages/reventless/src/Message.res:240)
+#### `combineMessage()`
 Reconstructs messages from type and data components.
 
 ```rescript
@@ -551,7 +551,7 @@ let handleCustomerEventV2 = (event) => {
 
 ### Type Definitions
 
-#### From [`reventless-spec/src/Message.res`](packages/reventless-spec/src/Message.res)
+#### From `reventless-spec/src/Message.res`
 
 ```rescript
 type service = string
@@ -595,7 +595,7 @@ type statusChange = {
 }
 ```
 
-#### From [`reventless/src/Message.res`](packages/reventless/src/Message.res)
+#### From `reventless/src/Message.res`
 
 ```rescript
 module type Service = {
@@ -620,37 +620,37 @@ exception InvalidCommand(Js.Json.t)
 ### Function Reference
 
 #### Message Creation
-- [`generateMeta(~service, ~ip=?, ~user=?)`](packages/reventless/src/Message.res:173) - Generate message metadata
-- [`uuid()`](packages/reventless/src/Message.res:45) - Generate unique identifier
-- [`nowAsISOString()`](packages/reventless/src/Message.res:54) - Current timestamp as ISO string
-- [`now()`](packages/reventless/src/Message.res:52) - Current timestamp as float
+- `generateMeta(~service, ~ip=?, ~user=?)` - Generate message metadata
+- `uuid()` - Generate unique identifier
+- `nowAsISOString()` - Current timestamp as ISO string
+- `now()` - Current timestamp as float
 
 #### Encoding/Decoding
-- [`encode(value, schema)`](packages/reventless/src/Message.res:20) - Encode value to JSON using schema
-- [`decode(json, schema)`](packages/reventless/src/Message.res:19) - Decode JSON to value using schema
-- [`encodeEvent'(event', idSchema, eventSchema)`](packages/reventless/src/Message.res:40) - Encode event message
-- [`decodeEvent'(json, idSchema, eventSchema)`](packages/reventless/src/Message.res:35) - Decode event message
-- [`encodeCommand'(command', idSchema, commandSchema)`](packages/reventless/src/Message.res:42) - Encode command message
-- [`decodeCommand'(json, idSchema, commandSchema)`](packages/reventless/src/Message.res:37) - Decode command message
+- `encode(value, schema)` - Encode value to JSON using schema
+- `decode(json, schema)` - Decode JSON to value using schema
+- `encodeEvent'(event', idSchema, eventSchema)` - Encode event message
+- `decodeEvent'(json, idSchema, eventSchema)` - Decode event message
+- `encodeCommand'(command', idSchema, commandSchema)` - Encode command message
+- `decodeCommand'(json, idSchema, commandSchema)` - Decode command message
 
 #### Message Analysis
-- [`serviceNameOfMsg(json)`](packages/reventless/src/Message.res:74) - Extract service name from message
-- [`eventNameOfEvent'Json(json)`](packages/reventless/src/Message.res:106) - Get event name from event JSON
-- [`variantNameOfJson(json)`](packages/reventless/src/Message.res:92) - Extract variant name from JSON
-- [`idOfEvent'Json(json)`](packages/reventless/src/Message.res:113) - Extract ID from event JSON
-- [`idMetaEventOfEvent'Json(json)`](packages/reventless/src/Message.res:119) - Extract ID, meta, and event from JSON
+- `serviceNameOfMsg(json)` - Extract service name from message
+- `eventNameOfEvent'Json(json)` - Get event name from event JSON
+- `variantNameOfJson(json)` - Extract variant name from JSON
+- `idOfEvent'Json(json)` - Extract ID from event JSON
+- `idMetaEventOfEvent'Json(json)` - Extract ID, meta, and event from JSON
 
 #### Message Transformation
-- [`splitMessage(json)`](packages/reventless/src/Message.res:228) - Split message into type and payload
-- [`combineMessage(type, data)`](packages/reventless/src/Message.res:240) - Combine type and data into message
-- [`commandJsonOfCommand'(~idToString, ~commandSchema, command')`](packages/reventless/src/Message.res:216) - Convert command' to commandJson
-- [`toMessageBody(commandJson)`](packages/reventless/src/Message.res:58) - Convert commandJson to message body string
+- `splitMessage(json)` - Split message into type and payload
+- `combineMessage(type, data)` - Combine type and data into message
+- `commandJsonOfCommand'(~idToString, ~commandSchema, command')` - Convert command' to commandJson
+- `toMessageBody(commandJson)` - Convert commandJson to message body string
 
 #### Utility Functions
-- [`decomposeMeta(meta)`](packages/reventless/src/Message.res:178) - Decompose meta into key-value pairs
-- [`composeMeta(dict)`](packages/reventless/src/Message.res:201) - Compose meta from dictionary
-- [`composeEventJson'(id, meta, eventJson)`](packages/reventless/src/Message.res:185) - Compose event JSON
-- [`log(value, str)`](packages/reventless/src/Message.res:47) - Log value with message and return value
+- `decomposeMeta(meta)` - Decompose meta into key-value pairs
+- `composeMeta(dict)` - Compose meta from dictionary
+- `composeEventJson'(id, meta, eventJson)` - Compose event JSON
+- `log(value, str)` - Log value with message and return value
 
 ### Common Patterns
 

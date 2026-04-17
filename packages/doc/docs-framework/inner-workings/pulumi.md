@@ -55,13 +55,13 @@ This separation ensures that:
 
 ### Pulumi.Output.t Wrapping
 
-All infrastructure values in reventless are wrapped in [`Pulumi.Output.t<'a>`](packages/reventless/src/components/Component.res:7) to handle:
+All infrastructure values in reventless are wrapped in `Pulumi.Output.t<'a>` to handle:
 
 - **Asynchronous Resource Creation**: Resources may not be immediately available during deployment
 - **Dependency Resolution**: Pulumi automatically resolves dependencies between resources
 - **Value Propagation**: Values flow correctly through the dependency graph
 
-Example from [`EventLog_Builder.res`](packages/reventless/src/components/EventLog/EventLog_Builder.res:26-44):
+Example from `EventLog_Builder.res`:
 
 ```rescript
 self->Component.setOperations(
@@ -79,7 +79,7 @@ self->Component.setOperations(
 
 ### Component Resource Patterns
 
-Reventless components extend [`Pulumi.ComponentResource`](packages/reventless/src/components/Component.res:24-29) to create reusable infrastructure patterns with proper parent-child relationships:
+Reventless components extend `Pulumi.ComponentResource` to create reusable infrastructure patterns with proper parent-child relationships:
 
 ```rescript
 @module("./Component") @new
@@ -102,8 +102,8 @@ This pattern ensures:
 Reventless includes custom ReScript bindings for Pulumi that provide type-safe access to Pulumi APIs:
 
 ### Core Dependencies
-- **[@reventless/rescript-pulumi-pulumi](packages/reventless/package.json:38)**: ^2.2.0 (Core Pulumi bindings)
-- **[@reventless/rescript-pulumi-aws](packages/reventless/package.json:37)**: ^2.3.0 (AWS provider bindings)
+- **@reventless/rescript-pulumi-pulumi**: ^2.2.0 (Core Pulumi bindings)
+- **@reventless/rescript-pulumi-aws**: ^2.3.0 (AWS provider bindings)
 
 ### Advantages of Custom Bindings
 
@@ -117,7 +117,7 @@ Reventless includes custom ReScript bindings for Pulumi that provide type-safe a
 
 ### Component Creation Pattern
 
-From [`EventLog_Builder.res`](packages/reventless/src/components/EventLog/EventLog_Builder.res:14-24):
+From `EventLog_Builder.res`:
 
 ```rescript
 let construct = (self, name) => {
@@ -137,7 +137,7 @@ let construct = (self, name) => {
 
 ### Output Wrapping and Dependency Management
 
-From [`Component.res`](packages/reventless/src/components/Component.res:7):
+From `Component.res`:
 
 ```rescript
 let wrappedOutputs = component => component->Pulumi.Output.apply(component => component->outputs)
@@ -145,7 +145,7 @@ let wrappedOutputs = component => component->Pulumi.Output.apply(component => co
 
 ### Resource Type Definitions
 
-From [`QueryDb_Adapter.res`](packages/reventless/src/components/QueryDb/QueryDb_Adapter.res:5-9):
+From `QueryDb_Adapter.res`:
 
 ```rescript
 type storage = {
@@ -172,17 +172,17 @@ let eventTopic = SpecificEventTopic.make(
 ### 1. Resource Naming Conventions
 - Use consistent naming patterns across components
 - Include component type and instance name in resource names
-- Leverage [`ComponentType.name`](packages/reventless/src/components/EventLog/EventLog_Builder.res:17) for standardized naming
+- Leverage `ComponentType.name` for standardized naming
 
 ### 2. Dependency Management
-- Always wrap infrastructure values in [`Pulumi.Output.t`](packages/reventless/src/components/Component.res:7)
-- Use [`Pulumi.Output.all2`](packages/reventless/src/components/EventLog/EventLog_Builder.res:28) and similar functions to combine multiple outputs
-- Apply transformations using [`Pulumi.Output.apply`](packages/reventless/src/components/EventLog/EventLog_Builder.res:29)
+- Always wrap infrastructure values in `Pulumi.Output.t`
+- Use `Pulumi.Output.all2` and similar functions to combine multiple outputs
+- Apply transformations using `Pulumi.Output.apply`
 
 ### 3. Component Resource Organization
 - Create component resources for logical groupings of infrastructure
-- Set proper parent-child relationships using [`Pulumi.CustomResourceOptions.parent`](packages/reventless/src/components/EventLog/EventLog_Builder.res:15)
-- Register outputs using [`Component.setOutputs`](packages/reventless/src/components/Component.res:35-38)
+- Set proper parent-child relationships using `Pulumi.CustomResourceOptions.parent`
+- Register outputs using `Component.setOutputs`
 
 ### 4. Error Handling Patterns
 - Leverage ReScript's type system to catch configuration errors at compile time
@@ -204,14 +204,14 @@ Reventless leverages Pulumi's AWS provider through custom ReScript bindings to c
 - **API Gateway**: For HTTP endpoints
 - **IAM Roles and Policies**: For security and access control
 
-The AWS-specific adapters (like those referenced in [`EventLog_Builder.res`](packages/reventless/src/components/EventLog/EventLog_Builder.res:3)) encapsulate the complexity of AWS resource creation while providing a clean, type-safe interface to the reventless components.
+The AWS-specific adapters (like those in `EventLog_Builder.res`) encapsulate the complexity of AWS resource creation while providing a clean, type-safe interface to the reventless components.
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Dependency Cycles**: Ensure that component dependencies form a directed acyclic graph
-2. **Output Access**: Always use [`Pulumi.Output.apply`](packages/reventless/src/components/EventLog/EventLog_Builder.res:29) to access values inside outputs
+2. **Output Access**: Always use `Pulumi.Output.apply` to access values inside outputs
 3. **Resource Naming**: Avoid hardcoded resource names that might conflict across deployments
 4. **Type Mismatches**: Leverage ReScript's type system to catch binding issues early
 

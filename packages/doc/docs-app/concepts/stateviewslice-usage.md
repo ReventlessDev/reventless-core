@@ -57,7 +57,7 @@ let sliceComponent = ItemViewSlice.make(
 )
 ```
 
-The [`StateViewSlice_Builder.Make`](./rescript-syntax.md#functors) [module function](./rescript-syntax.md#functors):
+The [`StateViewSlice_Builder.Make`](../rescript-syntax.md#functors) [module function](../rescript-syntax.md#functors):
 1. Creates a callback module with projection logic
 2. Sets up event handling from DcbEventLog
 3. Connects to QueryDb for state storage
@@ -346,8 +346,7 @@ module MyDcbSpec = {
 
 - [StateViewSlice Component Reference](../components/stateviewslice.md)
 - [StateChangeSlice Usage](./statechangeslice-usage.md)
-- [DCB Plugin Architecture](../../docs/dcb-usage.md)
+- [DCB Plugin Architecture](../dcb-slices.md)
 - [DcbEventLog](../components/dcbeventlog.md)
 - [QueryDb](../components/querydb.md)
 - [ReadModel](../components/readmodel.md)
-- [QueryDb Key Design Guide](../../../docs/guides/querydb-key-design-guide.md) — `@id`, `@subId`, `@index`, `@resolves` annotations; sort key query patterns

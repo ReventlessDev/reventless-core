@@ -92,9 +92,9 @@ This section describes how Reventless uses Sury schemas internally. Most develop
 
 ### Generated Schema Functions
 
-For each [`@schema`](packages/reventless/src/components/Counter/Counter_Callback.res:1) annotated type, Sury generates:
+For each `@schema` annotated type, Sury generates:
 - A schema object (e.g., `countsStateSchema`)
-- Encoding/decoding functions accessible through [`Message.encode`](packages/reventless/src/components/Counter/Counter_Callback.res:61) and [`Message.decode`](packages/reventless/src/components/Counter/Counter_Callback.res:47)
+- Encoding/decoding functions accessible through `Message.encode` and `Message.decode`
 
 ### Serialization Usage
 

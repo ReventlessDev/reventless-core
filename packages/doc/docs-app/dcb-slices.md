@@ -46,7 +46,7 @@ DcbEventLog -> ViewSlice1: { class: projection-flow }
 
 Fields ending in `Id` with type `string` are automatically annotated as DCB tags by the `@@reventless.dcbTags` PPX annotation — no manual work needed. Under the hood, each tagged field gets `@s.matches(DcbTag.string)`. This also applies to `*Id: array<string>` and `*Ids: array<string>` fields (element types are tagged). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its state (e.g., all events for a specific `itemId`).
 
-When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key. For a composite key built from multiple fields joined in declaration order, use `@compositePartitionTag` on each contributing field — see the [PPX guide](../../guides/reventless-ppx.md#partitiontag-notag-dcbtag--field-level-dcb-tag-control).
+When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key. For a composite key built from multiple fields joined in declaration order, use `@compositePartitionTag` on each contributing field — see [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations).
 
 ### Decision State
 

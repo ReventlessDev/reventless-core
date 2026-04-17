@@ -7,7 +7,7 @@ draft: false
 For a short summary of Counter, see [Reventless Components Overview.](../component-overview.md#counter)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`Counter.res`](../../reventless/src/components/Counter/Counter.res)), builder logic ([`Counter_Builder.res`](../../reventless/src/components/Counter/Counter_Builder.res)), runtime operations ([`Counter_Operations.res`](../../reventless/src/components/Counter/Counter_Operations.res)), and runtime callbacks ([`Counter_Callback.res`](../../reventless/src/components/Counter/Counter_Callback.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`Counter.res`), builder logic (`Counter_Builder.res`), runtime operations (`Counter_Operations.res`), and runtime callbacks (`Counter_Callback.res`).
 :::
 
 ## Overview
@@ -556,5 +556,5 @@ For detailed AWS implementation, see Counter AWS adapter documentation (TBD).
 ## Replacing the Old counter.md
 
 :::note Migration
-This documentation replaces the stub at [`packages/doc/do../common-modules/counter.md`](../common-modules/counter.md). The Counter is a full component, not just a common module, and its primary use is within EventMappings for multi-event coordination patterns.
+The Counter is a full component, not just a common module, and its primary use is within EventMappings for multi-event coordination patterns.
 :::

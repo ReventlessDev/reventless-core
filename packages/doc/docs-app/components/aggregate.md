@@ -7,7 +7,7 @@ draft: false
 For a short summary of an Aggregate, see [Reventless Components Overview.](../component-overview.md#aggregate)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`Aggregate.res`](../../reventless/src/components/Aggregate/Aggregate.res)), builder logic ([`Aggregate_Builder.res`](../../reventless/src/components/Aggregate/Aggregate_Builder.res)), and runtime callbacks ([`Aggregate_Callback.res`](../../reventless/src/components/Aggregate/Aggregate_Callback.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`Aggregate.res`), builder logic (`Aggregate_Builder.res`), and runtime callbacks (`Aggregate_Callback.res`).
 :::
 
 ```d2
@@ -273,7 +273,7 @@ This array has to include all mappings for this `Aggregate`.
 
 `counter` defines if a counter should be used for this mapping. In this example no counter is needed, so it is `None`.
 
-See [Counter](../components/counter#usage-in-eventmappings) component for further details.
+See [Counter](../components/counter#counter-in-eventmappings) component for further details.
 
 ## Generate Aggregate (AWS Defaults)
 

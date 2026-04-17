@@ -7,7 +7,7 @@ draft: false
 For a short summary of StateViewSlice, see [Reventless Components Overview.](../component-overview.md#stateviewslice)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`StateViewSlice.res`](../../reventless/src/components/StateViewSlice/StateViewSlice.res)), builder logic ([`StateViewSlice_Builder.res`](../../reventless/src/components/StateViewSlice/StateViewSlice_Builder.res)), and callback/handler logic ([`StateViewSlice_Callback.res`](../../reventless/src/components/StateViewSlice/StateViewSlice_Callback.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`StateViewSlice.res`), builder logic (`StateViewSlice_Builder.res`), and callback/handler logic (`StateViewSlice_Callback.res`).
 :::
 
 ## Overview
@@ -78,7 +78,7 @@ DCBArchitecture: DCB Architecture {
 
 ## Component Spec
 
-The StateViewSlice component requires a spec that defines its name, state type, and projection logic. The spec type is defined in [`StateViewSlice.res`](../../reventless/src/components/StateViewSlice/StateViewSlice.res) as `StateViewSlice.Spec`:
+The StateViewSlice component requires a spec that defines its name, state type, and projection logic. The spec type is defined in `StateViewSlice.res` as `StateViewSlice.Spec`:
 
 ```rescript
 module MySpec: StateViewSlice.Spec = {
@@ -199,7 +199,7 @@ let project = event =>
   }
 ```
 
-For the full annotation reference, see the [QueryDb key design guide](../../../docs/guides/querydb-key-design-guide.md) and [`docs/guides/reventless-ppx.md`](../../../docs/guides/reventless-ppx.md).
+For the full annotation reference, see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
 
 ## Comparison with ReadModel
 
@@ -242,4 +242,4 @@ The StateViewSlice creates its own QueryDb:
 - **[ReadModel](./readmodel.md)** - General-purpose read model component
 - **[Plugin](./plugin.md)** - Hosts DCB slices and creates shared infrastructure
 - **[EventCollector](./eventcollector.md)** - Consumes events for projection
-- **[Event Modeling: Usage](./event-modeling-stateviewslice-usage.md)** - How to use StateViewSlice in your application
+- **[Usage Guide](../concepts/stateviewslice-usage.md)** - How to use StateViewSlice in your application

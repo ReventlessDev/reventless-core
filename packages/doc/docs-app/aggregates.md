@@ -72,7 +72,7 @@ type error =
   | ProductNotFound
 ```
 
-The `@@reventless.spec` annotation auto-injects `let name` (derived from filename) and other boilerplate. The `@schema` annotation generates JSON serialization code via the [Sury `ppx`](./rescript-syntax.md#ppx). Every `command`, `event`, and `error` type must be annotated. See the [Reventless PPX Guide](/guides/reventless-ppx) for details.
+The `@@reventless.spec` annotation auto-injects `let name` (derived from filename) and other boilerplate. The `@schema` annotation generates JSON serialization code via the [Sury `ppx`](./rescript-syntax.md#ppx). Every `command`, `event`, and `error` type must be annotated. See [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations) for details.
 
 ### Step 2: Implement the Behavior
 

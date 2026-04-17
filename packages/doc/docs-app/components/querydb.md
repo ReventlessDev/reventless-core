@@ -7,7 +7,7 @@ draft: false
 For a short summary of QueryDb, see [Reventless Components Overview.](../component-overview.md#querydb)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions ([`QueryDb.res`](../../reventless/src/components/QueryDb/QueryDb.res)), builder logic ([`QueryDb_Builder.res`](../../reventless/src/components/QueryDb/QueryDb_Builder.res)), adapter interface ([`QueryDb_Adapter.res`](../../reventless/src/components/QueryDb/QueryDb_Adapter.res)), and runtime operations ([`QueryDb_Operations.res`](../../reventless/src/components/QueryDb/QueryDb_Operations.res)).
+This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`QueryDb.res`), builder logic (`QueryDb_Builder.res`), adapter interface (`QueryDb_Adapter.res`), and runtime operations (`QueryDb_Operations.res`).
 :::
 
 ## Overview
@@ -323,7 +323,7 @@ This generates:
 - `let subIdConfig = Some({ subIdField: "lineItemId", getSubId: ... })`
 - `let config` with a `byProduct` secondary index (partition: `productId`, sort: `createdAt`)
 
-For the complete annotation reference see [QueryDb key design guide](../../../docs/guides/querydb-key-design-guide.md).
+For the complete annotation reference see [PPX annotations](../rescript-syntax.md#reventless-ppx-annotations).
 
 ### Sort key query arguments
 

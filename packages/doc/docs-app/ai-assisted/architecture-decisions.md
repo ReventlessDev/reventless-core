@@ -5,7 +5,7 @@ sidebar_position: 4
 
 # Architecture Decisions
 
-Before generating code, the AI evaluates each entity against the [Aggregate vs DCB Decision Guide](/app/aggregate-vs-dcb-decision-guide) to determine the right architecture.
+Before generating code, the AI evaluates each entity against an Aggregate vs DCB Decision Guide to determine the right architecture.
 
 ## Decision Flow
 

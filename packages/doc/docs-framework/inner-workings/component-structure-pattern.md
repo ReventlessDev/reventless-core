@@ -44,7 +44,7 @@ Components use 2 required files and up to 3 optional files based on their needs:
 - **Purpose**: Implement runtime behavior (event/command handlers)
 - **When used**: For components that process messages at runtime
 - **Contains**: `Make` functor that creates message handlers
-- **Example**: [`Aggregate_Callback.res`](../../reventless/src/components/Aggregate/Aggregate_Callback.res) - Handles command processing for aggregates
+- **Example**: `Aggregate_Callback.res` - Handles command processing for aggregates
 
 ## Generic Component Wrapper
 
@@ -235,7 +235,7 @@ ComponentFiles.Operations -> TypeSafeOps
 
 ## Component_Callback Example: Aggregate_Callback
 
-The [`Aggregate_Callback.res`](../../reventless/src/components/Aggregate/Aggregate_Callback.res) file demonstrates the Component_Callback pattern for handling command processing:
+The `Aggregate_Callback.res` file demonstrates the Component_Callback pattern for handling command processing:
 
 ### Structure
 
@@ -377,22 +377,22 @@ module Make = (Spec: Component.Spec, /* other deps */): Component.T => {
 - **[API](/app/components/api)** - GraphQL schema definition pattern
 
 ### Infrastructure Components
-- **[EventLog](../../reventless/src/components/EventLog/)** - Uses all files (complete example)
-- **[CommandTopic](../../reventless/src/components/CommandTopic/)** - Uses Builder, Adapter, Operations, Callback
-- **[EventTopic](../../reventless/src/components/EventTopic/)** - Uses Builder, Adapter, Operations
-- **[EventCollector](../../reventless/src/components/EventCollector/)** - Uses Builder, Adapter
-- **[QueryDb](../../reventless/src/components/QueryDb/)** - Uses Builder, Adapter, Operations
+- **[EventLog](/app/components/eventlog)** (`EventLog/`) - Uses all files (complete example)
+- **[CommandTopic](/app/components/commandtopic)** (`CommandTopic/`) - Uses Builder, Adapter, Operations, Callback
+- **[EventTopic](/app/components/eventtopic)** (`EventTopic/`) - Uses Builder, Adapter, Operations
+- **[EventCollector](/app/components/eventcollector)** (`EventCollector/`) - Uses Builder, Adapter
+- **[QueryDb](/app/components/querydb)** (`QueryDb/`) - Uses Builder, Adapter, Operations
 
 ### Processing Components
-- **[CommandGenerator](../../reventless/src/components/CommandGenerator/)** - Uses Builder, Callback
+- **[CommandGenerator](/app/components/commandgenerator)** (`CommandGenerator/`) - Uses Builder, Callback
 - **[EventMapper](/app/components/eventmapper)** - Uses Builder pattern for event-to-command mapping
 - **[SideEffectHandler](/app/components/sideeffecthandler)** - Uses Builder pattern for event-triggered side effects
-- **[Counter](../../reventless/src/components/Counter/)** - Uses Builder, Operations
+- **[Counter](/app/components/counter)** (`Counter/`) - Uses Builder, Operations
 
 ### Plugin System Components
 - **[Plugin](/app/components/plugin)** - Deployment unit organization
-- **[ExtensionPoint](../../reventless/src/components/ExtensionPoint/)** - Uses Builder, Operations
-- **[Extension](../../reventless/src/components/Extension/)** - Uses Builder, Operations
+- **[ExtensionPoint](/app/components/extensionpoint)** (`ExtensionPoint/`) - Uses Builder, Operations
+- **[Extension](/app/components/extension)** (`Extension/`) - Uses Builder, Operations
 
 ### Scheduling Components
 - **[Scheduler](/app/components/scheduler)** - Time-based command publishing

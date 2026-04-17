@@ -131,31 +131,19 @@ This is the largest scope item (~71 occurrences across 8 files) but mechanical.
 
 ## Steps
 
-- [ ] **Step 1** — Fix `aggregate.md:276`: `#usage-in-eventmappings` → `#counter-in-eventmappings`
+- [x] **Step 1** — Fix `aggregate.md:276`: `#usage-in-eventmappings` → `#counter-in-eventmappings`
 
-- [ ] **Step 2** — Add `### StateChangeSlice` and `### StateViewSlice` sections to
+- [x] **Step 2** — Add `### StateChangeSlice` and `### StateViewSlice` sections to
   `component-overview.md` (follow the `### Aggregate` pattern)
 
-- [ ] **Step 3** — Fix relative path in concepts files:
-  - `statechangeslice-usage.md:65` (×2): `./rescript-syntax.md` → `../rescript-syntax.md`
-  - `stateviewslice-usage.md:60` (×2): `./rescript-syntax.md` → `../rescript-syntax.md`
+- [x] **Step 3** — Fix relative path in concepts files
 
-- [ ] **Step 4** — Fix `dcb-usage.md` links in concepts files:
-  - `statechangeslice-usage.md:273,278`: point to `../dcb-based-plugin.md`
-  - `stateviewslice-usage.md:349`: same
+- [x] **Step 4** — Fix `dcb-usage.md` links → point to `../dcb-slices.md`
 
-- [ ] **Step 5** — Fix event-modeling links in component reference:
-  - `statechangeslice.md:255`: `./event-modeling-statechangeslice-usage.md` → `../concepts/statechangeslice-usage.md`
-  - `stateviewslice.md:245`: `./event-modeling-stateviewslice-usage.md` → `../concepts/stateviewslice-usage.md`
+- [x] **Step 5** — Fix event-modeling links in component reference → `../concepts/statechangeslice-usage.md` etc.
 
-- [ ] **Step 6** — Fix missing guide links (Option B):
-  - `readmodel.md:75`, `stateviewslice.md:202`: update PPX link to `rescript-syntax.md#ppx-annotations`; update querydb link to a prose note or remove
-  - `querydb.md:326`: remove or replace with prose note
-  - `dcb-slices.md:49`: update PPX link to `../rescript-syntax.md#ppx-annotations`
-  - `stateviewslice-usage.md:353`: same
+- [x] **Step 6** — Fix missing guide links (Option B) — PPX links → `rescript-syntax.md#reventless-ppx-annotations`
 
-- [ ] **Step 7** — Fix inner-workings source file links (71 occurrences across 8 files):
-  convert every `[label](packages/reventless/...)` to plain `` `label` `` inline code
+- [x] **Step 7** — Fix inner-workings source file links (71 occurrences across 8 files)
 
-- [ ] **Step 8** — Rebuild docs (`cd packages/doc && npm run build`) and verify zero broken
-  link/anchor warnings remain
+- [x] **Step 8** — Build clean: zero broken link/anchor warnings (`[SUCCESS]`)
