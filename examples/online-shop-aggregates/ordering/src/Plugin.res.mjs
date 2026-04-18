@@ -178,7 +178,7 @@ function Make(Platform) {
     AvailableProductsReadModelMaker,
     CustomersReadModelMaker,
     OrdersReadModelMaker
-  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, undefined);
+  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   return {
     CatalogProductAggregate: CatalogProductAggregate,
     CustomerAggregate: CustomerAggregate,

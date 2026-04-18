@@ -183,7 +183,7 @@ function Make(Platform) {
     CategoriesReadModelMaker,
     ProductDemandReadModelMaker,
     ProductsReadModelMaker
-  ], [ImportProductsTask], undefined, undefined, undefined, undefined, undefined, undefined);
+  ], [ImportProductsTask], undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   return {
     CategoryAggregate: CategoryAggregate,
     ProductAggregate: ProductAggregate,

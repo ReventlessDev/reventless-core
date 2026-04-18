@@ -29,6 +29,36 @@ let apiSchemaFragmentOptionSchema = SuryResMjs.js_nullable(apiSchemaFragmentSche
 
 let stringOptionSchema = SuryResMjs.js_nullable(S.string);
 
+let panelManifestEntrySchema = S.schema(s => ({
+  fragmentId: s.m(S.string),
+  title: s.m(S.string),
+  description: s.m(S.string),
+  positions: s.m(S.array(S.string)),
+  requiredAccess: s.m(stringOptionSchema)
+}));
+
+let menuEntrySchema = S.schema(s => ({
+  label: s.m(S.string),
+  icon: s.m(stringOptionSchema),
+  group: s.m(stringOptionSchema),
+  sortOrder: s.m(S.int)
+}));
+
+let pageManifestEntrySchema = S.schema(s => ({
+  fragmentId: s.m(S.string),
+  title: s.m(S.string),
+  menuEntry: s.m(menuEntrySchema),
+  requiredAccess: s.m(stringOptionSchema)
+}));
+
+let uiFragmentManifestSchema = S.schema(s => ({
+  remoteEntryUrl: s.m(S.string),
+  panels: s.m(S.array(panelManifestEntrySchema)),
+  pages: s.m(S.array(pageManifestEntrySchema))
+}));
+
+let uiFragmentManifestOptionSchema = SuryResMjs.js_nullable(uiFragmentManifestSchema);
+
 let pluginDefinitionSchema = S.schema(s => ({
   id: s.m(S.string),
   name: s.m(S.string),
@@ -38,7 +68,8 @@ let pluginDefinitionSchema = S.schema(s => ({
   eventCollector: s.m(S.string),
   extensionProtocols: s.m(S.array(extensionProtocolSchema)),
   apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema),
-  apiTarget: s.m(stringOptionSchema)
+  apiTarget: s.m(stringOptionSchema),
+  uiFragments: s.m(uiFragmentManifestOptionSchema)
 }));
 
 let nameSchema = S.string;
@@ -54,6 +85,11 @@ export {
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
   stringOptionSchema,
+  panelManifestEntrySchema,
+  menuEntrySchema,
+  pageManifestEntrySchema,
+  uiFragmentManifestSchema,
+  uiFragmentManifestOptionSchema,
   pluginDefinitionSchema,
 }
 /* extensionPointDefinitionSchema Not a pure module */

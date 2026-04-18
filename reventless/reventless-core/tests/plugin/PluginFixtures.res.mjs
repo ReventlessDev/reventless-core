@@ -15,7 +15,8 @@ let pluginDefinition = {
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: undefined,
-  apiTarget: undefined
+  apiTarget: undefined,
+  uiFragments: undefined
 };
 
 let state_name = pluginDefinition.name;
@@ -42,7 +43,8 @@ let state = {
   extensions: state_extensions,
   status: "Connected",
   statusChange: TestFixtures$ReventlessCore.statusChange,
-  apiSchemaFragment: undefined
+  apiSchemaFragment: undefined,
+  uiFragments: undefined
 };
 
 let extensionPointNames2 = ["Test.Test"];
@@ -60,7 +62,8 @@ let pluginDefinition2 = {
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: undefined,
-  apiTarget: undefined
+  apiTarget: undefined,
+  uiFragments: undefined
 };
 
 export {

@@ -8,6 +8,7 @@ let pluginDefinition = {
   extensionProtocols: [],
   apiSchemaFragment: None,
   apiTarget: None,
+  uiFragments: None,
 }
 
 let state: PluginReadModelSpec.state = {
@@ -21,6 +22,7 @@ let state: PluginReadModelSpec.state = {
   status: Connected,
   statusChange: TestFixtures.statusChange,
   apiSchemaFragment: None,
+  uiFragments: None,
 }
 
 let extensionPointNames2 = ["Test.Test"]
@@ -38,4 +40,5 @@ let pluginDefinition2 = {
   extensionProtocols: [],
   apiSchemaFragment: None,
   apiTarget: None,
+  uiFragments: None,
 }

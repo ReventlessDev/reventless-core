@@ -52,7 +52,8 @@ function Make(Bus) {
       PluginRuntimeBuilder: PluginRuntimeBuilder,
       RemoteChannel: RemoteChannel,
       QE: QE,
-      make: include.make
+      make: include.make,
+      makeAutoUIManifest: include.makeAutoUIManifest
     };
   };
 }

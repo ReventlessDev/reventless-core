@@ -33,14 +33,19 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           status: Connected,
           statusChange,
           apiSchemaFragment: None,
+          uiFragments: None,
         }
         let withFrag = switch pluginDef.apiSchemaFragment {
         | Some(frag) => {...base, apiSchemaFragment: Some(frag)}
         | None => base
         }
-        let state = switch pluginDef.apiTarget {
-        | Some(target) => {...withFrag, apiTarget: target}
+        let withUi = switch pluginDef.uiFragments {
+        | Some(ui) => {...withFrag, uiFragments: Some(ui)}
         | None => withFrag
+        }
+        let state = switch pluginDef.apiTarget {
+        | Some(target) => {...withUi, apiTarget: target}
+        | None => withUi
         }
         Set(id, state)
       | Reconnected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
@@ -49,9 +54,13 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           | Some(frag) => {...s, apiSchemaFragment: Some(frag)}
           | None => s
           }
-          switch pluginDef.apiTarget {
-          | Some(target) => {...withFrag, apiTarget: target}
+          let withUi = switch pluginDef.uiFragments {
+          | Some(ui) => {...withFrag, uiFragments: Some(ui)}
           | None => withFrag
+          }
+          switch pluginDef.apiTarget {
+          | Some(target) => {...withUi, apiTarget: target}
+          | None => withUi
           }
         }
         let defaultState = applyFragAndTarget({
@@ -65,6 +74,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           status: Connected,
           statusChange,
           apiSchemaFragment: None,
+          uiFragments: None,
         })
         UpdateWithDefault(
           id,
@@ -86,6 +96,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             status: Disconnected,
             statusChange,
             apiSchemaFragment: None,
+            uiFragments: None,
           },
           state => {
             ...state,
@@ -107,6 +118,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             status: Inactive,
             statusChange,
             apiSchemaFragment: None,
+            uiFragments: None,
           },
           state => {
             ...state,

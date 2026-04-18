@@ -33,7 +33,40 @@ import * as Plugin_SubscriptionSchema$ReventlessCore from "./Plugin_Subscription
 
 function Make(Spec) {
   return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => {
-    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, opts) => {
+    let makeAutoUIManifest = (remoteEntryUrl, name, aggregates, readModels, readModelPositionsOpt, aggregatePositionsOpt) => {
+      let readModelPositions = readModelPositionsOpt !== undefined ? readModelPositionsOpt : [];
+      let aggregatePositions = aggregatePositionsOpt !== undefined ? aggregatePositionsOpt : [];
+      let panels = readModels.map(R => ({
+        fragmentId: name + "." + R.Spec.name + ".list",
+        title: R.Spec.name,
+        description: "",
+        positions: readModelPositions,
+        requiredAccess: undefined
+      })).concat(aggregates.map(M => ({
+        fragmentId: name + "." + M.Spec.name + ".detail",
+        title: M.Spec.name,
+        description: "",
+        positions: aggregatePositions,
+        requiredAccess: undefined
+      })));
+      let pages = readModels.map(R => ({
+        fragmentId: name + "." + R.Spec.name + ".list",
+        title: R.Spec.name,
+        menuEntry: {
+          label: R.Spec.name,
+          icon: undefined,
+          group: undefined,
+          sortOrder: 0
+        },
+        requiredAccess: undefined
+      }));
+      return {
+        remoteEntryUrl: remoteEntryUrl,
+        panels: panels,
+        pages: pages
+      };
+    };
+    let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, uiFragments, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
@@ -301,7 +334,8 @@ function Make(Spec) {
             eventCollector: param[1],
             extensionProtocols: [],
             apiSchemaFragment: apiSchemaFragment,
-            apiTarget: capturedDeployTarget
+            apiTarget: capturedDeployTarget,
+            uiFragments: uiFragments
           }));
           if (coreSetup !== undefined) {
             let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);
@@ -354,7 +388,8 @@ function Make(Spec) {
             ])),
             resolvers: resolvers,
             heartbeat: Component$ReventlessCore.outputs(heartbeat),
-            dcbEventLog: dcbResult.dcbEventLogOutputs
+            dcbEventLog: dcbResult.dcbEventLogOutputs,
+            uiFragments: uiFragments
           };
         });
         let pluginOutputs_id = builderOutputs.apply(outputs => outputs.id);
@@ -369,6 +404,7 @@ function Make(Spec) {
         let pluginOutputs_resolvers = builderOutputs.apply(outputs => outputs.resolvers);
         let pluginOutputs_heartbeat = builderOutputs.apply(outputs => outputs.heartbeat);
         let pluginOutputs_apiSchemaFragment = Pulumi.output(apiSchemaFragment);
+        let pluginOutputs_uiFragments = builderOutputs.apply(outputs => outputs.uiFragments);
         let pluginOutputs_dcbEventLog = builderOutputs.apply(outputs => outputs.dcbEventLog);
         let pluginOutputs_stateChangeSlices = builderOutputs.apply(outputs => outputs.stateChangeSlices);
         let pluginOutputs_stateViewSlices = builderOutputs.apply(outputs => outputs.stateViewSlices);
@@ -388,6 +424,7 @@ function Make(Spec) {
           resolvers: pluginOutputs_resolvers,
           heartbeat: pluginOutputs_heartbeat,
           apiSchemaFragment: pluginOutputs_apiSchemaFragment,
+          uiFragments: pluginOutputs_uiFragments,
           dcbEventLog: pluginOutputs_dcbEventLog,
           stateChangeSlices: pluginOutputs_stateChangeSlices,
           stateViewSlices: pluginOutputs_stateViewSlices,
@@ -400,7 +437,8 @@ function Make(Spec) {
       }, opts);
     };
     return {
-      make: make
+      make: make,
+      makeAutoUIManifest: makeAutoUIManifest
     };
   })))))))))));
 }

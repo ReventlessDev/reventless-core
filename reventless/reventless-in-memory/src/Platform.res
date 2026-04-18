@@ -587,6 +587,7 @@ module MakeWithConfig = (
     type role = unit
     type component = ReventlessCore.Plugin.component
     let make = PluginMaker.make
+    let makeAutoUIManifest = PluginMaker.makeAutoUIManifest
   }
 
   module EventCollectorChannel = EventCollectorChannel_InMemory.Make(Bus)
@@ -713,8 +714,9 @@ module MakeWithConfig = (
           outputs.extensionPoints,
           outputs.extensions,
           outputs.apiSchemaFragment,
+          outputs.uiFragments,
         )
-        ->Pulumi.Output.all6
+        ->Pulumi.Output.all7
         ->Pulumi.Output.apply(((
           id,
           version,
@@ -722,6 +724,7 @@ module MakeWithConfig = (
           extensionPoints,
           extensions,
           apiSchemaFragment,
+          uiFragments,
         )) => {
           let state: ReventlessCore.PluginReadModelSpec.state = {
             name: id->String.split("@")->Array.get(0)->Option.getOr(id),
@@ -749,6 +752,7 @@ module MakeWithConfig = (
             status: Connected,
             statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
             apiSchemaFragment,
+            uiFragments,
           }
           let entry =
             state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)

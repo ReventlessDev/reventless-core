@@ -18,6 +18,8 @@ type outputs = {
   resolvers: Pulumi.Output.t<array<Adapter.resource>>,
   heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
   apiSchemaFragment: Pulumi.Output.t<option<Reventless.Plugin.apiSchemaFragment>>,
+  /** UI fragment manifest for runtime micro-frontend registration (None for pure backend plugins). */
+  uiFragments: Pulumi.Output.t<option<Reventless.Plugin.uiFragmentManifest>>,
   /** Present when the plugin uses a `DcbEventLog`. */
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
   stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
@@ -54,6 +56,15 @@ module type T = {
     ~automationSlices: array<module(AutomationSlice.T)>=?,
     ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>=?,
     ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>=?,
+    ~uiFragments: Reventless.Plugin.uiFragmentManifest=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
+  let makeAutoUIManifest: (
+    ~remoteEntryUrl: string,
+    ~name: string,
+    ~aggregates: array<module(Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReadModel.T with type api = api and type role = role)>,
+    ~readModelPositions: array<string>=?,
+    ~aggregatePositions: array<string>=?,
+  ) => Reventless.Plugin.uiFragmentManifest
 }

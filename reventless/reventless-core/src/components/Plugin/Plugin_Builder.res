@@ -51,6 +51,7 @@ module Make = (
     ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>,
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
+    ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
     self,
     name,
   ) => {
@@ -470,6 +471,7 @@ module Make = (
             extensionProtocols: [],
             apiSchemaFragment: Some(apiSchemaFragment),
             apiTarget: Some(capturedDeployTarget),
+            uiFragments,
           })
 
         switch coreSetup {
@@ -584,6 +586,7 @@ module Make = (
           resolvers,
           heartbeat: heartbeat->Component.outputs,
           dcbEventLog: dcbResult.dcbEventLogOutputs,
+          uiFragments: (uiFragments: option<Reventless.Plugin.uiFragmentManifest>),
         }
       })
     }
@@ -611,6 +614,7 @@ module Make = (
       heartbeat: builderOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
       dcbEventLog: builderOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
       apiSchemaFragment: Pulumi.Output.make(Some(apiSchemaFragment)),
+      uiFragments: builderOutputs->Pulumi.Output.apply(outputs => outputs.uiFragments),
     }
     let _ = self->Component.setOutputs(pluginOutputs)
 
@@ -625,6 +629,57 @@ module Make = (
         ->toInteropMeta
         ->S.reverseConvertToJsonOrThrow(ReventlessInterop.ExportMeta.schema)
       )
+  }
+
+  let makeAutoUIManifest = (
+    ~remoteEntryUrl: string,
+    ~name: string,
+    ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
+    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>,
+    ~readModelPositions: array<string>=[],
+    ~aggregatePositions: array<string>=[],
+  ): Reventless.Plugin.uiFragmentManifest => {
+    let panels =
+      Array.concat(
+        readModels->Array.map((
+          module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+        ) =>
+          (
+            {
+              fragmentId: name ++ "." ++ R.Spec.name ++ ".list",
+              title: R.Spec.name,
+              description: "",
+              positions: readModelPositions,
+              requiredAccess: None,
+            }: Reventless.Plugin.panelManifestEntry
+          )
+        ),
+        aggregates->Array.map((module(M: ReventlessInfra.Aggregate.T with type api = api)) =>
+          (
+            {
+              fragmentId: name ++ "." ++ M.Spec.name ++ ".detail",
+              title: M.Spec.name,
+              description: "",
+              positions: aggregatePositions,
+              requiredAccess: None,
+            }: Reventless.Plugin.panelManifestEntry
+          )
+        ),
+      )
+    let pages =
+      readModels->Array.map((
+        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+      ) =>
+        (
+          {
+            fragmentId: name ++ "." ++ R.Spec.name ++ ".list",
+            title: R.Spec.name,
+            menuEntry: {label: R.Spec.name, icon: None, group: None, sortOrder: 0},
+            requiredAccess: None,
+          }: Reventless.Plugin.pageManifestEntry
+        )
+      )
+    {remoteEntryUrl, panels, pages}
   }
 
   let make = (
@@ -642,6 +697,7 @@ module Make = (
     ~automationSlices=[],
     ~outboundTranslationSlices=[],
     ~inboundTranslationSlices=[],
+    ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>=?,
     ~opts=?,
   ) => {
     let version = Reventless.PackageVersion.fromCaller()
@@ -661,6 +717,7 @@ module Make = (
         ~automationSlices,
         ~outboundTranslationSlices,
         ~inboundTranslationSlices,
+        ~uiFragments,
         ...
       ),
       ~opts,

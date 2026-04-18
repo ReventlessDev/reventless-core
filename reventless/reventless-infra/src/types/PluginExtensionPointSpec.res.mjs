@@ -97,6 +97,16 @@ let apiSchemaFragmentOptionSchema = Plugin$Reventless.apiSchemaFragmentOptionSch
 
 let stringOptionSchema = Plugin$Reventless.stringOptionSchema;
 
+let panelManifestEntrySchema = Plugin$Reventless.panelManifestEntrySchema;
+
+let menuEntrySchema = Plugin$Reventless.menuEntrySchema;
+
+let pageManifestEntrySchema = Plugin$Reventless.pageManifestEntrySchema;
+
+let uiFragmentManifestSchema = Plugin$Reventless.uiFragmentManifestSchema;
+
+let uiFragmentManifestOptionSchema = Plugin$Reventless.uiFragmentManifestOptionSchema;
+
 let pluginDefinitionSchema = Plugin$Reventless.pluginDefinitionSchema;
 
 let timeoutSchema = S.int;
@@ -111,6 +121,11 @@ export {
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
   stringOptionSchema,
+  panelManifestEntrySchema,
+  menuEntrySchema,
+  pageManifestEntrySchema,
+  uiFragmentManifestSchema,
+  uiFragmentManifestOptionSchema,
   pluginDefinitionSchema,
   timeoutSchema,
   forwardCommandSchema,

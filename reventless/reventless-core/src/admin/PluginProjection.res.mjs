@@ -56,7 +56,8 @@ function project(param) {
         extensions: extensions$1,
         status: "Connected",
         statusChange: statusChange,
-        apiSchemaFragment: undefined
+        apiSchemaFragment: undefined,
+        uiFragments: undefined
       };
       let frag = pluginDef.apiSchemaFragment;
       let withFrag;
@@ -67,14 +68,23 @@ function project(param) {
       } else {
         withFrag = base;
       }
+      let ui = pluginDef.uiFragments;
+      let withUi;
+      if (ui !== undefined) {
+        let newrecord$1 = {...withFrag};
+        newrecord$1.uiFragments = ui;
+        withUi = newrecord$1;
+      } else {
+        withUi = withFrag;
+      }
       let target = pluginDef.apiTarget;
       let state;
       if (target !== undefined) {
-        let newrecord$1 = {...withFrag};
-        newrecord$1.apiTarget = target;
-        state = newrecord$1;
+        let newrecord$2 = {...withUi};
+        newrecord$2.apiTarget = target;
+        state = newrecord$2;
       } else {
-        state = withFrag;
+        state = withUi;
       }
       return {
         TAG: "Set",
@@ -96,13 +106,22 @@ function project(param) {
         } else {
           withFrag = s;
         }
+        let ui = pluginDef$1.uiFragments;
+        let withUi;
+        if (ui !== undefined) {
+          let newrecord$1 = {...withFrag};
+          newrecord$1.uiFragments = ui;
+          withUi = newrecord$1;
+        } else {
+          withUi = withFrag;
+        }
         let target = pluginDef$1.apiTarget;
         if (target === undefined) {
-          return withFrag;
+          return withUi;
         }
-        let newrecord$1 = {...withFrag};
-        newrecord$1.apiTarget = target;
-        return newrecord$1;
+        let newrecord$2 = {...withUi};
+        newrecord$2.apiTarget = target;
+        return newrecord$2;
       };
       let defaultState = applyFragAndTarget({
         name: pluginDef$1.name,
@@ -114,7 +133,8 @@ function project(param) {
         extensions: extensions$2,
         status: "Connected",
         statusChange: statusChange,
-        apiSchemaFragment: undefined
+        apiSchemaFragment: undefined,
+        uiFragments: undefined
       });
       return {
         TAG: "UpdateWithDefault",
@@ -161,7 +181,8 @@ function project(param) {
           extensions: extensions$3,
           status: "Inactive",
           statusChange: statusChange,
-          apiSchemaFragment: undefined
+          apiSchemaFragment: undefined,
+          uiFragments: undefined
         },
         _2: state => {
           let newrecord = {...state};
@@ -186,7 +207,8 @@ function project(param) {
       extensions: extensions,
       status: "Disconnected",
       statusChange: statusChange,
-      apiSchemaFragment: undefined
+      apiSchemaFragment: undefined,
+      uiFragments: undefined
     },
     _2: state => {
       let newrecord = {...state};

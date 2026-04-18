@@ -41,7 +41,8 @@ function Make(RuntimeEnvironment) {
             eventCollector: "NOT-SET",
             extensionProtocols: [],
             apiSchemaFragment: undefined,
-            apiTarget: undefined
+            apiTarget: undefined,
+            uiFragments: undefined
           };
           let Callback = Admin_Callback$ReventlessCore.Make({
             pluginDefinition: fakePluginDefinition,
@@ -128,7 +129,8 @@ function Make(RuntimeEnvironment) {
               eventCollector: "NOT-SET",
               extensionProtocols: [],
               apiSchemaFragment: undefined,
-              apiTarget: undefined
+              apiTarget: undefined,
+              uiFragments: undefined
             };
             let Callback = Admin_Callback$ReventlessCore.Make({
               pluginDefinition: fakePluginDefinition,

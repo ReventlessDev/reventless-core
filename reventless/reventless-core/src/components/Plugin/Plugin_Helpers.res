@@ -28,6 +28,7 @@ type builderOutputs = {
   resolvers: array<ReventlessInfra.Adapter.resource>,
   heartbeat: Heartbeat.outputs,
   dcbEventLog: option<DcbEventLog.outputs>,
+  uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
 }
 
 let getRemoteStorageResources = (pluginName, queryDbName) =>

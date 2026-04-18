@@ -77,6 +77,7 @@ module Make = (
           extensionProtocols: [],
           apiSchemaFragment: None,
           apiTarget: None,
+          uiFragments: None,
         }
 
         module Callback = Admin_Callback.Make({

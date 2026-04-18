@@ -61,6 +61,42 @@ let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
 // js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
 let stringOptionSchema = _jsNullable(S.string, ())
 
+// ── UI fragment manifest types ────────────────────────────────────────────────
+
+@schema
+type panelManifestEntry = {
+  fragmentId: string,
+  title: string,
+  description: string,
+  positions: array<string>,
+  requiredAccess: @s.matches(stringOptionSchema) option<string>,
+}
+
+@schema
+type menuEntry = {
+  label: string,
+  icon: @s.matches(stringOptionSchema) option<string>,
+  group: @s.matches(stringOptionSchema) option<string>,
+  sortOrder: int,
+}
+
+@schema
+type pageManifestEntry = {
+  fragmentId: string,
+  title: string,
+  menuEntry: menuEntry,
+  requiredAccess: @s.matches(stringOptionSchema) option<string>,
+}
+
+@schema
+type uiFragmentManifest = {
+  remoteEntryUrl: string,
+  panels: array<panelManifestEntry>,
+  pages: array<pageManifestEntry>,
+}
+
+let uiFragmentManifestOptionSchema = _jsNullable(uiFragmentManifestSchema, ())
+
 /**
 The self-description of a deployed plugin, persisted in the plugin's event store.
 
@@ -89,5 +125,7 @@ type pluginDefinition = {
   // Uses @s.matches(stringOptionSchema) — js_nullable creates string | null (not string | undefined),
   // which passes sury's jsonableValidation inside union variant payloads.
   apiTarget: @s.matches(stringOptionSchema) option<string>,
+  // UI fragment manifest contributed by this plugin (optional, absent for pure backend plugins).
+  uiFragments: @s.matches(uiFragmentManifestOptionSchema) option<uiFragmentManifest>,
 }
 

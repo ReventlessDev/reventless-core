@@ -189,7 +189,7 @@ function Make(Platform) {
   ], [
     ProductDemandViewSlice,
     ProductsViewSlice
-  ], undefined, undefined, [ImportProductSlice], undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined, undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,

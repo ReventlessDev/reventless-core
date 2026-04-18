@@ -530,8 +530,11 @@ function MakeWithConfig(Config) {
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
   });
+  let Plugin_make = PluginMaker.make;
+  let Plugin_makeAutoUIManifest = PluginMaker.makeAutoUIManifest;
   let Plugin = {
-    make: PluginMaker.make
+    make: Plugin_make,
+    makeAutoUIManifest: Plugin_makeAutoUIManifest
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
@@ -668,7 +671,8 @@ function MakeWithConfig(Config) {
         outputs.eventCollector,
         outputs.extensionPoints,
         outputs.extensions,
-        outputs.apiSchemaFragment
+        outputs.apiSchemaFragment,
+        outputs.uiFragments
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
@@ -698,6 +702,7 @@ function MakeWithConfig(Config) {
           by: "in-memory"
         };
         let state_apiSchemaFragment = param[5];
+        let state_uiFragments = param[6];
         let state = {
           name: state_name,
           version: state_version,
@@ -708,7 +713,8 @@ function MakeWithConfig(Config) {
           extensions: state_extensions,
           status: "Connected",
           statusChange: state_statusChange,
-          apiSchemaFragment: state_apiSchemaFragment
+          apiSchemaFragment: state_apiSchemaFragment,
+          uiFragments: state_uiFragments
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
@@ -1612,8 +1618,11 @@ function Make($star) {
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
   });
+  let Plugin_make = PluginMaker.make;
+  let Plugin_makeAutoUIManifest = PluginMaker.makeAutoUIManifest;
   let Plugin = {
-    make: PluginMaker.make
+    make: Plugin_make,
+    makeAutoUIManifest: Plugin_makeAutoUIManifest
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
@@ -1750,7 +1759,8 @@ function Make($star) {
         outputs.eventCollector,
         outputs.extensionPoints,
         outputs.extensions,
-        outputs.apiSchemaFragment
+        outputs.apiSchemaFragment,
+        outputs.uiFragments
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
@@ -1780,6 +1790,7 @@ function Make($star) {
           by: "in-memory"
         };
         let state_apiSchemaFragment = param[5];
+        let state_uiFragments = param[6];
         let state = {
           name: state_name,
           version: state_version,
@@ -1790,7 +1801,8 @@ function Make($star) {
           extensions: state_extensions,
           status: "Connected",
           statusChange: state_statusChange,
-          apiSchemaFragment: state_apiSchemaFragment
+          apiSchemaFragment: state_apiSchemaFragment,
+          uiFragments: state_uiFragments
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);

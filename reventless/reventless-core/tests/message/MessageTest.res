@@ -36,6 +36,7 @@ describe("Message should", () => {
       extensionProtocols: [],
       apiSchemaFragment: None,
       apiTarget: None,
+      uiFragments: None,
     })
     let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)

@@ -868,6 +868,7 @@ module MakeWithConfig = (
     type role = Types.AppSync.role
     type component = ReventlessCore.Plugin.component
     let make = PluginBuilderImpl.make
+    let makeAutoUIManifest = PluginBuilderImpl.makeAutoUIManifest
   }
 
   module RuntimeEnvironment = RuntimeEnvironment.Lambda
