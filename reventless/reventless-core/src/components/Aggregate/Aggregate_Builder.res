@@ -109,7 +109,7 @@ module Make = (
           // In-memory: bind generateCommand to resolver stubs directly,
           // skipping the adapter-driven forCommandGenerator path.
           let fields =
-            switch Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.get(Spec.name) {
+            switch Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name) {
             | Some(registeredFields) if registeredFields->Array.length > 0 => registeredFields
             | _ => []
             }

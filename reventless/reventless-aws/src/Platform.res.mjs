@@ -451,7 +451,7 @@ function MakeWithConfig(Config) {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
-      let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[readModelName], qn => qn.returnTypeName), readModelName);
+      let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
       let noneDs = AppSync_DataSource$PulumiAws.makeNoneDataSource(returnTypeName + "StateTopicNone", graphqlApi, customOpts);
       AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", noneDs.name, `{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`, customOpts);
@@ -1331,7 +1331,7 @@ function Make($star) {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
-      let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[readModelName], qn => qn.returnTypeName), readModelName);
+      let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
       let noneDs = AppSync_DataSource$PulumiAws.makeNoneDataSource(returnTypeName + "StateTopicNone", graphqlApi, customOpts);
       AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", noneDs.name, `{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`, customOpts);

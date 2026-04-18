@@ -8,7 +8,7 @@ module Callback = ReventlessCore.InboundTranslationSlice_Callback.Make(PaymentWe
 
 describe("InboundTranslationSlice Callback", () => {
   let _ = beforeEach(() => {
-    Callback.auditLog := Dict.make()
+    Callback.auditLog->Dict.keysToArray->Array.forEach(k => Callback.auditLog->Dict.delete(k))
   })
 
   describe("receive", () => {
@@ -38,7 +38,7 @@ describe("InboundTranslationSlice Callback", () => {
       expect(cmd.id)->toBe("ord-1")
 
       // Audit log should have one entry
-      let auditEntries = Callback.auditLog.contents->Dict.toArray
+      let auditEntries = Callback.auditLog->Dict.toArray
       expect(auditEntries->Array.length)->toBe(1)
       let (_, auditRow) = auditEntries->Array.getUnsafe(0)
       expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)
@@ -66,7 +66,7 @@ describe("InboundTranslationSlice Callback", () => {
       }
       expect(publishedCommands.contents->Array.length)->toBe(0)
 
-      let auditEntries = Callback.auditLog.contents->Dict.toArray
+      let auditEntries = Callback.auditLog->Dict.toArray
       expect(auditEntries->Array.length)->toBe(1)
       let (_, auditRow) = auditEntries->Array.getUnsafe(0)
       expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
@@ -85,7 +85,7 @@ describe("InboundTranslationSlice Callback", () => {
       | Ok(_) => expect(true)->toBe(false)
       }
 
-      let auditEntries = Callback.auditLog.contents->Dict.toArray
+      let auditEntries = Callback.auditLog->Dict.toArray
       expect(auditEntries->Array.length)->toBe(1)
       let (_, auditRow) = auditEntries->Array.getUnsafe(0)
       expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
@@ -110,7 +110,7 @@ describe("InboundTranslationSlice Callback", () => {
       | Ok(_) => expect(true)->toBe(false)
       }
 
-      let auditEntries = Callback.auditLog.contents->Dict.toArray
+      let auditEntries = Callback.auditLog->Dict.toArray
       expect(auditEntries->Array.length)->toBe(1)
       let (_, auditRow) = auditEntries->Array.getUnsafe(0)
       expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Failure)
@@ -166,7 +166,7 @@ describe("InboundTranslationSlice Callback", () => {
       // All 3 commands published in one batch
       expect(publishedCommands.contents->Array.length)->toBe(3)
 
-      let auditEntries = MultiCallback.auditLog.contents->Dict.toArray
+      let auditEntries = MultiCallback.auditLog->Dict.toArray
       expect(auditEntries->Array.length)->toBe(1)
       let (_, auditRow) = auditEntries->Array.getUnsafe(0)
       expect(auditRow.status)->toBe(ReventlessCore.InboundTranslationSlice_Callback.Success)

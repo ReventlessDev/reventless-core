@@ -26,7 +26,7 @@ module type T = {
   module Spec: Reventless.OutboundTranslationSlice.Spec
 
   /** The in-memory TODO list -- maps item ID to row. */
-  let todoItems: ref<Dict.t<todoRow>>
+  let todoItems: Dict.t<todoRow>
 
   /** Phase 1: update TODO list from a batch of events (collect only, no resolve). */
   let phase1: array<Spec.consumedEvent> => unit
@@ -38,7 +38,7 @@ module type T = {
 module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  let todoItems: ref<Dict.t<todoRow>> = ref(Dict.make())
+  let todoItems: Dict.t<todoRow> = Dict.make()
 
   let now = () => Date.make()->Date.toISOString
 
@@ -55,7 +55,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
     events->Array.forEach(event => {
       // Collect new outbound items
       Spec.collect(event)->Array.forEach(((id, item)) => {
-        switch todoItems.contents->Dict.get(id) {
+        switch todoItems->Dict.get(id) {
         | Some(_) => () // Already exists -- skip (idempotent)
         | None =>
           let row: todoRow = {
@@ -64,7 +64,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
             createdAt: now(),
             retryCount: 0,
           }
-          todoItems.contents->Dict.set(id, row)
+          todoItems->Dict.set(id, row)
         }
       })
     })
@@ -72,7 +72,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
 
   let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {
     let pending =
-      todoItems.contents
+      todoItems
       ->Dict.toArray
       ->Array.filter(((_, row)) =>
         row.status == Pending || (row.status == Failed && row.retryCount < Spec.maxRetries)
@@ -95,7 +95,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
       switch item {
       | None => ()
       | Some(item) =>
-        todoItems.contents->Dict.set(id, {...row, status: Processing, processedAt: now()})
+        todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
 
         let result = try await Spec.translate(id, item) catch {
         | exn =>
@@ -131,7 +131,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
                 commandJson,
               }
               await publishJsons([msg])
-              todoItems.contents->Dict.set(id, {...row, status: Completed, completedAt: now()})
+              todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
             } catch {
             | exn =>
               let errMsg =
@@ -139,13 +139,13 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
               Effect.logError(
                 `OutboundTranslationSlice(${Spec.name}): failed to publish command: ${errMsg}`,
               )->Effect.runSync
-              todoItems.contents->Dict.set(
+              todoItems->Dict.set(
                 id,
                 {...row, status: Failed, retryCount: row.retryCount + 1},
               )
             }
           | None =>
-            todoItems.contents->Dict.set(
+            todoItems->Dict.set(
               id,
               {...row, status: Failed, retryCount: row.retryCount + 1},
             )
@@ -153,10 +153,10 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (T with module S
 
         | Ok(None) =>
           // Fire-and-forget: no command to publish
-          todoItems.contents->Dict.set(id, {...row, status: Completed, completedAt: now()})
+          todoItems->Dict.set(id, {...row, status: Completed, completedAt: now()})
 
         | Error(msg) =>
-          todoItems.contents->Dict.set(
+          todoItems->Dict.set(
             id,
             {...row, status: Failed, retryCount: row.retryCount + 1, lastError: msg},
           )

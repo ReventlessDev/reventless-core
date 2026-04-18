@@ -312,28 +312,28 @@ module Make = (
             }
           | None => qn
           }
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(V.Spec.name, qn)
+          Plugin_Helpers.queryFieldNamesRegistry->Dict.set(V.Spec.name, qn)
         })
 
         automationSlices->Array.forEach((
           module(A: AutomationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=A.queryDbName)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(A.queryDbName, qn)
+          Plugin_Helpers.queryFieldNamesRegistry->Dict.set(A.queryDbName, qn)
         })
 
         outboundTranslationSlices->Array.forEach((
           module(O: OutboundTranslationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=O.queryDbName)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(O.queryDbName, qn)
+          Plugin_Helpers.queryFieldNamesRegistry->Dict.set(O.queryDbName, qn)
         })
 
         inboundTranslationSlices->Array.forEach((
           module(I: InboundTranslationSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForSliceQueryDb(~plugin=name, ~queryDbName=I.queryDbName)
-          Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(I.queryDbName, qn)
+          Plugin_Helpers.queryFieldNamesRegistry->Dict.set(I.queryDbName, qn)
         })
 
         // Create StateViewSlices

@@ -318,13 +318,9 @@ function clearOnPlatformDeployed() {
   onPlatformDeployedHook.contents = undefined;
 }
 
-let queryFieldNamesRegistry = {
-  contents: {}
-};
+let queryFieldNamesRegistry = {};
 
-let aggregateMutationFieldsRegistry = {
-  contents: {}
-};
+let aggregateMutationFieldsRegistry = {};
 
 let noHooks_adminExtensionPoints = {
   contents: Pulumi.output({})
@@ -533,13 +529,12 @@ function exportPluginOutputs(pluginOutputs) {
   }
   let actor = Stdlib_Option.getOr(Stdlib_Option.orElse(Stdlib_Option.orElse(process.env["GITHUB_ACTOR"], process.env["CI_COMMIT_AUTHOR"]), process.env["USER"]), "local");
   let deploymentId = Stdlib_Option.getOr(Stdlib_Option.orElse(process.env["GITHUB_SHA"], process.env["CI_COMMIT_SHA"]), new Date().toISOString());
-  let schemaFor = name => Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry.contents[name], {});
   let resolveAggregates = Output$Pulumi.flatMap(pluginOutputs.aggregates, aggs => Pulumi.all(Object.entries(aggs).map(param => {
     let name = param[0];
     return Aggregate$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "Aggregate",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: [],
       subComponents: [
         {
@@ -566,7 +561,7 @@ function exportPluginOutputs(pluginOutputs) {
     return ReadModel$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "ReadModel",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: [],
       subComponents: [{
           role: "queryDb",
@@ -579,7 +574,7 @@ function exportPluginOutputs(pluginOutputs) {
     return ExtensionPoint$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "ExtensionPoint",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: [],
       subComponents: [
         {
@@ -598,7 +593,7 @@ function exportPluginOutputs(pluginOutputs) {
     return StateChangeSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "StateChangeSlice",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: resolved.resources,
       subComponents: []
     }));
@@ -608,7 +603,7 @@ function exportPluginOutputs(pluginOutputs) {
     return StateViewSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "StateViewSlice",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: resolved.resources,
       subComponents: [{
           role: "queryDb",
@@ -621,7 +616,7 @@ function exportPluginOutputs(pluginOutputs) {
     return AutomationSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "AutomationSlice",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: resolved.resources,
       subComponents: [{
           role: "queryDb",
@@ -634,7 +629,7 @@ function exportPluginOutputs(pluginOutputs) {
     return OutboundTranslationSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "OutboundTranslationSlice",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: resolved.resources,
       subComponents: [{
           role: "queryDb",
@@ -647,7 +642,7 @@ function exportPluginOutputs(pluginOutputs) {
     return InboundTranslationSlice$ReventlessCore.toResolvedOutputs(param[1]).apply(resolved => ({
       name: name,
       kind: "InboundTranslationSlice",
-      schema: schemaFor(name),
+      schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry[name], {}),
       resources: resolved.resources,
       subComponents: [{
           role: "queryDb",
@@ -660,7 +655,7 @@ function exportPluginOutputs(pluginOutputs) {
       return DcbEventLog$ReventlessCore.toResolvedOutputs(opt).apply(resolved => [{
           name: "DcbEventLog",
           kind: "DcbEventLog",
-          schema: schemaFor("DcbEventLog"),
+          schema: Stdlib_Option.getOr(Plugin_BuiltHook$ReventlessCore.componentSchemaRegistry["DcbEventLog"], {}),
           resources: resolved.resources,
           subComponents: [{
               role: "eventTopic",

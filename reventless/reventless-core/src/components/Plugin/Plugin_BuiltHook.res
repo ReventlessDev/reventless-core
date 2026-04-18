@@ -106,7 +106,7 @@ type pluginBuiltInfo = {
 
 // Registry for component schemas — populated during Plugin_Builder.construct,
 // read by exportPluginOutputs to populate pluginDeployedComponent.schema.
-let componentSchemaRegistry: ref<dict<pluginDeployedSchema>> = ref(Dict.make())
+let componentSchemaRegistry: dict<pluginDeployedSchema> = Dict.make()
 
 // Optional metadata consumers register before platform construction to
 // attach classification info to pluginBuiltInfo / pluginDeployedInfo.

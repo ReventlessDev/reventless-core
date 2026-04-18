@@ -802,7 +802,7 @@ module MakeWithConfig = (
         allQueryDbs->Dict.forEachWithKey((_queryDbOutputs, readModelName) => {
           if QueryDbStorage_DynamoDbStream.streamRegistry->Set.has(readModelName) {
             let returnTypeName =
-              ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+              ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
               ->Dict.get(readModelName)
               ->Option.map(qn => qn.returnTypeName)
               ->Option.getOr(readModelName)

@@ -57,7 +57,7 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
 ) => {
   let dataSourceName = dataSourceName->Pulumi.Output.asInput
   let name = name->String.capitalize
-  let registryEntry = ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.get(name)
+  let registryEntry = ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry->Dict.get(name)
 
   // In plugin mode, use plugin-prefixed field names from the registry.
   let fieldNameForSingle = switch registryEntry {

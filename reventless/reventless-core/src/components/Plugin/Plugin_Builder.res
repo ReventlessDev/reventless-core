@@ -115,7 +115,7 @@ module Make = (
               Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=M.Spec.name, ~command=cname)
             )
           // Register plugin-prefixed field names for CommandGenerator_Builder.
-          Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.set(M.Spec.name, fieldNames)
+          Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.set(M.Spec.name, fieldNames)
           if fieldNames->Array.length === 0 {
             []
           } else {
@@ -176,7 +176,7 @@ module Make = (
         }
       | None => qn
       }
-      Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.set(R.Spec.name, qn)
+      Plugin_Helpers.queryFieldNamesRegistry->Dict.set(R.Spec.name, qn)
     })
 
     let apiSchemaFragment = {
@@ -253,7 +253,7 @@ module Make = (
             SchemaWalker.walk(M.Spec.name ++ ".event", M.Spec.eventSchema),
           ],
         }
-        Plugin_Helpers.componentSchemaRegistry.contents->Dict.set(M.Spec.name, schema)
+        Plugin_Helpers.componentSchemaRegistry->Dict.set(M.Spec.name, schema)
         ({name: M.Spec.name, kind: "Aggregate", schema}: Plugin_Helpers.pluginBuiltComponent)
       })
 
@@ -264,7 +264,7 @@ module Make = (
         let schema: Plugin_Helpers.pluginDeployedSchema = {
           queryFields: [qn.singleFieldName, qn.listFieldName],
         }
-        Plugin_Helpers.componentSchemaRegistry.contents->Dict.set(R.Spec.name, schema)
+        Plugin_Helpers.componentSchemaRegistry->Dict.set(R.Spec.name, schema)
         ({name: R.Spec.name, kind: "ReadModel", schema}: Plugin_Helpers.pluginBuiltComponent)
       })
 

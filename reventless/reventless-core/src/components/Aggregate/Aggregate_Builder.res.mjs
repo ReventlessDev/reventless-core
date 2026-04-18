@@ -51,7 +51,7 @@ function Make(Spec) {
       let commandGenerator = SpecificCommandGenerator.make(name, opts);
       let bindHandler = HooksConfig.hooks.mutationBindHook;
       if (bindHandler !== undefined) {
-        let registeredFields = Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name];
+        let registeredFields = Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry[Spec.name];
         let fields = registeredFields !== undefined ? (
             registeredFields.length !== 0 ? registeredFields : []
           ) : [];

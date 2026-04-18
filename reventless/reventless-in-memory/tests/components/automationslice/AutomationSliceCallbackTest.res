@@ -11,14 +11,14 @@ open ReventlessCore.AutomationSlice_Callback
 
 describe("AutomationSlice Callback", () => {
   let _ = beforeEach(() => {
-    Callback.todoItems := Dict.make()
-    SkipCallback.todoItems := Dict.make()
+    Callback.todoItems->Dict.keysToArray->Array.forEach(k => Callback.todoItems->Dict.delete(k))
+    SkipCallback.todoItems->Dict.keysToArray->Array.forEach(k => SkipCallback.todoItems->Dict.delete(k))
   })
 
   describe("Phase 1 — collect", () => {
     testPromise("OrderPlaced event creates a pending TODO item", async () => {
       Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
-      let items = Callback.todoItems.contents
+      let items = Callback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(1)
       let row = items->Dict.get("ord-1")
       expect(row->Option.isSome)->toBe(true)
@@ -30,7 +30,7 @@ describe("AutomationSlice Callback", () => {
     testPromise("duplicate OrderPlaced does not create a second TODO item (idempotent)", async () => {
       Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
       Callback.phase1([OrderPlaced({orderId: "ord-1", address: "456 Oak Ave"})])
-      let items = Callback.todoItems.contents
+      let items = Callback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(1)
     })
 
@@ -39,13 +39,13 @@ describe("AutomationSlice Callback", () => {
         OrderPlaced({orderId: "ord-1", address: "123 Main St"}),
         OrderPlaced({orderId: "ord-2", address: "456 Oak Ave"}),
       ])
-      let items = Callback.todoItems.contents
+      let items = Callback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(2)
     })
 
     testPromise("ShipmentCreated event does not create a TODO item", async () => {
       Callback.phase1([ShipmentCreated({orderId: "ord-1"})])
-      let items = Callback.todoItems.contents
+      let items = Callback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(0)
     })
   })
@@ -54,13 +54,13 @@ describe("AutomationSlice Callback", () => {
     testPromise("ShipmentCreated marks pending TODO item as completed", async () => {
       Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
       Callback.phase1([ShipmentCreated({orderId: "ord-1"})])
-      let row = Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow
+      let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Completed)
     })
 
     testPromise("ShipmentCreated for unknown id is a no-op", async () => {
       Callback.phase1([ShipmentCreated({orderId: "unknown"})])
-      let items = Callback.todoItems.contents
+      let items = Callback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(0)
     })
   })
@@ -79,7 +79,7 @@ describe("AutomationSlice Callback", () => {
       expect(cmd.id)->toBe("ord-1")
 
       // Item should be in Processing status after phase2
-      let row = Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow
+      let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Processing)
     })
 
@@ -103,7 +103,7 @@ describe("AutomationSlice Callback", () => {
       await SkipCallback.phase2(mockPublish)
       expect(publishedCommands.contents->Array.length)->toBe(0)
       // Item stays Pending when process returns None
-      let row = SkipCallback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow
+      let row = SkipCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Pending)
     })
 
@@ -122,7 +122,7 @@ describe("AutomationSlice Callback", () => {
         JsError.throwWithMessage("publish failed")
       }
       await Callback.phase2(failingPublish)
-      let row = Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow
+      let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Failed)
       expect(row.retryCount)->toBe(1)
     })
@@ -134,7 +134,7 @@ describe("AutomationSlice Callback", () => {
         JsError.throwWithMessage("publish failed")
       }
       await Callback.phase2(failingPublish)
-      let row1 = Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow
+      let row1 = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row1.retryCount)->toBe(1)
 
       // Second attempt succeeds
@@ -144,7 +144,7 @@ describe("AutomationSlice Callback", () => {
       }
       await Callback.phase2(successPublish)
       expect(publishedCommands.contents->Array.length)->toBe(1)
-      let row2 = Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow
+      let row2 = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row2.status)->toBe(Processing)
     })
   })
@@ -153,7 +153,7 @@ describe("AutomationSlice Callback", () => {
     testPromise("collect → process → resolve completes the TODO item", async () => {
       // 1. Collect
       Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
-      expect((Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
         Pending,
       )
 
@@ -164,13 +164,13 @@ describe("AutomationSlice Callback", () => {
       }
       await Callback.phase2(mockPublish)
       expect(publishedCommands.contents->Array.length)->toBe(1)
-      expect((Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
         Processing,
       )
 
       // 3. Resolve
       Callback.phase1([ShipmentCreated({orderId: "ord-1"})])
-      expect((Callback.todoItems.contents->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
         Completed,
       )
 

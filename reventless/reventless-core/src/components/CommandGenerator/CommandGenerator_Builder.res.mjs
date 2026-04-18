@@ -11,7 +11,7 @@ import * as CommandGenerator_Callback$ReventlessCore from "./CommandGenerator_Ca
 function Make(Spec) {
   return Resolvers => {
     let construct = (self, _name) => {
-      let resources = Stdlib_Option.getOr(Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name], []).map(field => ({
+      let resources = Stdlib_Option.getOr(Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry[Spec.name], []).map(field => ({
         name: Pulumi.output(""),
         id: Pulumi.output(""),
         urn: Pulumi.output(""),
@@ -39,7 +39,7 @@ function Make(Spec) {
       let opts = {
         parent: opts_parent
       };
-      let fields = Stdlib_Option.getOr(Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[Spec.name], []);
+      let fields = Stdlib_Option.getOr(Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry[Spec.name], []);
       let resolvers = Resolvers.make(name, api, fields, Spec.commandSchema, runtime, resources, opts);
       let cgOutputs = {
         resources: resolvers.resources

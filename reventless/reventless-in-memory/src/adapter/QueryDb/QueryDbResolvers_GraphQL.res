@@ -124,7 +124,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     // Resolve query field names: check registry first, fall back to safe defaults.
     // Fallbacks use simple GraphQL built-in types to avoid referencing non-existent custom types.
-    let registryEntry = Plugin_Helpers.queryFieldNamesRegistry.contents->Dict.get(name)
+    let registryEntry = Plugin_Helpers.queryFieldNamesRegistry->Dict.get(name)
     let singleQueryName = switch registryEntry {
     | Some({singleFieldName}) => singleFieldName
     | None => name->String.charAt(0)->String.toLowerCase ++ name->String.slice(~start=1)

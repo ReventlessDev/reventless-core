@@ -69,7 +69,7 @@ function Make(Bus) {
       }
     };
     let cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-    let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[name];
+    let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name];
     let singleQueryName = registryEntry !== undefined ? registryEntry.singleFieldName : name.charAt(0).toLowerCase() + name.slice(1);
     let listQueryName = registryEntry !== undefined ? registryEntry.listFieldName : name + "s";
     let returnTypeName = registryEntry !== undefined ? registryEntry.returnTypeName : "String";

@@ -22,7 +22,7 @@ module type T = {
   module Spec: Reventless.InboundTranslationSlice.Spec
 
   /** The audit log -- maps request ID to audit row. */
-  let auditLog: ref<Dict.t<auditRow>>
+  let auditLog: Dict.t<auditRow>
 
   /** Receive external input, translate it, and publish commands. */
   let receive: (
@@ -34,7 +34,7 @@ module type T = {
 module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  let auditLog: ref<Dict.t<auditRow>> = ref(Dict.make())
+  let auditLog: Dict.t<auditRow> = Dict.make()
 
   let now = () => Date.make()->Date.toISOString
 
@@ -66,7 +66,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
 
     switch input {
     | Error(msg) =>
-      auditLog.contents->Dict.set(
+      auditLog->Dict.set(
         requestId,
         {
           input: inputJson->JSON.stringify,
@@ -81,7 +81,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
       switch Spec.translate(input) {
       | Ok(pairs) =>
         if pairs->Array.length === 0 {
-          auditLog.contents->Dict.set(
+          auditLog->Dict.set(
             requestId,
             {
               input: inputJson->JSON.stringify,
@@ -121,7 +121,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
 
           switch encodeError.contents {
           | Some(msg) =>
-            auditLog.contents->Dict.set(
+            auditLog->Dict.set(
               requestId,
               {
                 input: inputJson->JSON.stringify,
@@ -138,7 +138,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
                 let (targetId, _) = pair
                 targetId
               })
-              auditLog.contents->Dict.set(
+              auditLog->Dict.set(
                 requestId,
                 {
                   input: inputJson->JSON.stringify,
@@ -156,7 +156,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
                 ->JsExn.fromException
                 ->Option.flatMap(JsExn.message)
                 ->Option.getOr("publish failed")
-              auditLog.contents->Dict.set(
+              auditLog->Dict.set(
                 requestId,
                 {
                   input: inputJson->JSON.stringify,
@@ -171,7 +171,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Sp
         }
 
       | Error(msg) =>
-        auditLog.contents->Dict.set(
+        auditLog->Dict.set(
           requestId,
           {
             input: inputJson->JSON.stringify,

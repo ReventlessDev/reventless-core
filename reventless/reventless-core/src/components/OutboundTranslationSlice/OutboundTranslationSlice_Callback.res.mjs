@@ -29,9 +29,7 @@ let todoRowSchema = S.schema(s => ({
 }));
 
 function Make(Spec) {
-  let todoItems = {
-    contents: {}
-  };
+  let todoItems = {};
   let makeMeta = () => ({
     service: `OutboundTranslationSlice:` + Spec.name,
     time: new Date().toISOString(),
@@ -44,7 +42,7 @@ function Make(Spec) {
     events.forEach(event => {
       Spec.collect(event).forEach(param => {
         let id = param[0];
-        let match = todoItems.contents[id];
+        let match = todoItems[id];
         if (match !== undefined) {
           return;
         }
@@ -56,12 +54,12 @@ function Make(Spec) {
           createdAt: row_createdAt,
           retryCount: 0
         };
-        todoItems.contents[id] = row;
+        todoItems[id] = row;
       });
     });
   };
   let phase2 = async publishJsons => {
-    let pending = Object.entries(todoItems.contents).filter(param => {
+    let pending = Object.entries(todoItems).filter(param => {
       let row = param[1];
       if (row.status === "Pending") {
         return true;
@@ -90,7 +88,7 @@ function Make(Spec) {
       let newrecord = {...row};
       newrecord.processedAt = new Date().toISOString();
       newrecord.status = "Processing";
-      todoItems.contents[id] = newrecord;
+      todoItems[id] = newrecord;
       let result;
       try {
         result = await Spec.translate(id, Primitive_option.valFromOption(item));
@@ -127,7 +125,7 @@ function Make(Spec) {
               let newrecord$1 = {...row};
               newrecord$1.completedAt = new Date().toISOString();
               newrecord$1.status = "Completed";
-              todoItems.contents[id] = newrecord$1;
+              todoItems[id] = newrecord$1;
               return;
             } catch (raw_exn$3) {
               let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
@@ -136,21 +134,21 @@ function Make(Spec) {
               let newrecord$2 = {...row};
               newrecord$2.retryCount = row.retryCount + 1 | 0;
               newrecord$2.status = "Failed";
-              todoItems.contents[id] = newrecord$2;
+              todoItems[id] = newrecord$2;
               return;
             }
           } else {
             let newrecord$3 = {...row};
             newrecord$3.retryCount = row.retryCount + 1 | 0;
             newrecord$3.status = "Failed";
-            todoItems.contents[id] = newrecord$3;
+            todoItems[id] = newrecord$3;
             return;
           }
         } else {
           let newrecord$4 = {...row};
           newrecord$4.completedAt = new Date().toISOString();
           newrecord$4.status = "Completed";
-          todoItems.contents[id] = newrecord$4;
+          todoItems[id] = newrecord$4;
           return;
         }
       } else {
@@ -158,7 +156,7 @@ function Make(Spec) {
         newrecord$5.lastError = result._0;
         newrecord$5.retryCount = row.retryCount + 1 | 0;
         newrecord$5.status = "Failed";
-        todoItems.contents[id] = newrecord$5;
+        todoItems[id] = newrecord$5;
         return;
       }
     });

@@ -156,7 +156,7 @@ function MakeWithConfig(Config) {
     mcp.registerResourcesFromEntries(pluginName, queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
-      let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => {
+      let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => {
         let entry = param[1];
         if (entry.singleFieldName === resourceName) {
           return true;
@@ -313,7 +313,7 @@ function MakeWithConfig(Config) {
     let server = resolveTargetGraphQL();
     eventLogEntries.forEach(entry => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceA(Bus.subscribeToEvents, entry.displayName, entry.busKey));
     queryEntries.forEach(entry => {
-      let readModelName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => param[1].returnTypeName === entry.returnTypeName), param => param[0]), entry.returnTypeName);
+      let readModelName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => param[1].returnTypeName === entry.returnTypeName), param => param[0]), entry.returnTypeName);
       GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceB(Bus.subscribeToStateChanges, readModelName, entry.returnTypeName);
     });
     let sourceAEntries = eventLogEntries.map(e => {
@@ -1239,7 +1239,7 @@ function Make($star) {
     mcp.registerResourcesFromEntries(pluginName, queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
-      let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => {
+      let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => {
         let entry = param[1];
         if (entry.singleFieldName === resourceName) {
           return true;
@@ -1396,7 +1396,7 @@ function Make($star) {
     let server = resolveTargetGraphQL();
     eventLogEntries.forEach(entry => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceA(Bus.subscribeToEvents, entry.displayName, entry.busKey));
     queryEntries.forEach(entry => {
-      let readModelName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents).find(param => param[1].returnTypeName === entry.returnTypeName), param => param[0]), entry.returnTypeName);
+      let readModelName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => param[1].returnTypeName === entry.returnTypeName), param => param[0]), entry.returnTypeName);
       GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceB(Bus.subscribeToStateChanges, readModelName, entry.returnTypeName);
     });
     let sourceAEntries = eventLogEntries.map(e => {

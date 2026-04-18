@@ -70,7 +70,7 @@ function Make(Spec) {
           let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
           let filteredConstructorNames = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants(constructorNames, commandSchema);
           let fieldNames = filteredConstructorNames.map(cname => Api_Naming$ReventlessCore.aggregateMutationField(extra$1, M.Spec.name, cname));
-          Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry.contents[M.Spec.name] = fieldNames;
+          Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry[M.Spec.name] = fieldNames;
           if (fieldNames.length === 0) {
             return [];
           } else {
@@ -114,7 +114,7 @@ function Make(Spec) {
           } else {
             qn$1 = qn;
           }
-          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[R.Spec.name] = qn$1;
+          Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[R.Spec.name] = qn$1;
         });
         let baseFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
         let subResult = Plugin_SubscriptionSchema$ReventlessCore.generate(mutationEntries, queryEntries, eventLogEntries);
@@ -164,7 +164,7 @@ function Make(Spec) {
             commandSchemas: schema_commandSchemas,
             eventSchemas: schema_eventSchemas
           };
-          Plugin_Helpers$ReventlessCore.componentSchemaRegistry.contents[M.Spec.name] = schema;
+          Plugin_Helpers$ReventlessCore.componentSchemaRegistry[M.Spec.name] = schema;
           return {
             name: M.Spec.name,
             kind: "Aggregate",
@@ -180,7 +180,7 @@ function Make(Spec) {
           let schema = {
             queryFields: schema_queryFields
           };
-          Plugin_Helpers$ReventlessCore.componentSchemaRegistry.contents[R.Spec.name] = schema;
+          Plugin_Helpers$ReventlessCore.componentSchemaRegistry[R.Spec.name] = schema;
           return {
             name: R.Spec.name,
             kind: "ReadModel",

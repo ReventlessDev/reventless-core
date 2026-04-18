@@ -49,7 +49,7 @@ module Make = (
     let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
 
     let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations) => {
-      let items = Callback.todoItems.contents->Dict.toArray
+      let items = Callback.todoItems->Dict.toArray
       let _ = await items->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
         let _ = await prev
         let _ = await queryDbOps.save(

@@ -5,7 +5,7 @@ module Make = (
   CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts and type api := Resolvers.api
 ) => {
   let construct = (self, _name) => {
-    let resources = Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.get(Spec.name)->Option.getOr([])->Array.map(field => {
+    let resources = Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name)->Option.getOr([])->Array.map(field => {
       let r: ReventlessInfra.Adapter.resource = {
         id: ""->Pulumi.Output.make,
         resourceInfo: ReventlessInfra.Adapter.ApiResolver({typeName: "Mutation", fieldName: field})->Pulumi.Output.make,
@@ -32,7 +32,7 @@ module Make = (
       ->ComponentType.name(CommandGenerator.componentType)
     let opts = {Pulumi.ComponentResource.parent: commandGeneratorResource}
 
-    let fields = Plugin_Helpers.aggregateMutationFieldsRegistry.contents->Dict.get(Spec.name)->Option.getOr([])
+    let fields = Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.get(Spec.name)->Option.getOr([])
 
     let resolvers = Resolvers.make(
       ~name,

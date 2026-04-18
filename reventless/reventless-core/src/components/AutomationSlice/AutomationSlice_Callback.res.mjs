@@ -27,9 +27,7 @@ let todoRowSchema = S.schema(s => ({
 }));
 
 function Make(Spec) {
-  let todoItems = {
-    contents: {}
-  };
+  let todoItems = {};
   let makeMeta = () => ({
     service: `AutomationSlice:` + Spec.name,
     time: new Date().toISOString(),
@@ -42,7 +40,7 @@ function Make(Spec) {
     events.forEach(event => {
       Spec.collect(event).forEach(param => {
         let id = param[0];
-        let match = todoItems.contents[id];
+        let match = todoItems[id];
         if (match !== undefined) {
           return;
         }
@@ -54,21 +52,21 @@ function Make(Spec) {
           createdAt: row_createdAt,
           retryCount: 0
         };
-        todoItems.contents[id] = row;
+        todoItems[id] = row;
       });
       let id = Spec.resolve(event);
       if (id !== undefined) {
-        return Stdlib_Option.forEach(todoItems.contents[id], row => {
+        return Stdlib_Option.forEach(todoItems[id], row => {
           let newrecord = {...row};
           newrecord.completedAt = new Date().toISOString();
           newrecord.status = "Completed";
-          todoItems.contents[id] = newrecord;
+          todoItems[id] = newrecord;
         });
       }
     });
   };
   let phase2 = async publishJsons => {
-    let pending = Object.entries(todoItems.contents).filter(param => {
+    let pending = Object.entries(todoItems).filter(param => {
       let row = param[1];
       if (row.status === "Pending") {
         return true;
@@ -100,7 +98,7 @@ function Make(Spec) {
         let newrecord = {...row};
         newrecord.processedAt = new Date().toISOString();
         newrecord.status = "Processing";
-        todoItems.contents[id] = newrecord;
+        todoItems[id] = newrecord;
         let commandJson;
         try {
           commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
@@ -111,7 +109,7 @@ function Make(Spec) {
           let newrecord$1 = {...row};
           newrecord$1.retryCount = row.retryCount + 1 | 0;
           newrecord$1.status = "Failed";
-          todoItems.contents[id] = newrecord$1;
+          todoItems[id] = newrecord$1;
           commandJson = undefined;
         }
         Stdlib_Option.forEach(commandJson, commandJson => {
@@ -137,7 +135,7 @@ function Make(Spec) {
       pending.forEach(param => {
         let row = param[1];
         let id = param[0];
-        let current = todoItems.contents[id];
+        let current = todoItems[id];
         if (current === undefined) {
           return;
         }
@@ -147,7 +145,7 @@ function Make(Spec) {
         let newrecord = {...row};
         newrecord.retryCount = row.retryCount + 1 | 0;
         newrecord.status = "Failed";
-        todoItems.contents[id] = newrecord;
+        todoItems[id] = newrecord;
       });
       return;
     }

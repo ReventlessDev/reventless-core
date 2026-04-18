@@ -36,7 +36,7 @@ function Make(RuntimeEnvironment) {
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
       let syncToQueryDb = async queryDbOps => {
-        let items = Object.entries(Callback.todoItems.contents);
+        let items = Object.entries(Callback.todoItems);
         await Stdlib_Array.reduce(items, Promise.resolve(), async (prev, param) => {
           await prev;
           await queryDbOps.save(Id$Reventless.$$String.makeFromString(param[0]), param[1], "Overwrite", undefined);

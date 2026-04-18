@@ -24,9 +24,7 @@ let auditRowSchema = S.schema(s => ({
 }));
 
 function Make(Spec) {
-  let auditLog = {
-    contents: {}
-  };
+  let auditLog = {};
   let makeMeta = () => ({
     service: `InboundTranslationSlice:` + Spec.name,
     time: new Date().toISOString(),
@@ -56,7 +54,7 @@ function Make(Spec) {
       if (pairs.TAG === "Ok") {
         let pairs$1 = pairs._0;
         if (pairs$1.length === 0) {
-          auditLog.contents[requestId] = {
+          auditLog[requestId] = {
             input: JSON.stringify(inputJson),
             status: "Success",
             targetIds: [],
@@ -99,7 +97,7 @@ function Make(Spec) {
         });
         let msg$1 = encodeError.contents;
         if (msg$1 !== undefined) {
-          auditLog.contents[requestId] = {
+          auditLog[requestId] = {
             input: JSON.stringify(inputJson),
             status: "Failure",
             error: msg$1,
@@ -113,7 +111,7 @@ function Make(Spec) {
         try {
           await publishJsons(msgs.contents);
           let targetIds = pairs$1.map(pair => pair[0]);
-          auditLog.contents[requestId] = {
+          auditLog[requestId] = {
             input: JSON.stringify(inputJson),
             status: "Success",
             targetIds: targetIds,
@@ -127,7 +125,7 @@ function Make(Spec) {
         } catch (raw_exn$1) {
           let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
           let msg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "publish failed");
-          auditLog.contents[requestId] = {
+          auditLog[requestId] = {
             input: JSON.stringify(inputJson),
             status: "Failure",
             error: msg$2,
@@ -140,7 +138,7 @@ function Make(Spec) {
         }
       } else {
         let msg$3 = pairs._0;
-        auditLog.contents[requestId] = {
+        auditLog[requestId] = {
           input: JSON.stringify(inputJson),
           status: "Failure",
           error: msg$3,
@@ -153,7 +151,7 @@ function Make(Spec) {
       }
     } else {
       let msg$4 = input._0;
-      auditLog.contents[requestId] = {
+      auditLog[requestId] = {
         input: JSON.stringify(inputJson),
         status: "Failure",
         error: msg$4,

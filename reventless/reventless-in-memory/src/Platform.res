@@ -160,7 +160,7 @@ module MakeWithConfig = (
         let segments = uri->String.split("/")
         let id = segments->Array.at(-1)->Option.getOr("")
         let queryDbName =
-          ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+          ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
           ->Dict.toArray
           ->Array.find(((_, entry)) =>
             entry.singleFieldName == resourceName || entry.listFieldName == resourceName
@@ -342,7 +342,7 @@ module MakeWithConfig = (
         // Recover the ReadModel Spec.name (Bus key) from the query field names registry.
         queryEntries->Array.forEach(entry => {
           let readModelName =
-            ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
+            ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
             ->Dict.toArray
             ->Array.find(((_, qn)) => qn.returnTypeName == entry.returnTypeName)
             ->Option.map(((specName, _)) => specName)

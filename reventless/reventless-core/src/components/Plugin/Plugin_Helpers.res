@@ -545,14 +545,14 @@ type dcbAppSyncResolverParams = {
 // to map QueryDb component names → plugin-prefixed GraphQL query field names.
 // Read by QueryDbResolvers_GraphQL.make() to align resolver SDL with fragment SDL.
 // ---------------------------------------------------------------------------
-let queryFieldNamesRegistry: ref<dict<Api_Naming.queryNames>> = ref(Dict.make())
+let queryFieldNamesRegistry: dict<Api_Naming.queryNames> = Dict.make()
 
 // ---------------------------------------------------------------------------
 // Aggregate mutation field names registry — populated by Plugin_Builder during
 // construct() to map aggregate Spec.name → plugin-prefixed mutation field names.
 // Read by CommandGenerator_Builder.connect() to provide plugin-prefixed mutation field names.
 // ---------------------------------------------------------------------------
-let aggregateMutationFieldsRegistry: ref<dict<array<string>>> = ref(Dict.make())
+let aggregateMutationFieldsRegistry: dict<array<string>> = Dict.make()
 
 // ---------------------------------------------------------------------------
 // MCP schema registration params type — shared by platformHooks and callers.
@@ -1097,7 +1097,7 @@ let exportPluginOutputs = (pluginOutputs: Plugin.outputs) => {
       ->Option.orElse(processEnv->Dict.get("CI_COMMIT_SHA"))
       ->Option.getOr(Date.make()->Date.toISOString)
     let schemaFor = name =>
-      componentSchemaRegistry.contents->Dict.get(name)->Option.getOr({})
+      componentSchemaRegistry->Dict.get(name)->Option.getOr({})
     let resolveAggregates = pluginOutputs.aggregates->Pulumi.Output.flatMap(aggs =>
       aggs
       ->Dict.toArray

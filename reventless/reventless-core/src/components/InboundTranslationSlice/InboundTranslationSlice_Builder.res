@@ -38,7 +38,7 @@ module Make = (
     module SpecificQueryDb = QueryDb_Builder.Make(AuditQueryDbSpec, QueryDbStorage, QueryDbResolvers)
 
     let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations) => {
-      let items = Callback.auditLog.contents->Dict.toArray
+      let items = Callback.auditLog->Dict.toArray
       let _ = await items->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
         let _ = await prev
         let _ = await queryDbOps.save(

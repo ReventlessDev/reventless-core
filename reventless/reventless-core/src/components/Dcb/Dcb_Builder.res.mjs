@@ -217,19 +217,19 @@ function Make(DcbEventLogStorage) {
         } else {
           qn$1 = qn;
         }
-        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[V.Spec.name] = qn$1;
+        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[V.Spec.name] = qn$1;
       });
       automationSlices.forEach(A => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, A.queryDbName, undefined);
-        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[A.queryDbName] = qn;
+        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[A.queryDbName] = qn;
       });
       outboundTranslationSlices.forEach(O => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, O.queryDbName, undefined);
-        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[O.queryDbName] = qn;
+        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[O.queryDbName] = qn;
       });
       inboundTranslationSlices.forEach(I => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, I.queryDbName, undefined);
-        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[I.queryDbName] = qn;
+        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[I.queryDbName] = qn;
       });
       let stateViewSlicesOutputs = Object.fromEntries(stateViewSlices.map(StateViewSlice => {
         let sv = StateViewSlice.make(dcbEventLog, opts);
