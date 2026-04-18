@@ -869,6 +869,7 @@ module MakeWithConfig = (
     type component = ReventlessCore.Plugin.component
     let make = PluginBuilderImpl.make
     let makeAutoUIManifest = PluginBuilderImpl.makeAutoUIManifest
+    let makeAutoUIDefinition = PluginBuilderImpl.makeAutoUIDefinition
   }
 
   module RuntimeEnvironment = RuntimeEnvironment.Lambda

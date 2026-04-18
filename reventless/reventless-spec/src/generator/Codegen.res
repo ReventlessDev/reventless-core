@@ -173,6 +173,45 @@ let renderTaskMakeParam = (tasks: array<string>): option<string> =>
     Some("      ~tasks=[" ++ entries->Array.join(", ") ++ "],")
   }
 
+let renderUiDefinitionCall = (
+  ~name: string,
+  ~aggregates: array<Pairing.aggregateDef>,
+  ~readModels: array<Pairing.readModelDef>,
+  ~stateViewSlices: array<string>,
+  ~stateChangeSlices: array<string>,
+): option<array<string>> => {
+  let hasComponents =
+    aggregates->Array.length > 0 ||
+    readModels->Array.length > 0 ||
+    stateViewSlices->Array.length > 0 ||
+    stateChangeSlices->Array.length > 0
+  if !hasComponents {
+    None
+  } else {
+    let ls: array<string> = []
+    ls->Array.push("  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(")
+    ls->Array.push("    ~name=\"" ++ name ++ "\",")
+    if aggregates->Array.length > 0 {
+      let entries = aggregates->Array.map(({spec}) => "module(" ++ spec ++ "Aggregate)")
+      ls->Array.push("    ~aggregates=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if readModels->Array.length > 0 {
+      let entries = readModels->Array.map(({readModel}) => "module(" ++ readModel ++ "Maker)")
+      ls->Array.push("    ~readModels=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if stateViewSlices->Array.length > 0 {
+      let entries = stateViewSlices->Array.map(s => "module(" ++ s ++ "Slice)")
+      ls->Array.push("    ~stateViewSlices=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if stateChangeSlices->Array.length > 0 {
+      let entries = stateChangeSlices->Array.map(s => "module(" ++ s ++ "Slice)")
+      ls->Array.push("    ~stateChangeSlices=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    ls->Array.push("  )")
+    Some(ls)
+  }
+}
+
 // ── Top-level render ─────────────────────────────────────────────────────────
 
 let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
@@ -271,6 +310,22 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     lines->Array.push("")
   }
 
+  // uiDefinition
+  let uiDefLines = renderUiDefinitionCall(
+    ~name=config.name,
+    ~aggregates=resolved.aggregates,
+    ~readModels=resolved.readModels,
+    ~stateViewSlices=resolved.stateViewSlices,
+    ~stateChangeSlices=resolved.stateChangeSlices,
+  )
+  let hasUiDefinition = uiDefLines->Option.isSome
+  switch uiDefLines {
+  | Some(defLines) =>
+    defLines->Array.forEach(l => lines->Array.push(l))
+    lines->Array.push("")
+  | None => ()
+  }
+
   // make() call
   lines->Array.push("  let make = () =>")
   lines->Array.push("    Platform.Plugin.make(")
@@ -296,6 +351,7 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
       ~items=resolved.inboundTranslationSlices,
       ~moduleSuffix="Slice",
     ),
+    hasUiDefinition ? Some("      ~uiDefinition=uiDefinition,") : None,
   ]
 
   makeParams->Array.filterMap(x => x)->Array.forEach(line => lines->Array.push(line))

@@ -217,7 +217,7 @@ function Make(Platform) {
     AvailableProductsViewSlice,
     CustomersViewSlice,
     OrdersViewSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, undefined, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     ChangeAddressSlice: ChangeAddressSlice,

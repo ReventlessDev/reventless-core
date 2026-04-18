@@ -200,7 +200,7 @@ function Make(Platform) {
     CategoriesViewSlice,
     ProductDemandViewSlice,
     ProductsViewSlice
-  ], undefined, undefined, [ImportProductSlice], undefined, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined, undefined, undefined);
   return {
     AddCategorySlice: AddCategorySlice,
     AddProductSlice: AddProductSlice,

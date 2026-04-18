@@ -53,7 +53,8 @@ function Make(Bus) {
       RemoteChannel: RemoteChannel,
       QE: QE,
       make: include.make,
-      makeAutoUIManifest: include.makeAutoUIManifest
+      makeAutoUIManifest: include.makeAutoUIManifest,
+      makeAutoUIDefinition: include.makeAutoUIDefinition
     };
   };
 }

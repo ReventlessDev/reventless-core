@@ -180,6 +180,16 @@ function Make(Platform) {
     mapIncomingEvent: OrdersExtension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
+  let uiDefinition = Platform.Plugin.makeAutoUIDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
+    ProductDemandViewSlice,
+    ProductsViewSlice
+  ], [
+    AddProductSlice,
+    ChangeProductDescriptionSlice,
+    ChangeProductNameSlice,
+    ChangeProductPriceSlice,
+    RecordProductDemandSlice
+  ]);
   let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoriesReadModelMaker], undefined, [
     AddProductSlice,
     ChangeProductDescriptionSlice,
@@ -189,7 +199,7 @@ function Make(Platform) {
   ], [
     ProductDemandViewSlice,
     ProductsViewSlice
-  ], undefined, undefined, [ImportProductSlice], undefined, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined, uiDefinition, undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
@@ -204,6 +214,7 @@ function Make(Platform) {
     CategoriesReadModelMaker: CategoriesReadModelMaker,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersExtensionMaker: OrdersExtensionMaker,
+    uiDefinition: uiDefinition,
     make: make
   };
 }

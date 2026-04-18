@@ -533,9 +533,11 @@ function MakeWithConfig(Config) {
   });
   let Plugin_make = PluginMaker.make;
   let Plugin_makeAutoUIManifest = PluginMaker.makeAutoUIManifest;
+  let Plugin_makeAutoUIDefinition = PluginMaker.makeAutoUIDefinition;
   let Plugin = {
     make: Plugin_make,
-    makeAutoUIManifest: Plugin_makeAutoUIManifest
+    makeAutoUIManifest: Plugin_makeAutoUIManifest,
+    makeAutoUIDefinition: Plugin_makeAutoUIDefinition
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
@@ -750,6 +752,24 @@ function MakeWithConfig(Config) {
     Bus.registerQueryDbStream(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
+  };
+  let uiDefinitionsStore = {
+    contents: {}
+  };
+  let seedUIDefinitionsStore = pluginComponents => {
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.uiDefinition
+      ]).apply(param => {
+        let uiDef = param[1];
+        if (uiDef !== undefined) {
+          uiDefinitionsStore.contents[param[0]] = uiDef;
+          return;
+        }
+      });
+    });
   };
   let seedPluginQueryDb = pluginComponents => {
     let pluginOps = ensurePluginQueryDbStore();
@@ -1015,6 +1035,7 @@ function MakeWithConfig(Config) {
     }
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
+    seedUIDefinitionsStore(plugins$1);
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
@@ -1056,6 +1077,76 @@ function MakeWithConfig(Config) {
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
+    let uiDefsSdlTypes = [
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
+      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
+      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
+    ];
+    let encodeCommandDef = c => Object.fromEntries([
+      [
+        "name",
+        c.name
+      ],
+      [
+        "schema",
+        c.schema
+      ]
+    ]);
+    let encodeQueryableDef = r => Object.fromEntries([
+      [
+        "name",
+        r.name
+      ],
+      [
+        "queryField",
+        r.queryField
+      ],
+      [
+        "schema",
+        r.schema
+      ]
+    ]);
+    let encodeWritableDef = w => Object.fromEntries([
+      [
+        "name",
+        w.name
+      ],
+      [
+        "commands",
+        w.commands.map(encodeCommandDef)
+      ]
+    ]);
+    platformGraphQL.registerTypes(uiDefsSdlTypes);
+    platformGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+        "Platform_UIDefinitions",
+        async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+          let pluginId = param[0];
+          let def = param[1];
+          return Object.fromEntries([
+            [
+              "pluginId",
+              pluginId
+            ],
+            [
+              "readModels",
+              def.readModels.map(encodeQueryableDef)
+            ],
+            [
+              "stateViewSlices",
+              def.stateViewSlices.map(encodeQueryableDef)
+            ],
+            [
+              "stateChangeSlices",
+              def.stateChangeSlices.map(encodeWritableDef)
+            ],
+            [
+              "aggregates",
+              def.aggregates.map(encodeWritableDef)
+            ]
+          ]);
+        })
+      ]]));
     let statusToString = s => {
       switch (s) {
         case "Connected" :
@@ -1377,6 +1468,75 @@ function MakeWithConfig(Config) {
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
+      let dpUiDefsSdlTypes = [
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
+        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
+        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+        `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
+      ];
+      adminGraphQL.registerTypes(dpUiDefsSdlTypes);
+      adminGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+          "Platform_UIDefinitions",
+          async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+            let def = param[1];
+            let encodeCmd = c => Object.fromEntries([
+              [
+                "name",
+                c.name
+              ],
+              [
+                "schema",
+                c.schema
+              ]
+            ]);
+            let encodeQbl = r => Object.fromEntries([
+              [
+                "name",
+                r.name
+              ],
+              [
+                "queryField",
+                r.queryField
+              ],
+              [
+                "schema",
+                r.schema
+              ]
+            ]);
+            let encodeWbl = w => Object.fromEntries([
+              [
+                "name",
+                w.name
+              ],
+              [
+                "commands",
+                w.commands.map(encodeCmd)
+              ]
+            ]);
+            return Object.fromEntries([
+              [
+                "pluginId",
+                param[0]
+              ],
+              [
+                "readModels",
+                def.readModels.map(encodeQbl)
+              ],
+              [
+                "stateViewSlices",
+                def.stateViewSlices.map(encodeQbl)
+              ],
+              [
+                "stateChangeSlices",
+                def.stateChangeSlices.map(encodeWbl)
+              ],
+              [
+                "aggregates",
+                def.aggregates.map(encodeWbl)
+              ]
+            ]);
+          })
+        ]]));
       adminRegisteredServers.contents.push(adminGraphQL);
     }
     currentDeployTarget.contents = "Domain";
@@ -1384,6 +1544,7 @@ function MakeWithConfig(Config) {
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     seedPluginQueryDb([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
+    seedUIDefinitionsStore([pluginComponent]);
     firePluginDeployedHooks(builtInfos.contents);
     if (!Config.splitApi) {
       if (apiTarget === "Domain") {
@@ -1877,9 +2038,11 @@ function Make($star) {
   });
   let Plugin_make = PluginMaker.make;
   let Plugin_makeAutoUIManifest = PluginMaker.makeAutoUIManifest;
+  let Plugin_makeAutoUIDefinition = PluginMaker.makeAutoUIDefinition;
   let Plugin = {
     make: Plugin_make,
-    makeAutoUIManifest: Plugin_makeAutoUIManifest
+    makeAutoUIManifest: Plugin_makeAutoUIManifest,
+    makeAutoUIDefinition: Plugin_makeAutoUIDefinition
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
@@ -2094,6 +2257,24 @@ function Make($star) {
     Bus.registerQueryDbStream(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
+  };
+  let uiDefinitionsStore = {
+    contents: {}
+  };
+  let seedUIDefinitionsStore = pluginComponents => {
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.uiDefinition
+      ]).apply(param => {
+        let uiDef = param[1];
+        if (uiDef !== undefined) {
+          uiDefinitionsStore.contents[param[0]] = uiDef;
+          return;
+        }
+      });
+    });
   };
   let seedPluginQueryDb = pluginComponents => {
     let pluginOps = ensurePluginQueryDbStore();
@@ -2353,6 +2534,7 @@ function Make($star) {
     }
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
+    seedUIDefinitionsStore(plugins$1);
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
@@ -2394,6 +2576,76 @@ function Make($star) {
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
+    let uiDefsSdlTypes = [
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
+      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
+      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
+    ];
+    let encodeCommandDef = c => Object.fromEntries([
+      [
+        "name",
+        c.name
+      ],
+      [
+        "schema",
+        c.schema
+      ]
+    ]);
+    let encodeQueryableDef = r => Object.fromEntries([
+      [
+        "name",
+        r.name
+      ],
+      [
+        "queryField",
+        r.queryField
+      ],
+      [
+        "schema",
+        r.schema
+      ]
+    ]);
+    let encodeWritableDef = w => Object.fromEntries([
+      [
+        "name",
+        w.name
+      ],
+      [
+        "commands",
+        w.commands.map(encodeCommandDef)
+      ]
+    ]);
+    platformGraphQL.registerTypes(uiDefsSdlTypes);
+    platformGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+        "Platform_UIDefinitions",
+        async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+          let pluginId = param[0];
+          let def = param[1];
+          return Object.fromEntries([
+            [
+              "pluginId",
+              pluginId
+            ],
+            [
+              "readModels",
+              def.readModels.map(encodeQueryableDef)
+            ],
+            [
+              "stateViewSlices",
+              def.stateViewSlices.map(encodeQueryableDef)
+            ],
+            [
+              "stateChangeSlices",
+              def.stateChangeSlices.map(encodeWritableDef)
+            ],
+            [
+              "aggregates",
+              def.aggregates.map(encodeWritableDef)
+            ]
+          ]);
+        })
+      ]]));
     let statusToString = s => {
       switch (s) {
         case "Connected" :
@@ -2707,6 +2959,75 @@ function Make($star) {
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
+      let dpUiDefsSdlTypes = [
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
+        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
+        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+        `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
+      ];
+      adminGraphQL.registerTypes(dpUiDefsSdlTypes);
+      adminGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+          "Platform_UIDefinitions",
+          async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+            let def = param[1];
+            let encodeCmd = c => Object.fromEntries([
+              [
+                "name",
+                c.name
+              ],
+              [
+                "schema",
+                c.schema
+              ]
+            ]);
+            let encodeQbl = r => Object.fromEntries([
+              [
+                "name",
+                r.name
+              ],
+              [
+                "queryField",
+                r.queryField
+              ],
+              [
+                "schema",
+                r.schema
+              ]
+            ]);
+            let encodeWbl = w => Object.fromEntries([
+              [
+                "name",
+                w.name
+              ],
+              [
+                "commands",
+                w.commands.map(encodeCmd)
+              ]
+            ]);
+            return Object.fromEntries([
+              [
+                "pluginId",
+                param[0]
+              ],
+              [
+                "readModels",
+                def.readModels.map(encodeQbl)
+              ],
+              [
+                "stateViewSlices",
+                def.stateViewSlices.map(encodeQbl)
+              ],
+              [
+                "stateChangeSlices",
+                def.stateChangeSlices.map(encodeWbl)
+              ],
+              [
+                "aggregates",
+                def.aggregates.map(encodeWbl)
+              ]
+            ]);
+          })
+        ]]));
       adminRegisteredServers.contents.push(adminGraphQL);
     }
     currentDeployTarget.contents = "Domain";
@@ -2714,6 +3035,7 @@ function Make($star) {
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     seedPluginQueryDb([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
+    seedUIDefinitionsStore([pluginComponent]);
     firePluginDeployedHooks(builtInfos.contents);
     return Component$ReventlessCore.outputs(pluginComponent);
   };

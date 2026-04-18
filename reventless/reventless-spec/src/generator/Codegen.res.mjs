@@ -161,6 +161,34 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
+function renderUiDefinitionCall(name, aggregates, readModels, stateViewSlices, stateChangeSlices) {
+  let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateChangeSlices.length !== 0;
+  if (!hasComponents) {
+    return;
+  }
+  let ls = [];
+  ls.push("  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(");
+  ls.push("    ~name=\"" + name + "\",");
+  if (aggregates.length !== 0) {
+    let entries = aggregates.map(param => "module(" + param.spec + "Aggregate)");
+    ls.push("    ~aggregates=[" + entries.join(", ") + "],");
+  }
+  if (readModels.length !== 0) {
+    let entries$1 = readModels.map(param => "module(" + param.readModel + "Maker)");
+    ls.push("    ~readModels=[" + entries$1.join(", ") + "],");
+  }
+  if (stateViewSlices.length !== 0) {
+    let entries$2 = stateViewSlices.map(s => "module(" + s + "Slice)");
+    ls.push("    ~stateViewSlices=[" + entries$2.join(", ") + "],");
+  }
+  if (stateChangeSlices.length !== 0) {
+    let entries$3 = stateChangeSlices.map(s => "module(" + s + "Slice)");
+    ls.push("    ~stateChangeSlices=[" + entries$3.join(", ") + "],");
+  }
+  ls.push("  )");
+  return ls;
+}
+
 function render(config, resolved) {
   let hasReadModels = resolved.readModels.length !== 0;
   let lines = [];
@@ -240,6 +268,14 @@ function render(config, resolved) {
     });
     lines.push("");
   }
+  let uiDefLines = renderUiDefinitionCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateChangeSlices);
+  let hasUiDefinition = Stdlib_Option.isSome(uiDefLines);
+  if (uiDefLines !== undefined) {
+    uiDefLines.forEach(l => {
+      lines.push(l);
+    });
+    lines.push("");
+  }
   lines.push("  let make = () =>");
   lines.push("    Platform.Plugin.make(");
   lines.push("      ~name=\"" + config.name + "\",");
@@ -254,7 +290,8 @@ function render(config, resolved) {
     renderMakeParam("stateViewSlices", resolved.stateViewSlices, "Slice"),
     renderMakeParam("automationSlices", resolved.automationSlices, "Slice"),
     renderMakeParam("outboundTranslationSlices", resolved.outboundTranslationSlices, "Slice"),
-    renderMakeParam("inboundTranslationSlices", resolved.inboundTranslationSlices, "Slice")
+    renderMakeParam("inboundTranslationSlices", resolved.inboundTranslationSlices, "Slice"),
+    hasUiDefinition ? "      ~uiDefinition=uiDefinition," : undefined
   ];
   Stdlib_Array.filterMap(makeParams, x => x).forEach(line => {
     lines.push(line);
@@ -280,6 +317,7 @@ export {
   renderEpMakeParam,
   renderExtensionMakeParam,
   renderTaskMakeParam,
+  renderUiDefinitionCall,
   render,
 }
 /* No side effect */

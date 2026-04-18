@@ -97,6 +97,19 @@ type uiFragmentManifest = {
 
 let uiFragmentManifestOptionSchema = _jsNullable(uiFragmentManifestSchema, ())
 
+// ── AutoUI definition types ───────────────────────────────────────────────────
+
+type uiCommandDef = {name: string, schema: string}
+type uiQueryableDef = {name: string, queryField: string, schema: string}
+type uiWritableDef = {name: string, commands: array<uiCommandDef>}
+
+type uiDefinition = {
+  readModels: array<uiQueryableDef>,
+  stateViewSlices: array<uiQueryableDef>,
+  stateChangeSlices: array<uiWritableDef>,
+  aggregates: array<uiWritableDef>,
+}
+
 /**
 The self-description of a deployed plugin, persisted in the plugin's event store.
 

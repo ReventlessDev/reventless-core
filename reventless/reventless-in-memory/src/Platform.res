@@ -588,6 +588,7 @@ module MakeWithConfig = (
     type component = ReventlessCore.Plugin.component
     let make = PluginMaker.make
     let makeAutoUIManifest = PluginMaker.makeAutoUIManifest
+    let makeAutoUIDefinition = PluginMaker.makeAutoUIDefinition
   }
 
   module EventCollectorChannel = EventCollectorChannel_InMemory.Make(Bus)
@@ -760,6 +761,24 @@ module MakeWithConfig = (
       uiFragmentQueryDbOpsRef := Some(ops)
       ops
     }
+  }
+
+  // In-memory store for plugin UI definitions, keyed by plugin ID.
+  let uiDefinitionsStore: ref<dict<Reventless.Plugin.uiDefinition>> = ref(Dict.make())
+
+  let seedUIDefinitionsStore = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
+    pluginComponents->Array.forEach(plugin => {
+      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
+      let _ =
+        (outputs.id, outputs.uiDefinition)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((id, uiDef)) => {
+          switch uiDef {
+          | Some(def) => uiDefinitionsStore.contents->Dict.set(id, def)
+          | None => ()
+          }
+        })
+    })
   }
 
   // Seed the Plugin QueryDb from constructed plugin component outputs.
@@ -1034,6 +1053,7 @@ module MakeWithConfig = (
     // Initializes the store on first call and serializes via PluginReadModelSpec.stateSchema.
     seedPluginQueryDb(~pluginComponents=plugins)
     seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
+    seedUIDefinitionsStore(~pluginComponents=plugins)
 
     let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
     let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
@@ -1112,6 +1132,53 @@ module MakeWithConfig = (
       connectionResponse(items)
     })
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
+
+    // Register Platform_UIDefinitions query — returns all plugin AutoUI definitions.
+    let uiDefsSdlTypes = [
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
+      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
+      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`,
+    ]
+    let uiDefsQueryField = `  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`
+    let encodeCommandDef = (c: Reventless.Plugin.uiCommandDef): JSON.t =>
+      Dict.fromArray([
+        ("name", JSON.Encode.string(c.name)),
+        ("schema", JSON.Encode.string(c.schema)),
+      ])->JSON.Encode.object
+    let encodeQueryableDef = (r: Reventless.Plugin.uiQueryableDef): JSON.t =>
+      Dict.fromArray([
+        ("name", JSON.Encode.string(r.name)),
+        ("queryField", JSON.Encode.string(r.queryField)),
+        ("schema", JSON.Encode.string(r.schema)),
+      ])->JSON.Encode.object
+    let encodeWritableDef = (w: Reventless.Plugin.uiWritableDef): JSON.t =>
+      Dict.fromArray([
+        ("name", JSON.Encode.string(w.name)),
+        ("commands", w.commands->Array.map(encodeCommandDef)->JSON.Encode.array),
+      ])->JSON.Encode.object
+    let encodeUIDefinitionEntry = (~pluginId: string, def: Reventless.Plugin.uiDefinition): JSON.t =>
+      Dict.fromArray([
+        ("pluginId", JSON.Encode.string(pluginId)),
+        ("readModels", def.readModels->Array.map(encodeQueryableDef)->JSON.Encode.array),
+        ("stateViewSlices", def.stateViewSlices->Array.map(encodeQueryableDef)->JSON.Encode.array),
+        ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWritableDef)->JSON.Encode.array),
+        ("aggregates", def.aggregates->Array.map(encodeWritableDef)->JSON.Encode.array),
+      ])->JSON.Encode.object
+    platformGraphQL.registerTypes(~sdlTypes=uiDefsSdlTypes)
+    platformGraphQL.registerQueries(
+      ~sdlFields=[uiDefsQueryField],
+      ~resolvers=Dict.fromArray([
+        (
+          "Platform_UIDefinitions",
+          async (_root, _args, _ctx): JSON.t =>
+            uiDefinitionsStore.contents
+            ->Dict.toArray
+            ->Array.map(((pluginId, def)) => encodeUIDefinitionEntry(~pluginId, def))
+            ->JSON.Encode.array,
+        ),
+      ]),
+    )
 
     // Helper: extract plugin id from mutation args, load state, apply status change, save.
     let statusToString = (s: ReventlessCore.PluginReadModelSpec.status) =>
@@ -1576,6 +1643,51 @@ module MakeWithConfig = (
           ),
         ]),
       )
+      // Register Platform_UIDefinitions query on this server.
+      let dpUiDefsSdlTypes = [
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
+        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
+        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+        `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`,
+      ]
+      adminGraphQL.registerTypes(~sdlTypes=dpUiDefsSdlTypes)
+      adminGraphQL.registerQueries(
+        ~sdlFields=[`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`],
+        ~resolvers=Dict.fromArray([
+          (
+            "Platform_UIDefinitions",
+            async (_root, _args, _ctx): JSON.t =>
+              uiDefinitionsStore.contents
+              ->Dict.toArray
+              ->Array.map(((pluginId, def)) => {
+                let encodeCmd = (c: Reventless.Plugin.uiCommandDef) =>
+                  Dict.fromArray([
+                    ("name", JSON.Encode.string(c.name)),
+                    ("schema", JSON.Encode.string(c.schema)),
+                  ])->JSON.Encode.object
+                let encodeQbl = (r: Reventless.Plugin.uiQueryableDef) =>
+                  Dict.fromArray([
+                    ("name", JSON.Encode.string(r.name)),
+                    ("queryField", JSON.Encode.string(r.queryField)),
+                    ("schema", JSON.Encode.string(r.schema)),
+                  ])->JSON.Encode.object
+                let encodeWbl = (w: Reventless.Plugin.uiWritableDef) =>
+                  Dict.fromArray([
+                    ("name", JSON.Encode.string(w.name)),
+                    ("commands", w.commands->Array.map(encodeCmd)->JSON.Encode.array),
+                  ])->JSON.Encode.object
+                Dict.fromArray([
+                  ("pluginId", JSON.Encode.string(pluginId)),
+                  ("readModels", def.readModels->Array.map(encodeQbl)->JSON.Encode.array),
+                  ("stateViewSlices", def.stateViewSlices->Array.map(encodeQbl)->JSON.Encode.array),
+                  ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWbl)->JSON.Encode.array),
+                  ("aggregates", def.aggregates->Array.map(encodeWbl)->JSON.Encode.array),
+                ])->JSON.Encode.object
+              })
+              ->JSON.Encode.array,
+          ),
+        ]),
+      )
       adminRegisteredServers.contents->Array.push(adminGraphQL)
     }
 
@@ -1584,9 +1696,10 @@ module MakeWithConfig = (
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server.asInterface
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = Some(domainRelaySupport)
 
-    // Seed the Plugin and UIFragmentRegistry QueryDbs so this plugin appears in queries.
+    // Seed the Plugin, UIFragmentRegistry, and UIDefinitions stores so this plugin appears in queries.
     seedPluginQueryDb(~pluginComponents=[pluginComponent])
     seedUIFragmentRegistryQueryDb(~pluginComponents=[pluginComponent])
+    seedUIDefinitionsStore(~pluginComponents=[pluginComponent])
 
     // Fire onPluginDeployed hooks so subscribers learn about this plugin.
     firePluginDeployedHooks(~builtInfos=builtInfos.contents)

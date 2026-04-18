@@ -36,6 +36,14 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Extensions
   module OrdersExtensionMaker = Platform.Extension.Make(OrdersExtension.Mapping)
 
+  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(
+    ~name="Catalog",
+    ~aggregates=[module(CategoryAggregate)],
+    ~readModels=[module(CategoriesReadModelMaker)],
+    ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
+    ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
+  )
+
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
@@ -47,5 +55,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
       ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
+      ~uiDefinition=uiDefinition,
     )
 }

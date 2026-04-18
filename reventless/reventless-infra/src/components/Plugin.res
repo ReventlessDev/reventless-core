@@ -20,6 +20,8 @@ type outputs = {
   apiSchemaFragment: Pulumi.Output.t<option<Reventless.Plugin.apiSchemaFragment>>,
   /** UI fragment manifest for runtime micro-frontend registration (None for pure backend plugins). */
   uiFragments: Pulumi.Output.t<option<Reventless.Plugin.uiFragmentManifest>>,
+  /** AutoUI definition carrying queryable and writable component metadata (None for pure backend plugins). */
+  uiDefinition: Pulumi.Output.t<option<Reventless.Plugin.uiDefinition>>,
   /** Present when the plugin uses a `DcbEventLog`. */
   dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
   stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
@@ -57,6 +59,7 @@ module type T = {
     ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>=?,
     ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>=?,
     ~uiFragments: Reventless.Plugin.uiFragmentManifest=?,
+    ~uiDefinition: Reventless.Plugin.uiDefinition=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
   let makeAutoUIManifest: (
@@ -67,4 +70,11 @@ module type T = {
     ~readModelPositions: array<string>=?,
     ~aggregatePositions: array<string>=?,
   ) => Reventless.Plugin.uiFragmentManifest
+  let makeAutoUIDefinition: (
+    ~name: string,
+    ~aggregates: array<module(Aggregate.T with type api = api)>=?,
+    ~readModels: array<module(ReadModel.T with type api = api and type role = role)>=?,
+    ~stateViewSlices: array<module(StateViewSlice.T)>=?,
+    ~stateChangeSlices: array<module(StateChangeSlice.T)>=?,
+  ) => Reventless.Plugin.uiDefinition
 }
