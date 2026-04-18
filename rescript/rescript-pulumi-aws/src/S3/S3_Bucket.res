@@ -6,6 +6,7 @@ type t = {
   arn: Pulumi.Output.t<string>,
   region: Pulumi.Output.t<string>,
   bucket: Pulumi.Output.t<string>,
+  bucketRegionalDomainName: Pulumi.Output.t<string>,
 }
 
 type corsRule = {

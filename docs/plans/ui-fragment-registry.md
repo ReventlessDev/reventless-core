@@ -1,7 +1,6 @@
 # Plan: UI Fragment Registry — Platform_Admin Extension
 
 **Date:** 2026-04-18
-**Related plan:** reventless-ui — `docs/plans/micro-frontend.md` (frontend registry, shell, components)
 
 ---
 
@@ -9,7 +8,7 @@
 
 Extend `Platform_Admin` to carry a UI fragment manifest alongside the existing API schema manifest in each plugin's `pluginDefinition`. This enables the dashboard shell to dynamically register and deregister UI panels and pages as plugins come and go — without a shell rebuild.
 
-This is the backend half of the micro-frontend architecture. The frontend half (the `PanelRegistry`, `PageRegistry`, and `register()` API) is covered in reventless-ui.
+This is the backend half of the micro-frontend architecture. The frontend half (the `PanelRegistry`, `PageRegistry`, and `register()` API) is implemented in the companion UI library.
 
 ---
 
@@ -33,7 +32,7 @@ UI fragment registration follows the same pattern. The plugin sends a manifest o
 
 ## Context: Build-Time vs Runtime Registration
 
-The micro-frontend architecture has two delivery modes, described fully in the reventless-ui plan. In short:
+The micro-frontend architecture has two delivery modes:
 
 - **Build-time registration** — panels are npm packages imported at dashboard build time. The shell is a static SPA. No backend changes are needed; the dashboard works without anything in this plan.
 - **Runtime registration** — panels are loaded from CDN after deploy, driven by backend lifecycle events. This is what this plan implements.
@@ -98,9 +97,9 @@ type uiFragmentManifest = {
 
 ### 1.2 Update `Plugin_Builder.res` — `withAutoUI()`
 
-`Plugin_Builder` gains a `withAutoUI()` method. It derives `uiFragmentManifest` metadata directly from the plugin's already-registered read models and aggregates — the same schema source that `reventless-ui`'s `generateFragments` uses, but without importing React or producing any React components. reventless-core must not depend on React.
+`Plugin_Builder` gains a `withAutoUI()` method. It derives `uiFragmentManifest` metadata directly from the plugin's already-registered read models and aggregates — the same schema source that the UI library's `generateFragments` uses, but without importing React or producing any React components. reventless-core must not depend on React.
 
-The manifest contains only serialisable metadata: fragment IDs, positions, required licenses, and the CDN URL. The React components that implement the auto-generated views live in the plugin's UI bundle on CDN, which is built separately and calls `generateFragments` from reventless-ui at bundle load time.
+The manifest contains only serialisable metadata: fragment IDs, positions, required licenses, and the CDN URL. The React components that implement the auto-generated views live in the plugin's UI bundle on CDN, which is built separately and calls `generateFragments` from the UI library at bundle load time.
 
 ```rescript
 // reventless-core/src/admin/Plugin_Builder.res (addition)
@@ -111,7 +110,7 @@ The manifest contains only serialisable metadata: fragment IDs, positions, requi
 //   — each aggregate  → panelManifestEntry at aggregatePositions (caller-supplied strings)
 //                        with fragmentId "${name}.${agg.name}.detail"
 // remoteEntryUrl is the Pulumi stack output URL of the plugin's CDN bundle.
-// That bundle's entry point calls reventless-ui's generateFragments and
+// That bundle's entry point calls generateFragments from the UI library and
 // registers the resulting panelDefinition/pageDefinition arrays with the shell.
 let makeAutoUIManifest: (
   ~remoteEntryUrl: string,
@@ -330,9 +329,16 @@ Phase 4 — AppSync subscription ✅
            Verify (AWS): subscription fires when backend calls Platform_UIFragmentRegistered
            mutation after UIFragmentRegistered event is processed
 
-Phase 5 — CDN bundle hosting
-  [ ] 5.1  Plugin_Stack.makeUiBundleDistribution — S3 + CloudFront provisioning
-  [ ] 5.2  Export distributionUrl as Pulumi stack output
+Phase 5 — CDN bundle hosting ✅
+  [x] 5.1  Plugin_Stack.makeUiBundleDistribution — private S3 bucket (BucketV2 +
+           BucketPublicAccessBlock), CloudFront OAC + Distribution (CachingOptimized,
+           redirect-to-https, default cert), S3 BucketPolicy scoped to distribution ARN.
+           New bindings: CloudFront_OriginAccessControl, CloudFront_Distribution,
+           CloudFront.res re-export, S3_BucketPolicy; S3_Bucket.t extended with
+           bucketRegionalDomainName. reventless-aws/src/Plugin_Stack.res.
+  [x] 5.2  Returns { distributionUrl: Output.t<string>, bucketName: Output.t<string> };
+           caller exports distributionUrl as Pulumi.export("remoteEntryUrl", ...)
+           and passes it to withAutoUI(~remoteEntryUrl=...)
   [ ] 5.3  Document CI/CD upload step for plugin bundle
   [ ]      Verify: remoteEntryUrl resolves to uploaded bundle from browser
 ```
@@ -353,4 +359,4 @@ Phase 2 (lifecycle events)
 Phase 3 and Phase 4 are independent of each other and can proceed in parallel.
 ```
 
-Phases 1–4 must be complete before the dashboard shell's Phase 2 runtime registration can be tested end-to-end.
+Phases 1–4 must be complete before the dashboard shell's runtime registration can be tested end-to-end.

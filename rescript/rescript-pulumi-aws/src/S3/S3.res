@@ -6,3 +6,4 @@ module BucketV2 = S3_BucketV2
 module BucketAclV2 = S3_BucketAclV2
 module BucketOwnershipControls = S3_BucketOwnershipControls
 module BucketPublicAccessBlock = S3_BucketPublicAccessBlock
+module BucketPolicy = S3_BucketPolicy

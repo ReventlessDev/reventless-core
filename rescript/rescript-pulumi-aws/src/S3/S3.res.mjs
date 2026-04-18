@@ -11,11 +11,14 @@ let BucketOwnershipControls;
 
 let BucketPublicAccessBlock;
 
+let BucketPolicy;
+
 export {
   Bucket,
   BucketV2,
   BucketAclV2,
   BucketOwnershipControls,
   BucketPublicAccessBlock,
+  BucketPolicy,
 }
 /* No side effect */
