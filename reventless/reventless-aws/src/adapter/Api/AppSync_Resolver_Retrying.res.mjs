@@ -320,14 +320,24 @@ function makeResolver(name, props, opts) {
 }
 
 function makeSubscriptionResolverCode(filter) {
-  let filterLine = filter !== undefined ? `\n  ctx.extensions.setSubscriptionFilter(` + filter + `);` : "";
-  return `export function request(ctx) {` + filterLine + `
+  if (filter !== undefined) {
+    return `export function request(ctx) {
+  extensions.setSubscriptionFilter(` + filter + `);
+  return {};
+}
+
+export function response(ctx) {
+  return ctx.result;
+}`;
+  } else {
+    return `export function request(ctx) {
   return { payload: null };
 }
 
 export function response(ctx) {
   return ctx.result;
 }`;
+  }
 }
 
 function makeSubscriptionResolver(name, api, field, dataSourceName, subscriptionFilter, opts) {

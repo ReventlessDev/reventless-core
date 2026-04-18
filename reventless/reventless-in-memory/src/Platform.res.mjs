@@ -494,17 +494,21 @@ function MakeWithConfig(Config) {
   let StateViewSlice = {
     Make: Make$6
   };
-  let Make$7 = Spec => AutomationSliceMaker.Make(Spec);
-  let AutomationSlice = {
+  let Make$7 = Spec => StateViewSliceMaker.Make(Spec);
+  let StateViewSliceStream = {
     Make: Make$7
   };
-  let Make$8 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let OutboundTranslationSlice = {
+  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
+  let AutomationSlice = {
     Make: Make$8
   };
-  let Make$9 = Spec => InboundTranslationSliceMaker.Make(Spec);
-  let InboundTranslationSlice = {
+  let Make$9 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let OutboundTranslationSlice = {
     Make: Make$9
+  };
+  let Make$10 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let InboundTranslationSlice = {
+    Make: Make$10
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -512,7 +516,7 @@ function MakeWithConfig(Config) {
     queries: [],
     subscriptions: []
   });
-  let Make$10 = FragmentConfig => {
+  let Make$11 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
     let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
@@ -521,7 +525,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$10
+    Make: Make$11
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
@@ -1144,6 +1148,7 @@ function MakeWithConfig(Config) {
     },
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
+    StateViewSliceStream: StateViewSliceStream,
     AutomationSlice: AutomationSlice,
     OutboundTranslationSlice: OutboundTranslationSlice,
     InboundTranslationSlice: InboundTranslationSlice,
@@ -1572,17 +1577,21 @@ function Make($star) {
   let StateViewSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => AutomationSliceMaker.Make(Spec);
-  let AutomationSlice = {
+  let Make$8 = Spec => StateViewSliceMaker.Make(Spec);
+  let StateViewSliceStream = {
     Make: Make$8
   };
-  let Make$9 = Spec => OutboundTranslationSliceMaker.Make(Spec);
-  let OutboundTranslationSlice = {
+  let Make$9 = Spec => AutomationSliceMaker.Make(Spec);
+  let AutomationSlice = {
     Make: Make$9
   };
-  let Make$10 = Spec => InboundTranslationSliceMaker.Make(Spec);
-  let InboundTranslationSlice = {
+  let Make$10 = Spec => OutboundTranslationSliceMaker.Make(Spec);
+  let OutboundTranslationSlice = {
     Make: Make$10
+  };
+  let Make$11 = Spec => InboundTranslationSliceMaker.Make(Spec);
+  let InboundTranslationSlice = {
+    Make: Make$11
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -1590,7 +1599,7 @@ function Make($star) {
     queries: [],
     subscriptions: []
   });
-  let Make$11 = FragmentConfig => {
+  let Make$12 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
     return {
@@ -1598,7 +1607,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$11
+    Make: Make$12
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
@@ -2202,6 +2211,7 @@ function Make($star) {
     Counter: Counter$1,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
+    StateViewSliceStream: StateViewSliceStream,
     AutomationSlice: AutomationSlice,
     OutboundTranslationSlice: OutboundTranslationSlice,
     InboundTranslationSlice: InboundTranslationSlice,

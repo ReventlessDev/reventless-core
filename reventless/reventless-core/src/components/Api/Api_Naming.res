@@ -12,7 +12,7 @@ type queryNames = {
 let pluralize = (n: string) =>
   if RegExp.test(%re("/[^aeiou]y$/i"), n) {
     n->String.slice(~start=0, ~end=String.length(n) - 1) ++ "ies"
-  } else if n->String.endsWith("s") {
+  } else if n->String.endsWith("s") || n->String.endsWith("x") || n->String.endsWith("z") || n->String.endsWith("ch") || n->String.endsWith("sh") {
     n ++ "es"
   } else {
     n ++ "s"

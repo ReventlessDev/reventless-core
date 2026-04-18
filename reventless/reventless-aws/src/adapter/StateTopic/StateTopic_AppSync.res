@@ -81,6 +81,9 @@ let make = (
     ->ReventlessCore.Util.ReadModel.queryDbStorageResources(readModelName)
     ->Util_DynamoDbStream.findResource
 
+  // Extract the stream ARN from resourceInfo (urn holds the table ARN; stream ARN is in StreamSource).
+  let streamArn = Util_DynamoDbStream.streamArnFromDynamoDbTableResource(streamResource)
+
   // IAM role for the Lambda (Lambda service principal)
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "StateTopicRole",
@@ -91,7 +94,7 @@ let make = (
   // IAM policy: read DynamoDB stream + publish to AppSync Events API
   let _ =
     (
-      streamResource.urn,
+      streamArn,
       eventsApi.api.apiArn,
     )
     ->Pulumi.Output.all2
@@ -179,12 +182,14 @@ let make = (
   )
 
   // EventSourceMapping: DynamoDB Stream → StateTopic Lambda
-  let lambdaOutput = lambda->Pulumi.Output.make
-  let _esm = Util_EventSourceMapping.subscribe(
-    ~lambda=lambdaOutput,
-    ~targetName=name ++ "StateTopic",
-    ~sourceName=streamResource.name->Pulumi.Output.get,
-    ~source=streamResource,
-    ~opts,
+  // Uses streamArn (not streamResource.urn which holds the table ARN).
+  let _esm = EventSourceMapping.make(
+    ~name=name ++ "Stream2" ++ name ++ "StateTopic",
+    ~args={
+      EventSourceMapping.functionName: lambda.arn->Pulumi.Output.asInput,
+      eventSourceArn: streamArn->Pulumi.Output.asInput,
+      startingPosition: LATEST,
+    },
+    ~opts=Some(opts),
   )
 }

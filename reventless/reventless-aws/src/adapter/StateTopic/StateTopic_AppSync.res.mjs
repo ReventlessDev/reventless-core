@@ -13,7 +13,6 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_ReadModel.res.mjs";
 import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
-import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
 function makeHandlerCode(topicName) {
   return `
@@ -50,9 +49,10 @@ export async function handler(event) {
 
 function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
   let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
+  let streamArn = Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(readModelName + "StateTopicRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
   Pulumi.all([
-    streamResource.urn,
+    streamArn,
     eventsApi.api.apiArn
   ]).apply(param => {
     new (Aws.iam.RolePolicy)(readModelName + "StateTopicPolicy", {
@@ -114,8 +114,11 @@ function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
     },
     sourceCodeHash: sourceCodeHash
   }, opts);
-  let lambdaOutput = Pulumi.output(lambda);
-  Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambdaOutput, readModelName + "StateTopic", streamResource.name.get(), streamResource, opts);
+  new (Aws.lambda.EventSourceMapping)(readModelName + "Stream2" + readModelName + "StateTopic", {
+    functionName: lambda.arn,
+    eventSourceArn: streamArn,
+    startingPosition: "LATEST"
+  }, opts);
 }
 
 export {

@@ -89,9 +89,9 @@ let make = (
   // SQS queue policy — allow SNS to send messages
   let snsResource = eventTopicOutputs.resources->Array.getUnsafe(0)
   let _ =
-    (queue.arn, queue.id)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((queueArn, queueId)) => {
+    (queue.arn, queue.id, snsResource.urn)
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply(((queueArn, queueId, snsUrn)) => {
       open PolicyDocument
       let _queuePolicy = SQS.QueuePolicy.make(
         ~name=name ++ "EventLogSubQueuePolicy",
@@ -108,7 +108,7 @@ let make = (
                 resources: Resource(queueArn),
                 conditions: {
                   arnEquals: [
-                    ("aws:SourceArn", ConditionValues([snsResource.urn->Pulumi.Output.get])),
+                    ("aws:SourceArn", ConditionValues([snsUrn])),
                   ]->Dict.fromArray,
                 },
               },
@@ -125,7 +125,7 @@ let make = (
   let _subscription = Util_SQS.subscribeToSnsTopic(
     ~queue,
     ~targetName=name ++ "EventLogSub",
-    ~sourceName=snsResource.name->Pulumi.Output.get,
+    ~sourceName=name,
     ~topic=snsResource,
     ~opts,
   )

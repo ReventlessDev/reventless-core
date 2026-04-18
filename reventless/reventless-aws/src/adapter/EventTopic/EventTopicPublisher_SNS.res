@@ -1,6 +1,11 @@
 open PulumiAws
 
+/** EventTopic names backed by SNS (not DynamoDB stream).
+    Read by subscriptionInfraHook (Phase 5) to skip non-SNS entries. */
+let snsRegistry: Set.t<string> = Set.make()
+
 let make: ReventlessCore.EventTopic_Adapter.publisherMaker = (~name, ~storageResources as _, ~opts) => {
+  snsRegistry->Set.add(name)
   let tags = AWS.Tags.make(~name, ReventlessCore.EventTopic.componentType)
   let topic = SNS.Topic.make(
     ~name,

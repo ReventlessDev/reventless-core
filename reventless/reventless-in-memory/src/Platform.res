@@ -520,6 +520,13 @@ module MakeWithConfig = (
     ) => StateViewSliceMaker.Make(Spec)
   }
 
+  // In-memory has no DynamoDB streams — stream variant is identical to plain StateViewSlice.
+  module StateViewSliceStream = {
+    module Make = (Spec: Reventless.StateViewSlice.Spec): (
+      ReventlessInfra.StateViewSlice.T with module Spec = Spec
+    ) => StateViewSliceMaker.Make(Spec)
+  }
+
   module AutomationSlice = {
     module Make = (Spec: Reventless.AutomationSlice.Spec): (
       ReventlessInfra.AutomationSlice.T with module Spec = Spec

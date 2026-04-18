@@ -7,16 +7,17 @@ import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStre
 import * as QueryDbStorage_DynamoDb$ReventlessAws from "./QueryDbStorage_DynamoDb.res.mjs";
 import * as QueryDbStorage_DynamoDb_Runtime$ReventlessAws from "./QueryDbStorage_DynamoDb_Runtime.res.mjs";
 
-let streamRegistry = {
-  contents: new Set()
-};
+let streamRegistry = new Set();
 
 function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
-  streamRegistry.contents.add(name);
+  streamRegistry.add(name);
   let tags = AWS_Tags$ReventlessAws.make(name, QueryDb$ReventlessCore.componentType);
   let table = Util_DynamoDbStream$ReventlessAws.makeTable(QueryDbStorage_DynamoDb$ReventlessAws.attributes(subIdField, indexes), QueryDbStorage_DynamoDb$ReventlessAws.globalSecondaryIndexes(indexes), ttl, subIdField, "NEW_AND_OLD_IMAGES", tags, opts, name);
   return {
-    resources: [Util_DynamoDbStream$ReventlessAws.toResource(tags, table)],
+    resources: [
+      Util_DynamoDb$ReventlessAws.toResource(tags, table),
+      Util_DynamoDbStream$ReventlessAws.toResource(tags, table)
+    ],
     dataSourceName: QueryDbStorage_DynamoDb$ReventlessAws.dataSource(name, table, api, apiRole, opts).name,
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => ({
       load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(resolvedTable),

@@ -19,7 +19,9 @@ function Make(Spec) {
       asEffectHandler: prim => prim
     })({
       make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
-    })(EventTopicPublisher_SNS$ReventlessAws)({
+    })({
+      make: EventTopicPublisher_SNS$ReventlessAws.make
+    })({
       forCommandTopic: ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessAws.forCommandTopic
     });
     ExtensionPointRuntime_Builder_PerExtensionPoint$ReventlessAws.registerExtensionPoint(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Mappings.moduleUrl), Config.publishToAggregatesQueueUrls);

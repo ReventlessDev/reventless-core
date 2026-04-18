@@ -9,7 +9,10 @@ import * as Util_SNS$ReventlessAws from "../../util/Util_SNS.res.mjs";
 import * as EventTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventTopic/EventTopic.res.mjs";
 import * as EventTopicPublisher_SNS_Runtime$ReventlessAws from "./EventTopicPublisher_SNS_Runtime.res.mjs";
 
+let snsRegistry = new Set();
+
 function make(name, param, opts) {
+  snsRegistry.add(name);
   let tags = AWS_Tags$ReventlessAws.make(name, EventTopic$ReventlessCore.componentType);
   let topic = new (Aws.sns.Topic)(name, {
     tags: tags
@@ -30,6 +33,7 @@ function make(name, param, opts) {
 }
 
 export {
+  snsRegistry,
   make,
 }
-/* Stream Not a pure module */
+/* snsRegistry Not a pure module */

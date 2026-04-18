@@ -52,6 +52,10 @@ type apiComponent = Api.component
 // where `module Plugin: Plugin.T` shadows the package-level Plugin module.
 type pluginOutputs = Plugin.outputs
 
+// Module type alias so StateViewSliceStream can reference the component T
+// without being confused by the `module StateViewSlice` declaration inside T.
+module type StateViewSliceComponentT = StateViewSlice.T
+
 module type T = {
   /** Platform-specific API type (e.g. `Types.AppSync.api` for AWS, `unit` for in-memory). */
   type api
@@ -148,6 +152,12 @@ module type T = {
   /** Factory for DCB read-side state-view slice components. */
   module StateViewSlice: {
     module Make: (Spec: Reventless.StateViewSlice.Spec) => StateViewSlice.T
+      with module Spec = Spec
+  }
+
+  /** Factory for stream-enabled state-view slice components (enables Source B subscriptions). */
+  module StateViewSliceStream: {
+    module Make: (Spec: Reventless.StateViewSlice.Spec) => StateViewSliceComponentT
       with module Spec = Spec
   }
 

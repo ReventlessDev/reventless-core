@@ -22,7 +22,9 @@ function MakeWithConfig(Config) {
     asEffectHandler: prim => prim
   })({
     make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
-  })(EventTopicPublisher_SNS$ReventlessAws)({
+  })({
+    make: EventTopicPublisher_SNS$ReventlessAws.make
+  })({
     forCommandTopic: PluginExtensionPointRuntime_Builder$ReventlessAws.forCommandTopic
   });
 }
@@ -41,7 +43,9 @@ let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
   asEffectHandler: prim => prim
 })({
   make: CommandTopicChannel_SQS_Sync$ReventlessAws.make
-})(EventTopicPublisher_SNS$ReventlessAws)({
+})({
+  make: EventTopicPublisher_SNS$ReventlessAws.make
+})({
   forCommandTopic: PluginExtensionPointRuntime_Builder$ReventlessAws.forCommandTopic
 });
 

@@ -501,13 +501,18 @@ let makeResolver = (
 
 module Functions = PulumiAws.AppSync.Resolver.Functions
 
-let makeSubscriptionResolverCode = (~filter: option<string>): string => {
-  let filterLine = switch filter {
-  | None => ""
-  | Some(f) => `\n  ctx.extensions.setSubscriptionFilter(${f});`
-  }
-  `export function request(ctx) {${filterLine}
+let makeSubscriptionResolverCode = (~filter: option<string>): string =>
+  switch filter {
+  | None => `export function request(ctx) {
   return { payload: null };
+}
+
+export function response(ctx) {
+  return ctx.result;
+}`
+  | Some(f) => `export function request(ctx) {
+  extensions.setSubscriptionFilter(${f});
+  return {};
 }
 
 export function response(ctx) {

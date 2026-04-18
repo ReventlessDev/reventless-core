@@ -44,8 +44,9 @@ module Make = (
     CatalogPlugin.RecordProductDemand,
   )
 
-  module ProductsViewSlice = Platform.StateViewSlice.Make(CatalogPlugin.ProductsView)
-  module ProductDemandViewSlice = Platform.StateViewSlice.Make(
+  // Stream-enabled: allows StateTopic_AppSync to push state changes via AppSync Events API.
+  module ProductsViewSlice = Platform.StateViewSliceStream.Make(CatalogPlugin.ProductsView)
+  module ProductDemandViewSlice = Platform.StateViewSliceStream.Make(
     CatalogPlugin.ProductDemandView,
   )
 

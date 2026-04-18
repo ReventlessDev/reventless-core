@@ -122,7 +122,7 @@ function Make(Platform) {
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });
-  let ProductsViewSlice = Platform.StateViewSlice.Make({
+  let ProductsViewSlice = Platform.StateViewSliceStream.Make({
     name: ProductsView$CatalogPlugin.name,
     moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
     stateSchema: ProductsView$CatalogPlugin.stateSchema,
@@ -131,7 +131,7 @@ function Make(Platform) {
     config: ProductsView$CatalogPlugin.config,
     subIdConfig: undefined
   });
-  let ProductDemandViewSlice = Platform.StateViewSlice.Make({
+  let ProductDemandViewSlice = Platform.StateViewSliceStream.Make({
     name: ProductDemandView$CatalogPlugin.name,
     moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemandView$CatalogPlugin.stateSchema,

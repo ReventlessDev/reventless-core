@@ -68,7 +68,8 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
   let snsResource = eventTopicOutputs.resources[0];
   Pulumi.all([
     queue.arn,
-    queue.id
+    queue.id,
+    snsResource.urn
   ]).apply(param => {
     new (Aws.sqs.QueuePolicy)(name + "EventLogSubQueuePolicy", {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "EventLogSubQueuePolicy", [{
@@ -82,14 +83,14 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
           Condition: {
             ArnEquals: Object.fromEntries([[
                 "aws:SourceArn",
-                [snsResource.urn.get()]
+                [param[2]]
               ]])
           }
         }])),
       queueUrl: param[1]
     }, opts);
   });
-  Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name + "EventLogSub", snsResource.name.get(), snsResource, opts);
+  Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name + "EventLogSub", name, snsResource, opts);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "EventLogSubRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
   Pulumi.all([
     queue.arn,

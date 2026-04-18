@@ -213,12 +213,45 @@ module MakeWithConfig = (
   })
 
   // AppSync Events API — companion to the GraphQL API for Sources A and B subscriptions.
-  // Created only in platform/monolithic mode (platformStackRef = None).
-  // Plugin mode support (StackReference import) can be added later.
+  // In platform/monolithic mode: created here as a real resource.
+  // In plugin mode: reconstructed as a phantom from platform stack exports (eventsApiArn, eventsApiDns).
   let domainEventsApiOpt: option<AppSync_EventsApi.t> =
-    platformStackRef->Option.isNone
-      ? Some(AppSync_EventsApi.make(~name="DomainEventsApi", ~opts={}))
-      : None
+    switch platformStackRef {
+    | None => Some(AppSync_EventsApi.make(~name="DomainEventsApi", ~opts={}))
+    | Some(stackRef) =>
+      let eventsApiArnOutput: Pulumi.Output.t<option<string>> =
+        stackRef->Pulumi.StackReference.getOutput("eventsApiArn")
+      let eventsApiDnsOutput: Pulumi.Output.t<option<string>> =
+        stackRef->Pulumi.StackReference.getOutput("eventsApiDns")
+      let defaultEventsOutput: Pulumi.Output.t<option<JSON.t>> =
+        stackRef->Pulumi.StackReference.getOutput("default")
+      let getFromDefault = (default, key) =>
+        default
+        ->Option.flatMap(d => d->JSON.Decode.object)
+        ->Option.flatMap(d => d->Dict.get(key))
+        ->Option.flatMap(v => v->JSON.Decode.string)
+      let apiArn =
+        (eventsApiArnOutput, defaultEventsOutput)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((direct, default)) =>
+          direct->Option.orElse(getFromDefault(default, "eventsApiArn"))
+        )
+      let dns =
+        (eventsApiDnsOutput, defaultEventsOutput)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((direct, default)) =>
+          direct->Option.orElse(getFromDefault(default, "eventsApiDns"))
+        )
+      let api: PulumiAws.AwsNative.AppSync.Api.t = {
+        apiId: Pulumi.Output.make(""),
+        apiArn: apiArn->Pulumi.Output.apply(v => v->Option.getOr("")),
+        dns: dns->Pulumi.Output.apply(dnsHttp => ({
+          PulumiAws.AwsNative.AppSync.Api.http: ?dnsHttp,
+        }: PulumiAws.AwsNative.AppSync.Api.dns)),
+        name: Pulumi.Output.make(""),
+      }
+      Some({AppSync_EventsApi.api, defaultNamespace: None})
+    }
 
   // Returns the AppSync API/role to attach resolvers to for the current deploy target.
   // Hoisted above ApiConfig so the module can reference them as thunks.
@@ -410,6 +443,10 @@ module MakeWithConfig = (
 
   module StateViewSlice = {
     include StateViewSlice_Builder.Make(ApiConfig)
+  }
+  module StateViewSliceStream = {
+    @@warning("-60")
+    include StateViewSlice_Builder_Stream.Make(ApiConfig)
   }
   module AutomationSlice = {
     include AutomationSlice_Builder.Make(ApiConfig)
@@ -762,8 +799,8 @@ module MakeWithConfig = (
         let graphqlApi = resolveHookedApi()
 
         // Phase 4: StateTopic per stream-enabled QueryDb
-        allQueryDbs->Dict.forEachWithKey((_, readModelName) => {
-          if QueryDbStorage_DynamoDbStream.streamRegistry.contents->Set.has(readModelName) {
+        allQueryDbs->Dict.forEachWithKey((_queryDbOutputs, readModelName) => {
+          if QueryDbStorage_DynamoDbStream.streamRegistry->Set.has(readModelName) {
             let returnTypeName =
               ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry.contents
               ->Dict.get(readModelName)
@@ -776,25 +813,37 @@ module MakeWithConfig = (
               ~eventsApi,
               ~opts=customOpts,
             )
-            // Source B subscription resolver with server-side id-based filter
+            // Source B subscription resolver — NONE data source required by AppSync UNIT resolvers
+            let noneDs = PulumiAws.AppSync.DataSource.makeNoneDataSource(
+              ~name=returnTypeName ++ "StateTopicNone",
+              ~api=graphqlApi,
+              ~opts=customOpts,
+            )
             let _ = AppSync_Resolver_Retrying.makeSubscriptionResolver(
               ~name="on" ++ returnTypeName ++ "StateChanged",
               ~api=graphqlApi,
               ~field="on" ++ returnTypeName ++ "_stateChanged",
-              ~subscriptionFilter=`{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`,
+              ~dataSourceName=noneDs.name->Pulumi.Output.asInput,
+              ~subscriptionFilter=`{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`,
               ~opts=customOpts,
             )
           }
         })
 
-        // Phase 5: EventLogSubscription per event log entry
+        // Phase 5: EventLogSubscription per SNS-backed event log entry.
+        // DynamoDB stream event topics (Category, DCB) are skipped — no SNS subscription needed.
         eventLogEntries->Array.forEach(entry => {
           // Aggregate EventTopics are keyed by Spec.name (= displayName).
           // DCB EventTopic is keyed by busKey (= pluginName ++ "DcbEventLog").
+          let isSns =
+            EventTopicPublisher_SNS.snsRegistry->Set.has(entry.displayName) ||
+            EventTopicPublisher_SNS.snsRegistry->Set.has(entry.busKey)
           let eventTopicOutputs =
-            allEventTopics
-            ->Dict.get(entry.displayName)
-            ->Option.orElse(allEventTopics->Dict.get(entry.busKey))
+            isSns
+              ? allEventTopics
+                ->Dict.get(entry.displayName)
+                ->Option.orElse(allEventTopics->Dict.get(entry.busKey))
+              : None
           eventTopicOutputs->Option.forEach(outputs =>
             EventLogSubscription_AppSync.make(
               ~name=entry.displayName,
@@ -1219,6 +1268,17 @@ module MakeWithConfig = (
       ),
     )
     Pulumi.Pulumi.export("domainApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
+
+    // Events API exports — consumed by plugin stacks to wire Source B (StateTopic) Lambdas.
+    switch domainEventsApiOpt {
+    | Some(eventsApi) =>
+      Pulumi.Pulumi.export("eventsApiArn", eventsApi.api.apiArn)
+      Pulumi.Pulumi.export(
+        "eventsApiDns",
+        eventsApi.api.dns->Pulumi.Output.apply(dns => dns.http->Option.getOr("")),
+      )
+    | None => ()
+    }
 
     // Export Plugin RM table name so plugin stacks can query existing plugins
     // for cumulative schema stitching (preResolversSchemaHook).

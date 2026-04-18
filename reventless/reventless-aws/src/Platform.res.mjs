@@ -22,6 +22,7 @@ import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
@@ -44,6 +45,7 @@ import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoi
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
 import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationSlice_Builder.res.mjs";
+import * as EventTopicPublisher_SNS$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_SNS.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
@@ -59,6 +61,7 @@ import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadMo
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
+import * as StateViewSlice_Builder_Stream$ReventlessAws from "./components/StateViewSlice_Builder_Stream.res.mjs";
 import * as Aggregate_Builder_Single_Async$ReventlessAws from "./components/Aggregate_Builder_Single_Async.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
@@ -180,7 +183,40 @@ function MakeWithConfig(Config) {
     platformApi: match[2],
     platformApiRole: match[3]
   };
-  let domainEventsApiOpt = Stdlib_Option.isNone(platformStackRef) ? AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", {}) : undefined;
+  let domainEventsApiOpt;
+  if (platformStackRef !== undefined) {
+    let stackRef$1 = Primitive_option.valFromOption(platformStackRef);
+    let eventsApiArnOutput = stackRef$1.getOutput("eventsApiArn");
+    let eventsApiDnsOutput = stackRef$1.getOutput("eventsApiDns");
+    let defaultEventsOutput = stackRef$1.getOutput("default");
+    let getFromDefault = ($$default, key) => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
+    let apiArn = Pulumi.all([
+      eventsApiArnOutput,
+      defaultEventsOutput
+    ]).apply(param => Stdlib_Option.orElse(param[0], getFromDefault(param[1], "eventsApiArn")));
+    let dns = Pulumi.all([
+      eventsApiDnsOutput,
+      defaultEventsOutput
+    ]).apply(param => Stdlib_Option.orElse(param[0], getFromDefault(param[1], "eventsApiDns")));
+    let api_apiId = Pulumi.output("");
+    let api_apiArn = apiArn.apply(v => Stdlib_Option.getOr(v, ""));
+    let api_dns = dns.apply(dnsHttp => ({
+      http: dnsHttp
+    }));
+    let api_name = Pulumi.output("");
+    let api$1 = {
+      apiId: api_apiId,
+      apiArn: api_apiArn,
+      dns: api_dns,
+      name: api_name
+    };
+    domainEventsApiOpt = {
+      api: api$1,
+      defaultNamespace: undefined
+    };
+  } else {
+    domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", {});
+  }
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;
     if (match === "Domain") {
@@ -335,8 +371,9 @@ function MakeWithConfig(Config) {
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$1 = StateViewSlice_Builder_Stream$ReventlessAws.Make(ApiConfig);
+  let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -410,16 +447,18 @@ function MakeWithConfig(Config) {
     let allQueryDbs = params.allQueryDbs;
     let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(params.opts);
     let graphqlApi = resolveHookedApi();
-    Stdlib_Dict.forEachWithKey(allQueryDbs, (param, readModelName) => {
-      if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.contents.has(readModelName)) {
+    Stdlib_Dict.forEachWithKey(allQueryDbs, (_queryDbOutputs, readModelName) => {
+      if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
       let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
-      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", undefined, `{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`, customOpts);
+      let noneDs = AppSync_DataSource$PulumiAws.makeNoneDataSource(returnTypeName + "StateTopicNone", graphqlApi, customOpts);
+      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", noneDs.name, `{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
-      let eventTopicOutputs = Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]);
+      let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);
+      let eventTopicOutputs = isSns ? Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]) : undefined;
       Stdlib_Option.forEach(eventTopicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
     });
   }));
@@ -830,6 +869,10 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    if (domainEventsApiOpt !== undefined) {
+      Pulumi$Pulumi.$$export("eventsApiArn", domainEventsApiOpt.api.apiArn);
+      Pulumi$Pulumi.$$export("eventsApiDns", domainEventsApiOpt.api.dns.apply(dns => Stdlib_Option.getOr(dns.http, "")));
+    }
     if (pluginReadModelTableName !== undefined) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
@@ -906,11 +949,14 @@ function MakeWithConfig(Config) {
     StateViewSlice: {
       Make: include.Make
     },
-    AutomationSlice: {
+    StateViewSliceStream: {
       Make: include$1.Make
     },
-    OutboundTranslationSlice: {
+    AutomationSlice: {
       Make: include$2.Make
+    },
+    OutboundTranslationSlice: {
+      Make: include$3.Make
     },
     InboundTranslationSlice: InboundTranslationSlice,
     Api: Api,
@@ -1018,7 +1064,40 @@ function Make($star) {
     platformApi: match[2],
     platformApiRole: match[3]
   };
-  let domainEventsApiOpt = Stdlib_Option.isNone(platformStackRef) ? AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", {}) : undefined;
+  let domainEventsApiOpt;
+  if (platformStackRef !== undefined) {
+    let stackRef$1 = Primitive_option.valFromOption(platformStackRef);
+    let eventsApiArnOutput = stackRef$1.getOutput("eventsApiArn");
+    let eventsApiDnsOutput = stackRef$1.getOutput("eventsApiDns");
+    let defaultEventsOutput = stackRef$1.getOutput("default");
+    let getFromDefault = ($$default, key) => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap($$default, d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
+    let apiArn = Pulumi.all([
+      eventsApiArnOutput,
+      defaultEventsOutput
+    ]).apply(param => Stdlib_Option.orElse(param[0], getFromDefault(param[1], "eventsApiArn")));
+    let dns = Pulumi.all([
+      eventsApiDnsOutput,
+      defaultEventsOutput
+    ]).apply(param => Stdlib_Option.orElse(param[0], getFromDefault(param[1], "eventsApiDns")));
+    let api_apiId = Pulumi.output("");
+    let api_apiArn = apiArn.apply(v => Stdlib_Option.getOr(v, ""));
+    let api_dns = dns.apply(dnsHttp => ({
+      http: dnsHttp
+    }));
+    let api_name = Pulumi.output("");
+    let api$1 = {
+      apiId: api_apiId,
+      apiArn: api_apiArn,
+      dns: api_dns,
+      name: api_name
+    };
+    domainEventsApiOpt = {
+      api: api$1,
+      defaultNamespace: undefined
+    };
+  } else {
+    domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", {});
+  }
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;
     if (match === "Domain") {
@@ -1173,8 +1252,9 @@ function Make($star) {
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let include$1 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let include$2 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$1 = StateViewSlice_Builder_Stream$ReventlessAws.Make(ApiConfig);
+  let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
+  let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let InboundTranslationSlice = InboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -1247,16 +1327,18 @@ function Make($star) {
     let allQueryDbs = params.allQueryDbs;
     let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(params.opts);
     let graphqlApi = resolveHookedApi();
-    Stdlib_Dict.forEachWithKey(allQueryDbs, (param, readModelName) => {
-      if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.contents.has(readModelName)) {
+    Stdlib_Dict.forEachWithKey(allQueryDbs, (_queryDbOutputs, readModelName) => {
+      if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
       let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry.contents[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
-      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", undefined, `{"filterGroup":[{"filters":[{"fieldName":"id","operator":"eq","value":{"ref":"ctx.args.id"}}]}]}`, customOpts);
+      let noneDs = AppSync_DataSource$PulumiAws.makeNoneDataSource(returnTypeName + "StateTopicNone", graphqlApi, customOpts);
+      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", noneDs.name, `{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
-      let eventTopicOutputs = Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]);
+      let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);
+      let eventTopicOutputs = isSns ? Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]) : undefined;
       Stdlib_Option.forEach(eventTopicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
     });
   }));
@@ -1642,6 +1724,10 @@ function Make($star) {
     Pulumi$Pulumi.$$export("domainApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
     Pulumi$Pulumi.$$export("domainApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
+    if (domainEventsApiOpt !== undefined) {
+      Pulumi$Pulumi.$$export("eventsApiArn", domainEventsApiOpt.api.apiArn);
+      Pulumi$Pulumi.$$export("eventsApiDns", domainEventsApiOpt.api.dns.apply(dns => Stdlib_Option.getOr(dns.http, "")));
+    }
     if (pluginReadModelTableName !== undefined) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
@@ -1712,11 +1798,14 @@ function Make($star) {
   let StateViewSlice = {
     Make: include.Make
   };
-  let AutomationSlice = {
+  let StateViewSliceStream = {
     Make: include$1.Make
   };
-  let OutboundTranslationSlice = {
+  let AutomationSlice = {
     Make: include$2.Make
+  };
+  let OutboundTranslationSlice = {
+    Make: include$3.Make
   };
   return {
     api: domainApi,
@@ -1729,6 +1818,7 @@ function Make($star) {
     Counter: Counter$1,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
+    StateViewSliceStream: StateViewSliceStream,
     AutomationSlice: AutomationSlice,
     OutboundTranslationSlice: OutboundTranslationSlice,
     InboundTranslationSlice: InboundTranslationSlice,

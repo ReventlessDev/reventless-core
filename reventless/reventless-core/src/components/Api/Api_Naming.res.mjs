@@ -4,7 +4,7 @@
 function pluralize(n) {
   if (/[^aeiou]y$/i.test(n)) {
     return n.slice(0, n.length - 1 | 0) + "ies";
-  } else if (n.endsWith("s")) {
+  } else if (n.endsWith("s") || n.endsWith("x") || n.endsWith("z") || n.endsWith("ch") || n.endsWith("sh")) {
     return n + "es";
   } else {
     return n + "s";

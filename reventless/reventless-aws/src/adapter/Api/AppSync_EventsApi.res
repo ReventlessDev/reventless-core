@@ -20,7 +20,7 @@ type t = {
   /** Full AppSync Events API output — carry this through the stack. */
   api: Api.t,
   /** The `default` channel namespace created on the API. */
-  defaultNamespace: ChannelNamespace.t,
+  defaultNamespace: option<ChannelNamespace.t>,
 }
 
 /** Create an AppSync Events API with AWS_IAM auth + a `default` channel namespace.
@@ -54,10 +54,10 @@ let make = (~name: string, ~opts: Pulumi.CustomResourceOptions.t): t => {
       apiId: api.apiId->Pulumi.Output.asInput,
       name: "default"->Pulumi.Input.make,
     },
-    ~opts=Some({...opts, parent: api->Obj.magic}),
+    ~opts=Some({...opts, parent: api->Pulumi.Resource.makeFromJs}),
   )
 
-  {api, defaultNamespace}
+  {api, defaultNamespace: Some(defaultNamespace)}
 }
 
 /** HTTP endpoint URL for use as Lambda `APPSYNC_ENDPOINT` env var.

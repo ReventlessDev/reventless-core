@@ -5,7 +5,7 @@ type role = Types.AppSync.role
 
 /** ReadModel Spec.names for which a stream-enabled QueryDb was created in this deploy.
     Read by subscriptionInfraHook to decide which QueryDbs get a StateTopic Lambda. */
-let streamRegistry: ref<Set.t<string>> = ref(Set.make())
+let streamRegistry: Set.t<string> = Set.make()
 
 let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
@@ -16,7 +16,7 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   ~apiRole,
   ~opts,
 ) => {
-  streamRegistry.contents->Set.add(name)
+  streamRegistry->Set.add(name)
   let tags = AWS.Tags.make(~name, ReventlessCore.QueryDb.componentType)
   let table = Util_DynamoDbStream.makeTable(
     name,
@@ -30,7 +30,12 @@ let make: ReventlessCore.QueryDb_Adapter.storageMaker<api, role> = (
   )
   open QueryDbStorage_DynamoDb_Runtime
   {
-    resources: [table->Util_DynamoDbStream.toResource(~tags=tags->Pulumi.Output.fromInput)],
+    resources: [
+      // DynamoDb service resource required by QueryEngine_DynamoDb and QueryDbResolvers_AppSync
+      table->Util_DynamoDb.toResource(~tags=tags->Pulumi.Output.fromInput),
+      // DynamoDbStream service resource required by StateTopic_AppSync (stream ARN in resourceInfo)
+      table->Util_DynamoDbStream.toResource(~tags=tags->Pulumi.Output.fromInput),
+    ],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     operations: table
     ->Util_DynamoDb.toResolvedTableOutput

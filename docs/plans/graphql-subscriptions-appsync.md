@@ -1,8 +1,16 @@
 # Plan: GraphQL Subscriptions — AppSync Real-Time Infrastructure
 
-## Status: Phases 1–6 complete. Source C verified in AWS (all @aws_subscribe fields correct after SDL bug fix). Sources B and A not yet end-to-end tested (requires QueryDbStorage_DynamoDbStream + monolithic deployment).
+## Status: Phases 1–6 complete. Source C verified in AWS. Source B infrastructure deployed and subscription resolvers created. Source A skipped for DDB stream event topics (only SNS-backed topics eligible). End-to-end push verification pending.
 
 ### Bug fixed (2026-04-18): `Plugin_SubscriptionSchema.sourceCFields` used `String.replace(": String!", ...)` which replaced the first occurrence — hitting String! args before the return type. Fixed to `sub ++ @aws_subscribe directive` (append at end). Deployed fragments and pushed corrected schema.
+
+### Infrastructure fixes (2026-04-18):
+- `QueryDbStorage_DynamoDbStream` now returns both DynamoDb + DynamoDbStream resources so QueryEngine and StateTopic each find their service type
+- `StateTopic_AppSync` extracts stream ARN from `resourceInfo.StreamSource.sourceUrn`, creates `EventSourceMapping` directly (not via `Util_EventSourceMapping` which used table ARN)
+- `EventTopicPublisher_SNS` tracks SNS-backed topics in `snsRegistry`; Phase 5 guards skip DDB stream topics (Category aggregate, Catalog DCB use `EventTopicPublisher_DynamoDbStream`)
+- `Platform.res` reconstructs `AppSync_EventsApi.t` from StackReference exports in plugin mode (no Obj.magic — `defaultNamespace: None`)
+- Phase 4 creates a NONE data source per StateTopic (AppSync UNIT resolvers require one)
+- Subscription resolver code fixed: `extensions.setSubscriptionFilter` (not `ctx.extensions`), `return {}` for filtered resolvers
 
 ---
 
@@ -213,7 +221,10 @@ Wiring `StateTopic_AppSync.make` per ReadModel/StateViewSlice is left as opt-in 
 - [x] Stream opt-in via `QueryDbStorage_DynamoDbStream` (already existed)
 - [x] Wire `StateTopic_AppSync.make` per stream-enabled QueryDb via `subscriptionInfraHook` in `Platform.res`
 - [x] Set `subscriptionFilter` on `makeSubscriptionResolver` — hardcoded `"id"` field (see Q4 Option A)
-- [ ] Verify: state change → push reaches WebSocket subscriber (requires QueryDbStorage_DynamoDbStream + monolithic stack)
+- [x] NONE data source per StateTopic for AppSync UNIT resolver requirement
+- [x] `ProductsStream2ProductsStateTopic` + `ProductDemandStream2ProductDemandStateTopic` ESMs deployed
+- [x] `onCatalog_ProductStateChanged` + `onCatalog_ProductDemandStateChanged` subscription resolvers deployed
+- [ ] Verify: state change → push reaches WebSocket subscriber
 
 ---
 
@@ -268,8 +279,9 @@ Call site: `EventLogSubscription_AppSync.make(~name, ~topicName, ~eventTopic, ~a
 - [x] Lambda + IAM role (CloudWatch Logs + SQS receive + `appsync:GraphQL`)
 - [x] EventSourceMapping: SQS → Lambda (`Util_EventSourceMapping.subscribeSqs`)
 - [x] Inline handler: parse SNS body → extract `originatorSlice` from tags → publish to AppSync Events channel
-- [x] Wire `EventLogSubscription_AppSync.make` per entry in `eventLogEntries` via `subscriptionInfraHook` in `Platform.res`
-- [ ] Verify: domain event → push reaches admin WebSocket subscriber (requires monolithic stack; plugin mode deferred per plan)
+- [x] Wire `EventLogSubscription_AppSync.make` per SNS-backed entry in `eventLogEntries` via `subscriptionInfraHook` in `Platform.res`
+- [x] Guard: DDB stream event topics (Category, Catalog DCB) skipped via `EventTopicPublisher_SNS.snsRegistry`
+- [ ] Verify: domain event → push reaches admin WebSocket subscriber (SNS-backed topics only)
 
 ---
 
