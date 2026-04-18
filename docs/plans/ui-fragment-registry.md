@@ -1,0 +1,339 @@
+# Plan: UI Fragment Registry — Platform_Admin Extension
+
+**Date:** 2026-04-18
+**Related plan:** reventless-ui — `docs/plans/micro-frontend.md` (frontend registry, shell, components)
+
+---
+
+## Goal
+
+Extend `Platform_Admin` to carry a UI fragment manifest alongside the existing API schema manifest in each plugin's `pluginDefinition`. This enables the dashboard shell to dynamically register and deregister UI panels and pages as plugins come and go — without a shell rebuild.
+
+This is the backend half of the micro-frontend architecture. The frontend half (the `PanelRegistry`, `PageRegistry`, and `register()` API) is covered in reventless-ui.
+
+---
+
+## Background
+
+`Platform_Admin` already solves this problem for the GraphQL API layer: when a plugin connects, its `apiSchemaFragment` is stitched into the platform's unified schema. When the plugin disconnects, its types are removed. The unified API reflects exactly the plugins currently running, with no manual step.
+
+UI fragment registration follows the same pattern. The plugin sends a manifest of its UI fragments (panel IDs and CDN bundle URL) with its `Connect` command. `Platform_Admin` stores the manifest in a `UIFragmentRegistry` read model and fires lifecycle events. The dashboard shell subscribes to registry changes via AppSync and loads or unloads bundles dynamically.
+
+| Aspect | GraphQL schema stitching | UI fragment stitching |
+|--------|--------------------------|----------------------|
+| What is registered | SDL type definitions + resolver bindings | Panel manifest + bundle URL |
+| Submitted via | `pluginDefinition.apiSchemaFragment` | `pluginDefinition.uiFragments` |
+| Storage | Schema projection | `UIFragmentRegistry` read model |
+| Lifecycle events | Implicit in plugin lifecycle | `UIFragmentRegistered` · `UIFragmentUpdated` · `UIFragmentDeregistered` |
+| Disconnect trigger | Liveness timeout | Liveness timeout |
+| Consumer notification | Schema introspection on next request | AppSync subscription `onUIFragmentChange` |
+| Consumer action | Re-execute queries against updated schema | Fetch bundle from CDN, call `registry.register()` |
+
+---
+
+## Context: Build-Time vs Runtime Registration
+
+The micro-frontend architecture has two delivery modes, described fully in the reventless-ui plan. In short:
+
+- **Build-time registration** — panels are npm packages imported at dashboard build time. The shell is a static SPA. No backend changes are needed; the dashboard works without anything in this plan.
+- **Runtime registration** — panels are loaded from CDN after deploy, driven by backend lifecycle events. This is what this plan implements.
+
+Everything in this plan is prerequisite for runtime registration and has no effect on build-time registration. The two modes are additive — a deployment can start with build-time registration and migrate to runtime registration by implementing this plan.
+
+---
+
+## Step 1: Extend `pluginDefinition` with UI Fragment Manifest
+
+### 1.1 New types in `PluginDefinition.res`
+
+```rescript
+// reventless-core/src/admin/PluginDefinition.res (additions)
+
+// ── Panel fragment manifest ───────────────────────────────────────────────────
+
+// Must stay in sync with the corresponding type in reventless-ui's RegistryTypes.res
+type panelPosition =
+  | PlatformSummary   // top-level platform overview
+  | PluginDetail      // per-plugin detail page
+  | ResourceDetail    // when a specific AWS resource is selected
+  | Sidebar           // always-visible status indicators
+  | AdminGlobal       // any full-screen admin view
+
+type panelManifestEntry = {
+  fragmentId: string,             // globally unique, e.g. "monitor.latency"
+  title: string,
+  description: string,
+  positions: array<panelPosition>,
+  requiredLicense: option<string>,
+}
+
+// ── Page fragment manifest ────────────────────────────────────────────────────
+
+type menuGroup =
+  | Operations
+  | Compliance
+  | Tenants
+  | Billing
+  | Marketplace
+  | Custom(string)
+
+type menuEntry = {
+  label: string,
+  icon: option<string>,
+  group: option<menuGroup>,
+  sortOrder: int,
+}
+
+type pageManifestEntry = {
+  fragmentId: string,
+  title: string,
+  menuEntry: menuEntry,
+  requiredLicense: option<string>,
+}
+
+// ── UI fragment manifest ──────────────────────────────────────────────────────
+
+// The CDN URL from which the browser fetches the panel bundle at runtime.
+// Set to None in Phase 1 (npm-installed, no CDN). Required in Phase 2.
+type uiFragmentManifest = {
+  remoteEntryUrl: string,         // https://d1abc.cloudfront.net/monitor-ui@2.1.0/remoteEntry.js
+  panels: array<panelManifestEntry>,
+  pages: array<pageManifestEntry>,
+}
+
+// ── Extension to pluginDefinition ────────────────────────────────────────────
+
+// Added to the existing pluginDefinition type alongside apiSchemaFragment.
+// None = plugin has no UI (typical for pure backend plugins)
+// uiFragments: option<uiFragmentManifest>,
+```
+
+### 1.2 Update `Plugin_Builder.res` — `withAutoUI()`
+
+`Plugin_Builder` gains a `withAutoUI()` method. It derives `uiFragmentManifest` metadata directly from the plugin's already-registered read models and aggregates — the same schema source that `reventless-ui`'s `generateFragments` uses, but without importing React or producing any React components. reventless-core must not depend on React.
+
+The manifest contains only serialisable metadata: fragment IDs, positions, required licenses, and the CDN URL. The React components that implement the auto-generated views live in the plugin's UI bundle on CDN, which is built separately and calls `generateFragments` from reventless-ui at bundle load time.
+
+```rescript
+// reventless-core/src/admin/Plugin_Builder.res (addition)
+
+// withAutoUI derives uiFragmentManifest from the plugin's read models and aggregates:
+//   — each read model → panelManifestEntry at [PlatformSummary, PluginDetail]
+//                        + pageManifestEntry with fragmentId "${pluginId}.${rm.name}.list"
+//   — each aggregate  → panelManifestEntry at [ResourceDetail]
+//                        with fragmentId "${pluginId}.${agg.name}.detail"
+// remoteEntryUrl is the Pulumi stack output URL of the plugin's CDN bundle.
+// That bundle's entry point calls reventless-ui's generateFragments and
+// registers the resulting panelDefinition/pageDefinition arrays with the shell.
+let withAutoUI: (t, ~remoteEntryUrl: string) => t
+```
+
+`withAutoUI` is optional — plugins with no UI do not call it. Plugins providing fully custom UI populate `uiFragments` manually (bypassing `withAutoUI`) and export their own fragment definitions from their CDN bundle.
+
+---
+
+## Step 2: `Platform_Admin` — Lifecycle Handling
+
+### 2.1 New events on `Plugin` aggregate
+
+Three new events track the UI fragment manifest through the plugin lifecycle:
+
+```rescript
+// reventless-core/src/admin/Plugin_Events.res (additions)
+
+| UIFragmentRegistered({
+    pluginId: string,
+    manifest: uiFragmentManifest,
+  })
+
+| UIFragmentUpdated({
+    pluginId: string,
+    previousManifest: uiFragmentManifest,
+    newManifest: uiFragmentManifest,
+  })
+
+| UIFragmentDeregistered({
+    pluginId: string,
+  })
+```
+
+### 2.2 Command handling
+
+**`Connect` command** — when `pluginDefinition.uiFragments` is `Some(manifest)`:
+- If no prior manifest exists for this plugin → emit `UIFragmentRegistered`
+- If a prior manifest exists and it differs from the new one → emit `UIFragmentUpdated`
+- If a prior manifest exists and it is identical → emit nothing (idempotent)
+
+**Liveness timeout** — when a plugin's heartbeats stop and `UIFragmentDeregistered` has not yet been emitted:
+- Emit `UIFragmentDeregistered`
+
+This mirrors the existing handling of `apiSchemaFragment` — no new command types are needed.
+
+---
+
+## Step 3: `UIFragmentRegistry` Read Model
+
+A read model that holds the current set of registered UI fragment manifests across all connected plugins. Used by the dashboard shell to populate the registries on startup and to re-populate after a subscription event.
+
+### 3.1 Schema
+
+```rescript
+// reventless-core/src/admin/UIFragmentRegistry.res
+
+type fragmentEntry = {
+  pluginId: string,
+  manifest: uiFragmentManifest,
+  registeredAt: string,   // ISO 8601
+  updatedAt: string,
+}
+
+type t = {
+  fragments: Dict.t<fragmentEntry>,   // keyed by pluginId
+}
+```
+
+### 3.2 Projections
+
+| Event | Projection |
+|-------|-----------|
+| `UIFragmentRegistered` | Insert entry for `pluginId` |
+| `UIFragmentUpdated` | Replace entry for `pluginId`, update `updatedAt` |
+| `UIFragmentDeregistered` | Remove entry for `pluginId` |
+
+### 3.3 GraphQL query
+
+```graphql
+# Exposed as part of the Platform_Admin GraphQL schema
+
+type UIFragmentEntry {
+  pluginId: ID!
+  remoteEntryUrl: String!
+  panels: [PanelManifestEntry!]!
+  pages: [PageManifestEntry!]!
+  updatedAt: String!
+}
+
+type Query {
+  Admin_UIFragments: [UIFragmentEntry!]!
+}
+```
+
+The dashboard shell queries `Admin_UIFragments` at startup to populate both registries before first render.
+
+---
+
+## Step 4: AppSync Subscription
+
+A Source C subscription (`@aws_subscribe`) that fires whenever the fragment registry changes. The dashboard shell subscribes at startup and reacts to each push by fetching the updated registry and calling `registry.register()` or removing stale panels.
+
+```graphql
+# Platform_Admin subscription schema addition
+
+type Subscription {
+  onUIFragmentChange: UIFragmentChangeEvent
+    @aws_subscribe(mutations: [
+      "Platform_UIFragmentRegistered",
+      "Platform_UIFragmentUpdated",
+      "Platform_UIFragmentDeregistered"
+    ])
+}
+
+type UIFragmentChangeEvent {
+  pluginId: ID!
+  changeKind: UIFragmentChangeKind!
+  manifest: UIFragmentEntry   # null when changeKind is Deregistered
+}
+
+enum UIFragmentChangeKind {
+  Registered
+  Updated
+  Deregistered
+}
+```
+
+Each mutation that emits one of the three UI fragment events also triggers the `onUIFragmentChange` subscription, following the Source C pattern already established for other Platform_Admin events.
+
+---
+
+## Step 5: CDN Bundle Hosting (Pulumi)
+
+Each plugin that ships UI panels provisions its own S3 bucket and CloudFront distribution for the panel bundle. The `remoteEntryUrl` in the `uiFragmentManifest` is the Pulumi stack output of this distribution.
+
+### 5.1 New Pulumi resource in `Plugin_Stack.res`
+
+```rescript
+// reventless-core/src/pulumi/Plugin_Stack.res (addition)
+
+// When a plugin calls withAutoUI(), the Pulumi stack provisions:
+// - An S3 bucket for the panel bundle
+// - A CloudFront distribution in front of it
+// - Appropriate bucket policy and cache headers
+// The distribution domain name is exported as a Pulumi stack output
+// and passed to withAutoUI(~remoteEntryUrl=...) in the plugin definition.
+let makeUiBundleDistribution: (~pluginId: string, ~bundleVersion: string) => {
+  distributionUrl: Output.t<string>,
+  bucketName: Output.t<string>,
+}
+```
+
+The plugin's CI/CD step uploads the compiled bundle to the S3 bucket. The `distributionUrl` is used as `remoteEntryUrl` in `pluginDefinition.uiFragments`.
+
+---
+
+## Execution Checklist
+
+```
+Phase 1 — pluginDefinition extension
+  [ ] 1.1  Add panelPosition, panelManifestEntry, pageManifestEntry, uiFragmentManifest
+           types to PluginDefinition.res
+  [ ] 1.2  Add uiFragments: option<uiFragmentManifest> field to pluginDefinition
+  [ ] 1.3  Plugin_Builder.withAutoUI() — calls reventless-ui generateFragments,
+           populates uiFragments
+  [ ]      Verify: existing plugin definitions compile without changes (field is optional)
+
+Phase 2 — Platform_Admin lifecycle handling
+  [ ] 2.1  Add UIFragmentRegistered, UIFragmentUpdated, UIFragmentDeregistered
+           to Plugin_Events.res
+  [ ] 2.2  Handle uiFragments in Connect command — emit correct lifecycle event
+  [ ] 2.3  Handle liveness timeout → UIFragmentDeregistered when manifest was present
+  [ ]      Verify: connect with uiFragments emits UIFragmentRegistered;
+           re-connect with changed manifest emits UIFragmentUpdated;
+           liveness timeout emits UIFragmentDeregistered
+
+Phase 3 — UIFragmentRegistry read model
+  [ ] 3.1  UIFragmentRegistry.res — fragmentEntry type + Dict-keyed state
+  [ ] 3.2  Projections for Registered / Updated / Deregistered events
+  [ ] 3.3  Admin_UIFragments GraphQL query (UIFragmentEntry type + resolver)
+  [ ]      Verify: query returns correct entries after connect/disconnect cycle
+
+Phase 4 — AppSync subscription
+  [ ] 4.1  Add onUIFragmentChange to Platform_Admin subscription schema
+  [ ] 4.2  Add triggering mutations Platform_UIFragmentRegistered/Updated/Deregistered
+  [ ] 4.3  Wire @aws_subscribe to the three mutations
+  [ ]      Verify: subscription fires on connect (Registered) and liveness
+           timeout (Deregistered)
+
+Phase 5 — CDN bundle hosting
+  [ ] 5.1  Plugin_Stack.makeUiBundleDistribution — S3 + CloudFront provisioning
+  [ ] 5.2  Export distributionUrl as Pulumi stack output
+  [ ] 5.3  Document CI/CD upload step for plugin bundle
+  [ ]      Verify: remoteEntryUrl resolves to uploaded bundle from browser
+```
+
+---
+
+## Dependencies
+
+```
+Phase 1 (pluginDefinition extension)
+  └── Phase 2 (lifecycle events) — events reference uiFragmentManifest type
+  └── Phase 5 (CDN) — remoteEntryUrl is a Pulumi output fed into withAutoUI()
+
+Phase 2 (lifecycle events)
+  └── Phase 3 (read model) — UIFragmentRegistry projects the lifecycle events
+  └── Phase 4 (subscription) — subscription fires on the lifecycle mutations
+
+Phase 3 and Phase 4 are independent of each other and can proceed in parallel.
+```
+
+Phases 1–4 must be complete before the dashboard shell's Phase 2 runtime registration can be tested end-to-end.
