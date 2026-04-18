@@ -191,7 +191,7 @@ function project(param) {
           return newrecord;
         }
       };
-    case "IncompatiblePluginDetected" :
+    default:
       return "Ignore";
   }
   return {

@@ -20,7 +20,10 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
       }
       switch event {
       | PluginSpec.UnknownPluginDetected
-      | IncompatiblePluginDetected(_) => Reventless.Projection.Ignore
+      | IncompatiblePluginDetected(_)
+      | UIFragmentRegistered(_)
+      | UIFragmentUpdated(_)
+      | UIFragmentDeregistered(_) => Reventless.Projection.Ignore
       | Connected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
         let base: PluginReadModelSpec.state = {
           name,

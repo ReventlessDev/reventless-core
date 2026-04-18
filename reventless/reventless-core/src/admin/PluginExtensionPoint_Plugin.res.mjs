@@ -269,6 +269,8 @@ function Make(Spec) {
               _0: event._0
             }
           }];
+      default:
+        return [];
     }
   };
   let PluginMapping = {

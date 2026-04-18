@@ -14,6 +14,14 @@ let queryEntries: array<querySchemaEntry> = [
     authorization: Some(adminAuth),
     excludeFields: ["eventCollector", "extensionPointNames", "extensionNames"],
   },
+  {
+    singleFieldName: Api_Naming.adminField(~name="UIFragment"),
+    listFieldName: Api_Naming.adminField(~name="UIFragments"),
+    returnTypeName: Api_Naming.adminField(~name="UIFragment"),
+    stateSchema: UIFragmentRegistryReadModelSpec.stateSchema->S.castToUnknown,
+    authorization: Some(adminAuth),
+    excludeFields: ["registeredAt"],
+  },
 ]
 
 // Arg schemas for payload-less admin mutations

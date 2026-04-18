@@ -168,6 +168,7 @@ module Make = (Spec: Spec) => {
         | IncompatiblePluginDetected(pluginDefinition) => [
             PublishEvent(id, IncompatiblePlugin(pluginDefinition)),
           ]
+        | UIFragmentRegistered(_) | UIFragmentUpdated(_) | UIFragmentDeregistered(_) => []
         },
     )
   }

@@ -158,7 +158,7 @@ module Make = (
           mutationEntries: allMutationEntries,
           queryEntries: allQueryEntries,
           eventLogEntries: dcbResult.eventLogEntries,
-          subscriptionFields: [],
+          subscriptionFields: GraphQL_Stitcher.decode(adminFragment).subscriptions,
         })
       | None => ()
       }

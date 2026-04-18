@@ -14,6 +14,18 @@ let initialState = NotConnected
 
 let atomicCounter = None
 
+let uiRegisterEvents = (pluginId, manifest) =>
+  switch manifest {
+  | None => []
+  | Some(manifest) => [(UIFragmentRegistered({pluginId: pluginId, manifest: manifest}): event)]
+  }
+
+let uiDeregisterEvents = (pluginId, manifest) =>
+  switch manifest {
+  | None => []
+  | Some(_) => [(UIFragmentDeregistered({pluginId: pluginId}): event)]
+  }
+
 let decide = (state, command) =>
   switch state {
   | NotConnected =>
@@ -28,7 +40,13 @@ let decide = (state, command) =>
     }
   | Detected =>
     switch command {
-    | Connect(pluginDefinition) => Ok([(Connected(pluginDefinition): event)])
+    | Connect(pluginDefinition) =>
+      Ok(
+        Array.concat(
+          [(Connected(pluginDefinition): event)],
+          uiRegisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
+        ),
+      )
     | Heartbeat => Ok([UnknownPluginDetected])
     | ReportIncompatibility(pluginDefinition) => Ok([IncompatiblePluginDetected(pluginDefinition)])
     | Disconnect
@@ -37,8 +55,20 @@ let decide = (state, command) =>
     }
   | Connected(pluginDefinition) =>
     switch command {
-    | Disconnect => Ok([Disconnected(pluginDefinition)])
-    | Deactivate => Ok([Deactivated(pluginDefinition)])
+    | Disconnect =>
+      Ok(
+        Array.concat(
+          [(Disconnected(pluginDefinition): event)],
+          uiDeregisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
+        ),
+      )
+    | Deactivate =>
+      Ok(
+        Array.concat(
+          [(Deactivated(pluginDefinition): event)],
+          uiDeregisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
+        ),
+      )
     | Heartbeat => Ok([]) // ignore
     | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)
@@ -47,8 +77,14 @@ let decide = (state, command) =>
     }
   | Disconnected(pluginDefinition) =>
     switch command {
-    | Heartbeat => Ok([Reconnected(pluginDefinition)])
-    | Deactivate => Ok([Deactivated(pluginDefinition)])
+    | Heartbeat =>
+      Ok(
+        Array.concat(
+          [(Reconnected(pluginDefinition): event)],
+          uiRegisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
+        ),
+      )
+    | Deactivate => Ok([Deactivated(pluginDefinition)]) // already deregistered when disconnected
     | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)
     | Disconnect
@@ -73,7 +109,10 @@ let evolve = (state: state, event) =>
     switch event {
     | UnknownPluginDetected => Detected
     | Connected(pluginDefinition) => Connected(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state
+    | IncompatiblePluginDetected(_)
+    | UIFragmentRegistered(_)
+    | UIFragmentUpdated(_)
+    | UIFragmentDeregistered(_) => state
     | Reconnected(_)
     | Disconnected(_)
     | Activated(_)
@@ -84,7 +123,10 @@ let evolve = (state: state, event) =>
     switch event {
     | UnknownPluginDetected => state
     | Connected(pluginDefinition) => Connected(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state
+    | IncompatiblePluginDetected(_)
+    | UIFragmentRegistered(_)
+    | UIFragmentUpdated(_)
+    | UIFragmentDeregistered(_) => state
     | Reconnected(_)
     | Disconnected(_)
     | Activated(_)
@@ -95,7 +137,10 @@ let evolve = (state: state, event) =>
     switch event {
     | Disconnected(_) => Disconnected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state
+    | IncompatiblePluginDetected(_)
+    | UIFragmentRegistered(_)
+    | UIFragmentUpdated(_)
+    | UIFragmentDeregistered(_) => state
     | UnknownPluginDetected
     | Connected(_)
     | Reconnected(_)
@@ -106,7 +151,10 @@ let evolve = (state: state, event) =>
     switch event {
     | Reconnected(_) => Connected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state
+    | IncompatiblePluginDetected(_)
+    | UIFragmentRegistered(_)
+    | UIFragmentUpdated(_)
+    | UIFragmentDeregistered(_) => state
     | UnknownPluginDetected
     | Connected(_)
     | Disconnected(_)
@@ -116,7 +164,10 @@ let evolve = (state: state, event) =>
   | Inactive(pluginDefinition) =>
     switch event {
     | Activated(_) => Disconnected(pluginDefinition)
-    | IncompatiblePluginDetected(_) => state
+    | IncompatiblePluginDetected(_)
+    | UIFragmentRegistered(_)
+    | UIFragmentUpdated(_)
+    | UIFragmentDeregistered(_) => state
     | UnknownPluginDetected
     | Connected(_)
     | Reconnected(_)

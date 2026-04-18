@@ -82,7 +82,7 @@ function Make(RuntimeEnvironment) {
             mutationEntries: allMutationEntries,
             queryEntries: allQueryEntries,
             eventLogEntries: dcbResult.eventLogEntries,
-            subscriptionFields: []
+            subscriptionFields: GraphQL_Stitcher$ReventlessCore.decode(adminFragment).subscriptions
           });
         }
       }

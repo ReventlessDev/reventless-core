@@ -115,6 +115,37 @@ PluginProjectionTest.describe("PluginProjection:", () => {
       _0: PluginFixtures$ReventlessCore.pluginDefinition
     }), (newrecord.status = "Connected", newrecord));
   });
+  PluginProjectionTest.test("UIFragmentRegistered is ignored by plugin read model", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
+      "UnknownPluginDetected",
+      {
+        TAG: "Connected",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      }
+    ]), {
+      TAG: "UIFragmentRegistered",
+      _0: {
+        pluginId: PluginFixtures$ReventlessCore.pluginDefinition.id,
+        manifest: PluginFixtures$ReventlessCore.uiManifest
+      }
+    }), (newrecord.status = "Connected", newrecord));
+  });
+  PluginProjectionTest.test("UIFragmentDeregistered is ignored by plugin read model", undefined, () => {
+    let newrecord = {...PluginFixtures$ReventlessCore.state};
+    return PluginProjectionTest.thenState(PluginProjectionTest.whenEvent(PluginProjectionTest.givenEvents([
+      "UnknownPluginDetected",
+      {
+        TAG: "Connected",
+        _0: PluginFixtures$ReventlessCore.pluginDefinition
+      }
+    ]), {
+      TAG: "UIFragmentDeregistered",
+      _0: {
+        pluginId: PluginFixtures$ReventlessCore.pluginDefinition.id
+      }
+    }), (newrecord.status = "Connected", newrecord));
+  });
 });
 
 export {

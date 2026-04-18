@@ -128,4 +128,54 @@ describe("PluginBehavior:", () => {
     ->whenCmd(Connect(pluginDefinition))
     ->thenError(IsDisconnected)
   )
+
+  test("Connect (with UI fragments) emits UIFragmentRegistered", () =>
+    givenEvents([UnknownPluginDetected])
+    ->whenCmd(Connect(pluginDefinitionWithUI))
+    ->thenEvents([
+      Connected(pluginDefinitionWithUI),
+      UIFragmentRegistered({pluginId: pluginDefinitionWithUI.id, manifest: uiManifest}),
+    ])
+  )
+
+  test("Disconnect (with UI fragments) emits UIFragmentDeregistered", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinitionWithUI)])
+    ->whenCmd(Disconnect)
+    ->thenEvents([
+      Disconnected(pluginDefinitionWithUI),
+      UIFragmentDeregistered({pluginId: pluginDefinitionWithUI.id}),
+    ])
+  )
+
+  test("Deactivate (connected, with UI fragments) emits UIFragmentDeregistered", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinitionWithUI)])
+    ->whenCmd(Deactivate)
+    ->thenEvents([
+      Deactivated(pluginDefinitionWithUI),
+      UIFragmentDeregistered({pluginId: pluginDefinitionWithUI.id}),
+    ])
+  )
+
+  test("Heartbeat (re-connect with UI fragments) emits UIFragmentRegistered", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinitionWithUI),
+      Disconnected(pluginDefinitionWithUI),
+    ])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([
+      Reconnected(pluginDefinitionWithUI),
+      UIFragmentRegistered({pluginId: pluginDefinitionWithUI.id, manifest: uiManifest}),
+    ])
+  )
+
+  test("Deactivate (disconnected, with UI fragments) emits no UIFragmentDeregistered", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinitionWithUI),
+      Disconnected(pluginDefinitionWithUI),
+    ])
+    ->whenCmd(Deactivate)
+    ->thenEvents([Deactivated(pluginDefinitionWithUI)])
+  )
 })

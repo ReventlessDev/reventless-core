@@ -76,4 +76,18 @@ describe("PluginProjection:", () => {
     ->whenEvent(Reconnected(pluginDefinition))
     ->thenState({...state, status: Connected})
   )
+
+  test("UIFragmentRegistered is ignored by plugin read model", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    ->whenEvent(
+      UIFragmentRegistered({pluginId: pluginDefinition.id, manifest: uiManifest}),
+    )
+    ->thenState({...state, status: Connected})
+  )
+
+  test("UIFragmentDeregistered is ignored by plugin read model", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    ->whenEvent(UIFragmentDeregistered({pluginId: pluginDefinition.id}))
+    ->thenState({...state, status: Connected})
+  )
 })

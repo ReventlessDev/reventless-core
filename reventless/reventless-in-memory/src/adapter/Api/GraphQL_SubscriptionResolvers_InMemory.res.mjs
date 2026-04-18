@@ -62,6 +62,10 @@ function registerAll(server, sdlFields, sourceAEntries, sourceBEntries) {
   server.registerTypes(["scalar AWSJSON"]);
 }
 
+function publish(topic, payload) {
+  getPubSub().publish(topic, payload);
+}
+
 function reset() {
   pubSub.contents = undefined;
 }
@@ -78,6 +82,7 @@ export {
   bridgeSourceB,
   makeFieldResolver,
   registerAll,
+  publish,
   reset,
 }
 /* graphql-yoga Not a pure module */

@@ -136,6 +136,11 @@ let registerAll = (
   server.registerTypes(~sdlTypes=["scalar AWSJSON"])
 }
 
+/** Publish a payload to a named PubSub topic (for Source C mutation resolvers). */
+let publish = (topic: string, payload: JSON.t) => {
+  getPubSub()->YG.pubSubPublish(topic, payload)
+}
+
 let reset = () => {
   pubSub.contents = None
 }

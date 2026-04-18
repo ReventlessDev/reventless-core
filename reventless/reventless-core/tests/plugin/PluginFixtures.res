@@ -25,6 +25,17 @@ let state: PluginReadModelSpec.state = {
   uiFragments: None,
 }
 
+let uiManifest: Reventless.Plugin.uiFragmentManifest = {
+  remoteEntryUrl: "https://cdn.example.com/plugin@1.0/remoteEntry.js",
+  panels: [],
+  pages: [],
+}
+
+let pluginDefinitionWithUI = {
+  ...pluginDefinition,
+  uiFragments: Some(uiManifest),
+}
+
 let extensionPointNames2 = ["Test.Test"]
 let pluginDefinition2 = {
   Reventless.Plugin.id: "id2@1",

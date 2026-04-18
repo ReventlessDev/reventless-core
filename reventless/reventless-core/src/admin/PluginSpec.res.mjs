@@ -18,6 +18,21 @@ let commandSchema = S.union([
   }))
 ]);
 
+let uiFragmentRegisteredDataSchema = S.schema(s => ({
+  pluginId: s.m(S.string),
+  manifest: s.m(Plugin$Reventless.uiFragmentManifestSchema)
+}));
+
+let uiFragmentUpdatedDataSchema = S.schema(s => ({
+  pluginId: s.m(S.string),
+  previousManifest: s.m(Plugin$Reventless.uiFragmentManifestSchema),
+  newManifest: s.m(Plugin$Reventless.uiFragmentManifestSchema)
+}));
+
+let uiFragmentDeregisteredDataSchema = S.schema(s => ({
+  pluginId: s.m(S.string)
+}));
+
 let eventSchema = S.union([
   S.literal("UnknownPluginDetected"),
   S.schema(s => ({
@@ -43,6 +58,18 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "IncompatiblePluginDetected",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
+  })),
+  S.schema(s => ({
+    TAG: "UIFragmentRegistered",
+    _0: s.m(uiFragmentRegisteredDataSchema)
+  })),
+  S.schema(s => ({
+    TAG: "UIFragmentUpdated",
+    _0: s.m(uiFragmentUpdatedDataSchema)
+  })),
+  S.schema(s => ({
+    TAG: "UIFragmentDeregistered",
+    _0: s.m(uiFragmentDeregisteredDataSchema)
   }))
 ]);
 
@@ -63,6 +90,9 @@ export {
   name,
   Id,
   commandSchema,
+  uiFragmentRegisteredDataSchema,
+  uiFragmentUpdatedDataSchema,
+  uiFragmentDeregisteredDataSchema,
   eventSchema,
   errorSchema,
   moduleUrl,

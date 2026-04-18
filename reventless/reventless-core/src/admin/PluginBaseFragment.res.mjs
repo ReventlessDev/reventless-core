@@ -5,13 +5,15 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
+import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "./UIFragmentRegistryReadModelSpec.res.mjs";
 
 let adminAuth = {
   tableName: "Plugin",
   group: "Admin"
 };
 
-let queryEntries = [{
+let queryEntries = [
+  {
     singleFieldName: Api_Naming$ReventlessCore.adminField("Plugin"),
     listFieldName: Api_Naming$ReventlessCore.adminField("Plugins"),
     returnTypeName: Api_Naming$ReventlessCore.adminField("Plugin"),
@@ -22,7 +24,16 @@ let queryEntries = [{
       "extensionPointNames",
       "extensionNames"
     ]
-  }];
+  },
+  {
+    singleFieldName: Api_Naming$ReventlessCore.adminField("UIFragment"),
+    listFieldName: Api_Naming$ReventlessCore.adminField("UIFragments"),
+    returnTypeName: Api_Naming$ReventlessCore.adminField("UIFragment"),
+    stateSchema: UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema,
+    authorization: adminAuth,
+    excludeFields: ["registeredAt"]
+  }
+];
 
 let activateArgsSchema = S.schema(s => ({
   id: s.m(DcbTag$Reventless.string)

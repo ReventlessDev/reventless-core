@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
+import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "./PluginBaseFragment.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -27,8 +28,28 @@ function mutationEntries(cloner) {
   }
 }
 
+let uiFragmentSubscriptionTypes = [
+  `enum UIFragmentChangeKind {\n  Registered\n  Updated\n  Deregistered\n}`,
+  `type UIFragmentChangeEvent {\n  pluginId: ID!\n  changeKind: UIFragmentChangeKind!\n  manifest: String\n}`
+];
+
+let uiFragmentMutationFields = [
+  `  Platform_UIFragmentRegistered(pluginId: ID!, manifest: String): UIFragmentChangeEvent`,
+  `  Platform_UIFragmentUpdated(pluginId: ID!, manifest: String): UIFragmentChangeEvent`,
+  `  Platform_UIFragmentDeregistered(pluginId: ID!): UIFragmentChangeEvent`
+];
+
+let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`;
+
 function baseFragment(cloner) {
-  return GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
+  let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
+  let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
+  return GraphQL_Stitcher$ReventlessCore.encode({
+    types: parts.types.concat(uiFragmentSubscriptionTypes),
+    mutations: parts.mutations.concat(uiFragmentMutationFields),
+    queries: parts.queries,
+    subscriptions: [uiFragmentSubscriptionField]
+  });
 }
 
 let queryEntries = PluginBaseFragment$ReventlessCore.queryEntries;
@@ -38,6 +59,9 @@ export {
   cloneMutationEntry,
   mutationEntries,
   queryEntries,
+  uiFragmentSubscriptionTypes,
+  uiFragmentMutationFields,
+  uiFragmentSubscriptionField,
   baseFragment,
 }
 /* cloneArgsSchema Not a pure module */

@@ -700,6 +700,68 @@ module MakeWithConfig = (
     }
   }
 
+  // UIFragmentRegistry QueryDb store ops — initialized lazily on first seed call.
+  let uiFragmentQueryDbOpsRef: ref<option<ReventlessCore.QueryDb_Adapter.operations>> = ref(None)
+
+  let ensureUIFragmentRegistryQueryDbStore = () => {
+    switch uiFragmentQueryDbOpsRef.contents {
+    | Some(ops) => ops
+    | None =>
+      let name = ReventlessCore.UIFragmentRegistryReadModelSpec.name
+      let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
+      let allItems: ref<array<JSON.t>> = ref([])
+      let syncAll = () => {
+        allItems.contents =
+          store.contents
+          ->Dict.toArray
+          ->Array.flatMap(((id, items)) =>
+            items->Array.map(item => {
+              let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+              if !(obj->Dict.get("id")->Option.isSome) {
+                let copy = Dict.make()
+                obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
+                copy->Dict.set("id", JSON.Encode.string(id))
+                JSON.Encode.object(copy)
+              } else {
+                item
+              }
+            })
+          )
+      }
+      let ops: ReventlessCore.QueryDb_Adapter.operations = {
+        load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
+        loadStream: id =>
+          store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
+        save: async (id, state, _, _) => {
+          store.contents->Dict.set(id, [state])
+          syncAll()
+          Ok()
+        },
+        saveBatch: async batch => {
+          batch->Array.forEach(((id, state, _)) => store.contents->Dict.set(id, [state]))
+          syncAll()
+          Ok()
+        },
+        count: async (_, _, inc) => Ok(inc),
+        delete: async (id, _) => {
+          store.contents->Dict.delete(id)
+          syncAll()
+          Ok()
+        },
+        deleteBatch: async ids => {
+          ids->Array.forEach(((id, _)) => store.contents->Dict.delete(id))
+          syncAll()
+          Ok()
+        },
+      }
+      Bus.registerQueryDb(name, ops)
+      Bus.registerQueryDbScan(name, () => allItems.contents)
+      Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
+      uiFragmentQueryDbOpsRef := Some(ops)
+      ops
+    }
+  }
+
   // Seed the Plugin QueryDb from constructed plugin component outputs.
   // Uses real output values serialized via PluginReadModelSpec.stateSchema.
   let seedPluginQueryDb = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
@@ -757,6 +819,36 @@ module MakeWithConfig = (
           let entry =
             state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
           let _ = pluginOps.save(id, entry, Any, None)
+        })
+    })
+  }
+
+  // Seed the UIFragmentRegistry QueryDb from plugin outputs that carry a uiFragments manifest.
+  let seedUIFragmentRegistryQueryDb = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
+    let uiFragmentOps = ensureUIFragmentRegistryQueryDbStore()
+    pluginComponents->Array.forEach(plugin => {
+      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
+      let _ =
+        (outputs.id, outputs.uiFragments)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((id, uiFragments)) => {
+          switch uiFragments {
+          | Some(manifest) =>
+            let state: ReventlessCore.UIFragmentRegistryReadModelSpec.state = {
+              pluginId: id,
+              remoteEntryUrl: manifest.remoteEntryUrl,
+              panels: manifest.panels,
+              pages: manifest.pages,
+              registeredAt: Date.make()->Date.toISOString,
+              updatedAt: Date.make()->Date.toISOString,
+            }
+            let entry =
+              state->S.reverseConvertToJsonOrThrow(
+                ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
+              )
+            let _ = uiFragmentOps.save(id, entry, Any, None)
+          | None => ()
+          }
         })
     })
   }
@@ -941,8 +1033,10 @@ module MakeWithConfig = (
     // Seed the Plugin QueryDb from constructed plugin component outputs.
     // Initializes the store on first call and serializes via PluginReadModelSpec.stateSchema.
     seedPluginQueryDb(~pluginComponents=plugins)
+    seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
 
     let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
+    let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
 
     // Set deploy target to Platform for admin schema registration.
     // resolveTargetGraphQL/MCP() will return PlatformGraphQL_Server / PlatformMCP_Server
@@ -953,6 +1047,9 @@ module MakeWithConfig = (
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
     let singleQueryField = adminQueryEntry.singleFieldName
     let listQueryField = adminQueryEntry.listFieldName
+    let uiFragmentQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
+    let uiFragmentSingleField = uiFragmentQueryEntry.singleFieldName
+    let uiFragmentListField = uiFragmentQueryEntry.listFieldName
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
 
@@ -985,6 +1082,30 @@ module MakeWithConfig = (
     })
     queryResolvers->Dict.set(listQueryField, async (_root, _args, _ctx): JSON.t => {
       let items = switch Bus.getQueryDbScan(pluginQueryDbName) {
+      | Some(scanAll) => scanAll()
+      | None => []
+      }
+      connectionResponse(items)
+    })
+    queryResolvers->Dict.set(uiFragmentSingleField, async (_root, args, _ctx): JSON.t => {
+      let id =
+        args
+        ->JSON.Decode.object
+        ->Option.flatMap(d => d->Dict.get("id"))
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.getOr("")
+      switch Bus.getQueryDb(uiFragmentQueryDbName) {
+      | Some(ops) =>
+        let items = await ops.loadStream(id)
+        ->Stream.runCollect
+        ->Effect.catchAll(_ => Effect.succeed([]))
+        ->Effect.runPromise
+        items->Array.get(0)->Option.getOr(JSON.Encode.null)
+      | None => JSON.Encode.null
+      }
+    })
+    queryResolvers->Dict.set(uiFragmentListField, async (_root, _args, _ctx): JSON.t => {
+      let items = switch Bus.getQueryDbScan(uiFragmentQueryDbName) {
       | Some(scanAll) => scanAll()
       | None => []
       }
@@ -1066,35 +1187,85 @@ module MakeWithConfig = (
         )
       }
     )
+    // UIFragment Source C mutations — publish to PubSub so onUIFragmentChange fires.
+    let uiFragmentSubTopic = "onUIFragmentChange"
+    let makeUIEvent = (~pluginId, ~changeKind, ~manifest) =>
+      JSON.Encode.object(
+        Dict.fromArray([
+          ("pluginId", JSON.Encode.string(pluginId)),
+          ("changeKind", JSON.Encode.string(changeKind)),
+          ("manifest", manifest),
+        ])
+      )
+    let addUIFragmentMutation = (fieldName, changeKind) =>
+      mutationResolvers->Dict.set(fieldName, async (_root, args, _ctx): JSON.t => {
+        let obj = args->JSON.Decode.object->Option.getOr(Dict.make())
+        let pluginId =
+          obj->Dict.get("pluginId")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+        let manifest = obj->Dict.get("manifest")->Option.getOr(JSON.Encode.null)
+        let event = makeUIEvent(~pluginId, ~changeKind, ~manifest)
+        GraphQL_SubscriptionResolvers_InMemory.publish(uiFragmentSubTopic, event)
+        event
+      })
+    addUIFragmentMutation(
+      ReventlessCore.Api_Naming.adminField(~name="UIFragmentRegistered"),
+      "Registered",
+    )
+    addUIFragmentMutation(
+      ReventlessCore.Api_Naming.adminField(~name="UIFragmentUpdated"),
+      "Updated",
+    )
+    addUIFragmentMutation(
+      ReventlessCore.Api_Naming.adminField(~name="UIFragmentDeregistered"),
+      "Deregistered",
+    )
     CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(platformGraphQL)
     platformGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
     adminRegisteredServers.contents->Array.push(platformGraphQL)
+    // Register onUIFragmentChange subscription (Source C).
+    platformGraphQL.registerSubscriptions(
+      ~sdlFields=["  onUIFragmentChange: UIFragmentChangeEvent"],
+      ~resolvers=Dict.fromArray([
+        (
+          "onUIFragmentChange",
+          GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver(uiFragmentSubTopic),
+        ),
+      ]),
+    )
 
-    // Register admin Plugin queries and mutations as MCP resources and tools.
-    let pluginQueryHandler = async (_resourceName, uri) => {
-      let segments = uri->String.split("/")
-      let id = segments->Array.at(-1)->Option.getOr("")
-      switch Bus.getQueryDb(pluginQueryDbName) {
-      | Some(ops) =>
-        if id->String.length > 0 && id != listQueryField {
-          let items = await ops.loadStream(id)
-          ->Stream.runCollect
-          ->Effect.catchAll(_ => Effect.succeed([]))
-          ->Effect.runPromise
-          items->Array.get(0)->Option.getOr(JSON.Encode.null)
-        } else {
-          switch Bus.getQueryDbScan(pluginQueryDbName) {
-          | Some(scanAll) => scanAll()->JSON.Encode.array
-          | None => []->JSON.Encode.array
-          }
-        }
-      | None => JSON.Encode.null
-      }
-    }
+    // Register admin queries and mutations as MCP resources and tools.
+    // Route by field name: Plugin → pluginQueryDbName, UIFragment → uiFragmentQueryDbName.
+    let adminFieldToQueryDb = Dict.fromArray([
+      (singleQueryField, pluginQueryDbName),
+      (listQueryField, pluginQueryDbName),
+      (uiFragmentSingleField, uiFragmentQueryDbName),
+      (uiFragmentListField, uiFragmentQueryDbName),
+    ])
     platformMCP.registerResourcesFromEntries(
       ~pluginName="Admin",
       ~queryEntries=ReventlessCore.PluginBaseFragment.queryEntries,
-      ~queryHandler=pluginQueryHandler,
+      ~queryHandler=async (resourceName, uri) => {
+        let segments = uri->String.split("/")
+        let id = segments->Array.at(-1)->Option.getOr("")
+        let queryDbName =
+          adminFieldToQueryDb->Dict.get(resourceName)->Option.getOr(pluginQueryDbName)
+        switch Bus.getQueryDb(queryDbName) {
+        | Some(ops) =>
+          if id->String.length > 0 && id != resourceName {
+            let items = await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
+            items->Array.get(0)->Option.getOr(JSON.Encode.null)
+          } else {
+            switch Bus.getQueryDbScan(queryDbName) {
+            | Some(scanAll) => scanAll()->JSON.Encode.array
+            | None => []->JSON.Encode.array
+            }
+          }
+        | None => JSON.Encode.null
+        }
+      },
     )
 
     // Register admin mutations as MCP tools using the same entry-based path as plugins.
@@ -1185,6 +1356,13 @@ module MakeWithConfig = (
     queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
       connectionResponse([])
     )
+    let uiFragmentQueryEntry2 = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
+    queryResolvers->Dict.set(uiFragmentQueryEntry2.singleFieldName, async (_root, _args, _ctx): JSON.t =>
+      JSON.Encode.null
+    )
+    queryResolvers->Dict.set(uiFragmentQueryEntry2.listFieldName, async (_root, _args, _ctx): JSON.t =>
+      connectionResponse([])
+    )
     adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     let mutationResolvers = Dict.make()
@@ -1195,8 +1373,46 @@ module MakeWithConfig = (
         commandAccepted(~msgId=ReventlessCore.Message.uuid())
       )
     )
+    let dpSubTopic = "onUIFragmentChange"
+    let addUIFragmentMutation2 = (fieldName, changeKind) =>
+      mutationResolvers->Dict.set(fieldName, async (_root, args, _ctx): JSON.t => {
+        let obj = args->JSON.Decode.object->Option.getOr(Dict.make())
+        let pluginId =
+          obj->Dict.get("pluginId")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+        let manifest = obj->Dict.get("manifest")->Option.getOr(JSON.Encode.null)
+        let event = JSON.Encode.object(
+          Dict.fromArray([
+            ("pluginId", JSON.Encode.string(pluginId)),
+            ("changeKind", JSON.Encode.string(changeKind)),
+            ("manifest", manifest),
+          ]),
+        )
+        GraphQL_SubscriptionResolvers_InMemory.publish(dpSubTopic, event)
+        event
+      })
+    addUIFragmentMutation2(
+      ReventlessCore.Api_Naming.adminField(~name="UIFragmentRegistered"),
+      "Registered",
+    )
+    addUIFragmentMutation2(
+      ReventlessCore.Api_Naming.adminField(~name="UIFragmentUpdated"),
+      "Updated",
+    )
+    addUIFragmentMutation2(
+      ReventlessCore.Api_Naming.adminField(~name="UIFragmentDeregistered"),
+      "Deregistered",
+    )
     CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(adminGraphQL)
     adminGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
+    adminGraphQL.registerSubscriptions(
+      ~sdlFields=["  onUIFragmentChange: UIFragmentChangeEvent"],
+      ~resolvers=Dict.fromArray([
+        (
+          "onUIFragmentChange",
+          GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver(dpSubTopic),
+        ),
+      ]),
+    )
 
     currentDeployTarget.contents = Domain
 
@@ -1301,6 +1517,15 @@ module MakeWithConfig = (
       queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
         connectionResponse([])
       )
+      let uiFragmentQueryEntry3 = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
+      queryResolvers->Dict.set(
+        uiFragmentQueryEntry3.singleFieldName,
+        async (_root, _args, _ctx): JSON.t => JSON.Encode.null,
+      )
+      queryResolvers->Dict.set(
+        uiFragmentQueryEntry3.listFieldName,
+        async (_root, _args, _ctx): JSON.t => connectionResponse([]),
+      )
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
       let mutationResolvers = Dict.make()
@@ -1311,8 +1536,46 @@ module MakeWithConfig = (
           commandAccepted(~msgId=ReventlessCore.Message.uuid())
         )
       )
+      let dpSubTopic2 = "onUIFragmentChange"
+      let addUIFragmentMutation3 = (fieldName, changeKind) =>
+        mutationResolvers->Dict.set(fieldName, async (_root, args, _ctx): JSON.t => {
+          let obj = args->JSON.Decode.object->Option.getOr(Dict.make())
+          let pluginId =
+            obj->Dict.get("pluginId")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+          let manifest = obj->Dict.get("manifest")->Option.getOr(JSON.Encode.null)
+          let event = JSON.Encode.object(
+            Dict.fromArray([
+              ("pluginId", JSON.Encode.string(pluginId)),
+              ("changeKind", JSON.Encode.string(changeKind)),
+              ("manifest", manifest),
+            ]),
+          )
+          GraphQL_SubscriptionResolvers_InMemory.publish(dpSubTopic2, event)
+          event
+        })
+      addUIFragmentMutation3(
+        ReventlessCore.Api_Naming.adminField(~name="UIFragmentRegistered"),
+        "Registered",
+      )
+      addUIFragmentMutation3(
+        ReventlessCore.Api_Naming.adminField(~name="UIFragmentUpdated"),
+        "Updated",
+      )
+      addUIFragmentMutation3(
+        ReventlessCore.Api_Naming.adminField(~name="UIFragmentDeregistered"),
+        "Deregistered",
+      )
       CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(adminGraphQL)
       adminGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
+      adminGraphQL.registerSubscriptions(
+        ~sdlFields=["  onUIFragmentChange: UIFragmentChangeEvent"],
+        ~resolvers=Dict.fromArray([
+          (
+            "onUIFragmentChange",
+            GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver(dpSubTopic2),
+          ),
+        ]),
+      )
       adminRegisteredServers.contents->Array.push(adminGraphQL)
     }
 
@@ -1321,8 +1584,9 @@ module MakeWithConfig = (
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server.asInterface
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = Some(domainRelaySupport)
 
-    // Seed the Plugin QueryDb so this plugin appears in plugin queries.
+    // Seed the Plugin and UIFragmentRegistry QueryDbs so this plugin appears in queries.
     seedPluginQueryDb(~pluginComponents=[pluginComponent])
+    seedUIFragmentRegistryQueryDb(~pluginComponents=[pluginComponent])
 
     // Fire onPluginDeployed hooks so subscribers learn about this plugin.
     firePluginDeployedHooks(~builtInfos=builtInfos.contents)

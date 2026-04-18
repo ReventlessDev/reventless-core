@@ -288,27 +288,47 @@ Phase 1 — pluginDefinition extension ✅
   [x]      Verify: existing plugin definitions compile without changes (field is optional)
            — 107/107 test suites, 1005/1005 tests, zero warnings
 
-Phase 2 — Platform_Admin lifecycle handling
-  [ ] 2.1  Add UIFragmentRegistered, UIFragmentUpdated, UIFragmentDeregistered
-           to Plugin_Events.res
-  [ ] 2.2  Handle uiFragments in Connect command — emit correct lifecycle event
-  [ ] 2.3  Handle liveness timeout → UIFragmentDeregistered when manifest was present
-  [ ]      Verify: connect with uiFragments emits UIFragmentRegistered;
-           re-connect with changed manifest emits UIFragmentUpdated;
-           liveness timeout emits UIFragmentDeregistered
+Phase 2 — Platform_Admin lifecycle handling ✅
+  [x] 2.1  Add UIFragmentRegistered, UIFragmentUpdated, UIFragmentDeregistered
+           to PluginSpec.res (with named payload types uiFragmentRegisteredData,
+           uiFragmentUpdatedData, uiFragmentDeregisteredData)
+  [x] 2.2  Handle uiFragments in Connect command — emit UIFragmentRegistered
+           alongside Connected; emit UIFragmentDeregistered alongside
+           Disconnected and Deactivated (from Connected state); re-connect
+           via Heartbeat emits UIFragmentRegistered alongside Reconnected
+  [x] 2.3  Handle liveness timeout → UIFragmentDeregistered: liveness timeout
+           sends Disconnect command → Disconnected event → UIFragmentDeregistered
+           emitted when pluginDefinition.uiFragments is set
+  [x]      Verify: 305/305 tests pass, zero warnings. New behavior tests cover
+           Connect+UIFragmentRegistered, Disconnect+Deregister, Deactivate+Deregister,
+           Heartbeat-reconnect+Register, Deactivate-from-Disconnected (no double deregister).
+           UIFragmentUpdated defined in schema but unreachable in current architecture
+           (Connect only valid in Detected state — no prior manifest exists).
 
-Phase 3 — UIFragmentRegistry read model
-  [ ] 3.1  UIFragmentRegistry.res — fragmentEntry type + Dict-keyed state
-  [ ] 3.2  Projections for Registered / Updated / Deregistered events
-  [ ] 3.3  Admin_UIFragments GraphQL query (UIFragmentEntry type + resolver)
-  [ ]      Verify: query returns correct entries after connect/disconnect cycle
+Phase 3 — UIFragmentRegistry read model ✅
+  [x] 3.1  UIFragmentRegistryReadModelSpec.res — flat state type (pluginId, remoteEntryUrl,
+           panels, pages, registeredAt, updatedAt); keyed by pluginId
+  [x] 3.2  UIFragmentRegistryProjection.res — Registered→Set, Updated→Update,
+           Deregistered→Delete; UIFragmentRegistryProjectionTest (6 tests)
+  [x] 3.3  Admin_UIFragments GraphQL query — UIFragmentEntry type generated from state schema;
+           resolver backed by Bus UIFragmentRegistry QueryDb; seeded from plugin outputs
+           (pluginDefinition.uiFragments); MCP resource handler routes UIFragment vs Plugin
+           queries by field name; 311/311 tests, zero warnings
 
-Phase 4 — AppSync subscription
-  [ ] 4.1  Add onUIFragmentChange to Platform_Admin subscription schema
-  [ ] 4.2  Add triggering mutations Platform_UIFragmentRegistered/Updated/Deregistered
-  [ ] 4.3  Wire @aws_subscribe to the three mutations
-  [ ]      Verify: subscription fires on connect (Registered) and liveness
-           timeout (Deregistered)
+Phase 4 — AppSync subscription ✅
+  [x] 4.1  onUIFragmentChange: UIFragmentChangeEvent subscription added to AdminApi.baseFragment
+           (returned from Platform_Admin.construct via adminFragment; included in AppSync SDL)
+  [x] 4.2  Platform_UIFragmentRegistered/Updated/Deregistered mutations added to AdminApi.baseFragment
+           with UIFragmentChangeEvent return type; UIFragmentChangeKind enum + UIFragmentChangeEvent
+           type injected into admin schema types
+  [x] 4.3  @aws_subscribe(mutations: [...]) wired on onUIFragmentChange; @aws_subscribe directive
+           stripped by in-memory yoga (only valid in AppSync)
+           In-memory: Source C PubSub bridge added in makePlatform, deployPlatform, deployPlugin
+           fallback — mutation resolvers publish to "onUIFragmentChange" topic; subscription
+           resolver registered; UIFragment query resolvers added to deployPlatform + deployPlugin
+           fallback paths; 311/311 tests, zero warnings
+           Verify (AWS): subscription fires when backend calls Platform_UIFragmentRegistered
+           mutation after UIFragmentRegistered event is processed
 
 Phase 5 — CDN bundle hosting
   [ ] 5.1  Plugin_Stack.makeUiBundleDistribution — S3 + CloudFront provisioning

@@ -208,6 +208,95 @@ PluginTest.describe("PluginBehavior:", () => {
     TAG: "Connect",
     _0: PluginFixtures$ReventlessCore.pluginDefinition
   }), "IsDisconnected"));
+  PluginTest.test("Connect (with UI fragments) emits UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents(["UnknownPluginDetected"]), {
+    TAG: "Connect",
+    _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+  }), [
+    {
+      TAG: "Connected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    },
+    {
+      TAG: "UIFragmentRegistered",
+      _0: {
+        pluginId: PluginFixtures$ReventlessCore.pluginDefinitionWithUI.id,
+        manifest: PluginFixtures$ReventlessCore.uiManifest
+      }
+    }
+  ]));
+  PluginTest.test("Disconnect (with UI fragments) emits UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    }
+  ]), "Disconnect"), [
+    {
+      TAG: "Disconnected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    },
+    {
+      TAG: "UIFragmentDeregistered",
+      _0: {
+        pluginId: PluginFixtures$ReventlessCore.pluginDefinitionWithUI.id
+      }
+    }
+  ]));
+  PluginTest.test("Deactivate (connected, with UI fragments) emits UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    }
+  ]), "Deactivate"), [
+    {
+      TAG: "Deactivated",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    },
+    {
+      TAG: "UIFragmentDeregistered",
+      _0: {
+        pluginId: PluginFixtures$ReventlessCore.pluginDefinitionWithUI.id
+      }
+    }
+  ]));
+  PluginTest.test("Heartbeat (re-connect with UI fragments) emits UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    },
+    {
+      TAG: "Disconnected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    }
+  ]), "Heartbeat"), [
+    {
+      TAG: "Reconnected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    },
+    {
+      TAG: "UIFragmentRegistered",
+      _0: {
+        pluginId: PluginFixtures$ReventlessCore.pluginDefinitionWithUI.id,
+        manifest: PluginFixtures$ReventlessCore.uiManifest
+      }
+    }
+  ]));
+  PluginTest.test("Deactivate (disconnected, with UI fragments) emits no UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    },
+    {
+      TAG: "Disconnected",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    }
+  ]), "Deactivate"), [{
+      TAG: "Deactivated",
+      _0: PluginFixtures$ReventlessCore.pluginDefinitionWithUI
+    }]));
 });
 
 export {

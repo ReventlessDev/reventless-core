@@ -47,6 +47,29 @@ let state = {
   uiFragments: undefined
 };
 
+let uiManifest_panels = [];
+
+let uiManifest_pages = [];
+
+let uiManifest = {
+  remoteEntryUrl: "https://cdn.example.com/plugin@1.0/remoteEntry.js",
+  panels: uiManifest_panels,
+  pages: uiManifest_pages
+};
+
+let pluginDefinitionWithUI = {
+  id: pluginDefinition.id,
+  name: pluginDefinition.name,
+  version: pluginDefinition.version,
+  extensionPoints: pluginDefinition.extensionPoints,
+  extensions: pluginDefinition.extensions,
+  eventCollector: pluginDefinition.eventCollector,
+  extensionProtocols: pluginDefinition.extensionProtocols,
+  apiSchemaFragment: pluginDefinition.apiSchemaFragment,
+  apiTarget: pluginDefinition.apiTarget,
+  uiFragments: uiManifest
+};
+
 let extensionPointNames2 = ["Test.Test"];
 
 let pluginDefinition2 = {
@@ -69,6 +92,8 @@ let pluginDefinition2 = {
 export {
   pluginDefinition,
   state,
+  uiManifest,
+  pluginDefinitionWithUI,
   extensionPointNames2,
   pluginDefinition2,
 }

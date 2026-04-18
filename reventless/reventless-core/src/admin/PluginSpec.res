@@ -13,6 +13,19 @@ type command =
   | ReportIncompatibility(pluginDefinition)
 
 @schema
+type uiFragmentRegisteredData = {pluginId: string, manifest: uiFragmentManifest}
+
+@schema
+type uiFragmentUpdatedData = {
+  pluginId: string,
+  previousManifest: uiFragmentManifest,
+  newManifest: uiFragmentManifest,
+}
+
+@schema
+type uiFragmentDeregisteredData = {pluginId: string}
+
+@schema
 type event =
   | UnknownPluginDetected
   | Connected(pluginDefinition)
@@ -22,6 +35,11 @@ type event =
   | Deactivated(pluginDefinition)
   // Emitted when ReportIncompatibility is processed; carries the connecting plugin definition.
   | IncompatiblePluginDetected(pluginDefinition)
+  // UI fragment lifecycle events — emitted alongside Connected/Reconnected/Disconnected/Deactivated
+  // when the plugin's pluginDefinition.uiFragments is set.
+  | UIFragmentRegistered(uiFragmentRegisteredData)
+  | UIFragmentUpdated(uiFragmentUpdatedData)
+  | UIFragmentDeregistered(uiFragmentDeregisteredData)
 
 @schema
 type error =

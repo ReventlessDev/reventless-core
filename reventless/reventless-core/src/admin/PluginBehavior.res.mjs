@@ -22,6 +22,33 @@ let stateSchema = S.union([
   }))
 ]);
 
+function uiRegisterEvents(pluginId, manifest) {
+  if (manifest !== undefined) {
+    return [{
+        TAG: "UIFragmentRegistered",
+        _0: {
+          pluginId: pluginId,
+          manifest: manifest
+        }
+      }];
+  } else {
+    return [];
+  }
+}
+
+function uiDeregisterEvents(pluginId, manifest) {
+  if (manifest !== undefined) {
+    return [{
+        TAG: "UIFragmentDeregistered",
+        _0: {
+          pluginId: pluginId
+        }
+      }];
+  } else {
+    return [];
+  }
+}
+
 function decide(state, command) {
   if (typeof state !== "object") {
     if (state === "NotConnected") {
@@ -36,7 +63,8 @@ function decide(state, command) {
           _0: "NotExisting"
         };
       }
-    } else if (typeof command !== "object") {
+    }
+    if (typeof command !== "object") {
       if (command === "Heartbeat") {
         return {
           TAG: "Ok",
@@ -48,15 +76,8 @@ function decide(state, command) {
           _0: []
         };
       }
-    } else if (command.TAG === "Connect") {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "Connected",
-            _0: command._0
-          }]
-      };
-    } else {
+    }
+    if (command.TAG !== "Connect") {
       return {
         TAG: "Ok",
         _0: [{
@@ -65,132 +86,141 @@ function decide(state, command) {
           }]
       };
     }
-  }
-  switch (state.TAG) {
-    case "Connected" :
-      let pluginDefinition = state._0;
-      if (typeof command === "object") {
-        if (command.TAG === "Connect") {
-          return {
-            TAG: "Error",
-            _0: "AlreadyConnected"
-          };
-        } else {
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "IncompatiblePluginDetected",
-                _0: command._0
-              }]
-          };
+    let pluginDefinition = command._0;
+    return {
+      TAG: "Ok",
+      _0: [{
+          TAG: "Connected",
+          _0: pluginDefinition
+        }].concat(uiRegisterEvents(pluginDefinition.id, pluginDefinition.uiFragments))
+    };
+  } else {
+    switch (state.TAG) {
+      case "Connected" :
+        let pluginDefinition$1 = state._0;
+        if (typeof command === "object") {
+          if (command.TAG === "Connect") {
+            return {
+              TAG: "Error",
+              _0: "AlreadyConnected"
+            };
+          } else {
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "IncompatiblePluginDetected",
+                  _0: command._0
+                }]
+            };
+          }
         }
-      }
-      switch (command) {
-        case "Heartbeat" :
-          return {
-            TAG: "Ok",
-            _0: []
-          };
-        case "Disconnect" :
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "Disconnected",
-                _0: pluginDefinition
-              }]
-          };
-        case "Activate" :
-          return {
-            TAG: "Error",
-            _0: "AlreadyConnected"
-          };
-        case "Deactivate" :
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "Deactivated",
-                _0: pluginDefinition
-              }]
-          };
-      }
-    case "Disconnected" :
-      let pluginDefinition$1 = state._0;
-      if (typeof command === "object") {
-        if (command.TAG === "ReportIncompatibility") {
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "IncompatiblePluginDetected",
-                _0: command._0
-              }]
-          };
-        } else {
-          return {
-            TAG: "Error",
-            _0: "IsDisconnected"
-          };
+        switch (command) {
+          case "Heartbeat" :
+            return {
+              TAG: "Ok",
+              _0: []
+            };
+          case "Disconnect" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Disconnected",
+                  _0: pluginDefinition$1
+                }].concat(uiDeregisterEvents(pluginDefinition$1.id, pluginDefinition$1.uiFragments))
+            };
+          case "Activate" :
+            return {
+              TAG: "Error",
+              _0: "AlreadyConnected"
+            };
+          case "Deactivate" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Deactivated",
+                  _0: pluginDefinition$1
+                }].concat(uiDeregisterEvents(pluginDefinition$1.id, pluginDefinition$1.uiFragments))
+            };
         }
-      }
-      switch (command) {
-        case "Heartbeat" :
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "Reconnected",
-                _0: pluginDefinition$1
-              }]
-          };
-        case "Deactivate" :
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "Deactivated",
-                _0: pluginDefinition$1
-              }]
-          };
-        default:
-          return {
-            TAG: "Error",
-            _0: "IsDisconnected"
-          };
-      }
-    case "Inactive" :
-      if (typeof command === "object") {
-        if (command.TAG === "ReportIncompatibility") {
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "IncompatiblePluginDetected",
-                _0: command._0
-              }]
-          };
-        } else {
-          return {
-            TAG: "Error",
-            _0: "IsInactive"
-          };
+      case "Disconnected" :
+        let pluginDefinition$2 = state._0;
+        if (typeof command === "object") {
+          if (command.TAG === "ReportIncompatibility") {
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "IncompatiblePluginDetected",
+                  _0: command._0
+                }]
+            };
+          } else {
+            return {
+              TAG: "Error",
+              _0: "IsDisconnected"
+            };
+          }
         }
-      }
-      switch (command) {
-        case "Heartbeat" :
-          return {
-            TAG: "Ok",
-            _0: []
-          };
-        case "Activate" :
-          return {
-            TAG: "Ok",
-            _0: [{
-                TAG: "Activated",
-                _0: state._0
-              }]
-          };
-        default:
-          return {
-            TAG: "Error",
-            _0: "IsInactive"
-          };
-      }
+        switch (command) {
+          case "Heartbeat" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Reconnected",
+                  _0: pluginDefinition$2
+                }].concat(uiRegisterEvents(pluginDefinition$2.id, pluginDefinition$2.uiFragments))
+            };
+          case "Deactivate" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Deactivated",
+                  _0: pluginDefinition$2
+                }]
+            };
+          default:
+            return {
+              TAG: "Error",
+              _0: "IsDisconnected"
+            };
+        }
+      case "Inactive" :
+        if (typeof command === "object") {
+          if (command.TAG === "ReportIncompatibility") {
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "IncompatiblePluginDetected",
+                  _0: command._0
+                }]
+            };
+          } else {
+            return {
+              TAG: "Error",
+              _0: "IsInactive"
+            };
+          }
+        }
+        switch (command) {
+          case "Heartbeat" :
+            return {
+              TAG: "Ok",
+              _0: []
+            };
+          case "Activate" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Activated",
+                  _0: state._0
+                }]
+            };
+          default:
+            return {
+              TAG: "Error",
+              _0: "IsInactive"
+            };
+        }
+    }
   }
 }
 
@@ -207,6 +237,9 @@ function evolve(state, event) {
             _0: event._0
           };
         case "IncompatiblePluginDetected" :
+        case "UIFragmentRegistered" :
+        case "UIFragmentUpdated" :
+        case "UIFragmentDeregistered" :
           return state;
         default:
           throw {
@@ -226,6 +259,9 @@ function evolve(state, event) {
             _0: event._0
           };
         case "IncompatiblePluginDetected" :
+        case "UIFragmentRegistered" :
+        case "UIFragmentUpdated" :
+        case "UIFragmentDeregistered" :
           return state;
         default:
           throw {
@@ -258,6 +294,9 @@ function evolve(state, event) {
               _0: pluginDefinition
             };
           case "IncompatiblePluginDetected" :
+          case "UIFragmentRegistered" :
+          case "UIFragmentUpdated" :
+          case "UIFragmentDeregistered" :
             return state;
           default:
             throw {
@@ -287,6 +326,9 @@ function evolve(state, event) {
               _0: pluginDefinition$1
             };
           case "IncompatiblePluginDetected" :
+          case "UIFragmentRegistered" :
+          case "UIFragmentUpdated" :
+          case "UIFragmentDeregistered" :
             return state;
           default:
             throw {
@@ -310,6 +352,9 @@ function evolve(state, event) {
               _0: state._0
             };
           case "IncompatiblePluginDetected" :
+          case "UIFragmentRegistered" :
+          case "UIFragmentUpdated" :
+          case "UIFragmentDeregistered" :
             return state;
           default:
             throw {
@@ -335,6 +380,8 @@ export {
   stateSchema,
   initialState,
   atomicCounter,
+  uiRegisterEvents,
+  uiDeregisterEvents,
   decide,
   evolve,
   moduleUrl,
