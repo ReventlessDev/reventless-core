@@ -51,36 +51,24 @@ Everything in this plan is prerequisite for runtime registration and has no effe
 
 // ── Panel fragment manifest ───────────────────────────────────────────────────
 
-// Must stay in sync with the corresponding type in reventless-ui's RegistryTypes.res
-type panelPosition =
-  | PlatformSummary   // top-level platform overview
-  | PluginDetail      // per-plugin detail page
-  | ResourceDetail    // when a specific AWS resource is selected
-  | Sidebar           // always-visible status indicators
-  | AdminGlobal       // any full-screen admin view
+// Positions are plain strings defined by the host application.
+// The consuming shell defines its own position constants (e.g. "summary", "detail").
+// This library does not enumerate them.
 
 type panelManifestEntry = {
   fragmentId: string,             // globally unique, e.g. "monitor.latency"
   title: string,
   description: string,
-  positions: array<panelPosition>,
-  requiredLicense: option<string>,
+  positions: array<string>,
+  requiredAccess: option<string>,
 }
 
 // ── Page fragment manifest ────────────────────────────────────────────────────
 
-type menuGroup =
-  | Operations
-  | Compliance
-  | Tenants
-  | Billing
-  | Marketplace
-  | Custom(string)
-
 type menuEntry = {
   label: string,
   icon: option<string>,
-  group: option<menuGroup>,
+  group: option<string>,          // sidebar group label; None → ungrouped
   sortOrder: int,
 }
 
@@ -88,7 +76,7 @@ type pageManifestEntry = {
   fragmentId: string,
   title: string,
   menuEntry: menuEntry,
-  requiredLicense: option<string>,
+  requiredAccess: option<string>,
 }
 
 // ── UI fragment manifest ──────────────────────────────────────────────────────
@@ -117,15 +105,22 @@ The manifest contains only serialisable metadata: fragment IDs, positions, requi
 ```rescript
 // reventless-core/src/admin/Plugin_Builder.res (addition)
 
-// withAutoUI derives uiFragmentManifest from the plugin's read models and aggregates:
-//   — each read model → panelManifestEntry at [PlatformSummary, PluginDetail]
-//                        + pageManifestEntry with fragmentId "${pluginId}.${rm.name}.list"
-//   — each aggregate  → panelManifestEntry at [ResourceDetail]
-//                        with fragmentId "${pluginId}.${agg.name}.detail"
+// makeAutoUIManifest derives uiFragmentManifest from the plugin's read models and aggregates:
+//   — each read model → panelManifestEntry at readModelPositions (caller-supplied strings)
+//                        + pageManifestEntry with fragmentId "${name}.${rm.name}.list"
+//   — each aggregate  → panelManifestEntry at aggregatePositions (caller-supplied strings)
+//                        with fragmentId "${name}.${agg.name}.detail"
 // remoteEntryUrl is the Pulumi stack output URL of the plugin's CDN bundle.
 // That bundle's entry point calls reventless-ui's generateFragments and
 // registers the resulting panelDefinition/pageDefinition arrays with the shell.
-let withAutoUI: (t, ~remoteEntryUrl: string) => t
+let makeAutoUIManifest: (
+  ~remoteEntryUrl: string,
+  ~name: string,
+  ~aggregates: ...,
+  ~readModels: ...,
+  ~readModelPositions: array<string>=?,
+  ~aggregatePositions: array<string>=?,
+) => uiFragmentManifest
 ```
 
 `withAutoUI` is optional — plugins with no UI do not call it. Plugins providing fully custom UI populate `uiFragments` manually (bypassing `withAutoUI`) and export their own fragment definitions from their CDN bundle.
@@ -283,13 +278,15 @@ The plugin's CI/CD step uploads the compiled bundle to the S3 bucket. The `distr
 ## Execution Checklist
 
 ```
-Phase 1 — pluginDefinition extension
-  [ ] 1.1  Add panelPosition, panelManifestEntry, pageManifestEntry, uiFragmentManifest
-           types to PluginDefinition.res
-  [ ] 1.2  Add uiFragments: option<uiFragmentManifest> field to pluginDefinition
-  [ ] 1.3  Plugin_Builder.withAutoUI() — calls reventless-ui generateFragments,
-           populates uiFragments
-  [ ]      Verify: existing plugin definitions compile without changes (field is optional)
+Phase 1 — pluginDefinition extension ✅
+  [x] 1.1  Add panelManifestEntry (positions: array<string>, requiredAccess), pageManifestEntry,
+           menuEntry (group: option<string>), uiFragmentManifest types to Plugin.res (reventless-spec)
+  [x] 1.2  Add uiFragments: option<uiFragmentManifest> field to pluginDefinition
+  [x] 1.3  Plugin_Builder.makeAutoUIManifest() — derives manifest from registered
+           aggregates and read models; ~readModelPositions and ~aggregatePositions are
+           caller-supplied strings (default []); ~uiFragments=? added to Plugin.T.make
+  [x]      Verify: existing plugin definitions compile without changes (field is optional)
+           — 107/107 test suites, 1005/1005 tests, zero warnings
 
 Phase 2 — Platform_Admin lifecycle handling
   [ ] 2.1  Add UIFragmentRegistered, UIFragmentUpdated, UIFragmentDeregistered
