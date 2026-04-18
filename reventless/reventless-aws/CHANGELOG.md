@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.63 (2026-04-18)
+
+### Features
+
+* **core:** AutoUI definition — makeAutoUIDefinition, Platform_UIDefinitions query, generator support ([513ca53](https://github.com/ReventlessDev/reventless-core/commit/513ca5399b0b6e5ae6a982fd15693de2ea208b8d))
+* **core:** UI fragment registry — Phase 5 (CDN bundle hosting) ([949eba4](https://github.com/ReventlessDev/reventless-core/commit/949eba497139f705db1ce0b3993a4e0f051965b4))
+* **core:** uiFragments manifest — Phase 1 implementation with generic types ([1e73f62](https://github.com/ReventlessDev/reventless-core/commit/1e73f623984118081d2b985c48521812e4f8417e))
+
+
 # 3.0.0-alpha.62 (2026-04-18)
 
 ### Features

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.18 (2026-04-18)
+
+### Features
+
+* **core:** UI fragment registry — Phase 5 (CDN bundle hosting) ([949eba4](https://github.com/ReventlessDev/reventless-core/commit/949eba497139f705db1ce0b3993a4e0f051965b4))
+
+
 # 2.4.0-alpha.17 (2026-04-17)
 
 ### Bug Fixes
