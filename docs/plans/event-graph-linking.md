@@ -72,7 +72,7 @@ All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderCon
 
 ---
 
-## Phase 5 — Namespacing (qualified event and command names)
+## ~~Phase 5 — Namespacing (qualified event and command names)~~ ✅ DONE
 
 **Goal.** Qualify every event and command name in `pluginDefinition` with its plugin (for DCB events/commands) or spec-package (for Extension Point events), making cross-plugin matching collision-proof.
 
@@ -90,6 +90,16 @@ All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderCon
 **Validation.**
 - Test fixture builds the hybrid online-shop setup where Catalog has both `Catalog.ProductPriceChanged` (DCB event) and `CatalogSpec.ProductPriceChanged` (EP event). Assert the resulting `pluginDefinition` distinguishes them and that within-plugin matching still produces the expected `linkedViews`.
 - The generator's output diff for each example is limited to the prefixed strings.
+
+**What landed.**
+
+Added `let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)` in [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) and applied it to every `variantNames(...)` call:
+- DCB types (SCS/aggregate produced, SCS/SVS consumed, AutomationSlice consumed+produced, OutboundTranslationSlice consumed+inbound, InboundTranslationSlice commands): prefix = `name` (plugin name)
+- Extension types (EP eventTypes, commandTypes): prefix = `E.Spec.name` (extension point dotted name, e.g., `"Catalog.Products"`)
+
+Cross-reference helpers (`linkedViewsFor`, `linkedWriteSideFor`, `consistencyReadFor`) work correctly because both `svsConsumed`/`allWritableProduced` and the per-component arrays are qualified with the same plugin prefix — intersection keys match. Component names returned by those helpers remain short/unqualified.
+
+[PluginStructureTest.res](../../reventless/reventless-core/tests/plugin/PluginStructureTest.res) updated to expect `"TestPlugin.*"` qualified names. Build: zero warnings, 327 + 279 tests pass.
 
 **Commit message.**
 `feat!: qualify event and command names in pluginDefinition with plugin / spec-package prefix`

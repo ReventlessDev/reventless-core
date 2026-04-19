@@ -52,14 +52,14 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       expect(structure.stateChangeSlices->Array.length)->toBe(2)
     })
 
-    test("PlaceOrder: producedEventTypes contains OrderPlaced", () => {
+    test("PlaceOrder: producedEventTypes contains OrderPlaced (qualified)", () => {
       let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
-      expect(placeOrder.producedEventTypes)->toEqual(["OrderPlaced"])
+      expect(placeOrder.producedEventTypes)->toEqual(["TestPlugin.OrderPlaced"])
     })
 
-    test("PlaceOrder: consumedEventTypes contains CatalogProductSynced (payload-less variants excluded)", () => {
+    test("PlaceOrder: consumedEventTypes contains CatalogProductSynced qualified (payload-less variants excluded)", () => {
       let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
-      expect(placeOrder.consumedEventTypes)->toEqual(["CatalogProductSynced"])
+      expect(placeOrder.consumedEventTypes)->toEqual(["TestPlugin.CatalogProductSynced"])
     })
 
     test("PlaceOrder: linkedViews contains Orders (consumes its OrderPlaced)", () => {
@@ -81,9 +81,9 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       ))
     })
 
-    test("ShipOrder: producedEventTypes contains OrderShipped", () => {
+    test("ShipOrder: producedEventTypes contains OrderShipped (qualified)", () => {
       let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
-      expect(shipOrder.producedEventTypes)->toEqual(["OrderShipped"])
+      expect(shipOrder.producedEventTypes)->toEqual(["TestPlugin.OrderShipped"])
     })
 
     test("ShipOrder: consumedEventTypes is empty (all consumed events are payload-less literals)", () => {
@@ -116,12 +116,12 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       expect(structure.stateViewSlices->Array.length)->toBe(2)
     })
 
-    test("OrdersView: consumedEventTypes contains the three order events", () => {
+    test("OrdersView: consumedEventTypes contains the three order events (qualified)", () => {
       let ordersView = structure.stateViewSlices->Array.getUnsafe(0)
       expect(ordersView.consumedEventTypes)->toEqual([
-        "OrderPlaced",
-        "OrderShipped",
-        "OrderCancelled",
+        "TestPlugin.OrderPlaced",
+        "TestPlugin.OrderShipped",
+        "TestPlugin.OrderCancelled",
       ])
     })
 
@@ -130,11 +130,11 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       expect(ordersView.linkedWriteSide)->toEqual(["PlaceOrder", "ShipOrder"])
     })
 
-    test("AvailableProductsView: consumedEventTypes contains catalog events", () => {
+    test("AvailableProductsView: consumedEventTypes contains catalog events (qualified)", () => {
       let apv = structure.stateViewSlices->Array.getUnsafe(1)
       expect(apv.consumedEventTypes)->toEqual([
-        "CatalogProductSynced",
-        "CatalogProductPriceChanged",
+        "TestPlugin.CatalogProductSynced",
+        "TestPlugin.CatalogProductPriceChanged",
       ])
     })
 

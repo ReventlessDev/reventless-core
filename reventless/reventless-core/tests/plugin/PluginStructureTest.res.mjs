@@ -103,13 +103,13 @@ let structure = Plugin_Structure$ReventlessCore.make("TestPlugin", undefined, un
 Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   Jest.describe("stateChangeSlices", () => {
     Jest.test("produces two SCS entries in declaration order", () => Jest.Expect.toBe(Jest.Expect.expect(structure.stateChangeSlices.length), 2));
-    Jest.test("PlaceOrder: producedEventTypes contains OrderPlaced", () => {
+    Jest.test("PlaceOrder: producedEventTypes contains OrderPlaced (qualified)", () => {
       let placeOrder = structure.stateChangeSlices[0];
-      return Jest.Expect.toEqual(Jest.Expect.expect(placeOrder.producedEventTypes), ["OrderPlaced"]);
+      return Jest.Expect.toEqual(Jest.Expect.expect(placeOrder.producedEventTypes), ["TestPlugin.OrderPlaced"]);
     });
-    Jest.test("PlaceOrder: consumedEventTypes contains CatalogProductSynced (payload-less variants excluded)", () => {
+    Jest.test("PlaceOrder: consumedEventTypes contains CatalogProductSynced qualified (payload-less variants excluded)", () => {
       let placeOrder = structure.stateChangeSlices[0];
-      return Jest.Expect.toEqual(Jest.Expect.expect(placeOrder.consumedEventTypes), ["CatalogProductSynced"]);
+      return Jest.Expect.toEqual(Jest.Expect.expect(placeOrder.consumedEventTypes), ["TestPlugin.CatalogProductSynced"]);
     });
     Jest.test("PlaceOrder: linkedViews contains Orders (consumes its OrderPlaced)", () => {
       let placeOrder = structure.stateChangeSlices[0];
@@ -130,9 +130,9 @@ Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         "orderId"
       ]);
     });
-    Jest.test("ShipOrder: producedEventTypes contains OrderShipped", () => {
+    Jest.test("ShipOrder: producedEventTypes contains OrderShipped (qualified)", () => {
       let shipOrder = structure.stateChangeSlices[1];
-      return Jest.Expect.toEqual(Jest.Expect.expect(shipOrder.producedEventTypes), ["OrderShipped"]);
+      return Jest.Expect.toEqual(Jest.Expect.expect(shipOrder.producedEventTypes), ["TestPlugin.OrderShipped"]);
     });
     Jest.test("ShipOrder: consumedEventTypes is empty (all consumed events are payload-less literals)", () => {
       let shipOrder = structure.stateChangeSlices[1];
@@ -160,12 +160,12 @@ Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   });
   Jest.describe("stateViewSlices", () => {
     Jest.test("produces two SVS entries in declaration order", () => Jest.Expect.toBe(Jest.Expect.expect(structure.stateViewSlices.length), 2));
-    Jest.test("OrdersView: consumedEventTypes contains the three order events", () => {
+    Jest.test("OrdersView: consumedEventTypes contains the three order events (qualified)", () => {
       let ordersView = structure.stateViewSlices[0];
       return Jest.Expect.toEqual(Jest.Expect.expect(ordersView.consumedEventTypes), [
-        "OrderPlaced",
-        "OrderShipped",
-        "OrderCancelled"
+        "TestPlugin.OrderPlaced",
+        "TestPlugin.OrderShipped",
+        "TestPlugin.OrderCancelled"
       ]);
     });
     Jest.test("OrdersView: linkedWriteSide contains both SCS producing order events", () => {
@@ -175,11 +175,11 @@ Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         "ShipOrder"
       ]);
     });
-    Jest.test("AvailableProductsView: consumedEventTypes contains catalog events", () => {
+    Jest.test("AvailableProductsView: consumedEventTypes contains catalog events (qualified)", () => {
       let apv = structure.stateViewSlices[1];
       return Jest.Expect.toEqual(Jest.Expect.expect(apv.consumedEventTypes), [
-        "CatalogProductSynced",
-        "CatalogProductPriceChanged"
+        "TestPlugin.CatalogProductSynced",
+        "TestPlugin.CatalogProductPriceChanged"
       ]);
     });
     Jest.test("AvailableProductsView: linkedWriteSide is empty (no SCS produces these events)", () => {

@@ -16,6 +16,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
   let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
   let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
+  let qualify = (prefix, names) => names.map(n => prefix + "." + n);
   let commandLevelAndId = (isAggregate, properties) => {
     if (isAggregate) {
       return [
@@ -78,19 +79,19 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   };
   let scsProduced = stateChangeSlices.map(SCS => [
     SCS.Spec.name,
-    DcbTag$Reventless.extractVariantNames(SCS.Spec.eventSchema)
+    qualify(name, DcbTag$Reventless.extractVariantNames(SCS.Spec.eventSchema))
   ]);
   let scsConsumed = stateChangeSlices.map(SCS => [
     SCS.Spec.name,
-    DcbTag$Reventless.extractVariantNames(SCS.Spec.consumedEventSchema)
+    qualify(name, DcbTag$Reventless.extractVariantNames(SCS.Spec.consumedEventSchema))
   ]);
   let aggProduced = aggregates.map(A => [
     A.Spec.name,
-    DcbTag$Reventless.extractVariantNames(A.Spec.eventSchema)
+    qualify(name, DcbTag$Reventless.extractVariantNames(A.Spec.eventSchema))
   ]);
   let svsConsumed = stateViewSlices.map(SVS => [
     SVS.Spec.name,
-    DcbTag$Reventless.extractVariantNames(SVS.Spec.consumedEventSchema)
+    qualify(name, DcbTag$Reventless.extractVariantNames(SVS.Spec.consumedEventSchema))
   ]);
   let allWritableProduced = scsProduced.concat(aggProduced);
   let intersects = (a, b) => a.some(x => b.includes(x));
@@ -178,19 +179,19 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   });
   let automationSliceDefs = automationSlices.map(AS => ({
     name: AS.Spec.name,
-    consumedEventTypes: DcbTag$Reventless.extractVariantNames(AS.Spec.consumedEventSchema),
-    producedCommandTypes: DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema),
+    consumedEventTypes: qualify(name, DcbTag$Reventless.extractVariantNames(AS.Spec.consumedEventSchema)),
+    producedCommandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema)),
     targetName: AS.Spec.targetName
   }));
   let outboundTranslationSliceDefs = outboundTranslationSlices.map(OTS => ({
     name: OTS.Spec.name,
-    consumedEventTypes: DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema),
-    inboundCommandTypes: DcbTag$Reventless.extractVariantNames(OTS.Spec.inboundCommandSchema),
+    consumedEventTypes: qualify(name, DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema)),
+    inboundCommandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(OTS.Spec.inboundCommandSchema)),
     targetName: OTS.Spec.targetName
   }));
   let inboundTranslationSliceDefs = inboundTranslationSlices.map(ITS => ({
     name: ITS.Spec.name,
-    commandTypes: DcbTag$Reventless.extractVariantNames(ITS.Spec.commandSchema),
+    commandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(ITS.Spec.commandSchema)),
     targetName: ITS.Spec.targetName
   }));
   let extensionDefs = extensions.map(E => {
@@ -198,8 +199,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: E.Spec.name,
       delegateNames: delegateNames,
-      eventTypes: DcbTag$Reventless.extractVariantNames(E.Spec.eventSchema),
-      commandTypes: DcbTag$Reventless.extractVariantNames(E.Spec.commandSchema)
+      eventTypes: qualify(E.Spec.name, DcbTag$Reventless.extractVariantNames(E.Spec.eventSchema)),
+      commandTypes: qualify(E.Spec.name, DcbTag$Reventless.extractVariantNames(E.Spec.commandSchema))
     };
   });
   return {
