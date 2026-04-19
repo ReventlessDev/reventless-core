@@ -45,6 +45,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Extensions
   module ProductsExtensionMaker = Platform.Extension.Make(ProductsExtension.Mapping)
 
+  let pluginStructure = Platform.Plugin.makePluginDefinition(
+    ~name="Ordering",
+    ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
+    ~readModels=[module(AvailableProductsReadModelMaker), module(CustomersReadModelMaker), module(OrdersReadModelMaker)],
+  )
+
   let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
@@ -54,5 +60,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
       ~readModels=[module(AvailableProductsReadModelMaker), module(CustomersReadModelMaker), module(OrdersReadModelMaker)],
       ~tasks=[module(OrderNotificationsTask)],
+      ~pluginStructure=pluginStructure,
     )
 }

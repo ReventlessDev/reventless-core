@@ -588,7 +588,7 @@ module MakeWithConfig = (
     type component = ReventlessCore.Plugin.component
     let make = PluginMaker.make
     let makeAutoUIManifest = PluginMaker.makeAutoUIManifest
-    let makeAutoUIDefinition = PluginMaker.makeAutoUIDefinition
+    let makePluginDefinition = PluginMaker.makePluginDefinition
   }
 
   module EventCollectorChannel = EventCollectorChannel_InMemory.Make(Bus)
@@ -763,18 +763,18 @@ module MakeWithConfig = (
     }
   }
 
-  // In-memory store for plugin UI definitions, keyed by plugin ID.
-  let uiDefinitionsStore: ref<dict<Reventless.Plugin.uiDefinition>> = ref(Dict.make())
+  // In-memory store for plugin structures, keyed by plugin ID.
+  let pluginStructuresStore: ref<dict<Reventless.Plugin.pluginStructure>> = ref(Dict.make())
 
-  let seedUIDefinitionsStore = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
+  let seedPluginStructuresStore = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
     pluginComponents->Array.forEach(plugin => {
       let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
       let _ =
-        (outputs.id, outputs.uiDefinition)
+        (outputs.id, outputs.pluginStructure)
         ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((id, uiDef)) => {
-          switch uiDef {
-          | Some(def) => uiDefinitionsStore.contents->Dict.set(id, def)
+        ->Pulumi.Output.apply(((id, ps)) => {
+          switch ps {
+          | Some(def) => pluginStructuresStore.contents->Dict.set(id, def)
           | None => ()
           }
         })
@@ -1053,7 +1053,7 @@ module MakeWithConfig = (
     // Initializes the store on first call and serializes via PluginReadModelSpec.stateSchema.
     seedPluginQueryDb(~pluginComponents=plugins)
     seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
-    seedUIDefinitionsStore(~pluginComponents=plugins)
+    seedPluginStructuresStore(~pluginComponents=plugins)
 
     let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
     let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
@@ -1141,23 +1141,23 @@ module MakeWithConfig = (
       `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`,
     ]
     let uiDefsQueryField = `  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`
-    let encodeCommandDef = (c: Reventless.Plugin.uiCommandDef): JSON.t =>
+    let encodeCommandDef = (c: Reventless.Plugin.commandDef): JSON.t =>
       Dict.fromArray([
         ("name", JSON.Encode.string(c.name)),
         ("schema", JSON.Encode.string(c.schema)),
       ])->JSON.Encode.object
-    let encodeQueryableDef = (r: Reventless.Plugin.uiQueryableDef): JSON.t =>
+    let encodeQueryableDef = (r: Reventless.Plugin.queryableDef): JSON.t =>
       Dict.fromArray([
         ("name", JSON.Encode.string(r.name)),
         ("queryField", JSON.Encode.string(r.queryField)),
         ("schema", JSON.Encode.string(r.schema)),
       ])->JSON.Encode.object
-    let encodeWritableDef = (w: Reventless.Plugin.uiWritableDef): JSON.t =>
+    let encodeWritableDef = (w: Reventless.Plugin.writableDef): JSON.t =>
       Dict.fromArray([
         ("name", JSON.Encode.string(w.name)),
         ("commands", w.commands->Array.map(encodeCommandDef)->JSON.Encode.array),
       ])->JSON.Encode.object
-    let encodeUIDefinitionEntry = (~pluginId: string, def: Reventless.Plugin.uiDefinition): JSON.t =>
+    let encodePluginStructureEntry = (~pluginId: string, def: Reventless.Plugin.pluginStructure): JSON.t =>
       Dict.fromArray([
         ("pluginId", JSON.Encode.string(pluginId)),
         ("readModels", def.readModels->Array.map(encodeQueryableDef)->JSON.Encode.array),
@@ -1172,9 +1172,9 @@ module MakeWithConfig = (
         (
           "Platform_UIDefinitions",
           async (_root, _args, _ctx): JSON.t =>
-            uiDefinitionsStore.contents
+            pluginStructuresStore.contents
             ->Dict.toArray
-            ->Array.map(((pluginId, def)) => encodeUIDefinitionEntry(~pluginId, def))
+            ->Array.map(((pluginId, def)) => encodePluginStructureEntry(~pluginId, def))
             ->JSON.Encode.array,
         ),
       ]),
@@ -1657,21 +1657,21 @@ module MakeWithConfig = (
           (
             "Platform_UIDefinitions",
             async (_root, _args, _ctx): JSON.t =>
-              uiDefinitionsStore.contents
+              pluginStructuresStore.contents
               ->Dict.toArray
               ->Array.map(((pluginId, def)) => {
-                let encodeCmd = (c: Reventless.Plugin.uiCommandDef) =>
+                let encodeCmd = (c: Reventless.Plugin.commandDef) =>
                   Dict.fromArray([
                     ("name", JSON.Encode.string(c.name)),
                     ("schema", JSON.Encode.string(c.schema)),
                   ])->JSON.Encode.object
-                let encodeQbl = (r: Reventless.Plugin.uiQueryableDef) =>
+                let encodeQbl = (r: Reventless.Plugin.queryableDef) =>
                   Dict.fromArray([
                     ("name", JSON.Encode.string(r.name)),
                     ("queryField", JSON.Encode.string(r.queryField)),
                     ("schema", JSON.Encode.string(r.schema)),
                   ])->JSON.Encode.object
-                let encodeWbl = (w: Reventless.Plugin.uiWritableDef) =>
+                let encodeWbl = (w: Reventless.Plugin.writableDef) =>
                   Dict.fromArray([
                     ("name", JSON.Encode.string(w.name)),
                     ("commands", w.commands->Array.map(encodeCmd)->JSON.Encode.array),
@@ -1699,7 +1699,7 @@ module MakeWithConfig = (
     // Seed the Plugin, UIFragmentRegistry, and UIDefinitions stores so this plugin appears in queries.
     seedPluginQueryDb(~pluginComponents=[pluginComponent])
     seedUIFragmentRegistryQueryDb(~pluginComponents=[pluginComponent])
-    seedUIDefinitionsStore(~pluginComponents=[pluginComponent])
+    seedPluginStructuresStore(~pluginComponents=[pluginComponent])
 
     // Fire onPluginDeployed hooks so subscribers learn about this plugin.
     firePluginDeployedHooks(~builtInfos=builtInfos.contents)

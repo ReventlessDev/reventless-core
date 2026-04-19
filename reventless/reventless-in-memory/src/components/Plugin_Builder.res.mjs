@@ -54,7 +54,7 @@ function Make(Bus) {
       QE: QE,
       make: include.make,
       makeAutoUIManifest: include.makeAutoUIManifest,
-      makeAutoUIDefinition: include.makeAutoUIDefinition
+      makePluginDefinition: include.makePluginDefinition
     };
   };
 }

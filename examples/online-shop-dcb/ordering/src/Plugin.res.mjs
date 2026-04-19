@@ -204,6 +204,20 @@ function Make(Platform) {
     mapIncomingEvent: ProductsExtension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", undefined, undefined, [
+    AvailableProductsViewSlice,
+    CustomersViewSlice,
+    OrdersViewSlice
+  ], [
+    CancelOrderSlice,
+    ChangeAddressSlice,
+    ChangeEmailSlice,
+    DeactivateCustomerSlice,
+    PlaceOrderSlice,
+    RegisterCustomerSlice,
+    ShipOrderSlice,
+    SyncCatalogProductSlice
+  ]);
   let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, [
     CancelOrderSlice,
     ChangeAddressSlice,
@@ -217,7 +231,7 @@ function Make(Platform) {
     AvailableProductsViewSlice,
     CustomersViewSlice,
     OrdersViewSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, undefined, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     ChangeAddressSlice: ChangeAddressSlice,
@@ -234,6 +248,7 @@ function Make(Platform) {
     SendOrderConfirmationSlice: SendOrderConfirmationSlice,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
     ProductsExtensionMaker: ProductsExtensionMaker,
+    pluginStructure: pluginStructure,
     make: make
   };
 }

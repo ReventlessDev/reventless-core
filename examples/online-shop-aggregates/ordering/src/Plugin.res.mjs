@@ -170,6 +170,15 @@ function Make(Platform) {
     mapIncomingEvent: ProductsExtension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [
+    CatalogProductAggregate,
+    CustomerAggregate,
+    OrderAggregate
+  ], [
+    AvailableProductsReadModelMaker,
+    CustomersReadModelMaker,
+    OrdersReadModelMaker
+  ], undefined, undefined);
   let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
     CatalogProductAggregate,
     CustomerAggregate,
@@ -178,7 +187,7 @@ function Make(Platform) {
     AvailableProductsReadModelMaker,
     CustomersReadModelMaker,
     OrdersReadModelMaker
-  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, undefined, pluginStructure, undefined);
   return {
     CatalogProductAggregate: CatalogProductAggregate,
     CustomerAggregate: CustomerAggregate,
@@ -192,6 +201,7 @@ function Make(Platform) {
     OrderNotificationsTask: OrderNotificationsTask,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
     ProductsExtensionMaker: ProductsExtensionMaker,
+    pluginStructure: pluginStructure,
     make: make
   };
 }

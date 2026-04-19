@@ -1,0 +1,146 @@
+// Phase 2 validation: Plugin_Structure.make populates all graph fields correctly.
+// Uses simplified test specs (PsPlaceOrder, PsShipOrder, PsOrdersView, PsAvailableProductsView)
+// and calls Plugin_Structure.make directly — no Platform needed.
+
+open Jest
+open Expect
+
+// Stub T modules — Plugin_Structure.make only reads `Spec` fields; `make` is never called.
+type scsComponent = Component.t<
+  ReventlessInfra.StateChangeSlice.t,
+  ReventlessInfra.StateChangeSlice.outputs,
+  ReventlessInfra.StateChangeSlice.operations,
+>
+type svsComponent = Component.t<
+  ReventlessInfra.StateViewSlice.t,
+  ReventlessInfra.StateViewSlice.outputs,
+  ReventlessInfra.StateViewSlice.operations,
+>
+
+module PsPlaceOrderSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsPlaceOrder
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~opts as _=?): component => Obj.magic(0)
+}
+module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
+  module Spec = PsShipOrder
+  let isAsync = false
+  type component = scsComponent
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~opts as _=?): component => Obj.magic(0)
+}
+module PsOrdersViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsOrdersView
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+}
+module PsAvailableProductsViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsAvailableProductsView
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+}
+
+let structure = Plugin_Structure.make(
+  ~name="TestPlugin",
+  ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
+  ~stateViewSlices=[module(PsOrdersViewSlice), module(PsAvailableProductsViewSlice)],
+)
+
+describe("Plugin_Structure.make — Phase 2 graph fields", () => {
+  describe("stateChangeSlices", () => {
+    test("produces two SCS entries in declaration order", () => {
+      expect(structure.stateChangeSlices->Array.length)->toBe(2)
+    })
+
+    test("PlaceOrder: producedEventTypes contains OrderPlaced", () => {
+      let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
+      expect(placeOrder.producedEventTypes)->toEqual(["OrderPlaced"])
+    })
+
+    test("PlaceOrder: consumedEventTypes contains CatalogProductSynced (payload-less variants excluded)", () => {
+      let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
+      expect(placeOrder.consumedEventTypes)->toEqual(["CatalogProductSynced"])
+    })
+
+    test("PlaceOrder: linkedViews contains Orders (consumes its OrderPlaced)", () => {
+      let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
+      expect(placeOrder.linkedViews)->toEqual(["Orders"])
+    })
+
+    test("PlaceOrder: consistencyRead is AvailableProducts (only SVS consuming CatalogProductSynced)", () => {
+      let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
+      expect(placeOrder.consistencyRead)->toEqual(Some("AvailableProducts"))
+    })
+
+    test("PlaceOrder command: level Instance, aggregateIdField orderId", () => {
+      let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
+      let cmd = placeOrder.commands->Array.getUnsafe(0)
+      expect((cmd.level, cmd.aggregateIdField))->toEqual((
+        Reventless.Plugin.Instance,
+        Some("orderId"),
+      ))
+    })
+
+    test("ShipOrder: producedEventTypes contains OrderShipped", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.producedEventTypes)->toEqual(["OrderShipped"])
+    })
+
+    test("ShipOrder: consumedEventTypes is empty (all consumed events are payload-less literals)", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.consumedEventTypes)->toEqual([])
+    })
+
+    test("ShipOrder: linkedViews contains Orders (consumes its OrderShipped)", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.linkedViews)->toEqual(["Orders"])
+    })
+
+    test("ShipOrder: consistencyRead is None (empty consumedEventTypes cannot overlap any SVS)", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      expect(shipOrder.consistencyRead)->toEqual(None)
+    })
+
+    test("ShipOrder command: level Instance, aggregateIdField orderId", () => {
+      let shipOrder = structure.stateChangeSlices->Array.getUnsafe(1)
+      let cmd = shipOrder.commands->Array.getUnsafe(0)
+      expect((cmd.level, cmd.aggregateIdField))->toEqual((
+        Reventless.Plugin.Instance,
+        Some("orderId"),
+      ))
+    })
+  })
+
+  describe("stateViewSlices", () => {
+    test("produces two SVS entries in declaration order", () => {
+      expect(structure.stateViewSlices->Array.length)->toBe(2)
+    })
+
+    test("OrdersView: consumedEventTypes contains the three order events", () => {
+      let ordersView = structure.stateViewSlices->Array.getUnsafe(0)
+      expect(ordersView.consumedEventTypes)->toEqual([
+        "OrderPlaced",
+        "OrderShipped",
+        "OrderCancelled",
+      ])
+    })
+
+    test("OrdersView: linkedWriteSide contains both SCS producing order events", () => {
+      let ordersView = structure.stateViewSlices->Array.getUnsafe(0)
+      expect(ordersView.linkedWriteSide)->toEqual(["PlaceOrder", "ShipOrder"])
+    })
+
+    test("AvailableProductsView: consumedEventTypes contains catalog events", () => {
+      let apv = structure.stateViewSlices->Array.getUnsafe(1)
+      expect(apv.consumedEventTypes)->toEqual([
+        "CatalogProductSynced",
+        "CatalogProductPriceChanged",
+      ])
+    })
+
+    test("AvailableProductsView: linkedWriteSide is empty (no SCS produces these events)", () => {
+      let apv = structure.stateViewSlices->Array.getUnsafe(1)
+      expect(apv.linkedWriteSide)->toEqual([])
+    })
+  })
+})

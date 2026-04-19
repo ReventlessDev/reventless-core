@@ -197,7 +197,7 @@ function Make(Platform) {
     mapIncomingEvent: ProductsExtension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
-  let uiDefinition = Platform.Plugin.makeAutoUIDefinition("Ordering", [CustomerAggregate], [CustomersReadModelMaker], [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [CustomerAggregate], [CustomersReadModelMaker], [
     AvailableProductsViewSlice,
     OrdersViewSlice
   ], [
@@ -216,7 +216,7 @@ function Make(Platform) {
   ], [
     AvailableProductsViewSlice,
     OrdersViewSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, uiDefinition, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     PlaceOrderSlice: PlaceOrderSlice,
@@ -232,7 +232,7 @@ function Make(Platform) {
     CustomersReadModelMaker: CustomersReadModelMaker,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
     ProductsExtensionMaker: ProductsExtensionMaker,
-    uiDefinition: uiDefinition,
+    pluginStructure: pluginStructure,
     make: make
   };
 }

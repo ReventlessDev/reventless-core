@@ -182,7 +182,7 @@ function Make(Platform) {
     mapIncomingEvent: OrdersExtension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
-  let uiDefinition = Platform.Plugin.makeAutoUIDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
     ProductDemandViewStreamSlice,
     ProductsViewStreamSlice
   ], [
@@ -201,7 +201,7 @@ function Make(Platform) {
   ], [
     ProductDemandViewStreamSlice,
     ProductsViewStreamSlice
-  ], undefined, undefined, [ImportProductSlice], undefined, uiDefinition, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined, pluginStructure, undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
@@ -217,7 +217,7 @@ function Make(Platform) {
     ImportProductsTask: ImportProductsTask,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersExtensionMaker: OrdersExtensionMaker,
-    uiDefinition: uiDefinition,
+    pluginStructure: pluginStructure,
     make: make
   };
 }

@@ -24,7 +24,7 @@ module type T = {
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=?,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=?,
     ~uiFragments: Reventless.Plugin.uiFragmentManifest=?,
-    ~uiDefinition: Reventless.Plugin.uiDefinition=?,
+    ~pluginStructure: Reventless.Plugin.pluginStructure=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
   let makeAutoUIManifest: (
@@ -35,13 +35,13 @@ module type T = {
     ~readModelPositions: array<string>=?,
     ~aggregatePositions: array<string>=?,
   ) => Reventless.Plugin.uiFragmentManifest
-  let makeAutoUIDefinition: (
+  let makePluginDefinition: (
     ~name: string,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=?,
     ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=?,
     ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>=?,
     ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>=?,
-  ) => Reventless.Plugin.uiDefinition
+  ) => Reventless.Plugin.pluginStructure
 }
 
 let makeId = (name, version) => `${name}@${version}`

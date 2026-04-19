@@ -533,11 +533,11 @@ function MakeWithConfig(Config) {
   });
   let Plugin_make = PluginMaker.make;
   let Plugin_makeAutoUIManifest = PluginMaker.makeAutoUIManifest;
-  let Plugin_makeAutoUIDefinition = PluginMaker.makeAutoUIDefinition;
+  let Plugin_makePluginDefinition = PluginMaker.makePluginDefinition;
   let Plugin = {
     make: Plugin_make,
     makeAutoUIManifest: Plugin_makeAutoUIManifest,
-    makeAutoUIDefinition: Plugin_makeAutoUIDefinition
+    makePluginDefinition: Plugin_makePluginDefinition
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
@@ -753,19 +753,19 @@ function MakeWithConfig(Config) {
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };
-  let uiDefinitionsStore = {
+  let pluginStructuresStore = {
     contents: {}
   };
-  let seedUIDefinitionsStore = pluginComponents => {
+  let seedPluginStructuresStore = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
         outputs.id,
-        outputs.uiDefinition
+        outputs.pluginStructure
       ]).apply(param => {
-        let uiDef = param[1];
-        if (uiDef !== undefined) {
-          uiDefinitionsStore.contents[param[0]] = uiDef;
+        let ps = param[1];
+        if (ps !== undefined) {
+          pluginStructuresStore.contents[param[0]] = ps;
           return;
         }
       });
@@ -1035,7 +1035,7 @@ function MakeWithConfig(Config) {
     }
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
-    seedUIDefinitionsStore(plugins$1);
+    seedPluginStructuresStore(plugins$1);
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
@@ -1120,7 +1120,7 @@ function MakeWithConfig(Config) {
     platformGraphQL.registerTypes(uiDefsSdlTypes);
     platformGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
         "Platform_UIDefinitions",
-        async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
           let pluginId = param[0];
           let def = param[1];
           return Object.fromEntries([
@@ -1477,7 +1477,7 @@ function MakeWithConfig(Config) {
       adminGraphQL.registerTypes(dpUiDefsSdlTypes);
       adminGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
           "Platform_UIDefinitions",
-          async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
             let def = param[1];
             let encodeCmd = c => Object.fromEntries([
               [
@@ -1544,7 +1544,7 @@ function MakeWithConfig(Config) {
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     seedPluginQueryDb([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
-    seedUIDefinitionsStore([pluginComponent]);
+    seedPluginStructuresStore([pluginComponent]);
     firePluginDeployedHooks(builtInfos.contents);
     if (!Config.splitApi) {
       if (apiTarget === "Domain") {
@@ -2038,11 +2038,11 @@ function Make($star) {
   });
   let Plugin_make = PluginMaker.make;
   let Plugin_makeAutoUIManifest = PluginMaker.makeAutoUIManifest;
-  let Plugin_makeAutoUIDefinition = PluginMaker.makeAutoUIDefinition;
+  let Plugin_makePluginDefinition = PluginMaker.makePluginDefinition;
   let Plugin = {
     make: Plugin_make,
     makeAutoUIManifest: Plugin_makeAutoUIManifest,
-    makeAutoUIDefinition: Plugin_makeAutoUIDefinition
+    makePluginDefinition: Plugin_makePluginDefinition
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
@@ -2258,19 +2258,19 @@ function Make($star) {
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };
-  let uiDefinitionsStore = {
+  let pluginStructuresStore = {
     contents: {}
   };
-  let seedUIDefinitionsStore = pluginComponents => {
+  let seedPluginStructuresStore = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
         outputs.id,
-        outputs.uiDefinition
+        outputs.pluginStructure
       ]).apply(param => {
-        let uiDef = param[1];
-        if (uiDef !== undefined) {
-          uiDefinitionsStore.contents[param[0]] = uiDef;
+        let ps = param[1];
+        if (ps !== undefined) {
+          pluginStructuresStore.contents[param[0]] = ps;
           return;
         }
       });
@@ -2534,7 +2534,7 @@ function Make($star) {
     }
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
-    seedUIDefinitionsStore(plugins$1);
+    seedPluginStructuresStore(plugins$1);
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
@@ -2619,7 +2619,7 @@ function Make($star) {
     platformGraphQL.registerTypes(uiDefsSdlTypes);
     platformGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
         "Platform_UIDefinitions",
-        async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
           let pluginId = param[0];
           let def = param[1];
           return Object.fromEntries([
@@ -2968,7 +2968,7 @@ function Make($star) {
       adminGraphQL.registerTypes(dpUiDefsSdlTypes);
       adminGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
           "Platform_UIDefinitions",
-          async (_root, _args, _ctx) => Object.entries(uiDefinitionsStore.contents).map(param => {
+          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
             let def = param[1];
             let encodeCmd = c => Object.fromEntries([
               [
@@ -3035,7 +3035,7 @@ function Make($star) {
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
     seedPluginQueryDb([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
-    seedUIDefinitionsStore([pluginComponent]);
+    seedPluginStructuresStore([pluginComponent]);
     firePluginDeployedHooks(builtInfos.contents);
     return Component$ReventlessCore.outputs(pluginComponent);
   };

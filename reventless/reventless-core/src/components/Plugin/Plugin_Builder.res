@@ -52,7 +52,7 @@ module Make = (
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>,
     ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
-    ~uiDefinition: option<Reventless.Plugin.uiDefinition>,
+    ~pluginStructure: option<Reventless.Plugin.pluginStructure>,
     self,
     name,
   ) => {
@@ -616,7 +616,7 @@ module Make = (
       dcbEventLog: builderOutputs->Pulumi.Output.apply(outputs => outputs.dcbEventLog),
       apiSchemaFragment: Pulumi.Output.make(Some(apiSchemaFragment)),
       uiFragments: builderOutputs->Pulumi.Output.apply(outputs => outputs.uiFragments),
-      uiDefinition: Pulumi.Output.make(uiDefinition),
+      pluginStructure: Pulumi.Output.make(pluginStructure),
     }
     let _ = self->Component.setOutputs(pluginOutputs)
 
@@ -684,78 +684,22 @@ module Make = (
     {remoteEntryUrl, panels, pages}
   }
 
-  let makeAutoUIDefinition = (
+  let makePluginDefinition = (
     ~name: string,
     ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>=[],
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=[],
+    ~readModels: array<
+      module(ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    >=[],
     ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>=[],
     ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>=[],
-  ): Reventless.Plugin.uiDefinition => {
-    let toCommandDef = (v: S.t<unknown>): option<Reventless.Plugin.uiCommandDef> =>
-      switch v {
-      | Object({properties}) =>
-        properties
-        ->Dict.get("TAG")
-        ->Option.flatMap(tagSchema =>
-          switch tagSchema {
-          | String({const: ?Some(variantName)}) =>
-            Some({
-              Reventless.Plugin.name: variantName,
-              schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
-            })
-          | _ => None
-          }
-        )
-      | _ => None
-      }
-
-    let extractCommandDefs = (commandSchema: S.t<unknown>): array<Reventless.Plugin.uiCommandDef> =>
-      switch commandSchema {
-      | Union({anyOf}) => anyOf->Array.filterMap(toCommandDef)
-      | _ => []
-      }
-
-    let readModelDefs =
-      readModels->Array.map((
-        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-      ) => {
-        let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
-        ({
-          Reventless.Plugin.name: R.Spec.name,
-          queryField: qf.listFieldName,
-          schema: (R.Spec.stateSchema->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
-        }: Reventless.Plugin.uiQueryableDef)
-      })
-
-    let stateViewDefs =
-      stateViewSlices->Array.map((module(SVS: ReventlessInfra.StateViewSlice.T)) => {
-        let qf = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=SVS.Spec.name)
-        ({
-          Reventless.Plugin.name: SVS.Spec.name,
-          queryField: qf.listFieldName,
-          schema: (SVS.Spec.stateSchema->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
-        }: Reventless.Plugin.uiQueryableDef)
-      })
-
-    let stateChangeDefs =
-      stateChangeSlices->Array.map((module(SCS: ReventlessInfra.StateChangeSlice.T)) => ({
-        Reventless.Plugin.name: SCS.Spec.name,
-        commands: extractCommandDefs(SCS.Spec.commandSchema->S.castToUnknown),
-      }: Reventless.Plugin.uiWritableDef))
-
-    let aggregateDefs =
-      aggregates->Array.map((module(A: ReventlessInfra.Aggregate.T with type api = api)) => ({
-        Reventless.Plugin.name: A.Spec.name,
-        commands: extractCommandDefs(A.Spec.commandSchema->S.castToUnknown),
-      }: Reventless.Plugin.uiWritableDef))
-
-    {
-      readModels: readModelDefs,
-      stateViewSlices: stateViewDefs,
-      stateChangeSlices: stateChangeDefs,
-      aggregates: aggregateDefs,
-    }
-  }
+  ): Reventless.Plugin.pluginStructure =>
+    Plugin_Structure.make(
+      ~name,
+      ~aggregates,
+      ~readModels,
+      ~stateViewSlices,
+      ~stateChangeSlices,
+    )
 
   let make = (
     ~name,
@@ -773,7 +717,7 @@ module Make = (
     ~outboundTranslationSlices=[],
     ~inboundTranslationSlices=[],
     ~uiFragments: option<Reventless.Plugin.uiFragmentManifest>=?,
-    ~uiDefinition: option<Reventless.Plugin.uiDefinition>=?,
+    ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts=?,
   ) => {
     let version = Reventless.PackageVersion.fromCaller()
@@ -794,7 +738,7 @@ module Make = (
         ~outboundTranslationSlices,
         ~inboundTranslationSlices,
         ~uiFragments,
-        ~uiDefinition,
+        ~pluginStructure,
         ...
       ),
       ~opts,

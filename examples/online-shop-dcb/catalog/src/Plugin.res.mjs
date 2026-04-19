@@ -187,6 +187,20 @@ function Make(Platform) {
     mapIncomingEvent: OrdersExtension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", undefined, undefined, [
+    CategoriesViewSlice,
+    ProductDemandViewSlice,
+    ProductsViewSlice
+  ], [
+    AddCategorySlice,
+    AddProductSlice,
+    ArchiveCategorySlice,
+    ChangeProductDescriptionSlice,
+    ChangeProductNameSlice,
+    ChangeProductPriceSlice,
+    RecordProductDemandSlice,
+    RenameCategorySlice
+  ]);
   let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, [
     AddCategorySlice,
     AddProductSlice,
@@ -200,7 +214,7 @@ function Make(Platform) {
     CategoriesViewSlice,
     ProductDemandViewSlice,
     ProductsViewSlice
-  ], undefined, undefined, [ImportProductSlice], undefined, undefined, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined, pluginStructure, undefined);
   return {
     AddCategorySlice: AddCategorySlice,
     AddProductSlice: AddProductSlice,
@@ -216,6 +230,7 @@ function Make(Platform) {
     ImportProductSlice: ImportProductSlice,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersExtensionMaker: OrdersExtensionMaker,
+    pluginStructure: pluginStructure,
     make: make
   };
 }

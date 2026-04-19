@@ -97,17 +97,39 @@ type uiFragmentManifest = {
 
 let uiFragmentManifestOptionSchema = _jsNullable(uiFragmentManifestSchema, ())
 
-// ── AutoUI definition types ───────────────────────────────────────────────────
+// ── Plugin structure types (component metadata for Auto UI and event graph) ──
 
-type uiCommandDef = {name: string, schema: string}
-type uiQueryableDef = {name: string, queryField: string, schema: string}
-type uiWritableDef = {name: string, commands: array<uiCommandDef>}
+type commandLevel = Collection | Instance
 
-type uiDefinition = {
-  readModels: array<uiQueryableDef>,
-  stateViewSlices: array<uiQueryableDef>,
-  stateChangeSlices: array<uiWritableDef>,
-  aggregates: array<uiWritableDef>,
+type commandDef = {
+  name: string,
+  schema: string,
+  level: commandLevel,
+  aggregateIdField: option<string>,
+}
+
+type queryableDef = {
+  name: string,
+  queryField: string,
+  schema: string,
+  consumedEventTypes: array<string>,
+  linkedWriteSide: array<string>,
+}
+
+type writableDef = {
+  name: string,
+  commands: array<commandDef>,
+  producedEventTypes: array<string>,
+  consumedEventTypes: array<string>,
+  linkedViews: array<string>,
+  consistencyRead: option<string>,
+}
+
+type pluginStructure = {
+  readModels: array<queryableDef>,
+  stateViewSlices: array<queryableDef>,
+  stateChangeSlices: array<writableDef>,
+  aggregates: array<writableDef>,
 }
 
 /**

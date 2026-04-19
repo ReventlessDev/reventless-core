@@ -27,6 +27,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Extensions
   module ProductsExtensionMaker = Platform.Extension.Make(ProductsExtension.Mapping)
 
+  let pluginStructure = Platform.Plugin.makePluginDefinition(
+    ~name="Ordering",
+    ~stateViewSlices=[module(AvailableProductsViewSlice), module(CustomersViewSlice), module(OrdersViewSlice)],
+    ~stateChangeSlices=[module(CancelOrderSlice), module(ChangeAddressSlice), module(ChangeEmailSlice), module(DeactivateCustomerSlice), module(PlaceOrderSlice), module(RegisterCustomerSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
+  )
+
   let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
@@ -37,5 +43,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~stateViewSlices=[module(AvailableProductsViewSlice), module(CustomersViewSlice), module(OrdersViewSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],
       ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
+      ~pluginStructure=pluginStructure,
     )
 }

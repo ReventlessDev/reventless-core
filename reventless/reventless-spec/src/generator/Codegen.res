@@ -318,7 +318,7 @@ let renderTaskMakeParam = (tasks: array<string>): option<string> =>
     Some("      ~tasks=[" ++ entries->Array.join(", ") ++ "],")
   }
 
-let renderUiDefinitionCall = (
+let renderPluginStructureCall = (
   ~name: string,
   ~aggregates: array<Pairing.aggregateDef>,
   ~readModels: array<Pairing.readModelDef>,
@@ -336,7 +336,7 @@ let renderUiDefinitionCall = (
     None
   } else {
     let ls: array<string> = []
-    ls->Array.push("  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(")
+    ls->Array.push("  let pluginStructure = Platform.Plugin.makePluginDefinition(")
     ls->Array.push("    ~name=\"" ++ name ++ "\",")
     if aggregates->Array.length > 0 {
       let entries = aggregates->Array.map(({spec}) => "module(" ++ spec ++ "Aggregate)")
@@ -508,8 +508,8 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     }->push
   }
 
-  // uiDefinition
-  let uiDefLines = renderUiDefinitionCall(
+  // pluginStructure
+  let pluginStructureLines = renderPluginStructureCall(
     ~name=config.name,
     ~aggregates=resolved.aggregates,
     ~readModels=resolved.readModels,
@@ -517,8 +517,8 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     ~stateViewSlicesStream=resolved.stateViewSlicesStream,
     ~stateChangeSlices=resolved.stateChangeSlices,
   )
-  let hasUiDefinition = uiDefLines->Option.isSome
-  switch uiDefLines {
+  let hasPluginStructure = pluginStructureLines->Option.isSome
+  switch pluginStructureLines {
   | Some(defLines) =>
     defLines->Array.forEach(l => lines->Array.push(l))
     lines->Array.push("")
@@ -550,7 +550,7 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
       ~items=resolved.inboundTranslationSlices,
       ~moduleSuffix="Slice",
     ),
-    hasUiDefinition ? Some("      ~uiDefinition=uiDefinition,") : None,
+    hasPluginStructure ? Some("      ~pluginStructure=pluginStructure,") : None,
   ]
 
   makeParams->Array.filterMap(x => x)->Array.forEach(line => lines->Array.push(line))

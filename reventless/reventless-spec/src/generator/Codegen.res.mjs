@@ -266,13 +266,13 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
-function renderUiDefinitionCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices) {
+function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices) {
   let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0;
   if (!hasComponents) {
     return;
   }
   let ls = [];
-  ls.push("  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(");
+  ls.push("  let pluginStructure = Platform.Plugin.makePluginDefinition(");
   ls.push("    ~name=\"" + name + "\",");
   if (aggregates.length !== 0) {
     let entries = aggregates.map(param => "module(" + param.spec + "Aggregate)");
@@ -368,10 +368,10 @@ function render(config, resolved) {
     lines.push("  // Extensions");
     push(ns !== undefined ? renderExtensionsAws(ns, resolved.extensions) : renderExtensions(resolved.extensions));
   }
-  let uiDefLines = renderUiDefinitionCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices);
-  let hasUiDefinition = Stdlib_Option.isSome(uiDefLines);
-  if (uiDefLines !== undefined) {
-    uiDefLines.forEach(l => {
+  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices);
+  let hasPluginStructure = Stdlib_Option.isSome(pluginStructureLines);
+  if (pluginStructureLines !== undefined) {
+    pluginStructureLines.forEach(l => {
       lines.push(l);
     });
     lines.push("");
@@ -391,7 +391,7 @@ function render(config, resolved) {
     renderMakeParam("automationSlices", resolved.automationSlices, "Slice"),
     renderMakeParam("outboundTranslationSlices", resolved.outboundTranslationSlices, "Slice"),
     renderMakeParam("inboundTranslationSlices", resolved.inboundTranslationSlices, "Slice"),
-    hasUiDefinition ? "      ~uiDefinition=uiDefinition," : undefined
+    hasPluginStructure ? "      ~pluginStructure=pluginStructure," : undefined
   ];
   Stdlib_Array.filterMap(makeParams, x => x).forEach(line => {
     lines.push(line);
@@ -425,7 +425,7 @@ export {
   renderEpMakeParam,
   renderExtensionMakeParam,
   renderTaskMakeParam,
-  renderUiDefinitionCall,
+  renderPluginStructureCall,
   render,
 }
 /* No side effect */
