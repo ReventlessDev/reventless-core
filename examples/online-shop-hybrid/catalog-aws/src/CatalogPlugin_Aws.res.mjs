@@ -6,6 +6,7 @@ import * as Category$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catal
 import * as AddProduct$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChangeSlice/AddProduct.res.mjs";
 import * as ProductsView$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateViewSlice/ProductsView.res.mjs";
 import * as ImportProduct$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/InboundTranslationSlice/ImportProduct.res.mjs";
+import * as ImportProducts$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Task/ImportProducts.res.mjs";
 import * as OrdersExtension$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Extension/OrdersExtension.res.mjs";
 import * as CategoryBehavior$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Category/Aggregate/CategoryBehavior.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChangeSlice/ChangeProductName.res.mjs";
@@ -25,43 +26,6 @@ import * as ReadModel_Builder_Single$ReventlessAws from "@reventlessdev/reventle
 import * as ProductsExtensionPointMapping$CatalogPlugin from "@reventlessdev/online-shop-hybrid-catalog/src/ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
 
 function Make(Platform) {
-  let CategoryAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
-    Id: Id$Reventless.$$String,
-    name: Category$CatalogPlugin.name,
-    eventSchema: Category$CatalogPlugin.eventSchema,
-    errorSchema: Category$CatalogPlugin.errorSchema,
-    commandSchema: Category$CatalogPlugin.commandSchema,
-    moduleUrl: Category$CatalogPlugin.moduleUrl
-  })({
-    initialState: CategoryBehavior$CatalogPlugin.initialState,
-    evolve: CategoryBehavior$CatalogPlugin.evolve,
-    decide: CategoryBehavior$CatalogPlugin.decide,
-    moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
-  })(NoEventMappings$ReventlessInfra.Make({
-    name: Category$CatalogPlugin.name,
-    Id: Id$Reventless.$$String,
-    commandSchema: Category$CatalogPlugin.commandSchema
-  }));
-  Projection$Reventless.Mappings.Make({
-    Id: Id$Reventless.$$String,
-    name: CategoriesReadModel$CatalogPlugin.name,
-    stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
-    subIdConfig: undefined
-  });
-  let moduleUrl = import.meta.url;
-  let mappings = [CategoriesProjections$CatalogPlugin.CategoryMapping];
-  let CategoryProjections = {
-    moduleUrl: moduleUrl,
-    mappings: mappings
-  };
-  let CategoryReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
-    Id: Id$Reventless.$$String,
-    name: CategoriesReadModel$CatalogPlugin.name,
-    moduleUrl: CategoriesReadModel$CatalogPlugin.moduleUrl,
-    stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
-    config: CategoriesReadModel$CatalogPlugin.config,
-    subIdConfig: undefined
-  })(CategoryProjections);
   let AddProductSlice = Platform.StateChangeSlice.Make({
     name: AddProduct$CatalogPlugin.name,
     moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
@@ -74,18 +38,6 @@ function Make(Platform) {
     decide: AddProduct$CatalogPlugin.decide,
     commandSchema: AddProduct$CatalogPlugin.commandSchema
   });
-  let ChangeProductNameSlice = Platform.StateChangeSlice.Make({
-    name: ChangeProductName$CatalogPlugin.name,
-    moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-    initialState: ChangeProductName$CatalogPlugin.initialState,
-    consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
-    evolve: ChangeProductName$CatalogPlugin.evolve,
-    errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
-    Id: Id$Reventless.$$String,
-    eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
-    decide: ChangeProductName$CatalogPlugin.decide,
-    commandSchema: ChangeProductName$CatalogPlugin.commandSchema
-  });
   let ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductDescription$CatalogPlugin.name,
     moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
@@ -97,6 +49,18 @@ function Make(Platform) {
     eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
     decide: ChangeProductDescription$CatalogPlugin.decide,
     commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema
+  });
+  let ChangeProductNameSlice = Platform.StateChangeSlice.Make({
+    name: ChangeProductName$CatalogPlugin.name,
+    moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
+    initialState: ChangeProductName$CatalogPlugin.initialState,
+    consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
+    evolve: ChangeProductName$CatalogPlugin.evolve,
+    errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
+    Id: Id$Reventless.$$String,
+    eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
+    decide: ChangeProductName$CatalogPlugin.decide,
+    commandSchema: ChangeProductName$CatalogPlugin.commandSchema
   });
   let ChangeProductPriceSlice = Platform.StateChangeSlice.Make({
     name: ChangeProductPrice$CatalogPlugin.name,
@@ -122,22 +86,22 @@ function Make(Platform) {
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });
-  let ProductsViewSlice = Platform.StateViewSliceStream.Make({
-    name: ProductsView$CatalogPlugin.name,
-    moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
-    stateSchema: ProductsView$CatalogPlugin.stateSchema,
-    consumedEventSchema: ProductsView$CatalogPlugin.consumedEventSchema,
-    project: ProductsView$CatalogPlugin.project,
-    config: ProductsView$CatalogPlugin.config,
-    subIdConfig: undefined
-  });
-  let ProductDemandViewSlice = Platform.StateViewSliceStream.Make({
+  let ProductDemandViewSlice = Platform.StateViewSlice.Make({
     name: ProductDemandView$CatalogPlugin.name,
     moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemandView$CatalogPlugin.stateSchema,
     consumedEventSchema: ProductDemandView$CatalogPlugin.consumedEventSchema,
     project: ProductDemandView$CatalogPlugin.project,
     config: ProductDemandView$CatalogPlugin.config,
+    subIdConfig: undefined
+  });
+  let ProductsViewSlice = Platform.StateViewSlice.Make({
+    name: ProductsView$CatalogPlugin.name,
+    moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
+    stateSchema: ProductsView$CatalogPlugin.stateSchema,
+    consumedEventSchema: ProductsView$CatalogPlugin.consumedEventSchema,
+    project: ProductsView$CatalogPlugin.project,
+    config: ProductsView$CatalogPlugin.config,
     subIdConfig: undefined
   });
   let ImportProductSlice = Platform.InboundTranslationSlice.Make({
@@ -147,6 +111,43 @@ function Make(Platform) {
     commandSchema: ImportProduct$CatalogPlugin.commandSchema,
     translate: ImportProduct$CatalogPlugin.translate
   });
+  let CategoryAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: Category$CatalogPlugin.name,
+    eventSchema: Category$CatalogPlugin.eventSchema,
+    errorSchema: Category$CatalogPlugin.errorSchema,
+    commandSchema: Category$CatalogPlugin.commandSchema,
+    moduleUrl: Category$CatalogPlugin.moduleUrl
+  })({
+    initialState: CategoryBehavior$CatalogPlugin.initialState,
+    evolve: CategoryBehavior$CatalogPlugin.evolve,
+    decide: CategoryBehavior$CatalogPlugin.decide,
+    moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
+  })(NoEventMappings$ReventlessInfra.Make({
+    name: Category$CatalogPlugin.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: Category$CatalogPlugin.commandSchema
+  }));
+  Projection$Reventless.Mappings.Make({
+    Id: Id$Reventless.$$String,
+    name: CategoriesReadModel$CatalogPlugin.name,
+    stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
+    subIdConfig: undefined
+  });
+  let mappings = [CategoriesProjections$CatalogPlugin.CategoryMapping];
+  let CategoriesProjectionsWrapper = {
+    moduleUrl: "@reventlessdev/online-shop-hybrid-catalog-aws/src/CatalogPlugin_Aws.res.mjs",
+    mappings: mappings
+  };
+  let CategoriesReadModelMaker = ReadModel_Builder_Single$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: CategoriesReadModel$CatalogPlugin.name,
+    moduleUrl: CategoriesReadModel$CatalogPlugin.moduleUrl,
+    stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
+    config: CategoriesReadModel$CatalogPlugin.config,
+    subIdConfig: undefined
+  })(CategoriesProjectionsWrapper);
+  let ImportProductsTask = Platform.Task.Make(ImportProducts$CatalogPlugin);
   let ProductsEPMappingT = ExtensionPointMapping$ReventlessInfra.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
@@ -167,12 +168,12 @@ function Make(Platform) {
     mapOutgoingEvent: ProductsExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
   });
   let name = "ProductsEPMappings";
-  let moduleUrl$1 = import.meta.url;
+  let moduleUrl = import.meta.url;
   let mappings$1 = [ProductsEPMappingT];
   let ProductsEPMappings = {
     Spec: undefined,
     name: name,
-    moduleUrl: moduleUrl$1,
+    moduleUrl: moduleUrl,
     mappings: mappings$1
   };
   let publishToAggregatesQueueUrls = {};
@@ -184,7 +185,7 @@ function Make(Platform) {
     directiveSchema: ProductsExtensionPoint$CatalogSpec.directiveSchema
   })({
     name: name,
-    moduleUrl: moduleUrl$1,
+    moduleUrl: moduleUrl,
     mappings: mappings$1
   })({
     publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
@@ -208,32 +209,44 @@ function Make(Platform) {
     mapIncomingEvent: OrdersExtension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
-  let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoryReadModel], undefined, [
+  let uiDefinition = Platform.Plugin.makeAutoUIDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
+    ProductDemandViewSlice,
+    ProductsViewSlice
+  ], [
     AddProductSlice,
-    ChangeProductNameSlice,
     ChangeProductDescriptionSlice,
+    ChangeProductNameSlice,
+    ChangeProductPriceSlice,
+    RecordProductDemandSlice
+  ]);
+  let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoriesReadModelMaker], [ImportProductsTask], [
+    AddProductSlice,
+    ChangeProductDescriptionSlice,
+    ChangeProductNameSlice,
     ChangeProductPriceSlice,
     RecordProductDemandSlice
   ], [
-    ProductsViewSlice,
-    ProductDemandViewSlice
-  ], undefined, undefined, [ImportProductSlice], undefined);
+    ProductDemandViewSlice,
+    ProductsViewSlice
+  ], undefined, undefined, [ImportProductSlice], undefined, uiDefinition, undefined);
   return {
-    CategoryAggregate: CategoryAggregate,
-    CategoryProjections: CategoryProjections,
-    CategoryReadModel: CategoryReadModel,
     AddProductSlice: AddProductSlice,
-    ChangeProductNameSlice: ChangeProductNameSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
+    ChangeProductNameSlice: ChangeProductNameSlice,
     ChangeProductPriceSlice: ChangeProductPriceSlice,
     RecordProductDemandSlice: RecordProductDemandSlice,
-    ProductsViewSlice: ProductsViewSlice,
     ProductDemandViewSlice: ProductDemandViewSlice,
+    ProductsViewSlice: ProductsViewSlice,
     ImportProductSlice: ImportProductSlice,
+    CategoryAggregate: CategoryAggregate,
+    CategoriesProjectionsWrapper: CategoriesProjectionsWrapper,
+    CategoriesReadModelMaker: CategoriesReadModelMaker,
+    ImportProductsTask: ImportProductsTask,
     ProductsEPMappingT: ProductsEPMappingT,
     ProductsEPMappings: ProductsEPMappings,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersExtensionMaker: OrdersExtensionMaker,
+    uiDefinition: uiDefinition,
     make: make
   };
 }

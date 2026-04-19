@@ -12,6 +12,7 @@ type extensionPointDef = {group: option<string>, mappings: array<string>}
 type resolved = {
   stateChangeSlices: array<string>,
   stateViewSlices: array<string>,
+  stateViewSlicesStream: array<string>,
   automationSlices: array<string>,
   inboundTranslationSlices: array<string>,
   outboundTranslationSlices: array<string>,
@@ -72,6 +73,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
 
   let stateChangeSlices = []
   let stateViewSlices = []
+  let stateViewSlicesStream = []
   let automationSlices = []
   let inboundTranslationSlices = []
   let outboundTranslationSlices = []
@@ -89,6 +91,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     switch componentType {
     | StateChangeSlice => stateChangeSlices->Array.push(stem)
     | StateViewSlice => stateViewSlices->Array.push(stem)
+    | StateViewSliceStream => stateViewSlicesStream->Array.push(stem)
     | AutomationSlice => automationSlices->Array.push(stem)
     | InboundTranslationSlice => inboundTranslationSlices->Array.push(stem)
     | OutboundTranslationSlice => outboundTranslationSlices->Array.push(stem)
@@ -181,6 +184,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   {
     stateChangeSlices: stateChangeSlices->sortedStems,
     stateViewSlices: stateViewSlices->sortedStems,
+    stateViewSlicesStream: stateViewSlicesStream->sortedStems,
     automationSlices: automationSlices->sortedStems,
     inboundTranslationSlices: inboundTranslationSlices->sortedStems,
     outboundTranslationSlices: outboundTranslationSlices->sortedStems,

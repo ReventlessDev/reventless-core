@@ -1,10 +1,13 @@
 // Plugin configuration reader.
 // Reads plugin.json from srcDir (optional) and derives defaults from package.json.
 
+type variant = Standard | Aws({sourceNamespace: string})
+
 type config = {
   name: string,
   heartbeatInterval: int,
   exclude: array<string>,
+  variant: variant,
 }
 
 // Convert npm package name to PascalCase plugin name.
@@ -74,5 +77,6 @@ let read = (~srcDir: string): config => {
     ->Option.flatMap(j => getIntField(j, "heartbeatInterval"))
     ->Option.getOr(60),
     exclude: pluginJson->Option.flatMap(j => getStrArrayField(j, "exclude"))->Option.getOr([]),
+    variant: Standard,
   }
 }

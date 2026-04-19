@@ -3,6 +3,7 @@
 type componentType =
   | StateChangeSlice
   | StateViewSlice
+  | StateViewSliceStream
   | AutomationSlice
   | InboundTranslationSlice
   | OutboundTranslationSlice
@@ -20,6 +21,7 @@ let folderToComponentType = (folder: string): option<componentType> =>
   | "StateChange" | "StateChanges" | "StateChangeSlice" | "StateChangeSlices" =>
     Some(StateChangeSlice)
   | "StateView" | "StateViews" | "StateViewSlice" | "StateViewSlices" => Some(StateViewSlice)
+  | "StateViewSliceStream" | "StateViewSliceStreams" => Some(StateViewSliceStream)
   | "Automation" | "Automations" | "AutomationSlice" | "AutomationSlices" => Some(AutomationSlice)
   | "InboundTranslation"
   | "InboundTranslations"

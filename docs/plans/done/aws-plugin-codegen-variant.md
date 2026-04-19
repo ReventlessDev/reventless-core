@@ -145,8 +145,84 @@ Once implemented, add `generate` + `prebuild` scripts and `src/plugin.json` (or 
 
 ---
 
-## Out of Scope
+## Previously Out of Scope — Now Planned
 
-- `StateViewSliceStream` adoption (open question in analysis — separate decision)
-- EventMappings support for AWS aggregates (no business use case yet)
-- Tasks in AWS variant (no bundled Lambda task builder exists)
+---
+
+### Feature A: StateViewSliceStream adoption
+
+`renderSlices` currently keeps `StateViewSlice` as `Platform.StateViewSlice.Make` in both standard and AWS variants. `Platform.StateViewSliceStream` already exists (wraps `StateViewSlice_Builder_Stream.Make`) — it differs by using `QueryDbStorage_DynamoDbStream`, which enables DynamoDB Streams and the `StateTopic_AppSync` push channel.
+
+**Discovery** — `Discovery.res`: scan a `StateViewSliceStream/` sibling folder (same pattern as `StateViewSlice/`). Collected stems feed a new `stateViewSlicesStream: array<string>` field on `Pairing.resolved`.
+
+**Pairing** — `Pairing.res`: add `stateViewSlicesStream: array<string>` to the `resolved` record and populate it from the new discovery result.
+
+**Codegen** — `Codegen.res`: `renderSlicesAws` is already generic (`~platformFactory`, `~suffix`), so the render call is:
+```res
+renderSlicesAws(~platformFactory="StateViewSliceStream", ~suffix="StreamSlice", ~ns, resolved.stateViewSlicesStream)
+```
+Standard variant uses the same `renderSlices` helper:
+```res
+renderSlices(~platformFactory="StateViewSliceStream", ~suffix="StreamSlice", resolved.stateViewSlicesStream)
+```
+
+**Plugin.make assembly** — stream slices produce modules with suffix `StreamSlice` (e.g. `ProductsStreamSlice`). They satisfy the same `StateViewSlice.T` interface and must be merged into the existing `~stateViewSlices` array. Extend the `~stateViewSlices` `renderMakeParam` call (or add a second one) to append stream-suffix entries alongside regular `Slice` entries.
+
+Generated output (AWS variant):
+```res
+// StateViewSliceStream
+module ProductsStreamSlice = Platform.StateViewSliceStream.Make(CatalogPlugin.Products)
+```
+Passed to Plugin.make as: `~stateViewSlices=[module(RegularSlice), module(ProductsStreamSlice)]`
+
+**No new CLI flag needed.** The folder name is the opt-in signal.
+
+---
+
+### Feature B: EventMappings for AWS aggregates
+
+`renderAggregatesAws` hardcodes `ReventlessInfra.NoEventMappings.Make(Ns.Spec)`. The discovery and pairing already populate `aggregateDef.eventMappings: option<string>` for the standard variant — the AWS path just ignores it.
+
+**Codegen.res** — single change in `renderAggregatesAws` (currently line 132):
+```res
+// Before:
+"    ReventlessInfra.NoEventMappings.Make(" ++ ns ++ "." ++ spec ++ "),"
+
+// After:
+let mappingsExpr = eventMappings
+  ->Option.map(m => ns ++ "." ++ m)
+  ->Option.getOr("ReventlessInfra.NoEventMappings.Make(" ++ ns ++ "." ++ spec ++ ")")
+"    " ++ mappingsExpr ++ ","
+```
+
+The destructure of `aggregateDef` in the same function needs `eventMappings` added alongside `spec` and `behavior`.
+
+No other files change — discovery and pairing already do the right thing.
+
+Generated output (AWS variant, with custom mappings):
+```res
+module OrderAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
+  OrderingPlugin.Order,
+  OrderingPlugin.OrderBehavior,
+  OrderingPlugin.Order_EventMappings,
+)
+```
+
+---
+
+### Feature C: Tasks in AWS variant
+
+`ReventlessAws.Task_Builder` already exists (`reventless-aws/src/components/Task_Builder.res` → `include Task_Builder_PerBucket`). `Platform.Task.Make` (Platform.res line 414) also already wraps it with empty default Config. `renderTasksAws` exists but emits `Platform.Task.Make(Ns.Stem)` — inconsistent with the pattern used for aggregates, read models, and extension points, which all bypass Platform.* and use the explicit AWS builders directly.
+
+**Codegen.res** — `renderTasksAws` keeps `Platform.Task.Make(Ns.Stem)`. Switching to `ReventlessAws.Task_Builder.Make` directly was attempted but fails because that builder requires `ReventlessCore.Task.Spec`, which is inaccessible from AWS assembly packages that only depend on `reventless-aws` (not `reventless-core` directly). `Platform.Task.Make` inside the platform functor body only requires `ReventlessInfra.Task.Spec`, which cross-package task modules do satisfy. No code change needed to `renderTasksAws`.
+
+**Task spec files** must annotate `setup` parameters explicitly (not rely on polymorphic inference) so the compiled interface exports a concrete type. Example:
+```res
+let setup = (
+  _queryEngine: Reventless.QueryEngine.operations,
+  _queryBucketName: ReventlessInfra.Task.queryBucketName,
+  _opts: Pulumi.ComponentResource.options,
+): Reventless.Task.config => { ... }
+```
+
+**Verification** — `examples/online-shop-hybrid/catalog/src/Task/ImportProducts.res` added; `catalog-aws` regenerates and compiles clean. This is the regression test.

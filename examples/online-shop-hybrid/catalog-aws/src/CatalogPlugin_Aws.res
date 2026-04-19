@@ -1,58 +1,46 @@
-// Catalog plugin — AWS deployment.
-// Uses direct AWS builders for Aggregate and ReadModel components.
-// DCB slices, ExtensionPoints, and Extensions use standard Platform builders.
-
+// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
 open Reventless.Projection
-
-// DCB config registered in index.mjs (before ReScript module init)
 
 module Make = (
   Platform: ReventlessInfra.Platform.T
     with type api = ReventlessAws.Types.AppSync.api
     and type role = ReventlessAws.Types.AppSync.role,
 ) => {
-  // ── Category Aggregate ────────────────────────────────────────
+  // StateChangeSlices
+  module AddProductSlice = Platform.StateChangeSlice.Make(CatalogPlugin.AddProduct)
+  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductDescription)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductName)
+  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductPrice)
+  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(CatalogPlugin.RecordProductDemand)
+
+  // StateViewSlices
+  module ProductDemandViewSlice = Platform.StateViewSlice.Make(CatalogPlugin.ProductDemandView)
+  module ProductsViewSlice = Platform.StateViewSlice.Make(CatalogPlugin.ProductsView)
+
+  // InboundTranslationSlices
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(CatalogPlugin.ImportProduct)
+
+  // Aggregates
   module CategoryAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
     CatalogPlugin.Category,
     CatalogPlugin.CategoryBehavior,
     ReventlessInfra.NoEventMappings.Make(CatalogPlugin.Category),
   )
 
-  // ── Categories ReadModel ──────────────────────────────────────
-  module CategoryProjections: Mappings with module Target := CatalogPlugin.CategoriesReadModel = {
-    module M = Mappings.Make(CatalogPlugin.CategoriesReadModel)
-    module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [
-      module(CatalogPlugin.CategoriesProjections.CategoryMapping),
-    ]
+  // ReadModels
+  @reventless.projections
+  module CategoriesProjectionsWrapper: Mappings with module Target := CatalogPlugin.CategoriesReadModel = {
+    let mappings: array<module(Mapping)> = [module(CatalogPlugin.CategoriesProjections.CategoryMapping)]
   }
-
-  module CategoryReadModel = ReventlessAws.ReadModel_Builder_Single.Make(
+  module CategoriesReadModelMaker = ReventlessAws.ReadModel_Builder_Single.Make(
     CatalogPlugin.CategoriesReadModel,
-    CategoryProjections,
+    CategoriesProjectionsWrapper,
   )
 
-  // ── Product/ProductDemand DCB (standard — via Platform) ──────
-  module AddProductSlice = Platform.StateChangeSlice.Make(CatalogPlugin.AddProduct)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductName)
-  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(
-    CatalogPlugin.ChangeProductDescription,
-  )
-  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductPrice)
-  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(
-    CatalogPlugin.RecordProductDemand,
-  )
+  // Tasks
+  module ImportProductsTask = Platform.Task.Make(CatalogPlugin.ImportProducts)
 
-  // Stream-enabled: allows StateTopic_AppSync to push state changes via AppSync Events API.
-  module ProductsViewSlice = Platform.StateViewSliceStream.Make(CatalogPlugin.ProductsView)
-  module ProductDemandViewSlice = Platform.StateViewSliceStream.Make(
-    CatalogPlugin.ProductDemandView,
-  )
-
-  module ImportProductSlice = Platform.InboundTranslationSlice.Make(CatalogPlugin.ImportProduct)
-
-  // ── Extension Point ───────────────────────────────────────────
+  // ExtensionPoints
   module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
     CatalogPlugin.ProductsExtensionPointMapping,
   )
@@ -71,31 +59,29 @@ module Make = (
     },
   )
 
-  // ── Extension (standard — via Platform) ──────────────────────
-  module OrdersExtensionMaker = Platform.Extension.Make(
-    CatalogPlugin.OrdersExtension.Mapping,
+  // Extensions
+  module OrdersExtensionMaker = Platform.Extension.Make(CatalogPlugin.OrdersExtension.Mapping)
+
+  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(
+    ~name="Catalog",
+    ~aggregates=[module(CategoryAggregate)],
+    ~readModels=[module(CategoriesReadModelMaker)],
+    ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
+    ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
   )
 
-  // ── Hybrid Plugin Assembly ───────────────────────────────────
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~aggregates=[module(CategoryAggregate)],
-      ~readModels=[module(CategoryReadModel)],
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
-      ~stateChangeSlices=[
-        module(AddProductSlice),
-        module(ChangeProductNameSlice),
-        module(ChangeProductDescriptionSlice),
-        module(ChangeProductPriceSlice),
-        module(RecordProductDemandSlice),
-      ],
-      ~stateViewSlices=[
-        module(ProductsViewSlice),
-        module(ProductDemandViewSlice),
-      ],
+      ~aggregates=[module(CategoryAggregate)],
+      ~readModels=[module(CategoriesReadModelMaker)],
+      ~tasks=[module(ImportProductsTask)],
+      ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
+      ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
+      ~uiDefinition=uiDefinition,
     )
 }

@@ -64,6 +64,7 @@ function resolve(discovered, srcDir) {
   let eventMappings = findEventMappings(srcDir);
   let stateChangeSlices = [];
   let stateViewSlices = [];
+  let stateViewSlicesStream = [];
   let automationSlices = [];
   let inboundTranslationSlices = [];
   let outboundTranslationSlices = [];
@@ -84,6 +85,9 @@ function resolve(discovered, srcDir) {
         return;
       case "StateViewSlice" :
         stateViewSlices.push(stem);
+        return;
+      case "StateViewSliceStream" :
+        stateViewSlicesStream.push(stem);
         return;
       case "AutomationSlice" :
         automationSlices.push(stem);
@@ -181,6 +185,7 @@ function resolve(discovered, srcDir) {
   return {
     stateChangeSlices: sortedStems(stateChangeSlices),
     stateViewSlices: sortedStems(stateViewSlices),
+    stateViewSlicesStream: sortedStems(stateViewSlicesStream),
     automationSlices: sortedStems(automationSlices),
     inboundTranslationSlices: sortedStems(inboundTranslationSlices),
     outboundTranslationSlices: sortedStems(outboundTranslationSlices),

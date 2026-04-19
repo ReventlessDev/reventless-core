@@ -4,6 +4,8 @@
   "description": "Online Shop Hybrid — Ordering plugin AWS deployment",
   "license": "MIT",
   "scripts": {
+    "generate": "generate-plugin --aws OrderingPlugin ../ordering/src/",
+    "prebuild": "npm run generate",
     "build": "rescript build"
   },
   "dependencies": {

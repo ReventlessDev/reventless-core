@@ -6,6 +6,7 @@ import * as Category$CatalogPlugin from "./Category/Aggregate/Category.res.mjs";
 import * as AddProduct$CatalogPlugin from "./Product/StateChangeSlice/AddProduct.res.mjs";
 import * as ProductsView$CatalogPlugin from "./Product/StateViewSlice/ProductsView.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
+import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as OrdersExtension$CatalogPlugin from "./Extension/OrdersExtension.res.mjs";
 import * as CategoryBehavior$CatalogPlugin from "./Category/Aggregate/CategoryBehavior.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName.res.mjs";
@@ -142,6 +143,7 @@ function Make(Platform) {
     config: CategoriesReadModel$CatalogPlugin.config,
     subIdConfig: undefined
   })(CategoriesProjectionsWrapper);
+  let ImportProductsTask = Platform.Task.Make(ImportProducts$CatalogPlugin);
   let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
@@ -190,7 +192,7 @@ function Make(Platform) {
     ChangeProductPriceSlice,
     RecordProductDemandSlice
   ]);
-  let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoriesReadModelMaker], undefined, [
+  let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoriesReadModelMaker], [ImportProductsTask], [
     AddProductSlice,
     ChangeProductDescriptionSlice,
     ChangeProductNameSlice,
@@ -212,6 +214,7 @@ function Make(Platform) {
     CategoryAggregate: CategoryAggregate,
     CategoriesProjectionsWrapper: CategoriesProjectionsWrapper,
     CategoriesReadModelMaker: CategoriesReadModelMaker,
+    ImportProductsTask: ImportProductsTask,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersExtensionMaker: OrdersExtensionMaker,
     uiDefinition: uiDefinition,

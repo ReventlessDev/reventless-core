@@ -108,12 +108,117 @@ function renderExtensions(extensions) {
   return extensions.map(stem => "  module " + stem + "Maker = Platform.Extension.Make(" + stem + ".Mapping)");
 }
 
+function renderSlicesAws(platformFactory, suffix, ns, stems) {
+  return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + ns + "." + stem + ")");
+}
+
+function renderAggregatesAws(ns, aggregates) {
+  return aggregates.flatMap(param => {
+    let spec = param.spec;
+    let em = Stdlib_Option.getOr(Stdlib_Option.map(param.eventMappings, m => ns + "." + m), "ReventlessInfra.NoEventMappings.Make(" + ns + "." + spec + ")");
+    return [
+      "  module " + spec + "Aggregate = ReventlessAws.Aggregate_Builder_Single.Make(",
+      "    " + ns + "." + spec + ",",
+      "    " + ns + "." + param.behavior + ",",
+      "    " + em + ",",
+      "  )"
+    ];
+  });
+}
+
+function renderReadModelsAws(ns, readModels) {
+  return readModels.flatMap(param => {
+    let projections = param.projections;
+    let readModel = param.readModel;
+    let mappingEntries = param.mappingModules.map(m => "module(" + ns + "." + projections + "." + m + ")");
+    let mappingsLine = "    let mappings: array<module(Mapping)> = [" + mappingEntries.join(", ") + "]";
+    return [
+      "  @reventless.projections",
+      "  module " + projections + "Wrapper: Mappings with module Target := " + ns + "." + readModel + " = {",
+      mappingsLine,
+      "  }",
+      "  module " + readModel + "Maker = ReventlessAws.ReadModel_Builder_Single.Make(",
+      "    " + ns + "." + readModel + ",",
+      "    " + projections + "Wrapper,",
+      "  )"
+    ];
+  });
+}
+
+function epBase(mappingStem) {
+  return stripSuffix(mappingStem, "ExtensionPointMapping");
+}
+
+function renderExtensionPointsAws(ns, extensionPoints) {
+  return extensionPoints.flatMap(param => {
+    let mappings = param.mappings;
+    if (mappings.length === 0) {
+      return [];
+    }
+    let group = param.group;
+    let firstMapping = mappings[0];
+    let base = group !== undefined ? group : stripSuffix(firstMapping, "ExtensionPointMapping");
+    let makerModuleName = group !== undefined ? group + "Maker" : epModuleName(firstMapping);
+    let mappingsModuleName = base + "EPMappings";
+    let result = [];
+    let mappingTNames = [];
+    let idx = {
+      contents: 0
+    };
+    mappings.forEach(m => {
+      let i = idx.contents;
+      idx.contents = i + 1 | 0;
+      let tName = i === 0 ? base + "EPMappingT" : base + "EPMappingT_" + (i + 1 | 0).toString();
+      mappingTNames.push(tName);
+      result.push("  module " + tName + " = ReventlessInfra.ExtensionPointMapping.Make(");
+      result.push("    " + ns + "." + m + ",");
+      result.push("  )");
+    });
+    let mappingsEntriesLine = "    let mappings: array<module(Mapping)> = [" + mappingTNames.map(t => "module(" + t + ")").join(", ") + "]";
+    result.push("  module " + mappingsModuleName + " = {");
+    result.push("    module Spec = " + ns + "." + firstMapping + ".ExtensionPoint");
+    result.push("    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec");
+    result.push("    let name = \"" + mappingsModuleName + "\"");
+    result.push("    let moduleUrl: string = %raw(`import.meta.url`)");
+    result.push(mappingsEntriesLine);
+    result.push("  }");
+    result.push("  module " + makerModuleName + " = ReventlessAws.ExtensionPoint_Builder.Make(");
+    result.push("    " + mappingsModuleName + ".Spec,");
+    result.push("    " + mappingsModuleName + ",");
+    result.push("    {");
+    result.push("      let publishToAggregatesQueueUrls = Dict.make()");
+    result.push("    },");
+    result.push("  )");
+    return result;
+  });
+}
+
+function renderExtensionsAws(ns, extensions) {
+  return extensions.map(stem => "  module " + stem + "Maker = Platform.Extension.Make(" + ns + "." + stem + ".Mapping)");
+}
+
+function renderTasksAws(ns, tasks) {
+  return tasks.map(stem => "  module " + stem + "Task = Platform.Task.Make(" + ns + "." + stem + ")");
+}
+
 function renderMakeParam(param, items, moduleSuffix) {
   if (items.length === 0) {
     return;
   }
   let entries = items.map(s => "module(" + s + moduleSuffix + ")");
   return "      ~" + param + "=[" + entries.join(", ") + "],";
+}
+
+function renderStateViewSlicesMakeParam(slices, streamSlices) {
+  let entries = [
+    slices.map(s => "module(" + s + "Slice)"),
+    streamSlices.map(s => "module(" + s + "StreamSlice)")
+  ].flat();
+  if (entries.length === 0) {
+    return;
+  } else {
+    return "      ~stateViewSlices=[" + entries.join(", ") + "],";
+  }
 }
 
 function renderReadModelMakeParam(readModels) {
@@ -161,8 +266,8 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
-function renderUiDefinitionCall(name, aggregates, readModels, stateViewSlices, stateChangeSlices) {
-  let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateChangeSlices.length !== 0;
+function renderUiDefinitionCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices) {
+  let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0;
   if (!hasComponents) {
     return;
   }
@@ -177,13 +282,16 @@ function renderUiDefinitionCall(name, aggregates, readModels, stateViewSlices, s
     let entries$1 = readModels.map(param => "module(" + param.readModel + "Maker)");
     ls.push("    ~readModels=[" + entries$1.join(", ") + "],");
   }
-  if (stateViewSlices.length !== 0) {
-    let entries$2 = stateViewSlices.map(s => "module(" + s + "Slice)");
-    ls.push("    ~stateViewSlices=[" + entries$2.join(", ") + "],");
+  let allStateViewEntries = [
+    stateViewSlices.map(s => "module(" + s + "Slice)"),
+    stateViewSlicesStream.map(s => "module(" + s + "StreamSlice)")
+  ].flat();
+  if (allStateViewEntries.length !== 0) {
+    ls.push("    ~stateViewSlices=[" + allStateViewEntries.join(", ") + "],");
   }
   if (stateChangeSlices.length !== 0) {
-    let entries$3 = stateChangeSlices.map(s => "module(" + s + "Slice)");
-    ls.push("    ~stateChangeSlices=[" + entries$3.join(", ") + "],");
+    let entries$2 = stateChangeSlices.map(s => "module(" + s + "Slice)");
+    ls.push("    ~stateChangeSlices=[" + entries$2.join(", ") + "],");
   }
   ls.push("  )");
   return ls;
@@ -197,78 +305,70 @@ function render(config, resolved) {
     lines.push("open Reventless.Projection");
     lines.push("");
   }
-  lines.push("module Make = (Platform: ReventlessInfra.Platform.T) => {");
-  if (resolved.stateChangeSlices.length !== 0) {
-    lines.push("  // StateChangeSlices");
-    renderSlices("StateChangeSlice", "Slice", resolved.stateChangeSlices).forEach(l => {
+  let match = config.variant;
+  if (typeof match !== "object") {
+    lines.push("module Make = (Platform: ReventlessInfra.Platform.T) => {");
+  } else {
+    lines.push("module Make = (");
+    lines.push("  Platform: ReventlessInfra.Platform.T");
+    lines.push("    with type api = ReventlessAws.Types.AppSync.api");
+    lines.push("    and type role = ReventlessAws.Types.AppSync.role,");
+    lines.push(") => {");
+  }
+  let push = sectionLines => {
+    sectionLines.forEach(l => {
       lines.push(l);
     });
     lines.push("");
+  };
+  let match$1 = config.variant;
+  let ns;
+  ns = typeof match$1 !== "object" ? undefined : match$1.sourceNamespace;
+  if (resolved.stateChangeSlices.length !== 0) {
+    lines.push("  // StateChangeSlices");
+    push(ns !== undefined ? renderSlicesAws("StateChangeSlice", "Slice", ns, resolved.stateChangeSlices) : renderSlices("StateChangeSlice", "Slice", resolved.stateChangeSlices));
   }
   if (resolved.stateViewSlices.length !== 0) {
     lines.push("  // StateViewSlices");
-    renderSlices("StateViewSlice", "Slice", resolved.stateViewSlices).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderSlicesAws("StateViewSlice", "Slice", ns, resolved.stateViewSlices) : renderSlices("StateViewSlice", "Slice", resolved.stateViewSlices));
+  }
+  if (resolved.stateViewSlicesStream.length !== 0) {
+    lines.push("  // StateViewSliceStreams");
+    push(ns !== undefined ? renderSlicesAws("StateViewSliceStream", "StreamSlice", ns, resolved.stateViewSlicesStream) : renderSlices("StateViewSliceStream", "StreamSlice", resolved.stateViewSlicesStream));
   }
   if (resolved.automationSlices.length !== 0) {
     lines.push("  // AutomationSlices");
-    renderSlices("AutomationSlice", "Slice", resolved.automationSlices).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderSlicesAws("AutomationSlice", "Slice", ns, resolved.automationSlices) : renderSlices("AutomationSlice", "Slice", resolved.automationSlices));
   }
   if (resolved.outboundTranslationSlices.length !== 0) {
     lines.push("  // OutboundTranslationSlices");
-    renderSlices("OutboundTranslationSlice", "Slice", resolved.outboundTranslationSlices).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderSlicesAws("OutboundTranslationSlice", "Slice", ns, resolved.outboundTranslationSlices) : renderSlices("OutboundTranslationSlice", "Slice", resolved.outboundTranslationSlices));
   }
   if (resolved.inboundTranslationSlices.length !== 0) {
     lines.push("  // InboundTranslationSlices");
-    renderSlices("InboundTranslationSlice", "Slice", resolved.inboundTranslationSlices).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderSlicesAws("InboundTranslationSlice", "Slice", ns, resolved.inboundTranslationSlices) : renderSlices("InboundTranslationSlice", "Slice", resolved.inboundTranslationSlices));
   }
   if (resolved.aggregates.length !== 0) {
     lines.push("  // Aggregates");
-    renderAggregates(resolved.aggregates).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderAggregatesAws(ns, resolved.aggregates) : renderAggregates(resolved.aggregates));
   }
   if (resolved.readModels.length !== 0) {
     lines.push("  // ReadModels");
-    renderReadModels(resolved.readModels).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderReadModelsAws(ns, resolved.readModels) : renderReadModels(resolved.readModels));
   }
   if (resolved.tasks.length !== 0) {
     lines.push("  // Tasks");
-    renderTasks(resolved.tasks).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderTasksAws(ns, resolved.tasks) : renderTasks(resolved.tasks));
   }
   if (resolved.extensionPoints.length !== 0) {
     lines.push("  // ExtensionPoints");
-    renderExtensionPoints(resolved.extensionPoints).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderExtensionPointsAws(ns, resolved.extensionPoints) : renderExtensionPoints(resolved.extensionPoints));
   }
   if (resolved.extensions.length !== 0) {
     lines.push("  // Extensions");
-    renderExtensions(resolved.extensions).forEach(l => {
-      lines.push(l);
-    });
-    lines.push("");
+    push(ns !== undefined ? renderExtensionsAws(ns, resolved.extensions) : renderExtensions(resolved.extensions));
   }
-  let uiDefLines = renderUiDefinitionCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateChangeSlices);
+  let uiDefLines = renderUiDefinitionCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices);
   let hasUiDefinition = Stdlib_Option.isSome(uiDefLines);
   if (uiDefLines !== undefined) {
     uiDefLines.forEach(l => {
@@ -287,7 +387,7 @@ function render(config, resolved) {
     renderReadModelMakeParam(resolved.readModels),
     renderTaskMakeParam(resolved.tasks),
     renderMakeParam("stateChangeSlices", resolved.stateChangeSlices, "Slice"),
-    renderMakeParam("stateViewSlices", resolved.stateViewSlices, "Slice"),
+    renderStateViewSlicesMakeParam(resolved.stateViewSlices, resolved.stateViewSlicesStream),
     renderMakeParam("automationSlices", resolved.automationSlices, "Slice"),
     renderMakeParam("outboundTranslationSlices", resolved.outboundTranslationSlices, "Slice"),
     renderMakeParam("inboundTranslationSlices", resolved.inboundTranslationSlices, "Slice"),
@@ -311,7 +411,15 @@ export {
   renderTasks,
   renderExtensionPoints,
   renderExtensions,
+  renderSlicesAws,
+  renderAggregatesAws,
+  renderReadModelsAws,
+  epBase,
+  renderExtensionPointsAws,
+  renderExtensionsAws,
+  renderTasksAws,
   renderMakeParam,
+  renderStateViewSlicesMakeParam,
   renderReadModelMakeParam,
   renderAggregateMakeParam,
   renderEpMakeParam,

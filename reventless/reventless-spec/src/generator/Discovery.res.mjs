@@ -37,6 +37,9 @@ function folderToComponentType(folder) {
     case "StateChangeSlices" :
     case "StateChanges" :
       return "StateChangeSlice";
+    case "StateViewSliceStream" :
+    case "StateViewSliceStreams" :
+      return "StateViewSliceStream";
     case "StateView" :
     case "StateViewSlice" :
     case "StateViewSlices" :

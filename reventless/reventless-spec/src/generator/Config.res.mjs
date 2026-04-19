@@ -62,7 +62,8 @@ function read(srcDir) {
   return {
     name: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrField(j, "name")), derivedName),
     heartbeatInterval: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getIntField(j, "heartbeatInterval")), 60),
-    exclude: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrArrayField(j, "exclude")), [])
+    exclude: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrArrayField(j, "exclude")), []),
+    variant: "Standard"
   };
 }
 

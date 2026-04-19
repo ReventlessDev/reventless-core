@@ -4,6 +4,8 @@
   "description": "Online Shop Hybrid — Catalog plugin AWS deployment",
   "license": "MIT",
   "scripts": {
+    "generate": "generate-plugin --aws CatalogPlugin ../catalog/src/",
+    "prebuild": "npm run generate",
     "build": "rescript build"
   },
   "dependencies": {

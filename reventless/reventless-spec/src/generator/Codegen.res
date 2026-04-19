@@ -112,6 +112,136 @@ let renderExtensions = (extensions: array<string>): array<string> =>
     "  module " ++ stem ++ "Maker = Platform.Extension.Make(" ++ stem ++ ".Mapping)"
   )
 
+// ── AWS section renderers ────────────────────────────────────────────────────
+
+let renderSlicesAws = (
+  ~platformFactory: string,
+  ~suffix: string,
+  ~ns: string,
+  stems: array<string>,
+): array<string> =>
+  stems->Array.map(stem =>
+    "  module " ++ stem ++ suffix ++ " = Platform." ++ platformFactory ++ ".Make(" ++ ns ++ "." ++ stem ++ ")"
+  )
+
+let renderAggregatesAws = (~ns: string, aggregates: array<Pairing.aggregateDef>): array<string> =>
+  aggregates->Array.flatMap(({spec, behavior, eventMappings}) => {
+    let em =
+      eventMappings
+      ->Option.map(m => ns ++ "." ++ m)
+      ->Option.getOr("ReventlessInfra.NoEventMappings.Make(" ++ ns ++ "." ++ spec ++ ")")
+    [
+      "  module " ++ spec ++ "Aggregate = ReventlessAws.Aggregate_Builder_Single.Make(",
+      "    " ++ ns ++ "." ++ spec ++ ",",
+      "    " ++ ns ++ "." ++ behavior ++ ",",
+      "    " ++ em ++ ",",
+      "  )",
+    ]
+  })
+
+let renderReadModelsAws = (~ns: string, readModels: array<Pairing.readModelDef>): array<string> =>
+  readModels->Array.flatMap(({readModel, projections, mappingModules}) => {
+    let mappingEntries =
+      mappingModules->Array.map(m => "module(" ++ ns ++ "." ++ projections ++ "." ++ m ++ ")")
+    let mappingsLine =
+      "    let mappings: array<module(Mapping)> = [" ++ mappingEntries->Array.join(", ") ++ "]"
+    [
+      "  @reventless.projections",
+      "  module " ++
+      projections ++
+      "Wrapper: Mappings with module Target := " ++
+      ns ++
+      "." ++
+      readModel ++
+      " = {",
+      mappingsLine,
+      "  }",
+      "  module " ++ readModel ++ "Maker = ReventlessAws.ReadModel_Builder_Single.Make(",
+      "    " ++ ns ++ "." ++ readModel ++ ",",
+      "    " ++ projections ++ "Wrapper,",
+      "  )",
+    ]
+  })
+
+// Derive base name from EP mapping stem: "ProductsExtensionPointMapping" → "Products"
+let epBase = (mappingStem: string): string =>
+  stripSuffix(mappingStem, "ExtensionPointMapping")
+
+let renderExtensionPointsAws = (
+  ~ns: string,
+  extensionPoints: array<Pairing.extensionPointDef>,
+): array<string> =>
+  extensionPoints->Array.flatMap(({group, mappings}) => {
+    if mappings->Array.length === 0 {
+      []
+    } else {
+      let firstMapping = mappings->Array.getUnsafe(0)
+      let base = switch group {
+      | None => epBase(firstMapping)
+      | Some(g) => g
+      }
+      let makerModuleName = switch group {
+      | None => epModuleName(firstMapping)
+      | Some(g) => g ++ "Maker"
+      }
+      let mappingsModuleName = base ++ "EPMappings"
+
+      let result: array<string> = []
+      let mappingTNames: array<string> = []
+
+      let idx = ref(0)
+      mappings->Array.forEach(m => {
+        let i = idx.contents
+        idx := i + 1
+        let tName = if i === 0 {
+          base ++ "EPMappingT"
+        } else {
+          base ++ "EPMappingT_" ++ Int.toString(i + 1)
+        }
+        mappingTNames->Array.push(tName)
+        result->Array.push("  module " ++ tName ++ " = ReventlessInfra.ExtensionPointMapping.Make(")
+        result->Array.push("    " ++ ns ++ "." ++ m ++ ",")
+        result->Array.push("  )")
+      })
+
+      let mappingsEntriesLine =
+        "    let mappings: array<module(Mapping)> = [" ++
+        mappingTNames->Array.map(t => "module(" ++ t ++ ")")->Array.join(", ") ++
+        "]"
+
+      result->Array.push("  module " ++ mappingsModuleName ++ " = {")
+      result->Array.push("    module Spec = " ++ ns ++ "." ++ firstMapping ++ ".ExtensionPoint")
+      result->Array.push(
+        "    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec",
+      )
+      result->Array.push("    let name = \"" ++ mappingsModuleName ++ "\"")
+      result->Array.push("    let moduleUrl: string = %raw(`import.meta.url`)")
+      result->Array.push(mappingsEntriesLine)
+      result->Array.push("  }")
+      result->Array.push(
+        "  module " ++ makerModuleName ++ " = ReventlessAws.ExtensionPoint_Builder.Make(",
+      )
+      result->Array.push("    " ++ mappingsModuleName ++ ".Spec,")
+      result->Array.push("    " ++ mappingsModuleName ++ ",")
+      result->Array.push("    {")
+      result->Array.push("      let publishToAggregatesQueueUrls = Dict.make()")
+      result->Array.push("    },")
+      result->Array.push("  )")
+
+      result
+    }
+  })
+
+let renderExtensionsAws = (~ns: string, extensions: array<string>): array<string> =>
+  extensions->Array.map(stem =>
+    "  module " ++ stem ++ "Maker = Platform.Extension.Make(" ++ ns ++ "." ++ stem ++ ".Mapping)"
+  )
+
+let renderTasksAws = (~ns: string, tasks: array<string>): array<string> =>
+  tasks->Array.map(stem =>
+    "  module " ++ stem ++ "Task = Platform.Task.Make(" ++ ns ++ "." ++ stem ++ ")"
+  )
+
 // ── make() call ──────────────────────────────────────────────────────────────
 
 let renderMakeParam = (
@@ -125,6 +255,21 @@ let renderMakeParam = (
     let entries = items->Array.map(s => "module(" ++ s ++ moduleSuffix ++ ")")
     Some("      ~" ++ param ++ "=[" ++ entries->Array.join(", ") ++ "],")
   }
+
+let renderStateViewSlicesMakeParam = (
+  slices: array<string>,
+  streamSlices: array<string>,
+): option<string> => {
+  let entries = Array.flat([
+    slices->Array.map(s => "module(" ++ s ++ "Slice)"),
+    streamSlices->Array.map(s => "module(" ++ s ++ "StreamSlice)"),
+  ])
+  if entries->Array.length === 0 {
+    None
+  } else {
+    Some("      ~stateViewSlices=[" ++ entries->Array.join(", ") ++ "],")
+  }
+}
 
 let renderReadModelMakeParam = (readModels: array<Pairing.readModelDef>): option<string> =>
   if readModels->Array.length === 0 {
@@ -178,12 +323,14 @@ let renderUiDefinitionCall = (
   ~aggregates: array<Pairing.aggregateDef>,
   ~readModels: array<Pairing.readModelDef>,
   ~stateViewSlices: array<string>,
+  ~stateViewSlicesStream: array<string>,
   ~stateChangeSlices: array<string>,
 ): option<array<string>> => {
   let hasComponents =
     aggregates->Array.length > 0 ||
     readModels->Array.length > 0 ||
     stateViewSlices->Array.length > 0 ||
+    stateViewSlicesStream->Array.length > 0 ||
     stateChangeSlices->Array.length > 0
   if !hasComponents {
     None
@@ -199,9 +346,12 @@ let renderUiDefinitionCall = (
       let entries = readModels->Array.map(({readModel}) => "module(" ++ readModel ++ "Maker)")
       ls->Array.push("    ~readModels=[" ++ entries->Array.join(", ") ++ "],")
     }
-    if stateViewSlices->Array.length > 0 {
-      let entries = stateViewSlices->Array.map(s => "module(" ++ s ++ "Slice)")
-      ls->Array.push("    ~stateViewSlices=[" ++ entries->Array.join(", ") ++ "],")
+    let allStateViewEntries = Array.flat([
+      stateViewSlices->Array.map(s => "module(" ++ s ++ "Slice)"),
+      stateViewSlicesStream->Array.map(s => "module(" ++ s ++ "StreamSlice)"),
+    ])
+    if allStateViewEntries->Array.length > 0 {
+      ls->Array.push("    ~stateViewSlices=[" ++ allStateViewEntries->Array.join(", ") ++ "],")
     }
     if stateChangeSlices->Array.length > 0 {
       let entries = stateChangeSlices->Array.map(s => "module(" ++ s ++ "Slice)")
@@ -227,87 +377,135 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     lines->Array.push("")
   }
 
-  lines->Array.push("module Make = (Platform: ReventlessInfra.Platform.T) => {")
+  switch config.variant {
+  | Standard =>
+    lines->Array.push("module Make = (Platform: ReventlessInfra.Platform.T) => {")
+  | Aws(_) =>
+    lines->Array.push("module Make = (")
+    lines->Array.push("  Platform: ReventlessInfra.Platform.T")
+    lines->Array.push("    with type api = ReventlessAws.Types.AppSync.api")
+    lines->Array.push("    and type role = ReventlessAws.Types.AppSync.role,")
+    lines->Array.push(") => {")
+  }
+
+  let push = (sectionLines: array<string>) => {
+    sectionLines->Array.forEach(l => lines->Array.push(l))
+    lines->Array.push("")
+  }
+
+  let ns = switch config.variant {
+  | Standard => None
+  | Aws({sourceNamespace}) => Some(sourceNamespace)
+  }
 
   // StateChangeSlices
   if resolved.stateChangeSlices->Array.length > 0 {
     lines->Array.push("  // StateChangeSlices")
-    renderSlices(~platformFactory="StateChangeSlice", ~suffix="Slice", resolved.stateChangeSlices)
-    ->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderSlices(~platformFactory="StateChangeSlice", ~suffix="Slice", resolved.stateChangeSlices)
+    | Some(n) => renderSlicesAws(~platformFactory="StateChangeSlice", ~suffix="Slice", ~ns=n, resolved.stateChangeSlices)
+    }->push
   }
 
   // StateViewSlices
   if resolved.stateViewSlices->Array.length > 0 {
     lines->Array.push("  // StateViewSlices")
-    renderSlices(~platformFactory="StateViewSlice", ~suffix="Slice", resolved.stateViewSlices)
-    ->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderSlices(~platformFactory="StateViewSlice", ~suffix="Slice", resolved.stateViewSlices)
+    | Some(n) => renderSlicesAws(~platformFactory="StateViewSlice", ~suffix="Slice", ~ns=n, resolved.stateViewSlices)
+    }->push
+  }
+
+  // StateViewSliceStreams
+  if resolved.stateViewSlicesStream->Array.length > 0 {
+    lines->Array.push("  // StateViewSliceStreams")
+    switch ns {
+    | None =>
+      renderSlices(~platformFactory="StateViewSliceStream", ~suffix="StreamSlice", resolved.stateViewSlicesStream)
+    | Some(n) =>
+      renderSlicesAws(
+        ~platformFactory="StateViewSliceStream",
+        ~suffix="StreamSlice",
+        ~ns=n,
+        resolved.stateViewSlicesStream,
+      )
+    }->push
   }
 
   // AutomationSlices
   if resolved.automationSlices->Array.length > 0 {
     lines->Array.push("  // AutomationSlices")
-    renderSlices(~platformFactory="AutomationSlice", ~suffix="Slice", resolved.automationSlices)
-    ->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderSlices(~platformFactory="AutomationSlice", ~suffix="Slice", resolved.automationSlices)
+    | Some(n) => renderSlicesAws(~platformFactory="AutomationSlice", ~suffix="Slice", ~ns=n, resolved.automationSlices)
+    }->push
   }
 
   // OutboundTranslationSlices
   if resolved.outboundTranslationSlices->Array.length > 0 {
     lines->Array.push("  // OutboundTranslationSlices")
-    renderSlices(
-      ~platformFactory="OutboundTranslationSlice",
-      ~suffix="Slice",
-      resolved.outboundTranslationSlices,
-    )->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None =>
+      renderSlices(~platformFactory="OutboundTranslationSlice", ~suffix="Slice", resolved.outboundTranslationSlices)
+    | Some(n) =>
+      renderSlicesAws(~platformFactory="OutboundTranslationSlice", ~suffix="Slice", ~ns=n, resolved.outboundTranslationSlices)
+    }->push
   }
 
   // InboundTranslationSlices
   if resolved.inboundTranslationSlices->Array.length > 0 {
     lines->Array.push("  // InboundTranslationSlices")
-    renderSlices(
-      ~platformFactory="InboundTranslationSlice",
-      ~suffix="Slice",
-      resolved.inboundTranslationSlices,
-    )->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None =>
+      renderSlices(~platformFactory="InboundTranslationSlice", ~suffix="Slice", resolved.inboundTranslationSlices)
+    | Some(n) =>
+      renderSlicesAws(~platformFactory="InboundTranslationSlice", ~suffix="Slice", ~ns=n, resolved.inboundTranslationSlices)
+    }->push
   }
 
   // Aggregates
   if resolved.aggregates->Array.length > 0 {
     lines->Array.push("  // Aggregates")
-    renderAggregates(resolved.aggregates)->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderAggregates(resolved.aggregates)
+    | Some(n) => renderAggregatesAws(~ns=n, resolved.aggregates)
+    }->push
   }
 
   // ReadModels
   if resolved.readModels->Array.length > 0 {
     lines->Array.push("  // ReadModels")
-    renderReadModels(resolved.readModels)->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderReadModels(resolved.readModels)
+    | Some(n) => renderReadModelsAws(~ns=n, resolved.readModels)
+    }->push
   }
 
   // Tasks
   if resolved.tasks->Array.length > 0 {
     lines->Array.push("  // Tasks")
-    renderTasks(resolved.tasks)->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderTasks(resolved.tasks)
+    | Some(n) => renderTasksAws(~ns=n, resolved.tasks)
+    }->push
   }
 
   // ExtensionPoints
   if resolved.extensionPoints->Array.length > 0 {
     lines->Array.push("  // ExtensionPoints")
-    renderExtensionPoints(resolved.extensionPoints)->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderExtensionPoints(resolved.extensionPoints)
+    | Some(n) => renderExtensionPointsAws(~ns=n, resolved.extensionPoints)
+    }->push
   }
 
   // Extensions
   if resolved.extensions->Array.length > 0 {
     lines->Array.push("  // Extensions")
-    renderExtensions(resolved.extensions)->Array.forEach(l => lines->Array.push(l))
-    lines->Array.push("")
+    switch ns {
+    | None => renderExtensions(resolved.extensions)
+    | Some(n) => renderExtensionsAws(~ns=n, resolved.extensions)
+    }->push
   }
 
   // uiDefinition
@@ -316,6 +514,7 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     ~aggregates=resolved.aggregates,
     ~readModels=resolved.readModels,
     ~stateViewSlices=resolved.stateViewSlices,
+    ~stateViewSlicesStream=resolved.stateViewSlicesStream,
     ~stateChangeSlices=resolved.stateChangeSlices,
   )
   let hasUiDefinition = uiDefLines->Option.isSome
@@ -339,7 +538,7 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     renderReadModelMakeParam(resolved.readModels),
     renderTaskMakeParam(resolved.tasks),
     renderMakeParam(~param="stateChangeSlices", ~items=resolved.stateChangeSlices, ~moduleSuffix="Slice"),
-    renderMakeParam(~param="stateViewSlices", ~items=resolved.stateViewSlices, ~moduleSuffix="Slice"),
+    renderStateViewSlicesMakeParam(resolved.stateViewSlices, resolved.stateViewSlicesStream),
     renderMakeParam(~param="automationSlices", ~items=resolved.automationSlices, ~moduleSuffix="Slice"),
     renderMakeParam(
       ~param="outboundTranslationSlices",
