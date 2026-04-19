@@ -177,7 +177,7 @@ function registerDcb(fieldName, commandSchema, server) {
   ensureCommandResultTypes(server);
   let variantSchema = extractVariantSchema(commandSchema, undefined);
   let sdlFields = [deriveSdlField(fieldName, variantSchema)];
-  let constructorNames = DcbTag$Reventless.extractEventTypes(commandSchema);
+  let constructorNames = DcbTag$Reventless.extractVariantNames(commandSchema);
   let tag = Stdlib_Option.getOr(constructorNames[0], fieldName);
   let idFieldName;
   idFieldName = variantSchema.type === "object" ? Stdlib_Array.findMap(Object.entries(variantSchema.properties), param => {

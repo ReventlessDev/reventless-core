@@ -296,18 +296,19 @@ let extractTags = (schema: S.t<'a>, value: 'a): array<tag> => {
   extractTagsFromJson(schema->toUnknownSchema, json)
 }
 
-// --- Extract event type names from event schema ---
+// --- Extract variant constructor names from a tagged union schema ---
 // For a variant type like `type event = ItemCreated({...}) | ItemRenamed({...})`,
 // this extracts ["ItemCreated", "ItemRenamed"]
 
 /**
-Extracts all variant constructor names from an event schema.
+Extracts all variant constructor names from a tagged union schema.
 
+Works on any `@schema`-annotated variant type: events, commands, errors, consumed events.
 For `CatalogEventLog.event` returns
 `["ProductAdded", "ProductNameUpdated", ..., "CategoryAdded", ...]`.
 Used by the DCB runtime to build `queryItem.eventTypes` arrays automatically.
 */
-let extractEventTypes = (schema: S.t<'event>): array<string> => {
+let extractVariantNames = (schema: S.t<'a>): array<string> => {
   switch schema->toUnknownSchema {
   | Union({anyOf}) =>
     anyOf->Array.filterMap(variantSchema =>

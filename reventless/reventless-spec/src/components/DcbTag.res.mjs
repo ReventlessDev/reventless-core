@@ -134,7 +134,7 @@ function extractTags(schema, value) {
   return extractTagsFromJson(schema, json);
 }
 
-function extractEventTypes(schema) {
+function extractVariantNames(schema) {
   switch (schema.type) {
     case "object" :
       return Stdlib_Option.getOr(Stdlib_Option.flatMap(schema.items.find(item => item.location === "TAG"), item => {
@@ -573,7 +573,7 @@ export {
   extractTagsFromProperties,
   extractTagsFromJson,
   extractTags,
-  extractEventTypes,
+  extractVariantNames,
   extractTagsFromPropertiesExpanded,
   extractTagsFromJsonExpanded,
   extractTagsExpanded,

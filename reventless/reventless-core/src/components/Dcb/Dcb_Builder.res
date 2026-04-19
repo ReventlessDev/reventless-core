@@ -498,7 +498,7 @@ module Make = (
             } else {
               let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
               let constructorNames =
-                Reventless.DcbTag.extractEventTypes(S.Spec.commandSchema->Obj.magic)
+                Reventless.DcbTag.extractVariantNames(S.Spec.commandSchema->Obj.magic)
               let tag = constructorNames->Array.get(0)->Option.getOr(S.Spec.name)
               Some((fieldName, tag))
             }

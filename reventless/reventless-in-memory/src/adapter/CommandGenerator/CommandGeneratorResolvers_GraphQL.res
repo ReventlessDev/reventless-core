@@ -181,7 +181,7 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: Gr
   let sdlFields = [deriveSdlField(~fieldName, variantSchema)]
 
   // Extract TAG (variant constructor name) for routing
-  let constructorNames = Reventless.DcbTag.extractEventTypes(commandSchema->Obj.magic)
+  let constructorNames = Reventless.DcbTag.extractVariantNames(commandSchema->Obj.magic)
   let tag = constructorNames->Array.get(0)->Option.getOr(fieldName)
 
   // Find the tagged ID field name (the one with @s.matches(DcbTag.string))

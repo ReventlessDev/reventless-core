@@ -28,7 +28,7 @@ function inspectMutationFields(fieldPrefix, commandSchema) {
       });
       break;
     case "union" :
-      let constructorNames = DcbTag$Reventless.extractEventTypes(commandSchema);
+      let constructorNames = DcbTag$Reventless.extractVariantNames(commandSchema);
       commandSchema.anyOf.forEach((variantSchema, i) => {
         let name = constructorNames[i];
         let fieldName = name !== undefined ? fieldPrefix + `_` + name : fieldPrefix + `_Variant` + i.toString();

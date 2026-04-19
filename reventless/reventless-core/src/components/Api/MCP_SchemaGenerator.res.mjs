@@ -112,7 +112,7 @@ function generateResources(pluginName, queryEntries) {
 function generateEventHistoryResources(pluginName, eventLogEntries) {
   let resources = [];
   eventLogEntries.forEach(entry => {
-    let eventTypes = DcbTag$Reventless.extractEventTypes(entry.eventSchema);
+    let eventTypes = DcbTag$Reventless.extractVariantNames(entry.eventSchema);
     let typeList = eventTypes.join(", ");
     resources.push({
       uriTemplate: pluginName + `/` + entry.displayName + `_events/{entityId}`,
@@ -124,10 +124,10 @@ function generateEventHistoryResources(pluginName, eventLogEntries) {
   return resources;
 }
 
-let extractEventTypes = DcbTag$Reventless.extractEventTypes;
+let extractVariantNames = DcbTag$Reventless.extractVariantNames;
 
 export {
-  extractEventTypes,
+  extractVariantNames,
   generateTools,
   generateResources,
   generateEventHistoryResources,

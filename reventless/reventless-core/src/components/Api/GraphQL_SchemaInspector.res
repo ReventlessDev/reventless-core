@@ -30,7 +30,7 @@ let inspectMutationFields = (~fieldPrefix: string, commandSchema: S.t<'a>): arra
   let seenTypes = Set.make()
   switch schema {
   | Union({anyOf}) =>
-    let constructorNames = Reventless.DcbTag.extractEventTypes(commandSchema)
+    let constructorNames = Reventless.DcbTag.extractVariantNames(commandSchema)
     anyOf->Array.forEachWithIndex((variantSchema, i) => {
       let fieldName = switch constructorNames->Array.get(i) {
       | Some(name) => `${fieldPrefix}_${name}`

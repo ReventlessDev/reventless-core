@@ -9,7 +9,7 @@ import * as Stream from "effect/Stream";
 import { patchSpecId, makeQueueRef } from "./HandlerFactoryHelpers.mjs";
 import { decodeCommand$p as decodeCommandPrime, uuid } from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
-import { extractEventTypes } from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import { extractVariantNames } from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
 import { Make as stateChangeSliceCallbackMake } from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs";
@@ -80,7 +80,7 @@ async function buildHandler() {
     const patchedSpec = patchSpecId(specModule);
     const sliceCallback = stateChangeSliceCallbackMake(patchedSpec);
     const commandSchema = patchedSpec.commandSchema;
-    const typeNames = extractEventTypes(commandSchema);
+    const typeNames = extractVariantNames(commandSchema);
 
     const jsonHandler = stream => {
       const decodedStream = Stream.flatMap(

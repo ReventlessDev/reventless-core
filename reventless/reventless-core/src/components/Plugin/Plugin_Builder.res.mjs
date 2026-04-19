@@ -160,7 +160,7 @@ function Make(Spec) {
           if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
             return [];
           }
-          let constructorNames = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
+          let constructorNames = DcbTag$Reventless.extractVariantNames(M.Spec.commandSchema);
           let filteredConstructorNames = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants(constructorNames, commandSchema);
           let fieldNames = filteredConstructorNames.map(cname => Api_Naming$ReventlessCore.aggregateMutationField(extra$1, M.Spec.name, cname));
           Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry[M.Spec.name] = fieldNames;
@@ -245,9 +245,9 @@ function Make(Spec) {
         });
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
         let aggregateComponents = aggregates.map(M => {
-          let schema_commandTypes = DcbTag$Reventless.extractEventTypes(M.Spec.commandSchema);
-          let schema_eventTypes = DcbTag$Reventless.extractEventTypes(M.Spec.eventSchema);
-          let schema_errorTypes = DcbTag$Reventless.extractEventTypes(M.Spec.errorSchema);
+          let schema_commandTypes = DcbTag$Reventless.extractVariantNames(M.Spec.commandSchema);
+          let schema_eventTypes = DcbTag$Reventless.extractVariantNames(M.Spec.eventSchema);
+          let schema_errorTypes = DcbTag$Reventless.extractVariantNames(M.Spec.errorSchema);
           let schema_commandSchemas = [SchemaWalker$ReventlessCore.walk(M.Spec.name + ".command", M.Spec.commandSchema)];
           let schema_eventSchemas = [SchemaWalker$ReventlessCore.walk(M.Spec.name + ".event", M.Spec.eventSchema)];
           let schema = {

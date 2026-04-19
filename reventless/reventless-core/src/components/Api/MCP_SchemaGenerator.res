@@ -4,7 +4,7 @@
 
 open ReventlessInfra.Api
 
-let extractEventTypes = Reventless.DcbTag.extractEventTypes
+let extractVariantNames = Reventless.DcbTag.extractVariantNames
 
 // ─── MCP definition types ─────────────────────────────────────────────────
 
@@ -152,7 +152,7 @@ let generateEventHistoryResources = (
   let resources: array<mcpResourceDefinition> = []
 
   eventLogEntries->Array.forEach(entry => {
-    let eventTypes = extractEventTypes(entry.eventSchema)
+    let eventTypes = extractVariantNames(entry.eventSchema)
     let typeList = eventTypes->Array.join(", ")
 
     resources->Array.push({

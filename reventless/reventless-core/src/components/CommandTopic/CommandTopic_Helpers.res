@@ -83,7 +83,7 @@ let callHandlerWithArray: (
 // For a variant type like `type command = CreateItem({...}) | UpdateItem({...})`,
 // this extracts ["CreateItem", "UpdateItem"]
 let extractTypeNamesFromSchema = (schema: S.t<unknown>): array<string> =>
-  Reventless.DcbTag.extractEventTypes(schema)
+  Reventless.DcbTag.extractVariantNames(schema)
 
 // Global registry for schema-based filtering
 // Keyed by command type name (e.g., "CreateItem", "UpdateItem")
