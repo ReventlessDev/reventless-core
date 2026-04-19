@@ -1088,25 +1088,38 @@ function MakeWithConfig(Config) {
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let uiDefsSdlTypes = [
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
-      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
-      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
+      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
       `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
       `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
       `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
       `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
     ];
-    let encodeCommandDef = c => Object.fromEntries([
-      [
-        "name",
-        c.name
-      ],
-      [
-        "schema",
-        c.schema
-      ]
-    ]);
+    let encodeCommandDef = c => {
+      let match = c.level;
+      let tmp;
+      tmp = match === "Collection" ? "Collection" : "Instance";
+      return Object.fromEntries([
+        [
+          "name",
+          c.name
+        ],
+        [
+          "schema",
+          c.schema
+        ],
+        [
+          "level",
+          tmp
+        ],
+        [
+          "aggregateIdField",
+          Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+        ]
+      ]);
+    };
     let encodeQueryableDef = r => Object.fromEntries([
       [
         "name",
@@ -1119,6 +1132,14 @@ function MakeWithConfig(Config) {
       [
         "schema",
         r.schema
+      ],
+      [
+        "consumedEventTypes",
+        r.consumedEventTypes.map(prim => prim)
+      ],
+      [
+        "linkedWriteSide",
+        r.linkedWriteSide.map(prim => prim)
       ]
     ]);
     let encodeWritableDef = w => Object.fromEntries([
@@ -1129,6 +1150,22 @@ function MakeWithConfig(Config) {
       [
         "commands",
         w.commands.map(encodeCommandDef)
+      ],
+      [
+        "linkedViews",
+        w.linkedViews.map(prim => prim)
+      ],
+      [
+        "consistencyRead",
+        Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
+      ],
+      [
+        "producedEventTypes",
+        w.producedEventTypes.map(prim => prim)
+      ],
+      [
+        "consumedEventTypes",
+        w.consumedEventTypes.map(prim => prim)
       ]
     ]);
     platformGraphQL.registerTypes(uiDefsSdlTypes);
@@ -1552,9 +1589,9 @@ function MakeWithConfig(Config) {
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
       let dpUiDefsSdlTypes = [
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
-        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
-        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
+        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
       ];
       adminGraphQL.registerTypes(dpUiDefsSdlTypes);
@@ -1562,16 +1599,29 @@ function MakeWithConfig(Config) {
           "Platform_UIDefinitions",
           async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
             let def = param[1];
-            let encodeCmd = c => Object.fromEntries([
-              [
-                "name",
-                c.name
-              ],
-              [
-                "schema",
-                c.schema
-              ]
-            ]);
+            let encodeCmd = c => {
+              let match = c.level;
+              let tmp;
+              tmp = match === "Collection" ? "Collection" : "Instance";
+              return Object.fromEntries([
+                [
+                  "name",
+                  c.name
+                ],
+                [
+                  "schema",
+                  c.schema
+                ],
+                [
+                  "level",
+                  tmp
+                ],
+                [
+                  "aggregateIdField",
+                  Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+                ]
+              ]);
+            };
             let encodeQbl = r => Object.fromEntries([
               [
                 "name",
@@ -1584,6 +1634,14 @@ function MakeWithConfig(Config) {
               [
                 "schema",
                 r.schema
+              ],
+              [
+                "consumedEventTypes",
+                r.consumedEventTypes.map(prim => prim)
+              ],
+              [
+                "linkedWriteSide",
+                r.linkedWriteSide.map(prim => prim)
               ]
             ]);
             let encodeWbl = w => Object.fromEntries([
@@ -1594,6 +1652,22 @@ function MakeWithConfig(Config) {
               [
                 "commands",
                 w.commands.map(encodeCmd)
+              ],
+              [
+                "linkedViews",
+                w.linkedViews.map(prim => prim)
+              ],
+              [
+                "consistencyRead",
+                Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
+              ],
+              [
+                "producedEventTypes",
+                w.producedEventTypes.map(prim => prim)
+              ],
+              [
+                "consumedEventTypes",
+                w.consumedEventTypes.map(prim => prim)
               ]
             ]);
             return Object.fromEntries([
@@ -2669,25 +2743,38 @@ function Make($star) {
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let uiDefsSdlTypes = [
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
-      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
-      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
+      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
       `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
       `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
       `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
       `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
     ];
-    let encodeCommandDef = c => Object.fromEntries([
-      [
-        "name",
-        c.name
-      ],
-      [
-        "schema",
-        c.schema
-      ]
-    ]);
+    let encodeCommandDef = c => {
+      let match = c.level;
+      let tmp;
+      tmp = match === "Collection" ? "Collection" : "Instance";
+      return Object.fromEntries([
+        [
+          "name",
+          c.name
+        ],
+        [
+          "schema",
+          c.schema
+        ],
+        [
+          "level",
+          tmp
+        ],
+        [
+          "aggregateIdField",
+          Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+        ]
+      ]);
+    };
     let encodeQueryableDef = r => Object.fromEntries([
       [
         "name",
@@ -2700,6 +2787,14 @@ function Make($star) {
       [
         "schema",
         r.schema
+      ],
+      [
+        "consumedEventTypes",
+        r.consumedEventTypes.map(prim => prim)
+      ],
+      [
+        "linkedWriteSide",
+        r.linkedWriteSide.map(prim => prim)
       ]
     ]);
     let encodeWritableDef = w => Object.fromEntries([
@@ -2710,6 +2805,22 @@ function Make($star) {
       [
         "commands",
         w.commands.map(encodeCommandDef)
+      ],
+      [
+        "linkedViews",
+        w.linkedViews.map(prim => prim)
+      ],
+      [
+        "consistencyRead",
+        Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
+      ],
+      [
+        "producedEventTypes",
+        w.producedEventTypes.map(prim => prim)
+      ],
+      [
+        "consumedEventTypes",
+        w.consumedEventTypes.map(prim => prim)
       ]
     ]);
     platformGraphQL.registerTypes(uiDefsSdlTypes);
@@ -3125,9 +3236,9 @@ function Make($star) {
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
       let dpUiDefsSdlTypes = [
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
-        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
-        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
+        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
       ];
       adminGraphQL.registerTypes(dpUiDefsSdlTypes);
@@ -3135,16 +3246,29 @@ function Make($star) {
           "Platform_UIDefinitions",
           async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
             let def = param[1];
-            let encodeCmd = c => Object.fromEntries([
-              [
-                "name",
-                c.name
-              ],
-              [
-                "schema",
-                c.schema
-              ]
-            ]);
+            let encodeCmd = c => {
+              let match = c.level;
+              let tmp;
+              tmp = match === "Collection" ? "Collection" : "Instance";
+              return Object.fromEntries([
+                [
+                  "name",
+                  c.name
+                ],
+                [
+                  "schema",
+                  c.schema
+                ],
+                [
+                  "level",
+                  tmp
+                ],
+                [
+                  "aggregateIdField",
+                  Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+                ]
+              ]);
+            };
             let encodeQbl = r => Object.fromEntries([
               [
                 "name",
@@ -3157,6 +3281,14 @@ function Make($star) {
               [
                 "schema",
                 r.schema
+              ],
+              [
+                "consumedEventTypes",
+                r.consumedEventTypes.map(prim => prim)
+              ],
+              [
+                "linkedWriteSide",
+                r.linkedWriteSide.map(prim => prim)
               ]
             ]);
             let encodeWbl = w => Object.fromEntries([
@@ -3167,6 +3299,22 @@ function Make($star) {
               [
                 "commands",
                 w.commands.map(encodeCmd)
+              ],
+              [
+                "linkedViews",
+                w.linkedViews.map(prim => prim)
+              ],
+              [
+                "consistencyRead",
+                Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
+              ],
+              [
+                "producedEventTypes",
+                w.producedEventTypes.map(prim => prim)
+              ],
+              [
+                "consumedEventTypes",
+                w.consumedEventTypes.map(prim => prim)
               ]
             ]);
             return Object.fromEntries([
