@@ -9,13 +9,20 @@
 
 let _ = TestRunner.setup()
 
-// Derive field names from the schema entries — single source of truth.
-let adminQueryEntry =
-  ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
-let singleQueryField = adminQueryEntry.singleFieldName
-let listQueryField = adminQueryEntry.listFieldName
-let adminMutationFieldNames =
-  ReventlessCore.AdminApi.mutationEntries(~cloner=true)->Array.flatMap(entry => entry.fieldNames)
+// Helper to extract resolver key from an SDL field string.
+// Mirrors GraphQL_ServerInstance.extractFieldName.
+let extractSdlFieldName = (sdlField: string): string => {
+  let trimmed = sdlField->String.trim
+  trimmed
+  ->String.split("(")
+  ->Array.get(0)
+  ->Option.getOr("")
+  ->String.trim
+  ->String.split(":")
+  ->Array.get(0)
+  ->Option.getOr("")
+  ->String.trim
+}
 
 // ─────────────────────────────────────────────────────────────
 // Create admin GraphQL instance (mirrors Platform split mode)
@@ -23,13 +30,24 @@ let adminMutationFieldNames =
 
 let adminGraphQL = GraphQL_ServerInstance.make(~label="GraphQL:Admin")
 
-// Register admin schema into the admin instance
+// Build admin SDL — authoritative source for field names.
 let baseParts = ReventlessCore.GraphQL_Stitcher.decode(ReventlessCore.AdminApi.baseFragment(~cloner=true))
 let () = adminGraphQL.registerTypes(~sdlTypes=baseParts.types)
 
+// Derive query/mutation field names directly from SDL so that any SDL
+// additions (e.g. UIFragment entries) automatically get stub resolvers.
+let adminQueryFieldNames = baseParts.queries->Array.map(extractSdlFieldName)
+let adminMutationFieldNames = baseParts.mutations->Array.map(extractSdlFieldName)
+
+// Keep these for backwards-compat with the test file.
+let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
+let singleQueryField = adminQueryEntry.singleFieldName
+let listQueryField = adminQueryEntry.listFieldName
+
 let adminQueryResolvers = Dict.make()
-let () = adminQueryResolvers->Dict.set(singleQueryField, async (_root, _args, _ctx): JSON.t => JSON.Encode.null)
-let () = adminQueryResolvers->Dict.set(listQueryField, async (_root, _args, _ctx): JSON.t => JSON.Encode.null)
+let () = adminQueryFieldNames->Array.forEach(field =>
+  adminQueryResolvers->Dict.set(field, async (_root, _args, _ctx): JSON.t => JSON.Encode.null)
+)
 let () = adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=adminQueryResolvers)
 
 let adminMutationResolvers = Dict.make()

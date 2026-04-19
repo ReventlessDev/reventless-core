@@ -17,7 +17,7 @@ open AsyncTest.Expect
 let adminGraphQL = SplitApiFixtures.adminGraphQL
 
 // Derive field names from schema entries — single source of truth.
-let adminQueryFields = [SplitApiFixtures.singleQueryField, SplitApiFixtures.listQueryField]
+let adminQueryFields = SplitApiFixtures.adminQueryFieldNames
 let adminMutationFields = SplitApiFixtures.adminMutationFieldNames
 
 // Plugin field names

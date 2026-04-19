@@ -3,11 +3,6 @@
 import * as GraphQL_Server$ReventlessInMemory from "../src/adapter/GraphQL_Server.res.mjs";
 import * as SplitApiFixtures$ReventlessInMemory from "./SplitApiFixtures.res.mjs";
 
-let adminQueryFields = [
-  SplitApiFixtures$ReventlessInMemory.singleQueryField,
-  SplitApiFixtures$ReventlessInMemory.listQueryField
-];
-
 let pluginMutationPrefix = "SplitTestPlugin_SplitTestItem_";
 
 let pluginQueryPrefix = "SplitTestPlugin_SplitTestItem";
@@ -31,7 +26,7 @@ describe("Split API Mode — Schema Separation", () => {
     });
     test("does NOT contain admin query fields", async () => {
       let d = GraphQL_Server$ReventlessInMemory.diagnostics();
-      let hasAdminQuery = d.registeredQueryFields.some(f => adminQueryFields.includes(f));
+      let hasAdminQuery = d.registeredQueryFields.some(f => SplitApiFixtures$ReventlessInMemory.adminQueryFieldNames.includes(f));
       expect(hasAdminQuery).toBe(false);
     });
   });
@@ -45,7 +40,7 @@ describe("Split API Mode — Schema Separation", () => {
     });
     test("contains admin query fields", async () => {
       let d = SplitApiFixtures$ReventlessInMemory.adminGraphQL.diagnostics();
-      adminQueryFields.forEach(field => {
+      SplitApiFixtures$ReventlessInMemory.adminQueryFieldNames.forEach(field => {
         let hasField = d.registeredQueryFields.includes(field);
         expect(hasField).toBe(true);
       });
@@ -72,6 +67,8 @@ describe("Split API Mode — Schema Separation", () => {
 });
 
 let adminGraphQL = SplitApiFixtures$ReventlessInMemory.adminGraphQL;
+
+let adminQueryFields = SplitApiFixtures$ReventlessInMemory.adminQueryFieldNames;
 
 let adminMutationFields = SplitApiFixtures$ReventlessInMemory.adminMutationFieldNames;
 
