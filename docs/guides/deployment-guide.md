@@ -157,17 +157,22 @@ Templates are available in `docs/templates/deploy-aws/`.
 ```rescript
 module Platform = ReventlessAws.Platform.Make()
 
-Platform.deployPlatform(~version=Reventless.PackageVersion.fromCwd())
+let default = Platform.deployPlatform(~version=Reventless.PackageVersion.fromCaller())
 ```
 
 **`catalog-aws/src/Main.res`** -- deploys a single plugin's infrastructure:
 
-```rescript
-module Platform = ReventlessAws.Platform.Make()
-module Catalog = CatalogPlugin.Plugin.Make(Platform)
+> Note: This file is **auto-generated** by `generate-plugin --aws`. Do not edit it manually — run `npm run generate` to regenerate.
 
-Platform.deployPlugin(
-  ~version=Reventless.PackageVersion.fromCwd(),
+```rescript
+// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// Catalog plugin — AWS deployment.
+
+module Platform = ReventlessAws.Platform.Make()
+module Catalog = Plugin.Make(Platform)
+
+let default = Platform.deployPlugin(
+  ~version=Reventless.PackageVersion.fromCaller(),
   ~plugin=module(Catalog),
 )
 ```
@@ -568,6 +573,8 @@ Called in `platform-aws/src/Main.res`. Creates:
 - **Admin components** -- Plugin aggregate, read model, extension point (via `Platform_Admin.construct`).
 - **Stack outputs** -- exports API ID, role ARN, and admin extension points for plugin stacks to consume.
 
+Returns `dict<Pulumi.Output.t<JSON.t>>` -- the Pulumi stack outputs dict. Assign as the ESM default export: `let default = Platform.deployPlatform(...)`.
+
 The admin schema (plugin queries, cloner mutations) is pushed at deploy time. Plugin schema fragments are added at runtime when plugins connect.
 
 ### `Platform.deployPlugin(~version, ~plugin)`
@@ -577,6 +584,8 @@ Called in each plugin's `-aws` package (e.g., `catalog-aws/src/Main.res`). Creat
 - **Plugin infrastructure** -- all DynamoDB tables, SQS queues, Lambda functions, and S3 buckets for the plugin's aggregates, read models, tasks, and DCB slices.
 - **AppSync DataSources/Resolvers** -- created against the shared API using the API ID from the platform StackReference.
 - **Stack outputs** -- exports `_interopMeta` (extension points, event topics) for cross-stack consumption by dependent plugins.
+
+Returns `dict<Pulumi.Output.t<JSON.t>>` -- the Pulumi stack outputs dict. Assign as the ESM default export: `let default = Platform.deployPlugin(...)`. The plugin name is auto-registered by `Plugin_Builder.make` -- no manual `registerDcbConfig` call is needed.
 
 At runtime, the plugin connects to the PluginExtensionPoint with its schema fragment. The platform updates the combined schema.
 

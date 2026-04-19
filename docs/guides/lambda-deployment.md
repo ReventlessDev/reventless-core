@@ -75,7 +75,7 @@ Layer 3 instantiates a concrete platform (`ReventlessAws.Platform.Make()` or `Re
 
 ### Where AWS Builders Fit
 
-Aggregates, ReadModels, and ExtensionPoints require AWS-specific builders that register Lambda handlers. These live in Layer 3, in `_Aws.res` files.
+Aggregates, ReadModels, and ExtensionPoints require AWS-specific builders that register Lambda handlers. These live in Layer 3, in `Plugin.res` files inside `-aws` packages.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -87,7 +87,7 @@ Aggregates, ReadModels, and ExtensionPoints require AWS-specific builders that r
     ┌────────────────┼────────────────────┐
     │                │                    │
     ▼                ▼                    ▼
-  Tests          In-Memory Dev       CatalogPlugin_Aws.res
+  Tests          In-Memory Dev       catalog-aws/src/Plugin.res
   (in-memory)    (GraphQL Yoga)      (Layer 3 — AWS-specific)
                                        ReventlessAws.Aggregate_Builder_Single.Make(...)
                                        Platform.StateViewSlice.Make(ProductsView)  ← still via Platform
@@ -95,7 +95,7 @@ Aggregates, ReadModels, and ExtensionPoints require AWS-specific builders that r
 
 ---
 
-## 3. AWS Plugin Variants: `_Aws.res` Files
+## 3. AWS Plugin Variants: `Plugin.res` Files
 
 ### Platform-Agnostic (via `Platform.T`)
 
@@ -110,12 +110,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
 - Works with in-memory (for tests) and AWS (for production)
 - `Platform.Aggregate.Make` on AWS satisfies the type but registers **no Lambda entry point**
-- For a working AWS aggregate Lambda, use the AWS builder directly in a `_Aws.res` variant
+- For a working AWS aggregate Lambda, use the AWS builder directly in the `-aws` package's `Plugin.res`
 
 ### AWS-Specific (direct AWS builders)
 
 ```rescript
-// Layer 3 — CatalogPlugin_Aws.res
+// Layer 3 — catalog-aws/src/Plugin.res
 module Make = (
   Platform: ReventlessInfra.Platform.T
     with type api = ReventlessAws.Types.AppSync.api
@@ -247,18 +247,18 @@ ordering/                          # Platform-agnostic (Layer 1+2)
 
 ordering-aws/                      # AWS deployment (Layer 3)
 ├── src/
-│   ├── OrderingPlugin_Aws.res     # AWS plugin variant
-│   ├── Main.res                   # Composition root
-│   └── index.mjs                  # JS entry point (DCB config registration)
+│   ├── Plugin.res                 # AWS plugin variant (Layer 3)
+│   ├── Main.res                   # Composition root (auto-generated)
+│   └── index.mjs                  # JS entry point
 └── package.json                   # deps: reventless-aws, ordering (private)
 ```
 
-### The `_Aws.res` Pattern
+### The `Plugin.res` Pattern
 
-A `_Aws.res` file mirrors the platform-agnostic plugin but substitutes direct AWS builders for components that need Lambda handlers:
+The `-aws` package's `Plugin.res` mirrors the platform-agnostic plugin but substitutes direct AWS builders for components that need Lambda handlers:
 
 ```rescript
-// OrderingPlugin_Aws.res
+// ordering-aws/src/Plugin.res
 module Make = (
   Platform: ReventlessInfra.Platform.T
     with type api = ReventlessAws.Types.AppSync.api
@@ -285,41 +285,33 @@ module Make = (
 
 ### The `index.mjs` Entry Point
 
-DCB components require configuration to be registered **before** ReScript modules initialize (ReScript's dead code elimination removes module-level side-effect calls inside constrained functors). The `index.mjs` file handles this:
+DCB components require configuration to be registered **before** ReScript modules initialize (ReScript's dead code elimination removes module-level side-effect calls inside constrained functors). The `index.mjs` file re-exports the generated `Main.res.mjs` as the default:
 
 ```javascript
 // ordering-aws/src/index.mjs
-import { registerDcbConfig } from
-  "@reventlessdev/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res.mjs";
-import { resolveModule } from
-  "@reventlessdev/reventless-aws/src/util/Util_Bundle.res.mjs";
-
-const pkg = "@reventlessdev/online-shop-hybrid-ordering/src";
-
-// Register BEFORE Main.res.mjs loads — plain JS side effects are never DCE'd
-registerDcbConfig("Ordering", undefined, [
-  resolveModule(pkg + "/Order/StateChangeSlice/PlaceOrder.res.mjs"),
-  resolveModule(pkg + "/Order/StateChangeSlice/ShipOrder.res.mjs"),
-  resolveModule(pkg + "/Order/StateChangeSlice/CancelOrder.res.mjs"),
-], undefined);
-
 export { default } from "./Main.res.mjs";
 ```
 
+The plugin name is auto-registered by `Plugin_Builder.make` — no manual `registerDcbConfig` call is needed.
+
 ### The `Main.res` Composition Root
 
-```rescript
-// ordering-aws/src/Main.res
-module Platform = ReventlessAws.Platform.Make()
-module Ordering = OrderingPlugin_Aws.Make(Platform)
+`Main.res` is **auto-generated** by the generator (`--aws` mode). Do not edit it manually — run `npm run generate` to regenerate.
 
-Platform.deployPlugin(
+```rescript
+// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+// Ordering plugin — AWS deployment.
+
+module Platform = ReventlessAws.Platform.Make()
+module Ordering = Plugin.Make(Platform)
+
+let default = Platform.deployPlugin(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~plugin=module(Ordering),
 )
-
-let default = Pulumi.Pulumi.getOutputs()
 ```
+
+`deployPlugin` returns the Pulumi stack outputs dict (`dict<Pulumi.Output.t<JSON.t>>`). Assigning it to `let default` makes it the ESM module export that Pulumi reads as the stack's outputs.
 
 ---
 
@@ -388,7 +380,7 @@ describe("Catalog E2E", () => {
 - **`beforeAllAsync`** must resolve Output chains before the first test (handler registration is async)
 - **Topic names** follow the pattern: `Spec.name ++ ComponentType.toName(suffix)` (e.g., `"CatalogEventTopic"`)
 - The auto-generated `Plugin.res` (Layer 2) is used for tests — it goes through `Platform.T` and works with in-memory
-- `_Aws.res` plugin files are never tested with in-memory (they import `ReventlessAws` directly)
+- `Plugin.res` files in `-aws` packages are never tested with in-memory (they import `ReventlessAws` directly)
 
 ---
 
@@ -399,7 +391,7 @@ DCB (Dynamic Consistency Boundary) slices use a hook-based mechanism to bridge t
 ### The Flow
 
 ```
-1. Plugin_Aws.res creates slices via Platform.T:
+1. ordering-aws/src/Plugin.res creates slices via Platform.T:
    │  module OrdersView = Platform.StateViewSlice.Make(OrdersViewSpec)
    │  (internally registers handler spec in StateViewSliceRuntime_Builder_Single)
    │
@@ -456,6 +448,6 @@ The core builders (`Aggregate_Builder`, `ReadModel_Builder`, `StateViewSlice_Bui
 
 4. **`finish()` timing matters.** Runtime builders accumulate specs during `forEventCollector` / `registerXxx` calls and create the Lambda only when `finish()` is called. This must happen after all components have registered but before Pulumi's deployment graph is finalized.
 
-5. **`_Aws.res` files are AWS-specific.** They mirror the platform-agnostic plugin but substitute direct AWS builders. They import `ReventlessAws` directly and cannot be tested with the in-memory platform. The platform-agnostic plugin file remains the source of truth for business logic and is used for in-memory testing.
+5. **`Plugin.res` in `-aws` packages is AWS-specific.** It mirrors the platform-agnostic plugin but substitutes direct AWS builders. It imports `ReventlessAws` directly and cannot be tested with the in-memory platform. The platform-agnostic `Plugin.res` remains the source of truth for business logic and is used for in-memory testing.
 
-6. **`Platform.T` uses the same builders for DCB slices.** `StateViewSlice.Make`, `AutomationSlice.Make`, and `OutboundTranslationSlice.Make` all register handler specs when called from `_Aws.res` files. The Lambda is created later via `finish()` called by the `onDcbSlicesCreated` hook. No separate AWS builder is needed for slice types.
+6. **`Platform.T` uses the same builders for DCB slices.** `StateViewSlice.Make`, `AutomationSlice.Make`, and `OutboundTranslationSlice.Make` all register handler specs when called from the `-aws` `Plugin.res`. The Lambda is created later via `finish()` called by the `onDcbSlicesCreated` hook. No separate AWS builder is needed for slice types.
