@@ -56,6 +56,8 @@ let maxRetries = 3;
 
 let heartbeatInterval = 60;
 
+let targetName;
+
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
 
 export {
@@ -68,6 +70,7 @@ export {
   translate,
   maxRetries,
   heartbeatInterval,
+  targetName,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

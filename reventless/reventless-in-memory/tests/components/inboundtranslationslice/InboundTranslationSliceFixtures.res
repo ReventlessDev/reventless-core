@@ -25,6 +25,8 @@ module PaymentWebhookSpec = {
   @schema
   type command = ConfirmPayment({orderId: @s.matches(Reventless.DcbTag.string) string, paymentId: string})
 
+  let targetName = "ConfirmPayment"
+
   let translate = (input: externalInput) =>
     switch input.status {
     | "completed" =>

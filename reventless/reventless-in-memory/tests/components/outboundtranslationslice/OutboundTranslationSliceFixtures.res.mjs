@@ -63,7 +63,8 @@ let SendTrackingEmailSpec = {
   collect: collect,
   translate: translate,
   maxRetries: 3,
-  heartbeatInterval: 60
+  heartbeatInterval: 60,
+  targetName: undefined
 };
 
 let moduleUrl$2 = import.meta.url;
@@ -112,6 +113,8 @@ function translate$1(id, item) {
   return translateFn.contents(id, item);
 }
 
+let ProcessPaymentSpec_targetName = "ConfirmPayment";
+
 let ProcessPaymentSpec = {
   name: "ProcessPayment",
   moduleUrl: moduleUrl$2,
@@ -122,7 +125,8 @@ let ProcessPaymentSpec = {
   translateFn: translateFn,
   translate: translate$1,
   maxRetries: 2,
-  heartbeatInterval: 30
+  heartbeatInterval: 30,
+  targetName: ProcessPaymentSpec_targetName
 };
 
 export {

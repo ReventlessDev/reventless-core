@@ -55,31 +55,20 @@ The generated `pluginStructure` call in each example `Plugin.res` now includes `
 
 ---
 
-## Phase 4 — Tier 3 Spec fields (`let targetName` on slices, validated by generator)
+## ~~Phase 4 — Tier 3 Spec fields (`let targetName` on slices, validated by generator)~~ ✅ DONE
 
-**Goal.** Make the outbound command target of AutomationSlice / OutboundTranslationSlice / InboundTranslationSlice statically declarable, closing the last structural gap for interactive command flows.
+**What landed.**
 
-**Files to change.**
-- [AutomationSlice.res](../../reventless/reventless-spec/src/components/AutomationSlice.res) — add `let targetName: string` to `Spec`.
-- [OutboundTranslationSlice.res](../../reventless/reventless-spec/src/components/OutboundTranslationSlice.res) — add `let targetName: option<string>` to `Spec` (optional because some slices are pure fire-and-forget).
-- [InboundTranslationSlice.res](../../reventless/reventless-spec/src/components/InboundTranslationSlice.res) — add `let targetName: string` to `Spec`.
-- [Plugin_Builder.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res) — surface `Spec.targetName` into the Phase 3 slice records.
-- [Pairing.res](../../reventless/reventless-spec/src/generator/Pairing.res) and [Codegen.res](../../reventless/reventless-spec/src/generator/Codegen.res) — validation pass that checks each slice's declared `targetName` resolves to a known aggregate / StateChangeSlice / other command receiver in the same plugin.
-- Every example AutomationSlice / OutboundTranslationSlice / InboundTranslationSlice spec file adds the `targetName` declaration — for example, `AutoShipOrder` in `examples/online-shop-hybrid/ordering/src/AutoShipOrder/` needs `let targetName = "ShipOrder"`.
+Added `let targetName` to all three Spec module types:
+- `AutomationSlice.Spec` — `let targetName: string` (required; names the SCS or aggregate receiving the command)
+- `OutboundTranslationSlice.Spec` — `let targetName: option<string>` (None = fire-and-forget)
+- `InboundTranslationSlice.Spec` — `let targetName: string` (required)
 
-**Concrete steps.**
-1. Add the `let targetName` fields to the three Spec module types. This is a **non-breaking-for-runtime but compile-breaking-for-spec** change: every existing spec file that defines one of these slice kinds must add the declaration, so this phase is `feat!:`.
-2. In `Plugin_Builder`, populate `automationSliceDef.targetName` (and the analogous fields on the outbound/inbound records) from `Spec.targetName`.
-3. In `generate-plugin`, after `Pairing.resolve`, gather the set of known command receivers (aggregate names + StateChangeSlice names + other slice names that accept commands). For each slice with a declared `targetName`, assert membership; fail with a clear error citing the slice file path and the valid candidate names.
-4. Update every example to declare the correct `targetName`; re-run the generator to confirm validation passes.
+`automationSliceDef`, `outboundTranslationSliceDef`, and `inboundTranslationSliceDef` in [Plugin.res](../../reventless/reventless-spec/src/components/Plugin.res) gained the `targetName` field. [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) surfaces `Spec.targetName` into each def.
 
-**Validation.**
-- `generate-plugin` on the hybrid ordering example now populates `pluginDefinition.automationSlices[AutoShipOrder].targetName = Some("ShipOrder")`.
-- Deliberately introducing a typo (`targetName = "ShipOrde"`) causes `generate-plugin` to exit non-zero with an error naming `AutoShipOrder.res` and suggesting the closest match.
-- Unit test: each regenerated example's `pluginDefinition` serialises a non-empty `targetName` for every slice that has one.
+[Pairing.res](../../reventless/reventless-spec/src/generator/Pairing.res) parses `let targetName = "..."` from each slice file using `extractTargetName` and stores results in three new `Dict.t<option<string>>` fields on `resolved`. [Codegen.res](../../reventless/reventless-spec/src/generator/Codegen.res) calls `validateSliceTargets` at render time; it throws with a descriptive error if a declared `targetName` is not among the plugin's known aggregates + StateChangeSlices, or if a required `targetName` is absent.
 
-**Commit message.**
-`feat!: add targetName to AutomationSlice/OutboundTranslationSlice/InboundTranslationSlice Spec with generator validation`
+All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderConfirmation → None`, `ImportProduct → "AddProduct"`. Test fixture specs in `reventless-in-memory` also updated. Build: zero warnings, 1034 tests pass.
 
 ---
 

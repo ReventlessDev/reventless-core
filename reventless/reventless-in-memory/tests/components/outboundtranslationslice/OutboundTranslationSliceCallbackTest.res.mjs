@@ -16,7 +16,8 @@ let CommandBackCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make(
   collect: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.collect,
   translate: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.translate,
   maxRetries: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.maxRetries,
-  heartbeatInterval: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.heartbeatInterval
+  heartbeatInterval: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.heartbeatInterval,
+  targetName: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.targetName
 });
 
 describe("OutboundTranslationSlice Callback", () => {

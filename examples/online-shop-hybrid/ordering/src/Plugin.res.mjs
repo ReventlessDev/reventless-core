@@ -110,7 +110,8 @@ function Make(Platform) {
     resolve: AutoShipOrder$OrderingPlugin.resolve,
     process: AutoShipOrder$OrderingPlugin.process,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
-    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
+    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
+    targetName: AutoShipOrder$OrderingPlugin.targetName
   });
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,
@@ -121,7 +122,8 @@ function Make(Platform) {
     collect: SendOrderConfirmation$OrderingPlugin.collect,
     translate: SendOrderConfirmation$OrderingPlugin.translate,
     maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
-    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
+    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
+    targetName: undefined
   });
   let CustomerAggregate = Platform.Aggregate.Make({
     Id: Id$Reventless.$$String,

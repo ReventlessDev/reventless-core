@@ -386,9 +386,76 @@ let renderPluginStructureCall = (
   }
 }
 
+// ── targetName validation ────────────────────────────────────────────────────
+
+let validateSliceTargets = (~resolved: Pairing.resolved) => {
+  let knownReceivers = Array.concat(
+    resolved.aggregates->Array.map(({spec}) => spec),
+    resolved.stateChangeSlices,
+  )
+
+  let check = (~kind: string, stem: string, target: option<string>) =>
+    switch target {
+    | None =>
+      JsError.throwWithMessage(
+        "Generator: " ++
+        kind ++
+        " `" ++
+        stem ++
+        "` is missing `let targetName = \"...\"`. Valid targets: " ++
+        knownReceivers->Array.join(", "),
+      )
+    | Some(t) when !(knownReceivers->Array.includes(t)) =>
+      JsError.throwWithMessage(
+        "Generator: " ++
+        kind ++
+        " `" ++
+        stem ++
+        "` declares targetName = \"" ++
+        t ++
+        "\" but no such command receiver exists. Valid targets: " ++
+        knownReceivers->Array.join(", "),
+      )
+    | Some(_) => ()
+    }
+
+  resolved.automationSlices->Array.forEach(stem =>
+    check(
+      ~kind="AutomationSlice",
+      stem,
+      resolved.automationSliceTargets->Dict.get(stem)->Option.getOr(None),
+    )
+  )
+
+  resolved.inboundTranslationSlices->Array.forEach(stem =>
+    check(
+      ~kind="InboundTranslationSlice",
+      stem,
+      resolved.inboundTranslationSliceTargets->Dict.get(stem)->Option.getOr(None),
+    )
+  )
+
+  // OutboundTranslationSlice: only validate when targetName = Some(name) (None = fire-and-forget)
+  resolved.outboundTranslationSlices->Array.forEach(stem => {
+    switch resolved.outboundTranslationSliceTargets->Dict.get(stem)->Option.getOr(None) {
+    | Some(t) when !(knownReceivers->Array.includes(t)) =>
+      JsError.throwWithMessage(
+        "Generator: OutboundTranslationSlice `" ++
+        stem ++
+        "` declares targetName = Some(\"" ++
+        t ++
+        "\") but no such command receiver exists. Valid targets: " ++
+        knownReceivers->Array.join(", "),
+      )
+    | _ => ()
+    }
+  })
+}
+
 // ── Top-level render ─────────────────────────────────────────────────────────
 
 let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
+  validateSliceTargets(~resolved)
   let hasReadModels = resolved.readModels->Array.length > 0
   let lines: array<string> = []
 

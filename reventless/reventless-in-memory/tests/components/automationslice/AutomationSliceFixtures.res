@@ -48,6 +48,7 @@ module ShipOrderSpec = {
 
   let maxRetries = 3
   let heartbeatInterval = 60
+  let targetName = "CreateShipment"
 }
 
 // Spec where process returns None (skips processing)
@@ -82,4 +83,5 @@ module SkipProcessSpec = {
 
   let maxRetries = 0
   let heartbeatInterval = 60
+  let targetName = "Noop"
 }

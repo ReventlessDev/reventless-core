@@ -147,7 +147,8 @@ function Make(Platform) {
     moduleUrl: ImportProduct$CatalogPlugin.moduleUrl,
     externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
     commandSchema: ImportProduct$CatalogPlugin.commandSchema,
-    translate: ImportProduct$CatalogPlugin.translate
+    translate: ImportProduct$CatalogPlugin.translate,
+    targetName: ImportProduct$CatalogPlugin.targetName
   });
   let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
     ExtensionPoint: {

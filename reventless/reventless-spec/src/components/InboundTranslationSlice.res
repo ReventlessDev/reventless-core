@@ -46,4 +46,7 @@ module type Spec = {
   - `Error(msg)` to reject the input
   */
   let translate: externalInput => result<array<(string, command)>, string>
+
+  /** Name of the aggregate or StateChangeSlice that receives the produced command. */
+  let targetName: string
 }

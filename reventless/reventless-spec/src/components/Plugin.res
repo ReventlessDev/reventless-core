@@ -129,17 +129,20 @@ type automationSliceDef = {
   name: string,
   consumedEventTypes: array<string>,
   producedCommandTypes: array<string>,
+  targetName: string,
 }
 
 type outboundTranslationSliceDef = {
   name: string,
   consumedEventTypes: array<string>,
   inboundCommandTypes: array<string>,
+  targetName: option<string>,
 }
 
 type inboundTranslationSliceDef = {
   name: string,
   commandTypes: array<string>,
+  targetName: string,
 }
 
 type extensionDef = {

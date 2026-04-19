@@ -57,6 +57,7 @@ let PaymentWebhookSpec = {
   moduleUrl: moduleUrl$1,
   externalInputSchema: externalInputSchema,
   commandSchema: commandSchema,
+  targetName: "ConfirmPayment",
   translate: translate
 };
 

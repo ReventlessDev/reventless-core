@@ -60,6 +60,30 @@ function sortedStems(stems) {
   });
 }
 
+function extractTargetName(filePath) {
+  try {
+    let content = Nodefs.readFileSync(filePath, "utf8");
+    let result = {
+      contents: undefined
+    };
+    content.split("\n").forEach(line => {
+      let trimmed = line.trimStart();
+      if (!trimmed.startsWith("let targetName = ")) {
+        return;
+      }
+      let firstQuote = trimmed.indexOf("\"");
+      let lastQuote = trimmed.lastIndexOf("\"");
+      if (firstQuote >= 0 && lastQuote > firstQuote) {
+        result.contents = trimmed.slice(firstQuote + 1 | 0, lastQuote);
+        return;
+      }
+    });
+    return result.contents;
+  } catch (exn) {
+    return;
+  }
+}
+
 function resolve(discovered, srcDir) {
   let eventMappings = findEventMappings(srcDir);
   let stateChangeSlices = [];
@@ -68,6 +92,9 @@ function resolve(discovered, srcDir) {
   let automationSlices = [];
   let inboundTranslationSlices = [];
   let outboundTranslationSlices = [];
+  let automationSliceRelPaths = {};
+  let inboundTranslationSliceRelPaths = {};
+  let outboundTranslationSliceRelPaths = {};
   let aggregateSpecs = [];
   let aggregateBehaviors = [];
   let readModelStems = [];
@@ -91,12 +118,15 @@ function resolve(discovered, srcDir) {
         return;
       case "AutomationSlice" :
         automationSlices.push(stem);
+        automationSliceRelPaths[stem] = relPath;
         return;
       case "InboundTranslationSlice" :
         inboundTranslationSlices.push(stem);
+        inboundTranslationSliceRelPaths[stem] = relPath;
         return;
       case "OutboundTranslationSlice" :
         outboundTranslationSlices.push(stem);
+        outboundTranslationSliceRelPaths[stem] = relPath;
         return;
       case "Aggregate" :
         if (stem.endsWith("Behavior")) {
@@ -182,6 +212,15 @@ function resolve(discovered, srcDir) {
       mappings: sortedStems(param[1])
     });
   });
+  let buildTargets = (stems, relPaths) => {
+    let dict = {};
+    stems.forEach(stem => {
+      let relPath = relPaths[stem];
+      let target = relPath !== undefined ? extractTargetName(Nodepath.join(srcDir, relPath)) : undefined;
+      dict[stem] = target;
+    });
+    return dict;
+  };
   return {
     stateChangeSlices: sortedStems(stateChangeSlices),
     stateViewSlices: sortedStems(stateViewSlices),
@@ -189,6 +228,9 @@ function resolve(discovered, srcDir) {
     automationSlices: sortedStems(automationSlices),
     inboundTranslationSlices: sortedStems(inboundTranslationSlices),
     outboundTranslationSlices: sortedStems(outboundTranslationSlices),
+    automationSliceTargets: buildTargets(automationSlices, automationSliceRelPaths),
+    inboundTranslationSliceTargets: buildTargets(inboundTranslationSlices, inboundTranslationSliceRelPaths),
+    outboundTranslationSliceTargets: buildTargets(outboundTranslationSlices, outboundTranslationSliceRelPaths),
     aggregates: aggregates,
     readModels: readModels,
     tasks: sortedStems(tasks),
@@ -201,6 +243,7 @@ export {
   findEventMappings,
   extractMappingModules,
   sortedStems,
+  extractTargetName,
   resolve,
 }
 /* node:fs Not a pure module */

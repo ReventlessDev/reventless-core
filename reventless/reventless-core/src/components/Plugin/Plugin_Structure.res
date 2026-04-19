@@ -208,6 +208,7 @@ let make = (
       Reventless.Plugin.name: AS.Spec.name,
       consumedEventTypes: variantNames(AS.Spec.consumedEventSchema),
       producedCommandTypes: variantNames(AS.Spec.commandSchema),
+      targetName: AS.Spec.targetName,
     }: Reventless.Plugin.automationSliceDef))
 
   // ── Outbound translation slices ───────────────────────────────────────────
@@ -217,6 +218,7 @@ let make = (
       Reventless.Plugin.name: OTS.Spec.name,
       consumedEventTypes: variantNames(OTS.Spec.consumedEventSchema),
       inboundCommandTypes: variantNames(OTS.Spec.inboundCommandSchema),
+      targetName: OTS.Spec.targetName,
     }: Reventless.Plugin.outboundTranslationSliceDef))
 
   // ── Inbound translation slices ────────────────────────────────────────────
@@ -225,6 +227,7 @@ let make = (
     inboundTranslationSlices->Array.map((module(ITS: ReventlessInfra.InboundTranslationSlice.T)) => ({
       Reventless.Plugin.name: ITS.Spec.name,
       commandTypes: variantNames(ITS.Spec.commandSchema),
+      targetName: ITS.Spec.targetName,
     }: Reventless.Plugin.inboundTranslationSliceDef))
 
   // ── Extensions ───────────────────────────────────────────────────────────

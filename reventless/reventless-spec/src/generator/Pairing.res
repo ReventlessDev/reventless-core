@@ -16,6 +16,10 @@ type resolved = {
   automationSlices: array<string>,
   inboundTranslationSlices: array<string>,
   outboundTranslationSlices: array<string>,
+  // stem → declared targetName (None = not declared or explicitly None)
+  automationSliceTargets: Dict.t<option<string>>,
+  inboundTranslationSliceTargets: Dict.t<option<string>>,
+  outboundTranslationSliceTargets: Dict.t<option<string>>,
   aggregates: array<aggregateDef>,
   readModels: array<readModelDef>,
   tasks: array<string>,
@@ -68,6 +72,30 @@ let extractMappingModules = (filePath: string): array<string> => {
 let sortedStems = (stems: array<string>): array<string> =>
   stems->Array.toSorted((a, b) => if a < b {-1.0} else if a > b {1.0} else {0.0})
 
+// Read a slice spec file and extract the value of `let targetName = ...`.
+// Returns Some(name) for string literals (including inside Some("...")),
+// or None for `let targetName = None` or when the line is absent.
+let extractTargetName = (filePath: string): option<string> => {
+  try {
+    let content = Generator_Node.readFileSync(filePath)
+    let result = ref(None)
+    content->String.split("\n")->Array.forEach(line => {
+      let trimmed = line->String.trimStart
+      if trimmed->String.startsWith("let targetName = ") {
+        let firstQuote = trimmed->String.indexOf("\"")
+        let lastQuote = trimmed->String.lastIndexOf("\"")
+        if firstQuote >= 0 && lastQuote > firstQuote {
+          result := Some(trimmed->String.slice(~start=firstQuote + 1, ~end=lastQuote))
+        }
+        // `let targetName = None` → no quotes found → result stays None
+      }
+    })
+    result.contents
+  } catch {
+  | _ => None
+  }
+}
+
 let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): resolved => {
   let eventMappings = findEventMappings(~srcDir)
 
@@ -77,6 +105,10 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let automationSlices = []
   let inboundTranslationSlices = []
   let outboundTranslationSlices = []
+  // relPath dicts for slices that declare targetName
+  let automationSliceRelPaths: Dict.t<string> = Dict.make()
+  let inboundTranslationSliceRelPaths: Dict.t<string> = Dict.make()
+  let outboundTranslationSliceRelPaths: Dict.t<string> = Dict.make()
   let aggregateSpecs: array<string> = []
   let aggregateBehaviors: array<string> = []
   let readModelStems: array<string> = []
@@ -92,9 +124,15 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     | StateChangeSlice => stateChangeSlices->Array.push(stem)
     | StateViewSlice => stateViewSlices->Array.push(stem)
     | StateViewSliceStream => stateViewSlicesStream->Array.push(stem)
-    | AutomationSlice => automationSlices->Array.push(stem)
-    | InboundTranslationSlice => inboundTranslationSlices->Array.push(stem)
-    | OutboundTranslationSlice => outboundTranslationSlices->Array.push(stem)
+    | AutomationSlice =>
+      automationSlices->Array.push(stem)
+      automationSliceRelPaths->Dict.set(stem, relPath)
+    | InboundTranslationSlice =>
+      inboundTranslationSlices->Array.push(stem)
+      inboundTranslationSliceRelPaths->Dict.set(stem, relPath)
+    | OutboundTranslationSlice =>
+      outboundTranslationSlices->Array.push(stem)
+      outboundTranslationSliceRelPaths->Dict.set(stem, relPath)
     | Aggregate =>
       if stem->String.endsWith("Behavior") {
         aggregateBehaviors->Array.push(stem)
@@ -181,6 +219,19 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     extensionPoints->Array.push({group: Some(group), mappings: mappings->sortedStems})
   })
 
+  // ── targetName extraction ──────────────────────────────────────────────────
+  let buildTargets = (stems: array<string>, relPaths: Dict.t<string>): Dict.t<option<string>> => {
+    let dict = Dict.make()
+    stems->Array.forEach(stem => {
+      let target = switch Dict.get(relPaths, stem) {
+      | None => None
+      | Some(relPath) => extractTargetName(Generator_Node.join([srcDir, relPath]))
+      }
+      dict->Dict.set(stem, target)
+    })
+    dict
+  }
+
   {
     stateChangeSlices: stateChangeSlices->sortedStems,
     stateViewSlices: stateViewSlices->sortedStems,
@@ -188,6 +239,15 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     automationSlices: automationSlices->sortedStems,
     inboundTranslationSlices: inboundTranslationSlices->sortedStems,
     outboundTranslationSlices: outboundTranslationSlices->sortedStems,
+    automationSliceTargets: buildTargets(automationSlices, automationSliceRelPaths),
+    inboundTranslationSliceTargets: buildTargets(
+      inboundTranslationSlices,
+      inboundTranslationSliceRelPaths,
+    ),
+    outboundTranslationSliceTargets: buildTargets(
+      outboundTranslationSlices,
+      outboundTranslationSliceRelPaths,
+    ),
     aggregates,
     readModels,
     tasks: tasks->sortedStems,

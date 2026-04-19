@@ -2,6 +2,7 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 
 function stripSuffix(s, suffix) {
   if (s.endsWith(suffix)) {
@@ -313,7 +314,31 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
   return ls;
 }
 
+function validateSliceTargets(resolved) {
+  let knownReceivers = resolved.aggregates.map(param => param.spec).concat(resolved.stateChangeSlices);
+  let check = (kind, stem, target) => {
+    if (target !== undefined) {
+      if (!knownReceivers.includes(target)) {
+        return Stdlib_JsError.throwWithMessage("Generator: " + kind + " `" + stem + "` declares targetName = \"" + target + "\" but no such command receiver exists. Valid targets: " + knownReceivers.join(", "));
+      } else {
+        return;
+      }
+    } else {
+      return Stdlib_JsError.throwWithMessage("Generator: " + kind + " `" + stem + "` is missing `let targetName = \"...\"`. Valid targets: " + knownReceivers.join(", "));
+    }
+  };
+  resolved.automationSlices.forEach(stem => check("AutomationSlice", stem, Stdlib_Option.getOr(resolved.automationSliceTargets[stem], undefined)));
+  resolved.inboundTranslationSlices.forEach(stem => check("InboundTranslationSlice", stem, Stdlib_Option.getOr(resolved.inboundTranslationSliceTargets[stem], undefined)));
+  resolved.outboundTranslationSlices.forEach(stem => {
+    let t = Stdlib_Option.getOr(resolved.outboundTranslationSliceTargets[stem], undefined);
+    if (t !== undefined && !knownReceivers.includes(t)) {
+      return Stdlib_JsError.throwWithMessage("Generator: OutboundTranslationSlice `" + stem + "` declares targetName = Some(\"" + t + "\") but no such command receiver exists. Valid targets: " + knownReceivers.join(", "));
+    }
+  });
+}
+
 function render(config, resolved) {
+  validateSliceTargets(resolved);
   let hasReadModels = resolved.readModels.length !== 0;
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
@@ -442,6 +467,7 @@ export {
   renderExtensionMakeParam,
   renderTaskMakeParam,
   renderPluginStructureCall,
+  validateSliceTargets,
   render,
 }
 /* No side effect */

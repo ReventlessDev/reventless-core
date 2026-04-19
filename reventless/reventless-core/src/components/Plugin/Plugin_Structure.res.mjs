@@ -179,16 +179,19 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let automationSliceDefs = automationSlices.map(AS => ({
     name: AS.Spec.name,
     consumedEventTypes: DcbTag$Reventless.extractVariantNames(AS.Spec.consumedEventSchema),
-    producedCommandTypes: DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema)
+    producedCommandTypes: DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema),
+    targetName: AS.Spec.targetName
   }));
   let outboundTranslationSliceDefs = outboundTranslationSlices.map(OTS => ({
     name: OTS.Spec.name,
     consumedEventTypes: DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema),
-    inboundCommandTypes: DcbTag$Reventless.extractVariantNames(OTS.Spec.inboundCommandSchema)
+    inboundCommandTypes: DcbTag$Reventless.extractVariantNames(OTS.Spec.inboundCommandSchema),
+    targetName: OTS.Spec.targetName
   }));
   let inboundTranslationSliceDefs = inboundTranslationSlices.map(ITS => ({
     name: ITS.Spec.name,
-    commandTypes: DcbTag$Reventless.extractVariantNames(ITS.Spec.commandSchema)
+    commandTypes: DcbTag$Reventless.extractVariantNames(ITS.Spec.commandSchema),
+    targetName: ITS.Spec.targetName
   }));
   let extensionDefs = extensions.map(E => {
     let delegateNames = E.mappings.map(M => M.delegateName);

@@ -81,4 +81,7 @@ module type Spec = {
 
   /** Heartbeat interval in seconds for sweeping pending/failed items. */
   let heartbeatInterval: int
+
+  /** Name of the aggregate or StateChangeSlice that receives the produced command. */
+  let targetName: string
 }

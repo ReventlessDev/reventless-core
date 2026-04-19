@@ -88,7 +88,8 @@ let ShipOrderSpec = {
   resolve: resolve,
   process: process,
   maxRetries: 3,
-  heartbeatInterval: 60
+  heartbeatInterval: 60,
+  targetName: "CreateShipment"
 };
 
 let moduleUrl$2 = import.meta.url;
@@ -145,7 +146,8 @@ let SkipProcessSpec = {
   resolve: resolve$1,
   process: process$1,
   maxRetries: 0,
-  heartbeatInterval: 60
+  heartbeatInterval: 60,
+  targetName: "Noop"
 };
 
 export {

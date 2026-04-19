@@ -62,6 +62,8 @@ let maxRetries = 3;
 
 let heartbeatInterval = 60;
 
+let targetName = "ShipOrder";
+
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/AutomationSlice/AutoShipOrder.res.mjs";
 
 export {
@@ -75,6 +77,7 @@ export {
   process,
   maxRetries,
   heartbeatInterval,
+  targetName,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

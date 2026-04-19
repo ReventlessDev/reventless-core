@@ -133,6 +133,8 @@ describe("InboundTranslationSlice Callback", () => {
           paymentId: string,
         })
 
+        let targetName = "ConfirmPayment"
+
         let translate = (input: externalInput) =>
           Ok(
             input.items->Array.map(item => (
@@ -186,6 +188,8 @@ describe("InboundTranslationSlice Callback", () => {
           orderId: @s.matches(Reventless.DcbTag.string) string,
           paymentId: string,
         })
+
+        let targetName = "ConfirmPayment"
 
         let translate = (_input: externalInput) => Ok([])
       }

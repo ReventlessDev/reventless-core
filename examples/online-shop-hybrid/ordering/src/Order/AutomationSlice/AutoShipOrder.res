@@ -31,3 +31,4 @@ let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
 
 let maxRetries = 3
 let heartbeatInterval = 60
+let targetName = "ShipOrder"
