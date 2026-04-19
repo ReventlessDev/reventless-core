@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.65 (2026-04-19)
+
+### Bug Fixes
+
+* **aws:** recover from stale __provider read_ returning undefined on pulumi refresh ([f367c73](https://github.com/ReventlessDev/reventless-core/commit/f367c731a8782674a2f30e4dfc0eee803471dc55))
+
+
 # 3.0.0-alpha.64 (2026-04-19)
 
 ### Dependency Updates
