@@ -16,7 +16,7 @@
 // Usage in the plugin builder (after allQueryDbs are assembled):
 //   StateTopic_AppSync.make(
 //     ~readModelName="Product",      // QueryDb key = ReadModel Spec.name
-//     ~topicName="catalog_Product",  // AppSync Events channel name (= returnTypeName)
+//     ~topicName="catalog_Product",  // AppSync Events channel (underscores → hyphens)
 //     ~allQueryDbs,
 //     ~api,
 //     ~opts,
@@ -27,42 +27,69 @@ open PulumiAws
 // ── Handler code ─────────────────────────────────────────────────────────────
 //
 // Processes DynamoDB Stream records → publishes full NewImage to AppSync Events channel.
-// The channel name is injected via TOPIC_NAME env var at deploy time.
+// Channel name: /default/{topicName} where topicName has underscores replaced with hyphens
+// (AppSync Events channels do not allow underscores in the channel path).
 //
-// SDK: @aws-sdk/client-appsync-events (lazy-imported — keeps closure serialisable).
-// Endpoint: APPSYNC_ENDPOINT env var = "https://{eventsApi.dns.http}" (full URL, no path).
-// The AppSyncEventsClient handles the /event path internally.
+// Uses native Node.js crypto + fetch with SigV4 — no extra SDK packages needed.
+// Credentials come from the Lambda execution role via the process.env AWS_* variables.
 
-let makeHandlerCode = (~topicName: string): string => `
+let makeHandlerCode = (~topicName: string): string => {
+  // AppSync Events channels cannot contain underscores — replace with hyphens.
+  let channelName = topicName->String.replaceAll("_", "-")
+  `
+import { createHmac, createHash } from "node:crypto";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
-const TOPIC_NAME = "${topicName}";
-const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT;
+const CHANNEL = "/default/${channelName}";
+const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT; // "https://{eventsApi.dns.http}"
 const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
 
-let _client = null;
+function sha256hex(data) {
+  return createHash("sha256").update(typeof data === "string" ? data : JSON.stringify(data)).digest("hex");
+}
+function hmacBuf(key, data) {
+  return createHmac("sha256", key).update(data).digest();
+}
 
-async function getClient() {
-  if (_client) return _client;
-  const { AppSyncEventsClient } = await import("@aws-sdk/client-appsync-events");
-  _client = new AppSyncEventsClient({ endpoint: APPSYNC_ENDPOINT, region: AWS_REGION });
-  return _client;
+async function signedHeaders(host, path, body) {
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  const sessionToken = process.env.AWS_SESSION_TOKEN;
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:\\-]|\\..../g, "").slice(0, 15) + "Z";
+  const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const headers = { host, "x-amz-date": amzDate, ...(sessionToken ? { "x-amz-security-token": sessionToken } : {}) };
+  const canonH = Object.entries(headers).sort(([a],[b]) => a.localeCompare(b)).map(([k,v]) => \`\${k}:\${v}\\n\`).join("");
+  const signH = Object.keys(headers).sort().join(";");
+  const cr = ["POST", path, "", canonH, signH, sha256hex(body)].join("\\n");
+  const scope = \`\${dateStamp}/\${AWS_REGION}/appsync/aws4_request\`;
+  const sts = ["AWS4-HMAC-SHA256", amzDate, scope, sha256hex(cr)].join("\\n");
+  const kDate = hmacBuf("AWS4" + secretAccessKey, dateStamp);
+  const kSigning = hmacBuf(hmacBuf(hmacBuf(kDate, AWS_REGION), "appsync"), "aws4_request");
+  const sig = createHmac("sha256", kSigning).update(sts).digest("hex");
+  return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
 }
 
 export async function handler(event) {
-  const { PublishEvents } = await import("@aws-sdk/client-appsync-events");
-  const client = await getClient();
+  const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
     if (record.eventName === "REMOVE") continue;
     const newImage = unmarshall(record.dynamodb.NewImage);
-    await client.send(new PublishEvents({
-      channelNamespace: "default",
-      channelName: TOPIC_NAME,
-      events: [JSON.stringify(newImage)],
-    }));
+    const body = JSON.stringify({ id: record.eventID, channel: CHANNEL, events: [JSON.stringify(newImage)] });
+    const auth = await signedHeaders(url.hostname, "/event", body);
+    const res = await fetch(APPSYNC_ENDPOINT + "/event", {
+      method: "POST",
+      headers: { accept: "application/json, text/javascript", "content-encoding": "amz-1.0", "content-type": "application/json; charset=UTF-8", ...auth },
+      body,
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("StateTopic publish failed:", res.status, txt);
+    }
   }
 }
 `
+}
 
 // ── Deploy-time resource builder ──────────────────────────────────────────────
 

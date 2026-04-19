@@ -4,14 +4,14 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as Category$CatalogPlugin from "./Category/Aggregate/Category.res.mjs";
 import * as AddProduct$CatalogPlugin from "./Product/StateChangeSlice/AddProduct.res.mjs";
-import * as ProductsView$CatalogPlugin from "./Product/StateViewSlice/ProductsView.res.mjs";
+import * as ProductsView$CatalogPlugin from "./Product/StateViewSliceStream/ProductsView.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as OrdersExtension$CatalogPlugin from "./Extension/OrdersExtension.res.mjs";
 import * as CategoryBehavior$CatalogPlugin from "./Category/Aggregate/CategoryBehavior.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as ProductDemandView$CatalogPlugin from "./Product/StateViewSlice/ProductDemandView.res.mjs";
+import * as ProductDemandView$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemandView.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice.res.mjs";
 import * as CategoriesReadModel$CatalogPlugin from "./Category/ReadModel/CategoriesReadModel.res.mjs";
 import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-hybrid-ordering-spec/src/OrdersExtensionPoint.res.mjs";
@@ -82,7 +82,7 @@ function Make(Platform) {
     decide: RecordProductDemand$CatalogPlugin.decide,
     commandSchema: RecordProductDemand$CatalogPlugin.commandSchema
   });
-  let ProductDemandViewSlice = Platform.StateViewSlice.Make({
+  let ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make({
     name: ProductDemandView$CatalogPlugin.name,
     moduleUrl: ProductDemandView$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemandView$CatalogPlugin.stateSchema,
@@ -91,7 +91,7 @@ function Make(Platform) {
     config: ProductDemandView$CatalogPlugin.config,
     subIdConfig: undefined
   });
-  let ProductsViewSlice = Platform.StateViewSlice.Make({
+  let ProductsViewStreamSlice = Platform.StateViewSliceStream.Make({
     name: ProductsView$CatalogPlugin.name,
     moduleUrl: ProductsView$CatalogPlugin.moduleUrl,
     stateSchema: ProductsView$CatalogPlugin.stateSchema,
@@ -183,8 +183,8 @@ function Make(Platform) {
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
   let uiDefinition = Platform.Plugin.makeAutoUIDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
-    ProductDemandViewSlice,
-    ProductsViewSlice
+    ProductDemandViewStreamSlice,
+    ProductsViewStreamSlice
   ], [
     AddProductSlice,
     ChangeProductDescriptionSlice,
@@ -199,8 +199,8 @@ function Make(Platform) {
     ChangeProductPriceSlice,
     RecordProductDemandSlice
   ], [
-    ProductDemandViewSlice,
-    ProductsViewSlice
+    ProductDemandViewStreamSlice,
+    ProductsViewStreamSlice
   ], undefined, undefined, [ImportProductSlice], undefined, uiDefinition, undefined);
   return {
     AddProductSlice: AddProductSlice,
@@ -208,8 +208,8 @@ function Make(Platform) {
     ChangeProductNameSlice: ChangeProductNameSlice,
     ChangeProductPriceSlice: ChangeProductPriceSlice,
     RecordProductDemandSlice: RecordProductDemandSlice,
-    ProductDemandViewSlice: ProductDemandViewSlice,
-    ProductsViewSlice: ProductsViewSlice,
+    ProductDemandViewStreamSlice: ProductDemandViewStreamSlice,
+    ProductsViewStreamSlice: ProductsViewStreamSlice,
     ImportProductSlice: ImportProductSlice,
     CategoryAggregate: CategoryAggregate,
     CategoriesProjectionsWrapper: CategoriesProjectionsWrapper,

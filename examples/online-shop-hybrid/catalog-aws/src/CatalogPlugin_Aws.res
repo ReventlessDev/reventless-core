@@ -13,9 +13,9 @@ module Make = (
   module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductPrice)
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(CatalogPlugin.RecordProductDemand)
 
-  // StateViewSlices
-  module ProductDemandViewSlice = Platform.StateViewSlice.Make(CatalogPlugin.ProductDemandView)
-  module ProductsViewSlice = Platform.StateViewSlice.Make(CatalogPlugin.ProductsView)
+  // StateViewSliceStreams
+  module ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make(CatalogPlugin.ProductDemandView)
+  module ProductsViewStreamSlice = Platform.StateViewSliceStream.Make(CatalogPlugin.ProductsView)
 
   // InboundTranslationSlices
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(CatalogPlugin.ImportProduct)
@@ -66,7 +66,7 @@ module Make = (
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate)],
     ~readModels=[module(CategoriesReadModelMaker)],
-    ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
+    ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
     ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
   )
 
@@ -80,7 +80,7 @@ module Make = (
       ~readModels=[module(CategoriesReadModelMaker)],
       ~tasks=[module(ImportProductsTask)],
       ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
-      ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
+      ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
       ~uiDefinition=uiDefinition,
     )

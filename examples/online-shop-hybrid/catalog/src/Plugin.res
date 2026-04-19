@@ -9,9 +9,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice)
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand)
 
-  // StateViewSlices
-  module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
-  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
+  // StateViewSliceStreams
+  module ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make(ProductDemandView)
+  module ProductsViewStreamSlice = Platform.StateViewSliceStream.Make(ProductsView)
 
   // InboundTranslationSlices
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)
@@ -43,7 +43,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate)],
     ~readModels=[module(CategoriesReadModelMaker)],
-    ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
+    ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
     ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
   )
 
@@ -57,7 +57,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~readModels=[module(CategoriesReadModelMaker)],
       ~tasks=[module(ImportProductsTask)],
       ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
-      ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
+      ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
       ~uiDefinition=uiDefinition,
     )

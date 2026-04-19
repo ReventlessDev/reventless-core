@@ -17,23 +17,42 @@ import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQ
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
 function makeHandlerCode(topicName) {
+  let channelName = topicName.replaceAll("_", "-");
   return `
-import { AppSyncEventsClient, PublishEvents } from "@aws-sdk/client-appsync-events";
+import { createHmac, createHash } from "node:crypto";
 
-const TOPIC_NAME = "` + topicName + `";
+const CHANNEL = "/default/` + channelName + `";
 const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT;
 const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
 
-let _client = null;
+function sha256hex(data) {
+  return createHash("sha256").update(typeof data === "string" ? data : JSON.stringify(data)).digest("hex");
+}
+function hmacBuf(key, data) {
+  return createHmac("sha256", key).update(data).digest();
+}
 
-async function getClient() {
-  if (_client) return _client;
-  _client = new AppSyncEventsClient({ endpoint: APPSYNC_ENDPOINT, region: AWS_REGION });
-  return _client;
+async function signedHeaders(host, path, body) {
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+  const sessionToken = process.env.AWS_SESSION_TOKEN;
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:\\-]|\\..../g, "").slice(0, 15) + "Z";
+  const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const headers = { host, "x-amz-date": amzDate, ...(sessionToken ? { "x-amz-security-token": sessionToken } : {}) };
+  const canonH = Object.entries(headers).sort(([a],[b]) => a.localeCompare(b)).map(([k,v]) => \`\${k}:\${v}\\n\`).join("");
+  const signH = Object.keys(headers).sort().join(";");
+  const cr = ["POST", path, "", canonH, signH, sha256hex(body)].join("\\n");
+  const scope = \`\${dateStamp}/\${AWS_REGION}/appsync/aws4_request\`;
+  const sts = ["AWS4-HMAC-SHA256", amzDate, scope, sha256hex(cr)].join("\\n");
+  const kDate = hmacBuf("AWS4" + secretAccessKey, dateStamp);
+  const kSigning = hmacBuf(hmacBuf(hmacBuf(kDate, AWS_REGION), "appsync"), "aws4_request");
+  const sig = createHmac("sha256", kSigning).update(sts).digest("hex");
+  return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
 }
 
 export async function handler(event) {
-  const client = await getClient();
+  const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
     let body;
     try {
@@ -43,17 +62,18 @@ export async function handler(event) {
       continue;
     }
     const originatorSlice = body.tags?.find(t => t.key === "originatorSlice")?.value;
-    const payload = {
-      position: body.position,
-      eventType: body.eventType,
-      payload: body.data,
-      originatorSlice: originatorSlice ?? null,
-    };
-    await client.send(new PublishEvents({
-      channelNamespace: "default",
-      channelName: TOPIC_NAME,
-      events: [JSON.stringify(payload)],
-    }));
+    const payload = { position: body.position, eventType: body.eventType, payload: body.data, originatorSlice: originatorSlice ?? null };
+    const reqBody = JSON.stringify({ id: record.messageId, channel: CHANNEL, events: [JSON.stringify(payload)] });
+    const auth = await signedHeaders(url.hostname, "/event", reqBody);
+    const res = await fetch(APPSYNC_ENDPOINT + "/event", {
+      method: "POST",
+      headers: { accept: "application/json, text/javascript", "content-encoding": "amz-1.0", "content-type": "application/json; charset=UTF-8", ...auth },
+      body: reqBody,
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("EventLogSubscription publish failed:", res.status, txt);
+    }
   }
 }
 `;

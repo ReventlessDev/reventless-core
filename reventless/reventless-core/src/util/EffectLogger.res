@@ -15,9 +15,16 @@
 type loggerOptions
 type logLevel
 
-@get external _message: loggerOptions => array<string> = "message"
+@get external _message: loggerOptions => JSON.t = "message"
 @get external _logLevel: loggerOptions => logLevel = "logLevel"
 @get external _ordinal: logLevel => int = "ordinal"
+
+let _messageToString = (msg: JSON.t): string =>
+  switch msg {
+  | Array(arr) => arr->Array.map(j => j->JSON.stringifyAny->Option.getOr(""))->Array.join(" ")
+  | String(s) => s
+  | _ => msg->JSON.stringifyAny->Option.getOr("")
+  }
 
 type effectLogger = {mutable log: loggerOptions => unit}
 
@@ -37,7 +44,7 @@ let ordinalToLevel = ordinal =>
 
 let install = () =>
   _defaultLogger.log = opts => {
-    let raw = opts->_message->Array.join(" ")
+    let raw = opts->_message->_messageToString
     let level = opts->_logLevel->_ordinal->ordinalToLevel
     // Split on null-byte separator: "message\x00{detail json}"
     let idx = raw->String.indexOf(Logger.detailSeparator)

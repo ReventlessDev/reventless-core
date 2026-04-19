@@ -1,6 +1,6 @@
 # Plan: GraphQL Subscriptions — AppSync Real-Time Infrastructure
 
-## Status: Phases 1–6 complete. Source C verified in AWS. Source B infrastructure deployed and subscription resolvers created. Source A skipped for DDB stream event topics (only SNS-backed topics eligible). End-to-end push verification pending.
+## Status: Phases 1–6 complete. Source C verified in AWS. Source B publish chain verified (DDB Stream → Lambda → AppSync Events HTTP publish — two latent Lambda handler bugs fixed, see Phase 4). WebSocket subscriber verification blocked by unresolved client `Sec-WebSocket-Protocol` format. Source A infrastructure ready but no SNS-backed event topics currently deployed in the example stack.
 
 ### Bug fixed (2026-04-18): `Plugin_SubscriptionSchema.sourceCFields` used `String.replace(": String!", ...)` which replaced the first occurrence — hitting String! args before the return type. Fixed to `sub ++ @aws_subscribe directive` (append at end). Deployed fragments and pushed corrected schema.
 
@@ -224,7 +224,11 @@ Wiring `StateTopic_AppSync.make` per ReadModel/StateViewSlice is left as opt-in 
 - [x] NONE data source per StateTopic for AppSync UNIT resolver requirement
 - [x] `ProductsStream2ProductsStateTopic` + `ProductDemandStream2ProductDemandStateTopic` ESMs deployed
 - [x] `onCatalog_ProductStateChanged` + `onCatalog_ProductDemandStateChanged` subscription resolvers deployed
-- [ ] Verify: state change → push reaches WebSocket subscriber
+- [x] Verify: state change → publish chain (DDB Stream → Lambda → AppSync Events HTTP publish)
+  - Two pre-existing bugs fixed: (1) handler used nonexistent `@aws-sdk/client-appsync-events` — replaced with native SigV4+fetch; (2) AppSync Events channels forbid underscores — `topicName` normalized via `_`→`-`
+  - Verified via direct DDB write to `Products-07b7f5f` table: DDB Stream fired, Lambda invoked, zero errors in CloudWatch
+  - Verified HTTP publish format via direct `POST /event` calls: 200 OK for `/default/catalog-Product` channel
+- [ ] Verify: push reaches WebSocket subscriber (client-side `Sec-WebSocket-Protocol` format for AppSync Events WebSocket remains unresolved — all attempted protocol variants return `SubProtocolNotSupportedError`)
 
 ---
 
@@ -281,7 +285,8 @@ Call site: `EventLogSubscription_AppSync.make(~name, ~topicName, ~eventTopic, ~a
 - [x] Inline handler: parse SNS body → extract `originatorSlice` from tags → publish to AppSync Events channel
 - [x] Wire `EventLogSubscription_AppSync.make` per SNS-backed entry in `eventLogEntries` via `subscriptionInfraHook` in `Platform.res`
 - [x] Guard: DDB stream event topics (Category, Catalog DCB) skipped via `EventTopicPublisher_SNS.snsRegistry`
-- [ ] Verify: domain event → push reaches admin WebSocket subscriber (SNS-backed topics only)
+- [x] Handler fixes applied (same as Source B): native SigV4+fetch replacing nonexistent SDK + underscore→hyphen channel normalization
+- [ ] Verify: domain event → push reaches admin WebSocket subscriber — no SNS-backed event topics currently deployed in the hybrid example stack (all aggregate event topics use `EventTopicPublisher_DynamoDbStream`); requires a plugin with `EventTopicPublisher_SNS` configured to exercise end-to-end
 
 ---
 
