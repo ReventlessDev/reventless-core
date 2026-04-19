@@ -1,20 +1,21 @@
 name: Release
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main, beta, alpha]
-    paths-ignore:
-      - 'docs/**'
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   release:
     name: Release Packages
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
       packages: write
@@ -23,19 +24,11 @@ jobs:
       checks: read
       actions: write
     steps:
-      - name: Wait for CI and Security Scan
-        uses: lewagon/wait-on-check-action@v1.5.0
-        with:
-          ref: ${{ github.sha }}
-          check-regexp: "(CI|Security Scan).*"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-          allowed-conclusions: success
-          fail-on-no-checks: false
       - name: Checkout code
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
@@ -105,7 +98,7 @@ jobs:
         if: steps.changes.outputs.count != '0'
         id: prerelease
         run: |
-          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          BRANCH_NAME="${{ github.event.workflow_run.head_branch || github.ref_name }}"
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
           if [ "$BRANCH_NAME" = "alpha" ]; then
