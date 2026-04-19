@@ -31,6 +31,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~name="Ordering",
     ~stateViewSlices=[module(AvailableProductsViewSlice), module(CustomersViewSlice), module(OrdersViewSlice)],
     ~stateChangeSlices=[module(CancelOrderSlice), module(ChangeAddressSlice), module(ChangeEmailSlice), module(DeactivateCustomerSlice), module(PlaceOrderSlice), module(RegisterCustomerSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
+    ~automationSlices=[module(AutoShipOrderSlice)],
+    ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
+    ~extensions=[module(ProductsExtensionMaker)],
   )
 
   let make = () =>

@@ -266,8 +266,8 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
-function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices) {
-  let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0;
+function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions) {
+  let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0 || extensions.length !== 0;
   if (!hasComponents) {
     return;
   }
@@ -292,6 +292,22 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
   if (stateChangeSlices.length !== 0) {
     let entries$2 = stateChangeSlices.map(s => "module(" + s + "Slice)");
     ls.push("    ~stateChangeSlices=[" + entries$2.join(", ") + "],");
+  }
+  if (automationSlices.length !== 0) {
+    let entries$3 = automationSlices.map(s => "module(" + s + "Slice)");
+    ls.push("    ~automationSlices=[" + entries$3.join(", ") + "],");
+  }
+  if (outboundTranslationSlices.length !== 0) {
+    let entries$4 = outboundTranslationSlices.map(s => "module(" + s + "Slice)");
+    ls.push("    ~outboundTranslationSlices=[" + entries$4.join(", ") + "],");
+  }
+  if (inboundTranslationSlices.length !== 0) {
+    let entries$5 = inboundTranslationSlices.map(s => "module(" + s + "Slice)");
+    ls.push("    ~inboundTranslationSlices=[" + entries$5.join(", ") + "],");
+  }
+  if (extensions.length !== 0) {
+    let entries$6 = extensions.map(s => "module(" + s + "Maker)");
+    ls.push("    ~extensions=[" + entries$6.join(", ") + "],");
   }
   ls.push("  )");
   return ls;
@@ -368,7 +384,7 @@ function render(config, resolved) {
     lines.push("  // Extensions");
     push(ns !== undefined ? renderExtensionsAws(ns, resolved.extensions) : renderExtensions(resolved.extensions));
   }
-  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices);
+  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions);
   let hasPluginStructure = Stdlib_Option.isSome(pluginStructureLines);
   if (pluginStructureLines !== undefined) {
     pluginStructureLines.forEach(l => {

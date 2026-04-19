@@ -98,7 +98,7 @@ let structure = Plugin_Structure$ReventlessCore.make("TestPlugin", undefined, un
 ], [
   PsPlaceOrderSlice,
   PsShipOrderSlice
-]);
+], undefined, undefined, undefined, undefined);
 
 Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   Jest.describe("stateChangeSlices", () => {

@@ -325,13 +325,21 @@ let renderPluginStructureCall = (
   ~stateViewSlices: array<string>,
   ~stateViewSlicesStream: array<string>,
   ~stateChangeSlices: array<string>,
+  ~automationSlices: array<string>,
+  ~outboundTranslationSlices: array<string>,
+  ~inboundTranslationSlices: array<string>,
+  ~extensions: array<string>,
 ): option<array<string>> => {
   let hasComponents =
     aggregates->Array.length > 0 ||
     readModels->Array.length > 0 ||
     stateViewSlices->Array.length > 0 ||
     stateViewSlicesStream->Array.length > 0 ||
-    stateChangeSlices->Array.length > 0
+    stateChangeSlices->Array.length > 0 ||
+    automationSlices->Array.length > 0 ||
+    outboundTranslationSlices->Array.length > 0 ||
+    inboundTranslationSlices->Array.length > 0 ||
+    extensions->Array.length > 0
   if !hasComponents {
     None
   } else {
@@ -356,6 +364,22 @@ let renderPluginStructureCall = (
     if stateChangeSlices->Array.length > 0 {
       let entries = stateChangeSlices->Array.map(s => "module(" ++ s ++ "Slice)")
       ls->Array.push("    ~stateChangeSlices=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if automationSlices->Array.length > 0 {
+      let entries = automationSlices->Array.map(s => "module(" ++ s ++ "Slice)")
+      ls->Array.push("    ~automationSlices=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if outboundTranslationSlices->Array.length > 0 {
+      let entries = outboundTranslationSlices->Array.map(s => "module(" ++ s ++ "Slice)")
+      ls->Array.push("    ~outboundTranslationSlices=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if inboundTranslationSlices->Array.length > 0 {
+      let entries = inboundTranslationSlices->Array.map(s => "module(" ++ s ++ "Slice)")
+      ls->Array.push("    ~inboundTranslationSlices=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if extensions->Array.length > 0 {
+      let entries = extensions->Array.map(s => "module(" ++ s ++ "Maker)")
+      ls->Array.push("    ~extensions=[" ++ entries->Array.join(", ") ++ "],")
     }
     ls->Array.push("  )")
     Some(ls)
@@ -516,6 +540,10 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     ~stateViewSlices=resolved.stateViewSlices,
     ~stateViewSlicesStream=resolved.stateViewSlicesStream,
     ~stateChangeSlices=resolved.stateChangeSlices,
+    ~automationSlices=resolved.automationSlices,
+    ~outboundTranslationSlices=resolved.outboundTranslationSlices,
+    ~inboundTranslationSlices=resolved.inboundTranslationSlices,
+    ~extensions=resolved.extensions,
   )
   let hasPluginStructure = pluginStructureLines->Option.isSome
   switch pluginStructureLines {

@@ -76,5 +76,9 @@ module type T = {
     ~readModels: array<module(ReadModel.T with type api = api and type role = role)>=?,
     ~stateViewSlices: array<module(StateViewSlice.T)>=?,
     ~stateChangeSlices: array<module(StateChangeSlice.T)>=?,
+    ~automationSlices: array<module(AutomationSlice.T)>=?,
+    ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>=?,
+    ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>=?,
+    ~extensions: array<module(Extension.Blueprint)>=?,
   ) => Reventless.Plugin.pluginStructure
 }

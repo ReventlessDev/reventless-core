@@ -206,7 +206,7 @@ function Make(Platform) {
     RefundOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
-  ]);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [ProductsExtensionMaker]);
   let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomersReadModelMaker], undefined, [
     CancelOrderSlice,
     PlaceOrderSlice,

@@ -191,7 +191,7 @@ function Make(Platform) {
     ChangeProductNameSlice,
     ChangeProductPriceSlice,
     RecordProductDemandSlice
-  ]);
+  ], undefined, undefined, [ImportProductSlice], [OrdersExtensionMaker]);
   let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoriesReadModelMaker], [ImportProductsTask], [
     AddProductSlice,
     ChangeProductDescriptionSlice,

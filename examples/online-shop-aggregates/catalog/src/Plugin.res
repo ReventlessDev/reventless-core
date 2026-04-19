@@ -49,6 +49,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
     ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), module(ProductsReadModelMaker)],
+    ~extensions=[module(OrdersExtensionMaker)],
   )
 
   let make = () =>

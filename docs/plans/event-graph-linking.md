@@ -6,100 +6,52 @@ An event-sourced system is already a directed graph — write-side components pr
 
 ---
 
-## Phase 1 — Rename `uiDefinition` → `pluginDefinition` (breaking, pure refactor)
+## ~~Phase 1 — Rename `uiDefinition` → `pluginDefinition` (breaking, pure refactor)~~ ✅ DONE (8edd6673)
 
-**Goal.** Rename the existing Auto-UI-shaped API to reflect that it describes the plugin, not a UI, so subsequent phases can extend it without perpetuating the misleading name.
+**Naming decision (actual vs. planned).** The wire-level `pluginDefinition` record kept its name. The Auto-UI-shaped metadata record became **`pluginStructure`** (not `pluginDefinition` as originally proposed) to avoid a collision. All three sub-types renamed: `uiCommandDef` → `commandDef`, `uiQueryableDef` → `queryableDef`, `uiWritableDef` → `writableDef`. `makeAutoUIDefinition` → `makePluginDefinition`; the generated binding is `let pluginStructure = Platform.Plugin.makePluginDefinition(...)`. All example `Plugin.res` files regenerated.
 
-**Files to change.**
-- [Plugin.res](../../reventless/reventless-spec/src/components/Plugin.res) — rename the four record types and the sub-type fields at lines 100-111.
-- [Plugin_Builder.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res) — rename `makeAutoUIDefinition` → `makePluginDefinition`, update the `~uiDefinition` parameter on `construct` / `make` to `~pluginDefinition`, and rename the `uiDefinition` field on the builder outputs.
-- [Codegen.res](../../reventless/reventless-spec/src/generator/Codegen.res) — `renderUiDefinitionCall` emits `let pluginDefinition = Platform.Plugin.makePluginDefinition(...)`; rename the function too (e.g. `renderPluginDefinitionCall`).
-- [PluginSpec.res](../../reventless/reventless-core/src/admin/PluginSpec.res) — already uses `pluginDefinition`; verify it still compiles against the renamed types.
-- [Platform_Admin.res](../../reventless/reventless-core/src/admin/Platform_Admin.res) — `fakePluginDefinition` binding (line 70) already names the value correctly; types flow through from `Plugin.res`.
-- [Plugin.res (infra)](../../reventless/reventless-infra/src/components/Plugin.res) — update any mirrored type signatures.
-- All three examples — `Plugin.res` files under `examples/online-shop-aggregates/*/src/`, `examples/online-shop-dcb/*/src/`, `examples/online-shop-hybrid/*/src/` — regenerate via `npm run generate`.
-- CHANGELOG entries: `reventless-spec`, `reventless-core`, and affected examples get a `feat!:` note.
-
-**Concrete steps.**
-1. In [Plugin.res](../../reventless/reventless-spec/src/components/Plugin.res), rename the records: `uiCommandDef` → `commandDef`, `uiQueryableDef` → `queryableDef`, `uiWritableDef` → `writableDef`, `uiDefinition` → `pluginDefinition` (standalone record — **not** the existing `@schema`-annotated `pluginDefinition` record at line 121 which is the wire-level plugin self-description). Resolve the name collision by renaming the wire-level record to `pluginWireDefinition` (or similar) and updating every reference — `PluginSpec.res`, `Platform_Admin.res`, `Admin_Callback.res`, `PluginRuntime_Builder`, `Plugin_Builder.res`. **Decide and document which of the two records owns the name `pluginDefinition`** before renaming. Recommended: the wire-level record keeps `pluginDefinition` (many downstream references); the Auto-UI-shaped record becomes `pluginDefinition` too only if it subsumes the wire record. If they remain distinct, name the Auto-UI-shaped record `pluginStructure` or similar. The analysis document uses `pluginDefinition` for the Auto-UI-shaped one — reconcile in this step.
-2. Rename `makeAutoUIDefinition` → `makePluginDefinition` in `Plugin_Builder.res` (lines 687-758). Update the `~uiDefinition` optional parameter name on `construct` and `make` to whatever name the new record takes (step 1 decides this).
-3. Update `Codegen.res` at lines 321-363: rename the helper, change `"let uiDefinition = Platform.Plugin.makeAutoUIDefinition("` → the new binding and function names.
-4. Regenerate all example `Plugin.res` files.
-5. Grep for any residual `uiDefinition` / `makeAutoUIDefinition` / `uiCommandDef` / `uiQueryableDef` / `uiWritableDef` tokens in source and CHANGELOGs; update or leave historical CHANGELOG entries untouched.
-
-**Validation.**
-- `npm run build` at the workspace root succeeds.
-- All three examples regenerate without diffs other than the rename and compile.
-- The existing in-memory e2e suite (the tests exercised by [online-shop-hybrid-autoui-devapp.md](online-shop-hybrid-autoui-devapp.md)) passes unchanged.
-
-**Commit message.**
-`feat!: rename uiDefinition to pluginDefinition (makeAutoUIDefinition → makePluginDefinition)`
+Cross-repo impact: UI consumers must replace `uiDefinition` / `makeAutoUIDefinition` / `uiCommandDef` / `uiQueryableDef` / `uiWritableDef` with the new names (see bottom of this file).
 
 ---
 
-## Phase 2 — Tier 2a extractions (schema-derived fields, no Spec changes)
+## ~~Phase 2 — Tier 2a extractions (schema-derived fields, no Spec changes)~~ ✅ DONE (8edd6673)
 
-**Goal.** Surface every graph field that can be derived purely from schemas `makePluginDefinition` already holds: consumed/produced event type names, per-command `level`, `aggregateIdField`, `linkedViews`, and `consistencyRead`.
+**What landed (actual vs. planned).**
 
-**Files to change.**
-- [Plugin.res](../../reventless/reventless-spec/src/components/Plugin.res) — extend the renamed record types:
-  - `commandLevel = Collection | Instance`
-  - `commandDef` gains `level: commandLevel` and `aggregateIdField: option<string>`
-  - `queryableDef` gains `linkedWriteSide: array<string>` and `consumedEventTypes: array<string>`
-  - `writableDef` gains `producedEventTypes: array<string>`, `consumedEventTypes: array<string>`, `linkedViews: array<string>`, and `consistencyRead: option<string>`
-- [Plugin_Builder.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res) — extend `makePluginDefinition` (currently lines 687-758) to fill the new fields. `Plugin_Builder` already calls `DcbTag.extractVariantNames` at line 113 and `DcbDecode.makeDecoder` on `consumedEventSchema` at StateViewSlice construction — both prove the needed schemas are reachable from the modules already passed in.
+All planned fields were populated:
+- `commandDef` gains `level: commandLevel` and `aggregateIdField: option<string>`
+- `queryableDef` gains `consumedEventTypes` and `linkedWriteSide`
+- `writableDef` gains `producedEventTypes`, `consumedEventTypes`, `linkedViews`, `consistencyRead`
 
-**Concrete steps.**
-1. In `Plugin.res`, extend the record definitions as above. None of the new fields require `@schema` — they are consumed by Node-side tooling only, not sent over the wire.
-2. In `Plugin_Builder.makePluginDefinition`, for every `module(Aggregate.T)` / `module(StateChangeSlice.T)`:
-   - Call `DcbTag.extractVariantNames(Spec.eventSchema)` for produced events.
-   - Call `DcbTag.extractVariantNames(Spec.consumedEventSchema)` on StateChangeSlice for consumed events.
-3. Per-command level/idField: walk each variant of `Spec.commandSchema` (same `Union({anyOf})` pattern `toCommandDef` already uses at line 695). For each variant's property set, cross-reference with `DcbTag.extractTaggedFields(Spec.stateSchema)` (DCB) or the Aggregate's `@id`-marked field (Aggregate). If the command variant contains the entity-id field → `Instance` with `aggregateIdField: Some(name)`; otherwise `Collection`. For aggregates, the id field is whichever field the aggregate's `Spec.stateSchema` identifies as the aggregate root — typically surfaced through the same DCB tag metadata pattern for DCB components, and via the Aggregate's convention for aggregates. Read [Aggregate.res](../../reventless/reventless-spec/src/components/Aggregate.res) to confirm the exact id-field lookup (likely `Spec.id` or a metadata lookup on `stateSchema`).
-4. Per-view `linkedWriteSide` / `consumedEventTypes`: for each `queryableDef` (ReadModel + StateViewSlice), extract consumed-event variant names from `Spec.consumedEventSchema`. For `linkedWriteSide`, intersect the view's consumed event names with each writable's produced event names; emit the writable's name on match.
-5. Per-writable `linkedViews`: inverse of step 4 — for each writable, the list of queryables whose `consumedEventTypes` contain any of the writable's `producedEventTypes`.
-6. `consistencyRead` for a StateChangeSlice: the StateViewSlice whose `Spec.consumedEventSchema` variants overlap maximally with the SCS's `Spec.consumedEventSchema` variants (the analysis notes the SCS reads its decision model from a view — the view it shares the most consumed events with is the canonical tie-break). This is a heuristic; emit `Some(viewName)` only when the overlap is unambiguous (single best match), else `None`.
+**Extra: `Plugin_Structure.res` extraction.** The extraction logic was pulled out of `Plugin_Builder.Make` into a standalone [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) pure function (polymorphic over `api`/`role` phantom types via ReScript locally-abstract-type syntax `let make = (type api role, ...)`). `Plugin_Builder.makePluginDefinition` now delegates to it. This allows direct unit testing without spinning up a Platform.
 
-**Validation.**
-- Add a unit test in [reventless-core/test/](../../reventless/reventless-core/test/) that builds the DCB hybrid catalog plugin modules in-process and asserts, for `PlaceOrder` SCS: `producedEventTypes` contains `"OrderPlaced"`, `linkedViews` contains `"OrdersView"`, `consistencyRead` is `Some("AvailableProducts")`, and for `ShipOrder` command `level` is `Instance` with `aggregateIdField: Some("orderId")`.
-- Manual: the in-memory dev app's `pluginDefinition` JSON dump now contains populated `linkedViews` / `consistencyRead` / `level` / `aggregateIdField` / `producedEventTypes` / `consumedEventTypes` fields.
+**Bug fix: single-variant command schemas.** A `@schema type command = Foo({...})` with only one variant compiles to a bare `Object` schema in sury — not a `Union`. The original `extractCommandDefs` only matched `Union({anyOf})` and produced empty `commands` arrays for almost every aggregate and SCS. Fixed with a fallback case:
+```rescript
+| _ => toCommandDef(~isAggregate, commandSchema)->Option.mapOr([], def => [def])
+```
 
-**Commit message.**
-`feat: extract produced/consumed events, level, aggregateIdField, linkedViews, consistencyRead in makePluginDefinition`
+**`DcbTag.extractVariantNames` excludes payload-less literals.** The function only processes `Object` variants with a TAG field. Payload-less variants (`| OrderPlaced`) serialize as `String({const})` and are excluded. This is correct: they carry no DCB tag data and do not participate in event-type cross-referencing. The `consistencyRead` heuristic works correctly with this behaviour (PlaceOrder SCS consumed `CatalogProductSynced` unambiguously → `Some("AvailableProducts")`; ShipOrder consumed no payload-bearing events → `None`).
+
+**Level/aggregateIdField heuristic.** For aggregates: always `Instance`, `aggregateIdField: None`. For SCS commands: inspect the command variant's properties for any field (other than TAG) where `DcbTag.isTagged` or `DcbTag.isTaggedArray` returns true → `Instance` with that field name; if none found → `Collection`.
+
+**Tests.** 16 unit tests in [PluginStructureTest.res](../../reventless/reventless-core/tests/plugin/PluginStructureTest.res) covering all graph fields directly against `Plugin_Structure.make` (no Platform needed). Inline stub T modules use `Obj.magic(0)` for the `make` body.
 
 ---
 
-## Phase 3 — Tier 2b wiring (EventMapper, SideEffect, AutomationSlice, Outbound/Inbound Translation, Extension)
+## ~~Phase 3 — Tier 2b wiring (AutomationSlice, Outbound/Inbound Translation, Extension)~~ ✅ DONE (next commit)
 
-**Goal.** Pass the remaining component module arrays through to `makePluginDefinition` so their schema-derived edges appear in the graph. EventMapper edges are the highest-value addition and land first.
+**What landed vs. planned.**
 
-**Files to change.**
-- [Plugin.res](../../reventless/reventless-spec/src/components/Plugin.res) — add new record types for these components in `pluginDefinition`:
-  - `eventMapperDef = {name: string, sourceAggregate: string, sourceEventTypes: array<string>, targetName: string}`
-  - `sideEffectDef = {name: string, sourceAggregate: string, triggeringEventTypes: array<string>}`
-  - `automationSliceDef = {name: string, consumedEventTypes: array<string>, producedCommandTypes: array<string>, targetName: option<string>}` (targetName populated in Phase 4)
-  - `outboundTranslationSliceDef`, `inboundTranslationSliceDef`, `extensionDef` analogously
-  - add `eventMappers`, `sideEffects`, `automationSlices`, `outboundTranslationSlices`, `inboundTranslationSlices`, `extensions` arrays on `pluginDefinition`
-- [Plugin_Builder.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res) — extend `makePluginDefinition` signature with `~eventMappers`, `~sideEffects`, `~automationSlices`, `~outboundTranslationSlices`, `~inboundTranslationSlices`, `~extensions` optional parameters; populate the new record fields.
-- [Codegen.res](../../reventless/reventless-spec/src/generator/Codegen.res) — `renderPluginDefinitionCall` (renamed in Phase 1) must emit all new module-list arguments. Use the `resolved` payload from [Pairing.res](../../reventless/reventless-spec/src/generator/Pairing.res) to enumerate each component kind the same way `render` already does for `make`.
-- Every example `Plugin.res` regenerates with the new arguments.
+Added four new def types to `pluginStructure` and threaded the corresponding module arrays through `Plugin_Structure.make`, `makePluginDefinition`, and `renderPluginStructureCall`:
 
-**Concrete steps.**
-1. Land EventMapper first: add `~eventMappers` parameter; for each mapper module extract `Mapping.Source.name`, `extractVariantNames(Mapping.Source.eventSchema)`, and `Target.name`; append to `pluginDefinition.eventMappers`.
-2. Add SideEffect: same pattern on `Source.name` and `extractVariantNames(Source.eventSchema)`.
-3. Add AutomationSlice: extract `Spec.consumedEventSchema` + `Spec.commandSchema` variant names; leave `targetName: None` until Phase 4.
-4. Add OutboundTranslationSlice: extract consumed events from `Spec.consumedEventSchema`; record that `inboundCommand` may be `unit` (terminal) or a variant — surface variant names when non-unit so the graph distinguishes terminal slices from loop-closing ones.
-5. Add InboundTranslationSlice: extract `Spec.command` variant names.
-6. Add Extension: extract `ExtensionPoint.Spec.eventSchema` variant names and `Delegate.name`.
-7. Update `Codegen.renderPluginDefinitionCall` to emit every additional module list, matching the existing `resolved.eventMappers` / `resolved.sideEffects` / etc. naming in `Pairing.res`. Verify by reading `Pairing.resolved` type (probably at the top of [Pairing.res](../../reventless/reventless-spec/src/generator/Pairing.res)).
-8. Regenerate all examples; verify the generator still succeeds when a plugin has zero mappers / zero side effects.
+- `automationSliceDef` — `name`, `consumedEventTypes` (from `Spec.consumedEventSchema`), `producedCommandTypes` (from `Spec.commandSchema`)
+- `outboundTranslationSliceDef` — `name`, `consumedEventTypes`, `inboundCommandTypes` (from `Spec.inboundCommandSchema`; empty when `type inboundCommand = unit`)
+- `inboundTranslationSliceDef` — `name`, `commandTypes` (from `Spec.commandSchema`)
+- `extensionDef` — `name` (`Spec.name`), `delegateNames` (each mapping's `delegateName: string`), `eventTypes` (`Spec.eventSchema`), `commandTypes` (`Spec.commandSchema`)
 
-**Validation.**
-- Unit test asserts the Catalog hybrid plugin's `pluginDefinition.eventMappers` contains an entry with `sourceAggregate: "Category"`, `targetName: "CategoriesReadModel"`, and the three `CategoryAdded` / `CategoryRenamed` / `CategoryArchived` produced events.
-- A second assertion: `pluginDefinition.automationSlices` contains `AutoShipOrder` with consumed `["OrderPlaced", "OrderShipped"]` and produced commands `["ShipOrder"]`.
-- Regenerated examples diff cleanly (only additions).
+The generated `pluginStructure` call in each example `Plugin.res` now includes `~automationSlices`, `~outboundTranslationSlices`, `~inboundTranslationSlices`, and `~extensions` when those arrays are non-empty. The hybrid ordering plugin exercises all three: `AutoShipOrderSlice`, `SendOrderConfirmationSlice`, and `ProductsExtensionMaker`.
 
-**Commit message.**
-`feat: thread eventMappers, sideEffects, automationSlices, translation slices, extensions through makePluginDefinition`
+**Deferred: EventMappings and SideEffects.** Neither is in `Plugin.make`'s parameter list — EventMappings are bundled into individual `Aggregate.T` modules during `Platform.Aggregate.Make(Spec, Behavior, Mappings)` and are opaque from the outside; SideEffects have no top-level wiring at all in the current generator. Threading them would require either extending `Aggregate.T` with an accessor or adding a new separate parameter. Deferred to a later phase or separate plan.
 
 ---
 
@@ -218,10 +170,9 @@ The analysis identifies four permanent gaps that no phase of this plan attempts 
 
 ## Cross-repo impact
 
-UI consumers of the framework must update to the renamed types after Phase 1 lands:
+UI consumers of the framework must update to the renamed types (Phase 1 already shipped in 8edd6673):
 
-- Any consumer that references `uiDefinition`, `uiCommandDef`, `uiQueryableDef`, `uiWritableDef`, or calls `makeAutoUIDefinition` directly needs to adopt `pluginDefinition`, `commandDef`, `queryableDef`, `writableDef`, `makePluginDefinition`.
-- Consumers that read `pluginDefinition` fields additively (Phases 2-5) need no code changes but will benefit from the new fields once they opt in.
+- Replace `uiDefinition` → `pluginStructure`, `makeAutoUIDefinition` → `makePluginDefinition`, `uiCommandDef` → `commandDef`, `uiQueryableDef` → `queryableDef`, `uiWritableDef` → `writableDef`.
+- The platform accessor is now `pluginStructure: Pulumi.Output.t<option<Reventless.Plugin.pluginStructure>>`.
+- Consumers that read `pluginStructure` fields additively (Phases 2-5) need no code changes but will benefit from the new fields once they opt in.
 - The `Platform_EventGraph` GraphQL query (Phase 6) is additive and new; no migration required to continue using existing queries.
-
-Coordinate the UI-side update with Phase 1's merge so the UI remains buildable against the renamed API.

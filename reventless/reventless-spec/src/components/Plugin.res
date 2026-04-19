@@ -125,11 +125,39 @@ type writableDef = {
   consistencyRead: option<string>,
 }
 
+type automationSliceDef = {
+  name: string,
+  consumedEventTypes: array<string>,
+  producedCommandTypes: array<string>,
+}
+
+type outboundTranslationSliceDef = {
+  name: string,
+  consumedEventTypes: array<string>,
+  inboundCommandTypes: array<string>,
+}
+
+type inboundTranslationSliceDef = {
+  name: string,
+  commandTypes: array<string>,
+}
+
+type extensionDef = {
+  name: string,
+  delegateNames: array<string>,
+  eventTypes: array<string>,
+  commandTypes: array<string>,
+}
+
 type pluginStructure = {
   readModels: array<queryableDef>,
   stateViewSlices: array<queryableDef>,
   stateChangeSlices: array<writableDef>,
   aggregates: array<writableDef>,
+  automationSlices: array<automationSliceDef>,
+  outboundTranslationSlices: array<outboundTranslationSliceDef>,
+  inboundTranslationSlices: array<inboundTranslationSliceDef>,
+  extensions: array<extensionDef>,
 }
 
 /**

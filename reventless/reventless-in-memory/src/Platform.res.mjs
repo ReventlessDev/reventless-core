@@ -1081,7 +1081,11 @@ function MakeWithConfig(Config) {
       `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
-      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
+      `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
+      `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
+      `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
+      `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
+      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
     ];
     let encodeCommandDef = c => Object.fromEntries([
       [
@@ -1143,6 +1147,74 @@ function MakeWithConfig(Config) {
             [
               "aggregates",
               def.aggregates.map(encodeWritableDef)
+            ],
+            [
+              "automationSlices",
+              def.automationSlices.map(a => Object.fromEntries([
+                [
+                  "name",
+                  a.name
+                ],
+                [
+                  "consumedEventTypes",
+                  a.consumedEventTypes.map(prim => prim)
+                ],
+                [
+                  "producedCommandTypes",
+                  a.producedCommandTypes.map(prim => prim)
+                ]
+              ]))
+            ],
+            [
+              "outboundTranslationSlices",
+              def.outboundTranslationSlices.map(o => Object.fromEntries([
+                [
+                  "name",
+                  o.name
+                ],
+                [
+                  "consumedEventTypes",
+                  o.consumedEventTypes.map(prim => prim)
+                ],
+                [
+                  "inboundCommandTypes",
+                  o.inboundCommandTypes.map(prim => prim)
+                ]
+              ]))
+            ],
+            [
+              "inboundTranslationSlices",
+              def.inboundTranslationSlices.map(i => Object.fromEntries([
+                [
+                  "name",
+                  i.name
+                ],
+                [
+                  "commandTypes",
+                  i.commandTypes.map(prim => prim)
+                ]
+              ]))
+            ],
+            [
+              "extensions",
+              def.extensions.map(e => Object.fromEntries([
+                [
+                  "name",
+                  e.name
+                ],
+                [
+                  "delegateNames",
+                  e.delegateNames.map(prim => prim)
+                ],
+                [
+                  "eventTypes",
+                  e.eventTypes.map(prim => prim)
+                ],
+                [
+                  "commandTypes",
+                  e.commandTypes.map(prim => prim)
+                ]
+              ]))
             ]
           ]);
         })
@@ -2580,7 +2652,11 @@ function Make($star) {
       `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
-      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
+      `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
+      `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
+      `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
+      `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
+      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
     ];
     let encodeCommandDef = c => Object.fromEntries([
       [
@@ -2642,6 +2718,74 @@ function Make($star) {
             [
               "aggregates",
               def.aggregates.map(encodeWritableDef)
+            ],
+            [
+              "automationSlices",
+              def.automationSlices.map(a => Object.fromEntries([
+                [
+                  "name",
+                  a.name
+                ],
+                [
+                  "consumedEventTypes",
+                  a.consumedEventTypes.map(prim => prim)
+                ],
+                [
+                  "producedCommandTypes",
+                  a.producedCommandTypes.map(prim => prim)
+                ]
+              ]))
+            ],
+            [
+              "outboundTranslationSlices",
+              def.outboundTranslationSlices.map(o => Object.fromEntries([
+                [
+                  "name",
+                  o.name
+                ],
+                [
+                  "consumedEventTypes",
+                  o.consumedEventTypes.map(prim => prim)
+                ],
+                [
+                  "inboundCommandTypes",
+                  o.inboundCommandTypes.map(prim => prim)
+                ]
+              ]))
+            ],
+            [
+              "inboundTranslationSlices",
+              def.inboundTranslationSlices.map(i => Object.fromEntries([
+                [
+                  "name",
+                  i.name
+                ],
+                [
+                  "commandTypes",
+                  i.commandTypes.map(prim => prim)
+                ]
+              ]))
+            ],
+            [
+              "extensions",
+              def.extensions.map(e => Object.fromEntries([
+                [
+                  "name",
+                  e.name
+                ],
+                [
+                  "delegateNames",
+                  e.delegateNames.map(prim => prim)
+                ],
+                [
+                  "eventTypes",
+                  e.eventTypes.map(prim => prim)
+                ],
+                [
+                  "commandTypes",
+                  e.commandTypes.map(prim => prim)
+                ]
+              ]))
             ]
           ]);
         })

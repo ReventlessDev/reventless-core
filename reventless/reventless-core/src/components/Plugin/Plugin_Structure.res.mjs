@@ -7,11 +7,15 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 
-function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt) {
+function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
   let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
   let stateChangeSlices = stateChangeSlicesOpt !== undefined ? stateChangeSlicesOpt : [];
+  let automationSlices = automationSlicesOpt !== undefined ? automationSlicesOpt : [];
+  let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
+  let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
+  let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
   let commandLevelAndId = (isAggregate, properties) => {
     if (isAggregate) {
       return [
@@ -172,11 +176,38 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       consistencyRead: undefined
     };
   });
+  let automationSliceDefs = automationSlices.map(AS => ({
+    name: AS.Spec.name,
+    consumedEventTypes: DcbTag$Reventless.extractVariantNames(AS.Spec.consumedEventSchema),
+    producedCommandTypes: DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema)
+  }));
+  let outboundTranslationSliceDefs = outboundTranslationSlices.map(OTS => ({
+    name: OTS.Spec.name,
+    consumedEventTypes: DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema),
+    inboundCommandTypes: DcbTag$Reventless.extractVariantNames(OTS.Spec.inboundCommandSchema)
+  }));
+  let inboundTranslationSliceDefs = inboundTranslationSlices.map(ITS => ({
+    name: ITS.Spec.name,
+    commandTypes: DcbTag$Reventless.extractVariantNames(ITS.Spec.commandSchema)
+  }));
+  let extensionDefs = extensions.map(E => {
+    let delegateNames = E.mappings.map(M => M.delegateName);
+    return {
+      name: E.Spec.name,
+      delegateNames: delegateNames,
+      eventTypes: DcbTag$Reventless.extractVariantNames(E.Spec.eventSchema),
+      commandTypes: DcbTag$Reventless.extractVariantNames(E.Spec.commandSchema)
+    };
+  });
   return {
     readModels: readModelDefs,
     stateViewSlices: stateViewDefs,
     stateChangeSlices: stateChangeDefs,
-    aggregates: aggregateDefs
+    aggregates: aggregateDefs,
+    automationSlices: automationSliceDefs,
+    outboundTranslationSlices: outboundTranslationSliceDefs,
+    inboundTranslationSlices: inboundTranslationSliceDefs,
+    extensions: extensionDefs
   };
 }
 

@@ -28,6 +28,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~name="Catalog",
     ~stateViewSlices=[module(CategoriesViewSlice), module(ProductDemandViewSlice), module(ProductsViewSlice)],
     ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
+    ~inboundTranslationSlices=[module(ImportProductSlice)],
+    ~extensions=[module(OrdersExtensionMaker)],
   )
 
   let make = () =>

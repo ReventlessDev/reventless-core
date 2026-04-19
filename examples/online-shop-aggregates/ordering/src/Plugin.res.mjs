@@ -178,7 +178,7 @@ function Make(Platform) {
     AvailableProductsReadModelMaker,
     CustomersReadModelMaker,
     OrdersReadModelMaker
-  ], undefined, undefined);
+  ], undefined, undefined, undefined, undefined, undefined, [ProductsExtensionMaker]);
   let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
     CatalogProductAggregate,
     CustomerAggregate,

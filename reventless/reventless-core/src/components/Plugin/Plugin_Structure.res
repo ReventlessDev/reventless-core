@@ -10,6 +10,10 @@ let make = (
   ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=[],
   ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>=[],
   ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>=[],
+  ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>=[],
+  ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=[],
+  ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
+  ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
 ): Reventless.Plugin.pluginStructure => {
   let variantNames = schema => Reventless.DcbTag.extractVariantNames(schema)
 
@@ -197,10 +201,53 @@ let make = (
       }: Reventless.Plugin.writableDef)
     })
 
+  // ── Automation slices ────────────────────────────────────────────────────────
+
+  let automationSliceDefs =
+    automationSlices->Array.map((module(AS: ReventlessInfra.AutomationSlice.T)) => ({
+      Reventless.Plugin.name: AS.Spec.name,
+      consumedEventTypes: variantNames(AS.Spec.consumedEventSchema),
+      producedCommandTypes: variantNames(AS.Spec.commandSchema),
+    }: Reventless.Plugin.automationSliceDef))
+
+  // ── Outbound translation slices ───────────────────────────────────────────
+
+  let outboundTranslationSliceDefs =
+    outboundTranslationSlices->Array.map((module(OTS: ReventlessInfra.OutboundTranslationSlice.T)) => ({
+      Reventless.Plugin.name: OTS.Spec.name,
+      consumedEventTypes: variantNames(OTS.Spec.consumedEventSchema),
+      inboundCommandTypes: variantNames(OTS.Spec.inboundCommandSchema),
+    }: Reventless.Plugin.outboundTranslationSliceDef))
+
+  // ── Inbound translation slices ────────────────────────────────────────────
+
+  let inboundTranslationSliceDefs =
+    inboundTranslationSlices->Array.map((module(ITS: ReventlessInfra.InboundTranslationSlice.T)) => ({
+      Reventless.Plugin.name: ITS.Spec.name,
+      commandTypes: variantNames(ITS.Spec.commandSchema),
+    }: Reventless.Plugin.inboundTranslationSliceDef))
+
+  // ── Extensions ───────────────────────────────────────────────────────────
+
+  let extensionDefs =
+    extensions->Array.map((module(E: ReventlessInfra.Extension.Blueprint)) => {
+      let delegateNames = E.mappings->Array.map((module(M: E.Mapping)) => M.delegateName)
+      ({
+        Reventless.Plugin.name: E.Spec.name,
+        delegateNames,
+        eventTypes: variantNames(E.Spec.eventSchema),
+        commandTypes: variantNames(E.Spec.commandSchema),
+      }: Reventless.Plugin.extensionDef)
+    })
+
   {
     readModels: readModelDefs,
     stateViewSlices: stateViewDefs,
     stateChangeSlices: stateChangeDefs,
     aggregates: aggregateDefs,
+    automationSlices: automationSliceDefs,
+    outboundTranslationSlices: outboundTranslationSliceDefs,
+    inboundTranslationSlices: inboundTranslationSliceDefs,
+    extensions: extensionDefs,
   }
 }

@@ -45,6 +45,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~readModels=[module(CategoriesReadModelMaker)],
     ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
     ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
+    ~inboundTranslationSlices=[module(ImportProductSlice)],
+    ~extensions=[module(OrdersExtensionMaker)],
   )
 
   let make = () =>

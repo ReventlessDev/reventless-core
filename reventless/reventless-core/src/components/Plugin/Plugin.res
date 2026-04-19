@@ -41,6 +41,10 @@ module type T = {
     ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>=?,
     ~stateViewSlices: array<module(ReventlessInfra.StateViewSlice.T)>=?,
     ~stateChangeSlices: array<module(ReventlessInfra.StateChangeSlice.T)>=?,
+    ~automationSlices: array<module(ReventlessInfra.AutomationSlice.T)>=?,
+    ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=?,
+    ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=?,
+    ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=?,
   ) => Reventless.Plugin.pluginStructure
 }
 

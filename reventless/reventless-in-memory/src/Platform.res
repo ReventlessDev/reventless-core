@@ -1138,7 +1138,11 @@ module MakeWithConfig = (
       `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n}`,
-      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`,
+      `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
+      `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
+      `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
+      `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
+      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`,
     ]
     let uiDefsQueryField = `  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`
     let encodeCommandDef = (c: Reventless.Plugin.commandDef): JSON.t =>
@@ -1157,6 +1161,7 @@ module MakeWithConfig = (
         ("name", JSON.Encode.string(w.name)),
         ("commands", w.commands->Array.map(encodeCommandDef)->JSON.Encode.array),
       ])->JSON.Encode.object
+    let encodeStrings = (ss: array<string>): JSON.t => ss->Array.map(JSON.Encode.string)->JSON.Encode.array
     let encodePluginStructureEntry = (~pluginId: string, def: Reventless.Plugin.pluginStructure): JSON.t =>
       Dict.fromArray([
         ("pluginId", JSON.Encode.string(pluginId)),
@@ -1164,6 +1169,30 @@ module MakeWithConfig = (
         ("stateViewSlices", def.stateViewSlices->Array.map(encodeQueryableDef)->JSON.Encode.array),
         ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWritableDef)->JSON.Encode.array),
         ("aggregates", def.aggregates->Array.map(encodeWritableDef)->JSON.Encode.array),
+        ("automationSlices", def.automationSlices->Array.map(a =>
+          Dict.fromArray([
+            ("name", JSON.Encode.string(a.name)),
+            ("consumedEventTypes", encodeStrings(a.consumedEventTypes)),
+            ("producedCommandTypes", encodeStrings(a.producedCommandTypes)),
+          ])->JSON.Encode.object)->JSON.Encode.array),
+        ("outboundTranslationSlices", def.outboundTranslationSlices->Array.map(o =>
+          Dict.fromArray([
+            ("name", JSON.Encode.string(o.name)),
+            ("consumedEventTypes", encodeStrings(o.consumedEventTypes)),
+            ("inboundCommandTypes", encodeStrings(o.inboundCommandTypes)),
+          ])->JSON.Encode.object)->JSON.Encode.array),
+        ("inboundTranslationSlices", def.inboundTranslationSlices->Array.map(i =>
+          Dict.fromArray([
+            ("name", JSON.Encode.string(i.name)),
+            ("commandTypes", encodeStrings(i.commandTypes)),
+          ])->JSON.Encode.object)->JSON.Encode.array),
+        ("extensions", def.extensions->Array.map(e =>
+          Dict.fromArray([
+            ("name", JSON.Encode.string(e.name)),
+            ("delegateNames", encodeStrings(e.delegateNames)),
+            ("eventTypes", encodeStrings(e.eventTypes)),
+            ("commandTypes", encodeStrings(e.commandTypes)),
+          ])->JSON.Encode.object)->JSON.Encode.array),
       ])->JSON.Encode.object
     platformGraphQL.registerTypes(~sdlTypes=uiDefsSdlTypes)
     platformGraphQL.registerQueries(

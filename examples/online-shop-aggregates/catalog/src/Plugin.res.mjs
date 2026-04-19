@@ -183,7 +183,7 @@ function Make(Platform) {
     CategoriesReadModelMaker,
     ProductDemandReadModelMaker,
     ProductsReadModelMaker
-  ], undefined, undefined);
+  ], undefined, undefined, undefined, undefined, undefined, [OrdersExtensionMaker]);
   let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
     CategoryAggregate,
     ProductAggregate,
