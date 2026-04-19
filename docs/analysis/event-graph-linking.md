@@ -106,6 +106,12 @@ Add `let targetName: string` to `InboundTranslationSlice.Spec` to declare which 
 
 The target is wired at assembly via `~publishJsons` — a runtime function reference, not a module. The Spec has no field that captures the destination. Even if `makeAutoUIDefinition` received these component modules, it could not determine the target from what the Spec currently exposes. A new `let targetName` constant is the minimal change that closes this gap without restructuring the assembly model.
 
+#### Can targetName be auto-generated?
+
+No. The `~publishJsons` function is an opaque function reference passed at plugin composition time — neither the PPX nor the `generate-plugin` generator can see across to the assembly context where this wiring is defined. The PPX operates at the individual spec file level; the generator sees module names but not how callbacks are constructed.
+
+The declaration remains the developer's responsibility. However, `generate-plugin` can **validate** a declared `targetName` against the list of known component names at generation time, failing with a clear error if the name does not match any known aggregate, StateChangeSlice, or other command receiver. This narrows the maintenance gap: the developer declares the name once; the toolchain confirms it is valid on every generation pass.
+
 ---
 
 ### Tier 4 — Permanent gap (not resolvable statically)
@@ -128,6 +134,16 @@ The `EventMapping.action` type includes `PublishAsync(promise<array<(id, cmd)>>)
 
 If `CommandA → EventA → AutomationSlice → CommandB → EventB → ReadModelY`, the indirect dependency between `CommandA` and `ReadModelY` is not representable without runtime trace data. The graph captures only direct, one-hop relationships (component produces event → component consumes event). Transitive relationships require execution tracing, not static analysis.
 
+### Alternatives and What Is Missing
+
+**Task → aggregate routing**: As an opt-in convention, `Task.Spec` could expose `let targetNames: array<string>` listing the aggregates a task typically routes to. This is advisory metadata — the actual `bucketCallback` remains free to route to any aggregate at runtime, so declared names are not enforced. The graph would represent these as soft edges (distinguished from the hard edges derived from types) to signal their advisory nature. Without this, commands issued by Tasks are invisible to impact analysis for event type changes and cannot be surfaced in Auto UI command linking.
+
+**EventMapping `PublishAsync` actions**: No static alternative exists. Async callbacks are opaque by design; their resolved commands are unknowable at composition time. Flows involving `PublishAsync` appear in the graph with a terminal edge at the EventMapper node — downstream effects are invisible. In practice this affects a minority of event mappings.
+
+**External side-effect behavior**: By design out of scope. The graph documents the domain model; what external systems do in response to a `SideEffect.execute` or `OutboundTranslationSlice.translate` call is intentionally outside the framework's knowledge boundary.
+
+**Net missing coverage**: The gaps affect Tasks and async event mappings only. All interactive command flows — Aggregate, StateChangeSlice, AutomationSlice (with Tier 3 `targetName`), InboundTranslationSlice (with Tier 3 `targetName`) — and all read-side projections are fully representable. The missing edges do not prevent Auto UI command linking, impact analysis on DCB event types, or projection rebuild routing for the common cases.
+
 ---
 
 ## Building the Event Graph
@@ -139,21 +155,31 @@ At `makeAutoUIDefinition` time, `Plugin_Builder` already holds references to all
 The adjacency is computed by a combination of direct name references (for EventMapper and SideEffect) and event type name string matching (for DCB slice wiring):
 
 ```
-Aggregate A produces event types {E1, E2}
-StateChangeSlice SCS consumes {E1} → produces {E3}
-StateViewSlice SVS consumes {E1, E2, E3}
-EventMapper EM: Source=A (E1,E2) → Target=B        ← explicit name reference
-SideEffect SE: Source=A (E1)     → terminal        ← explicit name reference
-AutomationSlice AS: consumedEvent={E3}, command=Cmd ← target unknown from Spec
+Aggregate A produces event types {E1, E2} → A's own EventLog (not DcbEventLog)
+StateChangeSlice SCS consumes {E1*} → produces {E3}   (* via SVS, see below)
+StateViewSlice SVS consumes {E1, E2, E3}               (from DcbEventLog)
+EventMapper EM: Source=A (E1,E2) → Target=B            ← explicit name reference
+SideEffect SE: Source=A (E1)     → terminal            ← explicit name reference
+AutomationSlice AS: consumedEvent={E3}, command=Cmd    ← target unknown from Spec
 
 Resolved edges:
-  A → SVS (via E1, E2 — string match)
-  SCS → SVS (via E3 — string match)
-  A → SCS (E1 — DCB consistency read)
+  A --[EM]--> SVS (via E1, E2 — EventMapper bridges A's EventLog into DcbEventLog;
+                   SVS string-matches E1, E2 from the DCB log)
+  SCS → SVS  (via E3 — string match in DcbEventLog)
+  SVS ←-- SCS consistency read (SCS reads SVS as its DCB decision model — the
+                                 arrow points FROM SVS TO SCS as a data dependency)
   A → B (via EM.Source.name / EM.Target.name — direct, collision-proof)
   A → SE (via SE.Source.name — direct, terminal node)
   AS → ? (command type known; target aggregate not resolvable from Spec)
 ```
+
+**Can a StateViewSlice be connected to an Aggregate, or a StateChangeSlice to an Aggregate directly?**
+
+No. Aggregates write to their own per-aggregate EventLog (a separate DynamoDB table per aggregate type). StateViewSlices and StateChangeSlices read from a shared DcbEventLog — a distinct storage mechanism. Events cannot cross between these two stores without an explicit bridge.
+
+The only valid bridge is **EventMapper**: it consumes events from an Aggregate's EventLog and emits them as DCB events into the shared DcbEventLog. Only after that bridging step can a StateViewSlice pick up those events by string matching. The pattern `A → SVS` is always shorthand for `A → EventMapper → DcbEventLog → SVS`.
+
+Similarly, a StateChangeSlice never reads directly from an Aggregate — it reads from a StateViewSlice to obtain its DCB consistency boundary. The path `A → SCS` (if it appears in an abstract diagram) means: *A's events, after bridging through EventMapper, populate a StateViewSlice which SCS then reads for consistency*. The graph edges are `A → EventMapper`, `EventMapper → SVS`, and `SVS ←→ SCS (consistency read)`, not a direct `A → SCS` edge.
 
 EventMapping edges are the most reliable: they use explicit module name references rather than event type string matching, making them immune to name collisions. They should be extracted first and preferred over string-matched adjacency.
 
@@ -169,7 +195,11 @@ The platform-level graph requires correlating event type strings across all regi
 
 2. **EventMapping / EventMapper** — also explicit by construction. `Source.name` and `Target.name` are module references, not strings. When an EventMapper in Plugin B wires a `Source` from Plugin A, the cross-plugin edge is named precisely. This is the preferred mechanism for cross-aggregate event-to-command routing and should be treated as a first-class graph edge at the platform level.
 
-3. **Event type name matching** — for less formal cross-plugin event sharing (e.g., one plugin's aggregate events consumed directly by another plugin's StateViewSlice), the same string-matching algorithm applies across plugin boundaries. Name collisions are unlikely in practice: event type names are scoped to their aggregate by convention (`CategoryAdded`, not `Added`). Cross-plugin event sharing via the DcbEventLog without an explicit Extension or EventMapping is unusual but supported.
+3. **Event type name matching** — for cross-plugin event sharing without an explicit Extension or EventMapping, the same string-matching algorithm applies across plugin boundaries. This requires both plugins to share the same DcbEventLog instance — each plugin normally owns its own DcbEventLog, so this case only arises when two plugins are intentionally co-located on a single log.
+
+   Co-location is deliberately uncommon. When it occurs, a StateViewSlice in Plugin B may consume `ProductAdded` events that were produced by Plugin A's StateChangeSlice, with no Extension or EventMapper in between. The graph can detect these edges automatically using the `{pluginName}.{variantName}` qualified names: only event names sharing the same plugin prefix and the same variant string are matched, making false positives from name coincidences across plugins structurally impossible.
+
+   However, cross-plugin event sharing without explicit wiring is an architectural coupling smell — it creates an implicit dependency between two plugins that is invisible to the Extension Point contract system. The graph should surface these edges, but distinguish them from first-class Extension and EventMapping edges (e.g., with an `implicit` flag or a different visual weight). This gives maintainers visibility into accidental coupling rather than letting it pass silently.
 
 The platform-level Admin already aggregates deployed plugin schemas. The cross-plugin graph can be computed at plugin registration time by the `Platform_Admin` aggregate, stored in a read model, and served via GraphQL.
 
@@ -189,7 +219,7 @@ The platform-level Admin already aggregates deployed plugin schemas. The cross-p
 When a plugin registers with the `Platform_Admin` aggregate (the existing `Plugin` aggregate), the platform aggregates all deployed graph fragments and computes cross-plugin edges by matching event type names and Extension wiring.
 
 **Advantage**: Full cross-plugin graph with a single computation pass.  
-**Disadvantage**: Requires platform deployment, not available in local in-memory dev.
+**Disadvantage**: Requires platform deployment in its full form. For in-memory, an equivalent is available: when all plugin functors are applied inside `InMemory_Platform.Make(plugins)`, every plugin's graph fragment (produced at Option 1 composition time) is already in memory as a first-class value. A single pass over all collected `pluginDefinition` records resolves cross-plugin event type matches and Extension Point wiring, producing the same cross-plugin graph without any event sourcing infrastructure. The result is stored as a plain record in the platform value and is available immediately in local dev and test environments.
 
 ### Option 3 — Lazily at Query Time (runtime)
 
@@ -197,14 +227,37 @@ A `Platform_UIDefinitions` query resolver walks the plugin registry and computes
 
 **Recommendation**: Start with Option 1 (intra-plugin, at composition time) to expose the data without requiring a full platform deployment. Add Option 2 to fill in cross-plugin edges when a platform is running. Option 3 is a reasonable interim for the resolver layer.
 
+### Plugin Connect/Disconnect Behaviour
+
+All three options handle late-connecting and reconnecting plugins correctly, because the underlying mechanism is event-sourced:
+
+- **Initial registration**: a `PluginRegistered` event records the graph fragment; the `Platform_EventGraph` StateViewSlice picks it up on the next projection pass.
+- **Plugin version update**: a new `PluginRegistered` event replaces the previous fragment for that plugin; the StateViewSlice rebuilds the relevant graph portion.
+- **New plugin connecting to an existing platform**: registers normally; cross-plugin edges to already-registered plugins are computed when the StateViewSlice processes the new event.
+- **Plugin deregistration**: requires a `PluginDeregistered` (or `PluginDeprecated`) event to tombstone the fragment. This event is not currently modelled in the platform spec and would need to be added if formal deregistration is required.
+
+On any full replay (e.g., after a schema migration or a StateViewSlice bug fix), the graph is rebuilt from the complete `PluginRegistered` / `PluginDeregistered` history — no manual state reconstruction is needed. The in-memory equivalent is simpler: because all plugins are wired at startup, graph recomputation is just re-running the `InMemory_Platform.Make(plugins)` constructor.
+
 ---
 
 ## How to Provide It to Clients
+
+### Function and Type Naming
+
+`makeAutoUIDefinition` was named for its original use case: generating data for the Auto UI. As the graph extraction adds use cases — event graph queries, MCP tool enrichment, impact analysis, projection rebuild routing — the name no longer describes what the function does. It produces a structural description of the entire plugin: components, schemas, and connections. A more accurate name is `makePluginDefinition`, with the return type renamed from `uiDefinition` to `pluginDefinition`. Sub-types (`uiQueryableDef`, `uiWritableDef`, `uiCommandDef`) would follow: `queryableDef`, `writableDef`, `commandDef`.
+
+This is a breaking change to the public API and would be versioned as a `feat!:` commit. A parallel `makeEventGraphDefinition` function is not recommended — it would split conceptually identical data into two functions and require callers to invoke both. Renaming the single function and updating callers is the cleaner approach.
+
+The code examples below use the proposed `pluginDefinition` / `queryableDef` / `writableDef` / `commandDef` names.
+
+---
 
 The natural extension of `uiDefinition` is to add linkage fields to the existing types:
 
 ```rescript
 // In Plugin.res (reventless-spec)
+type commandLevel = Collection | Instance
+
 type uiQueryableDef = {
   name: string,
   queryField: string,
@@ -222,7 +275,7 @@ type uiWritableDef = {
 type uiCommandDef = {
   name: string,
   schema: string,
-  level: [#Collection | #Instance],  // derived without heuristics — from schema field analysis
+  level: commandLevel,               // derived without heuristics — from schema field analysis
   aggregateIdField: option<string>,  // field name carrying the entity id, for row context menus
 }
 ```
@@ -244,34 +297,20 @@ Platform.Plugin (aggregate) → PluginRegistered event → Platform_EventGraph (
 
 ## Additional Opportunities
 
-The event graph is not only for Auto UI command linking. Several capabilities fall out of the same data:
+The event graph is not only for Auto UI command linking. Several capabilities fall out of the same data. The opportunities covered here are part of the open-source framework scope. Commercial and tooling extensions (Impact Analysis, Projection Rebuild Routing, Testing Scaffolding) are analysed separately in the business repo at `docs/analysis/event-graph-commercial-extensions.md`.
 
 ### Accurate Auto UI Without Naming Conventions
 
 The primary motivation from the UI analysis. With `linkedViews` and `consistencyRead` populated by the framework, the Auto UI can place command buttons and panels with zero naming heuristics. This is covered in the UI analysis; the core contribution here is generating the data.
 
-### Auth UI
+### Zero-Configuration Command Panels
 
-Knowing which StateChangeSlice commands target which StateViewSlice, and having `level: Collection | Instance` per command, the framework can generate a basic auth interface without any configuration:
+Knowing which StateChangeSlice commands target which StateViewSlice, and having `level: Collection | Instance` per command, the framework can generate a basic command panel layout without any configuration:
 
 - Collection-level commands → header button on the list view
 - Instance-level commands → row context menu, with the aggregate id injected from the selected row
 
 This requires no plugin developer input beyond the schemas already written. A correct, navigable, command-capable domain UI is a zero-configuration output of the framework.
-
-### Impact Analysis
-
-Before deprecating or changing an event type, a developer needs to know every component that consumes it. The event graph answers this directly: `eventGraph.nodes["CategoryAdded"].consumers` lists every StateViewSlice, StateChangeSlice, and ReadModel that would be affected by a change to that event type.
-
-This is equivalent to a type-safe cross-component dependency check, but at the event boundary rather than the module boundary.
-
-### Projection Rebuild Routing
-
-When a projection needs to be rebuilt (after a bug fix, a schema migration, or an event type rename), the framework needs to know which components to replay. Today this requires manual knowledge of which projections consume which events. The event graph provides this automatically: given an event type, the graph immediately yields the full list of downstream projections.
-
-### Testing Scaffolding
-
-The event graph defines the test surface for each component: the inputs are the consumed event types, the outputs are the produced event types and the resulting state. Test scaffolding could use the graph to generate fixture skeletons, ensuring coverage of all declared input variants.
 
 ### MCP Tool Descriptions
 
@@ -285,11 +324,11 @@ The event graph computation belongs in the open-source framework for the same re
 
 The following capabilities are part of the open-source scope:
 
-- **Graph extraction** in `makeAutoUIDefinition` / `Plugin_Builder` — intra-plugin edges from schema traversal
+- **Graph extraction** in `makePluginDefinition` / `Plugin_Builder` — intra-plugin edges from schema traversal
 - **Platform-level graph aggregation** in `Platform_Admin` — cross-plugin edges from plugin registration
 - **`Platform_EventGraph` StateViewSlice** — queryable graph read model via GraphQL
-- **`uiDefinition` extensions** — `linkedViews`, `consistencyRead`, `level`, `aggregateIdField` fields
-- **Basic Auth UI** — Auto UI command linking for both aggregates and DCB slices, with correct collection/instance classification and aggregate id injection
+- **`pluginDefinition` extensions** — `linkedViews`, `consistencyRead`, `level`, `aggregateIdField` fields
+- **Zero-Configuration Command Panels** — Auto UI command linking for both aggregates and DCB slices, with correct collection/instance classification and aggregate id injection
 
 ---
 
