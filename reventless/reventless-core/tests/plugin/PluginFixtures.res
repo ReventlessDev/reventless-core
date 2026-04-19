@@ -9,6 +9,7 @@ let pluginDefinition = {
   apiSchemaFragment: None,
   apiTarget: None,
   uiFragments: None,
+  structure: None,
 }
 
 let state: PluginReadModelSpec.state = {
@@ -52,4 +53,5 @@ let pluginDefinition2 = {
   apiSchemaFragment: None,
   apiTarget: None,
   uiFragments: None,
+  structure: None,
 }

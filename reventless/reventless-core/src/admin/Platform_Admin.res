@@ -78,6 +78,7 @@ module Make = (
           apiSchemaFragment: None,
           apiTarget: None,
           uiFragments: None,
+          structure: None,
         }
 
         module Callback = Admin_Callback.Make({

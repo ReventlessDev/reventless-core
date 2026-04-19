@@ -30,6 +30,7 @@ import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-cor
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
 import * as Plugin_Builder$ReventlessInMemory from "./components/Plugin_Builder.res.mjs";
 import * as Counter_Builder$ReventlessInMemory from "./components/Counter_Builder.res.mjs";
+import * as Platform_EventGraph$ReventlessCore from "@reventlessdev/reventless-core/src/admin/StateViewSlice/Platform_EventGraph.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
 import * as DomainMCP_Server$ReventlessInMemory from "./adapter/DomainMCP_Server.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
@@ -368,6 +369,15 @@ function MakeWithConfig(Config) {
   let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
   let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
   let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
+  let PlatformEventGraphT = StateViewSliceMaker.Make({
+    name: Platform_EventGraph$ReventlessCore.name,
+    moduleUrl: Platform_EventGraph$ReventlessCore.moduleUrl,
+    stateSchema: Platform_EventGraph$ReventlessCore.stateSchema,
+    consumedEventSchema: Platform_EventGraph$ReventlessCore.consumedEventSchema,
+    project: Platform_EventGraph$ReventlessCore.project,
+    config: Platform_EventGraph$ReventlessCore.config,
+    subIdConfig: undefined
+  });
   let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
   let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
   let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
@@ -1474,7 +1484,7 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [PlatformEventGraphT], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1946,6 +1956,15 @@ function Make($star) {
   let ExtensionPointMaker = ExtensionPoint_Builder$ReventlessInMemory.Make(Bus);
   let TaskMaker = Task_Builder$ReventlessInMemory.Make(Bus);
   let StateViewSliceMaker = StateViewSlice_Builder$ReventlessInMemory.Make(Bus);
+  let PlatformEventGraphT = StateViewSliceMaker.Make({
+    name: Platform_EventGraph$ReventlessCore.name,
+    moduleUrl: Platform_EventGraph$ReventlessCore.moduleUrl,
+    stateSchema: Platform_EventGraph$ReventlessCore.stateSchema,
+    consumedEventSchema: Platform_EventGraph$ReventlessCore.consumedEventSchema,
+    project: Platform_EventGraph$ReventlessCore.project,
+    config: Platform_EventGraph$ReventlessCore.config,
+    subIdConfig: undefined
+  });
   let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
   let OutboundTranslationSliceMaker = OutboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
   let InboundTranslationSliceMaker = InboundTranslationSlice_Builder$ReventlessInMemory.Make(Bus);
@@ -3037,7 +3056,7 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [PlatformEventGraphT], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep

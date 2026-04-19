@@ -36,7 +36,8 @@ Jest.describe("Message should", () => {
         extensionProtocols: [],
         apiSchemaFragment: undefined,
         apiTarget: undefined,
-        uiFragments: undefined
+        uiFragments: undefined,
+        structure: undefined
       }
     };
     let variantJson = Message$ReventlessCore.encode(variant, PluginSpec$ReventlessCore.commandSchema);

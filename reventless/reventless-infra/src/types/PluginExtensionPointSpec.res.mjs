@@ -107,6 +107,32 @@ let uiFragmentManifestSchema = Plugin$Reventless.uiFragmentManifestSchema;
 
 let uiFragmentManifestOptionSchema = Plugin$Reventless.uiFragmentManifestOptionSchema;
 
+let commandLevelSchema = Plugin$Reventless.commandLevelSchema;
+
+let commandDefSchema = Plugin$Reventless.commandDefSchema;
+
+let queryableDefSchema = Plugin$Reventless.queryableDefSchema;
+
+let writableDefSchema = Plugin$Reventless.writableDefSchema;
+
+let automationSliceDefSchema = Plugin$Reventless.automationSliceDefSchema;
+
+let outboundTranslationSliceDefSchema = Plugin$Reventless.outboundTranslationSliceDefSchema;
+
+let inboundTranslationSliceDefSchema = Plugin$Reventless.inboundTranslationSliceDefSchema;
+
+let extensionDefSchema = Plugin$Reventless.extensionDefSchema;
+
+let pluginStructureSchema = Plugin$Reventless.pluginStructureSchema;
+
+let pluginStructureOptionSchema = Plugin$Reventless.pluginStructureOptionSchema;
+
+let graphNodeSchema = Plugin$Reventless.graphNodeSchema;
+
+let graphEdgeSchema = Plugin$Reventless.graphEdgeSchema;
+
+let platformEventGraphSchema = Plugin$Reventless.platformEventGraphSchema;
+
 let pluginDefinitionSchema = Plugin$Reventless.pluginDefinitionSchema;
 
 let timeoutSchema = S.int;
@@ -126,6 +152,19 @@ export {
   pageManifestEntrySchema,
   uiFragmentManifestSchema,
   uiFragmentManifestOptionSchema,
+  commandLevelSchema,
+  commandDefSchema,
+  queryableDefSchema,
+  writableDefSchema,
+  automationSliceDefSchema,
+  outboundTranslationSliceDefSchema,
+  inboundTranslationSliceDefSchema,
+  extensionDefSchema,
+  pluginStructureSchema,
+  pluginStructureOptionSchema,
+  graphNodeSchema,
+  graphEdgeSchema,
+  platformEventGraphSchema,
   pluginDefinitionSchema,
   timeoutSchema,
   forwardCommandSchema,

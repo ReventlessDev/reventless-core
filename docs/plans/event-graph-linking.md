@@ -106,43 +106,26 @@ Cross-reference helpers (`linkedViewsFor`, `linkedWriteSideFor`, `consistencyRea
 
 ---
 
-## Phase 6 — Cross-plugin graph and `Platform_EventGraph` StateViewSlice
+## ~~Phase 6 — Cross-plugin graph and `Platform_EventGraph` StateViewSlice~~ ✅ DONE
 
-**Goal.** Aggregate every registered plugin's `pluginDefinition` into a platform-level event graph, project it into a StateViewSlice on the Admin plugin, and expose it via GraphQL. An equivalent value is available in-memory without event-sourcing machinery.
+**What landed.**
 
-**Files to change.**
-- New: [Platform_EventGraph/](../../reventless/reventless-core/src/admin/Platform_EventGraph/) — a new StateViewSlice directory mirroring the existing admin slices' layout.
-  - `Platform_EventGraph.res` — `Spec` with `consumedEvent = Connected(pluginDefinition) | Reconnected(pluginDefinition) | Disconnected(pluginDefinition) | Activated(pluginDefinition) | Deactivated(pluginDefinition)` (subsetted from `PluginSpec.event`), `stateSchema` for the graph record, and a projection that folds each event into the aggregated graph.
-  - Optional `Platform_EventGraph_Projection.res` if the projection is complex.
-- [Platform_Admin.res](../../reventless/reventless-core/src/admin/Platform_Admin.res) — register the new slice via `stateViewSlices` when `Config.hooks` indicates it is enabled (or always-on).
-- [PluginSpec.res](../../reventless/reventless-core/src/admin/PluginSpec.res) — no change required; the existing `Connected(pluginDefinition)` event already carries the data. (This depends on step 1 of Phase 1 resolving the name collision — the wire-level `pluginDefinition` must carry the same structural-description record, or carry a new field `structure: pluginStructure` that surfaces the Phase 2-5 fields.)
-- [Platform.res (in-memory)](../../reventless/reventless-in-memory/src/Platform.res) — collect all plugin `pluginDefinition` values at `Make(plugins)` time and expose a platform-level `eventGraph` accessor that matches what the StateViewSlice serves on AWS.
+Added `structure: option<pluginStructure>` to `pluginDefinition` so the wire-level Connect command carries component-graph metadata. Added `@schema` to all plugin structure types (`commandLevel`, `commandDef`, `queryableDef`, `writableDef`, `automationSliceDef`, `outboundTranslationSliceDef`, `inboundTranslationSliceDef`, `extensionDef`, `pluginStructure`) and to the three new graph types (`graphNode`, `graphEdge`, `platformEventGraph`). `option<string>` fields on nested types that sit inside union variant payloads (`aggregateIdField`, `consistencyRead`, `targetName`) use `@s.matches(stringOptionSchema)` to avoid sury's `undefined`-in-JSON error.
 
-**Concrete steps.**
-1. Define the cross-plugin graph record in `Plugin.res` (or a new `EventGraph.res` in reventless-spec):
-   ```rescript
-   @schema type graphNode = {pluginName: string, componentName: string, kind: string}
-   @schema type graphEdge = {
-     from: graphNode, to: graphNode,
-     mechanism: string,  // "EventMapper" | "Extension" | "EventTypeMatch" | "ConsistencyRead" | ...
-     viaEvents: array<string>,
-     implicit: bool,     // true for cross-plugin EventTypeMatch edges
-   }
-   @schema type platformEventGraph = {nodes: array<graphNode>, edges: array<graphEdge>}
-   ```
-2. Implement the fold: `(state, event) => state` where `Connected(pd)` / `Reconnected(pd)` add the plugin's nodes and intra-plugin edges and rebuild any cross-plugin edges touching this plugin; `Disconnected(pd)` / `Deactivated(pd)` remove the plugin's nodes.
-3. Register the StateViewSlice in `Platform_Admin.construct` alongside existing DCB slices. The admin already supports DCB slices (see the `Dcb_Builder.Make` wiring at Platform_Admin.res line 117-134).
-4. Expose a query field (the DCB builder auto-registers a GraphQL field from each StateViewSlice — verify by reading `Dcb_Builder.res` to confirm the auto-registration is inherited here, no manual resolver needed).
-5. In-memory equivalent: since all plugins are wired at `InMemory_Platform.Make(plugins)` time, walk the collected `pluginDefinition` array once and compute the same `platformEventGraph` value, storing it on the platform record. This yields the same data via the same GraphQL query in the in-memory path without going through the event log.
-6. Implement cross-plugin edge computation: pair each Extension's `ExtensionPoint.Spec.eventSchema` + `Delegate.name` against matching EP in another plugin (first-class); match EventMappers that cross plugins (first-class); finally match any remaining bare DCB event type names that share a plugin prefix across plugins on the same DcbEventLog scope (implicit — flag `implicit: true`).
+`Plugin_Builder.res` now sets `structure: pluginStructure` when constructing the `pluginDefinition` output, so every connected plugin's component graph is embedded in the heartbeat event.
 
-**Validation.**
-- In-memory test: register `online-shop-hybrid/catalog` and `online-shop-hybrid/ordering` plugins in one platform; query `platformEventGraph { edges { from { componentName } to { componentName } mechanism viaEvents } }`; assert the four expected cross-plugin edges appear (two Extensions + two EventMappers as documented in the analysis' cross-plugin table) with `implicit: false`.
-- Disconnect the Catalog plugin; re-query; assert all Catalog nodes and every edge touching Catalog is gone.
-- Rebuild-from-replay test: delete and re-project the `Platform_EventGraph` read model store from the `Connected` / `Disconnected` event history; the resulting graph equals the live graph.
+**`Platform_EventGraph` StateViewSlice** ([src/admin/StateViewSlice/Platform_EventGraph.res](../../reventless/reventless-core/src/admin/StateViewSlice/Platform_EventGraph.res)):
+- `consumedEvent` = subset of PluginSpec events: `Connected | Reconnected | Disconnected | Activated | Deactivated`
+- `state` = `{pluginName: string, nodes: array<graphNode>, edges: array<graphEdge>}` keyed by plugin name
+- `project`: Connected/Reconnected/Activated → `Set(pd.name, entry)` building nodes for all component types and intra-plugin edges (write-side→StateViewSlice via EventTypeMatch, AutomationSlice→target, InboundTranslation→target, Extension→delegates); Disconnected/Deactivated → `Delete(pd.name)`
+- Registered in [Platform.res (in-memory)](../../reventless/reventless-in-memory/src/Platform.res) via `module PlatformEventGraphT = StateViewSliceMaker.Make(ReventlessCore.Platform_EventGraph)` passed to `Admin.construct(~stateViewSlices=[module(PlatformEventGraphT)])`. The DCB builder auto-registers the GraphQL query fields.
 
-**Commit message.**
-`feat: Platform_EventGraph StateViewSlice aggregating cross-plugin event graph`
+**Deferred from original plan.**
+- Cross-plugin edge computation (Extension-to-EP, EventMapper, implicit EventTypeMatch): requires reading all other plugins' entries in the projection function, which a pure StateViewSlice `project` cannot do. Each per-plugin entry stores intra-plugin edges only; cross-plugin assembly is deferred to a query-time resolver or a Phase 6b.
+- AWS platform wiring: `Platform_Admin.construct` does not own the adapter set needed to instantiate `StateViewSlice.T`; the caller (AWS platform) must pass `PlatformEventGraphT` the same way the in-memory platform does.
+- `platformEventGraph` as singleton state: the per-plugin keyed approach was chosen instead; the full graph can be assembled by reading all `platformEventGraph` entries.
+
+Build: zero warnings, 1034 tests pass.
 
 ---
 

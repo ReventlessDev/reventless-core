@@ -16,7 +16,8 @@ let pluginDefinition = {
   extensionProtocols: [],
   apiSchemaFragment: undefined,
   apiTarget: undefined,
-  uiFragments: undefined
+  uiFragments: undefined,
+  structure: undefined
 };
 
 let state_name = pluginDefinition.name;
@@ -67,7 +68,8 @@ let pluginDefinitionWithUI = {
   extensionProtocols: pluginDefinition.extensionProtocols,
   apiSchemaFragment: pluginDefinition.apiSchemaFragment,
   apiTarget: pluginDefinition.apiTarget,
-  uiFragments: uiManifest
+  uiFragments: uiManifest,
+  structure: pluginDefinition.structure
 };
 
 let extensionPointNames2 = ["Test.Test"];
@@ -86,7 +88,8 @@ let pluginDefinition2 = {
   extensionProtocols: [],
   apiSchemaFragment: undefined,
   apiTarget: undefined,
-  uiFragments: undefined
+  uiFragments: undefined,
+  structure: undefined
 };
 
 export {

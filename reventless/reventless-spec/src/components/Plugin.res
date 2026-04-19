@@ -99,15 +99,18 @@ let uiFragmentManifestOptionSchema = _jsNullable(uiFragmentManifestSchema, ())
 
 // ── Plugin structure types (component metadata for Auto UI and event graph) ──
 
+@schema
 type commandLevel = Collection | Instance
 
+@schema
 type commandDef = {
   name: string,
   schema: string,
   level: commandLevel,
-  aggregateIdField: option<string>,
+  aggregateIdField: @s.matches(stringOptionSchema) option<string>,
 }
 
+@schema
 type queryableDef = {
   name: string,
   queryField: string,
@@ -116,15 +119,17 @@ type queryableDef = {
   linkedWriteSide: array<string>,
 }
 
+@schema
 type writableDef = {
   name: string,
   commands: array<commandDef>,
   producedEventTypes: array<string>,
   consumedEventTypes: array<string>,
   linkedViews: array<string>,
-  consistencyRead: option<string>,
+  consistencyRead: @s.matches(stringOptionSchema) option<string>,
 }
 
+@schema
 type automationSliceDef = {
   name: string,
   consumedEventTypes: array<string>,
@@ -132,19 +137,22 @@ type automationSliceDef = {
   targetName: string,
 }
 
+@schema
 type outboundTranslationSliceDef = {
   name: string,
   consumedEventTypes: array<string>,
   inboundCommandTypes: array<string>,
-  targetName: option<string>,
+  targetName: @s.matches(stringOptionSchema) option<string>,
 }
 
+@schema
 type inboundTranslationSliceDef = {
   name: string,
   commandTypes: array<string>,
   targetName: string,
 }
 
+@schema
 type extensionDef = {
   name: string,
   delegateNames: array<string>,
@@ -152,6 +160,7 @@ type extensionDef = {
   commandTypes: array<string>,
 }
 
+@schema
 type pluginStructure = {
   readModels: array<queryableDef>,
   stateViewSlices: array<queryableDef>,
@@ -162,6 +171,25 @@ type pluginStructure = {
   inboundTranslationSlices: array<inboundTranslationSliceDef>,
   extensions: array<extensionDef>,
 }
+
+let pluginStructureOptionSchema = _jsNullable(pluginStructureSchema, ())
+
+// ── Event graph types (cross-plugin component graph) ──────────────────────────
+
+@schema
+type graphNode = {pluginName: string, componentName: string, kind: string}
+
+@schema
+type graphEdge = {
+  source: graphNode,
+  target: graphNode,
+  mechanism: string,
+  viaEvents: array<string>,
+  implicit: bool,
+}
+
+@schema
+type platformEventGraph = {nodes: array<graphNode>, edges: array<graphEdge>}
 
 /**
 The self-description of a deployed plugin, persisted in the plugin's event store.
@@ -193,5 +221,7 @@ type pluginDefinition = {
   apiTarget: @s.matches(stringOptionSchema) option<string>,
   // UI fragment manifest contributed by this plugin (optional, absent for pure backend plugins).
   uiFragments: @s.matches(uiFragmentManifestOptionSchema) option<uiFragmentManifest>,
+  // Component graph metadata — populated by makePluginDefinition; absent for older protocol versions.
+  structure: @s.matches(pluginStructureOptionSchema) option<pluginStructure>,
 }
 

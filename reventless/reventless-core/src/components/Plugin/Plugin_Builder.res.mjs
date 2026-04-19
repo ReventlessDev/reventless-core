@@ -347,7 +347,8 @@ function Make(Spec) {
             extensionProtocols: [],
             apiSchemaFragment: apiSchemaFragment,
             apiTarget: capturedDeployTarget,
-            uiFragments: uiFragments
+            uiFragments: uiFragments,
+            structure: pluginStructure
           }));
           if (coreSetup !== undefined) {
             let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, Spec.runtimeOps, Spec.resourceNaming, opts);

@@ -59,6 +59,94 @@ let uiFragmentManifestSchema = S.schema(s => ({
 
 let uiFragmentManifestOptionSchema = SuryResMjs.js_nullable(uiFragmentManifestSchema);
 
+let commandLevelSchema = S.union([
+  S.literal("Collection"),
+  S.literal("Instance")
+]);
+
+let commandDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  schema: s.m(S.string),
+  level: s.m(commandLevelSchema),
+  aggregateIdField: s.m(stringOptionSchema)
+}));
+
+let queryableDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  queryField: s.m(S.string),
+  schema: s.m(S.string),
+  consumedEventTypes: s.m(S.array(S.string)),
+  linkedWriteSide: s.m(S.array(S.string))
+}));
+
+let writableDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  commands: s.m(S.array(commandDefSchema)),
+  producedEventTypes: s.m(S.array(S.string)),
+  consumedEventTypes: s.m(S.array(S.string)),
+  linkedViews: s.m(S.array(S.string)),
+  consistencyRead: s.m(stringOptionSchema)
+}));
+
+let automationSliceDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  consumedEventTypes: s.m(S.array(S.string)),
+  producedCommandTypes: s.m(S.array(S.string)),
+  targetName: s.m(S.string)
+}));
+
+let outboundTranslationSliceDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  consumedEventTypes: s.m(S.array(S.string)),
+  inboundCommandTypes: s.m(S.array(S.string)),
+  targetName: s.m(stringOptionSchema)
+}));
+
+let inboundTranslationSliceDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  commandTypes: s.m(S.array(S.string)),
+  targetName: s.m(S.string)
+}));
+
+let extensionDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  delegateNames: s.m(S.array(S.string)),
+  eventTypes: s.m(S.array(S.string)),
+  commandTypes: s.m(S.array(S.string))
+}));
+
+let pluginStructureSchema = S.schema(s => ({
+  readModels: s.m(S.array(queryableDefSchema)),
+  stateViewSlices: s.m(S.array(queryableDefSchema)),
+  stateChangeSlices: s.m(S.array(writableDefSchema)),
+  aggregates: s.m(S.array(writableDefSchema)),
+  automationSlices: s.m(S.array(automationSliceDefSchema)),
+  outboundTranslationSlices: s.m(S.array(outboundTranslationSliceDefSchema)),
+  inboundTranslationSlices: s.m(S.array(inboundTranslationSliceDefSchema)),
+  extensions: s.m(S.array(extensionDefSchema))
+}));
+
+let pluginStructureOptionSchema = SuryResMjs.js_nullable(pluginStructureSchema);
+
+let graphNodeSchema = S.schema(s => ({
+  pluginName: s.m(S.string),
+  componentName: s.m(S.string),
+  kind: s.m(S.string)
+}));
+
+let graphEdgeSchema = S.schema(s => ({
+  source: s.m(graphNodeSchema),
+  target: s.m(graphNodeSchema),
+  mechanism: s.m(S.string),
+  viaEvents: s.m(S.array(S.string)),
+  implicit: s.m(S.bool)
+}));
+
+let platformEventGraphSchema = S.schema(s => ({
+  nodes: s.m(S.array(graphNodeSchema)),
+  edges: s.m(S.array(graphEdgeSchema))
+}));
+
 let pluginDefinitionSchema = S.schema(s => ({
   id: s.m(S.string),
   name: s.m(S.string),
@@ -69,7 +157,8 @@ let pluginDefinitionSchema = S.schema(s => ({
   extensionProtocols: s.m(S.array(extensionProtocolSchema)),
   apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema),
   apiTarget: s.m(stringOptionSchema),
-  uiFragments: s.m(uiFragmentManifestOptionSchema)
+  uiFragments: s.m(uiFragmentManifestOptionSchema),
+  structure: s.m(pluginStructureOptionSchema)
 }));
 
 let nameSchema = S.string;
@@ -90,6 +179,19 @@ export {
   pageManifestEntrySchema,
   uiFragmentManifestSchema,
   uiFragmentManifestOptionSchema,
+  commandLevelSchema,
+  commandDefSchema,
+  queryableDefSchema,
+  writableDefSchema,
+  automationSliceDefSchema,
+  outboundTranslationSliceDefSchema,
+  inboundTranslationSliceDefSchema,
+  extensionDefSchema,
+  pluginStructureSchema,
+  pluginStructureOptionSchema,
+  graphNodeSchema,
+  graphEdgeSchema,
+  platformEventGraphSchema,
   pluginDefinitionSchema,
 }
 /* extensionPointDefinitionSchema Not a pure module */

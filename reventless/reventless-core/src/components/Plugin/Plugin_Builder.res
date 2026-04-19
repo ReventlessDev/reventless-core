@@ -473,6 +473,7 @@ module Make = (
             apiSchemaFragment: Some(apiSchemaFragment),
             apiTarget: Some(capturedDeployTarget),
             uiFragments,
+            structure: pluginStructure,
           })
 
         switch coreSetup {
