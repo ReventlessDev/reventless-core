@@ -438,13 +438,10 @@ let diff_ = (_id: string, olds: providerInputs, news: providerInputs): diffResul
     Always reports the resolver as present so Pulumi keeps it in state.
     Actual divergence (resolver deleted by a schema replacement) is handled
     transparently by the `update` fallback that recreates the resolver on the
-    next `pulumi up`.  Returning `None` here would signal Pulumi to remove the
-    resource from state, but Pulumi ≤3.224.0 crashes with
-    "Cannot read properties of undefined (reading 'id')" when the provider's
-    `read` returns `undefined` — the handler accesses `result.id` before the
-    nil-check.  Avoiding `None` sidesteps the bug without a node_modules patch. */
-let read_ = async (id: string, _props: providerInputs): option<readResult> =>
-  Some({id, props: _props})
+    next `pulumi up`.  Returns `readResult` directly (not `option`) so that
+    deserialized `__provider` code in Pulumi state never produces `undefined`,
+    which would crash Pulumi ≤3.224.0 at `result.id` before the nil-check. */
+let read_ = async (id: string, _props: providerInputs): readResult => {id, props: _props}
 
 // Provider as a plain JS object (no Pulumi Output captures — all state via inputs/olds/news)
 let provider = {

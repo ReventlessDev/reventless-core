@@ -310,7 +310,8 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.platform.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
-          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive || \
+            echo "::warning::pulumi refresh had errors — proceeding with pulumi up to self-heal stale resources"
           pulumi up --stack "$BRANCH" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
   # ---------------------------------------------------------------------------
@@ -475,7 +476,10 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
-          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive
+          # Refresh may fail for individual resources with stale __provider serializations.
+          # Treat failures as warnings so pulumi up can still run and update those resources.
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive || \
+            echo "::warning::pulumi refresh had errors — proceeding with pulumi up to self-heal stale resources"
           pulumi up --stack "$BRANCH" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
   # ---------------------------------------------------------------------------
