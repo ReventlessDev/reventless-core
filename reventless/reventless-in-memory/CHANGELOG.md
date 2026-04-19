@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.32 (2026-04-19)
+
+### Bug Fixes
+
+* **tests:** update SplitApiTest fixtures for UIFragment query/mutation entries ([16577c0](https://github.com/ReventlessDev/reventless-core/commit/16577c0b26072a9743c1ee1a6118f6b69c114434))
+
+
 # 3.0.0-alpha.31 (2026-04-18)
 
 ### Features
