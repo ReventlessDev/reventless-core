@@ -1136,7 +1136,7 @@ module MakeWithConfig = (
 
     // Register Platform_UIDefinitions query — returns all plugin AutoUI definitions.
     let uiDefsSdlTypes = [
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
@@ -1153,6 +1153,7 @@ module MakeWithConfig = (
         ("schema", JSON.Encode.string(c.schema)),
         ("level", JSON.Encode.string(switch c.level { | Collection => "Collection" | Instance => "Instance" })),
         ("aggregateIdField", c.aggregateIdField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+        ("mutationField", JSON.Encode.string(c.mutationField)),
       ])->JSON.Encode.object
     let encodeQueryableDef = (r: Reventless.Plugin.queryableDef): JSON.t =>
       Dict.fromArray([
@@ -1684,7 +1685,7 @@ module MakeWithConfig = (
       )
       // Register Platform_UIDefinitions query on this server.
       let dpUiDefsSdlTypes = [
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
         `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
         `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`,
@@ -1706,6 +1707,7 @@ module MakeWithConfig = (
                     ("schema", JSON.Encode.string(c.schema)),
                     ("level", JSON.Encode.string(switch c.level { | Collection => "Collection" | Instance => "Instance" })),
                     ("aggregateIdField", c.aggregateIdField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
+                    ("mutationField", JSON.Encode.string(c.mutationField)),
                   ])->JSON.Encode.object
                 let encodeQbl = (r: Reventless.Plugin.queryableDef) =>
                   Dict.fromArray([

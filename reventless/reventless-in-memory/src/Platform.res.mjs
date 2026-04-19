@@ -1088,7 +1088,7 @@ function MakeWithConfig(Config) {
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let uiDefsSdlTypes = [
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
@@ -1117,6 +1117,10 @@ function MakeWithConfig(Config) {
         [
           "aggregateIdField",
           Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+        ],
+        [
+          "mutationField",
+          c.mutationField
         ]
       ]);
     };
@@ -1589,7 +1593,7 @@ function MakeWithConfig(Config) {
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
       let dpUiDefsSdlTypes = [
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
         `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
         `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
@@ -1619,6 +1623,10 @@ function MakeWithConfig(Config) {
                 [
                   "aggregateIdField",
                   Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+                ],
+                [
+                  "mutationField",
+                  c.mutationField
                 ]
               ]);
             };
@@ -2743,7 +2751,7 @@ function Make($star) {
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let uiDefsSdlTypes = [
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
@@ -2772,6 +2780,10 @@ function Make($star) {
         [
           "aggregateIdField",
           Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+        ],
+        [
+          "mutationField",
+          c.mutationField
         ]
       ]);
     };
@@ -3236,7 +3248,7 @@ function Make($star) {
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
       let dpUiDefsSdlTypes = [
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n}`,
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
         `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
         `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
@@ -3266,6 +3278,10 @@ function Make($star) {
                 [
                   "aggregateIdField",
                   Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
+                ],
+                [
+                  "mutationField",
+                  c.mutationField
                 ]
               ]);
             };

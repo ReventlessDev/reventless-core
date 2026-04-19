@@ -108,6 +108,7 @@ type commandDef = {
   schema: string,
   level: commandLevel,
   aggregateIdField: @s.matches(stringOptionSchema) option<string>,
+  mutationField: string,
 }
 
 @schema

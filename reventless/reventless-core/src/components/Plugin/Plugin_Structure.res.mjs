@@ -48,7 +48,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       ];
     }
   };
-  let toCommandDef = (isAggregate, v) => {
+  let toCommandDef = (isAggregate, mutationFieldFor, v) => {
     if (v.type !== "object") {
       return;
     }
@@ -66,15 +66,16 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         name: variantName,
         schema: JSON.stringify(S.toJSONSchema(v)),
         level: match[0],
-        aggregateIdField: match[1]
+        aggregateIdField: match[1],
+        mutationField: mutationFieldFor(variantName)
       };
     });
   };
-  let extractCommandDefs = (isAggregate, commandSchema) => {
+  let extractCommandDefs = (isAggregate, mutationFieldFor, commandSchema) => {
     if (commandSchema.type === "union") {
-      return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, v));
+      return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, v));
     } else {
-      return Stdlib_Option.mapOr(toCommandDef(isAggregate, commandSchema), [], def => [def]);
+      return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema), [], def => [def]);
     }
   };
   let scsProduced = stateChangeSlices.map(SCS => [
@@ -158,7 +159,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let consumed = match$1[1];
     return {
       name: SCS.Spec.name,
-      commands: extractCommandDefs(false, SCS.Spec.commandSchema),
+      commands: extractCommandDefs(false, _variantName => Api_Naming$ReventlessCore.sliceMutationField(name, SCS.Spec.name), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedViewsFor(produced),
@@ -170,7 +171,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let produced = match[1];
     return {
       name: A.Spec.name,
-      commands: extractCommandDefs(true, A.Spec.commandSchema),
+      commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedViewsFor(produced),

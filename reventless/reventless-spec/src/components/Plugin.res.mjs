@@ -68,7 +68,8 @@ let commandDefSchema = S.schema(s => ({
   name: s.m(S.string),
   schema: s.m(S.string),
   level: s.m(commandLevelSchema),
-  aggregateIdField: s.m(stringOptionSchema)
+  aggregateIdField: s.m(stringOptionSchema),
+  mutationField: s.m(S.string)
 }));
 
 let queryableDefSchema = S.schema(s => ({

@@ -36,7 +36,11 @@ let make = (
       }
     }
 
-  let toCommandDef = (~isAggregate, v: S.t<unknown>): option<Reventless.Plugin.commandDef> =>
+  let toCommandDef = (
+    ~isAggregate,
+    ~mutationFieldFor: string => string,
+    v: S.t<unknown>,
+  ): option<Reventless.Plugin.commandDef> =>
     switch v {
     | Object({properties}) =>
       properties
@@ -50,6 +54,7 @@ let make = (
               schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
               level,
               aggregateIdField,
+              mutationField: mutationFieldFor(variantName),
             })
           }
         | _ => None
@@ -58,14 +63,16 @@ let make = (
     | _ => None
     }
 
-  let extractCommandDefs = (~isAggregate, commandSchema: S.t<unknown>): array<
-    Reventless.Plugin.commandDef,
-  > =>
+  let extractCommandDefs = (
+    ~isAggregate,
+    ~mutationFieldFor: string => string,
+    commandSchema: S.t<unknown>,
+  ): array<Reventless.Plugin.commandDef> =>
     switch commandSchema {
-    | Union({anyOf}) => anyOf->Array.filterMap(v => toCommandDef(~isAggregate, v))
+    | Union({anyOf}) => anyOf->Array.filterMap(v => toCommandDef(~isAggregate, ~mutationFieldFor, v))
     | _ =>
       // Single-variant command types compile to a bare Object schema, not a Union.
-      toCommandDef(~isAggregate, commandSchema)->Option.mapOr([], def => [def])
+      toCommandDef(~isAggregate, ~mutationFieldFor, commandSchema)->Option.mapOr([], def => [def])
     }
 
   // ── Per-component event type extraction ────────────────────────────────────
@@ -178,7 +185,11 @@ let make = (
       let (_, consumed) = scsConsumed->Array.getUnsafe(i)
       ({
         Reventless.Plugin.name: SCS.Spec.name,
-        commands: extractCommandDefs(~isAggregate=false, SCS.Spec.commandSchema->S.castToUnknown),
+        commands: extractCommandDefs(
+          ~isAggregate=false,
+          ~mutationFieldFor=_variantName => Api_Naming.sliceMutationField(~plugin=name, ~slice=SCS.Spec.name),
+          SCS.Spec.commandSchema->S.castToUnknown,
+        ),
         producedEventTypes: produced,
         consumedEventTypes: consumed,
         linkedViews: linkedViewsFor(produced),
@@ -194,7 +205,11 @@ let make = (
       let (_, produced) = aggProduced->Array.getUnsafe(i)
       ({
         Reventless.Plugin.name: A.Spec.name,
-        commands: extractCommandDefs(~isAggregate=true, A.Spec.commandSchema->S.castToUnknown),
+        commands: extractCommandDefs(
+          ~isAggregate=true,
+          ~mutationFieldFor=variantName => Api_Naming.aggregateMutationField(~plugin=name, ~aggregate=A.Spec.name, ~command=variantName),
+          A.Spec.commandSchema->S.castToUnknown,
+        ),
         producedEventTypes: produced,
         consumedEventTypes: [],
         linkedViews: linkedViewsFor(produced),
