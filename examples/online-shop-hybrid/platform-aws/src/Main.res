@@ -3,6 +3,4 @@
 
 module Platform = ReventlessAws.Platform.Make()
 
-Platform.deployPlatform(~version=Reventless.PackageVersion.fromCaller())
-
-let default = Pulumi.Pulumi.getOutputs()
+let default = Platform.deployPlatform(~version=Reventless.PackageVersion.fromCaller())

@@ -38,6 +38,7 @@ function Make(Bus) {
       make: HeartbeatRunner_InMemory$ReventlessInMemory.make
     })({
       EventCollectorChannel: PluginRuntimeBuilder.EventCollectorChannel,
+      registerPluginName: PluginRuntimeBuilder.registerPluginName,
       forPluginEventCollector: PluginRuntimeBuilder.forPluginEventCollector,
       forPluginHeartbeat: PluginRuntimeBuilder.forPluginHeartbeat,
       forDcbCommandTopic: PluginRuntimeBuilder.forDcbCommandTopic,

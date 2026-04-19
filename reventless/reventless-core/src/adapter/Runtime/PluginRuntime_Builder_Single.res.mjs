@@ -35,6 +35,7 @@ function Make(RuntimeEnvironment) {
         parent: resource
       }));
     };
+    let registerPluginName = param => {};
     let forDcbCommandTopic = (handler, connect, memorySizeOpt, timeoutOpt, dcbCommandTopic) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
@@ -46,6 +47,7 @@ function Make(RuntimeEnvironment) {
     let finish = () => {};
     return {
       EventCollectorChannel: EventCollectorChannel,
+      registerPluginName: registerPluginName,
       forPluginEventCollector: forPluginEventCollector,
       forPluginHeartbeat: forPluginHeartbeat,
       forDcbCommandTopic: forDcbCommandTopic,

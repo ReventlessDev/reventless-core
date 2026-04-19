@@ -1456,7 +1456,7 @@ function MakeWithConfig(Config) {
     }
     let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
     if (hook !== undefined) {
-      return hook({
+      hook({
         name: "in-memory",
         environment: "local",
         region: "local",
@@ -1467,6 +1467,7 @@ function MakeWithConfig(Config) {
         adminResources: []
       });
     }
+    return {};
   };
   let deployPlugin = (version, plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
@@ -1637,7 +1638,7 @@ function MakeWithConfig(Config) {
         PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
       }
     }
-    return Component$ReventlessCore.outputs(pluginComponent);
+    return {};
   };
   return {
     api: undefined,
@@ -3028,7 +3029,7 @@ function Make($star) {
     DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
     if (hook !== undefined) {
-      return hook({
+      hook({
         name: "in-memory",
         environment: "local",
         region: "local",
@@ -3039,6 +3040,7 @@ function Make($star) {
         adminResources: []
       });
     }
+    return {};
   };
   let deployPlugin = (version, plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
@@ -3200,7 +3202,7 @@ function Make($star) {
     seedUIFragmentRegistryQueryDb([pluginComponent]);
     seedPluginStructuresStore([pluginComponent]);
     firePluginDeployedHooks(builtInfos.contents);
-    return Component$ReventlessCore.outputs(pluginComponent);
+    return {};
   };
   let Counter_make = Counter.make;
   let Counter_outputs = Counter.outputs;

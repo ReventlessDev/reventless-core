@@ -114,7 +114,8 @@ function Make(Platform) {
     resolve: AutoShipOrder$OrderingPlugin.resolve,
     process: AutoShipOrder$OrderingPlugin.process,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
-    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval
+    heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
+    targetName: AutoShipOrder$OrderingPlugin.targetName
   });
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,
@@ -125,7 +126,8 @@ function Make(Platform) {
     collect: SendOrderConfirmation$OrderingPlugin.collect,
     translate: SendOrderConfirmation$OrderingPlugin.translate,
     maxRetries: SendOrderConfirmation$OrderingPlugin.maxRetries,
-    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval
+    heartbeatInterval: SendOrderConfirmation$OrderingPlugin.heartbeatInterval,
+    targetName: undefined
   });
   let CustomerAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
@@ -152,7 +154,7 @@ function Make(Platform) {
   });
   let mappings = [CustomersProjections$OrderingPlugin.CustomerMapping];
   let CustomersProjectionsWrapper = {
-    moduleUrl: "@reventlessdev/online-shop-hybrid-ordering-aws/src/OrderingPlugin_Aws.res.mjs",
+    moduleUrl: "@reventlessdev/online-shop-hybrid-ordering-aws/src/Plugin.res.mjs",
     mappings: mappings
   };
   let CustomersReadModelMaker = ReadModel_Builder_Single$ReventlessAws.Make({
@@ -224,7 +226,7 @@ function Make(Platform) {
     mapIncomingEvent: ProductsExtension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
-  let uiDefinition = Platform.Plugin.makeAutoUIDefinition("Ordering", [CustomerAggregate], [CustomersReadModelMaker], [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [CustomerAggregate], [CustomersReadModelMaker], [
     AvailableProductsViewSlice,
     OrdersViewSlice
   ], [
@@ -233,7 +235,7 @@ function Make(Platform) {
     RefundOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
-  ]);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [ProductsExtensionMaker]);
   let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomersReadModelMaker], undefined, [
     CancelOrderSlice,
     PlaceOrderSlice,
@@ -243,7 +245,7 @@ function Make(Platform) {
   ], [
     AvailableProductsViewSlice,
     OrdersViewSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, uiDefinition, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, undefined, pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     PlaceOrderSlice: PlaceOrderSlice,
@@ -261,7 +263,7 @@ function Make(Platform) {
     OrdersEPMappings: OrdersEPMappings,
     OrdersExtensionPointMaker: OrdersExtensionPointMaker,
     ProductsExtensionMaker: ProductsExtensionMaker,
-    uiDefinition: uiDefinition,
+    pluginStructure: pluginStructure,
     make: make
   };
 }

@@ -109,7 +109,8 @@ function Make(Platform) {
     moduleUrl: ImportProduct$CatalogPlugin.moduleUrl,
     externalInputSchema: ImportProduct$CatalogPlugin.externalInputSchema,
     commandSchema: ImportProduct$CatalogPlugin.commandSchema,
-    translate: ImportProduct$CatalogPlugin.translate
+    translate: ImportProduct$CatalogPlugin.translate,
+    targetName: ImportProduct$CatalogPlugin.targetName
   });
   let CategoryAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
@@ -136,7 +137,7 @@ function Make(Platform) {
   });
   let mappings = [CategoriesProjections$CatalogPlugin.CategoryMapping];
   let CategoriesProjectionsWrapper = {
-    moduleUrl: "@reventlessdev/online-shop-hybrid-catalog-aws/src/CatalogPlugin_Aws.res.mjs",
+    moduleUrl: "@reventlessdev/online-shop-hybrid-catalog-aws/src/Plugin.res.mjs",
     mappings: mappings
   };
   let CategoriesReadModelMaker = ReadModel_Builder_Single$ReventlessAws.Make({
@@ -209,7 +210,7 @@ function Make(Platform) {
     mapIncomingEvent: OrdersExtension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
-  let uiDefinition = Platform.Plugin.makeAutoUIDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
     ProductDemandViewStreamSlice,
     ProductsViewStreamSlice
   ], [
@@ -218,7 +219,7 @@ function Make(Platform) {
     ChangeProductNameSlice,
     ChangeProductPriceSlice,
     RecordProductDemandSlice
-  ]);
+  ], undefined, undefined, [ImportProductSlice], [OrdersExtensionMaker]);
   let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoriesReadModelMaker], [ImportProductsTask], [
     AddProductSlice,
     ChangeProductDescriptionSlice,
@@ -228,7 +229,7 @@ function Make(Platform) {
   ], [
     ProductDemandViewStreamSlice,
     ProductsViewStreamSlice
-  ], undefined, undefined, [ImportProductSlice], undefined, uiDefinition, undefined);
+  ], undefined, undefined, [ImportProductSlice], undefined, pluginStructure, undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
@@ -246,7 +247,7 @@ function Make(Platform) {
     ProductsEPMappings: ProductsEPMappings,
     ProductsExtensionPointMaker: ProductsExtensionPointMaker,
     OrdersExtensionMaker: OrdersExtensionMaker,
-    uiDefinition: uiDefinition,
+    pluginStructure: pluginStructure,
     make: make
   };
 }

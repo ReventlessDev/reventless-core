@@ -16,6 +16,7 @@ function Make(Bus) {
   return {
     ECChannel: ECChannel,
     EventCollectorChannel: include.EventCollectorChannel,
+    registerPluginName: include.registerPluginName,
     forPluginEventCollector: include.forPluginEventCollector,
     forPluginHeartbeat: include.forPluginHeartbeat,
     forDcbCommandTopic: include.forDcbCommandTopic,

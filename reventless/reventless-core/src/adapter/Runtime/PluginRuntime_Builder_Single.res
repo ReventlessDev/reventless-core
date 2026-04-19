@@ -60,6 +60,8 @@ module Make = (
     connect(~runtime)
   }
 
+  let registerPluginName = (_: string) => ()
+
   let forDcbCommandTopic = (
     ~handler,
     ~connect,

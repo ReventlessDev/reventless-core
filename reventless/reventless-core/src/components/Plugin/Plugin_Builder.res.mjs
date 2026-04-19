@@ -89,6 +89,7 @@ function Make(Spec) {
       let automationSlices = automationSlicesOpt !== undefined ? automationSlicesOpt : [];
       let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
       let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
+      PluginRuntimeBuilder.registerPluginName(name);
       let version = PackageVersion$Reventless.fromCaller();
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
         let s = Spec.hooks.scheduler.contents;

@@ -729,6 +729,7 @@ module Make = (
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts=?,
   ) => {
+    PluginRuntimeBuilder.registerPluginName(name)
     let version = Reventless.PackageVersion.fromCaller()
     Component.make(
       ~componentType=Plugin.componentType->ComponentType.toString,

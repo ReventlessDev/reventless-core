@@ -755,11 +755,7 @@ module MakeWithConfig = (
       let dcbEventLog = dcbEventLogUnknown->asDcbEventLogComponent
       let outputs = dcbEventLog->ReventlessCore.Component.outputs
       let tableResource = outputs.resources->Array.getUnsafe(0)
-      let _ = PluginRuntime_Builder.registerDcbConfig(
-        ~pluginName="",
-        ~dcbTableName=tableResource.name,
-        (),
-      )
+      PluginRuntime_Builder.registerDcbTableName(tableResource.name)
     },
     // DCB CommandTopic created hook — extracts SQS queue URL for slice builders.
     onDcbCommandTopicCreated: dcbCommandTopicUnknown => {
@@ -1368,6 +1364,7 @@ module MakeWithConfig = (
         })
     | None => ()
     }
+    Pulumi.Pulumi.getOutputs()
   }
 
   let startServers = () => ()
@@ -1398,7 +1395,7 @@ module MakeWithConfig = (
     let pluginOutputs = pluginComponent->ReventlessCore.Component.outputs
     ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
 
-    pluginOutputs
+    Pulumi.Pulumi.getOutputs()
   }
 }
 

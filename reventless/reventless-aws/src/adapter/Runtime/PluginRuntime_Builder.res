@@ -41,6 +41,9 @@ let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceSpecPath
   stateChangeSliceSpecPaths->Array.length
 }
 
+let registerDcbTableName = (dcbTableName: Pulumi.Output.t<string>) =>
+  dcbConfigRef := {...dcbConfigRef.contents, dcbTableName: Some(dcbTableName)}
+
 type heartbeatConfig = {
   pluginId: string,
   heartbeatTimeout: int,
@@ -93,6 +96,9 @@ module Make = (
   type context = PulumiAws.Lambda.context
   type runtimeParts = Util.Lambda.runtimeParts
   module EventCollectorChannel = EventCollectorChannel
+
+  let registerPluginName = (pluginName: string) =>
+    dcbConfigRef := {...dcbConfigRef.contents, pluginName}
 
   let outputOrPlaceholder = opt =>
     switch opt {

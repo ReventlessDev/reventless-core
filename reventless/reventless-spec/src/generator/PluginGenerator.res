@@ -32,12 +32,22 @@ let () = {
     let resolved = Pairing.resolve(discovered, ~srcDir)
     let source = Codegen.render(~config, ~resolved)
 
-    let outputPath = switch variant {
-    | Config.Standard => Generator_Node.join([srcDir, "Plugin.res"])
-    | Config.Aws({sourceNamespace}) =>
-      Generator_Node.join([Generator_Node.cwd(), "src", sourceNamespace ++ "_Aws.res"])
+    let outputDir = switch variant {
+    | Config.Standard => srcDir
+    | Config.Aws(_) => Generator_Node.join([Generator_Node.cwd(), "src"])
     }
-    Generator_Node.writeFileSync(outputPath, source)
-    Console.log("Generated: " ++ outputPath)
+
+    let pluginPath = Generator_Node.join([outputDir, "Plugin.res"])
+    Generator_Node.writeFileSync(pluginPath, source)
+    Console.log("Generated: " ++ pluginPath)
+
+    switch variant {
+    | Config.Standard => ()
+    | Config.Aws(_) =>
+      let mainSource = Codegen.renderMain(~config)
+      let mainPath = Generator_Node.join([outputDir, "Main.res"])
+      Generator_Node.writeFileSync(mainPath, mainSource)
+      Console.log("Generated: " ++ mainPath)
+    }
   }
 }

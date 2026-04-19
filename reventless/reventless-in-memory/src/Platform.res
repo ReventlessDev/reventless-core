@@ -1540,6 +1540,7 @@ module MakeWithConfig = (
       })
     | None => ()
     }
+    Dict.make()
   }
 
   let deployPlugin = (~version, ~plugin: module(PluginMaker), ~apiTarget=Domain) => {
@@ -1747,9 +1748,7 @@ module MakeWithConfig = (
       }
     }
 
-    let pluginOutputs: ReventlessCore.Plugin.outputs =
-      (pluginComponent->Obj.magic: ReventlessCore.Plugin.component)->ReventlessCore.Component.outputs
-    pluginOutputs
+    Dict.make()
   }
 }
 

@@ -3,6 +3,7 @@ module type T = {
   type runtimeParts
   module EventCollectorChannel: EventCollector_Adapter.Channel
 
+  let registerPluginName: string => unit
   let forPluginEventCollector: Runtime.forEventCollector<
     Runtime.effectHandler<EventCollectorChannel.callbackEvent, context, unit, string>,
     EventCollector.component,

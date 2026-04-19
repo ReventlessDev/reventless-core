@@ -48,6 +48,15 @@ function registerDcbConfig(pluginName, dcbTableName, stateChangeSliceSpecPathsOp
   return stateChangeSliceSpecPaths.length;
 }
 
+function registerDcbTableName(dcbTableName) {
+  let init = dcbConfigRef.contents;
+  dcbConfigRef.contents = {
+    pluginName: init.pluginName,
+    dcbTableName: dcbTableName,
+    stateChangeSliceSpecPaths: init.stateChangeSliceSpecPaths
+  };
+}
+
 let heartbeatConfigRef = {
   contents: {
     pluginId: "",
@@ -79,6 +88,14 @@ function registerConfig(eventTopicArn, pluginReadModelTableName, schedulerRoleAr
 }
 
 function Make(EventCollectorChannel) {
+  let registerPluginName = pluginName => {
+    let init = dcbConfigRef.contents;
+    dcbConfigRef.contents = {
+      pluginName: pluginName,
+      dcbTableName: init.dcbTableName,
+      stateChangeSliceSpecPaths: init.stateChangeSliceSpecPaths
+    };
+  };
   let outputOrPlaceholder = opt => {
     if (opt !== undefined) {
       return opt;
@@ -203,6 +220,7 @@ function Make(EventCollectorChannel) {
   let finish = () => {};
   return {
     EventCollectorChannel: EventCollectorChannel,
+    registerPluginName: registerPluginName,
     forPluginEventCollector: forPluginEventCollector,
     forPluginHeartbeat: forPluginHeartbeat,
     forDcbCommandTopic: forDcbCommandTopic,
@@ -216,6 +234,7 @@ export {
   registeredSliceSpecPaths,
   registerStateChangeSliceSpec,
   registerDcbConfig,
+  registerDcbTableName,
   heartbeatConfigRef,
   registerHeartbeatConfig,
   registerConfig,

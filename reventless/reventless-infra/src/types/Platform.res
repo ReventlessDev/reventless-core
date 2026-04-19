@@ -214,14 +214,16 @@ module type T = {
   ) => unit
 
   /** Deploy only the platform (admin components, scheduler, shared API).
-      No plugins are deployed — each plugin deploys independently via `deployPlugin`. */
-  let deployPlatform: (~version: string) => unit
+      No plugins are deployed — each plugin deploys independently via `deployPlugin`.
+      Returns the Pulumi stack outputs dict for use as the ESM `default` export. */
+  let deployPlatform: (~version: string) => dict<Pulumi.Output.t<JSON.t>>
 
   /** Deploy a single plugin as an independent stack.
       Creates its own scheduler and exports stack outputs for cross-stack consumption.
       Pass `~apiTarget=Platform` to route the plugin's resolvers and schema to the Platform API.
-      Defaults to `Domain`. */
-  let deployPlugin: (~version: string, ~plugin: module(PluginMaker), ~apiTarget: apiTarget=?) => pluginOutputs
+      Defaults to `Domain`.
+      Returns the Pulumi stack outputs dict for use as the ESM `default` export. */
+  let deployPlugin: (~version: string, ~plugin: module(PluginMaker), ~apiTarget: apiTarget=?) => dict<Pulumi.Output.t<JSON.t>>
 
   /** Start all servers after all makePlatform/deployPlugin calls are complete.
       In split in-memory mode, servers are deferred until this is called so all

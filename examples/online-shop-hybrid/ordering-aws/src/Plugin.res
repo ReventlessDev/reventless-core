@@ -68,6 +68,9 @@ module Make = (
     ~readModels=[module(CustomersReadModelMaker)],
     ~stateViewSlices=[module(AvailableProductsViewSlice), module(OrdersViewSlice)],
     ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
+    ~automationSlices=[module(AutoShipOrderSlice)],
+    ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
+    ~extensions=[module(ProductsExtensionMaker)],
   )
 
   let make = () =>

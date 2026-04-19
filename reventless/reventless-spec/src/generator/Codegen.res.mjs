@@ -337,6 +337,23 @@ function validateSliceTargets(resolved) {
   });
 }
 
+function renderMain(config) {
+  let name = config.name;
+  return [
+    "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
+    "// " + name + " plugin — AWS deployment.",
+    "",
+    "module Platform = ReventlessAws.Platform.Make()",
+    "module " + name + " = Plugin.Make(Platform)",
+    "",
+    "let default = Platform.deployPlugin(",
+    "  ~version=Reventless.PackageVersion.fromCaller(),",
+    "  ~plugin=module(" + name + "),",
+    ")",
+    ""
+  ].join("\n");
+}
+
 function render(config, resolved) {
   validateSliceTargets(resolved);
   let hasReadModels = resolved.readModels.length !== 0;
@@ -468,6 +485,7 @@ export {
   renderTaskMakeParam,
   renderPluginStructureCall,
   validateSliceTargets,
+  renderMain,
   render,
 }
 /* No side effect */

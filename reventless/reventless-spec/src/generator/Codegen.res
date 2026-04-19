@@ -452,6 +452,25 @@ let validateSliceTargets = (~resolved: Pairing.resolved) => {
   })
 }
 
+// ── Main.res render (AWS mode only) ─────────────────────────────────────────
+
+let renderMain = (~config: Config.config): string => {
+  let name = config.name
+  [
+    "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
+    "// " ++ name ++ " plugin — AWS deployment.",
+    "",
+    "module Platform = ReventlessAws.Platform.Make()",
+    "module " ++ name ++ " = Plugin.Make(Platform)",
+    "",
+    "let default = Platform.deployPlugin(",
+    "  ~version=Reventless.PackageVersion.fromCaller(),",
+    "  ~plugin=module(" ++ name ++ "),",
+    ")",
+    "",
+  ]->Array.join("\n")
+}
+
 // ── Top-level render ─────────────────────────────────────────────────────────
 
 let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
