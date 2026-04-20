@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.66 (2026-04-20)
+
+### Bug Fixes
+
+* **aws:** Source B push chain end-to-end ([d2b5cef](https://github.com/ReventlessDev/reventless-core/commit/d2b5cef2ff1dde197879461551e71d04e91962ac))
+### Features
+
+* wire Platform_EventGraph into AWS platform Admin.construct ([9ff5f33](https://github.com/ReventlessDev/reventless-core/commit/9ff5f334d5e0a64220375df0e34780986cc9d9f0))
+
+
 # 3.0.0-alpha.65 (2026-04-19)
 
 ### Bug Fixes

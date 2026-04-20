@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.19 (2026-04-20)
+
+### Bug Fixes
+
+* **aws:** Source B push chain end-to-end ([d2b5cef](https://github.com/ReventlessDev/reventless-core/commit/d2b5cef2ff1dde197879461551e71d04e91962ac))
+### Features
+
+* add automationSlices, translation slices, and extensions to pluginStructure ([631e2f3](https://github.com/ReventlessDev/reventless-core/commit/631e2f3636f0a422e58712f70106c0df8effc1e9))
+* **reventless-spec:** add StateViewSliceStream, EventMappings, and Task support to AWS codegen variant ([22d6b4a](https://github.com/ReventlessDev/reventless-core/commit/22d6b4aa22a57740090fa78b8c055c798e88194f))
+
+
 # 1.0.0-alpha.18 (2026-04-18)
 
 ### Features

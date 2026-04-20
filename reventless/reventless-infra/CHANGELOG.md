@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.39 (2026-04-20)
+
+### Features
+
+* add automationSlices, translation slices, and extensions to pluginStructure ([631e2f3](https://github.com/ReventlessDev/reventless-core/commit/631e2f3636f0a422e58712f70106c0df8effc1e9))
+* enrich MCP tool descriptions with linkedViews and consistencyRead from pluginStructure ([221aad4](https://github.com/ReventlessDev/reventless-core/commit/221aad40ae096d01a066d955be397bb29fc18c59))
+* Platform_EventGraph StateViewSlice aggregating cross-plugin event graph ([718f0be](https://github.com/ReventlessDev/reventless-core/commit/718f0bed258da62c4ff5f2ab188e2d43b85e91b6))
+
+
 # 3.0.0-alpha.38 (2026-04-19)
 
 ### Dependency Updates

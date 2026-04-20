@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.33 (2026-04-20)
+
+### Features
+
+* add automationSlices, translation slices, and extensions to pluginStructure ([631e2f3](https://github.com/ReventlessDev/reventless-core/commit/631e2f3636f0a422e58712f70106c0df8effc1e9))
+* cross-plugin edge assembly for Platform_EventGraph via query-time resolver ([6a2ba2b](https://github.com/ReventlessDev/reventless-core/commit/6a2ba2bccd7207dfccb81aec4b2c90e43c866f4d))
+* expose level, aggregateIdField, linkedViews and consistencyRead in Platform_UIDefinitions GQL ([62092f6](https://github.com/ReventlessDev/reventless-core/commit/62092f6a803acb83c0d0afc378892bd33e8cd8e5))
+* Platform_EventGraph StateViewSlice aggregating cross-plugin event graph ([718f0be](https://github.com/ReventlessDev/reventless-core/commit/718f0bed258da62c4ff5f2ab188e2d43b85e91b6))
+* **plugin-structure:** add mutationField to commandDef ([80f2c8d](https://github.com/ReventlessDev/reventless-core/commit/80f2c8db6a61a705f8b05cb7429187a4b69ccf37))
+
+
 # 3.0.0-alpha.32 (2026-04-19)
 
 ### Bug Fixes

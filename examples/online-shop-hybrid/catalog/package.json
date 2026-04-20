@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog",
-  "version": "1.0.0-alpha.18",
+  "version": "1.0.0-alpha.19",
   "description": "Online Shop Hybrid example — Catalog plugin (Category aggregate + Product/ProductDemand DCB)",
   "license": "MIT",
   "scripts": {

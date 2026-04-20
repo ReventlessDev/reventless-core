@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-aws",
-  "version": "3.0.0-alpha.65",
+  "version": "3.0.0-alpha.66",
   "description": "AWS adapters for Reventless",
   "license": "MIT",
   "scripts": {
@@ -24,10 +24,10 @@
     "@reventlessdev/rescript-pulumi-aws": "^2.4.0-alpha.18",
     "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.7",
     "@reventlessdev/rescript-uuid": "^1.1.0-alpha.6",
-    "@reventlessdev/reventless-core": "^3.0.0-alpha.56",
-    "@reventlessdev/reventless-infra": "^3.0.0-alpha.38",
+    "@reventlessdev/reventless-core": "^3.0.0-alpha.57",
+    "@reventlessdev/reventless-infra": "^3.0.0-alpha.39",
     "@reventlessdev/reventless-interop": "^3.0.0-alpha.8",
-    "@reventlessdev/reventless-spec": "^3.0.0-alpha.29"
+    "@reventlessdev/reventless-spec": "^3.0.0-alpha.30"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
