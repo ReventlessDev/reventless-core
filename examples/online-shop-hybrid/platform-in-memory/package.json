@@ -13,7 +13,7 @@
     "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'npm run serve' 'npm run dev:ui'"
   },
   "optionalDependencies": {
-    "@reventless/dev-app": "*"
+    "@reventlessdev/dev-app": "*"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "^1.0.0-alpha.19",
