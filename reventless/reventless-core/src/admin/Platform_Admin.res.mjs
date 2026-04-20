@@ -65,7 +65,7 @@ function Make(RuntimeEnvironment) {
       let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(AdminRuntimeBuilder)({
         hooks: Config.hooks
       });
-      let dcbResult = DcbBuilder.construct(name, name, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
+      let dcbResult = DcbBuilder.construct(name, name, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, opts);
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
       let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);

@@ -1738,6 +1738,37 @@ module MakeWithConfig = (
           ),
         ]),
       )
+      // Register platformCrossPluginEdges query.
+      adminGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_CrossPluginEdges.sdlTypes)
+      adminGraphQL.registerQueries(
+        ~sdlFields=[ReventlessCore.Platform_CrossPluginEdges.sdlQueryField],
+        ~resolvers=Dict.fromArray([
+          (
+            "platformCrossPluginEdges",
+            async (_root, _args, _ctx): JSON.t => {
+              let encodeNode = (n: Reventless.Plugin.graphNode) =>
+                Dict.fromArray([
+                  ("pluginName", JSON.Encode.string(n.pluginName)),
+                  ("componentName", JSON.Encode.string(n.componentName)),
+                  ("kind", JSON.Encode.string(n.kind)),
+                ])->JSON.Encode.object
+              let encodeEdge = (e: Reventless.Plugin.graphEdge) =>
+                Dict.fromArray([
+                  ("source", encodeNode(e.source)),
+                  ("target", encodeNode(e.target)),
+                  ("mechanism", JSON.Encode.string(e.mechanism)),
+                  ("viaEvents", e.viaEvents->Array.map(JSON.Encode.string)->JSON.Encode.array),
+                  ("implicit", JSON.Encode.bool(e.implicit)),
+                ])->JSON.Encode.object
+              pluginStructuresStore.contents
+              ->Dict.toArray
+              ->ReventlessCore.Platform_CrossPluginEdges.computeEdges
+              ->Array.map(encodeEdge)
+              ->JSON.Encode.array
+            },
+          ),
+        ]),
+      )
       adminRegisteredServers.contents->Array.push(adminGraphQL)
     }
 

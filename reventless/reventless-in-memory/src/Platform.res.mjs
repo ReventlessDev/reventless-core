@@ -41,6 +41,7 @@ import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_Plug
 import * as DomainGraphQL_Server$ReventlessInMemory from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as QueryEngine_InMemory$ReventlessInMemory from "./adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
 import * as ClonerRunner_InMemory$ReventlessInMemory from "./adapter/Cloner/ClonerRunner_InMemory.res.mjs";
+import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessInMemory from "./adapter/PlatformGraphQL_Server.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateViewSlice_Builder.res.mjs";
@@ -1702,6 +1703,49 @@ function MakeWithConfig(Config) {
             ]);
           })
         ]]));
+      adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
+      adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
+          "platformCrossPluginEdges",
+          async (_root, _args, _ctx) => {
+            let encodeNode = n => Object.fromEntries([
+              [
+                "pluginName",
+                n.pluginName
+              ],
+              [
+                "componentName",
+                n.componentName
+              ],
+              [
+                "kind",
+                n.kind
+              ]
+            ]);
+            let encodeEdge = e => Object.fromEntries([
+              [
+                "source",
+                encodeNode(e.source)
+              ],
+              [
+                "target",
+                encodeNode(e.target)
+              ],
+              [
+                "mechanism",
+                e.mechanism
+              ],
+              [
+                "viaEvents",
+                e.viaEvents.map(prim => prim)
+              ],
+              [
+                "implicit",
+                e.implicit
+              ]
+            ]);
+            return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
+          }
+        ]]));
       adminRegisteredServers.contents.push(adminGraphQL);
     }
     currentDeployTarget.contents = "Domain";
@@ -3356,6 +3400,49 @@ function Make($star) {
               ]
             ]);
           })
+        ]]));
+      adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
+      adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
+          "platformCrossPluginEdges",
+          async (_root, _args, _ctx) => {
+            let encodeNode = n => Object.fromEntries([
+              [
+                "pluginName",
+                n.pluginName
+              ],
+              [
+                "componentName",
+                n.componentName
+              ],
+              [
+                "kind",
+                n.kind
+              ]
+            ]);
+            let encodeEdge = e => Object.fromEntries([
+              [
+                "source",
+                encodeNode(e.source)
+              ],
+              [
+                "target",
+                encodeNode(e.target)
+              ],
+              [
+                "mechanism",
+                e.mechanism
+              ],
+              [
+                "viaEvents",
+                e.viaEvents.map(prim => prim)
+              ],
+              [
+                "implicit",
+                e.implicit
+              ]
+            ]);
+            return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
+          }
         ]]));
       adminRegisteredServers.contents.push(adminGraphQL);
     }
