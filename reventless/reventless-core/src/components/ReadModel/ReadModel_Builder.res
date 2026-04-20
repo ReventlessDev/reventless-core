@@ -19,6 +19,12 @@ module Make = (
   module Spec = Spec
   module EventCollectorRuntimeBuilder = EventCollectorRuntimeBuilder
 
+  let sourceNames =
+    Mappings.mappings
+    ->Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
+    ->Belt.Set.String.fromArray
+    ->Belt.Set.String.toArray
+
   type api = QueryDbStorage.api
   type role = QueryDbStorage.role
   type component = ReadModel.component

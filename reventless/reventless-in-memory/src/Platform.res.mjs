@@ -410,6 +410,7 @@ function MakeWithConfig(Config) {
     let $$let = ReadModelMaker.Make(Spec)(Mappings);
     return {
       Spec: $$let.Spec,
+      sourceNames: $$let.sourceNames,
       make: $$let.make,
       outputs: $$let.outputs,
       operations: $$let.operations,
@@ -2166,6 +2167,7 @@ function Make($star) {
     let $$let = ReadModelMaker.Make(Spec)(Mappings);
     return {
       Spec: $$let.Spec,
+      sourceNames: $$let.sourceNames,
       make: $$let.make,
       outputs: $$let.outputs,
       operations: $$let.operations,

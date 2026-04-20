@@ -12,6 +12,7 @@ import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventC
 
 function Make(Spec) {
   return Mappings => (RuntimeEnvironment => (QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => {
+    let sourceNames = Belt_SetString.toArray(Belt_SetString.fromArray(Mappings.mappings.map(Mapping => Mapping.sourceName)));
     let make = (api, apiRole, allEventTopics, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(ReadModel$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
       let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
       let opts = {
@@ -77,6 +78,7 @@ function Make(Spec) {
       Spec: Spec,
       EventCollectorRuntimeBuilder: EventCollectorRuntimeBuilder,
       make: make,
+      sourceNames: sourceNames,
       outputs: Component$ReventlessCore.outputs,
       operations: Component$ReventlessCore.operations,
       finish: finish

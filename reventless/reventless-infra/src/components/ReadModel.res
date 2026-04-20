@@ -35,6 +35,8 @@ module type T = {
   type api
   type role
   type component
+  /** Names of aggregates whose events feed this read model (from Projection.Mapping.sourceName). */
+  let sourceNames: array<string>
   let make: (
     ~api: api,
     ~apiRole: role,

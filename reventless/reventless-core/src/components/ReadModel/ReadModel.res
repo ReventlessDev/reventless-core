@@ -18,6 +18,7 @@ module type T = {
     ~allEventTopics: EventTopic.allOutputs,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
+  let sourceNames: array<string>
   let outputs: component => outputs
   let operations: component => Pulumi.Output.t<operations>
   let finish: unit => unit

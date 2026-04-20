@@ -45,6 +45,7 @@ module Make = (
     readModel
   }
 
+  let sourceNames = Inner.sourceNames
   let outputs = Inner.outputs
   let operations = Inner.operations
   let finish = () => EventCollectorRuntimeBuilder.finish()

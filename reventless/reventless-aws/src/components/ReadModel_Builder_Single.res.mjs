@@ -42,6 +42,7 @@ function Make(Spec) {
     let finish = () => EventCollectorRuntime_Builder_Single$ReventlessAws.finish();
     return {
       Spec: Inner.Spec,
+      sourceNames: Inner.sourceNames,
       make: make,
       outputs: Inner.outputs,
       operations: Inner.operations,
