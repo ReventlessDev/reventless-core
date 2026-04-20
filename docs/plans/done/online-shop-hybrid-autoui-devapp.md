@@ -70,12 +70,12 @@ let uiDefinition = Plugin_Builder.makeAutoUIDefinition(
 ### Checklist
 
 ```
-Step 1
+Step 1  (implemented as pluginStructure/makePluginDefinition — same purpose, different naming)
   [x] 1.1  Define Reventless.Plugin.uiDefinition type in reventless-core (analogous to uiFragmentManifest)
   [x] 1.2  Implement Plugin_Builder.makeAutoUIDefinition using ReventlessInfra .T module types
   [x] 1.3  Update generate-plugin (Codegen.res) to emit `let uiDefinition` in Plugin.res
   [x] 1.4  Regenerate catalog/src/Plugin.res and ordering/src/Plugin.res
-  [ ]      Verify: uiDefinition is a non-empty JS object; stateViewSlice and stateChangeSlice entries present
+  [x]      Verify: pluginStructure contains stateViewSlices and stateChangeSlices entries (confirmed in Plugin.res)
 ```
 
 ---
@@ -112,12 +112,12 @@ query {
 Step 2
   [x] 2.1  Extend Platform.Plugin.make with ~uiDefinition; store at registration
   [x] 2.2  Implement Platform_UIDefinitions admin query
-  [ ]      Verify: dev-app renders all plugin components without any hardcoded imports
+  [x]      Verify: dev-app renders all plugin components without any hardcoded imports
 
 Verification (npm run dev:full -w examples/online-shop-hybrid/platform-in-memory)
-  [ ]      dev-app loads at localhost:5173; SidebarNav shows Catalog and Ordering groups
-  [ ]      AutoListView renders live categories, orders, products
-  [ ]      AutoDetailView renders in detail panel on row selection
-  [ ]      AutoCommandForm submits mutation; list refreshes
+  [x]      dev-app loads at localhost:5173; SidebarNav shows Catalog and Ordering groups
+  [x]      AutoListView renders live categories, orders, products
+  [x]      AutoDetailView renders in detail panel on row selection
+  [x]      AutoCommandForm submits mutation; list refreshes
 ```
 
