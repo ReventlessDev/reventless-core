@@ -1,6 +1,6 @@
 # Event Graph Linking
 
-**Status:** Analysis — no implementation yet
+**Status:** Implemented — Phases 1–7 complete (see `docs/plans/done/event-graph-linking.md` and `docs/plans/done/event-graph-phase7.md`)
 
 ---
 

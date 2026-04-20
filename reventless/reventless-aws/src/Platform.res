@@ -444,6 +444,7 @@ module MakeWithConfig = (
   module StateViewSlice = {
     include StateViewSlice_Builder.Make(ApiConfig)
   }
+  module PlatformEventGraphT = StateViewSlice.Make(ReventlessCore.Platform_EventGraph)
   module StateViewSliceStream = {
     @@warning("-60")
     include StateViewSlice_Builder_Stream.Make(ApiConfig)
@@ -978,7 +979,7 @@ module MakeWithConfig = (
       ~api=platformApi,
       ~apiRole=platformApiRole,
       ~stateChangeSlices=[],
-      ~stateViewSlices=[],
+      ~stateViewSlices=[module(PlatformEventGraphT)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -1151,7 +1152,7 @@ module MakeWithConfig = (
       ~api=platformApi,
       ~apiRole=platformApiRole,
       ~stateChangeSlices=[],
-      ~stateViewSlices=[],
+      ~stateViewSlices=[module(PlatformEventGraphT)],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
