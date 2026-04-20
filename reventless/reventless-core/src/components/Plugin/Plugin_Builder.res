@@ -100,6 +100,7 @@ module Make = (
       ~automationSlices,
       ~outboundTranslationSlices,
       ~inboundTranslationSlices,
+      ~pluginStructure?,
       ~opts,
     )
 
@@ -126,7 +127,16 @@ module Make = (
             Spec.hooks.mutationResolverHook->Option.forEach(registerResolver =>
               registerResolver(~kind=Aggregate, ~fields=fieldNames, ~commandSchema)
             )
-            [{ReventlessInfra.Api.fieldNames, commandSchema}]
+            let aggDef =
+              pluginStructure->Option.flatMap(s =>
+                s.aggregates->Array.find(d => d.name == M.Spec.name)
+              )
+            [{
+              ReventlessInfra.Api.fieldNames,
+              commandSchema,
+              linkedViews: ?aggDef->Option.map(d => d.linkedViews),
+              consistencyRead: ?aggDef->Option.flatMap(d => d.consistencyRead),
+            }]
           }
         }
       })

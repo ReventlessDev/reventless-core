@@ -5,6 +5,14 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "./SuryToJsonSchema.res.mjs";
 
+function buildDescriptionSuffix(base, entry) {
+  let views = entry.linkedViews;
+  let viewsSuffix = views !== undefined && views.length !== 0 ? ` Affects views: ` + views.join(", ") + `.` : "";
+  let view = entry.consistencyRead;
+  let consistencySuffix = view !== undefined ? ` Reads: ` + view + ` for consistency.` : "";
+  return base + viewsSuffix + consistencySuffix;
+}
+
 function generateTools(pluginName, mutationEntries) {
   let tools = [];
   mutationEntries.forEach(entry => {
@@ -17,7 +25,8 @@ function generateTools(pluginName, mutationEntries) {
           return;
         }
         let inputSchema = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema);
-        let desc = entryDescription.length > 0 ? entryDescription : `Execute ` + fieldName + ` on ` + pluginName;
+        let base = entryDescription.length > 0 ? entryDescription : `Execute ` + fieldName + ` on ` + pluginName;
+        let desc = buildDescriptionSuffix(base, entry);
         tools.push({
           name: fieldName,
           description: desc,
@@ -71,7 +80,8 @@ function generateTools(pluginName, mutationEntries) {
           } else {
             withId = inputSchema;
           }
-          let desc = entryDescription.length > 0 ? entryDescription : `Execute ` + fieldName + ` on ` + pluginName;
+          let base = entryDescription.length > 0 ? entryDescription : `Execute ` + fieldName + ` on ` + pluginName;
+          let desc = buildDescriptionSuffix(base, entry);
           tools.push({
             name: fieldName,
             description: desc,
@@ -128,6 +138,7 @@ let extractVariantNames = DcbTag$Reventless.extractVariantNames;
 
 export {
   extractVariantNames,
+  buildDescriptionSuffix,
   generateTools,
   generateResources,
   generateEventHistoryResources,

@@ -28,6 +28,8 @@ type mutationSchemaEntry = {
   commandSchema: S.t<unknown>,
   authorization?: Reventless.ReadModel.authorization,
   description?: string,
+  linkedViews?: array<string>,
+  consistencyRead?: string,
 }
 
 /**

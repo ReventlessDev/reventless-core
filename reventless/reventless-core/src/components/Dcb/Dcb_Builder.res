@@ -61,6 +61,7 @@ module Make = (
     ~automationSlices: array<module(AutomationSlice.T)>,
     ~outboundTranslationSlices: array<module(OutboundTranslationSlice.T)>,
     ~inboundTranslationSlices: array<module(InboundTranslationSlice.T)>,
+    ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts: Pulumi.ComponentResource.options,
   ): dcbResult => {
     let hasDcb =
@@ -572,9 +573,15 @@ module Make = (
             if ApiNoApiHelpers.isNoApi(commandSchema) {
               None
             } else {
+              let sliceDef =
+                pluginStructure->Option.flatMap(s =>
+                  s.stateChangeSlices->Array.find(d => d.name == S.Spec.name)
+                )
               Some({
                 ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
                 commandSchema,
+                linkedViews: ?sliceDef->Option.map(d => d.linkedViews),
+                consistencyRead: ?sliceDef->Option.flatMap(d => d.consistencyRead),
               })
             }
           })

@@ -107,7 +107,7 @@ function Make(Spec) {
         let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PluginRuntimeBuilder)({
           hooks: Spec.hooks
         });
-        let dcbResult = DcbBuilder.construct(extra$1, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts);
+        let dcbResult = DcbBuilder.construct(extra$1, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
@@ -119,13 +119,15 @@ function Make(Spec) {
           Plugin_Helpers$ReventlessCore.aggregateMutationFieldsRegistry[M.Spec.name] = fieldNames;
           if (fieldNames.length === 0) {
             return [];
-          } else {
-            Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema));
-            return [{
-                fieldNames: fieldNames,
-                commandSchema: commandSchema
-              }];
           }
+          Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema));
+          let aggDef = Stdlib_Option.flatMap(pluginStructure, s => s.aggregates.find(d => d.name === M.Spec.name));
+          return [{
+              fieldNames: fieldNames,
+              commandSchema: commandSchema,
+              linkedViews: Stdlib_Option.map(aggDef, d => d.linkedViews),
+              consistencyRead: Stdlib_Option.flatMap(aggDef, d => d.consistencyRead)
+            }];
         });
         let mutationEntries = mutationEntriesFromAggregates.concat(dcbResult.mutationEntries);
         let queryEntriesFromReadModels = readModels.map(R => {

@@ -23,6 +23,22 @@ type mcpResourceDefinition = {
 
 // ─── Tool generation ──────────────────────────────────────────────────────
 
+let buildDescriptionSuffix = (
+  ~base: string,
+  ~entry: ReventlessInfra.Api.mutationSchemaEntry,
+): string => {
+  let viewsSuffix = switch entry.linkedViews {
+  | Some(views) if views->Array.length > 0 =>
+    ` Affects views: ${views->Array.join(", ")}.`
+  | _ => ""
+  }
+  let consistencySuffix = switch entry.consistencyRead {
+  | Some(view) => ` Reads: ${view} for consistency.`
+  | None => ""
+  }
+  base ++ viewsSuffix ++ consistencySuffix
+}
+
 /** Generate MCP tool definitions from mutation entries.
     Each command variant becomes a separate tool. */
 let generateTools = (
@@ -77,10 +93,11 @@ let generateTools = (
             JSON.Encode.object(obj)
           | None => inputSchema
           }
-          let desc =
+          let base =
             entryDescription->String.length > 0
               ? entryDescription
               : `Execute ${fieldName} on ${pluginName}`
+          let desc = buildDescriptionSuffix(~base, ~entry)
           tools->Array.push({name: fieldName, description: desc, inputSchema: withId})
         }
       })
@@ -89,10 +106,11 @@ let generateTools = (
       let fieldName = entry.fieldNames->Array.get(0)->Option.getOr("")
       if fieldName->String.length > 0 {
         let inputSchema = SuryToJsonSchema.deriveObjectSchema(schema)
-        let desc =
+        let base =
           entryDescription->String.length > 0
             ? entryDescription
             : `Execute ${fieldName} on ${pluginName}`
+        let desc = buildDescriptionSuffix(~base, ~entry)
         tools->Array.push({name: fieldName, description: desc, inputSchema})
       }
     | _ => ()

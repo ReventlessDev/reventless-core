@@ -70,7 +70,7 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
-    let construct = (name, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, opts) => {
+    let construct = (name, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts) => {
       let hasDcb = stateChangeSlices.length !== 0 || stateViewSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0;
       if (!hasDcb) {
         return emptyResult;
@@ -377,12 +377,14 @@ function Make(DcbEventLogStorage) {
         let commandSchema = S.Spec.commandSchema;
         if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
           return;
-        } else {
-          return {
-            fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)],
-            commandSchema: commandSchema
-          };
         }
+        let sliceDef = Stdlib_Option.flatMap(pluginStructure, s => s.stateChangeSlices.find(d => d.name === S.Spec.name));
+        return {
+          fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)],
+          commandSchema: commandSchema,
+          linkedViews: Stdlib_Option.map(sliceDef, d => d.linkedViews),
+          consistencyRead: Stdlib_Option.flatMap(sliceDef, d => d.consistencyRead)
+        };
       });
       let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => ({
         fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name)],
