@@ -18,20 +18,41 @@ let make = (
   let variantNames = schema => Reventless.DcbTag.extractVariantNames(schema)
   let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)
 
-  let commandLevelAndId = (~isAggregate, properties: dict<S.t<unknown>>) =>
+  // Aggregate commands that initialize a new aggregate instance are Collection-level
+  // (shown as table-top buttons); all others are Instance-level (shown per-row).
+  let isCreateCommandName = name =>
+    ["Add", "Create", "Register", "Open", "Initialize", "Place", "Submit", "Start"]->Array.some(p =>
+      name->String.startsWith(p)
+    )
+
+  let commandLevelAndId = (~isAggregate, ~variantName, properties: dict<S.t<unknown>>) =>
     if isAggregate {
-      (Reventless.Plugin.Instance, None)
+      if isCreateCommandName(variantName) {
+        (Reventless.Plugin.Collection, None)
+      } else {
+        (Reventless.Plugin.Instance, None)
+      }
     } else {
-      let taggedField =
+      let taggedFields =
         properties
         ->Dict.toArray
-        ->Array.find(((fieldName, fieldSchema)) =>
+        ->Array.filter(((fieldName, fieldSchema)) =>
           fieldName != "TAG" &&
             (Reventless.DcbTag.isTagged(fieldSchema) ||
               Reventless.DcbTag.isTaggedArray(fieldSchema))
         )
+      let taggedField =
+        taggedFields
+        ->Array.find(((_, fieldSchema)) => Reventless.DcbTag.isPartitionTag(fieldSchema))
+        ->Option.orElse(taggedFields->Array.get(0))
       switch taggedField {
-      | Some((fieldName, _)) => (Reventless.Plugin.Instance, Some(fieldName))
+      | Some((fieldName, _)) =>
+        if isCreateCommandName(variantName) {
+          // Creation command: Collection-level, but UUID is injected into the tagged ID field.
+          (Reventless.Plugin.Collection, Some(fieldName))
+        } else {
+          (Reventless.Plugin.Instance, Some(fieldName))
+        }
       | None => (Reventless.Plugin.Collection, None)
       }
     }
@@ -48,7 +69,7 @@ let make = (
       ->Option.flatMap(tagSchema =>
         switch tagSchema {
         | String({const: ?Some(variantName)}) => {
-            let (level, aggregateIdField) = commandLevelAndId(~isAggregate, properties)
+            let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
             Some({
               Reventless.Plugin.name: variantName,
               schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
@@ -100,6 +121,11 @@ let make = (
       qualify(~prefix=name, variantNames(SVS.Spec.consumedEventSchema)),
     ))
 
+  let rmSourceNames =
+    readModels->Array.map((
+      module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    ) => (R.Spec.name, R.sourceNames))
+
   let allWritableProduced: array<(string, array<string>)> = Array.concat(scsProduced, aggProduced)
 
   // ── Cross-reference helpers ────────────────────────────────────────────────
@@ -107,10 +133,19 @@ let make = (
   let intersects = (a: array<string>, b: array<string>) =>
     a->Array.some(x => b->Array.includes(x))
 
-  let linkedViewsFor = (producedTypes: array<string>): array<string> =>
+  let linkedSvsFor = (producedTypes: array<string>): array<string> =>
     svsConsumed->Array.filterMap(((viewName, consumed)) =>
       if intersects(producedTypes, consumed) {
         Some(viewName)
+      } else {
+        None
+      }
+    )
+
+  let linkedReadModelsFor = (aggregateName: string): array<string> =>
+    rmSourceNames->Array.filterMap(((rmName, sources)) =>
+      if sources->Array.includes(aggregateName) {
+        Some(rmName)
       } else {
         None
       }
@@ -126,25 +161,36 @@ let make = (
     )
 
   // For a StateChangeSlice's consumedEventTypes, find the single best-matching StateViewSlice.
-  // Ties (equal overlap scores) resolve to None rather than guessing.
+  // Primary sort: overlap score desc. Tie-break: total consumed events desc (larger view wins).
+  // Remaining ties resolve to None.
   let consistencyReadFor = (scsConsumedTypes: array<string>): option<string> => {
     let scored =
       svsConsumed
       ->Array.map(((viewName, consumed)) => {
-        let overlap = consumed->Array.filter(e => scsConsumedTypes->Array.includes(e))
-        (viewName, overlap->Array.length)
+        let overlap = consumed->Array.filter(e => scsConsumedTypes->Array.includes(e))->Array.length
+        let total = consumed->Array.length
+        (viewName, overlap, total)
       })
-      ->Array.filter(((_, score)) => score > 0)
-      ->Array.toSorted(((_, a), (_, b)) => Int.compare(b, a))
+      ->Array.filter(((_, overlap, _)) => overlap > 0)
+      ->Array.toSorted(((_, a, aTotal), (_, b, bTotal)) => {
+        let cmp = Int.compare(b, a)
+        if cmp != Ordering.equal { cmp } else { Int.compare(bTotal, aTotal) }
+      })
     switch scored->Array.length {
     | 0 => None
     | 1 =>
-      let (viewName, _) = scored->Array.getUnsafe(0)
+      let (viewName, _, _) = scored->Array.getUnsafe(0)
       Some(viewName)
     | _ =>
-      let (viewName, top) = scored->Array.getUnsafe(0)
-      let (_, second) = scored->Array.getUnsafe(1)
-      top > second ? Some(viewName) : None
+      let (viewName, top, topTotal) = scored->Array.getUnsafe(0)
+      let (_, second, secondTotal) = scored->Array.getUnsafe(1)
+      if top > second {
+        Some(viewName)
+      } else if top == second && topTotal > secondTotal {
+        Some(viewName)
+      } else {
+        None
+      }
     }
   }
 
@@ -192,7 +238,7 @@ let make = (
         ),
         producedEventTypes: produced,
         consumedEventTypes: consumed,
-        linkedViews: linkedViewsFor(produced),
+        linkedViews: linkedSvsFor(produced),
         consistencyRead: consistencyReadFor(consumed),
       }: Reventless.Plugin.writableDef)
     })
@@ -212,7 +258,7 @@ let make = (
         ),
         producedEventTypes: produced,
         consumedEventTypes: [],
-        linkedViews: linkedViewsFor(produced),
+        linkedViews: Array.concat(linkedSvsFor(produced), linkedReadModelsFor(A.Spec.name)),
         consistencyRead: None,
       }: Reventless.Plugin.writableDef)
     })

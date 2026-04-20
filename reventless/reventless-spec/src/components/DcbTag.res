@@ -322,6 +322,7 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
           | _ => None
           }
         )
+      | String({const: ?Some(name)}) => Some(name)
       | _ => None
       }
     )
@@ -335,6 +336,7 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
       }
     )
     ->Option.getOr([])
+  | String({const: ?Some(name)}) => [name]
   | _ => []
   }
 }

@@ -2,6 +2,7 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -13,33 +14,35 @@ import * as EventPublish_Callback$ReventlessCore from "../EventLog/EventPublish_
 function Make(Ops) {
   let name = Ops.name;
   let publishToEventTopic = async rawEvents => {
-    let eventsJson = rawEvents.map(rawEvent => Message$ReventlessCore.combineMessage(rawEvent.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(rawEvent.data), {})));
     let meta = Message$ReventlessCore.generateMeta(name, undefined, undefined);
+    let rawEventsJson = rawEvents.map(rawEvent => Message$ReventlessCore.combineMessage(rawEvent.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(rawEvent.data), {})));
     let hook = EventPublish_Callback$ReventlessCore.beforePublishHook.contents;
-    let finalEventsJson;
+    let finalRawEventsJson;
     if (hook !== undefined) {
-      let published_eventCount = eventsJson.length;
+      let published_eventCount = rawEventsJson.length;
       let published = {
         componentName: name,
         entityId: name,
         eventCount: published_eventCount,
-        eventsJson: eventsJson,
+        eventsJson: rawEventsJson,
         meta: meta
       };
       try {
-        finalEventsJson = (await hook(published)).eventsJson;
+        finalRawEventsJson = (await hook(published)).eventsJson;
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
         Effect.runSync(Effect.logError(`DcbEventLog(` + name + `): beforePublishHook error: ` + errMsg));
-        finalEventsJson = eventsJson;
+        finalRawEventsJson = rawEventsJson;
       }
     } else {
-      finalEventsJson = eventsJson;
+      finalRawEventsJson = rawEventsJson;
     }
-    await Promise.all(finalEventsJson.map(async json => {
+    await Promise.all(Stdlib_Array.zip(rawEvents, finalRawEventsJson).map(async param => {
+      let entityId = Stdlib_Option.getOr(Stdlib_Option.map(param[0].tags[0], t => t.value), name);
+      let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, meta, param[1]);
       try {
-        return await Ops.publishJson(name, meta, json);
+        return await Ops.publishJson(entityId, meta, eventJson$p);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {
@@ -54,12 +57,12 @@ function Make(Ops) {
       return;
     }
     try {
-      let published_eventCount$1 = finalEventsJson.length;
+      let published_eventCount$1 = finalRawEventsJson.length;
       let published$1 = {
         componentName: name,
         entityId: name,
         eventCount: published_eventCount$1,
-        eventsJson: finalEventsJson,
+        eventsJson: finalRawEventsJson,
         meta: meta
       };
       await hook$1(published$1);

@@ -21,7 +21,7 @@ let eventSchema = S.union([
 let Delegate = {
   Id: undefined,
   commandSchema: S.unit,
-  name: "CatalogEventLog",
+  name: "Catalog",
   eventSchema: eventSchema,
   errorSchema: S.unit,
   moduleUrl: "@reventlessdev/online-shop-hybrid-catalog/src/ExtensionPoint/ProductsExtensionPointMapping.res.mjs"

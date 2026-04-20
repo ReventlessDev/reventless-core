@@ -6,7 +6,7 @@ module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
 module Delegate = {
-  let name = "CatalogEventLog"
+  let name = "Catalog"
   @schema
   type event =
     | ProductAdded({productId: string, name: string, description: string, price: float})

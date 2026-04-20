@@ -15,23 +15,24 @@ module Make = (Ops: Ops): T => {
   let name = Ops.name
 
   let publishToEventTopic = async (rawEvents: array<DcbEventLog.rawEvent>) => {
-    let eventsJson = rawEvents->Array.map(rawEvent =>
+    let meta = Message.generateMeta(~service=name)
+
+    let rawEventsJson = rawEvents->Array.map(rawEvent =>
       Message.combineMessage(
         rawEvent.eventType,
         rawEvent.data->JSON.Decode.object->Option.getOr(Dict.make()),
       )
     )
-    let meta = Message.generateMeta(~service=name)
 
     // Run beforePublish hook — if it throws, log the error and publish original events.
-    let finalEventsJson = switch EventPublish_Callback.beforePublishHook.contents {
-    | None => eventsJson
+    let finalRawEventsJson = switch EventPublish_Callback.beforePublishHook.contents {
+    | None => rawEventsJson
     | Some(hook) =>
       let published: EventPublish_Callback.publishedEvent = {
         componentName: name,
         entityId: name,
-        eventCount: eventsJson->Array.length,
-        eventsJson,
+        eventCount: rawEventsJson->Array.length,
+        eventsJson: rawEventsJson,
         meta,
       }
       try {
@@ -44,13 +45,16 @@ module Make = (Ops: Ops): T => {
         Effect.logError(
           `DcbEventLog(${name}): beforePublishHook error: ${errMsg}`,
         )->Effect.runSync
-        eventsJson
+        rawEventsJson
       }
     }
 
-    let _ = await finalEventsJson
-    ->Array.map(async json => {
-      try await Ops.publishJson(name, meta, json) catch {
+    let _ = await Array.zip(rawEvents, finalRawEventsJson)
+    ->Array.map(async ((rawEvent, eventJson)) => {
+      let entityId =
+        rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
+      let eventJson' = Message.composeEventJson'(entityId, meta, eventJson)
+      try await Ops.publishJson(entityId, meta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
         Effect.logError(`DcbEventLog(${name}): EventTopic.publish Error: ${errMsg}`)->Effect.runSync
@@ -66,8 +70,8 @@ module Make = (Ops: Ops): T => {
         let published: EventPublish_Callback.publishedEvent = {
           componentName: name,
           entityId: name,
-          eventCount: finalEventsJson->Array.length,
-          eventsJson: finalEventsJson,
+          eventCount: finalRawEventsJson->Array.length,
+          eventsJson: finalRawEventsJson,
           meta,
         }
         let _ = await hook(published)

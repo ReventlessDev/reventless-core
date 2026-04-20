@@ -17,14 +17,31 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
   let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
   let qualify = (prefix, names) => names.map(n => prefix + "." + n);
-  let commandLevelAndId = (isAggregate, properties) => {
+  let isCreateCommandName = name => [
+    "Add",
+    "Create",
+    "Register",
+    "Open",
+    "Initialize",
+    "Place",
+    "Submit",
+    "Start"
+  ].some(p => name.startsWith(p));
+  let commandLevelAndId = (isAggregate, variantName, properties) => {
     if (isAggregate) {
-      return [
-        "Instance",
-        undefined
-      ];
+      if (isCreateCommandName(variantName)) {
+        return [
+          "Collection",
+          undefined
+        ];
+      } else {
+        return [
+          "Instance",
+          undefined
+        ];
+      }
     }
-    let taggedField = Object.entries(properties).find(param => {
+    let taggedFields = Object.entries(properties).filter(param => {
       let fieldSchema = param[1];
       if (param[0] !== "TAG") {
         if (DcbTag$Reventless.isTagged(fieldSchema)) {
@@ -36,15 +53,23 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         return false;
       }
     });
-    if (taggedField !== undefined) {
-      return [
-        "Instance",
-        taggedField[0]
-      ];
-    } else {
+    let taggedField = Stdlib_Option.orElse(taggedFields.find(param => DcbTag$Reventless.isPartitionTag(param[1])), taggedFields[0]);
+    if (taggedField === undefined) {
       return [
         "Collection",
         undefined
+      ];
+    }
+    let fieldName = taggedField[0];
+    if (isCreateCommandName(variantName)) {
+      return [
+        "Collection",
+        fieldName
+      ];
+    } else {
+      return [
+        "Instance",
+        fieldName
       ];
     }
   };
@@ -61,7 +86,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       if (variantName === undefined) {
         return;
       }
-      let match = commandLevelAndId(isAggregate, properties);
+      let match = commandLevelAndId(isAggregate, variantName, properties);
       return {
         name: variantName,
         schema: JSON.stringify(S.toJSONSchema(v)),
@@ -94,10 +119,19 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     SVS.Spec.name,
     qualify(name, DcbTag$Reventless.extractVariantNames(SVS.Spec.consumedEventSchema))
   ]);
+  let rmSourceNames = readModels.map(R => [
+    R.Spec.name,
+    R.sourceNames
+  ]);
   let allWritableProduced = scsProduced.concat(aggProduced);
   let intersects = (a, b) => a.some(x => b.includes(x));
-  let linkedViewsFor = producedTypes => Stdlib_Array.filterMap(svsConsumed, param => {
+  let linkedSvsFor = producedTypes => Stdlib_Array.filterMap(svsConsumed, param => {
     if (intersects(producedTypes, param[1])) {
+      return param[0];
+    }
+  });
+  let linkedReadModelsFor = aggregateName => Stdlib_Array.filterMap(rmSourceNames, param => {
+    if (param[1].includes(aggregateName)) {
       return param[0];
     }
   });
@@ -108,21 +142,34 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   });
   let consistencyReadFor = scsConsumedTypes => {
     let scored = svsConsumed.map(param => {
-      let overlap = param[1].filter(e => scsConsumedTypes.includes(e));
+      let consumed = param[1];
+      let overlap = consumed.filter(e => scsConsumedTypes.includes(e)).length;
+      let total = consumed.length;
       return [
         param[0],
-        overlap.length
+        overlap,
+        total
       ];
-    }).filter(param => param[1] > 0).toSorted((param, param$1) => Primitive_int.compare(param$1[1], param[1]));
+    }).filter(param => param[1] > 0).toSorted((param, param$1) => {
+      let cmp = Primitive_int.compare(param$1[1], param[1]);
+      if (cmp !== 0) {
+        return cmp;
+      } else {
+        return Primitive_int.compare(param$1[2], param[2]);
+      }
+    });
     let match = scored.length;
     if (match === 0) {
       return;
     }
     if (match !== 1) {
       let match$1 = scored[0];
+      let top = match$1[1];
+      let viewName = match$1[0];
       let match$2 = scored[1];
-      if (match$1[1] > match$2[1]) {
-        return match$1[0];
+      let second = match$2[1];
+      if (top > second || top === second && match$1[2] > match$2[2]) {
+        return viewName;
       } else {
         return;
       }
@@ -162,7 +209,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       commands: extractCommandDefs(false, _variantName => Api_Naming$ReventlessCore.sliceMutationField(name, SCS.Spec.name), SCS.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: consumed,
-      linkedViews: linkedViewsFor(produced),
+      linkedViews: linkedSvsFor(produced),
       consistencyRead: consistencyReadFor(consumed)
     };
   });
@@ -174,7 +221,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       commands: extractCommandDefs(true, variantName => Api_Naming$ReventlessCore.aggregateMutationField(name, A.Spec.name, variantName), A.Spec.commandSchema),
       producedEventTypes: produced,
       consumedEventTypes: [],
-      linkedViews: linkedViewsFor(produced),
+      linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
       consistencyRead: undefined
     };
   });

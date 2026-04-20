@@ -10,7 +10,7 @@
     "serve": "npx tsx src/Main.res.mjs",
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
     "dev:ui": "[ -d reventless-ui ] && npm --prefix reventless-ui run dev:ui || dev-app",
-    "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'npm run serve' 'npm run dev:ui'"
+    "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'npm run serve' 'npx wait-on tcp:4001 && npm run dev:ui'"
   },
   "optionalDependencies": {
     "@reventlessdev/dev-app": "*"
