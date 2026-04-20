@@ -1415,6 +1415,49 @@ function MakeWithConfig(Config) {
         return JSON.stringify(result);
       }
     });
+    platformGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
+    platformGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
+        "platformCrossPluginEdges",
+        async (_root, _args, _ctx) => {
+          let encodeNode = n => Object.fromEntries([
+            [
+              "pluginName",
+              n.pluginName
+            ],
+            [
+              "componentName",
+              n.componentName
+            ],
+            [
+              "kind",
+              n.kind
+            ]
+          ]);
+          let encodeEdge = e => Object.fromEntries([
+            [
+              "source",
+              encodeNode(e.source)
+            ],
+            [
+              "target",
+              encodeNode(e.target)
+            ],
+            [
+              "mechanism",
+              e.mechanism
+            ],
+            [
+              "viaEvents",
+              e.viaEvents.map(prim => prim)
+            ],
+            [
+              "implicit",
+              e.implicit
+            ]
+          ]);
+          return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
+        }
+      ]]));
     DomainGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     if (Config.splitApi) {
@@ -3121,6 +3164,49 @@ function Make($star) {
         return JSON.stringify(result);
       }
     });
+    platformGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
+    platformGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
+        "platformCrossPluginEdges",
+        async (_root, _args, _ctx) => {
+          let encodeNode = n => Object.fromEntries([
+            [
+              "pluginName",
+              n.pluginName
+            ],
+            [
+              "componentName",
+              n.componentName
+            ],
+            [
+              "kind",
+              n.kind
+            ]
+          ]);
+          let encodeEdge = e => Object.fromEntries([
+            [
+              "source",
+              encodeNode(e.source)
+            ],
+            [
+              "target",
+              encodeNode(e.target)
+            ],
+            [
+              "mechanism",
+              e.mechanism
+            ],
+            [
+              "viaEvents",
+              e.viaEvents.map(prim => prim)
+            ],
+            [
+              "implicit",
+              e.implicit
+            ]
+          ]);
+          return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
+        }
+      ]]));
     DomainGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessInMemory.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     PlatformGraphQL_Server$ReventlessInMemory.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);

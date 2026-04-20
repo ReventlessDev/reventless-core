@@ -1391,6 +1391,38 @@ module MakeWithConfig = (
       },
     )
 
+    // Register platformCrossPluginEdges query — reads from pluginStructuresStore at query time.
+    platformGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_CrossPluginEdges.sdlTypes)
+    platformGraphQL.registerQueries(
+      ~sdlFields=[ReventlessCore.Platform_CrossPluginEdges.sdlQueryField],
+      ~resolvers=Dict.fromArray([
+        (
+          "platformCrossPluginEdges",
+          async (_root, _args, _ctx): JSON.t => {
+            let encodeNode = (n: Reventless.Plugin.graphNode) =>
+              Dict.fromArray([
+                ("pluginName", JSON.Encode.string(n.pluginName)),
+                ("componentName", JSON.Encode.string(n.componentName)),
+                ("kind", JSON.Encode.string(n.kind)),
+              ])->JSON.Encode.object
+            let encodeEdge = (e: Reventless.Plugin.graphEdge) =>
+              Dict.fromArray([
+                ("source", encodeNode(e.source)),
+                ("target", encodeNode(e.target)),
+                ("mechanism", JSON.Encode.string(e.mechanism)),
+                ("viaEvents", e.viaEvents->Array.map(JSON.Encode.string)->JSON.Encode.array),
+                ("implicit", JSON.Encode.bool(e.implicit)),
+              ])->JSON.Encode.object
+            pluginStructuresStore.contents
+            ->Dict.toArray
+            ->ReventlessCore.Platform_CrossPluginEdges.computeEdges
+            ->Array.map(encodeEdge)
+            ->JSON.Encode.array
+          },
+        ),
+      ]),
+    )
+
     // Always inject Relay base types (Node interface, PageInfo) and the node
     // query field into the domain GraphQL server so that:
     // 1. `type X implements Node { ... }` fragments compile (Node interface must exist)
