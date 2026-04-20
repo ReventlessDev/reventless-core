@@ -11,25 +11,22 @@ function Make(Spec) {
   let handleEventEffect = (eventJson$p, jsonEventsHandlersByService) => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), serviceName => jsonEventsHandlersByService[serviceName]), Effect.succeed(), jsonEventsHandlers => Effect.map(Effect.all(jsonEventsHandlers.map(jsonEventsHandler => Effect.promise(() => jsonEventsHandler(eventJson$p, Spec.pluginDefinition))), {
     concurrency: "unbounded"
   }), param => {}));
-  let detectUnhandledEventEffect = eventJson$p => Stdlib_Option.mapOr(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), Effect.succeed(), serviceName => {
-    let match = Spec.outgoingExtensionPointEventHandlers[serviceName];
-    let match$1 = Spec.outgoingExtensionEventHandlers[serviceName];
-    let match$2 = Spec.incomingExtensionEventHandlers[serviceName];
-    if (match !== undefined || match$1 !== undefined || match$2 !== undefined) {
-      return Effect.succeed();
-    } else {
-      return Effect.logInfo("No mapping matches service name");
-    }
-  });
   let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => {
     let id = Spec.pluginDefinition.id;
-    return Effect.zipRight(Effect.zipRight(EffectLogger$ReventlessCore.logInfo(`Plugin(` + id + `)`, undefined, `incoming event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)), detectUnhandledEventEffect(eventJson$p)), Effect.zipRight(handleEventEffect(eventJson$p, Spec.incomingConnectExtensionEventHandlers), Effect.map(Effect.all([
-      handleEventEffect(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
-      handleEventEffect(eventJson$p, Spec.outgoingExtensionEventHandlers),
-      handleEventEffect(eventJson$p, Spec.incomingExtensionEventHandlers)
-    ], {
-      concurrency: "unbounded"
-    }), param => {})));
+    return Stdlib_Option.mapOr(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), Effect.succeed(), serviceName => {
+      let isHandled = Stdlib_Option.isSome(Spec.incomingConnectExtensionEventHandlers[serviceName]) || Stdlib_Option.isSome(Spec.outgoingExtensionPointEventHandlers[serviceName]) || Stdlib_Option.isSome(Spec.outgoingExtensionEventHandlers[serviceName]) || Stdlib_Option.isSome(Spec.incomingExtensionEventHandlers[serviceName]);
+      if (isHandled) {
+        return Effect.zipRight(EffectLogger$ReventlessCore.logInfo(`Plugin(` + id + `)`, undefined, `incoming event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)), Effect.zipRight(handleEventEffect(eventJson$p, Spec.incomingConnectExtensionEventHandlers), Effect.map(Effect.all([
+          handleEventEffect(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
+          handleEventEffect(eventJson$p, Spec.outgoingExtensionEventHandlers),
+          handleEventEffect(eventJson$p, Spec.incomingExtensionEventHandlers)
+        ], {
+          concurrency: "unbounded"
+        }), param => {})));
+      } else {
+        return Effect.succeed();
+      }
+    });
   }));
   return {
     handleJsonEvents: handleJsonEvents
