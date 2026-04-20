@@ -15,6 +15,7 @@ import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/revent
 
 function Make(MappingSpec) {
   return Mappings => (Ops => {
+    let comp = `Extension(` + MappingSpec.name + `.` + Mappings.name + `)`;
     let findOutgoingMapping = (delegateNameOpt, mappings) => Stdlib_Option.flatMap(delegateNameOpt, delegateName => mappings.find(Mapping => Mapping.delegateName === delegateName));
     let mapIncomingEvent = (event$p, pluginDef, queryEngine) => Mappings.mappings.map(Mapping => Mapping.mapIncomingEvent(event$p, pluginDef, queryEngine)).flat();
     let mapOutgoingEvent = (eventJson$p, pluginDef) => {
@@ -31,6 +32,7 @@ function Make(MappingSpec) {
       }
     };
     let publishAggregateCommand = async (aggregateName, cmdJson) => {
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `EP→` + aggregateName + `: ` + Message$ReventlessCore.variantNameOfJson(cmdJson.commandJson) + `(` + cmdJson.id + `)`));
       let pub = Stdlib_Option.getOrThrow(Ops.publishToAggregates[aggregateName], undefined);
       try {
         return await pub([cmdJson]);
@@ -118,7 +120,7 @@ function Make(MappingSpec) {
       }
     };
     let incomingJsonEventsHandler = async (eventJson$p, pluginDef) => {
-      Effect.runSync(EffectLogger$ReventlessCore.logInfo(`Extension(` + Mappings.name + `)`, undefined, `incoming EP event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `incoming EP event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let event$p;
       try {
         event$p = Message$ReventlessCore.decodeEvent$p(eventJson$p, Id$Reventless.StringPure.schema, MappingSpec.eventSchema);
@@ -137,7 +139,7 @@ function Make(MappingSpec) {
       }
     };
     let outgoingJsonEventsHandler = (eventJson$p, pluginDef) => {
-      Effect.runSync(EffectLogger$ReventlessCore.logInfo(`Extension(` + Mappings.name + `)`, undefined, `outgoing delegate event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `outgoing delegate event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let commandActions = mapOutgoingEvent(eventJson$p, pluginDef);
       return Util_Promise$ReventlessCore.toUnit(Promise.all(commandActions.map(applyOutgoingCommandAction)));
     };

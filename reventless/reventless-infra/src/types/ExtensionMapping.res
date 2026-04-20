@@ -213,7 +213,6 @@ module Make = (MappingImpl: Mapping): (
   ) => {
     let encodeTargetCommandJson = (targetCmd, targetId) => {
       let cmdJson = targetCmd->Reventless.Message.encode(Delegate.commandSchema)
-      compLog(`Extension(${extensionPointName})`, `EP→${delegateName}: ${cmdJson->Reventless.Message.variantNameOfJson}(${targetId})`)
       {
         Reventless.Message.id: targetId,
         meta: encodeMeta(meta, delegateName),

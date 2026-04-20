@@ -26,6 +26,8 @@ module Make = (
   Mappings: Mappings with module Spec := MappingSpec,
   Ops: Ops,
 ): T => {
+  let comp = `Extension(${MappingSpec.name}.${Mappings.name})`
+
   let findOutgoingMapping = (delegateNameOpt, mappings) =>
     delegateNameOpt->Option.flatMap(delegateName =>
       mappings->Array.find((module(Mapping: Mappings.Mapping)) =>
@@ -61,7 +63,11 @@ module Make = (
       )
     }
 
-  let publishAggregateCommand = async (aggregateName, cmdJson) => {
+  let publishAggregateCommand = async (aggregateName, cmdJson: Message.commandJson) => {
+    EffectLogger.logInfo(
+      ~comp,
+      `EP→${aggregateName}: ${cmdJson.commandJson->Message.variantNameOfJson}(${cmdJson.id})`,
+    )->Effect.runSync
     let pub = Ops.publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow
     try await pub([cmdJson]) catch {
     | err =>
@@ -144,7 +150,7 @@ module Make = (
     }
 
   let incomingJsonEventsHandler = async (eventJson', pluginDef) => {
-    EffectLogger.logInfo(~comp=`Extension(${Mappings.name})`, `incoming EP event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
+    EffectLogger.logInfo(~comp=comp, `incoming EP event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
     switch eventJson'->Message.decodeEvent'(
       Reventless.Id.StringPure.schema,
       MappingSpec.eventSchema,
@@ -184,7 +190,7 @@ module Make = (
   }
 
   let outgoingJsonEventsHandler = (eventJson', pluginDef) => {
-    EffectLogger.logInfo(~comp=`Extension(${Mappings.name})`, `outgoing delegate event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
+    EffectLogger.logInfo(~comp=comp, `outgoing delegate event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
     let commandActions = mapOutgoingEvent(eventJson', pluginDef)
     commandActions
     ->Array.map(applyOutgoingCommandAction)

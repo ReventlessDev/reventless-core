@@ -46,7 +46,6 @@ function Make(MappingImpl) {
     let meta = extra.meta;
     let encodeTargetCommandJson = (targetCmd, targetId) => {
       let cmdJson = Message$Reventless.encode(targetCmd, Delegate.commandSchema);
-      compLog(`Extension(` + extensionPointName + `)`, `EP→` + delegateName + `: ` + Message$Reventless.variantNameOfJson(cmdJson) + `(` + targetId + `)`);
       return {
         id: targetId,
         meta: encodeMeta(meta, delegateName),
