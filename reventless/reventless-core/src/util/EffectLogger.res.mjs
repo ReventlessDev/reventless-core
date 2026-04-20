@@ -7,7 +7,13 @@ import * as Logger$ReventlessCore from "./Logger.res.mjs";
 
 function _messageToString(msg) {
   if (Array.isArray(msg)) {
-    return msg.map(j => Stdlib_Option.getOr(JSON.stringify(j), "")).join(" ");
+    return msg.map(j => {
+      if (typeof j === "string") {
+        return j;
+      } else {
+        return Stdlib_Option.getOr(JSON.stringify(j), "");
+      }
+    }).join(" ");
   }
   switch (typeof msg) {
     case "string" :

@@ -21,7 +21,15 @@ type logLevel
 
 let _messageToString = (msg: JSON.t): string =>
   switch msg {
-  | Array(arr) => arr->Array.map(j => j->JSON.stringifyAny->Option.getOr(""))->Array.join(" ")
+  | Array(arr) =>
+    arr
+    ->Array.map(j =>
+      switch j {
+      | String(s) => s
+      | _ => j->JSON.stringifyAny->Option.getOr("")
+      }
+    )
+    ->Array.join(" ")
   | String(s) => s
   | _ => msg->JSON.stringifyAny->Option.getOr("")
   }
