@@ -4,11 +4,10 @@
   "description": "Specifications for Reventless",
   "license": "MIT",
   "bin": {
-    "generate-plugin": "./src/generator/PluginGenerator.res.mjs"
+    "generate-plugin": "./run-generator.mjs"
   },
   "scripts": {
     "build": "rescript build",
-    "postbuild": "node -e \"const f='src/generator/PluginGenerator.res.mjs',fs=require('fs'),c=fs.readFileSync(f,'utf8');if(!c.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+c);fs.chmodSync(f,0o755)\"",
     "start": "rescript start",
     "clean": "rescript clean"
   },
