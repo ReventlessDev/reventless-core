@@ -185,6 +185,12 @@ function Make(Spec) {
           subscriptionFields: GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment).subscriptions
         }));
         let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
+        let slicePublishJsons = dcbResult.dcbPublishJsons;
+        if (slicePublishJsons !== undefined) {
+          stateChangeSlices.forEach(Sc => {
+            Plugin_Helpers$ReventlessCore.publishToAggregates[Sc.Spec.name] = slicePublishJsons;
+          });
+        }
         let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let dcbOutputs = dcbResult.dcbEventLogOutputs;
         if (dcbOutputs !== undefined) {

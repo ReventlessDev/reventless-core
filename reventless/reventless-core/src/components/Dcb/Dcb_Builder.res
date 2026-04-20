@@ -27,6 +27,10 @@ type dcbResult = {
   outboundTranslationSlicesOutputs: dict<OutboundTranslationSlice.outputs>,
   inboundTranslationSlicesOutputs: dict<InboundTranslationSlice.outputs>,
   dcbRuntimeSetup: option<unit => unit>,
+  // Shared publishJsons for all DCB StateChangeSlices in this plugin (same command topic).
+  // Used by Plugin_Builder to register slice names in publishToAggregates so extensions
+  // can dispatch commands to DCB slices via the same mechanism as regular aggregates.
+  dcbPublishJsons: option<Pulumi.Output.t<CommandTopic.publishJsons>>,
   mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
   eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
@@ -40,6 +44,7 @@ let emptyResult: dcbResult = {
   outboundTranslationSlicesOutputs: Dict.make(),
   inboundTranslationSlicesOutputs: Dict.make(),
   dcbRuntimeSetup: None,
+  dcbPublishJsons: None,
   mutationEntries: [],
   queryEntries: [],
   eventLogEntries: [],
@@ -675,6 +680,7 @@ module Make = (
           outboundTranslationSlicesOutputs,
           inboundTranslationSlicesOutputs,
           dcbRuntimeSetup: Some(dcbRuntimeSetup),
+          dcbPublishJsons: Some(publishJsons),
           mutationEntries: Array.concat(mutationEntriesFromSlices, mutationEntriesFromInboundSlices),
           queryEntries: stateViewEntries
             ->Array.concat(automationEntries)

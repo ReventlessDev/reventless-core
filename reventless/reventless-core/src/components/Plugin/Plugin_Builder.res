@@ -224,6 +224,16 @@ module Make = (
     )
 
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
+    // Register DCB StateChangeSlice publish functions in publishToAggregates so that
+    // extensions whose Delegate is a DCB slice can dispatch commands to them.
+    // All slices in a plugin share the same DCB command topic (same publishJsons).
+    switch dcbResult.dcbPublishJsons {
+    | Some(slicePublishJsons) =>
+      stateChangeSlices->Array.forEach((module(Sc: StateChangeSlice.T)) =>
+        publishToAggregates->Dict.set(Sc.Spec.name, slicePublishJsons)
+      )
+    | None => ()
+    }
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
     // Merge DCB EventTopic into allEventTopics so ReadModels can subscribe to DCB events.
     // Uses the same key as the eventLogEntries busKey (name ++ "DcbEventLog").

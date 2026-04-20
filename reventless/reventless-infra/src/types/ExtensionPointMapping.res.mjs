@@ -3,6 +3,7 @@
 import * as Uuid from "uuid";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
@@ -11,6 +12,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
+  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(`\x1b[1m[` + comp + `]\x1b[0m ` + msg));
   let mapIncomingCommands = (extra, extra$1, extra$2, extra$3) => {
     let mapIncomingEventImpl = MappingImpl.mapIncomingCommand;
     return extra.map(param => {
@@ -21,8 +23,8 @@ function Make(MappingImpl) {
         if (x.TAG === "PublishCommand") {
           let targetCmd = x._1;
           let targetId = x._0;
-          let commandStr = JSON.stringify(Message$Reventless.encode(targetCmd, Delegate.commandSchema));
-          console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + ` to Target ` + delegateName + `: Publishing command: ` + commandStr + ` id: ` + targetId);
+          let cmdJson = Message$Reventless.encode(targetCmd, Delegate.commandSchema);
+          compLog(`ExtensionPoint(` + extensionPointName + `)`, `EP→` + delegateName + `: ` + Message$Reventless.variantNameOfJson(cmdJson) + `(` + targetId + `)`);
           return {
             TAG: "AbstractPublishCommand",
             _0: delegateName,
@@ -43,7 +45,7 @@ function Make(MappingImpl) {
         }
         let directive = x._1;
         let handler = x._0;
-        console.log(`ExtensionPointMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+        compLog(`ExtensionPoint(` + extensionPointName + `)`, "incoming Call directive");
         return {
           TAG: "AbstractCall",
           _0: reference,
@@ -67,7 +69,7 @@ function Make(MappingImpl) {
         case "PublishEvent" :
           let id = eventAction._0;
           let eventJson = Message$Reventless.encode(eventAction._1, Spec.eventSchema);
-          console.log(`ExtensionPointMapping: outgoing from Target ` + delegateName + ` to ExtensionPoint ` + extensionPointName + `: Publishing event: ` + JSON.stringify(eventJson) + ` id: ` + id);
+          compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → ` + Message$Reventless.variantNameOfJson(eventJson) + `(` + id + `)`);
           let meta_service = Spec.name;
           let meta_time = meta.time;
           let meta_ip = meta.ip;
@@ -94,7 +96,7 @@ function Make(MappingImpl) {
             let match = await promise;
             let id = match[0];
             let eventJson = Message$Reventless.encode(match[1], Spec.eventSchema);
-            console.log(`ExtensionPointMapping: async outgoing from Target ` + delegateName + ` to ExtensionPoint ` + extensionPointName + `: Publishing event: ` + JSON.stringify(eventJson) + ` id: ` + id);
+            compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → ` + Message$Reventless.variantNameOfJson(eventJson) + `(` + id + `) (async)`);
             let eventJson$p = Message$Reventless.composeEventJson$p(id, meta, eventJson);
             return [
               id,
@@ -109,7 +111,7 @@ function Make(MappingImpl) {
         case "Call" :
           let directive = eventAction._1;
           let handler = eventAction._0;
-          console.log(`ExtensionPointMapping: outgoing from Target ` + delegateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+          compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → Call directive`);
           return {
             TAG: "AbstractCall",
             _0: () => handler(extra$1, extra$2, extra$3, directive)

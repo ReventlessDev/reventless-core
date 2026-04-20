@@ -196,6 +196,9 @@ module Make = (MappingImpl: Mapping): (
   let delegateName = Delegate.name
   let extensionPointName = Spec.name
 
+  let compLog = (comp, msg) =>
+    Effect.logInfo(`\x1b[1m[${comp}]\x1b[0m ${msg}`)->Effect.runSync
+
   let encodeMeta = (meta: Reventless.Message.meta, service) => {
     ...meta,
     service,
@@ -209,22 +212,17 @@ module Make = (MappingImpl: Mapping): (
     queryEngine,
   ) => {
     let encodeTargetCommandJson = (targetCmd, targetId) => {
-      let commandStr = targetCmd->Reventless.Message.encode(Delegate.commandSchema)->JSON.stringify
-      Console.log(
-        `ExtensionMapping incoming from ExtensionPoint ${extensionPointName} to Target ${delegateName}: Publishing command: ${commandStr} id: ${targetId}`,
-      )
+      let cmdJson = targetCmd->Reventless.Message.encode(Delegate.commandSchema)
+      compLog(`Extension(${extensionPointName})`, `EP→${delegateName}: ${cmdJson->Reventless.Message.variantNameOfJson}(${targetId})`)
       {
         Reventless.Message.id: targetId,
         meta: encodeMeta(meta, delegateName),
-        commandJson: targetCmd->Reventless.Message.encode(Delegate.commandSchema),
+        commandJson: cmdJson,
       }
     }
 
     let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-      let commandStr = commandJson->JSON.stringify
-      Console.log(
-        `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: ${action}: ${commandStr} id: ${id}`,
-      )
+      compLog(`Extension(${extensionPointName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson}(${id})`)
       {
         Reventless.Message.id,
         meta: encodeMeta(meta, extensionPointName),
@@ -285,11 +283,7 @@ module Make = (MappingImpl: Mapping): (
           ),
         )
       | Call(handler, directive) =>
-        Console.log2(
-          `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: Handling directive`,
-          directive->Reventless.Message.encode(Spec.directiveSchema)->JSON.stringify,
-        )
-
+        compLog(`Extension(${extensionPointName})`, "incoming Call directive")
         AbstractCall(() => handler(directive))
       }
     )
@@ -301,10 +295,7 @@ module Make = (MappingImpl: Mapping): (
     switch targetEvent'Json->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema) {
     | {id, meta, event} =>
       let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-        let commandStr = commandJson->JSON.stringify
-        Console.log(
-          `ExtensionMapping outgoing from Target ${delegateName}: ${action}: ${commandStr} id: ${id}`,
-        )
+        compLog(`Extension(${delegateName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson}(${id})`)
         {
           Reventless.Message.id,
           meta: encodeMeta(meta, extensionPointName),
@@ -348,11 +339,7 @@ module Make = (MappingImpl: Mapping): (
             ),
           )
         | Call(handler, directive) =>
-          Console.log2(
-            `ExtensionMapping outgoing from Target ${delegateName}: Handling directive`,
-            directive->Reventless.Message.encode(Spec.directiveSchema)->JSON.stringify,
-          )
-
+          compLog(`Extension(${delegateName})`, "outgoing Call directive")
           AbstractCall(() => handler(directive))
         }
       )

@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
   let handleEventEffect = (eventJson$p, jsonEventsHandlersByService) => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), serviceName => jsonEventsHandlersByService[serviceName]), Effect.succeed(), jsonEventsHandlers => Effect.map(Effect.all(jsonEventsHandlers.map(jsonEventsHandler => Effect.promise(() => jsonEventsHandler(eventJson$p, Spec.pluginDefinition))), {
@@ -22,7 +23,7 @@ function Make(Spec) {
   });
   let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => {
     let id = Spec.pluginDefinition.id;
-    return Effect.zipRight(Effect.zipRight(Effect.logInfo(`Plugin ` + id + ` handleJsonEvents: incoming event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), detectUnhandledEventEffect(eventJson$p)), Effect.zipRight(handleEventEffect(eventJson$p, Spec.incomingConnectExtensionEventHandlers), Effect.map(Effect.all([
+    return Effect.zipRight(Effect.zipRight(EffectLogger$ReventlessCore.logInfo(`Plugin(` + id + `)`, undefined, `incoming event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)), detectUnhandledEventEffect(eventJson$p)), Effect.zipRight(handleEventEffect(eventJson$p, Spec.incomingConnectExtensionEventHandlers), Effect.map(Effect.all([
       handleEventEffect(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
       handleEventEffect(eventJson$p, Spec.outgoingExtensionEventHandlers),
       handleEventEffect(eventJson$p, Spec.incomingExtensionEventHandlers)

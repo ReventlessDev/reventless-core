@@ -76,7 +76,12 @@ module Make = (
               let total = events->Array.length->Int.toString
               events
               ->Array.mapWithIndex((json, i) => {
-                let (eventType, dataDict) = json->Message.splitMessage
+                let rawEvent =
+                  json
+                  ->JSON.Decode.object
+                  ->Option.flatMap(d => d->Dict.get("event"))
+                  ->Option.getOr(json)
+                let (eventType, dataDict) = rawEvent->Message.splitMessage
                 switch decoder.decode(~eventType, ~data=dataDict) {
                 | Some(event) =>
                   let actions =

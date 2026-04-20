@@ -45,11 +45,7 @@ module Make = (Spec: Spec): T => {
     stream
     ->Stream.mapEffect(eventJson' => {
       let id = Spec.pluginDefinition.id
-      Effect.logInfo(
-        `Plugin ${id} handleJsonEvents: incoming event: ${LogFormat.event'JsonToLogMessage(
-            eventJson',
-          )}`,
-      )
+      EffectLogger.logInfo(~comp=`Plugin(${id})`, `incoming event: ${LogFormat.eventSummary(eventJson')}`)
       ->Effect.zipRight(detectUnhandledEventEffect(eventJson'))
       ->Effect.zipRight(
         handleEventEffect(eventJson', Spec.incomingConnectExtensionEventHandlers)

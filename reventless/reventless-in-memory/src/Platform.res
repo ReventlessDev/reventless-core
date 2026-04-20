@@ -1035,6 +1035,24 @@ module MakeWithConfig = (
     // are parked and drained once bindReceive fires (async, via Output.apply).
     ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
     firePluginDeployedHooks(~builtInfos=builtInfos.contents)
+
+    // Wire cross-plugin Extension → EP EventTopic subscriptions.
+    // Each plugin's Extension lists an extensionPointName; the matching EP EventTopic bus key
+    // is derived deterministically. Bus.subscribeEventCollectorToTopic defers if the
+    // EventCollector handler hasn't resolved yet (it fires after ~2 microtask ticks).
+    plugins->Array.forEach(plugin => {
+      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
+      let _ =
+        (outputs.eventCollector, outputs.extensions)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((eventCollector, extensions)) => {
+          extensions->Dict.toArray->Array.forEach(((_, ext: ReventlessInfra.Extension.outputs)) => {
+            let epTopicKey =
+              ext.extensionPointName->String.replace(".", "") ++ "ExtPointEventTopic"
+            Bus.subscribeEventCollectorToTopic(eventCollector.name, epTopicKey)
+          })
+        })
+    })
     switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
     | Some(hook) =>
       hook({

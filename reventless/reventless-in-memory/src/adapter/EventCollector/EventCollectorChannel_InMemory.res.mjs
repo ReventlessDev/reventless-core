@@ -15,7 +15,8 @@ function Make(Bus) {
       handleChannelEvent: handleEvents => Pulumi.output((json, _ctx) => Effect.map(handleEvents(Stream.fromIterable([json])), () => {}))
     };
   };
-  let connect = (param, channelSpecs, runtime, param$1) => {
+  let connect = (name, channelSpecs, runtime, param) => {
+    Effect.runPromise(Effect.flatMap(Deferred.await(runtime.parts.handlerDeferred), handler => Effect.sync(() => Bus.registerEventCollectorHandler(name, handler))));
     channelSpecs.forEach(param => {
       Object.values(param.eventTopics).forEach(topicOutputs => {
         topicOutputs.resources.forEach(resource => {

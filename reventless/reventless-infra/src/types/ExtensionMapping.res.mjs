@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
@@ -31,6 +32,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
+  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(`\x1b[1m[` + comp + `]\x1b[0m ` + msg));
   let encodeMeta = (meta, service) => ({
     service: service,
     time: meta.time,
@@ -43,17 +45,16 @@ function Make(MappingImpl) {
     let mapIncomingEventImpl = MappingImpl.mapIncomingEvent;
     let meta = extra.meta;
     let encodeTargetCommandJson = (targetCmd, targetId) => {
-      let commandStr = JSON.stringify(Message$Reventless.encode(targetCmd, Delegate.commandSchema));
-      console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + ` to Target ` + delegateName + `: Publishing command: ` + commandStr + ` id: ` + targetId);
+      let cmdJson = Message$Reventless.encode(targetCmd, Delegate.commandSchema);
+      compLog(`Extension(` + extensionPointName + `)`, `EP→` + delegateName + `: ` + Message$Reventless.variantNameOfJson(cmdJson) + `(` + targetId + `)`);
       return {
         id: targetId,
         meta: encodeMeta(meta, delegateName),
-        commandJson: Message$Reventless.encode(targetCmd, Delegate.commandSchema)
+        commandJson: cmdJson
       };
     };
     let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
-      let commandStr = JSON.stringify(commandJson);
-      console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + `: ` + action + `: ` + commandStr + ` id: ` + id);
+      compLog(`Extension(` + extensionPointName + `)`, action + `: ` + Message$Reventless.variantNameOfJson(commandJson) + `(` + id + `)`);
       return {
         id: id,
         meta: encodeMeta(meta, extensionPointName),
@@ -116,7 +117,7 @@ function Make(MappingImpl) {
         case "Call" :
           let directive = x._1;
           let handler = x._0;
-          console.log(`ExtensionMapping incoming from ExtensionPoint ` + extensionPointName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+          compLog(`Extension(` + extensionPointName + `)`, "incoming Call directive");
           return {
             TAG: "AbstractCall",
             _0: () => handler(directive)
@@ -135,8 +136,7 @@ function Make(MappingImpl) {
     }
     let meta = val.meta;
     let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
-      let commandStr = JSON.stringify(commandJson);
-      console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: ` + action + `: ` + commandStr + ` id: ` + id);
+      compLog(`Extension(` + delegateName + `)`, action + `: ` + Message$Reventless.variantNameOfJson(commandJson) + `(` + id + `)`);
       return {
         id: id,
         meta: encodeMeta(meta, extensionPointName),
@@ -172,7 +172,7 @@ function Make(MappingImpl) {
         case "Call" :
           let directive = x._1;
           let handler = x._0;
-          console.log(`ExtensionMapping outgoing from Target ` + delegateName + `: Handling directive`, JSON.stringify(Message$Reventless.encode(directive, Spec.directiveSchema)));
+          compLog(`Extension(` + delegateName + `)`, "outgoing Call directive");
           return {
             TAG: "AbstractCall",
             _0: () => handler(directive)

@@ -144,6 +144,7 @@ module Make = (
     }
 
   let incomingJsonEventsHandler = async (eventJson', pluginDef) => {
+    EffectLogger.logInfo(~comp=`Extension(${Mappings.name})`, `incoming EP event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
     switch eventJson'->Message.decodeEvent'(
       Reventless.Id.StringPure.schema,
       MappingSpec.eventSchema,
@@ -183,6 +184,7 @@ module Make = (
   }
 
   let outgoingJsonEventsHandler = (eventJson', pluginDef) => {
+    EffectLogger.logInfo(~comp=`Extension(${Mappings.name})`, `outgoing delegate event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
     let commandActions = mapOutgoingEvent(eventJson', pluginDef)
     commandActions
     ->Array.map(applyOutgoingCommandAction)

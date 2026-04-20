@@ -109,6 +109,12 @@ module type T = {
   let publishStateChange: (~name: string, ~state: JSON.t) => unit
   let subscribeToStateChanges: (string, JSON.t => unit) => unit
 
+  // Cross-plugin EP subscription registry.
+  // EventCollectors register their handler once resolved; makePlatform subscribes
+  // them to external EP EventTopics to wire cross-plugin Extension connections.
+  let registerEventCollectorHandler: (string, (JSON.t, unit) => promise<unit>) => unit
+  let subscribeEventCollectorToTopic: (string, string) => unit
+
   let reset: unit => unit
 }
 
@@ -317,6 +323,39 @@ module Impl = (C: BusConfig): T => {
     ->Option.getOr([])
     ->Array.forEach(cb => cb(state))
 
+  let eventCollectorHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
+  let eventCollectorPendingTopics: ref<dict<array<string>>> = ref(Dict.make())
+
+  // Cross-plugin subscriptions are fire-and-forget: the handler is started asynchronously
+  // and done_ is called immediately. This prevents a deadlock where publishEvent on the
+  // EP topic would block until the downstream aggregate command chain completes.
+  let makeFireAndForgetHandler = handler => (_, _, json) => {
+    let _ = handler(json, ())
+    Promise.resolve()
+  }
+
+  let registerEventCollectorHandler = (ecName, handler) => {
+    eventCollectorHandlers.contents->Dict.set(ecName, handler)
+    switch eventCollectorPendingTopics.contents->Dict.get(ecName) {
+    | Some(topics) =>
+      topics->Array.forEach(topicName =>
+        subscribeToEvents(topicName, makeFireAndForgetHandler(handler))
+      )
+      eventCollectorPendingTopics.contents->Dict.delete(ecName)
+    | None => ()
+    }
+  }
+
+  let subscribeEventCollectorToTopic = (ecName, topicName) => {
+    switch eventCollectorHandlers.contents->Dict.get(ecName) {
+    | Some(handler) => subscribeToEvents(topicName, makeFireAndForgetHandler(handler))
+    | None =>
+      let pending = eventCollectorPendingTopics.contents->Dict.get(ecName)->Option.getOr([])
+      pending->Array.push(topicName)
+      eventCollectorPendingTopics.contents->Dict.set(ecName, pending)
+    }
+  }
+
   let reset = () => {
     // Shut down all hubs — PubSub.shutdown interrupts Stream.fromQueue consumers,
     // causing Stream.runForEach to complete and Effect.scoped to close the subscription.
@@ -337,6 +376,8 @@ module Impl = (C: BusConfig): T => {
     eventLogReplayRegistry := Dict.make()
     dcbEventLogReadRegistry := Dict.make()
     stateChangeListeners := Dict.make()
+    eventCollectorHandlers := Dict.make()
+    eventCollectorPendingTopics := Dict.make()
   }
 }
 

@@ -6,7 +6,9 @@ import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../../util/ScheduleOps.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "../EventLog/EventPublish_Callback.res.mjs";
 
@@ -84,7 +86,7 @@ function Make(MappingSpec) {
       switch (action.TAG) {
         case "AbstractPublishEvent" :
           let eventJson = action._2;
-          Effect.runSync(Effect.logInfo(`ExtensionPoint_Operations.applyEventAction: ` + JSON.stringify(eventJson)));
+          Effect.runSync(EffectLogger$ReventlessCore.logInfo(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `applying event: ` + LogFormat$ReventlessCore.eventSummary(eventJson)));
           return await publishWithHooks(action._0, action._1, eventJson);
         case "AbstractPublishEventAsync" :
           let match = await action._0;
@@ -100,7 +102,7 @@ function Make(MappingSpec) {
       }
     };
     let outgoingJsonEventsHandler = async (eventJson$p, _pluginDef) => {
-      Effect.runSync(Effect.logInfo(`ExtensionPoint_Operations.outgoingJsonEventsHandler: ` + JSON.stringify(eventJson$p)));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `outgoing event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Ops.scheduler, Ops.commandTopicResources, Ops.queryEngine, Ops.resourceNaming);
       return await Util_Promise$ReventlessCore.toUnit(Promise.all(eventActions.map(applyEventAction)));
     };

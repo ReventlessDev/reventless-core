@@ -1032,6 +1032,19 @@ function MakeWithConfig(Config) {
     let plugins$1 = plugins.map(plugin => plugin.make());
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     firePluginDeployedHooks(builtInfos.contents);
+    plugins$1.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.eventCollector,
+        outputs.extensions
+      ]).apply(param => {
+        let eventCollector = param[0];
+        Object.entries(param[1]).forEach(param => {
+          let epTopicKey = param[1].extensionPointName.replace(".", "") + "ExtPointEventTopic";
+          Bus.subscribeEventCollectorToTopic(eventCollector.name, epTopicKey);
+        });
+      });
+    });
     let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
     if (hook !== undefined) {
       hook({
@@ -2782,6 +2795,19 @@ function Make($star) {
     let plugins$1 = plugins.map(plugin => plugin.make());
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
     firePluginDeployedHooks(builtInfos.contents);
+    plugins$1.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.eventCollector,
+        outputs.extensions
+      ]).apply(param => {
+        let eventCollector = param[0];
+        Object.entries(param[1]).forEach(param => {
+          let epTopicKey = param[1].extensionPointName.replace(".", "") + "ExtPointEventTopic";
+          Bus.subscribeEventCollectorToTopic(eventCollector.name, epTopicKey);
+        });
+      });
+    });
     let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
     if (hook !== undefined) {
       hook({

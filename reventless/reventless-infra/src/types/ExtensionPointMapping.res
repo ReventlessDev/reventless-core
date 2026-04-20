@@ -164,6 +164,9 @@ module Make = (MappingImpl: Mapping): (
   let delegateName = Delegate.name
   let extensionPointName = Spec.name
 
+  let compLog = (comp, msg) =>
+    Effect.logInfo(`\x1b[1m[${comp}]\x1b[0m ${msg}`)->Effect.runSync
+
   let doMapIncomingCommands = (
     mapIncomingEventImpl,
     topicItems,
@@ -176,10 +179,8 @@ module Make = (MappingImpl: Mapping): (
       mapIncomingEventImpl(id->Reventless.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
         | PublishCommand(targetId, targetCmd) =>
-          let commandStr = targetCmd->Reventless.Message.encode(Delegate.commandSchema)->JSON.stringify
-          Console.log(
-            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName} to Target ${delegateName}: Publishing command: ${commandStr} id: ${targetId}`,
-          )
+          let cmdJson = targetCmd->Reventless.Message.encode(Delegate.commandSchema)
+          compLog(`ExtensionPoint(${extensionPointName})`, `EP→${delegateName}: ${cmdJson->Reventless.Message.variantNameOfJson}(${targetId})`)
 
           AbstractPublishCommand(
             delegateName,
@@ -195,10 +196,7 @@ module Make = (MappingImpl: Mapping): (
             },
           )
         | Call(handler, directive) =>
-          Console.log2(
-            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName}: Handling directive`,
-            directive->Reventless.Message.encode(Spec.directiveSchema)->JSON.stringify,
-          )
+          compLog(`ExtensionPoint(${extensionPointName})`, "incoming Call directive")
 
           AbstractCall(
             reference,
@@ -229,9 +227,7 @@ module Make = (MappingImpl: Mapping): (
         switch eventAction {
         | PublishEvent(id, event) =>
           let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
-          Console.log(
-            `ExtensionPointMapping: outgoing from Target ${delegateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
-          )
+          compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson}(${id})`)
           let meta = {
             ...meta,
             service: Spec.name,
@@ -243,18 +239,13 @@ module Make = (MappingImpl: Mapping): (
           let toEvent' = async promise => {
             let (id, event) = await promise
             let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
-            Console.log(
-              `ExtensionPointMapping: async outgoing from Target ${delegateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->JSON.stringify} id: ${id}`,
-            )
+            compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson}(${id}) (async)`)
             let eventJson' = Reventless.Message.composeEventJson'(id, meta, eventJson) // TODO: check if meta is correct
             (id, meta, eventJson')
           }
           AbstractPublishEventAsync(promise->toEvent')
         | Call(handler, directive) =>
-          Console.log2(
-            `ExtensionPointMapping: outgoing from Target ${delegateName}: Handling directive`,
-            directive->Reventless.Message.encode(Spec.directiveSchema)->JSON.stringify,
-          )
+          compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → Call directive`)
 
           AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, directive))
         }

@@ -49,6 +49,25 @@ function decodeEvent$p(json, idSchema, eventSchema) {
   return S.parseJsonOrThrow(json, toEventSchema$p(idSchema, eventSchema));
 }
 
+function variantNameOfJson(json) {
+  if (json === null || Array.isArray(json)) {
+    return "unknown";
+  }
+  switch (typeof json) {
+    case "string" :
+      return json;
+    case "object" :
+      let match = json["TAG"];
+      if (typeof match === "string") {
+        return match;
+      } else {
+        return "unknown";
+      }
+    default:
+      return "unknown";
+  }
+}
+
 function composeEventJson$p(id, meta, eventJson) {
   return Object.fromEntries([
     [
@@ -79,6 +98,7 @@ export {
   InvalidEvent,
   toEventSchema$p,
   decodeEvent$p,
+  variantNameOfJson,
   composeEventJson$p,
 }
 /*  Not a pure module */

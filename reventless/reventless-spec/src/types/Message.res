@@ -159,6 +159,18 @@ let toEventSchema' = (idSchema, eventSchema) =>
 let decodeEvent' = (json, idSchema, eventSchema) =>
   json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
 
+/** Extract the variant constructor name from a sury-encoded variant JSON. */
+let variantNameOfJson = json =>
+  switch json {
+  | JSON.String(str) => str
+  | Object(dict) =>
+    switch dict->Dict.get("TAG") {
+    | Some(String(tag)) => tag
+    | _ => "unknown"
+    }
+  | _ => "unknown"
+  }
+
 /** Compose a raw event JSON envelope from id, meta, and event JSON. */
 let composeEventJson' = (id, meta, eventJson) =>
   [

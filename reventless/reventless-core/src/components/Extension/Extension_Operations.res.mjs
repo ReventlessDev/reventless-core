@@ -8,6 +8,8 @@ import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
@@ -116,6 +118,7 @@ function Make(MappingSpec) {
       }
     };
     let incomingJsonEventsHandler = async (eventJson$p, pluginDef) => {
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(`Extension(` + Mappings.name + `)`, undefined, `incoming EP event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let event$p;
       try {
         event$p = Message$ReventlessCore.decodeEvent$p(eventJson$p, Id$Reventless.StringPure.schema, MappingSpec.eventSchema);
@@ -134,6 +137,7 @@ function Make(MappingSpec) {
       }
     };
     let outgoingJsonEventsHandler = (eventJson$p, pluginDef) => {
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(`Extension(` + Mappings.name + `)`, undefined, `outgoing delegate event: ` + LogFormat$ReventlessCore.eventSummary(eventJson$p)));
       let commandActions = mapOutgoingEvent(eventJson$p, pluginDef);
       return Util_Promise$ReventlessCore.toUnit(Promise.all(commandActions.map(applyOutgoingCommandAction)));
     };

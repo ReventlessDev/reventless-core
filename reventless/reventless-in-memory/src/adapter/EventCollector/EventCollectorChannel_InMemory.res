@@ -37,7 +37,16 @@ module Make = (Bus: InMemory_Bus.T) => {
     'context,
     channelParts,
     runtimeParts,
-  > = (~name as _, ~channelSpecs, ~runtime, ~opts as _) => {
+  > = (~name, ~channelSpecs, ~runtime, ~opts as _) => {
+    // Register handler in Bus once resolved — allows makePlatform to wire cross-plugin
+    // Extension → EP EventTopic subscriptions after all plugins are built.
+    let _reg =
+      runtime.parts.handlerDeferred
+      ->Deferred.await_
+      ->Effect.flatMap(handler => Effect.sync(() => Bus.registerEventCollectorHandler(name, handler)))
+      ->Effect.runPromise
+      ->ignore
+
     channelSpecs->Array.forEach(({eventTopics}: ReventlessCore.EventCollector_Adapter.channelSpec<
       callbackEvent,
       'context,

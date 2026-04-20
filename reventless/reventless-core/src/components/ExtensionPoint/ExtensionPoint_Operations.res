@@ -109,9 +109,7 @@ module Make = (
   let applyEventAction = async action =>
     switch action {
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
-      Effect.logInfo(
-        `ExtensionPoint_Operations.applyEventAction: ${eventJson->JSON.stringify}`,
-      )->Effect.runSync
+      EffectLogger.logInfo(~comp=`ExtensionPoint(${MappingSpec.name})`, `applying event: ${LogFormat.eventSummary(eventJson)}`)->Effect.runSync
       await publishWithHooks(id, meta, eventJson)
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
       let (id, meta, eventJson) = await promise
@@ -126,9 +124,7 @@ module Make = (
     }
 
   let outgoingJsonEventsHandler = async (eventJson', _pluginDef) => {
-    Effect.logInfo(
-      `ExtensionPoint_Operations.outgoingJsonEventsHandler: ${eventJson'->JSON.stringify}`,
-    )->Effect.runSync
+    EffectLogger.logInfo(~comp=`ExtensionPoint(${MappingSpec.name})`, `outgoing event: ${LogFormat.eventSummary(eventJson')}`)->Effect.runSync
     let eventActions = mapOutgoingEvent(
       eventJson',
       Mappings.mappings,

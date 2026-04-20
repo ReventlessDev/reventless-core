@@ -63,6 +63,7 @@ let emptyResult = {
   outboundTranslationSlicesOutputs: emptyResult_outboundTranslationSlicesOutputs,
   inboundTranslationSlicesOutputs: emptyResult_inboundTranslationSlicesOutputs,
   dcbRuntimeSetup: undefined,
+  dcbPublishJsons: undefined,
   mutationEntries: emptyResult_mutationEntries,
   queryEntries: emptyResult_queryEntries,
   eventLogEntries: emptyResult_eventLogEntries
@@ -449,6 +450,7 @@ function Make(DcbEventLogStorage) {
         outboundTranslationSlicesOutputs: outboundTranslationSlicesOutputs,
         inboundTranslationSlicesOutputs: inboundTranslationSlicesOutputs,
         dcbRuntimeSetup: dcbRuntimeSetup,
+        dcbPublishJsons: publishJsons,
         mutationEntries: mutationEntriesFromSlices.concat(mutationEntriesFromInboundSlices),
         queryEntries: stateViewEntries.concat(automationEntries).concat(outboundEntries).concat(inboundEntries),
         eventLogEntries: allProducedSchemas.length !== 0 ? [{
