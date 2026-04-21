@@ -5,6 +5,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
@@ -58,7 +59,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     "Open",
     "Initialize",
     "Submit",
-    "Start"
+    "Start",
+    "Place"
   ].some(p => name.startsWith(p));
   let commandLevelAndId = (isAggregate, variantName, properties) => {
     if (isAggregate) {
@@ -120,12 +122,21 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         return;
       }
       let match = commandLevelAndId(isAggregate, variantName, properties);
+      let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
+        let fieldName = param[0];
+        return Stdlib_Option.map(Reference$Reventless.getTarget(param[1]), target => ({
+          fieldName: fieldName,
+          entity: target.entity,
+          plugin: target.plugin
+        }));
+      });
       return {
         name: variantName,
         schema: JSON.stringify(S.toJSONSchema(v)),
         level: match[0],
         aggregateIdField: match[1],
-        mutationField: mutationFieldFor(variantName)
+        mutationField: mutationFieldFor(variantName),
+        references: references
       };
     });
   };

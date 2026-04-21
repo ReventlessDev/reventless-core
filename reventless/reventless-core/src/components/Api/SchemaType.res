@@ -12,13 +12,25 @@ type rec schemaType =
 
 let isTagged = Reventless.DcbTag.isTagged
 
+let isIdFieldName = (name: string): bool => {
+  let lower = String.toLowerCase(name)
+  let len = String.length(lower)
+  len > 2 && String.endsWith(lower, "id")
+}
+
+let isIdsFieldName = (name: string): bool => {
+  let lower = String.toLowerCase(name)
+  let len = String.length(lower)
+  len > 3 && String.endsWith(lower, "ids")
+}
+
 let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown>): schemaType => {
-  if isTagged(schema) {
+  if isTagged(schema) || Reventless.Reference.getTarget(schema)->Option.isSome {
     EntityId
   } else {
     switch schema {
     | String({const: ?Some(_)}) => ScalarString
-    | String(_) => ScalarString
+    | String(_) => isIdFieldName(fieldName) ? EntityId : ScalarString
     | Number(_) => ScalarNumber
     | Boolean(_) => ScalarBoolean
     | BigInt(_) => ScalarBigInt
@@ -38,6 +50,9 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
         | _ => ScalarString
         }
       }
+      let itemType = (isIdsFieldName(fieldName) || isIdFieldName(fieldName)) && itemType == ScalarString
+        ? EntityId
+        : itemType
       ArrayOf(itemType)
     | Object({properties}) =>
       let nestedName =

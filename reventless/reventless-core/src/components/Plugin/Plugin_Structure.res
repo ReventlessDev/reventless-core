@@ -58,7 +58,7 @@ let make = (
   // Aggregate commands that initialize a new aggregate instance are Collection-level
   // (shown as table-top buttons); all others are Instance-level (shown per-row).
   let isCreateCommandName = name =>
-    ["Add", "Create", "Register", "Open", "Initialize", "Submit", "Start"]->Array.some(p =>
+    ["Add", "Create", "Register", "Open", "Initialize", "Submit", "Start", "Place"]->Array.some(p =>
       name->String.startsWith(p)
     )
 
@@ -107,12 +107,25 @@ let make = (
         switch tagSchema {
         | String({const: ?Some(variantName)}) => {
             let (level, aggregateIdField) = commandLevelAndId(~isAggregate, ~variantName, properties)
+            let references =
+              properties
+              ->Dict.toArray
+              ->Array.filterMap(((fieldName, fieldSchema)) =>
+                Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
+                  {
+                    Reventless.Plugin.fieldName,
+                    entity: target.entity,
+                    plugin: target.plugin,
+                  }: Reventless.Plugin.fieldReference
+                ))
+              )
             Some({
               Reventless.Plugin.name: variantName,
               schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
               level,
               aggregateIdField,
               mutationField: mutationFieldFor(variantName),
+              references,
             })
           }
         | _ => None
