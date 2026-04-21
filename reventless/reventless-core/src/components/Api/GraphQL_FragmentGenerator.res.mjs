@@ -114,6 +114,10 @@ function deriveSubIdFilterType(filterTypeName) {
   return `input ` + filterTypeName + ` {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`;
 }
 
+function deriveConnectionFilterType(filterTypeName) {
+  return `input ` + filterTypeName + ` {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`;
+}
+
 function deriveItemsQueryField(singleFieldName, returnTypeName, filterTypeName) {
   return `  ` + singleFieldName + `Items(id: ID!, filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + returnTypeName + `Connection!`;
 }
@@ -135,8 +139,8 @@ function deriveListQueryField(listFieldName, pluralTypeName) {
   return `  ` + listFieldName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`;
 }
 
-function deriveConnectionQueryField(listFieldName, singularTypeName) {
-  return `  ` + listFieldName + `(first: Int, after: String, last: Int, before: String): ` + singularTypeName + `Connection!`;
+function deriveConnectionQueryField(listFieldName, singularTypeName, filterTypeName) {
+  return `  ` + listFieldName + `(filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + singularTypeName + `Connection!`;
 }
 
 function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema) {
@@ -201,12 +205,12 @@ function generate(mutationEntries, queryEntries) {
     let listFieldName = entry.listFieldName;
     let _sf = entry.subIdField;
     if (_sf !== undefined) {
-      let filterTypeName = entry.returnTypeName + "Filter";
-      if (!seenTypes.has(filterTypeName)) {
-        seenTypes.add(filterTypeName);
-        types.push(deriveSubIdFilterType(filterTypeName));
+      let itemsFilterTypeName = entry.returnTypeName + "ItemsFilter";
+      if (!seenTypes.has(itemsFilterTypeName)) {
+        seenTypes.add(itemsFilterTypeName);
+        types.push(deriveSubIdFilterType(itemsFilterTypeName));
       }
-      queries.push(deriveItemsQueryField(entry.singleFieldName, entry.returnTypeName, filterTypeName));
+      queries.push(deriveItemsQueryField(entry.singleFieldName, entry.returnTypeName, itemsFilterTypeName));
     }
     let indexes = entry.indexQueries;
     if (indexes !== undefined) {
@@ -228,7 +232,12 @@ function generate(mutationEntries, queryEntries) {
           types.push(t);
         });
       }
-      let listField = deriveConnectionQueryField(listFieldName, entry.returnTypeName);
+      let connectionFilterTypeName = entry.returnTypeName + "Filter";
+      if (!seenTypes.has(connectionFilterTypeName)) {
+        seenTypes.add(connectionFilterTypeName);
+        types.push(deriveConnectionFilterType(connectionFilterTypeName));
+      }
+      let listField = deriveConnectionQueryField(listFieldName, entry.returnTypeName, connectionFilterTypeName);
       queries.push(listField);
       return;
     }
@@ -272,6 +281,7 @@ export {
   derivePluralWrapperType,
   deriveConnectionTypes,
   deriveSubIdFilterType,
+  deriveConnectionFilterType,
   deriveItemsQueryField,
   deriveObjectQueryField,
   deriveListQueryField,

@@ -165,11 +165,15 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     } else {
       None
     }
+    let labelField = switch registryEntry {
+    | Some({labelField: ?lf}) => lf->Option.getOr("id")
+    | None => "id"
+    }
     let resolverAll = makeQueryResolver(
       ~resolverName=fieldNameForAll->String.capitalize,
       ~field=fieldNameForAll->Pulumi.Input.make,
       ~code=if connectionSpec {
-        Resolver.Functions.listAllItemsConnection
+        Resolver.Functions.listAllItemsConnection(~labelField)
       } else {
         Resolver.Functions.listAllItems
       },

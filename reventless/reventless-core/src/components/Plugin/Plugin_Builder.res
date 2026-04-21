@@ -179,12 +179,21 @@ module Make = (
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
     ) => {
       let qn = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+      let (labelField, _searchableFields) = Plugin_Structure.labelFieldsFromStateSchema(
+        ~entityName=R.Spec.name,
+        R.Spec.stateSchema->S.castToUnknown,
+      )
+      let qn = {
+        ...qn,
+        labelField,
+        connectionFilterTypeName: qn.returnTypeName ++ "Filter",
+      }
       let qn = switch R.Spec.subIdConfig {
       | Some(_) =>
         {
           ...qn,
           itemsFieldName: qn.singleFieldName ++ "Items",
-          filterTypeName: qn.returnTypeName ++ "Filter",
+          itemsFilterTypeName: qn.returnTypeName ++ "ItemsFilter",
         }
       | None => qn
       }

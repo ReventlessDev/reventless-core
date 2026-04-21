@@ -125,6 +125,9 @@ let deriveConnectionTypes = (~singularTypeName: string): array<string> => [
 let deriveSubIdFilterType = (~filterTypeName: string): string =>
   `input ${filterTypeName} {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`
 
+let deriveConnectionFilterType = (~filterTypeName: string): string =>
+  `input ${filterTypeName} {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`
+
 let deriveItemsQueryField = (
   ~singleFieldName: string,
   ~returnTypeName: string,
@@ -158,8 +161,9 @@ let deriveListQueryField = (
 let deriveConnectionQueryField = (
   ~listFieldName: string,
   ~singularTypeName: string,
+  ~filterTypeName: string,
 ): string =>
-  `  ${listFieldName}(first: Int, after: String, last: Int, before: String): ${singularTypeName}Connection!`
+  `  ${listFieldName}(filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${singularTypeName}Connection!`
 
 // ── Mutation field derivation ──────────────────────────────────────────────
 
@@ -271,16 +275,16 @@ let generate = (
     // Items query (sort key conditions, Relay connection) — generated when subIdField is set
     switch entry.subIdField {
     | Some(_sf) =>
-      let filterTypeName = entry.returnTypeName ++ "Filter"
-      if !(seenTypes->Set.has(filterTypeName)) {
-        seenTypes->Set.add(filterTypeName)
-        types->Array.push(deriveSubIdFilterType(~filterTypeName))
+      let itemsFilterTypeName = entry.returnTypeName ++ "ItemsFilter"
+      if !(seenTypes->Set.has(itemsFilterTypeName)) {
+        seenTypes->Set.add(itemsFilterTypeName)
+        types->Array.push(deriveSubIdFilterType(~filterTypeName=itemsFilterTypeName))
       }
       queries->Array.push(
         deriveItemsQueryField(
           ~singleFieldName=entry.singleFieldName,
           ~returnTypeName=entry.returnTypeName,
-          ~filterTypeName,
+          ~filterTypeName=itemsFilterTypeName,
         ),
       )
     | None => ()
@@ -314,9 +318,15 @@ let generate = (
         deriveConnectionTypes(~singularTypeName=entry.returnTypeName)
         ->Array.forEach(t => types->Array.push(t))
       }
+      let connectionFilterTypeName = entry.returnTypeName ++ "Filter"
+      if !(seenTypes->Set.has(connectionFilterTypeName)) {
+        seenTypes->Set.add(connectionFilterTypeName)
+        types->Array.push(deriveConnectionFilterType(~filterTypeName=connectionFilterTypeName))
+      }
       let listField = deriveConnectionQueryField(
         ~listFieldName,
         ~singularTypeName=entry.returnTypeName,
+        ~filterTypeName=connectionFilterTypeName,
       )
       queries->Array.push(listField)
     } else {

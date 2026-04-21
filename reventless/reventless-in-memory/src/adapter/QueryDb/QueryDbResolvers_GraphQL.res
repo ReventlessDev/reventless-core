@@ -205,11 +205,26 @@ module Make = (Bus: InMemory_Bus.T) => {
       }
     }
 
+    // Look up labelField from registry (Phase 3). Used by list-query filter.search /
+    // searchPrefix to target the entity's human-readable column without per-entity
+    // resolver wiring. Falls back to "id" so filtering still works on entities
+    // without a @displayName annotation (match on the partition key).
+    let labelField = switch registryEntry {
+    | Some({labelField: ?lf}) => lf->Option.getOr("id")
+    | None => "id"
+    }
+
     // -- List query -------------------------------------------------------------
     let (listSdl, listResolver): (array<string>, GraphQL_ServerInstance.resolverFn) = if connectionSpec {
       // Relay Connection spec format
       let connectionTypeName = returnTypeName ++ "Connection"
-      let sdl = [`  ${listQueryName}(first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
+      let filterTypeName = returnTypeName ++ "Filter"
+      server.registerTypes(
+        ~sdlTypes=[
+          `input ${filterTypeName} {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`,
+        ],
+      )
+      let sdl = [`  ${listQueryName}(filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
       let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) =>
@@ -232,7 +247,48 @@ module Make = (Bus: InMemory_Bus.T) => {
             | None => []
             }
           }
-          let edges = items->Array.mapWithIndex((item, i) => {
+          // Apply filter (search, searchPrefix, ids) before any pagination.
+          let argsDict = args->JSON.Decode.object->Option.getOr(Dict.make())
+          let filterDict =
+            argsDict->Dict.get("filter")->Option.flatMap(JSON.Decode.object)->Option.getOr(Dict.make())
+          let search = filterDict->Dict.get("search")->Option.flatMap(JSON.Decode.string)
+          let searchPrefix = filterDict->Dict.get("searchPrefix")->Option.flatMap(JSON.Decode.string)
+          let ids =
+            filterDict
+            ->Dict.get("ids")
+            ->Option.flatMap(JSON.Decode.array)
+            ->Option.map(arr => arr->Array.filterMap(JSON.Decode.string))
+          let getLabel = item =>
+            item
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get(labelField))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.getOr("")
+          let getId = item =>
+            item
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get("id"))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.getOr("")
+          let filtered = items->Array.filter(item => {
+            let passSearch = switch search {
+            | Some(s) if s->String.length > 0 =>
+              getLabel(item)->String.toLowerCase->String.includes(s->String.toLowerCase)
+            | _ => true
+            }
+            let passPrefix = switch searchPrefix {
+            | Some(p) if p->String.length > 0 =>
+              getLabel(item)->String.toLowerCase->String.startsWith(p->String.toLowerCase)
+            | _ => true
+            }
+            let passIds = switch ids {
+            | Some(idList) if idList->Array.length > 0 =>
+              idList->Array.some(i => i == getId(item))
+            | _ => true
+            }
+            passSearch && passPrefix && passIds
+          })
+          let edges = filtered->Array.mapWithIndex((item, i) => {
             Obj.magic({"node": item, "cursor": Int.toString(i)})
           })
           let startCursor = edges->Array.get(0)->Option.map(_ => Int.toString(0))
@@ -284,7 +340,7 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     let itemsSdl = switch subIdField {
     | Some(_sf) =>
-      let filterTypeName = returnTypeName ++ "Filter"
+      let filterTypeName = returnTypeName ++ "ItemsFilter"
       let connectionTypeName = returnTypeName ++ "Connection"
       server.registerTypes(
         ~sdlTypes=[

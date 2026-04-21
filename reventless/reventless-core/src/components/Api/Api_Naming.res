@@ -4,7 +4,9 @@ type queryNames = {
   itemsFieldName?: string,
   returnTypeName: string,
   pluralTypeName: string,
-  filterTypeName?: string,
+  itemsFilterTypeName?: string,
+  connectionFilterTypeName?: string,
+  labelField?: string,
   includeIdParam: bool,
   connectionSpec: bool,
 }

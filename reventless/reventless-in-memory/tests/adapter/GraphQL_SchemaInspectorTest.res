@@ -288,11 +288,50 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl->String.includes("edges: [RelayProductEdge!]!"))->toBe(true)
       expect(sdl->String.includes("pageInfo: PageInfo!"))->toBe(true)
       expect(sdl->String.includes("totalCount"))->toBe(false)
-      // Query field should use first/after/last/before args
-      expect(sdl->String.includes("Relay_Products(first: Int, after: String, last: Int, before: String): RelayProductConnection!"))->toBe(true)
+      // Query field should use filter + first/after/last/before args (Phase 4)
+      expect(
+        sdl->String.includes(
+          "Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String): RelayProductConnection!",
+        ),
+      )->toBe(true)
+      // Connection filter input with search/searchPrefix/ids
+      expect(sdl->String.includes("input RelayProductFilter"))->toBe(true)
+      expect(sdl->String.includes("search: String"))->toBe(true)
+      expect(sdl->String.includes("searchPrefix: String"))->toBe(true)
+      expect(sdl->String.includes("ids: [ID!]"))->toBe(true)
       // Should NOT have legacy plural wrapper type
       expect(sdl->String.includes("items: [RelayProduct!]!"))->toBe(false)
       expect(sdl->String.includes("nextToken:"))->toBe(false)
+    })
+
+    testPromise("subIdField generates ItemsFilter (distinct from connection Filter)", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Items_Product",
+            listFieldName: "Items_Products",
+            returnTypeName: "ItemsProduct",
+            stateSchema: testStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+            connectionSpec: true,
+            subIdField: "sku",
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      // Connection-level filter (search/searchPrefix/ids)
+      expect(sdl->String.includes("input ItemsProductFilter"))->toBe(true)
+      // Items query gets its own filter type (prefix/from/to/eq/order) — renamed
+      // to ItemsFilter to disambiguate from the connection-level Filter.
+      expect(sdl->String.includes("input ItemsProductItemsFilter"))->toBe(true)
+      expect(
+        sdl->String.includes(
+          "Items_ProductItems(id: ID!, filter: ItemsProductItemsFilter,",
+        ),
+      )->toBe(true)
     })
 
     testPromise("explicit connectionSpec=false generates legacy plural wrapper (opt-out)", async () => {
@@ -362,12 +401,14 @@ describe("GraphQL_SchemaInspector", () => {
         ],
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
-      expect(inspection.types->Array.length)->toBe(3)
+      // TestState, TestStateEdge, TestStateConnection, TestStateFilter (Phase 4 connection filter)
+      expect(inspection.types->Array.length)->toBe(4)
       expect(inspection.mutations->Array.length)->toBe(1)
       expect(inspection.queries->Array.length)->toBe(2)
       expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("type TestStateEdge"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("type TestStateConnection"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("input TestStateFilter"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("edges: [TestStateEdge!]!"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("Test_Add"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("Test_State"))->toBe(true)

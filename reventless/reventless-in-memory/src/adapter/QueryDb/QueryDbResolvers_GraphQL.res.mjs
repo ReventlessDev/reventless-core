@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
@@ -105,10 +106,13 @@ function Make(Bus) {
       obj["id"] = encodeId(returnTypeName, id);
       return obj;
     };
+    let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
     let match;
     if (connectionSpec) {
       let connectionTypeName = returnTypeName + "Connection";
-      let sdl = [`  ` + listQueryName + `(first: Int, after: String, last: Int, before: String): ` + connectionTypeName + `!`];
+      let filterTypeName = returnTypeName + "Filter";
+      server.registerTypes([`input ` + filterTypeName + ` {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`]);
+      let sdl = [`  ` + listQueryName + `(filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + connectionTypeName + `!`];
       let resolver = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
@@ -130,7 +134,24 @@ function Make(Bus) {
           let scanAll = Bus.getQueryDbScan(name);
           items = scanAll !== undefined ? scanAll() : [];
         }
-        let edges = items.map((item, i) => ({
+        let argsDict = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(args), {});
+        let filterDict = Stdlib_Option.getOr(Stdlib_Option.flatMap(argsDict["filter"], Stdlib_JSON.Decode.object), {});
+        let search = Stdlib_Option.flatMap(filterDict["search"], Stdlib_JSON.Decode.string);
+        let searchPrefix = Stdlib_Option.flatMap(filterDict["searchPrefix"], Stdlib_JSON.Decode.string);
+        let ids = Stdlib_Option.map(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), arr => Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string));
+        let getLabel = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), "");
+        let getId = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["id"]), Stdlib_JSON.Decode.string), "");
+        let filtered = items.filter(item => {
+          let passSearch = search !== undefined && search.length > 0 ? getLabel(item).toLowerCase().includes(search.toLowerCase()) : true;
+          let passPrefix = searchPrefix !== undefined && searchPrefix.length > 0 ? getLabel(item).toLowerCase().startsWith(searchPrefix.toLowerCase()) : true;
+          let passIds = ids !== undefined && ids.length !== 0 ? ids.some(i => i === getId(item)) : true;
+          if (passSearch && passPrefix) {
+            return passIds;
+          } else {
+            return false;
+          }
+        });
+        let edges = filtered.map((item, i) => ({
           node: item,
           cursor: i.toString()
         }));
@@ -187,10 +208,10 @@ function Make(Bus) {
     let decodeCursor = cursor => atob(cursor);
     let itemsSdl;
     if (subIdField !== undefined) {
-      let filterTypeName = returnTypeName + "Filter";
+      let filterTypeName$1 = returnTypeName + "ItemsFilter";
       let connectionTypeName$1 = returnTypeName + "Connection";
-      server.registerTypes([`input ` + filterTypeName + ` {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`]);
-      itemsSdl = [`  ` + singleQueryName + `Items(id: ID!, filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + connectionTypeName$1 + `!`];
+      server.registerTypes([`input ` + filterTypeName$1 + ` {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`]);
+      itemsSdl = [`  ` + singleQueryName + `Items(id: ID!, filter: ` + filterTypeName$1 + `, first: Int, after: String, last: Int, before: String): ` + connectionTypeName$1 + `!`];
     } else {
       itemsSdl = [];
     }

@@ -153,9 +153,16 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 
 ---
 
-## Phase 4 — `filter` argument on Connection queries
+## Phase 4 — `filter` argument on Connection queries ✅ done
 
 **Pairs with UI Phase B.4.** Depends on Phases 2 and 3.
+
+**Implementation notes.**
+- The pre-existing `${ReturnType}Filter` generated for the `{singleFieldName}Items` (sort-key) query conflicted with the new connection-level filter name. Renamed the items filter to `${ReturnType}ItemsFilter`; the new connection filter owns the plain `${ReturnType}Filter`. Breaking change for any client that queries the items-query filter by name — but intentionally chosen so the connection filter gets the canonical name on the top-level list query, which is the predominant list shape.
+- `labelField` is threaded into the resolver via the existing `Plugin_Helpers.queryFieldNamesRegistry` rather than a new hook. Both `Plugin_Builder` and `Dcb_Builder` now call `Plugin_Structure.labelFieldsFromStateSchema` when populating the registry, so the resolver closes over the correct label column at construction time.
+- `search` is case-insensitive substring on the in-memory adapter (`String.toLowerCase`/`String.includes`); DynamoDB's `contains` is **case-sensitive** (FilterExpression has no `tolower`). The SDL documents `search` as case-insensitive — the in-memory dev experience matches, the AWS prod path degrades to case-sensitive. A truly case-insensitive AWS path requires either a projected lowercased label column or external full-text search (deferred to Phase 6.1).
+- `ids` uses DynamoDB `FilterExpression: #id IN (:id0, :id1, …)` (scan + post-filter) on the AWS path. BatchGetItem optimisation deferred — open question 1 below.
+- The connection resolver does not yet implement cursor-based `first`/`after` slicing; filter is still applied pre-return. Pagination remains a follow-up — out of scope for this phase because the list resolver didn't paginate before Phase 4 either.
 
 **Goal.** Extend every per-entity Connection query with a `filter: ${ReturnType}Filter` argument. The UI's combobox (search mode) submits `filter: {search: "..."}` to do server-side substring matching on the label field. Completes the Phase B feature from the analysis.
 
@@ -187,7 +194,9 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 - Empty search string drops the filter entirely (no `contains(x, "")` sent to DynamoDB).
 
 **Commit message.**
-`feat: add filter arg (search, searchPrefix, ids) to Connection list queries`
+`feat!: add filter arg (search, searchPrefix, ids) to Connection list queries`
+
+The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter` for items queries, which is a breaking schema change for clients that referenced that type name.
 
 ---
 

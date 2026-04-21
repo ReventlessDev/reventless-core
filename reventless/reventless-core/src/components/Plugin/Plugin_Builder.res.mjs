@@ -152,15 +152,19 @@ function Make(Spec) {
         let eventLogEntries = eventLogEntriesFromAggregates.concat(dcbResult.eventLogEntries);
         readModels.forEach(R => {
           let qn = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(extra$1, R.Spec.name, undefined);
-          let match = R.Spec.subIdConfig;
+          let match = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(R.Spec.name, R.Spec.stateSchema);
+          let newrecord = {...qn};
+          newrecord.labelField = match[0];
+          newrecord.connectionFilterTypeName = qn.returnTypeName + "Filter";
+          let match$1 = R.Spec.subIdConfig;
           let qn$1;
-          if (match !== undefined) {
-            let newrecord = {...qn};
-            newrecord.filterTypeName = qn.returnTypeName + "Filter";
-            newrecord.itemsFieldName = qn.singleFieldName + "Items";
-            qn$1 = newrecord;
+          if (match$1 !== undefined) {
+            let newrecord$1 = {...newrecord};
+            newrecord$1.itemsFilterTypeName = newrecord.returnTypeName + "ItemsFilter";
+            newrecord$1.itemsFieldName = newrecord.singleFieldName + "Items";
+            qn$1 = newrecord$1;
           } else {
-            qn$1 = qn;
+            qn$1 = newrecord;
           }
           Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[R.Spec.name] = qn$1;
         });

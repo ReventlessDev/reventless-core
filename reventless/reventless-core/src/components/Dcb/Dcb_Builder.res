@@ -309,12 +309,21 @@ module Make = (
           module(V: StateViewSlice.T),
         ) => {
           let qn = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=V.Spec.name)
+          let (labelField, _searchableFields) = Plugin_Structure.labelFieldsFromStateSchema(
+            ~entityName=V.Spec.name,
+            V.Spec.stateSchema->S.castToUnknown,
+          )
+          let qn = {
+            ...qn,
+            labelField,
+            connectionFilterTypeName: qn.returnTypeName ++ "Filter",
+          }
           let qn = switch V.Spec.subIdConfig {
           | Some(_) =>
             {
               ...qn,
               itemsFieldName: qn.singleFieldName ++ "Items",
-              filterTypeName: qn.returnTypeName ++ "Filter",
+              itemsFilterTypeName: qn.returnTypeName ++ "ItemsFilter",
             }
           | None => qn
           }

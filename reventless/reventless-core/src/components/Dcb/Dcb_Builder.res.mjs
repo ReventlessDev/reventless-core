@@ -14,6 +14,7 @@ import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/co
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../Api/ApiNoApiHelpers.res.mjs";
+import * as Plugin_Structure$ReventlessCore from "../Plugin/Plugin_Structure.res.mjs";
 import * as DcbEventLog_Builder$ReventlessCore from "../DcbEventLog/DcbEventLog_Builder.res.mjs";
 import * as CommandTopic_Builder$ReventlessCore from "../CommandTopic/CommandTopic_Builder.res.mjs";
 import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/AutomationSlice_Callback.res.mjs";
@@ -208,15 +209,19 @@ function Make(DcbEventLogStorage) {
       }
       stateViewSlices.forEach(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, undefined);
-        let match = V.Spec.subIdConfig;
+        let match = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(V.Spec.name, V.Spec.stateSchema);
+        let newrecord = {...qn};
+        newrecord.labelField = match[0];
+        newrecord.connectionFilterTypeName = qn.returnTypeName + "Filter";
+        let match$1 = V.Spec.subIdConfig;
         let qn$1;
-        if (match !== undefined) {
-          let newrecord = {...qn};
-          newrecord.filterTypeName = qn.returnTypeName + "Filter";
-          newrecord.itemsFieldName = qn.singleFieldName + "Items";
-          qn$1 = newrecord;
+        if (match$1 !== undefined) {
+          let newrecord$1 = {...newrecord};
+          newrecord$1.itemsFilterTypeName = newrecord.returnTypeName + "ItemsFilter";
+          newrecord$1.itemsFieldName = newrecord.singleFieldName + "Items";
+          qn$1 = newrecord$1;
         } else {
-          qn$1 = qn;
+          qn$1 = newrecord;
         }
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[V.Spec.name] = qn$1;
       });

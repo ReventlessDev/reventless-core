@@ -217,9 +217,30 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl.includes("edges: [RelayProductEdge!]!")).toBe(true);
       expect(sdl.includes("pageInfo: PageInfo!")).toBe(true);
       expect(sdl.includes("totalCount")).toBe(false);
-      expect(sdl.includes("Relay_Products(first: Int, after: String, last: Int, before: String): RelayProductConnection!")).toBe(true);
+      expect(sdl.includes("Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String): RelayProductConnection!")).toBe(true);
+      expect(sdl.includes("input RelayProductFilter")).toBe(true);
+      expect(sdl.includes("search: String")).toBe(true);
+      expect(sdl.includes("searchPrefix: String")).toBe(true);
+      expect(sdl.includes("ids: [ID!]")).toBe(true);
       expect(sdl.includes("items: [RelayProduct!]!")).toBe(false);
       expect(sdl.includes("nextToken:")).toBe(false);
+    });
+    test("subIdField generates ItemsFilter (distinct from connection Filter)", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Items_Product",
+          listFieldName: "Items_Products",
+          returnTypeName: "ItemsProduct",
+          stateSchema: testStateSchema,
+          authorization: undefined,
+          includeIdParam: true,
+          connectionSpec: true,
+          subIdField: "sku"
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("input ItemsProductFilter")).toBe(true);
+      expect(sdl.includes("input ItemsProductItemsFilter")).toBe(true);
+      expect(sdl.includes("Items_ProductItems(id: ID!, filter: ItemsProductItemsFilter,")).toBe(true);
     });
     test("explicit connectionSpec=false generates legacy plural wrapper (opt-out)", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
@@ -267,12 +288,13 @@ describe("GraphQL_SchemaInspector", () => {
           authorization: undefined
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
-      expect(inspection.types.length).toBe(3);
+      expect(inspection.types.length).toBe(4);
       expect(inspection.mutations.length).toBe(1);
       expect(inspection.queries.length).toBe(2);
       expect(inspection.sdlPreview.includes("type TestState")).toBe(true);
       expect(inspection.sdlPreview.includes("type TestStateEdge")).toBe(true);
       expect(inspection.sdlPreview.includes("type TestStateConnection")).toBe(true);
+      expect(inspection.sdlPreview.includes("input TestStateFilter")).toBe(true);
       expect(inspection.sdlPreview.includes("edges: [TestStateEdge!]!")).toBe(true);
       expect(inspection.sdlPreview.includes("Test_Add")).toBe(true);
       expect(inspection.sdlPreview.includes("Test_State")).toBe(true);

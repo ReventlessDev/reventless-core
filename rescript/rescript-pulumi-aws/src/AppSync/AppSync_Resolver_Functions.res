@@ -402,14 +402,59 @@ ${resultResponseCode}
 // DynamoDB read — list all (Relay Connection spec)
 // ---------------------------------------------------------------------------
 
-let listAllItemsConnection =
+/**
+ * Scan with optional `filter` arg: `{search?, searchPrefix?, ids?}`.
+ *
+ * `search`       → `contains(labelField, :v)` — case-sensitive on DynamoDB. Callers that
+ *                  need case-insensitive matching should project a lowercased label column
+ *                  (future Phase 6.1 / external full-text search).
+ * `searchPrefix` → `begins_with(labelField, :v)` — case-sensitive. Scan-only here;
+ *                  Phase 6 `@searchable` provisions a GSI to promote this to a query.
+ * `ids`          → FilterExpression `#id IN (:id0, :id1, …)`. Simple scan-based
+ *                  path; BatchGetItem optimisation is deferred (open question 1).
+ *
+ * Empty-string filter values are treated as "no filter" — consistent with the
+ * in-memory adapter so clients don't need to conditionally omit keys.
+ */
+let listAllItemsConnection = (~labelField: string) =>
   `${importUtil}
 export function request(ctx) {
-  return {
+  const filter = ctx.args.filter ?? {};
+  const names = {};
+  const values = {};
+  const parts = [];
+  if (typeof filter.search === 'string' && filter.search.length > 0) {
+    names['#label'] = '${labelField}';
+    values[':search'] = util.dynamodb.toDynamoDB(filter.search);
+    parts.push('contains(#label, :search)');
+  }
+  if (typeof filter.searchPrefix === 'string' && filter.searchPrefix.length > 0) {
+    names['#label'] = '${labelField}';
+    values[':searchPrefix'] = util.dynamodb.toDynamoDB(filter.searchPrefix);
+    parts.push('begins_with(#label, :searchPrefix)');
+  }
+  if (Array.isArray(filter.ids) && filter.ids.length > 0) {
+    names['#id'] = 'id';
+    const placeholders = filter.ids.map((id, i) => {
+      const key = ':id' + i;
+      values[key] = util.dynamodb.toDynamoDB(id);
+      return key;
+    });
+    parts.push('#id IN (' + placeholders.join(', ') + ')');
+  }
+  const req = {
     operation: 'Scan',
     limit: (ctx.args.first ?? 50),
-    nextToken: (ctx.args.after ?? null)
+    nextToken: (ctx.args.after ?? null),
   };
+  if (parts.length > 0) {
+    req.filter = {
+      expression: parts.join(' AND '),
+      expressionNames: names,
+      expressionValues: values,
+    };
+  }
+  return req;
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
