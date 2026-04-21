@@ -1,3 +1,7 @@
+const path = require("path");
+
+const setupFile = path.resolve(__dirname, "jest.setup.cjs");
+
 /** @type {import('jest').Config} */
 module.exports = {
   reporters: ["<rootDir>/jest.reporter.js"],
@@ -8,6 +12,7 @@ module.exports = {
       rootDir: "./rescript/rescript-pulumi-aws",
       testMatch: ["<rootDir>/tests/**/*Test.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@aws-appsync/utils$": "<rootDir>/tests/__mocks__/appsync-utils.mjs",
       },
@@ -24,6 +29,7 @@ module.exports = {
         "<rootDir>/tests/ProjectionTest.res.mjs",
       ],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
@@ -39,6 +45,7 @@ module.exports = {
       rootDir: "./reventless/reventless-in-memory",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
@@ -54,18 +61,21 @@ module.exports = {
       rootDir: "./reventless/reventless-interop",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
     },
     {
       displayName: "rescript-moment",
       rootDir: "./rescript/rescript-moment",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
     },
     {
       displayName: "online-shop-dcb-catalog",
       rootDir: "./examples/online-shop-dcb/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
@@ -81,6 +91,7 @@ module.exports = {
       rootDir: "./examples/online-shop-dcb/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
@@ -96,6 +107,7 @@ module.exports = {
       rootDir: "./examples/online-shop-aggregates/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
@@ -111,6 +123,7 @@ module.exports = {
       rootDir: "./examples/online-shop-aggregates/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
@@ -126,6 +139,7 @@ module.exports = {
       rootDir: "./examples/online-shop-hybrid/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
@@ -141,6 +155,7 @@ module.exports = {
       rootDir: "./examples/online-shop-hybrid/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
       moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
       moduleNameMapper: {
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
