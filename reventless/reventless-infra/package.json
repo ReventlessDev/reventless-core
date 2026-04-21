@@ -10,10 +10,10 @@
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps"
   },
   "dependencies": {
-    "@reventlessdev/rescript-effect": "*",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.7",
-    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.6",
-    "@reventlessdev/reventless-spec": "^3.0.0-alpha.30",
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"
   },

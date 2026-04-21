@@ -39,16 +39,16 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
-    "@reventlessdev/rescript-effect": "*",
-    "@reventlessdev/rescript-fast-csv": "^1.2.0-alpha.4",
-    "@reventlessdev/rescript-hash-object": "^1.2.0-alpha.4",
-    "@reventlessdev/rescript-node-streams": "^1.1.0-alpha.4",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.7",
-    "@reventlessdev/rescript-ssh2": "^1.1.0-alpha.4",
-    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.6",
-    "@reventlessdev/reventless-infra": "^3.0.0-alpha.39",
-    "@reventlessdev/reventless-interop": "^3.0.0-alpha.8",
-    "@reventlessdev/reventless-spec": "^3.0.0-alpha.30"
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-fast-csv": "workspace:*",
+    "@reventlessdev/rescript-hash-object": "workspace:*",
+    "@reventlessdev/rescript-node-streams": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/rescript-ssh2": "workspace:*",
+    "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-interop": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",

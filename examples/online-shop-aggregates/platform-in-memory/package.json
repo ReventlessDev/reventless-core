@@ -11,10 +11,10 @@
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs"
   },
   "dependencies": {
-    "@reventlessdev/online-shop-aggregates-catalog": "*",
-    "@reventlessdev/online-shop-aggregates-ordering": "*",
-    "@reventlessdev/reventless-in-memory": "*",
-    "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/online-shop-aggregates-catalog": "workspace:*",
+    "@reventlessdev/online-shop-aggregates-ordering": "workspace:*",
+    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/online-shop-aggregates-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",

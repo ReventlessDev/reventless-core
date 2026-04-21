@@ -28,10 +28,10 @@
     }
   },
   "dependencies": {
-    "@reventlessdev/online-shop-aggregates-catalog-spec": "*",
-    "@reventlessdev/online-shop-aggregates-ordering-spec": "*",
-    "@reventlessdev/reventless-in-memory": "*",
-    "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/online-shop-aggregates-catalog-spec": "workspace:*",
+    "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
+    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*"

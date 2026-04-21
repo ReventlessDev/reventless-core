@@ -91,22 +91,22 @@ importers:
   examples/online-shop-aggregates/catalog:
     dependencies:
       '@reventlessdev/online-shop-aggregates-catalog-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-aggregates-ordering-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -128,7 +128,7 @@ importers:
   examples/online-shop-aggregates/catalog-spec:
     dependencies:
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -147,22 +147,22 @@ importers:
   examples/online-shop-aggregates/ordering:
     dependencies:
       '@reventlessdev/online-shop-aggregates-catalog-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-aggregates-ordering-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -184,7 +184,7 @@ importers:
   examples/online-shop-aggregates/ordering-spec:
     dependencies:
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -203,13 +203,13 @@ importers:
   examples/online-shop-aggregates/platform-in-memory:
     dependencies:
       '@reventlessdev/online-shop-aggregates-catalog':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog
       '@reventlessdev/online-shop-aggregates-catalog-spec':
         specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-aggregates-ordering':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering
       '@reventlessdev/online-shop-aggregates-ordering-spec':
         specifier: workspace:*
@@ -218,13 +218,13 @@ importers:
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -240,22 +240,22 @@ importers:
   examples/online-shop-dcb/catalog:
     dependencies:
       '@reventlessdev/online-shop-dcb-catalog-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-dcb-ordering-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
     devDependencies:
       '@glennsl/rescript-jest':
@@ -277,7 +277,7 @@ importers:
   examples/online-shop-dcb/catalog-spec:
     dependencies:
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -296,22 +296,22 @@ importers:
   examples/online-shop-dcb/ordering:
     dependencies:
       '@reventlessdev/online-shop-dcb-catalog-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-dcb-ordering-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
     devDependencies:
       '@glennsl/rescript-jest':
@@ -333,7 +333,7 @@ importers:
   examples/online-shop-dcb/ordering-spec:
     dependencies:
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -352,28 +352,28 @@ importers:
   examples/online-shop-dcb/platform-in-memory:
     dependencies:
       '@reventlessdev/online-shop-dcb-catalog':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog
       '@reventlessdev/online-shop-dcb-catalog-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-dcb-ordering':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering
       '@reventlessdev/online-shop-dcb-ordering-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
     devDependencies:
       '@reventlessdev/reventless-ppx':
@@ -392,22 +392,22 @@ importers:
   examples/online-shop-hybrid/catalog:
     dependencies:
       '@reventlessdev/online-shop-hybrid-catalog-spec':
-        specifier: ^1.0.0-alpha.8
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-hybrid-ordering-spec':
-        specifier: ^1.0.0-alpha.8
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -429,7 +429,7 @@ importers:
   examples/online-shop-hybrid/catalog-aws:
     dependencies:
       '@reventlessdev/online-shop-hybrid-catalog':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../catalog
       '@reventlessdev/online-shop-hybrid-catalog-spec':
         specifier: workspace:*
@@ -441,13 +441,13 @@ importers:
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-aws':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -466,7 +466,7 @@ importers:
   examples/online-shop-hybrid/catalog-spec:
     dependencies:
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -485,22 +485,22 @@ importers:
   examples/online-shop-hybrid/ordering:
     dependencies:
       '@reventlessdev/online-shop-hybrid-catalog-spec':
-        specifier: ^1.0.0-alpha.8
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-hybrid-ordering-spec':
-        specifier: ^1.0.0-alpha.8
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -525,7 +525,7 @@ importers:
         specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-hybrid-ordering':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../ordering
       '@reventlessdev/online-shop-hybrid-ordering-spec':
         specifier: workspace:*
@@ -534,13 +534,13 @@ importers:
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-aws':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -559,7 +559,7 @@ importers:
   examples/online-shop-hybrid/ordering-spec:
     dependencies:
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -581,13 +581,13 @@ importers:
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-aws':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -606,28 +606,28 @@ importers:
   examples/online-shop-hybrid/platform-in-memory:
     dependencies:
       '@reventlessdev/online-shop-hybrid-catalog':
-        specifier: ^1.0.0-alpha.19
+        specifier: workspace:*
         version: link:../catalog
       '@reventlessdev/online-shop-hybrid-catalog-spec':
-        specifier: ^1.0.0-alpha.8
+        specifier: workspace:*
         version: link:../catalog-spec
       '@reventlessdev/online-shop-hybrid-ordering':
-        specifier: ^1.0.0-alpha.19
+        specifier: workspace:*
         version: link:../ordering
       '@reventlessdev/online-shop-hybrid-ordering-spec':
-        specifier: ^1.0.0-alpha.8
+        specifier: workspace:*
         version: link:../ordering-spec
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-in-memory':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-in-memory
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -737,7 +737,7 @@ importers:
         specifier: ^3.985.0
         version: 3.1033.0(@aws-sdk/client-s3@3.1033.0)
       '@reventlessdev/rescript-node-streams':
-        specifier: ^1.1.0-alpha.4
+        specifier: workspace:*
         version: link:../rescript-node-streams
     devDependencies:
       rescript:
@@ -766,7 +766,7 @@ importers:
   rescript/rescript-fast-csv:
     dependencies:
       '@reventlessdev/rescript-node-streams':
-        specifier: ^1.1.0-alpha.4
+        specifier: workspace:*
         version: link:../rescript-node-streams
       fast-csv:
         specifier: ^5.0.5
@@ -839,7 +839,7 @@ importers:
         specifier: ^11.1.4
         version: 11.1.4
       '@reventlessdev/rescript-node-streams':
-        specifier: ^1.1.0-alpha.4
+        specifier: workspace:*
         version: link:../rescript-node-streams
     devDependencies:
       rescript:
@@ -855,10 +855,10 @@ importers:
         specifier: ^1.48.0
         version: 1.62.0(typescript@5.9.3)
       '@reventlessdev/rescript-aws-sdk':
-        specifier: ^2.2.0-alpha.8
+        specifier: workspace:*
         version: link:../rescript-aws-sdk
       '@reventlessdev/rescript-pulumi-pulumi':
-        specifier: ^2.3.0-alpha.7
+        specifier: workspace:*
         version: link:../rescript-pulumi-pulumi
     devDependencies:
       esbuild:
@@ -890,7 +890,7 @@ importers:
         specifier: ^11.1.4
         version: 11.1.4
       '@reventlessdev/rescript-node-streams':
-        specifier: ^1.1.0-alpha.4
+        specifier: workspace:*
         version: link:../rescript-node-streams
       ssh2:
         specifier: ^1.17.0
@@ -916,31 +916,31 @@ importers:
         specifier: 3.970.0
         version: 3.970.0
       '@reventlessdev/rescript-aws-sdk':
-        specifier: ^2.2.0-alpha.8
+        specifier: workspace:*
         version: link:../../rescript/rescript-aws-sdk
       '@reventlessdev/rescript-effect':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../rescript/rescript-effect
       '@reventlessdev/rescript-pulumi-aws':
-        specifier: ^2.4.0-alpha.18
+        specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-aws
       '@reventlessdev/rescript-pulumi-pulumi':
-        specifier: ^2.3.0-alpha.7
+        specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/rescript-uuid':
-        specifier: ^1.1.0-alpha.6
+        specifier: workspace:*
         version: link:../../rescript/rescript-uuid
       '@reventlessdev/reventless-core':
-        specifier: ^3.0.0-alpha.57
+        specifier: workspace:*
         version: link:../reventless-core
       '@reventlessdev/reventless-infra':
-        specifier: ^3.0.0-alpha.39
+        specifier: workspace:*
         version: link:../reventless-infra
       '@reventlessdev/reventless-interop':
-        specifier: ^3.0.0-alpha.8
+        specifier: workspace:*
         version: link:../reventless-interop
       '@reventlessdev/reventless-spec':
-        specifier: ^3.0.0-alpha.30
+        specifier: workspace:*
         version: link:../reventless-spec
     devDependencies:
       '@glennsl/rescript-jest':
@@ -961,34 +961,34 @@ importers:
   reventless/reventless-core:
     dependencies:
       '@reventlessdev/rescript-effect':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../rescript/rescript-effect
       '@reventlessdev/rescript-fast-csv':
-        specifier: ^1.2.0-alpha.4
+        specifier: workspace:*
         version: link:../../rescript/rescript-fast-csv
       '@reventlessdev/rescript-hash-object':
-        specifier: ^1.2.0-alpha.4
+        specifier: workspace:*
         version: link:../../rescript/rescript-hash-object
       '@reventlessdev/rescript-node-streams':
-        specifier: ^1.1.0-alpha.4
+        specifier: workspace:*
         version: link:../../rescript/rescript-node-streams
       '@reventlessdev/rescript-pulumi-pulumi':
-        specifier: ^2.3.0-alpha.7
+        specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/rescript-ssh2':
-        specifier: ^1.1.0-alpha.4
+        specifier: workspace:*
         version: link:../../rescript/rescript-ssh2
       '@reventlessdev/rescript-uuid':
-        specifier: ^1.1.0-alpha.6
+        specifier: workspace:*
         version: link:../../rescript/rescript-uuid
       '@reventlessdev/reventless-infra':
-        specifier: ^3.0.0-alpha.39
+        specifier: workspace:*
         version: link:../reventless-infra
       '@reventlessdev/reventless-interop':
-        specifier: ^3.0.0-alpha.8
+        specifier: workspace:*
         version: link:../reventless-interop
       '@reventlessdev/reventless-spec':
-        specifier: ^3.0.0-alpha.30
+        specifier: workspace:*
         version: link:../reventless-spec
     devDependencies:
       '@glennsl/rescript-jest':
@@ -1019,25 +1019,25 @@ importers:
   reventless/reventless-in-memory:
     dependencies:
       '@reventlessdev/rescript-effect':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../rescript/rescript-effect
       '@reventlessdev/rescript-graphql-yoga':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../rescript/rescript-graphql-yoga
       '@reventlessdev/rescript-mcp-sdk':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../rescript/rescript-mcp-sdk
       '@reventlessdev/rescript-pulumi-pulumi':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/reventless-core':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../reventless-core
       '@reventlessdev/reventless-infra':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../reventless-infra
       '@reventlessdev/reventless-spec':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../reventless-spec
       graphql:
         specifier: ^16.0.0
@@ -1065,16 +1065,16 @@ importers:
   reventless/reventless-infra:
     dependencies:
       '@reventlessdev/rescript-effect':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../rescript/rescript-effect
       '@reventlessdev/rescript-pulumi-pulumi':
-        specifier: ^2.3.0-alpha.7
+        specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-pulumi
       '@reventlessdev/rescript-uuid':
-        specifier: ^1.1.0-alpha.6
+        specifier: workspace:*
         version: link:../../rescript/rescript-uuid
       '@reventlessdev/reventless-spec':
-        specifier: ^3.0.0-alpha.30
+        specifier: workspace:*
         version: link:../reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
@@ -1090,7 +1090,7 @@ importers:
   reventless/reventless-interop:
     dependencies:
       '@reventlessdev/rescript-pulumi-pulumi':
-        specifier: ^2.3.0-alpha.7
+        specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-pulumi
       sury:
         specifier: ^11.0.0-alpha.4

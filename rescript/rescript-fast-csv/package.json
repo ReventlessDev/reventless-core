@@ -11,7 +11,7 @@
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
   "dependencies": {
-    "@reventlessdev/rescript-node-streams": "^1.1.0-alpha.4",
+    "@reventlessdev/rescript-node-streams": "workspace:*",
     "fast-csv": "^5.0.5"
   },
   "devDependencies": {

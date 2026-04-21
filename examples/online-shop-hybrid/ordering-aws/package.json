@@ -9,9 +9,9 @@
     "build": "rescript build"
   },
   "dependencies": {
-    "@reventlessdev/online-shop-hybrid-ordering": "*",
-    "@reventlessdev/reventless-aws": "*",
-    "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
+    "@reventlessdev/reventless-aws": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4",
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",

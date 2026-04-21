@@ -3,8 +3,9 @@
 **Date (v1):** 2026-04-21
 **Date (v2 rewrite, post-Phase-0):** 2026-04-21
 **Date (v3, post-Phase-1 execution + Phase-3 compat spike):** 2026-04-21
+**Date (v4, post-workspace-protocol cleanup):** 2026-04-21
 
-**Status:** Phase 1 shipped on branch `feat/pnpm-migration` (commit `1de8b775`). Phase 3 compat-shim spike (Option B) validated. Phase 2 not yet started.
+**Status:** Phase 1 shipped on branch `feat/pnpm-migration` (commit `1de8b775`). Phase 3 compat-shim spike (Option B) validated. Phase-2-adjacent workspace-protocol cleanup executed (see §1.4d follow-up). Phase 2 not yet started.
 
 ## Why this plan exists
 
@@ -274,7 +275,7 @@ Phase 1 (core migration) — ALL COMPLETE (2026-04-21, commit 1de8b775)
 
 Not in the v2 plan. pnpm 10 changed this default from `true` (v9) → `false`, which means workspace packages no longer satisfy semver-ranged cross-workspace deps by default. This repo uses semver ranges heavily for `@reventlessdev/*` deps (e.g., `"@reventlessdev/reventless-spec": "^3.0.0-alpha.30"`), so pnpm fetched stale registry copies instead of linking workspaces — breaking the build on newly-added but-not-yet-published symbols (`Reventless.AnsiStyle`). Mitigation: added to `.npmrc`.
 
-Follow-up: as a Phase-2-adjacent cleanup, convert all in-repo `@reventlessdev/*` semver-range deps to `workspace:*`. This makes workspace intent explicit in source, is forward-compatible if `link-workspace-packages` is later flipped, and makes `pnpm publish --workspace-protocol` rewrite them correctly at publish time.
+**Follow-up completed (2026-04-21, post-Phase-1):** all 28 in-repo `@reventlessdev/*` semver-range and `"*"` deps converted to `workspace:*` (excluding `@reventlessdev/dev-app` which stays at `>=0.2.0-alpha` — external sister repo). `link-workspace-packages=true` was removed from `.npmrc`. Fresh `pnpm install` + `pnpm run build` succeed without it; the 3 documented duplicated-package warnings (§1.7a) are unchanged by this cleanup (they come from hoisted-layout nested node_modules, not semver resolution). This makes workspace intent explicit in source, is forward-compatible to any future pnpm semantics change, and makes `pnpm publish --workspace-protocol` rewrite `workspace:*` → concrete versions at publish time.
 
 ### 1.4e Deviation — `dev-app` optional dep range
 
@@ -510,4 +511,10 @@ If a regression is discovered post-merge:
 1. Merge `feat/pnpm-migration` into `alpha` after CI passes on the branch.
 2. **Before Phase 2:** coordinate a tiny PR on the sister repo to add `pnpm-workspace.yaml` (`packages: ['reventless/*']`). This is a zero-impact change for sister's own npm workflow.
 3. Execute Phase 2 (overlay script, `link:on`/`link:off` toggles, gitignored local config, docs).
-4. **Optional cleanup** (Phase-2-adjacent): convert all in-repo `@reventlessdev/*` semver ranges to `workspace:*`. Reduces reliance on `link-workspace-packages=true` and makes publish-time intent explicit.
+4. ~~**Optional cleanup** (Phase-2-adjacent): convert all in-repo `@reventlessdev/*` semver ranges to `workspace:*`.~~ **Done** (see §1.4d follow-up).
+
+## Pre-existing test regression (NOT caused by this plan)
+
+Discovered during the §1.4d follow-up cleanup: running `pnpm test` on the tip of `feat/pnpm-migration` (both with and without the cleanup applied) yields **84 failed / 926 passed / 1010 total** — not the 1034/1034 reported at commit `1de8b775`. Failing tests share a common stack: `uuid@13.0.0` throws `crypto.getRandomValues() not supported` because Jest 27's default `jsdom` test environment does not expose `globalThis.crypto` as a bare `crypto` identifier inside the VM. A minimal Jest probe confirms `typeof crypto === "undefined"` in the test context.
+
+Baseline comparison: stashing the workspace-protocol cleanup and re-running `pnpm install --frozen-lockfile` followed by `pnpm test` produces the **exact same** 84-failure / 926-pass counts. The cleanup is test-neutral. Why the Phase-1 commit reported 1034/1034 — whether the env was genuinely different (different jest/jsdom version, different Node, different default `testEnvironment`) or the verification number was incorrect — is out of scope here and should be tracked separately before merging to `alpha`.

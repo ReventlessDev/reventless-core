@@ -19,15 +19,15 @@
   },
   "dependencies": {
     "@aws-sdk/client-appsync": "3.970.0",
-    "@reventlessdev/rescript-aws-sdk": "^2.2.0-alpha.8",
-    "@reventlessdev/rescript-effect": "*",
-    "@reventlessdev/rescript-pulumi-aws": "^2.4.0-alpha.18",
-    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.7",
-    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.6",
-    "@reventlessdev/reventless-core": "^3.0.0-alpha.57",
-    "@reventlessdev/reventless-infra": "^3.0.0-alpha.39",
-    "@reventlessdev/reventless-interop": "^3.0.0-alpha.8",
-    "@reventlessdev/reventless-spec": "^3.0.0-alpha.30"
+    "@reventlessdev/rescript-aws-sdk": "workspace:*",
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-pulumi-aws": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/reventless-core": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-interop": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",

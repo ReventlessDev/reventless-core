@@ -7,8 +7,8 @@
     "build": "rescript build"
   },
   "dependencies": {
-    "@reventlessdev/reventless-aws": "*",
-    "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/reventless-aws": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*"
