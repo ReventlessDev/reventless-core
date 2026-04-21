@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -10,6 +11,7 @@ import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
+import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Message$ReventlessCore from "./Message.res.mjs";
 import * as QueryDb$ReventlessCore from "./components/QueryDb/QueryDb.res.mjs";
 import * as QueryDb$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/QueryDb.res.mjs";
@@ -30,6 +32,110 @@ let Mapping = {
 
 function logAction(str) {
   log.debug("Projection", undefined, str);
+}
+
+function overlayDisplayName(state, stateSchema, spec) {
+  let json = S.reverseConvertToJsonOrThrow(state, stateSchema);
+  let stateDict = Stdlib_JSON.Decode.object(json);
+  if (stateDict === undefined) {
+    return state;
+  }
+  let label = DisplayName$Reventless.computeLabel(spec, stateDict);
+  stateDict["displayName"] = label;
+  return S.parseJsonOrThrow(stateDict, stateSchema);
+}
+
+function rewriteAction(action, stateSchema) {
+  let spec = DisplayName$Reventless.getSpec(stateSchema);
+  if (spec === undefined) {
+    return action;
+  }
+  let overlay = state => overlayDisplayName(state, stateSchema, spec);
+  if (typeof action !== "object") {
+    return action;
+  }
+  switch (action.TAG) {
+    case "Create" :
+      return {
+        TAG: "Create",
+        _0: action._0,
+        _1: overlayDisplayName(action._1, stateSchema, spec)
+      };
+    case "CreateMany" :
+      return {
+        TAG: "CreateMany",
+        _0: action._0.map(param => [
+          param[0],
+          overlayDisplayName(param[1], stateSchema, spec)
+        ])
+      };
+    case "Update" :
+      let fn = action._1;
+      return {
+        TAG: "Update",
+        _0: action._0,
+        _1: state => overlayDisplayName(fn(state), stateSchema, spec)
+      };
+    case "UpdateMany" :
+      let fn$1 = action._1;
+      return {
+        TAG: "UpdateMany",
+        _0: action._0,
+        _1: (id, s) => overlayDisplayName(fn$1(id, s), stateSchema, spec)
+      };
+    case "UpdateWithDefault" :
+      let fn$2 = action._2;
+      return {
+        TAG: "UpdateWithDefault",
+        _0: action._0,
+        _1: overlayDisplayName(action._1, stateSchema, spec),
+        _2: state => overlayDisplayName(fn$2(state), stateSchema, spec)
+      };
+    case "UpdateManyWithDefault" :
+      let fn$3 = action._2;
+      let defFn = action._1;
+      return {
+        TAG: "UpdateManyWithDefault",
+        _0: action._0,
+        _1: id => overlayDisplayName(defFn(id), stateSchema, spec),
+        _2: (id, s) => overlayDisplayName(fn$3(id, s), stateSchema, spec)
+      };
+    case "Set" :
+      return {
+        TAG: "Set",
+        _0: action._0,
+        _1: overlayDisplayName(action._1, stateSchema, spec)
+      };
+    case "SetMany" :
+      let fn$4 = action._1;
+      return {
+        TAG: "SetMany",
+        _0: action._0,
+        _1: id => overlayDisplayName(fn$4(id), stateSchema, spec)
+      };
+    case "CreateMultiState" :
+      return {
+        TAG: "CreateMultiState",
+        _0: action._0,
+        _1: action._1.map(overlay)
+      };
+    case "UpdateMultiState" :
+      let fn$5 = action._1;
+      return {
+        TAG: "UpdateMultiState",
+        _0: action._0,
+        _1: states => fn$5(states).map(overlay)
+      };
+    case "UpdateManyMultiStates" :
+      let fn$6 = action._1;
+      return {
+        TAG: "UpdateManyMultiStates",
+        _0: action._0,
+        _1: (id, states) => fn$6(id, states).map(overlay)
+      };
+    default:
+      return action;
+  }
 }
 
 async function applyChanges(action, id, beforeStates, afterStates, param, param$1) {
@@ -592,6 +698,8 @@ export {
   log,
   Mapping,
   logAction,
+  overlayDisplayName,
+  rewriteAction,
   applyChanges,
   stateToString,
   statesToString,

@@ -5,7 +5,7 @@
 
 @schema
 type state = {
-  email: string,
+  @displayName email: string,
   address: string,
   deactivated: bool,
 }

@@ -18,6 +18,56 @@ module Mapping = {
 
 let logAction = str => log.debug(~comp="Projection", str)
 
+// ── @displayName overlay ────────────────────────────────────────────────────
+// When a read model's state schema carries DisplayName metadata, every state
+// written by a projection action gets its [displayName] field overwritten with
+// the composite label derived from the annotated source fields. The overlay
+// encodes via sury, mutates the JSON dict, and parses back — unlocks fine
+// work on partial/option fields without duplicating the record shape here.
+
+let overlayDisplayName = (
+  state: 'state,
+  stateSchema: S.t<'state>,
+  spec: Reventless.DisplayName.displayNameSpec,
+): 'state => {
+  let json = state->S.reverseConvertToJsonOrThrow(stateSchema)
+  switch json->JSON.Decode.object {
+  | None => state
+  | Some(stateDict) =>
+    let label = Reventless.DisplayName.computeLabel(spec, stateDict)
+    stateDict->Dict.set("displayName", JSON.Encode.string(label))
+    stateDict->JSON.Encode.object->S.parseJsonOrThrow(stateSchema)
+  }
+}
+
+let rewriteAction = (
+  action: action<'id, 'state>,
+  stateSchema: S.t<'state>,
+): action<'id, 'state> =>
+  switch Reventless.DisplayName.getSpec(stateSchema->S.castToUnknown) {
+  | None => action
+  | Some(spec) =>
+    let overlay = state => overlayDisplayName(state, stateSchema, spec)
+    switch action {
+    | Create(id, state) => Create(id, overlay(state))
+    | CreateMany(pairs) => CreateMany(pairs->Array.map(((id, s)) => (id, overlay(s))))
+    | Set(id, state) => Set(id, overlay(state))
+    | SetMany(ids, fn) => SetMany(ids, id => overlay(fn(id)))
+    | Update(id, fn) => Update(id, state => overlay(fn(state)))
+    | UpdateMany(ids, fn) => UpdateMany(ids, (id, s) => overlay(fn(id, s)))
+    | UpdateWithDefault(id, default, fn) =>
+      UpdateWithDefault(id, overlay(default), state => overlay(fn(state)))
+    | UpdateManyWithDefault(ids, defFn, fn) =>
+      UpdateManyWithDefault(ids, id => overlay(defFn(id)), (id, s) => overlay(fn(id, s)))
+    | CreateMultiState(id, states) => CreateMultiState(id, states->Array.map(overlay))
+    | UpdateMultiState(id, fn) =>
+      UpdateMultiState(id, states => states->fn->Array.map(overlay))
+    | UpdateManyMultiStates(ids, fn) =>
+      UpdateManyMultiStates(ids, (id, states) => fn(id, states)->Array.map(overlay))
+    | Delete(_) | DeleteMany(_) | DeleteIf(_, _) | DeleteManyIf(_, _) | Ignore => action
+    }
+  }
+
 let applyChanges = async (
   action,
   id,

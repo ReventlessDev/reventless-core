@@ -29,7 +29,10 @@ function Make(ReadModelSpec) {
         let idxStr = (idx + 1 | 0).toString();
         Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, json, `handling event ` + idxStr + `/` + total + ` from ` + sourceName + `: ` + LogFormat$ReventlessCore.eventDetail(json) + ` actions:` + actionsStr));
         return actions;
-      }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig)), param => {})));
+      }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => {
+        let action$1 = Projection$ReventlessCore.rewriteAction(action, ReadModelSpec.stateSchema);
+        return Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(action$1, Spec.operations, ReadModelSpec.subIdConfig)), param => {});
+      }));
     });
     return {
       EventProjector: EventProjector,

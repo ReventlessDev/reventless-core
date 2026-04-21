@@ -351,6 +351,7 @@ let transform (str : structure) : structure =
     let body = DcbTagInference.transform_composite_partition_tags ~loc body in
     let body = DcbTagInference.transform_explicit_dcb_tags ~loc body in
     let body = DcbTagInference.strip_no_tag_attrs body in
+    let body = DisplayNameInference.transform_structure body in
     let body = NoApiAnnotation.transform ~loc body in
     match mode with
     | Spec name_opt ->

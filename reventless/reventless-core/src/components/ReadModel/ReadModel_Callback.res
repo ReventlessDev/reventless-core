@@ -36,10 +36,12 @@ module Make = (
       ->Array.flat
       ->Array.reduce(Effect.succeed(), (acc, action) =>
         acc->Effect.flatMap(
-          _ =>
+          _ => {
+            let action = Projection.rewriteAction(action, ReadModelSpec.stateSchema)
             Effect.promise(
               () => Projection.handleAction(action, Spec.operations, ReadModelSpec.subIdConfig),
-            )->Effect.map(_ => ()),
+            )->Effect.map(_ => ())
+          },
         )
       )
     })

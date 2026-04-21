@@ -12,11 +12,11 @@ function project(param) {
     return {
       TAG: "Update",
       _0: id,
-      _1: state => ({
-        email: state.email,
-        address: state.address,
-        deactivated: true
-      })
+      _1: state => {
+        let newrecord = {...state};
+        newrecord.deactivated = true;
+        return newrecord;
+      }
     };
   }
   switch (event.TAG) {
@@ -35,22 +35,22 @@ function project(param) {
       return {
         TAG: "Update",
         _0: id,
-        _1: state => ({
-          email: email,
-          address: state.address,
-          deactivated: state.deactivated
-        })
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.email = email;
+          return newrecord;
+        }
       };
     case "AddressUpdated" :
       let address = event.address;
       return {
         TAG: "Update",
         _0: id,
-        _1: state => ({
-          email: state.email,
-          address: address,
-          deactivated: state.deactivated
-        })
+        _1: state => {
+          let newrecord = {...state};
+          newrecord.address = address;
+          return newrecord;
+        }
       };
   }
 }

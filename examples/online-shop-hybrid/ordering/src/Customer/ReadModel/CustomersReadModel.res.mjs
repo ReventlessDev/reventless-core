@@ -2,12 +2,19 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 
 let stateSchema = S.schema(s => ({
   email: s.m(S.string),
   address: s.m(S.string),
-  deactivated: s.m(S.bool)
+  deactivated: s.m(S.bool),
+  displayName: s.m(S.option(S.string))
 }));
+
+let stateSchema$1 = S.Metadata.set(stateSchema, DisplayName$Reventless.displayNameId, {
+  fields: ["email"],
+  separator: " "
+});
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
@@ -22,7 +29,7 @@ let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadMod
 export {
   name,
   Id,
-  stateSchema,
+  stateSchema$1 as stateSchema,
   config,
   subIdConfig,
   moduleUrl,
