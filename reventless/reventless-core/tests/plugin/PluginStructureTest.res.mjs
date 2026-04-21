@@ -5,6 +5,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as PsShipOrder$ReventlessCore from "./StateChangeSlice/PsShipOrder.res.mjs";
 import * as PsOrdersView$ReventlessCore from "./StateViewSlice/PsOrdersView.res.mjs";
 import * as PsPlaceOrder$ReventlessCore from "./StateChangeSlice/PsPlaceOrder.res.mjs";
+import * as PsCustomersView$ReventlessCore from "./StateViewSlice/PsCustomersView.res.mjs";
 import * as Plugin_Structure$ReventlessCore from "../../src/components/Plugin/Plugin_Structure.res.mjs";
 import * as PsAvailableProductsView$ReventlessCore from "./StateViewSlice/PsAvailableProductsView.res.mjs";
 
@@ -92,9 +93,29 @@ let PsAvailableProductsViewSlice = {
   make: make$3
 };
 
+function make$4(param, param$1) {
+  return 0;
+}
+
+let PsCustomersViewSlice_Spec = {
+  name: PsCustomersView$ReventlessCore.name,
+  moduleUrl: PsCustomersView$ReventlessCore.moduleUrl,
+  stateSchema: PsCustomersView$ReventlessCore.stateSchema,
+  consumedEventSchema: PsCustomersView$ReventlessCore.consumedEventSchema,
+  project: PsCustomersView$ReventlessCore.project,
+  config: PsCustomersView$ReventlessCore.config,
+  subIdConfig: undefined
+};
+
+let PsCustomersViewSlice = {
+  Spec: PsCustomersViewSlice_Spec,
+  make: make$4
+};
+
 let structure = Plugin_Structure$ReventlessCore.make("TestPlugin", undefined, undefined, [
   PsOrdersViewSlice,
-  PsAvailableProductsViewSlice
+  PsAvailableProductsViewSlice,
+  PsCustomersViewSlice
 ], [
   PsPlaceOrderSlice,
   PsShipOrderSlice
@@ -159,7 +180,7 @@ Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     });
   });
   Jest.describe("stateViewSlices", () => {
-    Jest.test("produces two SVS entries in declaration order", () => Jest.Expect.toBe(Jest.Expect.expect(structure.stateViewSlices.length), 2));
+    Jest.test("produces three SVS entries in declaration order", () => Jest.Expect.toBe(Jest.Expect.expect(structure.stateViewSlices.length), 3));
     Jest.test("OrdersView: consumedEventTypes contains the three order events (qualified)", () => {
       let ordersView = structure.stateViewSlices[0];
       return Jest.Expect.toEqual(Jest.Expect.expect(ordersView.consumedEventTypes), [
@@ -187,6 +208,41 @@ Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       return Jest.Expect.toEqual(Jest.Expect.expect(apv.linkedWriteSide), []);
     });
   });
+  Jest.describe("labelField / searchableFields", () => {
+    Jest.test("OrdersView: no @displayName → first non-id string field wins (orderId)", () => {
+      let ordersView = structure.stateViewSlices[0];
+      return Jest.Expect.toEqual(Jest.Expect.expect([
+        ordersView.labelField,
+        ordersView.searchableFields
+      ]), [
+        "orderId",
+        ["orderId"]
+      ]);
+    });
+    Jest.test("AvailableProductsView: no @displayName → first non-id string field wins (productId)", () => {
+      let apv = structure.stateViewSlices[1];
+      return Jest.Expect.toEqual(Jest.Expect.expect([
+        apv.labelField,
+        apv.searchableFields
+      ]), [
+        "productId",
+        ["productId"]
+      ]);
+    });
+    Jest.test("Customers: composite @displayName → labelField=displayName, searchableFields=raw source fields in declaration order", () => {
+      let customers = structure.stateViewSlices[2];
+      return Jest.Expect.toEqual(Jest.Expect.expect([
+        customers.labelField,
+        customers.searchableFields
+      ]), [
+        "displayName",
+        [
+          "firstName",
+          "lastName"
+        ]
+      ]);
+    });
+  });
 });
 
 export {
@@ -194,6 +250,7 @@ export {
   PsShipOrderSlice,
   PsOrdersViewSlice,
   PsAvailableProductsViewSlice,
+  PsCustomersViewSlice,
   structure,
 }
 /* structure Not a pure module */

@@ -118,6 +118,20 @@ type queryableDef = {
   schema: string,
   consumedEventTypes: array<string>,
   linkedWriteSide: array<string>,
+  /**
+  The field on this entity that carries the human-readable label.
+  When the entity's state schema declares one or more `@displayName` annotations,
+  this resolves to `"displayName"` (the projected column). Otherwise it falls back
+  to the first non-`id` string property, or `"id"` as a last resort.
+  */
+  labelField: string,
+  /**
+  Fields appropriate for label-oriented text search.
+  Mirrors `labelField` when the entity uses the fallback or single-field label.
+  For composite `@displayName` annotations, lists the *raw* underlying source
+  fields (so clients with substring indexes can target them directly).
+  */
+  searchableFields: array<string>,
 }
 
 @schema

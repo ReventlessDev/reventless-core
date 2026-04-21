@@ -105,9 +105,16 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 
 ---
 
-## Phase 3 — Surface `labelField` on `Platform_UIReadSideDef`
+## Phase 3 — Surface `labelField` on `Platform_UIReadSideDef` ✅ done
 
 **Pairs with UI Phase A.3.** Depends on Phase 2.
+
+**Implementation notes.**
+- Source ladder lives in `Plugin_Structure.res` as `labelFieldsFromStateSchema` and is applied to both `readModelDefs` and `stateViewDefs`.
+- The first-non-`id` fallback walks sury's `Object({items})` (declaration-ordered) rather than `properties` (dict) so the result is deterministic across compiles.
+- When `DisplayName.getSpec` is present, `searchableFields` lists the *raw* underlying fields from `spec.fields` so clients with substring indexes can target them directly; otherwise it mirrors `labelField` (single element).
+- `Logger.warn` fires once per queryable that falls back to `"id"` — helps surface missing annotations without breaking the build.
+- Only the in-memory platform currently emits `Platform_UIDefinitions`; reventless-aws has no corresponding resolver (verified via `grep Platform_UIReadSideDef reventless/reventless-aws/src`), so no AWS work is needed until that query is mirrored there.
 
 **Goal.** Expose the display-label field name (annotated or fallback-inferred) on the GraphQL schema so the UI can render entity labels without shipping its own fallback logic.
 

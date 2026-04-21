@@ -39,11 +39,20 @@ module PsAvailableProductsViewSlice: ReventlessInfra.StateViewSlice.T = {
   type component = svsComponent
   let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
 }
+module PsCustomersViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsCustomersView
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+}
 
 let structure = Plugin_Structure.make(
   ~name="TestPlugin",
   ~stateChangeSlices=[module(PsPlaceOrderSlice), module(PsShipOrderSlice)],
-  ~stateViewSlices=[module(PsOrdersViewSlice), module(PsAvailableProductsViewSlice)],
+  ~stateViewSlices=[
+    module(PsOrdersViewSlice),
+    module(PsAvailableProductsViewSlice),
+    module(PsCustomersViewSlice),
+  ],
 )
 
 describe("Plugin_Structure.make — Phase 2 graph fields", () => {
@@ -112,8 +121,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   })
 
   describe("stateViewSlices", () => {
-    test("produces two SVS entries in declaration order", () => {
-      expect(structure.stateViewSlices->Array.length)->toBe(2)
+    test("produces three SVS entries in declaration order", () => {
+      expect(structure.stateViewSlices->Array.length)->toBe(3)
     })
 
     test("OrdersView: consumedEventTypes contains the three order events (qualified)", () => {
@@ -141,6 +150,29 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     test("AvailableProductsView: linkedWriteSide is empty (no SCS produces these events)", () => {
       let apv = structure.stateViewSlices->Array.getUnsafe(1)
       expect(apv.linkedWriteSide)->toEqual([])
+    })
+  })
+
+  describe("labelField / searchableFields", () => {
+    test("OrdersView: no @displayName → first non-id string field wins (orderId)", () => {
+      let ordersView = structure.stateViewSlices->Array.getUnsafe(0)
+      expect((ordersView.labelField, ordersView.searchableFields))->toEqual((
+        "orderId",
+        ["orderId"],
+      ))
+    })
+
+    test("AvailableProductsView: no @displayName → first non-id string field wins (productId)", () => {
+      let apv = structure.stateViewSlices->Array.getUnsafe(1)
+      expect((apv.labelField, apv.searchableFields))->toEqual(("productId", ["productId"]))
+    })
+
+    test("Customers: composite @displayName → labelField=displayName, searchableFields=raw source fields in declaration order", () => {
+      let customers = structure.stateViewSlices->Array.getUnsafe(2)
+      expect((customers.labelField, customers.searchableFields))->toEqual((
+        "displayName",
+        ["firstName", "lastName"],
+      ))
     })
   })
 })

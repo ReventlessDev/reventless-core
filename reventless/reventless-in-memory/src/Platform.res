@@ -1155,7 +1155,7 @@ module MakeWithConfig = (
     let uiDefsSdlTypes = [
       `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
+      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
       `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
       `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
@@ -1179,6 +1179,8 @@ module MakeWithConfig = (
         ("schema", JSON.Encode.string(r.schema)),
         ("consumedEventTypes", encodeStrings(r.consumedEventTypes)),
         ("linkedWriteSide", encodeStrings(r.linkedWriteSide)),
+        ("labelField", JSON.Encode.string(r.labelField)),
+        ("searchableFields", encodeStrings(r.searchableFields)),
       ])->JSON.Encode.object
     let encodeWritableDef = (w: Reventless.Plugin.writableDef): JSON.t =>
       Dict.fromArray([
@@ -1736,7 +1738,7 @@ module MakeWithConfig = (
       let dpUiDefsSdlTypes = [
         `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
         `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n}`,
+        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`,
       ]
       adminGraphQL.registerTypes(~sdlTypes=dpUiDefsSdlTypes)
@@ -1765,6 +1767,8 @@ module MakeWithConfig = (
                     ("schema", JSON.Encode.string(r.schema)),
                     ("consumedEventTypes", encodeStrings(r.consumedEventTypes)),
                     ("linkedWriteSide", encodeStrings(r.linkedWriteSide)),
+                    ("labelField", JSON.Encode.string(r.labelField)),
+                    ("searchableFields", encodeStrings(r.searchableFields)),
                   ])->JSON.Encode.object
                 let encodeWbl = (w: Reventless.Plugin.writableDef) =>
                   Dict.fromArray([

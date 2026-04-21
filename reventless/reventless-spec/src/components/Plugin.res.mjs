@@ -77,7 +77,9 @@ let queryableDefSchema = S.schema(s => ({
   queryField: s.m(S.string),
   schema: s.m(S.string),
   consumedEventTypes: s.m(S.array(S.string)),
-  linkedWriteSide: s.m(S.array(S.string))
+  linkedWriteSide: s.m(S.array(S.string)),
+  labelField: s.m(S.string),
+  searchableFields: s.m(S.array(S.string))
 }));
 
 let writableDefSchema = S.schema(s => ({

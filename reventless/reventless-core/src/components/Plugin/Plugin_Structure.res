@@ -3,6 +3,43 @@
 // event-graph view, and MCP tooling consume. Kept standalone so it can be
 // unit-tested without spinning up a Platform.
 
+let log = Logger.fromEnv()
+
+// Returns (labelField, searchableFields) from a state schema.
+// Source ladder:
+//   1. @displayName spec present → "displayName" + spec.fields (raw underlying fields)
+//   2. First non-id, non-TAG, string-typed field in declaration order
+//   3. "id" fallback with a logged warning (no searchable fields)
+let labelFieldsFromStateSchema = (
+  ~entityName: string,
+  stateSchema: S.t<unknown>,
+): (string, array<string>) =>
+  switch Reventless.DisplayName.getSpec(stateSchema) {
+  | Some(spec) => ("displayName", spec.fields)
+  | None =>
+    let firstStringItem = switch stateSchema {
+    | Object({items}) =>
+      items->Array.find(item =>
+        item.location != "TAG" &&
+        item.location != "id" &&
+        switch item.schema {
+        | String(_) => true
+        | _ => false
+        }
+      )
+    | _ => None
+    }
+    switch firstStringItem {
+    | Some(item) => (item.location, [item.location])
+    | None =>
+      log.warn(
+        ~comp="Plugin_Structure",
+        `${entityName}: no @displayName annotation and no suitable string field — labelField falls back to "id"`,
+      )
+      ("id", [])
+    }
+  }
+
 let make = (
   type api role,
   ~name: string,
@@ -201,12 +238,18 @@ let make = (
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
     ) => {
       let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+      let (labelField, searchableFields) = labelFieldsFromStateSchema(
+        ~entityName=R.Spec.name,
+        R.Spec.stateSchema->S.castToUnknown,
+      )
       ({
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
         schema: (R.Spec.stateSchema->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
         consumedEventTypes: [],
         linkedWriteSide: [],
+        labelField,
+        searchableFields,
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -214,12 +257,18 @@ let make = (
     stateViewSlices->Array.mapWithIndex((module(SVS: ReventlessInfra.StateViewSlice.T), i) => {
       let qf = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=SVS.Spec.name)
       let (_, consumed) = svsConsumed->Array.getUnsafe(i)
+      let (labelField, searchableFields) = labelFieldsFromStateSchema(
+        ~entityName=SVS.Spec.name,
+        SVS.Spec.stateSchema->S.castToUnknown,
+      )
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,
         schema: (SVS.Spec.stateSchema->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
         consumedEventTypes: consumed,
         linkedWriteSide: linkedWriteSideFor(consumed),
+        labelField,
+        searchableFields,
       }: Reventless.Plugin.queryableDef)
     })
 

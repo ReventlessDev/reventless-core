@@ -5,7 +5,41 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
+
+function labelFieldsFromStateSchema(entityName, stateSchema) {
+  let spec = DisplayName$Reventless.getSpec(stateSchema);
+  if (spec !== undefined) {
+    return [
+      "displayName",
+      spec.fields
+    ];
+  }
+  let firstStringItem;
+  firstStringItem = stateSchema.type === "object" ? stateSchema.items.find(item => {
+      if (item.location === "TAG" || item.location === "id") {
+        return false;
+      }
+      let match = item.schema;
+      return match.type === "string";
+    }) : undefined;
+  if (firstStringItem !== undefined) {
+    return [
+      firstStringItem.location,
+      [firstStringItem.location]
+    ];
+  } else {
+    log.warn("Plugin_Structure", undefined, entityName + `: no @displayName annotation and no suitable string field — labelField falls back to "id"`);
+    return [
+      "id",
+      []
+    ];
+  }
+}
 
 function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
@@ -178,24 +212,30 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   };
   let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
+    let match = labelFieldsFromStateSchema(R.Spec.name, R.Spec.stateSchema);
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
       schema: JSON.stringify(S.toJSONSchema(R.Spec.stateSchema)),
       consumedEventTypes: [],
-      linkedWriteSide: []
+      linkedWriteSide: [],
+      labelField: match[0],
+      searchableFields: match[1]
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, SVS.Spec.name, undefined);
     let match = svsConsumed[i];
     let consumed = match[1];
+    let match$1 = labelFieldsFromStateSchema(SVS.Spec.name, SVS.Spec.stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
       schema: JSON.stringify(S.toJSONSchema(SVS.Spec.stateSchema)),
       consumedEventTypes: consumed,
-      linkedWriteSide: linkedWriteSideFor(consumed)
+      linkedWriteSide: linkedWriteSideFor(consumed),
+      labelField: match$1[0],
+      searchableFields: match$1[1]
     };
   });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
@@ -263,6 +303,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
 }
 
 export {
+  log,
+  labelFieldsFromStateSchema,
   make,
 }
-/* S Not a pure module */
+/* log Not a pure module */
