@@ -66,7 +66,7 @@ module Make = (
   let publishAggregateCommand = async (aggregateName, cmdJson: Message.commandJson) => {
     EffectLogger.logInfo(
       ~comp,
-      `EP→${aggregateName}: ${cmdJson.commandJson->Message.variantNameOfJson}(${cmdJson.id})`,
+      `EP→${aggregateName}: ${cmdJson.commandJson->Message.variantNameOfJson->LogFormat.bold}(${cmdJson.id})`,
     )->Effect.runSync
     let pub = Ops.publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow
     try await pub([cmdJson]) catch {

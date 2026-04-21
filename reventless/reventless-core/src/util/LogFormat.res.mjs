@@ -3,10 +3,11 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as Message$ReventlessCore from "../Message.res.mjs";
 
 function cmdName(msg) {
-  return Message$ReventlessCore.variantNameOfJson(msg.commandJson);
+  return AnsiStyle$Reventless.bold(Message$ReventlessCore.variantNameOfJson(msg.commandJson));
 }
 
 function cmdNames(msgs) {
@@ -14,7 +15,7 @@ function cmdNames(msgs) {
 }
 
 function cmdSummary(msg) {
-  return Message$ReventlessCore.variantNameOfJson(msg.commandJson) + `(` + msg.id + `)`;
+  return AnsiStyle$Reventless.bold(Message$ReventlessCore.variantNameOfJson(msg.commandJson)) + `(` + msg.id + `)`;
 }
 
 function cmdSummaries(msgs) {
@@ -34,7 +35,7 @@ function variantFields(json) {
 }
 
 function cmdDetail(msg) {
-  return Message$ReventlessCore.variantNameOfJson(msg.commandJson) + `(` + msg.id + variantFields(msg.commandJson) + `)`;
+  return AnsiStyle$Reventless.bold(Message$ReventlessCore.variantNameOfJson(msg.commandJson)) + `(` + msg.id + variantFields(msg.commandJson) + `)`;
 }
 
 function cmdDetails(msgs) {
@@ -51,7 +52,9 @@ function cmdFulls(msgs) {
   return `[` + msgs.map(cmdFull).join(", ") + `]`;
 }
 
-let eventName = Message$ReventlessCore.eventNameOfEvent$pJson;
+function eventName(j) {
+  return AnsiStyle$Reventless.bold(Message$ReventlessCore.eventNameOfEvent$pJson(j));
+}
 
 function eventNames(events) {
   return `[` + events.map(eventName).join(",") + `]`;
@@ -59,7 +62,7 @@ function eventNames(events) {
 
 function eventSummary(j) {
   let match = Message$ReventlessCore.idMetaEventOfEvent$pJson(j);
-  return Message$ReventlessCore.eventNameOfEvent$pJson(j) + `(` + match[0] + `)`;
+  return AnsiStyle$Reventless.bold(Message$ReventlessCore.eventNameOfEvent$pJson(j)) + `(` + match[0] + `)`;
 }
 
 function eventSummaries(events) {
@@ -67,10 +70,9 @@ function eventSummaries(events) {
 }
 
 function eventDetail(j) {
-  let name = Message$ReventlessCore.eventNameOfEvent$pJson(j);
   let match = Message$ReventlessCore.idMetaEventOfEvent$pJson(j);
   let eventJson = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(j), d => d["event"]), null);
-  return name + `(` + match[0] + variantFields(eventJson) + `)`;
+  return AnsiStyle$Reventless.bold(Message$ReventlessCore.eventNameOfEvent$pJson(j)) + `(` + match[0] + variantFields(eventJson) + `)`;
 }
 
 function eventDetails(events) {
@@ -194,6 +196,8 @@ function fmtCmds(msgs) {
   return `cmds=` + msgs.length.toString() + ` [` + msgs.map(cmdName).join(",") + `]`;
 }
 
+let bold = AnsiStyle$Reventless.bold;
+
 let commandJsonToLogMessage = cmdFull;
 
 let fmtCmd = cmdSummary;
@@ -205,6 +209,7 @@ let fmtAction = actionName;
 let fmtActions = actionNames;
 
 export {
+  bold,
   cmdName,
   cmdNames,
   cmdSummary,

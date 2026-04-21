@@ -104,7 +104,7 @@ function Make(Spec) {
             let eventCount = events.length.toString();
             let eventDetails = events.map(event$p => {
               let json = Message$ReventlessCore.encode(event$p.event, Spec.eventSchema);
-              let name = Message$ReventlessCore.variantNameOfJson(json);
+              let name = LogFormat$ReventlessCore.bold(Message$ReventlessCore.variantNameOfJson(json));
               let id = Spec.Id.toString(event$p.id);
               return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
             }).join(", ");

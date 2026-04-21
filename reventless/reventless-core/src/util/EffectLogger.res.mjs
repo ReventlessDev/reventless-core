@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Logger from "effect/Logger";
+import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as Logger$ReventlessCore from "./Logger.res.mjs";
 
 function _messageToString(msg) {
@@ -59,7 +60,7 @@ install();
 
 function withComp(comp, msg) {
   if (comp !== undefined) {
-    return Logger$ReventlessCore.bold + `[` + comp + `]` + Logger$ReventlessCore.reset + ` ` + msg;
+    return AnsiStyle$Reventless.bold(`[` + comp + `]`) + ` ` + msg;
   } else {
     return msg;
   }

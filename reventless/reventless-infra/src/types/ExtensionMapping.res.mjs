@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as PluginExtensionPointSpec$ReventlessInfra from "./PluginExtensionPointSpec.res.mjs";
 
@@ -32,7 +33,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
-  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(`\x1b[1m[` + comp + `]\x1b[0m ` + msg));
+  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(AnsiStyle$Reventless.bold(`[` + comp + `]`) + ` ` + msg));
   let encodeMeta = (meta, service) => ({
     service: service,
     time: meta.time,
@@ -53,7 +54,7 @@ function Make(MappingImpl) {
       };
     };
     let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
-      compLog(`Extension(` + extensionPointName + `)`, action + `: ` + Message$Reventless.variantNameOfJson(commandJson) + `(` + id + `)`);
+      compLog(`Extension(` + extensionPointName + `)`, action + `: ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(commandJson)) + `(` + id + `)`);
       return {
         id: id,
         meta: encodeMeta(meta, extensionPointName),
@@ -135,7 +136,7 @@ function Make(MappingImpl) {
     }
     let meta = val.meta;
     let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
-      compLog(`Extension(` + delegateName + `)`, action + `: ` + Message$Reventless.variantNameOfJson(commandJson) + `(` + id + `)`);
+      compLog(`Extension(` + delegateName + `)`, action + `: ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(commandJson)) + `(` + id + `)`);
       return {
         id: id,
         meta: encodeMeta(meta, extensionPointName),

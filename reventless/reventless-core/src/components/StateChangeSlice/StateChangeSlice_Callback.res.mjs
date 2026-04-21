@@ -94,7 +94,7 @@ function Make(Spec) {
           } else {
             fields = "";
           }
-          return e.eventType + fields;
+          return LogFormat$ReventlessCore.bold(e.eventType) + fields;
         }).join(", ");
         let eventJsons = rawEvents.map(e => e.data);
         let condition_after = param[1];

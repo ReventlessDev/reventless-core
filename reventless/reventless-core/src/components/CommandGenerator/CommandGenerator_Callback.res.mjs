@@ -55,7 +55,7 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
       ];
     }), param => {
       let commandJson = param[1];
-      let name = Message$ReventlessCore.variantNameOfJson(commandJson);
+      let name = LogFormat$ReventlessCore.bold(Message$ReventlessCore.variantNameOfJson(commandJson));
       return EffectLogger$ReventlessCore.logInfo(`CommandGenerator(` + serviceName + `)`, commandJson, `generated command: ` + name + `(` + param[2] + LogFormat$ReventlessCore.variantFields(commandJson) + `)`);
     }), param => {
       let id = param[2];

@@ -79,7 +79,7 @@ install()
 
 let withComp = (~comp=?, msg) =>
   switch comp {
-  | Some(c) => `${Logger.bold}[${c}]${Logger.reset} ${msg}`
+  | Some(c) => `${Reventless.AnsiStyle.bold(`[${c}]`)} ${msg}`
   | None => msg
   }
 

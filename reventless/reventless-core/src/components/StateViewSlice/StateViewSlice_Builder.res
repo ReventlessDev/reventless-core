@@ -113,7 +113,7 @@ module Make = (
                   EffectLogger.logInfo(
                     ~comp,
                     ~detail=eventData,
-                    `handling event ${idxStr}/${total}: ${eventType}${fieldsStr} ${actionsStr}`,
+                    `handling event ${idxStr}/${total}: ${LogFormat.bold(eventType)}${fieldsStr} ${actionsStr}`,
                   )->Effect.runSync
                   actions
                 | None => []

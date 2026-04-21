@@ -77,7 +77,7 @@ let makeGenerateCommand = (
       (meta, commandJson, id)
     })
     ->Effect.tap(((_, commandJson, id)) => {
-      let name = commandJson->Message.variantNameOfJson
+      let name = commandJson->Message.variantNameOfJson->LogFormat.bold
       EffectLogger.logInfo(
         ~comp=`CommandGenerator(${serviceName})`,
         ~detail=commandJson,

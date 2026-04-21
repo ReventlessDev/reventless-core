@@ -32,7 +32,7 @@ function Make(MappingSpec) {
       }
     };
     let publishAggregateCommand = async (aggregateName, cmdJson) => {
-      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `EP→` + aggregateName + `: ` + Message$ReventlessCore.variantNameOfJson(cmdJson.commandJson) + `(` + cmdJson.id + `)`));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `EP→` + aggregateName + `: ` + LogFormat$ReventlessCore.bold(Message$ReventlessCore.variantNameOfJson(cmdJson.commandJson)) + `(` + cmdJson.id + `)`));
       let pub = Stdlib_Option.getOrThrow(Ops.publishToAggregates[aggregateName], undefined);
       try {
         return await pub([cmdJson]);

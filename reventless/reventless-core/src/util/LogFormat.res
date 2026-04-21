@@ -22,11 +22,17 @@
 //     fmtState → "state=Order(order-1) seq=42"
 //     fmtExn   → "err=<message>"
 
+// ─── Style ───────────────────────────────────────────────────────────────────
+
+// Re-exported so downstream callers in reventless-core can reach the shared
+// styling primitive through `LogFormat.bold` rather than the spec namespace.
+let bold = Reventless.AnsiStyle.bold
+
 // ─── Commands ────────────────────────────────────────────────────────────────
 
-// "Add"
+// "Add"  (bold)
 let cmdName = (msg: Message.commandJson): string =>
-  msg.commandJson->Message.variantNameOfJson
+  msg.commandJson->Message.variantNameOfJson->bold
 
 // "[Add,Remove]"
 let cmdNames = (msgs: array<Message.commandJson>): string =>
@@ -34,7 +40,7 @@ let cmdNames = (msgs: array<Message.commandJson>): string =>
 
 // "Add(1)"
 let cmdSummary = (msg: Message.commandJson): string =>
-  `${msg.commandJson->Message.variantNameOfJson}(${msg.id})`
+  `${msg->cmdName}(${msg.id})`
 
 // "[Add(1),Remove(2)]"
 let cmdSummaries = (msgs: array<Message.commandJson>): string =>
@@ -58,7 +64,7 @@ let variantFields = (json: JSON.t): string =>
 
 // "Add(1, {name:"Cat 1"})"  (ReScript-style variant rendering)
 let cmdDetail = (msg: Message.commandJson): string =>
-  `${msg.commandJson->Message.variantNameOfJson}(${msg.id}${msg.commandJson->variantFields})`
+  `${msg->cmdName}(${msg.id}${msg.commandJson->variantFields})`
 
 // "[Add(1, {name:"Cat 1"}), Remove(2)]"
 let cmdDetails = (msgs: array<Message.commandJson>): string =>
@@ -77,9 +83,9 @@ let cmdFulls = (msgs: array<Message.commandJson>): string =>
 
 // ─── Events (JSON.t event' envelope) ─────────────────────────────────────────
 
-// "Added"
+// "Added"  (bold)
 let eventName = (j: JSON.t): string =>
-  j->Message.eventNameOfEvent'Json
+  j->Message.eventNameOfEvent'Json->bold
 
 // "[Added,Removed]"
 let eventNames = (events: array<JSON.t>): string =>
@@ -88,7 +94,7 @@ let eventNames = (events: array<JSON.t>): string =>
 // "Added(1)"
 let eventSummary = (j: JSON.t): string => {
   let (id, _, _) = j->Message.idMetaEventOfEvent'Json
-  `${j->Message.eventNameOfEvent'Json}(${id})`
+  `${j->eventName}(${id})`
 }
 
 // "[Added(1),Removed(2)]"
@@ -97,11 +103,10 @@ let eventSummaries = (events: array<JSON.t>): string =>
 
 // "Added(1, {name:"Cat 1"})"  (ReScript-style variant rendering)
 let eventDetail = (j: JSON.t): string => {
-  let name = j->Message.eventNameOfEvent'Json
   let (id, _, _) = j->Message.idMetaEventOfEvent'Json
   let eventJson =
     j->JSON.Decode.object->Option.flatMap(d => d->Dict.get("event"))->Option.getOr(JSON.Encode.null)
-  `${name}(${id}${eventJson->variantFields})`
+  `${j->eventName}(${id}${eventJson->variantFields})`
 }
 
 // "[Added(1, {name:"Cat 1"}), Removed(2)]"

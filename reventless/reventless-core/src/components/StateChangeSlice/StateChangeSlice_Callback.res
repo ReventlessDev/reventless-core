@@ -117,7 +117,7 @@ module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Sp
                 f == "" ? "" : `({${f}})`
               | _ => ""
               }
-              `${e.eventType}${fields}`
+              `${LogFormat.bold(e.eventType)}${fields}`
             })
             ->Array.join(", ")
           let eventJsons = rawEvents->Array.map(e => e.data)->JSON.Encode.array

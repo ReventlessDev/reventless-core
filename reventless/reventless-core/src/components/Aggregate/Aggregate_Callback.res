@@ -23,7 +23,7 @@ module Make = (
 
   let eventDetail = (event': Message.event'<Spec.Id.t, Spec.event>): string => {
     let json = event'->eventJson
-    let name = json->Message.variantNameOfJson
+    let name = json->Message.variantNameOfJson->LogFormat.bold
     let id = event'.id->Spec.Id.toString
     `${name}(${id}${LogFormat.variantFields(json)})`
   }

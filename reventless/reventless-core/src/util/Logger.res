@@ -42,7 +42,6 @@ let levelLabel = l =>
 // Single definition used by Logger.t AND EffectLogger.
 
 // ANSI codes
-let bold = "\x1b[1m"
 let red = "\x1b[31m"
 let yellow = "\x1b[33m"
 let cyan = "\x1b[36m"
@@ -64,7 +63,7 @@ let hms = () => {
 
 let fmtComp = (~comp=?, ()) =>
   switch comp {
-  | Some(c) => `${bold}[${c}]${reset} `
+  | Some(c) => `${Reventless.AnsiStyle.bold(`[${c}]`)} `
   | None => ""
   }
 

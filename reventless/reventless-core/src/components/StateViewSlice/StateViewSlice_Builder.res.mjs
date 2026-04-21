@@ -90,7 +90,7 @@ function Make(RuntimeEnvironment) {
               let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
               let f = Object.entries(dataDict).map(param => param[0] + `:` + JSON.stringify(param[1])).join(",");
               let fieldsStr = f === "" ? "" : `({` + f + `})`;
-              Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, dataDict, `handling event ` + idxStr + `/` + total + `: ` + eventType + fieldsStr + ` ` + actionsStr));
+              Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, dataDict, `handling event ` + idxStr + `/` + total + `: ` + LogFormat$ReventlessCore.bold(eventType) + fieldsStr + ` ` + actionsStr));
               return actions;
             }).flat(), Effect.succeed(), (acc, action) => Effect.flatMap(acc, () => Effect.map(Effect.promise(() => Projection$ReventlessCore.handleAction(action, projectionOps, undefined)), param => {})));
           });

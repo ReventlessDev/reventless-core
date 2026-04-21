@@ -165,7 +165,7 @@ module Make = (MappingImpl: Mapping): (
   let extensionPointName = Spec.name
 
   let compLog = (comp, msg) =>
-    Effect.logInfo(`\x1b[1m[${comp}]\x1b[0m ${msg}`)->Effect.runSync
+    Effect.logInfo(`${Reventless.AnsiStyle.bold(`[${comp}]`)} ${msg}`)->Effect.runSync
 
   let doMapIncomingCommands = (
     mapIncomingEventImpl,
@@ -180,7 +180,7 @@ module Make = (MappingImpl: Mapping): (
         switch x {
         | PublishCommand(targetId, targetCmd) =>
           let cmdJson = targetCmd->Reventless.Message.encode(Delegate.commandSchema)
-          compLog(`ExtensionPoint(${extensionPointName})`, `EP→${delegateName}: ${cmdJson->Reventless.Message.variantNameOfJson}(${targetId})`)
+          compLog(`ExtensionPoint(${extensionPointName})`, `EP→${delegateName}: ${cmdJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${targetId})`)
 
           AbstractPublishCommand(
             delegateName,
@@ -227,7 +227,7 @@ module Make = (MappingImpl: Mapping): (
         switch eventAction {
         | PublishEvent(id, event) =>
           let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
-          compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson}(${id})`)
+          compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id})`)
           let meta = {
             ...meta,
             service: Spec.name,
@@ -239,7 +239,7 @@ module Make = (MappingImpl: Mapping): (
           let toEvent' = async promise => {
             let (id, event) = await promise
             let eventJson = event->Reventless.Message.encode(Spec.eventSchema)
-            compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson}(${id}) (async)`)
+            compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → ${eventJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id}) (async)`)
             let eventJson' = Reventless.Message.composeEventJson'(id, meta, eventJson) // TODO: check if meta is correct
             (id, meta, eventJson')
           }

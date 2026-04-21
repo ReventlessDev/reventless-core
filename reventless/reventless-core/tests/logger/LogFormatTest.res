@@ -35,7 +35,7 @@ describe("LogFormat", () => {
             }
           },
         )
-        let expected = `1/1: Heartbeat(0): {"command":"Heartbeat","meta":${metaStr},"id":"0"}`
+        let expected = `1/1: \x1b[1mHeartbeat\x1b[0m(0): {"command":"Heartbeat","meta":${metaStr},"id":"0"}`
         expect(commandJsonsToLogMessages(arr))->toEqual([expected])
       },
     )
@@ -82,8 +82,8 @@ describe("LogFormat", () => {
             }
           },
         )
-        let expected1 = `1/2: Heartbeat(0): {"command":"Heartbeat","meta":${metaStr},"id":"0"}`
-        let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}},"meta":${metaStr},"id":"1"}`
+        let expected1 = `1/2: \x1b[1mHeartbeat\x1b[0m(0): {"command":"Heartbeat","meta":${metaStr},"id":"0"}`
+        let expected2 = `2/2: \x1b[1mConnect\x1b[0m(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}},"meta":${metaStr},"id":"1"}`
         expect(commandJsonsToLogMessages(arr))->toEqual([expected1, expected2])
       },
     )
@@ -108,7 +108,7 @@ describe("LogFormat", () => {
         let eventJson' = event'->Message.encodeEvent'(S.string, eventSchema)
         let msg = event'JsonToLogMessage(eventJson')
 
-        let expected = `UnknownPluginDetected(testId): {"event":"UnknownPluginDetected","meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`
+        let expected = `\x1b[1mUnknownPluginDetected\x1b[0m(testId): {"event":"UnknownPluginDetected","meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`
 
         expect(msg)->toEqual(expected)
       },

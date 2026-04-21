@@ -5,6 +5,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
 function Make(MappingImpl) {
@@ -12,7 +13,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
-  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(`\x1b[1m[` + comp + `]\x1b[0m ` + msg));
+  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(AnsiStyle$Reventless.bold(`[` + comp + `]`) + ` ` + msg));
   let mapIncomingCommands = (extra, extra$1, extra$2, extra$3) => {
     let mapIncomingEventImpl = MappingImpl.mapIncomingCommand;
     return extra.map(param => {
@@ -24,7 +25,7 @@ function Make(MappingImpl) {
           let targetCmd = x._1;
           let targetId = x._0;
           let cmdJson = Message$Reventless.encode(targetCmd, Delegate.commandSchema);
-          compLog(`ExtensionPoint(` + extensionPointName + `)`, `EP→` + delegateName + `: ` + Message$Reventless.variantNameOfJson(cmdJson) + `(` + targetId + `)`);
+          compLog(`ExtensionPoint(` + extensionPointName + `)`, `EP→` + delegateName + `: ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(cmdJson)) + `(` + targetId + `)`);
           return {
             TAG: "AbstractPublishCommand",
             _0: delegateName,
@@ -69,7 +70,7 @@ function Make(MappingImpl) {
         case "PublishEvent" :
           let id = eventAction._0;
           let eventJson = Message$Reventless.encode(eventAction._1, Spec.eventSchema);
-          compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → ` + Message$Reventless.variantNameOfJson(eventJson) + `(` + id + `)`);
+          compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(eventJson)) + `(` + id + `)`);
           let meta_service = Spec.name;
           let meta_time = meta.time;
           let meta_ip = meta.ip;
@@ -96,7 +97,7 @@ function Make(MappingImpl) {
             let match = await promise;
             let id = match[0];
             let eventJson = Message$Reventless.encode(match[1], Spec.eventSchema);
-            compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → ` + Message$Reventless.variantNameOfJson(eventJson) + `(` + id + `) (async)`);
+            compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(eventJson)) + `(` + id + `) (async)`);
             let eventJson$p = Message$Reventless.composeEventJson$p(id, meta, eventJson);
             return [
               id,

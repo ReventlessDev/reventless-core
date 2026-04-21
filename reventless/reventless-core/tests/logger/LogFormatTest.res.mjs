@@ -30,7 +30,7 @@ Jest.describe("LogFormat", () => {
         meta: meta,
         commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
-      let expected = `1/1: Heartbeat(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":"0"}`;
+      let expected = `1/1: \x1b[1mHeartbeat\x1b[0m(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":"0"}`;
       return Jest.Expect.toEqual(Jest.Expect.expect(LogFormat$ReventlessCore.commandJsonsToLogMessages(arr)), [expected]);
     });
     Jest.test("complex", () => {
@@ -74,8 +74,8 @@ Jest.describe("LogFormat", () => {
         meta: meta,
         commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
-      let expected1 = `1/2: Heartbeat(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":"0"}`;
-      let expected2 = `2/2: Connect(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}},"meta":` + metaStr + `,"id":"1"}`;
+      let expected1 = `1/2: \x1b[1mHeartbeat\x1b[0m(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":"0"}`;
+      let expected2 = `2/2: \x1b[1mConnect\x1b[0m(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}},"meta":` + metaStr + `,"id":"1"}`;
       return Jest.Expect.toEqual(Jest.Expect.expect(LogFormat$ReventlessCore.commandJsonsToLogMessages(arr)), [
         expected1,
         expected2
@@ -96,7 +96,7 @@ Jest.describe("LogFormat", () => {
       event: "UnknownPluginDetected"
     }, S.string, PluginSpec$ReventlessCore.eventSchema);
     let msg = LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p);
-    return Jest.Expect.toEqual(Jest.Expect.expect(msg), `UnknownPluginDetected(testId): {"event":"UnknownPluginDetected","meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`);
+    return Jest.Expect.toEqual(Jest.Expect.expect(msg), `\x1b[1mUnknownPluginDetected\x1b[0m(testId): {"event":"UnknownPluginDetected","meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`);
   }));
 });
 

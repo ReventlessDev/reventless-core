@@ -29,7 +29,7 @@ function Make(Spec) {
       let id = Stdlib_Option.getOr(Stdlib_Option.map(raw.tags[0], tag => tag.value), "?");
       let actions = Spec.project(event);
       let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
-      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + raw.eventType + `(` + id + `) ` + actionsStr));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
       allActions.push(...actions);
       return Primitive_option.some(event);
     });

@@ -197,7 +197,7 @@ module Make = (MappingImpl: Mapping): (
   let extensionPointName = Spec.name
 
   let compLog = (comp, msg) =>
-    Effect.logInfo(`\x1b[1m[${comp}]\x1b[0m ${msg}`)->Effect.runSync
+    Effect.logInfo(`${Reventless.AnsiStyle.bold(`[${comp}]`)} ${msg}`)->Effect.runSync
 
   let encodeMeta = (meta: Reventless.Message.meta, service) => {
     ...meta,
@@ -221,7 +221,7 @@ module Make = (MappingImpl: Mapping): (
     }
 
     let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-      compLog(`Extension(${extensionPointName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson}(${id})`)
+      compLog(`Extension(${extensionPointName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id})`)
       {
         Reventless.Message.id,
         meta: encodeMeta(meta, extensionPointName),
@@ -294,7 +294,7 @@ module Make = (MappingImpl: Mapping): (
     switch targetEvent'Json->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema) {
     | {id, meta, event} =>
       let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-        compLog(`Extension(${delegateName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson}(${id})`)
+        compLog(`Extension(${delegateName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id})`)
         {
           Reventless.Message.id,
           meta: encodeMeta(meta, extensionPointName),
