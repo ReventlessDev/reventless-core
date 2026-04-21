@@ -34,7 +34,8 @@
     "@reventlessdev/reventless-aws": "workspace:*",
     "@reventlessdev/online-shop-hybrid-platform-aws": "workspace:*",
     "lerna": "^8.1.8",
-    "rescript": "^12.2.0"
+    "rescript": "^12.2.0",
+    "yaml": "^2.8.0"
   },
   "scripts": {
     "build": "rescript build && rescript build examples/online-shop-aggregates/platform-in-memory && rescript build examples/online-shop-dcb/platform-in-memory && rescript build examples/online-shop-hybrid/platform-in-memory",
@@ -48,7 +49,10 @@
     "dev:fail": "concurrently --names rs,jest --prefix-colors cyan,yellow \"rescript watch\" \"ONLY_FAILURES=1 NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent\"",
     "test:integration": "echo 'No integration tests configured' || exit 0",
     "test:unit": "pnpm -r run test --if-present",
-    "test:coverage": "echo 'No coverage script configured' || exit 0"
+    "test:coverage": "echo 'No coverage script configured' || exit 0",
+    "link:on": "node ./scripts/apply-workspace-overlay.mjs && pnpm install",
+    "link:off": "node ./scripts/restore-workspace-base.mjs && pnpm install",
+    "link:status": "node ./scripts/workspace-link-status.mjs"
   },
   "pnpm": {
     "overrides": {

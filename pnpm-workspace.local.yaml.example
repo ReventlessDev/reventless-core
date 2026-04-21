@@ -1,0 +1,21 @@
+# Link-mode overlay (gitignored when copied to pnpm-workspace.local.yaml).
+#
+# Usage:
+#   1. cp pnpm-workspace.local.yaml.example pnpm-workspace.local.yaml
+#   2. Edit paths to point at your sibling working copies.
+#   3. pnpm link:on    # merges this file onto pnpm-workspace.yaml + pnpm install
+#   4. pnpm link:off   # restores the committed pnpm-workspace.yaml + pnpm install
+#
+# Sibling paths are relative to this repo's root.
+# Any package you want to live-link must ALSO be declared as `workspace:*`
+# in the direct consumer's package.json — pnpm does not apply workspace
+# linking to transitive deps. For transitive linking (e.g., dev-app →
+# reventless-ui), add an `overrides` entry below; it will be merged into
+# pnpm.overrides at install time.
+
+packages:
+  - '../reventless-ui/reventless/reventless-ui'
+
+# Uncomment to force transitive consumers of reventless-ui to the live copy:
+# overrides:
+#   '@reventlessdev/reventless-ui': 'workspace:*'

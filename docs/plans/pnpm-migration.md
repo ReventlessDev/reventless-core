@@ -5,8 +5,9 @@
 **Date (v3, post-Phase-1 execution + Phase-3 compat spike):** 2026-04-21
 **Date (v4, post-workspace-protocol cleanup):** 2026-04-21
 **Date (v5, post-crypto-polyfill fix):** 2026-04-21
+**Date (v6, Phase 2 shipped):** 2026-04-21
 
-**Status:** Phase 1 shipped on branch `feat/pnpm-migration` (commit `1de8b775`). Phase 3 compat-shim spike (Option B) validated. Phase-2-adjacent workspace-protocol cleanup executed (see §1.4d follow-up). `uuid@13`/Jest crypto regression fixed by commit `17e466a9` (test suite back to 1034/1034). Branch is ready to merge to `alpha`. Phase 2 not yet started.
+**Status:** Phase 1 merged to `alpha`. Phase 3 compat-shim committed on sister repo. **Phase 2 complete** (this revision): overlay script, `link:on`/`link:off` scripts, gitignored overlay pattern, and cross-repo-dev-linking guide all landed. Release-mode verification green (`pnpm install --frozen-lockfile`, `pnpm pack` rewrite of `workspace:*` → concrete semver). End-to-end link-mode rebuild-reflection verification is deferred until the first real core consumer of `@reventlessdev/reventless-ui` lands (§2.3 had no targets).
 
 ## Why this plan exists
 
@@ -384,19 +385,30 @@ Ship `pnpm-workspace.local.yaml.example` (committed) documenting the expected st
 ### Checklist
 
 ```
-Phase 2 (cross-repo linking)
-  [ ] 2.1  link:on / link:off scripts wired via overlay script
-  [ ] 2.2  pnpm-workspace.local.yaml in .gitignore
-  [ ] 2.3  @reventlessdev/reventless-ui declared as workspace:* in every
-           consumer package
-  [ ] 2.4  docs/guides/cross-repo-dev-linking.md + .example file
-  [ ]      Verify (link mode): link:on → edit sibling .res file → rebuild →
-           change reflected in core compiled output
-  [ ]      Verify (release mode): link:off → pnpm install --frozen-lockfile
-           resolves @reventlessdev/reventless-ui from registry
-  [ ]      Verify (toggle): link:on → link:off → link:on clean, no leftover
-  [ ]      Verify (publish dry-run): pnpm publish --dry-run rewrites
-           workspace:* to a concrete version in the tarball's package.json
+Phase 2 (cross-repo linking) — COMPLETE except live-rebuild verification (2026-04-21)
+  [x] 2.1  link:on / link:off scripts wired via overlay script
+           (scripts/apply-workspace-overlay.mjs uses `yaml` package; base
+           read via `git show HEAD:pnpm-workspace.yaml`; link:off uses
+           `git checkout pnpm-workspace.yaml && pnpm install`)
+  [x] 2.2  pnpm-workspace.local.yaml in .gitignore
+  [~] 2.3  No current core consumer of @reventlessdev/reventless-ui — §2.3
+           has zero targets as of Phase 2 execution. Re-check when the first
+           consumer lands; the doc explains the pattern.
+  [x] 2.4  docs/guides/cross-repo-dev-linking.md + pnpm-workspace.local.yaml.example
+  [~]      Verify (link mode): not executed — no direct consumer exists.
+           Workspace recognition verified via `pnpm list --recursive`:
+           sister's `@reventlessdev/reventless-ui@1.7.0-alpha.1` appears with
+           its real sibling-repo path. Rebuild-reflection is deferred.
+  [x]      Verify (release mode): `pnpm install --frozen-lockfile` succeeds
+           with committed `pnpm-workspace.yaml` (7.6s)
+  [x]      Verify (toggle): link:on (merges overlay) → git checkout restores
+           committed file exactly → link:on again → link:off leaves working
+           tree clean (git status shows no pnpm-workspace.yaml diff)
+  [x]      Verify (publish rewrite): `pnpm pack --filter @reventlessdev/reventless-core`
+           produces a tarball whose `package.json` has all 10 `workspace:*`
+           entries rewritten to concrete semver (e.g., `reventless-spec:
+           3.0.0-alpha.30`). Confirms publish-time behaviour without needing
+           a registry round-trip.
 ```
 
 ### Unknowns still to resolve in Phase 2
@@ -509,10 +521,11 @@ If a regression is discovered post-merge:
 
 ## Next steps
 
-1. Merge `feat/pnpm-migration` into `alpha` after CI passes on the branch.
-2. **Before Phase 2:** coordinate a tiny PR on the sister repo to add `pnpm-workspace.yaml` (`packages: ['reventless/*']`). This is a zero-impact change for sister's own npm workflow.
-3. Execute Phase 2 (overlay script, `link:on`/`link:off` toggles, gitignored local config, docs).
+1. ~~Merge `feat/pnpm-migration` into `alpha` after CI passes on the branch.~~ **Done** (merged via commit `6a1daa8c`).
+2. ~~**Before Phase 2:** coordinate a tiny PR on the sister repo to add `pnpm-workspace.yaml` (`packages: ['reventless/*']`).~~ **Done** — compat shim committed on the sister repo.
+3. ~~Execute Phase 2 (overlay script, `link:on`/`link:off` toggles, gitignored local config, docs).~~ **Done** (this revision).
 4. ~~**Optional cleanup** (Phase-2-adjacent): convert all in-repo `@reventlessdev/*` semver ranges to `workspace:*`.~~ **Done** (see §1.4d follow-up).
+5. **Deferred:** live rebuild-reflection verification. When the first core package declares `@reventlessdev/reventless-ui` as `workspace:*`, run the §2.4 link-mode test: `pnpm link:on` → edit a file in sister's `reventless-ui/src/` → `pnpm run build` → confirm the change reaches core's compiled output.
 
 ## Pre-existing test regression — RESOLVED (commit `17e466a9`)
 

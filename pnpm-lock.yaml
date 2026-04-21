@@ -87,6 +87,9 @@ importers:
       rescript:
         specifier: ^12.2.0
         version: 12.2.0
+      yaml:
+        specifier: ^2.8.0
+        version: 2.8.3
 
   examples/online-shop-aggregates/catalog:
     dependencies:
