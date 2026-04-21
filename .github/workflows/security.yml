@@ -25,24 +25,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22.17.1"
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Run npm audit
+      - name: Run pnpm audit
         run: |
-          npm audit --audit-level=moderate --json > audit-results.json || true
+          pnpm audit --audit-level=moderate --json > audit-results.json || true
           cat audit-results.json
 
       - name: Upload audit results
         uses: actions/upload-artifact@v6
         with:
-          name: npm-audit-results
+          name: pnpm-audit-results
           path: audit-results.json
 
       - name: Run Snyk security scan
@@ -123,14 +128,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22.17.1"
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Check licenses
         run: |

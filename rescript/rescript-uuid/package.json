@@ -7,7 +7,7 @@
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "test": "echo \"There are no tests for rescript-uuid.\"",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },

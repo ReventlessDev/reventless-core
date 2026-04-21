@@ -1,22 +1,27 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog-aws",
   "version": "1.0.0-alpha.19",
-  "description": "Online Shop Hybrid — Catalog plugin AWS deployment",
+  "description": "Online Shop Hybrid \u2014 Catalog plugin AWS deployment",
   "license": "MIT",
   "scripts": {
     "generate": "generate-plugin --aws CatalogPlugin ../catalog/src/",
-    "prebuild": "npm run generate",
+    "prebuild": "pnpm run generate",
     "build": "rescript build"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "*",
     "@reventlessdev/reventless-aws": "*",
     "@reventlessdev/reventless-spec": "*",
-    "sury": "^11.0.0-alpha.4"
+    "sury": "^11.0.0-alpha.4",
+    "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
+    "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*"
   },
   "devDependencies": {
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "^11.0.0-alpha.2",
+    "@reventlessdev/reventless-ppx": "workspace:*"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

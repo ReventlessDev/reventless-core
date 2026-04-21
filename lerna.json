@@ -1,6 +1,6 @@
 {
   "version": "independent",
-  "npmClient": "npm",
+  "npmClient": "pnpm",
   "packages": [
     "packages/*",
     "rescript/*",
@@ -35,10 +35,7 @@
       "createRelease": "github"
     },
     "bootstrap": {
-      "hoist": "true",
-      "npmClientArgs": [
-        "--no-package-lock"
-      ]
+      "hoist": "true"
     }
   },
   "ignoreChanges": [

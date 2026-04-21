@@ -7,7 +7,7 @@
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps"
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps"
   },
   "dependencies": {
     "@reventlessdev/rescript-effect": "*",

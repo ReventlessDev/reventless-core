@@ -1,19 +1,19 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform-in-memory",
   "version": "1.0.0-alpha.21",
-  "description": "Online Shop Hybrid example — full platform with Catalog + Ordering plugins (in-memory)",
+  "description": "Online Shop Hybrid example \u2014 full platform with Catalog + Ordering plugins (in-memory)",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "serve": "npx tsx src/Main.res.mjs",
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
-    "dev:ui": "[ -d reventless-ui ] && npm --prefix reventless-ui run dev:ui || dev-app",
-    "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'npm run serve' 'npx wait-on tcp:4001 && npm run dev:ui'"
+    "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || dev-app",
+    "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run serve' 'npx wait-on tcp:4001 && pnpm run dev:ui'"
   },
   "optionalDependencies": {
-    "@reventlessdev/dev-app": "*"
+    "@reventlessdev/dev-app": ">=0.2.0-alpha"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "^1.0.0-alpha.19",
@@ -21,9 +21,16 @@
     "@reventlessdev/online-shop-hybrid-ordering": "^1.0.0-alpha.19",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.8",
     "@reventlessdev/reventless-in-memory": "*",
-    "@reventlessdev/reventless-spec": "*"
+    "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "sury": "^11.0.0-alpha.4"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
+  },
+  "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "sury-ppx": "^11.0.0-alpha.2"
   }
 }

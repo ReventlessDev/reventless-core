@@ -7,7 +7,7 @@
     "build": "rescript build",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "test": "echo \"There are no tests for rescript-mcp-sdk.\""
   },
   "dependencies": {

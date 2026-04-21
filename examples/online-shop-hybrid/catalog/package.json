@@ -1,15 +1,15 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog",
   "version": "1.0.0-alpha.19",
-  "description": "Online Shop Hybrid example — Catalog plugin (Category aggregate + Product/ProductDemand DCB)",
+  "description": "Online Shop Hybrid example \u2014 Catalog plugin (Category aggregate + Product/ProductDemand DCB)",
   "license": "MIT",
   "scripts": {
     "generate": "generate-plugin src/",
-    "prebuild": "npm run generate",
+    "prebuild": "pnpm run generate",
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest"
   },
   "jest": {
@@ -32,12 +32,15 @@
     "@reventlessdev/online-shop-hybrid-ordering-spec": "^1.0.0-alpha.8",
     "@reventlessdev/reventless-in-memory": "*",
     "@reventlessdev/reventless-spec": "*",
-    "sury": "^11.0.0-alpha.4"
+    "sury": "^11.0.0-alpha.4",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "^11.0.0-alpha.2",
+    "@reventlessdev/reventless-ppx": "workspace:*"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

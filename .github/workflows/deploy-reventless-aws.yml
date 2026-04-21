@@ -248,20 +248,25 @@ jobs:
           echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
           echo "Layer ARN: ${ARN:-(none)}"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node-version }}
-          cache: "npm"
+          cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2
@@ -362,20 +367,25 @@ jobs:
           echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
           echo "Layer ARN: ${ARN:-(none)}"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node-version }}
-          cache: "npm"
+          cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Install Pulumi CLI
         uses: pulumi/setup-pulumi@v2

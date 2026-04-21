@@ -1,66 +1,67 @@
 {
-    "name": "@reventlessdev/reventless-core",
-    "version": "3.0.0-alpha.57",
-    "description": "Core package for Reventless framework",
-    "license": "MIT",
-    "jest": {
-        "testMatch": [
-            "<rootDir>/tests/**/*Test.res.mjs"
-        ],
-        "testPathIgnorePatterns": [
-            "/node_modules/",
-            "<rootDir>/tests/AsyncTest.res.mjs",
-            "<rootDir>/tests/BehaviorTest.res.mjs",
-            "<rootDir>/tests/EventMappingTest.res.mjs",
-            "<rootDir>/tests/ProjectionTest.res.mjs"
-        ],
-        "moduleFileExtensions": [
-            "js",
-            "mjs"
-        ],
-        "moduleNameMapper": {
-            "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
-            "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
-            "^spdx-license-ids/deprecated$": "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",
-            "^spdx-exceptions$": "<rootDir>/../../node_modules/spdx-exceptions/index.json"
-        }
-    },
-    "scripts": {
-        "build": "rescript build",
-        "start": "rescript build -w",
-        "clean": "rescript clean",
-        "rebuild": "npm run clean && npm run build -- -with-deps",
-        "deploy": "./scripts/deploy.sh",
-        "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
-        "test:watch": "jest --watchAll",
-        "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
-        "dev": "jest --watchAll",
-        "watch:screen": "screen -c .screenrc",
-        "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
-    },
-    "dependencies": {
-        "@reventlessdev/rescript-effect": "*",
-        "@reventlessdev/rescript-fast-csv": "^1.2.0-alpha.4",
-        "@reventlessdev/rescript-hash-object": "^1.2.0-alpha.4",
-        "@reventlessdev/rescript-node-streams": "^1.1.0-alpha.4",
-        "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.7",
-        "@reventlessdev/rescript-ssh2": "^1.1.0-alpha.4",
-        "@reventlessdev/rescript-uuid": "^1.1.0-alpha.6",
-        "@reventlessdev/reventless-infra": "^3.0.0-alpha.39",
-        "@reventlessdev/reventless-interop": "^3.0.0-alpha.8",
-        "@reventlessdev/reventless-spec": "^3.0.0-alpha.30"
-    },
-    "devDependencies": {
-        "@glennsl/rescript-jest": "^0.13.1",
-        "rescript": "^12.2.0",
-        "sury": "^11.0.0-alpha.4",
-        "sury-ppx": "^11.0.0-alpha.2"
-    },
-    "peerDependencies": {
-        "rescript": "^12.2.0"
-    },
-    "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
-    "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
+  "name": "@reventlessdev/reventless-core",
+  "version": "3.0.0-alpha.57",
+  "description": "Core package for Reventless framework",
+  "license": "MIT",
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/tests/AsyncTest.res.mjs",
+      "<rootDir>/tests/BehaviorTest.res.mjs",
+      "<rootDir>/tests/EventMappingTest.res.mjs",
+      "<rootDir>/tests/ProjectionTest.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ],
+    "moduleNameMapper": {
+      "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+      "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
+      "^spdx-license-ids/deprecated$": "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",
+      "^spdx-exceptions$": "<rootDir>/../../node_modules/spdx-exceptions/index.json"
     }
+  },
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "deploy": "./scripts/deploy.sh",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:watch": "jest --watchAll",
+    "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
+    "dev": "jest --watchAll",
+    "watch:screen": "screen -c .screenrc",
+    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-effect": "*",
+    "@reventlessdev/rescript-fast-csv": "^1.2.0-alpha.4",
+    "@reventlessdev/rescript-hash-object": "^1.2.0-alpha.4",
+    "@reventlessdev/rescript-node-streams": "^1.1.0-alpha.4",
+    "@reventlessdev/rescript-pulumi-pulumi": "^2.3.0-alpha.7",
+    "@reventlessdev/rescript-ssh2": "^1.1.0-alpha.4",
+    "@reventlessdev/rescript-uuid": "^1.1.0-alpha.6",
+    "@reventlessdev/reventless-infra": "^3.0.0-alpha.39",
+    "@reventlessdev/reventless-interop": "^3.0.0-alpha.8",
+    "@reventlessdev/reventless-spec": "^3.0.0-alpha.30"
+  },
+  "devDependencies": {
+    "@glennsl/rescript-jest": "^0.13.1",
+    "rescript": "^12.2.0",
+    "sury": "^11.0.0-alpha.4",
+    "sury-ppx": "^11.0.0-alpha.2",
+    "@reventlessdev/reventless-ppx": "workspace:*"
+  },
+  "peerDependencies": {
+    "rescript": "^12.2.0"
+  },
+  "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
 }

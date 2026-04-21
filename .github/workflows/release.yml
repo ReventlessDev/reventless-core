@@ -31,11 +31,16 @@ jobs:
           ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22.17.1"
-          cache: "npm"
+          cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
 
       - name: Configure Git
@@ -44,7 +49,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -88,7 +93,7 @@ jobs:
 
       - name: Build all packages
         if: steps.changes.outputs.count != '0'
-        run: npm run build
+        run: pnpm run build
 
       # Tests already run in CI workflow - no need to run again
       # - name: Run tests
@@ -236,8 +241,8 @@ jobs:
       - name: Build release artifacts
         if: steps.changes.outputs.count != '0'
         run: |
-          npm run clean
-          npm run build
+          pnpm run clean
+          pnpm run build
 
       - name: Restore deleted dev sources
         if: steps.changes.outputs.count != '0'

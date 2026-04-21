@@ -137,28 +137,34 @@ jobs:
           chmod +x ../ppx-linux.exe
         working-directory: packages/reventless-ppx/src
 
+      - name: Setup pnpm
+        if: steps.affected.outputs.select != 'none'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         if: steps.affected.outputs.select != 'none'
         uses: actions/setup-node@v6
         with:
           node-version: "22.17.1"
-          cache: "npm"
+          cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
 
       - name: Install dependencies
         if: steps.affected.outputs.select != 'none'
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build all packages
         id: build
         if: steps.affected.outputs.select != 'none'
-        run: npm run build
+        run: pnpm run build
 
       - name: Run unit tests (all)
         if: steps.build.outcome == 'success' && steps.affected.outputs.select == 'all'
-        run: npm run test
+        run: pnpm run test
         env:
           CI: true
 
@@ -176,7 +182,7 @@ jobs:
 
       - name: Run integration tests
         if: success() && steps.affected.outputs.select != 'none'
-        run: npm run test:integration
+        run: pnpm run test:integration
         continue-on-error: true
 
   summary:

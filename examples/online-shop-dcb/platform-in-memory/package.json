@@ -1,13 +1,13 @@
 {
   "name": "@reventlessdev/online-shop-dcb-platform-in-memory",
   "version": "1.0.0-alpha.14",
-  "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
+  "description": "Online Shop example \u2014 full DCB platform with Catalog + Ordering plugins (in-memory)",
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "run": "npx tsx src/Main.res.mjs",
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs"
   },
@@ -17,12 +17,15 @@
     "@reventlessdev/online-shop-dcb-ordering": "*",
     "@reventlessdev/online-shop-dcb-ordering-spec": "*",
     "@reventlessdev/reventless-in-memory": "*",
-    "@reventlessdev/reventless-spec": "*"
+    "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*"
   },
   "devDependencies": {
     "rescript": "^12.2.0",
     "sury": "^11.0.0-alpha.4",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "^11.0.0-alpha.2",
+    "@reventlessdev/reventless-ppx": "workspace:*"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

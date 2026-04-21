@@ -7,7 +7,7 @@
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest"
   },
   "jest": {
@@ -41,7 +41,8 @@
     "@glennsl/rescript-jest": "^0.13.1",
     "rescript": "^12.2.0",
     "sury": "^11.0.0-alpha.4",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "^11.0.0-alpha.2",
+    "@reventlessdev/reventless-ppx": "workspace:*"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

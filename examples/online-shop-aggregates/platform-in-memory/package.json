@@ -1,12 +1,12 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-platform-in-memory",
   "version": "1.0.0-alpha.15",
-  "description": "Online Shop example — full aggregate platform with Catalog + Ordering plugins (in-memory)",
+  "description": "Online Shop example \u2014 full aggregate platform with Catalog + Ordering plugins (in-memory)",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",
     "clean": "rescript clean",
-    "rebuild": "npm run clean && npm run build -- -with-deps",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "run": "npx tsx src/Main.res.mjs",
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs"
   },
@@ -14,9 +14,18 @@
     "@reventlessdev/online-shop-aggregates-catalog": "*",
     "@reventlessdev/online-shop-aggregates-ordering": "*",
     "@reventlessdev/reventless-in-memory": "*",
-    "@reventlessdev/reventless-spec": "*"
+    "@reventlessdev/reventless-spec": "*",
+    "@reventlessdev/online-shop-aggregates-catalog-spec": "workspace:*",
+    "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "sury": "^11.0.0-alpha.4"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
+  },
+  "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "sury-ppx": "^11.0.0-alpha.2"
   }
 }

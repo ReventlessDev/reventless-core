@@ -9,15 +9,30 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "workspaces": [
-    "packages/*",
-    "rescript/*",
-    "reventless/*",
-    "examples/**"
-  ],
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "@reventlessdev/reventless-conventional-changelog": "file:./reventless/reventless-conventional-changelog",
+    "@reventlessdev/reventless-conventional-changelog": "workspace:*",
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "@reventlessdev/rescript-aws-sdk": "workspace:*",
+    "@reventlessdev/rescript-fast-csv": "workspace:*",
+    "@reventlessdev/rescript-hash-object": "workspace:*",
+    "@reventlessdev/rescript-moment": "workspace:*",
+    "@reventlessdev/rescript-node-streams": "workspace:*",
+    "@reventlessdev/rescript-node-zlib": "workspace:*",
+    "@reventlessdev/rescript-pulumi-aws": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/rescript-ssh2": "workspace:*",
+    "@reventlessdev/rescript-graphql-yoga": "workspace:*",
+    "@reventlessdev/rescript-mcp-sdk": "workspace:*",
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-uuid": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-interop": "workspace:*",
+    "@reventlessdev/reventless-core": "workspace:*",
+    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-aws": "workspace:*",
+    "@reventlessdev/online-shop-hybrid-platform-aws": "workspace:*",
     "lerna": "^8.1.8",
     "rescript": "^12.2.0"
   },
@@ -32,12 +47,15 @@
     "dev": "concurrently --names rs,jest --prefix-colors cyan,yellow \"rescript watch\" \"NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent\"",
     "dev:fail": "concurrently --names rs,jest --prefix-colors cyan,yellow \"rescript watch\" \"ONLY_FAILURES=1 NODE_OPTIONS='--experimental-vm-modules --no-warnings --max-old-space-size=4096' jest --watchAll --silent\"",
     "test:integration": "echo 'No integration tests configured' || exit 0",
-    "test:unit": "npm run test --workspaces --if-present",
+    "test:unit": "pnpm -r run test --if-present",
     "test:coverage": "echo 'No coverage script configured' || exit 0"
   },
-  "overrides": {
-    "@docusaurus/theme-common": "3.9.2",
-    "graphql": "^16.0.0"
+  "pnpm": {
+    "overrides": {
+      "@docusaurus/theme-common": "3.9.2",
+      "graphql": "^16.0.0"
+    }
   },
-  "version": ""
+  "version": "",
+  "packageManager": "pnpm@10.33.0"
 }

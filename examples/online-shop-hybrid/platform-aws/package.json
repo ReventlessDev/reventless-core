@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform-aws",
   "version": "1.0.0-alpha.11",
-  "description": "Online Shop Hybrid — AWS platform deployment",
+  "description": "Online Shop Hybrid \u2014 AWS platform deployment",
   "license": "MIT",
   "scripts": {
     "build": "rescript build"
@@ -9,11 +9,14 @@
   "dependencies": {
     "@reventlessdev/reventless-aws": "*",
     "@reventlessdev/reventless-spec": "*",
-    "sury": "^11.0.0-alpha.4"
+    "sury": "^11.0.0-alpha.4",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*"
   },
   "devDependencies": {
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "^11.0.0-alpha.2",
+    "@reventlessdev/reventless-ppx": "workspace:*"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

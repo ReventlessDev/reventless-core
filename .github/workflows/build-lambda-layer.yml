@@ -31,11 +31,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22.17.1"
-          cache: "npm"
+          cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
 
       - name: Extract version
@@ -55,13 +60,13 @@ jobs:
           echo "Building layer for @reventlessdev/reventless-aws@$VERSION"
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build layer
         working-directory: reventless/reventless-layer-builder
-        run: npm run build
+        run: pnpm run build
         env:
           REVENTLESS_AWS_VERSION: ${{ steps.version.outputs.version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

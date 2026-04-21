@@ -4,7 +4,7 @@
   "description": "ReScript bindings for @pulumi/aws",
   "license": "MIT",
   "scripts": {
-    "build": "rescript build && npm run bundle",
+    "build": "rescript build && pnpm run bundle",
     "bundle": "node scripts/bundle-resolvers.mjs",
     "start": "rescript watch",
     "clean": "rescript clean",

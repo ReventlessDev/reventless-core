@@ -1,111 +1,109 @@
 # Plan: Migrate reventless-core to pnpm (+ cross-repo dev linking)
 
-**Date:** 2026-04-21
+**Date (v1):** 2026-04-21
+**Date (v2 rewrite, post-Phase-0):** 2026-04-21
 
 ## Why this plan exists
 
-Cross-repo linking with npm has produced repeated fires: `npm install` wipes hand-crafted symlinks, `file:` overrides resolve relative to the consuming workspace rather than the root (producing broken paths), and ReScript's compiler panics when its module walker traverses a symlinked package's ancestor `node_modules/` and finds duplicate deps.
+Cross-repo linking with npm has produced repeated fires: `npm install` wipes hand-crafted symlinks, `file:` overrides resolve relative to the consuming workspace rather than the root (producing broken paths), and ad-hoc symlinks inside `examples/**` get overwritten on every install.
 
 pnpm is chosen because:
 
-- First-class support for cross-package linking (`workspace:*` protocol).
-- Strict hoisting — the symlinked package's deps get resolved into pnpm's content-addressable store, not left in a competing sibling tree. This eliminates the ReScript duplicate-package panic.
-- A single config knob (the presence of a local overlay file) toggles between "link mode" (sibling repo as live source) and "release mode" (registry version) — no edits to committed files.
-- Stable workspace semantics across versions; npm's hoisting behaviour has shifted multiple times.
+- **`workspace:*` protocol.** Explicit, first-class declarations for workspace deps instead of npm's implicit global hoisting. Makes the dep graph legible and lockfile-accurate.
+- **Overlay-based cross-repo linking.** A single gitignored config file toggles between "link mode" (sibling repo as live source) and "release mode" (registry version). No edits to committed files.
+- **Stable workspace semantics.** npm's hoisting behaviour has shifted multiple times; pnpm's rules are explicit.
+- **No rebuild thrash on topology changes.** Adding/removing a workspace in pnpm re-wires symlinks predictably.
 
-Alternatives considered and rejected: plain `npm link` (survives install but still hits the ReScript walker issue and has no git-tracked config); npm cross-repo workspaces (not all versions accept `..` in the glob, and switching modes requires editing committed files); Yarn Berry (`portal:` works but PnP has incompatibilities with some tooling; upgrade path weaker than pnpm); Nx/Turborepo/Bazel (massive adoption cost for the small repo count). A local Verdaccio registry remains the fallback if Phase 0 fails — it trades edit-loop speed for full install isolation.
+**What pnpm does NOT give us** (demoted from the original plan's thesis): strict hoisting does **not** cleanly fix ReScript's cross-repo duplicate-package traversal. Phase 0 showed that ReScript's compiler walks `node_modules/@reventlessdev/*` via node-module resolution, which requires a *hoisted* layout to satisfy the phantom deps this codebase has accumulated. We therefore run pnpm in `node-linker=hoisted` mode, which produces an npm-like flat layout while preserving pnpm's other benefits.
+
+Alternatives considered and rejected: plain `npm link` (survives install but has no git-tracked config and still hits symlink fragility); npm cross-repo workspaces (not all versions accept `..` in the glob, and switching modes requires editing committed files); Yarn Berry (`portal:` works but PnP is incompatible with our PPX toolchain); Nx/Turborepo/Bazel (adoption cost disproportionate to repo size). A local Verdaccio registry remains the declared fallback if this plan fails to converge.
 
 ---
 
 ## Goal
 
-Replace npm with pnpm as the monorepo's package manager, and establish a clean pattern for linking the sister repo `reventless-ui` into local development builds without breaking ReScript or CI.
+Replace npm with pnpm as the monorepo's package manager, using `node-linker=hoisted` for ReScript compatibility, and establish a clean overlay pattern for linking the sister repo `reventless-ui` into local development builds without breaking the compiler or CI.
 
 ### What this unlocks when done
 
-- Edits in a sibling `reventless-ui` working copy appear instantly in core's example builds — no `npm publish` cycle, no manual symlink hygiene.
-- CI and fresh clones install from the registry unchanged — no per-developer setup required.
-- Switching between "link mode" (live sibling repo) and "release mode" (registry version) is toggled by the presence of one gitignored file. No edits to committed `package.json`.
-- ReScript compiler stops hitting the "Duplicated package" panic caused by cross-repo symlink traversal.
+- Edits in a sibling `reventless-ui` working copy appear in core's example builds without a publish cycle.
+- CI and fresh clones install from the registry unchanged — no per-developer setup.
+- Switching between "link mode" (live sibling repo) and "release mode" (registry version) is controlled by one gitignored file. Committed `package.json` files are unchanged between modes.
+- Workspace deps are declared explicitly (`workspace:*`) and surface in lockfile diffs.
 
 ---
 
 ## Prerequisites
 
-- pnpm installed (`corepack enable && corepack prepare pnpm@latest --activate`) on the dev machine. No repo-wide install yet.
+- pnpm 10+ installed (`corepack enable && corepack prepare pnpm@10 --activate`).
 - A clean branch off `alpha`. This plan is invasive — do not mix with unrelated work.
-- Time budget: Phase 0 is a 1-hour spike. Phases 1–3 are 1–2 focused days.
+- Time budget: **Phase 1 is 2–3 focused days** (revised upward from the original estimate). Phase 2 is a further day once Phase 1 is green.
 
 ---
 
-## Phase 0 — Spike to validate pnpm + ReScript
+## Phase 0 — Findings (completed 2026-04-21 on branch `spike/pnpm-rescript`, commit `2e21c3a2`)
 
-**Why first:** the key assumption is that pnpm's strict hoisting fixes ReScript's ancestor-`node_modules` traversal panic. Prove it before committing to the migration. If ReScript still panics with pnpm's linked workspaces, abandon this plan and fall back to Verdaccio.
+The 1-hour spike validated that pnpm + ReScript *can* work, but invalidated the original plan's core assumption about strict hoisting. Concrete findings:
 
-### 0.1 Throwaway spike branch
+### What works
 
-Create a short-lived branch `spike/pnpm-rescript`. All spike work happens here — discard on completion.
+1. `corepack enable && corepack prepare pnpm@latest --activate` succeeds cleanly.
+2. `pnpm install` from scratch completes in ~3 minutes with pnpm 10.33.
+3. With the remediations below, `rescript build` compiles all three example platforms (546 + 541 + 538 modules).
 
-### 0.2 Smoke install
+### What the original plan got wrong
 
-1. `corepack enable && corepack prepare pnpm@latest --activate`
-2. In core root: `rm -rf node_modules package-lock.json`
-3. Create minimal `pnpm-workspace.yaml`:
-   ```yaml
-   packages:
-     - 'packages/*'
-     - 'rescript/*'
-     - 'reventless/*'
-     - 'examples/**'
-   ```
-4. `pnpm install` — verify it completes without errors.
-5. `pnpm run build` from root — verify all four ReScript builds succeed.
+1. **"Strict hoisting fixes the duplicate-package panic"** — false for this codebase. pnpm's default isolated layout fails immediately on ~20 phantom workspace deps in the root `rescript.json`. Switching to `node-linker=hoisted` is mandatory; strict mode is not a viable target.
 
-### 0.3 Cross-repo link test
+2. **"3–10 missing dep declarations in Phase 1.5"** — actual surface is **~40+**:
+   - Root `rescript.json` lists 20 workspace packages not declared in root `package.json`.
+   - `@reventlessdev/reventless-ppx/bin` is referenced as a ppx-flag in 20 `rescript.json` files but declared in zero `package.json` files.
+   - Additional transitive phantom deps will likely surface once the first wave is fixed.
 
-1. In a sibling working copy of `reventless-ui`, add `pnpm-workspace.yaml` so its package is a valid pnpm workspace.
-2. In core, create `pnpm-workspace.local.yaml` with the sister path:
-   ```yaml
-   packages:
-     - '../reventless-ui/reventless/reventless-ui'
-   ```
-3. `pnpm install` (pnpm reads both files by default if supported; otherwise merge manually or use a shared-workspace flag).
-4. Verify `node_modules/@reventlessdev/reventless-ui` resolves to the sister repo.
-5. **Critical:** in `examples/online-shop-hybrid/platform-in-memory`, run `pnpm run build`. If ReScript panics with "Duplicated package" — the migration fails and the fallback is Verdaccio.
+3. **`prebuild` hooks do not auto-run under pnpm 10.** The `generate-plugin src/` step in every plugin's `prebuild` script is silently skipped unless `enable-pre-post-scripts=true` is set in `.npmrc`. Not mentioned in the original plan.
 
-### Checklist
+4. **Build-script approval is required AND sticky.** pnpm 10 blocks postinstall scripts by default. Adding `sury-ppx`, `esbuild`, `rescript-relay`, etc. to `onlyBuiltDependencies` only takes effect on fresh installs; `pnpm rebuild` does not always re-run the scripts it should. `sury-ppx`'s `install.cjs` had to be invoked manually during the spike to make `ppx-osx-x64.exe` executable.
 
-```
-Phase 0 (spike)
-  [ ] 0.1  Branch spike/pnpm-rescript
-  [ ] 0.2  pnpm install succeeds on committed workspaces
-  [ ]      Verify: pnpm run build passes on all four example builds, zero warnings
-  [ ] 0.3  Link sister reventless-ui via pnpm-workspace.local.yaml overlay
-  [ ]      Verify: rescript build of catalog-ui (or any example consuming
-           @reventlessdev/reventless-ui) succeeds with NO "Duplicated package" errors
-  [ ]      Verify: edits to a sister .res file appear in core's compiled output
-           without republishing
-```
+5. **"Duplicated package" warnings persist** even in hoisted mode. pnpm nests `node_modules` under some workspace packages (e.g. `node_modules/@reventlessdev/online-shop-hybrid-catalog/node_modules/@reventlessdev/reventless-spec`). ReScript treats these as warnings when it picks a "chosen" copy, but the original plan's "cleanly eliminates the panic" framing doesn't hold.
 
-**Exit criteria:** Phase 0 passes all checklist items. If ReScript panics anywhere, record findings in this plan under a new "Phase 0 failure" section and stop — this plan is not viable; open a Verdaccio fallback plan instead.
+### What the spike did NOT validate
+
+- Phase 0.3 (cross-repo link with sibling `reventless-ui`) was not attempted. The 1-hour budget was consumed by the issues above.
+- Whether a pre-existing `Main.res` type error in `examples/online-shop-hybrid/platform-in-memory` (`Catalog.make does not take ~uiBundleUrl`) is caused by pnpm or is a latent issue on `alpha` under npm — not verified.
+
+### Verdict
+
+Phase 0 is a **soft pass with asterisks**. The migration is possible but requires significantly more work than the original plan scoped. The rewritten Phase 1 below makes every discovered remediation explicit. If the cost still looks too high once Phase 2 (cross-repo linking) is better understood, the Verdaccio fallback remains on the table.
 
 ---
 
-## Phase 1 — Migrate core to pnpm
+## Phase 1 — Migrate core to pnpm (hoisted layout)
 
-Assuming Phase 0 passed, execute the migration on a clean branch off `alpha`.
+Execute on a fresh branch off `alpha`. The spike branch `spike/pnpm-rescript` is for reference only; it was not a clean migration attempt.
 
-### 1.1 Install pnpm, convert lockfile
+### 1.1 Install pnpm and convert lockfile
 
-1. `corepack enable && corepack prepare pnpm@latest --activate`.
-2. At core root: `rm -rf node_modules`.
-3. `pnpm import` — converts `package-lock.json` into `pnpm-lock.yaml` (lossy on edge cases; verify deltas by inspecting resolved versions of a sample of packages).
-4. Delete `package-lock.json`.
-5. Add `pnpm-lock.yaml` to git.
+1. `corepack enable && corepack prepare pnpm@10 --activate`.
+2. At core root: `rm -rf node_modules`, keep `package-lock.json` temporarily as a conversion input.
+3. `pnpm import` — converts `package-lock.json` into `pnpm-lock.yaml`. Manually verify resolved versions of a 20-package sample (including all `@reventlessdev/*`, `@pulumi/*`, `rescript*`, `sury*`, `react*`) by diffing against the old lockfile. Document any drift.
+4. Delete `package-lock.json`; add `pnpm-lock.yaml` to git.
 
-### 1.2 Replace workspace config
+### 1.2 Force hoisted layout (non-negotiable)
 
-Remove `"workspaces": [...]` from root `package.json`. Create `pnpm-workspace.yaml` with identical globs:
+ReScript's node-module walker and our phantom-dep surface require flat hoisting. Add to `.npmrc`:
+
+```
+# pnpm: required for ReScript compiler compatibility
+node-linker=hoisted
+
+# pnpm 10: workspaces define prebuild/postbuild steps for generate-plugin;
+# restore npm-style auto-execution
+enable-pre-post-scripts=true
+```
+
+### 1.3 Replace workspace config
+
+Remove `"workspaces": [...]` from root `package.json`. Create `pnpm-workspace.yaml`:
 
 ```yaml
 packages:
@@ -113,27 +111,77 @@ packages:
   - 'rescript/*'
   - 'reventless/*'
   - 'examples/**'
+
+# pnpm 10 blocks postinstall scripts by default; allowlist the ones we need.
+# Keep this list in sync with the set of deps that ship native binaries or
+# install-time codegen.
+onlyBuiltDependencies:
+  - '@pulumi/aws-native'
+  - core-js
+  - core-js-pure
+  - cpu-features
+  - esbuild
+  - nx
+  - protobufjs
+  - rescript-relay
+  - ssh2
+  - sury-ppx
 ```
 
-Delete the nested `examples/online-shop-hybrid/platform-in-memory/reventless-ui` symlink if it exists — it is a cross-repo hack that conflicts with clean workspace resolution.
+Delete any stray nested cross-repo symlinks inside `examples/online-shop-hybrid/platform-in-memory/` — these are npm-era hacks that conflict with clean workspace resolution.
 
-### 1.3 Update scripts
+### 1.4 Declare phantom workspace deps (the big one)
 
-Replace npm-specific script invocations in root and workspace `package.json`s:
+This is the largest remediation step and is independent of every other change. Each rescript.json dep must appear in at least one package.json dep so pnpm creates a symlink.
 
-| npm | pnpm |
-|---|---|
-| `npm install` | `pnpm install` |
-| `npm ci` | `pnpm install --frozen-lockfile` |
-| `npm run build -w <pkg>` | `pnpm --filter <pkg> run build` |
-| `npm run build --workspaces --if-present` | `pnpm -r run build` (recursive) |
-| `npm --prefix path run x` | `pnpm --filter ./path run x` |
+**1.4a — Root `rescript.json` → root `package.json`.** Add all 20 entries listed in root `rescript.json` to root `package.json` as `workspace:*` devDependencies:
 
-Grep every `package.json` for `npm ` invocations and convert. Common scripts: `dev:*`, `build`, `test`, `clean`.
+```json
+"devDependencies": {
+  "concurrently": "^9.2.1",
+  "@reventlessdev/reventless-conventional-changelog": "file:./reventless/reventless-conventional-changelog",
+  "lerna": "^8.1.8",
+  "rescript": "^12.2.0",
+  "@reventlessdev/rescript-aws-sdk": "workspace:*",
+  "@reventlessdev/rescript-fast-csv": "workspace:*",
+  "@reventlessdev/rescript-hash-object": "workspace:*",
+  "@reventlessdev/rescript-moment": "workspace:*",
+  "@reventlessdev/rescript-node-streams": "workspace:*",
+  "@reventlessdev/rescript-node-zlib": "workspace:*",
+  "@reventlessdev/rescript-pulumi-aws": "workspace:*",
+  "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+  "@reventlessdev/rescript-ssh2": "workspace:*",
+  "@reventlessdev/rescript-graphql-yoga": "workspace:*",
+  "@reventlessdev/rescript-mcp-sdk": "workspace:*",
+  "@reventlessdev/rescript-effect": "workspace:*",
+  "@reventlessdev/rescript-uuid": "workspace:*",
+  "@reventlessdev/reventless-spec": "workspace:*",
+  "@reventlessdev/reventless-infra": "workspace:*",
+  "@reventlessdev/reventless-interop": "workspace:*",
+  "@reventlessdev/reventless-core": "workspace:*",
+  "@reventlessdev/reventless-in-memory": "workspace:*",
+  "@reventlessdev/reventless-aws": "workspace:*",
+  "@reventlessdev/online-shop-hybrid-platform-aws": "workspace:*",
+  "@reventlessdev/reventless-ppx": "workspace:*"
+}
+```
 
-### 1.4 Overrides migration
+**1.4b — Workspace `rescript.json` → sibling `package.json`.** For each workspace whose `rescript.json` references `@reventlessdev/reventless-ppx/bin`, `sury-ppx/bin`, or any `@reventlessdev/*` dependency, add the corresponding entry to that workspace's `package.json`. The 20 rescript.json files found during the spike are:
 
-pnpm reads `pnpm.overrides` in root `package.json` (not `overrides`). Move:
+- `reventless/reventless-core/rescript.json`
+- `reventless/reventless-in-memory/rescript.json`
+- `examples/online-shop-aggregates/{catalog,catalog-spec,ordering,ordering-spec}/rescript.json`
+- `examples/online-shop-dcb/{catalog,catalog-spec,ordering,ordering-spec,platform-in-memory}/rescript.json`
+- `examples/online-shop-hybrid/{catalog,catalog-aws,catalog-spec,ordering,ordering-aws,ordering-spec,platform-in-memory,platform-aws}/rescript.json`
+- `examples/online-shop-aggregates/platform-in-memory/rescript.json` (already has reventless-ppx in build-time closure)
+
+For each of these, run: `grep '"@reventlessdev' rescript.json` and cross-check against that workspace's `package.json` `dependencies` + `devDependencies`. Add any missing entry as `workspace:*`.
+
+**1.4c — Iterate.** After 1.4a and 1.4b, run `pnpm install && pnpm run build` and fix any remaining `try_package_path: upward traversal did not find …` errors by adding the missing dep to the offending workspace's `package.json`. Budget 2–3 rounds.
+
+### 1.5 Overrides migration
+
+pnpm reads `pnpm.overrides` in root `package.json`, not top-level `overrides`. Move:
 
 ```json
 "pnpm": {
@@ -144,13 +192,37 @@ pnpm reads `pnpm.overrides` in root `package.json` (not `overrides`). Move:
 }
 ```
 
-Drop `"overrides"` (npm-style).
+Drop the top-level `"overrides"` key.
 
-### 1.5 Strict hoisting guard
+### 1.6 Update scripts
 
-Verify no package in the repo relies on a phantom dep (a dep used at runtime but not declared in its own `package.json`). pnpm refuses these by default. Remediation: add the missing dep to the relying package's `dependencies`. Run `pnpm install` and fix errors until clean.
+Replace npm-specific invocations in root and workspace `package.json`s. Relevant mappings:
 
-### 1.6 Update CI
+| npm | pnpm |
+|---|---|
+| `npm install` | `pnpm install` |
+| `npm ci` | `pnpm install --frozen-lockfile` |
+| `npm run build -w <pkg>` | `pnpm --filter <pkg> run build` |
+| `npm run build --workspaces --if-present` | `pnpm -r run build` |
+| `npm --prefix path run x` | `pnpm --filter ./path run x` |
+| `npm run generate` (in `prebuild` hooks) | keep as-is; requires `enable-pre-post-scripts=true` from §1.2 |
+
+Grep every `package.json` for ` npm ` invocations and convert. Common scripts: `dev:*`, `build`, `test`, `clean`, `prebuild`, `rebuild`.
+
+### 1.7 Install & verify
+
+1. `rm -rf node_modules && pnpm install` from scratch completes without errors.
+2. If any `onlyBuiltDependencies` postinstall failed to run (the spike saw this with `sury-ppx`), run manually:
+   ```bash
+   cd node_modules/sury-ppx && node install.cjs
+   cd $REPO_ROOT
+   ```
+   Investigate and file an issue for any recurring case; the long-term fix may be a root-level postinstall that verifies binaries are executable.
+3. `pnpm run build` from root — all three example platforms compile. Zero errors. `Duplicated package` warnings are acceptable (pre-existing under hoisted layout) but must be documented.
+4. `pnpm test` — all tests pass.
+5. `pnpm exec lerna publish --dry-run` — verify Lerna still functions.
+
+### 1.8 Update CI
 
 Replace in CI config:
 
@@ -163,59 +235,52 @@ Replace in CI config:
 - run: corepack enable
 - uses: pnpm/action-setup@v4
   with:
-    version: 9
+    version: 10
 - run: pnpm install --frozen-lockfile
 - run: pnpm run build
 ```
 
-### 1.7 Verify
-
-- `pnpm install` from scratch (delete `node_modules`) completes clean.
-- `pnpm run build` from root — zero warnings (see `.claude/rules/conventions.md`).
-- `pnpm test` — all tests pass.
-- Every script named in root `package.json` runs without error.
-- Lerna publish (if used) still works — pnpm and lerna coexist; verify with `pnpm exec lerna publish --dry-run`.
+Confirm pnpm/action-setup honors `onlyBuiltDependencies` and `enable-pre-post-scripts` in CI (these are read from `.npmrc` and `pnpm-workspace.yaml`, so they should).
 
 ### Checklist
 
 ```
 Phase 1 (core migration)
   [ ] 1.1  pnpm import; commit pnpm-lock.yaml; delete package-lock.json
-  [ ] 1.2  pnpm-workspace.yaml replaces workspaces array; delete nested
-           cross-repo symlink if present
-  [ ] 1.3  All npm invocations in package.json scripts converted to pnpm
-  [ ] 1.4  overrides → pnpm.overrides
-  [ ] 1.5  Phantom-dep remediation: every used dep declared
-  [ ] 1.6  CI updated to use pnpm/action-setup + frozen-lockfile
-  [ ]      Verify: pnpm install from scratch succeeds
-  [ ]      Verify: pnpm run build (all four example builds) — zero warnings
+  [ ] 1.2  .npmrc has node-linker=hoisted and enable-pre-post-scripts=true
+  [ ] 1.3  pnpm-workspace.yaml created with packages + onlyBuiltDependencies
+  [ ] 1.4a Root package.json declares all 20 root-rescript.json deps as workspace:*
+  [ ] 1.4b Each of 20 identified workspaces declares its own rescript.json deps
+  [ ] 1.4c Build-iteration loop converges with zero "try_package_path" errors
+  [ ] 1.5  overrides → pnpm.overrides
+  [ ] 1.6  All npm invocations in package.json scripts converted to pnpm
+  [ ] 1.7  Verify: fresh pnpm install succeeds
+  [ ]      Verify: pnpm run build (all three example platforms) succeeds
   [ ]      Verify: pnpm test — all suites pass
-  [ ]      Verify: lerna exec compatible (pnpm exec lerna ... succeeds)
+  [ ]      Verify: pnpm exec lerna publish --dry-run succeeds
+  [ ]      Document: list of Duplicated-package warnings that remain (should
+           be warnings only, not panics)
+  [ ] 1.8  CI updated; pnpm/action-setup@v4 with version 10
 ```
 
 ---
 
 ## Phase 2 — Cross-repo linking via local overlay
 
-The mechanism: pnpm supports reading workspace packages from a file whose presence indicates "link mode." Committed config covers release mode; a gitignored file adds the sibling repo for link mode.
+Mechanism: committed `pnpm-workspace.yaml` has release-mode packages; a gitignored overlay file adds the sibling repo path for link mode. A script toggles between the two.
 
 ### 2.1 Add the overlay mechanism
 
-pnpm 9+ supports `pnpm-workspace.yaml`. There is no native "overlay" feature; the clean pattern is:
-
-1. Create `pnpm-workspace.yaml.template` (committed) with the release-mode-only entries — identical to what's in `pnpm-workspace.yaml`.
-2. Developers can replace `pnpm-workspace.yaml` locally with a variant that adds sibling paths. A gitignored copy is the source of truth in link mode.
-3. Add `pnpm-workspace.yaml` to `.gitignore` **only** if teams agree every developer owns the file. Otherwise keep it committed with in-repo paths, and provide a helper script that swaps in an overlay copy.
-
-Alternative (cleaner): pnpm's `packages-relative-to-configured-workspaces` plus two files merged via environment variable:
+pnpm does not natively merge multiple workspace files. The cleanest pattern is to provide a script that rewrites `pnpm-workspace.yaml` in place:
 
 ```yaml
-# pnpm-workspace.yaml (committed) — release mode workspaces only
+# pnpm-workspace.yaml (committed) — release mode only
 packages:
   - 'packages/*'
   - 'rescript/*'
   - 'reventless/*'
   - 'examples/**'
+onlyBuiltDependencies: [...]  # (as in §1.3)
 ```
 
 ```yaml
@@ -224,24 +289,23 @@ packages:
   - '../reventless-ui/reventless/reventless-ui'
 ```
 
-Because pnpm does not auto-merge these, provide a small script:
+Root `package.json` scripts:
 
 ```json
-// root package.json
 "scripts": {
-  "link:on":  "cat pnpm-workspace.yaml pnpm-workspace.local.yaml > pnpm-workspace.merged.yaml && mv pnpm-workspace.merged.yaml pnpm-workspace.yaml && pnpm install",
+  "link:on":  "node ./scripts/apply-workspace-overlay.mjs && pnpm install",
   "link:off": "git checkout pnpm-workspace.yaml && pnpm install"
 }
 ```
 
-Committed file is the source of truth for release mode. `link:on` augments it; `link:off` restores it. Both trigger `pnpm install` to realign `node_modules/`.
+`scripts/apply-workspace-overlay.mjs` is a small YAML merger (js-yaml or manual string concat) that produces `pnpm-workspace.yaml` = committed file + local overlay. Committed file is always the source of truth; `link:off` restores it.
 
 ### 2.2 Gitignore
 
 Add to `.gitignore`:
+
 ```
 pnpm-workspace.local.yaml
-pnpm-workspace.merged.yaml
 ```
 
 ### 2.3 Declare cross-repo deps with `workspace:*`
@@ -254,56 +318,69 @@ In every consumer package that depends on `@reventlessdev/reventless-ui`:
 }
 ```
 
-- In link mode (sibling path in workspace): resolves to the local working copy.
-- In release mode (no sibling): pnpm resolves `workspace:*` to the registry version declared via the lockfile. In pure release mode (CI with only registry access), use `pnpm install --no-frozen-lockfile` or specify `^<version>` explicitly.
+Behaviour:
 
-**Gotcha:** `workspace:*` requires the workspace to be present at install time. For fresh release-mode clones, either (a) commit a release-mode lockfile, or (b) rewrite `workspace:*` to `^<version>` at publish via `pnpm publish --workspace-protocol`.
+- **Link mode** (sibling path in workspace): resolves to the local working copy.
+- **Release mode** (no sibling): pnpm resolves `workspace:*` to the locked registry version. For a fresh clone in release mode, `pnpm install --frozen-lockfile` is authoritative.
+- **Publishing**: `pnpm publish --workspace-protocol` rewrites `workspace:*` → `^<resolved-version>` in published `package.json`. Verify with `pnpm publish --dry-run`.
 
 ### 2.4 Document the workflow
 
 Create `docs/guides/cross-repo-dev-linking.md`:
 
 ```
-To enable live-edit of reventless-ui from this repo:
+To live-edit reventless-ui from this repo:
 
   1. cp pnpm-workspace.local.yaml.example pnpm-workspace.local.yaml
   2. pnpm run link:on
-  3. Edits in ../reventless-ui/reventless/reventless-ui/src/ appear
-     instantly in core's compiled output.
+  3. Edits in ../reventless-ui/reventless/reventless-ui/src/ appear in
+     core's compiled output after `pnpm run build`.
 
 To return to registry mode:
 
   pnpm run link:off
+
+After toggling, always re-run `pnpm run build`.
 ```
 
-Ship a `pnpm-workspace.local.yaml.example` file (committed, so teammates copy it) that documents the expected structure.
+Ship `pnpm-workspace.local.yaml.example` (committed) documenting the expected structure.
 
 ### Checklist
 
 ```
 Phase 2 (cross-repo linking)
-  [ ] 2.1  link:on and link:off scripts wired in root package.json
-  [ ] 2.2  pnpm-workspace.local.yaml and .merged.yaml in .gitignore
-  [ ] 2.3  @reventlessdev/reventless-ui declared as workspace:* in
-           every consumer package
-  [ ] 2.4  Write docs/guides/cross-repo-dev-linking.md
-  [ ] 2.5  Ship pnpm-workspace.local.yaml.example with expected shape
-  [ ]      Verify (link mode): link:on → edits to sibling .res file
-           reflect in core's compiled output after rescript rebuild
-  [ ]      Verify (release mode): link:off → pnpm install resolves
-           @reventlessdev/reventless-ui from registry
-  [ ]      Verify (toggle): link:on → link:off → link:on works cleanly,
-           no leftover state
+  [ ] 2.1  link:on / link:off scripts wired via overlay script
+  [ ] 2.2  pnpm-workspace.local.yaml in .gitignore
+  [ ] 2.3  @reventlessdev/reventless-ui declared as workspace:* in every
+           consumer package
+  [ ] 2.4  docs/guides/cross-repo-dev-linking.md + .example file
+  [ ]      Verify (link mode): link:on → edit sibling .res file → rebuild →
+           change reflected in core compiled output
+  [ ]      Verify (release mode): link:off → pnpm install --frozen-lockfile
+           resolves @reventlessdev/reventless-ui from registry
+  [ ]      Verify (toggle): link:on → link:off → link:on clean, no leftover
+  [ ]      Verify (publish dry-run): pnpm publish --dry-run rewrites
+           workspace:* to a concrete version in the tarball's package.json
 ```
+
+### Unknowns still to resolve in Phase 2
+
+The original plan assumed strict-hoisting would clean up the ReScript duplicate-package panic across repos. In hoisted mode, we do not know yet:
+
+- Whether the sister repo's `node_modules/@reventlessdev/*` contents shadow or duplicate core's — must test.
+- Whether `rescript.json` in consumers of `@reventlessdev/reventless-ui` needs an entry for cross-repo deps.
+- How `generate-plugin` behaves with a linked sibling whose generated files live in a different repo's `src/`.
+
+Budget an extra half-day in Phase 2 for these.
 
 ---
 
 ## Phase 3 — Sister repo compatibility
 
-For link mode to work, `reventless-ui` must also be a pnpm repo (or at minimum expose itself as a valid pnpm workspace — which requires `pnpm-workspace.yaml` at its root). If the sister repo is still on npm:
+For link mode to work, `reventless-ui` must be a valid pnpm workspace target, which requires `pnpm-workspace.yaml` at its root (even if minimal).
 
-- **Option A:** migrate the sister repo to pnpm (separate plan; coordinate with sister-repo owners).
-- **Option B:** run a compat shim — pnpm can consume npm-installed packages as workspaces if they have correctly-declared `package.json`. Validate in Phase 0.
+- **Option A:** Migrate the sister repo to pnpm fully (separate plan; coordinate with sister-repo owners).
+- **Option B:** Add only `pnpm-workspace.yaml` to the sister so it can be consumed as a pnpm workspace while staying on npm for its own development. Needs validation — pnpm must be able to read a workspace that wasn't `pnpm install`-ed.
 
 ### Checklist
 
@@ -319,44 +396,51 @@ Phase 3 (sister compatibility)
 
 ## Rollback
 
-If Phase 1 or 2 fails at verification:
+If Phase 1 fails at verification:
 
-1. `git checkout` the branch.
+1. `git checkout alpha`.
 2. `rm -rf node_modules pnpm-lock.yaml pnpm-workspace.yaml`.
-3. Restore `package-lock.json` from the pre-migration commit on `alpha`.
+3. Restore `.npmrc` to its pre-migration state (remove `node-linker=hoisted`, `enable-pre-post-scripts=true`).
 4. `npm install`.
-5. Document the failure mode in this plan under a new "Failed attempts" section. Decide between retrying with pnpm at a different version, or pivoting to Verdaccio.
+5. Document the failure mode here under a new "Phase 1 failure" section. Decide between retrying with a different pnpm strategy, or pivoting to Verdaccio.
 
 ---
 
 ## Risks
 
-1. **pnpm lockfile drift** during `pnpm import` — some npm resolutions may not translate cleanly (e.g. `file:` specs, github: refs). Mitigation: diff the resolved versions of a 20-package sample before committing.
-2. **Phantom deps** (Phase 1.5) — common in older workspaces. Expect to find 3–10 missing declarations. Each is a one-line fix but takes time.
-3. **CI environment** — ensure pnpm is available in whatever CI tool we use. `pnpm/action-setup@v4` for GitHub Actions; equivalent for others.
-4. **Lerna publish flow** — verify lerna + pnpm compatibility before merging. Lerna has first-class pnpm support in v7+ but edge cases exist around `publishConfig`.
-5. **rescript-relay compiler** — if ReScript's `relay-runtime` dep is hoisted differently, rescript-relay-compiler may fail to find it. Validate during Phase 0.
-6. **`workspace:*` publishing** — when we `pnpm publish`, `workspace:*` refs must be rewritten to concrete versions. pnpm does this with `--workspace-protocol` but misconfiguration publishes broken package.json.
+1. **Phantom-dep iteration loop (§1.4c).** Each failed build reveals one missing declaration at a time. Budget accordingly; don't treat it as a one-shot fix.
+2. **pnpm build-script approval flakiness.** `sury-ppx` postinstall didn't run reliably during the spike. Mitigation: document manual re-run; consider a root postinstall that `chmod +x`'s known binaries.
+3. **`pnpm import` lockfile drift.** npm's `file:` specs, `github:` refs, and peer-dep hoisting behave differently. Mitigation: diff resolved versions on a 20-package sample before committing.
+4. **Lerna + pnpm.** Lerna v7+ has first-class pnpm support but edge cases exist around `publishConfig` and workspace-protocol publishing. Verify with `pnpm exec lerna publish --dry-run`.
+5. **`Main.res` uiBundleUrl error surfaced during spike.** May be pre-existing on `alpha`; verify with plain npm before blaming pnpm. If real, fix independently of this migration.
+6. **rescript-relay compiler.** Possibly sensitive to node_modules layout. Validate during Phase 1.7.
+7. **`workspace:*` publishing.** Mis-configured `--workspace-protocol` flag publishes broken package.json files. Always `pnpm publish --dry-run` before real publish.
+8. **Warnings vs panics.** We are accepting ongoing `Duplicated package` warnings from ReScript. If any future change promotes these to hard errors, the plan's viability regresses.
 
 ---
 
 ## What this plan does NOT cover
 
-- Migrating the sister `reventless-ui` repo itself (Phase 3 is only the compatibility check — a full sister migration is a separate effort).
+- Full migration of sister `reventless-ui` repo (Phase 3 is compat check only).
 - Migrating any other sibling repos that may depend on core.
-- Setting up a local Verdaccio registry as an alternative fallback (separate plan if Phase 0 fails).
-- Changes to the lerna release flow beyond ensuring it still works.
+- Setting up a local Verdaccio registry as an alternative fallback (separate plan if this one fails).
+- Changes to the Lerna release flow beyond verifying it still works.
+- Moving off `node-linker=hoisted` to pnpm's isolated default — out of scope until ReScript's resolver changes or the monorepo's phantom-dep surface is reduced.
 
 ---
 
 ## Open questions
 
-1. Which pnpm version to pin? 9.x is stable, 10.x is latest. Start with 9 for conservatism.
-2. Do we commit `pnpm-workspace.yaml` or require developers to copy from a template? Recommendation: commit with release-mode paths; overlay is gitignored.
-3. Should `workspace:*` apply to all cross-package deps in the monorepo (even in-repo), or only cross-repo? Recommendation: all in-repo deps use `workspace:*`; cross-repo uses `workspace:*` too, but only resolves when overlay is active.
+1. **pnpm version pin.** 10.x is current; 9.x is stable. Phase 0 used 10.33. Recommendation: pin at 10.x via `packageManager` field in root `package.json`.
+2. **Monorepo-wide prebuild.** Today each plugin has its own `prebuild: npm run generate`. With `enable-pre-post-scripts=true` this continues to work, but consider whether a single top-level `generate-all` task would be cleaner.
+3. **Duplicated-package warnings.** Should we suppress them (via rescript warning flags) or leave them visible as topology signal? Recommendation: leave visible until §1.4c converges; then reassess.
+4. **`workspace:*` everywhere, or only cross-repo?** Recommendation: use `workspace:*` for all in-repo deps; it's the pnpm-native pattern and makes the dep graph explicit in the lockfile.
+5. **Sister repo migration path.** Full pnpm migration vs compat-shim is a separate decision; gather sister-repo-owner input before Phase 3.
 
 ---
 
-## Decision needed before executing
+## Decision needed before executing Phase 1
 
-This plan is approved for the 1-hour Phase 0 spike only. Phases 1–3 execute only after Phase 0 passes and the findings justify the migration cost. If Phase 0 fails, no further work on this plan — the fallback is a separate Verdaccio plan.
+This rewritten plan reflects actual Phase 0 findings and sets realistic scope for a 2–3 day Phase 1 effort. The key shift from v1: **pnpm in `node-linker=hoisted` mode, not strict hoisting.** This changes the value proposition from "fix duplicate-package panic" to "explicit workspace:* deps + overlay cross-repo linking on top of a known-good hoisted layout."
+
+Explicit approval required before starting Phase 1. If the effort feels disproportionate, the Verdaccio fallback is the next thing to evaluate.

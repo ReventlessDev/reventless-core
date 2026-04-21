@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering-spec",
   "version": "1.0.0-alpha.8",
-  "description": "Online Shop Hybrid example — Ordering plugin specification (extension point specs)",
+  "description": "Online Shop Hybrid example \u2014 Ordering plugin specification (extension point specs)",
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
@@ -13,7 +13,8 @@
   },
   "devDependencies": {
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "^11.0.0-alpha.2",
+    "@reventlessdev/reventless-ppx": "workspace:*"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
