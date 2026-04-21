@@ -4,8 +4,9 @@
 **Date (v2 rewrite, post-Phase-0):** 2026-04-21
 **Date (v3, post-Phase-1 execution + Phase-3 compat spike):** 2026-04-21
 **Date (v4, post-workspace-protocol cleanup):** 2026-04-21
+**Date (v5, post-crypto-polyfill fix):** 2026-04-21
 
-**Status:** Phase 1 shipped on branch `feat/pnpm-migration` (commit `1de8b775`). Phase 3 compat-shim spike (Option B) validated. Phase-2-adjacent workspace-protocol cleanup executed (see §1.4d follow-up). Phase 2 not yet started.
+**Status:** Phase 1 shipped on branch `feat/pnpm-migration` (commit `1de8b775`). Phase 3 compat-shim spike (Option B) validated. Phase-2-adjacent workspace-protocol cleanup executed (see §1.4d follow-up). `uuid@13`/Jest crypto regression fixed by commit `17e466a9` (test suite back to 1034/1034). Branch is ready to merge to `alpha`. Phase 2 not yet started.
 
 ## Why this plan exists
 
@@ -513,8 +514,8 @@ If a regression is discovered post-merge:
 3. Execute Phase 2 (overlay script, `link:on`/`link:off` toggles, gitignored local config, docs).
 4. ~~**Optional cleanup** (Phase-2-adjacent): convert all in-repo `@reventlessdev/*` semver ranges to `workspace:*`.~~ **Done** (see §1.4d follow-up).
 
-## Pre-existing test regression (NOT caused by this plan)
+## Pre-existing test regression — RESOLVED (commit `17e466a9`)
 
-Discovered during the §1.4d follow-up cleanup: running `pnpm test` on the tip of `feat/pnpm-migration` (both with and without the cleanup applied) yields **84 failed / 926 passed / 1010 total** — not the 1034/1034 reported at commit `1de8b775`. Failing tests share a common stack: `uuid@13.0.0` throws `crypto.getRandomValues() not supported` because Jest 27's default `jsdom` test environment does not expose `globalThis.crypto` as a bare `crypto` identifier inside the VM. A minimal Jest probe confirms `typeof crypto === "undefined"` in the test context.
+Discovered during the §1.4d follow-up cleanup: running `pnpm test` on the tip of `feat/pnpm-migration` (both with and without the cleanup applied) yielded **84 failed / 926 passed / 1010 total** — not the 1034/1034 reported at commit `1de8b775`. Failing tests shared a common stack: `uuid@13.0.0` throws `crypto.getRandomValues() not supported` because Jest 27's default `jsdom` test environment does not expose `globalThis.crypto` as a bare `crypto` identifier inside the VM.
 
-Baseline comparison: stashing the workspace-protocol cleanup and re-running `pnpm install --frozen-lockfile` followed by `pnpm test` produces the **exact same** 84-failure / 926-pass counts. The cleanup is test-neutral. Why the Phase-1 commit reported 1034/1034 — whether the env was genuinely different (different jest/jsdom version, different Node, different default `testEnvironment`) or the verification number was incorrect — is out of scope here and should be tracked separately before merging to `alpha`.
+**Fix (commit `17e466a9`):** added `jest.setup.cjs` that assigns `node:crypto.webcrypto` to `globalThis.crypto`, wired via `setupFiles` in `jest.config.js` on every project. Restores **109/109 suites, 1034/1034 tests**. Matches the Phase-1 verification count; branch is green and ready to merge.
