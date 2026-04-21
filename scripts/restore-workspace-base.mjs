@@ -37,3 +37,7 @@ checkClean(':0', 'index')
 
 run(`git checkout -- ${TARGET}`)
 console.log(`[restore] ${TARGET} restored from git index.`)
+
+// Also restore package.json's pnpm.overrides from git to undo any link:on merges.
+run(`git checkout -- package.json`)
+console.log(`[restore] package.json restored from git index.`)
