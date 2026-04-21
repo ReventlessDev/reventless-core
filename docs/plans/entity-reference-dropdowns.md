@@ -10,7 +10,7 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 
 ---
 
-## Phase 1 — Remove `totalCount` from Connection SDL
+## Phase 1 — Remove `totalCount` from Connection SDL ✅ done
 
 **Context.** The `totalCount: Int` field on every `${Entity}Connection` is a footgun: populated in-memory, returns `null` in every AWS-backed deployment. Clients that code against it on the dev platform silently misbehave in production. See [auto-ui-entity-reference-dropdowns.md §B.8](../../../reventless-ui/docs/analysis/auto-ui-entity-reference-dropdowns.md#b8--core-cleanup-remove-totalcount-from-the-connection-sdl) for the full rationale.
 

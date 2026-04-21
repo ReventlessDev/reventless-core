@@ -106,7 +106,7 @@ function derivePluralWrapperType(pluralTypeName, singularTypeName) {
 function deriveConnectionTypes(singularTypeName) {
   return [
     `type ` + singularTypeName + `Edge {\n  node: ` + singularTypeName + `!\n  cursor: String!\n}`,
-    `type ` + singularTypeName + `Connection {\n  edges: [` + singularTypeName + `Edge!]!\n  pageInfo: PageInfo!\n  totalCount: Int\n}`
+    `type ` + singularTypeName + `Connection {\n  edges: [` + singularTypeName + `Edge!]!\n  pageInfo: PageInfo!\n}`
   ];
 }
 

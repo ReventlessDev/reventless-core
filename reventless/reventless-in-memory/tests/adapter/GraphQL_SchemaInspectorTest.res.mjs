@@ -216,7 +216,7 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl.includes("type RelayProductConnection")).toBe(true);
       expect(sdl.includes("edges: [RelayProductEdge!]!")).toBe(true);
       expect(sdl.includes("pageInfo: PageInfo!")).toBe(true);
-      expect(sdl.includes("totalCount: Int")).toBe(true);
+      expect(sdl.includes("totalCount")).toBe(false);
       expect(sdl.includes("Relay_Products(first: Int, after: String, last: Int, before: String): RelayProductConnection!")).toBe(true);
       expect(sdl.includes("items: [RelayProduct!]!")).toBe(false);
       expect(sdl.includes("nextToken:")).toBe(false);

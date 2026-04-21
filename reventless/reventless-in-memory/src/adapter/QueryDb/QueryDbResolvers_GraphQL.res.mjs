@@ -119,8 +119,7 @@ function Make(Bus) {
               hasPreviousPage: false,
               startCursor: null,
               endCursor: null
-            },
-            totalCount: 0
+            }
           };
         }
         let makeStream = Bus.getQueryDbStream(name);
@@ -144,8 +143,7 @@ function Make(Bus) {
             hasPreviousPage: false,
             startCursor: Stdlib_Nullable.fromOption(startCursor),
             endCursor: Stdlib_Nullable.fromOption(endCursor)
-          },
-          totalCount: items.length
+          }
         };
       };
       match = [

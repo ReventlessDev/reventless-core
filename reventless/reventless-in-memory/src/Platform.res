@@ -974,7 +974,6 @@ module MakeWithConfig = (
           ),
         ])->JSON.Encode.object,
       ),
-      ("totalCount", JSON.Encode.int(items->Array.length)),
     ])->JSON.Encode.object
   }
 

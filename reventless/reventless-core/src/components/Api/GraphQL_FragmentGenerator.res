@@ -119,7 +119,7 @@ let derivePluralWrapperType = (~pluralTypeName: string, ~singularTypeName: strin
 
 let deriveConnectionTypes = (~singularTypeName: string): array<string> => [
   `type ${singularTypeName}Edge {\n  node: ${singularTypeName}!\n  cursor: String!\n}`,
-  `type ${singularTypeName}Connection {\n  edges: [${singularTypeName}Edge!]!\n  pageInfo: PageInfo!\n  totalCount: Int\n}`,
+  `type ${singularTypeName}Connection {\n  edges: [${singularTypeName}Edge!]!\n  pageInfo: PageInfo!\n}`,
 ]
 
 let deriveSubIdFilterType = (~filterTypeName: string): string =>

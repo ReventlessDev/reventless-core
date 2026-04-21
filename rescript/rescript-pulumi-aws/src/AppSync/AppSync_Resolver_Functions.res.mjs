@@ -383,7 +383,6 @@ export function response(ctx) {
       startCursor: edges.length > 0 ? edges[0].cursor : null,
       endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null,
     },
-    totalCount: ctx.result?.scannedCount ?? items.length,
   };
 }
 `;

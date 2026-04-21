@@ -997,10 +997,6 @@ function MakeWithConfig(Config) {
             hasItems ? (edges.length - 1 | 0).toString() : null
           ]
         ])
-      ],
-      [
-        "totalCount",
-        items.length
       ]
     ]);
   };
@@ -2760,10 +2756,6 @@ function Make($star) {
             hasItems ? (edges.length - 1 | 0).toString() : null
           ]
         ])
-      ],
-      [
-        "totalCount",
-        items.length
       ]
     ]);
   };

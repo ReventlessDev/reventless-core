@@ -287,7 +287,7 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl->String.includes("type RelayProductConnection"))->toBe(true)
       expect(sdl->String.includes("edges: [RelayProductEdge!]!"))->toBe(true)
       expect(sdl->String.includes("pageInfo: PageInfo!"))->toBe(true)
-      expect(sdl->String.includes("totalCount: Int"))->toBe(true)
+      expect(sdl->String.includes("totalCount"))->toBe(false)
       // Query field should use first/after/last/before args
       expect(sdl->String.includes("Relay_Products(first: Int, after: String, last: Int, before: String): RelayProductConnection!"))->toBe(true)
       // Should NOT have legacy plural wrapper type

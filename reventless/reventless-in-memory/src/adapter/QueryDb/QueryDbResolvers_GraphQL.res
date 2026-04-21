@@ -221,7 +221,6 @@ module Make = (Bus: InMemory_Bus.T) => {
               "startCursor": Nullable.null,
               "endCursor": Nullable.null,
             },
-            "totalCount": 0,
           })
         | Allow =>
           let items = switch Bus.getQueryDbStream(name) {
@@ -250,7 +249,6 @@ module Make = (Bus: InMemory_Bus.T) => {
               "startCursor": startCursor->Nullable.fromOption,
               "endCursor": endCursor->Nullable.fromOption,
             },
-            "totalCount": items->Array.length,
           })
         }
       }
