@@ -21,7 +21,7 @@ let make = (
   // Aggregate commands that initialize a new aggregate instance are Collection-level
   // (shown as table-top buttons); all others are Instance-level (shown per-row).
   let isCreateCommandName = name =>
-    ["Add", "Create", "Register", "Open", "Initialize", "Place", "Submit", "Start"]->Array.some(p =>
+    ["Add", "Create", "Register", "Open", "Initialize", "Submit", "Start"]->Array.some(p =>
       name->String.startsWith(p)
     )
 

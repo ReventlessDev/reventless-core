@@ -23,7 +23,6 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     "Register",
     "Open",
     "Initialize",
-    "Place",
     "Submit",
     "Start"
   ].some(p => name.startsWith(p));

@@ -42,7 +42,7 @@ function Make(Ops) {
       let entityId = Stdlib_Option.getOr(Stdlib_Option.map(param[0].tags[0], t => t.value), name);
       let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, meta, param[1]);
       try {
-        return await Ops.publishJson(entityId, meta, eventJson$p);
+        return await Ops.publishJson(name, meta, eventJson$p);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {

@@ -54,7 +54,7 @@ module Make = (Ops: Ops): T => {
       let entityId =
         rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
       let eventJson' = Message.composeEventJson'(entityId, meta, eventJson)
-      try await Ops.publishJson(entityId, meta, eventJson') catch {
+      try await Ops.publishJson(name, meta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
         Effect.logError(`DcbEventLog(${name}): EventTopic.publish Error: ${errMsg}`)->Effect.runSync

@@ -156,27 +156,17 @@ function extractVariantNames(schema) {
       }), []);
     case "union" :
       return Stdlib_Array.filterMap(schema.anyOf, variantSchema => {
-        switch (variantSchema.type) {
-          case "string" :
-            let name = variantSchema.const;
-            if (name !== undefined) {
-              return name;
-            } else {
+        if (variantSchema.type === "object") {
+          return Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+            let match = item.schema;
+            if (match.type !== "string") {
               return;
             }
-          case "object" :
-            return Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-              let match = item.schema;
-              if (match.type !== "string") {
-                return;
-              }
-              let $$const = match.const;
-              if ($$const !== undefined) {
-                return $$const;
-              }
-            });
-          default:
-            return;
+            let $$const = match.const;
+            if ($$const !== undefined) {
+              return $$const;
+            }
+          });
         }
       });
     default:
