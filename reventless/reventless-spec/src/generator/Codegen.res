@@ -640,10 +640,36 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
   }
 
   // make() call
-  lines->Array.push("  let make = () =>")
+  // uiBundleUrl is only meaningful when the plugin has aggregates or read models —
+  // makeAutoUIManifest derives panels/pages from those two component kinds.
+  let hasUiComponents =
+    resolved.aggregates->Array.length > 0 || resolved.readModels->Array.length > 0
+  let makeSig = hasUiComponents ? "  let make = (~uiBundleUrl=?) =>" : "  let make = () =>"
+  lines->Array.push(makeSig)
   lines->Array.push("    Platform.Plugin.make(")
   lines->Array.push("      ~name=\"" ++ config.name ++ "\",")
   lines->Array.push("      ~heartbeatInterval=" ++ config.heartbeatInterval->Int.toString ++ ",")
+
+  let uiFragmentsParam = if hasUiComponents {
+    let aggEntries =
+      resolved.aggregates->Array.map(({spec}) => "module(" ++ spec ++ "Aggregate)")
+    let rmEntries =
+      resolved.readModels->Array.map(({readModel}) => "module(" ++ readModel ++ "Maker)")
+    let ls: array<string> = []
+    ls->Array.push("      ~uiFragments=?uiBundleUrl->Option.map(url =>")
+    ls->Array.push("        Platform.Plugin.makeAutoUIManifest(")
+    ls->Array.push("          ~remoteEntryUrl=url,")
+    ls->Array.push("          ~name=\"" ++ config.name ++ "\",")
+    ls->Array.push("          ~aggregates=[" ++ aggEntries->Array.join(", ") ++ "],")
+    ls->Array.push("          ~readModels=[" ++ rmEntries->Array.join(", ") ++ "],")
+    ls->Array.push("          ~readModelPositions=[\"platform-summary\"],")
+    ls->Array.push("          ~aggregatePositions=[\"resource-detail\"],")
+    ls->Array.push("        )")
+    ls->Array.push("      ),")
+    Some(ls)
+  } else {
+    None
+  }
 
   let makeParams = [
     renderEpMakeParam(resolved.extensionPoints),
@@ -668,6 +694,10 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
   ]
 
   makeParams->Array.filterMap(x => x)->Array.forEach(line => lines->Array.push(line))
+  switch uiFragmentsParam {
+  | Some(uiLines) => uiLines->Array.forEach(line => lines->Array.push(line))
+  | None => ()
+  }
 
   lines->Array.push("    )")
   lines->Array.push("}")

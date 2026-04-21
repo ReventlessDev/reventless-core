@@ -50,7 +50,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~extensions=[module(ProductsExtensionMaker)],
   )
 
-  let make = () =>
+  let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
@@ -63,5 +63,15 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~automationSlices=[module(AutoShipOrderSlice)],
       ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
       ~pluginStructure=pluginStructure,
+      ~uiFragments=?uiBundleUrl->Option.map(url =>
+        Platform.Plugin.makeAutoUIManifest(
+          ~remoteEntryUrl=url,
+          ~name="Ordering",
+          ~aggregates=[module(CustomerAggregate)],
+          ~readModels=[module(CustomersReadModelMaker)],
+          ~readModelPositions=["platform-summary"],
+          ~aggregatePositions=["resource-detail"],
+        )
+      ),
     )
 }

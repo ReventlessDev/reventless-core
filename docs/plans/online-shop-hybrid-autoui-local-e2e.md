@@ -21,40 +21,78 @@ sidebar            — sidebar navigation entries
 
 ## Step 1 — Wire `makeAutoUIManifest` into backend plugins (reventless-core)
 
-For local runs, `remoteEntryUrl` points at the local Vite dev server. Pass it via env var so the same Plugin.res works in both local and AWS contexts.
+### Design decision: URL supplied by platform, not plugin (Option B)
 
-### `catalog/src/Plugin.res`
+`remoteEntryUrl` is a **deployment fact**, not a plugin fact — whoever deploys a plugin knows where its bundle lives; the plugin itself does not. The plugin package stays agnostic; the platform composition root (`platform-in-memory` / `platform-aws`) picks the URL.
+
+Considered and rejected: placing an `Env.res` in each plugin package reading a hardcoded env var name (e.g. `CATALOG_UI_BUNDLE_URL`). This couples plugins to deployment config, forces an `Env.res` convention on every UI-bearing plugin, and makes "same plugin, two deployments" awkward.
+
+**Chosen:** the generator extends `make` with an optional `~uiBundleUrl=?: string` parameter. When present, the generated `make` calls `Plugin_Builder.makeAutoUIManifest(~remoteEntryUrl=url, ...)` and passes the result as `~uiFragments=Some(manifest)`. When absent, no fragments are registered. Platform composition reads its env/config once and passes the URL per plugin.
+
+### 1.1 Extend generator (reventless-spec/generate-plugin)
+
+Generated `CatalogPlugin.Plugin.Make(Platform).make` becomes:
 
 ```rescript
-~uiFragments=Some(
-  Plugin_Builder.makeAutoUIManifest(
-    ~remoteEntryUrl=Env.catalogUiBundleUrl,
-    ~name="Catalog",
-    ~aggregates=[module(CategoryAggregate)],
-    ~readModels=[module(CategoriesReadModelMaker)],
-    ~readModelPositions=["platform-summary"],
-    ~aggregatePositions=["resource-detail"],
+let make = (~uiBundleUrl=?) => {
+  let uiFragments = uiBundleUrl->Option.map(url =>
+    Plugin_Builder.makeAutoUIManifest(
+      ~remoteEntryUrl=url,
+      ~name="Catalog",
+      ~aggregates=[module(CategoryAggregate)],
+      ~readModels=[module(CategoriesReadModelMaker)],
+      ~readModelPositions=["platform-summary"],
+      ~aggregatePositions=["resource-detail"],
+    )
   )
-),
+  Platform.Plugin.make(
+    ~name="Catalog",
+    ...
+    ~pluginStructure=pluginStructure,
+    ~uiFragments?,
+  )
+}
 ```
 
-### `catalog/src/Env.res`
+Positions remain fixed strings (`"platform-summary"`, `"resource-detail"`) — they are a UI contract shared with the dashboard shell, not a deployment concern.
+
+### 1.2 Update platform composition roots
+
+`platform-in-memory/src/Platform.res` reads env vars and passes them when wiring plugins:
 
 ```rescript
-let catalogUiBundleUrl =
-  Sys.getenv_opt("CATALOG_UI_BUNDLE_URL")
-  ->Option.getOr("http://localhost:4001")
+let catalogUiBundleUrl = Sys.getenv_opt("CATALOG_UI_BUNDLE_URL")
+let orderingUiBundleUrl = Sys.getenv_opt("ORDERING_UI_BUNDLE_URL")
+
+CatalogPlugin.Plugin.Make(Platform).make(~uiBundleUrl=?catalogUiBundleUrl)
+OrderingPlugin.Plugin.Make(Platform).make(~uiBundleUrl=?orderingUiBundleUrl)
 ```
 
-Same pattern for `ordering/src/Env.res` with `ORDERING_UI_BUNDLE_URL` / `http://localhost:4002`.
+`platform-aws` follows the same pattern, passing a Pulumi stack output instead of an env var.
 
 ### Checklist
 
 ```
-Step 1
-  [ ] 1.1  Add Env.res to catalog; add ~uiFragments to catalog Plugin.res
-  [ ] 1.2  Add Env.res to ordering; add ~uiFragments to ordering Plugin.res
-  [ ]      Verify: both plugins compile; pluginDefinition.uiFragments is Some(_) at runtime
+Step 1 ✅
+  [x] 1.1  Extend generate-plugin to emit ~uiBundleUrl=? param on make, and wire
+           makeAutoUIManifest with positions ["platform-summary"] / ["resource-detail"]
+           (reventless/reventless-spec/src/generator/Codegen.res — emitted only when
+           plugin has aggregates or readModels; otherwise make stays `() =>`)
+  [x] 1.2  Regenerate catalog and ordering Plugin.res — both now have
+           make = (~uiBundleUrl=?) with conditional makeAutoUIManifest wiring
+  [x] 1.3  platform-in-memory wraps plugins in CatalogMaker/OrderingMaker that
+           read CATALOG_UI_BUNDLE_URL / ORDERING_UI_BUNDLE_URL from process.env
+           and forward via ~uiBundleUrl=?. PluginMaker module type unchanged
+           (make: unit => component) — wrapper pattern avoids breaking other
+           example platforms (aggregates, dcb) whose generated Plugin.res still
+           has `let make = ()`.
+  [x]      Verified:
+           - Env vars set: Platform_UIFragments returns 2 entries with correct
+             remoteEntryUrl, panels at "platform-summary" and "resource-detail"
+             (Catalog.Categories.list, Catalog.Category.detail, Ordering.Customers.list,
+             Ordering.Customer.detail)
+           - Env vars unset: Platform_UIFragments returns empty edges
+           - Root build: zero warnings
 ```
 
 ---

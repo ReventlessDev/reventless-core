@@ -434,10 +434,31 @@ function render(config, resolved) {
     });
     lines.push("");
   }
-  lines.push("  let make = () =>");
+  let hasUiComponents = resolved.aggregates.length !== 0 || resolved.readModels.length !== 0;
+  let makeSig = hasUiComponents ? "  let make = (~uiBundleUrl=?) =>" : "  let make = () =>";
+  lines.push(makeSig);
   lines.push("    Platform.Plugin.make(");
   lines.push("      ~name=\"" + config.name + "\",");
   lines.push("      ~heartbeatInterval=" + config.heartbeatInterval.toString() + ",");
+  let uiFragmentsParam;
+  if (hasUiComponents) {
+    let aggEntries = resolved.aggregates.map(param => "module(" + param.spec + "Aggregate)");
+    let rmEntries = resolved.readModels.map(param => "module(" + param.readModel + "Maker)");
+    let ls = [];
+    ls.push("      ~uiFragments=?uiBundleUrl->Option.map(url =>");
+    ls.push("        Platform.Plugin.makeAutoUIManifest(");
+    ls.push("          ~remoteEntryUrl=url,");
+    ls.push("          ~name=\"" + config.name + "\",");
+    ls.push("          ~aggregates=[" + aggEntries.join(", ") + "],");
+    ls.push("          ~readModels=[" + rmEntries.join(", ") + "],");
+    ls.push("          ~readModelPositions=[\"platform-summary\"],");
+    ls.push("          ~aggregatePositions=[\"resource-detail\"],");
+    ls.push("        )");
+    ls.push("      ),");
+    uiFragmentsParam = ls;
+  } else {
+    uiFragmentsParam = undefined;
+  }
   let makeParams = [
     renderEpMakeParam(resolved.extensionPoints),
     renderExtensionMakeParam(resolved.extensions),
@@ -454,6 +475,11 @@ function render(config, resolved) {
   Stdlib_Array.filterMap(makeParams, x => x).forEach(line => {
     lines.push(line);
   });
+  if (uiFragmentsParam !== undefined) {
+    uiFragmentsParam.forEach(line => {
+      lines.push(line);
+    });
+  }
   lines.push("    )");
   lines.push("}");
   lines.push("");
