@@ -168,6 +168,42 @@ Step 1 ✅
 
 ---
 
+## Remote bundle contract (applies to Steps 2, 3, 4)
+
+Settled after investigating `AutoUI.generateFragments` and `AutoTypes.pluginDefinition` — these are **different shapes** than `Reventless.Plugin.pluginStructure`. The remote bundle cannot statically export `{ pages, panels }` at compile time unless we ship JSON schemas with every plugin (significant generator work). Instead, bundles expose a **pure function** and the dashboard supplies the data.
+
+**Contract:**
+
+```rescript
+// Every remote bundle's ./fragments module exposes this:
+let createFragments: (
+  ~definition: AutoTypes.pluginDefinition,
+  ~aggregatePositions: array<string>,
+  ~slicePositions: array<string>,
+  ~commandPositions: array<string>,
+) => AutoTypes.autoUIFragments  // { pages, panels }
+```
+
+**Dashboard-side flow:**
+
+1. Single Relay query fetches both `Platform_UIFragments` (URLs + positions) **and** `Platform_UIDefinitions` (JSON schemas), joined by `pluginId`.
+2. For each entry: `loadRemoteBundle(remoteEntryUrl, pluginId) → mod`, then `mod.createFragments(~definition=parsedDef, ~aggregatePositions, ~slicePositions, ~commandPositions)`.
+3. Register the returned `{ pages, panels }` with `PanelRegistry` / `PageRegistry` from `@reventlessdev/reventless-ui`.
+
+**Why this contract:**
+
+- Bundle has zero URLs / fetches — it's pure logic plus React components. Deployable anywhere (CDN, dev server) without config.
+- The JSON definition lives on the backend (already surfaced via `Platform_UIDefinitions`) — one source of truth.
+- Matches the Step 1 separation: deployment facts (URLs, env) stay in the composition root; domain facts (schemas) stay in the backend; presentation logic (components, auto-generation) lives in bundles.
+- Parsing JSON → `AutoTypes.pluginDefinition` is a small helper the dashboard owns (mirrors `DevPluginSetup.parsePluginDefinitions` from dev-app). One implementation, used by all bundles.
+
+**Rejected alternatives:**
+
+- **Static compile-time export** — would need generator changes to emit JSON schemas inline in each plugin's Plugin.res. Defers the problem (schemas already exist on the backend).
+- **Bundle queries Platform_UIDefinitions itself** — couples every bundle to an admin URL; painful for CDN-hosted bundles where the URL is unknown at bundle-build time.
+
+---
+
 ## Step 2 — `catalog-ui` package
 
 New package at `examples/online-shop-hybrid/catalog-ui/`. ReScript source, Vite Module Federation remote.
@@ -235,14 +271,24 @@ export default defineConfig({
 
 ### `src/Index.res`
 
-```rescript
-open AutoTypes
+Thin wrapper around `AutoUI.generateFragments` matching the Remote bundle contract:
 
-let { pages, panels } = ReventlessUi.Auto.generateFragments(
-  CatalogPlugin.CatalogUiDefinition.definition,
-  ~aggregatePositions=["resource-detail"],
-)
+```rescript
+let createFragments = (
+  ~definition: AutoTypes.pluginDefinition,
+  ~aggregatePositions: array<string>=[],
+  ~slicePositions: array<string>=[],
+  ~commandPositions: array<string>=[],
+): AutoTypes.autoUIFragments =>
+  AutoUI.generateFragments(
+    definition,
+    ~aggregatePositions,
+    ~slicePositions,
+    ~commandPositions,
+  )
 ```
+
+No imports from `@reventlessdev/online-shop-hybrid-catalog` are actually required — the plugin's definition arrives as a parameter. Listing `online-shop-hybrid-catalog` as a dependency would still make sense if the bundle later embeds custom components that reference the catalog's spec types.
 
 ### Checklist
 
@@ -251,7 +297,7 @@ Step 2
   [ ] 2.1  Create catalog-ui/package.json
   [ ] 2.2  Create catalog-ui/rescript.json
   [ ] 2.3  Create catalog-ui/vite.config.mjs with Module Federation remote config
-  [ ] 2.4  Create catalog-ui/src/Index.res — generateFragments entry point
+  [ ] 2.4  Create catalog-ui/src/Index.res — createFragments wrapper per contract
   [ ]      Verify: bun run dev starts on port 5001; remoteEntry.js accessible;
            { pages, panels } contain correct fragmentIds for Categories
 ```
