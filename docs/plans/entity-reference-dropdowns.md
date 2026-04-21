@@ -200,9 +200,24 @@ The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter`
 
 ---
 
-## Phase 5 — `@ref` ppx annotation and `Reference` metadata
+## Phase 5 — `@ref` ppx annotation and `Reference` metadata ✅ core implementation landed
 
 **Pairs with UI Phase C.** Nice-to-have. Independent of Phases 1-4.
+
+**Implementation notes.**
+- `Reference.res` in `reventless-spec/src/components/` exports `target`, `referenceId`, `to_`, `toWithoutDcbTag`, and `getTarget`. `to_` implies DCB tag metadata; `toWithoutDcbTag` omits it (used when `@ref @noDcbTag` is combined).
+- `ReferenceInference.ml` runs before `DcbTagInference.transform_structure` so the injected `@s.matches(Reference.to_(...))` is seen by the auto-`*Id` tagger which then skips the field. The `@ref` attribute is stripped during transformation.
+- `@ref("Plugin.Entity")` splits on the first `.`; `@ref("Entity")` produces no plugin qualifier. Self-reference (`@ref` with no payload) raises a clear error — deferred until enclosing-aggregate context is threaded through the ppx.
+- `fieldReference` is a `@schema` type in `Plugin.res` with `plugin: @s.matches(stringOptionSchema) option<string>` for JSON-safe serialization.
+- `SchemaType.fromSury` now classifies `@ref @noDcbTag` fields as `EntityId` (renders as `ID!` in GraphQL SDL) even when `DcbTag` metadata is absent.
+- Platform bootstrap reference validator (plan step 3) deferred — open question 2 row 5 interaction also deferred.
+- Both SDL copies in `Platform.res` updated; both encoders extended with `references` array.
+
+**Deferred for follow-up** (not blocking Phase 6 progress):
+- Self-reference `@ref` (no payload) — requires threading enclosing aggregate name through ppx transform context.
+- Platform bootstrap validator — walk `commandDef.references`, resolve targets against all plugin structures, throw on unknown entity.
+- Ppx snapshot tests under `packages/reventless-ppx/test/`.
+- End-to-end test: command with `@ref("Customer")` → `Platform_UIDefinitions` returns expected `references` array.
 
 **Context.** The UI heuristic (property name ends in `Id`/`Ids`, stem matches an entity) covers every case in the current examples. Phase 5 replaces the heuristic with an explicit annotation for plugins that have non-`Id` naming, self-references, ambiguous stems, or need disambiguation between same-named entities across plugins. See [auto-ui-entity-reference-dropdowns.md §C](../../../reventless-ui/docs/analysis/auto-ui-entity-reference-dropdowns.md#phase-c--explicit-reference-annotation-via-reventless-ppx) for the full rationale and syntax.
 

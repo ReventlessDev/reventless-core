@@ -64,12 +64,19 @@ let commandLevelSchema = S.union([
   S.literal("Instance")
 ]);
 
+let fieldReferenceSchema = S.schema(s => ({
+  fieldName: s.m(S.string),
+  entity: s.m(S.string),
+  plugin: s.m(stringOptionSchema)
+}));
+
 let commandDefSchema = S.schema(s => ({
   name: s.m(S.string),
   schema: s.m(S.string),
   level: s.m(commandLevelSchema),
   aggregateIdField: s.m(stringOptionSchema),
-  mutationField: s.m(S.string)
+  mutationField: s.m(S.string),
+  references: s.m(S.array(fieldReferenceSchema))
 }));
 
 let queryableDefSchema = S.schema(s => ({
@@ -183,6 +190,7 @@ export {
   uiFragmentManifestSchema,
   uiFragmentManifestOptionSchema,
   commandLevelSchema,
+  fieldReferenceSchema,
   commandDefSchema,
   queryableDefSchema,
   writableDefSchema,

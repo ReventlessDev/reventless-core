@@ -103,12 +103,20 @@ let uiFragmentManifestOptionSchema = _jsNullable(uiFragmentManifestSchema, ())
 type commandLevel = Collection | Instance
 
 @schema
+type fieldReference = {
+  fieldName: string,
+  entity: string,
+  plugin: @s.matches(stringOptionSchema) option<string>,
+}
+
+@schema
 type commandDef = {
   name: string,
   schema: string,
   level: commandLevel,
   aggregateIdField: @s.matches(stringOptionSchema) option<string>,
   mutationField: string,
+  references: array<fieldReference>,
 }
 
 @schema

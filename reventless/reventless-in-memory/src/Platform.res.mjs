@@ -1099,7 +1099,8 @@ function MakeWithConfig(Config) {
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let uiDefsSdlTypes = [
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
+      `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
@@ -1108,6 +1109,20 @@ function MakeWithConfig(Config) {
       `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
       `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
     ];
+    let encodeFieldReference = r => Object.fromEntries([
+      [
+        "fieldName",
+        r.fieldName
+      ],
+      [
+        "entity",
+        r.entity
+      ],
+      [
+        "plugin",
+        Stdlib_Option.mapOr(r.plugin, null, prim => prim)
+      ]
+    ]);
     let encodeCommandDef = c => {
       let match = c.level;
       let tmp;
@@ -1132,6 +1147,10 @@ function MakeWithConfig(Config) {
         [
           "mutationField",
           c.mutationField
+        ],
+        [
+          "references",
+          c.references.map(encodeFieldReference)
         ]
       ]);
     };
@@ -1655,7 +1674,8 @@ function MakeWithConfig(Config) {
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
       let dpUiDefsSdlTypes = [
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
+        `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
         `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
         `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
@@ -1665,6 +1685,20 @@ function MakeWithConfig(Config) {
           "Platform_UIDefinitions",
           async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
             let def = param[1];
+            let encodeRef = r => Object.fromEntries([
+              [
+                "fieldName",
+                r.fieldName
+              ],
+              [
+                "entity",
+                r.entity
+              ],
+              [
+                "plugin",
+                Stdlib_Option.mapOr(r.plugin, null, prim => prim)
+              ]
+            ]);
             let encodeCmd = c => {
               let match = c.level;
               let tmp;
@@ -1689,6 +1723,10 @@ function MakeWithConfig(Config) {
                 [
                   "mutationField",
                   c.mutationField
+                ],
+                [
+                  "references",
+                  c.references.map(encodeRef)
                 ]
               ]);
             };
@@ -2874,7 +2912,8 @@ function Make($star) {
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let uiDefsSdlTypes = [
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
+      `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
+      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
       `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
       `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
       `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
@@ -2883,6 +2922,20 @@ function Make($star) {
       `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
       `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
     ];
+    let encodeFieldReference = r => Object.fromEntries([
+      [
+        "fieldName",
+        r.fieldName
+      ],
+      [
+        "entity",
+        r.entity
+      ],
+      [
+        "plugin",
+        Stdlib_Option.mapOr(r.plugin, null, prim => prim)
+      ]
+    ]);
     let encodeCommandDef = c => {
       let match = c.level;
       let tmp;
@@ -2907,6 +2960,10 @@ function Make($star) {
         [
           "mutationField",
           c.mutationField
+        ],
+        [
+          "references",
+          c.references.map(encodeFieldReference)
         ]
       ]);
     };
@@ -3422,7 +3479,8 @@ function Make($star) {
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
       let dpUiDefsSdlTypes = [
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n}`,
+        `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
+        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
         `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
         `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
         `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
@@ -3432,6 +3490,20 @@ function Make($star) {
           "Platform_UIDefinitions",
           async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
             let def = param[1];
+            let encodeRef = r => Object.fromEntries([
+              [
+                "fieldName",
+                r.fieldName
+              ],
+              [
+                "entity",
+                r.entity
+              ],
+              [
+                "plugin",
+                Stdlib_Option.mapOr(r.plugin, null, prim => prim)
+              ]
+            ]);
             let encodeCmd = c => {
               let match = c.level;
               let tmp;
@@ -3456,6 +3528,10 @@ function Make($star) {
                 [
                   "mutationField",
                   c.mutationField
+                ],
+                [
+                  "references",
+                  c.references.map(encodeRef)
                 ]
               ]);
             };

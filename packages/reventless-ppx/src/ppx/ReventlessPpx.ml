@@ -346,6 +346,7 @@ let transform (str : structure) : structure =
                    || Util.is_in_slice_folder loc.loc_start.pos_fname in
     let body = strip_ppx_attrs str in
     let () = DcbTagInference.check_deprecated_no_tag body in
+    let body = ReferenceInference.transform_structure body in
     let body = if dcb_tags then DcbTagInference.transform_structure ~loc body else body in
     let body = DcbTagInference.transform_partition_tags ~loc body in
     let body = DcbTagInference.transform_composite_partition_tags ~loc body in
