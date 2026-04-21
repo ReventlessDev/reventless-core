@@ -21,38 +21,38 @@ This is a Lerna monorepo. Packages are organized by type — **always place new 
 | `examples/` | Example applications | `examples/online-shop-aggregates/`, `examples/online-shop-dcb/` |
 | `packages/` | Build tooling and documentation only | `doc` |
 
-All four folders are Lerna workspaces (`lerna.json` packages) and npm workspaces (`package.json` workspaces).
+All four folders are Lerna workspaces (`lerna.json` packages) and pnpm workspaces (declared in `pnpm-workspace.yaml`).
 
 ## Build Commands
 
-Use Node v22.17.1 (specified in `.node-version`).
+Use Node v22.17.1 (specified in `.node-version`) and pnpm 10 (enforced via `packageManager` + `corepack`). See [docs/guides/pnpm-guide.md](docs/guides/pnpm-guide.md) for an npm→pnpm reference.
 
 ### Monorepo-level commands
 ```bash
-npm install                    # Install root dependencies
-npm run build                  # Build all packages
-npm run test                   # Run tests in all packages
-npm run clean                  # Clean all packages
+pnpm install                   # Install root dependencies
+pnpm run build                 # Build all packages
+pnpm test                      # Run tests in all packages
+pnpm run clean                 # Clean all packages
 ```
 
 ### Per-package commands (run from the package directory, e.g. `reventless/reventless-in-memory/`)
 ```bash
-npm run build                  # rescript build
-npm run start                  # rescript build -w (watch mode)
-npm run rebuild                # clean + build with dependencies
-npm run test                   # jest
-npm run dev                    # jest --watchAll
+pnpm run build                 # rescript build
+pnpm run start                 # rescript build -w (watch mode)
+pnpm run rebuild               # clean + build with dependencies
+pnpm test                      # jest
+pnpm run dev                   # jest --watchAll
 ```
 
 ### Running a single test file
 ```bash
-cd reventless/reventless && npx jest tests/MessageTest.res.mjs
+cd reventless/reventless && pnpm exec jest tests/MessageTest.res.mjs
 ```
 
 ### Publishing
 ```bash
-npx lerna publish              # Version and publish all changed packages
-npx lerna version              # Version only without publishing
+pnpm exec lerna publish        # Version and publish all changed packages
+pnpm exec lerna version        # Version only without publishing
 ```
 
 ## Commit Message Conventions
@@ -174,7 +174,7 @@ A ReScript language server plugin is configured for Claude Code, providing type-
 - **findReferences**: Find all usages of a symbol
 - **documentSymbol**: List all symbols in a file
 
-Prerequisite: `npm install -g @rescript/language-server` (v1.72.0+). The plugin lives at `~/.claude/plugins/marketplaces/claude-code-lsps/rescript-lsp/`.
+Prerequisite: `pnpm add -g @rescript/language-server` (v1.72.0+). The plugin lives at `~/.claude/plugins/marketplaces/claude-code-lsps/rescript-lsp/`.
 
 Not supported by the ReScript LSP: `workspaceSymbol`, `goToImplementation`, `callHierarchy`.
 
@@ -184,11 +184,10 @@ The `packages/doc/` directory contains a Docusaurus-based documentation site.
 
 ### Running the docs locally
 ```bash
-cd packages/doc
-npm install
-npm run start                  # Start dev server with hot reload
-npm run build                  # Build static site
-npm run serve                  # Serve built site
+pnpm --filter ./packages/doc install
+pnpm --filter ./packages/doc run start   # Start dev server with hot reload
+pnpm --filter ./packages/doc run build   # Build static site
+pnpm --filter ./packages/doc run serve   # Serve built site
 ```
 
 ### Documentation Structure (`packages/doc/docs/`)

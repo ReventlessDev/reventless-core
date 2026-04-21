@@ -25,17 +25,17 @@ From `examples/online-shop-hybrid/platform-in-memory/` in **reventless-core**:
 
 ```bash
 # Build first (once, or after source changes)
-npm run build
+pnpm run build
 
 # Start backend + UI dev server together
-npm run dev:full
+pnpm run dev:full
 ```
 
 `dev:full` uses `concurrently` to run the backend (`:4000`/`:4001`) and the Vite dev app (`:5173`) side by side, with colour-coded output prefixed `[backend]` / `[ui]`.
 
 ### How the UI dev server is resolved
 
-`dev:full` internally calls `npm run dev:ui`, which picks the UI dev server in this order:
+`dev:full` internally calls `pnpm run dev:ui`, which picks the UI dev server in this order:
 
 | Priority | Condition | UI dev server | Hot reload |
 |----------|-----------|---------------|------------|
@@ -53,15 +53,15 @@ If you want separate control over each process:
 **Terminal 1 — reventless-core**
 ```bash
 # Build (once, or after source changes)
-npm run build -w examples/online-shop-hybrid/platform-in-memory
+pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run build
 
 # Start backend with debug logging
-npm run dev -w examples/online-shop-hybrid/platform-in-memory
+pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run dev
 ```
 
 **Terminal 2 — reventless-ui**
 ```bash
-npm run dev:ui
+pnpm run dev:ui
 ```
 
 Vite starts at `http://localhost:5173` and proxies `/graphql` to `http://localhost:4000`.
@@ -98,17 +98,17 @@ ln -s ../../../../reventless-ui reventless-ui
   "@reventless/dev-app": "*"
 },
 "scripts": {
-  "dev:local": "npx tsx src/LocalDev.res.mjs",
-  "dev:ui": "[ -d reventless-ui ] && npm --prefix reventless-ui run dev:ui || dev-app",
-  "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'npm run dev:local' 'npm run dev:ui'"
+  "dev:local": "tsx src/LocalDev.res.mjs",
+  "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || dev-app",
+  "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run dev:local' 'pnpm run dev:ui'"
 }
 ```
 
 Then from the **plugin package** in reventless-core:
 
 ```bash
-npm run build
-npm run dev:full
+pnpm run build
+pnpm run dev:full
 ```
 
 ---
@@ -166,7 +166,7 @@ Both domain and admin queries are served at `http://localhost:4000/graphql`.
 Point your schema fetch script at the domain server (run from **reventless-ui**):
 
 ```bash
-GRAPHQL_ENDPOINT=http://localhost:4000/graphql npm run gql:update
+GRAPHQL_ENDPOINT=http://localhost:4000/graphql pnpm run gql:update
 ```
 
 Use port `4001` when you need the admin/platform schema instead.
