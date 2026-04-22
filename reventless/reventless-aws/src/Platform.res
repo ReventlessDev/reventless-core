@@ -444,7 +444,6 @@ module MakeWithConfig = (
   module StateViewSlice = {
     include StateViewSlice_Builder.Make(ApiConfig)
   }
-  module PlatformEventGraphT = StateViewSlice.Make(ReventlessCore.Platform_EventGraph)
   module StateViewSliceStream = {
     @@warning("-60")
     include StateViewSlice_Builder_Stream.Make(ApiConfig)
@@ -920,6 +919,21 @@ module MakeWithConfig = (
     PluginReadModelMappings,
   )
 
+  // Admin-internal PlatformEventGraph read model — subscribes to Plugin aggregate events
+  // and projects per-plugin component graphs (nodes + edges) into a QueryDb table.
+  module PlatformEventGraphMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.Platform_EventGraphReadModelSpec = {
+    module M = ReventlessCore.Platform_EventGraphProjection.Mappings
+    module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
+    let mappings: array<module(Mapping)> = ReventlessCore.Platform_EventGraphProjection.mappings
+  }
+
+  module PlatformEventGraphReadModel = ReadModel_Builder_NoResolver.Make(
+    ReventlessCore.Platform_EventGraphReadModelSpec,
+    PlatformEventGraphMappings,
+  )
+
   module type PluginMaker = {
     let make: unit => Plugin.component
   }
@@ -973,13 +987,13 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[],
       ~aggregates=[module(PluginAggregate)],
-      ~readModels=[module(PluginReadModel)],
+      ~readModels=[module(PluginReadModel), module(PlatformEventGraphReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
       ~stateChangeSlices=[],
-      ~stateViewSlices=[module(PlatformEventGraphT)],
+      ~stateViewSlices=[],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
@@ -1146,13 +1160,13 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[module(PluginExtensionPoint)],
       ~aggregates=[module(PluginAggregate)],
-      ~readModels=[module(PluginReadModel)],
+      ~readModels=[module(PluginReadModel), module(PlatformEventGraphReadModel)],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
       ~apiRole=platformApiRole,
       ~stateChangeSlices=[],
-      ~stateViewSlices=[module(PlatformEventGraphT)],
+      ~stateViewSlices=[],
       ~automationSlices=[],
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],

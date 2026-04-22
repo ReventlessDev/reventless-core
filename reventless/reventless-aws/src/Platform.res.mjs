@@ -38,7 +38,6 @@ import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-inf
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./adapter/Cloner/ClonerRunner_Fargate.res.mjs";
-import * as Platform_EventGraph$ReventlessCore from "@reventlessdev/reventless-core/src/admin/StateViewSlice/Platform_EventGraph.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginRuntime_Builder.res.mjs";
@@ -64,9 +63,11 @@ import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_Exte
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
 import * as StateViewSlice_Builder_Stream$ReventlessAws from "./components/StateViewSlice_Builder_Stream.res.mjs";
 import * as Aggregate_Builder_Single_Async$ReventlessAws from "./components/Aggregate_Builder_Single_Async.res.mjs";
+import * as Platform_EventGraphProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_EventGraphProjection.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
+import * as Platform_EventGraphReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginExtensionPointRuntime_Builder.res.mjs";
@@ -372,16 +373,6 @@ function MakeWithConfig(Config) {
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$6 = include.Make;
-  let PlatformEventGraphT = Make$6({
-    name: Platform_EventGraph$ReventlessCore.name,
-    moduleUrl: Platform_EventGraph$ReventlessCore.moduleUrl,
-    stateSchema: Platform_EventGraph$ReventlessCore.stateSchema,
-    consumedEventSchema: Platform_EventGraph$ReventlessCore.consumedEventSchema,
-    project: Platform_EventGraph$ReventlessCore.project,
-    config: Platform_EventGraph$ReventlessCore.config,
-    subIdConfig: undefined
-  });
   let include$1 = StateViewSlice_Builder_Stream$ReventlessAws.Make(ApiConfig);
   let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
@@ -392,7 +383,7 @@ function MakeWithConfig(Config) {
     queries: [],
     subscriptions: []
   });
-  let Make$7 = FragmentConfig => {
+  let Make$6 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -405,7 +396,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$7
+    Make: Make$6
   };
   let deploySchemaHashPrefix = "deploy-schema-hash:";
   let readSchemaHash = async (tableName, apiId) => {
@@ -707,6 +698,19 @@ function MakeWithConfig(Config) {
     config: PluginReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
   })(PluginReadModelMappings);
+  let moduleUrl$1 = import.meta.url;
+  let PlatformEventGraphMappings = {
+    moduleUrl: moduleUrl$1,
+    mappings: Platform_EventGraphProjection$ReventlessCore.mappings
+  };
+  let PlatformEventGraphReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: Platform_EventGraphReadModelSpec$ReventlessCore.name,
+    moduleUrl: Platform_EventGraphReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
+    config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined
+  })(PlatformEventGraphMappings);
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
@@ -734,7 +738,10 @@ function MakeWithConfig(Config) {
         };
       }
     }
-    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [PlatformEventGraphT], [], [], []);
+    Admin.construct(version, [], [PluginAggregate], [
+      PluginReadModel,
+      PlatformEventGraphReadModel
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -828,7 +835,10 @@ function MakeWithConfig(Config) {
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
       updateApiSchema: updateApiSchema
     });
-    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [PlatformEventGraphT], [], [], []);
+    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
+      PluginReadModel,
+      PlatformEventGraphReadModel
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let publishToAggregatesQueueUrls = {};
     let pluginAgg = admin.aggregatesOutputs["Plugin"];
     if (pluginAgg !== undefined) {
@@ -958,7 +968,7 @@ function MakeWithConfig(Config) {
     },
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: {
-      Make: Make$6
+      Make: include.Make
     },
     StateViewSliceStream: {
       Make: include$1.Make
@@ -1263,16 +1273,6 @@ function Make($star) {
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$7 = include.Make;
-  let PlatformEventGraphT = Make$7({
-    name: Platform_EventGraph$ReventlessCore.name,
-    moduleUrl: Platform_EventGraph$ReventlessCore.moduleUrl,
-    stateSchema: Platform_EventGraph$ReventlessCore.stateSchema,
-    consumedEventSchema: Platform_EventGraph$ReventlessCore.consumedEventSchema,
-    project: Platform_EventGraph$ReventlessCore.project,
-    config: Platform_EventGraph$ReventlessCore.config,
-    subIdConfig: undefined
-  });
   let include$1 = StateViewSlice_Builder_Stream$ReventlessAws.Make(ApiConfig);
   let include$2 = AutomationSlice_Builder$ReventlessAws.Make(ApiConfig);
   let include$3 = OutboundTranslationSlice_Builder$ReventlessAws.Make(ApiConfig);
@@ -1283,7 +1283,7 @@ function Make($star) {
     queries: [],
     subscriptions: []
   });
-  let Make$8 = FragmentConfig => {
+  let Make$7 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -1295,7 +1295,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$8
+    Make: Make$7
   };
   let deploySchemaHashPrefix = "deploy-schema-hash:";
   let readSchemaHash = async (tableName, apiId) => {
@@ -1597,6 +1597,19 @@ function Make($star) {
     config: PluginReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
   })(PluginReadModelMappings);
+  let moduleUrl$1 = import.meta.url;
+  let PlatformEventGraphMappings = {
+    moduleUrl: moduleUrl$1,
+    mappings: Platform_EventGraphProjection$ReventlessCore.mappings
+  };
+  let PlatformEventGraphReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: Platform_EventGraphReadModelSpec$ReventlessCore.name,
+    moduleUrl: Platform_EventGraphReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
+    config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined
+  })(PlatformEventGraphMappings);
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
     let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
@@ -1619,7 +1632,10 @@ function Make($star) {
         platformApiRole: platformApiRole
       };
     }
-    Admin.construct(version, [], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [PlatformEventGraphT], [], [], []);
+    Admin.construct(version, [], [PluginAggregate], [
+      PluginReadModel,
+      PlatformEventGraphReadModel
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -1701,7 +1717,10 @@ function Make($star) {
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
       updateApiSchema: updateApiSchema
     });
-    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [PluginReadModel], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [PlatformEventGraphT], [], [], []);
+    let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
+      PluginReadModel,
+      PlatformEventGraphReadModel
+    ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let publishToAggregatesQueueUrls = {};
     let pluginAgg = admin.aggregatesOutputs["Plugin"];
     if (pluginAgg !== undefined) {
@@ -1817,7 +1836,7 @@ function Make($star) {
     operations: Counter_operations
   };
   let StateViewSlice = {
-    Make: Make$7
+    Make: include.Make
   };
   let StateViewSliceStream = {
     Make: include$1.Make

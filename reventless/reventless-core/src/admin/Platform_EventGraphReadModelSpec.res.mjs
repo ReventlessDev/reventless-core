@@ -4,29 +4,6 @@ import * as S from "sury/src/S.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
-let consumedEventSchema = S.union([
-  S.schema(s => ({
-    TAG: "Connected",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
-  })),
-  S.schema(s => ({
-    TAG: "Reconnected",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
-  })),
-  S.schema(s => ({
-    TAG: "Disconnected",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
-  })),
-  S.schema(s => ({
-    TAG: "Activated",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
-  })),
-  S.schema(s => ({
-    TAG: "Deactivated",
-    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
-  }))
-]);
-
 let stateSchema = S.schema(s => ({
   pluginName: s.m(S.string),
   nodes: s.m(S.array(Plugin$Reventless.graphNodeSchema)),
@@ -181,78 +158,6 @@ function buildEntry(pluginName, structure) {
   };
 }
 
-function project(event) {
-  let exit = 0;
-  let name;
-  let structure;
-  let name$1;
-  switch (event.TAG) {
-    case "Connected" :
-      let match = event._0;
-      let name$2 = match.name;
-      let structure$1 = match.structure;
-      if (structure$1 !== undefined) {
-        name = name$2;
-        structure = structure$1;
-        exit = 1;
-      } else {
-        name$1 = name$2;
-        exit = 2;
-      }
-      break;
-    case "Reconnected" :
-      let match$1 = event._0;
-      let name$3 = match$1.name;
-      let structure$2 = match$1.structure;
-      if (structure$2 !== undefined) {
-        name = name$3;
-        structure = structure$2;
-        exit = 1;
-      } else {
-        name$1 = name$3;
-        exit = 2;
-      }
-      break;
-    case "Activated" :
-      let match$2 = event._0;
-      let name$4 = match$2.name;
-      let structure$3 = match$2.structure;
-      if (structure$3 !== undefined) {
-        name = name$4;
-        structure = structure$3;
-        exit = 1;
-      } else {
-        name$1 = name$4;
-        exit = 2;
-      }
-      break;
-    case "Disconnected" :
-    case "Deactivated" :
-      return [{
-          TAG: "Delete",
-          _0: event._0.name
-        }];
-  }
-  switch (exit) {
-    case 1 :
-      return [{
-          TAG: "Set",
-          _0: name,
-          _1: buildEntry(name, structure)
-        }];
-    case 2 :
-      return [{
-          TAG: "Set",
-          _0: name$1,
-          _1: {
-            pluginName: name$1,
-            nodes: [],
-            edges: []
-          }
-        }];
-  }
-}
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let name = "PlatformEventGraph";
@@ -261,21 +166,19 @@ let Id;
 
 let subIdConfig;
 
-let moduleUrl = "@reventlessdev/reventless-core/src/admin/StateViewSlice/Platform_EventGraph.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res.mjs";
 
 export {
   name,
   Id,
-  consumedEventSchema,
   stateSchema,
   nodeFor,
   writeKind,
   nodesFromStructure,
   edgesFromStructure,
   buildEntry,
-  project,
   config,
   subIdConfig,
   moduleUrl,
 }
-/* consumedEventSchema Not a pure module */
+/* stateSchema Not a pure module */

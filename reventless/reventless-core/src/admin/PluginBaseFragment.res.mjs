@@ -6,6 +6,7 @@ import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs
 import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "./UIFragmentRegistryReadModelSpec.res.mjs";
+import * as Platform_EventGraphReadModelSpec$ReventlessCore from "./Platform_EventGraphReadModelSpec.res.mjs";
 
 let adminAuth = {
   tableName: "Plugin",
@@ -32,6 +33,14 @@ let queryEntries = [
     stateSchema: UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema,
     authorization: adminAuth,
     excludeFields: ["registeredAt"]
+  },
+  {
+    singleFieldName: Api_Naming$ReventlessCore.adminField("PlatformEventGraph"),
+    listFieldName: Api_Naming$ReventlessCore.adminField("PlatformEventGraphs"),
+    returnTypeName: Api_Naming$ReventlessCore.adminField("PlatformEventGraph"),
+    stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
+    authorization: adminAuth,
+    excludeFields: []
   }
 ];
 

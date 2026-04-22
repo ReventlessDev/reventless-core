@@ -3,14 +3,6 @@
 open Reventless.Plugin
 
 @schema
-type consumedEvent =
-  | Connected(pluginDefinition)
-  | Reconnected(pluginDefinition)
-  | Disconnected(pluginDefinition)
-  | Activated(pluginDefinition)
-  | Deactivated(pluginDefinition)
-
-@schema
 type state = {
   pluginName: string,
   nodes: array<graphNode>,
@@ -55,7 +47,6 @@ let nodesFromStructure = (~pluginName, structure: pluginStructure): array<graphN
 let edgesFromStructure = (~pluginName, structure: pluginStructure): array<graphEdge> => {
   let wk = name => writeKind(~structure, name)
 
-  // Write-side → StateViewSlice via event type matching
   let writeToView =
     Array.concat(
       structure.aggregates->Array.map(w => (w, "Aggregate")),
@@ -70,7 +61,6 @@ let edgesFromStructure = (~pluginName, structure: pluginStructure): array<graphE
       }: graphEdge))
     )
 
-  // AutomationSlice → target SCS or Aggregate
   let autoToTarget =
     structure.automationSlices->Array.map(a => ({
       source: nodeFor(~pluginName, ~name=a.name, ~kind="AutomationSlice"),
@@ -80,7 +70,6 @@ let edgesFromStructure = (~pluginName, structure: pluginStructure): array<graphE
       implicit: false,
     }: graphEdge))
 
-  // InboundTranslationSlice → target SCS or Aggregate
   let inboundToTarget =
     structure.inboundTranslationSlices->Array.map(its => ({
       source: nodeFor(~pluginName, ~name=its.name, ~kind="InboundTranslationSlice"),
@@ -90,7 +79,6 @@ let edgesFromStructure = (~pluginName, structure: pluginStructure): array<graphE
       implicit: false,
     }: graphEdge))
 
-  // Extension → delegate components
   let extensionToDelegate =
     structure.extensions->Array.flatMap(ext =>
       ext.delegateNames->Array.map(delegateName => ({
@@ -110,14 +98,3 @@ let buildEntry = (~pluginName, structure: pluginStructure): state => {
   nodes: nodesFromStructure(~pluginName, structure),
   edges: edgesFromStructure(~pluginName, structure),
 }
-
-let project = event =>
-  switch event {
-  | Connected({name, structure: Some(structure)})
-  | Reconnected({name, structure: Some(structure)})
-  | Activated({name, structure: Some(structure)}) => [Set(name, buildEntry(~pluginName=name, structure))]
-  | Connected({name, structure: None})
-  | Reconnected({name, structure: None})
-  | Activated({name, structure: None}) => [Set(name, {pluginName: name, nodes: [], edges: []})]
-  | Disconnected({name}) | Deactivated({name}) => [Delete(name)]
-  }

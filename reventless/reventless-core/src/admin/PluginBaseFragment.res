@@ -22,6 +22,14 @@ let queryEntries: array<querySchemaEntry> = [
     authorization: Some(adminAuth),
     excludeFields: ["registeredAt"],
   },
+  {
+    singleFieldName: Api_Naming.adminField(~name="PlatformEventGraph"),
+    listFieldName: Api_Naming.adminField(~name="PlatformEventGraphs"),
+    returnTypeName: Api_Naming.adminField(~name="PlatformEventGraph"),
+    stateSchema: Platform_EventGraphReadModelSpec.stateSchema->S.castToUnknown,
+    authorization: Some(adminAuth),
+    excludeFields: [],
+  },
 ]
 
 // Arg schemas for payload-less admin mutations
