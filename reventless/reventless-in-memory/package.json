@@ -16,9 +16,14 @@
     ],
     "moduleFileExtensions": [
       "js",
-      "mjs"
+      "mjs",
+      "cjs"
+    ],
+    "setupFiles": [
+      "<rootDir>/tests/setup/sqliteGlobal.cjs"
     ],
     "moduleNameMapper": {
+      "^node:sqlite$": "<rootDir>/__mocks__/nodeSqlite.mjs",
       "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
       "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
       "^spdx-license-ids/deprecated$": "<rootDir>/../../node_modules/spdx-license-ids/deprecated.json",

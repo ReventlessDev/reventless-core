@@ -18,12 +18,15 @@ import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/adm
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
+import * as Backend$ReventlessInMemory from "./adapter/Backend.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as TestRunner$ReventlessInMemory from "./test/TestRunner.res.mjs";
+import * as BackendState$ReventlessInMemory from "./adapter/BackendState.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
+import * as SqliteDriver$ReventlessInMemory from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
@@ -77,6 +80,17 @@ let platformMCPRef = {
 
 function MakeWithConfig(Config) {
   TestRunner$ReventlessInMemory.setup();
+  let match = Config.backend;
+  if (typeof match !== "object") {
+    BackendState$ReventlessInMemory.setMemory();
+  } else {
+    let path = match.path;
+    if (match.resetOnStart) {
+      Backend$ReventlessInMemory.removeFileIfExists(path);
+    }
+    let db = SqliteDriver$ReventlessInMemory.openDb(path);
+    BackendState$ReventlessInMemory.setSqlite(db, path);
+  }
   let Bus = InMemory_Bus$ReventlessInMemory.Impl({
     capacity: undefined,
     silent: Config.silent
@@ -1893,7 +1907,18 @@ function MakeWithConfig(Config) {
 }
 
 function Make($star) {
+  let backend = Backend$ReventlessInMemory.fromEnv();
   TestRunner$ReventlessInMemory.setup();
+  if (typeof backend !== "object") {
+    BackendState$ReventlessInMemory.setMemory();
+  } else {
+    let path = backend.path;
+    if (backend.resetOnStart) {
+      Backend$ReventlessInMemory.removeFileIfExists(path);
+    }
+    let db = SqliteDriver$ReventlessInMemory.openDb(path);
+    BackendState$ReventlessInMemory.setSqlite(db, path);
+  }
   let Bus = InMemory_Bus$ReventlessInMemory.Impl({
     capacity: undefined,
     silent: false

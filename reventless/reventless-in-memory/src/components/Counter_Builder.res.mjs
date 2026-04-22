@@ -12,7 +12,9 @@ function Make(Bus) {
     api: api,
     apiRole: apiRole
   };
-  let include = Counter_Builder$ReventlessCore.Make(QueryDbStorage)(Api)({
+  let include = Counter_Builder$ReventlessCore.Make({
+    make: QueryDbStorage.make
+  })(Api)({
     make: CounterHandler_InMemory$ReventlessInMemory.make
   });
   return {

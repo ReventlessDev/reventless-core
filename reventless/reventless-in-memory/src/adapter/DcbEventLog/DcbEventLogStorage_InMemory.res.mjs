@@ -5,6 +5,9 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as BackendState$ReventlessInMemory from "../BackendState.res.mjs";
+import * as DcbEventLogStorage_Sqlite$ReventlessInMemory from "./DcbEventLogStorage_Sqlite.res.mjs";
 
 function posToInt(pos) {
   return Stdlib_Option.getOr(Stdlib_Int.fromString(pos, undefined), 0);
@@ -109,9 +112,15 @@ function make(name, indexes, partitionTag, opts) {
 
 function Make(Bus) {
   let make = (name, indexes, partitionTag, opts) => {
-    let match = makeStorage(name, indexes, partitionTag, opts);
-    Bus.registerDcbEventLogRead(match[0], match[1]);
-    return match[2];
+    let db = BackendState$ReventlessInMemory.getDb();
+    if (db !== undefined) {
+      let match = DcbEventLogStorage_Sqlite$ReventlessInMemory.makeStorage(Primitive_option.valFromOption(db), (param, param$1) => {}, (param, param$1) => {}, name, indexes, partitionTag, opts);
+      Bus.registerDcbEventLogRead(match[0], match[1]);
+      return match[2];
+    }
+    let match$1 = makeStorage(name, indexes, partitionTag, opts);
+    Bus.registerDcbEventLogRead(match$1[0], match$1[1]);
+    return match$1[2];
   };
   return {
     make: make

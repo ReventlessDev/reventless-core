@@ -24,13 +24,15 @@ let getPlatformGraphQL = () => platformGraphQLRef.contents
 let platformMCPRef: ref<option<MCP_ServerInstance.t>> = ref(None)
 
 // Configurable platform — set silent=true to suppress diagnostic warnings in tests,
-// splitApi=true to serve core and plugin APIs on separate ports.
-// Usage: module Platform = Platform.MakeWithConfig({let silent = true; let splitApi = false; let cloner = false})
+// splitApi=true to serve core and plugin APIs on separate ports,
+// backend=Backend.Sqlite({...}) to opt into file-backed SQLite persistence.
+// Usage: module Platform = Platform.MakeWithConfig({let silent = true; let splitApi = false; let cloner = false; let backend = Backend.Memory})
 module MakeWithConfig = (
   Config: {
     let silent: bool
     let splitApi: bool
     let cloner: bool
+    let backend: Backend.t
   },
 ): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   // Activate Pulumi mock mode — must happen before any component creation.
@@ -43,6 +45,20 @@ module MakeWithConfig = (
 
   let api = ()
   let apiRole = ()
+
+  // Wire the backend before any storage maker runs. Dispatching adapters
+  // (EventLogStorage_InMemory, QueryDbStorage_InMemory, ...) read BackendState
+  // inside `make` to decide whether to allocate in-memory dicts or open a
+  // SQLite handle. resetOnStart truncates the file at construction.
+  let _ = switch Config.backend {
+  | Backend.Memory => BackendState.setMemory()
+  | Backend.Sqlite({path, resetOnStart}) =>
+    if resetOnStart {
+      Backend.removeFileIfExists(path)
+    }
+    let db = SqliteDriver.openDb(~path)
+    BackendState.setSqlite(~db, ~path)
+  }
 
   module Bus = InMemory_Bus.Impl({
     let capacity = None
@@ -1871,10 +1887,12 @@ module MakeWithConfig = (
 }
 
 // Default platform — diagnostic warnings enabled, split API (admin on separate ports), no cloner.
+// Backend defaults to Memory unless REVENTLESS_LOCAL_BACKEND is set.
 module Make = (): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
   include MakeWithConfig({
     let silent = false
     let splitApi = true
     let cloner = false
+    let backend = Backend.fromEnv()
   })
 }

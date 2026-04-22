@@ -14,7 +14,9 @@ function Make(Bus) {
     api: api,
     apiRole: apiRole
   };
-  let CoreMaker = InboundTranslationSlice_Builder$ReventlessCore.Make(QueryDbStorage)({
+  let CoreMaker = InboundTranslationSlice_Builder$ReventlessCore.Make({
+    make: QueryDbStorage.make
+  })({
     make: QueryDbResolvers.make
   })(Api);
   let Make$1 = Spec => {

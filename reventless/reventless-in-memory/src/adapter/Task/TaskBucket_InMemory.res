@@ -54,6 +54,12 @@ let makeHandler = (callback: Task.bucketCallback): Runtime.eventHandler<
 }
 
 let make: Task_Adapter.bucketMaker<bucketParts> = (~name, ~opts as _) => {
+  // When SQLite is the active backend, eagerly provision the task_object
+  // table so put/get helpers can be used outside the bucketMaker contract.
+  switch BackendState.getDb() {
+  | Some(db) => TaskBucket_Sqlite.ensureSchema(db)
+  | None => ()
+  }
   // Return a single dummy resource so Task_Builder can access Array.getUnsafe(0).id.
   {
     resources: [

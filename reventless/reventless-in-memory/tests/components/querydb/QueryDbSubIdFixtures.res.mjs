@@ -42,7 +42,9 @@ TestRunner$ReventlessInMemory.setup();
 
 let QDbStorage = QueryDbStorage_InMemory$ReventlessInMemory.Make(Bus);
 
-let QDbResolvers = QueryDb_Adapter$ReventlessCore.NoResolvers(QDbStorage);
+let QDbResolvers = QueryDb_Adapter$ReventlessCore.NoResolvers({
+  make: QDbStorage.make
+});
 
 let MetricQueryDbMaker = QueryDb_Builder$ReventlessCore.Make({
   Id: {
@@ -57,7 +59,9 @@ let MetricQueryDbMaker = QueryDb_Builder$ReventlessCore.Make({
   stateSchema: stateSchema,
   config: config,
   subIdConfig: subIdConfig
-})(QDbStorage)(QDbResolvers);
+})({
+  make: QDbStorage.make
+})(QDbResolvers);
 
 let metricQueryDb = MetricQueryDbMaker.make(undefined, undefined, undefined, undefined);
 

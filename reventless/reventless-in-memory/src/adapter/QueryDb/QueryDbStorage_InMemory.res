@@ -4,6 +4,10 @@
 //
 // Storage model: dict<dict<JSON.t>> — partition key → sub-key → item.
 // When no subIdField is configured, all items are stored under the implicit sub-key "".
+//
+// When BackendState is set to Sqlite, the `Make(Bus)` functor delegates to
+// QueryDbStorage_Sqlite at `make` time so the same builder wiring serves
+// both backends.
 
 // Extract sub-key from an item's JSON using the given field name.
 // Returns "" if the field is absent, not an object, or not a string.
@@ -60,7 +64,14 @@ module Make = (Bus: InMemory_Bus.T) => {
   type api = unit
   type role = unit
 
-  let make: QueryDb_Adapter.storageMaker<unit, unit> = (
+  let sqliteBusCallbacks: QueryDbStorage_Sqlite.busCallbacks = {
+    publishStateChange: Bus.publishStateChange,
+    registerQueryDb: Bus.registerQueryDb,
+    registerQueryDbScan: Bus.registerQueryDbScan,
+    registerQueryDbStream: Bus.registerQueryDbStream,
+  }
+
+  let makeMemory: QueryDb_Adapter.storageMaker<unit, unit> = (
     ~name,
     ~indexes as _,
     ~subIdField=?,
@@ -162,4 +173,19 @@ module Make = (Bus: InMemory_Bus.T) => {
       operations: Pulumi.Output.make(ops),
     }
   }
+
+  let make: QueryDb_Adapter.storageMaker<unit, unit> = (
+    ~name,
+    ~indexes,
+    ~subIdField=?,
+    ~ttl=?,
+    ~api,
+    ~apiRole,
+    ~opts,
+  ) =>
+    switch BackendState.getDb() {
+    | Some(db) =>
+      QueryDbStorage_Sqlite.makeStorage(~db, ~bus=sqliteBusCallbacks, ~name, ~indexes, ~subIdField)
+    | None => makeMemory(~name, ~indexes, ~subIdField?, ~ttl?, ~api, ~apiRole, ~opts)
+    }
 }

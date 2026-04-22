@@ -1,6 +1,17 @@
 const path = require("path");
 
 const setupFile = path.resolve(__dirname, "jest.setup.cjs");
+// node:sqlite cannot be resolved by Jest 27's CJS resolver. The bridge .mjs
+// pulls the real module off globalThis (populated by sqliteGlobal setup) so
+// any project that transitively loads reventless-in-memory still resolves it.
+const sqliteBridge = path.resolve(
+  __dirname,
+  "reventless/reventless-in-memory/__mocks__/nodeSqlite.mjs",
+);
+const sqliteGlobalSetup = path.resolve(
+  __dirname,
+  "reventless/reventless-in-memory/tests/setup/sqliteGlobal.cjs",
+);
 
 /** @type {import('jest').Config} */
 module.exports = {
@@ -28,9 +39,10 @@ module.exports = {
         "<rootDir>/tests/EventMappingTest.res.mjs",
         "<rootDir>/tests/ProjectionTest.res.mjs",
       ],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../node_modules/spdx-license-ids/index.json",
@@ -44,9 +56,10 @@ module.exports = {
       displayName: "reventless-in-memory",
       rootDir: "./reventless/reventless-in-memory",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../node_modules/spdx-license-ids/index.json",
@@ -74,9 +87,10 @@ module.exports = {
       displayName: "online-shop-dcb-catalog",
       rootDir: "./examples/online-shop-dcb/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
@@ -90,9 +104,10 @@ module.exports = {
       displayName: "online-shop-dcb-ordering",
       rootDir: "./examples/online-shop-dcb/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
@@ -106,9 +121,10 @@ module.exports = {
       displayName: "example-aggregate-catalog",
       rootDir: "./examples/online-shop-aggregates/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
@@ -122,9 +138,10 @@ module.exports = {
       displayName: "example-aggregate-ordering",
       rootDir: "./examples/online-shop-aggregates/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
@@ -138,9 +155,10 @@ module.exports = {
       displayName: "online-shop-hybrid-catalog",
       rootDir: "./examples/online-shop-hybrid/catalog",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
@@ -154,9 +172,10 @@ module.exports = {
       displayName: "online-shop-hybrid-ordering",
       rootDir: "./examples/online-shop-hybrid/ordering",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
-      moduleFileExtensions: ["js", "mjs"],
-      setupFiles: [setupFile],
+      moduleFileExtensions: ["js", "mjs", "cjs"],
+      setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
+        "^node:sqlite$": sqliteBridge,
         "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
         "^spdx-license-ids$":
           "<rootDir>/../../../node_modules/spdx-license-ids/index.json",

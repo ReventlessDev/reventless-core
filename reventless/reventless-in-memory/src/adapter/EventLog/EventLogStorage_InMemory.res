@@ -1,8 +1,12 @@
 // In-memory event log storage.
 // Uses Stm.TRef for transactional state management, preparing for future
 // atomic append+publish spanning storage and the event bus.
+//
+// When BackendState is set to Sqlite, the `Make(Bus)` functor delegates to
+// EventLogStorage_Sqlite at `make` time so the same builder wiring serves
+// both backends.
 
-let makeStorage = (~name as _name, ~opts as _) => {
+let makeMemoryStorage = (~name as _name, ~opts as _) => {
   let eventsRef =
     Stm.TRef.make(Dict.make())
     ->Stm.commit
@@ -77,15 +81,25 @@ let makeStorage = (~name as _name, ~opts as _) => {
   )
 }
 
+// Alias retained for tests that still want the pure-memory implementation.
+let makeStorage = makeMemoryStorage
+
 let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
-  let (_, _, storage) = makeStorage(~name, ~opts)
+  let (_, _, storage) = makeMemoryStorage(~name, ~opts)
   storage
 }
 
 module Make = (Bus: InMemory_Bus.T) => {
   let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
-    let (storageName, replay, storage) = makeStorage(~name, ~opts)
-    Bus.registerEventLogReplay(storageName, replay)
-    storage
+    switch BackendState.getDb() {
+    | Some(db) =>
+      let (storageName, replay, storage) = EventLogStorage_Sqlite.makeStorage(~db, ~name, ~opts)
+      Bus.registerEventLogReplay(storageName, replay)
+      storage
+    | None =>
+      let (storageName, replay, storage) = makeMemoryStorage(~name, ~opts)
+      Bus.registerEventLogReplay(storageName, replay)
+      storage
+    }
   }
 }

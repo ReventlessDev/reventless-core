@@ -101,8 +101,23 @@ let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~o
 
 module Make = (Bus: InMemory_Bus.T) => {
   let make: DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~partitionTag, ~opts) => {
-    let (storageName, read, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
-    Bus.registerDcbEventLogRead(storageName, read)
-    storage
+    switch BackendState.getDb() {
+    | Some(db) =>
+      let (storageName, read, storage) = DcbEventLogStorage_Sqlite.makeStorage(
+        ~db,
+        ~bus=(_, _) => (),
+        ~publishToTopic=(~topicName as _, ~json as _) => (),
+        ~name,
+        ~indexes,
+        ~partitionTag,
+        ~opts,
+      )
+      Bus.registerDcbEventLogRead(storageName, read)
+      storage
+    | None =>
+      let (storageName, read, storage) = makeStorage(~name, ~indexes, ~partitionTag, ~opts)
+      Bus.registerDcbEventLogRead(storageName, read)
+      storage
+    }
   }
 }

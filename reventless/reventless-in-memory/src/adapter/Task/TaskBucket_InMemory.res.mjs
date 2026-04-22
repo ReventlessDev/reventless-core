@@ -2,7 +2,10 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
+import * as BackendState$ReventlessInMemory from "../BackendState.res.mjs";
+import * as TaskBucket_Sqlite$ReventlessInMemory from "./TaskBucket_Sqlite.res.mjs";
 
 function connect(param, param$1, param$2, param$3, param$4, param$5) {
   
@@ -27,6 +30,10 @@ function makeHandler(callback) {
 }
 
 function make(name, param) {
+  let db = BackendState$ReventlessInMemory.getDb();
+  if (db !== undefined) {
+    TaskBucket_Sqlite$ReventlessInMemory.ensureSchema(Primitive_option.valFromOption(db));
+  }
   return {
     resources: [Adapter$ReventlessInfra.make(Pulumi.output(name), Pulumi.output(name), Pulumi.output("urn:" + name), Pulumi.output("memory:InMemory"), undefined, undefined, undefined, undefined, undefined, undefined)],
     parts: undefined
