@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.58 (2026-04-22)
+
+### Bug Fixes
+
+* **core:** correct plugin structure graph and dcb event publishing ([a61a9d0](https://github.com/ReventlessDev/reventless-core/commit/a61a9d024cffdf36faafc6bec8b8c04221ca3db2))
+* **core:** suppress Plugin_Callback log for unhandled events ([8df817d](https://github.com/ReventlessDev/reventless-core/commit/8df817d79fa24ea0c0229cfd3c11b0cded9b8280))
+* **infra:** harmonize extension and extension-point logging ([ba01793](https://github.com/ReventlessDev/reventless-core/commit/ba0179311c4a5ac66dfa960ed819b1c70492549f))
+* preserve ANSI codes in EffectLogger Array message branch ([d1444b6](https://github.com/ReventlessDev/reventless-core/commit/d1444b666595e9bf5f43d75f6fae47434c6ef7b6))
+* wire DCB cross-plugin event routing and AutoUI command linking ([8baabad](https://github.com/ReventlessDev/reventless-core/commit/8baabad8bce02ab0954a0eeefffb4cf5f448e1e7))
+### Features
+
+* add composite [@display](https://github.com/display)Name annotation with projected displayName column ([115f550](https://github.com/ReventlessDev/reventless-core/commit/115f5506231f635e261d977da0ca32bdabef817f))
+* **api:** type *Id/*Ids fields as ID in GraphQL schema by naming convention ([9d5f6c4](https://github.com/ReventlessDev/reventless-core/commit/9d5f6c489a60a4b1108bdc7cb824f8f2d56d644a))
+* **build:** migrate from npm to pnpm (hoisted layout) ([1de8b77](https://github.com/ReventlessDev/reventless-core/commit/1de8b7753b8f45c63ea3c8d9f64de2f27febd029))
+* expose sourceNames on ReadModel.T for aggregate-to-read-model linking ([379f344](https://github.com/ReventlessDev/reventless-core/commit/379f3445cfd5d18b5d439dd9c6f3bd7d86bdc3d5))
+* **logs:** bold event and command names in log output ([3b09f41](https://github.com/ReventlessDev/reventless-core/commit/3b09f41299bc1f851e15cfb7b8c4a8433f499c7d))
+* **spec:** add Message.variantNameOfJson helper ([a9efb5f](https://github.com/ReventlessDev/reventless-core/commit/a9efb5f1d3ac6180ea8e04dc3c1c2f183d15a984))
+* surface labelField and searchableFields on Platform_UIReadSideDef ([fb7bff8](https://github.com/ReventlessDev/reventless-core/commit/fb7bff8f6fca51c2ed9261adbfedec0f45777d59))
+
+
 # 3.0.0-alpha.57 (2026-04-20)
 
 ### Bug Fixes

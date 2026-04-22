@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog",
-  "version": "3.0.0-alpha.21",
-  "description": "Online Shop example \u2014 Catalog plugin (Product & Category aggregates)",
+  "version": "3.0.0-alpha.22",
+  "description": "Online Shop example — Catalog plugin (Product & Category aggregates)",
   "license": "MIT",
   "scripts": {
     "generate": "generate-plugin src/",
@@ -30,17 +30,17 @@
   "dependencies": {
     "@reventlessdev/online-shop-aggregates-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
-    "@reventlessdev/reventless-in-memory": "workspace:*",
-    "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-infra": "workspace:*"
+    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
+    "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2",
-    "@reventlessdev/reventless-ppx": "workspace:*"
+    "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

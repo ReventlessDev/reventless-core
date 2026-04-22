@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.22 (2026-04-22)
+
+### Bug Fixes
+
+* **deps:** correct dev-app package scope to [@reventlessdev](https://github.com/reventlessdev) ([7b7b285](https://github.com/ReventlessDev/reventless-core/commit/7b7b285b615bd9fd4e68a133544d114498e32e02))
+* wire DCB cross-plugin event routing and AutoUI command linking ([8baabad](https://github.com/ReventlessDev/reventless-core/commit/8baabad8bce02ab0954a0eeefffb4cf5f448e1e7))
+### Features
+
+* **build:** migrate from npm to pnpm (hoisted layout) ([1de8b77](https://github.com/ReventlessDev/reventless-core/commit/1de8b7753b8f45c63ea3c8d9f64de2f27febd029))
+* **spec:** wire UI fragment manifest through plugin make via ~uiBundleUrl ([e07fa3a](https://github.com/ReventlessDev/reventless-core/commit/e07fa3a05d6effdd4c6c6686ab1f7e4e4312c438))
+
+
 # 1.0.0-alpha.21 (2026-04-20)
 
 ### Dependency Updates

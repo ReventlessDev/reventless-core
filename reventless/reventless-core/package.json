@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-core",
-  "version": "3.0.0-alpha.57",
+  "version": "3.0.0-alpha.58",
   "description": "Core package for Reventless framework",
   "license": "MIT",
   "jest": {
@@ -52,10 +52,10 @@
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
+    "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.2.0",
     "sury": "^11.0.0-alpha.4",
-    "sury-ppx": "^11.0.0-alpha.2",
-    "@reventlessdev/reventless-ppx": "workspace:*"
+    "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog-spec",
-  "version": "3.0.0-alpha.12",
-  "description": "Online Shop example \u2014 Catalog plugin specification (extension point specs)",
+  "version": "3.0.0-alpha.13",
+  "description": "Online Shop example — Catalog plugin specification (extension point specs)",
   "license": "MIT",
   "scripts": {
     "build": "rescript build",
@@ -12,9 +12,9 @@
     "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2",
-    "@reventlessdev/reventless-ppx": "workspace:*"
+    "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

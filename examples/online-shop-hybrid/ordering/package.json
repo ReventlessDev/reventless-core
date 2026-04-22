@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering",
-  "version": "1.0.0-alpha.19",
-  "description": "Online Shop Hybrid example \u2014 Ordering plugin (Customer aggregate + Order/CatalogProduct DCB)",
+  "version": "1.0.0-alpha.20",
+  "description": "Online Shop Hybrid example — Ordering plugin (Customer aggregate + Order/CatalogProduct DCB)",
   "license": "MIT",
   "scripts": {
     "generate": "generate-plugin src/",
@@ -30,17 +30,17 @@
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
-    "@reventlessdev/reventless-in-memory": "workspace:*",
-    "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-infra": "workspace:*"
+    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
+    "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2",
-    "@reventlessdev/reventless-ppx": "workspace:*"
+    "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

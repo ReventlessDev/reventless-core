@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.8 (2026-04-22)
+
+### Bug Fixes
+
+* **ci:** remove -as-ppx flag from Linux ppx invocation ([b9c2cca](https://github.com/ReventlessDev/reventless-core/commit/b9c2cca71f5673c7d38e02c3154269635fe7f6f8))
+### Features
+
+* add [@ref](https://github.com/ref) ppx annotation for explicit cross-entity field references ([079c732](https://github.com/ReventlessDev/reventless-core/commit/079c732e81b481e9b2836ea755e1610b13f828fc))
+* add composite [@display](https://github.com/display)Name annotation with projected displayName column ([115f550](https://github.com/ReventlessDev/reventless-core/commit/115f5506231f635e261d977da0ca32bdabef817f))
+
+
 # 1.0.0-alpha.7 (2026-04-09)
 
 ### Bug Fixes

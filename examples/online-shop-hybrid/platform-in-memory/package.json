@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform-in-memory",
-  "version": "1.0.0-alpha.21",
-  "description": "Online Shop Hybrid example \u2014 full platform with Catalog + Ordering plugins (in-memory)",
+  "version": "1.0.0-alpha.22",
+  "description": "Online Shop Hybrid example — full platform with Catalog + Ordering plugins (in-memory)",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",
@@ -20,10 +20,10 @@
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
-    "@reventlessdev/reventless-in-memory": "workspace:*",
-    "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-in-memory": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"
   },
   "publishConfig": {

@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-catalog",
-  "version": "1.0.0-alpha.24",
-  "description": "Online Shop example \u2014 Catalog bounded context (Product & Category) using the DCB pattern",
+  "version": "1.0.0-alpha.25",
+  "description": "Online Shop example — Catalog bounded context (Product & Category) using the DCB pattern",
   "license": "MIT",
   "scripts": {
     "generate": "generate-plugin src/",
@@ -30,17 +30,17 @@
   "dependencies": {
     "@reventlessdev/online-shop-dcb-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-dcb-ordering-spec": "workspace:*",
-    "@reventlessdev/reventless-in-memory": "workspace:*",
-    "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-infra": "workspace:*"
+    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
+    "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.2.0",
     "sury": "^11.0.0-alpha.4",
-    "sury-ppx": "^11.0.0-alpha.2",
-    "@reventlessdev/reventless-ppx": "workspace:*"
+    "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"

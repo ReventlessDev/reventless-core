@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering-aws",
-  "version": "1.0.0-alpha.18",
-  "description": "Online Shop Hybrid \u2014 Ordering plugin AWS deployment",
+  "version": "1.0.0-alpha.19",
+  "description": "Online Shop Hybrid — Ordering plugin AWS deployment",
   "license": "MIT",
   "scripts": {
     "generate": "generate-plugin --aws OrderingPlugin ../ordering/src/",
@@ -9,19 +9,19 @@
     "build": "rescript build"
   },
   "dependencies": {
-    "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
-    "@reventlessdev/reventless-aws": "workspace:*",
-    "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4",
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
+    "@reventlessdev/online-shop-hybrid-ordering": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-infra": "workspace:*"
+    "@reventlessdev/reventless-aws": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.2.0",
-    "sury-ppx": "^11.0.0-alpha.2",
-    "@reventlessdev/reventless-ppx": "workspace:*"
+    "sury-ppx": "^11.0.0-alpha.2"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
