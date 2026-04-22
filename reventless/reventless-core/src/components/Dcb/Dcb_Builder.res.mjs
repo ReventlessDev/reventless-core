@@ -73,7 +73,7 @@ let emptyResult = {
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
     let construct = (name, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts) => {
-      let hasDcb = stateChangeSlices.length !== 0 || stateViewSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0;
+      let hasDcb = stateChangeSlices.length !== 0;
       if (!hasDcb) {
         return emptyResult;
       }

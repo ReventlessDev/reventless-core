@@ -69,12 +69,9 @@ module Make = (
     ~pluginStructure: option<Reventless.Plugin.pluginStructure>=?,
     ~opts: Pulumi.ComponentResource.options,
   ): dcbResult => {
-    let hasDcb =
-      stateChangeSlices->Array.length > 0 ||
-      stateViewSlices->Array.length > 0 ||
-      automationSlices->Array.length > 0 ||
-      outboundTranslationSlices->Array.length > 0 ||
-      inboundTranslationSlices->Array.length > 0
+    // DCB requires at least one StateChangeSlice to produce events to the event log.
+    // View/automation/translation slices are consumers and need produced events to exist.
+    let hasDcb = stateChangeSlices->Array.length > 0
     if hasDcb {
         // Partition slices by channel mode (set by MakeAsync vs Make)
         let syncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)) => !M.isAsync)
