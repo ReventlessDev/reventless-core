@@ -140,14 +140,14 @@ Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       let placeOrder = structure.stateChangeSlices[0];
       return Jest.Expect.toEqual(Jest.Expect.expect(placeOrder.consistencyRead), "AvailableProducts");
     });
-    Jest.test("PlaceOrder command: level Instance, aggregateIdField orderId", () => {
+    Jest.test("PlaceOrder command: level Collection (creation command), aggregateIdField orderId for UUID injection", () => {
       let placeOrder = structure.stateChangeSlices[0];
       let cmd = placeOrder.commands[0];
       return Jest.Expect.toEqual(Jest.Expect.expect([
         cmd.level,
         cmd.aggregateIdField
       ]), [
-        "Instance",
+        "Collection",
         "orderId"
       ]);
     });

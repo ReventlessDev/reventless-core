@@ -81,11 +81,11 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
       expect(placeOrder.consistencyRead)->toEqual(Some("AvailableProducts"))
     })
 
-    test("PlaceOrder command: level Instance, aggregateIdField orderId", () => {
+    test("PlaceOrder command: level Collection (creation command), aggregateIdField orderId for UUID injection", () => {
       let placeOrder = structure.stateChangeSlices->Array.getUnsafe(0)
       let cmd = placeOrder.commands->Array.getUnsafe(0)
       expect((cmd.level, cmd.aggregateIdField))->toEqual((
-        Reventless.Plugin.Instance,
+        Reventless.Plugin.Collection,
         Some("orderId"),
       ))
     })
