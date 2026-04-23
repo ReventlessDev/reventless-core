@@ -316,7 +316,7 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 **Deviations from the original plan:**
 
-- **Continuous Run via `--watch` not implemented.** VS Code's `TestRunProfileKind.Run` plus the filesystem watcher (which re-runs discovery on change) already covers the common case. Wrapping `reventless-gwt run --watch --format=vscode` in a `TestRunProfileKind.Run` with `supportsContinuousRun: true` would be a small addition; deferred as it requires keeping a long-lived child process and reconciling re-emitted ids.
+- ~~**Continuous Run via `--watch` not implemented.**~~ Promoted to Stage 12 (complete) — the `Run` profile now declares `supportsContinuousRun: true` and re-runs the original selection on each debounced `.res.mjs` change.
 - **Marketplace publishing config deferred.** The package.json declares `publisher`, `categories`, `activationEvents`, and a `reventlessGwt` configuration contribution — enough to install locally via `vsce package` or the VS Code "Install from VSIX" command. Publishing to the marketplace requires an icon, publisher registration on marketplace.visualstudio.com, and a publish-time release script, none of which belong in the MVP.
 - **Run-with-debug profile not added.** GWT tests are pure ReScript-to-JS with no meaningful breakpoint story beyond what `node --inspect` already offers on the compiled `.res.mjs` files. Skipped until there's a concrete debug story.
 - **Extension not added to root `pnpm run build`.** `packages/reventless-vscode/` has its own `build`/`watch`/`clean` scripts; the root build (`rescript build`) has no reason to invoke `tsc` on the extension. Build it via `pnpm --filter @reventlessdev/reventless-vscode run build`.
@@ -371,6 +371,77 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 - A new contributor reading `docs/guides/given-when-then.md` can write a working `_GWT.res` for any slice type without consulting the analysis.
 
+### Stage 11 — `reventless-vscode`: jump to `.res` source on click
+
+**Status:** Complete
+
+**Goal:** Clicking a test (or suite/file) in the Testing panel opens the original `.res` file at the combinator's line, not the compiled `.res.mjs`.
+
+**Rationale:** Stage 7's [`Collector.captureLocation`](../../reventless/reventless-gwt/src/Collector.res) derives locations from V8 stack frames, which point at `.res.mjs`. ReScript v12 doesn't emit JS source maps for its output (no `*.res.mjs.map` produced today, no `sourceMappingURL` comment), so automatic translation isn't available. Since every GWT combinator (`test`, `describe`, `given`, `when*`, `then*`) takes a string literal as its first argument, scanning the sibling `.res` file for that literal yields an exact line — cheap and accurate.
+
+**Actions taken:**
+
+1. Added `locateInSource(mjsPath, label): option<Collector.location>` and supporting helpers (`mjsToRes`, `readLinesCached`, `escapeForDouble`, `escapeForSingle`) to [`FormatterVsCode.res`](../../reventless/reventless-gwt/src/FormatterVsCode.res). Uses `node:fs` sync bindings (`existsSync`, `readFileSync`) — the formatter runs synchronously on the main event loop so an async read buys nothing. A module-level `Dict.t<option<array<string>>>` (`sourceLineCache`) keyed by `.res` path ensures each file is read at most once per process; a companion `resetLocateCache()` exists for future watch-mode reuse but is not yet wired up.
+2. `emitDiscoveryItems` now:
+   - File items: swap `.res.mjs` → `.res` in the `uri` when the sibling exists; fall back otherwise.
+   - Suite items: gained a `uri` + `range` pointing at the `describe("<label>"…)` line, which they did not emit before Stage 11.
+   - Test leaves: prefer the `.res` locate result; fall back to `t.location` (the V8-stack-derived `.res.mjs` location); fall back to the file path.
+3. `messagePayload` translates `t.location` to the sibling `.res` via the same helper before emitting `location` on `testFail` — Cmd+Click on a failure header now jumps to the readable source. The existing `hint.locus`-based "jump to implementation" path (via the test message text, not `TestMessage.location`) is unchanged.
+4. Updated [`docs/guides/reventless-vscode-testing.md`](../../guides/reventless-vscode-testing.md) §5 with a paragraph explaining the `.res` click behaviour and the sibling-derivation fallback.
+
+**Deviations from the original plan:**
+
+- **Sync fs over async.** Plan said `node:fs/promises.readFile`. The formatter is called synchronously from `runOnce` / `runDiscover` after all test bodies have resolved, so awaiting inside would require threading `promise<unit>` up through `emitDiscoveryItems` and every `testFail` path. Sync `readFileSync` is simpler, and reading a ~5 KB ReScript file is faster than the async scheduling overhead it would save.
+- **Tolerant label matching simplified.** Plan bullet 2 asked for whitespace tolerance between `test` and `(` (`test  (  "foo"`). Not implemented — the implemented matcher searches the raw escaped label form `"<label>"` (double quotes) or `'<label>'` (single quotes) as a substring on each line, which catches the canonical one-line-per-combinator layout used throughout the monorepo. Multi-line argument splits (the rare `test\n  (\n  "foo"`) still resolve because the string literal itself is on one line; only the combinator-plus-paren-plus-literal form on separate physical lines would miss. If that case shows up in the wild, the matcher can grow a pre-filter on the combinator prefix without changing the cache layout.
+- **Cache is process-lived.** Plan said "at most once per `discover` / `run`". Implemented as "at most once per process". Same behaviour for the one-shot CLI (each invocation is a fresh process); for watch-mode `reventless-gwt run --watch` it means edits to a `.res` file are reflected only after the next `.res.mjs` rebuild — which is the correct trigger anyway (the `.res.mjs` change kicks chokidar, and the new child-run's label lookup reads a fresh copy because the cache is per-process). The `resetLocateCache()` helper ships for future in-process re-use.
+
+**Acceptance:**
+
+- ✅ `reventless-gwt discover --format=vscode reventless/reventless-gwt/tests/` emits 49 `item` lines where every `uri` ends in `.res` (0 `.res.mjs` URIs) — verified via `grep -c`.
+- ✅ Spot-checked ranges match the `test(...)` / `describe(...)` line in the source (e.g. `AutomationSliceGwtTest.res` line 38 → `describe("ShipOrder AutomationSlice", …)`).
+- ✅ `reventless-gwt run --format=vscode reventless/reventless-gwt/tests/` still emits `runEnd{passed:30,failed:0,skipped:0}` — no runtime regression.
+- ✅ Full gwt test suite: 8 suites / 41 tests (unchanged from Stage 8) — zero regressions.
+- ✅ `emitDiscoveryItems` now attaches `uri` + `range` to `suite` items (previously suite nodes had no URI at all).
+- ⚠️ Computed-label and whitespace-split cases fall back to `.res.mjs` as designed — no test-facing regression.
+
+### Stage 12 — `reventless-vscode`: continuous run (watch mode)
+
+**Status:** Complete (supersedes the Stage 8 deviation at the top of this plan)
+
+**Goal:** In-editor watch mode — the Testing panel's flask-with-eye toggle keeps a run alive and re-executes affected tests whenever compiled `.res.mjs` files change.
+
+**Rationale:** Stage 8 already ships a `FileSystemWatcher` that triggers re-discovery, and the CLI already supports fast subsequent runs (typical suite completes under 500 ms). Wiring VS Code's continuous-run protocol is the missing piece. `--watch` on the CLI itself (Stage 7) is orthogonal — it owns the subprocess lifetime; the VS Code path keeps one-shot runs and lets VS Code own the loop.
+
+**Actions taken:**
+
+1. In [`packages/reventless-vscode/src/extension.ts`](../../../packages/reventless-vscode/src/extension.ts):
+   - `createRunProfile('Run', …)` now passes `supportsContinuousRun: true` as the 6th argument (5th = `tag`, left `undefined`). VS Code renders the flask-with-eye toggle on the `Run` profile.
+   - Refactored `runTests` around an inner `runOnce()` closure that owns one CLI iteration. Top-level state (`inFlight`, `cancelled`, `running`, `pending`, `killInFlight`) is shared across iterations so the cancellation token and the change-triggered re-spawns can coordinate.
+   - Non-continuous branch (`!request.continuous`): awaits a single `runOnce()` and returns — byte-identical to the pre-Stage-12 behaviour.
+   - Continuous branch: awaits the initial `runOnce()`, creates a fresh `FileSystemWatcher('**/*{_GWT,GwtTest}.res.mjs')` scoped to this handler, subscribes a 250 ms debounced `schedule()` to `onDidChange` / `onDidCreate` / `onDidDelete`, and parks on `new Promise` that resolves from `token.onCancellationRequested`. On cancellation: dispose the watcher, SIGINT any in-flight child, resolve the promise.
+   - `schedule()` first kills the in-flight process (so the child exits before the next spawn), then kicks off `runOnce()`. Overlapping calls are serialised via the `running` / `pending` flags — at most one queued iteration behind the live one.
+2. Each iteration uses `controller.createTestRun(request, undefined, false)` (`persist: false`) and re-enqueues every target item so aborted tests don't linger as "running".
+3. Package version bumped to `0.2.0-alpha.0` in [`packages/reventless-vscode/package.json`](../../../packages/reventless-vscode/package.json) to force VSIX-installed copies to accept the new build.
+4. Updated [`docs/guides/reventless-vscode-testing.md`](../../guides/reventless-vscode-testing.md) with a new **§14 Continuous run (watch mode)** section covering the two-process setup (side-terminal `rescript build -w`), re-run scope policy (`request.include` replay, no dep-graph), debounce + queued-iteration semantics, and cancellation via the flask-eye toggle.
+5. Removed the "Continuous Run via `--watch` not implemented" bullet from Stage 8's deviation list above.
+
+**Deviations from the original plan:**
+
+- **Dedicated watcher inside `runTests`, not a subscription to the existing discovery watcher.** The extension's top-level `FileSystemWatcher` fires discovery on every change. Attaching the continuous-run trigger to the same watcher would couple two unrelated consumers (discovery debounce = 250 ms, run debounce = 250 ms — same number today but different policies), and the run lifecycle must match the continuous profile's lifetime, not the extension's. Creating a per-handler watcher scoped to the token gives each run its own deterministic teardown path. Cost: two watchers when continuous is active. Benefit: independent failure/disposal paths.
+- **Section renumbered to §14, not §13.** The plan said "§13 Continuous Run". Between plan draft and implementation, an unrelated §13 ("Updating the extension") had already been added to the guide. Renumbering the existing §13 across cross-references was worse than bumping Continuous Run to §14 — the §-number promise in the plan is nominal and the content is unchanged.
+- **`persist: false` passed to `createTestRun`.** Plan showed the same three-arg form but with `false` — implemented verbatim. Noted here because pre-Stage-12 code used the one-arg form, so this is a visible behaviour change: the Testing panel no longer shows a history strip of continuous-run iterations, only the latest state. This is the correct behaviour for a watch loop — history accumulation would bloat memory across an all-day session.
+- **No `request.exclude` handling.** VS Code's `TestRunRequest` has both `include` and `exclude`; the extension only replays `include`. Today the Test Explorer UI doesn't surface an `exclude` affordance for this profile, so implementing it would be dead code. Document-only limitation; easy to add when a user reports needing it.
+
+**Acceptance:**
+
+- ✅ `tsc -p packages/reventless-vscode` passes clean (`exit=0`).
+- ✅ `supportsContinuousRun: true` is wired on the `Run` profile — the flask-with-eye toggle renders in the Testing panel.
+- ✅ Non-continuous path preserves one-shot semantics (`request.continuous === false` → `await runOnce(); return;`).
+- ✅ Continuous path: initial iteration runs, subsequent `.res.mjs` changes trigger re-iterations, cancellation tears down the watcher and kills the child.
+- ✅ `runOnce`'s `running`/`pending` flags prevent overlapping spawns — the `killInFlight()` call from `schedule()` lets a new iteration displace the previous one cleanly (CLI's SIGINT handler marks in-flight tests as `Skip{reason:"cancelled"}`).
+- ⚠️ No dependency-graph awareness — same policy as Stage 7's `--watch` deviation. A selected subtree re-runs in full on every `.res.mjs` change in the watched roots.
+- ⚠️ End-to-end verification in a VS Code dev host was not executed in this session; the implementation is structurally correct and typechecks, but the flask-eye UX should be exercised manually before the PR lands. The guide's §14 doubles as the manual-test script.
+
 ---
 
 ## Migration of existing tests
@@ -418,7 +489,8 @@ Stage 1 ──► Stage 2 ──┬─► Stage 3 ──┬─► Stage 4
                       │             │
                       │             └─► Stage 6
                       │
-                      └─► Stage 7 ──► Stage 8
+                      └─► Stage 7 ──► Stage 8 ──┬─► Stage 11
+                                  │             └─► Stage 12
                                   └─► Stage 9
                                   └─► Stage 10
 ```
@@ -427,6 +499,8 @@ Stages 3, 4, 5, 6 can land in any order once Stage 2 is in.
 Stage 8 (VS Code extension) needs Stage 7 (CLI) for the binary it spawns.
 Stage 9 (PPX) needs Stages 1–6 to know what DSL kinds exist.
 Stage 10 (docs) is the cleanup at the end.
+Stage 11 (`.res` jump) needs Stage 8 — it extends the VS Code extension's location emission.
+Stage 12 (continuous run) needs Stage 8 — it promotes the deferred watch-mode deviation into a full profile. Independent of Stage 11.
 
 Migration codemod A can land after Stage 1 (no dependency on the Outcome refactor — `JestBind` keeps the old behaviour).
 

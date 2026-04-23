@@ -15,6 +15,88 @@ let setIfSome = (d: Dict.t<JSON.t>, k: string, o: option<JSON.t>) =>
 
 let uriOf = (path: string) => "file://" ++ path
 
+// ─── .res-source locator ───────────────────────────────────────────────────
+// ReScript v12 does not emit JS source maps, so V8 stack frames (the basis for
+// Collector.captureLocation) point at `.res.mjs`. Every GWT combinator
+// (`test`, `describe`, `given`, …) takes a string literal as its first
+// argument — scanning the sibling `.res` file for that literal yields an
+// exact line. This turns the Testing panel's tree-node clicks into
+// `.res` jumps instead of compiled-output jumps.
+
+@module("node:fs") external _readFileSync: (string, string) => string = "readFileSync"
+@module("node:fs") external _existsSync: string => bool = "existsSync"
+
+let sourceLineCache: Dict.t<option<array<string>>> = Dict.make()
+
+let resetLocateCache = () => {
+  sourceLineCache
+  ->Dict.keysToArray
+  ->Array.forEach(k => Dict.delete(sourceLineCache, k))
+}
+
+let mjsToRes = (mjsPath: string): option<string> =>
+  if String.endsWith(mjsPath, ".res.mjs") {
+    Some(String.slice(mjsPath, ~start=0, ~end=String.length(mjsPath) - 4))
+  } else {
+    None
+  }
+
+let readLinesCached = (resPath: string): option<array<string>> =>
+  switch sourceLineCache->Dict.get(resPath) {
+  | Some(v) => v
+  | None => {
+      let v = try {
+        _existsSync(resPath)
+          ? Some(_readFileSync(resPath, "utf8")->String.split("\n"))
+          : None
+      } catch {
+      | _ => None
+      }
+      sourceLineCache->Dict.set(resPath, v)
+      v
+    }
+  }
+
+let escapeForDouble = (s: string) =>
+  s->String.replaceAll("\\", "\\\\")->String.replaceAll("\"", "\\\"")
+
+let escapeForSingle = (s: string) =>
+  s->String.replaceAll("\\", "\\\\")->String.replaceAll("'", "\\'")
+
+let locateInSource = (mjsPath: string, label: string): option<Collector.location> =>
+  switch mjsToRes(mjsPath) {
+  | None => None
+  | Some(resPath) =>
+    switch readLinesCached(resPath) {
+    | None => None
+    | Some(lines) => {
+        let needleD = "\"" ++ escapeForDouble(label) ++ "\""
+        let needleS = "'" ++ escapeForSingle(label) ++ "'"
+        let total = lines->Array.length
+        let rec find = i =>
+          if i >= total {
+            None
+          } else {
+            let line = lines->Array.getUnsafe(i)
+            let idxD = String.indexOf(line, needleD)
+            let idxS = String.indexOf(line, needleS)
+            let col = switch (idxD, idxS) {
+            | (-1, -1) => -1
+            | (-1, c) => c + 1
+            | (c, -1) => c + 1
+            | (a, b) => (a < b ? a : b) + 1
+            }
+            if col < 0 {
+              find(i + 1)
+            } else {
+              Some({Collector.file: resPath, line: i + 1, column: col})
+            }
+          }
+        find(0)
+      }
+    }
+  }
+
 let rangeJson = (loc: Collector.location): JSON.t => {
   let start = Dict.make()
   start->Dict.set("line", JSON.Encode.int(loc.line - 1))
@@ -45,15 +127,23 @@ let discoverStart = () => {
 
 // Used in both `discover` and `run` flows — emit one `item` per file, one
 // per describe, one per test so the tree populates before any test runs.
+// File / suite / test URIs point at `.res` sources whenever the sibling
+// `.res` is readable — `locateInSource` grep-scans for the quoted label.
+// Falls back to `.res.mjs` when no `.res` is adjacent (e.g. a hand-written
+// `.mjs` or a renamed build output) so nothing regresses for downstream users.
 let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>) => {
   files->Array.forEach(((path, tests)) => {
     let fileId = path
+    let fileUri = switch mjsToRes(path) {
+    | Some(resPath) if _existsSync(resPath) => uriOf(resPath)
+    | _ => uriOf(path)
+    }
     let d = Dict.make()
     d->Dict.set("event", JSON.Encode.string("item"))
     d->Dict.set("id", JSON.Encode.string(fileId))
     d->Dict.set("kind", JSON.Encode.string("file"))
     d->Dict.set("label", JSON.Encode.string(path))
-    d->Dict.set("uri", JSON.Encode.string(uriOf(path)))
+    d->Dict.set("uri", JSON.Encode.string(fileUri))
     event(d)
     // Emit describe suites and test leaves.
     let seenDescribes = Dict.make()
@@ -77,6 +167,13 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
             s->Dict.set("parent", JSON.Encode.string(parent))
             s->Dict.set("kind", JSON.Encode.string("suite"))
             s->Dict.set("label", JSON.Encode.string(label))
+            switch locateInSource(path, label) {
+            | Some(loc) => {
+                s->Dict.set("uri", JSON.Encode.string(uriOf(loc.file)))
+                s->Dict.set("range", rangeJson(loc))
+              }
+            | None => ()
+            }
             event(s)
           }
         }
@@ -92,12 +189,13 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
       leaf->Dict.set("parent", JSON.Encode.string(parent))
       leaf->Dict.set("kind", JSON.Encode.string("test"))
       leaf->Dict.set("label", JSON.Encode.string(t.name))
-      switch t.location {
-      | Some(loc) => {
+      let resLoc = locateInSource(path, t.name)
+      switch (resLoc, t.location) {
+      | (Some(loc), _) | (None, Some(loc)) => {
           leaf->Dict.set("uri", JSON.Encode.string(uriOf(loc.file)))
           leaf->Dict.set("range", rangeJson(loc))
         }
-      | None => ()
+      | (None, None) => ()
       }
       event(leaf)
     })
@@ -197,10 +295,13 @@ let messagePayload = (t: RunnerTypes.testResult): JSON.t => {
           d->Dict.set("actual", JSON.Encode.string(error))
         }
       }
-      // Location points at the implementation file (hint.locus) when available;
-      // fall back to the test file location.
+      // Location points at the test file — prefer the sibling `.res` path
+      // resolved via the test label so Cmd+Click on the failure header
+      // jumps to the readable source, not the compiled `.res.mjs`.
       switch t.location {
-      | Some(loc) => d->Dict.set("location", locationJson(loc))
+      | Some(loc) =>
+        let resLoc = locateInSource(loc.file, t.name)
+        d->Dict.set("location", locationJson(resLoc->Option.getOr(loc)))
       | None => ()
       }
     }

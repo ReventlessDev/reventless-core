@@ -89,6 +89,8 @@ Open the **Testing** panel (flask icon in the sidebar). Expect:
 
 These counts should match `pnpm --filter @reventlessdev/reventless-gwt test`.
 
+Clicking a file, suite, or test row opens the underlying `.res` **source** (not the compiled `.res.mjs`) at the combinator's line. The CLI derives the `.res` sibling from the discovered `.res.mjs` path and grep-scans for the quoted label — `test("collect: …"` places the cursor on that line. Renamed or hand-written `.mjs` files with no sibling `.res` fall back to the compiled path.
+
 If the panel is empty, check **Output → Log (Extension Host)** for the `reventless-gwt: discovery failed` message — most commonly an unresolved `reventless-gwt` binary (see §8) or a ReScript compile error that prevented `.res.mjs` from being produced.
 
 ---
@@ -156,7 +158,7 @@ The watcher glob is `**/*{_GWT,GwtTest}.res.mjs`, so changes to non-compiled sou
 
 - **`node_modules/.bin/reventless-gwt` missing.** The extension's walk-up fails, falls back to PATH, which usually isn't set. Fix: `pnpm install` at the monorepo root, or set `reventlessGwt.cliPath` explicitly.
 - **Stale `.res.mjs`.** Editing `.res` sources without rebuilding means the extension still sees the old test set. Always rebuild the gwt package after source edits.
-- **Extension source edits.** Rebuild the extension (`pnpm --filter @reventlessdev/reventless-vscode run build`) and **Developer: Reload Window** in the dev host.
+- **Extension source edits.** See §13 for the update flow in both the dev host and a VSIX-installed copy.
 - **Multiple workspace folders.** The extension currently uses `vscode.workspace.workspaceFolders?.[0]` — only the first folder is scanned. Multi-root workspaces need a follow-up.
 - **Framework log lines in CLI output.** The CLI launcher defaults `LOG_LEVEL=silent` so `Logger.fromEnv()` produces no output — Info/Debug logs would otherwise interleave with NDJSON on stdout and break JSON parsing. To re-enable framework logs (debugging a slice), run with an explicit override: `LOG_LEVEL=info reventless-gwt run …`. Levels: `silent` | `error` | `warn` | `info` | `debug`.
 
@@ -174,6 +176,106 @@ pnpm dlx vsce package --no-dependencies -o reventless-vscode.vsix
 Then in your main VS Code: **Extensions: Install from VSIX…** → pick the generated `.vsix`. Uninstall via **Extensions** panel → right-click → **Uninstall** when you're done.
 
 Marketplace publishing (icon, publisher registration, `vsce publish`) is deferred — see Stage 8 deviations in [`docs/plans/reventless-gwt.md`](../plans/reventless-gwt.md).
+
+---
+
+## 13. Updating the extension
+
+Which rebuild + reload you need depends on what you edited and how the extension is loaded.
+
+### You edited `src/extension.ts` (dev host — §3)
+
+```bash
+pnpm --filter @reventlessdev/reventless-vscode run build
+```
+
+Then in the dev host window: **Cmd+Shift+P → Developer: Reload Window**. The build writes `out/extension.js`; Reload Window re-reads it. No need to exit and relaunch.
+
+If you're using **Option B (F5)**, the `preLaunchTask: "npm: build"` in `.vscode/launch.json` runs the build for you — just stop the debug session (Shift+F5) and press F5 again.
+
+### You edited `package.json` (dev host)
+
+Changes under `contributes.*` (commands, configuration, menus) are picked up by **Developer: Reload Window**. Changes to `activationEvents` or `main` sometimes aren't — if a new command or configuration key doesn't appear, fully close and relaunch the dev host (Option B: stop and F5 again; Option A: close the window, reload the main window, reopen the dev host).
+
+### You edited the CLI or a GWT DSL (`reventless/reventless-gwt/src/**`)
+
+```bash
+pnpm --filter @reventlessdev/reventless-gwt run build
+```
+
+The extension's file watcher (§10) sees the changed `.res.mjs` files and re-runs discovery within ~250 ms. No Reload Window needed — the extension code itself hasn't changed.
+
+### You edited both (most common)
+
+```bash
+pnpm --filter @reventlessdev/reventless-gwt run build && \
+  pnpm --filter @reventlessdev/reventless-vscode run build
+```
+
+Then Reload Window in the dev host.
+
+### You installed a VSIX in your main VS Code (§12)
+
+VSIX-installed extensions do **not** hot-reload on `out/extension.js` changes — they live at `~/.vscode/extensions/…` and are read at install time. Every update needs a repackage + reinstall:
+
+1. Rebuild the CLI (if changed) and the extension — same commands as above.
+2. Repackage:
+   ```bash
+   cd packages/reventless-vscode
+   pnpm dlx vsce package --no-dependencies -o reventless-vscode.vsix
+   ```
+3. In main VS Code: **Cmd+Shift+P → Extensions: Install from VSIX…** → pick the new `.vsix`. Accept the "Already installed — update?" prompt.
+4. **Developer: Reload Window** in every VS Code window that had the old extension active.
+
+If the version in `package.json` didn't change, some versions of VS Code refuse to reinstall silently. Bump the `version` field (`0.1.0` → `0.1.1`) or uninstall first via **Extensions** panel → right-click → **Uninstall**.
+
+### Sanity check after any update
+
+- Testing panel refreshes; discovered test count matches `pnpm --filter @reventlessdev/reventless-gwt test`.
+- **Output → Log (Extension Host)** (dev host) or **Output → Reventless GWT** (main VS Code) has no `reventless-gwt: discovery failed` lines. If it does, the CLI resolution broke — see §11's first bullet.
+
+---
+
+## 14. Continuous run (watch mode)
+
+The `Run` profile declares `supportsContinuousRun: true`, so the Testing panel shows a flask-with-eye toggle next to the normal double-play. Click it to keep a run alive: the extension executes the initial selection once, then re-executes the same selection every time a compiled `.res.mjs` under the watched roots changes.
+
+### Two-process setup
+
+Continuous run fires on `.res.mjs` changes, not `.res` saves. Run the ReScript watcher in a side terminal so edits produce fresh compiled output:
+
+```bash
+pnpm --filter @reventlessdev/reventless-gwt run start
+# or from inside the affected package:
+pnpm run start   # equivalent to `rescript build -w`
+```
+
+The extension deliberately doesn't launch its own `rescript build -w` — fighting a watcher the user already has running is out of scope, and `rescript` serialises builds by default so racing two watchers causes lockfile contention.
+
+### What gets re-run
+
+Whatever the user originally selected — the extension replays `request.include` verbatim:
+
+- **Run all** → every discovered test re-runs.
+- **Run a file / suite / single test** → only that subtree re-runs.
+
+No dependency-graph awareness: editing one slice re-runs every selected test, not just the affected ones. A full suite completes in well under a second today (≈250 ms for 30 tests), so the added work isn't a concern.
+
+### How cancellation works
+
+Each iteration starts with `killInFlight()` — if a previous iteration is still mid-flight when a new `.res.mjs` change arrives, the extension sends `SIGINT` to the child CLI. The CLI's `Cancellation` module (§7 of the plan, Stage 7) traps the signal, marks in-flight tests as `Skip{reason:"cancelled"}`, and exits cleanly. The new iteration then spawns a fresh process.
+
+Toggling the flask-eye icon off fires `token.onCancellationRequested`, which disposes the `FileSystemWatcher` subscription and kills any live process. Subsequent file edits are ignored until continuous run is re-enabled.
+
+### Debounce and rapid edits
+
+File-change events are debounced at 250 ms. A burst of saves (e.g. `:wa` across several files) collapses into a single re-run. If saves arrive while an iteration is already running, the extension marks a `pending` re-run and fires it as soon as the current iteration finishes — at most one queued behind the live one.
+
+### Known limitations
+
+- **Single debounce window.** A save that arrives 250 ms after a still-running iteration triggers a second iteration immediately after the first finishes, even if the first was already up-to-date with all changes. No practical impact — the extra run costs ≈ one suite duration.
+- **Reload Window cancels continuous mode.** Expected: the token fires as part of window teardown. Re-enable the flask-eye after reload.
+- **Closing the test panel does not cancel.** VS Code keeps the run profile alive; only the flask-eye toggle actually tears down the watcher.
 
 ---
 
