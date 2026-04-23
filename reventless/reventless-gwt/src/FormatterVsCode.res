@@ -15,6 +15,21 @@ let setIfSome = (d: Dict.t<JSON.t>, k: string, o: option<JSON.t>) =>
 
 let uriOf = (path: string) => "file://" ++ path
 
+@val external processCwd: unit => string = "process.cwd"
+@module("node:path") external pathBasename: string => string = "basename"
+@module("node:path") external pathRelative: (string, string) => string = "relative"
+
+let fileLabelOf = (abs: string) => {
+  let base = pathBasename(abs)
+  if String.endsWith(base, ".res.mjs") {
+    String.slice(base, ~start=0, ~end=String.length(base) - 8)
+  } else {
+    base
+  }
+}
+
+let relativeToCwd = (abs: string) => pathRelative(processCwd(), abs)
+
 // ─── .res-source locator ───────────────────────────────────────────────────
 // ReScript v12 does not emit JS source maps, so V8 stack frames (the basis for
 // Collector.captureLocation) point at `.res.mjs`. Every GWT combinator
@@ -142,7 +157,8 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
     d->Dict.set("event", JSON.Encode.string("item"))
     d->Dict.set("id", JSON.Encode.string(fileId))
     d->Dict.set("kind", JSON.Encode.string("file"))
-    d->Dict.set("label", JSON.Encode.string(path))
+    d->Dict.set("label", JSON.Encode.string(fileLabelOf(path)))
+    d->Dict.set("description", JSON.Encode.string(relativeToCwd(path)))
     d->Dict.set("uri", JSON.Encode.string(fileUri))
     event(d)
     // Emit describe suites and test leaves.

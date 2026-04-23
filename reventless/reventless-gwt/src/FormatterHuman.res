@@ -17,9 +17,23 @@ type picocolors = {
 @module("picocolors") external pc: picocolors = "default"
 
 @val external processStdout: {"write": string => unit} = "process.stdout"
+@val external processCwd: unit => string = "process.cwd"
+@module("node:path") external pathBasename: string => string = "basename"
+@module("node:path") external pathRelative: (string, string) => string = "relative"
 
 let write = (s: string) => processStdout["write"](s)
 let writeLine = (s: string) => write(s ++ "\n")
+
+let formatFilePath = (abs: string) => {
+  let base = pathBasename(abs)
+  let name = if String.endsWith(base, ".res.mjs") {
+    String.slice(base, ~start=0, ~end=String.length(base) - 8)
+  } else {
+    base
+  }
+  let rel = pathRelative(processCwd(), abs)
+  `${name} - ${rel}`
+}
 
 let formatLocation = (loc: option<Collector.location>) =>
   switch loc {
@@ -100,7 +114,7 @@ let emitTest = (t: RunnerTypes.testResult) => {
 
 let emitFile = (f: RunnerTypes.fileResult) => {
   writeLine("")
-  writeLine(pc.bold(f.path))
+  writeLine(pc.bold(formatFilePath(f.path)))
   f.tests->Array.forEach(emitTest)
 }
 
