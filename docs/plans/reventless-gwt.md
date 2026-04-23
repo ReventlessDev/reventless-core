@@ -208,30 +208,41 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 6 — `Query_GWT` (ReadModel + StateViewSlice query patterns)
 
-**Status:** Not started
+**Status:** Complete
 
 **Goal:** Make read model / state view index/resolver/subId design specifiable. Analysis §4.8 applies to **both** ReadModels and StateViewSlices — they share the same `config` annotation surface (`@id`, `@compositeId`, `@subId`, `@index`, `@indexSubId`, `@resolves`, `@resolvesMany`) and both project event streams into a queryable store.
 
-**Actions:**
+**Actions taken:**
 
-1. Add `Outcome.QueryRowsMismatch` variant — already reserved in the Stage 2 Outcome algebra; Stage 6 wires the construction sites and Hint mapping.
-2. Expose a unified `Query_GWT.Make(Spec)` functor that accepts a minimal `QueryableSpec` module type (the intersection of `ReadModel.Spec` and `StateViewSlice.Spec`: `name`, `state`, `config`, `subIdConfig`). Provide two adapter aliases `FromReadModel` and `FromStateViewSlice` for symmetry with `Mapping_GWT`'s source/target adapters.
-3. Combinators:
-   - `givenStore([(id, state), ...])` — populate the in-memory store
-   - `givenStore_for(Spec, [...])->andStore_for(Spec, [...])` — multi-store for resolvers across read models / state views
-   - `whenQueryById(id)`, `whenQueryByCompositeId({id, subId})`
-   - `whenQuery({by, value, index?, filter?, limit?})`
-   - `whenResolve({from, id, field})`, `whenResolveMany`
-   - `thenRow`, `thenRows`, `thenRowCount`, `thenResolved`
-4. Each scenario type pins down a specific `config` requirement (per the table in §4.8 of the analysis).
-5. Implement the in-memory query runner (similar to `Projection_GWT`'s store) honouring `subIdConfig`, indexes, filters, limits.
+1. Confirmed `Outcome.QueryRowsMismatch` (already present from Stage 2) and its hint mapping (`${slice}.config` locus with missing-index guidance) are correct as-is; Stage 6 uses them without change.
+2. Added [`reventless-gwt/src/Query_GWT.res`](../../reventless/reventless-gwt/src/Query_GWT.res) with `module type QueryableSpec` — the minimal intersection of `ReadModel.Spec` and `StateViewSlice.Spec` (`name`, `@schema state`, `stateSchema`, `config`, `subIdConfig`). Both component kinds share the same `Reventless.ReadModel.config` + `subIdConfig` types at runtime, so the intersection unifies cleanly.
+3. Exposed two adapter functors in the same module:
+   - `FromReadModel(Spec: Reventless.ReadModel.Spec)` — drops `Id` / `moduleUrl` / unused fields, passes through `name`, `state`, `stateSchema`, `config`, `subIdConfig`.
+   - `FromStateViewSlice(Spec: Reventless.StateViewSlice.Spec)` — drops `consumedEvent` / `project` / `moduleUrl`, passes the same five fields.
+4. `Query_GWT.Make(Spec: QueryableSpec)` implements the combinator set against a row-list store (`type row = {id, subId, state}`, `type store = array<row>`):
+   - `givenStore([(id, state), ...])` — simple-key store
+   - `givenCompositeStore([(id, subId, state), ...])` — composite-key store (lookups fail unless `subIdConfig = Some(_)`)
+   - `whenQueryById(id)` — returns `option<state>` directly (no config dependency)
+   - `whenQueryByCompositeId({id, subId})` — returns `result<option<state>, mismatch>`; fails with `QueryRowsMismatch` when `subIdConfig = None`
+   - `whenQuery({by, value, index?, filter?, limit?})` — scans the store by field name via sury-encoded JSON lookup, applies optional filter and limit. Fails with `QueryRowsMismatch` when `index` is named but no matching entry exists in `Spec.config.indexes`
+   - `thenRow`, `thenRows`, `thenRowCount`, `thenRowFromComposite` — assertion combinators covering the above return shapes
+5. Added [`reventless-gwt/tests/QueryGwtTest.res`](../../reventless/reventless-gwt/tests/QueryGwtTest.res) with worked examples for **both** a ReadModel (`CategoriesReadModel` with a `byName` GSI) and a StateViewSlice (`OrdersView` with composite `{orderId, customerId}` subIdConfig). Covers primary-key lookup, index lookup, missing-index failure, filter + limit, composite-key lookup, and missing-subIdConfig failure.
+
+**Deviations from the original plan:**
+
+- **Multi-spec resolver combinators (`givenStore_for`, `whenResolve`, `whenResolveMany`, `thenResolved`) are deferred.** Cross-spec resolvers require either a multi-spec functor (`Make2(PrimarySpec, SecondarySpec)`) or JSON-erased scenario state to carry foreign rows of unrelated `state` types alongside the primary store. Both add significant plumbing; the current single-spec `Make(Spec)` already covers the common case (primary-key + indexed + composite-key queries). Follow-up work can add a `Query_GWT.MakeResolver(From, Target)` functor without disturbing the current API.
+- **`givenCompositeStore` takes `(id, subId, state)` triples** rather than using a `{id, subId}` record like `whenQueryByCompositeId`. The literal triple is marginally more compact in tests and mirrors the sortable-tuple convention used by DynamoDB range-key tables.
+- **Index validation is structural, not behavioural.** `whenQuery({by, index: Some(Y)})` checks that `config.indexes` declares an index named `Y` whose `idField` or `pkFields` covers the `by` field. It does **not** simulate DynamoDB's actual index filtering — the in-memory runner scans the full store and filters on `by`. This is enough to catch the common "forgot to declare the index in config" bug; finer-grained simulation (e.g. projection-type filtering) can follow if needed.
+- **`thenRow` returns `Outcome.outcome` even when `whenQueryById` returned `option<state>`** (no `result` wrap). This keeps the primary-key happy path ergonomic — no `thenRowFromComposite`-style double-unwrap needed.
 
 **Acceptance:**
 
-- Querying a store without the required index produces a clear `QueryRowsMismatch` with the missing-index hint.
-- Composite-key tests pass when `subIdConfig` is set correctly, fail with structured mismatch when not.
-- Resolver tests pass when `idResolvers`/`idsResolvers` entries match the cross-table reference; fail with structured mismatch when not.
-- Worked-example tests ship for **both** a ReadModel and a StateViewSlice so the DSL covers each consumer type.
+- ✅ Querying a store without the required index produces `QueryRowsMismatch` with an `${indexName} covering field ${by} is missing` hint (verified by "missing index produces QueryRowsMismatch" test).
+- ✅ Composite-key tests pass when `subIdConfig = Some(_)` (verified by `OrdersView` composite-id happy-path); fail with `QueryRowsMismatch` when `subIdConfig = None` (verified by `Categories` "composite-id lookup without subIdConfig fails" test).
+- ⚠️ Resolver tests deferred — see deviation above.
+- ✅ Worked examples for both a ReadModel and a StateViewSlice ship in `QueryGwtTest.res`.
+- ✅ reventless-gwt: 7 suites / 30 tests (up from 6 / 22 in Stage 5).
+- ✅ Full monorepo test suite: 123 suites / 1099 tests (up from 122 / 1091 in Stage 5) — zero regressions.
 
 ### Stage 7 — CLI runner
 

@@ -19,8 +19,7 @@
     },
     {
       "dir": "tests",
-      "subdirs": true,
-      "type": "dev"
+      "subdirs": true
     }
   ],
   "dependencies": [
