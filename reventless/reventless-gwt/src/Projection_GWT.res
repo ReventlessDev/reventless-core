@@ -6,57 +6,26 @@ module type T = {
 
   let describe: (string, unit => unit) => unit
   let describeWithId: (string, string, unit => unit) => unit
-  let test: (string, ~timeout: int=?, unit => promise<Jest.assertion>) => unit
+  let test: (string, ~timeout: int=?, unit => promise<Outcome.outcome>) => unit
 
   type store = dict<array<targetState>>
+  type storeThunk = unit => promise<store>
 
   let givenEvents: array<sourceEvent> => promise<store>
   let givenEventsWithTime: array<(string, sourceEvent)> => promise<store>
-  let whenEvent: (promise<store>, sourceEvent) => Jest.Expect.plainPartial<unit => promise<store>>
-  let whenEvents: (
-    promise<store>,
-    array<sourceEvent>,
-  ) => Jest.Expect.plainPartial<unit => promise<store>>
-  let whenEventWithTime: (
-    promise<store>,
-    string,
-    sourceEvent,
-  ) => Jest.Expect.plainPartial<unit => promise<store>>
-  let whenEventsWithTime: (
-    promise<store>,
-    array<(string, sourceEvent)>,
-  ) => Jest.Expect.plainPartial<unit => promise<store>>
-  let thenStates: (
-    Jest.Expect.plainPartial<unit => promise<store>>,
-    array<targetState>,
-  ) => promise<Jest.assertion>
-  let thenStatesWithId: (
-    Jest.Expect.plainPartial<unit => promise<store>>,
-    string,
-    array<targetState>,
-  ) => promise<Jest.assertion>
-  let thenAllStates: (
-    Jest.Expect.plainPartial<unit => promise<store>>,
-    store,
-  ) => promise<Jest.assertion>
-  let thenState: (
-    Jest.Expect.plainPartial<unit => promise<store>>,
-    targetState,
-  ) => promise<Jest.assertion>
-  let thenStateWithId: (
-    Jest.Expect.plainPartial<unit => promise<store>>,
-    string,
-    targetState,
-  ) => promise<Jest.assertion>
-  let thenNoState: Jest.Expect.plainPartial<unit => promise<store>> => promise<Jest.assertion>
-  let thenThrow: Jest.Expect.plainPartial<unit => promise<store>> => promise<Jest.assertion>
-  let thenFail: Jest.Expect.plainPartial<unit => promise<store>> => promise<Jest.assertion>
+  let whenEvent: (promise<store>, sourceEvent) => storeThunk
+  let whenEvents: (promise<store>, array<sourceEvent>) => storeThunk
+  let whenEventWithTime: (promise<store>, string, sourceEvent) => storeThunk
+  let whenEventsWithTime: (promise<store>, array<(string, sourceEvent)>) => storeThunk
+  let thenStates: (storeThunk, array<targetState>) => promise<Outcome.outcome>
+  let thenStatesWithId: (storeThunk, string, array<targetState>) => promise<Outcome.outcome>
+  let thenAllStates: (storeThunk, store) => promise<Outcome.outcome>
+  let thenState: (storeThunk, targetState) => promise<Outcome.outcome>
+  let thenStateWithId: (storeThunk, string, targetState) => promise<Outcome.outcome>
+  let thenNoState: storeThunk => promise<Outcome.outcome>
+  let thenThrow: storeThunk => promise<Outcome.outcome>
+  let thenFail: storeThunk => promise<Outcome.outcome>
 }
-
-let unpackPlainPartial: Jest.Expect.plainPartial<'a> => 'a = p =>
-  switch p {
-  | #Just(unpacked) => unpacked
-  }
 
 let handleActions = Projection.handleActions // create alias to avoid shadowing of same named modules
 
@@ -68,14 +37,15 @@ module Make = (Projection: Reventless.Projection.Mapping): (
   let testId = ref(TestFixtures.id)
   let meta = ref(TestFixtures.meta)
 
-  let describe = Jest.describe
+  let describe = JestBind.describe
   let describeWithId = (description, id, fn) => {
     testId := id
-    Jest.describe(description, fn)
+    JestBind.describe(description, fn)
   }
-  let test = Jest.testPromise
+  let test = JestBind.testPromise
 
   type store = dict<array<Projection.targetState>>
+  type storeThunk = unit => promise<store>
 
   let getSubId = state => Projection.subIdConfig->Option.map(({getSubId}) => state->getSubId)
   let hasSubId = (state, subId) => state->getSubId->Option.getOrThrow == subId
@@ -103,8 +73,6 @@ module Make = (Projection: Reventless.Projection.Mapping): (
       ->Option.getOr([]),
     )
 
-  // Belt.Result removed — Ok/Error are global in RescriptCore
-  //open QueryDb
   let load = (store, id) => store->states(id)->Ok->Promise.resolve
   let save = (store, id, state, saveMode: QueryDb.saveMode, _ttl) =>
     switch (store->states(id), saveMode) {
@@ -185,85 +153,163 @@ module Make = (Projection: Reventless.Projection.Mapping): (
       }),
     )
 
-  open Jest.Expect
-  let whenEvent = (store, event) =>
-    expect(async () =>
-      await (await store)->update([{Message.id: testId.contents, meta: meta.contents, event}])
-    )
-  let whenEvents = (store, events) =>
-    expect(async () =>
-      await (await store)->update(
-        events->Array.map(event => {Message.id: testId.contents, meta: meta.contents, event}),
+  let whenEvent = (store, event): storeThunk =>
+    () =>
+      (
+        async () =>
+          await (await store)->update([{Message.id: testId.contents, meta: meta.contents, event}])
+      )()
+  let whenEvents = (store, events): storeThunk =>
+    () =>
+      (
+        async () =>
+          await (await store)->update(
+            events->Array.map(event => {Message.id: testId.contents, meta: meta.contents, event}),
+          )
+      )()
+  let whenEventWithTime = (store, time, event): storeThunk =>
+    () =>
+      (
+        async () =>
+          await (await store)->update([
+            {Message.id: testId.contents, meta: {...meta.contents, time}, event},
+          ])
+      )()
+  let whenEventsWithTime = (store, events): storeThunk =>
+    () =>
+      (
+        async () =>
+          await (await store)->update(
+            events->Array.map(((time, event)) => {
+              Message.id: testId.contents,
+              meta: {...meta.contents, time},
+              event,
+            }),
+          )
+      )()
+
+  let encState = (s: Projection.targetState) => s->Message.encode(Projection.targetStateSchema)
+  let encStates = (arr: array<Projection.targetState>) => arr->Array.map(encState)
+
+  // State equality via encoded JSON — handles ReScript structural comparison
+  // nuances when states contain types whose `==` is not meaningful.
+  let stateEq = (a: Projection.targetState, b: Projection.targetState) =>
+    JSON.stringify(encState(a)) == JSON.stringify(encState(b))
+  let statesEq = (a, b) =>
+    Array.length(a) == Array.length(b) &&
+      Array.zip(a, b)->Array.every(((x, y)) => stateEq(x, y))
+  let storeEq = (a: store, b: store) => {
+    let ka = a->Dict.keysToArray->Array.toSorted(String.compare)
+    let kb = b->Dict.keysToArray->Array.toSorted(String.compare)
+    ka == kb &&
+      ka->Array.every(key =>
+        statesEq(a->Dict.get(key)->Option.getOr([]), b->Dict.get(key)->Option.getOr([]))
       )
-    )
-  let whenEventWithTime = (store, time, event) =>
-    expect(async () =>
-      await (await store)->update([
-        {Message.id: testId.contents, meta: {...meta.contents, time}, event},
-      ])
-    )
-  let whenEventsWithTime = (store, events) =>
-    expect(async () =>
-      await (await store)->update(
-        events->Array.map(((time, event)) => {
-          Message.id: testId.contents,
-          meta: {...meta.contents, time},
-          event,
+  }
+
+  let encStore = (s: store) => {
+    let obj = Dict.make()
+    s
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => obj->Dict.set(k, JSON.Encode.array(v->encStates)))
+    JSON.Encode.object(obj)
+  }
+
+  let thenStates = async (thunk, expectedStates) => {
+    let store = await thunk()
+    let keys = store->Dict.keysToArray
+    let actualId = keys->Array.get(0)
+    let actualStates = store->Dict.valuesToArray->Array.get(0)->Option.getOr([])
+    if (
+      keys->Array.length == 1 &&
+        actualId == Some(testId.contents) &&
+        statesEq(actualStates, expectedStates)
+    ) {
+      Outcome.pass
+    } else {
+      Outcome.fail(
+        StateMismatch({
+          key: testId.contents,
+          expected: Some(JSON.Encode.array(expectedStates->encStates)),
+          actual: Some(encStore(store)),
         }),
       )
-    )
-
-  let thenStates = async (p, expectedStates) => {
-    let store = await (p->unpackPlainPartial)()
-    // Console.log2("####### store:", store)
-    expect((
-      store->Dict.keysToArray->Array.length,
-      store->Dict.keysToArray->Array.get(0),
-      store->Dict.valuesToArray->Array.get(0)->Option.getOr([]),
-    ))->toEqual((1, Some(testId.contents), expectedStates))
-  }
-  let thenStatesWithId = async (p, id, expectedStates) => {
-    let store = await (p->unpackPlainPartial)()
-    expect((
-      store->Dict.keysToArray->Array.length,
-      store->Dict.keysToArray->Array.get(0),
-      store->Dict.valuesToArray->Array.get(0)->Option.getOr([]),
-    ))->toEqual((1, Some(id), expectedStates))
+    }
   }
 
-  let thenAllStates = async (p, expectedStore: store) => {
-    let store = await (p->unpackPlainPartial)()
-    expect(store)->toEqual(expectedStore)
+  let thenStatesWithId = async (thunk, id, expectedStates) => {
+    let store = await thunk()
+    let keys = store->Dict.keysToArray
+    let actualId = keys->Array.get(0)
+    let actualStates = store->Dict.valuesToArray->Array.get(0)->Option.getOr([])
+    if keys->Array.length == 1 && actualId == Some(id) && statesEq(actualStates, expectedStates) {
+      Outcome.pass
+    } else {
+      Outcome.fail(
+        StateMismatch({
+          key: id,
+          expected: Some(JSON.Encode.array(expectedStates->encStates)),
+          actual: Some(encStore(store)),
+        }),
+      )
+    }
   }
-  let thenState = async (p, expectedState) => {
-    let store = await (p->unpackPlainPartial)()
-    expect((
-      store->Dict.keysToArray->Array.length,
-      store->Dict.keysToArray->Array.get(0),
-      store->Dict.valuesToArray->Array.get(0)->Option.getOr([])->Array.length,
-      store->Dict.valuesToArray->Array.getUnsafe(0)->Array.get(0),
-    ))->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
-  }
-  let thenStateWithId = async (p, id, expectedState) => {
-    let store = await (p->unpackPlainPartial)()
-    expect((
-      store->Dict.keysToArray->Array.length,
-      store->Dict.keysToArray->Array.get(0),
-      store->Dict.valuesToArray->Array.get(0)->Option.getOr([])->Array.length,
-      store->Dict.valuesToArray->Array.getUnsafe(0)->Array.get(0),
-    ))->toEqual((1, Some(id), 1, Some(expectedState)))
-  }
-  let thenNoState = async p => {
-    let store = await (p->unpackPlainPartial)()
-    expect(
-      store->Dict.valuesToArray->Array.reduce(0, (acc, states) => acc + states->Array.length),
-    )->toEqual(0)
-  }
-  let thenThrow = async p => {p->toThrow}
 
-  let thenFail = async p =>
-    switch await (p->unpackPlainPartial)() {
-    | _ => Jest.fail("Expected Failure")
-    | exception _ => Jest.pass
+  let thenAllStates = async (thunk, expectedStore: store) => {
+    let store = await thunk()
+    if storeEq(store, expectedStore) {
+      Outcome.pass
+    } else {
+      Outcome.fail(
+        StateMismatch({
+          key: "<all>",
+          expected: Some(encStore(expectedStore)),
+          actual: Some(encStore(store)),
+        }),
+      )
+    }
+  }
+
+  let thenState = (thunk, expectedState) => thenStates(thunk, [expectedState])
+
+  let thenStateWithId = (thunk, id, expectedState) =>
+    thenStatesWithId(thunk, id, [expectedState])
+
+  let thenNoState = async thunk => {
+    let store = await thunk()
+    let total =
+      store->Dict.valuesToArray->Array.reduce(0, (acc, states) => acc + states->Array.length)
+    if total == 0 {
+      Outcome.pass
+    } else {
+      Outcome.fail(
+        StateMismatch({
+          key: "<any>",
+          expected: None,
+          actual: Some(encStore(store)),
+        }),
+      )
+    }
+  }
+
+  let thenThrow = async thunk =>
+    switch await thunk() {
+    | _ =>
+      Outcome.fail(
+        Throw({
+          error: "Expected thunk to throw but it returned normally",
+          stack: "",
+        }),
+      )
+    | exception _ => Outcome.pass
+    }
+
+  let thenFail = async thunk =>
+    switch await thunk() {
+    | _ =>
+      Outcome.fail(
+        Throw({error: "Expected failure but thunk returned normally", stack: ""}),
+      )
+    | exception _ => Outcome.pass
     }
 }

@@ -17,28 +17,28 @@ module type T = {
   module Spec: BehaviorSpec
 
   let describe: (string, unit => unit) => unit
-  let test: (string, unit => Jest.assertion) => unit
+  let test: (string, unit => Outcome.outcome) => unit
 
   let givenEvents: array<Spec.event> => array<Spec.event>
 
   let whenCmd: (array<Spec.event>, Spec.command) => array<Spec.event>
 
-  let thenEvent: (array<Spec.event>, Spec.event) => Jest.assertion
+  let thenEvent: (array<Spec.event>, Spec.event) => Outcome.outcome
   let thenCompareEvent: (
     array<Spec.event>,
     Spec.event,
     (Spec.event, Spec.event) => bool,
-  ) => Jest.assertion
-  let thenNoEvent: array<Spec.event> => Jest.assertion
-  let thenEventWithError: (array<Spec.event>, Spec.event, Spec.error) => Jest.assertion
-  let thenEvents: (array<Spec.event>, array<Spec.event>) => Jest.assertion
+  ) => Outcome.outcome
+  let thenNoEvent: array<Spec.event> => Outcome.outcome
+  let thenEventWithError: (array<Spec.event>, Spec.event, Spec.error) => Outcome.outcome
+  let thenEvents: (array<Spec.event>, array<Spec.event>) => Outcome.outcome
   let thenCompareEvents: (
     array<Spec.event>,
     array<Spec.event>,
     (Spec.event, Spec.event) => bool,
-  ) => Jest.assertion
-  let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Jest.assertion
-  let thenError: (array<Spec.event>, Spec.error) => Jest.assertion
+  ) => Outcome.outcome
+  let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Outcome.outcome
+  let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
 }
 
 module Make = (
@@ -49,8 +49,8 @@ module Make = (
 
   S.enableJson()
 
-  let describe = Jest.describe
-  let test = Jest.test
+  let describe = JestBind.describe
+  let test = JestBind.test
 
   let currentState = events =>
     events->Array.reduce(Behavior.initialState, Behavior.evolve)
@@ -71,90 +71,108 @@ module Make = (
   let givenEvents = events => events
   let whenCmd = (history, cmd) => history->exec(cmd)
 
-  open Jest.Expect
+  let encEvent = (e: Spec.event) => e->Message.encode(Spec.eventSchema)
+  let encEvents = evs => evs->Array.map(encEvent)
+  let encError = (err: Spec.error) => err->Message.encode(Spec.errorSchema)
 
-  let thenEvents = (events, expectedEvents) =>
-    expect((errors.contents->Array.length, events))->toEqual((0, expectedEvents))
-
-  let compare = (cmp, e1, e2) => {
-    let cmpResult = cmp(e1, e2)
-    if !cmpResult {
-      Console.log3("Events do not match:", e1, e2)
-    }
-    cmpResult
+  // Report an unexpected decide() error as ErrorMismatch with expected=null.
+  let unexpectedError = (events: array<Spec.event>): Outcome.outcome => {
+    let actual = errors.contents->Array.get(0)->Option.map(encError)
+    Outcome.fail(
+      ErrorMismatch({
+        expected: JSON.Encode.null,
+        actual,
+        actualEvents: events->encEvents,
+      }),
+    )
   }
 
-  let thenCompareEvents = (events, expectedEvents, cmp) =>
-    expect((
-      errors.contents->Array.length,
-      events->Array.length,
-      Array.zip(events, expectedEvents)
-      ->Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
-      ->Array.every(result => result),
-    ))->toEqual((0, expectedEvents->Array.length, true))
-
-  let listErrors = () =>
-    "Errors occured: " ++
-    errors.contents
-    ->Array.map(err =>
-      err
-      ->Message.encode(Spec.errorSchema)
-      ->JSON.Decode.array
-      ->Option.getOrThrow
-      ->Array.getUnsafe(0)
-      ->JSON.Decode.string
-      ->Option.getOrThrow
-    )
-    ->Array.reduce("", (a, b) => a ++ (b ++ " "))
-
-  let thenEvent = (events, expectedEvent) =>
-    if events->Array.length > 0 {
-      expect((errors.contents->Array.length, events->Array.length, events->Array.get(0)))->toEqual((
-        0,
-        1,
-        Some(expectedEvent),
-      ))
-    } else if errors.contents->Array.length > 0 {
-      listErrors()->Jest.fail
+  let thenEvents = (events, expectedEvents) =>
+    if errors.contents->Array.length > 0 {
+      unexpectedError(events)
+    } else if events == expectedEvents {
+      Outcome.pass
     } else {
-      Jest.fail("thenEvent: No event present to validate")
+      Outcome.fail(
+        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
+      )
     }
+
+  // thenCompareEvent(s) keep the custom equality semantics of the original
+  // DSL (used to compare events with non-structural equality, e.g. when an
+  // event carries a generated UUID). Success is reported even if the raw
+  // structural equality would fail; the mismatch carries the encoded event
+  // payloads so downstream tools can still render them.
+  let thenCompareEvents = (events, expectedEvents, cmp) =>
+    if errors.contents->Array.length > 0 {
+      unexpectedError(events)
+    } else if (
+      events->Array.length == expectedEvents->Array.length &&
+        Array.zip(events, expectedEvents)->Array.every(((e1, e2)) => cmp(e1, e2))
+    ) {
+      Outcome.pass
+    } else {
+      Outcome.fail(
+        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
+      )
+    }
+
+  let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent])
 
   let thenCompareEvent = (events, expectedEvent, cmp) =>
-    if events->Array.length > 0 {
-      let firstEvent = events->Array.get(0)->Option.getOrThrow
-      expect((
-        errors.contents->Array.length,
-        events->Array.length,
-        cmp->compare(firstEvent, expectedEvent),
-      ))->toEqual((0, 1, true))
-    } else if errors.contents->Array.length > 0 {
-      listErrors()->Jest.fail
+    thenCompareEvents(events, [expectedEvent], cmp)
+
+  let thenNoEvent = events =>
+    if errors.contents->Array.length > 0 {
+      unexpectedError(events)
+    } else if events->Array.length == 0 {
+      Outcome.pass
     } else {
-      Jest.fail("thenEvent: No event present to validate")
+      Outcome.fail(NoEventExpected({actual: events->encEvents}))
     }
 
-  let thenNoEvent = events => thenEvents(events, [])
+  // Handles all `thenError*` variants — expects a specific error. Priority:
+  // 1. error missing or wrong → ErrorMismatch
+  // 2. events don't match expected → EventsMismatch
+  let matchesError = (
+    events: array<Spec.event>,
+    expectedEvents: array<Spec.event>,
+    expectedError: Spec.error,
+  ): Outcome.outcome => {
+    let expectedErrorJson = encError(expectedError)
+    switch errors.contents->Array.get(0) {
+    | None =>
+      Outcome.fail(
+        ErrorMismatch({
+          expected: expectedErrorJson,
+          actual: None,
+          actualEvents: events->encEvents,
+        }),
+      )
+    | Some(actual) if actual != expectedError =>
+      Outcome.fail(
+        ErrorMismatch({
+          expected: expectedErrorJson,
+          actual: Some(encError(actual)),
+          actualEvents: events->encEvents,
+        }),
+      )
+    | Some(_) =>
+      if events == expectedEvents {
+        Outcome.pass
+      } else {
+        Outcome.fail(
+          EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
+        )
+      }
+    }
+  }
+
+  let thenError = (events, expectedError) => matchesError(events, [], expectedError)
 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
-    expect((
-      events->Array.length,
-      events->Array.get(0),
-      errors.contents->Array.length,
-      errors.contents->Array.get(0),
-    ))->toEqual((1, Some(expectedEvent), 1, Some(expectedError)))
+    matchesError(events, [expectedEvent], expectedError)
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
-    expect((events, errors.contents->Array.length, errors.contents->Array.get(0)))->toEqual((
-      expectedEvents,
-      1,
-      Some(expectedError),
-    ))
-
-  let thenError = (events, expectedError) =>
-    expect((events, errors.contents->Array.length, errors.contents->Array.get(0)))->toEqual((
-      [],
-      1,
-      Some(expectedError),
-    ))
+    matchesError(events, expectedEvents, expectedError)
 }

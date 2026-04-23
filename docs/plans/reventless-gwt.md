@@ -75,24 +75,34 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 2 — `Outcome` algebra + `JestBind` adapter
 
-**Status:** Not started
+**Status:** Complete
 
 **Goal:** Refactor every `then*` combinator to return `Outcome.outcome` instead of `Jest.assertion`. Existing test files compile unchanged.
 
-**Actions:**
+**Actions taken:**
 
-1. Add `reventless-gwt/src/Outcome.res` with the `mismatch` variants and `outcome` type.
-2. Add `reventless-gwt/src/Hint.res` mapping each `mismatch.kind` → `{locus, branch, message}`.
-3. Refactor each DSL's `then*` combinators to construct the appropriate `Outcome.mismatch` instead of calling `Jest.fail`.
-4. Add `reventless-gwt/src/JestBind.res` — wraps each `test(name, body)` call so `body()` returns `Outcome.outcome` and `JestBind` translates Pass/Fail to Jest.
-5. The `describe`/`test` exports keep their current signatures (test files don't change) but internally route through `JestBind`.
+1. Added `reventless-gwt/src/Outcome.res` with the eight `mismatch` variants from analysis §3.2 (`EventsMismatch`, `ErrorMismatch`, `StateMismatch`, `NoEventExpected`, `TodoMismatch`, `TranslateError`, `QueryRowsMismatch`, `Throw`), `type outcome = result<unit, mismatch>`, plus `format` (human-readable) and `toJson` (closed-schema kind-discriminated payload per §3.3). `AppendConditionMismatch` deferred to Stage 4 as planned.
+2. Added `reventless-gwt/src/Hint.res` exporting `type t = {locus, branch, message}` and `forMismatch(~slice=?, mismatch)` with the locus table from §3.2; plus `toJson` and `format` helpers.
+3. Refactored each DSL's `then*` combinators to construct `Outcome.mismatch` instead of calling `Jest.fail`:
+   - `Behavior_GWT` — every `then*` now returns `Outcome.outcome` (sync). `test` signature is `(string, unit => Outcome.outcome) => unit`. Uses `Message.encode(eventSchema | errorSchema)` to build JSON payloads.
+   - `Projection_GWT` — every `then*` now returns `promise<Outcome.outcome>`. Replaced the `Jest.Expect.plainPartial<unit => promise<store>>` shim with a plain `storeThunk = unit => promise<store>`. `thenThrow`/`thenFail` switched from `toThrow` to catching inside the thunk.
+   - `EventMapping_GWT` — every `then*` now returns `promise<Outcome.outcome>`. Source/target errors and target-event mismatches map to `ErrorMismatch`/`EventsMismatch` respectively.
+4. Added `reventless-gwt/src/JestBind.res` — exposes `describe`, `test`, `testPromise` that convert `Outcome.outcome` → `Jest.assertion` via `Jest.pass` / `Jest.fail(format(m) ++ format(hint))`.
+5. Each DSL's `describe`/`test` exports now delegate to `JestBind`. Test files compile unchanged — only the test body's inferred return type flows through (was `Jest.assertion`, now `Outcome.outcome` / `promise<Outcome.outcome>`).
+
+**Deviations from the original plan:**
+
+- **`ErrorMismatch` gained an `actualEvents: array<JSON.t>` field** (beyond the §3.2 sketch). Needed by `thenError` when `decide` returned `Ok([events])` instead of `Error` — the JSON payload in §3.3 already includes `actualEvents`, so this aligns the construction-time type with the serialised shape.
+- **`StateMismatch.expected` is `option<JSON.t>`** (not `JSON.t`). Lets `thenNoState` express "expected nothing, got state" uniformly.
+- **Source-location file+line hint** (filename + line number captured at `then*` call time) is not yet populated. The `Hint` module provides the `kind → {locus, branch, message}` mapping from §3.2; the stack-frame capture is deferred to Stage 7 where the runner needs it for the human/JSON/VS Code formatters.
+- **`Projection_GWT`'s `plainPartial` shim was dropped.** The `expect(async () => ...)` wrapping existed only to satisfy `toThrow` semantics. Replaced with a plain `storeThunk = unit => promise<store>`; `thenThrow`/`thenFail` now catch exceptions inside the thunk directly. Consumer test files were unaffected (they never annotated the intermediate type).
 
 **Acceptance:**
 
-- Every existing test file compiles and passes unchanged.
-- `Outcome.format(mismatch)` produces a human-readable string.
-- `Outcome.toJson(mismatch)` produces the structured JSON shape documented in the analysis (§3.3 JSON format).
-- Mismatch carries optional source-location hint.
+- ✅ Every existing test file compiles and passes unchanged (116 suites / 1069 tests).
+- ✅ `Outcome.format(mismatch)` produces a human-readable string.
+- ✅ `Outcome.toJson(mismatch)` produces a closed-schema JSON payload per §3.3.
+- ⚠️ File+line source-location hint deferred to Stage 7 (see deviation above).
 
 ### Stage 3 — DCB DSLs (5 modules)
 

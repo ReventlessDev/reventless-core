@@ -5,7 +5,7 @@ module type T = {
   module Target: Reventless.Aggregate.Spec
 
   let describe: (string, unit => unit) => unit
-  let test: (string, ~timeout: int=?, unit => promise<Jest.assertion>) => unit
+  let test: (string, ~timeout: int=?, unit => promise<Outcome.outcome>) => unit
 
   let givenSourceEvents: array<Source.event> => array<Source.event>
   let givenTargetEvents: (
@@ -22,33 +22,15 @@ module type T = {
   let thenTargetEvents: (
     array<(string, array<Target.event>)>,
     promise<dict<array<Target.event>>>,
-  ) => promise<Jest.assertion>
+  ) => promise<Outcome.outcome>
 
   let thenTargetEvent: (
     string,
     Target.event,
     promise<dict<array<Target.event>>>,
-  ) => promise<Jest.assertion>
+  ) => promise<Outcome.outcome>
 
-  let thenNoTargetEvent: promise<dict<array<Target.event>>> => promise<Jest.assertion>
-  // let thenTargetEventWithError:
-  //   (
-  //     Target.Id.t,
-  //     Target.event,
-  //     Target.error,
-  //     array((Target.Id.t, array(Target.event)))
-  //   ) =>
-  //   Jest.assertion;
-  // let thenTargetEventsWithError:
-  //   (
-  //     array((Target.Id.t, array(Target.event))),
-  //     Target.error,
-  //     array((Target.Id.t, array(Target.event)))
-  //   ) =>
-  //   Jest.assertion;
-  // let thenTargetError:
-  //   (Target.error, array((Target.Id.t, array(Target.event)))) =>
-  //   Jest.assertion;
+  let thenNoTargetEvent: promise<dict<array<Target.event>>> => promise<Outcome.outcome>
 }
 
 module type Aggregate = {
@@ -99,8 +81,8 @@ module Make = (
   module SourceAggregate = MakeAggregate(Source, SourceBehavior)
   module TargetAggregate = MakeAggregate(Target, TargetBehavior)
 
-  let describe = Jest.describe
-  let test = Jest.testPromise
+  let describe = JestBind.describe
+  let test = JestBind.testPromise
 
   let queryEngine: Reventless.QueryEngine.operations = {
     scan: (~readModelName as _, ~filterConfigs as _, ~limit as _) => []->Promise.resolve,
@@ -118,39 +100,8 @@ module Make = (
   let givenSourceEvents = sourceHistory => sourceHistory
   let givenTargetEvents = (targetHistory, sourceHistory) => (targetHistory, sourceHistory)
 
-  /*
-   TODO: The following functions were unused and are due to be deleted:
-     let logSourceEvents = events =>
-       events->Array.forEachWithIndex((event, idx) => {
-         let eventStr = event->Message.encode(Source.eventSchema);
-         Console.log({j|Source event[$idx]: $eventStr|j});
-       });
-     let logTargetCommands = commands => {
-       commands->Array.forEachWithIndex(((id, command), idx) => {
-         let commandStr = command->Message.encode(Target.commandSchema);
-         Console.log({j|Target command[$idx]: $commandStr id:$id|j});
-       });
-       commands;
-     };
-     let logTargetEvents = events =>
-       events->Array.forEachWithIndex((event, idx) => {
-         let eventStr = event->Message.encode(Target.eventSchema);
-         Console.log({j|  new Target event[$idx]: $eventStr|j});
-       });
-     let logTargetEventsDict = (events, prefix) =>
-       events
-       ->Dict.toArray
-       ->Array.forEachWithIndex(((id, events), idx1) =>
-           events->Array.forEachWithIndex((event, idx2) => {
-             let eventStr = event->Message.encode(Target.eventSchema);
-             Console.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
-           })
-         );
- */
-
   let whenSourceCmd = async (sourceId, cmd, (targetHistory, sourceHistory)) => {
     let sourceEvents = SourceAggregate.exec(cmd, sourceHistory)
-    // sourceEvents->logSourceEvents;
     let targetActions =
       sourceEvents
       ->Array.map(sourceEvent =>
@@ -170,8 +121,6 @@ module Make = (
       )
       ->Promise.all
     )->Array.flat
-    //  ->logTargetCommands
-    //  newEvents->logTargetEvents;
     commands->Array.reduce(Dict.make(), (targetEvents, (id, command)) => {
       let id = id->Target.Id.toString
       let targetHistory =
@@ -188,25 +137,115 @@ module Make = (
     })
   }
 
-  open Jest.Expect
+  let encTargetEvent = (e: Target.event) => e->Message.encode(Target.eventSchema)
+  let encTargetEvents = evs => evs->Array.map(encTargetEvent)
+  let encSourceError = (err: Source.error) => err->Message.encode(Source.errorSchema)
+  let encTargetError = (err: Target.error) => err->Message.encode(Target.errorSchema)
+
+  // Render the dict as a sorted array of (id, [encoded events...]) pairs,
+  // then wrap in a JSON array of `[id, events...]` rows so the Outcome payload
+  // preserves the source id.
+  let encDict = (d: dict<array<Target.event>>): array<JSON.t> =>
+    d
+    ->Dict.toArray
+    ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+    ->Array.map(((id, events)) => {
+      let obj = Dict.make()
+      obj->Dict.set("id", JSON.Encode.string(id))
+      obj->Dict.set("events", JSON.Encode.array(events->encTargetEvents))
+      JSON.Encode.object(obj)
+    })
+
+  let encExpected = (pairs: array<(string, array<Target.event>)>): array<JSON.t> =>
+    pairs
+    ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b))
+    ->Array.map(((id, events)) => {
+      let obj = Dict.make()
+      obj->Dict.set("id", JSON.Encode.string(id))
+      obj->Dict.set("events", JSON.Encode.array(events->encTargetEvents))
+      JSON.Encode.object(obj)
+    })
+
+  let unexpectedSideError = (actualDict: dict<array<Target.event>>): Outcome.outcome => {
+    let actualEvents = encDict(actualDict)
+    switch SourceAggregate.errors.contents->Array.get(0) {
+    | Some(srcErr) =>
+      Outcome.fail(
+        ErrorMismatch({
+          expected: JSON.Encode.null,
+          actual: Some(encSourceError(srcErr)),
+          actualEvents,
+        }),
+      )
+    | None =>
+      switch TargetAggregate.errors.contents->Array.get(0) {
+      | Some(tgtErr) =>
+        Outcome.fail(
+          ErrorMismatch({
+            expected: JSON.Encode.null,
+            actual: Some(encTargetError(tgtErr)),
+            actualEvents,
+          }),
+        )
+      | None => Outcome.pass
+      }
+    }
+  }
+
+  let dictPairsEq = (a: dict<array<Target.event>>, b: dict<array<Target.event>>) => {
+    let ka = a->Dict.keysToArray->Array.toSorted(String.compare)
+    let kb = b->Dict.keysToArray->Array.toSorted(String.compare)
+    ka == kb &&
+      ka->Array.every(k => {
+        let av = a->Dict.get(k)->Option.getOr([])
+        let bv = b->Dict.get(k)->Option.getOr([])
+        av == bv
+      })
+  }
 
   let thenTargetEvents = async (expectedTargetEvents, targetEvents) => {
-    expect((
-      SourceAggregate.errors.contents->Array.length,
-      TargetAggregate.errors.contents->Array.length,
-      await targetEvents,
-    ))->toEqual((0, 0, expectedTargetEvents->Dict.fromArray))
+    let actualDict = await targetEvents
+    switch unexpectedSideError(actualDict) {
+    | Error(_) as out => out
+    | Ok() =>
+      let expectedDict = expectedTargetEvents->Dict.fromArray
+      if dictPairsEq(actualDict, expectedDict) {
+        Outcome.pass
+      } else {
+        Outcome.fail(
+          EventsMismatch({
+            expected: encExpected(expectedTargetEvents),
+            actual: encDict(actualDict),
+          }),
+        )
+      }
+    }
   }
-  //  events->logTargetEventsDict("");
 
   let thenTargetEvent = async (id, expectedTargetEvent, targetEvents) => {
-    let events = (await targetEvents)->Dict.toArray
-    expect((
-      SourceAggregate.errors.contents->Array.length,
-      TargetAggregate.errors.contents->Array.length,
-      events->Array.length,
-      events->Array.get(0),
-    ))->toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
+    let actualDict = await targetEvents
+    switch unexpectedSideError(actualDict) {
+    | Error(_) as out => out
+    | Ok() =>
+      let pairs = actualDict->Dict.toArray
+      let ok =
+        pairs->Array.length == 1 &&
+          switch pairs->Array.get(0) {
+          | Some((actualId, [actualEvent])) =>
+            actualId == id && actualEvent == expectedTargetEvent
+          | _ => false
+          }
+      if ok {
+        Outcome.pass
+      } else {
+        Outcome.fail(
+          EventsMismatch({
+            expected: encExpected([(id, [expectedTargetEvent])]),
+            actual: encDict(actualDict),
+          }),
+        )
+      }
+    }
   }
 
   let thenNoTargetEvent = targetEvents => thenTargetEvents([], targetEvents)
