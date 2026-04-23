@@ -6,7 +6,7 @@
 //
 // See `docs/analysis/given-when-then-specifications.md` §3.2 for the canonical
 // shape and §3.3 for the JSON rendering. Stage 7 adds sury-aware rendering and
-// structural `fieldDiff`; Stage 4 adds `AppendConditionMismatch`.
+// structural `fieldDiff`. Stage 4 added `AppendConditionMismatch`.
 
 type mismatch =
   | EventsMismatch({expected: array<JSON.t>, actual: array<JSON.t>})
@@ -18,6 +18,7 @@ type mismatch =
   | StateMismatch({key: string, expected: option<JSON.t>, actual: option<JSON.t>})
   | NoEventExpected({actual: array<JSON.t>})
   | TodoMismatch({expected: array<(string, JSON.t)>, actual: array<(string, JSON.t)>})
+  | AppendConditionMismatch({expected: JSON.t, actual: JSON.t})
   | TranslateError({expected: string, actual: option<string>})
   | QueryRowsMismatch({expected: array<JSON.t>, actual: array<JSON.t>})
   | Throw({error: string, stack: string})
@@ -34,6 +35,7 @@ let kindName = (m: mismatch) =>
   | StateMismatch(_) => "StateMismatch"
   | NoEventExpected(_) => "NoEventExpected"
   | TodoMismatch(_) => "TodoMismatch"
+  | AppendConditionMismatch(_) => "AppendConditionMismatch"
   | TranslateError(_) => "TranslateError"
   | QueryRowsMismatch(_) => "QueryRowsMismatch"
   | Throw(_) => "Throw"
@@ -71,6 +73,10 @@ let format = (m: mismatch) =>
         ->Array.join(", ")
       `TodoMismatch:\n  expected: [${fmt(expected)}]\n  actual:   [${fmt(actual)}]`
     }
+  | AppendConditionMismatch({expected, actual}) =>
+    `AppendConditionMismatch:\n  expected: ${stringifyJson(expected)}\n  actual:   ${stringifyJson(
+        actual,
+      )}`
   | TranslateError({expected, actual}) =>
     `TranslateError:\n  expected: ${expected}\n  actual:   ${actual->Option.getOr("(none)")}`
   | QueryRowsMismatch({expected, actual}) =>
@@ -116,6 +122,10 @@ let toJson = (m: mismatch): JSON.t => {
         ->jsonArr
       obj->Dict.set("expected", pairArr(expected))
       obj->Dict.set("actual", pairArr(actual))
+    }
+  | AppendConditionMismatch({expected, actual}) => {
+      obj->Dict.set("expected", expected)
+      obj->Dict.set("actual", actual)
     }
   | TranslateError({expected, actual}) => {
       obj->Dict.set("expected", JSON.Encode.string(expected))

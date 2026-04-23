@@ -138,65 +138,100 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 4 — `thenAppendsConditionedOn` for `StateChangeSlice_GWT`
 
-**Status:** Not started
+**Status:** Complete
 
 **Goal:** Make the DCB optimistic-concurrency contract specifiable. Default mode auto-derives the expected condition; explicit mode documents it.
 
-**Actions:**
+**Actions taken:**
 
-1. Add `Outcome.AppendConditionMismatch` variant.
-2. Inside `StateChangeSlice_GWT.Make`, compute the expected append condition via `Reventless.DcbTag.buildQueryFromCommand` + `Reventless.DcbTag.extractVariantNames` (same helpers the runtime uses).
-3. Every `whenCmd` internally asserts the auto-derived condition matches what the slice's runtime would build.
-4. Expose `thenAppendsConditionedOn([...])` for explicit-equality documentation mode.
-5. Expose `thenAppendsConditionedOnExactly([...])` for strict-only mode (skips auto-derivation).
+1. Added `Outcome.AppendConditionMismatch({expected: JSON.t, actual: JSON.t})` variant with matching `kindName` / `format` / `toJson` branches in [`reventless-gwt/src/Outcome.res`](../../reventless/reventless-gwt/src/Outcome.res). Payload kept as JSON to stay closed-schema alongside the other variants.
+2. Added `AppendConditionMismatch → ${slice}.commandSchema` mapping to [`reventless-gwt/src/Hint.res`](../../reventless/reventless-gwt/src/Hint.res). Hint message names `@s.matches(DcbTag.string)` as the likely fix.
+3. Inside [`StateChangeSlice_GWT.Make`](../../reventless/reventless-gwt/src/StateChangeSlice_GWT.res): computed `consumedEventTypes` once via `Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes` (same helper the runtime uses — handles payload-less consumed variants that `DcbTag.extractVariantNames` skips). Added two refs: `derivedCondition: option<DcbTag.appendCondition>` and `appendConditionFailure: option<Outcome.mismatch>`.
+4. `whenCmd` now calls `DcbTag.buildQueryFromCommand(~eventTypes=consumedEventTypes, ~schema=Spec.commandSchema, ~value=cmd)` and stashes the resulting `{query}` as the derived condition. Implicit check: if `consumedEventTypes` is non-empty AND every query clause has empty tags → stash an `AppendConditionMismatch` pending failure.
+5. Every regular `then*` (`thenEvent`, `thenEvents`, `thenNoEvent`, `thenError`, `thenEventWithError`, `thenEventsWithError`) runs `checkAppendCondition()` first and surfaces the pending failure before its own assertion.
+6. Exposed `thenAppendsConditionedOn(events, expectedQuery: DcbTag.query)` — compares `expectedQuery` to `derivedCondition.query`. Failure produces `AppendConditionMismatch{expected: {query: expectedQuery}, actual: derivedCondition}`. Bypasses the implicit check since the dev has opted into documenting the condition.
+7. Exposed `thenAppendsConditionedOnExactly(events, expectedCondition: DcbTag.appendCondition)` — asserts the full append condition (including optional `after` position) equals the derived. Also bypasses the implicit check.
+8. Added JSON encoders `encodeTag`/`encodeQueryItem`/`encodeQuery`/`encodeAppendCondition` at module level (the framework doesn't ship a sury schema for `DcbTag.appendCondition`, so encoding is manual).
+9. Updated the worked-example test [`reventless-gwt/tests/StateChangeSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res) to use `@s.matches(Reventless.DcbTag.string)` on `categoryId` (required for the implicit check to pass). Added two Stage 4 scenarios: `thenAppendsConditionedOn` with explicit query literal, and `thenAppendsConditionedOnExactly` with full condition. Added a second slice (`MissingTagSlice`) demonstrating (a) the implicit check surfaces as `AppendConditionMismatch` when `@s.matches` is absent and (b) `thenAppendsConditionedOnExactly` bypasses the implicit check for slices that genuinely have no tagged fields.
+10. **Side-fix in [`reventless-gwt/src/JestBind.res`](../../reventless/reventless-gwt/src/JestBind.res)**: replaced `Jest.fail(msg)` with `JsError.throwWithMessage(msg)`. The `Jest.fail` global was removed in Jest 27+ ESM mode (the mode reventless-gwt runs under), so the failure path threw a `ReferenceError` instead of reporting the mismatch. Discovered when the new Stage 4 failure-path tests surfaced the issue; it would have hit any future failing test regardless of Stage 4.
+
+**Deviations from the original plan:**
+
+- **`consumedEventTypes` uses `DcbDecode.makeDecoder`, not `DcbTag.extractVariantNames`.** The plan named the latter but `extractVariantNames` only handles `Object`-typed union variants — payload-less variants (the common shape for DCB `consumedEvent`s like `CategoryAdded | CategoryArchived`) are dropped. `DcbDecode.makeDecoder(schema).eventTypes` handles both cases and is exactly what the runtime (`StateChangeSlice_Callback`) uses, so auto-derivation now matches the runtime for payload-less consumed events.
+- **Implicit check opt-out via `thenAppendsConditionedOn*`.** The plan said "Every `whenCmd` internally asserts the auto-derived condition matches what the slice's runtime would build." Since the GWT uses the same helpers as the runtime, a GWT-vs-runtime divergence is impossible — the only real signal the implicit check can catch is a missing `@s.matches(DcbTag.string)` annotation producing an empty-tags query. The implicit check fires at `whenCmd` time and is surfaced by the next regular `then*`; `thenAppendsConditionedOn*` bypass it because the dev has explicitly opted into documenting the (possibly empty-tagged) condition.
+- **`AppendConditionMismatch.expected/actual` stored as `JSON.t`**, not as the richer `DcbTag.appendCondition` sketched in analysis §3.2. `DcbTag.appendCondition` has no sury schema, so the Outcome algebra stays closed by encoding manually inside the DSL. The expected field in the implicit case carries a descriptive string encouraging the dev to add tag annotations.
 
 **Acceptance:**
 
-- Forgetting a `@s.matches(DcbTag.string)` annotation on a command field fails the test with `AppendConditionMismatch`.
-- Explicit `thenAppendsConditionedOn` matches the auto-derived condition (two-way equality).
+- ✅ Forgetting `@s.matches(DcbTag.string)` on a command field fails the test with `AppendConditionMismatch` (verified by `MissingTagSlice` test case).
+- ✅ Explicit `thenAppendsConditionedOn` matches the auto-derived condition (two-way equality — verified by `AddCategory` "append condition is single-entity query" test).
+- ✅ `thenAppendsConditionedOnExactly` bypasses the implicit check and compares full `appendCondition` — covered by two test cases across both slices.
+- ✅ All five reventless-gwt suites: 19 tests pass (up from 13 in Stage 3).
+- ✅ Full monorepo test suite: 121 suites / 1086 tests (up from 1082 in Stage 3) — zero regressions.
 
 ### Stage 5 — `Mapping_GWT` (cross-pattern automation)
 
-**Status:** Not started
+**Status:** Complete
 
 **Goal:** Generalise `EventMapping_GWT` so source and target can each be Behavior or StateChangeSlice.
 
-**Actions:**
+**Actions taken:**
 
-1. Define a small `Source.T`/`Target.T` module type abstracting Behavior + StateChangeSlice (`name`, `decide`, `evolve`, `initialState`, `event`, `consumedEvent`).
-2. `Mapping_GWT.Make(Source, Target, Mapping)` accepts both kinds for both positions.
-3. Implement the four producer/consumer combinations from [`event-source-connection-matrix.md`](../../analysis/event-source-connection-matrix.md).
-4. Finish the error combinators that were commented out in the old `EventMappingTest`: `thenTargetError`, `thenTargetEventsWithError`.
+1. Added [`reventless-gwt/src/Mapping_GWT.res`](../../reventless/reventless-gwt/src/Mapping_GWT.res) with a single unified `GwtSource` module type (with `name`, `Id`, `state`, `initialState`, `consumedEvent`/`evolve`, `command`, `event`, `error`, `decide`) and `module type GwtTarget = GwtSource`. `consumedEvent` is the type `evolve` folds over: for Aggregates it equals `event`, for DCB slices it's a distinct cross-entity event type.
+2. Exposed two adapter functors in the same module:
+   - `FromBehavior(Spec: Reventless.Aggregate.Spec, Behavior: Behavior.T with module Spec = Spec)` — lifts an Aggregate + Behavior pair into a `GwtSource`/`GwtTarget` (sets `consumedEvent = Spec.event`).
+   - `FromStateChangeSlice(Spec)` — lifts a StateChangeSlice `SliceSpec`-shaped module (same shape as `StateChangeSlice_GWT.SliceSpec`) into a `GwtSource`/`GwtTarget`. Uses `Reventless.Id.StringPure` since DCB entity identifiers are raw tag values.
+3. Exposed `module type Mapping = {module Source: GwtSource; module Target: GwtTarget; let map: ...}` where `map`'s shape is identical to `Reventless.EventMapping.T.map` — it returns `array<Reventless.EventMapping.action<Target.Id.t, Target.command>>`, so all four combinations (`Aggr→Aggr`, `Aggr→DCB`, `DCB→Aggr`, `DCB→DCB`) use the same `EventMapping.action` vocabulary.
+4. `Mapping_GWT.Make(Mapping)` implements the standard combinator set against a `scenario = (sourceHistory, targetHistory)` tuple carried through the pipe chain:
+   - `givenSourceEvents` / `andTargetEvents` — build the scenario (pipe-first friendly).
+   - `whenSourceCmd(scenario, sourceId, cmd)` — runs `Source.decide` → `map` → `Target.decide`, returning `promise<dict<array<Target.event>>>` keyed by `Target.Id.toString(id)`.
+   - `thenTargetEvents`, `thenTargetEvent`, `thenNoTargetEvent` — event assertions.
+   - **New Stage 5 combinators** `thenSourceError`, `thenTargetError`, `thenTargetEventsWithError` — finish the error side that was commented out in the legacy `EventMappingTest`.
+5. Rewrote [`reventless-gwt/src/EventMapping_GWT.res`](../../reventless/reventless-gwt/src/EventMapping_GWT.res) as a thin backward-compat alias: `Make(Source, SourceBehavior, Target, TargetBehavior, EventMapping)` internally constructs `Mapping_GWT.FromBehavior` adapters and `include`s `Mapping_GWT.Make(BoundMapping)`. Shipped a `let map = EventMapping.map` pass-through in the bound mapping module.
+6. Added [`reventless-gwt/tests/MappingGwtTest.res`](../../reventless/reventless-gwt/tests/MappingGwtTest.res) with one worked example per combination (`Aggr→Aggr`: Category→Product; `Aggr→DCB`: Category→Notification; `DCB→Aggr`: Inventory→Product; `DCB→DCB`: Inventory→Notification) plus an extra case exercising the new `thenTargetError` combinator.
+
+**Deviations from the original plan:**
+
+- **Pipe chain redesign.** The legacy `EventMapping_GWT`'s combinator signatures weren't pipe-first friendly (`givenTargetEvents(targetHistory, sourceHistory)` + `whenSourceCmd(id, cmd, tuple)` couldn't chain under ReScript's `->` operator). Mapping_GWT adopts a `scenario` tuple carried as the first parameter of every subsequent combinator: `givenSourceEvents([...])->andTargetEvents([...])->whenSourceCmd(id, cmd)->thenTargetEvent(id, event)`. Reads top-to-bottom and matches the shape of the other GWT DSLs.
+- **`EventMapping_GWT` is a wrapping alias, not a specialisation.** The plan sketched "`Aggr→Aggr` specialisation"; the actual implementation simply composes the two `FromBehavior` adapters and includes `Mapping_GWT.Make`, which is thinner. The resulting module exposes the same `Mapping_GWT.T` surface (including the new error combinators) rather than the legacy `EventMapping_GWT.T` signature.
+- **Worked-example test file layout.** All four combinations ship in a single file (`MappingGwtTest.res`) rather than four separate files. The shared Aggregate specs + StateChangeSlice `SliceSpec`s reused across combinations keep the file self-contained; splitting would force every file to redeclare the same fixtures.
+- **No top-level `thenSourceErrorWithEvents` combinator.** The plan's "finish the error combinators" list was specific to the target side (`thenTargetError` / `thenTargetEventsWithError`). `thenSourceError` ships as a source-side counterpart since the new error handling needs it for scenario coverage; a `thenSourceErrorWithEvents` would be dead weight (if source errors, no target events are produced, so the "with events" pair is always empty).
 
 **Acceptance:**
 
-- One worked example for each combination (`Aggr→Aggr`, `Aggr→DCB`, `DCB→Aggr`, `DCB→DCB`).
-- `EventMapping_GWT` becomes a thin alias over `Mapping_GWT` with `Aggr→Aggr` specialisation, kept for migration backward-compat.
+- ✅ One worked example per combination — `AggrToAggrGwt`, `AggrToDcbGwt`, `DcbToAggrGwt`, `DcbToDcbGwt` test blocks in `MappingGwtTest.res`.
+- ✅ `EventMapping_GWT.Make` remains callable with the legacy argument list for migration backward-compat; delegates to `Mapping_GWT.Make` via `FromBehavior` adapters.
+- ✅ `thenTargetError` and `thenTargetEventsWithError` both ship and the former is exercised by the "existing NotificationSent causes target decide to reject" test case.
+- ✅ reventless-gwt: 6 suites / 22 tests (up from 5 / 17 in Stage 4).
+- ✅ Full monorepo test suite: 122 suites / 1091 tests (up from 121 / 1086 in Stage 4) — zero regressions.
+- ⚠️ Note: root `pnpm run build` does not compile `type: "dev"` test sources in `reventless-gwt`. Run `pnpm run build` inside `reventless/reventless-gwt/` (or `pnpm --filter @reventlessdev/reventless-gwt run build`) before `pnpm test` at the root, otherwise the five `reventless-gwt` suites won't be discovered by Jest. Stage 7's CLI runner will subsume this requirement once it lands.
 
-### Stage 6 — `Query_GWT` (read model query patterns)
+### Stage 6 — `Query_GWT` (ReadModel + StateViewSlice query patterns)
 
 **Status:** Not started
 
-**Goal:** Make read model index/resolver/subId design specifiable.
+**Goal:** Make read model / state view index/resolver/subId design specifiable. Analysis §4.8 applies to **both** ReadModels and StateViewSlices — they share the same `config` annotation surface (`@id`, `@compositeId`, `@subId`, `@index`, `@indexSubId`, `@resolves`, `@resolvesMany`) and both project event streams into a queryable store.
 
 **Actions:**
 
-1. Add `Outcome.QueryRowsMismatch` variant.
-2. `Query_GWT.Make(Spec: ReadModel.Spec)` provides:
+1. Add `Outcome.QueryRowsMismatch` variant — already reserved in the Stage 2 Outcome algebra; Stage 6 wires the construction sites and Hint mapping.
+2. Expose a unified `Query_GWT.Make(Spec)` functor that accepts a minimal `QueryableSpec` module type (the intersection of `ReadModel.Spec` and `StateViewSlice.Spec`: `name`, `state`, `config`, `subIdConfig`). Provide two adapter aliases `FromReadModel` and `FromStateViewSlice` for symmetry with `Mapping_GWT`'s source/target adapters.
+3. Combinators:
    - `givenStore([(id, state), ...])` — populate the in-memory store
-   - `givenStore_for(Spec, [...])->andStore_for(Spec, [...])` — multi-store for resolvers
+   - `givenStore_for(Spec, [...])->andStore_for(Spec, [...])` — multi-store for resolvers across read models / state views
    - `whenQueryById(id)`, `whenQueryByCompositeId({id, subId})`
    - `whenQuery({by, value, index?, filter?, limit?})`
    - `whenResolve({from, id, field})`, `whenResolveMany`
    - `thenRow`, `thenRows`, `thenRowCount`, `thenResolved`
-3. Each scenario type pins down a specific `ReadModel.config` requirement (per the table in §4.8 of the analysis).
-4. Implement the in-memory query runner (similar to `Projection_GWT`'s store) honouring `subIdConfig`, indexes, filters, limits.
+4. Each scenario type pins down a specific `config` requirement (per the table in §4.8 of the analysis).
+5. Implement the in-memory query runner (similar to `Projection_GWT`'s store) honouring `subIdConfig`, indexes, filters, limits.
 
 **Acceptance:**
 
 - Querying a store without the required index produces a clear `QueryRowsMismatch` with the missing-index hint.
 - Composite-key tests pass when `subIdConfig` is set correctly, fail with structured mismatch when not.
 - Resolver tests pass when `idResolvers`/`idsResolvers` entries match the cross-table reference; fail with structured mismatch when not.
+- Worked-example tests ship for **both** a ReadModel and a StateViewSlice so the DSL covers each consumer type.
 
 ### Stage 7 — CLI runner
 

@@ -11,6 +11,12 @@ let PluginTest = Behavior_GWT$ReventlessGwt.Make({
   eventSchema: PluginSpec$ReventlessCore.eventSchema,
   errorSchema: PluginSpec$ReventlessCore.errorSchema
 })({
+  Spec: {
+    name: PluginSpec$ReventlessCore.name,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema,
+    eventSchema: PluginSpec$ReventlessCore.eventSchema,
+    errorSchema: PluginSpec$ReventlessCore.errorSchema
+  },
   initialState: PluginBehavior$ReventlessCore.initialState,
   evolve: PluginBehavior$ReventlessCore.evolve,
   decide: PluginBehavior$ReventlessCore.decide,

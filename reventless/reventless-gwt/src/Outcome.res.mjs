@@ -21,6 +21,8 @@ function kindName(m) {
       return "NoEventExpected";
     case "TodoMismatch" :
       return "TodoMismatch";
+    case "AppendConditionMismatch" :
+      return "AppendConditionMismatch";
     case "TranslateError" :
       return "TranslateError";
     case "QueryRowsMismatch" :
@@ -59,6 +61,8 @@ function format(m) {
     case "TodoMismatch" :
       let fmt = arr => arr.map(param => `(` + param[0] + `, ` + JSON.stringify(param[1], undefined, 2) + `)`).join(", ");
       return `TodoMismatch:\n  expected: [` + fmt(m.expected) + `]\n  actual:   [` + fmt(m.actual) + `]`;
+    case "AppendConditionMismatch" :
+      return `AppendConditionMismatch:\n  expected: ` + JSON.stringify(m.expected, undefined, 2) + `\n  actual:   ` + JSON.stringify(m.actual, undefined, 2);
     case "TranslateError" :
       return `TranslateError:\n  expected: ` + m.expected + `\n  actual:   ` + Stdlib_Option.getOr(m.actual, "(none)");
     case "QueryRowsMismatch" :
@@ -100,6 +104,7 @@ function toJson(m) {
       obj["actual"] = Stdlib_Option.mapOr(m.actual, null, prim => prim);
       break;
     case "EventsMismatch" :
+    case "AppendConditionMismatch" :
     case "QueryRowsMismatch" :
       obj["expected"] = m.expected;
       obj["actual"] = m.actual;

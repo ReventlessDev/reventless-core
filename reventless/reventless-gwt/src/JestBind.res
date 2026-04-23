@@ -12,12 +12,17 @@
 
 let describe = Jest.describe
 
+// Jest's built-in `fail(msg)` global was removed in Jest 27+ ESM mode, which
+// is the mode reventless-gwt's tests run under. Throwing a JS Error from the
+// test body is the portable way to mark a test as failed — Jest catches it
+// and reports the thrown message as the failure. `Jest.pass` still works
+// as-is because `affirm(Ok)` is a no-op.
 let toAssertion = (~slice=?, outcome: Outcome.outcome): Jest.assertion =>
   switch outcome {
   | Ok() => Jest.pass
   | Error(m) => {
       let hint = Hint.forMismatch(~slice?, m)
-      Jest.fail(`${Outcome.format(m)}\n\n${Hint.format(hint)}`)
+      JsError.throwWithMessage(`${Outcome.format(m)}\n\n${Hint.format(hint)}`)
     }
   }
 

@@ -10,6 +10,12 @@ let include = Behavior_GWT$ReventlessGwt.Make({
   eventSchema: Category$CatalogPlugin.eventSchema,
   errorSchema: Category$CatalogPlugin.errorSchema
 })({
+  Spec: {
+    name: Category$CatalogPlugin.name,
+    commandSchema: Category$CatalogPlugin.commandSchema,
+    eventSchema: Category$CatalogPlugin.eventSchema,
+    errorSchema: Category$CatalogPlugin.errorSchema
+  },
   initialState: CategoryBehavior$CatalogPlugin.initialState,
   evolve: CategoryBehavior$CatalogPlugin.evolve,
   decide: CategoryBehavior$CatalogPlugin.decide,

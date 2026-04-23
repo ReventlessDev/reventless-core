@@ -51,6 +51,11 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
       branch: None,
       message: "The automation slice's TODO projection diverged from the expected set.",
     }
+  | AppendConditionMismatch(_) => {
+      locus: `${slice}.commandSchema`,
+      branch: None,
+      message: "DCB optimistic-concurrency condition drift — likely a missing `@s.matches(DcbTag.string)` annotation on a command field, or the expected condition documented in the test disagrees with what the runtime would build.",
+    }
   | TranslateError(_) => {
       locus: `${slice}.translate`,
       branch: None,

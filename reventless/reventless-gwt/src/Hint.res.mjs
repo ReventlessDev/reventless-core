@@ -43,6 +43,12 @@ function forMismatch(sliceOpt, m) {
         branch: undefined,
         message: "The automation slice's TODO projection diverged from the expected set."
       };
+    case "AppendConditionMismatch" :
+      return {
+        locus: slice + `.commandSchema`,
+        branch: undefined,
+        message: "DCB optimistic-concurrency condition drift — likely a missing `@s.matches(DcbTag.string)` annotation on a command field, or the expected condition documented in the test disagrees with what the runtime would build."
+      };
     case "TranslateError" :
       return {
         locus: slice + `.translate`,
