@@ -2,6 +2,8 @@
 // translates `status` into either a `ConfirmPayment` command or a
 // translation error for unknown statuses.
 
+@@reventless.gwt
+
 module PaymentWebhookSlice = {
   let name = "PaymentWebhook"
 
@@ -18,8 +20,6 @@ module PaymentWebhookSlice = {
     | _ => Error("Unknown payment status: " ++ input.status)
     }
 }
-
-include InboundTranslationSlice_GWT.Make(PaymentWebhookSlice)
 
 describe("PaymentWebhook InboundTranslationSlice", () => {
   test("completed status emits ConfirmPayment", () =>

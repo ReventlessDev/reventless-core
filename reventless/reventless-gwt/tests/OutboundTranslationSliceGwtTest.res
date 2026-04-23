@@ -2,6 +2,8 @@
 // slice. Collect builds a TODO from OrderShipped; translate is mocked to
 // exercise both happy path (fire-and-forget success) and failure (retry).
 
+@@reventless.gwt
+
 module SendTrackingEmailSlice = {
   let name = "SendTrackingEmail"
 
@@ -19,8 +21,6 @@ module SendTrackingEmailSlice = {
     | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
     }
 }
-
-include OutboundTranslationSlice_GWT.Make(SendTrackingEmailSlice)
 
 describe("SendTrackingEmail OutboundTranslationSlice", () => {
   test("collect: OrderShipped queues an outbound TODO", async () =>

@@ -4,6 +4,8 @@
 // exists. Command carries a `@s.matches(DcbTag.string)` annotated ID so the
 // DCB optimistic-concurrency query resolves to a single-entity read.
 
+@@reventless.gwt
+
 module AddCategorySlice = {
   let name = "AddCategory"
 
@@ -38,8 +40,6 @@ module AddCategorySlice = {
       state.exists ? Error(CategoryAlreadyExists) : Ok([CategoryAdded({categoryId, name})])
     }
 }
-
-include StateChangeSlice_GWT.Make(AddCategorySlice)
 
 describe("AddCategory StateChangeSlice", () => {
   test("on empty event log produces CategoryAdded", () =>

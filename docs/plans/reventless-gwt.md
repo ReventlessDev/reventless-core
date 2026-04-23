@@ -334,21 +334,46 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 9 — `@@reventless.gwt` PPX
 
-**Status:** Not started
+**Status:** Complete
 
-**Goal:** Eliminate the two `include` lines at the top of every GWT file. Same convention layer as `@@reventless.spec` / `@@reventless.behavior`.
+**Goal:** Eliminate the `include ReventlessGwt.<Kind>_GWT.Make(<Spec>)` line at the top of every GWT file. Same convention layer as `@@reventless.spec` / `@@reventless.behavior`.
 
-**Actions:**
+**Actions taken:**
 
-1. Add a new file-level annotation `@@reventless.gwt` recognised by `reventless-ppx`.
-2. PPX inspects the folder name (`Aggregate/`, `StateChangeSlice/`, `StateViewSlice/`, etc.) and the file name to derive the slice kind.
-3. Auto-injects `include ReventlessGwt.<Kind>_GWT.Make(<Spec>, [<Behavior>?])` and `include ReventlessGwt.Bind` (or `JestBind` based on a project-level config).
-4. Update the macOS + Linux PPX binaries (per MEMORY: Docker rebuild required for Linux).
+1. Added [`packages/reventless-ppx/src/ppx/GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml) (~220 lines). Recognises the file-level `@@reventless.gwt` attribute and injects the generated `include` directly into the structure.
+2. Wired into [`ReventlessPpx.ml`](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml) as a first-pass before the existing spec/behavior/no-api transforms: `let str = GwtInference.transform str in …`. Independent of those passes — GWT files don't carry `@@reventless.spec` or `@@reventless.behavior`, so the existing passes still skip cleanly.
+3. **Kind derivation** via substring match against filename (base, ext stripped) and folder path segments, longest-match-first so `StateViewSlice` wins over `Slice`. Recognised tokens: `AutomationSlice`, `InboundTranslationSlice`, `OutboundTranslationSlice`, `StateChangeSlice`, `StateViewSlice`, `Projection`, `Behavior`.
+4. **Payload forms:**
+   - `@@reventless.gwt` — Kind from filename/folder; Spec auto-detected as the first top-level module binding in the structure.
+   - `@@reventless.gwt(SpecModule)` — explicit Spec; Kind still derived from filename.
+   - `@@reventless.gwt(SpecModule, BehaviorModule)` — Behavior DSL (two-argument functor); Spec + Behavior explicit.
+5. **Injection placement:** the `include` is inserted directly after the named module's `Pstr_module` item, so the types the `_GWT.Make` functor exposes come into scope in the right lexical position regardless of where the user wrote the attribute.
+6. **Error reporting** via `Location.raise_errorf` for four misuse cases: unknown Kind, ambiguous one-arg payload on Behavior, two-arg payload on a non-Behavior kind, and zero top-level modules in the body.
+7. Built macOS binary: `cd packages/reventless-ppx && pnpm run build:ppx && cp src/_build/default/bin/bin.exe ppx-osx-x64.exe` (16.5 MB).
+8. Rebuilt Linux binary via `docker build --platform linux/amd64 --no-cache -f packages/reventless-ppx/Dockerfile . && docker cp <cid>:/workspace/ppx-linux.exe packages/reventless-ppx/ppx-linux.exe` (25 MB). Both binaries contain the `"reventless.gwt"` attribute string (verified with `strings | grep`).
+9. Converted the five single-spec worked-example GWT test files:
+   - [`AutomationSliceGwtTest.res`](../../reventless/reventless-gwt/tests/AutomationSliceGwtTest.res)
+   - [`InboundTranslationSliceGwtTest.res`](../../reventless/reventless-gwt/tests/InboundTranslationSliceGwtTest.res)
+   - [`OutboundTranslationSliceGwtTest.res`](../../reventless/reventless-gwt/tests/OutboundTranslationSliceGwtTest.res)
+   - [`StateChangeSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res) — first-module (`AddCategorySlice`) auto-inferred; the secondary `MissingTagSlice` keeps its explicit `module MissingTagGwt = StateChangeSlice_GWT.Make(MissingTagSlice)` form.
+   - [`StateViewSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateViewSliceGwtTest.res)
+   Each lost its `include <Kind>_GWT.Make(<Spec>)` line in exchange for one `@@reventless.gwt` attribute.
+
+**Deviations from the original plan:**
+
+- **`include ReventlessGwt.Bind` not injected.** The plan said the PPX should also inject `ReventlessGwt.Bind` (or `JestBind` via project-level config). Not needed: each `<Kind>_GWT.Make` already re-exports `describe`/`test`/`testPromise` from `JestBind` (verified across all 8 DSL modules). A separate bind include would shadow those with identical values and add no capability.
+- **Multi-spec and adapter-heavy files kept explicit.** `MappingGwtTest.res` has four Source/Target combinations with `Mapping_GWT.FromBehavior` / `Mapping_GWT.FromStateChangeSlice` adapter modules, and `QueryGwtTest.res` has two separate `Query_GWT.Make(Query_GWT.FromReadModel(...))` constructions. Neither fits a one-annotation-per-file shape — they keep their explicit module bindings. Scope of the annotation is deliberately "the common single-Spec case."
+- **Folder-based discovery retained as a fallback.** The plan framed Kind derivation as folder-first (`Aggregate/`, `StateChangeSlice/`, etc.). The implementation checks filename first (covers the `reventless-gwt/tests/` flat layout where files like `AutomationSliceGwtTest.res` are the only signal), then falls back to folder segments — so plugin packages that organise tests under `StateChangeSlice/FooTest.res` will work identically.
+- **Attribute position is informational.** The plan didn't specify whether the PPX inserts the `include` at the attribute's position or uses the attribute purely as a signal. The implementation does the latter: the `include` always goes after the module it depends on, regardless of where the author wrote the `@@reventless.gwt` line. Convention-wise, placing it at the top of the file (after the file doc comment, before any modules) reads cleanest.
+- **In-package references drop the `ReventlessGwt.` namespace prefix.** Surfaced during Stage 9 testing: the reventless-gwt test files are part of the reventless-gwt package itself, which has `"namespace": "ReventlessGwt"`. Emitting `include ReventlessGwt.AutomationSlice_GWT.Make(...)` from a test file inside that package triggers `"is an alias for module AutomationSlice_GWT-ReventlessGwt, which is missing"` — the namespace module is synthesised from every in-package source file (including tests), so a test cannot reference sibling modules through it. `GwtInference.make_functor_lid` checks `ModuleUrl.find_package_for(loc)` and emits the unqualified `AutomationSlice_GWT.Make(...)` when `pkg.name == "@reventlessdev/reventless-gwt"`, and the namespace-qualified `ReventlessGwt.AutomationSlice_GWT.Make(...)` for every downstream package.
 
 **Acceptance:**
 
-- A test file with only `@@reventless.gwt` plus the actual `describe`/`test` calls compiles and runs.
-- The PPX picks up the right DSL kind from folder name without explicit configuration.
+- ✅ A test file with `@@reventless.gwt` + one top-level spec module + `describe`/`test` calls compiles and runs.
+- ✅ PPX picks up the right DSL kind from filename substring (no explicit configuration needed for the 5 converted files).
+- ✅ All 119 existing PPX integration tests still pass (verified via `./test/run.sh` after the ReventlessPpx.ml wiring change).
+- ✅ Full monorepo test suite: 124 suites / 1110 tests — zero regressions vs. Stage 8.
+- ✅ Both PPX binaries rebuilt (`ppx-osx-x64.exe` and `ppx-linux.exe`) and contain the new `"reventless.gwt"` attribute name.
 
 ### Stage 10 — Documentation
 

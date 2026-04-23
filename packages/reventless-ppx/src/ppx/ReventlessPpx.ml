@@ -321,6 +321,7 @@ let has_no_api_attr (str : structure) =
   !found
 
 let transform (str : structure) : structure =
+  let str = GwtInference.transform str in
   let initial_mode = detect_mode str in
   let has_mode = initial_mode <> None in
   let is_spec = match initial_mode with Some (Spec _, _) -> true | _ -> false in

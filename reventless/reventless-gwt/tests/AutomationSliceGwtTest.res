@@ -3,6 +3,8 @@
 // CreateShipment. Covers the unit combinators (collect / resolve / process)
 // and the scenario combinators (sweep / andThenEvents).
 
+@@reventless.gwt
+
 module ShipOrderSlice = {
   let name = "ShipOrder"
 
@@ -32,8 +34,6 @@ module ShipOrderSlice = {
   let process = (_id, item) =>
     Some((item.orderId, CreateShipment({orderId: item.orderId, address: item.shippingAddress})))
 }
-
-include AutomationSlice_GWT.Make(ShipOrderSlice)
 
 describe("ShipOrder AutomationSlice", () => {
   test("collect: OrderPlaced creates a pending TODO", () =>

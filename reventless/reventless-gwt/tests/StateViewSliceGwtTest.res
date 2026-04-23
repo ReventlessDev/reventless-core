@@ -2,6 +2,8 @@
 // Projects a small category event stream into a `{categoryId, name, archived}`
 // read model, exercising Set / Update actions.
 
+@@reventless.gwt
+
 open Reventless.Projection
 
 module CategoriesViewSpec = {
@@ -31,8 +33,6 @@ module CategoriesViewSpec = {
 
   let subIdConfig = None
 }
-
-include StateViewSlice_GWT.Make(CategoriesViewSpec)
 
 describe("CategoriesView StateViewSlice", () => {
   test("projects CategoryAdded into a new row", () =>
