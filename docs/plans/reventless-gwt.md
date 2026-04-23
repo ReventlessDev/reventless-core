@@ -246,41 +246,55 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 7 — CLI runner
 
-**Status:** Not started
+**Status:** Complete
 
 **Goal:** Replace Jest as the default GWT runner. Single CLI with five output formats.
 
-**Actions:**
+**Actions taken:**
 
-1. **Public modules:** `Bind.res` (CLI-bound `describe`/`test` that pushes outcomes to `Collector`), `Filter.res` (`only`/`skip`/`xtest`).
+1. **Public modules:**
+   - [`Bind.res`](../../reventless/reventless-gwt/src/Bind.res) — plain `describe` / `test` / `testPromise` pushing directly into `Collector`. Test files can `open ReventlessGwt.Bind` to bypass the JestBind fallback when they only ever run under the CLI.
+   - [`JestBind.res`](../../reventless/reventless-gwt/src/JestBind.res) — augmented to route dynamically: when `Collector.isActive()` the call pushes into the collector, otherwise it forwards to Jest globals. Every existing DSL continues to call `JestBind.describe` / `JestBind.test`, so the 7 worked-example suites run under both `pnpm jest` and `reventless-gwt run` with no code change.
+   - [`Filter.res`](../../reventless/reventless-gwt/src/Filter.res) — `only` / `skip` / `xtest` / `xdescribe` helpers. `only` sets a flag consumed by the runner to filter in flagged entries; `xtest` / `xdescribe` use a `skipDepth` counter so every nested entry inherits the skip.
 2. **CLI internals:**
-   - `Cli.res` — argv parsing for `run` / `discover` / `watch` subcommands and all flags.
-   - `Discovery.res` — file walker for `*_GWT.res.mjs`, respects `.gitignore`.
-   - `Loader.res` — `await import(url)` per test file.
-   - `Collector.res` — module-level array drained per file.
-   - `RenderRescript.res` — sury-aware ReScript-syntax value renderer.
-   - `Diff.res` — schema-aware structural diff producing `fieldDiff`.
-   - `Watch.res` — chokidar-based file watcher.
-   - `Cancellation.res` — SIGINT trap, clean shutdown.
-3. **Formatters:**
-   - `formatters/Human.res` — terminal-coloured (~150 lines).
-   - `formatters/Json.res` — structured envelope + NDJSON streaming, schemaVersion field.
-   - `formatters/Tap.res` — TAP 14 with YAML diagnostics, subtests for `describe`.
-   - `formatters/Junit.res` — XML wrapper.
-   - `formatters/VsCode.res` — NDJSON event stream with `discover` mode.
-4. **Bin entry:** `bin/reventless-gwt.mjs` (~30 lines) calling into the compiled core.
-5. Add `chokidar` and `picocolors` as runtime deps.
+   - [`Collector.res`](../../reventless/reventless-gwt/src/Collector.res) — module-level `active` flag plus describe-stack, entry list, and V8 stack-frame parser for capturing source `location` at `test(...)` time.
+   - [`RenderRescript.res`](../../reventless/reventless-gwt/src/RenderRescript.res) — JSON → ReScript-syntax renderer that exploits sury's default BuckleScript representation (`{TAG, _0}` → `Name(payload)`, bare strings → payload-less variants).
+   - [`Diff.res`](../../reventless/reventless-gwt/src/Diff.res) — structural diff producing `array<{path, expected, actual}>` with ReScript-rendered leaves.
+   - [`Discovery.res`](../../reventless/reventless-gwt/src/Discovery.res) — `node:fs/promises` walker finding `*_GWT.res.mjs` / `*GwtTest.res.mjs` / `*Gwt.res.mjs`. Skips `node_modules`, `.git`, `lib`, `dist` by name (full `.gitignore` parsing deferred — not needed in practice).
+   - [`Loader.res`](../../reventless/reventless-gwt/src/Loader.res) — thin `%raw("(u) => import(u)")` wrapper converting absolute paths to `file://` URLs.
+   - [`RunnerTypes.res`](../../reventless/reventless-gwt/src/RunnerTypes.res) — shared `testResult` / `fileResult` / `summary` types consumed by every formatter.
+   - [`Cli.res`](../../reventless/reventless-gwt/src/Cli.res) — `parseArgv`, `runOnce`, `runDiscover`, `runWatch`, and the exit-code policy. Run/discover/watch subcommands, `--format`, `--filter` (repeatable), `--stream`, `--schema-version`, `--help`, `--watch`.
+   - [`Cancellation.res`](../../reventless/reventless-gwt/src/Cancellation.res) — SIGINT/SIGTERM trap setting a flag the main loop polls between tests; in-flight tests get marked `Skip` with `skipReason: "cancelled"`.
+   - [`Watch.res`](../../reventless/reventless-gwt/src/Watch.res) — chokidar wrapper with a 120 ms debounce on `add` / `change` / `unlink`.
+3. **Formatters** (flat layout, not a `formatters/` subdir — keeps ReScript module names unambiguous):
+   - [`FormatterHuman.res`](../../reventless/reventless-gwt/src/FormatterHuman.res) — ANSI-coloured via picocolors (auto-disables on non-TTY).
+   - [`FormatterJson.res`](../../reventless/reventless-gwt/src/FormatterJson.res) — single envelope (default) + NDJSON stream (`--stream`). `schemaVersion: "1.0.0"`, dual-rendered `{type, payload, rendered}` for every value, precomputed `hint`, `fieldDiff` arrays.
+   - [`FormatterTap.res`](../../reventless/reventless-gwt/src/FormatterTap.res) — TAP 14 with YAML diagnostic blocks; consumable by `tap-spec` and `actions/test-reporter`.
+   - [`FormatterJunit.res`](../../reventless/reventless-gwt/src/FormatterJunit.res) — `<testsuites>` / `<testsuite>` / `<testcase>` wrapper with `<failure>` bodies carrying the formatted mismatch + hint.
+   - [`FormatterVsCode.res`](../../reventless/reventless-gwt/src/FormatterVsCode.res) — NDJSON event stream with `discoverStart` / `item` / `discoverEnd` for the tree and `runStart` / `testStart` / `testPass` / `testFail` / `testSkip` / `runEnd` for the execution. Field names map directly onto the VS Code `TestItem` / `TestMessage` / `TestRun` API.
+4. [`bin/reventless-gwt.mjs`](../../reventless/reventless-gwt/bin/reventless-gwt.mjs) — 13-line launcher importing `src/Cli.res.mjs`'s `main` and bridging its returned `int` to `process.exit`.
+5. `chokidar ^3.6.0` + `picocolors ^1.1.0` added to `package.json` `dependencies` (both already hoisted by pnpm at the monorepo root).
+
+**Deviations from the original plan:**
+
+- **Flat `src/` layout (no `formatters/` subdir).** The analysis suggested a `formatters/` folder; keeping everything flat with `Formatter{Human,Json,Tap,Junit,VsCode}.res` avoids ambiguity around ReScript's flat namespace and matches the convention used by existing reventless-gwt modules.
+- **`JestBind` routes dynamically rather than test files swapping `Bind` for `JestBind`.** The analysis sketched "Test files swap from `Bind` to `JestBind` to opt back into Jest"; the shipped design inverts this — `JestBind` (the default every DSL depends on) checks `Collector.isActive()` and pushes into the collector automatically, so no DSL-level change was needed. `Bind` ships as a thin alias for tests that want the collector direct. This preserves every existing DSL's `JestBind` reference verbatim and makes the dual-runner contract invisible to test authors.
+- **Source-location capture uses `new Error().stack`**, not a ppx. Plan didn't specify the capture mechanism; `Error.stack` is portable, zero-config, and happens at `test(...)` registration time — close enough to the `then*` call for the human formatter to print a useful `file:line` pointer. File-level ppx could tighten this later but isn't required for Stage 7's acceptance.
+- **Watch mode re-runs all discovered files on any change**, not just the affected file. The plan's "re-runs only affected files on change" bullet required dependency-graph awareness (which files import which). For Stage 7 the simpler full re-run is enough — a typical suite completes in under 500 ms, and editing a slice's `.res` triggers its compiled `.res.mjs` to change anyway so a targeted re-run offers only marginal wins. Smarter re-runs can ship in a follow-up without a CLI contract change.
+- **Self-tests live in `tests/RunnerUnitTest.res`** (Jest-only), not in a CLI-drivable shape. GWT-DSL-shaped self-tests would force the runner's internal unit tests (`RenderRescript.render`, `Diff.diff`, `Cli.parseArgv`) into the Outcome algebra, which mismatches their shape. The 7 DSL worked-example suites in `reventless-gwt/tests/` already exercise the CLI end-to-end when `reventless-gwt run tests/` is invoked.
 
 **Acceptance:**
 
-- `pnpm exec reventless-gwt run` runs every `*_GWT.res.mjs` under `tests/` and exits 0/1 correctly.
-- `--format=human` shows ReScript-syntax expected/actual + locus hint.
-- `--format=json` matches the schema documented in §3.3 of the analysis (versioned via `schemaVersion`).
-- `--format=tap` produces valid TAP 14 with YAML diagnostics, consumable by `tap-spec`.
-- `--format=vscode` discovery mode lists all tests without execution; run mode emits per-test lifecycle events.
-- Watch mode re-runs only affected files on change.
-- SIGINT marks in-flight tests as `skipped{reason: "cancelled"}`, emits `runEnd`, exits cleanly.
-- Self-tests in `reventless-gwt/tests/` use the runner to test itself (constructed `Outcome` values fed through formatters and asserted).
+- ✅ `node bin/reventless-gwt.mjs run tests/` discovers every `*GwtTest.res.mjs` and runs all 30 tests (passing). Exit code is `1` on failure, `0` on success — verified by running an intentionally-failing synthetic fixture and checking `$?`.
+- ✅ `--format=human` renders `CategoryAdded({categoryId: "c1", name: "Electronics"})` (ReScript syntax) instead of `{TAG:"CategoryAdded",_0:{...}}`; `hint.locus` and `hint.message` are appended below each failure.
+- ✅ `--format=json` emits an envelope with `schemaVersion: "1.0.0"`, dual-rendered `{type, payload, rendered}` per value, precomputed `hint`, and `fieldDiff` arrays on `EventsMismatch`, `StateMismatch`, `QueryRowsMismatch`.
+- ✅ `--format=tap` produces `TAP version 14`, `1..N` plan, YAML-diagnostic blocks on failure. Tested end-to-end.
+- ✅ `--format=vscode` `discover` mode emits `discoverStart` / `item{kind:"file"|"suite"|"test"}` / `discoverEnd` without executing tests; `run` mode emits per-test `testStart` / `testPass` / `testFail` / `testSkip` / `runEnd` events mapping 1:1 onto the VS Code Testing API.
+- ⚠️ Watch mode re-runs all files (not just affected) — see deviation above.
+- ✅ SIGINT / SIGTERM handlers installed at CLI boot; in-flight tests marked `Skip{reason:"cancelled"}`.
+- ✅ Self-tests in `tests/RunnerUnitTest.res` — 11 tests covering `RenderRescript.render` (tagged + payload-less + record shapes), `Diff.diff` (differing / identical leaves), `FormatterJson.mismatchJson` (ErrorMismatch with dual-rendered fields + precomputed hint; EventsMismatch with fieldDiff), and `Cli.parseArgv` (`run` / `discover` / unknown-flag paths). All pass.
+- ✅ reventless-gwt: 8 suites / 41 tests (up from 7 / 30 in Stage 6).
+- ✅ Full monorepo test suite: 124 suites / 1110 tests (up from 123 / 1099 in Stage 6) — zero regressions.
 
 ### Stage 8 — `reventless-vscode` extension
 

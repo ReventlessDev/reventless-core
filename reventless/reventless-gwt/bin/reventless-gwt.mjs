@@ -1,6 +1,13 @@
 #!/usr/bin/env node
-// Stub entry point for the reventless-gwt CLI runner.
-// Replaced with the real CLI in Stage 7 of the reventless-gwt plan.
+// Thin launcher for the reventless-gwt CLI. The heavy lifting lives in
+// Cli.res — this file only resolves the compiled module and exits with the
+// code Cli.main returns.
 
-console.error("reventless-gwt CLI is not implemented yet. Planned for Stage 7.");
-process.exit(1);
+import { main } from "../src/Cli.res.mjs";
+
+main()
+  .then((code) => process.exit(typeof code === "number" ? code : 0))
+  .catch((err) => {
+    console.error(err && err.stack ? err.stack : err);
+    process.exit(1);
+  });

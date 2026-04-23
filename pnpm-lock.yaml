@@ -1057,6 +1057,12 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../reventless-spec
+      chokidar:
+        specifier: ^3.6.0
+        version: 3.6.0
+      picocolors:
+        specifier: ^1.1.0
+        version: 1.1.1
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1

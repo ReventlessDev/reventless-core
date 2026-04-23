@@ -4,6 +4,7 @@ import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Hint$ReventlessGwt from "./Hint.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
+import * as Collector$ReventlessGwt from "./Collector.res.mjs";
 
 function toAssertion(slice, outcome) {
   if (outcome.TAG === "Ok") {
@@ -14,19 +15,33 @@ function toAssertion(slice, outcome) {
   return Stdlib_JsError.throwWithMessage(Outcome$ReventlessGwt.format(m) + `\n\n` + Hint$ReventlessGwt.format(hint));
 }
 
+function describe(label, body) {
+  if (Collector$ReventlessGwt.isActive()) {
+    return Collector$ReventlessGwt.pushDescribe(label, body);
+  } else {
+    return Jest.describe(label, body);
+  }
+}
+
 function test(slice, name, body) {
-  Jest.test(name, () => toAssertion(slice, body()));
+  if (!Collector$ReventlessGwt.isActive()) {
+    return Jest.test(name, () => toAssertion(slice, body()));
+  }
+  let location = Collector$ReventlessGwt.captureLocation(1);
+  Collector$ReventlessGwt.push(slice, location, name, () => Promise.resolve(body()));
 }
 
 function testPromise(slice, name, timeout, body) {
-  Jest.testPromise(name, timeout, async () => toAssertion(slice, await body()));
+  if (!Collector$ReventlessGwt.isActive()) {
+    return Jest.testPromise(name, timeout, async () => toAssertion(slice, await body()));
+  }
+  let location = Collector$ReventlessGwt.captureLocation(1);
+  Collector$ReventlessGwt.push(slice, location, name, body);
 }
 
-let describe = Jest.describe;
-
 export {
-  describe,
   toAssertion,
+  describe,
   test,
   testPromise,
 }
