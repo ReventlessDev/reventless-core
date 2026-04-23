@@ -2,8 +2,8 @@
 // Verifies that loadStream returns items sorted by sub-key and that
 // delete(id, Some((field, value))) removes only the targeted sub-key item.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open QueryDbSubIdFixtures
 
 describe("QueryDb sub-ID (in-memory)", () => {

@@ -1,7 +1,7 @@
 // Tests for TestRunner.collectNEvents utility (Phase J of stream-handler-implementation plan).
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 

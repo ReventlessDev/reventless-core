@@ -1,7 +1,7 @@
 // Unit tests for SortKey_Filter — the pure sort key filtering utility.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let makeItem = (sk: string) => {
   let d = Dict.make()

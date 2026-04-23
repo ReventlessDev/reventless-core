@@ -3,8 +3,8 @@
 // the replayStream → appendStream pipeline works without an intermediate mapping step.
 // Each test uses a unique aggregate ID to avoid state sharing with other tests.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open EventLogFixtures
 
 describe("EventLog.appendStream (in-memory adapter)", () => {

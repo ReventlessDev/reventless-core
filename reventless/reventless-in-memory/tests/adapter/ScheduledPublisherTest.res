@@ -1,8 +1,8 @@
 // Unit tests for ScheduledPublisher_InMemory.
 // Uses fake timers to verify createSchedule, deleteSchedule, and reset.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // ─────────────────────────────────────────────────────────────
 // Fake timer bindings

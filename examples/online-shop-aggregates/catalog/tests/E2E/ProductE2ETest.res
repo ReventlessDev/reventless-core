@@ -1,7 +1,7 @@
 // End-to-end test for the Product aggregate using the in-memory platform.
 
-open ReventlessInMemory.AsyncTest
-open ReventlessInMemory.AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open Reventless
 
 module Bus = ReventlessInMemory.InMemory_Bus.Make()

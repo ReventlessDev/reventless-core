@@ -65,8 +65,8 @@ module Make = (Projection: Reventless.Projection.Mapping): (
 ) => {
   S.enableJson()
 
-  let testId = ref(ReventlessCore.TestFixtures.id)
-  let meta = ref(ReventlessCore.TestFixtures.meta)
+  let testId = ref(TestFixtures.id)
+  let meta = ref(TestFixtures.meta)
 
   let describe = Jest.describe
   let describeWithId = (description, id, fn) => {

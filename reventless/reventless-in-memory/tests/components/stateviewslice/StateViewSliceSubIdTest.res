@@ -4,8 +4,8 @@
 //  - loadStream returns items sorted by sub-key
 //  - multiple sub-key items for the same partition key are all returned
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open StateViewSliceSubIdFixtures
 
 describe("StateViewSlice sub-ID E2E", () => {

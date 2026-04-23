@@ -35,9 +35,6 @@ module.exports = {
       testPathIgnorePatterns: [
         "/node_modules/",
         "<rootDir>/tests/AsyncTest.res.mjs",
-        "<rootDir>/tests/BehaviorTest.res.mjs",
-        "<rootDir>/tests/EventMappingTest.res.mjs",
-        "<rootDir>/tests/ProjectionTest.res.mjs",
       ],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],

@@ -1,7 +1,7 @@
 // Integration tests for QueryDb_Builder with in-memory adapters.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open QueryDbFixtures
 
 describe("QueryDb (in-memory)", () => {

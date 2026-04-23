@@ -1,8 +1,8 @@
 // Integration tests for CommandGenerator_Builder (in-memory).
 // Verifies that makeHandler returns a resolver that generates and publishes commands.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open CommandGeneratorFixtures
 
 // ─────────────────────────────────────────────────────────────

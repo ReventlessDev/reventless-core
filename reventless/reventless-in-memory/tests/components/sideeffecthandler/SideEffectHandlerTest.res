@@ -1,8 +1,8 @@
 // Integration tests for SideEffectHandler builder (in-memory).
 // Publishes events to the bus and verifies side effect execute is called.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open SideEffectHandlerFixtures
 
 // ─────────────────────────────────────────────────────────────

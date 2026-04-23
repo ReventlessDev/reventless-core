@@ -3,7 +3,7 @@
 
 open Customer
 
-include ReventlessInMemory.BehaviorTest.Make(Customer, CustomerBehavior)
+include ReventlessGwt.Behavior_GWT.Make(Customer, CustomerBehavior)
 
 describe("CustomerBehavior:", () => {
   describe("Register", () => {

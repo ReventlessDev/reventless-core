@@ -2,8 +2,8 @@
 // Verifies that a Stream<rawEvent> can drive a single atomic append, and that
 // the readStream → appendStream pipeline works end-to-end.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open DcbFixtures
 
 // Helper to encode a typed event into a raw event for appending to the DcbEventLog

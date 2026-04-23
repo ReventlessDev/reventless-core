@@ -3,8 +3,8 @@
 // Customer and Order entities without any cloud infrastructure.
 
 open Reventless
-open ReventlessInMemory.AsyncTest
-open ReventlessInMemory.AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // ─────────────────────────────────────────────────────────────
 // Isolated bus for this test suite

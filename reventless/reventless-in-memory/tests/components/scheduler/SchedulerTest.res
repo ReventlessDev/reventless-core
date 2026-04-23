@@ -3,8 +3,8 @@
 // Adapter-level timer tests are in adapter/ScheduledPublisherTest.res.
 
 open TestFixtures
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open SchedulerFixtures
 
 describe("Scheduler_Builder.Make:", () => {

@@ -1,8 +1,8 @@
 // Unit tests for QueryEngine_InMemory.
 // Verifies query (by id and key) and scan operations via the bus storage registry.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 

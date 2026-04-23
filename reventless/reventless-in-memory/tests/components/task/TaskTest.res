@@ -4,8 +4,8 @@
 // Low-level handler extraction is covered in adapter/TaskBucketTest.res.
 
 open TestFixtures
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open TaskFixtures
 
 describe("Task_Builder.Make:", () => {

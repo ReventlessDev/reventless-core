@@ -28,6 +28,7 @@
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/reventless-gwt",
     "@reventlessdev/online-shop-aggregates-ordering-spec",
     "@reventlessdev/online-shop-aggregates-catalog-spec"
   ],

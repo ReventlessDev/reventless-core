@@ -2,7 +2,7 @@
 // Uses ScheduledPublisher_InMemory + Scheduler_Builder to verify schedule lifecycle.
 
 open TestFixtures
-open AsyncTest
+open ReventlessGwt.AsyncTest
 
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()

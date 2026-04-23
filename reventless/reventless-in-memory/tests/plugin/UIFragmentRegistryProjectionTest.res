@@ -1,17 +1,18 @@
+open ReventlessCore
 open PluginSpec
 open PluginFixtures
-module UIFragmentRegistryProjectionTest = ProjectionTest.Make(
+module UIFragmentRegistryProjectionTest = ReventlessGwt.Projection_GWT.Make(
   UIFragmentRegistryProjection.UIFragmentRegistryMapping,
 )
 open UIFragmentRegistryProjectionTest
 
 let registeredState: UIFragmentRegistryReadModelSpec.state = {
-  pluginId: TestFixtures.id,
+  pluginId: ReventlessGwt.TestFixtures.id,
   remoteEntryUrl: uiManifest.remoteEntryUrl,
   panels: uiManifest.panels,
   pages: uiManifest.pages,
-  registeredAt: TestFixtures.meta.time,
-  updatedAt: TestFixtures.meta.time,
+  registeredAt: ReventlessGwt.TestFixtures.meta.time,
+  updatedAt: ReventlessGwt.TestFixtures.meta.time,
 }
 
 let updatedManifest: Reventless.Plugin.uiFragmentManifest = {
@@ -41,7 +42,7 @@ describe("UIFragmentRegistryProjection:", () => {
       remoteEntryUrl: updatedManifest.remoteEntryUrl,
       panels: updatedManifest.panels,
       pages: updatedManifest.pages,
-      updatedAt: TestFixtures.meta.time,
+      updatedAt: ReventlessGwt.TestFixtures.meta.time,
     })
   )
 

@@ -1,8 +1,8 @@
 // Round-trip test for EventLogStorage_Sqlite.
 // Mirrors the shape of the Memory variant but uses an in-memory SQLite database.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}

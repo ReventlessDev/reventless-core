@@ -1,8 +1,8 @@
 // Integration tests for ExtensionPoint builder (in-memory).
 // Dispatches a command to the EP channel and verifies that publishToAggregates is called.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open ExtensionPointFixtures
 
 // ─────────────────────────────────────────────────────────────

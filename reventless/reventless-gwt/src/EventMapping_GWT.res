@@ -1,3 +1,5 @@
+open ReventlessCore
+
 module type T = {
   module Source: Reventless.Aggregate.Spec
   module Target: Reventless.Aggregate.Spec

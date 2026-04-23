@@ -5,8 +5,8 @@
 //   1. publishEvent still resolves in exactly 2 microtask ticks (unbounded mode).
 //   2. A single publishEvent call reaches all subscribers on the same topic.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 

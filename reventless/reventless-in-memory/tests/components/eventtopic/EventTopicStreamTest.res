@@ -2,8 +2,8 @@
 // Verifies that a Stream<publishJsonStreamItem> drives publishing without collecting into an array.
 
 open TestFixtures
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open EventTopicStreamFixtures
 
 describe("EventTopic.publishJsonStream", () => {

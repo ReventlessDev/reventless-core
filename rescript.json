@@ -22,6 +22,7 @@
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-interop",
     "@reventlessdev/reventless-core",
+    "@reventlessdev/reventless-gwt",
     "@reventlessdev/reventless-in-memory",
     "@reventlessdev/reventless-aws",
     "@reventlessdev/online-shop-hybrid-platform-aws"

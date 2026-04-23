@@ -1,8 +1,8 @@
 // Unit tests for HeartbeatRunner_InMemory.
 // Uses fake timers to verify that the heartbeat interval fires the runtime handler.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // ─────────────────────────────────────────────────────────────
 // Fake timer bindings

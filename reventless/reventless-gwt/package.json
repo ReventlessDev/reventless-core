@@ -1,0 +1,34 @@
+{
+  "name": "@reventlessdev/reventless-gwt",
+  "version": "0.1.0-alpha.0",
+  "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
+  "license": "MIT",
+  "bin": {
+    "reventless-gwt": "./bin/reventless-gwt.mjs"
+  },
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps"
+  },
+  "dependencies": {
+    "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/reventless-core": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*"
+  },
+  "devDependencies": {
+    "@glennsl/rescript-jest": "^0.13.1",
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "rescript": "^12.2.0",
+    "sury": "^11.0.0-alpha.4",
+    "sury-ppx": "^11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "^12.2.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

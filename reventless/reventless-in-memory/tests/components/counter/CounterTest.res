@@ -1,8 +1,8 @@
 // E2E tests for Counter_Builder.
 // Verifies addToCounterTarget deduplication and count persistence.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open CounterFixtures
 
 describe("Counter E2E", () => {

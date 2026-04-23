@@ -1,8 +1,8 @@
 // Unit tests for CounterHandler_InMemory.
 // CounterHandler uses module-level refs — call reset() in beforeEach for isolation.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // No Pulumi mock needed (CounterHandler_InMemory uses no Output)
 

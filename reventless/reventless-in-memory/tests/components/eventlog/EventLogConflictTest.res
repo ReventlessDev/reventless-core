@@ -1,7 +1,7 @@
 // Tests for optimistic locking conflict detection in EventLog (in-memory).
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open EventLogFixtures
 
 describe("EventLog — conflict detection (in-memory)", () => {

@@ -1,3 +1,5 @@
+open ReventlessCore
+
 let pluginDefinition = {
   Reventless.Plugin.id: "id@1",
   name: "name",
@@ -21,7 +23,7 @@ let state: PluginReadModelSpec.state = {
   extensionNames: pluginDefinition.extensions->PluginProjection.Util.extractExtensionNames,
   extensions: pluginDefinition.extensions,
   status: Connected,
-  statusChange: TestFixtures.statusChange,
+  statusChange: ReventlessGwt.TestFixtures.statusChange,
   apiSchemaFragment: None,
   uiFragments: None,
 }

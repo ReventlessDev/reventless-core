@@ -1,7 +1,7 @@
 // Integration tests for EventLog_Builder with in-memory adapters.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open EventLogFixtures
 
 describe("EventLog (in-memory)", () => {

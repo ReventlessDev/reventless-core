@@ -2,8 +2,8 @@
 // Verifies that the Order/CatalogProduct DCB slices dispatch and produce events.
 
 open Reventless
-open ReventlessInMemory.AsyncTest
-open ReventlessInMemory.AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // ─────────────────────────────────────────────────────────────
 // Isolated bus for this test suite

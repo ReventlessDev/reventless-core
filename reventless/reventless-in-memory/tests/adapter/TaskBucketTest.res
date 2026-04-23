@@ -1,8 +1,8 @@
 // Unit tests for TaskBucket_InMemory.
 // Covers makeHandler (event extraction) and make (dummy resource for Task_Builder compatibility).
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // No Pulumi mock needed (TaskBucket_InMemory has no Pulumi.Output usage)
 

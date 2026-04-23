@@ -34,33 +34,44 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 1 — Create `reventless-gwt`, consolidate existing DSLs
 
-**Status:** Not started
+**Status:** Complete — commit `4c2895bd` on `alpha`.
 
 **Goal:** Single package home for every existing DSL. Delete the `reventless-in-memory/src/test/*` duplicates.
 
-**Actions:**
+**Actions taken:**
 
-1. Create `reventless/reventless-gwt/` package with `package.json`, `rescript.json`, `bin/reventless-gwt.mjs` stub.
-2. `git mv` the four files from `reventless/reventless-core/tests/` into `reventless/reventless-gwt/src/`:
+1. Created `reventless/reventless-gwt/` package with `package.json`, `rescript.json`, `bin/reventless-gwt.mjs` stub (namespace `ReventlessGwt`, deps on `rescript-effect`, `reventless-spec`, `reventless-infra`, `reventless-core`).
+2. `git mv` from `reventless-core/tests/` into `reventless-gwt/src/`:
    - `BehaviorTest.res` → `Behavior_GWT.res`
    - `EventMappingTest.res` → `EventMapping_GWT.res`
    - `ProjectionTest.res` → `Projection_GWT.res`
-   - `AsyncTest.res` (kept as-is — Jest binding helper, not a GWT)
-3. Delete `reventless/reventless-in-memory/src/test/{BehaviorTest,ProjectionTest,AsyncTest}.res` and `.res.mjs` siblings.
-4. Update `reventless-in-memory/rescript.json` — remove `src/test` source dir or reduce to `Mocks/` and `TestRunner.res` only.
-5. Add `@reventlessdev/reventless-gwt` as a devDep of `reventless-in-memory` (only because some `TestRunner` helpers use `AsyncTest`).
-6. Codemod every example test:
+   - `TestFixtures.res` → `TestFixtures.res` (added mid-stage — only used by the GWT DSLs and downstream tests once the plugin tests moved out of reventless-core).
+   New file `reventless-gwt/src/AsyncTest.res` as a content copy. `reventless-core/tests/AsyncTest.res` was kept as an internal Jest-binding helper to avoid a `reventless-core` ↔ `reventless-gwt` dependency cycle (13 reventless-core unit/integration test files `open AsyncTest`).
+3. Deleted the three duplicates in `reventless-in-memory/src/test/`. `Mocks/` and `TestRunner.res` remain; `rescript.json` unchanged.
+4. Declared `@reventlessdev/reventless-gwt` as a **devDependency** of `reventless-in-memory` and of the six example plugin packages (not runtime — stays out of the AWS Lambda layer). Also added to root `rescript.json` and root `package.json` so the monorepo build picks it up.
+5. Relocated three framework-internal Plugin GWT tests (+ `PluginFixtures.res`) from `reventless-core/tests/plugin/` to `reventless-in-memory/tests/plugin/` — reventless-core itself can't depend on reventless-gwt without a cycle, and reventless-in-memory already depends on both. Agreed long-term home (reventless-gwt's `tests/` dir is reserved for per-DSL worked examples in later stages).
+6. Codemodded 24 consumer files:
    - `ReventlessInMemory.BehaviorTest` → `ReventlessGwt.Behavior_GWT`
    - `ReventlessInMemory.ProjectionTest` → `ReventlessGwt.Projection_GWT`
    - `ReventlessInMemory.AsyncTest` → `ReventlessGwt.AsyncTest`
-7. Add deprecation aliases in `reventless-gwt/src/Deprecated.res` and `reventless-in-memory/src/test/Deprecated.res` for one release cycle.
-8. Update `MEMORY.md` notes that reference the old paths.
+   - In-memory internal tests: `open AsyncTest` → `open ReventlessGwt.AsyncTest` (and `.Expect`)
+   - Relocated plugin tests switched `TestFixtures.*` → `ReventlessGwt.TestFixtures.*` to avoid a warning-44 shadow against the in-memory `TestFixtures.res`.
+7. Refined `Behavior_GWT.Make`'s signature to take an inline `BehaviorSpec` module type (matching the former in-memory pattern) so sury-ppx processes `@schema` attributes in the same compilation unit that declares the functor — a cross-package `ReventlessCore.Behavior.Spec` reference produced an unexpected "not included in" error from the compiler.
+8. Removed obsolete `testPathIgnorePatterns` entries for the three moved DSL files in `jest.config.js` and `reventless-core/package.json`. `AsyncTest.res.mjs` entries kept (the file is still there as an internal helper).
+
+**Deviations from the original plan:**
+
+- **Deprecation aliases skipped.** Step 6's codemod updated every in-repo consumer in the same PR, leaving no remaining internal references to the old paths. Any external consumer of the old `ReventlessInMemory.BehaviorTest`/`ProjectionTest`/`AsyncTest` exports gets a hard compile error rather than a warning — faster feedback, cleaner tree, and removes the Stage D cleanup step.
+- **`AsyncTest.res` kept in `reventless-core/tests/`** (Option 1 of two cycle-break alternatives) instead of moved. Contents identical to the reventless-gwt copy; both are trivial Jest `@val external` bindings.
+- **`TestFixtures.res` moved to reventless-gwt** (not covered by the original plan step 2). Surfaced only after the plugin tests moved — at that point reventless-core had zero remaining consumers of the file.
+- **Plugin GWT tests relocated to reventless-in-memory** rather than left in reventless-core or rewritten — the original plan did not address these framework-internal GWT tests.
 
 **Acceptance:**
 
-- All existing tests pass with the new import paths.
-- No file under `reventless-in-memory/src/test/` other than `TestRunner.res`, `Mocks/`, and `Deprecated.res`.
-- Deprecation warnings emitted for old import paths.
+- ✅ All existing tests pass with the new import paths (116 suites / 1069 tests).
+- ✅ No GWT DSL files under `reventless-in-memory/src/test/` other than `TestRunner.res` and `Mocks/`.
+- ✅ Zero new compiler warnings.
+- ⚠️ Deprecation aliases skipped (see deviation above) — old paths fail-fast instead.
 
 ### Stage 2 — `Outcome` algebra + `JestBind` adapter
 

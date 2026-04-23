@@ -1,7 +1,7 @@
 // Unit tests for InboundTranslationSlice_Callback — tests receive function directly.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open InboundTranslationSliceFixtures
 
 module Callback = ReventlessCore.InboundTranslationSlice_Callback.Make(PaymentWebhookSpec)

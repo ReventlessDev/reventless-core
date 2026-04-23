@@ -1,7 +1,7 @@
 // Unit tests for AutomationSlice_Callback — tests collect/resolve/process phases directly.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open AutomationSliceFixtures
 
 module Callback = ReventlessCore.AutomationSlice_Callback.Make(ShipOrderSpec)

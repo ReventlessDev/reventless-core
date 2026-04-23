@@ -1,7 +1,7 @@
 // Round-trip test for TaskBucket_Sqlite put/get helpers.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 describe("TaskBucket_Sqlite", () => {
   testPromise("put then get returns the stored body", async () => {

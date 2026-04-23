@@ -63,6 +63,9 @@ importers:
       '@reventlessdev/reventless-core':
         specifier: workspace:*
         version: link:reventless/reventless-core
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:reventless/reventless-gwt
       '@reventlessdev/reventless-in-memory':
         specifier: workspace:*
         version: link:reventless/reventless-in-memory
@@ -118,6 +121,9 @@ importers:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -174,6 +180,9 @@ importers:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -264,6 +273,9 @@ importers:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -320,6 +332,9 @@ importers:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -419,6 +434,9 @@ importers:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -512,6 +530,9 @@ importers:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -1022,6 +1043,37 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0
 
+  reventless/reventless-gwt:
+    dependencies:
+      '@reventlessdev/rescript-effect':
+        specifier: workspace:*
+        version: link:../../rescript/rescript-effect
+      '@reventlessdev/reventless-core':
+        specifier: workspace:*
+        version: link:../reventless-core
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../reventless-infra
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../reventless-spec
+    devDependencies:
+      '@glennsl/rescript-jest':
+        specifier: ^0.13.1
+        version: 0.13.1
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../packages/reventless-ppx
+      rescript:
+        specifier: ^12.2.0
+        version: 12.2.0
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.2.0)
+      sury-ppx:
+        specifier: ^11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+
   reventless/reventless-in-memory:
     dependencies:
       '@reventlessdev/rescript-effect':
@@ -1055,6 +1107,9 @@ importers:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../packages/reventless-ppx
@@ -20546,7 +20601,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 17.0.45
+      '@types/node': 25.6.0
 
   '@types/semver@7.7.1': {}
 
@@ -24289,7 +24344,7 @@ snapshots:
 
   jest-diff@29.7.0:
     dependencies:
-      chalk: 4.1.0
+      chalk: 4.1.2
       diff-sequences: 29.6.3
       jest-get-type: 29.6.3
       pretty-format: 29.7.0
@@ -26463,7 +26518,7 @@ snapshots:
       '@yarnpkg/parsers': 3.0.2
       '@zkochan/js-yaml': 0.0.7
       axios: 1.15.1
-      chalk: 4.1.0
+      chalk: 4.1.2
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
       cliui: 8.0.1

@@ -2,8 +2,8 @@
 // Verifies the full aggregate command → event flow using the in-memory bus.
 
 open TestFixtures
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open AggregateFixtures
 
 describe("InMemory_Bus", () => {

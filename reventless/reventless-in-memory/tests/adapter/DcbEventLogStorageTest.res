@@ -1,8 +1,8 @@
 // Unit tests for DcbEventLogStorage_InMemory.
 // Covers append, read (with filtering), headPosition, and conditional append.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 

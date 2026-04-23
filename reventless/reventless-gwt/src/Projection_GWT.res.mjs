@@ -10,7 +10,7 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
-import * as TestFixtures$ReventlessCore from "@reventlessdev/reventless-core/tests/TestFixtures.res.mjs";
+import * as TestFixtures$ReventlessGwt from "./TestFixtures.res.mjs";
 
 function unpackPlainPartial(p) {
   return p.VAL;
@@ -19,10 +19,10 @@ function unpackPlainPartial(p) {
 function Make(Projection) {
   S.enableJson();
   let testId = {
-    contents: TestFixtures$ReventlessCore.id
+    contents: TestFixtures$ReventlessGwt.id
   };
   let meta = {
-    contents: TestFixtures$ReventlessCore.meta
+    contents: TestFixtures$ReventlessGwt.meta
   };
   let describeWithId = (description, id, fn) => {
     testId.contents = id;

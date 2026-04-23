@@ -1,8 +1,8 @@
 // Integration tests for EventCollector_Builder with in-memory channel.
 
 open TestFixtures
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open EventCollectorFixtures
 
 describe("EventCollector (in-memory)", () => {

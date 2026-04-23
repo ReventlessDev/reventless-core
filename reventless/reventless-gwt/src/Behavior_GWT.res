@@ -1,5 +1,20 @@
+open ReventlessCore
+
+// Minimal spec the DSL requires — command / event / error schemas only.
+// Defined inline (rather than referencing ReventlessCore.Behavior.Spec) so
+// sury-ppx processes the @schema attributes in this compilation unit,
+// matching how consumers' aggregate specs are generated.
+module type BehaviorSpec = {
+  @schema
+  type command
+  @schema
+  type event
+  @schema
+  type error
+}
+
 module type T = {
-  module Spec: Behavior.Spec
+  module Spec: BehaviorSpec
 
   let describe: (string, unit => unit) => unit
   let test: (string, unit => Jest.assertion) => unit
@@ -26,9 +41,10 @@ module type T = {
   let thenError: (array<Spec.event>, Spec.error) => Jest.assertion
 }
 
-module Make = (Spec: Behavior.Spec, Behavior: Behavior.T with module Spec := Spec): (
-  T with module Spec = Spec
-) => {
+module Make = (
+  Spec: BehaviorSpec,
+  Behavior: Behavior.T with module Spec := Spec,
+): (T with module Spec = Spec) => {
   module Spec = Spec
 
   S.enableJson()

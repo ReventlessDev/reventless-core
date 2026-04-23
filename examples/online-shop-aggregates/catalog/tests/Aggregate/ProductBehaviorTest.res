@@ -3,7 +3,7 @@
 
 open Product
 
-include ReventlessInMemory.BehaviorTest.Make(Product, ProductBehavior)
+include ReventlessGwt.Behavior_GWT.Make(Product, ProductBehavior)
 
 describe("ProductBehavior:", () => {
   describe("Add", () => {

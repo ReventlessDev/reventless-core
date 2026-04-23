@@ -1,8 +1,8 @@
 // Behavioural parity between Memory and Sqlite backends at the adapter layer.
 // Each test runs the same scenario against both BackendState settings.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}

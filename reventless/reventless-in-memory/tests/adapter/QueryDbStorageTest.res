@@ -1,8 +1,8 @@
 // Unit tests for QueryDbStorage_InMemory.
 // Covers save, loadStream, saveBatch, count, delete, deleteBatch, and scan registration.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 

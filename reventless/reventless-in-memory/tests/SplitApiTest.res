@@ -10,8 +10,8 @@
 // GraphQL_ServerInstance) but is not tested here due to Jest ESM
 // compatibility issues with the MCP SDK dependency chain.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // Force side-effect import (creates admin instance + registers schemas)
 let adminGraphQL = SplitApiFixtures.adminGraphQL

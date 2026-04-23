@@ -1,7 +1,7 @@
 // Unit tests for OutboundTranslationSlice_Callback — tests collect and translate phases directly.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open OutboundTranslationSliceFixtures
 
 module FireForgetCallback = ReventlessCore.OutboundTranslationSlice_Callback.Make(SendTrackingEmailSpec)

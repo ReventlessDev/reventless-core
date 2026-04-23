@@ -9,10 +9,7 @@
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "<rootDir>/tests/AsyncTest.res.mjs",
-      "<rootDir>/tests/BehaviorTest.res.mjs",
-      "<rootDir>/tests/EventMappingTest.res.mjs",
-      "<rootDir>/tests/ProjectionTest.res.mjs"
+      "<rootDir>/tests/AsyncTest.res.mjs"
     ],
     "moduleFileExtensions": [
       "js",

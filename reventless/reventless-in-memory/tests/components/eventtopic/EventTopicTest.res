@@ -1,7 +1,7 @@
 // Integration tests for EventTopic_Builder with in-memory publisher.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open EventTopicFixtures
 
 describe("EventTopic (in-memory)", () => {

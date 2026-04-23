@@ -2,8 +2,8 @@
 // Verifies that a single ReadModel can project events from two independent
 // EventTopics (simulating aggregate + DCB sources merged by Plugin_Builder).
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 open MixedSourceReadModelFixtures
 
 describe("MixedSource ReadModel", () => {

@@ -6,7 +6,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 
 function Make(Spec) {
   return Behavior => {
@@ -48,7 +48,7 @@ function Make(Spec) {
       expectedEvents.length,
       true
     ]);
-    let listErrors = () => "Errors occured: " + Stdlib_Array.reduce(errors.contents.map(err => Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.array(Message$Reventless.encode(err, Spec.errorSchema)), undefined)[0]), undefined)), "", (a, b) => a + (b + " "));
+    let listErrors = () => "Errors occured: " + Stdlib_Array.reduce(errors.contents.map(err => Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.array(Message$ReventlessCore.encode(err, Spec.errorSchema)), undefined)[0]), undefined)), "", (a, b) => a + (b + " "));
     let thenEvent = (events, expectedEvent) => {
       if (events.length !== 0) {
         return Jest.Expect.toEqual(Jest.Expect.expect([

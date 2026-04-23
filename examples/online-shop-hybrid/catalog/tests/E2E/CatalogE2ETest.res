@@ -3,8 +3,8 @@
 // and dispatch independently without interference.
 
 open Reventless
-open ReventlessInMemory.AsyncTest
-open ReventlessInMemory.AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 // ─────────────────────────────────────────────────────────────
 // Isolated bus for this test suite

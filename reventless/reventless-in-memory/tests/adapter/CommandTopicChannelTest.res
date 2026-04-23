@@ -1,8 +1,8 @@
 // Unit tests for CommandTopicChannel_InMemory.
 // Covers encodeCommandJson (shared helper), decodeId, publishJsons, and connect wiring.
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 

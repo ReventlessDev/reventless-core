@@ -3,7 +3,7 @@
 
 open Category
 
-include ReventlessInMemory.BehaviorTest.Make(Category, CategoryBehavior)
+include ReventlessGwt.Behavior_GWT.Make(Category, CategoryBehavior)
 
 describe("CategoryBehavior:", () => {
   describe("Add", () => {

@@ -31,7 +31,8 @@
     "@reventlessdev/rescript-mcp-sdk",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
-    "@reventlessdev/reventless-core"
+    "@reventlessdev/reventless-core",
+    "@reventlessdev/reventless-gwt"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

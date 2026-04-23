@@ -1,8 +1,8 @@
 // Unit tests for EventCollectorChannel_InMemory.
 // Verifies resource collection in make() and subscriber wiring in connect().
 
-open AsyncTest
-open AsyncTest.Expect
+open ReventlessGwt.AsyncTest
+open ReventlessGwt.AsyncTest.Expect
 
 let _ = TestRunner.setup()
 
