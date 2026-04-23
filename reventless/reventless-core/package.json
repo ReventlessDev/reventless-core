@@ -46,6 +46,7 @@
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-ssh2": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",
+    "uuid": "^13.0.0",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*"
