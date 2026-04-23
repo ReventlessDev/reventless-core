@@ -235,6 +235,8 @@ let runFiles = async (
   opts: options,
   paths: array<string>,
   ~onFileFinished: option<RunnerTypes.fileResult => unit>=?,
+  ~onTestStart: option<(string, Collector.entry) => unit>=?,
+  ~onTestFinished: option<(string, RunnerTypes.testResult) => unit>=?,
 ): RunnerTypes.runResult => {
   let startedAt = dateNowIso()
   let startTime = now()
@@ -255,7 +257,7 @@ let runFiles = async (
       for j in 0 to selected->Array.length - 1 {
         if Cancellation.isCancelled() {
           let e = selected->Array.getUnsafe(j)
-          tests->Array.push({
+          let r: RunnerTypes.testResult = {
             id: e.id,
             name: e.name,
             describePath: e.describePath,
@@ -265,11 +267,24 @@ let runFiles = async (
             slice: e.slice,
             mismatch: None,
             skipReason: Some("cancelled"),
-          })
+          }
+          tests->Array.push(r)
+          switch onTestFinished {
+          | Some(cb) => cb(path, r)
+          | None => ()
+          }
         } else {
           let entry = selected->Array.getUnsafe(j)
+          switch onTestStart {
+          | Some(cb) => cb(path, entry)
+          | None => ()
+          }
           let r = await runEntry(entry)
           tests->Array.push(r)
+          switch onTestFinished {
+          | Some(cb) => cb(path, r)
+          | None => ()
+          }
         }
       }
       let fr: RunnerTypes.fileResult = {path, tests}
@@ -315,21 +330,29 @@ let runOnce = async (opts: options): int => {
         FormatterJson.streamFileFinished(f)
       },
     )
-  | (VsCode, _) =>
-    Some(
-      (f: RunnerTypes.fileResult) => {
-        f.tests->Array.forEach(t =>
-          switch t.status {
-          | Pass => FormatterVsCode.testPass(t.id, t.durationMs)
-          | Fail => FormatterVsCode.testFail(t, t.id)
-          | Skip =>
-            FormatterVsCode.testSkip(t.id, t.skipReason->Option.getOr("skipped"))
-          }
-        )
-      },
-    )
   | _ => None
   }
+  // VS Code emits per-test events (testStart / testPass / testFail / testSkip)
+  // so the extension can update the UI in real time. IDs are prefixed with the
+  // absolute file path to match the ids emitted by `discover`.
+  let onTestStart: option<(string, Collector.entry) => unit> =
+    opts.format == VsCode
+      ? Some((path, e) => FormatterVsCode.testStart(path ++ "::" ++ e.id))
+      : None
+  let onTestFinished: option<(string, RunnerTypes.testResult) => unit> =
+    opts.format == VsCode
+      ? Some(
+          (path, t) => {
+            let id = path ++ "::" ++ t.id
+            switch t.status {
+            | Pass => FormatterVsCode.testPass(id, t.durationMs)
+            | Fail => FormatterVsCode.testFail(t, id)
+            | Skip =>
+              FormatterVsCode.testSkip(id, t.skipReason->Option.getOr("skipped"))
+            }
+          },
+        )
+      : None
   // For streaming formatters, emit per-file events; emitResult only emits
   // the terminal `runEnd`.
   if opts.format == Json && opts.stream {
@@ -337,7 +360,7 @@ let runOnce = async (opts: options): int => {
   } else if opts.format == VsCode {
     FormatterVsCode.runStart(~total=0, ~filter=opts.filters)
   }
-  let result = await runFiles(opts, paths, ~onFileFinished?)
+  let result = await runFiles(opts, paths, ~onFileFinished?, ~onTestStart?, ~onTestFinished?)
   emitResult(opts, result)
   result.summary.failed > 0 ? 1 : 0
 }

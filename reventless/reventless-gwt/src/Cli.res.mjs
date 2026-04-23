@@ -318,7 +318,7 @@ async function loadAndCollect(path) {
   return entries;
 }
 
-async function runFiles(opts, paths, onFileFinished) {
+async function runFiles(opts, paths, onFileFinished, onTestStart, onTestFinished) {
   let startedAt = dateNowIso();
   let startTime = performance.now();
   let files = [];
@@ -340,21 +340,37 @@ async function runFiles(opts, paths, onFileFinished) {
       for (let j = 0, j_finish = selected.length; j < j_finish; ++j) {
         if (Cancellation$ReventlessGwt.isCancelled()) {
           let e = selected[j];
-          tests.push({
-            id: e.id,
-            name: e.name,
-            describePath: e.describePath,
+          let r_id = e.id;
+          let r_name = e.name;
+          let r_describePath = e.describePath;
+          let r_location = e.location;
+          let r_slice = e.slice;
+          let r_skipReason = "cancelled";
+          let r = {
+            id: r_id,
+            name: r_name,
+            describePath: r_describePath,
             status: "Skip",
             durationMs: 0.0,
-            location: e.location,
-            slice: e.slice,
+            location: r_location,
+            slice: r_slice,
             mismatch: undefined,
-            skipReason: "cancelled"
-          });
+            skipReason: r_skipReason
+          };
+          tests.push(r);
+          if (onTestFinished !== undefined) {
+            onTestFinished(path, r);
+          }
         } else {
           let entry = selected[j];
-          let r = await runEntry(entry);
-          tests.push(r);
+          if (onTestStart !== undefined) {
+            onTestStart(path, entry);
+          }
+          let r$1 = await runEntry(entry);
+          tests.push(r$1);
+          if (onTestFinished !== undefined) {
+            onTestFinished(path, r$1);
+          }
         }
       }
       let fr = {
@@ -403,37 +419,29 @@ async function runOnce(opts) {
   let match = opts.format;
   let match$1 = opts.stream;
   let onFileFinished;
-  switch (match) {
-    case "Json" :
-      onFileFinished = match$1 ? f => {
-          f.tests.forEach(FormatterJson$ReventlessGwt.streamTest);
-          FormatterJson$ReventlessGwt.streamFileFinished(f);
-        } : undefined;
-      break;
-    case "VsCode" :
-      onFileFinished = f => {
-        f.tests.forEach(t => {
-          let match = t.status;
-          switch (match) {
-            case "Pass" :
-              return FormatterVsCode$ReventlessGwt.testPass(t.id, t.durationMs);
-            case "Fail" :
-              return FormatterVsCode$ReventlessGwt.testFail(t, t.id);
-            case "Skip" :
-              return FormatterVsCode$ReventlessGwt.testSkip(t.id, Stdlib_Option.getOr(t.skipReason, "skipped"));
-          }
-        });
-      };
-      break;
-    default:
-      onFileFinished = undefined;
-  }
+  onFileFinished = match === "Json" && match$1 ? f => {
+      f.tests.forEach(FormatterJson$ReventlessGwt.streamTest);
+      FormatterJson$ReventlessGwt.streamFileFinished(f);
+    } : undefined;
+  let onTestStart = opts.format === "VsCode" ? (path, e) => FormatterVsCode$ReventlessGwt.testStart(path + "::" + e.id) : undefined;
+  let onTestFinished = opts.format === "VsCode" ? (path, t) => {
+      let id = path + "::" + t.id;
+      let match = t.status;
+      switch (match) {
+        case "Pass" :
+          return FormatterVsCode$ReventlessGwt.testPass(id, t.durationMs);
+        case "Fail" :
+          return FormatterVsCode$ReventlessGwt.testFail(t, id);
+        case "Skip" :
+          return FormatterVsCode$ReventlessGwt.testSkip(id, Stdlib_Option.getOr(t.skipReason, "skipped"));
+      }
+    } : undefined;
   if (opts.format === "Json" && opts.stream) {
     paths.forEach(FormatterJson$ReventlessGwt.streamFileStart);
   } else if (opts.format === "VsCode") {
     FormatterVsCode$ReventlessGwt.runStart(0, opts.filters);
   }
-  let result = await runFiles(opts, paths, onFileFinished);
+  let result = await runFiles(opts, paths, onFileFinished, onTestStart, onTestFinished);
   emitResult(opts, result);
   if (result.summary.failed > 0) {
     return 1;

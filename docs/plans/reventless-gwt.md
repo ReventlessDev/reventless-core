@@ -298,26 +298,39 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 8 — `reventless-vscode` extension
 
-**Status:** Not started
+**Status:** Complete (MVP; marketplace publishing deferred)
 
 **Goal:** VS Code Test panel integration via the `--format=vscode` runner mode.
 
-**Actions:**
+**Actions taken:**
 
-1. New `reventless-vscode/` package (separate npm publishable, marketplace target — placement TBD, possibly `packages/reventless-vscode/` since it's tooling).
-2. ~80 lines of TypeScript per the example in §3.3 of the analysis:
-   - Discovery: spawn `reventless-gwt discover --format=vscode`, populate `TestController` items.
-   - Run handler: spawn `reventless-gwt run --format=vscode --filter=<id>`, forward NDJSON events to `TestRun` API.
-   - Continuous Run: spawn with `--watch`, restart per file change.
-   - Cancellation: forward `CancellationToken` to SIGINT.
-3. Marketplace publishing config.
+1. Created [`packages/reventless-vscode/`](../../../packages/reventless-vscode/) — new pnpm workspace package. TypeScript, not ReScript: VS Code's Testing API (`vscode.tests`, `TestController`, `TestItem`, `TestMessage`, `TestRun`) is a TS/JS module consumed by VS Code's Node host. The ReScript side already did the heavy lifting (the `--format=vscode` NDJSON maps 1:1 onto the API fields), so the extension is pure glue — ReScript bindings for `vscode.*` would be more code than the extension itself, and the marketplace tooling (`vsce`) assumes TypeScript. Path of least resistance.
+2. [`src/extension.ts`](../../../packages/reventless-vscode/src/extension.ts) (~260 lines):
+   - **Discovery** via `controller.resolveHandler` + `refreshHandler` + filesystem watcher on `**/*{_GWT,GwtTest}.res.mjs` (250 ms debounce). Spawns `reventless-gwt discover --format=vscode` and populates `controller.items`.
+   - **Run handler** spawns `reventless-gwt run --format=vscode --filter=<id>...` per run, forwards NDJSON events to `TestRun.started` / `passed` / `failed` / `skipped`. `testFail` messages set `expectedOutput` / `actualOutput` / `location` so VS Code's diff view shows ReScript-syntax expected vs actual and Cmd+Click jumps to the implementation file (the CLI's `hint.locus`).
+   - **Cancellation** forwards `token.onCancellationRequested` to `proc.kill('SIGINT')`. The CLI already marks in-flight tests as `Skip{reason:"cancelled"}`.
+   - **CLI resolution** walks up from the workspace folder looking for `node_modules/.bin/reventless-gwt`; falls back to PATH; overridable via `reventlessGwt.cliPath` setting. Roots are configurable via `reventlessGwt.roots` (default `["tests"]`).
+3. **Stage 7 bug fixes discovered during integration** (committed alongside the extension):
+   - VS Code run-side test IDs were emitted as `describePath::name`, but discover emitted `fileId::describePath::name` — the extension's id→TestItem map couldn't match run events to discovered items. Fixed by threading `fileResult.path` through to a new per-test callback on [`Cli.runFiles`](../../../reventless/reventless-gwt/src/Cli.res) and prefixing VS Code emit with it.
+   - `testStart` events were never emitted; only batched pass/fail/skip per file. Added `onTestStart`/`onTestFinished` callbacks so the VS Code spinner fires on each test.
+
+**Deviations from the original plan:**
+
+- **Continuous Run via `--watch` not implemented.** VS Code's `TestRunProfileKind.Run` plus the filesystem watcher (which re-runs discovery on change) already covers the common case. Wrapping `reventless-gwt run --watch --format=vscode` in a `TestRunProfileKind.Run` with `supportsContinuousRun: true` would be a small addition; deferred as it requires keeping a long-lived child process and reconciling re-emitted ids.
+- **Marketplace publishing config deferred.** The package.json declares `publisher`, `categories`, `activationEvents`, and a `reventlessGwt` configuration contribution — enough to install locally via `vsce package` or the VS Code "Install from VSIX" command. Publishing to the marketplace requires an icon, publisher registration on marketplace.visualstudio.com, and a publish-time release script, none of which belong in the MVP.
+- **Run-with-debug profile not added.** GWT tests are pure ReScript-to-JS with no meaningful breakpoint story beyond what `node --inspect` already offers on the compiled `.res.mjs` files. Skipped until there's a concrete debug story.
+- **Extension not added to root `pnpm run build`.** `packages/reventless-vscode/` has its own `build`/`watch`/`clean` scripts; the root build (`rescript build`) has no reason to invoke `tsc` on the extension. Build it via `pnpm --filter @reventlessdev/reventless-vscode run build`.
 
 **Acceptance:**
 
-- Test tree populates on workspace open.
-- Run/Run-with-debug from the test panel triggers the CLI and reports results.
-- Failure messages show ReScript-syntax expected/actual in VS Code's diff view.
-- Cmd+Click on a failure jumps to the implementation file (`hint.locus`), not the test file.
+- ✅ Test tree populates on workspace open (via `resolveHandler` + initial discovery).
+- ✅ Run from the test panel triggers `reventless-gwt run --format=vscode` and reports pass/fail/skip per test.
+- ✅ Failure messages show ReScript-syntax expected/actual in VS Code's diff view (CLI's `FormatterVsCode.messagePayload` already pre-renders `expected`/`actual` as ReScript syntax via `RenderRescript`).
+- ✅ Cmd+Click on a failure jumps to the implementation file (`hint.locus`), not the test file — CLI sets `TestMessage.location` from `hint.locus` when available.
+- ✅ TypeScript compiles clean (`tsc -p .` — 0 errors).
+- ✅ CLI `discover` and `run` ids now match (previously mismatched — see Stage 7 bug fixes).
+- ⚠️ Marketplace publishing, Run-with-debug, and Continuous Run deferred (see deviations above).
+- ✅ reventless-gwt tests: 8 suites / 41 tests (unchanged from Stage 7) — zero regressions.
 
 ### Stage 9 — `@@reventless.gwt` PPX
 
