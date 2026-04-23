@@ -152,25 +152,21 @@ let silent = {
 
 function fromEnv() {
   let match = process.env.LOG_LEVEL;
-  let tmp;
-  if (match !== undefined) {
-    switch (match) {
-      case "debug" :
-        tmp = "Debug";
-        break;
-      case "error" :
-        tmp = "Error";
-        break;
-      case "warn" :
-        tmp = "Warn";
-        break;
-      default:
-        tmp = "Info";
-    }
-  } else {
-    tmp = "Info";
+  if (match === undefined) {
+    return makeLogger("Info");
   }
-  return makeLogger(tmp);
+  switch (match) {
+    case "debug" :
+      return makeLogger("Debug");
+    case "error" :
+      return makeLogger("Error");
+    case "silent" :
+      return silent;
+    case "warn" :
+      return makeLogger("Warn");
+    default:
+      return makeLogger("Info");
+  }
 }
 
 let detailSeparator = "\x00";

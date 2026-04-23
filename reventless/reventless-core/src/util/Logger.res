@@ -6,7 +6,7 @@
 //   log.info(~comp="MyModule", "done")
 //   log.debug(~comp="MyModule", ~data=json, "detail")
 //
-// LOG_LEVEL env var: "debug" | "warn" | "error" | (anything else = "info")
+// LOG_LEVEL env var: "silent" | "debug" | "warn" | "error" | (anything else = "info")
 
 @val external _logLevel: option<string> = "process.env.LOG_LEVEL"
 @val external _isLambda: option<string> = "process.env.AWS_LAMBDA_FUNCTION_NAME"
@@ -135,12 +135,13 @@ let silent: t = {
 
 // Reads LOG_LEVEL from process.env and returns a configured logger.
 // Call once at module top-level or startup — not inside hot loops.
+// LOG_LEVEL=silent disables all output (used by the reventless-gwt CLI so
+// framework diagnostics don't interleave with NDJSON / TAP / JUnit streams).
 let fromEnv = (): t =>
-  makeLogger(
-    ~minLevel=switch _logLevel {
-    | Some("debug") => Debug
-    | Some("warn") => Warn
-    | Some("error") => Error
-    | _ => Info
-    },
-  )
+  switch _logLevel {
+  | Some("silent") => silent
+  | Some("debug") => makeLogger(~minLevel=Debug)
+  | Some("warn") => makeLogger(~minLevel=Warn)
+  | Some("error") => makeLogger(~minLevel=Error)
+  | _ => makeLogger(~minLevel=Info)
+  }
