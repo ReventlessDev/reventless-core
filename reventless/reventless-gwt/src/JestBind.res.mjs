@@ -4,21 +4,21 @@ import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Hint$ReventlessGwt from "./Hint.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 
-function toAssertion(outcome) {
+function toAssertion(slice, outcome) {
   if (outcome.TAG === "Ok") {
     return Jest.pass;
   }
   let m = outcome._0;
-  let hint = Hint$ReventlessGwt.forMismatch(undefined, m);
+  let hint = Hint$ReventlessGwt.forMismatch(slice, m);
   return Jest.fail(Outcome$ReventlessGwt.format(m) + `\n\n` + Hint$ReventlessGwt.format(hint));
 }
 
-function test(name, body) {
-  Jest.test(name, () => toAssertion(body()));
+function test(slice, name, body) {
+  Jest.test(name, () => toAssertion(slice, body()));
 }
 
-function testPromise(name, timeout, body) {
-  Jest.testPromise(name, timeout, async () => toAssertion(await body()));
+function testPromise(slice, name, timeout, body) {
+  Jest.testPromise(name, timeout, async () => toAssertion(slice, await body()));
 }
 
 let describe = Jest.describe;

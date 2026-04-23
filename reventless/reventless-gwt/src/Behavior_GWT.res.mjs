@@ -12,6 +12,7 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 function Make(Spec) {
   return Behavior => {
     S.enableJson();
+    let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, body);
     let errors = {
       contents: []
     };
@@ -112,7 +113,7 @@ function Make(Spec) {
     return {
       Spec: Spec,
       describe: JestBind$ReventlessGwt.describe,
-      test: JestBind$ReventlessGwt.test,
+      test: test,
       givenEvents: givenEvents,
       whenCmd: whenCmd,
       thenEvent: thenEvent,

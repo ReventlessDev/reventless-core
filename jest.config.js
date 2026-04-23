@@ -50,6 +50,13 @@ module.exports = {
       },
     },
     {
+      displayName: "reventless-gwt",
+      rootDir: "./reventless/reventless-gwt",
+      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      moduleFileExtensions: ["js", "mjs"],
+      setupFiles: [setupFile],
+    },
+    {
       displayName: "reventless-in-memory",
       rootDir: "./reventless/reventless-in-memory",
       testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],

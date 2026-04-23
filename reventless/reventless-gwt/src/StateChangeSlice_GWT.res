@@ -1,56 +1,50 @@
 open ReventlessCore
 
-// Minimal spec the DSL requires — the slice name plus command / event /
-// error schemas. Declared inline (rather than aliasing
-// `Reventless.Behavior.T`'s inner `Spec`) because `Behavior.T`'s inner Spec
-// only carries the three @schema types — no `name` — and ReScript's
-// `with module Spec = X` can only equate the inner Spec to a concrete
-// module, not constrain it to a module type that adds `name`. So the dual
-// `(Spec: BehaviorSpec, Behavior: Behavior.T with module Spec = Spec)`
-// shape is the only way to thread the slice name through without changing
-// `Behavior.T` upstream. See `docs/plans/reventless-gwt.md` Stage 1 step 7.
-module type BehaviorSpec = {
+// Minimal inline spec — parallels the pattern in Behavior_GWT so that sury-ppx
+// processes the @schema attributes in this compilation unit. Matches the
+// relevant subset of `Reventless.StateChangeSlice.Spec`.
+module type SliceSpec = {
   let name: string
+
+  type state
+  let initialState: state
+
+  @schema
+  type consumedEvent
+
+  let evolve: (state, consumedEvent) => state
+
   @schema
   type command
-  @schema
-  type event
+
   @schema
   type error
+
+  @schema
+  type event
+
+  let decide: (state, command) => result<array<event>, error>
 }
 
 module type T = {
-  module Spec: BehaviorSpec
+  module Spec: SliceSpec
 
   let describe: (string, unit => unit) => unit
   let test: (string, unit => Outcome.outcome) => unit
 
-  let givenEvents: array<Spec.event> => array<Spec.event>
+  let givenEvents: array<Spec.consumedEvent> => array<Spec.consumedEvent>
 
-  let whenCmd: (array<Spec.event>, Spec.command) => array<Spec.event>
+  let whenCmd: (array<Spec.consumedEvent>, Spec.command) => array<Spec.event>
 
   let thenEvent: (array<Spec.event>, Spec.event) => Outcome.outcome
-  let thenCompareEvent: (
-    array<Spec.event>,
-    Spec.event,
-    (Spec.event, Spec.event) => bool,
-  ) => Outcome.outcome
+  let thenEvents: (array<Spec.event>, array<Spec.event>) => Outcome.outcome
   let thenNoEvent: array<Spec.event> => Outcome.outcome
   let thenEventWithError: (array<Spec.event>, Spec.event, Spec.error) => Outcome.outcome
-  let thenEvents: (array<Spec.event>, array<Spec.event>) => Outcome.outcome
-  let thenCompareEvents: (
-    array<Spec.event>,
-    array<Spec.event>,
-    (Spec.event, Spec.event) => bool,
-  ) => Outcome.outcome
   let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Outcome.outcome
   let thenError: (array<Spec.event>, Spec.error) => Outcome.outcome
 }
 
-module Make = (
-  Spec: BehaviorSpec,
-  Behavior: Behavior.T with module Spec = Spec,
-): (T with module Spec = Spec) => {
+module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
   S.enableJson()
@@ -58,15 +52,15 @@ module Make = (
   let describe = JestBind.describe
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
-  let currentState = events =>
-    events->Array.reduce(Behavior.initialState, Behavior.evolve)
+  let currentState = consumed =>
+    consumed->Array.reduce(Spec.initialState, Spec.evolve)
 
   let errors = ref([])
 
   let exec = (history, command): array<Spec.event> => {
     errors := []
     let state = currentState(history)
-    switch Behavior.decide(state, command) {
+    switch Spec.decide(state, command) {
     | Ok(events) => events
     | Error(error) =>
       errors := [error]
@@ -74,14 +68,13 @@ module Make = (
     }
   }
 
-  let givenEvents = events => events
+  let givenEvents = consumed => consumed
   let whenCmd = (history, cmd) => history->exec(cmd)
 
   let encEvent = (e: Spec.event) => e->Message.encode(Spec.eventSchema)
   let encEvents = evs => evs->Array.map(encEvent)
   let encError = (err: Spec.error) => err->Message.encode(Spec.errorSchema)
 
-  // Report an unexpected decide() error as ErrorMismatch with expected=null.
   let unexpectedError = (events: array<Spec.event>): Outcome.outcome => {
     let actual = errors.contents->Array.get(0)->Option.map(encError)
     Outcome.fail(
@@ -104,29 +97,7 @@ module Make = (
       )
     }
 
-  // thenCompareEvent(s) keep the custom equality semantics of the original
-  // DSL (used to compare events with non-structural equality, e.g. when an
-  // event carries a generated UUID). Success is reported even if the raw
-  // structural equality would fail; the mismatch carries the encoded event
-  // payloads so downstream tools can still render them.
-  let thenCompareEvents = (events, expectedEvents, cmp) =>
-    if errors.contents->Array.length > 0 {
-      unexpectedError(events)
-    } else if (
-      events->Array.length == expectedEvents->Array.length &&
-        Array.zip(events, expectedEvents)->Array.every(((e1, e2)) => cmp(e1, e2))
-    ) {
-      Outcome.pass
-    } else {
-      Outcome.fail(
-        EventsMismatch({expected: expectedEvents->encEvents, actual: events->encEvents}),
-      )
-    }
-
   let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent])
-
-  let thenCompareEvent = (events, expectedEvent, cmp) =>
-    thenCompareEvents(events, [expectedEvent], cmp)
 
   let thenNoEvent = events =>
     if errors.contents->Array.length > 0 {
@@ -137,9 +108,6 @@ module Make = (
       Outcome.fail(NoEventExpected({actual: events->encEvents}))
     }
 
-  // Handles all `thenError*` variants — expects a specific error. Priority:
-  // 1. error missing or wrong → ErrorMismatch
-  // 2. events don't match expected → EventsMismatch
   let matchesError = (
     events: array<Spec.event>,
     expectedEvents: array<Spec.event>,

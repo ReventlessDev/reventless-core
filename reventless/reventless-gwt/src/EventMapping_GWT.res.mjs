@@ -63,6 +63,8 @@ function Make(Source) {
       errors$1.contents = [events._0];
       return [];
     };
+    let sliceName = Source.name + `→` + Target.name;
+    let test = (name, timeout, body) => JestBind$ReventlessGwt.testPromise(sliceName, name, timeout, body);
     let queryEngine_scan = (param, param$1, param$2) => Promise.resolve([]);
     let queryEngine_query = (param, param$1, param$2, param$3, param$4, param$5, param$6) => Promise.resolve([]);
     let queryEngine = {
@@ -208,7 +210,7 @@ function Make(Source) {
       Source: Source,
       Target: Target,
       describe: JestBind$ReventlessGwt.describe,
-      test: JestBind$ReventlessGwt.testPromise,
+      test: test,
       givenSourceEvents: givenSourceEvents,
       givenTargetEvents: givenTargetEvents,
       whenSourceCmd: whenSourceCmd,

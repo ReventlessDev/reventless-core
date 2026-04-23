@@ -6,6 +6,7 @@ import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as PluginFixtures$ReventlessInMemory from "./PluginFixtures.res.mjs";
 
 let PluginTest = Behavior_GWT$ReventlessGwt.Make({
+  name: PluginSpec$ReventlessCore.name,
   commandSchema: PluginSpec$ReventlessCore.commandSchema,
   eventSchema: PluginSpec$ReventlessCore.eventSchema,
   errorSchema: PluginSpec$ReventlessCore.errorSchema

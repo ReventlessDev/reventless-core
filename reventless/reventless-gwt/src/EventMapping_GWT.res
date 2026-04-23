@@ -44,7 +44,7 @@ module type Aggregate = {
 
 module MakeAggregate = (
   Spec: Reventless.Aggregate.Spec,
-  Behavior: Behavior.T with module Spec := Spec,
+  Behavior: Behavior.T with module Spec = Spec,
 ) => {
   module Spec = Spec
   module Behavior = Behavior
@@ -73,7 +73,7 @@ module Make = (
   TargetBehavior: Behavior.T with module Spec = Target,
   EventMapping: Reventless.EventMapping.T
     with module Source = Source
-    and module Target := Target,
+    and module Target = Target,
 ): (T with module Source = Source and module Target = Target) => {
   module Source = Source
   module Target = Target
@@ -82,7 +82,11 @@ module Make = (
   module TargetAggregate = MakeAggregate(Target, TargetBehavior)
 
   let describe = JestBind.describe
-  let test = JestBind.testPromise
+  // Slice label blends source and target aggregate names so failure hints
+  // can disambiguate the cross-aggregate mapping under test.
+  let sliceName = `${Source.name}→${Target.name}`
+  let test = (name, ~timeout=?, body) =>
+    JestBind.testPromise(~slice=sliceName, name, ~timeout?, body)
 
   let queryEngine: Reventless.QueryEngine.operations = {
     scan: (~readModelName as _, ~filterConfigs as _, ~limit as _) => []->Promise.resolve,

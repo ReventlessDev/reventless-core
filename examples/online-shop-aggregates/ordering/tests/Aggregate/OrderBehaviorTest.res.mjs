@@ -5,6 +5,7 @@ import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/B
 import * as OrderBehavior$OrderingPlugin from "../../src/Aggregate/OrderBehavior.res.mjs";
 
 let include = Behavior_GWT$ReventlessGwt.Make({
+  name: Order$OrderingPlugin.name,
   commandSchema: Order$OrderingPlugin.commandSchema,
   eventSchema: Order$OrderingPlugin.eventSchema,
   errorSchema: Order$OrderingPlugin.errorSchema

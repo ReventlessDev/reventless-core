@@ -56,7 +56,7 @@ Each stage is one PR. Deprecation aliases keep every PR green.
    - `ReventlessInMemory.AsyncTest` → `ReventlessGwt.AsyncTest`
    - In-memory internal tests: `open AsyncTest` → `open ReventlessGwt.AsyncTest` (and `.Expect`)
    - Relocated plugin tests switched `TestFixtures.*` → `ReventlessGwt.TestFixtures.*` to avoid a warning-44 shadow against the in-memory `TestFixtures.res`.
-7. Refined `Behavior_GWT.Make`'s signature to take an inline `BehaviorSpec` module type (matching the former in-memory pattern) so sury-ppx processes `@schema` attributes in the same compilation unit that declares the functor — a cross-package `ReventlessCore.Behavior.Spec` reference produced an unexpected "not included in" error from the compiler.
+7. Refined `Behavior_GWT.Make`'s signature to take an inline `BehaviorSpec` module type (matching the former in-memory pattern). Rationale discovered during Stage 3 probing (see Stage 3's Deviations): `Behavior.T`'s inner `Spec` in reventless-spec only declares the `@schema` types — no `name` field — so the GWT layer needs a richer second parameter to thread `Spec.name` into failure hints. The original Stage 1 commit blamed a "cross-package 'not included in' compiler error" but that was misdiagnosed: it doesn't reproduce today (a probe with `(Spec: Reventless.StateChangeSlice.Spec) => ...` compiles cleanly).
 8. Removed obsolete `testPathIgnorePatterns` entries for the three moved DSL files in `jest.config.js` and `reventless-core/package.json`. `AsyncTest.res.mjs` entries kept (the file is still there as an internal helper).
 
 **Deviations from the original plan:**
@@ -106,23 +106,35 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 3 — DCB DSLs (5 modules)
 
-**Status:** Not started
+**Status:** Complete
 
 **Goal:** Stop hand-rolling DCB tests. Same vocabulary as Aggregate DSLs.
 
-**Actions:**
+**Actions taken:**
 
-1. `StateChangeSlice_GWT` — `Make(Spec: StateChangeSlice.Spec)` runs `evolve` over given consumed events, calls `decide`. Same combinator surface as `Behavior_GWT` (`givenEvents`/`whenCmd`/`thenEvent`/`thenError`).
-2. `StateViewSlice_GWT` — `Make(Spec: StateViewSlice.Spec)`. Reuses `Projection.handleActions` against an in-memory dict store (lift from `Projection_GWT`'s store). No `Projection.Mapping` indirection.
-3. `AutomationSlice_GWT` — `Make(Spec: AutomationSlice.Spec)`. Combinators: `whenCollect`, `whenResolve`, `whenProcess`, `whenSweep` (composed loop). `givenTodo`, `thenTodos`, `thenCommand(s)`, `andThenEvents`.
-4. `InboundTranslationSlice_GWT` — `Make(Spec: InboundTranslationSlice.Spec)`. No `given` clause. `whenInput`, `thenCommands`, `thenTranslateError`.
-5. `OutboundTranslationSlice_GWT` — `Make(Spec: OutboundTranslationSlice.Spec)`. `givenTodo`, `whenTranslateMocked`, `thenNoCommand`, `thenRetryRecorded`, `thenTodoStatus`.
+1. `StateChangeSlice_GWT.res` — `Make(Spec)` runs `evolve` over given consumed events, calls `decide`. Combinators: `givenEvents`/`whenCmd`/`thenEvent`/`thenEvents`/`thenNoEvent`/`thenError`/`thenEventWithError`/`thenEventsWithError`. Uses an inline `SliceSpec` module type (mirroring `Behavior_GWT`) so sury-ppx processes `@schema` attributes in the same compilation unit.
+2. `StateViewSlice_GWT.res` — `Make(Spec)`. Reuses `Projection.handleActions` against an in-memory dict store (lift-and-simplify of `Projection_GWT`'s store: no `Message.event'` envelope, no `sourceName`/`subIdConfig` indirection via `Projection.Mapping`). Combinators mirror `Projection_GWT`: `givenEvents`/`whenEvent(s)`/`thenState(sWithId)`/`thenAllStates`/`thenNoState`/`thenThrow`/`thenFail`.
+3. `AutomationSlice_GWT.res` — `Make(Spec)`. Unit combinators: `givenEvent→whenCollect→thenTodos`, `givenEvent→whenResolve→thenResolved`, `givenTodo→whenProcess→thenCommand`/`thenNoCommand`. Scenario combinators: `givenEvents→whenSweep→thenCommands→andThenEvents→thenScenarioTodos`.
+4. `InboundTranslationSlice_GWT.res` — `Make(Spec)`. No `given` clause. Combinators: `whenInput→thenCommand(s)`/`thenNoCommand`/`thenTranslateError`.
+5. `OutboundTranslationSlice_GWT.res` — `Make(Spec)`. Unit-collect: `givenEvent→whenCollect→thenTodos`. Translate pipeline: `givenTodo→whenTranslateMocked(mockFn)→thenCommand`/`thenNoCommand`/`thenRetryRecorded`/`thenTodoStatus`. The mock function replaces `Spec.translate` to avoid external service calls; retry semantics are asserted via `thenRetryRecorded(n)` (Error result) and `thenTodoStatus("id", #Pending|#Completed)`.
+6. Per-DSL worked-example tests ship in `reventless-gwt/tests/` (5 files, 13 tests) exercising happy and error paths. `tests/` registered as a `dev`-typed source in `rescript.json`. Added `test` script + Jest config to `reventless-gwt/package.json` and a `reventless-gwt` project entry to root `jest.config.js` so `pnpm test` at the monorepo root picks them up.
+
+**Deviations from the original plan:**
+
+- **`StateChangeSlice_GWT` does not yet auto-derive the append condition.** That's Stage 4's work (`thenAppendsConditionedOn`) and is gated on the `AppendConditionMismatch` variant. Current implementation exercises only `evolve` + `decide`, not the DCB tag query — enough for pure decide-level tests.
+- **`AutomationSlice_GWT.thenCommand/thenCommands` use `EventsMismatch`** (not a new `CommandsMismatch` variant). Commands are encoded as `{id, command}` JSON pairs into the existing `EventsMismatch` payload — keeps the Outcome algebra closed at §3.2's eight variants.
+- **`OutboundTranslationSlice_GWT.thenRetryRecorded(n)`** asserts the translate result was `Error(_)` but does not track a retry counter — the slice runtime owns retry state externally. The `n` argument documents intent only. When Stage 7 introduces the runner with richer scenario state, this can tighten.
+- **`OutboundTranslationSlice_GWT`'s spec omits `translate`**. `whenTranslateMocked` always supplies the translate function from the test — the spec only needs `collect` + `consumedEvent`/`outboundItem`/`inboundCommand` schemas for the DSL to type-check. The spec's own `translate` is unit-tested elsewhere (component callback tests).
+- **Slice-name threading added after initial Stage 3 landing.** Each DSL's inline `SliceSpec` gained `let name: string` (plus `Projection_GWT` uses `Projection.sourceName` and `EventMapping_GWT` uses `${Source.name}→${Target.name}`). `JestBind.test`/`testPromise`/`toAssertion` grew an optional `~slice=?` forwarded to `Hint.forMismatch`, so failure messages now read `Look at AddCategory.decide` instead of the `<slice>` fallback. Worked-example fixtures updated accordingly (one extra line per stub).
+- **Destructive substitution (`:=`) in `Behavior_GWT`/`EventMapping_GWT` replaced with non-destructive (`=`)** for readability. The dual-parameter shape itself is retained — see Stage 1 step 7's updated rationale. A probe confirmed `Reventless.StateChangeSlice.Spec` and `Reventless.Behavior.T` can be referenced cross-package without the "not included in" error the Stage 1 note blamed; the real reason for the inline specs is that `Behavior.T`'s inner Spec lacks `name` and ReScript's `with module` can't add it.
 
 **Acceptance:**
 
-- All five DSLs return `Outcome.outcome` (Stage 2 algebra).
-- Module signatures and combinators match the API examples in `docs/analysis/given-when-then-specifications.md` §4.2–4.6.
-- One worked example test per DSL ships in `reventless-gwt/tests/` proving the DSL compiles and the happy path passes.
+- ✅ All five DSLs return `Outcome.outcome` (Stage 2 algebra).
+- ✅ Combinators match the API examples in `docs/analysis/given-when-then-specifications.md` §4.2–4.6 (with the deviations above).
+- ✅ One worked example test per DSL ships in `reventless-gwt/tests/` — 5 test files, 13 tests, all passing.
+- ✅ Full monorepo test suite: 121 suites / 1082 tests (up from 116 / 1069 in Stage 2) — zero regressions.
+- ⚠️ Auto-derived append condition deferred to Stage 4 (see deviation above).
 
 ### Stage 4 — `thenAppendsConditionedOn` for `StateChangeSlice_GWT`
 

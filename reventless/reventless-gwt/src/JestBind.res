@@ -6,25 +6,27 @@
 // infrastructure keep working during the migration (Stage 7 introduces the
 // standalone CLI runner that consumes the same outcomes directly).
 //
-// Consumers keep their existing `describe`/`test` call sites — only the
-// **return type** of the body changes, from `Jest.assertion` to `Outcome.outcome`
-// (or `promise<Outcome.outcome>`). Because test bodies usually terminate with
-// a `->then*` chain, the body's return type is inferred from the chain and the
-// call site needs no change.
+// `~slice` is the slice/component name — each DSL threads `Spec.name` through
+// so failure hints read `Look at AddCategory.decide` rather than the generic
+// `<slice>.decide` fallback.
 
 let describe = Jest.describe
 
-let toAssertion = (outcome: Outcome.outcome): Jest.assertion =>
+let toAssertion = (~slice=?, outcome: Outcome.outcome): Jest.assertion =>
   switch outcome {
   | Ok() => Jest.pass
   | Error(m) => {
-      let hint = Hint.forMismatch(m)
+      let hint = Hint.forMismatch(~slice?, m)
       Jest.fail(`${Outcome.format(m)}\n\n${Hint.format(hint)}`)
     }
   }
 
-let test = (name: string, body: unit => Outcome.outcome) =>
-  Jest.test(name, () => body()->toAssertion)
+let test = (~slice=?, name: string, body: unit => Outcome.outcome) =>
+  Jest.test(name, () => body()->toAssertion(~slice?))
 
-let testPromise = (name: string, ~timeout: option<int>=?, body: unit => promise<Outcome.outcome>) =>
-  Jest.testPromise(name, ~timeout?, async () => (await body())->toAssertion)
+let testPromise = (
+  ~slice=?,
+  name: string,
+  ~timeout: option<int>=?,
+  body: unit => promise<Outcome.outcome>,
+) => Jest.testPromise(name, ~timeout?, async () => (await body())->toAssertion(~slice?))
