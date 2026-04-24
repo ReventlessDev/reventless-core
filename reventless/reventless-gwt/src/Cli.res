@@ -250,7 +250,14 @@ let runFiles = async (
       let onlyActive = Collector.hasOnly.contents
       let selected = entries->Array.filter(e => {
         let keepByOnly = onlyActive ? e.status == Only : true
-        let keepByFilter = passesFilter(e.id, opts.filters)
+        // Match filters against both the bare entry id (`describe::name`) and
+        // the fully-qualified id the VS Code extension uses
+        // (`<absFile>::<describe>::<name>`). Without the qualified form the
+        // extension's `--filter=<testId>` never matches — see continuous-run
+        // stale-failure fix.
+        let qualifiedId = path ++ "::" ++ e.id
+        let keepByFilter =
+          passesFilter(e.id, opts.filters) || passesFilter(qualifiedId, opts.filters)
         keepByOnly && keepByFilter
       })
       let tests: array<RunnerTypes.testResult> = []

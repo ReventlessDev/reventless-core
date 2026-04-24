@@ -329,7 +329,8 @@ async function runFiles(opts, paths, onFileFinished, onTestStart, onTestFinished
       let onlyActive = Collector$ReventlessGwt.hasOnly.contents;
       let selected = entries.filter(e => {
         let keepByOnly = onlyActive ? e.status === "Only" : true;
-        let keepByFilter = passesFilter(e.id, opts.filters);
+        let qualifiedId = path + "::" + e.id;
+        let keepByFilter = passesFilter(e.id, opts.filters) || passesFilter(qualifiedId, opts.filters);
         if (keepByOnly) {
           return keepByFilter;
         } else {
