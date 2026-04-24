@@ -582,6 +582,61 @@ The same pattern applies to every DSL. Behavior is the one exception to the
 zero-payload form: the two-arg functor needs both modules named —
 `@@reventless.gwt(CategorySpec, CategoryBehavior)`.
 
+### 4.11 Companion fixtures module (`<Stem>_Fixtures.res`)
+
+Fixture-heavy suites — repeated identity strings, command/event payloads,
+expected state records — benefit from extracting shared values to a sibling
+module. When a file named `<Stem>_Fixtures.res` sits next to
+`<Stem>_GWT.res`, `@@reventless.gwt` detects it on disk and auto-opens it in
+the test body, after the Spec open:
+
+```rescript
+// tests/StateChange/AddCategory_Fixtures.res
+open AddCategory
+
+let addCategoryElectronics = AddCategory({categoryId: "c1", name: "Electronics"})
+let electronicsCategoryAdded = CategoryAdded({categoryId: "c1", name: "Electronics"})
+```
+
+```rescript
+// tests/StateChange/AddCategory_GWT.res
+@@reventless.gwt
+
+describe("AddCategory StateChangeSlice", () => {
+  test("empty event log produces CategoryAdded", () =>
+    givenEvents([])
+    ->whenCmd(addCategoryElectronics)
+    ->thenEvent((electronicsCategoryAdded :> event))
+  )
+})
+```
+
+No manual `open AddCategory_Fixtures` in the test — the PPX emits it. Emission
+order is `open <Spec>; open <Stem>_Fixtures; include <Kind>_GWT.Make(<Spec>)`,
+so fixture bindings intentionally shadow same-named Spec bindings when you
+want them to.
+
+Conventions:
+
+- **Filename is fixed.** The PPX only looks for the literal name
+  `<Stem>_Fixtures.res`, where `<Stem>` is the GWT filename stem with `_GWT` /
+  `GwtTest` / `Gwt` stripped. Other companion shapes (`_Helpers`, `_Builders`)
+  are not auto-opened.
+- **Manual opens are deduped.** If a test writes `open <Stem>_Fixtures`
+  explicitly, the PPX skips the duplicate injection — the source stays valid.
+- **Shared primitives via `include`.** A fixtures module can `include` a
+  repo-wide primitives module (e.g. `TestFixtures.res`) so those primitives
+  flow through the auto-open transitively, without each GWT test needing its
+  own manual open.
+- **Explicit-payload and Behavior DSL.** The companion rule keys off the
+  filename stem, not the Spec name. `@@reventless.gwt(OtherSpec)` on
+  `AddCategory_GWT.res` still auto-opens `AddCategory_Fixtures.res` if
+  present. Likewise for `@@reventless.gwt(Spec, Behavior)` pairs.
+
+Not auto-opened: spec-adjacent types modules (e.g. `DeploymentTypes`,
+shared-variant modules beyond the Spec). Those still need an explicit
+`open` in the test body.
+
 ---
 
 ## 5. The `Outcome` algebra

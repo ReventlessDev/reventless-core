@@ -224,6 +224,23 @@ let kinds_list_for_error () =
    `Slices` suffix), or a filename / folder containing `Projection` \
    or `Behavior`"
 
+(** Detect a companion [<Stem>_Fixtures.res] next to the GWT file.
+    Returns the module name if the sibling file exists, else [None].
+    Resolves [fname] to an absolute path so the lookup works regardless of
+    the cwd the compiler runs the PPX under. *)
+let companion_fixtures_module (fname : string) : string option =
+  match Util.spec_name_from_gwt_filename fname with
+  | None -> None
+  | Some stem ->
+    let abs =
+      if Filename.is_relative fname then Filename.concat (Sys.getcwd ()) fname
+      else fname
+    in
+    let dir = Filename.dirname abs in
+    let candidate_module = stem ^ "_Fixtures" in
+    let candidate_file = Filename.concat dir (candidate_module ^ ".res") in
+    if Sys.file_exists candidate_file then Some candidate_module else None
+
 let transform (str : structure) : structure =
   match find_gwt_attr str with
   | None -> str
@@ -288,8 +305,15 @@ let transform (str : structure) : structure =
       | None ->
         gen_include_one ~loc:attr_loc ~kind ~spec_module:spec_name
     in
+    let fixtures_open =
+      match companion_fixtures_module fname with
+      | Some name when not (Util.has_open name body) ->
+        [gen_open ~loc:attr_loc name]
+      | _ -> []
+    in
     let injection_items =
       (if Util.has_open spec_name body then [] else [open_item])
+      @ fixtures_open
       @ [include_item]
     in
     if spec_is_external then
