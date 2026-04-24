@@ -1,9 +1,0 @@
-open ReventlessSpec.EventMapping;
-
-module Target = {{properCase target}};
-
-module type Mapping = T with module Target := Target;
-
-let mappings: array(module Mapping) = [||];
-
-let counter = None;

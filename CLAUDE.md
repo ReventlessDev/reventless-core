@@ -220,7 +220,6 @@ From the codebase documentation:
 - `reventless-aws` — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
 - `reventless-in-memory` — in-memory platform for local dev and testing
 - `reventless-interop` — JS interop helpers
-- `reventless-gen` — code generation utilities
 - `reventless-layer-builder` — Lambda layer builder (private)
 
 **`rescript/` — ReScript bindings:**

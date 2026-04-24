@@ -1,2 +1,0 @@
-[@decco]
-type id = string;

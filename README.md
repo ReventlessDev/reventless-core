@@ -48,7 +48,6 @@ This monorepo contains the following packages (located in `./packages/*`):
 - [rescript-ssh2](packages/rescript-ssh2/README.md) - Bindings for `ssh2`
 
 ### Build & Tools
-- [reventless-gen](packages/reventless-gen/README.md) - Code generator for Reventless projects
 - [aws-lambda-layer](packages/aws-lambda-layer/README.md) - Lambda layer builder
 - [doc](packages/doc/README.md) - Documentation site (Docusaurus)
 

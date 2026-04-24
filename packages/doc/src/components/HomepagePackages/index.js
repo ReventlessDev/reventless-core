@@ -27,10 +27,6 @@ const PackageCategories = [
     description: 'Tools to help you build and document Reventless applications',
     packages: [
       {
-        name: 'reventless-gen',
-        description: 'Code generation utilities for scaffolding Reventless projects',
-      },
-      {
         name: 'doc',
         description: 'Docusaurus-based documentation site for the framework',
       },
