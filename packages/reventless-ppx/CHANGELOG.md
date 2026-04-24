@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.10 (2026-04-24)
+
+### Features
+
+* **ppx:** auto-open companion `<Stem>_Fixtures` in @[@reventless](https://github.com/reventless).gwt ([c429e43](https://github.com/ReventlessDev/reventless-core/commit/c429e43383360968cb70cd2c73316445d33c8bcc))
+* **ppx:** infer external Spec from path in @[@reventless](https://github.com/reventless).gwt ([54735d1](https://github.com/ReventlessDev/reventless-core/commit/54735d1727932f3dff249a551d40b9861f3996ed))
+
+
 # 1.0.0-alpha.9 (2026-04-24)
 
 ### Features
