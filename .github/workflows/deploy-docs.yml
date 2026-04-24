@@ -163,6 +163,7 @@ jobs:
           git checkout main
           cd packages/doc
           if [ -f ../../pnpm-lock.yaml ]; then
+            node ../../scripts/workspace-setup.mjs
             pnpm install --frozen-lockfile
           else
             npm ci
@@ -189,6 +190,7 @@ jobs:
           git checkout beta
           cd packages/doc
           if [ -f ../../pnpm-lock.yaml ]; then
+            node ../../scripts/workspace-setup.mjs
             pnpm install --frozen-lockfile
           else
             npm ci
@@ -220,6 +222,7 @@ jobs:
           git checkout alpha
           cd packages/doc
           if [ -f ../../pnpm-lock.yaml ]; then
+            node ../../scripts/workspace-setup.mjs
             pnpm install --frozen-lockfile
           else
             npm ci

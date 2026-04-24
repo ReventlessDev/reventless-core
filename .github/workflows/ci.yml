@@ -149,6 +149,10 @@ jobs:
           cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
 
+      - name: Setup workspace (pnpm-workspace.yaml)
+        if: steps.affected.outputs.select != 'none'
+        run: node scripts/workspace-setup.mjs
+
       - name: Install dependencies
         if: steps.affected.outputs.select != 'none'
         run: pnpm install --frozen-lockfile

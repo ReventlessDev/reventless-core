@@ -57,6 +57,9 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building layer for @reventlessdev/reventless-aws@$VERSION"
 
+      - name: Setup workspace (pnpm-workspace.yaml)
+        run: node scripts/workspace-setup.mjs
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
