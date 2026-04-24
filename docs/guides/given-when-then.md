@@ -48,20 +48,42 @@ Two cross-cutting DSLs round out the surface:
    ```json
    "bs-dev-dependencies": ["@reventlessdev/reventless-gwt"]
    ```
-3. In your test file, annotate the top of the file with `@@reventless.gwt` so
-   the PPX injects the right `include <Kind>_GWT.Make(<Spec>)` line. The PPX
-   picks the DSL kind from the filename (substring match, longest wins:
-   `AutomationSlice`, `InboundTranslationSlice`, `OutboundTranslationSlice`,
-   `StateChangeSlice`, `StateViewSlice`, `Projection`, `Behavior`) and uses the
-   first top-level module as the spec:
+3. In your test file, annotate the top of the file with `@@reventless.gwt`.
+   The PPX resolves DSL Kind **and** Spec module from the file path, and
+   emits the right `include ReventlessGwt.<Kind>_GWT.Make(<Spec>)` + `open
+   <Spec>` for you.
+
+   **File-naming convention: `{SpecModule}_GWT.res`.** One test file per spec
+   module, named after the spec. Matches the CLI's discovery pattern
+   (`*_GWT.res.mjs`, `*GwtTest.res.mjs`, `*Gwt.res.mjs`) and reads as a 1:1
+   mirror of the source tree:
+
+   | Source                                | Test                                        |
+   |---------------------------------------|---------------------------------------------|
+   | `src/StateChange/AddCategory.res`       | `tests/StateChange/AddCategory_GWT.res`     |
+   | `src/StateViewSlices/CategoriesView.res` | `tests/StateViewSlices/CategoriesView_GWT.res` |
+   | `src/Projections/CategoriesProjection.res` | `tests/Projections/CategoriesProjection_GWT.res` |
+
+   Kind inference accepts the short folder form (`StateChange`,
+   `StateView`, `Automation`, `InboundTranslation`, `OutboundTranslation`),
+   the long singular form (`StateChangeSlice`), and the plural form
+   (`StateChangeSlices`), matching the same vocabulary `@@reventless.spec`
+   uses for production files. When multiple segments of the path match,
+   the segment closest to the file wins. Spec resolution picks (1) the
+   first top-level module defined in the test file, if any, otherwise
+   (2) the filename stem with the `_GWT` / `GwtTest` / `Gwt` suffix
+   stripped — treated as an external module reference, so no local
+   binding or `module Spec = …` alias is needed in the consumer pattern.
+
+   Explicit forms (when the path-based inference doesn't fit):
    ```rescript
-   @@reventless.gwt
+   @@reventless.gwt(AddCategorySlice)                // explicit Spec (external module reference)
+   @@reventless.gwt(CategorySpec, CategoryBehavior)  // Behavior DSL (two-arg functor)
    ```
-   Explicit forms:
-   ```rescript
-   @@reventless.gwt(AddCategorySlice)               // explicit Spec
-   @@reventless.gwt(CategorySpec, CategoryBehavior) // Behavior DSL (two-arg functor)
-   ```
+   Both payload forms resolve the Spec (and Behavior) names through the
+   compiler, so the modules do not need to be defined locally in the test
+   file — the PPX will prepend the generated `open` + `include` at the
+   top of the structure.
    See [`.claude/rules/app-developer.md`](../../.claude/rules/app-developer.md)
    for the full PPX annotation table.
 
@@ -502,6 +524,64 @@ describe("SendTrackingEmail OutboundTranslationSlice", () => {
 })
 ```
 
+### 4.10 Testing external slice modules (the consumer pattern)
+
+The worked examples in §§ 4.1–4.9 are **inline** — the spec module is defined
+in the same file as the tests. This is the pattern used inside the
+`reventless-gwt` package itself, where each test file documents one DSL.
+
+In downstream consumer repos, production slice modules already live in `src/`,
+and re-inlining them in tests would be a stale copy. The canonical pattern
+there is to reference the production module directly:
+
+```rescript
+// tests/StateChange/AddCategory_GWT.res
+@@reventless.gwt
+
+// No payload. No local module. No alias.
+//
+// Kind inferred from the folder segment "StateChange" → StateChangeSlice.
+// Spec inferred from the filename stem "AddCategory" (with `_GWT` stripped)
+// and treated as an external module reference.
+// `open AddCategory` is injected by the PPX, so the command/event variants
+// and state fields are reachable unqualified in the test bodies below.
+
+describe("AddCategory StateChangeSlice", () => {
+  test("empty event log produces CategoryAdded", () =>
+    givenEvents([])
+    ->whenCmd(AddCategory({categoryId: "c1", name: "Electronics"}))
+    ->thenEvent(CategoryAdded({categoryId: "c1", name: "Electronics"})))
+
+  test("existing category returns CategoryAlreadyExists", () =>
+    givenEvents([CategoryAdded])
+    ->whenCmd(AddCategory({categoryId: "c1", name: "X"}))
+    ->thenError(CategoryAlreadyExists))
+})
+```
+
+Conventions to follow:
+
+- **One `_GWT.res` file per spec module**, named `{SpecModule}_GWT.res`.
+  `tests/` mirrors `src/` 1:1. If `src/StateChange/AddCategory.res` exists,
+  its tests live at `tests/StateChange/AddCategory_GWT.res`.
+- **Bare `@@reventless.gwt` — no payload.** Kind comes from the folder
+  segment (`StateChange` → `StateChangeSlice`) using the same vocabulary
+  `@@reventless.spec` uses for source files. Spec comes from the filename
+  stem with `_GWT` stripped. Every folder segment in the full path is
+  considered, not just the immediate parent — tests can live at any
+  nesting depth. When the path contains multiple slice-base segments
+  (rare), the closer-to-file one wins.
+- **No module aliases in test files.** If you do need to point at a Spec
+  whose name doesn't match the filename, `@@reventless.gwt(SpecModule)`
+  accepts the external module directly; the PPX emits the `open` +
+  `include` for you at the top of the file.
+- **No explicit `open`.** The PPX emits one for you so the spec's variants,
+  fields, and `initialState` read unqualified.
+
+The same pattern applies to every DSL. Behavior is the one exception to the
+zero-payload form: the two-arg functor needs both modules named —
+`@@reventless.gwt(CategorySpec, CategoryBehavior)`.
+
 ---
 
 ## 5. The `Outcome` algebra
@@ -668,6 +748,10 @@ Full field reference lives in
   infer the kind. See
   [`.claude/rules/app-developer.md`](../../.claude/rules/app-developer.md)
   for the full attribute form.
+- **Inline copy of an existing production slice** — delete the inline copy
+  and switch to `@@reventless.gwt(ProductionModule)` (see § 4.10). The
+  inline style is reserved for tests that document a DSL pattern itself;
+  production-slice tests should reference the real module.
 
 ---
 

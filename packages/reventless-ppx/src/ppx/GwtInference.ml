@@ -7,13 +7,16 @@ open Ppxlib
     Payload forms:
     {ul
       {- [@@reventless.gwt] — Kind inferred from filename/folder;
-         Spec inferred as the first top-level module.}
-      {- [@@reventless.gwt(SpecModule)] — Kind inferred; Spec explicit.}
+         Spec inferred as the first top-level module if present, otherwise
+         derived from the filename stem (stripping [_GWT] / [GwtTest] / [Gwt]).}
+      {- [@@reventless.gwt(SpecModule)] — Kind inferred; Spec explicit.
+         [SpecModule] is treated as a module reference the compiler will
+         resolve; it does NOT need to be a local binding in this file.}
       {- [@@reventless.gwt(SpecModule, BehaviorModule)] — for the Behavior DSL,
          which takes two functor arguments.}}
 
-    Supported DSL kinds (canonical tokens, recognised as substrings of the
-    filename or any folder-path segment):
+    Supported DSL kinds (canonical tokens, shared with [@@reventless.spec]
+    via [Util.derive_gwt_kind]):
     {ul
       {- [AutomationSlice]}
       {- [InboundTranslationSlice]}
@@ -23,65 +26,26 @@ open Ppxlib
       {- [Projection]}
       {- [Behavior]}}
 
-    The PPX strips the attribute and inserts the generated [include] directly
-    after the spec module's definition in the structure (or after the behavior
-    module, for Behavior DSLs). *)
+    Folder segments match on the short base form ("StateChange"), the long
+    form ("StateChangeSlice"), or the plural form ("StateChangeSlices"), as
+    well as any filename substring that contains a kind token. When several
+    path segments match, the closest-to-file segment wins.
+
+    The PPX strips the attribute and inserts the generated
+    [open <Spec>; include <Kind>_GWT.Make(<Spec>)] pair. When the Spec is a
+    local top-level module the pair is inserted directly after that module
+    (or after the Behavior module, for Behavior DSLs). When the Spec is
+    external (explicit payload, or no local module in the file), the pair is
+    prepended to the top of the structure. *)
 
 let attr_name = "reventless.gwt"
-
-(** Canonical Kind tokens, longest-first so substring matches prefer the most
-    specific label (e.g. [StateViewSlice] wins over [Slice] alone). *)
-let kinds_longest_first = [
-  "OutboundTranslationSlice";
-  "InboundTranslationSlice";
-  "StateChangeSlice";
-  "AutomationSlice";
-  "StateViewSlice";
-  "Projection";
-  "Behavior";
-]
 
 type payload =
   | Empty
   | One of string
   | Two of string * string
 
-let contains_substring haystack needle =
-  let hlen = String.length haystack in
-  let nlen = String.length needle in
-  if hlen < nlen then false
-  else
-    let rec check i =
-      if i > hlen - nlen then false
-      else if String.sub haystack i nlen = needle then true
-      else check (i + 1)
-    in
-    check 0
-
-let basename_without_ext fname =
-  let base = Filename.basename fname in
-  match String.index_opt base '.' with
-  | Some i -> String.sub base 0 i
-  | None -> base
-
-let derive_kind fname : string option =
-  let file_stem = basename_without_ext fname in
-  let dir = Filename.dirname fname in
-  let parts = String.split_on_char '/' dir in
-  let first_match haystack =
-    List.find_opt (fun k -> contains_substring haystack k) kinds_longest_first
-  in
-  match first_match file_stem with
-  | Some k -> Some k
-  | None ->
-    let rec scan = function
-      | [] -> None
-      | part :: rest ->
-        (match first_match part with
-         | Some k -> Some k
-         | None -> scan rest)
-    in
-    scan parts
+let derive_kind fname : string option = Util.derive_gwt_kind fname
 
 let find_gwt_attr (str : structure) : (attribute * Location.t) option =
   let rec scan = function
@@ -233,17 +197,32 @@ let gen_include_two ~loc ~spec_module ~behavior_module : structure_item =
     };
     pstr_loc = loc }
 
-(** Insert [item] into [lst] directly after index [idx] (0-based). *)
-let insert_after (lst : 'a list) (idx : int) (item : 'a) : 'a list =
+(** Emit [open <name>] at [loc]. *)
+let gen_open ~loc name : structure_item =
+  { pstr_desc = Pstr_open {
+      popen_expr = { pmod_desc = Pmod_ident { txt = Lident name; loc };
+                     pmod_loc = loc;
+                     pmod_attributes = [] };
+      popen_override = Fresh;
+      popen_loc = loc;
+      popen_attributes = [];
+    };
+    pstr_loc = loc }
+
+(** Insert [items] into [lst] directly after index [idx] (0-based). *)
+let insert_after_many (lst : 'a list) (idx : int) (items : 'a list) : 'a list =
   let rec loop i = function
-    | [] -> [item]  (* append at end if idx past list length *)
-    | x :: rest when i = idx -> x :: item :: rest
+    | [] -> items  (* append at end if idx past list length *)
+    | x :: rest when i = idx -> x :: items @ rest
     | x :: rest -> x :: loop (i + 1) rest
   in
   loop 0 lst
 
 let kinds_list_for_error () =
-  String.concat ", " (List.sort compare kinds_longest_first)
+  "folder base names StateChange / StateView / Automation / \
+   InboundTranslation / OutboundTranslation (with optional `Slice` or \
+   `Slices` suffix), or a filename / folder containing `Projection` \
+   or `Behavior`"
 
 let transform (str : structure) : structure =
   match find_gwt_attr str with
@@ -256,14 +235,20 @@ let transform (str : structure) : structure =
       | None ->
         Location.raise_errorf ~loc:attr_loc
           "@@reventless.gwt: cannot infer DSL kind from filename or folder. \
-           The filename or some folder segment must contain one of: %s."
+           Expected %s."
           (kinds_list_for_error ())
     in
     let payload = parse_payload attr in
     let body = strip_gwt_attr str in
-    let (spec_name, behavior_name_opt) =
+    (* Resolution order:
+       1. Two-arg payload: Behavior DSL only, two-module form.
+       2. One-arg payload: external Spec, no local binding required.
+       3. Empty + Behavior kind: two local modules (Spec, Behavior).
+       4. Empty + other kind: one local module if present, else derive Spec
+          from the filename stem (external Spec).  *)
+    let (spec_name, behavior_name_opt, spec_is_external) =
       match payload, kind with
-      | Two (spec, behavior), "Behavior" -> (spec, Some behavior)
+      | Two (spec, behavior), "Behavior" -> (spec, Some behavior, false)
       | Two _, _ ->
         Location.raise_errorf ~loc:attr_loc
           "@@reventless.gwt: a two-module payload is only valid for the \
@@ -272,10 +257,10 @@ let transform (str : structure) : structure =
         Location.raise_errorf ~loc:attr_loc
           "@@reventless.gwt: the Behavior DSL needs a (Spec, Behavior) pair. \
            Use @@reventless.gwt(%s, <Behavior>)." spec
-      | One spec, _ -> (spec, None)
+      | One spec, _ -> (spec, None, true)
       | Empty, "Behavior" ->
         (match find_first_top_modules 2 body with
-         | [spec; behavior] -> (spec, Some behavior)
+         | [spec; behavior] -> (spec, Some behavior, false)
          | _ ->
            Location.raise_errorf ~loc:attr_loc
              "@@reventless.gwt: Behavior DSL needs two top-level modules \
@@ -283,28 +268,19 @@ let transform (str : structure) : structure =
               or use @@reventless.gwt(Spec, Behavior).")
       | Empty, _ ->
         (match find_first_top_modules 1 body with
-         | [name] -> (name, None)
+         | [name] -> (name, None, false)
          | _ ->
-           Location.raise_errorf ~loc:attr_loc
-             "@@reventless.gwt: no top-level module found to use as the Spec. \
-              Either declare a module FooSpec = { ... } block or use \
-              @@reventless.gwt(SpecModule).")
+           (match Util.spec_name_from_gwt_filename fname with
+            | Some name -> (name, None, true)
+            | None ->
+              Location.raise_errorf ~loc:attr_loc
+                "@@reventless.gwt: no top-level module found and cannot \
+                 derive a Spec module name from the filename. Expected the \
+                 file stem to end in one of: _GWT, GwtTest, Gwt. Either \
+                 rename the file, declare a module, or use \
+                 @@reventless.gwt(SpecModule)."))
     in
-    let inject_after_idx =
-      match behavior_name_opt with
-      | Some bname ->
-        (match find_module_index bname body with
-         | Some i -> i
-         | None ->
-           Location.raise_errorf ~loc:attr_loc
-             "@@reventless.gwt: behavior module %s not found at top level." bname)
-      | None ->
-        (match find_module_index spec_name body with
-         | Some i -> i
-         | None ->
-           Location.raise_errorf ~loc:attr_loc
-             "@@reventless.gwt: spec module %s not found at top level." spec_name)
-    in
+    let open_item = gen_open ~loc:attr_loc spec_name in
     let include_item =
       match behavior_name_opt with
       | Some bname ->
@@ -312,4 +288,29 @@ let transform (str : structure) : structure =
       | None ->
         gen_include_one ~loc:attr_loc ~kind ~spec_module:spec_name
     in
-    insert_after body inject_after_idx include_item
+    let injection_items =
+      (if Util.has_open spec_name body then [] else [open_item])
+      @ [include_item]
+    in
+    if spec_is_external then
+      (* No local module anchor — prepend at the top of the structure.
+         The attribute conventionally lives at file top, so this matches the
+         attribute's original position. *)
+      injection_items @ body
+    else
+      let inject_after_idx =
+        match behavior_name_opt with
+        | Some bname ->
+          (match find_module_index bname body with
+           | Some i -> i
+           | None ->
+             Location.raise_errorf ~loc:attr_loc
+               "@@reventless.gwt: behavior module %s not found at top level." bname)
+        | None ->
+          (match find_module_index spec_name body with
+           | Some i -> i
+           | None ->
+             Location.raise_errorf ~loc:attr_loc
+               "@@reventless.gwt: spec module %s not found at top level." spec_name)
+      in
+      insert_after_many body inject_after_idx injection_items

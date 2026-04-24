@@ -110,8 +110,97 @@ let ends_with_slice part =
   let len = String.length part in
   len >= 5 && String.sub part (len - 5) 5 = "Slice"
 
+let ends_with_slices part =
+  let len = String.length part in
+  len >= 6 && String.sub part (len - 6) 6 = "Slices"
+
 let is_slice_folder_segment part =
   ends_with_slice part || List.mem part known_slice_bases
+
+(* Shared substring check — also used by GwtInference. *)
+let contains_substring haystack needle =
+  let hlen = String.length haystack in
+  let nlen = String.length needle in
+  if hlen < nlen then false
+  else
+    let rec check i =
+      if i > hlen - nlen then false
+      else if String.sub haystack i nlen = needle then true
+      else check (i + 1)
+    in
+    check 0
+
+(* Full Kind name for a given folder segment or filename stem, or None if
+   the segment doesn't correspond to any DSL kind.
+
+   Recognises:
+   - Short slice-base form:   "StateChange"        -> "StateChangeSlice"
+   - Long slice form:         "StateChangeSlice"   -> "StateChangeSlice"
+   - Plural slice form:       "StateChangeSlices"  -> "StateChangeSlice"
+   - Non-slice kinds via substring: "Projection", "Behavior"
+
+   Note: substring match on non-slice kinds keeps existing behaviour for
+   filenames like "StateChangeSliceGwtTest" / "ProjectionGwtTest". *)
+let dsl_kind_of_segment part : string option =
+  if List.mem part known_slice_bases then Some (part ^ "Slice")
+  else if ends_with_slices part then
+    Some (String.sub part 0 (String.length part - 1))
+  else if ends_with_slice part then Some part
+  else if contains_substring part "OutboundTranslationSlice" then Some "OutboundTranslationSlice"
+  else if contains_substring part "InboundTranslationSlice" then Some "InboundTranslationSlice"
+  else if contains_substring part "StateChangeSlice" then Some "StateChangeSlice"
+  else if contains_substring part "AutomationSlice" then Some "AutomationSlice"
+  else if contains_substring part "StateViewSlice" then Some "StateViewSlice"
+  else if contains_substring part "Projection" then Some "Projection"
+  else if contains_substring part "Behavior" then Some "Behavior"
+  else None
+
+(* Derive the DSL Kind for a @@reventless.gwt file from its path.
+   Scans folder segments innermost-first (closest-to-file wins) so a path
+   like [tests/StateChange/Migrations/StateView/X_GWT.res] classifies as
+   StateView rather than StateChange — the immediate folder is a better
+   signal of a test's subject than an outer organisational ancestor.
+   Falls back to the filename stem if no folder segment matches. *)
+let derive_gwt_kind fname : string option =
+  let dir_parts = String.split_on_char '/' (Filename.dirname fname) in
+  let stem =
+    let base = Filename.basename fname in
+    match String.index_opt base '.' with
+    | Some i -> String.sub base 0 i
+    | None -> base
+  in
+  let from_folder =
+    List.find_map dsl_kind_of_segment (List.rev dir_parts)
+  in
+  match from_folder with
+  | Some _ as k -> k
+  | None -> dsl_kind_of_segment stem
+
+(* GWT test filename suffixes — stripped to derive the external Spec module
+   name from files with no local Spec binding. Order matters: longest match
+   wins so "GwtTest" is tried before "Gwt". *)
+let gwt_test_suffixes = ["_GWT"; "GwtTest"; "Gwt"]
+
+(* Strip one of the GWT-test suffixes from the filename stem.
+   Returns the Spec module name (the remainder), or None if the filename
+   doesn't end in a recognised GWT suffix. *)
+let spec_name_from_gwt_filename fname : string option =
+  let stem =
+    let base = Filename.basename fname in
+    match String.index_opt base '.' with
+    | Some i -> String.sub base 0 i
+    | None -> base
+  in
+  let rec try_suffixes = function
+    | [] -> None
+    | s :: rest ->
+      let stripped = strip_suffix stem s in
+      if not (String.equal stripped stem) && String.length stripped > 0 then
+        Some stripped
+      else
+        try_suffixes rest
+  in
+  try_suffixes gwt_test_suffixes
 
 let is_in_slice_folder fname =
   let dir = Filename.dirname fname in
