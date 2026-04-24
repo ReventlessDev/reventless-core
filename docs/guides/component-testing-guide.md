@@ -9,6 +9,14 @@ Use this guide when adding tests for **any** Reventless component:
 - New components (DcbEventLog, CommandHandler, etc.)
 - Adapter implementations (DynamoDB, S3, SQS, etc.)
 
+> **Slice-level Given-When-Then tests** — aggregate `Behavior`, DCB
+> `StateChangeSlice`, read-model projections, DCB `StateViewSlice`,
+> automation / translation slices, and cross-pattern `Mapping_GWT` — are
+> covered by [`docs/guides/given-when-then.md`](./given-when-then.md) and run
+> through the `reventless-gwt` CLI. This guide is for the component /
+> integration layer that sits below them (mocks, adapters, callbacks,
+> operations).
+
 ---
 
 ## Quick Reference: Test Structure Template

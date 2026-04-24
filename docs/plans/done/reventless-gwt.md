@@ -1,6 +1,6 @@
 # Reventless GWT — Test Framework, DSLs, Runner
 
-## Status: BACKLOG
+## Status: COMPLETE (2026-04-24)
 
 ## Goal
 
@@ -144,16 +144,16 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 **Actions taken:**
 
-1. Added `Outcome.AppendConditionMismatch({expected: JSON.t, actual: JSON.t})` variant with matching `kindName` / `format` / `toJson` branches in [`reventless-gwt/src/Outcome.res`](../../reventless/reventless-gwt/src/Outcome.res). Payload kept as JSON to stay closed-schema alongside the other variants.
-2. Added `AppendConditionMismatch → ${slice}.commandSchema` mapping to [`reventless-gwt/src/Hint.res`](../../reventless/reventless-gwt/src/Hint.res). Hint message names `@s.matches(DcbTag.string)` as the likely fix.
-3. Inside [`StateChangeSlice_GWT.Make`](../../reventless/reventless-gwt/src/StateChangeSlice_GWT.res): computed `consumedEventTypes` once via `Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes` (same helper the runtime uses — handles payload-less consumed variants that `DcbTag.extractVariantNames` skips). Added two refs: `derivedCondition: option<DcbTag.appendCondition>` and `appendConditionFailure: option<Outcome.mismatch>`.
+1. Added `Outcome.AppendConditionMismatch({expected: JSON.t, actual: JSON.t})` variant with matching `kindName` / `format` / `toJson` branches in [`reventless-gwt/src/Outcome.res`](../../../reventless/reventless-gwt/src/Outcome.res). Payload kept as JSON to stay closed-schema alongside the other variants.
+2. Added `AppendConditionMismatch → ${slice}.commandSchema` mapping to [`reventless-gwt/src/Hint.res`](../../../reventless/reventless-gwt/src/Hint.res). Hint message names `@s.matches(DcbTag.string)` as the likely fix.
+3. Inside [`StateChangeSlice_GWT.Make`](../../../reventless/reventless-gwt/src/StateChangeSlice_GWT.res): computed `consumedEventTypes` once via `Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes` (same helper the runtime uses — handles payload-less consumed variants that `DcbTag.extractVariantNames` skips). Added two refs: `derivedCondition: option<DcbTag.appendCondition>` and `appendConditionFailure: option<Outcome.mismatch>`.
 4. `whenCmd` now calls `DcbTag.buildQueryFromCommand(~eventTypes=consumedEventTypes, ~schema=Spec.commandSchema, ~value=cmd)` and stashes the resulting `{query}` as the derived condition. Implicit check: if `consumedEventTypes` is non-empty AND every query clause has empty tags → stash an `AppendConditionMismatch` pending failure.
 5. Every regular `then*` (`thenEvent`, `thenEvents`, `thenNoEvent`, `thenError`, `thenEventWithError`, `thenEventsWithError`) runs `checkAppendCondition()` first and surfaces the pending failure before its own assertion.
 6. Exposed `thenAppendsConditionedOn(events, expectedQuery: DcbTag.query)` — compares `expectedQuery` to `derivedCondition.query`. Failure produces `AppendConditionMismatch{expected: {query: expectedQuery}, actual: derivedCondition}`. Bypasses the implicit check since the dev has opted into documenting the condition.
 7. Exposed `thenAppendsConditionedOnExactly(events, expectedCondition: DcbTag.appendCondition)` — asserts the full append condition (including optional `after` position) equals the derived. Also bypasses the implicit check.
 8. Added JSON encoders `encodeTag`/`encodeQueryItem`/`encodeQuery`/`encodeAppendCondition` at module level (the framework doesn't ship a sury schema for `DcbTag.appendCondition`, so encoding is manual).
-9. Updated the worked-example test [`reventless-gwt/tests/StateChangeSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res) to use `@s.matches(Reventless.DcbTag.string)` on `categoryId` (required for the implicit check to pass). Added two Stage 4 scenarios: `thenAppendsConditionedOn` with explicit query literal, and `thenAppendsConditionedOnExactly` with full condition. Added a second slice (`MissingTagSlice`) demonstrating (a) the implicit check surfaces as `AppendConditionMismatch` when `@s.matches` is absent and (b) `thenAppendsConditionedOnExactly` bypasses the implicit check for slices that genuinely have no tagged fields.
-10. **Side-fix in [`reventless-gwt/src/JestBind.res`](../../reventless/reventless-gwt/src/JestBind.res)**: replaced `Jest.fail(msg)` with `JsError.throwWithMessage(msg)`. The `Jest.fail` global was removed in Jest 27+ ESM mode (the mode reventless-gwt runs under), so the failure path threw a `ReferenceError` instead of reporting the mismatch. Discovered when the new Stage 4 failure-path tests surfaced the issue; it would have hit any future failing test regardless of Stage 4.
+9. Updated the worked-example test [`reventless-gwt/tests/StateChangeSliceGwtTest.res`](../../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res) to use `@s.matches(Reventless.DcbTag.string)` on `categoryId` (required for the implicit check to pass). Added two Stage 4 scenarios: `thenAppendsConditionedOn` with explicit query literal, and `thenAppendsConditionedOnExactly` with full condition. Added a second slice (`MissingTagSlice`) demonstrating (a) the implicit check surfaces as `AppendConditionMismatch` when `@s.matches` is absent and (b) `thenAppendsConditionedOnExactly` bypasses the implicit check for slices that genuinely have no tagged fields.
+10. **Side-fix in [`reventless-gwt/src/JestBind.res`](../../../reventless/reventless-gwt/src/JestBind.res)**: replaced `Jest.fail(msg)` with `JsError.throwWithMessage(msg)`. The `Jest.fail` global was removed in Jest 27+ ESM mode (the mode reventless-gwt runs under), so the failure path threw a `ReferenceError` instead of reporting the mismatch. Discovered when the new Stage 4 failure-path tests surfaced the issue; it would have hit any future failing test regardless of Stage 4.
 
 **Deviations from the original plan:**
 
@@ -177,7 +177,7 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 **Actions taken:**
 
-1. Added [`reventless-gwt/src/Mapping_GWT.res`](../../reventless/reventless-gwt/src/Mapping_GWT.res) with a single unified `GwtSource` module type (with `name`, `Id`, `state`, `initialState`, `consumedEvent`/`evolve`, `command`, `event`, `error`, `decide`) and `module type GwtTarget = GwtSource`. `consumedEvent` is the type `evolve` folds over: for Aggregates it equals `event`, for DCB slices it's a distinct cross-entity event type.
+1. Added [`reventless-gwt/src/Mapping_GWT.res`](../../../reventless/reventless-gwt/src/Mapping_GWT.res) with a single unified `GwtSource` module type (with `name`, `Id`, `state`, `initialState`, `consumedEvent`/`evolve`, `command`, `event`, `error`, `decide`) and `module type GwtTarget = GwtSource`. `consumedEvent` is the type `evolve` folds over: for Aggregates it equals `event`, for DCB slices it's a distinct cross-entity event type.
 2. Exposed two adapter functors in the same module:
    - `FromBehavior(Spec: Reventless.Aggregate.Spec, Behavior: Behavior.T with module Spec = Spec)` — lifts an Aggregate + Behavior pair into a `GwtSource`/`GwtTarget` (sets `consumedEvent = Spec.event`).
    - `FromStateChangeSlice(Spec)` — lifts a StateChangeSlice `SliceSpec`-shaped module (same shape as `StateChangeSlice_GWT.SliceSpec`) into a `GwtSource`/`GwtTarget`. Uses `Reventless.Id.StringPure` since DCB entity identifiers are raw tag values.
@@ -187,8 +187,8 @@ Each stage is one PR. Deprecation aliases keep every PR green.
    - `whenSourceCmd(scenario, sourceId, cmd)` — runs `Source.decide` → `map` → `Target.decide`, returning `promise<dict<array<Target.event>>>` keyed by `Target.Id.toString(id)`.
    - `thenTargetEvents`, `thenTargetEvent`, `thenNoTargetEvent` — event assertions.
    - **New Stage 5 combinators** `thenSourceError`, `thenTargetError`, `thenTargetEventsWithError` — finish the error side that was commented out in the legacy `EventMappingTest`.
-5. Rewrote [`reventless-gwt/src/EventMapping_GWT.res`](../../reventless/reventless-gwt/src/EventMapping_GWT.res) as a thin backward-compat alias: `Make(Source, SourceBehavior, Target, TargetBehavior, EventMapping)` internally constructs `Mapping_GWT.FromBehavior` adapters and `include`s `Mapping_GWT.Make(BoundMapping)`. Shipped a `let map = EventMapping.map` pass-through in the bound mapping module.
-6. Added [`reventless-gwt/tests/MappingGwtTest.res`](../../reventless/reventless-gwt/tests/MappingGwtTest.res) with one worked example per combination (`Aggr→Aggr`: Category→Product; `Aggr→DCB`: Category→Notification; `DCB→Aggr`: Inventory→Product; `DCB→DCB`: Inventory→Notification) plus an extra case exercising the new `thenTargetError` combinator.
+5. Rewrote [`reventless-gwt/src/EventMapping_GWT.res`](../../../reventless/reventless-gwt/src/EventMapping_GWT.res) as a thin backward-compat alias: `Make(Source, SourceBehavior, Target, TargetBehavior, EventMapping)` internally constructs `Mapping_GWT.FromBehavior` adapters and `include`s `Mapping_GWT.Make(BoundMapping)`. Shipped a `let map = EventMapping.map` pass-through in the bound mapping module.
+6. Added [`reventless-gwt/tests/MappingGwtTest.res`](../../../reventless/reventless-gwt/tests/MappingGwtTest.res) with one worked example per combination (`Aggr→Aggr`: Category→Product; `Aggr→DCB`: Category→Notification; `DCB→Aggr`: Inventory→Product; `DCB→DCB`: Inventory→Notification) plus an extra case exercising the new `thenTargetError` combinator.
 
 **Deviations from the original plan:**
 
@@ -215,7 +215,7 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 **Actions taken:**
 
 1. Confirmed `Outcome.QueryRowsMismatch` (already present from Stage 2) and its hint mapping (`${slice}.config` locus with missing-index guidance) are correct as-is; Stage 6 uses them without change.
-2. Added [`reventless-gwt/src/Query_GWT.res`](../../reventless/reventless-gwt/src/Query_GWT.res) with `module type QueryableSpec` — the minimal intersection of `ReadModel.Spec` and `StateViewSlice.Spec` (`name`, `@schema state`, `stateSchema`, `config`, `subIdConfig`). Both component kinds share the same `Reventless.ReadModel.config` + `subIdConfig` types at runtime, so the intersection unifies cleanly.
+2. Added [`reventless-gwt/src/Query_GWT.res`](../../../reventless/reventless-gwt/src/Query_GWT.res) with `module type QueryableSpec` — the minimal intersection of `ReadModel.Spec` and `StateViewSlice.Spec` (`name`, `@schema state`, `stateSchema`, `config`, `subIdConfig`). Both component kinds share the same `Reventless.ReadModel.config` + `subIdConfig` types at runtime, so the intersection unifies cleanly.
 3. Exposed two adapter functors in the same module:
    - `FromReadModel(Spec: Reventless.ReadModel.Spec)` — drops `Id` / `moduleUrl` / unused fields, passes through `name`, `state`, `stateSchema`, `config`, `subIdConfig`.
    - `FromStateViewSlice(Spec: Reventless.StateViewSlice.Spec)` — drops `consumedEvent` / `project` / `moduleUrl`, passes the same five fields.
@@ -226,7 +226,7 @@ Each stage is one PR. Deprecation aliases keep every PR green.
    - `whenQueryByCompositeId({id, subId})` — returns `result<option<state>, mismatch>`; fails with `QueryRowsMismatch` when `subIdConfig = None`
    - `whenQuery({by, value, index?, filter?, limit?})` — scans the store by field name via sury-encoded JSON lookup, applies optional filter and limit. Fails with `QueryRowsMismatch` when `index` is named but no matching entry exists in `Spec.config.indexes`
    - `thenRow`, `thenRows`, `thenRowCount`, `thenRowFromComposite` — assertion combinators covering the above return shapes
-5. Added [`reventless-gwt/tests/QueryGwtTest.res`](../../reventless/reventless-gwt/tests/QueryGwtTest.res) with worked examples for **both** a ReadModel (`CategoriesReadModel` with a `byName` GSI) and a StateViewSlice (`OrdersView` with composite `{orderId, customerId}` subIdConfig). Covers primary-key lookup, index lookup, missing-index failure, filter + limit, composite-key lookup, and missing-subIdConfig failure.
+5. Added [`reventless-gwt/tests/QueryGwtTest.res`](../../../reventless/reventless-gwt/tests/QueryGwtTest.res) with worked examples for **both** a ReadModel (`CategoriesReadModel` with a `byName` GSI) and a StateViewSlice (`OrdersView` with composite `{orderId, customerId}` subIdConfig). Covers primary-key lookup, index lookup, missing-index failure, filter + limit, composite-key lookup, and missing-subIdConfig failure.
 
 **Deviations from the original plan:**
 
@@ -253,26 +253,26 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 **Actions taken:**
 
 1. **Public modules:**
-   - [`Bind.res`](../../reventless/reventless-gwt/src/Bind.res) — plain `describe` / `test` / `testPromise` pushing directly into `Collector`. Test files can `open ReventlessGwt.Bind` to bypass the JestBind fallback when they only ever run under the CLI.
-   - [`JestBind.res`](../../reventless/reventless-gwt/src/JestBind.res) — augmented to route dynamically: when `Collector.isActive()` the call pushes into the collector, otherwise it forwards to Jest globals. Every existing DSL continues to call `JestBind.describe` / `JestBind.test`, so the 7 worked-example suites run under both `pnpm jest` and `reventless-gwt run` with no code change.
-   - [`Filter.res`](../../reventless/reventless-gwt/src/Filter.res) — `only` / `skip` / `xtest` / `xdescribe` helpers. `only` sets a flag consumed by the runner to filter in flagged entries; `xtest` / `xdescribe` use a `skipDepth` counter so every nested entry inherits the skip.
+   - [`Bind.res`](../../../reventless/reventless-gwt/src/Bind.res) — plain `describe` / `test` / `testPromise` pushing directly into `Collector`. Test files can `open ReventlessGwt.Bind` to bypass the JestBind fallback when they only ever run under the CLI.
+   - [`JestBind.res`](../../../reventless/reventless-gwt/src/JestBind.res) — augmented to route dynamically: when `Collector.isActive()` the call pushes into the collector, otherwise it forwards to Jest globals. Every existing DSL continues to call `JestBind.describe` / `JestBind.test`, so the 7 worked-example suites run under both `pnpm jest` and `reventless-gwt run` with no code change.
+   - [`Filter.res`](../../../reventless/reventless-gwt/src/Filter.res) — `only` / `skip` / `xtest` / `xdescribe` helpers. `only` sets a flag consumed by the runner to filter in flagged entries; `xtest` / `xdescribe` use a `skipDepth` counter so every nested entry inherits the skip.
 2. **CLI internals:**
-   - [`Collector.res`](../../reventless/reventless-gwt/src/Collector.res) — module-level `active` flag plus describe-stack, entry list, and V8 stack-frame parser for capturing source `location` at `test(...)` time.
-   - [`RenderRescript.res`](../../reventless/reventless-gwt/src/RenderRescript.res) — JSON → ReScript-syntax renderer that exploits sury's default BuckleScript representation (`{TAG, _0}` → `Name(payload)`, bare strings → payload-less variants).
-   - [`Diff.res`](../../reventless/reventless-gwt/src/Diff.res) — structural diff producing `array<{path, expected, actual}>` with ReScript-rendered leaves.
-   - [`Discovery.res`](../../reventless/reventless-gwt/src/Discovery.res) — `node:fs/promises` walker finding `*_GWT.res.mjs` / `*GwtTest.res.mjs` / `*Gwt.res.mjs`. Skips `node_modules`, `.git`, `lib`, `dist` by name (full `.gitignore` parsing deferred — not needed in practice).
-   - [`Loader.res`](../../reventless/reventless-gwt/src/Loader.res) — thin `%raw("(u) => import(u)")` wrapper converting absolute paths to `file://` URLs.
-   - [`RunnerTypes.res`](../../reventless/reventless-gwt/src/RunnerTypes.res) — shared `testResult` / `fileResult` / `summary` types consumed by every formatter.
-   - [`Cli.res`](../../reventless/reventless-gwt/src/Cli.res) — `parseArgv`, `runOnce`, `runDiscover`, `runWatch`, and the exit-code policy. Run/discover/watch subcommands, `--format`, `--filter` (repeatable), `--stream`, `--schema-version`, `--help`, `--watch`.
-   - [`Cancellation.res`](../../reventless/reventless-gwt/src/Cancellation.res) — SIGINT/SIGTERM trap setting a flag the main loop polls between tests; in-flight tests get marked `Skip` with `skipReason: "cancelled"`.
-   - [`Watch.res`](../../reventless/reventless-gwt/src/Watch.res) — chokidar wrapper with a 120 ms debounce on `add` / `change` / `unlink`.
+   - [`Collector.res`](../../../reventless/reventless-gwt/src/Collector.res) — module-level `active` flag plus describe-stack, entry list, and V8 stack-frame parser for capturing source `location` at `test(...)` time.
+   - [`RenderRescript.res`](../../../reventless/reventless-gwt/src/RenderRescript.res) — JSON → ReScript-syntax renderer that exploits sury's default BuckleScript representation (`{TAG, _0}` → `Name(payload)`, bare strings → payload-less variants).
+   - [`Diff.res`](../../../reventless/reventless-gwt/src/Diff.res) — structural diff producing `array<{path, expected, actual}>` with ReScript-rendered leaves.
+   - [`Discovery.res`](../../../reventless/reventless-gwt/src/Discovery.res) — `node:fs/promises` walker finding `*_GWT.res.mjs` / `*GwtTest.res.mjs` / `*Gwt.res.mjs`. Skips `node_modules`, `.git`, `lib`, `dist` by name (full `.gitignore` parsing deferred — not needed in practice).
+   - [`Loader.res`](../../../reventless/reventless-gwt/src/Loader.res) — thin `%raw("(u) => import(u)")` wrapper converting absolute paths to `file://` URLs.
+   - [`RunnerTypes.res`](../../../reventless/reventless-gwt/src/RunnerTypes.res) — shared `testResult` / `fileResult` / `summary` types consumed by every formatter.
+   - [`Cli.res`](../../../reventless/reventless-gwt/src/Cli.res) — `parseArgv`, `runOnce`, `runDiscover`, `runWatch`, and the exit-code policy. Run/discover/watch subcommands, `--format`, `--filter` (repeatable), `--stream`, `--schema-version`, `--help`, `--watch`.
+   - [`Cancellation.res`](../../../reventless/reventless-gwt/src/Cancellation.res) — SIGINT/SIGTERM trap setting a flag the main loop polls between tests; in-flight tests get marked `Skip` with `skipReason: "cancelled"`.
+   - [`Watch.res`](../../../reventless/reventless-gwt/src/Watch.res) — chokidar wrapper with a 120 ms debounce on `add` / `change` / `unlink`.
 3. **Formatters** (flat layout, not a `formatters/` subdir — keeps ReScript module names unambiguous):
-   - [`FormatterHuman.res`](../../reventless/reventless-gwt/src/FormatterHuman.res) — ANSI-coloured via picocolors (auto-disables on non-TTY).
-   - [`FormatterJson.res`](../../reventless/reventless-gwt/src/FormatterJson.res) — single envelope (default) + NDJSON stream (`--stream`). `schemaVersion: "1.0.0"`, dual-rendered `{type, payload, rendered}` for every value, precomputed `hint`, `fieldDiff` arrays.
-   - [`FormatterTap.res`](../../reventless/reventless-gwt/src/FormatterTap.res) — TAP 14 with YAML diagnostic blocks; consumable by `tap-spec` and `actions/test-reporter`.
-   - [`FormatterJunit.res`](../../reventless/reventless-gwt/src/FormatterJunit.res) — `<testsuites>` / `<testsuite>` / `<testcase>` wrapper with `<failure>` bodies carrying the formatted mismatch + hint.
-   - [`FormatterVsCode.res`](../../reventless/reventless-gwt/src/FormatterVsCode.res) — NDJSON event stream with `discoverStart` / `item` / `discoverEnd` for the tree and `runStart` / `testStart` / `testPass` / `testFail` / `testSkip` / `runEnd` for the execution. Field names map directly onto the VS Code `TestItem` / `TestMessage` / `TestRun` API.
-4. [`bin/reventless-gwt.mjs`](../../reventless/reventless-gwt/bin/reventless-gwt.mjs) — 13-line launcher importing `src/Cli.res.mjs`'s `main` and bridging its returned `int` to `process.exit`.
+   - [`FormatterHuman.res`](../../../reventless/reventless-gwt/src/FormatterHuman.res) — ANSI-coloured via picocolors (auto-disables on non-TTY).
+   - [`FormatterJson.res`](../../../reventless/reventless-gwt/src/FormatterJson.res) — single envelope (default) + NDJSON stream (`--stream`). `schemaVersion: "1.0.0"`, dual-rendered `{type, payload, rendered}` for every value, precomputed `hint`, `fieldDiff` arrays.
+   - [`FormatterTap.res`](../../../reventless/reventless-gwt/src/FormatterTap.res) — TAP 14 with YAML diagnostic blocks; consumable by `tap-spec` and `actions/test-reporter`.
+   - [`FormatterJunit.res`](../../../reventless/reventless-gwt/src/FormatterJunit.res) — `<testsuites>` / `<testsuite>` / `<testcase>` wrapper with `<failure>` bodies carrying the formatted mismatch + hint.
+   - [`FormatterVsCode.res`](../../../reventless/reventless-gwt/src/FormatterVsCode.res) — NDJSON event stream with `discoverStart` / `item` / `discoverEnd` for the tree and `runStart` / `testStart` / `testPass` / `testFail` / `testSkip` / `runEnd` for the execution. Field names map directly onto the VS Code `TestItem` / `TestMessage` / `TestRun` API.
+4. [`bin/reventless-gwt.mjs`](../../../reventless/reventless-gwt/bin/reventless-gwt.mjs) — 13-line launcher importing `src/Cli.res.mjs`'s `main` and bridging its returned `int` to `process.exit`.
 5. `chokidar ^3.6.0` + `picocolors ^1.1.0` added to `package.json` `dependencies` (both already hoisted by pnpm at the monorepo root).
 
 **Deviations from the original plan:**
@@ -340,8 +340,8 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 **Actions taken:**
 
-1. Added [`packages/reventless-ppx/src/ppx/GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml) (~220 lines). Recognises the file-level `@@reventless.gwt` attribute and injects the generated `include` directly into the structure.
-2. Wired into [`ReventlessPpx.ml`](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml) as a first-pass before the existing spec/behavior/no-api transforms: `let str = GwtInference.transform str in …`. Independent of those passes — GWT files don't carry `@@reventless.spec` or `@@reventless.behavior`, so the existing passes still skip cleanly.
+1. Added [`packages/reventless-ppx/src/ppx/GwtInference.ml`](../../../packages/reventless-ppx/src/ppx/GwtInference.ml) (~220 lines). Recognises the file-level `@@reventless.gwt` attribute and injects the generated `include` directly into the structure.
+2. Wired into [`ReventlessPpx.ml`](../../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml) as a first-pass before the existing spec/behavior/no-api transforms: `let str = GwtInference.transform str in …`. Independent of those passes — GWT files don't carry `@@reventless.spec` or `@@reventless.behavior`, so the existing passes still skip cleanly.
 3. **Kind derivation** via substring match against filename (base, ext stripped) and folder path segments, longest-match-first so `StateViewSlice` wins over `Slice`. Recognised tokens: `AutomationSlice`, `InboundTranslationSlice`, `OutboundTranslationSlice`, `StateChangeSlice`, `StateViewSlice`, `Projection`, `Behavior`.
 4. **Payload forms:**
    - `@@reventless.gwt` — Kind from filename/folder; Spec auto-detected as the first top-level module binding in the structure.
@@ -352,11 +352,11 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 7. Built macOS binary: `cd packages/reventless-ppx && pnpm run build:ppx && cp src/_build/default/bin/bin.exe ppx-osx-x64.exe` (16.5 MB).
 8. Rebuilt Linux binary via `docker build --platform linux/amd64 --no-cache -f packages/reventless-ppx/Dockerfile . && docker cp <cid>:/workspace/ppx-linux.exe packages/reventless-ppx/ppx-linux.exe` (25 MB). Both binaries contain the `"reventless.gwt"` attribute string (verified with `strings | grep`).
 9. Converted the five single-spec worked-example GWT test files:
-   - [`AutomationSliceGwtTest.res`](../../reventless/reventless-gwt/tests/AutomationSliceGwtTest.res)
-   - [`InboundTranslationSliceGwtTest.res`](../../reventless/reventless-gwt/tests/InboundTranslationSliceGwtTest.res)
-   - [`OutboundTranslationSliceGwtTest.res`](../../reventless/reventless-gwt/tests/OutboundTranslationSliceGwtTest.res)
-   - [`StateChangeSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res) — first-module (`AddCategorySlice`) auto-inferred; the secondary `MissingTagSlice` keeps its explicit `module MissingTagGwt = StateChangeSlice_GWT.Make(MissingTagSlice)` form.
-   - [`StateViewSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateViewSliceGwtTest.res)
+   - [`AutomationSliceGwtTest.res`](../../../reventless/reventless-gwt/tests/AutomationSliceGwtTest.res)
+   - [`InboundTranslationSliceGwtTest.res`](../../../reventless/reventless-gwt/tests/InboundTranslationSliceGwtTest.res)
+   - [`OutboundTranslationSliceGwtTest.res`](../../../reventless/reventless-gwt/tests/OutboundTranslationSliceGwtTest.res)
+   - [`StateChangeSliceGwtTest.res`](../../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res) — first-module (`AddCategorySlice`) auto-inferred; the secondary `MissingTagSlice` keeps its explicit `module MissingTagGwt = StateChangeSlice_GWT.Make(MissingTagSlice)` form.
+   - [`StateViewSliceGwtTest.res`](../../../reventless/reventless-gwt/tests/StateViewSliceGwtTest.res)
    Each lost its `include <Kind>_GWT.Make(<Spec>)` line in exchange for one `@@reventless.gwt` attribute.
 
 **Deviations from the original plan:**
@@ -377,24 +377,27 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 ### Stage 10 — Documentation
 
-**Status:** Not started
+**Status:** Complete
 
 **Goal:** A single canonical guide for GWT testing in Reventless.
 
-**Actions:**
+**Actions taken:**
 
-1. New `docs/guides/given-when-then.md`:
-   - The four-slice / four-vocabulary table (matches §1 of the analysis).
-   - One fully-worked example per slice type (10 examples).
-   - Output format reference.
-   - Migration tips for existing tests.
-2. Cross-link from `docs/guides/component-testing-guide.md`.
-3. Update `docs/analysis/given-when-then-specifications.md` status note: "Implemented as of v…".
-4. Update `CLAUDE.md` PPX section if Stage 9 lands.
+1. Added [`docs/guides/given-when-then.md`](../../guides/given-when-then.md) — 11 sections covering the slice ↔ DSL table, setup, shared vocabulary, nine worked DSL examples (one per `_GWT` module), the `Outcome` algebra and hint-locus reference, CLI invocation and flags, output format reference, VS Code integration pointer, and migration tips. Every example is keyed to the runnable copy in [`reventless/reventless-gwt/tests/`](../../../reventless/reventless-gwt/tests/) or the equivalent production example test file.
+2. Cross-linked from [`docs/guides/component-testing-guide.md`](../../guides/component-testing-guide.md) — a callout near the top of the "Purpose" section delineates the split: slice-level Given-When-Then tests belong in the new guide; this one covers the component / integration layer below (mocks, adapters, callbacks, operations).
+3. Added an "Implemented as of 2026-04-24" status banner to the top of [`docs/analysis/given-when-then-specifications.md`](../../analysis/given-when-then-specifications.md) with a pointer to the done plan and the usage guide.
+4. `CLAUDE.md` itself doesn't enumerate PPX attributes (only `sury-ppx` is mentioned, in the ReScript Configuration section). The `@@reventless.gwt` attribute is fully documented in [`.claude/rules/app-developer.md`](../../../.claude/rules/app-developer.md) — updated during Stage 9 and already visible as project instructions.
+
+**Deviations from the original plan:**
+
+- **Nine worked examples, not ten.** The plan's "10 examples" count tracked the line-count estimate in the "Estimated size" table, which double-counted `EventMapping_GWT` and `Mapping_GWT`. In practice they share one worked example (Mapping_GWT is the general case; EventMapping_GWT is a backward-compat alias composing two `FromBehavior` adapters). Nine DSL modules → nine examples.
+- **Examples split between runnable worked copies and production test files.** `Behavior_GWT` and `Projection_GWT` worked examples in the guide link to real plugin tests (`CategoryBehaviorTest.res`, `CategoryProjectionTest.res` under `examples/online-shop-aggregates/`) rather than to a synthetic copy in `reventless-gwt/tests/` — these two DSLs already had production callers when the package shipped, so re-deriving a minimal synthetic version would have been busywork. The other seven DSLs (added in Stages 3–6) link to the canonical worked-example copies in `reventless-gwt/tests/`.
 
 **Acceptance:**
 
-- A new contributor reading `docs/guides/given-when-then.md` can write a working `_GWT.res` for any slice type without consulting the analysis.
+- ✅ A new contributor reading `docs/guides/given-when-then.md` can copy one of the nine templates, set up the package, annotate with `@@reventless.gwt`, run `reventless-gwt run tests/`, and get a passing test — every step is self-contained in the guide.
+- ✅ Cross-link from `component-testing-guide.md` establishes the "slice GWT vs. component/integration" split at the top of both docs.
+- ✅ Analysis doc carries a status banner pointing at the implementation and the usage guide.
 
 ### Stage 11 — `reventless-vscode`: jump to `.res` source on click
 
@@ -402,11 +405,11 @@ Each stage is one PR. Deprecation aliases keep every PR green.
 
 **Goal:** Clicking a test (or suite/file) in the Testing panel opens the original `.res` file at the combinator's line, not the compiled `.res.mjs`.
 
-**Rationale:** Stage 7's [`Collector.captureLocation`](../../reventless/reventless-gwt/src/Collector.res) derives locations from V8 stack frames, which point at `.res.mjs`. ReScript v12 doesn't emit JS source maps for its output (no `*.res.mjs.map` produced today, no `sourceMappingURL` comment), so automatic translation isn't available. Since every GWT combinator (`test`, `describe`, `given`, `when*`, `then*`) takes a string literal as its first argument, scanning the sibling `.res` file for that literal yields an exact line — cheap and accurate.
+**Rationale:** Stage 7's [`Collector.captureLocation`](../../../reventless/reventless-gwt/src/Collector.res) derives locations from V8 stack frames, which point at `.res.mjs`. ReScript v12 doesn't emit JS source maps for its output (no `*.res.mjs.map` produced today, no `sourceMappingURL` comment), so automatic translation isn't available. Since every GWT combinator (`test`, `describe`, `given`, `when*`, `then*`) takes a string literal as its first argument, scanning the sibling `.res` file for that literal yields an exact line — cheap and accurate.
 
 **Actions taken:**
 
-1. Added `locateInSource(mjsPath, label): option<Collector.location>` and supporting helpers (`mjsToRes`, `readLinesCached`, `escapeForDouble`, `escapeForSingle`) to [`FormatterVsCode.res`](../../reventless/reventless-gwt/src/FormatterVsCode.res). Uses `node:fs` sync bindings (`existsSync`, `readFileSync`) — the formatter runs synchronously on the main event loop so an async read buys nothing. A module-level `Dict.t<option<array<string>>>` (`sourceLineCache`) keyed by `.res` path ensures each file is read at most once per process; a companion `resetLocateCache()` exists for future watch-mode reuse but is not yet wired up.
+1. Added `locateInSource(mjsPath, label): option<Collector.location>` and supporting helpers (`mjsToRes`, `readLinesCached`, `escapeForDouble`, `escapeForSingle`) to [`FormatterVsCode.res`](../../../reventless/reventless-gwt/src/FormatterVsCode.res). Uses `node:fs` sync bindings (`existsSync`, `readFileSync`) — the formatter runs synchronously on the main event loop so an async read buys nothing. A module-level `Dict.t<option<array<string>>>` (`sourceLineCache`) keyed by `.res` path ensures each file is read at most once per process; a companion `resetLocateCache()` exists for future watch-mode reuse but is not yet wired up.
 2. `emitDiscoveryItems` now:
    - File items: swap `.res.mjs` → `.res` in the `uri` when the sibling exists; fall back otherwise.
    - Suite items: gained a `uri` + `range` pointing at the `describe("<label>"…)` line, which they did not emit before Stage 11.

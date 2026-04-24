@@ -1,5 +1,13 @@
 # Given-When-Then Specifications in Reventless
 
+> **Status:** Implemented as of 2026-04-24 — see
+> [`docs/plans/done/reventless-gwt.md`](../plans/done/reventless-gwt.md) for
+> the phased rollout record (Stages 1–9, 11, 12 all landed; Stage 10 is this
+> file plus [`docs/guides/given-when-then.md`](../guides/given-when-then.md)).
+> This document preserves the design rationale, alternatives considered, and
+> canonical format / hint-table specifications; the day-to-day usage guide is
+> [`docs/guides/given-when-then.md`](../guides/given-when-then.md).
+
 Analysis of the framework's Given-When-Then (GWT) specification support for Event Modeling slices, the gaps between Aggregate-side and DCB-side test DSLs, the case for a single Reventless-owned testing package replacing Jest for GWT files, and how far AI-assisted generation of implementation + tests from a GWT corpus can go.
 
 ---
