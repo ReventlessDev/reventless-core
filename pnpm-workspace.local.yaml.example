@@ -12,9 +12,16 @@
 # linking to transitive deps. For transitive linking (e.g., dev-app →
 # reventless-ui), add an `overrides` entry below; it will be merged into
 # pnpm.overrides at install time.
+#
+# If a sibling package itself declares `workspace:*` deps on other sibling
+# packages (e.g. reventless-ui depends on reventless-routes via workspace:*),
+# you must include ALL of those siblings here — otherwise pnpm aborts with
+# ERR_PNPM_WORKSPACE_PKG_NOT_FOUND. Registry-installed tarballs rewrite
+# workspace:* to concrete semver at publish, so this only bites in link mode.
 
 packages:
   - '../reventless-ui/reventless/reventless-ui'
+  - '../reventless-ui/reventless/reventless-routes'
 
 # Uncomment to force transitive consumers of reventless-ui to the live copy:
 # overrides:

@@ -35,8 +35,14 @@ including the `.npmrc` example and CI environment-variable wiring.
 ```bash
 git clone <repo-url> reventless-core
 cd reventless-core
+node scripts/workspace-setup.mjs     # one-time: create pnpm-workspace.yaml symlink
 pnpm install --frozen-lockfile
 ```
+
+`pnpm-workspace.yaml` is gitignored; the tracked source of truth is
+`pnpm-workspace.base.yaml`. The setup script creates the symlink so pnpm has
+a workspace config to read. See
+[cross-repo-dev-linking.md](cross-repo-dev-linking.md) for the full mechanism.
 
 `--frozen-lockfile` is the recommended default — it matches CI and catches
 accidental lockfile drift. Drop it only when intentionally changing
@@ -126,10 +132,11 @@ pnpm link:on       # switch to link mode (sibling is live source)
 pnpm link:off      # restore release mode
 ```
 
-The committed `pnpm-workspace.yaml` is always the release-mode source of
-truth. `link:on` overwrites it in place from a gitignored
-`pnpm-workspace.local.yaml` overlay you keep per-checkout. Always run
-`pnpm link:off` before committing or publishing.
+The committed `pnpm-workspace.base.yaml` is the release-mode source of
+truth. `pnpm-workspace.yaml` is gitignored — either a symlink to the base
+file (release) or a merged file produced from your local
+`pnpm-workspace.local.yaml` overlay (link mode). Either mode is safe to
+commit in; only run `pnpm link:off` before publishing.
 
 Full mechanism, overlay file format, transitive-dep caveats, and
 troubleshooting are in [cross-repo-dev-linking.md](cross-repo-dev-linking.md).

@@ -33,5 +33,10 @@ packages/reventless-ppx/src/_build/
 # ast-grep tree-sitter grammar (compiled binary, rebuild with gcc)
 rescript.dylib
 
-# Cross-repo dev-linking overlay (see docs/guides/cross-repo-dev-linking.md)
+# Cross-repo dev linking (see docs/guides/cross-repo-dev-linking.md).
+# pnpm-workspace.base.yaml is the tracked source of truth.
+# pnpm-workspace.yaml is either a symlink to it (release mode) or a
+# merged file produced by `pnpm link:on` (link mode) — always local.
+# pnpm-workspace.local.yaml is the developer's overlay input.
+pnpm-workspace.yaml
 pnpm-workspace.local.yaml
