@@ -1161,6 +1161,9 @@ importers:
       sury-ppx:
         specifier: ^11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+      uuid:
+        specifier: ^13.0.0
+        version: 13.0.0
     devDependencies:
       rescript:
         specifier: ^12.2.0
