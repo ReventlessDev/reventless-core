@@ -90,10 +90,14 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
 
   let load = (store, id) => store->states(id)->Ok->Promise.resolve
   let save = (store, id, state, saveMode: QueryDb.saveMode, _ttl) =>
-    switch (store->states(id), saveMode) {
-    | (_, Any)
-    | ([], Init)
-    | ([_], Overwrite) =>
+    switch (store->states(id), saveMode, Spec.subIdConfig) {
+    | (_, Any, Some(_))
+    | (_, Init, Some(_)) =>
+      store->addState(id, state)
+      Ok()->Promise.resolve
+    | (_, Any, None)
+    | ([], Init, _)
+    | ([_], Overwrite, _) =>
       store->setStates(id, [state])
       Ok()->Promise.resolve
     | _ => Error(ReventlessInfra.QueryDb.StaleState)->Promise.resolve

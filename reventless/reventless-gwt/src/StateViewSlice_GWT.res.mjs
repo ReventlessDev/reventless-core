@@ -36,6 +36,22 @@ function Make(Spec) {
       return state;
     }
   });
+  let addState = (store, id, newState) => {
+    let subId = getSubId(newState);
+    let match = subId !== undefined ? (
+        states(store, id).some(state => hasSubId(state, subId)) ? [
+            updateState(store, id, subId, newState),
+            []
+          ] : [
+            states(store, id),
+            [newState]
+          ]
+      ) : [
+        states(store, id),
+        [newState]
+      ];
+    store[id] = match[0].concat(match[1]);
+  };
   let deleteStates = (store, id) => {
     store[id] = [];
   };
@@ -52,13 +68,30 @@ function Make(Spec) {
       loadStream: id => Stream.fromIterable(states(store, id)),
       save: (extra, extra$1, extra$2, extra$3) => {
         let match = states(store, extra);
+        let match$1 = Spec.subIdConfig;
         let exit = 0;
         switch (extra$2) {
           case "Init" :
+            if (match$1 !== undefined) {
+              addState(store, extra, extra$1);
+              return Promise.resolve({
+                TAG: "Ok",
+                _0: undefined
+              });
+            }
+            exit = 2;
+            break;
           case "Overwrite" :
             exit = 2;
             break;
           case "Any" :
+            if (match$1 !== undefined) {
+              addState(store, extra, extra$1);
+              return Promise.resolve({
+                TAG: "Ok",
+                _0: undefined
+              });
+            }
             break;
         }
         if (exit === 2) {
@@ -90,24 +123,7 @@ function Make(Spec) {
         });
       },
       saveBatch: extra => {
-        extra.forEach(param => {
-          let id = param[0];
-          let newState = param[1];
-          let subId = getSubId(newState);
-          let match = subId !== undefined ? (
-              states(store, id).some(state => hasSubId(state, subId)) ? [
-                  updateState(store, id, subId, newState),
-                  []
-                ] : [
-                  states(store, id),
-                  [newState]
-                ]
-            ) : [
-              states(store, id),
-              [newState]
-            ];
-          store[id] = match[0].concat(match[1]);
-        });
+        extra.forEach(param => addState(store, param[0], param[1]));
         return Promise.resolve({
           TAG: "Ok",
           _0: undefined
