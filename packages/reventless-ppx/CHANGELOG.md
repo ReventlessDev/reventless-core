@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.9 (2026-04-24)
+
+### Features
+
+* **gwt:** add @[@reventless](https://github.com/reventless).gwt PPX annotation (Stage 9) ([f6c3a65](https://github.com/ReventlessDev/reventless-core/commit/f6c3a65e0906b4fa09688c3c9907245701dca3da))
+
+
 # 1.0.0-alpha.8 (2026-04-22)
 
 ### Bug Fixes

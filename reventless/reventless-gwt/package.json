@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-gwt",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
   "license": "MIT",
   "bin": {

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.41 (2026-04-24)
+
+### Bug Fixes
+
+* **infra:** declare uuid as direct dependency ([0bbe589](https://github.com/ReventlessDev/reventless-core/commit/0bbe5892d6772e2993b976cfa32d9803d568f739))
+
+
 # 3.0.0-alpha.40 (2026-04-22)
 
 ### Bug Fixes

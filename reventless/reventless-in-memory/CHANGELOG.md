@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.35 (2026-04-24)
+
+### Bug Fixes
+
+* **in-memory:** polyfill globalThis.crypto for uuid@13 in Jest 27 ([63e5cee](https://github.com/ReventlessDev/reventless-core/commit/63e5cee55ec3efda681351c8bf4bb259053f9684))
+### Features
+
+* **admin:** convert PlatformEventGraph from StateViewSlice to ReadModel ([df5746b](https://github.com/ReventlessDev/reventless-core/commit/df5746bbb419833361c2fb47ed607e2ab85ced47))
+* **gwt:** add 5 DCB slice DSLs and thread slice name into hints (Stage 3) ([62b59fd](https://github.com/ReventlessDev/reventless-core/commit/62b59fdaa745d7799209ec3c24c50a8d443670b5))
+* **gwt:** add Stage 4 AppendConditionMismatch + Stage 5 Mapping_GWT ([24fa835](https://github.com/ReventlessDev/reventless-core/commit/24fa8353657329e73a04cfed8e0a390806ff3395))
+* **gwt:** extract GWT test DSLs into @reventlessdev/reventless-gwt package ([dd64b4e](https://github.com/ReventlessDev/reventless-core/commit/dd64b4e1fd0bb203821d055b6743a52aec1836fb))
+* **in-memory:** add opt-in SQLite persistence backend ([1a74301](https://github.com/ReventlessDev/reventless-core/commit/1a7430191c8fb83b3eac066e488585af3f330bbf))
+
+
 # 3.0.0-alpha.34 (2026-04-22)
 
 ### Bug Fixes

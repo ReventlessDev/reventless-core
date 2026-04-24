@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.59 (2026-04-24)
+
+### Bug Fixes
+
+* **dcb:** guard hasDcb on StateChangeSlices only — prevent crash when admin has stateViewSlices but no producers ([198f14a](https://github.com/ReventlessDev/reventless-core/commit/198f14ae4b75a01ac7d10b77cd4d7c3a48f4e7b0))
+* **deps:** add uuid as direct dependency of reventless-core ([87bf8cc](https://github.com/ReventlessDev/reventless-core/commit/87bf8cca3b8ee8637a27567f77017ee3103bf445))
+### Features
+
+* **admin:** convert PlatformEventGraph from StateViewSlice to ReadModel ([df5746b](https://github.com/ReventlessDev/reventless-core/commit/df5746bbb419833361c2fb47ed607e2ab85ced47))
+* **gwt:** extract GWT test DSLs into @reventlessdev/reventless-gwt package ([dd64b4e](https://github.com/ReventlessDev/reventless-core/commit/dd64b4e1fd0bb203821d055b6743a52aec1836fb))
+* **gwt:** silence CLI logs by default; add vscode testing guide ([9f124da](https://github.com/ReventlessDev/reventless-core/commit/9f124dac32a408ca88011d9b15e4de6bde624c74))
+
+
 # 3.0.0-alpha.58 (2026-04-22)
 
 ### Bug Fixes
