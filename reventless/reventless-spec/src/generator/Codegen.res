@@ -17,10 +17,21 @@ let epModuleName = (mappingStem: string): string =>
 let renderSlices = (
   ~platformFactory: string,
   ~suffix: string,
+  ~implSuffix: string,
   stems: array<string>,
 ): array<string> =>
   stems->Array.map(stem =>
-    "  module " ++ stem ++ suffix ++ " = Platform." ++ platformFactory ++ ".Make(" ++ stem ++ ")"
+    "  module "
+    ++ stem
+    ++ suffix
+    ++ " = Platform."
+    ++ platformFactory
+    ++ ".Make("
+    ++ stem
+    ++ ", "
+    ++ stem
+    ++ implSuffix
+    ++ ")"
   )
 
 let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> =>
@@ -117,11 +128,26 @@ let renderExtensions = (extensions: array<string>): array<string> =>
 let renderSlicesAws = (
   ~platformFactory: string,
   ~suffix: string,
+  ~implSuffix: string,
   ~ns: string,
   stems: array<string>,
 ): array<string> =>
   stems->Array.map(stem =>
-    "  module " ++ stem ++ suffix ++ " = Platform." ++ platformFactory ++ ".Make(" ++ ns ++ "." ++ stem ++ ")"
+    "  module "
+    ++ stem
+    ++ suffix
+    ++ " = Platform."
+    ++ platformFactory
+    ++ ".Make("
+    ++ ns
+    ++ "."
+    ++ stem
+    ++ ", "
+    ++ ns
+    ++ "."
+    ++ stem
+    ++ implSuffix
+    ++ ")"
   )
 
 let renderAggregatesAws = (~ns: string, aggregates: array<Pairing.aggregateDef>): array<string> =>
@@ -511,31 +537,35 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
   // StateChangeSlices
   if resolved.stateChangeSlices->Array.length > 0 {
     lines->Array.push("  // StateChangeSlices")
+    let implSuffix = Pairing.implSuffixForStateChange
     switch ns {
-    | None => renderSlices(~platformFactory="StateChangeSlice", ~suffix="Slice", resolved.stateChangeSlices)
-    | Some(n) => renderSlicesAws(~platformFactory="StateChangeSlice", ~suffix="Slice", ~ns=n, resolved.stateChangeSlices)
+    | None => renderSlices(~platformFactory="StateChangeSlice", ~suffix="Slice", ~implSuffix, resolved.stateChangeSlices)
+    | Some(n) => renderSlicesAws(~platformFactory="StateChangeSlice", ~suffix="Slice", ~implSuffix, ~ns=n, resolved.stateChangeSlices)
     }->push
   }
 
   // StateViewSlices
   if resolved.stateViewSlices->Array.length > 0 {
     lines->Array.push("  // StateViewSlices")
+    let implSuffix = Pairing.implSuffixForStateView
     switch ns {
-    | None => renderSlices(~platformFactory="StateViewSlice", ~suffix="Slice", resolved.stateViewSlices)
-    | Some(n) => renderSlicesAws(~platformFactory="StateViewSlice", ~suffix="Slice", ~ns=n, resolved.stateViewSlices)
+    | None => renderSlices(~platformFactory="StateViewSlice", ~suffix="Slice", ~implSuffix, resolved.stateViewSlices)
+    | Some(n) => renderSlicesAws(~platformFactory="StateViewSlice", ~suffix="Slice", ~implSuffix, ~ns=n, resolved.stateViewSlices)
     }->push
   }
 
   // StateViewSliceStreams
   if resolved.stateViewSlicesStream->Array.length > 0 {
     lines->Array.push("  // StateViewSliceStreams")
+    let implSuffix = Pairing.implSuffixForStateView
     switch ns {
     | None =>
-      renderSlices(~platformFactory="StateViewSliceStream", ~suffix="StreamSlice", resolved.stateViewSlicesStream)
+      renderSlices(~platformFactory="StateViewSliceStream", ~suffix="StreamSlice", ~implSuffix, resolved.stateViewSlicesStream)
     | Some(n) =>
       renderSlicesAws(
         ~platformFactory="StateViewSliceStream",
         ~suffix="StreamSlice",
+        ~implSuffix,
         ~ns=n,
         resolved.stateViewSlicesStream,
       )
@@ -545,31 +575,34 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
   // AutomationSlices
   if resolved.automationSlices->Array.length > 0 {
     lines->Array.push("  // AutomationSlices")
+    let implSuffix = Pairing.implSuffixForAutomation
     switch ns {
-    | None => renderSlices(~platformFactory="AutomationSlice", ~suffix="Slice", resolved.automationSlices)
-    | Some(n) => renderSlicesAws(~platformFactory="AutomationSlice", ~suffix="Slice", ~ns=n, resolved.automationSlices)
+    | None => renderSlices(~platformFactory="AutomationSlice", ~suffix="Slice", ~implSuffix, resolved.automationSlices)
+    | Some(n) => renderSlicesAws(~platformFactory="AutomationSlice", ~suffix="Slice", ~implSuffix, ~ns=n, resolved.automationSlices)
     }->push
   }
 
   // OutboundTranslationSlices
   if resolved.outboundTranslationSlices->Array.length > 0 {
     lines->Array.push("  // OutboundTranslationSlices")
+    let implSuffix = Pairing.implSuffixForTranslation
     switch ns {
     | None =>
-      renderSlices(~platformFactory="OutboundTranslationSlice", ~suffix="Slice", resolved.outboundTranslationSlices)
+      renderSlices(~platformFactory="OutboundTranslationSlice", ~suffix="Slice", ~implSuffix, resolved.outboundTranslationSlices)
     | Some(n) =>
-      renderSlicesAws(~platformFactory="OutboundTranslationSlice", ~suffix="Slice", ~ns=n, resolved.outboundTranslationSlices)
+      renderSlicesAws(~platformFactory="OutboundTranslationSlice", ~suffix="Slice", ~implSuffix, ~ns=n, resolved.outboundTranslationSlices)
     }->push
   }
 
   // InboundTranslationSlices
   if resolved.inboundTranslationSlices->Array.length > 0 {
     lines->Array.push("  // InboundTranslationSlices")
+    let implSuffix = Pairing.implSuffixForTranslation
     switch ns {
     | None =>
-      renderSlices(~platformFactory="InboundTranslationSlice", ~suffix="Slice", resolved.inboundTranslationSlices)
+      renderSlices(~platformFactory="InboundTranslationSlice", ~suffix="Slice", ~implSuffix, resolved.inboundTranslationSlices)
     | Some(n) =>
-      renderSlicesAws(~platformFactory="InboundTranslationSlice", ~suffix="Slice", ~ns=n, resolved.inboundTranslationSlices)
+      renderSlicesAws(~platformFactory="InboundTranslationSlice", ~suffix="Slice", ~implSuffix, ~ns=n, resolved.inboundTranslationSlices)
     }->push
   }
 

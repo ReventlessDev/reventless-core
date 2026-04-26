@@ -15,28 +15,6 @@ let consumedEventSchema = S.union([
   S.literal("CustomerDeactivated")
 ]);
 
-function evolve(state, event) {
-  if (typeof event !== "object") {
-    return {
-      exists: state.exists,
-      deactivated: true,
-      currentEmail: state.currentEmail
-    };
-  } else if (event.TAG === "CustomerRegistered") {
-    return {
-      exists: true,
-      deactivated: false,
-      currentEmail: event.email
-    };
-  } else {
-    return {
-      exists: state.exists,
-      deactivated: state.deactivated,
-      currentEmail: event.email
-    };
-  }
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "ChangeEmail",
   customerId: s.m(DcbTag$Reventless.string),
@@ -54,59 +32,19 @@ let eventSchema = S.schema(s => ({
   email: s.m(S.string)
 }));
 
-function decide(state, command) {
-  if (!state.exists) {
-    return {
-      TAG: "Error",
-      _0: "CustomerNotFound"
-    };
-  }
-  if (state.deactivated) {
-    return {
-      TAG: "Error",
-      _0: "CustomerAlreadyDeactivated"
-    };
-  }
-  let email = command.email;
-  if (email === state.currentEmail) {
-    return {
-      TAG: "Ok",
-      _0: []
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "EmailChanged",
-          customerId: command.customerId,
-          email: email
-        }]
-    };
-  }
-}
-
 let name = "ChangeEmail";
 
 let Id;
-
-let initialState = {
-  exists: false,
-  deactivated: false,
-  currentEmail: ""
-};
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Customer/StateChangeSlice/ChangeEmail.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

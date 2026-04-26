@@ -35,9 +35,9 @@ let eventLog = CatalogEventLogMaker.make(~name="Catalog", ~partitionTag=Reventle
 // Build DCB StateChangeSlices (Product)
 // ─────────────────────────────────────────────────────────────
 
-module AddProductMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(AddProduct)
-module ChangeProductNameMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductName)
-module ChangeProductPriceMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductPrice)
+module AddProductMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(AddProduct, AddProduct_Behavior)
+module ChangeProductNameMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductName, ChangeProductName_Behavior)
+module ChangeProductPriceMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
 
 // publishJsons routing — dispatches each command to its registered StateChangeSlice handler.
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {

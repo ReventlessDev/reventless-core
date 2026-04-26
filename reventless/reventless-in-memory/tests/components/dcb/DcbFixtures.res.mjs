@@ -45,6 +45,18 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("ItemAlreadyExists");
 
+let AddItemSpec = {
+  name: name,
+  Id: undefined,
+  moduleUrl: moduleUrl,
+  eventSchema: eventSchema$1,
+  consumedEventSchema: consumedEventSchema,
+  errorSchema: errorSchema,
+  commandSchema: commandSchema
+};
+
+let moduleUrl$1 = import.meta.url;
+
 function evolve(_state, _event) {
   return true;
 }
@@ -67,17 +79,12 @@ function decide(state, command) {
   }
 }
 
-let AddItemSpec = {
-  name: name,
-  Id: undefined,
-  moduleUrl: moduleUrl,
-  eventSchema: eventSchema$1,
-  consumedEventSchema: consumedEventSchema,
-  errorSchema: errorSchema,
+let AddItemBehavior = {
+  Spec: undefined,
+  moduleUrl: moduleUrl$1,
   initialState: false,
   evolve: evolve,
-  decide: decide,
-  commandSchema: commandSchema
+  decide: decide
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -104,14 +111,16 @@ let eventLog = ItemEventLogMaker.make("ItemEventLog", undefined, {
 let AddItemMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: name,
   moduleUrl: moduleUrl,
-  initialState: false,
-  consumedEventSchema: consumedEventSchema,
-  evolve: evolve,
-  errorSchema: errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: consumedEventSchema,
+  errorSchema: errorSchema,
   eventSchema: eventSchema$1,
-  decide: decide,
   commandSchema: commandSchema
+})({
+  initialState: false,
+  evolve: evolve,
+  decide: decide,
+  moduleUrl: moduleUrl$1
 });
 
 async function publishJsons(cmdJsons) {
@@ -187,6 +196,7 @@ function addItemJson(id, name) {
 export {
   ItemEventLog,
   AddItemSpec,
+  AddItemBehavior,
   Bus,
   capturedEventCount,
   ItemEventLogMaker,

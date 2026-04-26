@@ -494,83 +494,83 @@ function MakeWithConfig(Config) {
     Make: Make$4
   };
   let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$5 = Spec => {
-    let $$let = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec);
+  let Make$5 = Spec => (Behavior => {
+    let $$let = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec)(Behavior);
     return {
       Spec: $$let.Spec,
-      Behavior: $$let.BehaviorImpl,
+      Behavior: $$let.Behavior,
       isAsync: $$let.isAsync,
       make: $$let.make
     };
-  };
-  let MakeAsync$1 = Spec => {
-    let include = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec);
+  });
+  let MakeAsync$1 = Spec => (Behavior => {
+    let include = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec)(Behavior);
     return {
       Spec: include.Spec,
-      Behavior: include.BehaviorImpl,
+      Behavior: include.Behavior,
       isAsync: true,
       make: include.make
     };
-  };
+  });
   let StateChangeSlice = {
     Make: Make$5,
     MakeAsync: MakeAsync$1
   };
-  let Make$6 = Spec => {
-    let $$let = StateViewSliceMaker.Make(Spec);
+  let Make$6 = Spec => (Projection => {
+    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
       Spec: $$let.Spec,
-      Projection: $$let.ProjectionImpl,
+      Projection: $$let.Projection,
       make: $$let.make
     };
-  };
+  });
   let StateViewSlice = {
     Make: Make$6
   };
-  let Make$7 = Spec => {
-    let $$let = StateViewSliceMaker.Make(Spec);
+  let Make$7 = Spec => (Projection => {
+    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
       Spec: $$let.Spec,
-      Projection: $$let.ProjectionImpl,
+      Projection: $$let.Projection,
       make: $$let.make
     };
-  };
+  });
   let StateViewSliceStream = {
     Make: Make$7
   };
-  let Make$8 = Spec => {
-    let $$let = AutomationSliceMaker.Make(Spec);
+  let Make$8 = Spec => (Automation => {
+    let $$let = AutomationSliceMaker.Make(Spec)(Automation);
     return {
       Spec: $$let.Spec,
-      Automation: $$let.AutomationImpl,
+      Automation: $$let.Automation,
       queryDbName: $$let.queryDbName,
       make: $$let.make
     };
-  };
+  });
   let AutomationSlice = {
     Make: Make$8
   };
-  let Make$9 = Spec => {
-    let $$let = OutboundTranslationSliceMaker.Make(Spec);
+  let Make$9 = Spec => (Translation => {
+    let $$let = OutboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
-      Translation: $$let.TranslationImpl,
+      Translation: $$let.Translation,
       queryDbName: $$let.queryDbName,
       make: $$let.make
     };
-  };
+  });
   let OutboundTranslationSlice = {
     Make: Make$9
   };
-  let Make$10 = Spec => {
-    let $$let = InboundTranslationSliceMaker.Make(Spec);
+  let Make$10 = Spec => (Translation => {
+    let $$let = InboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
-      Translation: $$let.TranslationImpl,
+      Translation: $$let.Translation,
       queryDbName: $$let.queryDbName,
       make: $$let.make
     };
-  };
+  });
   let InboundTranslationSlice = {
     Make: Make$10
   };
@@ -2363,83 +2363,83 @@ function Make($star) {
     Make: Make$5
   };
   let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$6 = Spec => {
-    let $$let = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec);
+  let Make$6 = Spec => (Behavior => {
+    let $$let = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec)(Behavior);
     return {
       Spec: $$let.Spec,
-      Behavior: $$let.BehaviorImpl,
+      Behavior: $$let.Behavior,
       isAsync: $$let.isAsync,
       make: $$let.make
     };
-  };
-  let MakeAsync$1 = Spec => {
-    let include = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec);
+  });
+  let MakeAsync$1 = Spec => (Behavior => {
+    let include = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec)(Behavior);
     return {
       Spec: include.Spec,
-      Behavior: include.BehaviorImpl,
+      Behavior: include.Behavior,
       isAsync: true,
       make: include.make
     };
-  };
+  });
   let StateChangeSlice = {
     Make: Make$6,
     MakeAsync: MakeAsync$1
   };
-  let Make$7 = Spec => {
-    let $$let = StateViewSliceMaker.Make(Spec);
+  let Make$7 = Spec => (Projection => {
+    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
       Spec: $$let.Spec,
-      Projection: $$let.ProjectionImpl,
+      Projection: $$let.Projection,
       make: $$let.make
     };
-  };
+  });
   let StateViewSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => {
-    let $$let = StateViewSliceMaker.Make(Spec);
+  let Make$8 = Spec => (Projection => {
+    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
     return {
       Spec: $$let.Spec,
-      Projection: $$let.ProjectionImpl,
+      Projection: $$let.Projection,
       make: $$let.make
     };
-  };
+  });
   let StateViewSliceStream = {
     Make: Make$8
   };
-  let Make$9 = Spec => {
-    let $$let = AutomationSliceMaker.Make(Spec);
+  let Make$9 = Spec => (Automation => {
+    let $$let = AutomationSliceMaker.Make(Spec)(Automation);
     return {
       Spec: $$let.Spec,
-      Automation: $$let.AutomationImpl,
+      Automation: $$let.Automation,
       queryDbName: $$let.queryDbName,
       make: $$let.make
     };
-  };
+  });
   let AutomationSlice = {
     Make: Make$9
   };
-  let Make$10 = Spec => {
-    let $$let = OutboundTranslationSliceMaker.Make(Spec);
+  let Make$10 = Spec => (Translation => {
+    let $$let = OutboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
-      Translation: $$let.TranslationImpl,
+      Translation: $$let.Translation,
       queryDbName: $$let.queryDbName,
       make: $$let.make
     };
-  };
+  });
   let OutboundTranslationSlice = {
     Make: Make$10
   };
-  let Make$11 = Spec => {
-    let $$let = InboundTranslationSliceMaker.Make(Spec);
+  let Make$11 = Spec => (Translation => {
+    let $$let = InboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
-      Translation: $$let.TranslationImpl,
+      Translation: $$let.Translation,
       queryDbName: $$let.queryDbName,
       make: $$let.make
     };
-  };
+  });
   let InboundTranslationSlice = {
     Make: Make$11
   };

@@ -71,28 +71,3 @@ module type Translation = {
   let moduleUrl: string
 }
 
-/**
-Legacy combined-shape module type. Used by slice builders pre-Phase 2;
-removed in Phase 6.
-*/
-module type MergedSpec = {
-  /** Logical name of this inbound translation slice (used as a component prefix). */
-  let name: string
-  let moduleUrl: string
-
-  /** The external input type received from the outside world. Must carry `@schema`. */
-  @schema
-  type externalInput
-
-  /** The command type produced by the anti-corruption layer. Must carry `@schema`. */
-  @schema
-  type command
-
-  /**
-  Translate: convert external input into domain commands.
-  */
-  let translate: externalInput => result<array<(string, command)>, string>
-
-  /** Name of the aggregate or StateChangeSlice that receives the produced command. */
-  let targetName: string
-}

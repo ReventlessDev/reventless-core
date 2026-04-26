@@ -3,7 +3,7 @@
 
 open Order
 
-include ReventlessGwt.Behavior_GWT.Make(Order, OrderBehavior)
+include ReventlessGwt.Behavior_GWT.MakeFromAggregate(Order, OrderBehavior)
 
 describe("OrderBehavior:", () => {
   describe("Place", () => {

@@ -9,19 +9,19 @@ describe("AddProduct:", () => {
   describe("evolve", () => {
     test("ProductAdded sets exists=true", () =>
       expect(
-        AddProduct.evolve(
-          AddProduct.initialState,
+        AddProduct_Behavior.evolve(
+          AddProduct_Behavior.initialState,
           AddProduct.ProductAdded,
         ),
-      )->toEqual({AddProduct.exists: true})
+      )->toEqual({AddProduct_Behavior.exists: true})
     )
   })
 
   describe("decide", () => {
     test("on non-existent product produces ProductAdded", () =>
       expect(
-        AddProduct.decide(
-          AddProduct.initialState,
+        AddProduct_Behavior.decide(
+          AddProduct_Behavior.initialState,
           AddProduct.AddProduct({
             productId: "p1",
             name: "Laptop",
@@ -43,8 +43,8 @@ describe("AddProduct:", () => {
 
     test("on existing product returns ProductAlreadyExists", () =>
       expect(
-        AddProduct.decide(
-          {AddProduct.exists: true},
+        AddProduct_Behavior.decide(
+          {AddProduct_Behavior.exists: true},
           AddProduct.AddProduct({
             productId: "p1",
             name: "Laptop",
@@ -58,33 +58,33 @@ describe("AddProduct:", () => {
 })
 
 describe("ChangeProductName:", () => {
-  let existingState: ChangeProductName.state = {exists: true, currentName: "Laptop"}
+  let existingState: ChangeProductName_Behavior.state = {exists: true, currentName: "Laptop"}
 
   describe("evolve", () => {
     test("ProductAdded sets exists=true and currentName", () =>
       expect(
-        ChangeProductName.evolve(
-          ChangeProductName.initialState,
+        ChangeProductName_Behavior.evolve(
+          ChangeProductName_Behavior.initialState,
           ChangeProductName.ProductAdded({name: "Laptop"}),
         ),
-      )->toEqual({ChangeProductName.exists: true, currentName: "Laptop"})
+      )->toEqual({ChangeProductName_Behavior.exists: true, currentName: "Laptop"})
     )
 
     test("ProductNameChanged updates currentName", () =>
       expect(
-        ChangeProductName.evolve(
+        ChangeProductName_Behavior.evolve(
           existingState,
           ChangeProductName.ProductNameChanged({name: "Gaming Laptop"}),
         ),
-      )->toEqual({ChangeProductName.exists: true, currentName: "Gaming Laptop"})
+      )->toEqual({ChangeProductName_Behavior.exists: true, currentName: "Gaming Laptop"})
     )
   })
 
   describe("decide", () => {
     test("on non-existent product returns ProductNotFound", () =>
       expect(
-        ChangeProductName.decide(
-          ChangeProductName.initialState,
+        ChangeProductName_Behavior.decide(
+          ChangeProductName_Behavior.initialState,
           ChangeProductName.ChangeProductName({productId: "p1", name: "Gaming Laptop"}),
         ),
       )->toEqual(Error(ChangeProductName.ProductNotFound))
@@ -92,7 +92,7 @@ describe("ChangeProductName:", () => {
 
     test("same name produces no events (idempotent)", () =>
       expect(
-        ChangeProductName.decide(
+        ChangeProductName_Behavior.decide(
           existingState,
           ChangeProductName.ChangeProductName({productId: "p1", name: "Laptop"}),
         ),
@@ -101,7 +101,7 @@ describe("ChangeProductName:", () => {
 
     test("new name produces ProductNameChanged", () =>
       expect(
-        ChangeProductName.decide(
+        ChangeProductName_Behavior.decide(
           existingState,
           ChangeProductName.ChangeProductName({productId: "p1", name: "Gaming Laptop"}),
         ),
@@ -111,7 +111,7 @@ describe("ChangeProductName:", () => {
 })
 
 describe("ChangeProductDescription:", () => {
-  let existingState: ChangeProductDescription.state = {
+  let existingState: ChangeProductDescription_Behavior.state = {
     exists: true,
     currentDescription: "A laptop",
   }
@@ -119,8 +119,8 @@ describe("ChangeProductDescription:", () => {
   describe("decide", () => {
     test("on non-existent product returns ProductNotFound", () =>
       expect(
-        ChangeProductDescription.decide(
-          ChangeProductDescription.initialState,
+        ChangeProductDescription_Behavior.decide(
+          ChangeProductDescription_Behavior.initialState,
           ChangeProductDescription.ChangeProductDescription({
             productId: "p1",
             description: "A high-end laptop",
@@ -131,7 +131,7 @@ describe("ChangeProductDescription:", () => {
 
     test("same description produces no events (idempotent)", () =>
       expect(
-        ChangeProductDescription.decide(
+        ChangeProductDescription_Behavior.decide(
           existingState,
           ChangeProductDescription.ChangeProductDescription({
             productId: "p1",
@@ -143,7 +143,7 @@ describe("ChangeProductDescription:", () => {
 
     test("new description produces ProductDescriptionChanged", () =>
       expect(
-        ChangeProductDescription.decide(
+        ChangeProductDescription_Behavior.decide(
           existingState,
           ChangeProductDescription.ChangeProductDescription({
             productId: "p1",
@@ -163,13 +163,13 @@ describe("ChangeProductDescription:", () => {
 })
 
 describe("ChangeProductPrice:", () => {
-  let existingState: ChangeProductPrice.state = {exists: true, currentPrice: 999.99}
+  let existingState: ChangeProductPrice_Behavior.state = {exists: true, currentPrice: 999.99}
 
   describe("decide", () => {
     test("on non-existent product returns ProductNotFound", () =>
       expect(
-        ChangeProductPrice.decide(
-          ChangeProductPrice.initialState,
+        ChangeProductPrice_Behavior.decide(
+          ChangeProductPrice_Behavior.initialState,
           ChangeProductPrice.ChangeProductPrice({productId: "p1", price: 899.99}),
         ),
       )->toEqual(Error(ChangeProductPrice.ProductNotFound))
@@ -177,7 +177,7 @@ describe("ChangeProductPrice:", () => {
 
     test("same price produces no events (idempotent)", () =>
       expect(
-        ChangeProductPrice.decide(
+        ChangeProductPrice_Behavior.decide(
           existingState,
           ChangeProductPrice.ChangeProductPrice({productId: "p1", price: 999.99}),
         ),
@@ -186,7 +186,7 @@ describe("ChangeProductPrice:", () => {
 
     test("new price produces ProductPriceChanged", () =>
       expect(
-        ChangeProductPrice.decide(
+        ChangeProductPrice_Behavior.decide(
           existingState,
           ChangeProductPrice.ChangeProductPrice({productId: "p1", price: 899.99}),
         ),

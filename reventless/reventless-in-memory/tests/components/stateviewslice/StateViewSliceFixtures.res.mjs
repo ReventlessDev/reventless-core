@@ -59,6 +59,19 @@ let stateSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
+let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+
+let ItemsViewSpec = {
+  name: name,
+  moduleUrl: moduleUrl,
+  consumedEventSchema: consumedEventSchema,
+  stateSchema: stateSchema,
+  config: config,
+  subIdConfig: undefined
+};
+
+let moduleUrl$1 = import.meta.url;
+
 function project(event) {
   switch (event.TAG) {
     case "ItemAdded" :
@@ -89,16 +102,10 @@ function project(event) {
   }
 }
 
-let config = ReadModel$Reventless.config(undefined, undefined, undefined);
-
-let ItemsViewSpec = {
-  name: name,
-  moduleUrl: moduleUrl,
-  consumedEventSchema: consumedEventSchema,
-  stateSchema: stateSchema,
-  project: project,
-  config: config,
-  subIdConfig: undefined
+let ItemsViewProjection = {
+  Spec: undefined,
+  moduleUrl: moduleUrl$1,
+  project: project
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -121,9 +128,11 @@ let ItemsViewMaker = SVMaker.Make({
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   consumedEventSchema: consumedEventSchema,
-  project: project,
   config: config,
   subIdConfig: undefined
+})({
+  project: project,
+  moduleUrl: moduleUrl$1
 });
 
 let sv = ItemsViewMaker.make(eventLog, undefined);
@@ -158,6 +167,7 @@ async function loadState(id) {
 export {
   ItemEventLog,
   ItemsViewSpec,
+  ItemsViewProjection,
   Bus,
   ItemEventLogMaker,
   eventLog,

@@ -101,21 +101,22 @@ let top_level_only_suffixes = [
   "Plugin";
 ]
 
-(* Slice bases that have been migrated to short DSL kind names (Plan 01 —
-   docs/plans/test-dsl-naming-cleanup.md). The emitted [<Kind>_GWT.Make]
-   reference uses the short base form (e.g. [Automation_GWT.Make]).
-   Folder/filename segments still match on either short or [Slice]-suffixed
-   form for backwards compatibility. *)
-let short_kind_slice_bases = [
-  "Automation"; "InboundTranslation"; "OutboundTranslation"
+(* Slice bases that have been migrated to short DSL kind names. Each base
+   maps a folder/filename segment to the implementation-kind name emitted as
+   [<Kind>_GWT.Make]. Plan 01 unified Automation/InboundTranslation/
+   OutboundTranslation onto short forms; Plan 02 (Phase 3b) added the
+   StateChange → Behavior and StateView → Projection redirects so all five
+   slice families are uniform. Folder/filename segments still match on the
+   short, plural, or [Slice]-suffixed forms for backwards compatibility. *)
+let slice_base_to_kind = [
+  ("Automation",          "Automation");
+  ("InboundTranslation",  "InboundTranslation");
+  ("OutboundTranslation", "OutboundTranslation");
+  ("StateChange",         "Behavior");
+  ("StateView",           "Projection");
 ]
 
-(* Slice bases still using the long [Slice]-suffixed kind name. Plan 02
-   converges these onto Behavior_GWT / Projection_GWT once the underlying
-   functor signatures match. *)
-let long_kind_slice_bases = ["StateChange"; "StateView"]
-
-let known_slice_bases = short_kind_slice_bases @ long_kind_slice_bases
+let known_slice_bases = List.map fst slice_base_to_kind
 
 let ends_with_slice part =
   let len = String.length part in
@@ -141,23 +142,26 @@ let contains_substring haystack needle =
     in
     check 0
 
-(* Map a slice base to its emitted kind name. Short bases emit the short
-   form; long bases keep the [Slice] suffix. *)
+(* Map a slice base to its emitted DSL kind name. Looks up the [base] in
+   [slice_base_to_kind]; falls back to [base ^ "Slice"] for any future base
+   that hasn't been registered yet (preserves the previous default). *)
 let kind_for_base base =
-  if List.mem base short_kind_slice_bases then base
-  else base ^ "Slice"
+  match List.assoc_opt base slice_base_to_kind with
+  | Some k -> k
+  | None -> base ^ "Slice"
 
 (* Kind name for a given folder segment or filename stem, or None if the
    segment doesn't correspond to any DSL kind.
 
    Recognises four spellings of every known slice base:
      "Foo", "Foos", "FooSlice", "FooSlices"
-   Short bases (Automation, InboundTranslation, OutboundTranslation) emit
-   "Foo"; long bases (StateChange, StateView) emit "FooSlice".
+   The [slice_base_to_kind] table maps each base to its emitted kind name.
 
    Falls back to substring matching for non-slice kinds (Projection,
    Behavior) and for filenames like "AutomationGwtTest" or
-   "StateChangeSliceGwtTest" that bundle the kind with a test suffix. *)
+   "StateChangeSliceGwtTest" that bundle the kind with a test suffix.
+   StateChange* / StateView* substrings map to Behavior / Projection per
+   Plan 02 Phase 3b. *)
 let dsl_kind_of_segment part : string option =
   let try_base base =
     if part = base
@@ -183,8 +187,8 @@ let dsl_kind_of_segment part : string option =
     if contains_substring part "OutboundTranslation" then Some "OutboundTranslation"
     else if contains_substring part "InboundTranslation" then Some "InboundTranslation"
     else if contains_substring part "Automation" then Some "Automation"
-    else if contains_substring part "StateChangeSlice" then Some "StateChangeSlice"
-    else if contains_substring part "StateViewSlice" then Some "StateViewSlice"
+    else if contains_substring part "StateChangeSlice" then Some "Behavior"
+    else if contains_substring part "StateViewSlice" then Some "Projection"
     else if contains_substring part "Projection" then Some "Projection"
     else if contains_substring part "Behavior" then Some "Behavior"
     else None

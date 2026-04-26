@@ -10,33 +10,15 @@ function Make(Api) {
   })({
     make: QueryDbResolvers_AppSync$ReventlessAws.make
   })(Api);
-  let Make$1 = Spec => {
-    let LeanSpec_name = Spec.name;
-    let LeanSpec_moduleUrl = Spec.moduleUrl;
-    let LeanSpec_externalInputSchema = Spec.externalInputSchema;
-    let LeanSpec_commandSchema = Spec.commandSchema;
-    let LeanSpec_targetName = Spec.targetName;
-    let LeanSpec = {
-      name: LeanSpec_name,
-      moduleUrl: LeanSpec_moduleUrl,
-      externalInputSchema: LeanSpec_externalInputSchema,
-      commandSchema: LeanSpec_commandSchema,
-      targetName: LeanSpec_targetName
-    };
-    let TranslationImpl_translate = Spec.translate;
-    let TranslationImpl_moduleUrl = Spec.moduleUrl;
-    let TranslationImpl = {
-      translate: TranslationImpl_translate,
-      moduleUrl: TranslationImpl_moduleUrl
-    };
-    let InnerMake = Inner.Make(LeanSpec)(TranslationImpl);
+  let Make$1 = Spec => (Translation => {
+    let InnerMake = Inner.Make(Spec)(Translation);
     return {
       Spec: Spec,
-      Translation: TranslationImpl,
+      Translation: Translation,
       queryDbName: InnerMake.queryDbName,
       make: InnerMake.make
     };
-  };
+  });
   return {
     Inner: Inner,
     Make: Make$1

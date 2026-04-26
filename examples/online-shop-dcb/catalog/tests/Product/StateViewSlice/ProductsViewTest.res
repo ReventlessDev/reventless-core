@@ -19,10 +19,10 @@ let applyFirstUpdate = (actions, baseState) =>
     | _ => s
     })
 
-describe("ProductsView.project:", () => {
+describe("ProductsView_Projection.project:", () => {
   test("ProductAdded creates new state", () =>
     expect(
-      ProductsView.project(
+      ProductsView_Projection.project(
         ProductsView.ProductAdded({
           productId: "p1",
           name: "Laptop",
@@ -40,7 +40,7 @@ describe("ProductsView.project:", () => {
 
   test("ProductNameChanged Update function changes name", () =>
     expect(
-      ProductsView.project(
+      ProductsView_Projection.project(
         ProductsView.ProductNameChanged({productId: "p1", name: "Gaming Laptop"}),
       )->applyFirstUpdate(baseProduct),
     )->toEqual({...baseProduct, name: "Gaming Laptop"})
@@ -48,7 +48,7 @@ describe("ProductsView.project:", () => {
 
   test("ProductDescriptionChanged Update function changes description", () =>
     expect(
-      ProductsView.project(
+      ProductsView_Projection.project(
         ProductsView.ProductDescriptionChanged({
           productId: "p1",
           description: "A high-end laptop",
@@ -59,7 +59,7 @@ describe("ProductsView.project:", () => {
 
   test("ProductPriceChanged Update function changes price", () =>
     expect(
-      ProductsView.project(
+      ProductsView_Projection.project(
         ProductsView.ProductPriceChanged({productId: "p1", price: 899.99}),
       )->applyFirstUpdate(baseProduct),
     )->toEqual({...baseProduct, price: 899.99})

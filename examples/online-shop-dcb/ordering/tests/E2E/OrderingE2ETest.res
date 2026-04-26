@@ -35,13 +35,13 @@ let eventLog = OrderingEventLogMaker.make(~name="Ordering", ~partitionTag=Revent
 // Build StateChangeSlices
 // ─────────────────────────────────────────────────────────────
 
-module RegisterCustomerMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(RegisterCustomer)
-module ChangeEmailMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeEmail)
-module ChangeAddressMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeAddress)
-module DeactivateCustomerMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(DeactivateCustomer)
-module PlaceOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(PlaceOrder)
-module ShipOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ShipOrder)
-module CancelOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(CancelOrder)
+module RegisterCustomerMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(RegisterCustomer, RegisterCustomer_Behavior)
+module ChangeEmailMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeEmail, ChangeEmail_Behavior)
+module ChangeAddressMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeAddress, ChangeAddress_Behavior)
+module DeactivateCustomerMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(DeactivateCustomer, DeactivateCustomer_Behavior)
+module PlaceOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(PlaceOrder, PlaceOrder_Behavior)
+module ShipOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ShipOrder, ShipOrder_Behavior)
+module CancelOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(CancelOrder, CancelOrder_Behavior)
 
 // publishJsons routing — dispatches each command to its registered StateChangeSlice handler.
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {

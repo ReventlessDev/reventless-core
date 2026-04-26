@@ -3,18 +3,18 @@ open Reventless.Projection
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
-  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice)
-  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription, ChangeProductDescription_Behavior)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
+  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
+  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
 
   // StateViewSliceStreams
-  module ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make(ProductDemandView)
-  module ProductsViewStreamSlice = Platform.StateViewSliceStream.Make(ProductsView)
+  module ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make(ProductDemandView, ProductDemandView_Projection)
+  module ProductsViewStreamSlice = Platform.StateViewSliceStream.Make(ProductsView, ProductsView_Projection)
 
   // InboundTranslationSlices
-  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
 
   // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(

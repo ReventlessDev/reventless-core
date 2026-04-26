@@ -15,20 +15,6 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
-function evolve(state, event) {
-  if (event.TAG === "CatalogProductSynced") {
-    return {
-      name: event.name,
-      price: event.price
-    };
-  } else {
-    return {
-      name: state.name,
-      price: event.price
-    };
-  }
-}
-
 let commandSchema = S.union([
   S.schema(s => ({
     TAG: "SyncNewProduct",
@@ -57,37 +43,9 @@ let eventSchema = S.union([
   }))
 ]);
 
-function decide(_state, command) {
-  if (command.TAG === "SyncNewProduct") {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "CatalogProductSynced",
-          productId: command.productId,
-          name: command.name,
-          price: command.price
-        }]
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "CatalogProductPriceChanged",
-          productId: command.productId,
-          price: command.price
-        }]
-    };
-  }
-}
-
 let name = "SyncCatalogProduct";
 
 let Id;
-
-let initialState = {
-  name: "",
-  price: 0.0
-};
 
 let errorSchema = S.unit;
 
@@ -96,13 +54,10 @@ let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/CatalogProduct/Stat
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

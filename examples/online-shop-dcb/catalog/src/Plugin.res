@@ -1,22 +1,22 @@
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory)
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory)
-  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
-  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice)
-  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand)
-  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory)
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Behavior)
+  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription, ChangeProductDescription_Behavior)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
+  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
+  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
 
   // StateViewSlices
-  module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView)
-  module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
-  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
+  module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView, CategoriesView_Projection)
+  module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView, ProductDemandView_Projection)
+  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView, ProductsView_Projection)
 
   // InboundTranslationSlices
-  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
 
   // ExtensionPoints
   module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)

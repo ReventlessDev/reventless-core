@@ -2,20 +2,10 @@
 // Requires product to exist; idempotent when price is unchanged.
 @@reventless.spec
 
-type state = {exists: bool, currentPrice: float}
-
-let initialState = {exists: false, currentPrice: 0.0}
-
 @schema
 type consumedEvent =
   | ProductAdded({price: float})
   | ProductPriceChanged({price: float})
-
-let evolve = (state, event) =>
-  switch event {
-  | ProductAdded({price}) => {exists: true, currentPrice: price}
-  | ProductPriceChanged({price}) => {...state, currentPrice: price}
-  }
 
 @schema
 type command = ChangeProductPrice({productId: string, price: float})
@@ -25,15 +15,3 @@ type error = ProductNotFound
 
 @schema
 type event = ProductPriceChanged({productId: string, price: float})
-
-let decide = (state, command) =>
-  switch command {
-  | ChangeProductPrice({productId, price}) =>
-    if !state.exists {
-      Error(ProductNotFound)
-    } else if price == state.currentPrice {
-      Ok([]) // idempotent — price unchanged
-    } else {
-      Ok([ProductPriceChanged({productId, price})])
-    }
-  }

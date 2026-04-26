@@ -9,29 +9,6 @@ let consumedEventSchema = S.union([
   S.literal("OrderCancelled")
 ]);
 
-function evolve(state, event) {
-  switch (event) {
-    case "OrderPlaced" :
-      return {
-        exists: true,
-        shipped: false,
-        cancelled: false
-      };
-    case "OrderShipped" :
-      return {
-        exists: state.exists,
-        shipped: true,
-        cancelled: state.cancelled
-      };
-    case "OrderCancelled" :
-      return {
-        exists: state.exists,
-        shipped: state.shipped,
-        cancelled: true
-      };
-  }
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "ShipOrder",
   orderId: s.m(DcbTag$Reventless.string)
@@ -47,57 +24,19 @@ let eventSchema = S.schema(s => ({
   orderId: s.m(DcbTag$Reventless.string)
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    if (state.cancelled) {
-      return {
-        TAG: "Error",
-        _0: "OrderAlreadyCancelled"
-      };
-    } else if (state.shipped) {
-      return {
-        TAG: "Ok",
-        _0: []
-      };
-    } else {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "OrderShipped",
-            orderId: command.orderId
-          }]
-      };
-    }
-  } else {
-    return {
-      TAG: "Error",
-      _0: "OrderNotFound"
-    };
-  }
-}
-
 let name = "ShipOrder";
 
 let Id;
-
-let initialState = {
-  exists: false,
-  shipped: false,
-  cancelled: false
-};
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/StateChangeSlice/ShipOrder.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

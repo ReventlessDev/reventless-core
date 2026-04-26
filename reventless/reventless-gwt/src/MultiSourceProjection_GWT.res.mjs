@@ -13,17 +13,20 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 import * as TestFixtures$ReventlessGwt from "./TestFixtures.res.mjs";
 
-function Make(Spec) {
+function Make(Projection) {
   S.enableJson();
   let testId = {
     contents: TestFixtures$ReventlessGwt.id
+  };
+  let meta = {
+    contents: TestFixtures$ReventlessGwt.meta
   };
   let describeWithId = (description, id, fn) => {
     testId.contents = id;
     JestBind$ReventlessGwt.describe(description, fn);
   };
-  let test = (name, timeout, body) => JestBind$ReventlessGwt.testPromise(Spec.name, name, timeout, body);
-  let getSubId = state => Stdlib_Option.map(Spec.subIdConfig, param => param.getSubId(state));
+  let test = (name, timeout, body) => JestBind$ReventlessGwt.testPromise(Projection.sourceName, name, timeout, body);
+  let getSubId = state => Stdlib_Option.map(Projection.subIdConfig, param => param.getSubId(state));
   let hasSubId = (state, subId) => Stdlib_Option.getOrThrow(getSubId(state), undefined) === subId;
   let states = (store, id) => Stdlib_Option.getOr(store[id], []);
   let setStates = (store, id, states) => {
@@ -36,30 +39,14 @@ function Make(Spec) {
       return state;
     }
   });
-  let addState = (store, id, newState) => {
-    let subId = getSubId(newState);
-    let match = subId !== undefined ? (
-        states(store, id).some(state => hasSubId(state, subId)) ? [
-            updateState(store, id, subId, newState),
-            []
-          ] : [
-            states(store, id),
-            [newState]
-          ]
-      ) : [
-        states(store, id),
-        [newState]
-      ];
-    store[id] = match[0].concat(match[1]);
-  };
   let deleteStates = (store, id) => {
     store[id] = [];
   };
   let deleteSubState = (store, id, subId, getSubId) => {
     store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
   };
-  let update = async (store, events) => {
-    let actions = events.map(ev => Spec.project(ev)).flat();
+  let update = async (store, events$p) => {
+    let actions = events$p.map(event$p => Projection.project(event$p));
     await Projection$ReventlessCore.handleActions(actions, {
       load: extra => Promise.resolve({
         TAG: "Ok",
@@ -68,30 +55,13 @@ function Make(Spec) {
       loadStream: id => Stream.fromIterable(states(store, id)),
       save: (extra, extra$1, extra$2, extra$3) => {
         let match = states(store, extra);
-        let match$1 = Spec.subIdConfig;
         let exit = 0;
         switch (extra$2) {
           case "Init" :
-            if (match$1 !== undefined) {
-              addState(store, extra, extra$1);
-              return Promise.resolve({
-                TAG: "Ok",
-                _0: undefined
-              });
-            }
-            exit = 2;
-            break;
           case "Overwrite" :
             exit = 2;
             break;
           case "Any" :
-            if (match$1 !== undefined) {
-              addState(store, extra, extra$1);
-              return Promise.resolve({
-                TAG: "Ok",
-                _0: undefined
-              });
-            }
             break;
         }
         if (exit === 2) {
@@ -123,7 +93,24 @@ function Make(Spec) {
         });
       },
       saveBatch: extra => {
-        extra.forEach(param => addState(store, param[0], param[1]));
+        extra.forEach(param => {
+          let id = param[0];
+          let newState = param[1];
+          let subId = getSubId(newState);
+          let match = subId !== undefined ? (
+              states(store, id).some(state => hasSubId(state, subId)) ? [
+                  updateState(store, id, subId, newState),
+                  []
+                ] : [
+                  states(store, id),
+                  [newState]
+                ]
+            ) : [
+              states(store, id),
+              [newState]
+            ];
+          store[id] = match[0].concat(match[1]);
+        });
         return Promise.resolve({
           TAG: "Ok",
           _0: undefined
@@ -134,7 +121,7 @@ function Make(Spec) {
         _0: 0
       }),
       delete: (extra, extra$1) => {
-        let match = Spec.subIdConfig;
+        let match = Projection.subIdConfig;
         if (extra$1 !== undefined) {
           if (match !== undefined) {
             deleteSubState(store, extra, extra$1[1], match.getSubId);
@@ -160,7 +147,7 @@ function Make(Spec) {
         extra.forEach(param => {
           let subId = param[1];
           let id = param[0];
-          let match = Spec.subIdConfig;
+          let match = Projection.subIdConfig;
           if (subId !== undefined) {
             if (match !== undefined) {
               return deleteSubState(store, id, subId[1], match.getSubId);
@@ -176,23 +163,80 @@ function Make(Spec) {
           _0: undefined
         });
       }
-    }, Spec.subIdConfig);
-    if (Spec.subIdConfig !== undefined) {
-      return Stdlib_Dict.mapValues(store, states => states.toSorted((s1, s2) => Primitive_string.compare(getSubId(s1), getSubId(s2))));
+    }, Projection.subIdConfig);
+    if (Projection.subIdConfig !== undefined) {
+      return Stdlib_Dict.mapValues(store, states => states.toSorted((state1, state2) => Primitive_string.compare(getSubId(state1), getSubId(state2))));
     } else {
       return store;
     }
   };
-  let givenEvents = events => update({}, events);
-  let whenEvent = (store, event) => (() => (async () => await update(await store, [event]))());
-  let whenEvents = (store, events) => (() => (async () => await update(await store, events))());
-  let encState = s => Message$ReventlessCore.encode(s, Spec.stateSchema);
+  let givenEvents = events => update({}, events.map(event => ({
+    id: testId.contents,
+    meta: meta.contents,
+    event: event
+  })));
+  let givenEventsWithTime = events => update({}, events.map(param => {
+    let init = meta.contents;
+    return {
+      id: testId.contents,
+      meta: {
+        service: init.service,
+        time: param[0],
+        ip: init.ip,
+        user: init.user,
+        msgId: init.msgId,
+        correlationId: init.correlationId
+      },
+      event: param[1]
+    };
+  }));
+  let whenEvent = (store, event) => (() => (async () => await update(await store, [{
+      id: testId.contents,
+      meta: meta.contents,
+      event: event
+    }]))());
+  let whenEvents = (store, events) => (() => (async () => await update(await store, events.map(event => ({
+    id: testId.contents,
+    meta: meta.contents,
+    event: event
+  }))))());
+  let whenEventWithTime = (store, time, event) => (() => (async () => {
+    let init = meta.contents;
+    return await update(await store, [{
+        id: testId.contents,
+        meta: {
+          service: init.service,
+          time: time,
+          ip: init.ip,
+          user: init.user,
+          msgId: init.msgId,
+          correlationId: init.correlationId
+        },
+        event: event
+      }]);
+  })());
+  let whenEventsWithTime = (store, events) => (() => (async () => await update(await store, events.map(param => {
+    let init = meta.contents;
+    return {
+      id: testId.contents,
+      meta: {
+        service: init.service,
+        time: param[0],
+        ip: init.ip,
+        user: init.user,
+        msgId: init.msgId,
+        correlationId: init.correlationId
+      },
+      event: param[1]
+    };
+  })))());
+  let encState = s => Message$ReventlessCore.encode(s, Projection.targetStateSchema);
   let statesEq = (a, b) => {
     if (a.length === b.length) {
       return Stdlib_Array.zip(a, b).every(param => {
         let a = param[0];
         let b = param[1];
-        return JSON.stringify(Message$ReventlessCore.encode(a, Spec.stateSchema)) === JSON.stringify(Message$ReventlessCore.encode(b, Spec.stateSchema));
+        return JSON.stringify(Message$ReventlessCore.encode(a, Projection.targetStateSchema)) === JSON.stringify(Message$ReventlessCore.encode(b, Projection.targetStateSchema));
       });
     } else {
       return false;
@@ -302,13 +346,15 @@ function Make(Spec) {
     });
   };
   return {
-    Spec: Spec,
     describe: JestBind$ReventlessGwt.describe,
     describeWithId: describeWithId,
     test: test,
     givenEvents: givenEvents,
+    givenEventsWithTime: givenEventsWithTime,
     whenEvent: whenEvent,
     whenEvents: whenEvents,
+    whenEventWithTime: whenEventWithTime,
+    whenEventsWithTime: whenEventsWithTime,
     thenStates: thenStates,
     thenStatesWithId: thenStatesWithId,
     thenAllStates: thenAllStates,

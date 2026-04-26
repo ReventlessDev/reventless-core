@@ -1,12 +1,16 @@
-// Worked example for StateViewSlice_GWT.
+// Worked example for Projection_GWT (single-source StateViewSlice flavor).
 // Projects a small category event stream into a `{categoryId, name, archived}`
 // read model, exercising Set / Update actions.
+//
+// Plan 02 Phase 6: split-form Spec/Projection; PPX inference resolves the
+// "StateViewSlice" filename substring → Projection DSL → emits
+// [include Projection_GWT.Make(Spec, Projection)].
 
 @@reventless.gwt
 
 open Reventless.Projection
 
-module CategoriesViewSpec = {
+module CategoriesView = {
   let name = "CategoriesView"
 
   @schema
@@ -18,7 +22,14 @@ module CategoriesViewSpec = {
     | CategoryRenamed({categoryId: string, name: string})
     | CategoryArchived({categoryId: string})
 
-  let project = event =>
+  let subIdConfig = None
+}
+
+module CategoriesViewProjection = {
+  module Spec = CategoriesView
+  open CategoriesView
+
+  let project = (event: consumedEvent) =>
     switch event {
     | CategoryAdded({categoryId, name}) => [
         Set(categoryId, {categoryId, name, archived: false}),
@@ -30,8 +41,6 @@ module CategoriesViewSpec = {
         Update(categoryId, state => {...state, archived: true}),
       ]
     }
-
-  let subIdConfig = None
 }
 
 describe("CategoriesView StateViewSlice", () => {

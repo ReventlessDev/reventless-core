@@ -142,41 +142,55 @@ module type T = {
 
   /** Factory for DCB write-side state-change slice components. */
   module StateChangeSlice: {
-    module Make: (Spec: Reventless.StateChangeSlice.MergedSpec) => StateChangeSlice.T
-      with module Spec = Spec
+    module Make: (
+      Spec: Reventless.StateChangeSlice.Spec,
+      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+    ) => StateChangeSlice.T with module Spec = Spec
     /** Async variant — uses FIFO channel, returns `CommandPending`. */
-    module MakeAsync: (Spec: Reventless.StateChangeSlice.MergedSpec) => StateChangeSlice.T
-      with module Spec = Spec
+    module MakeAsync: (
+      Spec: Reventless.StateChangeSlice.Spec,
+      Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+    ) => StateChangeSlice.T with module Spec = Spec
   }
 
   /** Factory for DCB read-side state-view slice components. */
   module StateViewSlice: {
-    module Make: (Spec: Reventless.StateViewSlice.MergedSpec) => StateViewSlice.T
-      with module Spec = Spec
+    module Make: (
+      Spec: Reventless.StateViewSlice.Spec,
+      Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
+    ) => StateViewSlice.T with module Spec = Spec
   }
 
   /** Factory for stream-enabled state-view slice components (enables Source B subscriptions). */
   module StateViewSliceStream: {
-    module Make: (Spec: Reventless.StateViewSlice.MergedSpec) => StateViewSliceComponentT
-      with module Spec = Spec
+    module Make: (
+      Spec: Reventless.StateViewSlice.Spec,
+      Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
+    ) => StateViewSliceComponentT with module Spec = Spec
   }
 
   /** Factory for DCB automation slice components (TODO list pattern). */
   module AutomationSlice: {
-    module Make: (Spec: Reventless.AutomationSlice.MergedSpec) => AutomationSlice.T
-      with module Spec = Spec
+    module Make: (
+      Spec: Reventless.AutomationSlice.Spec,
+      Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+    ) => AutomationSlice.T with module Spec = Spec
   }
 
   /** Factory for DCB outbound translation slice components (tracked external calls). */
   module OutboundTranslationSlice: {
-    module Make: (Spec: Reventless.OutboundTranslationSlice.MergedSpec) => OutboundTranslationSlice.T
-      with module Spec = Spec
+    module Make: (
+      Spec: Reventless.OutboundTranslationSlice.Spec,
+      Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec,
+    ) => OutboundTranslationSlice.T with module Spec = Spec
   }
 
   /** Factory for DCB inbound translation slice components (external input to commands). */
   module InboundTranslationSlice: {
-    module Make: (Spec: Reventless.InboundTranslationSlice.MergedSpec) => InboundTranslationSlice.T
-      with module Spec = Spec
+    module Make: (
+      Spec: Reventless.InboundTranslationSlice.Spec,
+      Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
+    ) => InboundTranslationSlice.T with module Spec = Spec
   }
 
   /** Factory for the API (GraphQL) component. */

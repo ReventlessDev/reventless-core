@@ -1,7 +1,7 @@
 open ReventlessCore
 open PluginSpec
 open PluginFixtures
-module PluginProjectionTest = ReventlessGwt.Projection_GWT.Make(PluginProjection.PluginMapping)
+module PluginProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(PluginProjection.PluginMapping)
 open PluginProjectionTest
 
 describe("PluginProjection:", () => {

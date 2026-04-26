@@ -3,19 +3,10 @@
 
 @@reventless.spec
 
-type state = {name: string, price: float}
-let initialState = {name: "", price: 0.0}
-
 @schema
 type consumedEvent =
   | CatalogProductSynced({name: string, price: float})
   | CatalogProductPriceChanged({price: float})
-
-let evolve = (state, event) =>
-  switch event {
-  | CatalogProductSynced({name, price}) => {name, price}
-  | CatalogProductPriceChanged({price}) => {...state, price}
-  }
 
 @schema
 type command =
@@ -36,9 +27,3 @@ type event =
       productId: string,
       price: float,
     })
-
-let decide = (_state, command) =>
-  switch command {
-  | SyncNewProduct({productId, name, price}) => Ok([CatalogProductSynced({productId, name, price})])
-  | ChangeSyncedPrice({productId, price}) => Ok([CatalogProductPriceChanged({productId, price})])
-  }

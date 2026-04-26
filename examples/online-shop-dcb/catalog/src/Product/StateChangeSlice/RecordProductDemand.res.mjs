@@ -3,10 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let initialState = {
-  recordedOrderIds: []
-};
-
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "ProductDemandRecorded",
@@ -17,18 +13,6 @@ let consumedEventSchema = S.union([
     orderId: s.m(DcbTag$Reventless.string)
   }))
 ]);
-
-function evolve(state, event) {
-  if (event.TAG === "ProductDemandRecorded") {
-    return {
-      recordedOrderIds: state.recordedOrderIds.concat([event.orderId])
-    };
-  }
-  let orderId = event.orderId;
-  return {
-    recordedOrderIds: state.recordedOrderIds.filter(id => id !== orderId)
-  };
-}
 
 let commandSchema = S.union([
   S.schema(s => ({
@@ -56,43 +40,6 @@ let eventSchema = S.union([
   }))
 ]);
 
-function decide(state, command) {
-  if (command.TAG === "RecordDemand") {
-    let orderId = command.orderId;
-    if (state.recordedOrderIds.includes(orderId)) {
-      return {
-        TAG: "Ok",
-        _0: []
-      };
-    } else {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "ProductDemandRecorded",
-            productId: command.productId,
-            orderId: orderId
-          }]
-      };
-    }
-  }
-  let orderId$1 = command.orderId;
-  if (state.recordedOrderIds.includes(orderId$1)) {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "ProductDemandRevoked",
-          productId: command.productId,
-          orderId: orderId$1
-        }]
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: []
-    };
-  }
-}
-
 let name = "RecordProductDemand";
 
 let Id;
@@ -104,13 +51,10 @@ let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateChangeS
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

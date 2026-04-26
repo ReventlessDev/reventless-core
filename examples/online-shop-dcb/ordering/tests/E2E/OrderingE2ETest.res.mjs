@@ -15,7 +15,14 @@ import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-m
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as RegisterCustomer$OrderingPlugin from "../../src/Customer/StateChangeSlice/RegisterCustomer.res.mjs";
 import * as DeactivateCustomer$OrderingPlugin from "../../src/Customer/StateChangeSlice/DeactivateCustomer.res.mjs";
+import * as ShipOrder_Behavior$OrderingPlugin from "../../src/Order/StateChangeSlice/ShipOrder_Behavior.res.mjs";
+import * as PlaceOrder_Behavior$OrderingPlugin from "../../src/Order/StateChangeSlice/PlaceOrder_Behavior.res.mjs";
+import * as CancelOrder_Behavior$OrderingPlugin from "../../src/Order/StateChangeSlice/CancelOrder_Behavior.res.mjs";
+import * as ChangeEmail_Behavior$OrderingPlugin from "../../src/Customer/StateChangeSlice/ChangeEmail_Behavior.res.mjs";
+import * as ChangeAddress_Behavior$OrderingPlugin from "../../src/Customer/StateChangeSlice/ChangeAddress_Behavior.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/DcbEventLog_Builder.res.mjs";
+import * as RegisterCustomer_Behavior$OrderingPlugin from "../../src/Customer/StateChangeSlice/RegisterCustomer_Behavior.res.mjs";
+import * as DeactivateCustomer_Behavior$OrderingPlugin from "../../src/Customer/StateChangeSlice/DeactivateCustomer_Behavior.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/StateChangeSlice_Builder.res.mjs";
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -42,92 +49,106 @@ let eventLog = OrderingEventLogMaker.make("Ordering", undefined, {
 let RegisterCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: RegisterCustomer$OrderingPlugin.name,
   moduleUrl: RegisterCustomer$OrderingPlugin.moduleUrl,
-  initialState: RegisterCustomer$OrderingPlugin.initialState,
-  consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
-  evolve: RegisterCustomer$OrderingPlugin.evolve,
-  errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: RegisterCustomer$OrderingPlugin.consumedEventSchema,
+  errorSchema: RegisterCustomer$OrderingPlugin.errorSchema,
   eventSchema: RegisterCustomer$OrderingPlugin.eventSchema,
-  decide: RegisterCustomer$OrderingPlugin.decide,
   commandSchema: RegisterCustomer$OrderingPlugin.commandSchema
+})({
+  initialState: RegisterCustomer_Behavior$OrderingPlugin.initialState,
+  evolve: RegisterCustomer_Behavior$OrderingPlugin.evolve,
+  decide: RegisterCustomer_Behavior$OrderingPlugin.decide,
+  moduleUrl: RegisterCustomer_Behavior$OrderingPlugin.moduleUrl
 });
 
 let ChangeEmailMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeEmail$OrderingPlugin.name,
   moduleUrl: ChangeEmail$OrderingPlugin.moduleUrl,
-  initialState: ChangeEmail$OrderingPlugin.initialState,
-  consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
-  evolve: ChangeEmail$OrderingPlugin.evolve,
-  errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ChangeEmail$OrderingPlugin.consumedEventSchema,
+  errorSchema: ChangeEmail$OrderingPlugin.errorSchema,
   eventSchema: ChangeEmail$OrderingPlugin.eventSchema,
-  decide: ChangeEmail$OrderingPlugin.decide,
   commandSchema: ChangeEmail$OrderingPlugin.commandSchema
+})({
+  initialState: ChangeEmail_Behavior$OrderingPlugin.initialState,
+  evolve: ChangeEmail_Behavior$OrderingPlugin.evolve,
+  decide: ChangeEmail_Behavior$OrderingPlugin.decide,
+  moduleUrl: ChangeEmail_Behavior$OrderingPlugin.moduleUrl
 });
 
 let ChangeAddressMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeAddress$OrderingPlugin.name,
   moduleUrl: ChangeAddress$OrderingPlugin.moduleUrl,
-  initialState: ChangeAddress$OrderingPlugin.initialState,
-  consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
-  evolve: ChangeAddress$OrderingPlugin.evolve,
-  errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ChangeAddress$OrderingPlugin.consumedEventSchema,
+  errorSchema: ChangeAddress$OrderingPlugin.errorSchema,
   eventSchema: ChangeAddress$OrderingPlugin.eventSchema,
-  decide: ChangeAddress$OrderingPlugin.decide,
   commandSchema: ChangeAddress$OrderingPlugin.commandSchema
+})({
+  initialState: ChangeAddress_Behavior$OrderingPlugin.initialState,
+  evolve: ChangeAddress_Behavior$OrderingPlugin.evolve,
+  decide: ChangeAddress_Behavior$OrderingPlugin.decide,
+  moduleUrl: ChangeAddress_Behavior$OrderingPlugin.moduleUrl
 });
 
 let DeactivateCustomerMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: DeactivateCustomer$OrderingPlugin.name,
   moduleUrl: DeactivateCustomer$OrderingPlugin.moduleUrl,
-  initialState: DeactivateCustomer$OrderingPlugin.initialState,
-  consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
-  evolve: DeactivateCustomer$OrderingPlugin.evolve,
-  errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: DeactivateCustomer$OrderingPlugin.consumedEventSchema,
+  errorSchema: DeactivateCustomer$OrderingPlugin.errorSchema,
   eventSchema: DeactivateCustomer$OrderingPlugin.eventSchema,
-  decide: DeactivateCustomer$OrderingPlugin.decide,
   commandSchema: DeactivateCustomer$OrderingPlugin.commandSchema
+})({
+  initialState: DeactivateCustomer_Behavior$OrderingPlugin.initialState,
+  evolve: DeactivateCustomer_Behavior$OrderingPlugin.evolve,
+  decide: DeactivateCustomer_Behavior$OrderingPlugin.decide,
+  moduleUrl: DeactivateCustomer_Behavior$OrderingPlugin.moduleUrl
 });
 
 let PlaceOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: PlaceOrder$OrderingPlugin.name,
   moduleUrl: PlaceOrder$OrderingPlugin.moduleUrl,
-  initialState: PlaceOrder$OrderingPlugin.initialState,
-  consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
-  evolve: PlaceOrder$OrderingPlugin.evolve,
-  errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
+  errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
   eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
-  decide: PlaceOrder$OrderingPlugin.decide,
   commandSchema: PlaceOrder$OrderingPlugin.commandSchema
+})({
+  initialState: PlaceOrder_Behavior$OrderingPlugin.initialState,
+  evolve: PlaceOrder_Behavior$OrderingPlugin.evolve,
+  decide: PlaceOrder_Behavior$OrderingPlugin.decide,
+  moduleUrl: PlaceOrder_Behavior$OrderingPlugin.moduleUrl
 });
 
 let ShipOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ShipOrder$OrderingPlugin.name,
   moduleUrl: ShipOrder$OrderingPlugin.moduleUrl,
-  initialState: ShipOrder$OrderingPlugin.initialState,
-  consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
-  evolve: ShipOrder$OrderingPlugin.evolve,
-  errorSchema: ShipOrder$OrderingPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
+  errorSchema: ShipOrder$OrderingPlugin.errorSchema,
   eventSchema: ShipOrder$OrderingPlugin.eventSchema,
-  decide: ShipOrder$OrderingPlugin.decide,
   commandSchema: ShipOrder$OrderingPlugin.commandSchema
+})({
+  initialState: ShipOrder_Behavior$OrderingPlugin.initialState,
+  evolve: ShipOrder_Behavior$OrderingPlugin.evolve,
+  decide: ShipOrder_Behavior$OrderingPlugin.decide,
+  moduleUrl: ShipOrder_Behavior$OrderingPlugin.moduleUrl
 });
 
 let CancelOrderMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: CancelOrder$OrderingPlugin.name,
   moduleUrl: CancelOrder$OrderingPlugin.moduleUrl,
-  initialState: CancelOrder$OrderingPlugin.initialState,
-  consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
-  evolve: CancelOrder$OrderingPlugin.evolve,
-  errorSchema: CancelOrder$OrderingPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
+  errorSchema: CancelOrder$OrderingPlugin.errorSchema,
   eventSchema: CancelOrder$OrderingPlugin.eventSchema,
-  decide: CancelOrder$OrderingPlugin.decide,
   commandSchema: CancelOrder$OrderingPlugin.commandSchema
+})({
+  initialState: CancelOrder_Behavior$OrderingPlugin.initialState,
+  evolve: CancelOrder_Behavior$OrderingPlugin.evolve,
+  decide: CancelOrder_Behavior$OrderingPlugin.decide,
+  moduleUrl: CancelOrder_Behavior$OrderingPlugin.moduleUrl
 });
 
 async function publishJsons(cmdJsons) {

@@ -1,7 +1,7 @@
 open ReventlessCore
 open PluginSpec
 open PluginFixtures
-module PluginTest = ReventlessGwt.Behavior_GWT.Make(PluginSpec, PluginBehavior)
+module PluginTest = ReventlessGwt.Behavior_GWT.MakeFromAggregate(PluginSpec, PluginBehavior)
 open PluginTest
 
 describe("PluginBehavior:", () => {

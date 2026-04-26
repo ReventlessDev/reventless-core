@@ -359,16 +359,16 @@ function MakeWithConfig(Config) {
     mappingsModulePath: "",
     publishQueueUrl: publishQueueUrl
   });
-  let Make$5 = StateChangeSlice_Builder$ReventlessAws.Make;
-  let MakeAsync$1 = Spec => {
-    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec);
+  let Make$5 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
+  let MakeAsync$1 = Spec => (Behavior => {
+    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
     return {
       Spec: include.Spec,
       Behavior: include.Behavior,
       isAsync: true,
       make: include.make
     };
-  };
+  });
   let StateChangeSlice = {
     Make: Make$5,
     MakeAsync: MakeAsync$1
@@ -1262,16 +1262,16 @@ function Make($star) {
     mappingsModulePath: "",
     publishQueueUrl: publishQueueUrl
   });
-  let Make$6 = StateChangeSlice_Builder$ReventlessAws.Make;
-  let MakeAsync$1 = Spec => {
-    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec);
+  let Make$6 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
+  let MakeAsync$1 = Spec => (Behavior => {
+    let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
     return {
       Spec: include.Spec,
       Behavior: include.Behavior,
       isAsync: true,
       make: include.make
     };
-  };
+  });
   let StateChangeSlice = {
     Make: Make$6,
     MakeAsync: MakeAsync$1

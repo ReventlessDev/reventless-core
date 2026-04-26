@@ -82,9 +82,9 @@ module FromBehavior = (
   let decide = Behavior.decide
 }
 
-// Adapter: a StateChangeSlice spec (see `StateChangeSlice_GWT.SliceSpec`)
-// becomes a `GwtSource`/`GwtTarget`. DCB entity identifiers are tag values —
-// plain strings — so the adapter uses `Id.StringPure`.
+// Adapter: a StateChangeSlice spec becomes a `GwtSource`/`GwtTarget`. DCB
+// entity identifiers are tag values — plain strings — so the adapter uses
+// `Id.StringPure`.
 module type FromSliceSpec = {
   let name: string
 

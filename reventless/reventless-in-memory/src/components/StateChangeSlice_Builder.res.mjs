@@ -3,49 +3,15 @@
 import * as StateChangeSlice_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Builder.res.mjs";
 
 function Make(Spec) {
-  let name = Spec.name;
-  let moduleUrl = Spec.moduleUrl;
-  let Id = Spec.Id;
-  let consumedEventSchema = Spec.consumedEventSchema;
-  let commandSchema = Spec.commandSchema;
-  let errorSchema = Spec.errorSchema;
-  let eventSchema = Spec.eventSchema;
-  let LeanSpec = {
-    name: name,
-    moduleUrl: moduleUrl,
-    Id: Id,
-    consumedEventSchema: consumedEventSchema,
-    commandSchema: commandSchema,
-    errorSchema: errorSchema,
-    eventSchema: eventSchema
-  };
-  let BehaviorImpl_initialState = Spec.initialState;
-  let BehaviorImpl_evolve = Spec.evolve;
-  let BehaviorImpl_decide = Spec.decide;
-  let BehaviorImpl_moduleUrl = Spec.moduleUrl;
-  let BehaviorImpl = {
-    initialState: BehaviorImpl_initialState,
-    evolve: BehaviorImpl_evolve,
-    decide: BehaviorImpl_decide,
-    moduleUrl: BehaviorImpl_moduleUrl
-  };
-  let Inner = StateChangeSlice_Builder$ReventlessCore.Make({
-    name: name,
-    moduleUrl: moduleUrl,
-    Id: Id,
-    consumedEventSchema: consumedEventSchema,
-    errorSchema: errorSchema,
-    eventSchema: eventSchema,
-    commandSchema: commandSchema
-  })(BehaviorImpl);
-  return {
-    LeanSpec: LeanSpec,
-    BehaviorImpl: BehaviorImpl,
-    Inner: Inner,
-    Spec: Spec,
-    Behavior: undefined,
-    isAsync: Inner.isAsync,
-    make: Inner.make
+  return Behavior => {
+    let Inner = StateChangeSlice_Builder$ReventlessCore.Make(Spec)(Behavior);
+    return {
+      Inner: Inner,
+      Spec: Spec,
+      Behavior: Behavior,
+      isAsync: Inner.isAsync,
+      make: Inner.make
+    };
   };
 }
 

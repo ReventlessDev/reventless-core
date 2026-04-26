@@ -2,26 +2,11 @@
 // Requires customer to exist and not be deactivated; idempotent when address is unchanged.
 @@reventless.spec
 
-type state = {exists: bool, deactivated: bool, currentAddress: string}
-
-let initialState = {exists: false, deactivated: false, currentAddress: ""}
-
 @schema
 type consumedEvent =
   | CustomerRegistered({address: string})
   | AddressChanged({address: string})
   | CustomerDeactivated
-
-let evolve = (state, event) =>
-  switch event {
-  | CustomerRegistered({address}) => {
-      exists: true,
-      deactivated: false,
-      currentAddress: address,
-    }
-  | AddressChanged({address}) => {...state, currentAddress: address}
-  | CustomerDeactivated => {...state, deactivated: true}
-  }
 
 @schema
 type command = ChangeAddress({customerId: string, address: string})
@@ -33,17 +18,3 @@ type error =
 
 @schema
 type event = AddressChanged({customerId: string, address: string})
-
-let decide = (state, command) =>
-  switch command {
-  | ChangeAddress({customerId, address}) =>
-    if !state.exists {
-      Error(CustomerNotFound)
-    } else if state.deactivated {
-      Error(CustomerAlreadyDeactivated)
-    } else if address == state.currentAddress {
-      Ok([]) // idempotent — address unchanged
-    } else {
-      Ok([AddressChanged({customerId, address})])
-    }
-  }

@@ -1,6 +1,7 @@
 // Stage 6 — query-pattern GWT for ReadModels and StateViewSlices.
 //
-// Where `Projection_GWT` / `StateViewSlice_GWT` cover the projection *write*
+// Where `MultiSourceProjection_GWT` (multi-source ReadModel) and `Projection_GWT`
+// (single-source StateViewSlice) cover the projection *write*
 // side (event → state actions), `Query_GWT` covers the read side: what queries
 // must the projected state support? Indexes, sub-IDs, and GraphQL resolvers
 // all exist to answer specific query patterns — none of which are derivable

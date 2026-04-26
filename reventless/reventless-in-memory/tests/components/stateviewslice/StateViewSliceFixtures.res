@@ -32,15 +32,22 @@ module ItemsViewSpec = {
   @schema
   type state = {id: string, name: string}
 
-  let project = event =>
+  let config = Reventless.ReadModel.config()
+  let subIdConfig = None
+}
+
+module ItemsViewProjection = {
+  module Spec = ItemsViewSpec
+  open ItemsViewSpec
+
+  let moduleUrl: string = %raw(`import.meta.url`)
+
+  let project = (event: consumedEvent) =>
     switch event {
     | ItemAdded({id, name}) => [Set(id, {id, name})]
     | ItemRenamed({id, name}) => [Update(id, s => {...s, name})]
     | ItemRemoved({id}) => [Delete(id)]
     }
-
-  let config = Reventless.ReadModel.config()
-  let subIdConfig = None
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -67,7 +74,7 @@ let eventLog = ItemEventLogMaker.make(~name="ItemEventLog", ~partitionTag=Revent
 // ─────────────────────────────────────────────────────────────
 
 module SVMaker = StateViewSlice_Builder.Make(Bus)
-module ItemsViewMaker = SVMaker.Make(ItemsViewSpec)
+module ItemsViewMaker = SVMaker.Make(ItemsViewSpec, ItemsViewProjection)
 let sv = ItemsViewMaker.make(~dcbEventLog=eventLog)
 
 // DcbEventLog eventTopic resource — needed for 2nd beforeAllAsync resolve to

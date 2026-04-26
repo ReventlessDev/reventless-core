@@ -1,7 +1,7 @@
 // Unit tests for Category projection mappings.
 // Uses the ProjectionTest DSL for async projection testing.
 
-include ReventlessGwt.Projection_GWT.Make(CategoriesProjections.CategoryMapping)
+include ReventlessGwt.MultiSourceProjection_GWT.Make(CategoriesProjections.CategoryMapping)
 
 describe("CategoryProjection:", () => {
   test("Added sets initial read model state", () =>

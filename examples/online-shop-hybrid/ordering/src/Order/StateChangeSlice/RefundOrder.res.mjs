@@ -13,30 +13,6 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
-function evolve(state, event) {
-  if (typeof event !== "object") {
-    if (event === "OrderPlaced") {
-      return {
-        exists: true,
-        cancelled: false,
-        refunded: false
-      };
-    } else {
-      return {
-        exists: state.exists,
-        cancelled: true,
-        refunded: state.refunded
-      };
-    }
-  } else {
-    return {
-      exists: state.exists,
-      cancelled: state.cancelled,
-      refunded: true
-    };
-  }
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "IssueRefund",
   orderId: s.m(DcbTag$Reventless.string),
@@ -55,61 +31,20 @@ let eventSchema = S.schema(s => ({
   reason: s.m(S.string)
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    if (state.cancelled) {
-      if (state.refunded) {
-        return {
-          TAG: "Error",
-          _0: "RefundAlreadyIssued"
-        };
-      } else {
-        return {
-          TAG: "Ok",
-          _0: [{
-              TAG: "RefundIssued",
-              orderId: command.orderId,
-              reason: command.reason
-            }]
-        };
-      }
-    } else {
-      return {
-        TAG: "Error",
-        _0: "OrderNotCancelled"
-      };
-    }
-  } else {
-    return {
-      TAG: "Error",
-      _0: "OrderNotFound"
-    };
-  }
-}
-
 let commandSchema$1 = Api$ReventlessInfra.markNoApi(commandSchema);
 
 let name = "RefundOrder";
 
 let Id;
 
-let initialState = {
-  exists: false,
-  cancelled: false,
-  refunded: false
-};
-
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChangeSlice/RefundOrder.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   errorSchema,
   eventSchema,
-  decide,
   commandSchema$1 as commandSchema,
   moduleUrl,
 }

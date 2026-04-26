@@ -19,10 +19,10 @@ let applyFirstUpdate = (actions, baseState) =>
     | _ => s
     })
 
-describe("CustomersView.project:", () => {
+describe("CustomersView_Projection.project:", () => {
   test("CustomerRegistered creates new state", () =>
     expect(
-      CustomersView.project(
+      CustomersView_Projection.project(
         CustomersView.CustomerRegistered({
           customerId: "cust-1",
           email: "alice@example.com",
@@ -44,7 +44,7 @@ describe("CustomersView.project:", () => {
 
   test("EmailChanged Update function changes email", () =>
     expect(
-      CustomersView.project(
+      CustomersView_Projection.project(
         CustomersView.EmailChanged({customerId: "cust-1", email: "alice2@example.com"}),
       )->applyFirstUpdate(baseCustomer),
     )->toEqual({...baseCustomer, email: "alice2@example.com"})
@@ -52,7 +52,7 @@ describe("CustomersView.project:", () => {
 
   test("AddressChanged Update function changes address", () =>
     expect(
-      CustomersView.project(
+      CustomersView_Projection.project(
         CustomersView.AddressChanged({customerId: "cust-1", address: "789 Pine Rd"}),
       )->applyFirstUpdate(baseCustomer),
     )->toEqual({...baseCustomer, address: "789 Pine Rd"})
@@ -60,7 +60,7 @@ describe("CustomersView.project:", () => {
 
   test("CustomerDeactivated Update function sets deactivated=true", () =>
     expect(
-      CustomersView.project(
+      CustomersView_Projection.project(
         CustomersView.CustomerDeactivated({customerId: "cust-1"}),
       )->applyFirstUpdate(baseCustomer),
     )->toEqual({...baseCustomer, deactivated: true})

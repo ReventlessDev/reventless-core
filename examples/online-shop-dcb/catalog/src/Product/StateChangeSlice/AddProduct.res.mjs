@@ -5,12 +5,6 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let consumedEventSchema = S.literal("ProductAdded");
 
-function evolve(_state, event) {
-  return {
-    exists: true
-  };
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "AddProduct",
   productId: s.m(DcbTag$Reventless.string),
@@ -29,46 +23,19 @@ let eventSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    return {
-      TAG: "Error",
-      _0: "ProductAlreadyExists"
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "ProductAdded",
-          productId: command.productId,
-          name: command.name,
-          description: command.description,
-          price: command.price
-        }]
-    };
-  }
-}
-
 let name = "AddProduct";
 
 let Id;
-
-let initialState = {
-  exists: false
-};
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Product/StateChangeSlice/AddProduct.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

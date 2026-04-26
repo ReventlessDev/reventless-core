@@ -1,8 +1,5 @@
 // AutomationSlice_Builder (AWS)
 // Wires AWS adapters and delegates to the core ReventlessCore.AutomationSlice_Builder.
-// Internal: splices a legacy MergedSpec into (Spec, Automation) for the
-// new two-arg framework form. External signature stays on MergedSpec
-// until Phase 5 migrates examples to native split form.
 
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
@@ -22,34 +19,13 @@ module Make = (Api: {
   )
 
   module Make = (
-    Spec: Reventless.AutomationSlice.MergedSpec,
-  ): (
-    ReventlessCore.AutomationSlice.T
-      with module Spec = Spec
-  ) => {
-    module LeanSpec = {
-      let name = Spec.name
-      let moduleUrl = Spec.moduleUrl
-      type consumedEvent = Spec.consumedEvent
-      let consumedEventSchema = Spec.consumedEventSchema
-      type todoItem = Spec.todoItem
-      let todoItemSchema = Spec.todoItemSchema
-      type command = Spec.command
-      let commandSchema = Spec.commandSchema
-      let maxRetries = Spec.maxRetries
-      let heartbeatInterval = Spec.heartbeatInterval
-      let targetName = Spec.targetName
-    }
-    module AutomationImpl = {
-      let collect = Spec.collect
-      let resolve = Spec.resolve
-      let process = Spec.process
-      let moduleUrl = Spec.moduleUrl
-    }
-    module InnerMake = Inner.Make(LeanSpec, AutomationImpl)
+    Spec: Reventless.AutomationSlice.Spec,
+    Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+  ): (ReventlessCore.AutomationSlice.T with module Spec = Spec) => {
+    module InnerMake = Inner.Make(Spec, Automation)
 
     module Spec = Spec
-    module Automation = AutomationImpl
+    module Automation = Automation
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
 

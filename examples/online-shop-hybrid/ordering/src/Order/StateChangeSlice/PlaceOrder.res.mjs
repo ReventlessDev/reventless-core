@@ -3,13 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let initialState_availableProductIds = new Set();
-
-let initialState = {
-  exists: false,
-  availableProductIds: initialState_availableProductIds
-};
-
 let consumedEventSchema = S.union([
   S.literal("OrderPlaced"),
   S.schema(s => ({
@@ -17,17 +10,6 @@ let consumedEventSchema = S.union([
     productId: s.m(DcbTag$Reventless.string)
   }))
 ]);
-
-function evolve(state, event) {
-  if (typeof event !== "object") {
-    return {
-      exists: true,
-      availableProductIds: state.availableProductIds
-    };
-  }
-  state.availableProductIds.add(event.productId);
-  return state;
-}
 
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
@@ -51,36 +33,6 @@ let eventSchema = S.schema(s => ({
   productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    return {
-      TAG: "Error",
-      _0: "OrderAlreadyPlaced"
-    };
-  }
-  let productId = command.productId;
-  let missing = productId.filter(pid => !state.availableProductIds.has(pid));
-  if (missing.length !== 0) {
-    return {
-      TAG: "Error",
-      _0: {
-        TAG: "ProductsNotAvailable",
-        missing: missing
-      }
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "OrderPlaced",
-          orderId: command.orderId,
-          customerId: command.customerId,
-          productId: productId
-        }]
-    };
-  }
-}
-
 let name = "PlaceOrder";
 
 let Id;
@@ -90,13 +42,10 @@ let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/StateChang
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
-/* initialState Not a pure module */
+/* consumedEventSchema Not a pure module */

@@ -24,31 +24,6 @@ let stateSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-function project(event) {
-  if (event.TAG === "CatalogProductSynced") {
-    let productId = event.productId;
-    return [{
-        TAG: "Set",
-        _0: productId,
-        _1: {
-          productId: productId,
-          name: event.name,
-          price: event.price
-        }
-      }];
-  }
-  let price = event.price;
-  return [{
-      TAG: "Update",
-      _0: event.productId,
-      _1: p => ({
-        productId: p.productId,
-        name: p.name,
-        price: price
-      })
-    }];
-}
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let name = "AvailableProducts";
@@ -64,7 +39,6 @@ export {
   Id,
   consumedEventSchema,
   stateSchema,
-  project,
   config,
   subIdConfig,
   moduleUrl,

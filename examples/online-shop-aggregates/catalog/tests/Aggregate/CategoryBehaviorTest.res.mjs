@@ -4,7 +4,7 @@ import * as Category$CatalogPlugin from "../../src/Aggregate/Category.res.mjs";
 import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Behavior_GWT.res.mjs";
 import * as CategoryBehavior$CatalogPlugin from "../../src/Aggregate/CategoryBehavior.res.mjs";
 
-let include = Behavior_GWT$ReventlessGwt.Make({
+let include = Behavior_GWT$ReventlessGwt.MakeFromAggregate({
   name: Category$CatalogPlugin.name,
   commandSchema: Category$CatalogPlugin.commandSchema,
   eventSchema: Category$CatalogPlugin.eventSchema,

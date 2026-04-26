@@ -31,28 +31,8 @@ function Make(Api) {
     forEventCollector: StateViewSliceRuntime_Builder_Single$ReventlessAws.forEventCollector,
     finish: StateViewSliceRuntime_Builder_Single$ReventlessAws.finish
   })(Api);
-  let Make$1 = Spec => {
-    let LeanSpec_name = Spec.name;
-    let LeanSpec_moduleUrl = Spec.moduleUrl;
-    let LeanSpec_stateSchema = Spec.stateSchema;
-    let LeanSpec_consumedEventSchema = Spec.consumedEventSchema;
-    let LeanSpec_config = Spec.config;
-    let LeanSpec_subIdConfig = Spec.subIdConfig;
-    let LeanSpec = {
-      name: LeanSpec_name,
-      moduleUrl: LeanSpec_moduleUrl,
-      stateSchema: LeanSpec_stateSchema,
-      consumedEventSchema: LeanSpec_consumedEventSchema,
-      config: LeanSpec_config,
-      subIdConfig: LeanSpec_subIdConfig
-    };
-    let ProjectionImpl_project = Spec.project;
-    let ProjectionImpl_moduleUrl = Spec.moduleUrl;
-    let ProjectionImpl = {
-      project: ProjectionImpl_project,
-      moduleUrl: ProjectionImpl_moduleUrl
-    };
-    let InnerMake = Inner.Make(LeanSpec)(ProjectionImpl);
+  let Make$1 = Spec => (Projection => {
+    let InnerMake = Inner.Make(Spec)(Projection);
     let make = (dcbEventLog, opts) => {
       let sv = InnerMake.make(dcbEventLog, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(sv).queryDb;
@@ -62,10 +42,10 @@ function Make(Api) {
     };
     return {
       Spec: Spec,
-      Projection: ProjectionImpl,
+      Projection: Projection,
       make: make
     };
-  };
+  });
   return {
     Inner: Inner,
     finish: Inner.finish,

@@ -5,7 +5,7 @@ import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/B
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBehavior.res.mjs";
 import * as PluginFixtures$ReventlessInMemory from "./PluginFixtures.res.mjs";
 
-let PluginTest = Behavior_GWT$ReventlessGwt.Make({
+let PluginTest = Behavior_GWT$ReventlessGwt.MakeFromAggregate({
   name: PluginSpec$ReventlessCore.name,
   commandSchema: PluginSpec$ReventlessCore.commandSchema,
   eventSchema: PluginSpec$ReventlessCore.eventSchema,

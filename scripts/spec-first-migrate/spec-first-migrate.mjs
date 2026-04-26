@@ -51,6 +51,15 @@ const SLICE_KINDS = {
     ]),
     implBindings: new Set(['project']),
   },
+  StateViewSliceStream: {
+    implKind: 'Projection',
+    implAttr: '@@reventless.projection',
+    specBindings: new Set([
+      'name', 'moduleUrl',
+      'state', 'stateSchema', 'consumedEvent', 'config', 'subIdConfig',
+    ]),
+    implBindings: new Set(['project']),
+  },
   AutomationSlice: {
     implKind: 'Automation',
     implAttr: '@@reventless.automation',

@@ -8,20 +8,20 @@ describe("AddCategory:", () => {
   describe("evolve", () => {
     test("CategoryAdded sets exists=true", () =>
       expect(
-        AddCategory.evolve(
-          AddCategory.initialState,
+        AddCategory_Behavior.evolve(
+          AddCategory_Behavior.initialState,
           AddCategory.CategoryAdded,
         ),
-      )->toEqual({AddCategory.exists: true, archived: false})
+      )->toEqual({AddCategory_Behavior.exists: true, archived: false})
     )
 
     test("CategoryArchived sets archived=true", () =>
       expect(
-        AddCategory.evolve(
-          {AddCategory.exists: true, archived: false},
+        AddCategory_Behavior.evolve(
+          {AddCategory_Behavior.exists: true, archived: false},
           AddCategory.CategoryArchived,
         ),
-      )->toEqual({AddCategory.exists: true, archived: true})
+      )->toEqual({AddCategory_Behavior.exists: true, archived: true})
     )
 
 })
@@ -29,8 +29,8 @@ describe("AddCategory:", () => {
   describe("decide", () => {
     test("on non-existent category produces CategoryAdded", () =>
       expect(
-        AddCategory.decide(
-          AddCategory.initialState,
+        AddCategory_Behavior.decide(
+          AddCategory_Behavior.initialState,
           AddCategory.AddCategory({categoryId: "c1", name: "Electronics"}),
         ),
       )->toEqual(Ok([AddCategory.CategoryAdded({categoryId: "c1", name: "Electronics"})]))
@@ -38,8 +38,8 @@ describe("AddCategory:", () => {
 
     test("on existing category returns CategoryAlreadyExists", () =>
       expect(
-        AddCategory.decide(
-          {AddCategory.exists: true, archived: false},
+        AddCategory_Behavior.decide(
+          {AddCategory_Behavior.exists: true, archived: false},
           AddCategory.AddCategory({categoryId: "c1", name: "Electronics"}),
         ),
       )->toEqual(Error(AddCategory.CategoryAlreadyExists))
@@ -51,8 +51,8 @@ describe("RenameCategory:", () => {
   describe("decide", () => {
     test("on non-existent category returns CategoryNotFound", () =>
       expect(
-        RenameCategory.decide(
-          RenameCategory.initialState,
+        RenameCategory_Behavior.decide(
+          RenameCategory_Behavior.initialState,
           RenameCategory.RenameCategory({categoryId: "c1", name: "Consumer Electronics"}),
         ),
       )->toEqual(Error(RenameCategory.CategoryNotFound))
@@ -60,8 +60,8 @@ describe("RenameCategory:", () => {
 
     test("on archived category returns CategoryAlreadyArchived", () =>
       expect(
-        RenameCategory.decide(
-          {RenameCategory.exists: true, archived: true},
+        RenameCategory_Behavior.decide(
+          {RenameCategory_Behavior.exists: true, archived: true},
           RenameCategory.RenameCategory({categoryId: "c1", name: "Consumer Electronics"}),
         ),
       )->toEqual(Error(RenameCategory.CategoryAlreadyArchived))
@@ -69,8 +69,8 @@ describe("RenameCategory:", () => {
 
     test("on active category produces CategoryRenamed", () =>
       expect(
-        RenameCategory.decide(
-          {RenameCategory.exists: true, archived: false},
+        RenameCategory_Behavior.decide(
+          {RenameCategory_Behavior.exists: true, archived: false},
           RenameCategory.RenameCategory({categoryId: "c1", name: "Consumer Electronics"}),
         ),
       )->toEqual(
@@ -84,8 +84,8 @@ describe("ArchiveCategory:", () => {
   describe("decide", () => {
     test("on non-existent category returns CategoryNotFound", () =>
       expect(
-        ArchiveCategory.decide(
-          ArchiveCategory.initialState,
+        ArchiveCategory_Behavior.decide(
+          ArchiveCategory_Behavior.initialState,
           ArchiveCategory.ArchiveCategory({categoryId: "c1"}),
         ),
       )->toEqual(Error(ArchiveCategory.CategoryNotFound))
@@ -93,8 +93,8 @@ describe("ArchiveCategory:", () => {
 
     test("on already archived category returns Ok([]) (idempotent)", () =>
       expect(
-        ArchiveCategory.decide(
-          {ArchiveCategory.exists: true, archived: true},
+        ArchiveCategory_Behavior.decide(
+          {ArchiveCategory_Behavior.exists: true, archived: true},
           ArchiveCategory.ArchiveCategory({categoryId: "c1"}),
         ),
       )->toEqual(Ok([]))
@@ -102,8 +102,8 @@ describe("ArchiveCategory:", () => {
 
     test("on active category produces CategoryArchived", () =>
       expect(
-        ArchiveCategory.decide(
-          {ArchiveCategory.exists: true, archived: false},
+        ArchiveCategory_Behavior.decide(
+          {ArchiveCategory_Behavior.exists: true, archived: false},
           ArchiveCategory.ArchiveCategory({categoryId: "c1"}),
         ),
       )->toEqual(Ok([ArchiveCategory.CategoryArchived({categoryId: "c1"})]))

@@ -13,356 +13,312 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as Projection$ReventlessCore from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 import * as TestFixtures$ReventlessGwt from "./TestFixtures.res.mjs";
 
-function Make(Projection) {
-  S.enableJson();
-  let testId = {
-    contents: TestFixtures$ReventlessGwt.id
-  };
-  let meta = {
-    contents: TestFixtures$ReventlessGwt.meta
-  };
-  let describeWithId = (description, id, fn) => {
-    testId.contents = id;
-    JestBind$ReventlessGwt.describe(description, fn);
-  };
-  let test = (name, timeout, body) => JestBind$ReventlessGwt.testPromise(Projection.sourceName, name, timeout, body);
-  let getSubId = state => Stdlib_Option.map(Projection.subIdConfig, param => param.getSubId(state));
-  let hasSubId = (state, subId) => Stdlib_Option.getOrThrow(getSubId(state), undefined) === subId;
-  let states = (store, id) => Stdlib_Option.getOr(store[id], []);
-  let setStates = (store, id, states) => {
-    store[id] = states;
-  };
-  let updateState = (store, id, subId, newState) => states(store, id).map(state => {
-    if (hasSubId(state, subId)) {
-      return newState;
-    } else {
-      return state;
-    }
-  });
-  let deleteStates = (store, id) => {
-    store[id] = [];
-  };
-  let deleteSubState = (store, id, subId, getSubId) => {
-    store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
-  };
-  let update = async (store, events$p) => {
-    let actions = events$p.map(event$p => Projection.project(event$p));
-    await Projection$ReventlessCore.handleActions(actions, {
-      load: extra => Promise.resolve({
-        TAG: "Ok",
-        _0: states(store, extra)
-      }),
-      loadStream: id => Stream.fromIterable(states(store, id)),
-      save: (extra, extra$1, extra$2, extra$3) => {
-        let match = states(store, extra);
-        let exit = 0;
-        switch (extra$2) {
-          case "Init" :
-          case "Overwrite" :
-            exit = 2;
-            break;
-          case "Any" :
-            break;
-        }
-        if (exit === 2) {
-          let len = match.length;
-          if (len !== 1) {
-            if (len !== 0) {
-              return Promise.resolve({
-                TAG: "Error",
-                _0: "StaleState"
-              });
-            }
-            if (extra$2 !== "Init") {
-              return Promise.resolve({
-                TAG: "Error",
-                _0: "StaleState"
-              });
-            }
-          } else if (extra$2 === "Init") {
-            return Promise.resolve({
-              TAG: "Error",
-              _0: "StaleState"
-            });
-          }
-        }
-        setStates(store, extra, [extra$1]);
-        return Promise.resolve({
-          TAG: "Ok",
-          _0: undefined
-        });
-      },
-      saveBatch: extra => {
-        extra.forEach(param => {
-          let id = param[0];
-          let newState = param[1];
-          let subId = getSubId(newState);
-          let match = subId !== undefined ? (
-              states(store, id).some(state => hasSubId(state, subId)) ? [
-                  updateState(store, id, subId, newState),
-                  []
-                ] : [
-                  states(store, id),
-                  [newState]
-                ]
-            ) : [
+function Make(Spec) {
+  return Projection => {
+    S.enableJson();
+    let testId = {
+      contents: TestFixtures$ReventlessGwt.id
+    };
+    let describeWithId = (description, id, fn) => {
+      testId.contents = id;
+      JestBind$ReventlessGwt.describe(description, fn);
+    };
+    let test = (name, timeout, body) => JestBind$ReventlessGwt.testPromise(Spec.name, name, timeout, body);
+    let getSubId = state => Stdlib_Option.map(Spec.subIdConfig, param => param.getSubId(state));
+    let hasSubId = (state, subId) => Stdlib_Option.getOrThrow(getSubId(state), undefined) === subId;
+    let states = (store, id) => Stdlib_Option.getOr(store[id], []);
+    let setStates = (store, id, states) => {
+      store[id] = states;
+    };
+    let updateState = (store, id, subId, newState) => states(store, id).map(state => {
+      if (hasSubId(state, subId)) {
+        return newState;
+      } else {
+        return state;
+      }
+    });
+    let addState = (store, id, newState) => {
+      let subId = getSubId(newState);
+      let match = subId !== undefined ? (
+          states(store, id).some(state => hasSubId(state, subId)) ? [
+              updateState(store, id, subId, newState),
+              []
+            ] : [
               states(store, id),
               [newState]
-            ];
-          store[id] = match[0].concat(match[1]);
-        });
-        return Promise.resolve({
+            ]
+        ) : [
+          states(store, id),
+          [newState]
+        ];
+      store[id] = match[0].concat(match[1]);
+    };
+    let deleteStates = (store, id) => {
+      store[id] = [];
+    };
+    let deleteSubState = (store, id, subId, getSubId) => {
+      store[id] = Stdlib_Option.getOr(Stdlib_Option.map(store[id], states => states.filter(state => Primitive_object.notequal(getSubId(state), subId))), []);
+    };
+    let update = async (store, events) => {
+      let actions = events.map(ev => Projection.project(ev)).flat();
+      await Projection$ReventlessCore.handleActions(actions, {
+        load: extra => Promise.resolve({
           TAG: "Ok",
-          _0: undefined
-        });
-      },
-      count: async (param, param$1, param$2) => ({
-        TAG: "Ok",
-        _0: 0
-      }),
-      delete: (extra, extra$1) => {
-        let match = Projection.subIdConfig;
-        if (extra$1 !== undefined) {
-          if (match !== undefined) {
-            deleteSubState(store, extra, extra$1[1], match.getSubId);
-            return Promise.resolve({
-              TAG: "Ok",
-              _0: undefined
-            });
+          _0: states(store, extra)
+        }),
+        loadStream: id => Stream.fromIterable(states(store, id)),
+        save: (extra, extra$1, extra$2, extra$3) => {
+          let match = states(store, extra);
+          let match$1 = Spec.subIdConfig;
+          let exit = 0;
+          switch (extra$2) {
+            case "Init" :
+              if (match$1 !== undefined) {
+                addState(store, extra, extra$1);
+                return Promise.resolve({
+                  TAG: "Ok",
+                  _0: undefined
+                });
+              }
+              exit = 2;
+              break;
+            case "Overwrite" :
+              exit = 2;
+              break;
+            case "Any" :
+              if (match$1 !== undefined) {
+                addState(store, extra, extra$1);
+                return Promise.resolve({
+                  TAG: "Ok",
+                  _0: undefined
+                });
+              }
+              break;
+          }
+          if (exit === 2) {
+            let len = match.length;
+            if (len !== 1) {
+              if (len !== 0) {
+                return Promise.resolve({
+                  TAG: "Error",
+                  _0: "StaleState"
+                });
+              }
+              if (extra$2 !== "Init") {
+                return Promise.resolve({
+                  TAG: "Error",
+                  _0: "StaleState"
+                });
+              }
+            } else if (extra$2 === "Init") {
+              return Promise.resolve({
+                TAG: "Error",
+                _0: "StaleState"
+              });
+            }
+          }
+          setStates(store, extra, [extra$1]);
+          return Promise.resolve({
+            TAG: "Ok",
+            _0: undefined
+          });
+        },
+        saveBatch: extra => {
+          extra.forEach(param => addState(store, param[0], param[1]));
+          return Promise.resolve({
+            TAG: "Ok",
+            _0: undefined
+          });
+        },
+        count: async (param, param$1, param$2) => ({
+          TAG: "Ok",
+          _0: 0
+        }),
+        delete: (extra, extra$1) => {
+          let match = Spec.subIdConfig;
+          if (extra$1 !== undefined) {
+            if (match !== undefined) {
+              deleteSubState(store, extra, extra$1[1], match.getSubId);
+              return Promise.resolve({
+                TAG: "Ok",
+                _0: undefined
+              });
+            } else {
+              return Promise.resolve({
+                TAG: "Ok",
+                _0: undefined
+              });
+            }
           } else {
+            deleteStates(store, extra);
             return Promise.resolve({
               TAG: "Ok",
               _0: undefined
             });
           }
-        } else {
-          deleteStates(store, extra);
+        },
+        deleteBatch: extra => {
+          extra.forEach(param => {
+            let subId = param[1];
+            let id = param[0];
+            let match = Spec.subIdConfig;
+            if (subId !== undefined) {
+              if (match !== undefined) {
+                return deleteSubState(store, id, subId[1], match.getSubId);
+              } else {
+                return;
+              }
+            } else {
+              return deleteStates(store, id);
+            }
+          });
           return Promise.resolve({
             TAG: "Ok",
             _0: undefined
           });
         }
-      },
-      deleteBatch: extra => {
-        extra.forEach(param => {
-          let subId = param[1];
-          let id = param[0];
-          let match = Projection.subIdConfig;
-          if (subId !== undefined) {
-            if (match !== undefined) {
-              return deleteSubState(store, id, subId[1], match.getSubId);
-            } else {
-              return;
-            }
-          } else {
-            return deleteStates(store, id);
-          }
+      }, Spec.subIdConfig);
+      if (Spec.subIdConfig !== undefined) {
+        return Stdlib_Dict.mapValues(store, states => states.toSorted((s1, s2) => Primitive_string.compare(getSubId(s1), getSubId(s2))));
+      } else {
+        return store;
+      }
+    };
+    let givenEvents = events => update({}, events);
+    let whenEvent = (store, event) => (() => (async () => await update(await store, [event]))());
+    let whenEvents = (store, events) => (() => (async () => await update(await store, events))());
+    let encState = s => Message$ReventlessCore.encode(s, Spec.stateSchema);
+    let statesEq = (a, b) => {
+      if (a.length === b.length) {
+        return Stdlib_Array.zip(a, b).every(param => {
+          let a = param[0];
+          let b = param[1];
+          return JSON.stringify(Message$ReventlessCore.encode(a, Spec.stateSchema)) === JSON.stringify(Message$ReventlessCore.encode(b, Spec.stateSchema));
         });
-        return Promise.resolve({
-          TAG: "Ok",
-          _0: undefined
+      } else {
+        return false;
+      }
+    };
+    let storeEq = (a, b) => {
+      let ka = Object.keys(a).toSorted(Primitive_string.compare);
+      let kb = Object.keys(b).toSorted(Primitive_string.compare);
+      if (Primitive_object.equal(ka, kb)) {
+        return ka.every(key => statesEq(Stdlib_Option.getOr(a[key], []), Stdlib_Option.getOr(b[key], [])));
+      } else {
+        return false;
+      }
+    };
+    let encStore = s => {
+      let obj = {};
+      Object.entries(s).forEach(param => {
+        obj[param[0]] = param[1].map(encState);
+      });
+      return obj;
+    };
+    let thenStates = async (thunk, expectedStates) => {
+      let store = await thunk();
+      let keys = Object.keys(store);
+      let actualId = keys[0];
+      let actualStates = Stdlib_Option.getOr(Object.values(store)[0], []);
+      if (keys.length === 1 && Primitive_object.equal(actualId, testId.contents) && statesEq(actualStates, expectedStates)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "StateMismatch",
+          key: testId.contents,
+          expected: expectedStates.map(encState),
+          actual: encStore(store)
         });
       }
-    }, Projection.subIdConfig);
-    if (Projection.subIdConfig !== undefined) {
-      return Stdlib_Dict.mapValues(store, states => states.toSorted((state1, state2) => Primitive_string.compare(getSubId(state1), getSubId(state2))));
-    } else {
-      return store;
-    }
-  };
-  let givenEvents = events => update({}, events.map(event => ({
-    id: testId.contents,
-    meta: meta.contents,
-    event: event
-  })));
-  let givenEventsWithTime = events => update({}, events.map(param => {
-    let init = meta.contents;
-    return {
-      id: testId.contents,
-      meta: {
-        service: init.service,
-        time: param[0],
-        ip: init.ip,
-        user: init.user,
-        msgId: init.msgId,
-        correlationId: init.correlationId
-      },
-      event: param[1]
     };
-  }));
-  let whenEvent = (store, event) => (() => (async () => await update(await store, [{
-      id: testId.contents,
-      meta: meta.contents,
-      event: event
-    }]))());
-  let whenEvents = (store, events) => (() => (async () => await update(await store, events.map(event => ({
-    id: testId.contents,
-    meta: meta.contents,
-    event: event
-  }))))());
-  let whenEventWithTime = (store, time, event) => (() => (async () => {
-    let init = meta.contents;
-    return await update(await store, [{
-        id: testId.contents,
-        meta: {
-          service: init.service,
-          time: time,
-          ip: init.ip,
-          user: init.user,
-          msgId: init.msgId,
-          correlationId: init.correlationId
-        },
-        event: event
-      }]);
-  })());
-  let whenEventsWithTime = (store, events) => (() => (async () => await update(await store, events.map(param => {
-    let init = meta.contents;
-    return {
-      id: testId.contents,
-      meta: {
-        service: init.service,
-        time: param[0],
-        ip: init.ip,
-        user: init.user,
-        msgId: init.msgId,
-        correlationId: init.correlationId
-      },
-      event: param[1]
+    let thenStatesWithId = async (thunk, id, expectedStates) => {
+      let store = await thunk();
+      let keys = Object.keys(store);
+      let actualId = keys[0];
+      let actualStates = Stdlib_Option.getOr(Object.values(store)[0], []);
+      if (keys.length === 1 && Primitive_object.equal(actualId, id) && statesEq(actualStates, expectedStates)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "StateMismatch",
+          key: id,
+          expected: expectedStates.map(encState),
+          actual: encStore(store)
+        });
+      }
     };
-  })))());
-  let encState = s => Message$ReventlessCore.encode(s, Projection.targetStateSchema);
-  let statesEq = (a, b) => {
-    if (a.length === b.length) {
-      return Stdlib_Array.zip(a, b).every(param => {
-        let a = param[0];
-        let b = param[1];
-        return JSON.stringify(Message$ReventlessCore.encode(a, Projection.targetStateSchema)) === JSON.stringify(Message$ReventlessCore.encode(b, Projection.targetStateSchema));
-      });
-    } else {
-      return false;
-    }
-  };
-  let storeEq = (a, b) => {
-    let ka = Object.keys(a).toSorted(Primitive_string.compare);
-    let kb = Object.keys(b).toSorted(Primitive_string.compare);
-    if (Primitive_object.equal(ka, kb)) {
-      return ka.every(key => statesEq(Stdlib_Option.getOr(a[key], []), Stdlib_Option.getOr(b[key], [])));
-    } else {
-      return false;
-    }
-  };
-  let encStore = s => {
-    let obj = {};
-    Object.entries(s).forEach(param => {
-      obj[param[0]] = param[1].map(encState);
-    });
-    return obj;
-  };
-  let thenStates = async (thunk, expectedStates) => {
-    let store = await thunk();
-    let keys = Object.keys(store);
-    let actualId = keys[0];
-    let actualStates = Stdlib_Option.getOr(Object.values(store)[0], []);
-    if (keys.length === 1 && Primitive_object.equal(actualId, testId.contents) && statesEq(actualStates, expectedStates)) {
-      return Outcome$ReventlessGwt.pass;
-    } else {
+    let thenAllStates = async (thunk, expectedStore) => {
+      let store = await thunk();
+      if (storeEq(store, expectedStore)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "StateMismatch",
+          key: "<all>",
+          expected: encStore(expectedStore),
+          actual: encStore(store)
+        });
+      }
+    };
+    let thenState = (thunk, expectedState) => thenStates(thunk, [expectedState]);
+    let thenStateWithId = (thunk, id, expectedState) => thenStatesWithId(thunk, id, [expectedState]);
+    let thenNoState = async thunk => {
+      let store = await thunk();
+      let total = Stdlib_Array.reduce(Object.values(store), 0, (acc, states) => acc + states.length | 0);
+      if (total === 0) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "StateMismatch",
+          key: "<any>",
+          expected: undefined,
+          actual: encStore(store)
+        });
+      }
+    };
+    let thenThrow = async thunk => {
+      let val;
+      try {
+        val = await thunk();
+      } catch (exn) {
+        return Outcome$ReventlessGwt.pass;
+      }
       return Outcome$ReventlessGwt.fail({
-        TAG: "StateMismatch",
-        key: testId.contents,
-        expected: expectedStates.map(encState),
-        actual: encStore(store)
+        TAG: "Throw",
+        error: "Expected thunk to throw but it returned normally",
+        stack: ""
       });
-    }
-  };
-  let thenStatesWithId = async (thunk, id, expectedStates) => {
-    let store = await thunk();
-    let keys = Object.keys(store);
-    let actualId = keys[0];
-    let actualStates = Stdlib_Option.getOr(Object.values(store)[0], []);
-    if (keys.length === 1 && Primitive_object.equal(actualId, id) && statesEq(actualStates, expectedStates)) {
-      return Outcome$ReventlessGwt.pass;
-    } else {
+    };
+    let thenFail = async thunk => {
+      let val;
+      try {
+        val = await thunk();
+      } catch (exn) {
+        return Outcome$ReventlessGwt.pass;
+      }
       return Outcome$ReventlessGwt.fail({
-        TAG: "StateMismatch",
-        key: id,
-        expected: expectedStates.map(encState),
-        actual: encStore(store)
+        TAG: "Throw",
+        error: "Expected failure but thunk returned normally",
+        stack: ""
       });
-    }
-  };
-  let thenAllStates = async (thunk, expectedStore) => {
-    let store = await thunk();
-    if (storeEq(store, expectedStore)) {
-      return Outcome$ReventlessGwt.pass;
-    } else {
-      return Outcome$ReventlessGwt.fail({
-        TAG: "StateMismatch",
-        key: "<all>",
-        expected: encStore(expectedStore),
-        actual: encStore(store)
-      });
-    }
-  };
-  let thenState = (thunk, expectedState) => thenStates(thunk, [expectedState]);
-  let thenStateWithId = (thunk, id, expectedState) => thenStatesWithId(thunk, id, [expectedState]);
-  let thenNoState = async thunk => {
-    let store = await thunk();
-    let total = Stdlib_Array.reduce(Object.values(store), 0, (acc, states) => acc + states.length | 0);
-    if (total === 0) {
-      return Outcome$ReventlessGwt.pass;
-    } else {
-      return Outcome$ReventlessGwt.fail({
-        TAG: "StateMismatch",
-        key: "<any>",
-        expected: undefined,
-        actual: encStore(store)
-      });
-    }
-  };
-  let thenThrow = async thunk => {
-    let val;
-    try {
-      val = await thunk();
-    } catch (exn) {
-      return Outcome$ReventlessGwt.pass;
-    }
-    return Outcome$ReventlessGwt.fail({
-      TAG: "Throw",
-      error: "Expected thunk to throw but it returned normally",
-      stack: ""
-    });
-  };
-  let thenFail = async thunk => {
-    let val;
-    try {
-      val = await thunk();
-    } catch (exn) {
-      return Outcome$ReventlessGwt.pass;
-    }
-    return Outcome$ReventlessGwt.fail({
-      TAG: "Throw",
-      error: "Expected failure but thunk returned normally",
-      stack: ""
-    });
-  };
-  return {
-    describe: JestBind$ReventlessGwt.describe,
-    describeWithId: describeWithId,
-    test: test,
-    givenEvents: givenEvents,
-    givenEventsWithTime: givenEventsWithTime,
-    whenEvent: whenEvent,
-    whenEvents: whenEvents,
-    whenEventWithTime: whenEventWithTime,
-    whenEventsWithTime: whenEventsWithTime,
-    thenStates: thenStates,
-    thenStatesWithId: thenStatesWithId,
-    thenAllStates: thenAllStates,
-    thenState: thenState,
-    thenStateWithId: thenStateWithId,
-    thenNoState: thenNoState,
-    thenThrow: thenThrow,
-    thenFail: thenFail
+    };
+    return {
+      Spec: Spec,
+      describe: JestBind$ReventlessGwt.describe,
+      describeWithId: describeWithId,
+      test: test,
+      givenEvents: givenEvents,
+      whenEvent: whenEvent,
+      whenEvents: whenEvents,
+      thenStates: thenStates,
+      thenStatesWithId: thenStatesWithId,
+      thenAllStates: thenAllStates,
+      thenState: thenState,
+      thenStateWithId: thenStateWithId,
+      thenNoState: thenNoState,
+      thenThrow: thenThrow,
+      thenFail: thenFail
+    };
   };
 }
 

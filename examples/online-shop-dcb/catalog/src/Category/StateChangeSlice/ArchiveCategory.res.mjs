@@ -8,20 +8,6 @@ let consumedEventSchema = S.union([
   S.literal("CategoryArchived")
 ]);
 
-function evolve(state, event) {
-  if (event === "CategoryAdded") {
-    return {
-      exists: true,
-      archived: false
-    };
-  } else {
-    return {
-      exists: state.exists,
-      archived: true
-    };
-  }
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "ArchiveCategory",
   categoryId: s.m(DcbTag$Reventless.string)
@@ -34,51 +20,19 @@ let eventSchema = S.schema(s => ({
   categoryId: s.m(DcbTag$Reventless.string)
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    if (state.archived) {
-      return {
-        TAG: "Ok",
-        _0: []
-      };
-    } else {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "CategoryArchived",
-            categoryId: command.categoryId
-          }]
-      };
-    }
-  } else {
-    return {
-      TAG: "Error",
-      _0: "CategoryNotFound"
-    };
-  }
-}
-
 let name = "ArchiveCategory";
 
 let Id;
-
-let initialState = {
-  exists: false,
-  archived: false
-};
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Category/StateChangeSlice/ArchiveCategory.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

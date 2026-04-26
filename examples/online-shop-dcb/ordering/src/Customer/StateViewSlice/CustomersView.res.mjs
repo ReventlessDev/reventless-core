@@ -34,58 +34,6 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
-function project(event) {
-  switch (event.TAG) {
-    case "CustomerRegistered" :
-      let customerId = event.customerId;
-      return [{
-          TAG: "Set",
-          _0: customerId,
-          _1: {
-            customerId: customerId,
-            email: event.email,
-            address: event.address,
-            deactivated: false
-          }
-        }];
-    case "EmailChanged" :
-      let email = event.email;
-      return [{
-          TAG: "Update",
-          _0: event.customerId,
-          _1: state => ({
-            customerId: state.customerId,
-            email: email,
-            address: state.address,
-            deactivated: state.deactivated
-          })
-        }];
-    case "AddressChanged" :
-      let address = event.address;
-      return [{
-          TAG: "Update",
-          _0: event.customerId,
-          _1: state => ({
-            customerId: state.customerId,
-            email: state.email,
-            address: address,
-            deactivated: state.deactivated
-          })
-        }];
-    case "CustomerDeactivated" :
-      return [{
-          TAG: "Update",
-          _0: event.customerId,
-          _1: state => ({
-            customerId: state.customerId,
-            email: state.email,
-            address: state.address,
-            deactivated: true
-          })
-        }];
-  }
-}
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let name = "Customers";
@@ -101,7 +49,6 @@ export {
   Id,
   stateSchema,
   consumedEventSchema,
-  project,
   config,
   subIdConfig,
   moduleUrl,

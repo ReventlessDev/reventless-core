@@ -3,26 +3,12 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Outcome$ReventlessGwt from "../src/Outcome.res.mjs";
-import * as StateChangeSlice_GWT$ReventlessGwt from "../src/StateChangeSlice_GWT.res.mjs";
+import * as Behavior_GWT$ReventlessGwt from "../src/Behavior_GWT.res.mjs";
 
 let consumedEventSchema = S.union([
   S.literal("CategoryAdded"),
   S.literal("CategoryArchived")
 ]);
-
-function evolve(state, event) {
-  if (event === "CategoryAdded") {
-    return {
-      exists: true,
-      archived: false
-    };
-  } else {
-    return {
-      exists: state.exists,
-      archived: true
-    };
-  }
-}
 
 let commandSchema = S.schema(s => ({
   TAG: "AddCategory",
@@ -37,6 +23,33 @@ let eventSchema = S.schema(s => ({
   categoryId: s.m(DcbTag$Reventless.string),
   name: s.m(S.string)
 }));
+
+let AddCategorySlice = {
+  name: "AddCategory",
+  consumedEventSchema: consumedEventSchema,
+  commandSchema: commandSchema,
+  errorSchema: errorSchema,
+  eventSchema: eventSchema
+};
+
+let initialState = {
+  exists: false,
+  archived: false
+};
+
+function evolve(state, event) {
+  if (event === "CategoryAdded") {
+    return {
+      exists: true,
+      archived: false
+    };
+  } else {
+    return {
+      exists: state.exists,
+      archived: true
+    };
+  }
+}
 
 function decide(state, command) {
   if (state.exists) {
@@ -56,23 +69,18 @@ function decide(state, command) {
   }
 }
 
-let AddCategorySlice_initialState = {
-  exists: false,
-  archived: false
-};
-
-let AddCategorySlice = {
-  name: "AddCategory",
-  initialState: AddCategorySlice_initialState,
-  consumedEventSchema: consumedEventSchema,
+let AddCategorySliceBehavior = {
+  Spec: undefined,
+  initialState: initialState,
   evolve: evolve,
-  commandSchema: commandSchema,
-  errorSchema: errorSchema,
-  eventSchema: eventSchema,
   decide: decide
 };
 
-let include = StateChangeSlice_GWT$ReventlessGwt.Make(AddCategorySlice);
+let include = Behavior_GWT$ReventlessGwt.Make(AddCategorySlice)({
+  initialState: initialState,
+  evolve: evolve,
+  decide: decide
+});
 
 let describe = include.describe;
 
@@ -139,10 +147,6 @@ describe("AddCategory StateChangeSlice", () => {
 
 let consumedEventSchema$1 = S.literal("Noop");
 
-function evolve$1(state, _event) {
-  return state;
-}
-
 let commandSchema$1 = S.schema(s => ({
   TAG: "Do",
   id: s.m(S.string)
@@ -155,6 +159,18 @@ let eventSchema$1 = S.schema(s => ({
   id: s.m(S.string)
 }));
 
+let MissingTagSlice = {
+  name: "MissingTagSlice",
+  consumedEventSchema: consumedEventSchema$1,
+  commandSchema: commandSchema$1,
+  errorSchema: errorSchema$1,
+  eventSchema: eventSchema$1
+};
+
+function evolve$1(state, _event) {
+  
+}
+
 function decide$1(_state, cmd) {
   return {
     TAG: "Ok",
@@ -165,18 +181,18 @@ function decide$1(_state, cmd) {
   };
 }
 
-let MissingTagSlice = {
-  name: "MissingTagSlice",
+let MissingTagBehavior = {
+  Spec: undefined,
   initialState: undefined,
-  consumedEventSchema: consumedEventSchema$1,
   evolve: evolve$1,
-  commandSchema: commandSchema$1,
-  errorSchema: errorSchema$1,
-  eventSchema: eventSchema$1,
   decide: decide$1
 };
 
-let MissingTagGwt = StateChangeSlice_GWT$ReventlessGwt.Make(MissingTagSlice);
+let MissingTagGwt = Behavior_GWT$ReventlessGwt.Make(MissingTagSlice)({
+  initialState: undefined,
+  evolve: evolve$1,
+  decide: decide$1
+});
 
 MissingTagGwt.describe("MissingTag slice implicit check", () => {
   MissingTagGwt.test("thenEvent surfaces AppendConditionMismatch when command lacks DCB tag", () => {
@@ -228,6 +244,7 @@ let thenEventsWithError = include.thenEventsWithError;
 
 export {
   AddCategorySlice,
+  AddCategorySliceBehavior,
   Spec,
   describe,
   test,
@@ -242,6 +259,7 @@ export {
   thenAppendsConditionedOn,
   thenAppendsConditionedOnExactly,
   MissingTagSlice,
+  MissingTagBehavior,
   MissingTagGwt,
 }
 /* consumedEventSchema Not a pure module */

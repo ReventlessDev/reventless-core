@@ -1,8 +1,27 @@
 // Applies pairing rules to discovered files.
 // - Aggregates: pairs Foo + FooBehavior; finds Foo_EventMappings if present
 // - ReadModels: pairs FooReadModel + FooProjections; extracts mapping module names from projections file
+// - Slices (Plan 02): pair X + X_<Kind> where Kind is the implementation
+//   suffix matching the slice's folder. The slice arrays carry only spec
+//   stems; the corresponding impl stem is `<stem>_<implSuffix>`.
+//     * StateChangeSlice / StateViewSlice  → Behavior / Projection
+//     * AutomationSlice                    → Automation
+//     * In/OutboundTranslationSlice        → Translation
 // - ExtensionPoints: groups by epGroup, counts mappings, selects Make variant
-// - All other types: no pairing needed (pass through as stems)
+
+// Implementation-file suffix per slice kind. Used to filter impl files out
+// of the slice arrays (they're paired with their spec stems via this
+// suffix at codegen time) and to compute the impl module reference.
+let implSuffixForStateChange = "_Behavior"
+let implSuffixForStateView = "_Projection"
+let implSuffixForAutomation = "_Automation"
+let implSuffixForTranslation = "_Translation"
+
+let isImplStem = (stem: string): bool =>
+  stem->String.endsWith(implSuffixForStateChange)
+  || stem->String.endsWith(implSuffixForStateView)
+  || stem->String.endsWith(implSuffixForAutomation)
+  || stem->String.endsWith(implSuffixForTranslation)
 
 type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>}
 // mappingModules: module names found inside the projections file (e.g. ["ProductMapping"])
@@ -118,21 +137,33 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let epFiles: array<Discovery.discoveredFile> = []
   let extensions = []
 
-  // Classify discovered files by component type
+  // Classify discovered files by component type. For the five slice
+  // families, impl files (X_Behavior / X_Projection / X_Automation /
+  // X_Translation) are filtered out: they're paired with their spec stems
+  // at codegen time via the `_<ImplKind>` suffix convention.
   discovered->Array.forEach(({stem, componentType, epGroup, relPath}) => {
     switch componentType {
-    | StateChangeSlice => stateChangeSlices->Array.push(stem)
-    | StateViewSlice => stateViewSlices->Array.push(stem)
-    | StateViewSliceStream => stateViewSlicesStream->Array.push(stem)
+    | StateChangeSlice =>
+      if !isImplStem(stem) { stateChangeSlices->Array.push(stem) }
+    | StateViewSlice =>
+      if !isImplStem(stem) { stateViewSlices->Array.push(stem) }
+    | StateViewSliceStream =>
+      if !isImplStem(stem) { stateViewSlicesStream->Array.push(stem) }
     | AutomationSlice =>
-      automationSlices->Array.push(stem)
-      automationSliceRelPaths->Dict.set(stem, relPath)
+      if !isImplStem(stem) {
+        automationSlices->Array.push(stem)
+        automationSliceRelPaths->Dict.set(stem, relPath)
+      }
     | InboundTranslationSlice =>
-      inboundTranslationSlices->Array.push(stem)
-      inboundTranslationSliceRelPaths->Dict.set(stem, relPath)
+      if !isImplStem(stem) {
+        inboundTranslationSlices->Array.push(stem)
+        inboundTranslationSliceRelPaths->Dict.set(stem, relPath)
+      }
     | OutboundTranslationSlice =>
-      outboundTranslationSlices->Array.push(stem)
-      outboundTranslationSliceRelPaths->Dict.set(stem, relPath)
+      if !isImplStem(stem) {
+        outboundTranslationSlices->Array.push(stem)
+        outboundTranslationSliceRelPaths->Dict.set(stem, relPath)
+      }
     | Aggregate =>
       if stem->String.endsWith("Behavior") {
         aggregateBehaviors->Array.push(stem)

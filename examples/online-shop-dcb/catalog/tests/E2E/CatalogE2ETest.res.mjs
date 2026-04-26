@@ -14,9 +14,16 @@ import * as ChangeProductName$CatalogPlugin from "../../src/Product/StateChangeS
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductPrice.res.mjs";
+import * as AddProduct_Behavior$CatalogPlugin from "../../src/Product/StateChangeSlice/AddProduct_Behavior.res.mjs";
+import * as AddCategory_Behavior$CatalogPlugin from "../../src/Category/StateChangeSlice/AddCategory_Behavior.res.mjs";
+import * as RenameCategory_Behavior$CatalogPlugin from "../../src/Category/StateChangeSlice/RenameCategory_Behavior.res.mjs";
+import * as ArchiveCategory_Behavior$CatalogPlugin from "../../src/Category/StateChangeSlice/ArchiveCategory_Behavior.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductDescription.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/DcbEventLog_Builder.res.mjs";
+import * as ChangeProductName_Behavior$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
+import * as ChangeProductPrice_Behavior$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/StateChangeSlice_Builder.res.mjs";
+import * as ChangeProductDescription_Behavior$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductDescription_Behavior.res.mjs";
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
@@ -42,92 +49,106 @@ let eventLog = CatalogEventLogMaker.make("Catalog", undefined, {
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,
   moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
-  initialState: AddProduct$CatalogPlugin.initialState,
-  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
-  evolve: AddProduct$CatalogPlugin.evolve,
-  errorSchema: AddProduct$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
+  errorSchema: AddProduct$CatalogPlugin.errorSchema,
   eventSchema: AddProduct$CatalogPlugin.eventSchema,
-  decide: AddProduct$CatalogPlugin.decide,
   commandSchema: AddProduct$CatalogPlugin.commandSchema
+})({
+  initialState: AddProduct_Behavior$CatalogPlugin.initialState,
+  evolve: AddProduct_Behavior$CatalogPlugin.evolve,
+  decide: AddProduct_Behavior$CatalogPlugin.decide,
+  moduleUrl: AddProduct_Behavior$CatalogPlugin.moduleUrl
 });
 
 let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductName$CatalogPlugin.name,
   moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-  initialState: ChangeProductName$CatalogPlugin.initialState,
-  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
-  evolve: ChangeProductName$CatalogPlugin.evolve,
-  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
+  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
-  decide: ChangeProductName$CatalogPlugin.decide,
   commandSchema: ChangeProductName$CatalogPlugin.commandSchema
+})({
+  initialState: ChangeProductName_Behavior$CatalogPlugin.initialState,
+  evolve: ChangeProductName_Behavior$CatalogPlugin.evolve,
+  decide: ChangeProductName_Behavior$CatalogPlugin.decide,
+  moduleUrl: ChangeProductName_Behavior$CatalogPlugin.moduleUrl
 });
 
 let ChangeProductDescriptionMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductDescription$CatalogPlugin.name,
   moduleUrl: ChangeProductDescription$CatalogPlugin.moduleUrl,
-  initialState: ChangeProductDescription$CatalogPlugin.initialState,
-  consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
-  evolve: ChangeProductDescription$CatalogPlugin.evolve,
-  errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ChangeProductDescription$CatalogPlugin.consumedEventSchema,
+  errorSchema: ChangeProductDescription$CatalogPlugin.errorSchema,
   eventSchema: ChangeProductDescription$CatalogPlugin.eventSchema,
-  decide: ChangeProductDescription$CatalogPlugin.decide,
   commandSchema: ChangeProductDescription$CatalogPlugin.commandSchema
+})({
+  initialState: ChangeProductDescription_Behavior$CatalogPlugin.initialState,
+  evolve: ChangeProductDescription_Behavior$CatalogPlugin.evolve,
+  decide: ChangeProductDescription_Behavior$CatalogPlugin.decide,
+  moduleUrl: ChangeProductDescription_Behavior$CatalogPlugin.moduleUrl
 });
 
 let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductPrice$CatalogPlugin.name,
   moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
-  initialState: ChangeProductPrice$CatalogPlugin.initialState,
-  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
-  evolve: ChangeProductPrice$CatalogPlugin.evolve,
-  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
+  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
-  decide: ChangeProductPrice$CatalogPlugin.decide,
   commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
+})({
+  initialState: ChangeProductPrice_Behavior$CatalogPlugin.initialState,
+  evolve: ChangeProductPrice_Behavior$CatalogPlugin.evolve,
+  decide: ChangeProductPrice_Behavior$CatalogPlugin.decide,
+  moduleUrl: ChangeProductPrice_Behavior$CatalogPlugin.moduleUrl
 });
 
 let AddCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddCategory$CatalogPlugin.name,
   moduleUrl: AddCategory$CatalogPlugin.moduleUrl,
-  initialState: AddCategory$CatalogPlugin.initialState,
-  consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
-  evolve: AddCategory$CatalogPlugin.evolve,
-  errorSchema: AddCategory$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: AddCategory$CatalogPlugin.consumedEventSchema,
+  errorSchema: AddCategory$CatalogPlugin.errorSchema,
   eventSchema: AddCategory$CatalogPlugin.eventSchema,
-  decide: AddCategory$CatalogPlugin.decide,
   commandSchema: AddCategory$CatalogPlugin.commandSchema
+})({
+  initialState: AddCategory_Behavior$CatalogPlugin.initialState,
+  evolve: AddCategory_Behavior$CatalogPlugin.evolve,
+  decide: AddCategory_Behavior$CatalogPlugin.decide,
+  moduleUrl: AddCategory_Behavior$CatalogPlugin.moduleUrl
 });
 
 let RenameCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: RenameCategory$CatalogPlugin.name,
   moduleUrl: RenameCategory$CatalogPlugin.moduleUrl,
-  initialState: RenameCategory$CatalogPlugin.initialState,
-  consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
-  evolve: RenameCategory$CatalogPlugin.evolve,
-  errorSchema: RenameCategory$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: RenameCategory$CatalogPlugin.consumedEventSchema,
+  errorSchema: RenameCategory$CatalogPlugin.errorSchema,
   eventSchema: RenameCategory$CatalogPlugin.eventSchema,
-  decide: RenameCategory$CatalogPlugin.decide,
   commandSchema: RenameCategory$CatalogPlugin.commandSchema
+})({
+  initialState: RenameCategory_Behavior$CatalogPlugin.initialState,
+  evolve: RenameCategory_Behavior$CatalogPlugin.evolve,
+  decide: RenameCategory_Behavior$CatalogPlugin.decide,
+  moduleUrl: RenameCategory_Behavior$CatalogPlugin.moduleUrl
 });
 
 let ArchiveCategoryMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ArchiveCategory$CatalogPlugin.name,
   moduleUrl: ArchiveCategory$CatalogPlugin.moduleUrl,
-  initialState: ArchiveCategory$CatalogPlugin.initialState,
-  consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
-  evolve: ArchiveCategory$CatalogPlugin.evolve,
-  errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ArchiveCategory$CatalogPlugin.consumedEventSchema,
+  errorSchema: ArchiveCategory$CatalogPlugin.errorSchema,
   eventSchema: ArchiveCategory$CatalogPlugin.eventSchema,
-  decide: ArchiveCategory$CatalogPlugin.decide,
   commandSchema: ArchiveCategory$CatalogPlugin.commandSchema
+})({
+  initialState: ArchiveCategory_Behavior$CatalogPlugin.initialState,
+  evolve: ArchiveCategory_Behavior$CatalogPlugin.evolve,
+  decide: ArchiveCategory_Behavior$CatalogPlugin.decide,
+  moduleUrl: ArchiveCategory_Behavior$CatalogPlugin.moduleUrl
 });
 
 async function publishJsons(cmdJsons) {

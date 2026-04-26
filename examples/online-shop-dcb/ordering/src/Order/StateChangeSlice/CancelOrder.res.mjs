@@ -3,15 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let initialState_productIds = [];
-
-let initialState = {
-  exists: false,
-  shipped: false,
-  cancelled: false,
-  productIds: initialState_productIds
-};
-
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
@@ -20,33 +11,6 @@ let consumedEventSchema = S.union([
   S.literal("OrderShipped"),
   S.literal("OrderCancelled")
 ]);
-
-function evolve(state, event) {
-  if (typeof event !== "object") {
-    if (event === "OrderShipped") {
-      return {
-        exists: state.exists,
-        shipped: true,
-        cancelled: state.cancelled,
-        productIds: state.productIds
-      };
-    } else {
-      return {
-        exists: state.exists,
-        shipped: state.shipped,
-        cancelled: true,
-        productIds: state.productIds
-      };
-    }
-  } else {
-    return {
-      exists: true,
-      shipped: false,
-      cancelled: false,
-      productIds: event.productIds
-    };
-  }
-}
 
 let commandSchema = S.schema(s => ({
   TAG: "CancelOrder",
@@ -64,36 +28,6 @@ let eventSchema = S.schema(s => ({
   productIds: s.m(S.array(DcbTag$Reventless.string))
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    if (state.shipped) {
-      return {
-        TAG: "Error",
-        _0: "OrderAlreadyShipped"
-      };
-    } else if (state.cancelled) {
-      return {
-        TAG: "Ok",
-        _0: []
-      };
-    } else {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "OrderCancelled",
-            orderId: command.orderId,
-            productIds: state.productIds
-          }]
-      };
-    }
-  } else {
-    return {
-      TAG: "Error",
-      _0: "OrderNotFound"
-    };
-  }
-}
-
 let name = "CancelOrder";
 
 let Id;
@@ -103,13 +37,10 @@ let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/StateChangeSl
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

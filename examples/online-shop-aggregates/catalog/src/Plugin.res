@@ -52,7 +52,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~extensions=[module(OrdersExtensionMaker)],
   )
 
-  let make = () =>
+  let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
@@ -62,5 +62,15 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), module(ProductsReadModelMaker)],
       ~tasks=[module(ImportProductsTask)],
       ~pluginStructure=pluginStructure,
+      ~uiFragments=?uiBundleUrl->Option.map(url =>
+        Platform.Plugin.makeAutoUIManifest(
+          ~remoteEntryUrl=url,
+          ~name="Catalog",
+          ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
+          ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), module(ProductsReadModelMaker)],
+          ~readModelPositions=["platform-summary"],
+          ~aggregatePositions=["resource-detail"],
+        )
+      ),
     )
 }

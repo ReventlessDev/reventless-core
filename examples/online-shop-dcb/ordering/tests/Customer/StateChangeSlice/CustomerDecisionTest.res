@@ -9,19 +9,19 @@ describe("RegisterCustomer:", () => {
   describe("evolve", () => {
     test("CustomerRegistered sets exists=true", () =>
       expect(
-        RegisterCustomer.evolve(
-          RegisterCustomer.initialState,
+        RegisterCustomer_Behavior.evolve(
+          RegisterCustomer_Behavior.initialState,
           RegisterCustomer.CustomerRegistered,
         ),
-      )->toEqual({RegisterCustomer.exists: true})
+      )->toEqual({RegisterCustomer_Behavior.exists: true})
     )
   })
 
   describe("decide", () => {
     test("on non-existent customer produces CustomerRegistered", () =>
       expect(
-        RegisterCustomer.decide(
-          RegisterCustomer.initialState,
+        RegisterCustomer_Behavior.decide(
+          RegisterCustomer_Behavior.initialState,
           RegisterCustomer.RegisterCustomer({
             customerId: "cust-1",
             email: "alice@example.com",
@@ -41,8 +41,8 @@ describe("RegisterCustomer:", () => {
 
     test("on existing customer returns CustomerAlreadyRegistered", () =>
       expect(
-        RegisterCustomer.decide(
-          {RegisterCustomer.exists: true},
+        RegisterCustomer_Behavior.decide(
+          {RegisterCustomer_Behavior.exists: true},
           RegisterCustomer.RegisterCustomer({
             customerId: "cust-1",
             email: "alice@example.com",
@@ -55,7 +55,7 @@ describe("RegisterCustomer:", () => {
 })
 
 describe("ChangeEmail:", () => {
-  let activeState: ChangeEmail.state = {
+  let activeState: ChangeEmail_Behavior.state = {
     exists: true,
     deactivated: false,
     currentEmail: "alice@example.com",
@@ -64,8 +64,8 @@ describe("ChangeEmail:", () => {
   describe("decide", () => {
     test("on non-existent customer returns CustomerNotFound", () =>
       expect(
-        ChangeEmail.decide(
-          ChangeEmail.initialState,
+        ChangeEmail_Behavior.decide(
+          ChangeEmail_Behavior.initialState,
           ChangeEmail.ChangeEmail({customerId: "cust-1", email: "new@example.com"}),
         ),
       )->toEqual(Error(ChangeEmail.CustomerNotFound))
@@ -73,7 +73,7 @@ describe("ChangeEmail:", () => {
 
     test("on deactivated customer returns CustomerAlreadyDeactivated", () =>
       expect(
-        ChangeEmail.decide(
+        ChangeEmail_Behavior.decide(
           {...activeState, deactivated: true},
           ChangeEmail.ChangeEmail({customerId: "cust-1", email: "new@example.com"}),
         ),
@@ -82,7 +82,7 @@ describe("ChangeEmail:", () => {
 
     test("same email produces no events (idempotent)", () =>
       expect(
-        ChangeEmail.decide(
+        ChangeEmail_Behavior.decide(
           activeState,
           ChangeEmail.ChangeEmail({customerId: "cust-1", email: "alice@example.com"}),
         ),
@@ -91,7 +91,7 @@ describe("ChangeEmail:", () => {
 
     test("new email produces EmailChanged", () =>
       expect(
-        ChangeEmail.decide(
+        ChangeEmail_Behavior.decide(
           activeState,
           ChangeEmail.ChangeEmail({customerId: "cust-1", email: "alice2@example.com"}),
         ),
@@ -103,7 +103,7 @@ describe("ChangeEmail:", () => {
 })
 
 describe("ChangeAddress:", () => {
-  let activeState: ChangeAddress.state = {
+  let activeState: ChangeAddress_Behavior.state = {
     exists: true,
     deactivated: false,
     currentAddress: "123 Main St",
@@ -112,8 +112,8 @@ describe("ChangeAddress:", () => {
   describe("decide", () => {
     test("on non-existent customer returns CustomerNotFound", () =>
       expect(
-        ChangeAddress.decide(
-          ChangeAddress.initialState,
+        ChangeAddress_Behavior.decide(
+          ChangeAddress_Behavior.initialState,
           ChangeAddress.ChangeAddress({customerId: "cust-1", address: "789 Pine Rd"}),
         ),
       )->toEqual(Error(ChangeAddress.CustomerNotFound))
@@ -121,7 +121,7 @@ describe("ChangeAddress:", () => {
 
     test("same address produces no events (idempotent)", () =>
       expect(
-        ChangeAddress.decide(
+        ChangeAddress_Behavior.decide(
           activeState,
           ChangeAddress.ChangeAddress({customerId: "cust-1", address: "123 Main St"}),
         ),
@@ -130,7 +130,7 @@ describe("ChangeAddress:", () => {
 
     test("new address produces AddressChanged", () =>
       expect(
-        ChangeAddress.decide(
+        ChangeAddress_Behavior.decide(
           activeState,
           ChangeAddress.ChangeAddress({customerId: "cust-1", address: "789 Pine Rd"}),
         ),
@@ -145,8 +145,8 @@ describe("DeactivateCustomer:", () => {
   describe("decide", () => {
     test("on non-existent customer returns CustomerNotFound", () =>
       expect(
-        DeactivateCustomer.decide(
-          DeactivateCustomer.initialState,
+        DeactivateCustomer_Behavior.decide(
+          DeactivateCustomer_Behavior.initialState,
           DeactivateCustomer.DeactivateCustomer({customerId: "cust-1"}),
         ),
       )->toEqual(Error(DeactivateCustomer.CustomerNotFound))
@@ -154,8 +154,8 @@ describe("DeactivateCustomer:", () => {
 
     test("on already deactivated customer returns Ok([]) (idempotent)", () =>
       expect(
-        DeactivateCustomer.decide(
-          {DeactivateCustomer.exists: true, deactivated: true},
+        DeactivateCustomer_Behavior.decide(
+          {DeactivateCustomer_Behavior.exists: true, deactivated: true},
           DeactivateCustomer.DeactivateCustomer({customerId: "cust-1"}),
         ),
       )->toEqual(Ok([]))
@@ -163,8 +163,8 @@ describe("DeactivateCustomer:", () => {
 
     test("on active customer produces CustomerDeactivated", () =>
       expect(
-        DeactivateCustomer.decide(
-          {DeactivateCustomer.exists: true, deactivated: false},
+        DeactivateCustomer_Behavior.decide(
+          {DeactivateCustomer_Behavior.exists: true, deactivated: false},
           DeactivateCustomer.DeactivateCustomer({customerId: "cust-1"}),
         ),
       )->toEqual(

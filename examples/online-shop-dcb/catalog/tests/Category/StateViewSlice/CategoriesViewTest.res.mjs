@@ -2,7 +2,7 @@
 
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as CategoriesView$CatalogPlugin from "../../../src/Category/StateViewSlice/CategoriesView.res.mjs";
+import * as CategoriesView_Projection$CatalogPlugin from "../../../src/Category/StateViewSlice/CategoriesView_Projection.res.mjs";
 
 let baseCategory = {
   categoryId: "c1",
@@ -20,8 +20,8 @@ function applyFirstUpdate(actions, baseState) {
   });
 }
 
-Jest.describe("CategoriesView.project:", () => {
-  Jest.test("CategoryAdded creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(CategoriesView$CatalogPlugin.project({
+Jest.describe("CategoriesView_Projection.project:", () => {
+  Jest.test("CategoryAdded creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(CategoriesView_Projection$CatalogPlugin.project({
     TAG: "CategoryAdded",
     categoryId: "c1",
     name: "Electronics"
@@ -34,7 +34,7 @@ Jest.describe("CategoriesView.project:", () => {
         archived: false
       }
     }]));
-  Jest.test("CategoryRenamed Update function changes name", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CategoriesView$CatalogPlugin.project({
+  Jest.test("CategoryRenamed Update function changes name", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CategoriesView_Projection$CatalogPlugin.project({
     TAG: "CategoryRenamed",
     categoryId: "c1",
     name: "Consumer Electronics"
@@ -43,7 +43,7 @@ Jest.describe("CategoriesView.project:", () => {
     name: "Consumer Electronics",
     archived: false
   }));
-  Jest.test("CategoryArchived Update function sets archived=true", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CategoriesView$CatalogPlugin.project({
+  Jest.test("CategoryArchived Update function sets archived=true", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(CategoriesView_Projection$CatalogPlugin.project({
     TAG: "CategoryArchived",
     categoryId: "c1"
   }), baseCategory)), {

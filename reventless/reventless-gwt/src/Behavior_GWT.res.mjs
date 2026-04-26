@@ -5,11 +5,243 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as JestBind$ReventlessGwt from "./JestBind.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 
+function encodeTag(t) {
+  let d = {};
+  d["key"] = t.key;
+  d["value"] = t.value;
+  return d;
+}
+
+function encodeQueryItem(qi) {
+  let d = {};
+  let types = qi.eventTypes;
+  if (types !== undefined) {
+    d["eventTypes"] = types.map(prim => prim);
+  }
+  let tags = qi.tags;
+  if (tags !== undefined) {
+    d["tags"] = tags.map(encodeTag);
+  }
+  return d;
+}
+
+function encodeQuery(q) {
+  return q.map(encodeQueryItem);
+}
+
+function encodeAppendCondition(c) {
+  let d = {};
+  d["query"] = c.query.map(encodeQueryItem);
+  let pos = c.after;
+  if (pos !== undefined) {
+    d["after"] = pos;
+  }
+  return d;
+}
+
 function Make(Spec) {
+  return Behavior => {
+    S.enableJson();
+    let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, body);
+    let errors = {
+      contents: []
+    };
+    let derivedCondition = {
+      contents: undefined
+    };
+    let appendConditionFailure = {
+      contents: undefined
+    };
+    let consumedEventTypes = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema).eventTypes;
+    let queryTagsTotal = q => Stdlib_Array.reduce(q, 0, (acc, qi) => acc + Stdlib_Option.mapOr(qi.tags, 0, t => t.length) | 0);
+    let givenEvents = consumed => consumed;
+    let whenCmd = (history, cmd) => {
+      errors.contents = [];
+      appendConditionFailure.contents = undefined;
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd);
+      let condition = {
+        query: query
+      };
+      derivedCondition.contents = condition;
+      if (consumedEventTypes.length !== 0 && queryTagsTotal(query) === 0) {
+        appendConditionFailure.contents = {
+          TAG: "AppendConditionMismatch",
+          expected: "a non-empty tag set derived from @s.matches(DcbTag.string) fields on the command",
+          actual: encodeAppendCondition(condition)
+        };
+      }
+      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
+      let events = Behavior.decide(state, cmd);
+      if (events.TAG === "Ok") {
+        return events._0;
+      }
+      errors.contents = [events._0];
+      return [];
+    };
+    let encEvent = e => Message$ReventlessCore.encode(e, Spec.eventSchema);
+    let encError = err => Message$ReventlessCore.encode(err, Spec.errorSchema);
+    let checkAppendCondition = () => Stdlib_Option.map(appendConditionFailure.contents, Outcome$ReventlessGwt.fail);
+    let unexpectedError = events => {
+      let actual = Stdlib_Option.map(errors.contents[0], encError);
+      return Outcome$ReventlessGwt.fail({
+        TAG: "ErrorMismatch",
+        expected: null,
+        actual: actual,
+        actualEvents: events.map(encEvent)
+      });
+    };
+    let thenEvents = (events, expectedEvents) => {
+      let o = checkAppendCondition();
+      if (o !== undefined) {
+        return o;
+      } else if (errors.contents.length !== 0) {
+        return unexpectedError(events);
+      } else if (Primitive_object.equal(events, expectedEvents)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "EventsMismatch",
+          expected: expectedEvents.map(encEvent),
+          actual: events.map(encEvent)
+        });
+      }
+    };
+    let thenEvent = (events, expectedEvent) => thenEvents(events, [expectedEvent]);
+    let thenNoEvent = events => {
+      let o = checkAppendCondition();
+      if (o !== undefined) {
+        return o;
+      } else if (errors.contents.length !== 0) {
+        return unexpectedError(events);
+      } else if (events.length === 0) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "NoEventExpected",
+          actual: events.map(encEvent)
+        });
+      }
+    };
+    let matchesError = (events, expectedEvents, expectedError) => {
+      let expectedErrorJson = Message$ReventlessCore.encode(expectedError, Spec.errorSchema);
+      let actual = errors.contents[0];
+      if (actual === undefined) {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: expectedErrorJson,
+          actual: undefined,
+          actualEvents: events.map(encEvent)
+        });
+      }
+      let actual$1 = Primitive_option.valFromOption(actual);
+      if (Primitive_object.notequal(actual$1, expectedError)) {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: expectedErrorJson,
+          actual: Message$ReventlessCore.encode(actual$1, Spec.errorSchema),
+          actualEvents: events.map(encEvent)
+        });
+      } else if (Primitive_object.equal(events, expectedEvents)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "EventsMismatch",
+          expected: expectedEvents.map(encEvent),
+          actual: events.map(encEvent)
+        });
+      }
+    };
+    let thenError = (events, expectedError) => {
+      let o = checkAppendCondition();
+      if (o !== undefined) {
+        return o;
+      } else {
+        return matchesError(events, [], expectedError);
+      }
+    };
+    let thenEventWithError = (events, expectedEvent, expectedError) => {
+      let o = checkAppendCondition();
+      if (o !== undefined) {
+        return o;
+      } else {
+        return matchesError(events, [expectedEvent], expectedError);
+      }
+    };
+    let thenEventsWithError = (events, expectedEvents, expectedError) => {
+      let o = checkAppendCondition();
+      if (o !== undefined) {
+        return o;
+      } else {
+        return matchesError(events, expectedEvents, expectedError);
+      }
+    };
+    let thenAppendsConditionedOn = (_events, expectedQuery) => {
+      let cond = derivedCondition.contents;
+      if (cond !== undefined) {
+        if (Primitive_object.equal(cond.query, expectedQuery)) {
+          return Outcome$ReventlessGwt.pass;
+        } else {
+          return Outcome$ReventlessGwt.fail({
+            TAG: "AppendConditionMismatch",
+            expected: encodeAppendCondition({
+              query: expectedQuery
+            }),
+            actual: encodeAppendCondition(cond)
+          });
+        }
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "Throw",
+          error: "thenAppendsConditionedOn: whenCmd must be called before this assertion",
+          stack: ""
+        });
+      }
+    };
+    let thenAppendsConditionedOnExactly = (_events, expectedCondition) => {
+      let cond = derivedCondition.contents;
+      if (cond !== undefined) {
+        if (Primitive_object.equal(cond, expectedCondition)) {
+          return Outcome$ReventlessGwt.pass;
+        } else {
+          return Outcome$ReventlessGwt.fail({
+            TAG: "AppendConditionMismatch",
+            expected: encodeAppendCondition(expectedCondition),
+            actual: encodeAppendCondition(cond)
+          });
+        }
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "Throw",
+          error: "thenAppendsConditionedOnExactly: whenCmd must be called before this assertion",
+          stack: ""
+        });
+      }
+    };
+    return {
+      Spec: Spec,
+      describe: JestBind$ReventlessGwt.describe,
+      test: test,
+      givenEvents: givenEvents,
+      whenCmd: whenCmd,
+      thenEvent: thenEvent,
+      thenEvents: thenEvents,
+      thenNoEvent: thenNoEvent,
+      thenEventWithError: thenEventWithError,
+      thenEventsWithError: thenEventsWithError,
+      thenError: thenError,
+      thenAppendsConditionedOn: thenAppendsConditionedOn,
+      thenAppendsConditionedOnExactly: thenAppendsConditionedOnExactly
+    };
+  };
+}
+
+function MakeFromAggregate(Spec) {
   return Behavior => {
     S.enableJson();
     let test = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, body);
@@ -129,6 +361,11 @@ function Make(Spec) {
 }
 
 export {
+  encodeTag,
+  encodeQueryItem,
+  encodeQuery,
+  encodeAppendCondition,
   Make,
+  MakeFromAggregate,
 }
 /* S Not a pure module */

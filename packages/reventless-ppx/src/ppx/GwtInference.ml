@@ -21,10 +21,8 @@ open Ppxlib
       {- [Automation]                 (was [AutomationSlice], Plan 01)}
       {- [InboundTranslation]         (was [InboundTranslationSlice], Plan 01)}
       {- [OutboundTranslation]        (was [OutboundTranslationSlice], Plan 01)}
-      {- [StateChangeSlice]           (Plan 02 will rename to [Behavior])}
-      {- [StateViewSlice]             (Plan 02 will rename to [Projection])}
-      {- [Projection]}
-      {- [Behavior]}}
+      {- [Behavior]                   (Aggregate + StateChangeSlice, Plan 02 Phase 3b)}
+      {- [Projection]                 (StateViewSlice, Plan 02 Phase 3b)}}
 
     Folder segments match on the short base form ("StateChange"), the long
     form ("StateChangeSlice"), or the plural form ("StateChangeSlices"), as
@@ -163,8 +161,8 @@ let gen_include_one ~loc ~kind ~spec_module : structure_item =
     };
     pstr_loc = loc }
 
-let gen_include_two ~loc ~spec_module ~behavior_module : structure_item =
-  let make_lid = make_functor_lid ~loc ~dsl_module:"Behavior_GWT" in
+let gen_include_two ~loc ~kind ~spec_module ~impl_module : structure_item =
+  let make_lid = make_functor_lid ~loc ~dsl_module:(kind ^ "_GWT") in
   let make_mod =
     { pmod_desc = Pmod_ident { txt = make_lid; loc };
       pmod_loc = loc;
@@ -175,8 +173,8 @@ let gen_include_two ~loc ~spec_module ~behavior_module : structure_item =
       pmod_loc = loc;
       pmod_attributes = [] }
   in
-  let behavior_mod =
-    { pmod_desc = Pmod_ident { txt = Lident behavior_module; loc };
+  let impl_mod =
+    { pmod_desc = Pmod_ident { txt = Lident impl_module; loc };
       pmod_loc = loc;
       pmod_attributes = [] }
   in
@@ -186,7 +184,7 @@ let gen_include_two ~loc ~spec_module ~behavior_module : structure_item =
       pmod_attributes = [] }
   in
   let applied_twice =
-    { pmod_desc = Pmod_apply (applied_once, behavior_mod);
+    { pmod_desc = Pmod_apply (applied_once, impl_mod);
       pmod_loc = loc;
       pmod_attributes = [] }
   in
@@ -196,6 +194,13 @@ let gen_include_two ~loc ~spec_module ~behavior_module : structure_item =
       pincl_attributes = [];
     };
     pstr_loc = loc }
+
+(* Plan 02 Phase 3b: Behavior and Projection DSLs are both two-functor. The
+   shared check is used in payload validation and in default Empty-payload
+   resolution. *)
+let is_two_arg_kind = function
+  | "Behavior" | "Projection" -> true
+  | _ -> false
 
 (** Emit [open <name>] at [loc]. *)
 let gen_open ~loc name : structure_item =
@@ -264,27 +269,36 @@ let transform (str : structure) : structure =
        3. Empty + Behavior kind: two local modules (Spec, Behavior).
        4. Empty + other kind: one local module if present, else derive Spec
           from the filename stem (external Spec).  *)
-    let (spec_name, behavior_name_opt, spec_is_external) =
-      match payload, kind with
-      | Two (spec, behavior), "Behavior" -> (spec, Some behavior, false)
-      | Two _, _ ->
+    let two_arg = is_two_arg_kind kind in
+    let (spec_name, impl_name_opt, spec_is_external) =
+      match payload, two_arg with
+      | Two (spec, impl), true -> (spec, Some impl, false)
+      | Two _, false ->
         Location.raise_errorf ~loc:attr_loc
           "@@reventless.gwt: a two-module payload is only valid for the \
-           Behavior DSL. Got kind %s." kind
-      | One spec, "Behavior" ->
+           Behavior or Projection DSL. Got kind %s." kind
+      | One spec, true ->
         Location.raise_errorf ~loc:attr_loc
-          "@@reventless.gwt: the Behavior DSL needs a (Spec, Behavior) pair. \
-           Use @@reventless.gwt(%s, <Behavior>)." spec
-      | One spec, _ -> (spec, None, true)
-      | Empty, "Behavior" ->
+          "@@reventless.gwt: the %s DSL needs a (Spec, %s) pair. \
+           Use @@reventless.gwt(%s, <%s>)." kind kind spec kind
+      | One spec, false -> (spec, None, true)
+      | Empty, true ->
         (match find_first_top_modules 2 body with
-         | [spec; behavior] -> (spec, Some behavior, false)
+         | [spec; impl] -> (spec, Some impl, false)
          | _ ->
-           Location.raise_errorf ~loc:attr_loc
-             "@@reventless.gwt: Behavior DSL needs two top-level modules \
-              (Spec followed by Behavior). Found fewer. Either declare both \
-              or use @@reventless.gwt(Spec, Behavior).")
-      | Empty, _ ->
+           (* Try external Spec derivation: filename stem with GWT suffix
+              stripped, paired with a derived impl module name (e.g.
+              [<Stem>_Behavior] / [<Stem>_Projection]). *)
+           (match Util.spec_name_from_gwt_filename fname with
+            | Some stem ->
+              let impl = stem ^ "_" ^ kind in
+              (stem, Some impl, true)
+            | None ->
+              Location.raise_errorf ~loc:attr_loc
+                "@@reventless.gwt: %s DSL needs two top-level modules \
+                 (Spec followed by %s). Found fewer. Either declare both \
+                 or use @@reventless.gwt(Spec, %s)." kind kind kind))
+      | Empty, false ->
         (match find_first_top_modules 1 body with
          | [name] -> (name, None, false)
          | _ ->
@@ -300,9 +314,9 @@ let transform (str : structure) : structure =
     in
     let open_item = gen_open ~loc:attr_loc spec_name in
     let include_item =
-      match behavior_name_opt with
-      | Some bname ->
-        gen_include_two ~loc:attr_loc ~spec_module:spec_name ~behavior_module:bname
+      match impl_name_opt with
+      | Some impl_name ->
+        gen_include_two ~loc:attr_loc ~kind ~spec_module:spec_name ~impl_module:impl_name
       | None ->
         gen_include_one ~loc:attr_loc ~kind ~spec_module:spec_name
     in
@@ -324,13 +338,13 @@ let transform (str : structure) : structure =
       injection_items @ body
     else
       let inject_after_idx =
-        match behavior_name_opt with
-        | Some bname ->
-          (match find_module_index bname body with
+        match impl_name_opt with
+        | Some iname ->
+          (match find_module_index iname body with
            | Some i -> i
            | None ->
              Location.raise_errorf ~loc:attr_loc
-               "@@reventless.gwt: behavior module %s not found at top level." bname)
+               "@@reventless.gwt: implementation module %s not found at top level." iname)
         | None ->
           (match find_module_index spec_name body with
            | Some i -> i

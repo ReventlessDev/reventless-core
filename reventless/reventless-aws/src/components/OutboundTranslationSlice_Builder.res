@@ -1,8 +1,5 @@
 // OutboundTranslationSlice_Builder (AWS)
 // Wires AWS adapters and delegates to the core ReventlessCore.OutboundTranslationSlice_Builder.
-// Internal: splices a legacy MergedSpec into (Spec, Translation) for the
-// new two-arg framework form. External signature stays on MergedSpec
-// until Phase 5 migrates examples to native split form.
 
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
@@ -31,33 +28,13 @@ module Make = (Api: {
   )
 
   module Make = (
-    Spec: Reventless.OutboundTranslationSlice.MergedSpec,
-  ): (
-    ReventlessCore.OutboundTranslationSlice.T
-      with module Spec = Spec
-  ) => {
-    module LeanSpec = {
-      let name = Spec.name
-      let moduleUrl = Spec.moduleUrl
-      type consumedEvent = Spec.consumedEvent
-      let consumedEventSchema = Spec.consumedEventSchema
-      type outboundItem = Spec.outboundItem
-      let outboundItemSchema = Spec.outboundItemSchema
-      type inboundCommand = Spec.inboundCommand
-      let inboundCommandSchema = Spec.inboundCommandSchema
-      let maxRetries = Spec.maxRetries
-      let heartbeatInterval = Spec.heartbeatInterval
-      let targetName = Spec.targetName
-    }
-    module TranslationImpl = {
-      let collect = Spec.collect
-      let translate = Spec.translate
-      let moduleUrl = Spec.moduleUrl
-    }
-    module InnerMake = Inner.Make(LeanSpec, TranslationImpl)
+    Spec: Reventless.OutboundTranslationSlice.Spec,
+    Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec,
+  ): (ReventlessCore.OutboundTranslationSlice.T with module Spec = Spec) => {
+    module InnerMake = Inner.Make(Spec, Translation)
 
     module Spec = Spec
-    module Translation = TranslationImpl
+    module Translation = Translation
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
 

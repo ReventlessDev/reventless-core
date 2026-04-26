@@ -36,59 +36,6 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
-function project(event) {
-  switch (event.TAG) {
-    case "ProductAdded" :
-      let productId = event.productId;
-      return [{
-          TAG: "Set",
-          _0: productId,
-          _1: {
-            productId: productId,
-            name: event.name,
-            description: event.description,
-            price: event.price
-          }
-        }];
-    case "ProductNameChanged" :
-      let name = event.name;
-      return [{
-          TAG: "Update",
-          _0: event.productId,
-          _1: state => ({
-            productId: state.productId,
-            name: name,
-            description: state.description,
-            price: state.price
-          })
-        }];
-    case "ProductDescriptionChanged" :
-      let description = event.description;
-      return [{
-          TAG: "Update",
-          _0: event.productId,
-          _1: state => ({
-            productId: state.productId,
-            name: state.name,
-            description: description,
-            price: state.price
-          })
-        }];
-    case "ProductPriceChanged" :
-      let price = event.price;
-      return [{
-          TAG: "Update",
-          _0: event.productId,
-          _1: state => ({
-            productId: state.productId,
-            name: state.name,
-            description: state.description,
-            price: price
-          })
-        }];
-  }
-}
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let name = "Products";
@@ -104,7 +51,6 @@ export {
   Id,
   stateSchema,
   consumedEventSchema,
-  project,
   config,
   subIdConfig,
   moduleUrl,

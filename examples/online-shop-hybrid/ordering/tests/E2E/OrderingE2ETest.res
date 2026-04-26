@@ -36,10 +36,11 @@ let eventLog = OrderingEventLogMaker.make(~name="Ordering", ~partitionTag=Revent
 
 module SyncCatalogProductMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(
   SyncCatalogProduct,
+  SyncCatalogProduct_Behavior,
 )
-module PlaceOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(PlaceOrder)
-module ShipOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ShipOrder)
-module CancelOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(CancelOrder)
+module PlaceOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(PlaceOrder, PlaceOrder_Behavior)
+module ShipOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ShipOrder, ShipOrder_Behavior)
+module CancelOrderMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(CancelOrder, CancelOrder_Behavior)
 
 // publishJsons routing — dispatches each command to its registered StateChangeSlice handler.
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {

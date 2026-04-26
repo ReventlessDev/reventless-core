@@ -6,6 +6,22 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Generator_Node$Reventless from "./Generator_Node.res.mjs";
 
+let implSuffixForStateChange = "_Behavior";
+
+let implSuffixForStateView = "_Projection";
+
+let implSuffixForAutomation = "_Automation";
+
+let implSuffixForTranslation = "_Translation";
+
+function isImplStem(stem) {
+  if (stem.endsWith(implSuffixForStateChange) || stem.endsWith(implSuffixForStateView) || stem.endsWith(implSuffixForAutomation)) {
+    return true;
+  } else {
+    return stem.endsWith(implSuffixForTranslation);
+  }
+}
+
 function findEventMappings(srcDir) {
   let dict = {};
   let emDir = Nodepath.join(srcDir, "EventMappings");
@@ -108,26 +124,50 @@ function resolve(discovered, srcDir) {
     let stem = param.stem;
     switch (componentType) {
       case "StateChangeSlice" :
-        stateChangeSlices.push(stem);
-        return;
+        if (!isImplStem(stem)) {
+          stateChangeSlices.push(stem);
+          return;
+        } else {
+          return;
+        }
       case "StateViewSlice" :
-        stateViewSlices.push(stem);
-        return;
+        if (!isImplStem(stem)) {
+          stateViewSlices.push(stem);
+          return;
+        } else {
+          return;
+        }
       case "StateViewSliceStream" :
-        stateViewSlicesStream.push(stem);
-        return;
+        if (!isImplStem(stem)) {
+          stateViewSlicesStream.push(stem);
+          return;
+        } else {
+          return;
+        }
       case "AutomationSlice" :
-        automationSlices.push(stem);
-        automationSliceRelPaths[stem] = relPath;
-        return;
+        if (!isImplStem(stem)) {
+          automationSlices.push(stem);
+          automationSliceRelPaths[stem] = relPath;
+          return;
+        } else {
+          return;
+        }
       case "InboundTranslationSlice" :
-        inboundTranslationSlices.push(stem);
-        inboundTranslationSliceRelPaths[stem] = relPath;
-        return;
+        if (!isImplStem(stem)) {
+          inboundTranslationSlices.push(stem);
+          inboundTranslationSliceRelPaths[stem] = relPath;
+          return;
+        } else {
+          return;
+        }
       case "OutboundTranslationSlice" :
-        outboundTranslationSlices.push(stem);
-        outboundTranslationSliceRelPaths[stem] = relPath;
-        return;
+        if (!isImplStem(stem)) {
+          outboundTranslationSlices.push(stem);
+          outboundTranslationSliceRelPaths[stem] = relPath;
+          return;
+        } else {
+          return;
+        }
       case "Aggregate" :
         if (stem.endsWith("Behavior")) {
           aggregateBehaviors.push(stem);
@@ -240,6 +280,11 @@ function resolve(discovered, srcDir) {
 }
 
 export {
+  implSuffixForStateChange,
+  implSuffixForStateView,
+  implSuffixForAutomation,
+  implSuffixForTranslation,
+  isImplStem,
   findEventMappings,
   extractMappingModules,
   sortedStems,

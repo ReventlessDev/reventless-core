@@ -2,7 +2,7 @@
 
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as ProductsView$CatalogPlugin from "../../../src/Product/StateViewSlice/ProductsView.res.mjs";
+import * as ProductsView_Projection$CatalogPlugin from "../../../src/Product/StateViewSlice/ProductsView_Projection.res.mjs";
 
 let baseProduct = {
   productId: "p1",
@@ -21,8 +21,8 @@ function applyFirstUpdate(actions, baseState) {
   });
 }
 
-Jest.describe("ProductsView.project:", () => {
-  Jest.test("ProductAdded creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(ProductsView$CatalogPlugin.project({
+Jest.describe("ProductsView_Projection.project:", () => {
+  Jest.test("ProductAdded creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(ProductsView_Projection$CatalogPlugin.project({
     TAG: "ProductAdded",
     productId: "p1",
     name: "Laptop",
@@ -38,7 +38,7 @@ Jest.describe("ProductsView.project:", () => {
         price: 999.99
       }
     }]));
-  Jest.test("ProductNameChanged Update function changes name", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project({
+  Jest.test("ProductNameChanged Update function changes name", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView_Projection$CatalogPlugin.project({
     TAG: "ProductNameChanged",
     productId: "p1",
     name: "Gaming Laptop"
@@ -48,7 +48,7 @@ Jest.describe("ProductsView.project:", () => {
     description: "A laptop",
     price: 999.99
   }));
-  Jest.test("ProductDescriptionChanged Update function changes description", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project({
+  Jest.test("ProductDescriptionChanged Update function changes description", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView_Projection$CatalogPlugin.project({
     TAG: "ProductDescriptionChanged",
     productId: "p1",
     description: "A high-end laptop"
@@ -58,7 +58,7 @@ Jest.describe("ProductsView.project:", () => {
     description: "A high-end laptop",
     price: 999.99
   }));
-  Jest.test("ProductPriceChanged Update function changes price", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView$CatalogPlugin.project({
+  Jest.test("ProductPriceChanged Update function changes price", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(ProductsView_Projection$CatalogPlugin.project({
     TAG: "ProductPriceChanged",
     productId: "p1",
     price: 899.99

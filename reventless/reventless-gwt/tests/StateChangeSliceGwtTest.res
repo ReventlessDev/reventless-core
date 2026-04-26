@@ -1,27 +1,22 @@
-// Worked example for StateChangeSlice_GWT.
+// Worked example for Behavior_GWT (slice flavor).
 // Uses the canonical "AddCategory" DCB slice shape — payload-less consumed
 // events, decide that appends `CategoryAdded` unless the category already
 // exists. Command carries a `@s.matches(DcbTag.string)` annotated ID so the
 // DCB optimistic-concurrency query resolves to a single-entity read.
+//
+// Plan 02 Phase 6: split-form Spec/Behavior; PPX inference resolves the
+// folder kind from the test path's "StateChangeSlice" substring → Behavior
+// DSL → emits [include Behavior_GWT.Make(Spec, Behavior)].
 
 @@reventless.gwt
 
 module AddCategorySlice = {
   let name = "AddCategory"
 
-  type state = {exists: bool, archived: bool}
-  let initialState = {exists: false, archived: false}
-
   @schema
   type consumedEvent =
     | CategoryAdded
     | CategoryArchived
-
-  let evolve = (state, event) =>
-    switch event {
-    | CategoryAdded => {exists: true, archived: false}
-    | CategoryArchived => {...state, archived: true}
-    }
 
   @schema
   type command =
@@ -33,8 +28,22 @@ module AddCategorySlice = {
   @schema
   type event =
     CategoryAdded({categoryId: @s.matches(Reventless.DcbTag.string) string, name: string})
+}
 
-  let decide = (state, command) =>
+module AddCategorySliceBehavior = {
+  module Spec = AddCategorySlice
+  open AddCategorySlice
+
+  type state = {exists: bool, archived: bool}
+  let initialState: state = {exists: false, archived: false}
+
+  let evolve = (state: state, event: consumedEvent): state =>
+    switch event {
+    | CategoryAdded => {exists: true, archived: false}
+    | CategoryArchived => {...state, archived: true}
+    }
+
+  let decide = (state: state, command: command): result<array<event>, error> =>
     switch command {
     | AddCategory({categoryId, name}) =>
       state.exists ? Error(CategoryAlreadyExists) : Ok([CategoryAdded({categoryId, name})])
@@ -85,13 +94,8 @@ describe("AddCategory StateChangeSlice", () => {
 module MissingTagSlice = {
   let name = "MissingTagSlice"
 
-  type state = unit
-  let initialState = ()
-
   @schema
   type consumedEvent = Noop
-
-  let evolve = (state, _event) => state
 
   @schema
   type command = Do({id: string})
@@ -101,14 +105,29 @@ module MissingTagSlice = {
 
   @schema
   type event = Done({id: string})
+}
 
-  let decide = (_state, cmd) =>
+module MissingTagBehavior = {
+  // Qualify references through [Spec] to avoid shadowing the file-scope
+  // [consumedEvent] / [command] / [event] / [error] brought in by the PPX-
+  // injected [open AddCategorySlice].
+  module Spec = MissingTagSlice
+
+  type state = unit
+  let initialState: state = ()
+
+  let evolve = (state: state, _event: Spec.consumedEvent): state => state
+
+  let decide = (
+    _state: state,
+    cmd: Spec.command,
+  ): result<array<Spec.event>, Spec.error> =>
     switch cmd {
-    | Do({id}) => Ok([Done({id: id})])
+    | Do({id}) => Ok([Spec.Done({id: id})])
     }
 }
 
-module MissingTagGwt = StateChangeSlice_GWT.Make(MissingTagSlice)
+module MissingTagGwt = Behavior_GWT.Make(MissingTagSlice, MissingTagBehavior)
 
 MissingTagGwt.describe("MissingTag slice implicit check", () => {
   MissingTagGwt.test("thenEvent surfaces AppendConditionMismatch when command lacks DCB tag", () => {

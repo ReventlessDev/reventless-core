@@ -425,7 +425,12 @@ let transform (str : structure) : structure =
       if Util.is_extensionpointmapping_filename loc.loc_start.pos_fname
          && not (Util.has_open_dotted "ReventlessInfra" "ExtensionPointMapping" body) then
         prefix := !prefix @ [gen_open_ep_mapping ~loc];
+      (* Stateview spec files only need [open Reventless.Projection] when
+         they still carry a [project] binding (legacy merged form). After the
+         Plan 02 split, [project] lives in the [_Projection] impl file and
+         the spec file no longer references the action constructors. *)
       if Util.is_stateview_filename loc.loc_start.pos_fname
+         && Util.has_let_binding "project" body
          && not (Util.has_open_dotted "Reventless" "Projection" body) then
         prefix := !prefix @ [gen_open_projection ~loc];
       if not (Util.has_let_binding "name" body) then
@@ -468,6 +473,7 @@ let transform (str : structure) : structure =
       !prefix @ body @ readmodel_suffix @ suffix
 
     | Implementation (kind, spec_name_opt) ->
+      let fname = loc.loc_start.pos_fname in
       let spec_name = match spec_name_opt with
         | Some n -> n
         | None ->
@@ -476,11 +482,21 @@ let transform (str : structure) : structure =
              resolves to [Product]. Inside slice folders, use the
              [_<Kind>] / [<Kind>] suffix-stripping derivation that handles
              the new [X_<Kind>.res] convention. *)
-          let fname = loc.loc_start.pos_fname in
           (match kind with
            | Behavior when not (Util.is_in_slice_folder fname) ->
              Util.filename_to_name fname
            | _ -> derive_impl_spec_name ~kind fname)
+      in
+      (* Inject type annotations on recognised function bindings. The split
+         form's Spec puts both [consumedEvent] and [event] in the impl file's
+         scope (via [open Spec]); without explicit annotations the merged
+         form's declaration-order disambiguation no longer holds. *)
+      let body =
+        match TypeAnnotationInjection.kind_from_impl_kind
+                ~fname (impl_kind_name kind) with
+        | Some inj_kind ->
+          TypeAnnotationInjection.transform_structure ~kind:inj_kind body
+        | None -> body
       in
       let prefix = ref [] in
       (* Projection implementations need [Reventless.Projection]'s action

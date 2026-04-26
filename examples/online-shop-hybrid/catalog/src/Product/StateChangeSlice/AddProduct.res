@@ -3,18 +3,9 @@
 
 @@reventless.spec
 
-type state = {exists: bool}
-
-let initialState = {exists: false}
-
 @schema
 type consumedEvent =
   | ProductAdded
-
-let evolve = (_state, event) =>
-  switch event {
-  | ProductAdded => {exists: true}
-  }
 
 @schema
 type command =
@@ -36,13 +27,3 @@ type event =
       description: string,
       price: float,
     })
-
-let decide = (state, command) =>
-  switch command {
-  | AddProduct({productId, name, description, price}) =>
-    if state.exists {
-      Error(ProductAlreadyExists)
-    } else {
-      Ok([ProductAdded({productId, name, description, price})])
-    }
-  }

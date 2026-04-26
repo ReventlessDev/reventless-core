@@ -14,10 +14,10 @@ let applyFirstUpdate = (actions, baseState) =>
     | _ => s
     })
 
-describe("CategoriesView.project:", () => {
+describe("CategoriesView_Projection.project:", () => {
   test("CategoryAdded creates new state", () =>
     expect(
-      CategoriesView.project(
+      CategoriesView_Projection.project(
         CategoriesView.CategoryAdded({categoryId: "c1", name: "Electronics"}),
       ),
     )->toEqual([
@@ -30,7 +30,7 @@ describe("CategoriesView.project:", () => {
 
   test("CategoryRenamed Update function changes name", () =>
     expect(
-      CategoriesView.project(
+      CategoriesView_Projection.project(
         CategoriesView.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, name: "Consumer Electronics"})
@@ -38,7 +38,7 @@ describe("CategoriesView.project:", () => {
 
   test("CategoryArchived Update function sets archived=true", () =>
     expect(
-      CategoriesView.project(
+      CategoriesView_Projection.project(
         CategoriesView.CategoryArchived({categoryId: "c1"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, archived: true})

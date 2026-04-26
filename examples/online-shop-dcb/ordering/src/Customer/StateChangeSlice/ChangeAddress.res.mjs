@@ -15,28 +15,6 @@ let consumedEventSchema = S.union([
   S.literal("CustomerDeactivated")
 ]);
 
-function evolve(state, event) {
-  if (typeof event !== "object") {
-    return {
-      exists: state.exists,
-      deactivated: true,
-      currentAddress: state.currentAddress
-    };
-  } else if (event.TAG === "CustomerRegistered") {
-    return {
-      exists: true,
-      deactivated: false,
-      currentAddress: event.address
-    };
-  } else {
-    return {
-      exists: state.exists,
-      deactivated: state.deactivated,
-      currentAddress: event.address
-    };
-  }
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "ChangeAddress",
   customerId: s.m(DcbTag$Reventless.string),
@@ -54,59 +32,19 @@ let eventSchema = S.schema(s => ({
   address: s.m(S.string)
 }));
 
-function decide(state, command) {
-  if (!state.exists) {
-    return {
-      TAG: "Error",
-      _0: "CustomerNotFound"
-    };
-  }
-  if (state.deactivated) {
-    return {
-      TAG: "Error",
-      _0: "CustomerAlreadyDeactivated"
-    };
-  }
-  let address = command.address;
-  if (address === state.currentAddress) {
-    return {
-      TAG: "Ok",
-      _0: []
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "AddressChanged",
-          customerId: command.customerId,
-          address: address
-        }]
-    };
-  }
-}
-
 let name = "ChangeAddress";
 
 let Id;
-
-let initialState = {
-  exists: false,
-  deactivated: false,
-  currentAddress: ""
-};
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Customer/StateChangeSlice/ChangeAddress.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

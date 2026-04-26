@@ -1,8 +1,5 @@
 // In-memory AutomationSlice builder.
 // Wires in-memory adapters and delegates to the core ReventlessCore.AutomationSlice_Builder.
-// Internal: splices a legacy MergedSpec into (Spec, Automation) for the
-// new two-arg framework form. External signature stays on MergedSpec
-// until Phase 5 migrates examples to native split form.
 
 module Make = (Bus: InMemory_Bus.T) => {
   module RuntimeEnvironment = RuntimeEnvironment_InMemory
@@ -29,29 +26,13 @@ module Make = (Bus: InMemory_Bus.T) => {
     Api,
   )
 
-  module Make = (Spec: Reventless.AutomationSlice.MergedSpec) => {
-    module LeanSpec = {
-      let name = Spec.name
-      let moduleUrl = Spec.moduleUrl
-      type consumedEvent = Spec.consumedEvent
-      let consumedEventSchema = Spec.consumedEventSchema
-      type todoItem = Spec.todoItem
-      let todoItemSchema = Spec.todoItemSchema
-      type command = Spec.command
-      let commandSchema = Spec.commandSchema
-      let maxRetries = Spec.maxRetries
-      let heartbeatInterval = Spec.heartbeatInterval
-      let targetName = Spec.targetName
-    }
-    module AutomationImpl = {
-      let collect = Spec.collect
-      let resolve = Spec.resolve
-      let process = Spec.process
-      let moduleUrl = Spec.moduleUrl
-    }
-    module Inner = CoreMaker.Make(LeanSpec, AutomationImpl)
+  module Make = (
+    Spec: Reventless.AutomationSlice.Spec,
+    Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+  ) => {
+    module Inner = CoreMaker.Make(Spec, Automation)
     module Spec = Spec
-    module Automation = AutomationImpl
+    module Automation = Automation
     type component = Inner.component
     let queryDbName = Inner.queryDbName
     let make = Inner.make

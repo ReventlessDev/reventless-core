@@ -2,7 +2,7 @@
 
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as OrdersView$OrderingPlugin from "../../../src/Order/StateViewSlice/OrdersView.res.mjs";
+import * as OrdersView_Projection$OrderingPlugin from "../../../src/Order/StateViewSlice/OrdersView_Projection.res.mjs";
 
 let baseOrder_productIds = ["prod-1"];
 
@@ -23,8 +23,8 @@ function applyFirstUpdate(actions, baseState) {
   });
 }
 
-Jest.describe("OrdersView.project:", () => {
-  Jest.test("OrderPlaced creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(OrdersView$OrderingPlugin.project({
+Jest.describe("OrdersView_Projection.project:", () => {
+  Jest.test("OrderPlaced creates new state", () => Jest.Expect.toEqual(Jest.Expect.expect(OrdersView_Projection$OrderingPlugin.project({
     TAG: "OrderPlaced",
     orderId: "ord-1",
     customerId: "cust-1",
@@ -39,7 +39,7 @@ Jest.describe("OrdersView.project:", () => {
         status: "placed"
       }
     }]));
-  Jest.test("OrderShipped Update function sets status to shipped", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(OrdersView$OrderingPlugin.project({
+  Jest.test("OrderShipped Update function sets status to shipped", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(OrdersView_Projection$OrderingPlugin.project({
     TAG: "OrderShipped",
     orderId: "ord-1"
   }), baseOrder)), {
@@ -48,7 +48,7 @@ Jest.describe("OrdersView.project:", () => {
     productIds: baseOrder_productIds,
     status: "shipped"
   }));
-  Jest.test("OrderCancelled Update function sets status to cancelled", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(OrdersView$OrderingPlugin.project({
+  Jest.test("OrderCancelled Update function sets status to cancelled", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(OrdersView_Projection$OrderingPlugin.project({
     TAG: "OrderCancelled",
     orderId: "ord-1"
   }), baseOrder)), {

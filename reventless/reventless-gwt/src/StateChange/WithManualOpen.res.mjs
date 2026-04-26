@@ -5,12 +5,6 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let consumedEventSchema = S.literal("CategoryAdded");
 
-function evolve(_state, event) {
-  return {
-    exists: true
-  };
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "AddCategory",
   categoryId: s.m(DcbTag$Reventless.string),
@@ -25,38 +19,13 @@ let eventSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    return {
-      TAG: "Error",
-      _0: "CategoryAlreadyExists"
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "CategoryAdded",
-          categoryId: command.categoryId,
-          name: command.name
-        }]
-    };
-  }
-}
-
 let name = "WithManualOpen";
-
-let initialState = {
-  exists: false
-};
 
 export {
   name,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
 }
 /* consumedEventSchema Not a pure module */

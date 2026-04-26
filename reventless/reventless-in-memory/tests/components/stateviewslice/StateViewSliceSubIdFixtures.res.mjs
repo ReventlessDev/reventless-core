@@ -59,6 +59,24 @@ let stateSchema = S.schema(s => ({
   score: s.m(S.int)
 }));
 
+let config = ReadModel$Reventless.config(undefined, undefined, undefined);
+
+let subIdConfig = {
+  subIdField: "_subId",
+  getSubId: state => state.category + "/" + state.date
+};
+
+let ScoresViewSpec = {
+  name: name,
+  moduleUrl: moduleUrl,
+  consumedEventSchema: consumedEventSchema,
+  stateSchema: stateSchema,
+  config: config,
+  subIdConfig: subIdConfig
+};
+
+let moduleUrl$1 = import.meta.url;
+
 function project(event) {
   if (event.TAG !== "ScoreRecorded") {
     return [{
@@ -79,21 +97,10 @@ function project(event) {
     }];
 }
 
-let config = ReadModel$Reventless.config(undefined, undefined, undefined);
-
-let subIdConfig = {
-  subIdField: "_subId",
-  getSubId: state => state.category + "/" + state.date
-};
-
-let ScoresViewSpec = {
-  name: name,
-  moduleUrl: moduleUrl,
-  consumedEventSchema: consumedEventSchema,
-  stateSchema: stateSchema,
-  project: project,
-  config: config,
-  subIdConfig: subIdConfig
+let ScoresViewProjection = {
+  Spec: undefined,
+  moduleUrl: moduleUrl$1,
+  project: project
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -116,9 +123,11 @@ let ScoresViewMaker = SVMaker.Make({
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   consumedEventSchema: consumedEventSchema,
-  project: project,
   config: config,
   subIdConfig: subIdConfig
+})({
+  project: project,
+  moduleUrl: moduleUrl$1
 });
 
 let sv = ScoresViewMaker.make(eventLog, undefined);
@@ -153,6 +162,7 @@ async function loadScores(id) {
 export {
   ScoreEventLog,
   ScoresViewSpec,
+  ScoresViewProjection,
   Bus,
   ScoreEventLogMaker,
   eventLog,

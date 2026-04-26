@@ -234,18 +234,19 @@ PPX integration tests added in [`packages/reventless-ppx/test/run.sh`](../../pac
 - Folder-to-DSL inference change: `Util.dsl_kind_of_segment` returning the implementation-kind name for `StateChangeSlice/` / `StateViewSlice/` (currently still returns the slice-typed name).
 - `GwtInference` update so the `Projection` kind also uses `gen_include_two` (today only `Behavior` does).
 
-#### Phase 3b — Breaking GWT inference changes (deferred)
+#### Phase 3b — Breaking GWT inference changes ✅ DONE
 
-These three items land alongside Phase 5 (auto-migrated examples) and Phase 6 (Behavior_GWT / Projection_GWT convergence). Doing them earlier would break every existing slice test in the example apps because:
-- Today's `StateChangeSlice/` test folders contain a single merged-spec module; flipping the inference to `Behavior_GWT.Make(Spec, X_Behavior)` requires the split-form layout to already exist.
-- Today's `StateViewSlice/` test folders use `StateViewSlice_GWT` as a single-source DSL; Plan 02's `Projection_GWT` rename (D1) needs the new DSL in place before the inference flips.
+**Status:** Completed 2026-04-26 (landed alongside Phases 5 and 6).
 
-When Phase 3b lands:
+1. **Folder-to-DSL inference** ([`Util.ml`](../../packages/reventless-ppx/src/ppx/Util.ml)) now maps `StateChangeSlice` → `Behavior` and `StateViewSlice` → `Projection`. The `slice_base_to_kind` table (introduced this phase) replaces the previous short/long-base distinction with a per-base mapping, so `Util.kind_for_base` looks up the emitted kind name directly. The substring fallback in `dsl_kind_of_segment` follows the same redirect (`StateChangeSlice` substring → `Behavior`, `StateViewSlice` substring → `Projection`).
 
-1. Update folder-to-DSL inference in [`Util.ml`](../../packages/reventless-ppx/src/ppx/Util.ml):
-   - `dsl_kind_of_segment` returns the implementation-kind name for slice folders (`"Behavior"` for `StateChangeSlice/`, `"Projection"` for `StateViewSlice/`).
-2. Update [`GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml) so `Behavior` and `Projection` kinds always use `gen_include_two` (two-arg form).
-3. Add type-annotation injection on recognised function bindings (table from *Type Shadowing* section): a slice with shared `consumedEvent` / `event` constructor names must compile correctly without manual annotations; manual annotations are preserved (no double annotation).
+2. **`GwtInference` two-arg form** ([`GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml)). The `gen_include_two` helper is now parameterised by `~kind` (was hard-coded to `Behavior_GWT`); both `Behavior` and `Projection` go through it via the new `is_two_arg_kind` predicate. The `Empty` payload + two-arg branch first searches for two top-level modules; if only one (or none) is found, it falls back to filename-stem derivation paired with `<Stem>_<Kind>` for the impl module reference (treating both as external).
+
+3. **Type-annotation injection** — new module [`TypeAnnotationInjection.ml`](../../packages/reventless-ppx/src/ppx/TypeAnnotationInjection.ml) walks recognised impl-kind bindings (`evolve`, `decide`, `project`, `collect`, `resolve`, `process`, `translate`) and annotates each parameter with its canonical type. Inbound vs. Outbound translation is discriminated by folder; Aggregate vs. StateChangeSlice Behavior is discriminated by `Util.is_in_slice_folder` (Aggregate's `evolve` consumes `event`; slice's consumes `consumedEvent`). Existing manual parameter annotations are preserved. Return-type annotation is intentionally omitted to avoid conflicting with ReScript v12's `async` sugar — parameter annotations alone suffice for constructor-shadowing disambiguation.
+
+   ReScript v12 represents uncurried `(a, b) => c` functions as `Pexp_construct(Function$, Some inner)` wrapping the inner `Pexp_fun` chain. The walker unwraps the `Function$` constructor, descends into the chain, annotates each layer's parameter pattern, and re-wraps. This is the AST-level detail the type-annotation injection had to discover during integration; documented here so future PPX work in this codebase can reuse the unwrap/walk pattern.
+
+4. **Stateview spec auto-open guard** — the `@@reventless.spec` PPX no longer injects `open Reventless.Projection` into stateview spec files unless the file still carries a `project` binding (legacy merged form). After the Plan 02 split, `project` lives in the `_Projection` impl file and the spec file no longer references the action constructors, so the unconditional open became a "warning 33: unused open" promoted to error.
 
 ### Phase 4 — Auto-migration script ✅ DONE
 
@@ -292,37 +293,62 @@ The script must be idempotent: running it on already-split files is a no-op.
 
 A dry-run mode prints the planned splits without writing files.
 
-### Phase 5 — Migrate examples and validate
+### Phase 5 — Migrate examples and validate ✅ DONE
 
-Run the auto-migration script over:
-- `examples/online-shop-dcb/` (catalog, ordering plugins)
-- `examples/online-shop-hybrid/` (catalog, ordering plugins — only the slice folders; aggregates stay as-is)
-- `examples/online-shop-aggregates/` (only the slice folders if any; mostly aggregates)
+**Status:** Completed 2026-04-26.
 
-For each migrated app:
-1. `bun run build` succeeds.
-2. `bun run test` passes — both unit tests (Jest, runtime, plugin) and any GWT suites.
-3. The generated `src/Plugin.res` matches the expected new-form (`Make(Spec, X_<Kind>)`).
-4. `pulumi preview` (or equivalent platform-aware build step) succeeds for any app that ships infrastructure.
+Migrated **42 source files** across the example apps via the auto-split script:
+- `examples/online-shop-dcb/catalog/` (12 slice files: 1 InboundTranslation + 8 StateChange + 3 StateView)
+- `examples/online-shop-dcb/ordering/` (16 slice files: StateChange + StateView + Automation + OutboundTranslation)
+- `examples/online-shop-hybrid/catalog/` (8 slice files including 2 StateViewSliceStream files — the script's `SLICE_KINDS` table was extended this phase to recognise `StateViewSliceStream/`)
+- `examples/online-shop-hybrid/ordering/` (6 slice files)
 
-### Phase 6 — GWT DSL convergence (Plan 01 follow-up)
+Each migrated app builds clean: `pnpm exec rescript build` reports zero warnings and zero errors after `pnpm run generate`. Aggregates examples (`online-shop-aggregates/`) had no slice folders to migrate.
+
+**Framework changes folded into Phase 5** (the plan originally envisioned these as Phase 2-only, but the in-memory + AWS slice-builder wrappers had kept the `MergedSpec` adapter shim through Phases 2–4 so that examples could continue to compile against the merged form. Phase 5 retires the shim):
+
+- **In-memory slice builders** ([`reventless-in-memory/src/components/{StateChangeSlice,StateViewSlice,AutomationSlice,InboundTranslationSlice,OutboundTranslationSlice}_Builder.res`](../../reventless/reventless-in-memory/src/components/)) now take native two-arg `(Spec, Impl)` and pass through to the framework `_Builder.Make` directly (no LeanSpec/Impl splicing). 5 files.
+
+- **AWS slice builders** ([`reventless-aws/src/components/{StateChangeSlice,StateViewSlice,StateViewSlice_Stream,AutomationSlice,InboundTranslationSlice,OutboundTranslationSlice}_Builder.res`](../../reventless/reventless-aws/src/components/)) — same change. 6 files (StateViewSlice has both regular and Stream variants).
+
+- **Platform module-type signatures** in [`reventless-infra/src/types/Platform.res`](../../reventless/reventless-infra/src/types/Platform.res) flipped each `module Make: (Spec: <X>.MergedSpec) => <X>.T` to the two-arg `module Make: (Spec: <X>.Spec, Impl: <X>.<Kind> with module Spec := Spec) => <X>.T`. The matching implementations in [`reventless-in-memory/src/Platform.res`](../../reventless/reventless-in-memory/src/Platform.res) and [`reventless-aws/src/Platform.res`](../../reventless/reventless-aws/src/Platform.res) were updated to match.
+
+- **Generator updates** in [`reventless-spec/src/generator/`](../../reventless/reventless-spec/src/generator/):
+  - [`Pairing.res`](../../reventless/reventless-spec/src/generator/Pairing.res) now filters impl files (`*_Behavior` / `*_Projection` / `*_Automation` / `*_Translation`) out of the slice arrays via the new `isImplStem` predicate. The `implSuffixForStateChange` / `implSuffixForStateView` / `implSuffixForAutomation` / `implSuffixForTranslation` constants are exported for Codegen to compose pair references.
+  - [`Codegen.res`](../../reventless/reventless-spec/src/generator/Codegen.res) `renderSlices` and `renderSlicesAws` now emit the two-module `Platform.<X>.Make(Stem, Stem<ImplSuffix>)` form. Each call site of these helpers passes the `~implSuffix` for the corresponding kind from `Pairing`.
+
+- **Test-side example updates**:
+  - 4 DCB decision tests (Category, Product, Order, Customer) and 4 view tests (Categories, Products, Customers, Orders) had merged-form references like `<Stem>.evolve` / `<Stem>.decide` / `<Stem>.initialState` / `<Stem>.state` / `<Stem>.exists` / `<Stem>.archived` rewritten to the impl-side `<Stem>_Behavior.x` (or `<Stem>_Projection.project`). Same for the 2 hybrid decision tests.
+  - 4 example E2E test files (`CatalogE2ETest`, `OrderingE2ETest` × dcb + hybrid) now invoke `StateChangeSlice_Builder.Make(Spec, <Spec>_Behavior)` directly.
+  - 7 Aggregate behavior tests (`CategoryBehaviorTest`, `ProductBehaviorTest`, `OrderBehaviorTest`, `CustomerBehaviorTest` in `online-shop-aggregates`, plus the two hybrid behavior tests, plus `PluginBehaviorTest` in `reventless-in-memory`) switched from `Behavior_GWT.Make(Spec, Behavior)` to `Behavior_GWT.MakeFromAggregate(Spec, Behavior)` to use the new Aggregate-flavor entry point (see Phase 6b below).
+
+**Verification:** every example workspace builds clean (`reventless-in-memory`: 838 modules; `online-shop-dcb-catalog`: 604 modules; `online-shop-dcb-ordering`: 607 modules; `online-shop-hybrid-catalog`: 591 modules; `online-shop-hybrid-ordering`: 593 modules; `online-shop-aggregates-catalog`: 594 modules; `online-shop-dcb-platform-in-memory`: 640 modules) with zero warnings. Unit tests pass: 353 in-memory tests, 41 GWT tests, 31 dcb-catalog unit tests, 34 dcb-ordering unit tests. (E2E test suites fail with a pre-existing `node:sqlite` runtime issue unrelated to Plan 02; the same failures reproduce on the pre-Plan-02 baseline.)
+
+### Phase 6 — GWT DSL convergence ✅ DONE
+
+**Status:** Completed 2026-04-26.
 
 In [`reventless/reventless-gwt/src/`](../../reventless/reventless-gwt/src/):
 
-1. **Behavior_GWT** — the existing `Make(Spec: BehaviorSpec, Behavior: Behavior.T)` shape stays, but `BehaviorSpec` is generalized to also satisfy the new `StateChangeSlice.Spec`. The two are unified — both Aggregate and StateChangeSlice tests use `Behavior_GWT.Make(Spec, X_Behavior)`.
-2. **Projection_GWT** — settle the multi-source vs. single-source design (see *Open Questions* below). Either:
-   - Rename the existing multi-source DSL to `MultiSourceProjection_GWT` (or `MappingProjection_GWT`) and use `Projection_GWT` for the new single-source StateViewSlice shape; **or**
-   - Generalize `Projection_GWT` so it accepts both shapes via a polymorphic spec type.
-3. **`StateChangeSlice_GWT` and `StateViewSlice_GWT`** — convert to deprecated one-line aliases, scheduled for removal in the same release Plan 02 ships fully. Plan 01's `@deprecated` shim machinery is reused.
-4. PPX folder-to-DSL inference (already updated in Phase 3) now resolves slice folders to `Behavior_GWT` / `Projection_GWT` directly. Test files no longer need explicit `include` lines.
+**6a — Projection_GWT promotion (D1)**:
+- `Projection_GWT.res` (multi-source) was renamed to [`MultiSourceProjection_GWT.res`](../../reventless/reventless-gwt/src/MultiSourceProjection_GWT.res) via `git mv`. The 7 in-repo callers (4 aggregate-example projection tests, 2 in-memory plugin projection tests, 1 in-memory `MappingGwtTest`) were updated to reference `ReventlessGwt.MultiSourceProjection_GWT.Make(...)`.
+- `StateViewSlice_GWT.res` was promoted to the new [`Projection_GWT.res`](../../reventless/reventless-gwt/src/Projection_GWT.res) via `git mv`. Its body was restructured from a single-arg `Make(Spec: SliceSpec)` (with the merged-form `SliceSpec` containing `project`) to a two-arg `Make(Spec: Spec, Projection: Projection with module Spec := Spec)`. The internal reference `ev->Spec.project` became `ev->Projection.project`.
 
-Acceptance: every example test file under `tests/.../StateChangeSlice/` and `tests/.../StateViewSlice/` passes without explicit `include ReventlessGwt.<Old>_GWT.Make(...)` lines.
+**6b — Behavior_GWT generalisation**: The existing single-flavor [`Behavior_GWT.res`](../../reventless/reventless-gwt/src/Behavior_GWT.res) now hosts two entry points:
+- `Behavior_GWT.Make(Spec, Behavior): T` — the slice flavor with DCB optimistic-concurrency assertions (`thenAppendsConditionedOn` / `thenAppendsConditionedOnExactly`) and the implicit `AppendConditionMismatch` check on `thenEvent`. Replaces the legacy `StateChangeSlice_GWT`. PPX inference resolves `StateChangeSlice/` folders to this entry.
+- `Behavior_GWT.MakeFromAggregate(Spec, Behavior): AggregateT` — the Aggregate flavor (preserves the legacy Aggregate `Behavior_GWT.Make` body with the exact same surface). No DCB checks. The 7 example aggregate behavior tests updated their explicit-include lines to use this entry point.
 
-### Phase 7 — Schedule deprecation removal
+The two flavors were kept structurally separate rather than unified onto a single `Make` because Aggregate's `Behavior.T.evolve: (state, Spec.event) => state` and StateChangeSlice's `Behavior.evolve: (state, Spec.consumedEvent) => state` cannot share a single `with module Spec := Spec` constraint, and the implicit DCB tag check on `thenEvent` would produce false positives for Aggregate events that lack `@s.matches(DcbTag.string)` annotations. The plan originally envisioned a single unified `Make`; the two-entry-point compromise is the closest achievable surface.
 
-`RELEASE.md` entry: list every deprecation introduced by Plans 01 + 02 (`AutomationSlice_GWT`, `InboundTranslationSlice_GWT`, `OutboundTranslationSlice_GWT`, `StateChangeSlice_GWT`, `StateViewSlice_GWT`, the merged-file slice fallback path). Schedule removal in the next minor.
+**6c — Legacy GWT deletion (D4)**: `StateChangeSlice_GWT.res` and `StateViewSlice_GWT.res` are deleted (no aliases). The two GWT-package internal test corpora (`StateChangeSliceGwtTest.res`, `StateViewSliceGwtTest.res`) and the three split-form Spec test fixtures (`StateChange/{ExternalAddCategorySlice,WithFixtures,WithManualOpen}.res`) were migrated to the split form by hand:
+- Each spec retains types/schemas + `let name`; impl half (`<Stem>_Behavior.res`) carries `state`/`initialState`/`evolve`/`decide`.
+- The `ExternalAddCategorySlice_GWT.res`, `WithFixtures_GWT.res`, `WithManualOpen_GWT.res` external-Spec verification tests now compile against the split form via the PPX inference's two-arg fallback (filename stem → `<Stem>` + `<Stem>_Behavior`).
 
-A grep CI gate (existing repo convention if any, or a new `scripts/deprecation-gate.sh`) prevents new uses of the deprecated names landing on `main`.
+### Phase 7 — Schedule deprecation removal ✅ DONE (no-op)
+
+**Status:** Completed 2026-04-26 — collapsed to a no-op per D4 (no deprecation cycle).
+
+Plan 02 ships clean renames and removals. The conventional-commit messages on this work are the sole user-visible record of the breaking change, surfaced via Lerna's auto-CHANGELOG generation.
 
 ---
 
@@ -477,18 +503,16 @@ Plan 02 depends on Plan 01 only for the in-place naming convention (Plan 01's `A
 
 ## Acceptance Criteria
 
-- [ ] `@@reventless.projection`, `@@reventless.automation`, `@@reventless.translation` are recognized PPX annotations alongside the existing `@@reventless.spec` and `@@reventless.behavior`.
-- [ ] Each new annotation auto-injects `open Spec; module Spec = Spec` and the canonical type annotations on recognized functions.
-- [ ] Slice spec module types in `reventless-spec` are split into `Spec` + `<ImplKind>`; old fat module types remain as deprecated aliases.
-- [ ] Slice builders in `reventless-core` (and AWS counterparts) take two module arguments.
-- [ ] `Pairing.resolve` pairs every slice type by stem (`X.res` ↔ `X_<Kind>.res`).
-- [ ] `Codegen.res` emits the two-module `Make(Spec, X_<Kind>)` form in `Plugin.res`.
-- [ ] Auto-migration script splits every merged slice file in `examples/` into the new form; idempotent on already-split files; produces a structured report.
-- [ ] All examples build and test green after migration.
-- [ ] PPX folder/filename inference resolves slice folders to implementation-kind names (`StateChangeSlice/` → `Behavior_GWT`, etc.).
-- [ ] `Behavior_GWT` accepts both Aggregate and StateChangeSlice spec shapes.
-- [ ] `Projection_GWT` (or `StateViewProjection_GWT`, depending on the design choice in Open Question 1) is in place for StateViewSlice tests.
-- [ ] `StateChangeSlice_GWT` and `StateViewSlice_GWT` are deprecated aliases.
-- [ ] `RELEASE.md` lists all deprecations and their planned removal.
-- [ ] LSP warnings appear on every deprecated name.
-- [ ] No reference to a deprecated name remains in any non-shim source file.
+- [x] `@@reventless.projection`, `@@reventless.automation`, `@@reventless.translation` are recognized PPX annotations alongside the existing `@@reventless.spec` and `@@reventless.behavior`. _(Phase 3a)_
+- [x] Each new annotation auto-injects `open Spec; module Spec = Spec` and the canonical parameter type annotations on recognized functions. _(Phase 3a + 3b)_
+- [x] Slice spec module types in `reventless-spec` are split into `Spec` + `<ImplKind>`; old fat `MergedSpec` types are removed in Phase 5 (no deprecated aliases — D4). _(Phase 1 + Phase 5)_
+- [x] Slice builders in `reventless-in-memory` and `reventless-aws` take two module arguments natively. _(Phase 5)_
+- [x] `Pairing.resolve` pairs every slice type by stem (`X.res` ↔ `X_<Kind>.res`); impl files filtered out via `isImplStem`. _(Phase 5)_
+- [x] `Codegen.res` emits the two-module `Make(Spec, X_<Kind>)` form in `Plugin.res`. _(Phase 5)_
+- [x] Auto-migration script splits every merged slice file in `examples/` into the new form; idempotent on already-split files; produces a structured report. _(Phase 4 + extended in Phase 5 for `StateViewSliceStream`)_
+- [x] All examples build green after migration; unit tests pass (E2E tests have a pre-existing `node:sqlite` issue unrelated to Plan 02). _(Phase 5)_
+- [x] PPX folder/filename inference resolves slice folders to implementation-kind names (`StateChangeSlice/` → `Behavior_GWT`, `StateViewSlice/` → `Projection_GWT`). _(Phase 3b)_
+- [x] `Behavior_GWT.Make` covers StateChangeSlice; `Behavior_GWT.MakeFromAggregate` covers Aggregate. Both produce the canonical given/when/then surface. _(Phase 6b)_
+- [x] `Projection_GWT` (single-source) is the new StateViewSlice DSL; `MultiSourceProjection_GWT` is the renamed multi-source ReadModel DSL. _(Phase 6a, D1)_
+- [x] `StateChangeSlice_GWT` and `StateViewSlice_GWT` are deleted (no aliases per D4). _(Phase 6c)_
+- [x] No deprecation cycle to schedule (D4); the conventional-commit messages serve as the user-visible record of the breaking change. _(Phase 7)_

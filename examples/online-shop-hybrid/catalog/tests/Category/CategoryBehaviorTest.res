@@ -3,7 +3,7 @@
 
 open Category
 
-include ReventlessGwt.Behavior_GWT.Make(Category, CategoryBehavior)
+include ReventlessGwt.Behavior_GWT.MakeFromAggregate(Category, CategoryBehavior)
 
 describe("CategoryBehavior:", () => {
   describe("Add", () => {

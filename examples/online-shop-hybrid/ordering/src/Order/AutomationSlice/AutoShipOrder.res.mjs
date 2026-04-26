@@ -23,37 +23,6 @@ let commandSchema = S.schema(s => ({
   orderId: s.m(DcbTag$Reventless.string)
 }));
 
-function collect(event) {
-  if (event.TAG !== "OrderPlaced") {
-    return [];
-  }
-  let orderId = event.orderId;
-  return [[
-      orderId,
-      {
-        orderId: orderId
-      }
-    ]];
-}
-
-function resolve(event) {
-  if (event.TAG === "OrderPlaced") {
-    return;
-  } else {
-    return event.orderId;
-  }
-}
-
-function process(id, _item) {
-  return [
-    id,
-    {
-      TAG: "ShipOrder",
-      orderId: id
-    }
-  ];
-}
-
 let name = "AutoShipOrder";
 
 let Id;
@@ -72,9 +41,6 @@ export {
   consumedEventSchema,
   todoItemSchema,
   commandSchema,
-  collect,
-  resolve,
-  process,
   maxRetries,
   heartbeatInterval,
   targetName,

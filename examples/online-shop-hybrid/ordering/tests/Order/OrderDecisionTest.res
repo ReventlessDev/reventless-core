@@ -8,14 +8,14 @@ describe("PlaceOrder:", () => {
   let withProducts = productIds => {
     let s = Set.make()
     productIds->Array.forEach(id => s->Set.add(id))
-    {PlaceOrder.exists: false, availableProductIds: s}
+    {PlaceOrder_Behavior.exists: false, availableProductIds: s}
   }
 
   describe("evolve", () => {
     test(
       "OrderPlaced sets exists=true",
       () => {
-        let state = PlaceOrder.evolve(
+        let state = PlaceOrder_Behavior.evolve(
           withProducts(["prod-1"]),
           PlaceOrder.OrderPlaced,
         )
@@ -26,8 +26,8 @@ describe("PlaceOrder:", () => {
     test(
       "CatalogProductSynced adds to availableProductIds",
       () => {
-        let state = PlaceOrder.evolve(
-          PlaceOrder.initialState,
+        let state = PlaceOrder_Behavior.evolve(
+          PlaceOrder_Behavior.initialState,
           PlaceOrder.CatalogProductSynced({productId: "prod-1"}),
         )
         expect(state.availableProductIds->Set.has("prod-1"))->toBe(true)
@@ -40,7 +40,7 @@ describe("PlaceOrder:", () => {
       "with available products produces OrderPlaced",
       () =>
         expect(
-          PlaceOrder.decide(
+          PlaceOrder_Behavior.decide(
             withProducts(["prod-1", "prod-2"]),
             PlaceOrder.PlaceOrder({
               orderId: "ord-1",
@@ -63,7 +63,7 @@ describe("PlaceOrder:", () => {
       "with missing products returns ProductsNotAvailable",
       () =>
         expect(
-          PlaceOrder.decide(
+          PlaceOrder_Behavior.decide(
             withProducts(["prod-1"]),
             PlaceOrder.PlaceOrder({
               orderId: "ord-1",
@@ -79,7 +79,7 @@ describe("PlaceOrder:", () => {
       () => {
         let state = withProducts(["prod-1"])
         expect(
-          PlaceOrder.decide(
+          PlaceOrder_Behavior.decide(
             {...state, exists: true},
             PlaceOrder.PlaceOrder({
               orderId: "ord-1",
@@ -99,7 +99,7 @@ describe("ShipOrder:", () => {
       "on non-existent order returns OrderNotFound",
       () =>
         expect(
-          ShipOrder.decide(ShipOrder.initialState, ShipOrder.ShipOrder({orderId: "ord-1"})),
+          ShipOrder_Behavior.decide(ShipOrder_Behavior.initialState, ShipOrder.ShipOrder({orderId: "ord-1"})),
         )->toEqual(Error(ShipOrder.OrderNotFound)),
     )
 
@@ -107,8 +107,8 @@ describe("ShipOrder:", () => {
       "on placed order produces OrderShipped",
       () =>
         expect(
-          ShipOrder.decide(
-            {ShipOrder.exists: true, shipped: false, cancelled: false},
+          ShipOrder_Behavior.decide(
+            {ShipOrder_Behavior.exists: true, shipped: false, cancelled: false},
             ShipOrder.ShipOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Ok([ShipOrder.OrderShipped({orderId: "ord-1"})])),
@@ -118,8 +118,8 @@ describe("ShipOrder:", () => {
       "on shipped order is idempotent (no events)",
       () =>
         expect(
-          ShipOrder.decide(
-            {ShipOrder.exists: true, shipped: true, cancelled: false},
+          ShipOrder_Behavior.decide(
+            {ShipOrder_Behavior.exists: true, shipped: true, cancelled: false},
             ShipOrder.ShipOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Ok([])),
@@ -129,8 +129,8 @@ describe("ShipOrder:", () => {
       "on cancelled order returns OrderAlreadyCancelled",
       () =>
         expect(
-          ShipOrder.decide(
-            {ShipOrder.exists: true, shipped: false, cancelled: true},
+          ShipOrder_Behavior.decide(
+            {ShipOrder_Behavior.exists: true, shipped: false, cancelled: true},
             ShipOrder.ShipOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Error(ShipOrder.OrderAlreadyCancelled)),
@@ -144,8 +144,8 @@ describe("CancelOrder:", () => {
       "on non-existent order returns OrderNotFound",
       () =>
         expect(
-          CancelOrder.decide(
-            CancelOrder.initialState,
+          CancelOrder_Behavior.decide(
+            CancelOrder_Behavior.initialState,
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Error(CancelOrder.OrderNotFound)),
@@ -155,8 +155,8 @@ describe("CancelOrder:", () => {
       "on placed order produces OrderCancelled with productIds",
       () =>
         expect(
-          CancelOrder.decide(
-            {CancelOrder.exists: true, shipped: false, cancelled: false, productId: ["prod-1"]},
+          CancelOrder_Behavior.decide(
+            {CancelOrder_Behavior.exists: true, shipped: false, cancelled: false, productId: ["prod-1"]},
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(
@@ -168,8 +168,8 @@ describe("CancelOrder:", () => {
       "on cancelled order is idempotent (no events)",
       () =>
         expect(
-          CancelOrder.decide(
-            {CancelOrder.exists: true, shipped: false, cancelled: true, productId: ["prod-1"]},
+          CancelOrder_Behavior.decide(
+            {CancelOrder_Behavior.exists: true, shipped: false, cancelled: true, productId: ["prod-1"]},
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Ok([])),
@@ -179,8 +179,8 @@ describe("CancelOrder:", () => {
       "on shipped order returns OrderAlreadyShipped",
       () =>
         expect(
-          CancelOrder.decide(
-            {CancelOrder.exists: true, shipped: true, cancelled: false, productId: ["prod-1"]},
+          CancelOrder_Behavior.decide(
+            {CancelOrder_Behavior.exists: true, shipped: true, cancelled: false, productId: ["prod-1"]},
             CancelOrder.CancelOrder({orderId: "ord-1"}),
           ),
         )->toEqual(Error(CancelOrder.OrderAlreadyShipped)),

@@ -3,21 +3,21 @@ open Reventless.Projection
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder)
-  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder)
-  module RefundOrderSlice = Platform.StateChangeSlice.Make(RefundOrder)
-  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder)
-  module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct)
+  module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
+  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Behavior)
+  module RefundOrderSlice = Platform.StateChangeSlice.Make(RefundOrder, RefundOrder_Behavior)
+  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
+  module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct, SyncCatalogProduct_Behavior)
 
   // StateViewSlices
-  module AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView)
-  module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView)
+  module AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView, AvailableProductsView_Projection)
+  module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView, OrdersView_Projection)
 
   // AutomationSlices
-  module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder)
+  module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
 
   // OutboundTranslationSlices
-  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation)
+  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation, SendOrderConfirmation_Translation)
 
   // Aggregates
   module CustomerAggregate = Platform.Aggregate.Make(

@@ -8,22 +8,10 @@
 
 @@reventless.spec
 
-type state = {exists: bool, availableProductIds: Set.t<string>}
-
-let initialState = {exists: false, availableProductIds: Set.make()}
-
 @schema
 type consumedEvent =
   | OrderPlaced
   | CatalogProductSynced({productId: string})
-
-let evolve = (state, event) =>
-  switch event {
-  | OrderPlaced => {exists: true, availableProductIds: state.availableProductIds}
-  | CatalogProductSynced({productId}) =>
-    state.availableProductIds->Set.add(productId)
-    state
-  }
 
 @schema
 type command =
@@ -37,18 +25,3 @@ type error =
 @schema
 type event =
   | OrderPlaced({@partitionTag orderId: string, customerId: string, productId: array<string>})
-
-let decide = (state, command) =>
-  switch command {
-  | PlaceOrder({orderId, customerId, productId}) =>
-    if state.exists {
-      Error(OrderAlreadyPlaced)
-    } else {
-      let missing = productId->Array.filter(pid => !(state.availableProductIds->Set.has(pid)))
-      if missing->Array.length > 0 {
-        Error(ProductsNotAvailable({missing: missing}))
-      } else {
-        Ok([OrderPlaced({orderId, customerId, productId})])
-      }
-    }
-  }

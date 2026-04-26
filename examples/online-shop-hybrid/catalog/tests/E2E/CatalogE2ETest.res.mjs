@@ -11,7 +11,10 @@ import * as ChangeProductName$CatalogPlugin from "../../src/Product/StateChangeS
 import * as CommandTopic$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/reexport/CommandTopic.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductPrice.res.mjs";
+import * as AddProduct_Behavior$CatalogPlugin from "../../src/Product/StateChangeSlice/AddProduct_Behavior.res.mjs";
 import * as DcbEventLog_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/DcbEventLog_Builder.res.mjs";
+import * as ChangeProductName_Behavior$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
+import * as ChangeProductPrice_Behavior$CatalogPlugin from "../../src/Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/StateChangeSlice_Builder.res.mjs";
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -38,40 +41,46 @@ let eventLog = CatalogEventLogMaker.make("Catalog", undefined, {
 let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: AddProduct$CatalogPlugin.name,
   moduleUrl: AddProduct$CatalogPlugin.moduleUrl,
-  initialState: AddProduct$CatalogPlugin.initialState,
-  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
-  evolve: AddProduct$CatalogPlugin.evolve,
-  errorSchema: AddProduct$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: AddProduct$CatalogPlugin.consumedEventSchema,
+  errorSchema: AddProduct$CatalogPlugin.errorSchema,
   eventSchema: AddProduct$CatalogPlugin.eventSchema,
-  decide: AddProduct$CatalogPlugin.decide,
   commandSchema: AddProduct$CatalogPlugin.commandSchema
+})({
+  initialState: AddProduct_Behavior$CatalogPlugin.initialState,
+  evolve: AddProduct_Behavior$CatalogPlugin.evolve,
+  decide: AddProduct_Behavior$CatalogPlugin.decide,
+  moduleUrl: AddProduct_Behavior$CatalogPlugin.moduleUrl
 });
 
 let ChangeProductNameMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductName$CatalogPlugin.name,
   moduleUrl: ChangeProductName$CatalogPlugin.moduleUrl,
-  initialState: ChangeProductName$CatalogPlugin.initialState,
-  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
-  evolve: ChangeProductName$CatalogPlugin.evolve,
-  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ChangeProductName$CatalogPlugin.consumedEventSchema,
+  errorSchema: ChangeProductName$CatalogPlugin.errorSchema,
   eventSchema: ChangeProductName$CatalogPlugin.eventSchema,
-  decide: ChangeProductName$CatalogPlugin.decide,
   commandSchema: ChangeProductName$CatalogPlugin.commandSchema
+})({
+  initialState: ChangeProductName_Behavior$CatalogPlugin.initialState,
+  evolve: ChangeProductName_Behavior$CatalogPlugin.evolve,
+  decide: ChangeProductName_Behavior$CatalogPlugin.decide,
+  moduleUrl: ChangeProductName_Behavior$CatalogPlugin.moduleUrl
 });
 
 let ChangeProductPriceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   name: ChangeProductPrice$CatalogPlugin.name,
   moduleUrl: ChangeProductPrice$CatalogPlugin.moduleUrl,
-  initialState: ChangeProductPrice$CatalogPlugin.initialState,
-  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
-  evolve: ChangeProductPrice$CatalogPlugin.evolve,
-  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: ChangeProductPrice$CatalogPlugin.consumedEventSchema,
+  errorSchema: ChangeProductPrice$CatalogPlugin.errorSchema,
   eventSchema: ChangeProductPrice$CatalogPlugin.eventSchema,
-  decide: ChangeProductPrice$CatalogPlugin.decide,
   commandSchema: ChangeProductPrice$CatalogPlugin.commandSchema
+})({
+  initialState: ChangeProductPrice_Behavior$CatalogPlugin.initialState,
+  evolve: ChangeProductPrice_Behavior$CatalogPlugin.evolve,
+  decide: ChangeProductPrice_Behavior$CatalogPlugin.decide,
+  moduleUrl: ChangeProductPrice_Behavior$CatalogPlugin.moduleUrl
 });
 
 async function publishJsons(cmdJsons) {

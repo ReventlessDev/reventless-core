@@ -19,39 +19,6 @@ let commandSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-function translate(input) {
-  if (input.currency !== "USD") {
-    return {
-      TAG: "Error",
-      _0: "Unsupported currency: " + input.currency
-    };
-  } else if (input.unitPrice <= 0) {
-    return {
-      TAG: "Error",
-      _0: "Price must be positive"
-    };
-  } else if (input.sku === "") {
-    return {
-      TAG: "Error",
-      _0: "SKU is required"
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [[
-          input.sku,
-          {
-            TAG: "AddProduct",
-            productId: input.sku,
-            name: input.title,
-            description: input.desc,
-            price: input.unitPrice / 100.0
-          }
-        ]]
-    };
-  }
-}
-
 let name = "ImportProduct";
 
 let Id;
@@ -66,7 +33,6 @@ export {
   externalInputSchema,
   commandSchema,
   targetName,
-  translate,
   moduleUrl,
 }
 /* externalInputSchema Not a pure module */

@@ -31,19 +31,26 @@ module ScoresViewSpec = {
   @schema
   type state = {id: string, category: string, date: string, score: int}
 
-  let project = event =>
+  let config = Reventless.ReadModel.config()
+  let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = Some({
+    subIdField: "_subId",
+    getSubId: (state: state) => state.category ++ "/" ++ state.date,
+  })
+}
+
+module ScoresViewProjection = {
+  module Spec = ScoresViewSpec
+  open ScoresViewSpec
+
+  let moduleUrl: string = %raw(`import.meta.url`)
+
+  let project = (event: consumedEvent) =>
     switch event {
     | ScoreRecorded({id, category, date, score}) =>
       [Set(id, {id, category, date, score})]
     | ScoreRemoved({id, category: _, date: _}) =>
       [Delete(id)]
     }
-
-  let config = Reventless.ReadModel.config()
-  let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = Some({
-    subIdField: "_subId",
-    getSubId: (state: state) => state.category ++ "/" ++ state.date,
-  })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -73,7 +80,7 @@ let eventLog = ScoreEventLogMaker.make(
 // ─────────────────────────────────────────────────────────────
 
 module SVMaker = StateViewSlice_Builder.Make(Bus)
-module ScoresViewMaker = SVMaker.Make(ScoresViewSpec)
+module ScoresViewMaker = SVMaker.Make(ScoresViewSpec, ScoresViewProjection)
 let sv = ScoresViewMaker.make(~dcbEventLog=eventLog)
 
 let dcbEventTopicResource =

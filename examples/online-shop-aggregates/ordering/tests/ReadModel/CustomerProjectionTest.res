@@ -1,7 +1,7 @@
 // Unit tests for Customer projection mappings.
 // Uses the ProjectionTest DSL for async projection testing.
 
-include ReventlessGwt.Projection_GWT.Make(CustomersProjections.CustomerMapping)
+include ReventlessGwt.MultiSourceProjection_GWT.Make(CustomersProjections.CustomerMapping)
 
 describe("CustomerProjection:", () => {
   test("Registered sets initial read model state", () =>

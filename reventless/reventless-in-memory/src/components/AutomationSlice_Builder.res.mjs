@@ -30,47 +30,17 @@ function Make(Bus) {
   })({
     make: QueryDbResolvers.make
   })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
-  let Make$1 = Spec => {
-    let LeanSpec_name = Spec.name;
-    let LeanSpec_moduleUrl = Spec.moduleUrl;
-    let LeanSpec_consumedEventSchema = Spec.consumedEventSchema;
-    let LeanSpec_todoItemSchema = Spec.todoItemSchema;
-    let LeanSpec_commandSchema = Spec.commandSchema;
-    let LeanSpec_maxRetries = Spec.maxRetries;
-    let LeanSpec_heartbeatInterval = Spec.heartbeatInterval;
-    let LeanSpec_targetName = Spec.targetName;
-    let LeanSpec = {
-      name: LeanSpec_name,
-      moduleUrl: LeanSpec_moduleUrl,
-      consumedEventSchema: LeanSpec_consumedEventSchema,
-      todoItemSchema: LeanSpec_todoItemSchema,
-      commandSchema: LeanSpec_commandSchema,
-      maxRetries: LeanSpec_maxRetries,
-      heartbeatInterval: LeanSpec_heartbeatInterval,
-      targetName: LeanSpec_targetName
-    };
-    let AutomationImpl_collect = Spec.collect;
-    let AutomationImpl_resolve = Spec.resolve;
-    let AutomationImpl_process = Spec.process;
-    let AutomationImpl_moduleUrl = Spec.moduleUrl;
-    let AutomationImpl = {
-      collect: AutomationImpl_collect,
-      resolve: AutomationImpl_resolve,
-      process: AutomationImpl_process,
-      moduleUrl: AutomationImpl_moduleUrl
-    };
-    let Inner = CoreMaker.Make(LeanSpec)(AutomationImpl);
+  let Make$1 = Spec => (Automation => {
+    let Inner = CoreMaker.Make(Spec)(Automation);
     return {
-      LeanSpec: LeanSpec,
-      AutomationImpl: AutomationImpl,
       Inner: Inner,
       Spec: Spec,
-      Automation: undefined,
+      Automation: Automation,
       queryDbName: Inner.queryDbName,
       make: Inner.make,
       operations: Component$ReventlessCore.operations
     };
-  };
+  });
   return {
     RuntimeEnvironment: undefined,
     EventCollectorChannel: EventCollectorChannel,

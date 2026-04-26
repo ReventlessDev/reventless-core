@@ -27,43 +27,6 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
-function project(event) {
-  switch (event.TAG) {
-    case "CategoryAdded" :
-      let categoryId = event.categoryId;
-      return [{
-          TAG: "Set",
-          _0: categoryId,
-          _1: {
-            categoryId: categoryId,
-            name: event.name,
-            archived: false
-          }
-        }];
-    case "CategoryRenamed" :
-      let name = event.name;
-      return [{
-          TAG: "Update",
-          _0: event.categoryId,
-          _1: state => ({
-            categoryId: state.categoryId,
-            name: name,
-            archived: state.archived
-          })
-        }];
-    case "CategoryArchived" :
-      return [{
-          TAG: "Update",
-          _0: event.categoryId,
-          _1: state => ({
-            categoryId: state.categoryId,
-            name: state.name,
-            archived: true
-          })
-        }];
-  }
-}
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let name = "Categories";
@@ -79,7 +42,6 @@ export {
   Id,
   stateSchema,
   consumedEventSchema,
-  project,
   config,
   subIdConfig,
   moduleUrl,

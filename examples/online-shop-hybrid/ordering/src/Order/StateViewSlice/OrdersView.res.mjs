@@ -28,45 +28,6 @@ let stateSchema = S.schema(s => ({
   status: s.m(S.string)
 }));
 
-function project(event) {
-  switch (event.TAG) {
-    case "OrderPlaced" :
-      let orderId = event.orderId;
-      return [{
-          TAG: "Set",
-          _0: orderId,
-          _1: {
-            orderId: orderId,
-            customerId: event.customerId,
-            productId: event.productId,
-            status: "placed"
-          }
-        }];
-    case "OrderShipped" :
-      return [{
-          TAG: "Update",
-          _0: event.orderId,
-          _1: state => ({
-            orderId: state.orderId,
-            customerId: state.customerId,
-            productId: state.productId,
-            status: "shipped"
-          })
-        }];
-    case "OrderCancelled" :
-      return [{
-          TAG: "Update",
-          _0: event.orderId,
-          _1: state => ({
-            orderId: state.orderId,
-            customerId: state.customerId,
-            productId: state.productId,
-            status: "cancelled"
-          })
-        }];
-  }
-}
-
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
 let name = "Orders";
@@ -82,7 +43,6 @@ export {
   Id,
   consumedEventSchema,
   stateSchema,
-  project,
   config,
   subIdConfig,
   moduleUrl,

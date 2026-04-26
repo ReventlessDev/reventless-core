@@ -14,20 +14,6 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
-function evolve(state, event) {
-  if (event.TAG === "ProductAdded") {
-    return {
-      exists: true,
-      currentPrice: event.price
-    };
-  } else {
-    return {
-      exists: state.exists,
-      currentPrice: event.price
-    };
-  }
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "ChangeProductPrice",
   productId: s.m(DcbTag$Reventless.string),
@@ -42,52 +28,19 @@ let eventSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-function decide(state, command) {
-  if (!state.exists) {
-    return {
-      TAG: "Error",
-      _0: "ProductNotFound"
-    };
-  }
-  let price = command.price;
-  if (price === state.currentPrice) {
-    return {
-      TAG: "Ok",
-      _0: []
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "ProductPriceChanged",
-          productId: command.productId,
-          price: price
-        }]
-    };
-  }
-}
-
 let name = "ChangeProductPrice";
 
 let Id;
-
-let initialState = {
-  exists: false,
-  currentPrice: 0.0
-};
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Product/StateChangeSlice/ChangeProductPrice.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

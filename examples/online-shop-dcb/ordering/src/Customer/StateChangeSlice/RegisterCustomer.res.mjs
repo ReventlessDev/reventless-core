@@ -5,12 +5,6 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 
 let consumedEventSchema = S.literal("CustomerRegistered");
 
-function evolve(_state, event) {
-  return {
-    exists: true
-  };
-}
-
 let commandSchema = S.schema(s => ({
   TAG: "RegisterCustomer",
   customerId: s.m(DcbTag$Reventless.string),
@@ -27,45 +21,19 @@ let eventSchema = S.schema(s => ({
   address: s.m(S.string)
 }));
 
-function decide(state, command) {
-  if (state.exists) {
-    return {
-      TAG: "Error",
-      _0: "CustomerAlreadyRegistered"
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: [{
-          TAG: "CustomerRegistered",
-          customerId: command.customerId,
-          email: command.email,
-          address: command.address
-        }]
-    };
-  }
-}
-
 let name = "RegisterCustomer";
 
 let Id;
-
-let initialState = {
-  exists: false
-};
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Customer/StateChangeSlice/RegisterCustomer.res.mjs";
 
 export {
   name,
   Id,
-  initialState,
   consumedEventSchema,
-  evolve,
   commandSchema,
   errorSchema,
   eventSchema,
-  decide,
   moduleUrl,
 }
 /* consumedEventSchema Not a pure module */

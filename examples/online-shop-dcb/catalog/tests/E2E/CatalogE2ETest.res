@@ -35,15 +35,16 @@ let eventLog = CatalogEventLogMaker.make(~name="Catalog", ~partitionTag=Reventle
 // Build StateChangeSlices
 // ─────────────────────────────────────────────────────────────
 
-module AddProductMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(AddProduct)
-module ChangeProductNameMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductName)
+module AddProductMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(AddProduct, AddProduct_Behavior)
+module ChangeProductNameMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductName, ChangeProductName_Behavior)
 module ChangeProductDescriptionMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(
   ChangeProductDescription,
+  ChangeProductDescription_Behavior,
 )
-module ChangeProductPriceMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductPrice)
-module AddCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(AddCategory)
-module RenameCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(RenameCategory)
-module ArchiveCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ArchiveCategory)
+module ChangeProductPriceMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
+module AddCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(AddCategory, AddCategory_Behavior)
+module RenameCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(RenameCategory, RenameCategory_Behavior)
+module ArchiveCategoryMaker = ReventlessInMemory.StateChangeSlice_Builder.Make(ArchiveCategory, ArchiveCategory_Behavior)
 
 // publishJsons routing — dispatches each command to its registered StateChangeSlice handler.
 let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => {

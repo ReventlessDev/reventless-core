@@ -19,10 +19,10 @@ let applyFirstUpdate = (actions, baseState) =>
     | _ => s
     })
 
-describe("OrdersView.project:", () => {
+describe("OrdersView_Projection.project:", () => {
   test("OrderPlaced creates new state", () =>
     expect(
-      OrdersView.project(
+      OrdersView_Projection.project(
         OrdersView.OrderPlaced({
           orderId: "ord-1",
           customerId: "cust-1",
@@ -44,14 +44,14 @@ describe("OrdersView.project:", () => {
 
   test("OrderShipped Update function sets status to shipped", () =>
     expect(
-      OrdersView.project(OrdersView.OrderShipped({orderId: "ord-1"}))
+      OrdersView_Projection.project(OrdersView.OrderShipped({orderId: "ord-1"}))
       ->applyFirstUpdate(baseOrder),
     )->toEqual({...baseOrder, status: "shipped"})
   )
 
   test("OrderCancelled Update function sets status to cancelled", () =>
     expect(
-      OrdersView.project(
+      OrdersView_Projection.project(
         OrdersView.OrderCancelled({orderId: "ord-1"}),
       )
       ->applyFirstUpdate(baseOrder),

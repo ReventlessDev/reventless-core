@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Pairing$Reventless from "./Pairing.res.mjs";
 
 function stripSuffix(s, suffix) {
   if (s.endsWith(suffix)) {
@@ -16,8 +17,8 @@ function epModuleName(mappingStem) {
   return stripSuffix(mappingStem, "Mapping") + "Maker";
 }
 
-function renderSlices(platformFactory, suffix, stems) {
-  return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + stem + ")");
+function renderSlices(platformFactory, suffix, implSuffix, stems) {
+  return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + stem + ", " + stem + implSuffix + ")");
 }
 
 function renderAggregates(aggregates) {
@@ -109,8 +110,8 @@ function renderExtensions(extensions) {
   return extensions.map(stem => "  module " + stem + "Maker = Platform.Extension.Make(" + stem + ".Mapping)");
 }
 
-function renderSlicesAws(platformFactory, suffix, ns, stems) {
-  return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + ns + "." + stem + ")");
+function renderSlicesAws(platformFactory, suffix, implSuffix, ns, stems) {
+  return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + ns + "." + stem + ", " + ns + "." + stem + implSuffix + ")");
 }
 
 function renderAggregatesAws(ns, aggregates) {
@@ -384,27 +385,27 @@ function render(config, resolved) {
   ns = typeof match$1 !== "object" ? undefined : match$1.sourceNamespace;
   if (resolved.stateChangeSlices.length !== 0) {
     lines.push("  // StateChangeSlices");
-    push(ns !== undefined ? renderSlicesAws("StateChangeSlice", "Slice", ns, resolved.stateChangeSlices) : renderSlices("StateChangeSlice", "Slice", resolved.stateChangeSlices));
+    push(ns !== undefined ? renderSlicesAws("StateChangeSlice", "Slice", Pairing$Reventless.implSuffixForStateChange, ns, resolved.stateChangeSlices) : renderSlices("StateChangeSlice", "Slice", Pairing$Reventless.implSuffixForStateChange, resolved.stateChangeSlices));
   }
   if (resolved.stateViewSlices.length !== 0) {
     lines.push("  // StateViewSlices");
-    push(ns !== undefined ? renderSlicesAws("StateViewSlice", "Slice", ns, resolved.stateViewSlices) : renderSlices("StateViewSlice", "Slice", resolved.stateViewSlices));
+    push(ns !== undefined ? renderSlicesAws("StateViewSlice", "Slice", Pairing$Reventless.implSuffixForStateView, ns, resolved.stateViewSlices) : renderSlices("StateViewSlice", "Slice", Pairing$Reventless.implSuffixForStateView, resolved.stateViewSlices));
   }
   if (resolved.stateViewSlicesStream.length !== 0) {
     lines.push("  // StateViewSliceStreams");
-    push(ns !== undefined ? renderSlicesAws("StateViewSliceStream", "StreamSlice", ns, resolved.stateViewSlicesStream) : renderSlices("StateViewSliceStream", "StreamSlice", resolved.stateViewSlicesStream));
+    push(ns !== undefined ? renderSlicesAws("StateViewSliceStream", "StreamSlice", Pairing$Reventless.implSuffixForStateView, ns, resolved.stateViewSlicesStream) : renderSlices("StateViewSliceStream", "StreamSlice", Pairing$Reventless.implSuffixForStateView, resolved.stateViewSlicesStream));
   }
   if (resolved.automationSlices.length !== 0) {
     lines.push("  // AutomationSlices");
-    push(ns !== undefined ? renderSlicesAws("AutomationSlice", "Slice", ns, resolved.automationSlices) : renderSlices("AutomationSlice", "Slice", resolved.automationSlices));
+    push(ns !== undefined ? renderSlicesAws("AutomationSlice", "Slice", Pairing$Reventless.implSuffixForAutomation, ns, resolved.automationSlices) : renderSlices("AutomationSlice", "Slice", Pairing$Reventless.implSuffixForAutomation, resolved.automationSlices));
   }
   if (resolved.outboundTranslationSlices.length !== 0) {
     lines.push("  // OutboundTranslationSlices");
-    push(ns !== undefined ? renderSlicesAws("OutboundTranslationSlice", "Slice", ns, resolved.outboundTranslationSlices) : renderSlices("OutboundTranslationSlice", "Slice", resolved.outboundTranslationSlices));
+    push(ns !== undefined ? renderSlicesAws("OutboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, ns, resolved.outboundTranslationSlices) : renderSlices("OutboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, resolved.outboundTranslationSlices));
   }
   if (resolved.inboundTranslationSlices.length !== 0) {
     lines.push("  // InboundTranslationSlices");
-    push(ns !== undefined ? renderSlicesAws("InboundTranslationSlice", "Slice", ns, resolved.inboundTranslationSlices) : renderSlices("InboundTranslationSlice", "Slice", resolved.inboundTranslationSlices));
+    push(ns !== undefined ? renderSlicesAws("InboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, ns, resolved.inboundTranslationSlices) : renderSlices("InboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, resolved.inboundTranslationSlices));
   }
   if (resolved.aggregates.length !== 0) {
     lines.push("  // Aggregates");
@@ -514,4 +515,4 @@ export {
   renderMain,
   render,
 }
-/* No side effect */
+/* Pairing-Reventless Not a pure module */
