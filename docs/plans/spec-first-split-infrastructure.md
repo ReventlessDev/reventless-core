@@ -247,7 +247,25 @@ When Phase 3b lands:
 2. Update [`GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml) so `Behavior` and `Projection` kinds always use `gen_include_two` (two-arg form).
 3. Add type-annotation injection on recognised function bindings (table from *Type Shadowing* section): a slice with shared `consumedEvent` / `event` constructor names must compile correctly without manual annotations; manual annotations are preserved (no double annotation).
 
-### Phase 4 — Auto-migration script
+### Phase 4 — Auto-migration script ✅ DONE
+
+**Status:** Completed 2026-04-26.
+
+Implemented as a standalone Node script at [`scripts/spec-first-migrate/spec-first-migrate.mjs`](../../scripts/spec-first-migrate/spec-first-migrate.mjs) (per the plan's "lighter" option — Node-based rather than Ppxlib-based, justified by the corpus being small and the slice files being structurally regular). See [`scripts/spec-first-migrate/README.md`](../../scripts/spec-first-migrate/README.md) for usage.
+
+The script:
+- Walks `.res` files under any recognised slice folder (`StateChangeSlice/`, `StateViewSlice/`, `AutomationSlice/`, `InboundTranslationSlice/`, `OutboundTranslationSlice/`); skips `node_modules/` and `lib/`.
+- Parses each file with a custom top-level scanner that tracks bracket depth, string state (`"..."` and template `\`...${...}...\``), and nested block comments — sufficient for the regular shape of slice files (no nested modules, no functors).
+- Classifies each top-level item by binding name against the per-kind tables in §D2. Comments and decorators (`@schema`, etc.) attach to the next binding (per plan §Phase 4 step 2). Unrecognised bindings default to the implementation file with a warning.
+- Emits two files: `X.res` (Spec, retains `@@reventless.spec` + the file-header comments) and `X_<Kind>.res` (Implementation, gets `@@reventless.<kind>`).
+- Is **idempotent**: re-running on already-split files is a no-op (impl files identified by their `@@reventless.<kind>` attribute; spec files identified by an existing sibling `X_<Kind>.res`).
+- Supports `--dry-run` (prints planned splits without writing) and `--report <path>` (structured JSON output).
+
+A self-test at [`scripts/spec-first-migrate/spec-first-migrate.test.mjs`](../../scripts/spec-first-migrate/spec-first-migrate.test.mjs) exercises all 5 slice kinds with hand-crafted fixtures and verifies: per-kind structural correctness (right binding in right file, right attribute, header comments preserved, no leaks, no warnings); byte-stability of re-splitting the spec output; and full split → re-merge → split round-trip stability. **50/50 tests pass.**
+
+**Phase 5 dependency note (re-stated for visibility):** the script produces a structurally correct split immediately, but actually applying it to the example apps requires Phase 3b first — without the PPX-injected type annotations, the implementation file's `evolve` won't type-check when `consumedEvent` and `event` share constructor names (the merged form's declaration-order trick breaks once the two type definitions live in the same Spec file with no functions between them). This is exactly the type-shadowing problem the plan calls out under *Type Shadowing in Split Files*.
+
+Original Phase 4 design notes (kept for reference):
 
 A standalone tool — placed in `scripts/spec-first-migrate/` or as a subcommand of an existing CLI — that walks a source tree and splits every merged slice file:
 
