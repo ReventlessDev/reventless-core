@@ -4,8 +4,26 @@ open ReventlessGwt.AsyncTest
 open ReventlessGwt.AsyncTest.Expect
 open AutomationSliceFixtures
 
-module Callback = ReventlessCore.AutomationSlice_Callback.Make(ShipOrderSpec)
-module SkipCallback = ReventlessCore.AutomationSlice_Callback.Make(SkipProcessSpec)
+module ShipOrderAutomation = {
+  let collect = ShipOrderSpec.collect
+  let resolve = ShipOrderSpec.resolve
+  let process = ShipOrderSpec.process
+  let moduleUrl = ShipOrderSpec.moduleUrl
+}
+module SkipProcessAutomation = {
+  let collect = SkipProcessSpec.collect
+  let resolve = SkipProcessSpec.resolve
+  let process = SkipProcessSpec.process
+  let moduleUrl = SkipProcessSpec.moduleUrl
+}
+module Callback = ReventlessCore.AutomationSlice_Callback.Make(
+  ShipOrderSpec,
+  ShipOrderAutomation,
+)
+module SkipCallback = ReventlessCore.AutomationSlice_Callback.Make(
+  SkipProcessSpec,
+  SkipProcessAutomation,
+)
 
 open ReventlessCore.AutomationSlice_Callback
 

@@ -15,17 +15,18 @@ type operations = {publishJsons: CommandTopic.publishJsons}
 type t
 
 /**
-Module type produced by `Platform.StateChangeSlice.Make(Spec)`.
+Module type produced by `Platform.StateChangeSlice.Make(Spec, Behavior)`.
 
 @example
 ```rescript
 // CatalogPlugin.res
-module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory)
+module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
 let slice = AddCategorySlice.make(~dcbEventLog=log, ~publishJsons=publishJsonsOutput)
 ```
 */
 module type T = {
-  module Spec: Reventless.StateChangeSlice.MergedSpec
+  module Spec: Reventless.StateChangeSlice.Spec
+  module Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec
   /** `true` when built with `Platform.StateChangeSlice.MakeAsync` — uses FIFO channel, returns `CommandPending`. */
   let isAsync: bool
   type component = Component.t<t, outputs, operations>

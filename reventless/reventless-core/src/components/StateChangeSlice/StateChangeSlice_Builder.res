@@ -1,10 +1,12 @@
-module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (
-  StateChangeSlice.T with module Spec = Spec
-) => {
+module Make = (
+  Spec: Reventless.StateChangeSlice.Spec,
+  Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+): StateChangeSlice.T => {
   module Spec = Spec
+  module Behavior = Behavior
   let isAsync = false
   type component = StateChangeSlice.component
-  module Callback = StateChangeSlice_Callback.Make(Spec)
+  module Callback = StateChangeSlice_Callback.Make(Spec, Behavior)
 
   let makeJsonHandler = (dcbEventLogOps: DcbEventLog.operations) => {
     let handler: CommandTopic.jsonCommandsHandler = stream => {

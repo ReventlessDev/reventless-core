@@ -23,7 +23,7 @@ import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventC
 
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
-    let Make = Spec => {
+    let Make = Spec => (Projection => {
       let moduleUrl = import.meta.url;
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
         Id: Id$Reventless.$$String,
@@ -79,7 +79,7 @@ function Make(RuntimeEnvironment) {
               }
               let actions;
               try {
-                actions = Spec.project(Primitive_option.valFromOption(event));
+                actions = Projection.project(Primitive_option.valFromOption(event));
               } catch (raw_exn) {
                 let exn = Primitive_exceptions.internalToException(raw_exn);
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
@@ -112,9 +112,10 @@ function Make(RuntimeEnvironment) {
       }, opts);
       return {
         Spec: Spec,
+        Projection: Projection,
         make: make
       };
-    };
+    });
     return {
       finish: EventCollectorRuntimeBuilder.finish,
       Make: Make
@@ -122,7 +123,10 @@ function Make(RuntimeEnvironment) {
   }))));
 }
 
+let FrameworkProjection;
+
 export {
+  FrameworkProjection,
   Make,
 }
 /* Stream Not a pure module */

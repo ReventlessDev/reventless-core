@@ -31,10 +31,34 @@ function Make(Bus) {
     make: QueryDbResolvers.make
   })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => {
-    let include = CoreMaker.Make(Spec);
+    let LeanSpec_name = Spec.name;
+    let LeanSpec_moduleUrl = Spec.moduleUrl;
+    let LeanSpec_stateSchema = Spec.stateSchema;
+    let LeanSpec_consumedEventSchema = Spec.consumedEventSchema;
+    let LeanSpec_config = Spec.config;
+    let LeanSpec_subIdConfig = Spec.subIdConfig;
+    let LeanSpec = {
+      name: LeanSpec_name,
+      moduleUrl: LeanSpec_moduleUrl,
+      stateSchema: LeanSpec_stateSchema,
+      consumedEventSchema: LeanSpec_consumedEventSchema,
+      config: LeanSpec_config,
+      subIdConfig: LeanSpec_subIdConfig
+    };
+    let ProjectionImpl_project = Spec.project;
+    let ProjectionImpl_moduleUrl = Spec.moduleUrl;
+    let ProjectionImpl = {
+      project: ProjectionImpl_project,
+      moduleUrl: ProjectionImpl_moduleUrl
+    };
+    let Inner = CoreMaker.Make(LeanSpec)(ProjectionImpl);
     return {
-      Spec: include.Spec,
-      make: include.make,
+      LeanSpec: LeanSpec,
+      ProjectionImpl: ProjectionImpl,
+      Inner: Inner,
+      Spec: Spec,
+      Projection: undefined,
+      make: Inner.make,
       operations: Component$ReventlessCore.operations
     };
   };

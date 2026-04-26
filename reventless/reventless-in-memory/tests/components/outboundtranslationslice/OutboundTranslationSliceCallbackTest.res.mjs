@@ -5,7 +5,40 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
 import * as OutboundTranslationSliceFixtures$ReventlessInMemory from "./OutboundTranslationSliceFixtures.res.mjs";
 
-let FireForgetCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make(OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec);
+let collect = OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.collect;
+
+let translate = OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.translate;
+
+let moduleUrl = OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.moduleUrl;
+
+let SendTrackingEmailTranslation = {
+  collect: collect,
+  translate: translate,
+  moduleUrl: moduleUrl
+};
+
+let collect$1 = OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.collect;
+
+let translate$1 = OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.translate;
+
+let moduleUrl$1 = OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.moduleUrl;
+
+let ProcessPaymentTranslation = {
+  collect: collect$1,
+  translate: translate$1,
+  moduleUrl: moduleUrl$1
+};
+
+let FireForgetCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make({
+  name: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.name,
+  moduleUrl: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.moduleUrl,
+  consumedEventSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.consumedEventSchema,
+  outboundItemSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.outboundItemSchema,
+  inboundCommandSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.inboundCommandSchema,
+  maxRetries: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.maxRetries,
+  heartbeatInterval: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.heartbeatInterval,
+  targetName: OutboundTranslationSliceFixtures$ReventlessInMemory.SendTrackingEmailSpec.targetName
+})(SendTrackingEmailTranslation);
 
 let CommandBackCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make({
   name: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.name,
@@ -13,12 +46,10 @@ let CommandBackCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make(
   consumedEventSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.consumedEventSchema,
   outboundItemSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.outboundItemSchema,
   inboundCommandSchema: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.inboundCommandSchema,
-  collect: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.collect,
-  translate: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.translate,
   maxRetries: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.maxRetries,
   heartbeatInterval: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.heartbeatInterval,
   targetName: OutboundTranslationSliceFixtures$ReventlessInMemory.ProcessPaymentSpec.targetName
-});
+})(ProcessPaymentTranslation);
 
 describe("OutboundTranslationSlice Callback", () => {
   beforeEach(() => {
@@ -258,6 +289,8 @@ describe("OutboundTranslationSlice Callback", () => {
 });
 
 export {
+  SendTrackingEmailTranslation,
+  ProcessPaymentTranslation,
   FireForgetCallback,
   CommandBackCallback,
 }

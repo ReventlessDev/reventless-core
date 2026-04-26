@@ -22,7 +22,8 @@ type todoRow = {
 }
 
 module type T = {
-  module Spec: Reventless.AutomationSlice.MergedSpec
+  module Spec: Reventless.AutomationSlice.Spec
+  module Automation: Reventless.AutomationSlice.Automation with module Spec := Spec
 
   /** The in-memory TODO list — maps item ID to row. */
   let todoItems: Dict.t<todoRow>
@@ -34,8 +35,12 @@ module type T = {
   let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
 }
 
-module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (T with module Spec = Spec) => {
+module Make = (
+  Spec: Reventless.AutomationSlice.Spec,
+  Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+): (T with module Spec = Spec and module Automation := Automation) => {
   module Spec = Spec
+  module Automation = Automation
 
   let todoItems: Dict.t<todoRow> = Dict.make()
 
@@ -53,7 +58,7 @@ module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (T with module Spec
   let phase1 = (events: array<Spec.consumedEvent>) => {
     events->Array.forEach(event => {
       // Collect new TODO items
-      Spec.collect(event)->Array.forEach(((id, item)) => {
+      Automation.collect(event)->Array.forEach(((id, item)) => {
         switch todoItems->Dict.get(id) {
         | Some(_) => () // Already exists — skip (idempotent)
         | None =>
@@ -68,7 +73,7 @@ module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (T with module Spec
       })
 
       // Resolve completed items
-      switch Spec.resolve(event) {
+      switch Automation.resolve(event) {
       | Some(id) =>
         todoItems
         ->Dict.get(id)
@@ -102,7 +107,7 @@ module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (T with module Spec
       }
 
       item->Option.forEach(item => {
-        switch Spec.process(id, item) {
+        switch Automation.process(id, item) {
         | Some((targetId, command)) =>
           todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
           let commandJson = try command

@@ -20,8 +20,8 @@ import * as OutboundTranslationSlice_Callback$ReventlessCore from "./OutboundTra
 
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
-    let Make = Spec => {
-      let Callback = OutboundTranslationSlice_Callback$ReventlessCore.Make(Spec);
+    let Make = Spec => (Translation => {
+      let Callback = OutboundTranslationSlice_Callback$ReventlessCore.Make(Spec)(Translation);
       let queryDbName = Spec.name + "Todo";
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -104,10 +104,11 @@ function Make(RuntimeEnvironment) {
       }, opts);
       return {
         Spec: Spec,
+        Translation: Translation,
         queryDbName: queryDbName,
         make: make
       };
-    };
+    });
     return {
       finish: EventCollectorRuntimeBuilder.finish,
       Make: Make

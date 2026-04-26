@@ -27,134 +27,136 @@ let todoRowSchema = S.schema(s => ({
 }));
 
 function Make(Spec) {
-  let todoItems = {};
-  let makeMeta = () => ({
-    service: `AutomationSlice:` + Spec.name,
-    time: new Date().toISOString(),
-    ip: "",
-    user: "",
-    msgId: Uuid.v4(),
-    correlationId: ""
-  });
-  let phase1 = events => {
-    events.forEach(event => {
-      Spec.collect(event).forEach(param => {
-        let id = param[0];
-        let match = todoItems[id];
-        if (match !== undefined) {
-          return;
-        }
-        let row_item = S.reverseConvertToJsonOrThrow(param[1], Spec.todoItemSchema);
-        let row_createdAt = new Date().toISOString();
-        let row = {
-          item: row_item,
-          status: "Pending",
-          createdAt: row_createdAt,
-          retryCount: 0
-        };
-        todoItems[id] = row;
-      });
-      let id = Spec.resolve(event);
-      if (id !== undefined) {
-        return Stdlib_Option.forEach(todoItems[id], row => {
-          let newrecord = {...row};
-          newrecord.completedAt = new Date().toISOString();
-          newrecord.status = "Completed";
-          todoItems[id] = newrecord;
-        });
-      }
+  return Automation => {
+    let todoItems = {};
+    let makeMeta = () => ({
+      service: `AutomationSlice:` + Spec.name,
+      time: new Date().toISOString(),
+      ip: "",
+      user: "",
+      msgId: Uuid.v4(),
+      correlationId: ""
     });
-  };
-  let phase2 = async publishJsons => {
-    let pending = Object.entries(todoItems).filter(param => {
-      let row = param[1];
-      if (row.status === "Pending") {
-        return true;
-      } else if (row.status === "Failed") {
-        return row.retryCount < Spec.maxRetries;
-      } else {
-        return false;
-      }
-    });
-    let commands = [];
-    pending.forEach(param => {
-      let row = param[1];
-      let id = param[0];
-      let item;
-      try {
-        item = Primitive_option.some(S.parseJsonOrThrow(row.item, Spec.todoItemSchema));
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-        Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to decode todoItem: ` + errMsg));
-        item = undefined;
-      }
-      Stdlib_Option.forEach(item, item => {
-        let match = Spec.process(id, item);
-        if (match === undefined) {
-          return;
-        }
-        let targetId = match[0];
-        let newrecord = {...row};
-        newrecord.processedAt = new Date().toISOString();
-        newrecord.status = "Processing";
-        todoItems[id] = newrecord;
-        let commandJson;
-        try {
-          commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
-        } catch (raw_exn) {
-          let exn = Primitive_exceptions.internalToException(raw_exn);
-          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
-          let newrecord$1 = {...row};
-          newrecord$1.retryCount = row.retryCount + 1 | 0;
-          newrecord$1.status = "Failed";
-          todoItems[id] = newrecord$1;
-          commandJson = undefined;
-        }
-        Stdlib_Option.forEach(commandJson, commandJson => {
-          let msg_meta = makeMeta();
-          let msg = {
-            id: targetId,
-            meta: msg_meta,
-            commandJson: commandJson
+    let phase1 = events => {
+      events.forEach(event => {
+        Automation.collect(event).forEach(param => {
+          let id = param[0];
+          let match = todoItems[id];
+          if (match !== undefined) {
+            return;
+          }
+          let row_item = S.reverseConvertToJsonOrThrow(param[1], Spec.todoItemSchema);
+          let row_createdAt = new Date().toISOString();
+          let row = {
+            item: row_item,
+            status: "Pending",
+            createdAt: row_createdAt,
+            retryCount: 0
           };
-          commands.push(msg);
+          todoItems[id] = row;
         });
+        let id = Automation.resolve(event);
+        if (id !== undefined) {
+          return Stdlib_Option.forEach(todoItems[id], row => {
+            let newrecord = {...row};
+            newrecord.completedAt = new Date().toISOString();
+            newrecord.status = "Completed";
+            todoItems[id] = newrecord;
+          });
+        }
       });
-    });
-    if (commands.length === 0) {
-      return;
-    }
-    try {
-      return await publishJsons(commands);
-    } catch (raw_exn) {
-      let exn = Primitive_exceptions.internalToException(raw_exn);
-      let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-      Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to publish commands: ` + errMsg));
+    };
+    let phase2 = async publishJsons => {
+      let pending = Object.entries(todoItems).filter(param => {
+        let row = param[1];
+        if (row.status === "Pending") {
+          return true;
+        } else if (row.status === "Failed") {
+          return row.retryCount < Spec.maxRetries;
+        } else {
+          return false;
+        }
+      });
+      let commands = [];
       pending.forEach(param => {
         let row = param[1];
         let id = param[0];
-        let current = todoItems[id];
-        if (current === undefined) {
-          return;
+        let item;
+        try {
+          item = Primitive_option.some(S.parseJsonOrThrow(row.item, Spec.todoItemSchema));
+        } catch (raw_exn) {
+          let exn = Primitive_exceptions.internalToException(raw_exn);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+          Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to decode todoItem: ` + errMsg));
+          item = undefined;
         }
-        if (current.status !== "Processing") {
-          return;
-        }
-        let newrecord = {...row};
-        newrecord.retryCount = row.retryCount + 1 | 0;
-        newrecord.status = "Failed";
-        todoItems[id] = newrecord;
+        Stdlib_Option.forEach(item, item => {
+          let match = Automation.process(id, item);
+          if (match === undefined) {
+            return;
+          }
+          let targetId = match[0];
+          let newrecord = {...row};
+          newrecord.processedAt = new Date().toISOString();
+          newrecord.status = "Processing";
+          todoItems[id] = newrecord;
+          let commandJson;
+          try {
+            commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
+          } catch (raw_exn) {
+            let exn = Primitive_exceptions.internalToException(raw_exn);
+            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+            Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
+            let newrecord$1 = {...row};
+            newrecord$1.retryCount = row.retryCount + 1 | 0;
+            newrecord$1.status = "Failed";
+            todoItems[id] = newrecord$1;
+            commandJson = undefined;
+          }
+          Stdlib_Option.forEach(commandJson, commandJson => {
+            let msg_meta = makeMeta();
+            let msg = {
+              id: targetId,
+              meta: msg_meta,
+              commandJson: commandJson
+            };
+            commands.push(msg);
+          });
+        });
       });
-      return;
-    }
-  };
-  return {
-    Spec: Spec,
-    todoItems: todoItems,
-    phase1: phase1,
-    phase2: phase2
+      if (commands.length === 0) {
+        return;
+      }
+      try {
+        return await publishJsons(commands);
+      } catch (raw_exn) {
+        let exn = Primitive_exceptions.internalToException(raw_exn);
+        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+        Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to publish commands: ` + errMsg));
+        pending.forEach(param => {
+          let row = param[1];
+          let id = param[0];
+          let current = todoItems[id];
+          if (current === undefined) {
+            return;
+          }
+          if (current.status !== "Processing") {
+            return;
+          }
+          let newrecord = {...row};
+          newrecord.retryCount = row.retryCount + 1 | 0;
+          newrecord.status = "Failed";
+          todoItems[id] = newrecord;
+        });
+        return;
+      }
+    };
+    return {
+      Spec: Spec,
+      todoItems: todoItems,
+      phase1: phase1,
+      phase2: phase2
+    };
   };
 }
 

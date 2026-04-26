@@ -6,9 +6,57 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as AutomationSliceFixtures$ReventlessInMemory from "./AutomationSliceFixtures.res.mjs";
 
-let Callback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec);
+let collect = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.collect;
 
-let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec);
+let resolve = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.resolve;
+
+let process = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.process;
+
+let moduleUrl = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.moduleUrl;
+
+let ShipOrderAutomation = {
+  collect: collect,
+  resolve: resolve,
+  process: process,
+  moduleUrl: moduleUrl
+};
+
+let collect$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.collect;
+
+let resolve$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.resolve;
+
+let process$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.process;
+
+let moduleUrl$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.moduleUrl;
+
+let SkipProcessAutomation = {
+  collect: collect$1,
+  resolve: resolve$1,
+  process: process$1,
+  moduleUrl: moduleUrl$1
+};
+
+let Callback = AutomationSlice_Callback$ReventlessCore.Make({
+  name: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.name,
+  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.moduleUrl,
+  consumedEventSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.consumedEventSchema,
+  todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.todoItemSchema,
+  commandSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.commandSchema,
+  maxRetries: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.maxRetries,
+  heartbeatInterval: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.heartbeatInterval,
+  targetName: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.targetName
+})(ShipOrderAutomation);
+
+let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make({
+  name: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.name,
+  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.moduleUrl,
+  consumedEventSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.consumedEventSchema,
+  todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.todoItemSchema,
+  commandSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.commandSchema,
+  maxRetries: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.maxRetries,
+  heartbeatInterval: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.heartbeatInterval,
+  targetName: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.targetName
+})(SkipProcessAutomation);
 
 describe("AutomationSlice Callback", () => {
   beforeEach(() => {
@@ -222,6 +270,8 @@ describe("AutomationSlice Callback", () => {
 });
 
 export {
+  ShipOrderAutomation,
+  SkipProcessAutomation,
   Callback,
   SkipCallback,
 }

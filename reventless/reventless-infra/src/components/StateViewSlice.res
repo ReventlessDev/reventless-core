@@ -18,17 +18,18 @@ type operations = {enqueueEvent: EventCollector.enqueueEvent}
 type t
 
 /**
-Module type produced by `Platform.StateViewSlice.Make(Spec)`.
+Module type produced by `Platform.StateViewSlice.Make(Spec, Projection)`.
 
 @example
 ```rescript
 // CatalogPlugin.res
-module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView)
+module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView, CategoriesView_Projection)
 let slice = CategoriesViewSlice.make(~dcbEventLog=log)
 ```
 */
 module type T = {
-  module Spec: Reventless.StateViewSlice.MergedSpec
+  module Spec: Reventless.StateViewSlice.Spec
+  module Projection: Reventless.StateViewSlice.Projection with module Spec := Spec
   type component = Component.t<t, outputs, operations>
   let make: (
     ~dcbEventLog: DcbEventLog.component,

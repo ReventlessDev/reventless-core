@@ -12,54 +12,57 @@ import * as StateChangeSlice$ReventlessCore from "./StateChangeSlice.res.mjs";
 import * as StateChangeSlice_Callback$ReventlessCore from "./StateChangeSlice_Callback.res.mjs";
 
 function Make(Spec) {
-  let Callback = StateChangeSlice_Callback$ReventlessCore.Make(Spec);
-  let makeJsonHandler = dcbEventLogOps => (stream => {
-    let decodedStream = Stream.flatMap(Stream.mapEffect(stream, param => {
-      let reference = param.reference;
-      let json = param.command;
-      return Effect.sync(() => {
-        let command$p;
-        try {
-          command$p = Message$ReventlessCore.decodeCommand$p(json, Id$Reventless.$$String.schema, Spec.commandSchema);
-        } catch (raw_err) {
-          let err = Primitive_exceptions.internalToException(raw_err);
-          let commandStr = JSON.stringify(json);
-          console.error(`Couldn't decode command ` + commandStr + `:`, err);
-          return;
+  return Behavior => {
+    let Callback = StateChangeSlice_Callback$ReventlessCore.Make(Spec)(Behavior);
+    let makeJsonHandler = dcbEventLogOps => (stream => {
+      let decodedStream = Stream.flatMap(Stream.mapEffect(stream, param => {
+        let reference = param.reference;
+        let json = param.command;
+        return Effect.sync(() => {
+          let command$p;
+          try {
+            command$p = Message$ReventlessCore.decodeCommand$p(json, Id$Reventless.$$String.schema, Spec.commandSchema);
+          } catch (raw_err) {
+            let err = Primitive_exceptions.internalToException(raw_err);
+            let commandStr = JSON.stringify(json);
+            console.error(`Couldn't decode command ` + commandStr + `:`, err);
+            return;
+          }
+          return {
+            command: command$p,
+            reference: reference
+          };
+        });
+      }), opt => {
+        if (opt !== undefined) {
+          return Stream.fromIterable([opt]);
+        } else {
+          return Stream.empty;
         }
-        return {
-          command: command$p,
-          reference: reference
-        };
       });
-    }), opt => {
-      if (opt !== undefined) {
-        return Stream.fromIterable([opt]);
-      } else {
-        return Stream.empty;
-      }
+      return Callback.handleCommands(dcbEventLogOps, decodedStream);
     });
-    return Callback.handleCommands(dcbEventLogOps, decodedStream);
-  });
-  let make = (dcbEventLog, publishJsons, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateChangeSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
-    let commandSchema = Spec.commandSchema;
-    let commandTypeNames = CommandTopic$ReventlessCore.extractTypeNamesFromSchema(commandSchema);
-    Component$ReventlessCore.operations(dcbEventLog).apply(dcbEventLogOps => {
-      let jsonHandler = makeJsonHandler(dcbEventLogOps);
-      CommandTopic$ReventlessCore.registerHandler(commandSchema, jsonHandler, commandTypeNames);
-    });
-    Component$ReventlessCore.setOperations(extra, publishJsons.apply(publishJsons => ({
-      publishJsons: publishJsons
-    })));
-    let outputs = {
-      resources: Component$ReventlessCore.outputs(dcbEventLog).resources
+    let make = (dcbEventLog, publishJsons, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateChangeSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+      let commandSchema = Spec.commandSchema;
+      let commandTypeNames = CommandTopic$ReventlessCore.extractTypeNamesFromSchema(commandSchema);
+      Component$ReventlessCore.operations(dcbEventLog).apply(dcbEventLogOps => {
+        let jsonHandler = makeJsonHandler(dcbEventLogOps);
+        CommandTopic$ReventlessCore.registerHandler(commandSchema, jsonHandler, commandTypeNames);
+      });
+      Component$ReventlessCore.setOperations(extra, publishJsons.apply(publishJsons => ({
+        publishJsons: publishJsons
+      })));
+      let outputs = {
+        resources: Component$ReventlessCore.outputs(dcbEventLog).resources
+      };
+      return Component$ReventlessCore.setOutputs(extra, outputs);
+    }, opts);
+    return {
+      Spec: Spec,
+      Behavior: Behavior,
+      isAsync: false,
+      make: make
     };
-    return Component$ReventlessCore.setOutputs(extra, outputs);
-  }, opts);
-  return {
-    Spec: Spec,
-    isAsync: false,
-    make: make
   };
 }
 

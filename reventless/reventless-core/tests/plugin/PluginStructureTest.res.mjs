@@ -9,6 +9,13 @@ import * as PsCustomersView$ReventlessCore from "./StateViewSlice/PsCustomersVie
 import * as Plugin_Structure$ReventlessCore from "../../src/components/Plugin/Plugin_Structure.res.mjs";
 import * as PsAvailableProductsView$ReventlessCore from "./StateViewSlice/PsAvailableProductsView.res.mjs";
 
+let Behavior = {
+  initialState: false,
+  evolve: PsPlaceOrder$ReventlessCore.evolve,
+  decide: PsPlaceOrder$ReventlessCore.decide,
+  moduleUrl: PsPlaceOrder$ReventlessCore.moduleUrl
+};
+
 function make(param, param$1, param$2) {
   return 0;
 }
@@ -16,20 +23,25 @@ function make(param, param$1, param$2) {
 let PsPlaceOrderSlice_Spec = {
   name: PsPlaceOrder$ReventlessCore.name,
   moduleUrl: PsPlaceOrder$ReventlessCore.moduleUrl,
-  initialState: false,
-  consumedEventSchema: PsPlaceOrder$ReventlessCore.consumedEventSchema,
-  evolve: PsPlaceOrder$ReventlessCore.evolve,
-  errorSchema: PsPlaceOrder$ReventlessCore.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: PsPlaceOrder$ReventlessCore.consumedEventSchema,
+  errorSchema: PsPlaceOrder$ReventlessCore.errorSchema,
   eventSchema: PsPlaceOrder$ReventlessCore.eventSchema,
-  decide: PsPlaceOrder$ReventlessCore.decide,
   commandSchema: PsPlaceOrder$ReventlessCore.commandSchema
 };
 
 let PsPlaceOrderSlice = {
   Spec: PsPlaceOrderSlice_Spec,
+  Behavior: Behavior,
   isAsync: false,
   make: make
+};
+
+let Behavior$1 = {
+  initialState: false,
+  evolve: PsShipOrder$ReventlessCore.evolve,
+  decide: PsShipOrder$ReventlessCore.decide,
+  moduleUrl: PsShipOrder$ReventlessCore.moduleUrl
 };
 
 function make$1(param, param$1, param$2) {
@@ -39,20 +51,23 @@ function make$1(param, param$1, param$2) {
 let PsShipOrderSlice_Spec = {
   name: PsShipOrder$ReventlessCore.name,
   moduleUrl: PsShipOrder$ReventlessCore.moduleUrl,
-  initialState: false,
-  consumedEventSchema: PsShipOrder$ReventlessCore.consumedEventSchema,
-  evolve: PsShipOrder$ReventlessCore.evolve,
-  errorSchema: PsShipOrder$ReventlessCore.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: PsShipOrder$ReventlessCore.consumedEventSchema,
+  errorSchema: PsShipOrder$ReventlessCore.errorSchema,
   eventSchema: PsShipOrder$ReventlessCore.eventSchema,
-  decide: PsShipOrder$ReventlessCore.decide,
   commandSchema: PsShipOrder$ReventlessCore.commandSchema
 };
 
 let PsShipOrderSlice = {
   Spec: PsShipOrderSlice_Spec,
+  Behavior: Behavior$1,
   isAsync: false,
   make: make$1
+};
+
+let Projection = {
+  project: PsOrdersView$ReventlessCore.project,
+  moduleUrl: PsOrdersView$ReventlessCore.moduleUrl
 };
 
 function make$2(param, param$1) {
@@ -64,14 +79,19 @@ let PsOrdersViewSlice_Spec = {
   moduleUrl: PsOrdersView$ReventlessCore.moduleUrl,
   stateSchema: PsOrdersView$ReventlessCore.stateSchema,
   consumedEventSchema: PsOrdersView$ReventlessCore.consumedEventSchema,
-  project: PsOrdersView$ReventlessCore.project,
   config: PsOrdersView$ReventlessCore.config,
   subIdConfig: undefined
 };
 
 let PsOrdersViewSlice = {
   Spec: PsOrdersViewSlice_Spec,
+  Projection: Projection,
   make: make$2
+};
+
+let Projection$1 = {
+  project: PsAvailableProductsView$ReventlessCore.project,
+  moduleUrl: PsAvailableProductsView$ReventlessCore.moduleUrl
 };
 
 function make$3(param, param$1) {
@@ -83,14 +103,19 @@ let PsAvailableProductsViewSlice_Spec = {
   moduleUrl: PsAvailableProductsView$ReventlessCore.moduleUrl,
   stateSchema: PsAvailableProductsView$ReventlessCore.stateSchema,
   consumedEventSchema: PsAvailableProductsView$ReventlessCore.consumedEventSchema,
-  project: PsAvailableProductsView$ReventlessCore.project,
   config: PsAvailableProductsView$ReventlessCore.config,
   subIdConfig: undefined
 };
 
 let PsAvailableProductsViewSlice = {
   Spec: PsAvailableProductsViewSlice_Spec,
+  Projection: Projection$1,
   make: make$3
+};
+
+let Projection$2 = {
+  project: PsCustomersView$ReventlessCore.project,
+  moduleUrl: PsCustomersView$ReventlessCore.moduleUrl
 };
 
 function make$4(param, param$1) {
@@ -102,13 +127,13 @@ let PsCustomersViewSlice_Spec = {
   moduleUrl: PsCustomersView$ReventlessCore.moduleUrl,
   stateSchema: PsCustomersView$ReventlessCore.stateSchema,
   consumedEventSchema: PsCustomersView$ReventlessCore.consumedEventSchema,
-  project: PsCustomersView$ReventlessCore.project,
   config: PsCustomersView$ReventlessCore.config,
   subIdConfig: undefined
 };
 
 let PsCustomersViewSlice = {
   Spec: PsCustomersViewSlice_Spec,
+  Projection: Projection$2,
   make: make$4
 };
 

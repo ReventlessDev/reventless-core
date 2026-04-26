@@ -19,13 +19,15 @@ module Make = (
   },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
-  module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (
-    AutomationSlice.T with module Spec = Spec
-  ) => {
+  module Make = (
+    Spec: Reventless.AutomationSlice.Spec,
+    Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+  ): AutomationSlice.T => {
     module Spec = Spec
+    module Automation = Automation
     type component = AutomationSlice.component
 
-    module Callback = AutomationSlice_Callback.Make(Spec)
+    module Callback = AutomationSlice_Callback.Make(Spec, Automation)
 
     let queryDbName = Spec.name ++ "Todo"
 

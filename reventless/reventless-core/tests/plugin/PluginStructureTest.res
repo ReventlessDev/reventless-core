@@ -19,28 +19,54 @@ type svsComponent = Component.t<
 
 module PsPlaceOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsPlaceOrder
+  module Behavior = {
+    type state = PsPlaceOrder.state
+    let initialState = PsPlaceOrder.initialState
+    let evolve = PsPlaceOrder.evolve
+    let decide = PsPlaceOrder.decide
+    let moduleUrl = PsPlaceOrder.moduleUrl
+  }
   let isAsync = false
   type component = scsComponent
   let make = (~dcbEventLog as _, ~publishJsons as _, ~opts as _=?): component => Obj.magic(0)
 }
 module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsShipOrder
+  module Behavior = {
+    type state = PsShipOrder.state
+    let initialState = PsShipOrder.initialState
+    let evolve = PsShipOrder.evolve
+    let decide = PsShipOrder.decide
+    let moduleUrl = PsShipOrder.moduleUrl
+  }
   let isAsync = false
   type component = scsComponent
   let make = (~dcbEventLog as _, ~publishJsons as _, ~opts as _=?): component => Obj.magic(0)
 }
 module PsOrdersViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsOrdersView
+  module Projection = {
+    let project = PsOrdersView.project
+    let moduleUrl = PsOrdersView.moduleUrl
+  }
   type component = svsComponent
   let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
 }
 module PsAvailableProductsViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsAvailableProductsView
+  module Projection = {
+    let project = PsAvailableProductsView.project
+    let moduleUrl = PsAvailableProductsView.moduleUrl
+  }
   type component = svsComponent
   let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
 }
 module PsCustomersViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsCustomersView
+  module Projection = {
+    let project = PsCustomersView.project
+    let moduleUrl = PsCustomersView.moduleUrl
+  }
   type component = svsComponent
   let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
 }

@@ -169,20 +169,36 @@ State placement follows D2: ephemeral state (StateChangeSlice) lives in `Behavio
 
 **Verification:** Full repo build clean (no warnings, no errors). All 1110 tests across 124 suites pass.
 
-### Phase 2 — Slice builders: take two module arguments
+### Phase 2 — Slice builders: take two module arguments ✅ DONE
 
-For each of the five slice builders in [`reventless/reventless-core/src/components/<Slice>/`](../../reventless/reventless-core/src/components/):
+**Status:** Completed 2026-04-26.
 
-1. Change `Make` from one-arg `(Spec: <Slice>.Spec)` to two-arg `(Spec: <Slice>.Spec, Impl: <Slice>.<ImplKind> with module Spec := Spec)` — same shape as [`Aggregate_Builder.Make`](../../reventless/reventless-core/src/components/Aggregate/Aggregate_Builder.res) at line 1–4.
-2. Update internal references (`Spec.evolve` → `Impl.evolve`, etc.).
-3. Update the public `T` module type in `<Slice>.res` to expose `module Impl: <Slice>.<ImplKind>`.
+Each of the five framework slice `_Builder.Make` and `_Callback.Make` functors now takes two module arguments — the lean `Spec` and the kind-specific implementation module:
 
-Files:
-- [`reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Builder.res`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Builder.res) and `_Callback.res`
-- Same pattern for the four other slice builders.
-- AWS-side counterparts in `packages/reventless-aws/` and any platform adapters that reference the slice builders.
+| Slice                       | Functor signature                                                                          |
+|-----------------------------|--------------------------------------------------------------------------------------------|
+| `StateChangeSlice_Builder`  | `Make(Spec, Behavior: Behavior with module Spec := Spec)` → `StateChangeSlice.T`           |
+| `StateViewSlice_Builder`    | `Make(Spec, Projection: Projection with module Spec := Spec)` → `StateViewSlice.T`         |
+| `AutomationSlice_Builder`   | `Make(Spec, Automation: Automation with module Spec := Spec)` → `AutomationSlice.T`        |
+| `InboundTranslationSlice_Builder`  | `Make(Spec, Translation: Translation with module Spec := Spec)` → `InboundTranslationSlice.T`  |
+| `OutboundTranslationSlice_Builder` | `Make(Spec, Translation: Translation with module Spec := Spec)` → `OutboundTranslationSlice.T` |
 
-Verification: `bun run build` at the repo root succeeds. The runtime tests in `reventless-in-memory` pass.
+Internal references inside `_Callback.res` and `_Builder.res` switched from `Spec.evolve` / `Spec.project` / `Spec.collect` / `Spec.translate` / `Spec.process` / `Spec.resolve` / `Spec.initialState` to `Behavior.X` / `Projection.X` / `Automation.X` / `Translation.X` (all unqualified within the implementation half).
+
+The framework `T` module types were updated to expose **two** modules — `module Spec` (lean) and `module <ImplKind>` (the implementation half). Same change in [`reventless-infra/src/components/<Slice>.res`](../../reventless/reventless-infra/src/components/) for the deploy-time-facing `T`. Plugin_Structure / Dcb_Builder consumers only ever read `<Slice>.Spec.{name, eventSchema, consumedEventSchema, commandSchema, moduleUrl}`, all of which live in the lean Spec — no consumer change needed.
+
+**Backwards-compat shim at the AWS / in-memory adapter layer.** Each `Platform.<Slice>.Make` still accepts a legacy `MergedSpec`. Inside the wrapper the merged module is spliced into a `LeanSpec` + `<ImplKind>Impl` pair using inline submodule definitions, then handed to the new two-arg framework `Make`. The wrapper re-binds `module Spec = Spec` (the original input MergedSpec) and `module <ImplKind> = <ImplKind>Impl` so the result satisfies `T with module Spec = Spec`. This means **example apps and the codegen are unchanged in Phase 2** — they keep calling `Platform.StateChangeSlice.Make(SpecModule)` exactly as before. Phase 5 will switch examples to native split form, after which the wrappers shed the `MergedSpec` adapter and take `(Spec, Impl)` directly.
+
+Files touched:
+- Framework: `_Builder.res`, `_Callback.res`, `<Slice>.res` for all five slices (~15 files in `reventless-core`).
+- Infra: `<Slice>.res` for all five slices in `reventless-infra/src/components/`.
+- AWS adapters: `<Slice>_Builder.res` (and `StateViewSlice_Builder_Stream.res`) in `reventless-aws/src/components/` (6 files).
+- In-memory adapters: `<Slice>_Builder.res` in `reventless-in-memory/src/components/` (5 files).
+- Tests: `tests/dcb/DcbStateChangeSliceTest.res` and `tests/plugin/PluginStructureTest.res` in `reventless-core` plus three callback tests in `reventless-in-memory/tests/components/` updated to splice MergedSpec → (Spec, Impl) when calling the framework callbacks directly.
+
+**Note on framework Projection module shadowing.** Inside `StateViewSlice_Callback.res` and `StateViewSlice_Builder.res`, the new `Projection` functor argument shadows the framework's local `Projection` module (`reventless-core/src/Projection.res`, which provides `handleAction`/`handleActions`). Both files now alias the framework module as `module FrameworkProjection = Projection` at the top of the file, before the functor argument shadows the name. Same shadowing mitigation pattern will apply if a similar `Behavior` or `Translation` framework module is ever introduced.
+
+**Verification:** Full clean repo rebuild (`pnpm exec rescript clean && pnpm exec rescript build`) compiles 836 modules with zero warnings and zero errors. All 1110 tests across 124 suites pass.
 
 ### Phase 3 — PPX annotations and inference
 

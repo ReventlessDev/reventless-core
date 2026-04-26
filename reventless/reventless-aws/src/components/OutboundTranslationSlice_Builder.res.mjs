@@ -39,17 +39,44 @@ function Make(Api) {
     finish: AutomationSliceRuntime_Builder_Single$ReventlessAws.finish
   })(Api);
   let Make$1 = Spec => {
-    let InnerMake = Inner.Make(Spec);
+    let LeanSpec_name = Spec.name;
+    let LeanSpec_moduleUrl = Spec.moduleUrl;
+    let LeanSpec_consumedEventSchema = Spec.consumedEventSchema;
+    let LeanSpec_outboundItemSchema = Spec.outboundItemSchema;
+    let LeanSpec_inboundCommandSchema = Spec.inboundCommandSchema;
+    let LeanSpec_maxRetries = Spec.maxRetries;
+    let LeanSpec_heartbeatInterval = Spec.heartbeatInterval;
+    let LeanSpec_targetName = Spec.targetName;
+    let LeanSpec = {
+      name: LeanSpec_name,
+      moduleUrl: LeanSpec_moduleUrl,
+      consumedEventSchema: LeanSpec_consumedEventSchema,
+      outboundItemSchema: LeanSpec_outboundItemSchema,
+      inboundCommandSchema: LeanSpec_inboundCommandSchema,
+      maxRetries: LeanSpec_maxRetries,
+      heartbeatInterval: LeanSpec_heartbeatInterval,
+      targetName: LeanSpec_targetName
+    };
+    let TranslationImpl_collect = Spec.collect;
+    let TranslationImpl_translate = Spec.translate;
+    let TranslationImpl_moduleUrl = Spec.moduleUrl;
+    let TranslationImpl = {
+      collect: TranslationImpl_collect,
+      translate: TranslationImpl_translate,
+      moduleUrl: TranslationImpl_moduleUrl
+    };
+    let InnerMake = Inner.Make(LeanSpec)(TranslationImpl);
     let make = (dcbEventLog, publishJsons, opts) => {
       let ots = InnerMake.make(dcbEventLog, publishJsons, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(ots).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(InnerMake.Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(InnerMake.Spec.moduleUrl), "outbound", queryDbTableName);
+      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), "outbound", queryDbTableName);
       return ots;
     };
     return {
-      Spec: InnerMake.Spec,
+      Spec: Spec,
+      Translation: TranslationImpl,
       queryDbName: InnerMake.queryDbName,
       make: make
     };

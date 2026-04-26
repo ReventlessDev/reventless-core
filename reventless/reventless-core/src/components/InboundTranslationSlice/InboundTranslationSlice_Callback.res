@@ -1,7 +1,7 @@
 S.enableJson()
 // InboundTranslationSlice callback — receives external input and translates to commands.
 //
-// Maintains an audit log QueryDb and delegates translation to Spec.translate.
+// Maintains an audit log QueryDb and delegates translation to Translation.translate.
 
 @schema
 type auditStatus =
@@ -19,7 +19,8 @@ type auditRow = {
 }
 
 module type T = {
-  module Spec: Reventless.InboundTranslationSlice.MergedSpec
+  module Spec: Reventless.InboundTranslationSlice.Spec
+  module Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec
 
   /** The audit log -- maps request ID to audit row. */
   let auditLog: Dict.t<auditRow>
@@ -31,8 +32,12 @@ module type T = {
   ) => promise<result<array<string>, string>>
 }
 
-module Make = (Spec: Reventless.InboundTranslationSlice.MergedSpec): (T with module Spec = Spec) => {
+module Make = (
+  Spec: Reventless.InboundTranslationSlice.Spec,
+  Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
+): (T with module Spec = Spec and module Translation := Translation) => {
   module Spec = Spec
+  module Translation = Translation
 
   let auditLog: Dict.t<auditRow> = Dict.make()
 
@@ -78,7 +83,7 @@ module Make = (Spec: Reventless.InboundTranslationSlice.MergedSpec): (T with mod
       Error(msg)
 
     | Ok(input) =>
-      switch Spec.translate(input) {
+      switch Translation.translate(input) {
       | Ok(pairs) =>
         if pairs->Array.length === 0 {
           auditLog->Dict.set(

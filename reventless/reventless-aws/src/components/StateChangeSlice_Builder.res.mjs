@@ -6,7 +6,31 @@ import * as StateChangeSlice_Builder$ReventlessCore from "@reventlessdev/reventl
 
 function Make(Spec) {
   PluginRuntime_Builder$ReventlessAws.registerStateChangeSliceSpec(Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl));
-  return StateChangeSlice_Builder$ReventlessCore.Make(Spec);
+  let BehaviorImpl_initialState = Spec.initialState;
+  let BehaviorImpl_evolve = Spec.evolve;
+  let BehaviorImpl_decide = Spec.decide;
+  let BehaviorImpl_moduleUrl = Spec.moduleUrl;
+  let BehaviorImpl = {
+    initialState: BehaviorImpl_initialState,
+    evolve: BehaviorImpl_evolve,
+    decide: BehaviorImpl_decide,
+    moduleUrl: BehaviorImpl_moduleUrl
+  };
+  let Inner = StateChangeSlice_Builder$ReventlessCore.Make({
+    name: Spec.name,
+    moduleUrl: Spec.moduleUrl,
+    Id: Spec.Id,
+    consumedEventSchema: Spec.consumedEventSchema,
+    errorSchema: Spec.errorSchema,
+    eventSchema: Spec.eventSchema,
+    commandSchema: Spec.commandSchema
+  })(BehaviorImpl);
+  return {
+    Spec: Spec,
+    Behavior: BehaviorImpl,
+    isAsync: Inner.isAsync,
+    make: Inner.make
+  };
 }
 
 export {

@@ -11,41 +11,46 @@ import * as Projection$ReventlessCore from "../../Projection.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
-  let comp = `StateViewSlice(` + Spec.name + `)`;
-  let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
-  let eventsHandler = async (queryDbOps, rawEvents) => {
-    let count = rawEvents.length.toString();
-    let idx = {
-      contents: 0
-    };
-    let allActions = [];
-    let events = Stdlib_Array.filterMap(rawEvents, raw => {
-      let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
-      if (decoded === undefined) {
-        return;
+  return Projection => {
+    let comp = `StateViewSlice(` + Spec.name + `)`;
+    let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
+    let eventsHandler = async (queryDbOps, rawEvents) => {
+      let count = rawEvents.length.toString();
+      let idx = {
+        contents: 0
+      };
+      let allActions = [];
+      let events = Stdlib_Array.filterMap(rawEvents, raw => {
+        let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
+        if (decoded === undefined) {
+          return;
+        }
+        let event = Primitive_option.valFromOption(decoded);
+        idx.contents = idx.contents + 1 | 0;
+        let id = Stdlib_Option.getOr(Stdlib_Option.map(raw.tags[0], tag => tag.value), "?");
+        let actions = Projection.project(event);
+        let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
+        allActions.push(...actions);
+        return Primitive_option.some(event);
+      });
+      let skipped = rawEvents.length - events.length | 0;
+      if (skipped > 0) {
+        Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `skipped=` + skipped.toString() + ` events (decode mismatch)`));
       }
-      let event = Primitive_option.valFromOption(decoded);
-      idx.contents = idx.contents + 1 | 0;
-      let id = Stdlib_Option.getOr(Stdlib_Option.map(raw.tags[0], tag => tag.value), "?");
-      let actions = Spec.project(event);
-      let actionsStr = LogFormat$ReventlessCore.actionNames(actions);
-      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, raw.data, `handling event ` + idx.contents.toString() + `/` + count + `: ` + LogFormat$ReventlessCore.bold(raw.eventType) + `(` + id + `) ` + actionsStr));
-      allActions.push(...actions);
-      return Primitive_option.some(event);
-    });
-    let skipped = rawEvents.length - events.length | 0;
-    if (skipped > 0) {
-      Effect.runSync(EffectLogger$ReventlessCore.logWarn(comp, undefined, `skipped=` + skipped.toString() + ` events (decode mismatch)`));
-    }
-    return await Projection$ReventlessCore.handleActions(allActions, queryDbOps, undefined);
-  };
-  return {
-    Spec: Spec,
-    eventsHandler: eventsHandler
+      return await Projection$ReventlessCore.handleActions(allActions, queryDbOps, undefined);
+    };
+    return {
+      Spec: Spec,
+      eventsHandler: eventsHandler
+    };
   };
 }
 
+let FrameworkProjection;
+
 export {
+  FrameworkProjection,
   Make,
 }
 /* effect/Effect Not a pure module */

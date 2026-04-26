@@ -7,14 +7,16 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as InboundTranslationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as InboundTranslationSliceFixtures$ReventlessInMemory from "./InboundTranslationSliceFixtures.res.mjs";
 
-let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make({
-  name: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.name,
-  moduleUrl: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.moduleUrl,
-  externalInputSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.externalInputSchema,
-  commandSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.commandSchema,
-  translate: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.translate,
-  targetName: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.targetName
-});
+let translate = InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.translate;
+
+let moduleUrl = InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.moduleUrl;
+
+let PaymentWebhookTranslation = {
+  translate: translate,
+  moduleUrl: moduleUrl
+};
+
+let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec)(PaymentWebhookTranslation);
 
 describe("InboundTranslationSlice Callback", () => {
   beforeEach(() => {
@@ -133,14 +135,19 @@ describe("InboundTranslationSlice Callback", () => {
           }
         ])
       });
-      let MultiCallback = InboundTranslationSlice_Callback$ReventlessCore.Make({
+      let MultiSpec = {
         name: "BatchWebhook",
         moduleUrl: moduleUrl,
         externalInputSchema: externalInputSchema,
         commandSchema: commandSchema,
+        targetName: "ConfirmPayment",
+        translate: translate
+      };
+      let MultiTranslation = {
         translate: translate,
-        targetName: "ConfirmPayment"
-      });
+        moduleUrl: moduleUrl
+      };
+      let MultiCallback = InboundTranslationSlice_Callback$ReventlessCore.Make(MultiSpec)(MultiTranslation);
       let publishedCommands = {
         contents: []
       };
@@ -185,14 +192,19 @@ describe("InboundTranslationSlice Callback", () => {
         TAG: "Ok",
         _0: []
       });
-      let EmptyCallback = InboundTranslationSlice_Callback$ReventlessCore.Make({
+      let EmptySpec = {
         name: "EmptyWebhook",
         moduleUrl: moduleUrl,
         externalInputSchema: externalInputSchema,
         commandSchema: commandSchema,
+        targetName: "ConfirmPayment",
+        translate: translate
+      };
+      let EmptyTranslation = {
         translate: translate,
-        targetName: "ConfirmPayment"
-      });
+        moduleUrl: moduleUrl
+      };
+      let EmptyCallback = InboundTranslationSlice_Callback$ReventlessCore.Make(EmptySpec)(EmptyTranslation);
       let publishedCommands = {
         contents: []
       };
@@ -214,6 +226,7 @@ describe("InboundTranslationSlice Callback", () => {
 });
 
 export {
+  PaymentWebhookTranslation,
   Callback,
 }
 /* Callback Not a pure module */

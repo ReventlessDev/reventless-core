@@ -364,6 +364,7 @@ function MakeWithConfig(Config) {
     let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec);
     return {
       Spec: include.Spec,
+      Behavior: include.Behavior,
       isAsync: true,
       make: include.make
     };
@@ -979,7 +980,9 @@ function MakeWithConfig(Config) {
     OutboundTranslationSlice: {
       Make: include$3.Make
     },
-    InboundTranslationSlice: InboundTranslationSlice,
+    InboundTranslationSlice: {
+      Make: InboundTranslationSlice.Make
+    },
     Api: Api,
     mcpSupported: false,
     Plugin: Plugin,
@@ -1264,6 +1267,7 @@ function Make($star) {
     let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec);
     return {
       Spec: include.Spec,
+      Behavior: include.Behavior,
       isAsync: true,
       make: include.make
     };
@@ -1847,6 +1851,9 @@ function Make($star) {
   let OutboundTranslationSlice = {
     Make: include$3.Make
   };
+  let InboundTranslationSlice$1 = {
+    Make: InboundTranslationSlice.Make
+  };
   return {
     api: domainApi,
     apiRole: domainApiRole,
@@ -1861,7 +1868,7 @@ function Make($star) {
     StateViewSliceStream: StateViewSliceStream,
     AutomationSlice: AutomationSlice,
     OutboundTranslationSlice: OutboundTranslationSlice,
-    InboundTranslationSlice: InboundTranslationSlice,
+    InboundTranslationSlice: InboundTranslationSlice$1,
     Api: Api,
     mcpSupported: false,
     Plugin: Plugin,

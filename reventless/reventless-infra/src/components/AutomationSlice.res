@@ -32,7 +32,8 @@ let slice = ShipOrderSlice.make(~dcbEventLog=log, ~publishJsons=publishJsonsOutp
 type t
 
 module type T = {
-  module Spec: Reventless.AutomationSlice.MergedSpec
+  module Spec: Reventless.AutomationSlice.Spec
+  module Automation: Reventless.AutomationSlice.Automation with module Spec := Spec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
   let make: (

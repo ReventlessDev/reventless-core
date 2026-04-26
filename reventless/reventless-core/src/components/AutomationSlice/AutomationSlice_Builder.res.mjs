@@ -20,8 +20,8 @@ import * as AutomationSlice_Callback$ReventlessCore from "./AutomationSlice_Call
 
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
-    let Make = Spec => {
-      let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec);
+    let Make = Spec => (Automation => {
+      let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec)(Automation);
       let queryDbName = Spec.name + "Todo";
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -104,10 +104,11 @@ function Make(RuntimeEnvironment) {
       }, opts);
       return {
         Spec: Spec,
+        Automation: Automation,
         queryDbName: queryDbName,
         make: make
       };
-    };
+    });
     return {
       finish: EventCollectorRuntimeBuilder.finish,
       Make: Make

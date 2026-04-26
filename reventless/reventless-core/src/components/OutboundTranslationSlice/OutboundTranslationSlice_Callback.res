@@ -2,7 +2,7 @@ S.enableJson()
 // OutboundTranslationSlice callback — implements the tracked external call pattern.
 //
 // Phase 1 (collect): updates the in-memory TODO list from events (no resolve)
-// Phase 2 (translate): calls Spec.translate for each pending item individually
+// Phase 2 (translate): calls Translation.translate for each pending item individually
 
 @schema
 type todoStatus =
@@ -23,7 +23,8 @@ type todoRow = {
 }
 
 module type T = {
-  module Spec: Reventless.OutboundTranslationSlice.MergedSpec
+  module Spec: Reventless.OutboundTranslationSlice.Spec
+  module Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec
 
   /** The in-memory TODO list -- maps item ID to row. */
   let todoItems: Dict.t<todoRow>
@@ -35,8 +36,12 @@ module type T = {
   let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
 }
 
-module Make = (Spec: Reventless.OutboundTranslationSlice.MergedSpec): (T with module Spec = Spec) => {
+module Make = (
+  Spec: Reventless.OutboundTranslationSlice.Spec,
+  Translation: Reventless.OutboundTranslationSlice.Translation with module Spec := Spec,
+): (T with module Spec = Spec and module Translation := Translation) => {
   module Spec = Spec
+  module Translation = Translation
 
   let todoItems: Dict.t<todoRow> = Dict.make()
 
@@ -54,7 +59,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.MergedSpec): (T with mo
   let phase1 = (events: array<Spec.consumedEvent>) => {
     events->Array.forEach(event => {
       // Collect new outbound items
-      Spec.collect(event)->Array.forEach(((id, item)) => {
+      Translation.collect(event)->Array.forEach(((id, item)) => {
         switch todoItems->Dict.get(id) {
         | Some(_) => () // Already exists -- skip (idempotent)
         | None =>
@@ -97,7 +102,7 @@ module Make = (Spec: Reventless.OutboundTranslationSlice.MergedSpec): (T with mo
       | Some(item) =>
         todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
 
-        let result = try await Spec.translate(id, item) catch {
+        let result = try await Translation.translate(id, item) catch {
         | exn =>
           let msg =
             exn

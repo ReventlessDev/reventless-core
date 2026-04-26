@@ -18,7 +18,17 @@ let testDcbEventLog: DcbEventLog.operations = {
   appendStream: EventLogOps.appendStream,
 }
 
-module TestHandler = StateChangeSlice_Callback.Make(DcbFixtures.TestCommandSpec)
+module TestCommandBehavior = {
+  type state = DcbFixtures.TestCommandSpec.state
+  let initialState = DcbFixtures.TestCommandSpec.initialState
+  let evolve = DcbFixtures.TestCommandSpec.evolve
+  let decide = DcbFixtures.TestCommandSpec.decide
+  let moduleUrl = DcbFixtures.TestCommandSpec.moduleUrl
+}
+module TestHandler = StateChangeSlice_Callback.Make(
+  DcbFixtures.TestCommandSpec,
+  TestCommandBehavior,
+)
 
 let makeTopicItem = (reference, command): CommandTopic.topicItem<
   Message.command'<Reventless.Id.String.t, DcbFixtures.TestCommandSpec.command>,

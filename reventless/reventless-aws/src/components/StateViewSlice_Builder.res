@@ -1,5 +1,8 @@
 // StateViewSlice_Builder (AWS)
 // Wires AWS adapters and delegates to the core ReventlessCore.StateViewSlice_Builder.
+// Internal: splices a legacy MergedSpec into (Spec, Projection) for the
+// new two-arg framework form. External signature stays on MergedSpec
+// until Phase 5 migrates examples to native split form.
 
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
@@ -23,8 +26,24 @@ module Make = (Api: {
   module Make = (
     Spec: Reventless.StateViewSlice.MergedSpec,
   ): (ReventlessCore.StateViewSlice.T with module Spec = Spec) => {
-    module InnerMake = Inner.Make(Spec)
-    include InnerMake
+    module LeanSpec = {
+      let name = Spec.name
+      let moduleUrl = Spec.moduleUrl
+      type state = Spec.state
+      let stateSchema = Spec.stateSchema
+      type consumedEvent = Spec.consumedEvent
+      let consumedEventSchema = Spec.consumedEventSchema
+      let config = Spec.config
+      let subIdConfig = Spec.subIdConfig
+    }
+    module ProjectionImpl = {
+      let project = Spec.project
+      let moduleUrl = Spec.moduleUrl
+    }
+    module InnerMake = Inner.Make(LeanSpec, ProjectionImpl)
+    module Spec = Spec
+    module Projection = ProjectionImpl
+    type component = InnerMake.component
 
     let make = (~dcbEventLog, ~opts=?): component => {
       let sv = InnerMake.make(~dcbEventLog, ~opts?)

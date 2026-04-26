@@ -4,8 +4,24 @@ open ReventlessGwt.AsyncTest
 open ReventlessGwt.AsyncTest.Expect
 open OutboundTranslationSliceFixtures
 
-module FireForgetCallback = ReventlessCore.OutboundTranslationSlice_Callback.Make(SendTrackingEmailSpec)
-module CommandBackCallback = ReventlessCore.OutboundTranslationSlice_Callback.Make(ProcessPaymentSpec)
+module SendTrackingEmailTranslation = {
+  let collect = SendTrackingEmailSpec.collect
+  let translate = SendTrackingEmailSpec.translate
+  let moduleUrl = SendTrackingEmailSpec.moduleUrl
+}
+module ProcessPaymentTranslation = {
+  let collect = ProcessPaymentSpec.collect
+  let translate = ProcessPaymentSpec.translate
+  let moduleUrl = ProcessPaymentSpec.moduleUrl
+}
+module FireForgetCallback = ReventlessCore.OutboundTranslationSlice_Callback.Make(
+  SendTrackingEmailSpec,
+  SendTrackingEmailTranslation,
+)
+module CommandBackCallback = ReventlessCore.OutboundTranslationSlice_Callback.Make(
+  ProcessPaymentSpec,
+  ProcessPaymentTranslation,
+)
 
 open ReventlessCore.OutboundTranslationSlice_Callback
 

@@ -31,11 +31,41 @@ function Make(Bus) {
     make: QueryDbResolvers.make
   })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
   let Make$1 = Spec => {
-    let include = CoreMaker.Make(Spec);
+    let LeanSpec_name = Spec.name;
+    let LeanSpec_moduleUrl = Spec.moduleUrl;
+    let LeanSpec_consumedEventSchema = Spec.consumedEventSchema;
+    let LeanSpec_outboundItemSchema = Spec.outboundItemSchema;
+    let LeanSpec_inboundCommandSchema = Spec.inboundCommandSchema;
+    let LeanSpec_maxRetries = Spec.maxRetries;
+    let LeanSpec_heartbeatInterval = Spec.heartbeatInterval;
+    let LeanSpec_targetName = Spec.targetName;
+    let LeanSpec = {
+      name: LeanSpec_name,
+      moduleUrl: LeanSpec_moduleUrl,
+      consumedEventSchema: LeanSpec_consumedEventSchema,
+      outboundItemSchema: LeanSpec_outboundItemSchema,
+      inboundCommandSchema: LeanSpec_inboundCommandSchema,
+      maxRetries: LeanSpec_maxRetries,
+      heartbeatInterval: LeanSpec_heartbeatInterval,
+      targetName: LeanSpec_targetName
+    };
+    let TranslationImpl_collect = Spec.collect;
+    let TranslationImpl_translate = Spec.translate;
+    let TranslationImpl_moduleUrl = Spec.moduleUrl;
+    let TranslationImpl = {
+      collect: TranslationImpl_collect,
+      translate: TranslationImpl_translate,
+      moduleUrl: TranslationImpl_moduleUrl
+    };
+    let Inner = CoreMaker.Make(LeanSpec)(TranslationImpl);
     return {
-      Spec: include.Spec,
-      queryDbName: include.queryDbName,
-      make: include.make,
+      LeanSpec: LeanSpec,
+      TranslationImpl: TranslationImpl,
+      Inner: Inner,
+      Spec: Spec,
+      Translation: undefined,
+      queryDbName: Inner.queryDbName,
+      make: Inner.make,
       operations: Component$ReventlessCore.operations
     };
   };

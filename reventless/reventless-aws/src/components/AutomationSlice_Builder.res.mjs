@@ -32,17 +32,46 @@ function Make(Api) {
     finish: AutomationSliceRuntime_Builder_Single$ReventlessAws.finish
   })(Api);
   let Make$1 = Spec => {
-    let InnerMake = Inner.Make(Spec);
+    let LeanSpec_name = Spec.name;
+    let LeanSpec_moduleUrl = Spec.moduleUrl;
+    let LeanSpec_consumedEventSchema = Spec.consumedEventSchema;
+    let LeanSpec_todoItemSchema = Spec.todoItemSchema;
+    let LeanSpec_commandSchema = Spec.commandSchema;
+    let LeanSpec_maxRetries = Spec.maxRetries;
+    let LeanSpec_heartbeatInterval = Spec.heartbeatInterval;
+    let LeanSpec_targetName = Spec.targetName;
+    let LeanSpec = {
+      name: LeanSpec_name,
+      moduleUrl: LeanSpec_moduleUrl,
+      consumedEventSchema: LeanSpec_consumedEventSchema,
+      todoItemSchema: LeanSpec_todoItemSchema,
+      commandSchema: LeanSpec_commandSchema,
+      maxRetries: LeanSpec_maxRetries,
+      heartbeatInterval: LeanSpec_heartbeatInterval,
+      targetName: LeanSpec_targetName
+    };
+    let AutomationImpl_collect = Spec.collect;
+    let AutomationImpl_resolve = Spec.resolve;
+    let AutomationImpl_process = Spec.process;
+    let AutomationImpl_moduleUrl = Spec.moduleUrl;
+    let AutomationImpl = {
+      collect: AutomationImpl_collect,
+      resolve: AutomationImpl_resolve,
+      process: AutomationImpl_process,
+      moduleUrl: AutomationImpl_moduleUrl
+    };
+    let InnerMake = Inner.Make(LeanSpec)(AutomationImpl);
     let make = (dcbEventLog, publishJsons, opts) => {
       let as_ = InnerMake.make(dcbEventLog, publishJsons, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(as_).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
-      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(InnerMake.Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(InnerMake.Spec.moduleUrl), "automation", queryDbTableName);
+      AutomationSliceRuntime_Builder_Single$ReventlessAws.registerAutomationSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), "automation", queryDbTableName);
       return as_;
     };
     return {
-      Spec: InnerMake.Spec,
+      Spec: Spec,
+      Automation: AutomationImpl,
       queryDbName: InnerMake.queryDbName,
       make: make
     };

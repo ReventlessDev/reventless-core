@@ -1,5 +1,9 @@
+// Capture the framework's Projection module before the functor arg shadows it.
+module FrameworkProjection = Projection
+
 module type T = {
-  module Spec: Reventless.StateViewSlice.MergedSpec
+  module Spec: Reventless.StateViewSlice.Spec
+  module Projection: Reventless.StateViewSlice.Projection with module Spec := Spec
   type queryDbOperations
 
   let eventsHandler: (
@@ -8,8 +12,12 @@ module type T = {
   ) => promise<unit>
 }
 
-module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (T with module Spec = Spec) => {
+module Make = (
+  Spec: Reventless.StateViewSlice.Spec,
+  Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
+): (T with module Spec = Spec and module Projection := Projection) => {
   module Spec = Spec
+  module Projection = Projection
 
   type queryDbOperations = QueryDb.operations<string, Spec.state>
 
@@ -32,7 +40,7 @@ module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (T with module Spec 
       | Some(event) =>
         idx := idx.contents + 1
         let id = raw.tags->Array.get(0)->Option.map(tag => tag.value)->Option.getOr("?")
-        let actions = Spec.project(event)
+        let actions = Projection.project(event)
         let actionsStr = LogFormat.actionNames(actions)
         EffectLogger.logInfo(
           ~comp,
@@ -51,6 +59,6 @@ module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (T with module Spec 
         `skipped=${skipped->Int.toString} events (decode mismatch)`,
       )->Effect.runSync
     }
-    await Projection.handleActions(allActions, queryDbOps, None)
+    await FrameworkProjection.handleActions(allActions, queryDbOps, None)
   }
 }

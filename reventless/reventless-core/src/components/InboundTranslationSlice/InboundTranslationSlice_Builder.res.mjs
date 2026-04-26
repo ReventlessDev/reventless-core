@@ -12,8 +12,8 @@ import * as InboundTranslationSlice_Callback$ReventlessCore from "./InboundTrans
 
 function Make(QueryDbStorage) {
   return QueryDbResolvers => (Api => {
-    let Make = Spec => {
-      let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(Spec);
+    let Make = Spec => (Translation => {
+      let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(Spec)(Translation);
       let queryDbName = Spec.name + "Audit";
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -68,10 +68,11 @@ function Make(QueryDbStorage) {
       }, opts);
       return {
         Spec: Spec,
+        Translation: Translation,
         queryDbName: queryDbName,
         make: make
       };
-    };
+    });
     return {
       Make: Make
     };

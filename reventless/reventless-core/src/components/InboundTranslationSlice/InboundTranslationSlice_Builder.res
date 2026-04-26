@@ -14,13 +14,15 @@ module Make = (
     let apiRole: unit => QueryDbStorage.role
   },
 ) => {
-  module Make = (Spec: Reventless.InboundTranslationSlice.MergedSpec): (
-    InboundTranslationSlice.T with module Spec = Spec
-  ) => {
+  module Make = (
+    Spec: Reventless.InboundTranslationSlice.Spec,
+    Translation: Reventless.InboundTranslationSlice.Translation with module Spec := Spec,
+  ): InboundTranslationSlice.T => {
     module Spec = Spec
+    module Translation = Translation
     type component = InboundTranslationSlice.component
 
-    module Callback = InboundTranslationSlice_Callback.Make(Spec)
+    module Callback = InboundTranslationSlice_Callback.Make(Spec, Translation)
 
     let queryDbName = Spec.name ++ "Audit"
 

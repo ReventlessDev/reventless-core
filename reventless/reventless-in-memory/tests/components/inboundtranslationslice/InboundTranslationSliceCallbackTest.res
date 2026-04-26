@@ -4,7 +4,14 @@ open ReventlessGwt.AsyncTest
 open ReventlessGwt.AsyncTest.Expect
 open InboundTranslationSliceFixtures
 
-module Callback = ReventlessCore.InboundTranslationSlice_Callback.Make(PaymentWebhookSpec)
+module PaymentWebhookTranslation = {
+  let translate = PaymentWebhookSpec.translate
+  let moduleUrl = PaymentWebhookSpec.moduleUrl
+}
+module Callback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+  PaymentWebhookSpec,
+  PaymentWebhookTranslation,
+)
 
 describe("InboundTranslationSlice Callback", () => {
   let _ = beforeEach(() => {
@@ -144,7 +151,14 @@ describe("InboundTranslationSlice Callback", () => {
           )
       }
 
-      module MultiCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(MultiSpec)
+      module MultiTranslation = {
+        let translate = MultiSpec.translate
+        let moduleUrl = MultiSpec.moduleUrl
+      }
+      module MultiCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+        MultiSpec,
+        MultiTranslation,
+      )
 
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
@@ -194,7 +208,14 @@ describe("InboundTranslationSlice Callback", () => {
         let translate = (_input: externalInput) => Ok([])
       }
 
-      module EmptyCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(EmptySpec)
+      module EmptyTranslation = {
+        let translate = EmptySpec.translate
+        let moduleUrl = EmptySpec.moduleUrl
+      }
+      module EmptyCallback = ReventlessCore.InboundTranslationSlice_Callback.Make(
+        EmptySpec,
+        EmptyTranslation,
+      )
 
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {

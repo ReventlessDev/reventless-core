@@ -37,18 +37,30 @@ let testDcbEventLog = {
   appendStream: testDcbEventLog_appendStream
 };
 
+let initialState = DcbFixtures$ReventlessCore.TestCommandSpec.initialState;
+
+let evolve = DcbFixtures$ReventlessCore.TestCommandSpec.evolve;
+
+let decide = DcbFixtures$ReventlessCore.TestCommandSpec.decide;
+
+let moduleUrl = DcbFixtures$ReventlessCore.TestCommandSpec.moduleUrl;
+
+let TestCommandBehavior = {
+  initialState: initialState,
+  evolve: evolve,
+  decide: decide,
+  moduleUrl: moduleUrl
+};
+
 let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({
   name: DcbFixtures$ReventlessCore.TestCommandSpec.name,
   moduleUrl: DcbFixtures$ReventlessCore.TestCommandSpec.moduleUrl,
-  initialState: DcbFixtures$ReventlessCore.TestCommandSpec.initialState,
-  consumedEventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.consumedEventSchema,
-  evolve: DcbFixtures$ReventlessCore.TestCommandSpec.evolve,
-  errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
   Id: Id$Reventless.$$String,
+  consumedEventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.consumedEventSchema,
+  errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
   eventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.eventSchema,
-  decide: DcbFixtures$ReventlessCore.TestCommandSpec.decide,
   commandSchema: DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema
-});
+})(TestCommandBehavior);
 
 function makeTopicItem(reference, command) {
   return {
@@ -258,6 +270,7 @@ export {
   TestDcbOps,
   EventLogOps,
   testDcbEventLog,
+  TestCommandBehavior,
   TestHandler,
   makeTopicItem,
 }

@@ -1,5 +1,6 @@
 module type T = {
-  module Spec: Reventless.StateChangeSlice.MergedSpec
+  module Spec: Reventless.StateChangeSlice.Spec
+  module Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec
   let handleCommands: (
     DcbEventLog.operations,
     Stream.t<
@@ -10,8 +11,12 @@ module type T = {
   ) => Effect.t<array<result<string, string>>, string, unit>
 }
 
-module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (T with module Spec = Spec) => {
+module Make = (
+  Spec: Reventless.StateChangeSlice.Spec,
+  Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
+): (T with module Spec = Spec and module Behavior := Behavior) => {
   module Spec = Spec
+  module Behavior = Behavior
 
   let comp = `StateChangeSlice(${Spec.name})`
 
@@ -29,7 +34,7 @@ module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (T with module Spe
 
   // Computed once at functor init — used to extract entityId for publishJsonsAndWait outcomes.
   let derivedPartitionTag = Reventless.DcbTag.derivePartitionTag([
-    (Spec.name, Spec.moduleUrl, Spec.eventSchema->S.castToUnknown),
+    (Spec.name, Behavior.moduleUrl, Spec.eventSchema->S.castToUnknown),
   ])
 
   let maxRetries = 3
@@ -37,7 +42,7 @@ module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (T with module Spe
   // Processes one command against the DCB event log with optimistic concurrency:
   //   1. Reads relevant events (filtered by command tags) to build the decision model
   //   2. Decodes raw events using consumedEventSchema
-  //   3. Calls Spec.decide to produce new events
+  //   3. Calls Behavior.decide to produce new events
   //   4. Encodes produced events to raw and appends with a condition
   //   5. On conflict, retries from step 1 (up to maxRetries)
   let handleSingleCommand = (
@@ -84,14 +89,14 @@ module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (T with module Spe
         | None => Stream.empty
         }
       )
-      ->Stream.runFold((Spec.initialState, None, 0), ((dm, _pos, n), (event, position)) => (
-        Spec.evolve(dm, event),
+      ->Stream.runFold((Behavior.initialState, None, 0), ((dm, _pos, n), (event, position)) => (
+        Behavior.evolve(dm, event),
         Some(position),
         n + 1,
       ))
       ->Effect.tap(((_, _, n)) => EffectLogger.logInfo(~comp, `read: ${n->Int.toString} event(s)`))
       ->Effect.flatMap(((state, headPosition, _)) =>
-        switch Spec.decide(state, command'.command) {
+        switch Behavior.decide(state, command'.command) {
         | Ok(newEvents) if newEvents->Array.length == 0 =>
           CommandTopic_Helpers.reportAccepted(
             cmdJson.meta.msgId,

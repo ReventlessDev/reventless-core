@@ -1,3 +1,6 @@
+// Capture the framework's Projection module before the inner functor arg shadows it.
+module FrameworkProjection = Projection
+
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
   QueryDbStorage: QueryDb_Adapter.Storage,
@@ -14,10 +17,12 @@ module Make = (
   },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
-  module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (
-    StateViewSlice.T with module Spec = Spec
-  ) => {
+  module Make = (
+    Spec: Reventless.StateViewSlice.Spec,
+    Projection: Reventless.StateViewSlice.Projection with module Spec := Spec,
+  ): StateViewSlice.T => {
     module Spec = Spec
+    module Projection = Projection
     type component = StateViewSlice.component
 
     module SvQueryDbSpec = {
@@ -85,7 +90,7 @@ module Make = (
                 switch decoder.decode(~eventType, ~data=dataDict) {
                 | Some(event) =>
                   let actions =
-                    try Spec.project(event)
+                    try Projection.project(event)
                     catch {
                     | exn =>
                       let errMsg =
@@ -123,7 +128,7 @@ module Make = (
               ->Array.reduce(Effect.succeed(), (acc, action) =>
                 acc->Effect.flatMap(_ =>
                   Effect.promise(() =>
-                    Projection.handleAction(action, projectionOps, None)
+                    FrameworkProjection.handleAction(action, projectionOps, None)
                   )->Effect.map(_ => ())
                 )
               )

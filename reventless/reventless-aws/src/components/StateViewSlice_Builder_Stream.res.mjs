@@ -32,16 +32,37 @@ function Make(Api) {
     finish: StateViewSliceRuntime_Builder_Single$ReventlessAws.finish
   })(Api);
   let Make$1 = Spec => {
-    let InnerMake = Inner.Make(Spec);
+    let LeanSpec_name = Spec.name;
+    let LeanSpec_moduleUrl = Spec.moduleUrl;
+    let LeanSpec_stateSchema = Spec.stateSchema;
+    let LeanSpec_consumedEventSchema = Spec.consumedEventSchema;
+    let LeanSpec_config = Spec.config;
+    let LeanSpec_subIdConfig = Spec.subIdConfig;
+    let LeanSpec = {
+      name: LeanSpec_name,
+      moduleUrl: LeanSpec_moduleUrl,
+      stateSchema: LeanSpec_stateSchema,
+      consumedEventSchema: LeanSpec_consumedEventSchema,
+      config: LeanSpec_config,
+      subIdConfig: LeanSpec_subIdConfig
+    };
+    let ProjectionImpl_project = Spec.project;
+    let ProjectionImpl_moduleUrl = Spec.moduleUrl;
+    let ProjectionImpl = {
+      project: ProjectionImpl_project,
+      moduleUrl: ProjectionImpl_moduleUrl
+    };
+    let InnerMake = Inner.Make(LeanSpec)(ProjectionImpl);
     let make = (dcbEventLog, opts) => {
       let sv = InnerMake.make(dcbEventLog, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(sv).queryDb;
       let tableResource = queryDbOutputs.resources[0];
-      StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(InnerMake.Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(InnerMake.Spec.moduleUrl), tableResource.name, queryDbOutputs.resources);
+      StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), tableResource.name, queryDbOutputs.resources);
       return sv;
     };
     return {
-      Spec: InnerMake.Spec,
+      Spec: Spec,
+      Projection: ProjectionImpl,
       make: make
     };
   };

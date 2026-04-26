@@ -29,143 +29,145 @@ let todoRowSchema = S.schema(s => ({
 }));
 
 function Make(Spec) {
-  let todoItems = {};
-  let makeMeta = () => ({
-    service: `OutboundTranslationSlice:` + Spec.name,
-    time: new Date().toISOString(),
-    ip: "",
-    user: "",
-    msgId: Uuid.v4(),
-    correlationId: ""
-  });
-  let phase1 = events => {
-    events.forEach(event => {
-      Spec.collect(event).forEach(param => {
+  return Translation => {
+    let todoItems = {};
+    let makeMeta = () => ({
+      service: `OutboundTranslationSlice:` + Spec.name,
+      time: new Date().toISOString(),
+      ip: "",
+      user: "",
+      msgId: Uuid.v4(),
+      correlationId: ""
+    });
+    let phase1 = events => {
+      events.forEach(event => {
+        Translation.collect(event).forEach(param => {
+          let id = param[0];
+          let match = todoItems[id];
+          if (match !== undefined) {
+            return;
+          }
+          let row_item = S.reverseConvertToJsonOrThrow(param[1], Spec.outboundItemSchema);
+          let row_createdAt = new Date().toISOString();
+          let row = {
+            item: row_item,
+            status: "Pending",
+            createdAt: row_createdAt,
+            retryCount: 0
+          };
+          todoItems[id] = row;
+        });
+      });
+    };
+    let phase2 = async publishJsons => {
+      let pending = Object.entries(todoItems).filter(param => {
+        let row = param[1];
+        if (row.status === "Pending") {
+          return true;
+        } else if (row.status === "Failed") {
+          return row.retryCount < Spec.maxRetries;
+        } else {
+          return false;
+        }
+      });
+      await Stdlib_Array.reduce(pending, Promise.resolve(), async (prev, param) => {
+        let row = param[1];
         let id = param[0];
-        let match = todoItems[id];
-        if (match !== undefined) {
+        await prev;
+        let item;
+        try {
+          item = Primitive_option.some(S.parseJsonOrThrow(row.item, Spec.outboundItemSchema));
+        } catch (raw_exn) {
+          let exn = Primitive_exceptions.internalToException(raw_exn);
+          let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+          Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to decode outboundItem: ` + errMsg));
+          item = undefined;
+        }
+        if (item === undefined) {
           return;
         }
-        let row_item = S.reverseConvertToJsonOrThrow(param[1], Spec.outboundItemSchema);
-        let row_createdAt = new Date().toISOString();
-        let row = {
-          item: row_item,
-          status: "Pending",
-          createdAt: row_createdAt,
-          retryCount: 0
-        };
-        todoItems[id] = row;
-      });
-    });
-  };
-  let phase2 = async publishJsons => {
-    let pending = Object.entries(todoItems).filter(param => {
-      let row = param[1];
-      if (row.status === "Pending") {
-        return true;
-      } else if (row.status === "Failed") {
-        return row.retryCount < Spec.maxRetries;
-      } else {
-        return false;
-      }
-    });
-    await Stdlib_Array.reduce(pending, Promise.resolve(), async (prev, param) => {
-      let row = param[1];
-      let id = param[0];
-      await prev;
-      let item;
-      try {
-        item = Primitive_option.some(S.parseJsonOrThrow(row.item, Spec.outboundItemSchema));
-      } catch (raw_exn) {
-        let exn = Primitive_exceptions.internalToException(raw_exn);
-        let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-        Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to decode outboundItem: ` + errMsg));
-        item = undefined;
-      }
-      if (item === undefined) {
-        return;
-      }
-      let newrecord = {...row};
-      newrecord.processedAt = new Date().toISOString();
-      newrecord.status = "Processing";
-      todoItems[id] = newrecord;
-      let result;
-      try {
-        result = await Spec.translate(id, Primitive_option.valFromOption(item));
-      } catch (raw_exn$1) {
-        let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
-        let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown error");
-        result = {
-          TAG: "Error",
-          _0: msg
-        };
-      }
-      if (result.TAG === "Ok") {
-        let match = result._0;
-        if (match !== undefined) {
-          let commandJson;
-          try {
-            commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.inboundCommandSchema);
-          } catch (raw_exn$2) {
-            let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
-            let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
-            Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to encode inbound command: ` + errMsg$1));
-            commandJson = undefined;
-          }
-          if (commandJson !== undefined) {
+        let newrecord = {...row};
+        newrecord.processedAt = new Date().toISOString();
+        newrecord.status = "Processing";
+        todoItems[id] = newrecord;
+        let result;
+        try {
+          result = await Translation.translate(id, Primitive_option.valFromOption(item));
+        } catch (raw_exn$1) {
+          let exn$1 = Primitive_exceptions.internalToException(raw_exn$1);
+          let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$1), Stdlib_JsExn.message), "unknown error");
+          result = {
+            TAG: "Error",
+            _0: msg
+          };
+        }
+        if (result.TAG === "Ok") {
+          let match = result._0;
+          if (match !== undefined) {
+            let commandJson;
             try {
-              let msg_id = match[0];
-              let msg_meta = makeMeta();
-              let msg$1 = {
-                id: msg_id,
-                meta: msg_meta,
-                commandJson: commandJson
-              };
-              await publishJsons([msg$1]);
-              let newrecord$1 = {...row};
-              newrecord$1.completedAt = new Date().toISOString();
-              newrecord$1.status = "Completed";
-              todoItems[id] = newrecord$1;
-              return;
-            } catch (raw_exn$3) {
-              let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
-              let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to publish command: ` + errMsg$2));
-              let newrecord$2 = {...row};
-              newrecord$2.retryCount = row.retryCount + 1 | 0;
-              newrecord$2.status = "Failed";
-              todoItems[id] = newrecord$2;
+              commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.inboundCommandSchema);
+            } catch (raw_exn$2) {
+              let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
+              let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
+              Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to encode inbound command: ` + errMsg$1));
+              commandJson = undefined;
+            }
+            if (commandJson !== undefined) {
+              try {
+                let msg_id = match[0];
+                let msg_meta = makeMeta();
+                let msg$1 = {
+                  id: msg_id,
+                  meta: msg_meta,
+                  commandJson: commandJson
+                };
+                await publishJsons([msg$1]);
+                let newrecord$1 = {...row};
+                newrecord$1.completedAt = new Date().toISOString();
+                newrecord$1.status = "Completed";
+                todoItems[id] = newrecord$1;
+                return;
+              } catch (raw_exn$3) {
+                let exn$3 = Primitive_exceptions.internalToException(raw_exn$3);
+                let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$3), Stdlib_JsExn.message), "unknown");
+                Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): failed to publish command: ` + errMsg$2));
+                let newrecord$2 = {...row};
+                newrecord$2.retryCount = row.retryCount + 1 | 0;
+                newrecord$2.status = "Failed";
+                todoItems[id] = newrecord$2;
+                return;
+              }
+            } else {
+              let newrecord$3 = {...row};
+              newrecord$3.retryCount = row.retryCount + 1 | 0;
+              newrecord$3.status = "Failed";
+              todoItems[id] = newrecord$3;
               return;
             }
           } else {
-            let newrecord$3 = {...row};
-            newrecord$3.retryCount = row.retryCount + 1 | 0;
-            newrecord$3.status = "Failed";
-            todoItems[id] = newrecord$3;
+            let newrecord$4 = {...row};
+            newrecord$4.completedAt = new Date().toISOString();
+            newrecord$4.status = "Completed";
+            todoItems[id] = newrecord$4;
             return;
           }
         } else {
-          let newrecord$4 = {...row};
-          newrecord$4.completedAt = new Date().toISOString();
-          newrecord$4.status = "Completed";
-          todoItems[id] = newrecord$4;
+          let newrecord$5 = {...row};
+          newrecord$5.lastError = result._0;
+          newrecord$5.retryCount = row.retryCount + 1 | 0;
+          newrecord$5.status = "Failed";
+          todoItems[id] = newrecord$5;
           return;
         }
-      } else {
-        let newrecord$5 = {...row};
-        newrecord$5.lastError = result._0;
-        newrecord$5.retryCount = row.retryCount + 1 | 0;
-        newrecord$5.status = "Failed";
-        todoItems[id] = newrecord$5;
-        return;
-      }
-    });
-  };
-  return {
-    Spec: Spec,
-    todoItems: todoItems,
-    phase1: phase1,
-    phase2: phase2
+      });
+    };
+    return {
+      Spec: Spec,
+      todoItems: todoItems,
+      phase1: phase1,
+      phase2: phase2
+    };
   };
 }
 

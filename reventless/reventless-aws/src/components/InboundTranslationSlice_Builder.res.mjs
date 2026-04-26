@@ -5,11 +5,42 @@ import * as QueryDbResolvers_AppSync$ReventlessAws from "../adapter/QueryDb/Quer
 import * as InboundTranslationSlice_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/InboundTranslationSlice/InboundTranslationSlice_Builder.res.mjs";
 
 function Make(Api) {
-  return InboundTranslationSlice_Builder$ReventlessCore.Make({
+  let Inner = InboundTranslationSlice_Builder$ReventlessCore.Make({
     make: QueryDbStorage_DynamoDb$ReventlessAws.make
   })({
     make: QueryDbResolvers_AppSync$ReventlessAws.make
   })(Api);
+  let Make$1 = Spec => {
+    let LeanSpec_name = Spec.name;
+    let LeanSpec_moduleUrl = Spec.moduleUrl;
+    let LeanSpec_externalInputSchema = Spec.externalInputSchema;
+    let LeanSpec_commandSchema = Spec.commandSchema;
+    let LeanSpec_targetName = Spec.targetName;
+    let LeanSpec = {
+      name: LeanSpec_name,
+      moduleUrl: LeanSpec_moduleUrl,
+      externalInputSchema: LeanSpec_externalInputSchema,
+      commandSchema: LeanSpec_commandSchema,
+      targetName: LeanSpec_targetName
+    };
+    let TranslationImpl_translate = Spec.translate;
+    let TranslationImpl_moduleUrl = Spec.moduleUrl;
+    let TranslationImpl = {
+      translate: TranslationImpl_translate,
+      moduleUrl: TranslationImpl_moduleUrl
+    };
+    let InnerMake = Inner.Make(LeanSpec)(TranslationImpl);
+    return {
+      Spec: Spec,
+      Translation: TranslationImpl,
+      queryDbName: InnerMake.queryDbName,
+      make: InnerMake.make
+    };
+  };
+  return {
+    Inner: Inner,
+    Make: Make$1
+  };
 }
 
 export {
