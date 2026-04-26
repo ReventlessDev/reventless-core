@@ -30,9 +30,12 @@ let resourceNaming = {
 
 let environment = "in-memory";
 
+let platformName = "in-memory";
+
 export {
   runtimeOps,
   resourceNaming,
   environment,
+  platformName,
 }
 /* No side effect */

@@ -5,13 +5,13 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Effect from "effect/Effect";
-import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
+import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as AutomationSlice$ReventlessCore from "./AutomationSlice.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
@@ -20,9 +20,10 @@ import * as AutomationSlice_Callback$ReventlessCore from "./AutomationSlice_Call
 
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
-    let Make = Spec => (Automation => {
-      let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec)(Automation);
+    let Make = Spec => (Automation => (Mappings => {
+      let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec)(Automation)(Mappings);
       let queryDbName = Spec.name + "Todo";
+      let sourceNames = Belt_SetString.toArray(Belt_SetString.fromArray(Mappings.mappings.map(M => M.sourceName)));
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
@@ -34,7 +35,6 @@ function Make(RuntimeEnvironment) {
         subIdConfig: undefined
       })(QueryDbStorage)(QueryDbResolvers);
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
-      let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
       let syncToQueryDb = async queryDbOps => {
         let items = Object.entries(Callback.todoItems);
         await Stdlib_Array.reduce(items, Promise.resolve(), async (prev, param) => {
@@ -42,46 +42,36 @@ function Make(RuntimeEnvironment) {
           await queryDbOps.save(Id$Reventless.$$String.makeFromString(param[0]), param[1], "Overwrite", undefined);
         });
       };
-      let make = (dcbEventLog, publishJsons, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(AutomationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+      let make = (allEventTopics, publishJsons, context, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(AutomationSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
         let opts = {
           parent: opts_parent
         };
         let queryDb = SpecificQueryDb.make(Api.api(), Api.apiRole(), undefined, opts);
-        let dcbEventTopicOutputs = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
-        let allEventTopics = Object.fromEntries([[
-            Spec.name,
-            dcbEventTopicOutputs
-          ]]);
-        let publishJsonsRef = {
-          contents: undefined
-        };
-        publishJsons.apply(pj => {
-          publishJsonsRef.contents = pj;
+        sourceNames.forEach(sourceName => {
+          if (sourceName in allEventTopics) {
+            return;
+          }
+          let availableNames = Object.keys(allEventTopics).toSorted(Primitive_string.compare).join(", ");
+          Stdlib_JsError.throwWithMessage(`AutomationSlice "` + Spec.name + `" has a Mapping with sourceName "` + sourceName + `", but no EventTopic with that key exists in allEventTopics. ` + (`Available source names: [` + availableNames + `]. `) + `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog").`);
         });
-        let eventCollector = Component$ReventlessCore.operations(queryDb).apply(queryDbOps => {
-          let ec = SpecificEventCollector.make(Spec.name, allEventTopics, opts);
-          let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(Stream$1.flatMap(Stream$1.mapEffect(stream, json => Effect.sync(() => {
-            let match = Message$ReventlessCore.splitMessage(json);
-            let event = decoder.decode(match[0], match[1]);
-            if (event !== undefined) {
-              return [Primitive_option.valFromOption(event)];
-            } else {
-              return [];
-            }
-          })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
-            Callback.phase1(eventsArr);
-            let pj = publishJsonsRef.contents;
-            if (pj !== undefined) {
-              await Callback.phase2(pj);
-            } else {
-              console.error(`AutomationSlice(` + Spec.name + `): publishJsons not yet resolved`);
-            }
+        let sourceSet = Belt_SetString.fromArray(sourceNames);
+        let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, sourceSet);
+        let eventCollector = Pulumi.all([
+          Component$ReventlessCore.operations(queryDb),
+          publishJsons
+        ]).apply(param => {
+          let publishJsonsFn = param[1];
+          let queryDbOps = param[0];
+          let ec = SpecificEventCollector.make(Spec.name, eventTopics, opts);
+          let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
+            Callback.phase1(jsons, context);
+            await Callback.phase2(publishJsonsFn, context);
             return await syncToQueryDb(queryDbOps);
           }));
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;
-          EventCollectorRuntimeBuilder.forEventCollector(handler, allEventTopics, resources, undefined, undefined, ec);
+          EventCollectorRuntimeBuilder.forEventCollector(handler, eventTopics, resources, undefined, undefined, ec);
           return ec;
         });
         Component$ReventlessCore.setOperations(extra, Pulumi.all([
@@ -91,13 +81,13 @@ function Make(RuntimeEnvironment) {
           let publishJsonsFn = param[1];
           return {
             enqueueEvent: param[0].enqueueEvent,
-            processPending: async () => await Callback.phase2(publishJsonsFn)
+            processPending: async () => await Callback.phase2(publishJsonsFn, context)
           };
         }));
-        let outputs_resources = dcbEventTopicOutputs.resources;
+        let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);
         let outputs_queryDb = Component$ReventlessCore.outputs(queryDb);
         let outputs = {
-          resources: outputs_resources,
+          resources: aggregatedResources,
           queryDb: outputs_queryDb
         };
         return Component$ReventlessCore.setOutputs(extra, outputs);
@@ -105,10 +95,12 @@ function Make(RuntimeEnvironment) {
       return {
         Spec: Spec,
         Automation: Automation,
+        Mappings: Mappings,
         queryDbName: queryDbName,
+        sourceNames: sourceNames,
         make: make
       };
-    });
+    }));
     return {
       finish: EventCollectorRuntimeBuilder.finish,
       Make: Make

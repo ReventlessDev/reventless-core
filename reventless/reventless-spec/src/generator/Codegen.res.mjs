@@ -21,6 +21,10 @@ function renderSlices(platformFactory, suffix, implSuffix, stems) {
   return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + stem + ", " + stem + implSuffix + ")");
 }
 
+function renderAutomationSlices(stems) {
+  return stems.map(stem => "  module " + stem + "Slice = Platform.AutomationSlice.Make(" + stem + ", " + stem + "_Automation, " + stem + "_Mappings)");
+}
+
 function renderAggregates(aggregates) {
   return aggregates.flatMap(param => {
     let spec = param.spec;
@@ -112,6 +116,10 @@ function renderExtensions(extensions) {
 
 function renderSlicesAws(platformFactory, suffix, implSuffix, ns, stems) {
   return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + ns + "." + stem + ", " + ns + "." + stem + implSuffix + ")");
+}
+
+function renderAutomationSlicesAws(ns, stems) {
+  return stems.map(stem => "  module " + stem + "Slice = Platform.AutomationSlice.Make(" + ns + "." + stem + ", " + ns + "." + stem + "_Automation, " + ns + "." + stem + "_Mappings)");
 }
 
 function renderAggregatesAws(ns, aggregates) {
@@ -397,7 +405,7 @@ function render(config, resolved) {
   }
   if (resolved.automationSlices.length !== 0) {
     lines.push("  // AutomationSlices");
-    push(ns !== undefined ? renderSlicesAws("AutomationSlice", "Slice", Pairing$Reventless.implSuffixForAutomation, ns, resolved.automationSlices) : renderSlices("AutomationSlice", "Slice", Pairing$Reventless.implSuffixForAutomation, resolved.automationSlices));
+    push(ns !== undefined ? renderAutomationSlicesAws(ns, resolved.automationSlices) : renderAutomationSlices(resolved.automationSlices));
   }
   if (resolved.outboundTranslationSlices.length !== 0) {
     lines.push("  // OutboundTranslationSlices");
@@ -491,12 +499,14 @@ export {
   stripSuffix,
   epModuleName,
   renderSlices,
+  renderAutomationSlices,
   renderAggregates,
   renderReadModels,
   renderTasks,
   renderExtensionPoints,
   renderExtensions,
   renderSlicesAws,
+  renderAutomationSlicesAws,
   renderAggregatesAws,
   renderReadModelsAws,
   epBase,

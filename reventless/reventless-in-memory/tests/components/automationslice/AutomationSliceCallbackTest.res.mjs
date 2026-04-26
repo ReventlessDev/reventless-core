@@ -6,150 +6,113 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as AutomationSliceFixtures$ReventlessInMemory from "./AutomationSliceFixtures.res.mjs";
 
-let collect = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.collect;
+let Callback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec)({
+  process: AutomationSliceFixtures$ReventlessInMemory.ShipOrderAutomation.process,
+  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.ShipOrderAutomation.moduleUrl
+})(AutomationSliceFixtures$ReventlessInMemory.ShipOrderMappings);
 
-let resolve = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.resolve;
+let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec)({
+  process: AutomationSliceFixtures$ReventlessInMemory.SkipProcessAutomation.process,
+  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.SkipProcessAutomation.moduleUrl
+})(AutomationSliceFixtures$ReventlessInMemory.SkipProcessMappings);
 
-let process = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.process;
-
-let moduleUrl = AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.moduleUrl;
-
-let ShipOrderAutomation = {
-  collect: collect,
-  resolve: resolve,
-  process: process,
-  moduleUrl: moduleUrl
-};
-
-let collect$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.collect;
-
-let resolve$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.resolve;
-
-let process$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.process;
-
-let moduleUrl$1 = AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.moduleUrl;
-
-let SkipProcessAutomation = {
-  collect: collect$1,
-  resolve: resolve$1,
-  process: process$1,
-  moduleUrl: moduleUrl$1
-};
-
-let Callback = AutomationSlice_Callback$ReventlessCore.Make({
-  name: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.name,
-  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.moduleUrl,
-  consumedEventSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.consumedEventSchema,
-  todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.todoItemSchema,
-  commandSchema: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.commandSchema,
-  maxRetries: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.maxRetries,
-  heartbeatInterval: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.heartbeatInterval,
-  targetName: AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec.targetName
-})(ShipOrderAutomation);
-
-let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make({
-  name: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.name,
-  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.moduleUrl,
-  consumedEventSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.consumedEventSchema,
-  todoItemSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.todoItemSchema,
-  commandSchema: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.commandSchema,
-  maxRetries: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.maxRetries,
-  heartbeatInterval: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.heartbeatInterval,
-  targetName: AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec.targetName
-})(SkipProcessAutomation);
-
-describe("AutomationSlice Callback", () => {
+describe("AutomationSlice Callback (mixed-source)", () => {
   beforeEach(() => {
     Object.keys(Callback.todoItems).forEach(k => Stdlib_Dict.$$delete(Callback.todoItems, k));
     Object.keys(SkipCallback.todoItems).forEach(k => Stdlib_Dict.$$delete(SkipCallback.todoItems, k));
   });
   describe("Phase 1 — collect", () => {
-    test("OrderPlaced event creates a pending TODO item", async () => {
-      Callback.phase1([{
-          TAG: "OrderPlaced",
-          orderId: "ord-1",
-          address: "123 Main St"
-        }]);
+    test("OrderPlaced JSON creates a pending TODO item", async () => {
+      let json = AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
+        TAG: "OrderPlaced",
+        orderId: "ord-1",
+        address: "123 Main St"
+      });
+      Callback.phase1([json], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let items = Callback.todoItems;
       expect(Object.entries(items).length).toBe(1);
-      let row = items["ord-1"];
-      expect(Stdlib_Option.isSome(row)).toBe(true);
-      let r = Stdlib_Option.getOrThrow(row, undefined);
-      expect(r.status).toBe("Pending");
-      expect(r.retryCount).toBe(0);
+      let row = Stdlib_Option.getOrThrow(items["ord-1"], undefined);
+      expect(row.status).toBe("Pending");
+      expect(row.retryCount).toBe(0);
+      expect(row.sourceName).toBe(AutomationSliceFixtures$ReventlessInMemory.ShipOrderSource.name);
     });
-    test("duplicate OrderPlaced does not create a second TODO item (idempotent)", async () => {
-      Callback.phase1([{
-          TAG: "OrderPlaced",
-          orderId: "ord-1",
-          address: "123 Main St"
-        }]);
-      Callback.phase1([{
-          TAG: "OrderPlaced",
-          orderId: "ord-1",
-          address: "456 Oak Ave"
-        }]);
+    test("duplicate OrderPlaced is idempotent", async () => {
+      let j1 = AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
+        TAG: "OrderPlaced",
+        orderId: "ord-1",
+        address: "123 Main St"
+      });
+      let j2 = AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
+        TAG: "OrderPlaced",
+        orderId: "ord-1",
+        address: "456 Oak Ave"
+      });
+      Callback.phase1([j1], AutomationSliceFixtures$ReventlessInMemory.testContext);
+      Callback.phase1([j2], AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(Object.entries(Callback.todoItems).length).toBe(1);
     });
-    test("multiple different OrderPlaced events create multiple TODO items", async () => {
+    test("multiple OrderPlaced events create multiple TODO items", async () => {
+      let j1 = AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
+        TAG: "OrderPlaced",
+        orderId: "ord-1",
+        address: "123 Main St"
+      });
+      let j2 = AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
+        TAG: "OrderPlaced",
+        orderId: "ord-2",
+        address: "456 Oak Ave"
+      });
       Callback.phase1([
-        {
-          TAG: "OrderPlaced",
-          orderId: "ord-1",
-          address: "123 Main St"
-        },
-        {
-          TAG: "OrderPlaced",
-          orderId: "ord-2",
-          address: "456 Oak Ave"
-        }
-      ]);
+        j1,
+        j2
+      ], AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(Object.entries(Callback.todoItems).length).toBe(2);
     });
-    test("ShipmentCreated event does not create a TODO item", async () => {
-      Callback.phase1([{
-          TAG: "ShipmentCreated",
-          orderId: "ord-1"
-        }]);
+    test("ShipmentCreated does not create a TODO item", async () => {
+      let json = AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
+        TAG: "ShipmentCreated",
+        orderId: "ord-1"
+      });
+      Callback.phase1([json], AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(Object.entries(Callback.todoItems).length).toBe(0);
     });
   });
   describe("Phase 1 — resolve", () => {
     test("ShipmentCreated marks pending TODO item as completed", async () => {
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
           address: "123 Main St"
-        }]);
-      Callback.phase1([{
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "ShipmentCreated",
           orderId: "ord-1"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let row = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
       expect(row.status).toBe("Completed");
     });
     test("ShipmentCreated for unknown id is a no-op", async () => {
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "ShipmentCreated",
           orderId: "unknown"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(Object.entries(Callback.todoItems).length).toBe(0);
     });
   });
   describe("Phase 2 — process", () => {
     test("pending items produce commands via publishJsons", async () => {
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
           address: "123 Main St"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let publishedCommands = {
         contents: []
       };
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish);
+      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(publishedCommands.contents.length).toBe(1);
       let cmd = publishedCommands.contents[0];
       expect(cmd.id).toBe("ord-1");
@@ -157,36 +120,37 @@ describe("AutomationSlice Callback", () => {
       expect(row.status).toBe("Processing");
     });
     test("completed items are not processed", async () => {
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
           address: "123 Main St"
-        }]);
-      Callback.phase1([{
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "ShipmentCreated",
           orderId: "ord-1"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let publishedCommands = {
         contents: []
       };
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish);
+      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(publishedCommands.contents.length).toBe(0);
     });
     test("items where process returns None are skipped", async () => {
-      SkipCallback.phase1([{
-          TAG: "OrderPlaced",
-          orderId: "ord-1"
-        }]);
+      let json = AutomationSliceFixtures$ReventlessInMemory.encodeSkipProcessEvent({
+        TAG: "OrderPlaced",
+        orderId: "ord-1"
+      });
+      SkipCallback.phase1([json], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let publishedCommands = {
         contents: []
       };
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await SkipCallback.phase2(mockPublish);
+      await SkipCallback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(publishedCommands.contents.length).toBe(0);
       let row = Stdlib_Option.getOrThrow(SkipCallback.todoItems["ord-1"], undefined);
       expect(row.status).toBe("Pending");
@@ -198,29 +162,29 @@ describe("AutomationSlice Callback", () => {
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish);
+      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(publishedCommands.contents.length).toBe(0);
     });
     test("publishJsons failure marks items as Failed", async () => {
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
           address: "123 Main St"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let failingPublish = async _cmds => Stdlib_JsError.throwWithMessage("publish failed");
-      await Callback.phase2(failingPublish);
+      await Callback.phase2(failingPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       let row = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
       expect(row.status).toBe("Failed");
       expect(row.retryCount).toBe(1);
     });
     test("failed items with retryCount < maxRetries are retried", async () => {
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
           address: "123 Main St"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let failingPublish = async _cmds => Stdlib_JsError.throwWithMessage("publish failed");
-      await Callback.phase2(failingPublish);
+      await Callback.phase2(failingPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       let row1 = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
       expect(row1.retryCount).toBe(1);
       let publishedCommands = {
@@ -229,7 +193,7 @@ describe("AutomationSlice Callback", () => {
       let successPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(successPublish);
+      await Callback.phase2(successPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(publishedCommands.contents.length).toBe(1);
       let row2 = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
       expect(row2.status).toBe("Processing");
@@ -237,11 +201,11 @@ describe("AutomationSlice Callback", () => {
   });
   describe("full lifecycle", () => {
     test("collect → process → resolve completes the TODO item", async () => {
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
           address: "123 Main St"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Pending");
       let publishedCommands = {
         contents: []
@@ -249,13 +213,13 @@ describe("AutomationSlice Callback", () => {
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish);
+      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(publishedCommands.contents.length).toBe(1);
       expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Processing");
-      Callback.phase1([{
+      Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
           TAG: "ShipmentCreated",
           orderId: "ord-1"
-        }]);
+        })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Completed");
       let publishedCommands2 = {
         contents: []
@@ -263,15 +227,13 @@ describe("AutomationSlice Callback", () => {
       let mockPublish2 = async cmds => {
         publishedCommands2.contents = cmds;
       };
-      await Callback.phase2(mockPublish2);
+      await Callback.phase2(mockPublish2, AutomationSliceFixtures$ReventlessInMemory.testContext);
       expect(publishedCommands2.contents.length).toBe(0);
     });
   });
 });
 
 export {
-  ShipOrderAutomation,
-  SkipProcessAutomation,
   Callback,
   SkipCallback,
 }

@@ -21,16 +21,19 @@ module Make = (Api: {
   module Make = (
     Spec: Reventless.AutomationSlice.Spec,
     Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
+    Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
   ): (ReventlessCore.AutomationSlice.T with module Spec = Spec) => {
-    module InnerMake = Inner.Make(Spec, Automation)
+    module InnerMake = Inner.Make(Spec, Automation, Mappings)
 
     module Spec = Spec
     module Automation = Automation
+    module Mappings = Mappings
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
+    let sourceNames = InnerMake.sourceNames
 
-    let make = (~dcbEventLog, ~publishJsons, ~opts=?): component => {
-      let as_ = InnerMake.make(~dcbEventLog, ~publishJsons, ~opts?)
+    let make = (~allEventTopics, ~publishJsons, ~context, ~opts=?): component => {
+      let as_ = InnerMake.make(~allEventTopics, ~publishJsons, ~context, ~opts?)
 
       let queryDbOutputs = (as_->ReventlessCore.Component.outputs).queryDb
       let tableResource = queryDbOutputs.resources->Array.getUnsafe(0)

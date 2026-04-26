@@ -72,7 +72,10 @@ let emptyResult = {
 
 function Make(DcbEventLogStorage) {
   return DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => (RuntimeBuilder => (HooksConfig => {
-    let construct = (name, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts) => {
+    let construct = (name, childName, environmentOpt, platformNameOpt, aggregateEventTopicsOpt, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts) => {
+      let environment = environmentOpt !== undefined ? environmentOpt : "";
+      let platformName = platformNameOpt !== undefined ? platformNameOpt : "";
+      let aggregateEventTopics = aggregateEventTopicsOpt !== undefined ? aggregateEventTopicsOpt : ({});
       let hasDcb = stateChangeSlices.length !== 0;
       if (!hasDcb) {
         return emptyResult;
@@ -94,10 +97,10 @@ function Make(DcbEventLogStorage) {
       ]).concat(stateViewSlices.map(V => [
         V.Spec.name,
         V.Spec.consumedEventSchema
-      ])).concat(automationSlices.map(A => [
+      ])).concat(automationSlices.flatMap(A => A.Mappings.mappings.map(M => [
         A.Spec.name,
-        A.Spec.consumedEventSchema
-      ])).concat(outboundTranslationSlices.map(O => [
+        M.sourceEventSchema
+      ]))).concat(outboundTranslationSlices.map(O => [
         O.Spec.name,
         O.Spec.consumedEventSchema
       ]));
@@ -244,8 +247,17 @@ function Make(DcbEventLogStorage) {
           Component$ReventlessCore.outputs(sv)
         ];
       }));
+      let allEventTopics = Object.assign({}, aggregateEventTopics);
+      allEventTopics[name + "DcbEventLog"] = Component$ReventlessCore.outputs(dcbEventLog).eventTopic;
       let automationSlicesOutputs = Object.fromEntries(automationSlices.map(AutoSlice => {
-        let as_ = AutoSlice.make(dcbEventLog, publishJsons, opts);
+        let context_sliceName = AutoSlice.Spec.name;
+        let context = {
+          environment: environment,
+          platformName: platformName,
+          pluginName: name,
+          sliceName: context_sliceName
+        };
+        let as_ = AutoSlice.make(allEventTopics, publishJsons, context, opts);
         return [
           AutoSlice.Spec.name,
           Component$ReventlessCore.outputs(as_)

@@ -123,9 +123,15 @@ module Make = (
       AdminRuntimeBuilder,
       Config,
     )
+    // Aggregates constructed early so multi-source AutomationSlices created
+    // inside DcbBuilder can subscribe to Aggregate event topics.
+    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
+    let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
+
     let dcbResult = DcbBuilder.construct(
       ~name,
       ~childName=name,
+      ~aggregateEventTopics,
       ~stateChangeSlices,
       ~stateViewSlices,
       ~automationSlices,
@@ -165,10 +171,8 @@ module Make = (
       }
     }
 
-    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
-    let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
-
-    // Merge DCB EventTopic into allEventTopics so ReadModels can subscribe to DCB events
+    // Reuse aggregateEventTopics computed above as the base for ReadModels' allEventTopics.
+    let allEventTopics = aggregateEventTopics
     switch dcbResult.dcbEventLogOutputs {
     | Some(dcbOutputs) => allEventTopics->Dict.set(name ++ "DcbEventLog", dcbOutputs.eventTopic)
     | None => ()

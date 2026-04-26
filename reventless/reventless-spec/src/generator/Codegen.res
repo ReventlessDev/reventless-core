@@ -34,6 +34,21 @@ let renderSlices = (
     ++ ")"
   )
 
+// AutomationSlice has an extra `Mappings` arg (Plan 04) — emits a 3-arg
+// `Platform.AutomationSlice.Make(<Stem>, <Stem>_Automation, <Stem>_Mappings)`.
+let renderAutomationSlices = (stems: array<string>): array<string> =>
+  stems->Array.map(stem =>
+    "  module "
+    ++ stem
+    ++ "Slice = Platform.AutomationSlice.Make("
+    ++ stem
+    ++ ", "
+    ++ stem
+    ++ "_Automation, "
+    ++ stem
+    ++ "_Mappings)"
+  )
+
 let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> =>
   aggregates->Array.flatMap(({spec, behavior, eventMappings}) => {
     let em = eventMappings->Option.getOr("ReventlessInfra.NoEventMappings.Make(" ++ spec ++ ")")
@@ -148,6 +163,25 @@ let renderSlicesAws = (
     ++ stem
     ++ implSuffix
     ++ ")"
+  )
+
+let renderAutomationSlicesAws = (~ns: string, stems: array<string>): array<string> =>
+  stems->Array.map(stem =>
+    "  module "
+    ++ stem
+    ++ "Slice = Platform.AutomationSlice.Make("
+    ++ ns
+    ++ "."
+    ++ stem
+    ++ ", "
+    ++ ns
+    ++ "."
+    ++ stem
+    ++ "_Automation, "
+    ++ ns
+    ++ "."
+    ++ stem
+    ++ "_Mappings)"
   )
 
 let renderAggregatesAws = (~ns: string, aggregates: array<Pairing.aggregateDef>): array<string> =>
@@ -572,13 +606,12 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     }->push
   }
 
-  // AutomationSlices
+  // AutomationSlices — Plan 04 3-arg form: (Spec, _Automation, _Mappings)
   if resolved.automationSlices->Array.length > 0 {
     lines->Array.push("  // AutomationSlices")
-    let implSuffix = Pairing.implSuffixForAutomation
     switch ns {
-    | None => renderSlices(~platformFactory="AutomationSlice", ~suffix="Slice", ~implSuffix, resolved.automationSlices)
-    | Some(n) => renderSlicesAws(~platformFactory="AutomationSlice", ~suffix="Slice", ~implSuffix, ~ns=n, resolved.automationSlices)
+    | None => renderAutomationSlices(resolved.automationSlices)
+    | Some(n) => renderAutomationSlicesAws(~ns=n, resolved.automationSlices)
     }->push
   }
 

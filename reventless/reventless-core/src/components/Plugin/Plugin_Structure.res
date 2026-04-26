@@ -328,12 +328,24 @@ let make = (
   // ── Automation slices ────────────────────────────────────────────────────────
 
   let automationSliceDefs =
-    automationSlices->Array.map((module(AS: ReventlessInfra.AutomationSlice.T)) => ({
-      Reventless.Plugin.name: AS.Spec.name,
-      consumedEventTypes: qualify(~prefix=name, variantNames(AS.Spec.consumedEventSchema)),
-      producedCommandTypes: qualify(~prefix=name, variantNames(AS.Spec.commandSchema)),
-      targetName: AS.Spec.targetName,
-    }: Reventless.Plugin.automationSliceDef))
+    automationSlices->Array.map((module(AS: ReventlessInfra.AutomationSlice.T)) => {
+      // Plan 04: gather variant names across every per-source mapping. A
+      // multi-source slice contributes the union; a single-source slice
+      // contributes that one source's variants.
+      let allConsumedVariants =
+        AS.Mappings.mappings
+        ->Array.flatMap((module(M: AS.Mappings.Mapping)) =>
+          variantNames(M.sourceEventSchema->S.castToUnknown)
+        )
+        ->Belt.Set.String.fromArray
+        ->Belt.Set.String.toArray
+      ({
+        Reventless.Plugin.name: AS.Spec.name,
+        consumedEventTypes: qualify(~prefix=name, allConsumedVariants),
+        producedCommandTypes: qualify(~prefix=name, variantNames(AS.Spec.commandSchema)),
+        targetName: AS.Spec.targetName,
+      }: Reventless.Plugin.automationSliceDef)
+    })
 
   // ── Outbound translation slices ───────────────────────────────────────────
 

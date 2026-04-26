@@ -2,11 +2,15 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Message$ReventlessCore from "../../Message.res.mjs";
 
 S.enableJson();
 
@@ -20,6 +24,7 @@ let todoStatusSchema = S.union([
 let todoRowSchema = S.schema(s => ({
   item: s.m(S.json),
   status: s.m(todoStatusSchema),
+  sourceName: s.m(S.string),
   createdAt: s.m(S.string),
   processedAt: s.m(S.option(S.string)),
   completedAt: s.m(S.option(S.string)),
@@ -27,7 +32,7 @@ let todoRowSchema = S.schema(s => ({
 }));
 
 function Make(Spec) {
-  return Automation => {
+  return Automation => (Mappings => {
     let todoItems = {};
     let makeMeta = () => ({
       service: `AutomationSlice:` + Spec.name,
@@ -37,25 +42,34 @@ function Make(Spec) {
       msgId: Uuid.v4(),
       correlationId: ""
     });
-    let phase1 = events => {
-      events.forEach(event => {
-        Automation.collect(event).forEach(param => {
+    let dispatches = Mappings.mappings.map(M => {
+      let decoder = DcbDecode$Reventless.makeDecoder(M.sourceEventSchema);
+      let handle = (json, ctx) => {
+        let match = Message$ReventlessCore.splitMessage(json);
+        let event = decoder.decode(match[0], match[1]);
+        if (event === undefined) {
+          return;
+        }
+        let event$1 = Primitive_option.valFromOption(event);
+        M.collect(event$1, ctx).forEach(param => {
           let id = param[0];
           let match = todoItems[id];
           if (match !== undefined) {
             return;
           }
           let row_item = S.reverseConvertToJsonOrThrow(param[1], Spec.todoItemSchema);
+          let row_sourceName = M.sourceName;
           let row_createdAt = new Date().toISOString();
           let row = {
             item: row_item,
             status: "Pending",
+            sourceName: row_sourceName,
             createdAt: row_createdAt,
             retryCount: 0
           };
           todoItems[id] = row;
         });
-        let id = Automation.resolve(event);
+        let id = M.resolve(event$1);
         if (id !== undefined) {
           return Stdlib_Option.forEach(todoItems[id], row => {
             let newrecord = {...row};
@@ -64,9 +78,42 @@ function Make(Spec) {
             todoItems[id] = newrecord;
           });
         }
+      };
+      let validateTags = (item, ctx) => {
+        let _tagSet = M.toTags(item, ctx);
+        if (_tagSet.TAG === "Ok") {
+          return {
+            TAG: "Ok",
+            _0: undefined
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: _tagSet._0
+          };
+        }
+      };
+      return {
+        sourceName: M.sourceName,
+        handle: handle,
+        validateTags: validateTags
+      };
+    });
+    let findDispatch = sourceName => dispatches.find(d => d.sourceName === sourceName);
+    let phase1 = (events, ctx) => {
+      events.forEach(json => {
+        let context = Message$ReventlessCore.decode(json, Message$Reventless.contextSchema);
+        let sourceName = context.meta.service;
+        let dict = Stdlib_JSON.Decode.object(json);
+        let eventPayload = dict !== undefined ? Stdlib_Option.getOr(dict["event"], json) : json;
+        dispatches.forEach(d => {
+          if (d.sourceName === sourceName) {
+            return d.handle(eventPayload, ctx);
+          }
+        });
       });
     };
-    let phase2 = async publishJsons => {
+    let phase2 = async (publishJsons, ctx) => {
       let pending = Object.entries(todoItems).filter(param => {
         let row = param[1];
         if (row.status === "Pending") {
@@ -91,37 +138,49 @@ function Make(Spec) {
           item = undefined;
         }
         Stdlib_Option.forEach(item, item => {
-          let match = Automation.process(id, item);
-          if (match === undefined) {
-            return;
+          let d = findDispatch(row.sourceName);
+          let tagsResult = d !== undefined ? d.validateTags(item, ctx) : ({
+              TAG: "Error",
+              _0: `unknown sourceName "` + row.sourceName + `" — mapping not found`
+            });
+          if (tagsResult.TAG === "Ok") {
+            let match = Automation.process(id, item);
+            if (match === undefined) {
+              return;
+            }
+            let targetId = match[0];
+            let newrecord = {...row};
+            newrecord.processedAt = new Date().toISOString();
+            newrecord.status = "Processing";
+            todoItems[id] = newrecord;
+            let commandJson;
+            try {
+              commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
+            } catch (raw_exn) {
+              let exn = Primitive_exceptions.internalToException(raw_exn);
+              let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+              Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
+              let newrecord$1 = {...row};
+              newrecord$1.retryCount = row.retryCount + 1 | 0;
+              newrecord$1.status = "Failed";
+              todoItems[id] = newrecord$1;
+              commandJson = undefined;
+            }
+            return Stdlib_Option.forEach(commandJson, commandJson => {
+              let msg_meta = makeMeta();
+              let msg = {
+                id: targetId,
+                meta: msg_meta,
+                commandJson: commandJson
+              };
+              commands.push(msg);
+            });
           }
-          let targetId = match[0];
-          let newrecord = {...row};
-          newrecord.processedAt = new Date().toISOString();
-          newrecord.status = "Processing";
-          todoItems[id] = newrecord;
-          let commandJson;
-          try {
-            commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.commandSchema);
-          } catch (raw_exn) {
-            let exn = Primitive_exceptions.internalToException(raw_exn);
-            let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-            Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
-            let newrecord$1 = {...row};
-            newrecord$1.retryCount = row.retryCount + 1 | 0;
-            newrecord$1.status = "Failed";
-            todoItems[id] = newrecord$1;
-            commandJson = undefined;
-          }
-          Stdlib_Option.forEach(commandJson, commandJson => {
-            let msg_meta = makeMeta();
-            let msg = {
-              id: targetId,
-              meta: msg_meta,
-              commandJson: commandJson
-            };
-            commands.push(msg);
-          });
+          Effect.runSync(Effect.logWarning(`AutomationSlice(` + Spec.name + `): toTags failed for item ` + id + `: ` + tagsResult._0));
+          let newrecord$2 = {...row};
+          newrecord$2.retryCount = row.retryCount + 1 | 0;
+          newrecord$2.status = "Failed";
+          todoItems[id] = newrecord$2;
         });
       });
       if (commands.length === 0) {
@@ -157,7 +216,7 @@ function Make(Spec) {
       phase1: phase1,
       phase2: phase2
     };
-  };
+  });
 }
 
 export {

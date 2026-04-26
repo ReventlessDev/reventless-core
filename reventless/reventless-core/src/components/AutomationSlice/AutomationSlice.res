@@ -24,12 +24,17 @@ let toResolvedOutputs = (
 module type T = {
   module Spec: Reventless.AutomationSlice.Spec
   module Automation: Reventless.AutomationSlice.Automation with module Spec := Spec
+  module Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
+  /** Names of all sources this slice consumes (deduplicated). Used by
+      `Plugin_Builder` for the source-name fail-fast assembly check. */
+  let sourceNames: array<string>
 
   let make: (
-    ~dcbEventLog: DcbEventLog.component,
+    ~allEventTopics: EventTopic.allOutputs,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~context: Reventless.AutomationSlice.context,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

@@ -25,6 +25,7 @@ function Make(Bus) {
       runtimeOps: InMemory_PluginSpec$ReventlessInMemory.runtimeOps,
       resourceNaming: InMemory_PluginSpec$ReventlessInMemory.resourceNaming,
       environment: InMemory_PluginSpec$ReventlessInMemory.environment,
+      platformName: InMemory_PluginSpec$ReventlessInMemory.platformName,
       hooks: HooksConfig.hooks
     })({})(GraphQL_InMemory_Adapter$ReventlessInMemory)({
       make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,

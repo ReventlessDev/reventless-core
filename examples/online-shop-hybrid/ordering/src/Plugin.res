@@ -14,7 +14,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView, OrdersView_Projection)
 
   // AutomationSlices
-  module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
+  module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation, AutoShipOrder_Mappings)
 
   // OutboundTranslationSlices
   module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation, SendOrderConfirmation_Translation)

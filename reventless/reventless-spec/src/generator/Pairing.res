@@ -16,12 +16,16 @@ let implSuffixForStateChange = "_Behavior"
 let implSuffixForStateView = "_Projection"
 let implSuffixForAutomation = "_Automation"
 let implSuffixForTranslation = "_Translation"
+// Plan 04: AutomationSlice splits source-side concerns into a `_Mappings`
+// sibling. Treated as an impl file so it doesn't surface as a slice spec.
+let mappingsSuffixForAutomation = "_Mappings"
 
 let isImplStem = (stem: string): bool =>
   stem->String.endsWith(implSuffixForStateChange)
   || stem->String.endsWith(implSuffixForStateView)
   || stem->String.endsWith(implSuffixForAutomation)
   || stem->String.endsWith(implSuffixForTranslation)
+  || stem->String.endsWith(mappingsSuffixForAutomation)
 
 type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>}
 // mappingModules: module names found inside the projections file (e.g. ["ProductMapping"])

@@ -45,19 +45,17 @@ let heartbeatInterval = 60
 
 /**
 The lean Spec for an AutomationSlice — types, identity, schemas, sweep config.
+
+Plan 04 dropped `consumedEvent` from the Spec — the framework now derives the
+consumed-event set from each per-source Mapping's `sourceEventSchema`, so a
+manually-declared union is no longer necessary. Single-source slices have one
+`Mapping` whose `sourceEventSchema` IS the consumed-event schema; multi-source
+slices have several Mappings and the framework walks all of them.
 */
 module type Spec = {
   /** Logical name of this automation slice (used as a component prefix). */
   let name: string
   let moduleUrl: string
-
-  /**
-  Events this automation slice consumes for collect/resolve.
-  Only needs the fields required — no tag annotations needed.
-  Must carry `@schema`.
-  */
-  @schema
-  type consumedEvent
 
   /** The TODO item state — what data is accumulated for each pending work item. Must carry `@schema`. */
   @schema
@@ -78,23 +76,14 @@ module type Spec = {
 }
 
 /**
-The Automation — the three pure functions that drive the TODO loop.
+The Automation — the source-agnostic processing function.
+
+Plan 04 moved `collect` and `resolve` to per-source `Mapping` modules (where
+they switch over the source's own `event` type). `process` stays here because
+it operates on `todoItem`, which is uniform across sources.
 */
 module type Automation = {
   module Spec: Spec
-
-  /**
-  Collect: map an incoming event to zero or more new TODO items.
-  Each item has an `id` (deduplication key) and the `todoItem` payload.
-  Returns empty array if this event is not relevant.
-  */
-  let collect: Spec.consumedEvent => array<(string, Spec.todoItem)>
-
-  /**
-  Resolve: check if an incoming event completes a pending TODO item.
-  Returns `Some(todoItemId)` if the event marks the item as done, `None` otherwise.
-  */
-  let resolve: Spec.consumedEvent => option<string>
 
   /**
   Process: given a pending TODO item, produce a command.
@@ -105,5 +94,178 @@ module type Automation = {
 
   /** File URL of this Automation module (`import.meta.url`). */
   let moduleUrl: string
+}
+
+// ── Plan 04: Mixed-source mappings ───────────────────────────────────────────
+//
+// An AutomationSlice can declare per-source mappings that consume Aggregate
+// events alongside the slice's own DcbEventLog events. Each mapping carries its
+// own `collect`/`resolve` (over the source's `event` type) plus a `toTags`
+// validation step run before each command publish. `process` remains shared in
+// the slice's `Automation` module since it operates on `todoItem` regardless of
+// the originating source.
+
+/**
+Ambient deployment context plumbed to every mapping function.
+
+`Plugin_Builder` constructs this from its existing `~environment`, `~name` and
+related parameters. `collect` and `resolve` use it to complete partial event
+payloads (e.g. when a DCB tag field is supplied by deployment metadata rather
+than the source event); `toTags` uses it to validate that all tag fields on the
+target command will be populated.
+
+The record is intentionally narrow — extending it is a deliberate framework
+change, not an open-dict escape hatch. Runtime registry lookups are out of
+scope (see Plan 04 / decision 3).
+*/
+type context = {
+  environment: string,
+  platformName: string,
+  pluginName: string,
+  sliceName: string,
+}
+
+/**
+A compiled per-source-to-AutomationSlice mapping.
+
+Created by `AutomationSlice.Mapping.Make(Source, Target, Impl)`. The mapping
+binds `sourceEvent` (decode target) plus `collect`/`resolve`/`toTags` to the
+slice's `todoItem` and `command` types. `process` remains in the slice's
+`Automation` module — it is source-agnostic.
+
+`tagSet` is per-mapping and opaque to the framework; the `toTags` `Result`
+distinguishes valid vs. invalid items at publish time. The actual DCB tags on
+the published command are still derived from the command schema's
+`@compositePartitionTag` annotations — `toTags` is the explicit validation
+site that fails fast when those fields are not populated.
+*/
+module type Mapping = {
+  module SourceId: Id.T
+  @schema
+  type sourceEvent
+  type todoItem
+  type command
+  type tagSet
+  let sourceEventSchema: S.t<sourceEvent>
+  let sourceName: string
+  let collect: (sourceEvent, context) => array<(string, todoItem)>
+  let resolve: sourceEvent => option<string>
+  let toTags: (todoItem, context) => result<tagSet, string>
+}
+
+/**
+The implementation passed to `AutomationSlice.Mapping.Make`. Caller-supplied
+`collect`/`resolve`/`toTags` are bound to source/target types via destructive
+substitution in the functor.
+*/
+module type MappingImpl = {
+  type sourceEvent
+  type todoItem
+  type command
+  type tagSet
+  let collect: (sourceEvent, context) => array<(string, todoItem)>
+  let resolve: sourceEvent => option<string>
+  let toTags: (todoItem, context) => result<tagSet, string>
+}
+
+/**
+A collection of `Mapping` modules for a single AutomationSlice target.
+
+Pass a `Mappings` module to the AutomationSlice plugin builder to register all
+source-to-slice mappings. The shape mirrors `Projection.Mappings` for
+ReadModels.
+
+@example
+```rescript
+// AutoFulfillment_Mappings.res
+module M = Reventless.AutomationSlice.Mappings.Make(AutoFulfillmentSpec)
+module type Mapping = M.Mapping
+
+let mappings: array<module(Mapping)> = [
+  module(FromOrderShipped),
+  module(FromStockReserved),
+]
+```
+*/
+module type Mappings = {
+  module Target: Spec
+  module type Mapping = Mapping
+    with type todoItem = Target.todoItem
+    and type command = Target.command
+  let moduleUrl: string
+  let mappings: array<module(Mapping)>
+}
+
+/**
+Builds an `AutomationSlice.Mapping` from a `Source`, the slice's `Spec`, and a
+`MappingImpl`.
+
+@example
+```rescript
+// AutoFulfillment/FromOrderShipped.res
+module FromOrderShipped = Reventless.AutomationSlice.Mapping.Make(
+  OrderSpec,                    // Source: Aggregate spec module
+  AutoFulfillmentSpec,          // Target: this slice's spec
+  {
+    type tagSet = {orderId: string, productId: string}
+
+    let collect = (event, _ctx) =>
+      switch event {
+      | OrderSpec.OrderShipped({orderId, productId}) =>
+        [(orderId ++ ":" ++ productId, {AutoFulfillmentSpec.orderId, productId})]
+      | _ => []
+      }
+
+    let resolve = event =>
+      switch event {
+      | OrderSpec.OrderRefunded({orderId, productId}) =>
+        Some(orderId ++ ":" ++ productId)
+      | _ => None
+      }
+
+    let toTags = (item, _ctx): result<tagSet, string> =>
+      switch (item.orderId, item.productId) {
+      | ("", _) | (_, "") => Error("missing partition tag fields")
+      | _ => Ok({orderId: item.orderId, productId: item.productId})
+      }
+  },
+)
+```
+*/
+module Mapping = {
+  module Make = (
+    Source: Projection.Source,
+    Target: Spec,
+    Impl: MappingImpl
+      with type sourceEvent := Source.event
+      and type todoItem := Target.todoItem
+      and type command := Target.command,
+  ): (
+    Mapping
+      with type sourceEvent = Source.event
+      and type todoItem = Target.todoItem
+      and type command = Target.command
+      and type tagSet = Impl.tagSet
+      and module SourceId = Source.Id
+  ) => {
+    module SourceId = Source.Id
+    @schema
+    type sourceEvent = Source.event
+    type todoItem = Target.todoItem
+    type command = Target.command
+    type tagSet = Impl.tagSet
+    let sourceName = Source.name
+    let collect = Impl.collect
+    let resolve = Impl.resolve
+    let toTags = Impl.toTags
+  }
+}
+
+module Mappings = {
+  module Make = (Target: Spec) => {
+    module type Mapping = Mapping
+      with type todoItem = Target.todoItem
+      and type command = Target.command
+  }
 }
 

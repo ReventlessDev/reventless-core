@@ -31,10 +31,10 @@ function Make(Api) {
     forEventCollector: AutomationSliceRuntime_Builder_Single$ReventlessAws.forEventCollector,
     finish: AutomationSliceRuntime_Builder_Single$ReventlessAws.finish
   })(Api);
-  let Make$1 = Spec => (Automation => {
-    let InnerMake = Inner.Make(Spec)(Automation);
-    let make = (dcbEventLog, publishJsons, opts) => {
-      let as_ = InnerMake.make(dcbEventLog, publishJsons, opts);
+  let Make$1 = Spec => (Automation => (Mappings => {
+    let InnerMake = Inner.Make(Spec)(Automation)(Mappings);
+    let make = (allEventTopics, publishJsons, context, opts) => {
+      let as_ = InnerMake.make(allEventTopics, publishJsons, context, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(as_).queryDb;
       let tableResource = queryDbOutputs.resources[0];
       let queryDbTableName = tableResource.name;
@@ -44,10 +44,12 @@ function Make(Api) {
     return {
       Spec: Spec,
       Automation: Automation,
+      Mappings: Mappings,
       queryDbName: InnerMake.queryDbName,
+      sourceNames: InnerMake.sourceNames,
       make: make
     };
-  });
+  }));
   let finish = () => AutomationSliceRuntime_Builder_Single$ReventlessAws.finish();
   return {
     Inner: Inner,

@@ -104,10 +104,12 @@ function Make(Spec) {
           parent: opts_parent
         };
         let childName = ComponentType$ReventlessCore.name(extra$1, Plugin$ReventlessCore.componentType);
+        let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
+        let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(PluginRuntimeBuilder)({
           hooks: Spec.hooks
         });
-        let dcbResult = DcbBuilder.construct(extra$1, childName, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts);
+        let dcbResult = DcbBuilder.construct(extra$1, childName, Spec.environment, Spec.platformName, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, pluginStructure, opts);
         let mutationEntriesFromAggregates = aggregates.flatMap(M => {
           let commandSchema = M.Spec.commandSchema;
           if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
@@ -188,19 +190,17 @@ function Make(Spec) {
           eventLogEntries: eventLogEntries,
           subscriptionFields: GraphQL_Stitcher$ReventlessCore.decode(apiSchemaFragment).subscriptions
         }));
-        let aggregatesWithoutEventMappers = Plugin_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
         let slicePublishJsons = dcbResult.dcbPublishJsons;
         if (slicePublishJsons !== undefined) {
           stateChangeSlices.forEach(Sc => {
             Plugin_Helpers$ReventlessCore.publishToAggregates[Sc.Spec.name] = slicePublishJsons;
           });
         }
-        let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
         let dcbOutputs = dcbResult.dcbEventLogOutputs;
         if (dcbOutputs !== undefined) {
-          allEventTopics[extra$1 + "DcbEventLog"] = dcbOutputs.eventTopic;
+          aggregateEventTopics[extra$1 + "DcbEventLog"] = dcbOutputs.eventTopic;
         }
-        let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
+        let readModelsOutputs = Plugin_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, aggregateEventTopics, opts);
         let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
         Object.entries(dcbResult.stateViewSlicesOutputs).forEach(param => {
           allQueryDbs[param[0]] = param[1].queryDb;
@@ -302,7 +302,7 @@ function Make(Spec) {
           let match = param[0];
           let localAdminResolvedEP = match[1];
           let interstackAdminExtensionPoints = match[0];
-          let aggregatesOutputs = Plugin_Helpers$ReventlessCore.addEventMappers(allEventTopics, queryEngine);
+          let aggregatesOutputs = Plugin_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
           let match$1 = Plugin_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[1], publishToAggregates, scheduler, queryEngine, Spec.resourceNaming, opts);
           let extensionPointsHandlers = match$1[1];
           let extensionPointsOutputs = match$1[0];
@@ -373,7 +373,7 @@ function Make(Spec) {
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);
           Stdlib_Option.forEach(Spec.hooks.subscriptionInfraHook, hook => hook({
             allQueryDbs: allQueryDbs,
-            allEventTopics: allEventTopics,
+            allEventTopics: aggregateEventTopics,
             eventLogEntries: eventLogEntries,
             opts: opts
           }));

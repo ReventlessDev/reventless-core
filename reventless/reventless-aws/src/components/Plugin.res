@@ -7,6 +7,7 @@ module Make = (HooksConfig: ReventlessCore.Plugin_Helpers.HooksConfig) => {
       let runtimeOps = PluginRuntimeOperations.operations
       let resourceNaming = Util_ResourceNaming.operations
       let environment = PulumiAws.Lambda.environment->Option.getOr("unknown")
+      let platformName = Pulumi.Pulumi.getProjectName()
       let hooks = HooksConfig.hooks
     },
     {

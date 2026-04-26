@@ -10,6 +10,10 @@ For a short summary of AutomationSlice, see [Reventless Components Overview.](..
 This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`AutomationSlice.res`), builder logic (`AutomationSlice_Builder.res`), and callback/handler logic (`AutomationSlice_Callback.res`).
 :::
 
+:::tip Mixed-source automation (Plan 04)
+An AutomationSlice can consume events from **multiple sources** — Aggregate `EventTopic`s and DCB `EventLog`s — via per-source `Mapping` modules. `collect` and `resolve` move to the mapping; `process` stays source-agnostic. See the [mixed-source guide](../../docs/guides/mixed-source-automationslice.md) for the per-source mapping convention, ambient context, and `toTags` validation.
+:::
+
 ## Overview
 
 ```d2

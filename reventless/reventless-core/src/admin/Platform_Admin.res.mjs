@@ -65,7 +65,9 @@ function Make(RuntimeEnvironment) {
       let DcbBuilder = Dcb_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher)(DcbCommandTopicChannel)(DcbCommandTopicChannelAsync)(AdminRuntimeBuilder)({
         hooks: Config.hooks
       });
-      let dcbResult = DcbBuilder.construct(name, name, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, opts);
+      let aggregatesWithoutEventMappers = Builder_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
+      let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
+      let dcbResult = DcbBuilder.construct(name, name, undefined, undefined, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, opts);
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
       let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
       let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
@@ -87,13 +89,11 @@ function Make(RuntimeEnvironment) {
           });
         }
       }
-      let aggregatesWithoutEventMappers = Builder_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
-      let allEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
       let dcbOutputs = dcbResult.dcbEventLogOutputs;
       if (dcbOutputs !== undefined) {
-        allEventTopics[name + "DcbEventLog"] = dcbOutputs.eventTopic;
+        aggregateEventTopics[name + "DcbEventLog"] = dcbOutputs.eventTopic;
       }
-      let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, allEventTopics, opts);
+      let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, aggregateEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
       let extensionPointsOutputs = Pulumi.all([
@@ -103,11 +103,11 @@ function Make(RuntimeEnvironment) {
         scheduler
       ]).apply(param => {
         let queryEngine = param[2];
-        Builder_Helpers$ReventlessCore.addEventMappers(allEventTopics, queryEngine);
+        Builder_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
         let match = Builder_Helpers$ReventlessCore.createExtensionPoints(extensionPoints, param[0], param[1], param[3], queryEngine, resourceNaming, opts);
         let extensionPointsOutputs = match[0];
         let aggregateNames = Stdlib_Array.reduce(extensionPointsOutputs.map(extensionPointOutputs => Belt_SetString.fromArray(extensionPointOutputs.aggregateNames)), undefined, Belt_SetString.union);
-        let aggregatesOutputs = Builder_Helpers$ReventlessCore.addEventMappers(allEventTopics, queryEngine);
+        let aggregatesOutputs = Builder_Helpers$ReventlessCore.addEventMappers(aggregateEventTopics, queryEngine);
         let eventTopics = Aggregate$ReventlessCore.filterEventTopics(aggregatesOutputs, aggregateNames);
         let AdminEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
         let make = (name, eventTopics, opts) => {

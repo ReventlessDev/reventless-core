@@ -17,3 +17,4 @@ let resourceNaming: ReventlessInfra.ResourceNaming.operations = {
 }
 
 let environment = "in-memory"
+let platformName = "in-memory"

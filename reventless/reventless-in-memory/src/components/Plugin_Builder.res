@@ -15,6 +15,7 @@ module Make = (Bus: InMemory_Bus.T, HooksConfig: ReventlessCore.Plugin_Helpers.H
       let runtimeOps = InMemory_PluginSpec.runtimeOps
       let resourceNaming = InMemory_PluginSpec.resourceNaming
       let environment = InMemory_PluginSpec.environment
+      let platformName = InMemory_PluginSpec.platformName
       let hooks = HooksConfig.hooks
     },
     {

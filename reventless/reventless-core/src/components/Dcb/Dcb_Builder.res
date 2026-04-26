@@ -61,6 +61,9 @@ module Make = (
   let construct = (
     ~name: string,
     ~childName: string,
+    ~environment: string="",
+    ~platformName: string="",
+    ~aggregateEventTopics: EventTopic.allOutputs=Dict.make(),
     ~stateChangeSlices: array<module(StateChangeSlice.T)>,
     ~stateViewSlices: array<module(StateViewSlice.T)>,
     ~automationSlices: array<module(AutomationSlice.T)>,
@@ -96,8 +99,14 @@ module Make = (
             ),
           )
           ->Array.concat(
-            automationSlices->Array.map((module(A: AutomationSlice.T)) =>
-              (A.Spec.name, A.Spec.consumedEventSchema->S.castToUnknown)
+            // Plan 04: AutomationSlice has per-source Mappings, each carrying
+            // its own `sourceEventSchema`. Validation contributes one entry per
+            // (slice, source) pair so unknown variants surface against the right
+            // mapping context.
+            automationSlices->Array.flatMap((module(A: AutomationSlice.T)) =>
+              A.Mappings.mappings->Array.map((module(M: A.Mappings.Mapping)) =>
+                (A.Spec.name, M.sourceEventSchema->S.castToUnknown)
+              )
             ),
           )
           ->Array.concat(
@@ -357,11 +366,26 @@ module Make = (
           })
           ->Dict.fromArray
 
+        // Build the full topic dict: aggregate event topics + this plugin's
+        // own DCB event topic (keyed by `<pluginName>DcbEventLog` per Plan 03
+        // convention). AutomationSlice mappings reference topics by these keys.
+        let allEventTopics = aggregateEventTopics->Dict.copy
+        allEventTopics->Dict.set(
+          name ++ "DcbEventLog",
+          (dcbEventLog->Component.outputs).eventTopic,
+        )
+
         // Create AutomationSlices
         let automationSlicesOutputs =
           automationSlices
           ->Array.map((module(AutoSlice: AutomationSlice.T)) => {
-            let as_ = AutoSlice.make(~dcbEventLog, ~publishJsons, ~opts)
+            let context: Reventless.AutomationSlice.context = {
+              environment,
+              platformName,
+              pluginName: name,
+              sliceName: AutoSlice.Spec.name,
+            }
+            let as_ = AutoSlice.make(~allEventTopics, ~publishJsons, ~context, ~opts)
             (AutoSlice.Spec.name, as_->Component.outputs)
           })
           ->Dict.fromArray

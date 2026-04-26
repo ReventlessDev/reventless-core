@@ -1,6 +1,11 @@
 // AutomationSlice builder — creates the TODO list QueryDb, EventCollector,
 // and wires the event handler (Phase 1 + Phase 2) plus exposes processPending.
 //
+// Plan 04: subscribes to events from any combination of Aggregate EventTopics
+// and DCB EventLog topics declared by the slice's `Mappings.mappings`. The
+// caller passes `~allEventTopics` (the plugin-wide topic dict) — the slice
+// filters down to topics matching its mappings' source names.
+//
 // Follows the StateViewSlice_Builder pattern for adapter injection.
 
 module Make = (
@@ -22,14 +27,25 @@ module Make = (
   module Make = (
     Spec: Reventless.AutomationSlice.Spec,
     Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-  ): AutomationSlice.T => {
+    Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
+  ): (AutomationSlice.T with module Spec = Spec) => {
     module Spec = Spec
     module Automation = Automation
+    module Mappings = Mappings
     type component = AutomationSlice.component
 
-    module Callback = AutomationSlice_Callback.Make(Spec, Automation)
+    module Callback = AutomationSlice_Callback.Make(Spec, Automation, Mappings)
 
     let queryDbName = Spec.name ++ "Todo"
+
+    // Names of all sources this slice subscribes to (deduplicated). Multiple
+    // mappings can share a source name (e.g., two mappings reading the same
+    // Aggregate's events for different reasons).
+    let sourceNames =
+      Mappings.mappings
+      ->Array.map((module(M: Mappings.Mapping)) => M.sourceName)
+      ->Belt.Set.String.fromArray
+      ->Belt.Set.String.toArray
 
     // QueryDb for TODO list — stores todoRow keyed by string ID
     module TodoQueryDbSpec = {
@@ -48,8 +64,6 @@ module Make = (
       EventCollectorChannel,
     )
 
-    let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
-
     let syncToQueryDb = async (queryDbOps: SpecificQueryDb.operations) => {
       let items = Callback.todoItems->Dict.toArray
       let _ = await items->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
@@ -63,52 +77,63 @@ module Make = (
       })
     }
 
-    let construct = (~dcbEventLog: DcbEventLog.component, ~publishJsons, self, _name) => {
+    let construct = (
+      ~allEventTopics: EventTopic.allOutputs,
+      ~publishJsons,
+      ~context: Reventless.AutomationSlice.context,
+      self,
+      _name,
+    ) => {
       let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
       let queryDb = SpecificQueryDb.make(~api=Api.api(), ~apiRole=Api.apiRole(), ~opts)
 
-      let dcbEventTopicOutputs: EventTopic.outputs = (dcbEventLog->Component.outputs).eventTopic
-      let allEventTopics = Dict.fromArray([(Spec.name, dcbEventTopicOutputs)])
+      // Fail-fast: every Mapping.sourceName must resolve to a topic in
+      // `allEventTopics`. Catches Aggregate-name typos and DCB-source-name
+      // typos (e.g. "FooDcb" instead of "FooDcbEventLog"). Without this check
+      // `EventTopic.filter` silently drops the unknown source, the
+      // EventCollector subscribes to nothing, and the slice runs on no events
+      // — which surfaces as "TODO list never populates" much later.
+      sourceNames->Array.forEach(sourceName =>
+        if !(allEventTopics->Dict.has(sourceName)) {
+          let availableNames =
+            allEventTopics->Dict.keysToArray->Array.toSorted(String.compare)->Array.join(", ")
+          JsError.throwWithMessage(
+            `AutomationSlice "${Spec.name}" has a Mapping with sourceName "${sourceName}", ` ++
+            `but no EventTopic with that key exists in allEventTopics. ` ++
+            `Available source names: [${availableNames}]. ` ++
+            `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++
+            `source name (typically "<pluginName>DcbEventLog").`,
+          )
+        }
+      )
 
-      // Resolve publishJsons so it's available for Phase 2
-      let publishJsonsRef: ref<option<ReventlessInfra.CommandTopic.publishJsons>> = ref(None)
-      let _ = publishJsons->Pulumi.Output.apply(pj => {
-        publishJsonsRef := Some(pj)
-      })
+      // Filter to only the topics this slice consumes from.
+      let sourceSet = sourceNames->Belt.Set.String.fromArray
+      let eventTopics = allEventTopics->EventTopic.filter(sourceSet)
 
+      // Build the EventCollector inside an Output.all2 so both `queryDbOps`
+      // and `publishJsonsFn` are captured in the same closure. The
+      // jsonEventsHandler then has direct access to `publishJsonsFn` —
+      // avoids racing a side-effect-only `publishJsons.apply` against the
+      // first event arrival (which silently dropped Phase 2 in the previous
+      // shape).
       let eventCollector =
-        queryDb
-        ->Component.operations
-        ->Pulumi.Output.apply(queryDbOps => {
-          let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics=allEventTopics, ~opts)
+        (queryDb->Component.operations, publishJsons)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((queryDbOps, publishJsonsFn)) => {
+          let ec = SpecificEventCollector.make(~name=Spec.name, ~eventTopics, ~opts)
 
           let jsonEventsHandler: EventCollector.jsonEventsHandler = stream =>
             stream
-            ->Stream.mapEffect(json =>
-              Effect.sync(
-                () => {
-                  let (eventType, dataDict) = json->Message.splitMessage
-                  switch decoder.decode(~eventType, ~data=dataDict) {
-                  | Some(event) => [event]
-                  | None => []
-                  }
-                },
-              )
-            )
-            ->Stream.flatMap(events => Stream.fromIterable(events))
             ->Stream.runCollect
-            ->Effect.flatMap(eventsArr =>
+            ->Effect.flatMap(jsons =>
               Effect.promise(
                 async () => {
-                  // Phase 1: collect/resolve
-                  Callback.phase1(eventsArr)
-                  // Phase 2: process pending items
-                  switch publishJsonsRef.contents {
-                  | Some(pj) => await Callback.phase2(pj)
-                  | None =>
-                    Console.error(`AutomationSlice(${Spec.name}): publishJsons not yet resolved`)
-                  }
+                  // Phase 1: per-source decode + collect/resolve, threaded with context
+                  Callback.phase1(jsons, context)
+                  // Phase 2: process pending items (toTags + process + publish)
+                  await Callback.phase2(publishJsonsFn, context)
                   // Sync TODO state to QueryDb for observability
                   await syncToQueryDb(queryDbOps)
                 },
@@ -119,7 +144,7 @@ module Make = (
           let resources = (queryDb->Component.outputs).resources
           ec->EventCollectorRuntimeBuilder.forEventCollector(
             ~handler,
-            ~eventTopics=allEventTopics,
+            ~eventTopics,
             ~resources,
           )
           ec
@@ -131,24 +156,29 @@ module Make = (
         ->Pulumi.Output.apply(((ecOps, publishJsonsFn)) => {
           let ops: AutomationSlice.operations = {
             enqueueEvent: ecOps.enqueueEvent,
-            processPending: async () => await Callback.phase2(publishJsonsFn),
+            processPending: async () => await Callback.phase2(publishJsonsFn, context),
           }
           ops
         }),
       )
 
+      // Outputs.resources are aggregated from all subscribed event topics.
+      let aggregatedResources =
+        eventTopics
+        ->Dict.valuesToArray
+        ->Array.flatMap((t: EventTopic.outputs) => t.resources)
       let outputs: AutomationSlice.outputs = {
-        resources: dcbEventTopicOutputs.resources,
+        resources: aggregatedResources,
         queryDb: queryDb->Component.outputs,
       }
       self->Component.setOutputs(outputs)
     }
 
-    let make = (~dcbEventLog, ~publishJsons, ~opts=?): AutomationSlice.component =>
+    let make = (~allEventTopics, ~publishJsons, ~context, ~opts=?): AutomationSlice.component =>
       Component.make(
         ~componentType=AutomationSlice.componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~dcbEventLog, ~publishJsons, ...),
+        ~construct=construct(~allEventTopics, ~publishJsons, ~context, ...),
         ~opts,
       )
   }

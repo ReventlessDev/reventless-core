@@ -3,17 +3,6 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let consumedEventSchema = S.union([
-  S.schema(s => ({
-    TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string)
-  })),
-  S.schema(s => ({
-    TAG: "OrderShipped",
-    orderId: s.m(DcbTag$Reventless.string)
-  }))
-]);
-
 let todoItemSchema = S.schema(s => ({
   orderId: s.m(S.string)
 }));
@@ -38,7 +27,6 @@ let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Order/Automation
 export {
   name,
   Id,
-  consumedEventSchema,
   todoItemSchema,
   commandSchema,
   maxRetries,
@@ -46,4 +34,4 @@ export {
   targetName,
   moduleUrl,
 }
-/* consumedEventSchema Not a pure module */
+/* todoItemSchema Not a pure module */

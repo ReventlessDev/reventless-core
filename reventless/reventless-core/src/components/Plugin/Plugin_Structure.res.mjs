@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Primitive_int from "@rescript/runtime/lib/es6/Primitive_int.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
@@ -275,12 +276,15 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       consistencyRead: undefined
     };
   });
-  let automationSliceDefs = automationSlices.map(AS => ({
-    name: AS.Spec.name,
-    consumedEventTypes: qualify(name, DcbTag$Reventless.extractVariantNames(AS.Spec.consumedEventSchema)),
-    producedCommandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema)),
-    targetName: AS.Spec.targetName
-  }));
+  let automationSliceDefs = automationSlices.map(AS => {
+    let allConsumedVariants = Belt_SetString.toArray(Belt_SetString.fromArray(AS.Mappings.mappings.flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
+    return {
+      name: AS.Spec.name,
+      consumedEventTypes: qualify(name, allConsumedVariants),
+      producedCommandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema)),
+      targetName: AS.Spec.targetName
+    };
+  });
   let outboundTranslationSliceDefs = outboundTranslationSlices.map(OTS => ({
     name: OTS.Spec.name,
     consumedEventTypes: qualify(name, DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema)),

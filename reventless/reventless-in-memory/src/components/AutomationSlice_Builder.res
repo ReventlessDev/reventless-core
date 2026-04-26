@@ -29,15 +29,15 @@ module Make = (Bus: InMemory_Bus.T) => {
   module Make = (
     Spec: Reventless.AutomationSlice.Spec,
     Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-  ) => {
-    module Inner = CoreMaker.Make(Spec, Automation)
+    Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
+  ): (ReventlessInfra.AutomationSlice.T with module Spec = Spec) => {
+    module Inner = CoreMaker.Make(Spec, Automation, Mappings)
     module Spec = Spec
     module Automation = Automation
+    module Mappings = Mappings
     type component = Inner.component
     let queryDbName = Inner.queryDbName
+    let sourceNames = Inner.sourceNames
     let make = Inner.make
-    // Re-expose operations for test resolution
-    let operations: component => Pulumi.Output.t<ReventlessCore.AutomationSlice.operations> =
-      ReventlessCore.Component.operations
   }
 }

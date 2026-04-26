@@ -9,6 +9,10 @@ module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let resourceNaming: ReventlessInfra.ResourceNaming.operations
   let environment: string
+  /** Deployment-level identity (Pulumi project name in AWS, "in-memory" in
+      the in-memory platform). Threaded into `AutomationSlice.context` so
+      mappings can populate partition tags from deployment metadata. */
+  let platformName: string
   let hooks: Plugin_Helpers.platformHooks
 }
 
@@ -83,6 +87,13 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let childName = name->ComponentType.name(Plugin.componentType)
 
+    // Aggregates are constructed early so their EventTopics can feed multi-source
+    // AutomationSlices created inside DcbBuilder. The same `aggregateEventTopics`
+    // dict (after merging in the DCB EventLog topic) is reused later as
+    // `allEventTopics` for ReadModels.
+    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
+    let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
+
     // Construct DCB components and derive DCB-specific API schema entries
     module DcbBuilder = Dcb_Builder.Make(
       DcbEventLogStorage,
@@ -95,6 +106,9 @@ module Make = (
     let dcbResult = DcbBuilder.construct(
       ~name,
       ~childName,
+      ~environment=Spec.environment,
+      ~platformName=Spec.platformName,
+      ~aggregateEventTopics,
       ~stateChangeSlices,
       ~stateViewSlices,
       ~automationSlices,
@@ -232,7 +246,6 @@ module Make = (
       })
     )
 
-    let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     // Register DCB StateChangeSlice publish functions in publishToAggregates so that
     // extensions whose Delegate is a DCB slice can dispatch commands to them.
     // All slices in a plugin share the same DCB command topic (same publishJsons).
@@ -243,9 +256,10 @@ module Make = (
       )
     | None => ()
     }
-    let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
-    // Merge DCB EventTopic into allEventTopics so ReadModels can subscribe to DCB events.
-    // Uses the same key as the eventLogEntries busKey (name ++ "DcbEventLog").
+    // Reuse the aggregateEventTopics dict computed before DcbBuilder.construct;
+    // merge in the DCB EventLog topic for ReadModels (already merged inside
+    // DcbBuilder for AutomationSlice subscription).
+    let allEventTopics = aggregateEventTopics
     switch dcbResult.dcbEventLogOutputs {
     | Some(dcbOutputs) => allEventTopics->Dict.set(name ++ "DcbEventLog", dcbOutputs.eventTopic)
     | None => ()

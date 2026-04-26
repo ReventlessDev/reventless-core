@@ -22,6 +22,7 @@ import * as ChangeEmail_Behavior$OrderingPlugin from "./Customer/StateChangeSlic
 import * as AvailableProductsView$OrderingPlugin from "./CatalogProduct/StateViewSlice/AvailableProductsView.res.mjs";
 import * as OrdersView_Projection$OrderingPlugin from "./Order/StateViewSlice/OrdersView_Projection.res.mjs";
 import * as SendOrderConfirmation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
+import * as AutoShipOrder_Mappings$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Mappings.res.mjs";
 import * as ChangeAddress_Behavior$OrderingPlugin from "./Customer/StateChangeSlice/ChangeAddress_Behavior.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
 import * as CustomersView_Projection$OrderingPlugin from "./Customer/StateViewSlice/CustomersView_Projection.res.mjs";
@@ -181,17 +182,17 @@ function Make(Platform) {
   let AutoShipOrderSlice = Platform.AutomationSlice.Make({
     name: AutoShipOrder$OrderingPlugin.name,
     moduleUrl: AutoShipOrder$OrderingPlugin.moduleUrl,
-    consumedEventSchema: AutoShipOrder$OrderingPlugin.consumedEventSchema,
     todoItemSchema: AutoShipOrder$OrderingPlugin.todoItemSchema,
     commandSchema: AutoShipOrder$OrderingPlugin.commandSchema,
     maxRetries: AutoShipOrder$OrderingPlugin.maxRetries,
     heartbeatInterval: AutoShipOrder$OrderingPlugin.heartbeatInterval,
     targetName: AutoShipOrder$OrderingPlugin.targetName
   })({
-    collect: AutoShipOrder_Automation$OrderingPlugin.collect,
-    resolve: AutoShipOrder_Automation$OrderingPlugin.resolve,
     process: AutoShipOrder_Automation$OrderingPlugin.process,
     moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl
+  })({
+    moduleUrl: AutoShipOrder_Mappings$OrderingPlugin.moduleUrl,
+    mappings: AutoShipOrder_Mappings$OrderingPlugin.mappings
   });
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,

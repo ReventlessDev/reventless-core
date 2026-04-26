@@ -14,11 +14,13 @@ let implSuffixForAutomation = "_Automation";
 
 let implSuffixForTranslation = "_Translation";
 
+let mappingsSuffixForAutomation = "_Mappings";
+
 function isImplStem(stem) {
-  if (stem.endsWith(implSuffixForStateChange) || stem.endsWith(implSuffixForStateView) || stem.endsWith(implSuffixForAutomation)) {
+  if (stem.endsWith(implSuffixForStateChange) || stem.endsWith(implSuffixForStateView) || stem.endsWith(implSuffixForAutomation) || stem.endsWith(implSuffixForTranslation)) {
     return true;
   } else {
-    return stem.endsWith(implSuffixForTranslation);
+    return stem.endsWith(mappingsSuffixForAutomation);
   }
 }
 
@@ -284,6 +286,7 @@ export {
   implSuffixForStateView,
   implSuffixForAutomation,
   implSuffixForTranslation,
+  mappingsSuffixForAutomation,
   isImplStem,
   findEventMappings,
   extractMappingModules,

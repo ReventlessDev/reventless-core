@@ -1,126 +1,138 @@
-// Unit tests for AutomationSlice_Callback — tests collect/resolve/process phases directly.
+// Unit tests for AutomationSlice_Callback (Plan 04 mixed-source shape) —
+// exercises per-source decode dispatch, context plumbing, and toTags
+// validation.
 
 open ReventlessGwt.AsyncTest
 open ReventlessGwt.AsyncTest.Expect
 open AutomationSliceFixtures
 
-module ShipOrderAutomation = {
-  let collect = ShipOrderSpec.collect
-  let resolve = ShipOrderSpec.resolve
-  let process = ShipOrderSpec.process
-  let moduleUrl = ShipOrderSpec.moduleUrl
-}
-module SkipProcessAutomation = {
-  let collect = SkipProcessSpec.collect
-  let resolve = SkipProcessSpec.resolve
-  let process = SkipProcessSpec.process
-  let moduleUrl = SkipProcessSpec.moduleUrl
-}
 module Callback = ReventlessCore.AutomationSlice_Callback.Make(
   ShipOrderSpec,
   ShipOrderAutomation,
+  ShipOrderMappings,
 )
+
 module SkipCallback = ReventlessCore.AutomationSlice_Callback.Make(
   SkipProcessSpec,
   SkipProcessAutomation,
+  SkipProcessMappings,
 )
 
 open ReventlessCore.AutomationSlice_Callback
 
-describe("AutomationSlice Callback", () => {
+describe("AutomationSlice Callback (mixed-source)", () => {
   let _ = beforeEach(() => {
-    Callback.todoItems->Dict.keysToArray->Array.forEach(k => Callback.todoItems->Dict.delete(k))
-    SkipCallback.todoItems->Dict.keysToArray->Array.forEach(k => SkipCallback.todoItems->Dict.delete(k))
+    Callback.todoItems
+    ->Dict.keysToArray
+    ->Array.forEach(k => Callback.todoItems->Dict.delete(k))
+    SkipCallback.todoItems
+    ->Dict.keysToArray
+    ->Array.forEach(k => SkipCallback.todoItems->Dict.delete(k))
   })
 
   describe("Phase 1 — collect", () => {
-    testPromise("OrderPlaced event creates a pending TODO item", async () => {
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
+    testPromise("OrderPlaced JSON creates a pending TODO item", async () => {
+      let json = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))
+      Callback.phase1([json], testContext)
       let items = Callback.todoItems
       expect(items->Dict.toArray->Array.length)->toBe(1)
-      let row = items->Dict.get("ord-1")
-      expect(row->Option.isSome)->toBe(true)
-      let r = row->Option.getOrThrow
-      expect(r.status)->toBe(Pending)
-      expect(r.retryCount)->toBe(0)
+      let row = items->Dict.get("ord-1")->Option.getOrThrow
+      expect(row.status)->toBe(Pending)
+      expect(row.retryCount)->toBe(0)
+      expect(row.sourceName)->toBe(ShipOrderSource.name)
     })
 
-    testPromise("duplicate OrderPlaced does not create a second TODO item (idempotent)", async () => {
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "456 Oak Ave"})])
-      let items = Callback.todoItems
-      expect(items->Dict.toArray->Array.length)->toBe(1)
+    testPromise("duplicate OrderPlaced is idempotent", async () => {
+      let j1 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))
+      let j2 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "456 Oak Ave"}))
+      Callback.phase1([j1], testContext)
+      Callback.phase1([j2], testContext)
+      expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(1)
     })
 
-    testPromise("multiple different OrderPlaced events create multiple TODO items", async () => {
-      Callback.phase1([
-        OrderPlaced({orderId: "ord-1", address: "123 Main St"}),
-        OrderPlaced({orderId: "ord-2", address: "456 Oak Ave"}),
-      ])
-      let items = Callback.todoItems
-      expect(items->Dict.toArray->Array.length)->toBe(2)
+    testPromise("multiple OrderPlaced events create multiple TODO items", async () => {
+      let j1 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))
+      let j2 = encodeShipOrderEvent(OrderPlaced({orderId: "ord-2", address: "456 Oak Ave"}))
+      Callback.phase1([j1, j2], testContext)
+      expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(2)
     })
 
-    testPromise("ShipmentCreated event does not create a TODO item", async () => {
-      Callback.phase1([ShipmentCreated({orderId: "ord-1"})])
-      let items = Callback.todoItems
-      expect(items->Dict.toArray->Array.length)->toBe(0)
+    testPromise("ShipmentCreated does not create a TODO item", async () => {
+      let json = encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))
+      Callback.phase1([json], testContext)
+      expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(0)
     })
   })
 
   describe("Phase 1 — resolve", () => {
     testPromise("ShipmentCreated marks pending TODO item as completed", async () => {
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
-      Callback.phase1([ShipmentCreated({orderId: "ord-1"})])
+      Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
+      )
+      Callback.phase1(
+        [encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))],
+        testContext,
+      )
       let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Completed)
     })
 
     testPromise("ShipmentCreated for unknown id is a no-op", async () => {
-      Callback.phase1([ShipmentCreated({orderId: "unknown"})])
-      let items = Callback.todoItems
-      expect(items->Dict.toArray->Array.length)->toBe(0)
+      Callback.phase1(
+        [encodeShipOrderEvent(ShipmentCreated({orderId: "unknown"}))],
+        testContext,
+      )
+      expect(Callback.todoItems->Dict.toArray->Array.length)->toBe(0)
     })
   })
 
   describe("Phase 2 — process", () => {
     testPromise("pending items produce commands via publishJsons", async () => {
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
+      Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
+      )
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish)
+      await Callback.phase2(mockPublish, testContext)
 
       expect(publishedCommands.contents->Array.length)->toBe(1)
       let cmd = publishedCommands.contents->Array.getUnsafe(0)
       expect(cmd.id)->toBe("ord-1")
 
-      // Item should be in Processing status after phase2
       let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Processing)
     })
 
     testPromise("completed items are not processed", async () => {
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
-      Callback.phase1([ShipmentCreated({orderId: "ord-1"})])
+      Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
+      )
+      Callback.phase1(
+        [encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))],
+        testContext,
+      )
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish)
+      await Callback.phase2(mockPublish, testContext)
       expect(publishedCommands.contents->Array.length)->toBe(0)
     })
 
     testPromise("items where process returns None are skipped", async () => {
-      SkipCallback.phase1([SkipProcessSpec.OrderPlaced({orderId: "ord-1"})])
+      let json = encodeSkipProcessEvent(OrderPlaced({orderId: "ord-1"}))
+      SkipCallback.phase1([json], testContext)
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await SkipCallback.phase2(mockPublish)
+      await SkipCallback.phase2(mockPublish, testContext)
       expect(publishedCommands.contents->Array.length)->toBe(0)
-      // Item stays Pending when process returns None
       let row = SkipCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Pending)
     })
@@ -130,37 +142,41 @@ describe("AutomationSlice Callback", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish)
+      await Callback.phase2(mockPublish, testContext)
       expect(publishedCommands.contents->Array.length)->toBe(0)
     })
 
     testPromise("publishJsons failure marks items as Failed", async () => {
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
+      Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
+      )
       let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
         JsError.throwWithMessage("publish failed")
       }
-      await Callback.phase2(failingPublish)
+      await Callback.phase2(failingPublish, testContext)
       let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Failed)
       expect(row.retryCount)->toBe(1)
     })
 
     testPromise("failed items with retryCount < maxRetries are retried", async () => {
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
-      // First attempt fails
+      Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
+      )
       let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
         JsError.throwWithMessage("publish failed")
       }
-      await Callback.phase2(failingPublish)
+      await Callback.phase2(failingPublish, testContext)
       let row1 = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row1.retryCount)->toBe(1)
 
-      // Second attempt succeeds
       let publishedCommands = ref([])
       let successPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(successPublish)
+      await Callback.phase2(successPublish, testContext)
       expect(publishedCommands.contents->Array.length)->toBe(1)
       let row2 = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row2.status)->toBe(Processing)
@@ -169,35 +185,31 @@ describe("AutomationSlice Callback", () => {
 
   describe("full lifecycle", () => {
     testPromise("collect → process → resolve completes the TODO item", async () => {
-      // 1. Collect
-      Callback.phase1([OrderPlaced({orderId: "ord-1", address: "123 Main St"})])
-      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
-        Pending,
+      Callback.phase1(
+        [encodeShipOrderEvent(OrderPlaced({orderId: "ord-1", address: "123 Main St"}))],
+        testContext,
       )
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(Pending)
 
-      // 2. Process
       let publishedCommands = ref([])
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish)
+      await Callback.phase2(mockPublish, testContext)
       expect(publishedCommands.contents->Array.length)->toBe(1)
-      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
-        Processing,
-      )
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(Processing)
 
-      // 3. Resolve
-      Callback.phase1([ShipmentCreated({orderId: "ord-1"})])
-      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(
-        Completed,
+      Callback.phase1(
+        [encodeShipOrderEvent(ShipmentCreated({orderId: "ord-1"}))],
+        testContext,
       )
+      expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(Completed)
 
-      // 4. No more processing after completion
       let publishedCommands2 = ref([])
       let mockPublish2: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands2 := cmds
       }
-      await Callback.phase2(mockPublish2)
+      await Callback.phase2(mockPublish2, testContext)
       expect(publishedCommands2.contents->Array.length)->toBe(0)
     })
   })
