@@ -30,9 +30,11 @@ function Make(Storage) {
           storage.operations,
           Component$ReventlessCore.operations(eventTopic)
         ]).apply(param => {
+          let serviceName = extra$1 + "DcbEventLog";
           let publishJson = param[1].publishJson;
           let Ops = DcbEventLog_Operations$ReventlessCore.Make({
             name: extra$1,
+            serviceName: serviceName,
             storage: param[0],
             publishJson: publishJson
           });

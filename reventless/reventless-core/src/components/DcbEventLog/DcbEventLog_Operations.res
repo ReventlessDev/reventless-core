@@ -1,5 +1,10 @@
 module type Ops = {
   let name: string
+  // The `service` value stamped on every published event's meta — and used as the
+  // first arg to publishJson. Must equal the key under which Plugin_Builder
+  // registers this DcbEventLog's EventTopic in `allEventTopics` so that
+  // `Mapping.sourceName` matches at dispatch time. See Plan 03 / Phase 1.5.
+  let serviceName: string
   let storage: DcbEventLog_Adapter.operations
   let publishJson: EventTopic.publishJson
 }
@@ -13,9 +18,10 @@ module type T = {
 
 module Make = (Ops: Ops): T => {
   let name = Ops.name
+  let serviceName = Ops.serviceName
 
   let publishToEventTopic = async (rawEvents: array<DcbEventLog.rawEvent>) => {
-    let meta = Message.generateMeta(~service=name)
+    let meta = Message.generateMeta(~service=serviceName)
 
     let rawEventsJson = rawEvents->Array.map(rawEvent =>
       Message.combineMessage(
@@ -54,7 +60,7 @@ module Make = (Ops: Ops): T => {
       let entityId =
         rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
       let eventJson' = Message.composeEventJson'(entityId, meta, eventJson)
-      try await Ops.publishJson(name, meta, eventJson') catch {
+      try await Ops.publishJson(serviceName, meta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
         Effect.logError(`DcbEventLog(${name}): EventTopic.publish Error: ${errMsg}`)->Effect.runSync

@@ -36,6 +36,10 @@ module Make = (
       ->Pulumi.Output.apply(((storageOps, eventTopicOps)) => {
         module Ops = DcbEventLog_Operations.Make({
           let name = name
+          // Must match the key Plugin_Builder uses to register this DcbEventLog's
+          // EventTopic in `allEventTopics` (`name ++ "DcbEventLog"`), so that
+          // ReadModel `Mapping.sourceName` matches `meta.service` at dispatch.
+          let serviceName = name ++ "DcbEventLog"
           let storage = storageOps
           let publishJson = eventTopicOps.publishJson
         })

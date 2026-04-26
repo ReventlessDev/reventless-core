@@ -5,11 +5,23 @@ let mock = DcbFixtures.makeMockStorage()
 
 module TestOps: DcbEventLog_Operations.Ops = {
   let name = "TestDcbEventLog"
+  let serviceName = "TestDcbEventLog"
   let storage = mock.operations
   let publishJson = mock.mockPublishJson
 }
 
 module Ops = DcbEventLog_Operations.Make(TestOps)
+
+// Verifies Phase 1.5 of Plan 03: the `service` carried on published events
+// comes from `serviceName`, not `name`. Plugin_Builder relies on this to align
+// `meta.service` with `allEventTopics`'s dict key.
+module TestOpsAlt: DcbEventLog_Operations.Ops = {
+  let name = "Catalog"
+  let serviceName = "CatalogDcbEventLog"
+  let storage = mock.operations
+  let publishJson = mock.mockPublishJson
+}
+module OpsAlt = DcbEventLog_Operations.Make(TestOpsAlt)
 
 let _ = beforeEach(() => mock.reset())
 
@@ -89,6 +101,16 @@ describe("DcbEventLog_Operations:", () => {
       expect(
         mock.publishedEvents.contents->Array.get(0)->Option.map(pe => pe.service),
       )->toEqual(Some("TestDcbEventLog"))
+    })
+
+    testPromise("service comes from Ops.serviceName, not Ops.name", async () => {
+      let _ = await OpsAlt.append([
+        encodeEvent(DcbFixtures.TestEventLogSpec.ItemCreated({itemId: "item-1", name: "Test"})),
+      ])
+
+      expect(
+        mock.publishedEvents.contents->Array.get(0)->Option.map(pe => pe.service),
+      )->toEqual(Some("CatalogDcbEventLog"))
     })
 
     testPromise("error from storage does not publish to event topic", async () => {

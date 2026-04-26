@@ -68,6 +68,26 @@ module Make = (
       ->Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
       ->Belt.Set.String.fromArray
 
+    // Fail-fast: every Mapping.sourceName must resolve to a topic in allEventTopics,
+    // otherwise EventTopic.filter silently drops it and the projection runs on no events.
+    // Catches both Aggregate-name typos and DCB-source-name typos (e.g. "FooDcb" instead
+    // of "FooDcbEventLog"). See Plan 03 / Phase 2.
+    sourceNames
+    ->Belt.Set.String.toArray
+    ->Array.forEach(sourceName =>
+      if !(allEventTopics->Dict.has(sourceName)) {
+        let availableNames =
+          allEventTopics->Dict.keysToArray->Array.toSorted(String.compare)->Array.join(", ")
+        JsError.throwWithMessage(
+          `ReadModel "${Spec.name}" has a Mapping with sourceName "${sourceName}", ` ++
+          `but no EventTopic with that key exists in allEventTopics. ` ++
+          `Available source names: [${availableNames}]. ` ++
+          `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB ` ++
+          `source name (typically "<pluginName>DcbEventLog").`,
+        )
+      }
+    )
+
     module SpecificEventCollector = EventCollector_Builder.Make(
       RuntimeEnvironment,
       EventCollectorChannel,

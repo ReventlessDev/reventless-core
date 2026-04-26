@@ -18,11 +18,25 @@ let publishJson = mock.mockPublishJson;
 
 let TestOps = {
   name: "TestDcbEventLog",
+  serviceName: "TestDcbEventLog",
   storage: storage,
   publishJson: publishJson
 };
 
 let Ops = DcbEventLog_Operations$ReventlessCore.Make(TestOps);
+
+let storage$1 = mock.operations;
+
+let publishJson$1 = mock.mockPublishJson;
+
+let TestOpsAlt = {
+  name: "Catalog",
+  serviceName: "CatalogDcbEventLog",
+  storage: storage$1,
+  publishJson: publishJson$1
+};
+
+let OpsAlt = DcbEventLog_Operations$ReventlessCore.Make(TestOpsAlt);
 
 beforeEach(() => mock.reset());
 
@@ -121,6 +135,14 @@ Jest.describe("DcbEventLog_Operations:", () => {
           name: "Test"
         })], undefined);
       return Jest.Expect.toEqual(Jest.Expect.expect(Stdlib_Option.map(mock.publishedEvents.contents[0], pe => pe.service)), "TestDcbEventLog");
+    });
+    Jest.testPromise("service comes from Ops.serviceName, not Ops.name", undefined, async () => {
+      await OpsAlt.append([encodeEvent({
+          TAG: "ItemCreated",
+          itemId: "item-1",
+          name: "Test"
+        })], undefined);
+      return Jest.Expect.toEqual(Jest.Expect.expect(Stdlib_Option.map(mock.publishedEvents.contents[0], pe => pe.service)), "CatalogDcbEventLog");
     });
     Jest.testPromise("error from storage does not publish to event topic", undefined, async () => {
       mock.failNextAppends.contents = 1;
@@ -237,6 +259,8 @@ export {
   mock,
   TestOps,
   Ops,
+  TestOpsAlt,
+  OpsAlt,
   encodeEvent,
   decodeEvent,
 }

@@ -24,8 +24,21 @@ let Mappings = {
   Make: Make$1
 };
 
+function Make$2(D) {
+  return {
+    Id: undefined,
+    name: D.name,
+    eventSchema: D.eventSchema
+  };
+}
+
+let DcbSource = {
+  Make: Make$2
+};
+
 export {
   Mapping,
   Mappings,
+  DcbSource,
 }
 /* No side effect */

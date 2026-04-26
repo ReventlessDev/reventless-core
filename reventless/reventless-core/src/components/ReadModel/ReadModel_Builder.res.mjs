@@ -2,6 +2,8 @@
 
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "./ReadModel.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
@@ -47,6 +49,13 @@ function Make(Spec) {
         };
       };
       let sourceNames = Belt_SetString.fromArray(Mappings.mappings.map(Mapping => Mapping.sourceName));
+      Belt_SetString.toArray(sourceNames).forEach(sourceName => {
+        if (sourceName in allEventTopics) {
+          return;
+        }
+        let availableNames = Object.keys(allEventTopics).toSorted(Primitive_string.compare).join(", ");
+        Stdlib_JsError.throwWithMessage(`ReadModel "` + Spec.name + `" has a Mapping with sourceName "` + sourceName + `", but no EventTopic with that key exists in allEventTopics. ` + (`Available source names: [` + availableNames + `]. `) + `Check Mapping.Make's first arg matches an Aggregate Spec.name or a DCB source name (typically "<pluginName>DcbEventLog").`);
+      });
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let eventCollector = Component$ReventlessCore.operations(queryDb).apply(operations => {
         let eventTopics = EventTopic$ReventlessCore.filter(allEventTopics, sourceNames);

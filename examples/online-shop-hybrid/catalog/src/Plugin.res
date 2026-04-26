@@ -25,6 +25,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   // ReadModels
   @reventless.projections
+  module CatalogActivityProjectionsWrapper: Mappings with module Target := CatalogActivityReadModel = {
+    let mappings: array<module(Mapping)> = [module(CatalogActivityProjections.CategoryActivityMapping), module(CatalogActivityProjections.ProductActivityMapping)]
+  }
+  module CatalogActivityReadModelMaker = Platform.ReadModel.Make(CatalogActivityReadModel, CatalogActivityProjectionsWrapper)
+  @reventless.projections
   module CategoriesProjectionsWrapper: Mappings with module Target := CategoriesReadModel = {
     let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
   }
@@ -42,7 +47,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate)],
-    ~readModels=[module(CategoriesReadModelMaker)],
+    ~readModels=[module(CatalogActivityReadModelMaker), module(CategoriesReadModelMaker)],
     ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
     ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
@@ -56,7 +61,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~extensionPoints=[module(ProductsExtensionPointMaker)],
       ~extensions=[module(OrdersExtensionMaker)],
       ~aggregates=[module(CategoryAggregate)],
-      ~readModels=[module(CategoriesReadModelMaker)],
+      ~readModels=[module(CatalogActivityReadModelMaker), module(CategoriesReadModelMaker)],
       ~tasks=[module(ImportProductsTask)],
       ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
       ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
@@ -67,7 +72,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
           ~remoteEntryUrl=url,
           ~name="Catalog",
           ~aggregates=[module(CategoryAggregate)],
-          ~readModels=[module(CategoriesReadModelMaker)],
+          ~readModels=[module(CatalogActivityReadModelMaker), module(CategoriesReadModelMaker)],
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )

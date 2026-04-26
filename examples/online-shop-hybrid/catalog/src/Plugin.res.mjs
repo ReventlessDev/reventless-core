@@ -21,8 +21,10 @@ import * as RecordProductDemand$CatalogPlugin from "./ProductDemand/StateChangeS
 import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/ProductsExtensionPoint.res.mjs";
 import * as CategoriesProjections$CatalogPlugin from "./Category/ReadModel/CategoriesProjections.res.mjs";
 import * as ProductsView_Projection$CatalogPlugin from "./Product/StateViewSliceStream/ProductsView_Projection.res.mjs";
+import * as CatalogActivityReadModel$CatalogPlugin from "./CatalogActivity/ReadModel/CatalogActivityReadModel.res.mjs";
 import * as ChangeProductDescription$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription.res.mjs";
 import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct_Translation.res.mjs";
+import * as CatalogActivityProjections$CatalogPlugin from "./CatalogActivity/ReadModel/CatalogActivityProjections.res.mjs";
 import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
 import * as ChangeProductPrice_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
 import * as ProductDemandView_Projection$CatalogPlugin from "./Product/StateViewSliceStream/ProductDemandView_Projection.res.mjs";
@@ -152,14 +154,36 @@ function Make(Platform) {
   }));
   Projection$Reventless.Mappings.Make({
     Id: Id$Reventless.$$String,
+    name: CatalogActivityReadModel$CatalogPlugin.name,
+    stateSchema: CatalogActivityReadModel$CatalogPlugin.stateSchema,
+    subIdConfig: undefined
+  });
+  let mappings = [
+    CatalogActivityProjections$CatalogPlugin.CategoryActivityMapping,
+    CatalogActivityProjections$CatalogPlugin.ProductActivityMapping
+  ];
+  let CatalogActivityProjectionsWrapper = {
+    moduleUrl: "@reventlessdev/online-shop-hybrid-catalog/src/Plugin.res.mjs",
+    mappings: mappings
+  };
+  let CatalogActivityReadModelMaker = Platform.ReadModel.Make({
+    Id: Id$Reventless.$$String,
+    name: CatalogActivityReadModel$CatalogPlugin.name,
+    moduleUrl: CatalogActivityReadModel$CatalogPlugin.moduleUrl,
+    stateSchema: CatalogActivityReadModel$CatalogPlugin.stateSchema,
+    config: CatalogActivityReadModel$CatalogPlugin.config,
+    subIdConfig: undefined
+  })(CatalogActivityProjectionsWrapper);
+  Projection$Reventless.Mappings.Make({
+    Id: Id$Reventless.$$String,
     name: CategoriesReadModel$CatalogPlugin.name,
     stateSchema: CategoriesReadModel$CatalogPlugin.stateSchema,
     subIdConfig: undefined
   });
-  let mappings = [CategoriesProjections$CatalogPlugin.CategoryMapping];
+  let mappings$1 = [CategoriesProjections$CatalogPlugin.CategoryMapping];
   let CategoriesProjectionsWrapper = {
     moduleUrl: "@reventlessdev/online-shop-hybrid-catalog/src/Plugin.res.mjs",
-    mappings: mappings
+    mappings: mappings$1
   };
   let CategoriesReadModelMaker = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
@@ -208,7 +232,10 @@ function Make(Platform) {
     mapIncomingEvent: OrdersExtension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: OrdersExtension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
-  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", [CategoryAggregate], [CategoriesReadModelMaker], [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", [CategoryAggregate], [
+    CatalogActivityReadModelMaker,
+    CategoriesReadModelMaker
+  ], [
     ProductDemandViewStreamSlice,
     ProductsViewStreamSlice
   ], [
@@ -218,7 +245,10 @@ function Make(Platform) {
     ChangeProductPriceSlice,
     RecordProductDemandSlice
   ], undefined, undefined, [ImportProductSlice], [OrdersExtensionMaker]);
-  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [CategoriesReadModelMaker], [ImportProductsTask], [
+  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [CategoryAggregate], [
+    CatalogActivityReadModelMaker,
+    CategoriesReadModelMaker
+  ], [ImportProductsTask], [
     AddProductSlice,
     ChangeProductDescriptionSlice,
     ChangeProductNameSlice,
@@ -227,7 +257,10 @@ function Make(Platform) {
   ], [
     ProductDemandViewStreamSlice,
     ProductsViewStreamSlice
-  ], undefined, undefined, [ImportProductSlice], Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", [CategoryAggregate], [CategoriesReadModelMaker], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], undefined, undefined, [ImportProductSlice], Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", [CategoryAggregate], [
+    CatalogActivityReadModelMaker,
+    CategoriesReadModelMaker
+  ], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,
@@ -238,6 +271,8 @@ function Make(Platform) {
     ProductsViewStreamSlice: ProductsViewStreamSlice,
     ImportProductSlice: ImportProductSlice,
     CategoryAggregate: CategoryAggregate,
+    CatalogActivityProjectionsWrapper: CatalogActivityProjectionsWrapper,
+    CatalogActivityReadModelMaker: CatalogActivityReadModelMaker,
     CategoriesProjectionsWrapper: CategoriesProjectionsWrapper,
     CategoriesReadModelMaker: CategoriesReadModelMaker,
     ImportProductsTask: ImportProductsTask,

@@ -16,6 +16,7 @@ let publishJson = mock.mockPublishJson;
 
 let TestDcbOps = {
   name: "TestDcbEventLog",
+  serviceName: "TestDcbEventLog",
   storage: storage,
   publishJson: publishJson
 };

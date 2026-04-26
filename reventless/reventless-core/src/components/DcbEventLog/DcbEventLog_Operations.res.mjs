@@ -13,8 +13,9 @@ import * as EventPublish_Callback$ReventlessCore from "../EventLog/EventPublish_
 
 function Make(Ops) {
   let name = Ops.name;
+  let serviceName = Ops.serviceName;
   let publishToEventTopic = async rawEvents => {
-    let meta = Message$ReventlessCore.generateMeta(name, undefined, undefined);
+    let meta = Message$ReventlessCore.generateMeta(serviceName, undefined, undefined);
     let rawEventsJson = rawEvents.map(rawEvent => Message$ReventlessCore.combineMessage(rawEvent.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(rawEvent.data), {})));
     let hook = EventPublish_Callback$ReventlessCore.beforePublishHook.contents;
     let finalRawEventsJson;
@@ -42,7 +43,7 @@ function Make(Ops) {
       let entityId = Stdlib_Option.getOr(Stdlib_Option.map(param[0].tags[0], t => t.value), name);
       let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, meta, param[1]);
       try {
-        return await Ops.publishJson(name, meta, eventJson$p);
+        return await Ops.publishJson(serviceName, meta, eventJson$p);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {

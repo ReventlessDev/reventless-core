@@ -163,3 +163,58 @@ module Mappings = {
     module type Mapping = Mapping with type targetState = Target.state
   }
 }
+
+/**
+Builds a `Projection.Source` module for a DCB EventLog.
+
+A DCB-source `Mapping.Make` takes a `Source` whose `name` matches the key under
+which `Plugin_Builder` registers the DCB topic in `allEventTopics`
+(`<pluginName>DcbEventLog`). This helper is a thin convenience that asserts the
+`Source` shape over an inline DCB event subset — the `event` type only needs to
+enumerate the variants this consumer projects (others fall through as decode
+errors and the runtime treats them as `Ignore`).
+
+@example
+```rescript
+// catalog/src/Product/ReadModel/CatalogDcbSource.res
+module CatalogDcbSource = Reventless.Projection.DcbSource.Make({
+  let name = "CatalogDcbEventLog"
+  @schema
+  type event =
+    | ProductAdded({productId: string, name: string, price: float})
+    | ProductRenamed({productId: string, name: string})
+})
+```
+
+Then in your projections file:
+```rescript
+module ProductsFromDcb = Reventless.Projection.Mapping.Make(
+  CatalogDcbSource,
+  ProductsReadModel,
+  { let project = ({event, id, _}) => switch event {
+      | ProductAdded({name}) => Set(id, {ProductsReadModel.name})
+      | ProductRenamed({name}) => Update(id, s => {...s, name})
+    } },
+)
+```
+
+`module Id` is `Reventless.Id.String` for DCB sources — DCB events are
+content-addressed and have no aggregate-style stream ID.
+*/
+module DcbSource = {
+  module type Definition = {
+    let name: string
+    @schema
+    type event
+  }
+  // Returned signature is left structurally inferred (NOT sealed under `Source`)
+  // so that variant constructors of `D.event` remain accessible to callers
+  // writing `switch msg.event { | ProductAdded(_) => ... }`. The result still
+  // satisfies `Source` structurally and is accepted by `Mapping.Make` as such.
+  module Make = (D: Definition) => {
+    module Id = Id.String
+    let name = D.name
+    type event = D.event
+    let eventSchema = D.eventSchema
+  }
+}
