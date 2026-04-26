@@ -57,6 +57,9 @@ importers:
       '@reventlessdev/reventless-aws':
         specifier: workspace:*
         version: link:reventless/reventless-aws
+      '@reventlessdev/reventless-codegen':
+        specifier: workspace:*
+        version: link:reventless/reventless-codegen
       '@reventlessdev/reventless-conventional-changelog':
         specifier: workspace:*
         version: link:reventless/reventless-conventional-changelog
@@ -988,6 +991,22 @@ importers:
       sury:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
+      sury-ppx:
+        specifier: ^11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+
+  reventless/reventless-codegen:
+    dependencies:
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.2.0)
+    devDependencies:
+      '@glennsl/rescript-jest':
+        specifier: ^0.13.1
+        version: 0.13.1
+      rescript:
+        specifier: ^12.2.0
+        version: 12.2.0
       sury-ppx:
         specifier: ^11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
