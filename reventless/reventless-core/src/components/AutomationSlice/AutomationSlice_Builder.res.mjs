@@ -66,7 +66,7 @@ function Make(RuntimeEnvironment) {
           let ec = SpecificEventCollector.make(Spec.name, eventTopics, opts);
           let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
             Callback.phase1(jsons, context);
-            await Callback.phase2(publishJsonsFn, context);
+            await Callback.phase2(publishJsonsFn);
             return await syncToQueryDb(queryDbOps);
           }));
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
@@ -81,7 +81,7 @@ function Make(RuntimeEnvironment) {
           let publishJsonsFn = param[1];
           return {
             enqueueEvent: param[0].enqueueEvent,
-            processPending: async () => await Callback.phase2(publishJsonsFn, context)
+            processPending: async () => await Callback.phase2(publishJsonsFn)
           };
         }));
         let aggregatedResources = Object.values(eventTopics).flatMap(t => t.resources);

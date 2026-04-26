@@ -72,7 +72,6 @@ module FromOrderAggregate = AutomationSlice.Mapping.Make(
   OrderAggregateSource,
   AutoFulfillSpec,
   {
-    type tagSet = unit
     let collect = (event: OrderAggregateSource.event, _ctx) =>
       switch event {
       | OrderShipped({orderId, productId}) => [
@@ -83,11 +82,6 @@ module FromOrderAggregate = AutomationSlice.Mapping.Make(
         ]
       }
     let resolve = (_event: OrderAggregateSource.event) => None
-    let toTags = (item: AutoFulfillSpec.todoItem, _ctx) =>
-      switch (item.orderId, item.productId) {
-      | ("", _) | (_, "") => Error("missing orderId or productId")
-      | _ => Ok()
-      }
   },
 )
 
@@ -100,7 +94,6 @@ module FromInventoryDcb = AutomationSlice.Mapping.Make(
   InventoryDcbSource,
   AutoFulfillSpec,
   {
-    type tagSet = unit
     let collect = (event: InventoryDcbSource.event, _ctx) =>
       switch event {
       | StockReserved({orderId, productId}) => [
@@ -116,7 +109,6 @@ module FromInventoryDcb = AutomationSlice.Mapping.Make(
       | StockReleased({orderId, productId}) => Some(orderId ++ ":" ++ productId)
       | StockReserved(_) => None
       }
-    let toTags = (_item, _ctx) => Ok()
   },
 )
 

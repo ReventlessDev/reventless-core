@@ -22,7 +22,6 @@ module FromOrderingDcb = Mapping.Make(
   AutoShipOrder,
   {
     open OrderingDcbSource
-    type tagSet = unit
 
     let collect = (event, _ctx) =>
       switch event {
@@ -35,11 +34,6 @@ module FromOrderingDcb = Mapping.Make(
       | OrderShipped({orderId}) => Some(orderId)
       | OrderPlaced(_) => None
       }
-
-    // Single-source self-DCB consumer — tags come from the slice's own
-    // command schema (`@compositePartitionTag` / `@s.matches(DcbTag.string)`),
-    // not from ambient context. `toTags` is a no-op validator here.
-    let toTags = (_item, _ctx) => Ok()
   },
 )
 

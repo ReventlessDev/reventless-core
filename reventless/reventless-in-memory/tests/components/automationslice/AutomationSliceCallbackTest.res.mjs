@@ -34,7 +34,6 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let row = Stdlib_Option.getOrThrow(items["ord-1"], undefined);
       expect(row.status).toBe("Pending");
       expect(row.retryCount).toBe(0);
-      expect(row.sourceName).toBe(AutomationSliceFixtures$ReventlessInMemory.ShipOrderSource.name);
     });
     test("duplicate OrderPlaced is idempotent", async () => {
       let j1 = AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
@@ -112,7 +111,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(mockPublish);
       expect(publishedCommands.contents.length).toBe(1);
       let cmd = publishedCommands.contents[0];
       expect(cmd.id).toBe("ord-1");
@@ -135,7 +134,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(mockPublish);
       expect(publishedCommands.contents.length).toBe(0);
     });
     test("items where process returns None are skipped", async () => {
@@ -150,7 +149,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await SkipCallback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await SkipCallback.phase2(mockPublish);
       expect(publishedCommands.contents.length).toBe(0);
       let row = Stdlib_Option.getOrThrow(SkipCallback.todoItems["ord-1"], undefined);
       expect(row.status).toBe("Pending");
@@ -162,7 +161,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(mockPublish);
       expect(publishedCommands.contents.length).toBe(0);
     });
     test("publishJsons failure marks items as Failed", async () => {
@@ -172,7 +171,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
           address: "123 Main St"
         })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let failingPublish = async _cmds => Stdlib_JsError.throwWithMessage("publish failed");
-      await Callback.phase2(failingPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(failingPublish);
       let row = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
       expect(row.status).toBe("Failed");
       expect(row.retryCount).toBe(1);
@@ -184,7 +183,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
           address: "123 Main St"
         })], AutomationSliceFixtures$ReventlessInMemory.testContext);
       let failingPublish = async _cmds => Stdlib_JsError.throwWithMessage("publish failed");
-      await Callback.phase2(failingPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(failingPublish);
       let row1 = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
       expect(row1.retryCount).toBe(1);
       let publishedCommands = {
@@ -193,7 +192,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let successPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(successPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(successPublish);
       expect(publishedCommands.contents.length).toBe(1);
       let row2 = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
       expect(row2.status).toBe("Processing");
@@ -213,7 +212,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish = async cmds => {
         publishedCommands.contents = cmds;
       };
-      await Callback.phase2(mockPublish, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(mockPublish);
       expect(publishedCommands.contents.length).toBe(1);
       expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Processing");
       Callback.phase1([AutomationSliceFixtures$ReventlessInMemory.encodeShipOrderEvent({
@@ -227,7 +226,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish2 = async cmds => {
         publishedCommands2.contents = cmds;
       };
-      await Callback.phase2(mockPublish2, AutomationSliceFixtures$ReventlessInMemory.testContext);
+      await Callback.phase2(mockPublish2);
       expect(publishedCommands2.contents.length).toBe(0);
     });
   });

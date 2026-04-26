@@ -109,30 +109,13 @@ function resolve(_event) {
   
 }
 
-function toTags(item, _ctx) {
-  let match = item.orderId;
-  let match$1 = item.productId;
-  if (match === "" || match$1 === "") {
-    return {
-      TAG: "Error",
-      _0: "missing orderId or productId"
-    };
-  } else {
-    return {
-      TAG: "Ok",
-      _0: undefined
-    };
-  }
-}
-
 let FromOrderAggregate = AutomationSlice$Reventless.Mapping.Make({
   Id: Id$Reventless.$$String,
   name: name,
   eventSchema: eventSchema
 })(AutoFulfillSpec)({
   collect: collect,
-  resolve: resolve,
-  toTags: toTags
+  resolve: resolve
 });
 
 function collect$1(event, _ctx) {
@@ -159,21 +142,13 @@ function resolve$1(event) {
   }
 }
 
-function toTags$1(_item, _ctx) {
-  return {
-    TAG: "Ok",
-    _0: undefined
-  };
-}
-
 let FromInventoryDcb = AutomationSlice$Reventless.Mapping.Make({
   Id: Id$Reventless.$$String,
   name: name$1,
   eventSchema: eventSchema$1
 })(AutoFulfillSpec)({
   collect: collect$1,
-  resolve: resolve$1,
-  toTags: toTags$1
+  resolve: resolve$1
 });
 
 AutomationSlice$Reventless.Mappings.Make(AutoFulfillSpec);
@@ -221,7 +196,7 @@ let AutoFulfill = AutomationSliceMaker.Make(AutoFulfillSpec)({
 })(AutoFulfillMappings);
 
 let testContext = {
-  environment: "test",
+  environment: "in-memory",
   platformName: "in-memory",
   pluginName: "TestPlugin",
   sliceName: name$2

@@ -25,7 +25,7 @@ slices/AutoFulfill/
 
 - **Spec** (`AutoFulfill.res`) — `todoItem`, `command`, `maxRetries`, `heartbeatInterval`, `targetName`. **No `consumedEvent`** — the framework derives the consumed-event set from each mapping's `sourceEventSchema`.
 - **Automation** (`AutoFulfill_Automation.res`) — only `process: (string, todoItem) => option<(string, command)>`. `process` is source-agnostic: it operates on `todoItem` regardless of which mapping created it.
-- **Mappings** (`AutoFulfill_Mappings.res`) — one `Mapping.Make` instance per source plus a `mappings` array. Each mapping carries its own `collect`, `resolve`, and `toTags` functions, scoped to that source's `event` type.
+- **Mappings** (`AutoFulfill_Mappings.res`) — one `Mapping.Make` instance per source plus a `mappings` array. Each mapping carries its own `collect` and `resolve` functions, scoped to that source's `event` type.
 
 ## Per-source mapping
 
@@ -40,7 +40,6 @@ module FromOrderShipped = Mapping.Make(
   OrderSpec,                   // Aggregate spec module (provides .name and .event)
   AutoFulfillSpec,             // this slice's spec
   {
-    type tagSet = unit         // opaque per-mapping; framework only checks Ok/Error
     let collect = (event, _ctx) =>
       switch event {
       | OrderSpec.OrderShipped({orderId, productId}) => [
@@ -49,11 +48,6 @@ module FromOrderShipped = Mapping.Make(
       | _ => []
       }
     let resolve = _ => None
-    let toTags = (item, _ctx) =>
-      switch (item.orderId, item.productId) {
-      | ("", _) | (_, "") => Error("missing partition tag fields")
-      | _ => Ok()
-      }
   },
 )
 
@@ -71,7 +65,6 @@ module FromStockReserved = Mapping.Make(
   InventoryDcbSource,
   AutoFulfillSpec,
   {
-    type tagSet = unit
     let collect = (event, _ctx) =>
       switch event {
       | StockReserved({orderId, productId}) => [
@@ -84,7 +77,6 @@ module FromStockReserved = Mapping.Make(
       | StockReleased({orderId, productId}) => Some(orderId ++ ":" ++ productId)
       | StockReserved(_) => None
       }
-    let toTags = (_item, _ctx) => Ok()
   },
 )
 
@@ -107,7 +99,7 @@ The slice fails plugin assembly with a clear error if any mapping's `sourceName`
 
 ### Ambient context
 
-`collect`, `resolve`, and `toTags` all receive an ambient `Reventless.AutomationSlice.context`:
+`collect` and `resolve` receive an ambient `Reventless.AutomationSlice.context`:
 
 ```rescript
 type context = {
@@ -122,16 +114,13 @@ type context = {
 
 The `context` record is intentionally narrow. Extending it requires an explicit framework PR — runtime registry lookups and open dicts are deliberately out of scope.
 
-### `toTags` validation
+### Validation
 
-`toTags` runs per-item in phase 2, just before the framework publishes the command:
+There's no per-mapping validation hook. Push validation to the layer that owns the data:
 
-- `Ok(_)` — proceed; the framework constructs the command via `Automation.process` and publishes via `publishJsons`.
-- `Error(msg)` — log a warning, mark the item Failed, increment `retryCount` (eligible for the next heartbeat sweep).
-
-The actual DCB tags on the published command are still derived from the command schema's `@compositePartitionTag` / `@s.matches(DcbTag.string)` annotations. `toTags` is the explicit validation site that fails fast when those tag fields are not populated — without it a missing field surfaces as an opaque DCB-write error several Lambda hops later.
-
-`tagSet` is per-mapping and opaque to the framework. The `Result` envelope is what matters; the inner `tagSet` value is for the developer's clarity.
+- **`collect` returns `[]`** for events that shouldn't enter the TODO list. This is the cheapest gate — invalid items never get persisted.
+- **`@s.matches(DcbTag.string)` and `@compositePartitionTag` on the command schema** enforce DCB-tag invariants at encode time. Sury-encode failures mark the item `Failed` (counts toward `maxRetries`) — the same retry path as publish failures. Use this for partition-key validation.
+- **Deployment-time checks** for `context` invariants (e.g., "platformName is non-empty") belong in `Plugin_Builder.Spec` validation, not per-item — a misconfigured deployment fails every item, so fail it once at startup.
 
 ## Plugin assembly
 
@@ -159,20 +148,22 @@ Aggregate / DCB events
         │                                └─► resolve(sourceEvent)         ──► TODO list (Completed)
         ▼
    phase 2 (per item):
-      toTags(item, context) ─ Ok ──► Automation.process ──► publishJsons
-                              Error ► log warn, mark Failed, retry on next heartbeat
+      Automation.process(id, item) ─ Some(targetId, command) ──► encode + publish
+                                     None                    ──► stays Pending, retried by heartbeat
+                                     encode/publish failure  ──► mark Failed, retry up to maxRetries
 ```
 
 Multiple mappings may share a `sourceName` (e.g., two mappings reading the same Aggregate's events for different reasons). All matching mappings run.
 
-The first writer wins for `collect`: if two mappings produce the same TODO id, only the first arrival inserts; subsequent ones are skipped (the `sourceName` of the producing mapping is recorded on the row so phase 2 can find the right `toTags`).
+The first writer wins for `collect`: if two mappings produce the same TODO id, only the first arrival inserts; subsequent ones are skipped.
 
 ## Failure modes
 
 | Failure | When | What happens |
 |---|---|---|
 | Source-name typo | Plugin assembly | `JsError` with the bad name and a list of valid source names. Catches Aggregate-name typos and DCB-source typos (e.g. `"FooDcb"` instead of `"FooDcbEventLog"`). |
-| `toTags` returns `Error(msg)` | Per-item, just before publish | Logged warning, item marked `Failed`, `retryCount` incremented. Same flow as encoding/publish failures. |
+| Sury encode failure (e.g., `@s.matches(DcbTag.string)` violation) | Per-item, at command-encode time | Item marked `Failed`, `retryCount` incremented. Eligible for retry on next heartbeat sweep until `maxRetries`. |
+| `publishJsons` throws | Phase 2, after encode | All `Processing` items reverted to `Failed`, `retryCount` incremented. |
 | Decode failure on a mapping | Per-event | Silently skipped for that mapping. Other mappings with the same `sourceName` still try. |
 | Cross-plugin DCB consumption | At runtime | Out of scope for v1 — `allEventTopics` is per-plugin. A cross-plugin source-name will fail the plugin-assembly check above. |
 
@@ -188,7 +179,7 @@ A single-source slice is a special case where the `Mappings` array has exactly o
 
 - Spec module types: [`reventless-spec/src/components/AutomationSlice.res`](../../reventless/reventless-spec/src/components/AutomationSlice.res)
 - Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](../../reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res)
-- Callback (per-source dispatch + toTags + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](../../reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res)
+- Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](../../reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res)
 - Integration test (canonical demo): [`reventless-in-memory/tests/components/automationslice/MixedSourceAutomationSlice*.res`](../../reventless/reventless-in-memory/tests/components/automationslice/)
 - Single-source example slice (post-Plan-04 shape): [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](../../examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)
 - Plan: [`docs/plans/done/mixed-source-automationslice.md`](../plans/done/mixed-source-automationslice.md) (after merge)

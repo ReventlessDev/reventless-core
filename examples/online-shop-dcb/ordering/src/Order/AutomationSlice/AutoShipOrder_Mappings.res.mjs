@@ -45,13 +45,6 @@ function resolve(event) {
   }
 }
 
-function toTags(_item, _ctx) {
-  return {
-    TAG: "Ok",
-    _0: undefined
-  };
-}
-
 let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
   Id: Id$Reventless.$$String,
   name: name,
@@ -66,8 +59,7 @@ let FromOrderingDcb = AutomationSlice$Reventless.Mapping.Make({
   targetName: AutoShipOrder$OrderingPlugin.targetName
 })({
   collect: collect,
-  resolve: resolve,
-  toTags: toTags
+  resolve: resolve
 });
 
 let M = AutomationSlice$Reventless.Mappings.Make({

@@ -7,11 +7,12 @@ S.enableJson()
 // run the mapping's `collect`/`resolve`. Multiple mappings may share a source
 // name; all matching mappings run.
 //
-// Phase 2 (process): walk pending TODO items; for each, run the producing
-// mapping's `toTags` to validate that DCB tag fields are populated, then call
-// `Automation.process` to construct the command, encode, and publish via
-// `publishJsons`. `toTags` failures log a warning and mark the item Failed
-// (incrementing retryCount) — same retry path as encode/publish failures.
+// Phase 2 (process): walk pending TODO items; for each, call
+// `Automation.process` to construct the command, encode against the command
+// schema (sury enforces `@s.matches` / `@compositePartitionTag` invariants
+// here — failures mark the item Failed for retry), and publish via
+// `publishJsons`. Publish failures revert all `Processing` items to Failed
+// for the next heartbeat sweep.
 
 @schema
 type todoStatus =
@@ -24,9 +25,6 @@ type todoStatus =
 type todoRow = {
   item: JSON.t,
   status: todoStatus,
-  /** Name of the mapping that created this TODO item — used in phase2 to find
-      the right `toTags` function. */
-  sourceName: string,
   createdAt: string,
   processedAt?: string,
   completedAt?: string,
@@ -45,10 +43,7 @@ module type T = {
   let phase1: (array<JSON.t>, Reventless.AutomationSlice.context) => unit
 
   /** Phase 2: process all pending items, publishing commands via publishJsons. */
-  let phase2: (
-    ReventlessInfra.CommandTopic.publishJsons,
-    Reventless.AutomationSlice.context,
-  ) => promise<unit>
+  let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
 }
 
 module Make = (
@@ -76,7 +71,6 @@ module Make = (
   type dispatch = {
     sourceName: string,
     handle: (JSON.t, Reventless.AutomationSlice.context) => unit,
-    validateTags: (Spec.todoItem, Reventless.AutomationSlice.context) => result<unit, string>,
   }
 
   let dispatches: array<dispatch> = Mappings.mappings->Array.map((
@@ -95,7 +89,6 @@ module Make = (
             let row: todoRow = {
               item: item->S.reverseConvertToJsonOrThrow(Spec.todoItemSchema),
               status: Pending,
-              sourceName: M.sourceName,
               createdAt: now(),
               retryCount: 0,
             }
@@ -115,16 +108,8 @@ module Make = (
       | None => ()
       }
     }
-    let validateTags = (item: Spec.todoItem, ctx: Reventless.AutomationSlice.context) =>
-      switch M.toTags(item, ctx) {
-      | Ok(_tagSet) => Ok()
-      | Error(msg) => Error(msg)
-      }
-    {sourceName: M.sourceName, handle, validateTags}
+    {sourceName: M.sourceName, handle}
   })
-
-  let findDispatch = (sourceName: string): option<dispatch> =>
-    dispatches->Array.find(d => d.sourceName == sourceName)
 
   let phase1 = (events: array<JSON.t>, ctx: Reventless.AutomationSlice.context) => {
     events->Array.forEach(json => {
@@ -146,10 +131,7 @@ module Make = (
     })
   }
 
-  let phase2 = async (
-    publishJsons: ReventlessInfra.CommandTopic.publishJsons,
-    ctx: Reventless.AutomationSlice.context,
-  ) => {
+  let phase2 = async (publishJsons: ReventlessInfra.CommandTopic.publishJsons) => {
     let pending =
       todoItems
       ->Dict.toArray
@@ -171,54 +153,35 @@ module Make = (
       }
 
       item->Option.forEach(item => {
-        // Tag validation — locate the producing mapping by sourceName recorded in row.
-        let tagsResult = switch findDispatch(row.sourceName) {
-        | Some(d) => d.validateTags(item, ctx)
-        | None =>
-          // Should not happen — sourceName is always set by phase1 from a registered mapping.
-          Error(`unknown sourceName "${row.sourceName}" — mapping not found`)
-        }
-
-        switch tagsResult {
-        | Error(msg) =>
-          Effect.logWarning(
-            `AutomationSlice(${Spec.name}): toTags failed for item ${id}: ${msg}`,
-          )->Effect.runSync
-          todoItems->Dict.set(
-            id,
-            {...row, status: Failed, retryCount: row.retryCount + 1},
-          )
-        | Ok() =>
-          switch Automation.process(id, item) {
-          | Some((targetId, command)) =>
-            todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
-            let commandJson = try command
-            ->S.reverseConvertToJsonOrThrow(Spec.commandSchema)
-            ->Some catch {
-            | exn =>
-              let errMsg =
-                exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-              Effect.logError(
-                `AutomationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
-              )->Effect.runSync
-              todoItems->Dict.set(
-                id,
-                {...row, status: Failed, retryCount: row.retryCount + 1},
-              )
-              None
-            }
-            commandJson->Option.forEach(
-              commandJson => {
-                let msg: Reventless.Message.commandJson = {
-                  id: targetId,
-                  meta: makeMeta(),
-                  commandJson,
-                }
-                let _ = commands->Array.push(msg)
-              },
+        switch Automation.process(id, item) {
+        | Some((targetId, command)) =>
+          todoItems->Dict.set(id, {...row, status: Processing, processedAt: now()})
+          let commandJson = try command
+          ->S.reverseConvertToJsonOrThrow(Spec.commandSchema)
+          ->Some catch {
+          | exn =>
+            let errMsg =
+              exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+            Effect.logError(
+              `AutomationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
+            )->Effect.runSync
+            todoItems->Dict.set(
+              id,
+              {...row, status: Failed, retryCount: row.retryCount + 1},
             )
-          | None => () // Skip — process returned None
+            None
           }
+          commandJson->Option.forEach(
+            commandJson => {
+              let msg: Reventless.Message.commandJson = {
+                id: targetId,
+                meta: makeMeta(),
+                commandJson,
+              }
+              let _ = commands->Array.push(msg)
+            },
+          )
+        | None => () // Skip — process returned None
         }
       })
     })

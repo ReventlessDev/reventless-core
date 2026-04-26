@@ -138,21 +138,13 @@ function resolve(event) {
   }
 }
 
-function toTags(_item, _ctx) {
-  return {
-    TAG: "Ok",
-    _0: undefined
-  };
-}
-
 let ShipOrderMapping = AutomationSlice$Reventless.Mapping.Make({
   Id: Id$Reventless.$$String,
   name: name,
   eventSchema: eventSchema
 })(ShipOrderSpec)({
   collect: collect,
-  resolve: resolve,
-  toTags: toTags
+  resolve: resolve
 });
 
 function collect$1(event, _ctx) {
@@ -176,21 +168,13 @@ function resolve$1(event) {
   }
 }
 
-function toTags$1(_item, _ctx) {
-  return {
-    TAG: "Ok",
-    _0: undefined
-  };
-}
-
 let SkipProcessMapping = AutomationSlice$Reventless.Mapping.Make({
   Id: Id$Reventless.$$String,
   name: name$1,
   eventSchema: eventSchema$1
 })(SkipProcessSpec)({
   collect: collect$1,
-  resolve: resolve$1,
-  toTags: toTags$1
+  resolve: resolve$1
 });
 
 AutomationSlice$Reventless.Mappings.Make(ShipOrderSpec);

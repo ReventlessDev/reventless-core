@@ -129,15 +129,14 @@ type context = {
 A compiled per-source-to-AutomationSlice mapping.
 
 Created by `AutomationSlice.Mapping.Make(Source, Target, Impl)`. The mapping
-binds `sourceEvent` (decode target) plus `collect`/`resolve`/`toTags` to the
-slice's `todoItem` and `command` types. `process` remains in the slice's
-`Automation` module — it is source-agnostic.
+binds `sourceEvent` (decode target) plus `collect`/`resolve` to the slice's
+`todoItem` type. `process` remains in the slice's `Automation` module — it is
+source-agnostic.
 
-`tagSet` is per-mapping and opaque to the framework; the `toTags` `Result`
-distinguishes valid vs. invalid items at publish time. The actual DCB tags on
-the published command are still derived from the command schema's
-`@compositePartitionTag` annotations — `toTags` is the explicit validation
-site that fails fast when those fields are not populated.
+Validation belongs upstream of the mapping: `collect` should return `[]` for
+events that shouldn't enter the TODO list, and the command schema's
+`@compositePartitionTag` / `@s.matches(DcbTag.string)` annotations enforce
+DCB-tag invariants at encode time (failures mark the item Failed → retry).
 */
 module type Mapping = {
   module SourceId: Id.T
@@ -145,27 +144,23 @@ module type Mapping = {
   type sourceEvent
   type todoItem
   type command
-  type tagSet
   let sourceEventSchema: S.t<sourceEvent>
   let sourceName: string
   let collect: (sourceEvent, context) => array<(string, todoItem)>
   let resolve: sourceEvent => option<string>
-  let toTags: (todoItem, context) => result<tagSet, string>
 }
 
 /**
 The implementation passed to `AutomationSlice.Mapping.Make`. Caller-supplied
-`collect`/`resolve`/`toTags` are bound to source/target types via destructive
+`collect`/`resolve` are bound to source/target types via destructive
 substitution in the functor.
 */
 module type MappingImpl = {
   type sourceEvent
   type todoItem
   type command
-  type tagSet
   let collect: (sourceEvent, context) => array<(string, todoItem)>
   let resolve: sourceEvent => option<string>
-  let toTags: (todoItem, context) => result<tagSet, string>
 }
 
 /**
@@ -207,8 +202,6 @@ module FromOrderShipped = Reventless.AutomationSlice.Mapping.Make(
   OrderSpec,                    // Source: Aggregate spec module
   AutoFulfillmentSpec,          // Target: this slice's spec
   {
-    type tagSet = {orderId: string, productId: string}
-
     let collect = (event, _ctx) =>
       switch event {
       | OrderSpec.OrderShipped({orderId, productId}) =>
@@ -221,12 +214,6 @@ module FromOrderShipped = Reventless.AutomationSlice.Mapping.Make(
       | OrderSpec.OrderRefunded({orderId, productId}) =>
         Some(orderId ++ ":" ++ productId)
       | _ => None
-      }
-
-    let toTags = (item, _ctx): result<tagSet, string> =>
-      switch (item.orderId, item.productId) {
-      | ("", _) | (_, "") => Error("missing partition tag fields")
-      | _ => Ok({orderId: item.orderId, productId: item.productId})
       }
   },
 )
@@ -245,7 +232,6 @@ module Mapping = {
       with type sourceEvent = Source.event
       and type todoItem = Target.todoItem
       and type command = Target.command
-      and type tagSet = Impl.tagSet
       and module SourceId = Source.Id
   ) => {
     module SourceId = Source.Id
@@ -253,11 +239,9 @@ module Mapping = {
     type sourceEvent = Source.event
     type todoItem = Target.todoItem
     type command = Target.command
-    type tagSet = Impl.tagSet
     let sourceName = Source.name
     let collect = Impl.collect
     let resolve = Impl.resolve
-    let toTags = Impl.toTags
   }
 }
 

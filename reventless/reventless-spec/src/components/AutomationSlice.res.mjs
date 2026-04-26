@@ -7,8 +7,7 @@ function Make(Source) {
     sourceEventSchema: Source.eventSchema,
     sourceName: Source.name,
     collect: Impl.collect,
-    resolve: Impl.resolve,
-    toTags: Impl.toTags
+    resolve: Impl.resolve
   }));
 }
 

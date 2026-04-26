@@ -132,8 +132,8 @@ module Make = (
                 async () => {
                   // Phase 1: per-source decode + collect/resolve, threaded with context
                   Callback.phase1(jsons, context)
-                  // Phase 2: process pending items (toTags + process + publish)
-                  await Callback.phase2(publishJsonsFn, context)
+                  // Phase 2: process pending items (process + encode + publish)
+                  await Callback.phase2(publishJsonsFn)
                   // Sync TODO state to QueryDb for observability
                   await syncToQueryDb(queryDbOps)
                 },
@@ -156,7 +156,7 @@ module Make = (
         ->Pulumi.Output.apply(((ecOps, publishJsonsFn)) => {
           let ops: AutomationSlice.operations = {
             enqueueEvent: ecOps.enqueueEvent,
-            processPending: async () => await Callback.phase2(publishJsonsFn, context),
+            processPending: async () => await Callback.phase2(publishJsonsFn),
           }
           ops
         }),

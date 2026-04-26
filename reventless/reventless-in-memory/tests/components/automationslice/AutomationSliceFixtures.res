@@ -1,6 +1,6 @@
 // Test fixtures for AutomationSlice — Plan 04 mixed-source shape.
 // Single-source mapping wired up so Callback unit tests exercise the per-source
-// dispatch, context plumbing, and toTags validation that Plan 04 introduced.
+// dispatch and context plumbing introduced by Plan 04.
 
 // ─────────────────────────────────────────────────────────────
 // Source — slice's own DcbEventLog (hand-rolled DcbSource shape)
@@ -83,7 +83,6 @@ module ShipOrderMapping = Reventless.AutomationSlice.Mapping.Make(
   ShipOrderSource,
   ShipOrderSpec,
   {
-    type tagSet = unit
     let collect = (event: ShipOrderSource.event, _ctx) =>
       switch event {
       | OrderPlaced({orderId, address}) => [(orderId, ({orderId, address}: ShipOrderSpec.todoItem))]
@@ -94,7 +93,6 @@ module ShipOrderMapping = Reventless.AutomationSlice.Mapping.Make(
       | ShipmentCreated({orderId}) => Some(orderId)
       | OrderPlaced(_) => None
       }
-    let toTags = (_item, _ctx) => Ok()
   },
 )
 
@@ -102,7 +100,6 @@ module SkipProcessMapping = Reventless.AutomationSlice.Mapping.Make(
   SkipProcessSource,
   SkipProcessSpec,
   {
-    type tagSet = unit
     let collect = (event: SkipProcessSource.event, _ctx) =>
       switch event {
       | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: SkipProcessSpec.todoItem))]
@@ -113,7 +110,6 @@ module SkipProcessMapping = Reventless.AutomationSlice.Mapping.Make(
       | ShipmentCreated({orderId}) => Some(orderId)
       | OrderPlaced(_) => None
       }
-    let toTags = (_item, _ctx) => Ok()
   },
 )
 

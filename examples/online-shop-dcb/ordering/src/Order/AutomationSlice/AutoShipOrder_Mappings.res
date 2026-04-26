@@ -19,7 +19,6 @@ module FromOrderingDcb = Mapping.Make(
   AutoShipOrder,
   {
     open OrderingDcbSource
-    type tagSet = unit
 
     let collect = (event, _ctx) =>
       switch event {
@@ -32,8 +31,6 @@ module FromOrderingDcb = Mapping.Make(
       | OrderShipped({orderId}) => Some(orderId)
       | OrderPlaced(_) => None
       }
-
-    let toTags = (_item, _ctx) => Ok()
   },
 )
 

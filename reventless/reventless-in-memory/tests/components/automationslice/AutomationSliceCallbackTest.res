@@ -39,7 +39,6 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let row = items->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Pending)
       expect(row.retryCount)->toBe(0)
-      expect(row.sourceName)->toBe(ShipOrderSource.name)
     })
 
     testPromise("duplicate OrderPlaced is idempotent", async () => {
@@ -97,7 +96,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish, testContext)
+      await Callback.phase2(mockPublish)
 
       expect(publishedCommands.contents->Array.length)->toBe(1)
       let cmd = publishedCommands.contents->Array.getUnsafe(0)
@@ -120,7 +119,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish, testContext)
+      await Callback.phase2(mockPublish)
       expect(publishedCommands.contents->Array.length)->toBe(0)
     })
 
@@ -131,7 +130,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await SkipCallback.phase2(mockPublish, testContext)
+      await SkipCallback.phase2(mockPublish)
       expect(publishedCommands.contents->Array.length)->toBe(0)
       let row = SkipCallback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Pending)
@@ -142,7 +141,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish, testContext)
+      await Callback.phase2(mockPublish)
       expect(publishedCommands.contents->Array.length)->toBe(0)
     })
 
@@ -154,7 +153,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
         JsError.throwWithMessage("publish failed")
       }
-      await Callback.phase2(failingPublish, testContext)
+      await Callback.phase2(failingPublish)
       let row = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row.status)->toBe(Failed)
       expect(row.retryCount)->toBe(1)
@@ -168,7 +167,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let failingPublish: ReventlessInfra.CommandTopic.publishJsons = async _cmds => {
         JsError.throwWithMessage("publish failed")
       }
-      await Callback.phase2(failingPublish, testContext)
+      await Callback.phase2(failingPublish)
       let row1 = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row1.retryCount)->toBe(1)
 
@@ -176,7 +175,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let successPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(successPublish, testContext)
+      await Callback.phase2(successPublish)
       expect(publishedCommands.contents->Array.length)->toBe(1)
       let row2 = Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow
       expect(row2.status)->toBe(Processing)
@@ -195,7 +194,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands := cmds
       }
-      await Callback.phase2(mockPublish, testContext)
+      await Callback.phase2(mockPublish)
       expect(publishedCommands.contents->Array.length)->toBe(1)
       expect((Callback.todoItems->Dict.get("ord-1")->Option.getOrThrow).status)->toBe(Processing)
 
@@ -209,7 +208,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let mockPublish2: ReventlessInfra.CommandTopic.publishJsons = async cmds => {
         publishedCommands2 := cmds
       }
-      await Callback.phase2(mockPublish2, testContext)
+      await Callback.phase2(mockPublish2)
       expect(publishedCommands2.contents->Array.length)->toBe(0)
     })
   })
