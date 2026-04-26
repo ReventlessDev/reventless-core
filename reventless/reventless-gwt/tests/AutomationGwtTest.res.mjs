@@ -2,7 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Outcome$ReventlessGwt from "../src/Outcome.res.mjs";
-import * as AutomationSlice_GWT$ReventlessGwt from "../src/AutomationSlice_GWT.res.mjs";
+import * as Automation_GWT$ReventlessGwt from "../src/Automation_GWT.res.mjs";
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -70,7 +70,7 @@ let ShipOrderSlice = {
   process: process
 };
 
-let include = AutomationSlice_GWT$ReventlessGwt.Make(ShipOrderSlice);
+let include = Automation_GWT$ReventlessGwt.Make(ShipOrderSlice);
 
 let describe = include.describe;
 

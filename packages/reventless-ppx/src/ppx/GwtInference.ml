@@ -18,11 +18,11 @@ open Ppxlib
     Supported DSL kinds (canonical tokens, shared with [@@reventless.spec]
     via [Util.derive_gwt_kind]):
     {ul
-      {- [AutomationSlice]}
-      {- [InboundTranslationSlice]}
-      {- [OutboundTranslationSlice]}
-      {- [StateChangeSlice]}
-      {- [StateViewSlice]}
+      {- [Automation]                 (was [AutomationSlice], Plan 01)}
+      {- [InboundTranslation]         (was [InboundTranslationSlice], Plan 01)}
+      {- [OutboundTranslation]        (was [OutboundTranslationSlice], Plan 01)}
+      {- [StateChangeSlice]           (Plan 02 will rename to [Behavior])}
+      {- [StateViewSlice]             (Plan 02 will rename to [Projection])}
       {- [Projection]}
       {- [Behavior]}}
 
@@ -220,9 +220,10 @@ let insert_after_many (lst : 'a list) (idx : int) (items : 'a list) : 'a list =
 
 let kinds_list_for_error () =
   "folder base names StateChange / StateView / Automation / \
-   InboundTranslation / OutboundTranslation (with optional `Slice` or \
-   `Slices` suffix), or a filename / folder containing `Projection` \
-   or `Behavior`"
+   InboundTranslation / OutboundTranslation (short, plural, or with \
+   `Slice` / `Slices` suffix — e.g. Automation, Automations, \
+   AutomationSlice, AutomationSlices), or a filename / folder \
+   containing `Projection` or `Behavior`"
 
 (** Detect a companion [<Stem>_Fixtures.res] next to the GWT file.
     Returns the module name if the sibling file exists, else [None].

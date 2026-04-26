@@ -101,10 +101,21 @@ let top_level_only_suffixes = [
   "Plugin";
 ]
 
-let known_slice_bases = [
-  "StateChange"; "StateView"; "Automation";
-  "InboundTranslation"; "OutboundTranslation"
+(* Slice bases that have been migrated to short DSL kind names (Plan 01 —
+   docs/plans/test-dsl-naming-cleanup.md). The emitted [<Kind>_GWT.Make]
+   reference uses the short base form (e.g. [Automation_GWT.Make]).
+   Folder/filename segments still match on either short or [Slice]-suffixed
+   form for backwards compatibility. *)
+let short_kind_slice_bases = [
+  "Automation"; "InboundTranslation"; "OutboundTranslation"
 ]
+
+(* Slice bases still using the long [Slice]-suffixed kind name. Plan 02
+   converges these onto Behavior_GWT / Projection_GWT once the underlying
+   functor signatures match. *)
+let long_kind_slice_bases = ["StateChange"; "StateView"]
+
+let known_slice_bases = short_kind_slice_bases @ long_kind_slice_bases
 
 let ends_with_slice part =
   let len = String.length part in
@@ -130,30 +141,53 @@ let contains_substring haystack needle =
     in
     check 0
 
-(* Full Kind name for a given folder segment or filename stem, or None if
-   the segment doesn't correspond to any DSL kind.
+(* Map a slice base to its emitted kind name. Short bases emit the short
+   form; long bases keep the [Slice] suffix. *)
+let kind_for_base base =
+  if List.mem base short_kind_slice_bases then base
+  else base ^ "Slice"
 
-   Recognises:
-   - Short slice-base form:   "StateChange"        -> "StateChangeSlice"
-   - Long slice form:         "StateChangeSlice"   -> "StateChangeSlice"
-   - Plural slice form:       "StateChangeSlices"  -> "StateChangeSlice"
-   - Non-slice kinds via substring: "Projection", "Behavior"
+(* Kind name for a given folder segment or filename stem, or None if the
+   segment doesn't correspond to any DSL kind.
 
-   Note: substring match on non-slice kinds keeps existing behaviour for
-   filenames like "StateChangeSliceGwtTest" / "ProjectionGwtTest". *)
+   Recognises four spellings of every known slice base:
+     "Foo", "Foos", "FooSlice", "FooSlices"
+   Short bases (Automation, InboundTranslation, OutboundTranslation) emit
+   "Foo"; long bases (StateChange, StateView) emit "FooSlice".
+
+   Falls back to substring matching for non-slice kinds (Projection,
+   Behavior) and for filenames like "AutomationGwtTest" or
+   "StateChangeSliceGwtTest" that bundle the kind with a test suffix. *)
 let dsl_kind_of_segment part : string option =
-  if List.mem part known_slice_bases then Some (part ^ "Slice")
-  else if ends_with_slices part then
-    Some (String.sub part 0 (String.length part - 1))
-  else if ends_with_slice part then Some part
-  else if contains_substring part "OutboundTranslationSlice" then Some "OutboundTranslationSlice"
-  else if contains_substring part "InboundTranslationSlice" then Some "InboundTranslationSlice"
-  else if contains_substring part "StateChangeSlice" then Some "StateChangeSlice"
-  else if contains_substring part "AutomationSlice" then Some "AutomationSlice"
-  else if contains_substring part "StateViewSlice" then Some "StateViewSlice"
-  else if contains_substring part "Projection" then Some "Projection"
-  else if contains_substring part "Behavior" then Some "Behavior"
-  else None
+  let try_base base =
+    if part = base
+       || part = base ^ "s"
+       || part = base ^ "Slice"
+       || part = base ^ "Slices"
+    then Some (kind_for_base base)
+    else None
+  in
+  let rec try_bases = function
+    | [] -> None
+    | b :: rest ->
+      (match try_base b with
+       | Some _ as k -> k
+       | None -> try_bases rest)
+  in
+  match try_bases known_slice_bases with
+  | Some _ as k -> k
+  | None ->
+    (* Substring fallback. Order matters: longer/more specific prefixes
+       first so "OutboundTranslationSliceGwtTest" doesn't match the
+       shorter "Translation" / "Automation" patterns. *)
+    if contains_substring part "OutboundTranslation" then Some "OutboundTranslation"
+    else if contains_substring part "InboundTranslation" then Some "InboundTranslation"
+    else if contains_substring part "Automation" then Some "Automation"
+    else if contains_substring part "StateChangeSlice" then Some "StateChangeSlice"
+    else if contains_substring part "StateViewSlice" then Some "StateViewSlice"
+    else if contains_substring part "Projection" then Some "Projection"
+    else if contains_substring part "Behavior" then Some "Behavior"
+    else None
 
 (* Derive the DSL Kind for a @@reventless.gwt file from its path.
    Scans folder segments innermost-first (closest-to-file wins) so a path

@@ -22,8 +22,8 @@ an Aggregate implementation and a DCB implementation of each:
 |------------------------------|-----------------------------------|---------------------------------|----------------------------------------------------------------|
 | Command (state change)       | `Aggregate` + `Behavior`          | `StateChangeSlice`              | `Behavior_GWT` / `StateChangeSlice_GWT`                        |
 | View (state projection)      | `ReadModel` + `Projection.Mapping`| `StateViewSlice`                | `Projection_GWT` / `StateViewSlice_GWT`                        |
-| Automation (TODO list)       | `EventMapping` (delayed / async)  | `AutomationSlice`               | `Mapping_GWT` *(covers the Aggregate side)* / `AutomationSlice_GWT` |
-| Translation (anti-corruption)| API / handler code                | `InboundTranslationSlice` / `OutboundTranslationSlice` | `InboundTranslationSlice_GWT` / `OutboundTranslationSlice_GWT` |
+| Automation (TODO list)       | `EventMapping` (delayed / async)  | `AutomationSlice`               | `Mapping_GWT` *(covers the Aggregate side)* / `Automation_GWT` |
+| Translation (anti-corruption)| API / handler code                | `InboundTranslationSlice` / `OutboundTranslationSlice` | `InboundTranslation_GWT` / `OutboundTranslation_GWT` |
 
 Two cross-cutting DSLs round out the surface:
 
@@ -393,7 +393,7 @@ The legacy `EventMapping_GWT.Make(Source, SourceBehavior, Target, TargetBehavior
 remains callable with its old argument list — it simply composes two
 `FromBehavior` adapters internally.
 
-### 4.7 `AutomationSlice_GWT` — DCB automation
+### 4.7 `Automation_GWT` — DCB automation
 
 Three loop steps (`collect` / `resolve` / `process`) plus a scenario-style
 `sweep`.
@@ -448,9 +448,9 @@ describe("ShipOrder AutomationSlice", () => {
 ```
 
 Runnable copy:
-[`reventless/reventless-gwt/tests/AutomationSliceGwtTest.res`](../../reventless/reventless-gwt/tests/AutomationSliceGwtTest.res).
+[`reventless/reventless-gwt/tests/AutomationGwtTest.res`](../../reventless/reventless-gwt/tests/AutomationGwtTest.res).
 
-### 4.8 `InboundTranslationSlice_GWT` — external → internal translation
+### 4.8 `InboundTranslation_GWT` — external → internal translation
 
 No `given` clause (translation is pure over its input).
 
@@ -483,7 +483,7 @@ describe("PaymentWebhook InboundTranslationSlice", () => {
 })
 ```
 
-### 4.9 `OutboundTranslationSlice_GWT` — internal → external translation
+### 4.9 `OutboundTranslation_GWT` — internal → external translation
 
 Combines a `collect` pipeline (same shape as `AutomationSlice`) with a
 `translate` pipeline whose actual implementation is **mocked** by the test
