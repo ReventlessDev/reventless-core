@@ -28,7 +28,7 @@ let slice = CategoriesViewSlice.make(~dcbEventLog=log)
 ```
 */
 module type T = {
-  module Spec: Reventless.StateViewSlice.Spec
+  module Spec: Reventless.StateViewSlice.MergedSpec
   type component = Component.t<t, outputs, operations>
   let make: (
     ~dcbEventLog: DcbEventLog.component,

@@ -28,7 +28,7 @@ module Make = (Api: {
   )
 
   module Make = (
-    Spec: Reventless.OutboundTranslationSlice.Spec,
+    Spec: Reventless.OutboundTranslationSlice.MergedSpec,
   ): (
     ReventlessCore.OutboundTranslationSlice.T
       with module Spec = Spec

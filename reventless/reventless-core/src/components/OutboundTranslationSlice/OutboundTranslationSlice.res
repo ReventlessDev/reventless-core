@@ -22,7 +22,7 @@ let toResolvedOutputs = (
   })
 
 module type T = {
-  module Spec: Reventless.OutboundTranslationSlice.Spec
+  module Spec: Reventless.OutboundTranslationSlice.MergedSpec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
 

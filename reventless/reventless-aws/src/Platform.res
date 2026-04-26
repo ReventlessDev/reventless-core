@@ -428,12 +428,12 @@ module MakeWithConfig = (
   })
 
   module StateChangeSlice = {
-    module Make = (Spec: Reventless.StateChangeSlice.Spec): (
+    module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (
       ReventlessInfra.StateChangeSlice.T
         with module Spec = Spec
     ) => StateChangeSlice_Builder.Make(Spec)
     /** Async variant — uses FIFO SQS channel, commands return `CommandPending`. */
-    module MakeAsync = (Spec: Reventless.StateChangeSlice.Spec): (
+    module MakeAsync = (Spec: Reventless.StateChangeSlice.MergedSpec): (
       ReventlessInfra.StateChangeSlice.T with module Spec = Spec
     ) => {
       include StateChangeSlice_Builder.Make(Spec)

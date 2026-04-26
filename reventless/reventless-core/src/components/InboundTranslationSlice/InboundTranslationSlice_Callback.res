@@ -19,7 +19,7 @@ type auditRow = {
 }
 
 module type T = {
-  module Spec: Reventless.InboundTranslationSlice.Spec
+  module Spec: Reventless.InboundTranslationSlice.MergedSpec
 
   /** The audit log -- maps request ID to audit row. */
   let auditLog: Dict.t<auditRow>
@@ -31,7 +31,7 @@ module type T = {
   ) => promise<result<array<string>, string>>
 }
 
-module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (T with module Spec = Spec) => {
+module Make = (Spec: Reventless.InboundTranslationSlice.MergedSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
   let auditLog: Dict.t<auditRow> = Dict.make()

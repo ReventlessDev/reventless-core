@@ -1,5 +1,5 @@
 module type T = {
-  module Spec: Reventless.StateChangeSlice.Spec
+  module Spec: Reventless.StateChangeSlice.MergedSpec
   let handleCommands: (
     DcbEventLog.operations,
     Stream.t<
@@ -10,7 +10,7 @@ module type T = {
   ) => Effect.t<array<result<string, string>>, string, unit>
 }
 
-module Make = (Spec: Reventless.StateChangeSlice.Spec): (T with module Spec = Spec) => {
+module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
   let comp = `StateChangeSlice(${Spec.name})`

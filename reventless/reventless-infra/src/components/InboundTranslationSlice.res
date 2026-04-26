@@ -30,7 +30,7 @@ let slice = PaymentWebhookSlice.make(~publishJsons=publishJsonsOutput)
 type t
 
 module type T = {
-  module Spec: Reventless.InboundTranslationSlice.Spec
+  module Spec: Reventless.InboundTranslationSlice.MergedSpec
   type component = Component.t<t, outputs, operations>
   let queryDbName: string
   let make: (

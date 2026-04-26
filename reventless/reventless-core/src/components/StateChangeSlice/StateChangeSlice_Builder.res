@@ -1,4 +1,4 @@
-module Make = (Spec: Reventless.StateChangeSlice.Spec): (
+module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (
   StateChangeSlice.T with module Spec = Spec
 ) => {
   module Spec = Spec

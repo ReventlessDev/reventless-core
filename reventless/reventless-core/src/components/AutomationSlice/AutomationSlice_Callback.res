@@ -22,7 +22,7 @@ type todoRow = {
 }
 
 module type T = {
-  module Spec: Reventless.AutomationSlice.Spec
+  module Spec: Reventless.AutomationSlice.MergedSpec
 
   /** The in-memory TODO list — maps item ID to row. */
   let todoItems: Dict.t<todoRow>
@@ -34,7 +34,7 @@ module type T = {
   let phase2: ReventlessInfra.CommandTopic.publishJsons => promise<unit>
 }
 
-module Make = (Spec: Reventless.AutomationSlice.Spec): (T with module Spec = Spec) => {
+module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
   let todoItems: Dict.t<todoRow> = Dict.make()

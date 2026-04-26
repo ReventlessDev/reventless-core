@@ -14,7 +14,7 @@ module Make = (
   },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
-  module Make = (Spec: Reventless.StateViewSlice.Spec): (
+  module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (
     StateViewSlice.T with module Spec = Spec
   ) => {
     module Spec = Spec

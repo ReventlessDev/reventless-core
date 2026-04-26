@@ -26,7 +26,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     Api,
   )
 
-  module Make = (Spec: Reventless.StateViewSlice.Spec) => {
+  module Make = (Spec: Reventless.StateViewSlice.MergedSpec) => {
     include CoreMaker.Make(Spec)
     // Re-expose operations for test resolution
     let operations: component => Pulumi.Output.t<ReventlessCore.StateViewSlice.operations> =

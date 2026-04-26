@@ -1,5 +1,5 @@
 module type T = {
-  module Spec: Reventless.StateViewSlice.Spec
+  module Spec: Reventless.StateViewSlice.MergedSpec
   type queryDbOperations
 
   let eventsHandler: (
@@ -8,7 +8,7 @@ module type T = {
   ) => promise<unit>
 }
 
-module Make = (Spec: Reventless.StateViewSlice.Spec): (T with module Spec = Spec) => {
+module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
   type queryDbOperations = QueryDb.operations<string, Spec.state>

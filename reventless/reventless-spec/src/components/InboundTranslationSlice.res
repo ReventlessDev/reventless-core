@@ -1,5 +1,5 @@
 /**
-Module type for a DCB inbound translation slice specification.
+Module types for a DCB inbound translation slice.
 
 An `InboundTranslationSlice` receives external input (webhooks, API calls) and
 translates it into domain commands via an anti-corruption layer.
@@ -10,6 +10,12 @@ Unlike outbound slices, inbound slices are triggered externally via
 ```
 External Input -> Anti-Corruption Layer (translate) -> Command
 ```
+
+Plan 02 splits the merged spec into two module types:
+
+- `Spec` — types, identity, schemas, target name. (No state — translation is
+  a pure function of external input.)
+- `Translation` — the single `translate` function.
 
 @example
 ```rescript
@@ -25,7 +31,51 @@ let translate = input => switch input.status {
 }
 ```
 */
+
+/**
+The lean Spec for an InboundTranslationSlice — types, identity, schemas.
+*/
 module type Spec = {
+  /** Logical name of this inbound translation slice (used as a component prefix). */
+  let name: string
+  let moduleUrl: string
+
+  /** The external input type received from the outside world. Must carry `@schema`. */
+  @schema
+  type externalInput
+
+  /** The command type produced by the anti-corruption layer. Must carry `@schema`. */
+  @schema
+  type command
+
+  /** Name of the aggregate or StateChangeSlice that receives the produced command. */
+  let targetName: string
+}
+
+/**
+The Translation — the synchronous translate function.
+*/
+module type Translation = {
+  module Spec: Spec
+
+  /**
+  Translate: convert external input into domain commands.
+  Returns:
+  - `Ok([(targetId, cmd), ...])` to publish one or more commands
+  - `Ok([])` for idempotent no-ops (nothing to publish)
+  - `Error(msg)` to reject the input
+  */
+  let translate: Spec.externalInput => result<array<(string, Spec.command)>, string>
+
+  /** File URL of this Translation module (`import.meta.url`). */
+  let moduleUrl: string
+}
+
+/**
+Legacy combined-shape module type. Used by slice builders pre-Phase 2;
+removed in Phase 6.
+*/
+module type MergedSpec = {
   /** Logical name of this inbound translation slice (used as a component prefix). */
   let name: string
   let moduleUrl: string
@@ -40,10 +90,6 @@ module type Spec = {
 
   /**
   Translate: convert external input into domain commands.
-  Returns:
-  - `Ok([(targetId, cmd), ...])` to publish one or more commands
-  - `Ok([])` for idempotent no-ops (nothing to publish)
-  - `Error(msg)` to reject the input
   */
   let translate: externalInput => result<array<(string, command)>, string>
 

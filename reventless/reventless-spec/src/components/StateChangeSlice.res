@@ -1,14 +1,20 @@
 /**
-Module type for a DCB write-side state change slice specification.
+Module types for a DCB write-side state change slice.
 
 A `StateChangeSlice` is the DCB equivalent of an aggregate: it processes
 commands by reading the relevant events from a shared `DcbEventLog`, building
 a `state` (ephemeral read model), and appending new events conditioned
 on no concurrent changes to the same entities.
 
-Each slice declares its own `event` (what it emits) and `consumedEvent`
-(what it reads to build its decision model). Consumed events may be payload-less,
-carry a field subset, or use the full shape.
+Plan 02 splits the merged spec into two module types:
+
+- `Spec` — types, identity, schemas. The structural contract.
+- `Behavior` — `state`, `initialState`, `evolve`, `decide`. The state machine.
+
+`MergedSpec` is the legacy combined shape kept for transitional use during
+Phases 1–2 of the Spec-First migration. Slice builders consume it today and
+will switch to `(Spec, Behavior)` in Phase 2; `MergedSpec` is removed in
+Phase 6.
 
 @example
 ```rescript
@@ -40,7 +46,87 @@ let decide = (state, command) => switch command {
 }
 ```
 */
+
+/**
+The lean Spec for a StateChangeSlice — types, identity, schemas. State and
+state-evolution functions live in the sibling `Behavior` module type.
+*/
 module type Spec = {
+  /** Logical name of this slice (used as a command topic prefix). */
+  let name: string
+  let moduleUrl: string
+
+  /** Identity type — always `Id.String` for DCB slices. */
+  module Id: Id.T
+
+  /**
+  Events this slice reads to build its decision model (in `evolve`).
+  Only needs the fields required for the decision — no tag annotations needed.
+  May be payload-less for events where only existence matters.
+  Must carry `@schema`.
+  */
+  @schema
+  type consumedEvent
+
+  /** Commands this slice handles. Must carry `@schema`. */
+  @schema
+  type command
+
+  /** Business rule violation errors. Must carry `@schema`. */
+  @schema
+  type error
+
+  /** Events this slice emits (from `decide`). Must carry `@schema` and include tag annotations. */
+  @schema
+  type event
+
+  /** Schema for the command type — used to extract DCB tags for the conditional read. */
+  let commandSchema: S.t<command>
+}
+
+/**
+The Behavior — pure state machine that decides commands and folds events.
+
+`module Spec: Spec` shares the lean Spec's types so `evolve` references
+`Spec.consumedEvent`, `decide` references `Spec.command`/`Spec.event`/`Spec.error`.
+*/
+module type Behavior = {
+  module Spec: Spec
+
+  /**
+  The ephemeral state built by replaying relevant events.
+  Not persisted — reconstructed for each command by reading from the DCB log.
+  */
+  type state
+
+  /** The initial (empty) state before any events have been applied. */
+  let initialState: state
+
+  /**
+  Folds one consumed event into the state during the read phase.
+  Must be a pure function — no side effects.
+  */
+  let evolve: (state, Spec.consumedEvent) => state
+
+  /**
+  Decides what events to append given the current state and the command.
+  Return `Ok(events)` to append, or `Error(error)` to reject the command.
+  */
+  let decide: (state, Spec.command) => result<array<Spec.event>, Spec.error>
+
+  /** File URL of this Behavior module (`import.meta.url`). */
+  let moduleUrl: string
+}
+
+/**
+Legacy combined-shape module type. Bundles the lean Spec's types/schemas
+with Behavior's state/initialState/evolve/decide in a single module signature.
+
+Slice builders/callbacks consume this transitional shape today; Phase 2 of
+the Spec-First migration switches them to take `(Spec, Behavior)` separately,
+at which point `MergedSpec` is removed.
+*/
+module type MergedSpec = {
   /** Logical name of this slice (used as a command topic prefix). */
   let name: string
   let moduleUrl: string

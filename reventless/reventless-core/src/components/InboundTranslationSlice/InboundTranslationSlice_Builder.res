@@ -14,7 +14,7 @@ module Make = (
     let apiRole: unit => QueryDbStorage.role
   },
 ) => {
-  module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (
+  module Make = (Spec: Reventless.InboundTranslationSlice.MergedSpec): (
     InboundTranslationSlice.T with module Spec = Spec
   ) => {
     module Spec = Spec

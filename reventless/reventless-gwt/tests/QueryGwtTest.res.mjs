@@ -199,6 +199,10 @@ CategoriesQuery.describe("Categories ReadModel queries", () => {
   });
 });
 
+let name$1 = "OrdersView";
+
+let moduleUrl$1 = "";
+
 let stateSchema$1 = S.schema(s => ({
   orderId: s.m(S.string),
   customerId: s.m(S.string),
@@ -233,8 +237,8 @@ let subIdConfig = {
 };
 
 let OrdersView = {
-  name: "OrdersView",
-  moduleUrl: "",
+  name: name$1,
+  moduleUrl: moduleUrl$1,
   stateSchema: stateSchema$1,
   consumedEventSchema: consumedEventSchema,
   project: project,
@@ -242,7 +246,14 @@ let OrdersView = {
   subIdConfig: subIdConfig
 };
 
-let OrdersQuery = Query_GWT$ReventlessGwt.Make(Query_GWT$ReventlessGwt.FromStateViewSlice(OrdersView));
+let OrdersQuery = Query_GWT$ReventlessGwt.Make(Query_GWT$ReventlessGwt.FromStateViewSlice({
+  name: name$1,
+  moduleUrl: moduleUrl$1,
+  stateSchema: stateSchema$1,
+  consumedEventSchema: consumedEventSchema,
+  config: config$1,
+  subIdConfig: subIdConfig
+}));
 
 OrdersQuery.describe("OrdersView StateViewSlice queries", () => {
   OrdersQuery.test("composite-id lookup returns the row", () => OrdersQuery.thenRowFromComposite(OrdersQuery.whenQueryByCompositeId(OrdersQuery.givenCompositeStore([

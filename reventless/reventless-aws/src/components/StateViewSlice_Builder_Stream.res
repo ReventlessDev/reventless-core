@@ -24,7 +24,7 @@ module Make = (Api: {
   let finish = Inner.finish
 
   module Make = (
-    Spec: Reventless.StateViewSlice.Spec,
+    Spec: Reventless.StateViewSlice.MergedSpec,
   ): (ReventlessCore.StateViewSlice.T with module Spec = Spec) => {
     module InnerMake = Inner.Make(Spec)
     include InnerMake

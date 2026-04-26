@@ -19,7 +19,7 @@ module Make = (
   },
 ) => {
   let finish = EventCollectorRuntimeBuilder.finish
-  module Make = (Spec: Reventless.AutomationSlice.Spec): (
+  module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (
     AutomationSlice.T with module Spec = Spec
   ) => {
     module Spec = Spec

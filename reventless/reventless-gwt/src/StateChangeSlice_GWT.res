@@ -2,7 +2,7 @@ open ReventlessCore
 
 // Minimal inline spec — parallels the pattern in Behavior_GWT so that sury-ppx
 // processes the @schema attributes in this compilation unit. Matches the
-// relevant subset of `Reventless.StateChangeSlice.Spec`.
+// relevant subset of `Reventless.StateChangeSlice.MergedSpec`.
 module type SliceSpec = {
   let name: string
 

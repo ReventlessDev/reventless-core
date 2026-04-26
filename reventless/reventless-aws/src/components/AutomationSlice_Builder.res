@@ -19,7 +19,7 @@ module Make = (Api: {
   )
 
   module Make = (
-    Spec: Reventless.AutomationSlice.Spec,
+    Spec: Reventless.AutomationSlice.MergedSpec,
   ): (
     ReventlessCore.AutomationSlice.T
       with module Spec = Spec

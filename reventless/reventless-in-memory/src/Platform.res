@@ -518,11 +518,11 @@ module MakeWithConfig = (
   module Counter = Counter_Builder.Make(Bus)
 
   module StateChangeSlice = {
-    module Make = (Spec: Reventless.StateChangeSlice.Spec): (
+    module Make = (Spec: Reventless.StateChangeSlice.MergedSpec): (
       ReventlessInfra.StateChangeSlice.T with module Spec = Spec
     ) => StateChangeSlice_Builder.Make(Spec)
     /** Async variant — in-memory uses the same channel (no FIFO distinction). */
-    module MakeAsync = (Spec: Reventless.StateChangeSlice.Spec): (
+    module MakeAsync = (Spec: Reventless.StateChangeSlice.MergedSpec): (
       ReventlessInfra.StateChangeSlice.T with module Spec = Spec
     ) => {
       include StateChangeSlice_Builder.Make(Spec)
@@ -531,32 +531,32 @@ module MakeWithConfig = (
   }
 
   module StateViewSlice = {
-    module Make = (Spec: Reventless.StateViewSlice.Spec): (
+    module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (
       ReventlessInfra.StateViewSlice.T with module Spec = Spec
     ) => StateViewSliceMaker.Make(Spec)
   }
 
   // In-memory has no DynamoDB streams — stream variant is identical to plain StateViewSlice.
   module StateViewSliceStream = {
-    module Make = (Spec: Reventless.StateViewSlice.Spec): (
+    module Make = (Spec: Reventless.StateViewSlice.MergedSpec): (
       ReventlessInfra.StateViewSlice.T with module Spec = Spec
     ) => StateViewSliceMaker.Make(Spec)
   }
 
   module AutomationSlice = {
-    module Make = (Spec: Reventless.AutomationSlice.Spec): (
+    module Make = (Spec: Reventless.AutomationSlice.MergedSpec): (
       ReventlessInfra.AutomationSlice.T with module Spec = Spec
     ) => AutomationSliceMaker.Make(Spec)
   }
 
   module OutboundTranslationSlice = {
-    module Make = (Spec: Reventless.OutboundTranslationSlice.Spec): (
+    module Make = (Spec: Reventless.OutboundTranslationSlice.MergedSpec): (
       ReventlessInfra.OutboundTranslationSlice.T with module Spec = Spec
     ) => OutboundTranslationSliceMaker.Make(Spec)
   }
 
   module InboundTranslationSlice = {
-    module Make = (Spec: Reventless.InboundTranslationSlice.Spec): (
+    module Make = (Spec: Reventless.InboundTranslationSlice.MergedSpec): (
       ReventlessInfra.InboundTranslationSlice.T with module Spec = Spec
     ) => InboundTranslationSliceMaker.Make(Spec)
   }
