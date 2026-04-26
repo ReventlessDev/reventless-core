@@ -1,8 +1,33 @@
 open Ppxlib
 
+(* Implementation kinds — the second half of the Spec/Implementation split.
+   Each kind has a corresponding [@@reventless.<kind>] attribute that
+   auto-injects [open <Spec>; module Spec = <Spec>; let moduleUrl = ...].
+   The Spec module name is derived from the filename: a [_<Kind>] or
+   [<Kind>] suffix is stripped. *)
+type impl_kind =
+  | Behavior      (* StateChangeSlice + Aggregate *)
+  | Projection    (* StateViewSlice *)
+  | Automation    (* AutomationSlice *)
+  | Translation   (* InboundTranslationSlice + OutboundTranslationSlice *)
+
+let impl_kind_name = function
+  | Behavior -> "Behavior"
+  | Projection -> "Projection"
+  | Automation -> "Automation"
+  | Translation -> "Translation"
+
+let impl_kind_attr_name = function
+  | Behavior -> "reventless.behavior"
+  | Projection -> "reventless.projection"
+  | Automation -> "reventless.automation"
+  | Translation -> "reventless.translation"
+
+let all_impl_kinds = [Behavior; Projection; Automation; Translation]
+
 type mode =
   | Spec of string option
-  | Behavior of string option
+  | Implementation of impl_kind * string option
 
 let detect_mode (str : structure) =
   let rec scan = function
@@ -13,15 +38,21 @@ let detect_mode (str : structure) =
          if String.equal attr.attr_name.txt "reventless.spec" then
            let name = Util.get_string_payload attr in
            Some (Spec name, attr.attr_loc)
-         else if String.equal attr.attr_name.txt "reventless.behavior" then
-           let spec_name =
-             match Util.get_string_payload attr with
-             | Some s -> Some s
-             | None -> Util.get_ident_payload attr
-           in
-           Some (Behavior spec_name, attr.attr_loc)
          else
-           scan rest
+           let matched_kind =
+             List.find_opt (fun k ->
+               String.equal attr.attr_name.txt (impl_kind_attr_name k)
+             ) all_impl_kinds
+           in
+           (match matched_kind with
+            | Some k ->
+              let spec_name =
+                match Util.get_string_payload attr with
+                | Some s -> Some s
+                | None -> Util.get_ident_payload attr
+              in
+              Some (Implementation (k, spec_name), attr.attr_loc)
+            | None -> scan rest)
        | _ -> scan rest)
   in
   scan str
@@ -34,12 +65,15 @@ let has_dcb_tags_attr (str : structure) =
   ) str
 
 let strip_ppx_attrs (str : structure) : structure =
+  let impl_attr_names = List.map impl_kind_attr_name all_impl_kinds in
+  let is_ppx_attr name =
+    String.equal name "reventless.spec"
+    || String.equal name "reventless.dcbTags"
+    || List.exists (String.equal name) impl_attr_names
+  in
   List.filter (fun (item : structure_item) ->
     match item.pstr_desc with
-    | Pstr_attribute attr ->
-      not (String.equal attr.attr_name.txt "reventless.spec"
-           || String.equal attr.attr_name.txt "reventless.behavior"
-           || String.equal attr.attr_name.txt "reventless.dcbTags")
+    | Pstr_attribute attr -> not (is_ppx_attr attr.attr_name.txt)
     | _ -> true
   ) str
 
@@ -86,6 +120,30 @@ let derive_spec_name ~loc name_opt =
       let plugin = ModuleUrl.plugin_name_from_namespace pkg in
       plugin ^ "." ^ entity
     | _ -> entity
+
+(* Derive the Spec module name for an implementation file from its filename.
+   Recognises two conventions:
+   - [X_<Kind>.res] (slice convention, e.g. [ArchiveCategory_Behavior.res] → [ArchiveCategory]).
+   - [X<Kind>.res] (Aggregate convention, e.g. [ProductBehavior.res] → [Product]).
+   Falls back to the bare filename stem if neither suffix is present. *)
+let derive_impl_spec_name ~kind fname =
+  let stem =
+    let base = Filename.basename fname in
+    match String.index_opt base '.' with
+    | Some i -> String.sub base 0 i
+    | None -> base
+  in
+  let kind_name = impl_kind_name kind in
+  let underscored = "_" ^ kind_name in
+  let stripped_under = Util.strip_suffix stem underscored in
+  if not (String.equal stripped_under stem) && String.length stripped_under > 0 then
+    stripped_under
+  else
+    let stripped_bare = Util.strip_suffix stem kind_name in
+    if not (String.equal stripped_bare stem) && String.length stripped_bare > 0 then
+      stripped_bare
+    else
+      stem
 
 (* --- Phase 6.2: ReadModel auto-defaults --- *)
 
@@ -409,12 +467,29 @@ let transform (str : structure) : structure =
       in
       !prefix @ body @ readmodel_suffix @ suffix
 
-    | Behavior spec_name_opt ->
+    | Implementation (kind, spec_name_opt) ->
       let spec_name = match spec_name_opt with
         | Some n -> n
-        | None -> Util.filename_to_name loc.loc_start.pos_fname
+        | None ->
+          (* For [Behavior], preserve the legacy [filename_to_name]-based
+             derivation so [ProductBehavior.res] outside slice folders still
+             resolves to [Product]. Inside slice folders, use the
+             [_<Kind>] / [<Kind>] suffix-stripping derivation that handles
+             the new [X_<Kind>.res] convention. *)
+          let fname = loc.loc_start.pos_fname in
+          (match kind with
+           | Behavior when not (Util.is_in_slice_folder fname) ->
+             Util.filename_to_name fname
+           | _ -> derive_impl_spec_name ~kind fname)
       in
       let prefix = ref [] in
+      (* Projection implementations need [Reventless.Projection]'s action
+         constructors ([Set], [Update], …) in scope. This mirrors the
+         auto-open the Spec branch does for [is_stateview_filename] files in
+         the merged form. *)
+      if kind = Projection
+         && not (Util.has_open_dotted "Reventless" "Projection" body) then
+        prefix := !prefix @ [gen_open_projection ~loc];
       if not (Util.has_open spec_name body) then
         prefix := !prefix @ [gen_open ~loc spec_name];
       if not (Util.has_module_binding "Spec" body) then

@@ -23,7 +23,7 @@ Event Modeling, as captured in [`event-modeling-comparison.md`](./event-modeling
 | **Automation (TODO list / processor)** | events that build the TODO list | a tick / new event arrives | command(s) issued, TODO marked done |
 | **Translation (anti-corruption)** | external input OR domain events | translator runs | command(s) emitted to internal system OR external call made |
 
-The framework's component model mirrors this 1:1 (see [`event-source-connection-matrix.md`](./event-source-connection-matrix.md)):
+The framework's component model mirrors this 1:1:
 
 | Pattern | Aggregate world | DCB world |
 |---------|-----------------|-----------|
@@ -968,7 +968,7 @@ givenTodo("o1", {orderId: "o1", email: "x@y"})
 
 ### 4.7 `Mapping_GWT` — cross-pattern automation
 
-Generalises `EventMapping_GWT` so source and target can each be either an Aggregate `Behavior` or a `StateChangeSlice`. This is the GWT equivalent of the four producer/consumer combinations in [`event-source-connection-matrix.md`](./event-source-connection-matrix.md). The functor accepts `module(Source.T)` where `Source.T` abstracts Behavior + StateChangeSlice via a small Spec record (`name`, `decide`, `evolve`, `initialState`, `event`, `consumedEvent`).
+Generalises `EventMapping_GWT` so source and target can each be either an Aggregate `Behavior` or a `StateChangeSlice`. This is the GWT equivalent of the four producer/consumer combinations across the Aggregate and DCB patterns. The functor accepts `module(Source.T)` where `Source.T` abstracts Behavior + StateChangeSlice via a small Spec record (`name`, `decide`, `evolve`, `initialState`, `event`, `consumedEvent`).
 
 ### 4.8 `Query_GWT` — read model query patterns
 

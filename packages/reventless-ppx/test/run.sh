@@ -575,6 +575,122 @@ let project = event => switch event {
 }
 EOF
 
+# ─── Fixture: split-form StateViewSlice (@@reventless.projection) ──
+
+# Spec — types only, no project function
+cat > "$PLUGIN/src/StateViewSlice/SplitView.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string, count: int }
+
+@schema
+type consumedEvent = Counted({ id: string, count: int })
+EOF
+
+# Implementation — @@reventless.projection auto-injects:
+#   open SplitView; module Spec = SplitView; let moduleUrl = ...
+# and (because the file lives inside a StateView* folder)
+#   open Reventless.Projection (so Set/Update/etc. constructors are in scope).
+cat > "$PLUGIN/src/StateViewSlice/SplitView_Projection.res" <<'EOF'
+@@reventless.projection
+
+let project = (event: consumedEvent) => switch event {
+  | Counted({id, count}) => [Set(id, {id: id, count: count})]
+}
+EOF
+
+# Explicit Spec module name form
+cat > "$PLUGIN/src/StateViewSlice/AltView.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { id: string }
+
+@schema
+type consumedEvent = Created({ id: string })
+EOF
+
+cat > "$PLUGIN/src/StateViewSlice/AltProjection.res" <<'EOF'
+@@reventless.projection(AltView)
+
+let project = (event: consumedEvent) => switch event {
+  | Created({id}) => [Set(id, {id: id})]
+}
+EOF
+
+# ─── Fixture: split-form AutomationSlice (@@reventless.automation) ──
+
+mkdir -p "$PLUGIN/src/AutomationSlice"
+cat > "$PLUGIN/src/AutomationSlice/Sweep.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type consumedEvent = Triggered({ id: string })
+
+@schema
+type todoItem = { id: string }
+
+@schema
+type command = DoIt({ id: string })
+EOF
+
+cat > "$PLUGIN/src/AutomationSlice/Sweep_Automation.res" <<'EOF'
+@@reventless.automation
+
+let collect = (event: consumedEvent) => switch event {
+  | Triggered({id}) => [(id, ({id: id}: todoItem))]
+}
+let resolve = (_event: consumedEvent) => None
+let process = (id, item: todoItem) => Some((id, DoIt({id: item.id})))
+EOF
+
+# ─── Fixture: split-form InboundTranslationSlice ────────────────────
+
+mkdir -p "$PLUGIN/src/InboundTranslationSlice"
+cat > "$PLUGIN/src/InboundTranslationSlice/Hook.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type externalInput = { id: string, value: int }
+
+@schema
+type command = Apply({ id: string, value: int })
+EOF
+
+cat > "$PLUGIN/src/InboundTranslationSlice/Hook_Translation.res" <<'EOF'
+@@reventless.translation
+
+let translate = (input: externalInput) =>
+  Ok([(input.id, Apply({id: input.id, value: input.value}))])
+EOF
+
+# ─── Fixture: split-form OutboundTranslationSlice ───────────────────
+
+mkdir -p "$PLUGIN/src/OutboundTranslationSlice"
+cat > "$PLUGIN/src/OutboundTranslationSlice/Notify.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type consumedEvent = Triggered({ id: string })
+
+@schema
+type outboundItem = { id: string }
+
+@schema
+type inboundCommand = Done({ id: string })
+EOF
+
+cat > "$PLUGIN/src/OutboundTranslationSlice/Notify_Translation.res" <<'EOF'
+@@reventless.translation
+
+let collect = (event: consumedEvent) => switch event {
+  | Triggered({id}) => [(id, ({id: id}: outboundItem))]
+}
+let translate = async (id, item: outboundItem) =>
+  Ok(Some((id, Done({id: item.id}))))
+EOF
+
 # ─── Build PPX ──────────────────────────────────────────────────────
 
 echo "Building PPX..."
@@ -895,6 +1011,39 @@ assert_js_contains "$JS" '"Orders"'                  "@compositeId+@resolves: ta
 assert_js_contains "$JS" '"orderId"'                 "@compositeId+@resolves: idField in resolver source"
 assert_js_not_contains "$JS" 'compositeId'           "@compositeId+@resolves: @compositeId annotation stripped"
 assert_js_not_contains "$JS" 'resolves'              "@compositeId+@resolves: @resolves annotation stripped"
+
+echo ""
+echo "=== Test: @@reventless.projection (split-form StateViewSlice) ==="
+JS="$PLUGIN/src/StateViewSlice/SplitView_Projection.res.mjs"
+assert_js_contains "$JS" 'StateViewSlice/SplitView_Projection.res.mjs' "projection moduleUrl"
+# open Spec + module Spec are compile-time only — successful compile proves
+# they were injected (the project body references `consumedEvent` and `Set`
+# which are only in scope after `open SplitView` and `open Reventless.Projection`)
+pass "projection compiles (open Spec + module Spec injected; _Projection suffix stripped from filename)"
+
+echo ""
+echo "=== Test: @@reventless.projection(Spec) explicit name ==="
+JS="$PLUGIN/src/StateViewSlice/AltProjection.res.mjs"
+assert_js_contains "$JS" 'StateViewSlice/AltProjection.res.mjs' "explicit-spec projection moduleUrl"
+pass "projection with explicit Spec module name compiles"
+
+echo ""
+echo "=== Test: @@reventless.automation (split-form AutomationSlice) ==="
+JS="$PLUGIN/src/AutomationSlice/Sweep_Automation.res.mjs"
+assert_js_contains "$JS" 'AutomationSlice/Sweep_Automation.res.mjs' "automation moduleUrl"
+pass "automation compiles (open Spec + module Spec injected; _Automation suffix stripped)"
+
+echo ""
+echo "=== Test: @@reventless.translation (split-form InboundTranslationSlice) ==="
+JS="$PLUGIN/src/InboundTranslationSlice/Hook_Translation.res.mjs"
+assert_js_contains "$JS" 'InboundTranslationSlice/Hook_Translation.res.mjs' "inbound translation moduleUrl"
+pass "inbound translation compiles (sync translate function)"
+
+echo ""
+echo "=== Test: @@reventless.translation (split-form OutboundTranslationSlice) ==="
+JS="$PLUGIN/src/OutboundTranslationSlice/Notify_Translation.res.mjs"
+assert_js_contains "$JS" 'OutboundTranslationSlice/Notify_Translation.res.mjs' "outbound translation moduleUrl"
+pass "outbound translation compiles (sync collect + async translate)"
 
 # ─── Fixture: error package (expected to fail compilation) ──────────
 

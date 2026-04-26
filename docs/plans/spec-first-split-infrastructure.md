@@ -202,23 +202,50 @@ Files touched:
 
 ### Phase 3 — PPX annotations and inference
 
+Phase 3 is split into two sub-phases. **Phase 3a** is additive: new annotations land alongside the existing `@@reventless.behavior` / `@@reventless.spec` without breaking anything, so it can ship before example migrations. **Phase 3b** contains the breaking GWT-inference changes that have to land in lockstep with Phase 5 (example migration) and Phase 6 (DSL convergence).
+
+#### Phase 3a — New annotations (additive) ✅ DONE
+
+**Status:** Completed 2026-04-26.
+
 In [`packages/reventless-ppx/src/ppx/ReventlessPpx.ml`](../../packages/reventless-ppx/src/ppx/ReventlessPpx.ml):
 
-1. Extend the `mode` ADT (line 3–5) with `Projection`, `Automation`, `Translation` variants alongside `Spec` and `Behavior`.
-2. Recognize the new annotation names (`reventless.projection`, `reventless.automation`, `reventless.translation`) in `detect_mode` and `strip_ppx_attrs`.
-3. For each new mode, the transform (line 412–427 has the `Behavior` template) should:
-   - Inject `open <Spec>` and `module Spec = <Spec>` (same as Behavior today).
-   - Inject the type annotations from the *Type Shadowing* table on recognized function bindings.
-   - Add the `moduleUrl` suffix.
-4. Update folder-to-DSL inference in [`Util.ml`](../../packages/reventless-ppx/src/ppx/Util.ml):
-   - `dsl_kind_of_segment` returns the implementation-kind name for slice folders (`"Behavior"` for `StateChangeSlice/`, `"Projection"` for `StateViewSlice/`, etc.) instead of the slice-typed name.
-   - This is the change that finishes Plan 01's deferred renames — once it lands, `@@reventless.gwt` in a `StateChangeSlice/` test folder emits `Behavior_GWT.Make(Spec, X_Behavior)`.
-5. Update [`GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml) so that the `Behavior` and `Projection` kinds always use `gen_include_two` (two-arg form). Today only `Behavior` does; after Plan 02, every slice kind takes (Spec, Implementation).
+1. The `mode` ADT now has a unified `Implementation of impl_kind * string option` variant. `impl_kind` is `Behavior | Projection | Automation | Translation` — one variant per implementation file kind. The old `Behavior of string option` was folded into `Implementation (Behavior, _)`.
+2. `detect_mode` and `strip_ppx_attrs` recognise the new annotation names (`reventless.projection`, `reventless.automation`, `reventless.translation`) alongside `reventless.behavior`. Each accepts an optional Spec module name in the same `(SpecModule)` payload form Behavior already supports.
+3. The Implementation transform branch:
+   - Injects `open <Spec>` and `module Spec = <Spec>` (same as Behavior).
+   - For `Projection` only, also injects `open Reventless.Projection` so the `Set` / `Update` / `UpdateWithDefault` / `Delete` action constructors are in scope without an explicit user `open`. This mirrors the auto-open the Spec branch already does for `is_stateview_filename` files in the merged form.
+   - Adds the `moduleUrl` suffix.
+4. Spec-name derivation (`derive_impl_spec_name`) handles both filename conventions:
+   - `X_<Kind>.res` (slice convention, e.g. `ArchiveCategory_Behavior.res` → `ArchiveCategory`).
+   - `X<Kind>.res` (Aggregate convention, e.g. `ProductBehavior.res` → `Product`).
+   - For `Behavior` outside slice folders, the legacy `Util.filename_to_name` derivation is preserved so existing Aggregate filenames keep resolving correctly.
 
-Add PPX tests covering:
-- Each new annotation produces the expected injected items.
-- Type-annotation injection: a slice with shared `consumedEvent`/`event` constructor names compiles correctly without manual annotations.
-- Manual annotation by the developer is preserved (no double annotation).
+PPX integration tests added in [`packages/reventless-ppx/test/run.sh`](../../packages/reventless-ppx/test/run.sh) cover:
+- `@@reventless.projection` on `StateViewSlice/SplitView_Projection.res` (paired with `SplitView.res`) compiles with auto-injected `open` / `module Spec` / `open Reventless.Projection`.
+- `@@reventless.projection(AltView)` explicit-Spec form.
+- `@@reventless.automation` on `AutomationSlice/Sweep_Automation.res`.
+- `@@reventless.translation` on both `InboundTranslationSlice/Hook_Translation.res` (sync) and `OutboundTranslationSlice/Notify_Translation.res` (sync collect + async translate).
+
+**Verification:** All 129 PPX integration tests pass (10 new + 119 existing). Full repo rebuild compiles 836 modules with zero warnings; all 1110 tests across 124 suites pass. Both `ppx-osx-x64.exe` and `ppx-linux.exe` binaries committed.
+
+**Deferred to Phase 3b** (would break existing tests; needs coordination with Phases 5 & 6):
+- Type-annotation injection on recognised function bindings to resolve `consumedEvent` / `event` constructor shadowing in split slice files.
+- Folder-to-DSL inference change: `Util.dsl_kind_of_segment` returning the implementation-kind name for `StateChangeSlice/` / `StateViewSlice/` (currently still returns the slice-typed name).
+- `GwtInference` update so the `Projection` kind also uses `gen_include_two` (today only `Behavior` does).
+
+#### Phase 3b — Breaking GWT inference changes (deferred)
+
+These three items land alongside Phase 5 (auto-migrated examples) and Phase 6 (Behavior_GWT / Projection_GWT convergence). Doing them earlier would break every existing slice test in the example apps because:
+- Today's `StateChangeSlice/` test folders contain a single merged-spec module; flipping the inference to `Behavior_GWT.Make(Spec, X_Behavior)` requires the split-form layout to already exist.
+- Today's `StateViewSlice/` test folders use `StateViewSlice_GWT` as a single-source DSL; Plan 02's `Projection_GWT` rename (D1) needs the new DSL in place before the inference flips.
+
+When Phase 3b lands:
+
+1. Update folder-to-DSL inference in [`Util.ml`](../../packages/reventless-ppx/src/ppx/Util.ml):
+   - `dsl_kind_of_segment` returns the implementation-kind name for slice folders (`"Behavior"` for `StateChangeSlice/`, `"Projection"` for `StateViewSlice/`).
+2. Update [`GwtInference.ml`](../../packages/reventless-ppx/src/ppx/GwtInference.ml) so `Behavior` and `Projection` kinds always use `gen_include_two` (two-arg form).
+3. Add type-annotation injection on recognised function bindings (table from *Type Shadowing* section): a slice with shared `consumedEvent` / `event` constructor names must compile correctly without manual annotations; manual annotations are preserved (no double annotation).
 
 ### Phase 4 — Auto-migration script
 

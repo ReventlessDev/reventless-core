@@ -50,7 +50,7 @@ Before describing the rename, here is what `reventless/reventless-gwt/src/` actu
 | [`StateChangeSlice_GWT.res`](../../reventless/reventless-gwt/src/StateChangeSlice_GWT.res) | `Make(Spec: SliceSpec) → T` | One-arg. Spec is *fat* — bundles types + decide/evolve/initialState. Used by merged StateChangeSlice files. |
 | [`StateViewSlice_GWT.res`](../../reventless/reventless-gwt/src/StateViewSlice_GWT.res) | `Make(Spec: SliceSpec) → T` | One-arg. Fat spec with `state`, `project`, `subIdConfig`. |
 | [`Projection_GWT.res`](../../reventless/reventless-gwt/src/Projection_GWT.res) | `Make({sourceEvent, targetState, ...}) → T` | Multi-source ReadModel DSL. `sourceEvent`/`targetState` as separate type parameters; store-based outcomes. **Not the same shape as `StateViewSlice_GWT`.** |
-| [`Mapping_GWT.res`](../../reventless/reventless-gwt/src/Mapping_GWT.res) | `Make(Source, Target, Mapping)` | Cross-pattern mapping (Aggr↔Aggr, Aggr↔DCB, etc.) — see `event-source-connection-matrix.md`. |
+| [`Mapping_GWT.res`](../../reventless/reventless-gwt/src/Mapping_GWT.res) | `Make(Source, Target, Mapping)` | Cross-pattern mapping (Aggr↔Aggr, Aggr↔DCB, etc.). |
 | [`AutomationSlice_GWT.res`](../../reventless/reventless-gwt/src/AutomationSlice_GWT.res) | `Make(Spec: SliceSpec) → T` | One-arg. Tests `collect`/`resolve`/`process`. |
 | [`InboundTranslationSlice_GWT.res`](../../reventless/reventless-gwt/src/InboundTranslationSlice_GWT.res) | `Make(Spec: SliceSpec) → T` | Sync `translate: externalInput → result<array<(string, command)>, string>`. |
 | [`OutboundTranslationSlice_GWT.res`](../../reventless/reventless-gwt/src/OutboundTranslationSlice_GWT.res) | `Make(Spec: SliceSpec) → T` | Different surface — `collect` + async `whenTranslateMocked` phase + retry assertions. |

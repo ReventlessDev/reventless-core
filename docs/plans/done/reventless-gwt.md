@@ -580,8 +580,6 @@ Smaller than a typical Jest configuration with custom reporters and TAP/JUnit tr
 ## References
 
 - [`docs/analysis/given-when-then-specifications.md`](../../analysis/given-when-then-specifications.md) — full design rationale, alternatives, format specifications.
-- [`docs/analysis/event-source-connection-matrix.md`](../../analysis/event-source-connection-matrix.md) — cross-pattern producer/consumer combinations.
-- [`docs/analysis/event-modeling-comparison.md`](../../analysis/event-modeling-comparison.md) — Event Modeling slice taxonomy.
 - [`docs/guides/aggregate-vs-dcb-decision-guide.md`](../../guides/aggregate-vs-dcb-decision-guide.md) — when to use Aggregate vs DCB.
 - VS Code Test API: https://code.visualstudio.com/api/extension-guides/testing
 - TAP 14 spec: https://testanything.org/tap-version-14-specification.html
