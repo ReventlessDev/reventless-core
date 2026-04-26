@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.32 (2026-04-26)
+
+* refactor(automation)!: drop tagSet and toTags from Mapping API ([c9cd7f2](https://github.com/ReventlessDev/reventless-core/commit/c9cd7f2a1c1758990cb3d83a6876348477fe89d6))
+* feat!: mixed-source AutomationSlice — Plan 04 ([fae3fbf](https://github.com/ReventlessDev/reventless-core/commit/fae3fbf93b12ecf62d0883fe7335ed73c6f52d67))
+### Features
+
+* enable mixed-source ReadModel — Aggregate + DCB projections (Plan 03) ([2a5f9de](https://github.com/ReventlessDev/reventless-core/commit/2a5f9de1df23cac39fc292dbad23cf16ad0aece4))
+* **ppx:** add @[@reventless](https://github.com/reventless).projection / .automation / .translation — Phase 3a of Spec-First series ([d193ae6](https://github.com/ReventlessDev/reventless-core/commit/d193ae64cff93aae2867182641489f17ce4e88d6))
+* **spec:** split slice spec module types — Phase 1 of Spec-First series ([d3b1493](https://github.com/ReventlessDev/reventless-core/commit/d3b149300d09dbac45a5e316343cd79fe2a769e6))
+
+### BREAKING CHANGES
+
+* Mapping/MappingImpl no longer have `type tagSet`
+or `let toTags`. Mappings declared in user code with `type tagSet`
+or `let toTags` need those lines removed. Migrate any toTags
+validation logic to `collect` (filter) or to `@s.matches` /
+`@compositePartitionTag` annotations on the command schema.
+* AutomationSlice.Spec drops consumedEvent;
+AutomationSlice_Builder.Make takes Mappings as 3rd arg; make signature
+swaps ~dcbEventLog for ~allEventTopics + ~context; Plugin_Builder.Spec
+gains platformName. Existing slices need a sibling _Mappings.res file
+and updated Plugin.res (regenerate via prebuild hook).
+
+Tests: 362/362 pass. Build clean, zero warnings.
+
+Plan: docs/plans/done/mixed-source-automationslice.md
+Guide: docs/guides/mixed-source-automationslice.md
+
+
+
 # 3.0.0-alpha.31 (2026-04-22)
 
 ### Bug Fixes

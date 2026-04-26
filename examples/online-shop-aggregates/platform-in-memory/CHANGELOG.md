@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.19 (2026-04-26)
+
+* feat!: mixed-source AutomationSlice — Plan 04 ([fae3fbf](https://github.com/ReventlessDev/reventless-core/commit/fae3fbf93b12ecf62d0883fe7335ed73c6f52d67))
+
+### BREAKING CHANGES
+
+* AutomationSlice.Spec drops consumedEvent;
+AutomationSlice_Builder.Make takes Mappings as 3rd arg; make signature
+swaps ~dcbEventLog for ~allEventTopics + ~context; Plugin_Builder.Spec
+gains platformName. Existing slices need a sibling _Mappings.res file
+and updated Plugin.res (regenerate via prebuild hook).
+
+Tests: 362/362 pass. Build clean, zero warnings.
+
+Plan: docs/plans/done/mixed-source-automationslice.md
+Guide: docs/guides/mixed-source-automationslice.md
+
+
+
 # 1.0.0-alpha.18 (2026-04-24)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-in-memory

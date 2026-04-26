@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.25 (2026-04-26)
+
+### Features
+
+* enable mixed-source ReadModel — Aggregate + DCB projections (Plan 03) ([2a5f9de](https://github.com/ReventlessDev/reventless-core/commit/2a5f9de1df23cac39fc292dbad23cf16ad0aece4))
+
+
 # 3.0.0-alpha.24 (2026-04-24)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.0 (2026-04-26)
+
+### Bug Fixes
+
+* **gwt:** respect [@sub](https://github.com/sub)Id in StateViewSlice_GWT save function ([7173648](https://github.com/ReventlessDev/reventless-core/commit/71736483f84d6c66b24f3a5361aedad12e3135be))
+* feat(gwt)!: rename slice GWT DSLs to short kind names ([4b2e457](https://github.com/ReventlessDev/reventless-core/commit/4b2e45743a777aa85898763db0c5042443b31c97))
+### Features
+
+* **spec:** split slice spec module types — Phase 1 of Spec-First series ([d3b1493](https://github.com/ReventlessDev/reventless-core/commit/d3b149300d09dbac45a5e316343cd79fe2a769e6))
+
+### BREAKING CHANGES
+
+* AutomationSlice_GWT, InboundTranslationSlice_GWT, and
+OutboundTranslationSlice_GWT are renamed without deprecation shims.
+Update explicit include ReventlessGwt.<Old>.Make(...) lines to the new
+short names.
+
+
+
 # 0.1.0-alpha.2 (2026-04-24)
 
 ### Features

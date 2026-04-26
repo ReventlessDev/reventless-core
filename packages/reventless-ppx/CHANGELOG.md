@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.11 (2026-04-26)
+
+* feat(gwt)!: rename slice GWT DSLs to short kind names ([4b2e457](https://github.com/ReventlessDev/reventless-core/commit/4b2e45743a777aa85898763db0c5042443b31c97))
+### Features
+
+* **ppx:** add @[@reventless](https://github.com/reventless).projection / .automation / .translation — Phase 3a of Spec-First series ([d193ae6](https://github.com/ReventlessDev/reventless-core/commit/d193ae64cff93aae2867182641489f17ce4e88d6))
+
+### BREAKING CHANGES
+
+* AutomationSlice_GWT, InboundTranslationSlice_GWT, and
+OutboundTranslationSlice_GWT are renamed without deprecation shims.
+Update explicit include ReventlessGwt.<Old>.Make(...) lines to the new
+short names.
+
+
+
 # 1.0.0-alpha.10 (2026-04-24)
 
 ### Features

@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.70 (2026-04-26)
+
+* feat!: mixed-source AutomationSlice — Plan 04 ([fae3fbf](https://github.com/ReventlessDev/reventless-core/commit/fae3fbf93b12ecf62d0883fe7335ed73c6f52d67))
+### Features
+
+* **core:** convert slice builders to two-arg (Spec, Impl) form — Phase 2 of Spec-First series ([4c994f3](https://github.com/ReventlessDev/reventless-core/commit/4c994f3d62003da26f5fc6a5b2a9fc9264dc241e))
+* **spec:** split slice spec module types — Phase 1 of Spec-First series ([d3b1493](https://github.com/ReventlessDev/reventless-core/commit/d3b149300d09dbac45a5e316343cd79fe2a769e6))
+
+### BREAKING CHANGES
+
+* AutomationSlice.Spec drops consumedEvent;
+AutomationSlice_Builder.Make takes Mappings as 3rd arg; make signature
+swaps ~dcbEventLog for ~allEventTopics + ~context; Plugin_Builder.Spec
+gains platformName. Existing slices need a sibling _Mappings.res file
+and updated Plugin.res (regenerate via prebuild hook).
+
+Tests: 362/362 pass. Build clean, zero warnings.
+
+Plan: docs/plans/done/mixed-source-automationslice.md
+Guide: docs/guides/mixed-source-automationslice.md
+
+
+
 # 3.0.0-alpha.69 (2026-04-24)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
