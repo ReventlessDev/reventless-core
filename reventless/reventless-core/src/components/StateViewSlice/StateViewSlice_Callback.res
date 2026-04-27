@@ -59,6 +59,6 @@ module Make = (
         `skipped=${skipped->Int.toString} events (decode mismatch)`,
       )->Effect.runSync
     }
-    await FrameworkProjection.handleActions(allActions, queryDbOps, None)
+    await FrameworkProjection.handleActions(allActions, queryDbOps, Spec.subIdConfig)
   }
 }

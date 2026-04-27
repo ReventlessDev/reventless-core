@@ -899,38 +899,35 @@ function MakeWithConfig(Config) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
-      let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
-      let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL));
-      let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(platformApiRole, role => role.arn);
-      let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
-        r.eventLog.resources,
-        r.eventLog.eventTopic.resources,
-        r.commandTopic.resources,
-        r.commandGenerator.resources
-      ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
-      Pulumi.all([
-        resolvedDomainApiEndpoint,
-        resolvedDomainApiRoleArn,
-        resolvedPlatformApiEndpoint,
-        resolvedPlatformApiRoleArn,
-        adminResourcesOutput
-      ]).apply(param => {
-        let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
-        hook({
-          name: Pulumi.getProject(),
-          environment: Pulumi.getStack(),
-          region: region,
-          domainApiEndpoint: param[0],
-          domainApiRoleArn: param[1],
-          platformApiEndpoint: param[2],
-          platformApiRoleArn: param[3],
-          adminResources: param[4]
-        });
+    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
+    let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(platformApiRole, role => role.arn);
+    let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
+      r.eventLog.resources,
+      r.eventLog.eventTopic.resources,
+      r.commandTopic.resources,
+      r.commandGenerator.resources
+    ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
+    Pulumi.all([
+      resolvedDomainApiEndpoint,
+      resolvedDomainApiRoleArn,
+      resolvedPlatformApiEndpoint,
+      resolvedPlatformApiRoleArn,
+      adminResourcesOutput
+    ]).apply(param => {
+      let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+      Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+        name: Pulumi.getProject(),
+        environment: Pulumi.getStack(),
+        region: region,
+        domainApiEndpoint: param[0],
+        domainApiRoleArn: param[1],
+        platformApiEndpoint: param[2],
+        platformApiRoleArn: param[3],
+        adminResources: param[4]
       });
-    }
+    });
     return Pulumi$Pulumi.getOutputs();
   };
   let startServers = () => {};
@@ -1776,38 +1773,35 @@ function Make($star) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
-      let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
-      let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL));
-      let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(platformApiRole, role => role.arn);
-      let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
-        r.eventLog.resources,
-        r.eventLog.eventTopic.resources,
-        r.commandTopic.resources,
-        r.commandGenerator.resources
-      ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
-      Pulumi.all([
-        resolvedDomainApiEndpoint,
-        resolvedDomainApiRoleArn,
-        resolvedPlatformApiEndpoint,
-        resolvedPlatformApiRoleArn,
-        adminResourcesOutput
-      ]).apply(param => {
-        let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
-        hook({
-          name: Pulumi.getProject(),
-          environment: Pulumi.getStack(),
-          region: region,
-          domainApiEndpoint: param[0],
-          domainApiRoleArn: param[1],
-          platformApiEndpoint: param[2],
-          platformApiRoleArn: param[3],
-          adminResources: param[4]
-        });
+    let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
+    let resolvedPlatformApiEndpoint = Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL));
+    let resolvedPlatformApiRoleArn = Output$Pulumi.flatMap(platformApiRole, role => role.arn);
+    let adminResourcesOutput = Pulumi.all(Object.values(admin.aggregatesOutputs).map(agg => Aggregate$ReventlessCore.toResolvedOutputs(agg).apply(r => [
+      r.eventLog.resources,
+      r.eventLog.eventTopic.resources,
+      r.commandTopic.resources,
+      r.commandGenerator.resources
+    ].flat())).concat(Object.values(admin.readModelsOutputs).map(rm => ReadModel$ReventlessCore.toResolvedOutputs(rm).apply(r => r.queryDb.resources)))).apply(arrays => arrays.flat());
+    Pulumi.all([
+      resolvedDomainApiEndpoint,
+      resolvedDomainApiRoleArn,
+      resolvedPlatformApiEndpoint,
+      resolvedPlatformApiRoleArn,
+      adminResourcesOutput
+    ]).apply(param => {
+      let region = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+      Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+        name: Pulumi.getProject(),
+        environment: Pulumi.getStack(),
+        region: region,
+        domainApiEndpoint: param[0],
+        domainApiRoleArn: param[1],
+        platformApiEndpoint: param[2],
+        platformApiRoleArn: param[3],
+        adminResources: param[4]
       });
-    }
+    });
     return Pulumi$Pulumi.getOutputs();
   };
   let startServers = () => {};

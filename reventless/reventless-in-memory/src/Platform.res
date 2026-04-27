@@ -902,38 +902,71 @@ module MakeWithConfig = (
     })
   }
 
+  // Extract extension wiring metadata from a plugin's outputs.
+  // Returns an Output so the caller can chain on the resolved value.
+  let extractExtensionWirings = (
+    pluginName: string,
+    pluginVersion: string,
+    pluginOutputs: ReventlessInfra.Plugin.outputs,
+  ): Pulumi.Output.t<array<ReventlessCore.Plugin_Helpers.extensionWiring>> => {
+    pluginOutputs.extensions->Pulumi.Output.apply(exts =>
+      exts
+      ->Dict.valuesToArray
+      ->Array.map((ext: ReventlessInfra.Extension.outputs) => {
+        let providerPlugin =
+          ext.extensionPointName->String.split(".")->Array.getUnsafe(0)
+        let wiring: ReventlessCore.Plugin_Helpers.extensionWiring = {
+          extensionName: ext.name,
+          extensionPointName: ext.extensionPointName,
+          providerPlugin,
+          providerVersion: "",
+          subscriberPlugin: pluginName,
+          subscriberVersion: pluginVersion,
+        }
+        wiring
+      })
+    )
+  }
+
   // Fire onPluginDeployed hooks for each plugin that was built.
   let firePluginDeployedHooks = (
     ~builtInfos: array<ReventlessCore.Plugin_Helpers.pluginBuiltInfo>,
+    ~pluginOutputs=?,
   ) => {
     let environment = Pulumi.Pulumi.getStackName()
-    builtInfos->Array.forEach(info => {
+    builtInfos->Array.forEachWithIndex((info, i) => {
       switch ReventlessCore.Plugin_Helpers.onPluginDeployedHook.contents {
       | Some(hook) =>
-        let deployedInfo: ReventlessCore.Plugin_Helpers.pluginDeployedInfo = {
-          name: info.name,
-          version: info.version,
-          environment,
-          stackName: environment,
-          deployedAt: Date.make()->Date.toISOString,
-          actor: "local",
-          deploymentId: Date.make()->Date.toISOString,
-          kind: ?info.kind,
-          displayName: ?info.displayName,
-          vendor: ?info.vendor,
-          architectureType: ?info.architectureType,
-          components: info.components->Array.map(
-            (c): ReventlessCore.Plugin_Helpers.pluginDeployedComponent => {
-              name: c.name,
-              kind: c.kind,
-              schema: c.schema,
-              resources: [],
-              subComponents: [],
-            },
-          ),
-          extensionWirings: [],
+        let wiringsOutput = switch pluginOutputs->Option.flatMap(arr => arr->Array.get(i)) {
+        | Some(outputs) => extractExtensionWirings(info.name, info.version, outputs)
+        | None => Pulumi.Output.make([])
         }
-        let _ = hook(deployedInfo)
+        let _ = wiringsOutput->Pulumi.Output.apply(wirings => {
+          let deployedInfo: ReventlessCore.Plugin_Helpers.pluginDeployedInfo = {
+            name: info.name,
+            version: info.version,
+            environment,
+            stackName: environment,
+            deployedAt: Date.make()->Date.toISOString,
+            actor: "local",
+            deploymentId: Date.make()->Date.toISOString,
+            kind: ?info.kind,
+            displayName: ?info.displayName,
+            vendor: ?info.vendor,
+            architectureType: ?info.architectureType,
+            components: info.components->Array.map(
+              (c): ReventlessCore.Plugin_Helpers.pluginDeployedComponent => {
+                name: c.name,
+                kind: c.kind,
+                schema: c.schema,
+                resources: [],
+                subComponents: [],
+              },
+            ),
+            extensionWirings: wirings,
+          }
+          let _ = hook(deployedInfo)
+        })
       | None => ()
       }
     })
@@ -957,6 +990,22 @@ module MakeWithConfig = (
         PlatformMCP_Server.printDiagnostics()
       }
     }
+    // Fire onPlatformDeployed after all servers are started so late-deployed
+    // plugins (e.g. PlatformInspector) have their handler refs populated.
+    ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: Pulumi.Pulumi.getStackName(),
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: if Config.splitApi {
+        "http://localhost:4001/graphql"
+      } else {
+        "http://localhost:4000/graphql"
+      },
+      platformApiRoleArn: "in-memory",
+      adminResources: [],
+    })
   }
 
   // -- Admin mutation helpers --------------------------------------------------
@@ -1062,7 +1111,10 @@ module MakeWithConfig = (
     // receiveRegistry entries are pre-populated (queuing forwarder) so calls
     // are parked and drained once bindReceive fires (async, via Output.apply).
     ReventlessCore.Plugin_Helpers.onPluginBuiltHook.contents = existingBuiltHook
-    firePluginDeployedHooks(~builtInfos=builtInfos.contents)
+    let allPluginOutputs = plugins->Array.map(p =>
+      (ReventlessCore.Component.outputs(p): ReventlessInfra.Plugin.outputs)
+    )
+    firePluginDeployedHooks(~builtInfos=builtInfos.contents, ~pluginOutputs=allPluginOutputs)
 
     // Wire cross-plugin Extension → EP EventTopic subscriptions.
     // Each plugin's Extension lists an extensionPointName; the matching EP EventTopic bus key
@@ -1081,20 +1133,16 @@ module MakeWithConfig = (
           })
         })
     })
-    switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
-    | Some(hook) =>
-      hook({
-        name: "in-memory",
-        environment,
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
-        platformApiRoleArn: "in-memory",
-        adminResources: [],
-      })
-    | None => ()
-    }
+    ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
+      name: "in-memory",
+      environment,
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: "http://localhost:4000/graphql",
+      platformApiRoleArn: "in-memory",
+      adminResources: [],
+    })
 
     // Seed the Plugin QueryDb from constructed plugin component outputs.
     // Initializes the store on first call and serializes via PluginReadModelSpec.stateSchema.
@@ -1619,24 +1667,20 @@ module MakeWithConfig = (
     }
 
     // Fire onPlatformDeployed hook with in-memory platform metadata.
-    switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
-    | Some(hook) =>
-      hook({
-        name: "in-memory",
-        environment: "local",
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: if Config.splitApi {
-          "http://localhost:4001/graphql"
-        } else {
-          "http://localhost:4000/graphql"
-        },
-        platformApiRoleArn: "in-memory",
-        adminResources: [],
-      })
-    | None => ()
-    }
+    ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: "local",
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: if Config.splitApi {
+        "http://localhost:4001/graphql"
+      } else {
+        "http://localhost:4000/graphql"
+      },
+      platformApiRoleArn: "in-memory",
+      adminResources: [],
+    })
     Dict.make()
   }
 
@@ -1881,7 +1925,13 @@ module MakeWithConfig = (
     seedPluginStructuresStore(~pluginComponents=[pluginComponent])
 
     // Fire onPluginDeployed hooks so subscribers learn about this plugin.
-    firePluginDeployedHooks(~builtInfos=builtInfos.contents)
+    let deployedPluginOutputs = [(ReventlessCore.Component.outputs(pluginComponent): ReventlessInfra.Plugin.outputs)]
+    firePluginDeployedHooks(~builtInfos=builtInfos.contents, ~pluginOutputs=deployedPluginOutputs)
+
+    // Late-deployed plugins may register an onPlatformDeployed hook that missed
+    // the original firing in makePlatform. Replay the stored info so they
+    // receive the platform metadata they need.
+    ReventlessCore.Plugin_Helpers.replayPlatformDeployedHook()
 
     // In unified mode, start servers immediately (backwards-compatible).
     // In split mode, start() is deferred to startServers().

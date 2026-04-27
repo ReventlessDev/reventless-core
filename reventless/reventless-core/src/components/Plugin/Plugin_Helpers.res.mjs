@@ -310,12 +310,33 @@ let onPlatformDeployedHook = {
   contents: undefined
 };
 
+let lastPlatformDeployedInfo = {
+  contents: undefined
+};
+
 function registerOnPlatformDeployed(hook) {
   onPlatformDeployedHook.contents = hook;
 }
 
+function firePlatformDeployedHook(info) {
+  lastPlatformDeployedInfo.contents = info;
+  let hook = onPlatformDeployedHook.contents;
+  if (hook !== undefined) {
+    return hook(info);
+  }
+}
+
+function replayPlatformDeployedHook() {
+  let match = onPlatformDeployedHook.contents;
+  let match$1 = lastPlatformDeployedInfo.contents;
+  if (match !== undefined && match$1 !== undefined) {
+    return match(match$1);
+  }
+}
+
 function clearOnPlatformDeployed() {
   onPlatformDeployedHook.contents = undefined;
+  lastPlatformDeployedInfo.contents = undefined;
 }
 
 let queryFieldNamesRegistry = {};
@@ -828,7 +849,10 @@ export {
   registerOnPluginDeployed,
   clearOnPluginDeployed,
   onPlatformDeployedHook,
+  lastPlatformDeployedInfo,
   registerOnPlatformDeployed,
+  firePlatformDeployedHook,
+  replayPlatformDeployedHook,
   clearOnPlatformDeployed,
   queryFieldNamesRegistry,
   aggregateMutationFieldsRegistry,

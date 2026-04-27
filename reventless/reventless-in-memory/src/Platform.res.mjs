@@ -917,45 +917,59 @@ function MakeWithConfig(Config) {
       });
     });
   };
-  let firePluginDeployedHooks = builtInfos => {
+  let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
+    let providerPlugin = ext.extensionPointName.split(".")[0];
+    return {
+      extensionName: ext.name,
+      extensionPointName: ext.extensionPointName,
+      providerPlugin: providerPlugin,
+      providerVersion: "",
+      subscriberPlugin: pluginName,
+      subscriberVersion: pluginVersion
+    };
+  }));
+  let firePluginDeployedHooks = (builtInfos, pluginOutputs) => {
     let environment = Pulumi.getStack();
-    builtInfos.forEach(info => {
+    builtInfos.forEach((info, i) => {
       let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
       if (hook === undefined) {
         return;
       }
-      let deployedInfo_name = info.name;
-      let deployedInfo_version = info.version;
-      let deployedInfo_deployedAt = new Date().toISOString();
-      let deployedInfo_deploymentId = new Date().toISOString();
-      let deployedInfo_kind = info.kind;
-      let deployedInfo_displayName = info.displayName;
-      let deployedInfo_vendor = info.vendor;
-      let deployedInfo_architectureType = info.architectureType;
-      let deployedInfo_components = info.components.map(c => ({
-        name: c.name,
-        kind: c.kind,
-        schema: c.schema,
-        resources: [],
-        subComponents: []
-      }));
-      let deployedInfo_extensionWirings = [];
-      let deployedInfo = {
-        name: deployedInfo_name,
-        version: deployedInfo_version,
-        environment: environment,
-        stackName: environment,
-        deployedAt: deployedInfo_deployedAt,
-        actor: "local",
-        deploymentId: deployedInfo_deploymentId,
-        kind: deployedInfo_kind,
-        displayName: deployedInfo_displayName,
-        vendor: deployedInfo_vendor,
-        architectureType: deployedInfo_architectureType,
-        components: deployedInfo_components,
-        extensionWirings: deployedInfo_extensionWirings
-      };
-      hook(deployedInfo);
+      let outputs = Stdlib_Option.flatMap(pluginOutputs, arr => arr[i]);
+      let wiringsOutput = outputs !== undefined ? extractExtensionWirings(info.name, info.version, outputs) : Pulumi.output([]);
+      wiringsOutput.apply(wirings => {
+        let deployedInfo_name = info.name;
+        let deployedInfo_version = info.version;
+        let deployedInfo_deployedAt = new Date().toISOString();
+        let deployedInfo_deploymentId = new Date().toISOString();
+        let deployedInfo_kind = info.kind;
+        let deployedInfo_displayName = info.displayName;
+        let deployedInfo_vendor = info.vendor;
+        let deployedInfo_architectureType = info.architectureType;
+        let deployedInfo_components = info.components.map(c => ({
+          name: c.name,
+          kind: c.kind,
+          schema: c.schema,
+          resources: [],
+          subComponents: []
+        }));
+        let deployedInfo = {
+          name: deployedInfo_name,
+          version: deployedInfo_version,
+          environment: environment,
+          stackName: environment,
+          deployedAt: deployedInfo_deployedAt,
+          actor: "local",
+          deploymentId: deployedInfo_deploymentId,
+          kind: deployedInfo_kind,
+          displayName: deployedInfo_displayName,
+          vendor: deployedInfo_vendor,
+          architectureType: deployedInfo_architectureType,
+          components: deployedInfo_components,
+          extensionWirings: wirings
+        };
+        hook(deployedInfo);
+      });
     });
   };
   let startServers = () => {
@@ -970,11 +984,19 @@ function MakeWithConfig(Config) {
       DomainMCP_Server$ReventlessInMemory.printDiagnostics();
       if (Config.splitApi) {
         PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
-        return PlatformMCP_Server$ReventlessInMemory.printDiagnostics();
-      } else {
-        return;
+        PlatformMCP_Server$ReventlessInMemory.printDiagnostics();
       }
     }
+    Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: Pulumi.getStack(),
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: Config.splitApi ? "http://localhost:4001/graphql" : "http://localhost:4000/graphql",
+      platformApiRoleArn: "in-memory",
+      adminResources: []
+    });
   };
   let adminMutationSdl = mutations => mutations.map(field => {
     let suffix = ": String!";
@@ -1070,7 +1092,8 @@ function MakeWithConfig(Config) {
     });
     let plugins$1 = plugins.map(plugin => plugin.make());
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
-    firePluginDeployedHooks(builtInfos.contents);
+    let allPluginOutputs = plugins$1.map(Component$ReventlessCore.outputs);
+    firePluginDeployedHooks(builtInfos.contents, allPluginOutputs);
     plugins$1.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
@@ -1084,19 +1107,16 @@ function MakeWithConfig(Config) {
         });
       });
     });
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      hook({
-        name: "in-memory",
-        environment: environment,
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
-        platformApiRoleArn: "in-memory",
-        adminResources: []
-      });
-    }
+    Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: environment,
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: "http://localhost:4000/graphql",
+      platformApiRoleArn: "in-memory",
+      adminResources: []
+    });
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
@@ -1619,19 +1639,16 @@ function MakeWithConfig(Config) {
       DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
       DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     }
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      hook({
-        name: "in-memory",
-        environment: "local",
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: Config.splitApi ? "http://localhost:4001/graphql" : "http://localhost:4000/graphql",
-        platformApiRoleArn: "in-memory",
-        adminResources: []
-      });
-    }
+    Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: "local",
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: Config.splitApi ? "http://localhost:4001/graphql" : "http://localhost:4000/graphql",
+      platformApiRoleArn: "in-memory",
+      adminResources: []
+    });
     return {};
   };
   let deployPlugin = (version, plugin, apiTargetOpt) => {
@@ -1904,7 +1921,9 @@ function MakeWithConfig(Config) {
     seedPluginQueryDb([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
     seedPluginStructuresStore([pluginComponent]);
-    firePluginDeployedHooks(builtInfos.contents);
+    let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
+    firePluginDeployedHooks(builtInfos.contents, deployedPluginOutputs);
+    Plugin_Helpers$ReventlessCore.replayPlatformDeployedHook();
     if (!Config.splitApi) {
       if (apiTarget === "Domain") {
         DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
@@ -2777,45 +2796,59 @@ function Make($star) {
       });
     });
   };
-  let firePluginDeployedHooks = builtInfos => {
+  let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
+    let providerPlugin = ext.extensionPointName.split(".")[0];
+    return {
+      extensionName: ext.name,
+      extensionPointName: ext.extensionPointName,
+      providerPlugin: providerPlugin,
+      providerVersion: "",
+      subscriberPlugin: pluginName,
+      subscriberVersion: pluginVersion
+    };
+  }));
+  let firePluginDeployedHooks = (builtInfos, pluginOutputs) => {
     let environment = Pulumi.getStack();
-    builtInfos.forEach(info => {
+    builtInfos.forEach((info, i) => {
       let hook = Plugin_Helpers$ReventlessCore.onPluginDeployedHook.contents;
       if (hook === undefined) {
         return;
       }
-      let deployedInfo_name = info.name;
-      let deployedInfo_version = info.version;
-      let deployedInfo_deployedAt = new Date().toISOString();
-      let deployedInfo_deploymentId = new Date().toISOString();
-      let deployedInfo_kind = info.kind;
-      let deployedInfo_displayName = info.displayName;
-      let deployedInfo_vendor = info.vendor;
-      let deployedInfo_architectureType = info.architectureType;
-      let deployedInfo_components = info.components.map(c => ({
-        name: c.name,
-        kind: c.kind,
-        schema: c.schema,
-        resources: [],
-        subComponents: []
-      }));
-      let deployedInfo_extensionWirings = [];
-      let deployedInfo = {
-        name: deployedInfo_name,
-        version: deployedInfo_version,
-        environment: environment,
-        stackName: environment,
-        deployedAt: deployedInfo_deployedAt,
-        actor: "local",
-        deploymentId: deployedInfo_deploymentId,
-        kind: deployedInfo_kind,
-        displayName: deployedInfo_displayName,
-        vendor: deployedInfo_vendor,
-        architectureType: deployedInfo_architectureType,
-        components: deployedInfo_components,
-        extensionWirings: deployedInfo_extensionWirings
-      };
-      hook(deployedInfo);
+      let outputs = Stdlib_Option.flatMap(pluginOutputs, arr => arr[i]);
+      let wiringsOutput = outputs !== undefined ? extractExtensionWirings(info.name, info.version, outputs) : Pulumi.output([]);
+      wiringsOutput.apply(wirings => {
+        let deployedInfo_name = info.name;
+        let deployedInfo_version = info.version;
+        let deployedInfo_deployedAt = new Date().toISOString();
+        let deployedInfo_deploymentId = new Date().toISOString();
+        let deployedInfo_kind = info.kind;
+        let deployedInfo_displayName = info.displayName;
+        let deployedInfo_vendor = info.vendor;
+        let deployedInfo_architectureType = info.architectureType;
+        let deployedInfo_components = info.components.map(c => ({
+          name: c.name,
+          kind: c.kind,
+          schema: c.schema,
+          resources: [],
+          subComponents: []
+        }));
+        let deployedInfo = {
+          name: deployedInfo_name,
+          version: deployedInfo_version,
+          environment: environment,
+          stackName: environment,
+          deployedAt: deployedInfo_deployedAt,
+          actor: "local",
+          deploymentId: deployedInfo_deploymentId,
+          kind: deployedInfo_kind,
+          displayName: deployedInfo_displayName,
+          vendor: deployedInfo_vendor,
+          architectureType: deployedInfo_architectureType,
+          components: deployedInfo_components,
+          extensionWirings: wirings
+        };
+        hook(deployedInfo);
+      });
     });
   };
   let startServers = () => {
@@ -2827,8 +2860,18 @@ function Make($star) {
       DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
       DomainMCP_Server$ReventlessInMemory.printDiagnostics();
       PlatformGraphQL_Server$ReventlessInMemory.printDiagnostics();
-      return PlatformMCP_Server$ReventlessInMemory.printDiagnostics();
+      PlatformMCP_Server$ReventlessInMemory.printDiagnostics();
     }
+    Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: Pulumi.getStack(),
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: "http://localhost:4001/graphql",
+      platformApiRoleArn: "in-memory",
+      adminResources: []
+    });
   };
   let adminMutationSdl = mutations => mutations.map(field => {
     let suffix = ": String!";
@@ -2924,7 +2967,8 @@ function Make($star) {
     });
     let plugins$1 = plugins.map(plugin => plugin.make());
     Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents = existingBuiltHook;
-    firePluginDeployedHooks(builtInfos.contents);
+    let allPluginOutputs = plugins$1.map(Component$ReventlessCore.outputs);
+    firePluginDeployedHooks(builtInfos.contents, allPluginOutputs);
     plugins$1.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
@@ -2938,19 +2982,16 @@ function Make($star) {
         });
       });
     });
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      hook({
-        name: "in-memory",
-        environment: environment,
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4000/graphql",
-        platformApiRoleArn: "in-memory",
-        adminResources: []
-      });
-    }
+    Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: environment,
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: "http://localhost:4000/graphql",
+      platformApiRoleArn: "in-memory",
+      adminResources: []
+    });
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
@@ -3465,19 +3506,16 @@ function Make($star) {
     adminMCP.start(3002, undefined);
     DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
-    let hook = Plugin_Helpers$ReventlessCore.onPlatformDeployedHook.contents;
-    if (hook !== undefined) {
-      hook({
-        name: "in-memory",
-        environment: "local",
-        region: "local",
-        domainApiEndpoint: "http://localhost:4000/graphql",
-        domainApiRoleArn: "in-memory",
-        platformApiEndpoint: "http://localhost:4001/graphql",
-        platformApiRoleArn: "in-memory",
-        adminResources: []
-      });
-    }
+    Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
+      name: "in-memory",
+      environment: "local",
+      region: "local",
+      domainApiEndpoint: "http://localhost:4000/graphql",
+      domainApiRoleArn: "in-memory",
+      platformApiEndpoint: "http://localhost:4001/graphql",
+      platformApiRoleArn: "in-memory",
+      adminResources: []
+    });
     return {};
   };
   let deployPlugin = (version, plugin, apiTargetOpt) => {
@@ -3750,7 +3788,9 @@ function Make($star) {
     seedPluginQueryDb([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
     seedPluginStructuresStore([pluginComponent]);
-    firePluginDeployedHooks(builtInfos.contents);
+    let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
+    firePluginDeployedHooks(builtInfos.contents, deployedPluginOutputs);
+    Plugin_Helpers$ReventlessCore.replayPlatformDeployedHook();
     return {};
   };
   let Counter_make = Counter.make;

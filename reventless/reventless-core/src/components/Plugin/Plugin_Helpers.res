@@ -510,12 +510,30 @@ type platformDeployedInfo = {
 
 let onPlatformDeployedHook: ref<option<platformDeployedInfo => unit>> = ref(None)
 
+let lastPlatformDeployedInfo: ref<option<platformDeployedInfo>> = ref(None)
+
 let registerOnPlatformDeployed = (hook: platformDeployedInfo => unit) => {
   onPlatformDeployedHook.contents = Some(hook)
 }
 
+let firePlatformDeployedHook = (info: platformDeployedInfo) => {
+  lastPlatformDeployedInfo.contents = Some(info)
+  switch onPlatformDeployedHook.contents {
+  | Some(hook) => hook(info)
+  | None => ()
+  }
+}
+
+let replayPlatformDeployedHook = () => {
+  switch (onPlatformDeployedHook.contents, lastPlatformDeployedInfo.contents) {
+  | (Some(hook), Some(info)) => hook(info)
+  | _ => ()
+  }
+}
+
 let clearOnPlatformDeployed = () => {
   onPlatformDeployedHook.contents = None
+  lastPlatformDeployedInfo.contents = None
 }
 
 // Resolver error hook has moved to Plugin_ResolverError to keep it on the

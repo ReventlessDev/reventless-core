@@ -1317,71 +1317,66 @@ module MakeWithConfig = (
     )
 
     // Fire onPlatformDeployed hook with resolved platform metadata.
-    switch ReventlessCore.Plugin_Helpers.onPlatformDeployedHook.contents {
-    | Some(hook) =>
-      let resolvedDomainApiEndpoint = domainApi->Pulumi.Output.flatMap(api =>
-        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+    let resolvedDomainApiEndpoint = domainApi->Pulumi.Output.flatMap(api =>
+      api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+    )
+    let resolvedDomainApiRoleArn = domainApiRole->Pulumi.Output.flatMap(role => role.arn)
+    let resolvedPlatformApiEndpoint = platformApi->Pulumi.Output.flatMap(api =>
+      api.uris->Pulumi.Output.apply(uris => uris.graphQL)
+    )
+    let resolvedPlatformApiRoleArn = platformApiRole->Pulumi.Output.flatMap(role => role.arn)
+    // Collect admin aggregate + read model resources.
+    let adminResourcesOutput =
+      admin.aggregatesOutputs
+      ->Dict.valuesToArray
+      ->Array.map(agg =>
+        agg
+        ->ReventlessCore.Aggregate.toResolvedOutputs
+        ->Pulumi.Output.apply((r: ReventlessInterop.Aggregate.resolvedOutputs) =>
+          Array.flat([
+            r.eventLog.resources,
+            r.eventLog.eventTopic.resources,
+            r.commandTopic.resources,
+            r.commandGenerator.resources,
+          ])
+        )
       )
-      let resolvedDomainApiRoleArn = domainApiRole->Pulumi.Output.flatMap(role => role.arn)
-      let resolvedPlatformApiEndpoint = platformApi->Pulumi.Output.flatMap(api =>
-        api.uris->Pulumi.Output.apply(uris => uris.graphQL)
-      )
-      let resolvedPlatformApiRoleArn = platformApiRole->Pulumi.Output.flatMap(role => role.arn)
-      // Collect admin aggregate + read model resources.
-      let adminResourcesOutput =
-        admin.aggregatesOutputs
+      ->Array.concat(
+        admin.readModelsOutputs
         ->Dict.valuesToArray
-        ->Array.map(agg =>
-          agg
-          ->ReventlessCore.Aggregate.toResolvedOutputs
-          ->Pulumi.Output.apply((r: ReventlessInterop.Aggregate.resolvedOutputs) =>
-            Array.flat([
-              r.eventLog.resources,
-              r.eventLog.eventTopic.resources,
-              r.commandTopic.resources,
-              r.commandGenerator.resources,
-            ])
+        ->Array.map(rm =>
+          rm
+          ->ReventlessCore.ReadModel.toResolvedOutputs
+          ->Pulumi.Output.apply((r: ReventlessInterop.ReadModel.resolvedOutputs) =>
+            r.queryDb.resources
           )
-        )
-        ->Array.concat(
-          admin.readModelsOutputs
-          ->Dict.valuesToArray
-          ->Array.map(rm =>
-            rm
-            ->ReventlessCore.ReadModel.toResolvedOutputs
-            ->Pulumi.Output.apply((r: ReventlessInterop.ReadModel.resolvedOutputs) =>
-              r.queryDb.resources
-            )
-          ),
-        )
-        ->Pulumi.Output.all
-        ->Pulumi.Output.apply(arrays => Array.flat(arrays))
-      let _ =
-        (
-          resolvedDomainApiEndpoint,
-          resolvedDomainApiRoleArn,
-          resolvedPlatformApiEndpoint,
-          resolvedPlatformApiRoleArn,
-          adminResourcesOutput,
-        )
-        ->Pulumi.Output.all5
-        ->Pulumi.Output.apply(((domainApiEndpoint, domainApiRoleArn, platformApiEndpoint, platformApiRoleArn, adminResources)) => {
-          let region =
-            Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
-          let info: ReventlessCore.Plugin_Helpers.platformDeployedInfo = {
-            name: Pulumi.Pulumi.getProjectName(),
-            environment: Pulumi.Pulumi.getStackName(),
-            region,
-            domainApiEndpoint,
-            domainApiRoleArn,
-            platformApiEndpoint,
-            platformApiRoleArn,
-            adminResources,
-          }
-          hook(info)
+        ),
+      )
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(arrays => Array.flat(arrays))
+    let _ =
+      (
+        resolvedDomainApiEndpoint,
+        resolvedDomainApiRoleArn,
+        resolvedPlatformApiEndpoint,
+        resolvedPlatformApiRoleArn,
+        adminResourcesOutput,
+      )
+      ->Pulumi.Output.all5
+      ->Pulumi.Output.apply(((domainApiEndpoint, domainApiRoleArn, platformApiEndpoint, platformApiRoleArn, adminResources)) => {
+        let region =
+          Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
+        ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
+          name: Pulumi.Pulumi.getProjectName(),
+          environment: Pulumi.Pulumi.getStackName(),
+          region,
+          domainApiEndpoint,
+          domainApiRoleArn,
+          platformApiEndpoint,
+          platformApiRoleArn,
+          adminResources,
         })
-    | None => ()
-    }
+      })
     Pulumi.Pulumi.getOutputs()
   }
 
