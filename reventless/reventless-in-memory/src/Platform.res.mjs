@@ -1068,6 +1068,12 @@ function MakeWithConfig(Config) {
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
+    let match = Config.backend;
+    let tmp;
+    tmp = typeof match !== "object" ? "backend: memory" : `backend: sqlite (` + match.path + (
+        match.resetOnStart ? ", resetOnStart" : ""
+      ) + `)`;
+    log.info("Platform", undefined, tmp);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -2943,6 +2949,11 @@ function Make($star) {
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
+    let tmp;
+    tmp = typeof backend !== "object" ? "backend: memory" : `backend: sqlite (` + backend.path + (
+        backend.resetOnStart ? ", resetOnStart" : ""
+      ) + `)`;
+    log.info("Platform", undefined, tmp);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {

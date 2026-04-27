@@ -1061,6 +1061,14 @@ module MakeWithConfig = (
       ~comp="Platform",
       `silent: ${Config.silent->Bool.toString}, splitApi: ${Config.splitApi->Bool.toString}, cloner: ${Config.cloner->Bool.toString}`,
     )
+    log.info(
+      ~comp="Platform",
+      switch Config.backend {
+      | Backend.Memory => "backend: memory"
+      | Backend.Sqlite({path, resetOnStart}) =>
+        `backend: sqlite (${path}${resetOnStart ? ", resetOnStart" : ""})`
+      },
+    )
     // Create scheduler and populate platform context refs.
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
