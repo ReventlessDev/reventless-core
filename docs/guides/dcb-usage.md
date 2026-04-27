@@ -458,12 +458,12 @@ switch Reventless.DcbValidation.validateProducedAndConsumed(~produced, ~consumed
 
 // 2-4. Create shared resources
 let partitionTag = Reventless.DcbTag.derivePartitionTag(producedSchemas)
-module DcbEventLogMaker = DcbEventLog_Builder.Make(DcbEventLogStorage, DcbEventTopicPublisher)
-let dcbEventLog = DcbEventLogMaker.make(~name, ~indexes, ~partitionTag, ~opts)
+module DcbEventLog = DcbEventLog_Builder.Make(DcbEventLogStorage, DcbEventTopicPublisher)
+let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~partitionTag, ~opts)
 
 // 5. Sync CommandTopic (standard SQS) — always created
-module DcbCommandTopicMaker = CommandTopic_Builder.Make(DcbCommandTopicSpec, DcbCommandTopicChannel)
-let dcbCommandTopic = DcbCommandTopicMaker.make(~name=`${childName}-dcb-command-topic`, ~opts)
+module DcbCommandTopic = CommandTopic_Builder.Make(DcbCommandTopicSpec, DcbCommandTopicChannel)
+let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
 
 let publishJsons =
   dcbCommandTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
@@ -474,9 +474,9 @@ let asyncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)
 
 // 6. Async CommandTopic (FIFO SQS) — only created if any MakeAsync slices present
 module DcbCommandTopicSpecAsync = { let name = childName ++ "Async"; @schema type command = JSON.t }
-module DcbAsyncCommandTopicMaker = CommandTopic_Builder.Make(DcbCommandTopicSpecAsync, DcbCommandTopicChannelAsync)
+module DcbAsyncCommandTopic = CommandTopic_Builder.Make(DcbCommandTopicSpecAsync, DcbCommandTopicChannelAsync)
 let asyncDcbCommandTopicOpt = if asyncSlices->Array.length > 0 {
-  Some(DcbAsyncCommandTopicMaker.make(~name=`${childName}-dcb-async-command-topic`, ~opts))
+  Some(DcbAsyncCommandTopic.make(~name=`${childName}-dcb-async-command-topic`, ~opts))
 } else { None }
 
 // 7. Each sync StateChangeSlice.make registers its handler in the global registry
@@ -498,11 +498,11 @@ stateViewSlices->Array.map((module(Slice: StateViewSlice.T)) => {
 })
 
 // 11-12. One Lambda per CommandTopic
-let dcbHandler = DcbCommandTopicMaker.makeFilteringHandler(dcbCommandTopic)
+let dcbHandler = DcbCommandTopic.makeFilteringHandler(dcbCommandTopic)
 let dcbRuntimeSetup = () => {
   dcbCommandTopic->PluginRuntimeBuilder.forDcbCommandTopic(~handler=dcbHandler, ~connect=dcbConnectFn)
   asyncDcbCommandTopicOpt->Option.forEach(asyncTopic => {
-    let asyncHandler = DcbAsyncCommandTopicMaker.makeFilteringHandler(asyncTopic)
+    let asyncHandler = DcbAsyncCommandTopic.makeFilteringHandler(asyncTopic)
     asyncTopic->PluginRuntimeBuilder.forDcbCommandTopic(~handler=asyncHandler->Obj.magic, ~connect=asyncConnectFn)
   })
 }

@@ -470,11 +470,11 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
-  module ProductsExtensionPointMaker =
+  module ProductsExtensionPoint =
     Platform.ExtensionPoint.Make(ProductsEPMappings)
 
   // ── Extension (inbound — subscribing to another plugin's EP) ───────
-  module OrdersExtensionMaker =
+  module OrdersExtension =
     Platform.Extension.Make(OrdersExtension.Mappings)
 }
 ```
@@ -483,9 +483,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
 ```rescript
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-
-  // ── Shared DCB event log ───────────────────────────────────────────
-  module CatalogEventLogMaker = Platform.DcbEventLog.Make(CatalogEventLog)
 
   // ── State Change Slices (write side) ──────────────────────────────
   module AddProductSlice          = Platform.StateChangeSlice.Make(AddProduct)
@@ -506,15 +503,15 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
     let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
   }
-  module ProductsExtensionPointMaker =
+  module ProductsExtensionPoint =
     Platform.ExtensionPoint.Make(ProductsEPMappings)
 
   // ── Extension (inbound) ────────────────────────────────────────────
-  module OrdersExtensionMaker =
+  module OrdersExtension =
     Platform.Extension.Make(OrdersExtension.Mappings)
 
-  // ── DCB Spec (collected for the Plugin builder) ────────────────────
-  module DcbSpec = CatalogEventLog
+  // The DCB event log itself is created internally by the platform from the
+  // registered slices; plugins do not declare a `DcbEventLog.Make` module.
 }
 ```
 

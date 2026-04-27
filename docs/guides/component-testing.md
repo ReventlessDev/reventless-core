@@ -69,7 +69,7 @@ let _ = beforeEach(() => mock.reset())
 
 ```rescript
 let _ = beforeAllAsync(async () => {
-  let _ = await component->Maker.operations->TestRunner.resolve
+  let _ = await component->ReventlessCore.Component.operations->TestRunner.resolve
   // Some components need a second resolve to register inner subscriptions
   let _ = await topicResource.name->TestRunner.resolve
 })

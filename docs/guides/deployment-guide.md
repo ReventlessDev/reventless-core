@@ -277,6 +277,12 @@ config:
 
 The branch name determines the environment: push to `alpha` uses `Pulumi.alpha.yaml`, push to `main` uses `Pulumi.main.yaml`. If no matching file exists, no deployment occurs.
 
+#### Plugin UI bundle URL (optional)
+
+Plugins with aggregates or read models accept an optional UI bundle URL — the location of the Module-Federation remote that exposes the plugin's React components for the platform shell. The generated AWS `Plugin.res` reads `<PLUGIN>_UI_BUNDLE_URL` from `process.env` (PascalCase plugin name → SCREAMING_SNAKE_CASE: `Catalog` → `CATALOG_UI_BUNDLE_URL`). Unset → no UI fragments are registered for that plugin.
+
+Set it on the deployed Lambda by adding the env var to the Pulumi stack config and threading it through to the plugin's deploy step. The same env-var name is consumed by the in-memory dev platform, so a single setting works for both deploy paths. See `platform-and-plugin-guide.md` → AutoUI for the runtime mechanics.
+
 ### 4g. Create `deploy-manifest.yaml` at the project root
 
 This manifest tells the GitHub Actions workflow which stacks exist and their deployment order:

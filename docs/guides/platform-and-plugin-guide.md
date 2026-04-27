@@ -638,7 +638,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CategoriesProjectionsWrapper: Mappings with module Target := CategoriesReadModel = {
     let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
   }
-  module CategoriesReadModelMaker = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
+  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
 
   @reventless.projections
   module ProductDemandProjectionsWrapper: Mappings with module Target := ProductDemandReadModel = {
@@ -647,33 +647,36 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       module(ProductDemandProjections.ProductDemandMapping),
     ]
   }
-  module ProductDemandReadModelMaker = Platform.ReadModel.Make(ProductDemandReadModel, ProductDemandProjectionsWrapper)
+  module ProductDemandReadModel = Platform.ReadModel.Make(ProductDemandReadModel, ProductDemandProjectionsWrapper)
 
   // ExtensionPoints
-  module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
+  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
 
   // Extensions
-  module OrdersExtensionMaker = Platform.Extension.Make(OrdersExtension.Mapping)
+  module OrdersExtension = Platform.Extension.Make(OrdersExtension.Mapping)
 
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
-  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(
-    ~name="Catalog",
-    ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-    ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), ...],
-  )
-
-  let make = () =>
+  let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPointMaker)],
-      ~extensions=[module(OrdersExtensionMaker)],
+      ~extensionPoints=[module(ProductsExtensionPoint)],
+      ~extensions=[module(OrdersExtension)],
       ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-      ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), ...],
+      ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), ...],
       ~tasks=[module(ImportProductsTask)],
-      ~uiDefinition=uiDefinition,
+      ~uiFragments=?uiBundleUrl->Option.map(url =>
+        Platform.Plugin.makeAutoUIManifest(
+          ~remoteEntryUrl=url,
+          ~name="Catalog",
+          ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
+          ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), ...],
+          ~readModelPositions=["platform-summary"],
+          ~aggregatePositions=["resource-detail"],
+        )
+      ),
     )
 }
 ```
@@ -902,27 +905,21 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // ... more views ...
 
   // ── Extension Point (outbound) ──────────────────────────────
-  module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
+  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(
     ProductsExtensionPointMapping,
   )
 
   // ── Extension (inbound from Ordering) ───────────────────────
-  module OrdersExtensionMaker = Platform.Extension.Make(
+  module OrdersExtension = Platform.Extension.Make(
     OrdersExtension.Mapping,
-  )
-
-  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(
-    ~name="Catalog",
-    ~stateViewSlices=[module(ProductsViewSlice), ...],
-    ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductNameSlice), ...],
   )
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPointMaker)],
-      ~extensions=[module(OrdersExtensionMaker)],
+      ~extensionPoints=[module(ProductsExtensionPoint)],
+      ~extensions=[module(OrdersExtension)],
       ~stateChangeSlices=[
         module(AddProductSlice),
         module(ChangeProductNameSlice),
@@ -932,7 +929,6 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(ProductsViewSlice),
         // ... all view slices ...
       ],
-      ~uiDefinition=uiDefinition,
     )
 }
 ```
@@ -1119,7 +1115,7 @@ A hybrid plugin passes both `~aggregates` and DCB slice arrays to `Plugin.make`:
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // --- Aggregate-based: Category (independent entity) ---
   module CategoryAggregate = Platform.Aggregate.Make(Category, CategoryBehavior)
-  module CategoriesReadModelMaker = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjections)
+  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjections)
 
   // --- DCB-based: Product + ProductDemand (cross-entity consistency) ---
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
@@ -1129,21 +1125,13 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
   module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
 
-  let uiDefinition = Platform.Plugin.makeAutoUIDefinition(
-    ~name="Catalog",
-    ~aggregates=[module(CategoryAggregate)],
-    ~readModels=[module(CategoriesReadModelMaker)],
-    ~stateViewSlices=[module(ProductsViewSlice), module(ProductDemandViewSlice)],
-    ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductNameSlice)],
-  )
-
-  let make = () =>
+  let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
       ~aggregates=[module(CategoryAggregate)],        // Aggregate components
-      ~readModels=[module(CategoriesReadModelMaker)],  // Aggregate read models
-      ~stateChangeSlices=[                             // DCB slices
+      ~readModels=[module(CategoriesReadModel)],      // Aggregate read models
+      ~stateChangeSlices=[                            // DCB slices
         module(AddProductSlice),
         module(ChangeProductNameSlice),
       ],
@@ -1151,7 +1139,16 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(ProductsViewSlice),
         module(ProductDemandViewSlice),
       ],
-      ~uiDefinition=uiDefinition,
+      ~uiFragments=?uiBundleUrl->Option.map(url =>
+        Platform.Plugin.makeAutoUIManifest(
+          ~remoteEntryUrl=url,
+          ~name="Catalog",
+          ~aggregates=[module(CategoryAggregate)],
+          ~readModels=[module(CategoriesReadModel)],
+          ~readModelPositions=["platform-summary"],
+          ~aggregatePositions=["resource-detail"],
+        )
+      ),
     )
 }
 ```
@@ -1469,56 +1466,85 @@ These aggregates:
 
 ## AutoUI
 
-AutoUI derives a runtime UI from plugin metadata — no frontend code required. The platform's dev-app uses it to render list views, detail views, and command forms for every plugin component.
+AutoUI publishes a runtime UI manifest from plugin metadata so the platform's UI shell can mount the plugin's React components without any hardcoded imports. The plugin packages its UI as a Module-Federation remote bundle; the platform asks each connected plugin for the bundle URL and the list of components to mount.
 
 ### How it's enabled
 
-AutoUI is enabled automatically. The `generate-plugin` code generator detects which component types are present and emits a `let uiDefinition` block in the generated `Plugin.res`:
+When a plugin has at least one aggregate or read model, the `generate-plugin` code generator emits an optional `~uiBundleUrl=?` parameter on the plugin's `make` and wires the conditional manifest:
 
 ```rescript
-let uiDefinition = Platform.Plugin.makeAutoUIDefinition(
-  ~name="Catalog",
-  ~aggregates=[module(CategoryAggregate)],
-  ~readModels=[module(CategoriesReadModelMaker)],
-  ~stateViewSlices=[module(ProductDemandViewSlice), module(ProductsViewSlice)],
-  ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductNameSlice), ...],
-)
+let make = (~uiBundleUrl=?) =>
+  Platform.Plugin.make(
+    ~name="Catalog",
+    ~heartbeatInterval=60,
+    ~aggregates=[module(CategoryAggregate)],
+    ~readModels=[module(CategoriesReadModel)],
+    // ... other params ...
+    ~uiFragments=?uiBundleUrl->Option.map(url =>
+      Platform.Plugin.makeAutoUIManifest(
+        ~remoteEntryUrl=url,
+        ~name="Catalog",
+        ~aggregates=[module(CategoryAggregate)],
+        ~readModels=[module(CategoriesReadModel)],
+        ~readModelPositions=["platform-summary"],
+        ~aggregatePositions=["resource-detail"],
+      )
+    ),
+  )
 ```
 
-This value is passed to `Platform.Plugin.make()` via `~uiDefinition=uiDefinition`. The generator omits `uiDefinition` entirely for plugins that have none of these component types.
+When `uiBundleUrl` is `None` (the default), `~uiFragments` is `None` and the plugin connects without a UI manifest — the platform shell shows nothing for it. When set, `makeAutoUIManifest` builds a `uiFragmentManifest` with the bundle's remote-entry URL and the list of components to mount in each shell slot. Plugins with neither aggregates nor read models get a plain `make = ()` with no UI parameter.
+
+### Supplying `uiBundleUrl` per deployment
+
+The bundle URL is deployment configuration, not plugin code. Both deploy paths read it from the same env var: `<PLUGIN>_UI_BUNDLE_URL` (PascalCase plugin name → SCREAMING_SNAKE_CASE — e.g., `Catalog` → `CATALOG_UI_BUNDLE_URL`, `OnlineShop` → `ONLINE_SHOP_UI_BUNDLE_URL`).
+
+**In-memory (`platform-in-memory/src/Main.res`)** — the composition root reads env explicitly and forwards:
+
+```rescript
+@val external processEnv: dict<string> = "process.env"
+
+module CatalogMaker = {
+  let make = () =>
+    Catalog.make(~uiBundleUrl=?processEnv->Dict.get("CATALOG_UI_BUNDLE_URL"))
+}
+```
+
+**AWS (`catalog-aws/src/Plugin.res`)** — the generator emits the env-var read directly. The deployer calls `make()` (no args) per the `PluginMaker.make: unit => component` contract:
+
+```rescript
+@val external uiBundleUrl: option<string> = "process.env.CATALOG_UI_BUNDLE_URL"
+
+module Make = (
+  Platform: ReventlessInfra.Platform.T
+    with type api = ReventlessAws.Types.AppSync.api
+    and type role = ReventlessAws.Types.AppSync.role,
+) => {
+  module Composition = CatalogPlugin.Plugin.Make(Platform)
+  let make = () => Composition.make(~uiBundleUrl?)
+}
+```
+
+For local dev: `CATALOG_UI_BUNDLE_URL=http://localhost:5001 pnpm dev`. For AWS: set the env var on the Pulumi stack to a CloudFront URL pointing at the uploaded bundle.
 
 ### Component → AutoUI role
 
 | Component | AutoUI role |
 |---|---|
-| `Aggregate` | Commands — write-side only; state is internal, not queryable |
-| `ReadModel` | List view / detail view — aggregate-style queryable projection |
-| `StateViewSlice` | List view / detail view — DCB equivalent of ReadModel |
+| `Aggregate` | Commands — write-side; state is internal, not queryable |
+| `ReadModel` | List / detail view — aggregate-style queryable projection |
+| `StateViewSlice` | List / detail view — DCB equivalent of ReadModel |
 | `StateChangeSlice` | Commands — independent; not linked to any specific view |
 
-Aggregates and StateChangeSlices provide command forms. ReadModels and StateViewSlices provide the queryable views those forms act on (but there is no automatic coupling between them — the UI resolves this at render time).
+Aggregates and StateChangeSlices provide command forms; ReadModels and StateViewSlices provide the queryable views those forms act on. The UI resolves linkage between them at render time — there is no automatic coupling at the manifest level.
 
-### Accessing AutoUI definitions
+### Accessing the manifest at runtime
 
-The admin API (port 4001) exposes all plugin UI definitions via a single query:
-
-```graphql
-query {
-  Platform_UIDefinitions {
-    pluginId
-    aggregates        { name commands { name schema } }
-    readModels        { name queryField schema }
-    stateViewSlices   { name queryField schema }
-    stateChangeSlices { name commands { name schema } }
-  }
-}
-```
-
-The dev-app fetches this at startup and renders the sidebar, list views, detail views, and command forms without any hardcoded plugin imports.
+When a plugin connects with `Some(manifest)`, the platform's admin handler emits a `UIFragmentRegistered` event and writes the manifest into the `Plugin` admin read model. The shell observes the read model and the `Platform_UIFragmentRegistered/Updated/Deregistered` subscription to mount and unmount components.
 
 ### No manual steps
 
-You never call `makeAutoUIDefinition` by hand. If you add a new aggregate, read model, state view slice, or state change slice to a plugin, the next `npm run build` regenerates `Plugin.res` and the component appears in the AutoUI automatically.
+You never call `makeAutoUIManifest` by hand. The generator regenerates `Plugin.res` on every `pnpm run build`; new aggregates and read models appear in the manifest automatically. Toggle UI on per deployment by setting or unsetting the env var.
 
 ---
 
