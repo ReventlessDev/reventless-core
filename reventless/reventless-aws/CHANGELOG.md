@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.71 (2026-04-27)
+
+### Bug Fixes
+
+* **in-memory:** resolve extension wirings via Output chain and use firePlatformDeployedHook ([3037fc7](https://github.com/ReventlessDev/reventless-core/commit/3037fc7af05574163873eefdb227b5421118c323))
+* **spec:** regenerate plugins; simplify codegen, drop Maker suffix ([8d81302](https://github.com/ReventlessDev/reventless-core/commit/8d81302a9dc3403f98298ff69b19901d625dff7e))
+
+
 # 3.0.0-alpha.70 (2026-04-26)
 
 * feat!: mixed-source AutomationSlice — Plan 04 ([fae3fbf](https://github.com/ReventlessDev/reventless-core/commit/fae3fbf93b12ecf62d0883fe7335ed73c6f52d67))

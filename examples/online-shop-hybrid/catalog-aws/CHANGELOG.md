@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.24 (2026-04-27)
+
+### Bug Fixes
+
+* **spec:** regenerate plugins; simplify codegen, drop Maker suffix ([8d81302](https://github.com/ReventlessDev/reventless-core/commit/8d81302a9dc3403f98298ff69b19901d625dff7e))
+### Features
+
+* **codegen:** AWS Plugin.res delegates to composition variant; forward uiBundleUrl from env ([8832ab7](https://github.com/ReventlessDev/reventless-core/commit/8832ab7a3a19cd697afe14b230f122fc18f73403))
+
+
 # 1.0.0-alpha.23 (2026-04-26)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-aws

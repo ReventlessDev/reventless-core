@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.20 (2026-04-27)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-in-memory
+
+
+
+
+
 # 1.0.0-alpha.19 (2026-04-26)
 
 * feat!: mixed-source AutomationSlice — Plan 04 ([fae3fbf](https://github.com/ReventlessDev/reventless-core/commit/fae3fbf93b12ecf62d0883fe7335ed73c6f52d67))
