@@ -282,9 +282,10 @@ module MakeWithConfig = (
   }
 
   module Aggregate = {
-    // This Make satisfies Platform.T but registers no Lambda entry point.
-    // For working AWS deployments, use the AWS builders directly
-    // (e.g., ReventlessAws.Aggregate_Builder_Single.Make) from _Aws plugin variants.
+    // Default deployment strategy is Single (one Lambda per plugin shared by all
+    // aggregates). To override per-plugin or per-aggregate, swap the builder at
+    // the call site (e.g., ReventlessAws.Aggregate_Builder_PerAggregate.Make,
+    // _Micro, _NoResolver) — see docs/plans/Backlog/aws-deployment-strategy.md.
     module Make = (
       Spec: Reventless.Aggregate.Spec,
       Behavior: Reventless.Behavior.T with module Spec := Spec,

@@ -6,81 +6,64 @@ module Make = (
     with type api = ReventlessAws.Types.AppSync.api
     and type role = ReventlessAws.Types.AppSync.role,
 ) => {
+  open OrderingPlugin
+
   // StateChangeSlices
-  module CancelOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.CancelOrder)
-  module PlaceOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.PlaceOrder)
-  module RefundOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.RefundOrder)
-  module ShipOrderSlice = Platform.StateChangeSlice.Make(OrderingPlugin.ShipOrder)
-  module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(OrderingPlugin.SyncCatalogProduct)
+  module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
+  module PlaceOrderSlice = Platform.StateChangeSlice.Make(PlaceOrder, PlaceOrder_Behavior)
+  module RefundOrderSlice = Platform.StateChangeSlice.Make(RefundOrder, RefundOrder_Behavior)
+  module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
+  module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct, SyncCatalogProduct_Behavior)
 
   // StateViewSlices
-  module AvailableProductsViewSlice = Platform.StateViewSlice.Make(OrderingPlugin.AvailableProductsView)
-  module OrdersViewSlice = Platform.StateViewSlice.Make(OrderingPlugin.OrdersView)
+  module AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView, AvailableProductsView_Projection)
+  module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView, OrdersView_Projection)
 
   // AutomationSlices
-  module AutoShipOrderSlice = Platform.AutomationSlice.Make(OrderingPlugin.AutoShipOrder)
+  module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation, AutoShipOrder_Mappings)
 
   // OutboundTranslationSlices
-  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(OrderingPlugin.SendOrderConfirmation)
+  module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation, SendOrderConfirmation_Translation)
 
   // Aggregates
-  module CustomerAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
-    OrderingPlugin.Customer,
-    OrderingPlugin.CustomerBehavior,
-    ReventlessInfra.NoEventMappings.Make(OrderingPlugin.Customer),
+  module CustomerAggregate = Platform.Aggregate.Make(
+    Customer,
+    CustomerBehavior,
+    ReventlessInfra.NoEventMappings.Make(Customer),
   )
 
   // ReadModels
   @reventless.projections
-  module CustomersProjectionsWrapper: Mappings with module Target := OrderingPlugin.CustomersReadModel = {
-    let mappings: array<module(Mapping)> = [module(OrderingPlugin.CustomersProjections.CustomerMapping)]
+  module CustomersProjectionsWrapper: Mappings with module Target := CustomersReadModel = {
+    let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
   }
-  module CustomersReadModelMaker = ReventlessAws.ReadModel_Builder_Single.Make(
-    OrderingPlugin.CustomersReadModel,
-    CustomersProjectionsWrapper,
-  )
+  module CustomersReadModel = Platform.ReadModel.Make(CustomersReadModel, CustomersProjectionsWrapper)
 
   // ExtensionPoints
-  module OrdersEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    OrderingPlugin.OrdersExtensionPointMapping,
-  )
-  module OrdersEPMappings = {
-    module Spec = OrderingPlugin.OrdersExtensionPointMapping.ExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
-    let name = "OrdersEPMappings"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(OrdersEPMappingT)]
-  }
-  module OrdersExtensionPointMaker = ReventlessAws.ExtensionPoint_Builder.Make(
-    OrdersEPMappings.Spec,
-    OrdersEPMappings,
-    {
-      let publishToAggregatesQueueUrls = Dict.make()
-    },
-  )
+  module OrdersExtensionPoint = Platform.ExtensionPoint.Make(OrdersExtensionPointMapping)
 
   // Extensions
-  module ProductsExtensionMaker = Platform.Extension.Make(OrderingPlugin.ProductsExtension.Mapping)
+  module ProductsExtension = Platform.Extension.Make(ProductsExtension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Ordering",
     ~aggregates=[module(CustomerAggregate)],
-    ~readModels=[module(CustomersReadModelMaker)],
+    ~readModels=[module(CustomersReadModel)],
     ~stateViewSlices=[module(AvailableProductsViewSlice), module(OrdersViewSlice)],
     ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
     ~automationSlices=[module(AutoShipOrderSlice)],
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
-    ~extensions=[module(ProductsExtensionMaker)],
+    ~extensions=[module(ProductsExtension)],
   )
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(OrdersExtensionPointMaker)],
-      ~extensions=[module(ProductsExtensionMaker)],
+      ~extensionPoints=[module(OrdersExtensionPoint)],
+      ~extensions=[module(ProductsExtension)],
       ~aggregates=[module(CustomerAggregate)],
-      ~readModels=[module(CustomersReadModelMaker)],
+      ~readModels=[module(CustomersReadModel)],
       ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
       ~stateViewSlices=[module(AvailableProductsViewSlice), module(OrdersViewSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],

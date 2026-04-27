@@ -86,7 +86,7 @@ function Make(Platform) {
     moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Plugin.res.mjs",
     mappings: mappings
   };
-  let AvailableProductsReadModelMaker = Platform.ReadModel.Make({
+  let AvailableProductsReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
     name: AvailableProductsReadModel$OrderingPlugin.name,
     moduleUrl: AvailableProductsReadModel$OrderingPlugin.moduleUrl,
@@ -105,7 +105,7 @@ function Make(Platform) {
     moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Plugin.res.mjs",
     mappings: mappings$1
   };
-  let CustomersReadModelMaker = Platform.ReadModel.Make({
+  let CustomersReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
     name: CustomersReadModel$OrderingPlugin.name,
     moduleUrl: CustomersReadModel$OrderingPlugin.moduleUrl,
@@ -124,7 +124,7 @@ function Make(Platform) {
     moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Plugin.res.mjs",
     mappings: mappings$2
   };
-  let OrdersReadModelMaker = Platform.ReadModel.Make({
+  let OrdersReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
     name: OrdersReadModel$OrderingPlugin.name,
     moduleUrl: OrdersReadModel$OrderingPlugin.moduleUrl,
@@ -133,7 +133,7 @@ function Make(Platform) {
     subIdConfig: undefined
   })(OrdersProjectionsWrapper);
   let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
-  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make({
+  let OrdersExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: OrdersExtensionPoint$OrderingSpec.name,
       moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
@@ -152,7 +152,7 @@ function Make(Platform) {
     mapIncomingCommand: OrdersExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });
-  let ProductsExtensionMaker = Platform.Extension.Make({
+  let ProductsExtension = Platform.Extension.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
       moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
@@ -176,40 +176,40 @@ function Make(Platform) {
     CustomerAggregate,
     OrderAggregate
   ], [
-    AvailableProductsReadModelMaker,
-    CustomersReadModelMaker,
-    OrdersReadModelMaker
-  ], undefined, undefined, undefined, undefined, undefined, [ProductsExtensionMaker]);
-  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [
+    AvailableProductsReadModel,
+    CustomersReadModel,
+    OrdersReadModel
+  ], undefined, undefined, undefined, undefined, undefined, [ProductsExtension]);
+  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPoint], [ProductsExtension], [
     CatalogProductAggregate,
     CustomerAggregate,
     OrderAggregate
   ], [
-    AvailableProductsReadModelMaker,
-    CustomersReadModelMaker,
-    OrdersReadModelMaker
+    AvailableProductsReadModel,
+    CustomersReadModel,
+    OrdersReadModel
   ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", [
     CatalogProductAggregate,
     CustomerAggregate,
     OrderAggregate
   ], [
-    AvailableProductsReadModelMaker,
-    CustomersReadModelMaker,
-    OrdersReadModelMaker
+    AvailableProductsReadModel,
+    CustomersReadModel,
+    OrdersReadModel
   ], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CatalogProductAggregate: CatalogProductAggregate,
     CustomerAggregate: CustomerAggregate,
     OrderAggregate: OrderAggregate,
     AvailableProductsProjectionsWrapper: AvailableProductsProjectionsWrapper,
-    AvailableProductsReadModelMaker: AvailableProductsReadModelMaker,
+    AvailableProductsReadModel: AvailableProductsReadModel,
     CustomersProjectionsWrapper: CustomersProjectionsWrapper,
-    CustomersReadModelMaker: CustomersReadModelMaker,
+    CustomersReadModel: CustomersReadModel,
     OrdersProjectionsWrapper: OrdersProjectionsWrapper,
-    OrdersReadModelMaker: OrdersReadModelMaker,
+    OrdersReadModel: OrdersReadModel,
     OrderNotificationsTask: OrderNotificationsTask,
-    OrdersExtensionPointMaker: OrdersExtensionPointMaker,
-    ProductsExtensionMaker: ProductsExtensionMaker,
+    OrdersExtensionPoint: OrdersExtensionPoint,
+    ProductsExtension: ProductsExtension,
     pluginStructure: pluginStructure,
     make: make
   };

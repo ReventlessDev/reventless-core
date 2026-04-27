@@ -14,7 +14,7 @@ function stripSuffix(s, suffix) {
 }
 
 function epModuleName(mappingStem) {
-  return stripSuffix(mappingStem, "Mapping") + "Maker";
+  return stripSuffix(mappingStem, "Mapping");
 }
 
 function renderSlices(platformFactory, suffix, implSuffix, stems) {
@@ -50,7 +50,7 @@ function renderReadModels(readModels) {
       "  module " + projections + "Wrapper: Mappings with module Target := " + readModel + " = {",
       mappingsLine,
       "  }",
-      "  module " + readModel + "Maker = Platform.ReadModel.Make(" + readModel + ", " + projections + "Wrapper)"
+      "  module " + readModel + " = Platform.ReadModel.Make(" + readModel + ", " + projections + "Wrapper)"
     ];
   });
 }
@@ -65,7 +65,7 @@ function renderExtensionPoints(extensionPoints) {
     let group = param.group;
     let count = mappings.length;
     let firstMapping = mappings[0];
-    let moduleName = group !== undefined ? group + "Maker" : epModuleName(firstMapping);
+    let moduleName = group !== undefined ? group : stripSuffix(firstMapping, "Mapping");
     switch (count) {
       case 0 :
         return [];
@@ -111,104 +111,7 @@ function renderExtensionPoints(extensionPoints) {
 }
 
 function renderExtensions(extensions) {
-  return extensions.map(stem => "  module " + stem + "Maker = Platform.Extension.Make(" + stem + ".Mapping)");
-}
-
-function renderSlicesAws(platformFactory, suffix, implSuffix, ns, stems) {
-  return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + ns + "." + stem + ", " + ns + "." + stem + implSuffix + ")");
-}
-
-function renderAutomationSlicesAws(ns, stems) {
-  return stems.map(stem => "  module " + stem + "Slice = Platform.AutomationSlice.Make(" + ns + "." + stem + ", " + ns + "." + stem + "_Automation, " + ns + "." + stem + "_Mappings)");
-}
-
-function renderAggregatesAws(ns, aggregates) {
-  return aggregates.flatMap(param => {
-    let spec = param.spec;
-    let em = Stdlib_Option.getOr(Stdlib_Option.map(param.eventMappings, m => ns + "." + m), "ReventlessInfra.NoEventMappings.Make(" + ns + "." + spec + ")");
-    return [
-      "  module " + spec + "Aggregate = ReventlessAws.Aggregate_Builder_Single.Make(",
-      "    " + ns + "." + spec + ",",
-      "    " + ns + "." + param.behavior + ",",
-      "    " + em + ",",
-      "  )"
-    ];
-  });
-}
-
-function renderReadModelsAws(ns, readModels) {
-  return readModels.flatMap(param => {
-    let projections = param.projections;
-    let readModel = param.readModel;
-    let mappingEntries = param.mappingModules.map(m => "module(" + ns + "." + projections + "." + m + ")");
-    let mappingsLine = "    let mappings: array<module(Mapping)> = [" + mappingEntries.join(", ") + "]";
-    return [
-      "  @reventless.projections",
-      "  module " + projections + "Wrapper: Mappings with module Target := " + ns + "." + readModel + " = {",
-      mappingsLine,
-      "  }",
-      "  module " + readModel + "Maker = ReventlessAws.ReadModel_Builder_Single.Make(",
-      "    " + ns + "." + readModel + ",",
-      "    " + projections + "Wrapper,",
-      "  )"
-    ];
-  });
-}
-
-function epBase(mappingStem) {
-  return stripSuffix(mappingStem, "ExtensionPointMapping");
-}
-
-function renderExtensionPointsAws(ns, extensionPoints) {
-  return extensionPoints.flatMap(param => {
-    let mappings = param.mappings;
-    if (mappings.length === 0) {
-      return [];
-    }
-    let group = param.group;
-    let firstMapping = mappings[0];
-    let base = group !== undefined ? group : stripSuffix(firstMapping, "ExtensionPointMapping");
-    let makerModuleName = group !== undefined ? group + "Maker" : epModuleName(firstMapping);
-    let mappingsModuleName = base + "EPMappings";
-    let result = [];
-    let mappingTNames = [];
-    let idx = {
-      contents: 0
-    };
-    mappings.forEach(m => {
-      let i = idx.contents;
-      idx.contents = i + 1 | 0;
-      let tName = i === 0 ? base + "EPMappingT" : base + "EPMappingT_" + (i + 1 | 0).toString();
-      mappingTNames.push(tName);
-      result.push("  module " + tName + " = ReventlessInfra.ExtensionPointMapping.Make(");
-      result.push("    " + ns + "." + m + ",");
-      result.push("  )");
-    });
-    let mappingsEntriesLine = "    let mappings: array<module(Mapping)> = [" + mappingTNames.map(t => "module(" + t + ")").join(", ") + "]";
-    result.push("  module " + mappingsModuleName + " = {");
-    result.push("    module Spec = " + ns + "." + firstMapping + ".ExtensionPoint");
-    result.push("    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec");
-    result.push("    let name = \"" + mappingsModuleName + "\"");
-    result.push("    let moduleUrl: string = %raw(`import.meta.url`)");
-    result.push(mappingsEntriesLine);
-    result.push("  }");
-    result.push("  module " + makerModuleName + " = ReventlessAws.ExtensionPoint_Builder.Make(");
-    result.push("    " + mappingsModuleName + ".Spec,");
-    result.push("    " + mappingsModuleName + ",");
-    result.push("    {");
-    result.push("      let publishToAggregatesQueueUrls = Dict.make()");
-    result.push("    },");
-    result.push("  )");
-    return result;
-  });
-}
-
-function renderExtensionsAws(ns, extensions) {
-  return extensions.map(stem => "  module " + stem + "Maker = Platform.Extension.Make(" + ns + "." + stem + ".Mapping)");
-}
-
-function renderTasksAws(ns, tasks) {
-  return tasks.map(stem => "  module " + stem + "Task = Platform.Task.Make(" + ns + "." + stem + ")");
+  return extensions.map(stem => "  module " + stem + " = Platform.Extension.Make(" + stem + ".Mapping)");
 }
 
 function renderMakeParam(param, items, moduleSuffix) {
@@ -235,7 +138,7 @@ function renderReadModelMakeParam(readModels) {
   if (readModels.length === 0) {
     return;
   }
-  let entries = readModels.map(param => "module(" + param.readModel + "Maker)");
+  let entries = readModels.map(param => "module(" + param.readModel + ")");
   return "      ~readModels=[" + entries.join(", ") + "],";
 }
 
@@ -254,7 +157,7 @@ function renderEpMakeParam(extensionPoints) {
   let entries = extensionPoints.map(param => {
     let group = param.group;
     let firstMapping = param.mappings[0];
-    let moduleName = group !== undefined ? group + "Maker" : epModuleName(firstMapping);
+    let moduleName = group !== undefined ? group : stripSuffix(firstMapping, "Mapping");
     return "module(" + moduleName + ")";
   });
   return "      ~extensionPoints=[" + entries.join(", ") + "],";
@@ -264,7 +167,7 @@ function renderExtensionMakeParam(extensions) {
   if (extensions.length === 0) {
     return;
   }
-  let entries = extensions.map(s => "module(" + s + "Maker)");
+  let entries = extensions.map(s => "module(" + s + ")");
   return "      ~extensions=[" + entries.join(", ") + "],";
 }
 
@@ -289,7 +192,7 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
     ls.push("    ~aggregates=[" + entries.join(", ") + "],");
   }
   if (readModels.length !== 0) {
-    let entries$1 = readModels.map(param => "module(" + param.readModel + "Maker)");
+    let entries$1 = readModels.map(param => "module(" + param.readModel + ")");
     ls.push("    ~readModels=[" + entries$1.join(", ") + "],");
   }
   let allStateViewEntries = [
@@ -316,7 +219,7 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
     ls.push("    ~inboundTranslationSlices=[" + entries$5.join(", ") + "],");
   }
   if (extensions.length !== 0) {
-    let entries$6 = extensions.map(s => "module(" + s + "Maker)");
+    let entries$6 = extensions.map(s => "module(" + s + ")");
     ls.push("    ~extensions=[" + entries$6.join(", ") + "],");
   }
   ls.push("  )");
@@ -381,6 +284,8 @@ function render(config, resolved) {
     lines.push("    with type api = ReventlessAws.Types.AppSync.api");
     lines.push("    and type role = ReventlessAws.Types.AppSync.role,");
     lines.push(") => {");
+    lines.push("  open " + match.sourceNamespace);
+    lines.push("");
   }
   let push = sectionLines => {
     sectionLines.forEach(l => {
@@ -388,52 +293,49 @@ function render(config, resolved) {
     });
     lines.push("");
   };
-  let match$1 = config.variant;
-  let ns;
-  ns = typeof match$1 !== "object" ? undefined : match$1.sourceNamespace;
   if (resolved.stateChangeSlices.length !== 0) {
     lines.push("  // StateChangeSlices");
-    push(ns !== undefined ? renderSlicesAws("StateChangeSlice", "Slice", Pairing$Reventless.implSuffixForStateChange, ns, resolved.stateChangeSlices) : renderSlices("StateChangeSlice", "Slice", Pairing$Reventless.implSuffixForStateChange, resolved.stateChangeSlices));
+    push(renderSlices("StateChangeSlice", "Slice", Pairing$Reventless.implSuffixForStateChange, resolved.stateChangeSlices));
   }
   if (resolved.stateViewSlices.length !== 0) {
     lines.push("  // StateViewSlices");
-    push(ns !== undefined ? renderSlicesAws("StateViewSlice", "Slice", Pairing$Reventless.implSuffixForStateView, ns, resolved.stateViewSlices) : renderSlices("StateViewSlice", "Slice", Pairing$Reventless.implSuffixForStateView, resolved.stateViewSlices));
+    push(renderSlices("StateViewSlice", "Slice", Pairing$Reventless.implSuffixForStateView, resolved.stateViewSlices));
   }
   if (resolved.stateViewSlicesStream.length !== 0) {
     lines.push("  // StateViewSliceStreams");
-    push(ns !== undefined ? renderSlicesAws("StateViewSliceStream", "StreamSlice", Pairing$Reventless.implSuffixForStateView, ns, resolved.stateViewSlicesStream) : renderSlices("StateViewSliceStream", "StreamSlice", Pairing$Reventless.implSuffixForStateView, resolved.stateViewSlicesStream));
+    push(renderSlices("StateViewSliceStream", "StreamSlice", Pairing$Reventless.implSuffixForStateView, resolved.stateViewSlicesStream));
   }
   if (resolved.automationSlices.length !== 0) {
     lines.push("  // AutomationSlices");
-    push(ns !== undefined ? renderAutomationSlicesAws(ns, resolved.automationSlices) : renderAutomationSlices(resolved.automationSlices));
+    push(renderAutomationSlices(resolved.automationSlices));
   }
   if (resolved.outboundTranslationSlices.length !== 0) {
     lines.push("  // OutboundTranslationSlices");
-    push(ns !== undefined ? renderSlicesAws("OutboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, ns, resolved.outboundTranslationSlices) : renderSlices("OutboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, resolved.outboundTranslationSlices));
+    push(renderSlices("OutboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, resolved.outboundTranslationSlices));
   }
   if (resolved.inboundTranslationSlices.length !== 0) {
     lines.push("  // InboundTranslationSlices");
-    push(ns !== undefined ? renderSlicesAws("InboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, ns, resolved.inboundTranslationSlices) : renderSlices("InboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, resolved.inboundTranslationSlices));
+    push(renderSlices("InboundTranslationSlice", "Slice", Pairing$Reventless.implSuffixForTranslation, resolved.inboundTranslationSlices));
   }
   if (resolved.aggregates.length !== 0) {
     lines.push("  // Aggregates");
-    push(ns !== undefined ? renderAggregatesAws(ns, resolved.aggregates) : renderAggregates(resolved.aggregates));
+    push(renderAggregates(resolved.aggregates));
   }
   if (resolved.readModels.length !== 0) {
     lines.push("  // ReadModels");
-    push(ns !== undefined ? renderReadModelsAws(ns, resolved.readModels) : renderReadModels(resolved.readModels));
+    push(renderReadModels(resolved.readModels));
   }
   if (resolved.tasks.length !== 0) {
     lines.push("  // Tasks");
-    push(ns !== undefined ? renderTasksAws(ns, resolved.tasks) : renderTasks(resolved.tasks));
+    push(renderTasks(resolved.tasks));
   }
   if (resolved.extensionPoints.length !== 0) {
     lines.push("  // ExtensionPoints");
-    push(ns !== undefined ? renderExtensionPointsAws(ns, resolved.extensionPoints) : renderExtensionPoints(resolved.extensionPoints));
+    push(renderExtensionPoints(resolved.extensionPoints));
   }
   if (resolved.extensions.length !== 0) {
     lines.push("  // Extensions");
-    push(ns !== undefined ? renderExtensionsAws(ns, resolved.extensions) : renderExtensions(resolved.extensions));
+    push(renderExtensions(resolved.extensions));
   }
   let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions);
   let hasPluginStructure = Stdlib_Option.isSome(pluginStructureLines);
@@ -443,7 +345,9 @@ function render(config, resolved) {
     });
     lines.push("");
   }
-  let hasUiComponents = resolved.aggregates.length !== 0 || resolved.readModels.length !== 0;
+  let match$1 = config.variant;
+  let hasUiComponents;
+  hasUiComponents = typeof match$1 !== "object" ? resolved.aggregates.length !== 0 || resolved.readModels.length !== 0 : false;
   let makeSig = hasUiComponents ? "  let make = (~uiBundleUrl=?) =>" : "  let make = () =>";
   lines.push(makeSig);
   lines.push("    Platform.Plugin.make(");
@@ -452,7 +356,7 @@ function render(config, resolved) {
   let uiFragmentsParam;
   if (hasUiComponents) {
     let aggEntries = resolved.aggregates.map(param => "module(" + param.spec + "Aggregate)");
-    let rmEntries = resolved.readModels.map(param => "module(" + param.readModel + "Maker)");
+    let rmEntries = resolved.readModels.map(param => "module(" + param.readModel + ")");
     let ls = [];
     ls.push("      ~uiFragments=?uiBundleUrl->Option.map(url =>");
     ls.push("        Platform.Plugin.makeAutoUIManifest(");
@@ -505,14 +409,6 @@ export {
   renderTasks,
   renderExtensionPoints,
   renderExtensions,
-  renderSlicesAws,
-  renderAutomationSlicesAws,
-  renderAggregatesAws,
-  renderReadModelsAws,
-  epBase,
-  renderExtensionPointsAws,
-  renderExtensionsAws,
-  renderTasksAws,
   renderMakeParam,
   renderStateViewSlicesMakeParam,
   renderReadModelMakeParam,

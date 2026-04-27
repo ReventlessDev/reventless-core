@@ -186,7 +186,7 @@ function Make(Platform) {
     translate: ImportProduct_Translation$CatalogPlugin.translate,
     moduleUrl: ImportProduct_Translation$CatalogPlugin.moduleUrl
   });
-  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
+  let ProductsExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
       moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
@@ -205,7 +205,7 @@ function Make(Platform) {
     mapIncomingCommand: ProductsExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
     mapOutgoingEvent: ProductsExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
   });
-  let OrdersExtensionMaker = Platform.Extension.Make({
+  let OrdersExtension = Platform.Extension.Make({
     ExtensionPoint: {
       name: OrdersExtensionPoint$OrderingSpec.name,
       moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
@@ -237,8 +237,8 @@ function Make(Platform) {
     ChangeProductPriceSlice,
     RecordProductDemandSlice,
     RenameCategorySlice
-  ], undefined, undefined, [ImportProductSlice], [OrdersExtensionMaker]);
-  let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], undefined, undefined, undefined, [
+  ], undefined, undefined, [ImportProductSlice], [OrdersExtension]);
+  let make = () => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPoint], [OrdersExtension], undefined, undefined, undefined, [
     AddCategorySlice,
     AddProductSlice,
     ArchiveCategorySlice,
@@ -265,8 +265,8 @@ function Make(Platform) {
     ProductDemandViewSlice: ProductDemandViewSlice,
     ProductsViewSlice: ProductsViewSlice,
     ImportProductSlice: ImportProductSlice,
-    ProductsExtensionPointMaker: ProductsExtensionPointMaker,
-    OrdersExtensionMaker: OrdersExtensionMaker,
+    ProductsExtensionPoint: ProductsExtensionPoint,
+    OrdersExtension: OrdersExtension,
     pluginStructure: pluginStructure,
     make: make
   };

@@ -6,80 +6,68 @@ module Make = (
     with type api = ReventlessAws.Types.AppSync.api
     and type role = ReventlessAws.Types.AppSync.role,
 ) => {
+  open CatalogPlugin
+
   // StateChangeSlices
-  module AddProductSlice = Platform.StateChangeSlice.Make(CatalogPlugin.AddProduct)
-  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductDescription)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductName)
-  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(CatalogPlugin.ChangeProductPrice)
-  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(CatalogPlugin.RecordProductDemand)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module ChangeProductDescriptionSlice = Platform.StateChangeSlice.Make(ChangeProductDescription, ChangeProductDescription_Behavior)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
+  module ChangeProductPriceSlice = Platform.StateChangeSlice.Make(ChangeProductPrice, ChangeProductPrice_Behavior)
+  module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
 
   // StateViewSliceStreams
-  module ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make(CatalogPlugin.ProductDemandView)
-  module ProductsViewStreamSlice = Platform.StateViewSliceStream.Make(CatalogPlugin.ProductsView)
+  module ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make(ProductDemandView, ProductDemandView_Projection)
+  module ProductsViewStreamSlice = Platform.StateViewSliceStream.Make(ProductsView, ProductsView_Projection)
 
   // InboundTranslationSlices
-  module ImportProductSlice = Platform.InboundTranslationSlice.Make(CatalogPlugin.ImportProduct)
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
 
   // Aggregates
-  module CategoryAggregate = ReventlessAws.Aggregate_Builder_Single.Make(
-    CatalogPlugin.Category,
-    CatalogPlugin.CategoryBehavior,
-    ReventlessInfra.NoEventMappings.Make(CatalogPlugin.Category),
+  module CategoryAggregate = Platform.Aggregate.Make(
+    Category,
+    CategoryBehavior,
+    ReventlessInfra.NoEventMappings.Make(Category),
   )
 
   // ReadModels
   @reventless.projections
-  module CategoriesProjectionsWrapper: Mappings with module Target := CatalogPlugin.CategoriesReadModel = {
-    let mappings: array<module(Mapping)> = [module(CatalogPlugin.CategoriesProjections.CategoryMapping)]
+  module CatalogActivityProjectionsWrapper: Mappings with module Target := CatalogActivityReadModel = {
+    let mappings: array<module(Mapping)> = [module(CatalogActivityProjections.CategoryActivityMapping), module(CatalogActivityProjections.ProductActivityMapping)]
   }
-  module CategoriesReadModelMaker = ReventlessAws.ReadModel_Builder_Single.Make(
-    CatalogPlugin.CategoriesReadModel,
-    CategoriesProjectionsWrapper,
-  )
+  module CatalogActivityReadModel = Platform.ReadModel.Make(CatalogActivityReadModel, CatalogActivityProjectionsWrapper)
+  @reventless.projections
+  module CategoriesProjectionsWrapper: Mappings with module Target := CategoriesReadModel = {
+    let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
+  }
+  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
 
   // Tasks
-  module ImportProductsTask = Platform.Task.Make(CatalogPlugin.ImportProducts)
+  module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
   // ExtensionPoints
-  module ProductsEPMappingT = ReventlessInfra.ExtensionPointMapping.Make(
-    CatalogPlugin.ProductsExtensionPointMapping,
-  )
-  module ProductsEPMappings = {
-    module Spec = CatalogPlugin.ProductsExtensionPointMapping.ExtensionPoint
-    module type Mapping = ReventlessInfra.ExtensionPointMapping.T with module ExtensionPoint := Spec
-    let name = "ProductsEPMappings"
-    let moduleUrl: string = %raw(`import.meta.url`)
-    let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
-  }
-  module ProductsExtensionPointMaker = ReventlessAws.ExtensionPoint_Builder.Make(
-    ProductsEPMappings.Spec,
-    ProductsEPMappings,
-    {
-      let publishToAggregatesQueueUrls = Dict.make()
-    },
-  )
+  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
 
   // Extensions
-  module OrdersExtensionMaker = Platform.Extension.Make(CatalogPlugin.OrdersExtension.Mapping)
+  module OrdersExtension = Platform.Extension.Make(OrdersExtension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate)],
-    ~readModels=[module(CategoriesReadModelMaker)],
+    ~readModels=[module(CatalogActivityReadModel), module(CategoriesReadModel)],
     ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
     ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
-    ~extensions=[module(OrdersExtensionMaker)],
+    ~extensions=[module(OrdersExtension)],
   )
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPointMaker)],
-      ~extensions=[module(OrdersExtensionMaker)],
+      ~extensionPoints=[module(ProductsExtensionPoint)],
+      ~extensions=[module(OrdersExtension)],
       ~aggregates=[module(CategoryAggregate)],
-      ~readModels=[module(CategoriesReadModelMaker)],
+      ~readModels=[module(CatalogActivityReadModel), module(CategoriesReadModel)],
       ~tasks=[module(ImportProductsTask)],
       ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
       ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],

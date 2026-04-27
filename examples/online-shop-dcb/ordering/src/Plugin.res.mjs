@@ -208,7 +208,7 @@ function Make(Platform) {
     translate: SendOrderConfirmation_Translation$OrderingPlugin.translate,
     moduleUrl: SendOrderConfirmation_Translation$OrderingPlugin.moduleUrl
   });
-  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make({
+  let OrdersExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: OrdersExtensionPoint$OrderingSpec.name,
       moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
@@ -227,7 +227,7 @@ function Make(Platform) {
     mapIncomingCommand: OrdersExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });
-  let ProductsExtensionMaker = Platform.Extension.Make({
+  let ProductsExtension = Platform.Extension.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
       moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
@@ -259,8 +259,8 @@ function Make(Platform) {
     RegisterCustomerSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [ProductsExtensionMaker]);
-  let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], undefined, undefined, undefined, [
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [ProductsExtension]);
+  let make = () => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPoint], [ProductsExtension], undefined, undefined, undefined, [
     CancelOrderSlice,
     ChangeAddressSlice,
     ChangeEmailSlice,
@@ -288,8 +288,8 @@ function Make(Platform) {
     OrdersViewSlice: OrdersViewSlice,
     AutoShipOrderSlice: AutoShipOrderSlice,
     SendOrderConfirmationSlice: SendOrderConfirmationSlice,
-    OrdersExtensionPointMaker: OrdersExtensionPointMaker,
-    ProductsExtensionMaker: ProductsExtensionMaker,
+    OrdersExtensionPoint: OrdersExtensionPoint,
+    ProductsExtension: ProductsExtension,
     pluginStructure: pluginStructure,
     make: make
   };

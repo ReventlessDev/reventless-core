@@ -31,33 +31,33 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CustomersProjectionsWrapper: Mappings with module Target := CustomersReadModel = {
     let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
   }
-  module CustomersReadModelMaker = Platform.ReadModel.Make(CustomersReadModel, CustomersProjectionsWrapper)
+  module CustomersReadModel = Platform.ReadModel.Make(CustomersReadModel, CustomersProjectionsWrapper)
 
   // ExtensionPoints
-  module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPointMapping)
+  module OrdersExtensionPoint = Platform.ExtensionPoint.Make(OrdersExtensionPointMapping)
 
   // Extensions
-  module ProductsExtensionMaker = Platform.Extension.Make(ProductsExtension.Mapping)
+  module ProductsExtension = Platform.Extension.Make(ProductsExtension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Ordering",
     ~aggregates=[module(CustomerAggregate)],
-    ~readModels=[module(CustomersReadModelMaker)],
+    ~readModels=[module(CustomersReadModel)],
     ~stateViewSlices=[module(AvailableProductsViewSlice), module(OrdersViewSlice)],
     ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
     ~automationSlices=[module(AutoShipOrderSlice)],
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
-    ~extensions=[module(ProductsExtensionMaker)],
+    ~extensions=[module(ProductsExtension)],
   )
 
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(OrdersExtensionPointMaker)],
-      ~extensions=[module(ProductsExtensionMaker)],
+      ~extensionPoints=[module(OrdersExtensionPoint)],
+      ~extensions=[module(ProductsExtension)],
       ~aggregates=[module(CustomerAggregate)],
-      ~readModels=[module(CustomersReadModelMaker)],
+      ~readModels=[module(CustomersReadModel)],
       ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
       ~stateViewSlices=[module(AvailableProductsViewSlice), module(OrdersViewSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],
@@ -68,7 +68,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
           ~remoteEntryUrl=url,
           ~name="Ordering",
           ~aggregates=[module(CustomerAggregate)],
-          ~readModels=[module(CustomersReadModelMaker)],
+          ~readModels=[module(CustomersReadModel)],
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )

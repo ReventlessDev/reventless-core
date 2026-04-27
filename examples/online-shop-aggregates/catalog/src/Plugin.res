@@ -24,42 +24,42 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module CategoriesProjectionsWrapper: Mappings with module Target := CategoriesReadModel = {
     let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
   }
-  module CategoriesReadModelMaker = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
+  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
   @reventless.projections
   module ProductDemandProjectionsWrapper: Mappings with module Target := ProductDemandReadModel = {
     let mappings: array<module(Mapping)> = [module(ProductDemandProjections.ProductMapping), module(ProductDemandProjections.ProductDemandMapping)]
   }
-  module ProductDemandReadModelMaker = Platform.ReadModel.Make(ProductDemandReadModel, ProductDemandProjectionsWrapper)
+  module ProductDemandReadModel = Platform.ReadModel.Make(ProductDemandReadModel, ProductDemandProjectionsWrapper)
   @reventless.projections
   module ProductsProjectionsWrapper: Mappings with module Target := ProductsReadModel = {
     let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
   }
-  module ProductsReadModelMaker = Platform.ReadModel.Make(ProductsReadModel, ProductsProjectionsWrapper)
+  module ProductsReadModel = Platform.ReadModel.Make(ProductsReadModel, ProductsProjectionsWrapper)
 
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
   // ExtensionPoints
-  module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
+  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
 
   // Extensions
-  module OrdersExtensionMaker = Platform.Extension.Make(OrdersExtension.Mapping)
+  module OrdersExtension = Platform.Extension.Make(OrdersExtension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-    ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), module(ProductsReadModelMaker)],
-    ~extensions=[module(OrdersExtensionMaker)],
+    ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), module(ProductsReadModel)],
+    ~extensions=[module(OrdersExtension)],
   )
 
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPointMaker)],
-      ~extensions=[module(OrdersExtensionMaker)],
+      ~extensionPoints=[module(ProductsExtensionPoint)],
+      ~extensions=[module(OrdersExtension)],
       ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-      ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), module(ProductsReadModelMaker)],
+      ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), module(ProductsReadModel)],
       ~tasks=[module(ImportProductsTask)],
       ~pluginStructure=pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
@@ -67,7 +67,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
           ~remoteEntryUrl=url,
           ~name="Catalog",
           ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-          ~readModels=[module(CategoriesReadModelMaker), module(ProductDemandReadModelMaker), module(ProductsReadModelMaker)],
+          ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), module(ProductsReadModel)],
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )

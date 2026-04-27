@@ -22,10 +22,10 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make(SendOrderConfirmation, SendOrderConfirmation_Translation)
 
   // ExtensionPoints
-  module OrdersExtensionPointMaker = Platform.ExtensionPoint.Make(OrdersExtensionPointMapping)
+  module OrdersExtensionPoint = Platform.ExtensionPoint.Make(OrdersExtensionPointMapping)
 
   // Extensions
-  module ProductsExtensionMaker = Platform.Extension.Make(ProductsExtension.Mapping)
+  module ProductsExtension = Platform.Extension.Make(ProductsExtension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Ordering",
@@ -33,15 +33,15 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~stateChangeSlices=[module(CancelOrderSlice), module(ChangeAddressSlice), module(ChangeEmailSlice), module(DeactivateCustomerSlice), module(PlaceOrderSlice), module(RegisterCustomerSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
     ~automationSlices=[module(AutoShipOrderSlice)],
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
-    ~extensions=[module(ProductsExtensionMaker)],
+    ~extensions=[module(ProductsExtension)],
   )
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(OrdersExtensionPointMaker)],
-      ~extensions=[module(ProductsExtensionMaker)],
+      ~extensionPoints=[module(OrdersExtensionPoint)],
+      ~extensions=[module(ProductsExtension)],
       ~stateChangeSlices=[module(CancelOrderSlice), module(ChangeAddressSlice), module(ChangeEmailSlice), module(DeactivateCustomerSlice), module(PlaceOrderSlice), module(RegisterCustomerSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
       ~stateViewSlices=[module(AvailableProductsViewSlice), module(CustomersViewSlice), module(OrdersViewSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],

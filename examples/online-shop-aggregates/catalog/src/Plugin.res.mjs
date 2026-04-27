@@ -85,7 +85,7 @@ function Make(Platform) {
     moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/Plugin.res.mjs",
     mappings: mappings
   };
-  let CategoriesReadModelMaker = Platform.ReadModel.Make({
+  let CategoriesReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
     name: CategoriesReadModel$CatalogPlugin.name,
     moduleUrl: CategoriesReadModel$CatalogPlugin.moduleUrl,
@@ -107,7 +107,7 @@ function Make(Platform) {
     moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/Plugin.res.mjs",
     mappings: mappings$1
   };
-  let ProductDemandReadModelMaker = Platform.ReadModel.Make({
+  let ProductDemandReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
     name: ProductDemandReadModel$CatalogPlugin.name,
     moduleUrl: ProductDemandReadModel$CatalogPlugin.moduleUrl,
@@ -126,7 +126,7 @@ function Make(Platform) {
     moduleUrl: "@reventlessdev/online-shop-aggregates-catalog/src/Plugin.res.mjs",
     mappings: mappings$2
   };
-  let ProductsReadModelMaker = Platform.ReadModel.Make({
+  let ProductsReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
     name: ProductsReadModel$CatalogPlugin.name,
     moduleUrl: ProductsReadModel$CatalogPlugin.moduleUrl,
@@ -138,7 +138,7 @@ function Make(Platform) {
     name: ImportProducts$CatalogPlugin.name,
     setup: ImportProducts$CatalogPlugin.setup
   });
-  let ProductsExtensionPointMaker = Platform.ExtensionPoint.Make({
+  let ProductsExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
       moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
@@ -157,7 +157,7 @@ function Make(Platform) {
     mapIncomingCommand: ProductsExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
     mapOutgoingEvent: ProductsExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
   });
-  let OrdersExtensionMaker = Platform.Extension.Make({
+  let OrdersExtension = Platform.Extension.Make({
     ExtensionPoint: {
       name: OrdersExtensionPoint$OrderingSpec.name,
       moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
@@ -181,40 +181,40 @@ function Make(Platform) {
     ProductAggregate,
     ProductDemandAggregate
   ], [
-    CategoriesReadModelMaker,
-    ProductDemandReadModelMaker,
-    ProductsReadModelMaker
-  ], undefined, undefined, undefined, undefined, undefined, [OrdersExtensionMaker]);
-  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPointMaker], [OrdersExtensionMaker], [
+    CategoriesReadModel,
+    ProductDemandReadModel,
+    ProductsReadModel
+  ], undefined, undefined, undefined, undefined, undefined, [OrdersExtension]);
+  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 60, [ProductsExtensionPoint], [OrdersExtension], [
     CategoryAggregate,
     ProductAggregate,
     ProductDemandAggregate
   ], [
-    CategoriesReadModelMaker,
-    ProductDemandReadModelMaker,
-    ProductsReadModelMaker
+    CategoriesReadModel,
+    ProductDemandReadModel,
+    ProductsReadModel
   ], [ImportProductsTask], undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", [
     CategoryAggregate,
     ProductAggregate,
     ProductDemandAggregate
   ], [
-    CategoriesReadModelMaker,
-    ProductDemandReadModelMaker,
-    ProductsReadModelMaker
+    CategoriesReadModel,
+    ProductDemandReadModel,
+    ProductsReadModel
   ], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CategoryAggregate: CategoryAggregate,
     ProductAggregate: ProductAggregate,
     ProductDemandAggregate: ProductDemandAggregate,
     CategoriesProjectionsWrapper: CategoriesProjectionsWrapper,
-    CategoriesReadModelMaker: CategoriesReadModelMaker,
+    CategoriesReadModel: CategoriesReadModel,
     ProductDemandProjectionsWrapper: ProductDemandProjectionsWrapper,
-    ProductDemandReadModelMaker: ProductDemandReadModelMaker,
+    ProductDemandReadModel: ProductDemandReadModel,
     ProductsProjectionsWrapper: ProductsProjectionsWrapper,
-    ProductsReadModelMaker: ProductsReadModelMaker,
+    ProductsReadModel: ProductsReadModel,
     ImportProductsTask: ImportProductsTask,
-    ProductsExtensionPointMaker: ProductsExtensionPointMaker,
-    OrdersExtensionMaker: OrdersExtensionMaker,
+    ProductsExtensionPoint: ProductsExtensionPoint,
+    OrdersExtension: OrdersExtension,
     pluginStructure: pluginStructure,
     make: make
   };

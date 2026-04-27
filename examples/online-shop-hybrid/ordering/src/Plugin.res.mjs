@@ -182,7 +182,7 @@ function Make(Platform) {
     moduleUrl: "@reventlessdev/online-shop-hybrid-ordering/src/Plugin.res.mjs",
     mappings: mappings
   };
-  let CustomersReadModelMaker = Platform.ReadModel.Make({
+  let CustomersReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
     name: CustomersReadModel$OrderingPlugin.name,
     moduleUrl: CustomersReadModel$OrderingPlugin.moduleUrl,
@@ -190,7 +190,7 @@ function Make(Platform) {
     config: CustomersReadModel$OrderingPlugin.config,
     subIdConfig: undefined
   })(CustomersProjectionsWrapper);
-  let OrdersExtensionPointMaker = Platform.ExtensionPoint.Make({
+  let OrdersExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: OrdersExtensionPoint$OrderingSpec.name,
       moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
@@ -209,7 +209,7 @@ function Make(Platform) {
     mapIncomingCommand: OrdersExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: OrdersExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });
-  let ProductsExtensionMaker = Platform.Extension.Make({
+  let ProductsExtension = Platform.Extension.Make({
     ExtensionPoint: {
       name: ProductsExtensionPoint$CatalogSpec.name,
       moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
@@ -228,7 +228,7 @@ function Make(Platform) {
     mapIncomingEvent: ProductsExtension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: ProductsExtension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
-  let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [CustomerAggregate], [CustomersReadModelMaker], [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [CustomerAggregate], [CustomersReadModel], [
     AvailableProductsViewSlice,
     OrdersViewSlice
   ], [
@@ -237,8 +237,8 @@ function Make(Platform) {
     RefundOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [ProductsExtensionMaker]);
-  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPointMaker], [ProductsExtensionMaker], [CustomerAggregate], [CustomersReadModelMaker], undefined, [
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [ProductsExtension]);
+  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPoint], [ProductsExtension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     PlaceOrderSlice,
     RefundOrderSlice,
@@ -247,7 +247,7 @@ function Make(Platform) {
   ], [
     AvailableProductsViewSlice,
     OrdersViewSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", [CustomerAggregate], [CustomersReadModelMaker], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", [CustomerAggregate], [CustomersReadModel], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     PlaceOrderSlice: PlaceOrderSlice,
@@ -260,9 +260,9 @@ function Make(Platform) {
     SendOrderConfirmationSlice: SendOrderConfirmationSlice,
     CustomerAggregate: CustomerAggregate,
     CustomersProjectionsWrapper: CustomersProjectionsWrapper,
-    CustomersReadModelMaker: CustomersReadModelMaker,
-    OrdersExtensionPointMaker: OrdersExtensionPointMaker,
-    ProductsExtensionMaker: ProductsExtensionMaker,
+    CustomersReadModel: CustomersReadModel,
+    OrdersExtensionPoint: OrdersExtensionPoint,
+    ProductsExtension: ProductsExtension,
     pluginStructure: pluginStructure,
     make: make
   };
