@@ -18,15 +18,15 @@ let match = argv2 === "--aws" ? (
     argv3 !== "" && argv4 !== "" ? [
         {
           TAG: "Aws",
-          sourceNamespace: argv3
+          compositionNamespace: argv3
         },
         argv4
       ] : (console.error("Usage: generate-plugin --aws <Namespace> <srcDir>"), [
-        "Standard",
+        "Composition",
         ""
       ])
   ) : [
-    "Standard",
+    "Composition",
     argv2
   ];
 

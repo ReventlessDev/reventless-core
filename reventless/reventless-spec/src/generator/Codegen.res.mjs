@@ -266,8 +266,53 @@ function renderMain(config) {
   ].join("\n");
 }
 
-function render(config, resolved) {
-  validateSliceTargets(resolved);
+function pluginNameToEnvBase(name) {
+  return name.split("").map((ch, i) => {
+    let isUpper = ch !== "" && ch === ch.toUpperCase() && ch !== ch.toLowerCase();
+    if (i > 0 && isUpper) {
+      return "_" + ch;
+    } else {
+      return ch;
+    }
+  }).join("").toUpperCase();
+}
+
+function renderAwsWrapper(name, compositionNamespace, hasUiComponents) {
+  let header = ["// AUTO-GENERATED — do not edit. Run `npm run generate` to update."];
+  let externLines;
+  if (hasUiComponents) {
+    let envVar = pluginNameToEnvBase(name) + "_UI_BUNDLE_URL";
+    externLines = [
+      "",
+      "@val external uiBundleUrl: option<string> = \"process.env." + envVar + "\""
+    ];
+  } else {
+    externLines = [];
+  }
+  let functorLines = [
+    "",
+    "module Make = (",
+    "  Platform: ReventlessInfra.Platform.T",
+    "    with type api = ReventlessAws.Types.AppSync.api",
+    "    and type role = ReventlessAws.Types.AppSync.role,",
+    ") => {",
+    "  module Composition = " + compositionNamespace + ".Plugin.Make(Platform)"
+  ];
+  let makeLines = hasUiComponents ? ["  let make = () => Composition.make(~uiBundleUrl?)"] : ["  let make = () => Composition.make()"];
+  let footer = [
+    "}",
+    ""
+  ];
+  return [
+    header,
+    externLines,
+    functorLines,
+    makeLines,
+    footer
+  ].flat().join("\n");
+}
+
+function renderComposition(config, resolved) {
   let hasReadModels = resolved.readModels.length !== 0;
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
@@ -275,18 +320,7 @@ function render(config, resolved) {
     lines.push("open Reventless.Projection");
     lines.push("");
   }
-  let match = config.variant;
-  if (typeof match !== "object") {
-    lines.push("module Make = (Platform: ReventlessInfra.Platform.T) => {");
-  } else {
-    lines.push("module Make = (");
-    lines.push("  Platform: ReventlessInfra.Platform.T");
-    lines.push("    with type api = ReventlessAws.Types.AppSync.api");
-    lines.push("    and type role = ReventlessAws.Types.AppSync.role,");
-    lines.push(") => {");
-    lines.push("  open " + match.sourceNamespace);
-    lines.push("");
-  }
+  lines.push("module Make = (Platform: ReventlessInfra.Platform.T) => {");
   let push = sectionLines => {
     sectionLines.forEach(l => {
       lines.push(l);
@@ -345,9 +379,7 @@ function render(config, resolved) {
     });
     lines.push("");
   }
-  let match$1 = config.variant;
-  let hasUiComponents;
-  hasUiComponents = typeof match$1 !== "object" ? resolved.aggregates.length !== 0 || resolved.readModels.length !== 0 : false;
+  let hasUiComponents = resolved.aggregates.length !== 0 || resolved.readModels.length !== 0;
   let makeSig = hasUiComponents ? "  let make = (~uiBundleUrl=?) =>" : "  let make = () =>";
   lines.push(makeSig);
   lines.push("    Platform.Plugin.make(");
@@ -399,6 +431,16 @@ function render(config, resolved) {
   return lines.join("\n");
 }
 
+function render(config, resolved) {
+  validateSliceTargets(resolved);
+  let match = config.variant;
+  if (typeof match !== "object") {
+    return renderComposition(config, resolved);
+  }
+  let hasUiComponents = resolved.aggregates.length !== 0 || resolved.readModels.length !== 0;
+  return renderAwsWrapper(config.name, match.compositionNamespace, hasUiComponents);
+}
+
 export {
   stripSuffix,
   epModuleName,
@@ -419,6 +461,9 @@ export {
   renderPluginStructureCall,
   validateSliceTargets,
   renderMain,
+  pluginNameToEnvBase,
+  renderAwsWrapper,
+  renderComposition,
   render,
 }
 /* Pairing-Reventless Not a pure module */

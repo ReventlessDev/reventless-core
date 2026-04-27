@@ -1,7 +1,7 @@
 // Plugin configuration reader.
 // Reads plugin.json from srcDir (optional) and derives defaults from package.json.
 
-type variant = Standard | Aws({sourceNamespace: string})
+type variant = Composition | Aws({compositionNamespace: string})
 
 type config = {
   name: string,
@@ -38,7 +38,10 @@ let readJson = (path: string): option<JSON.t> =>
   }
 
 let getStrField = (json: JSON.t, key: string): option<string> =>
-  json->JSON.Decode.object->Option.flatMap(d => d->Dict.get(key))->Option.flatMap(JSON.Decode.string)
+  json
+  ->JSON.Decode.object
+  ->Option.flatMap(d => d->Dict.get(key))
+  ->Option.flatMap(JSON.Decode.string)
 
 let getIntField = (json: JSON.t, key: string): option<int> =>
   json
@@ -77,6 +80,6 @@ let read = (~srcDir: string): config => {
     ->Option.flatMap(j => getIntField(j, "heartbeatInterval"))
     ->Option.getOr(60),
     exclude: pluginJson->Option.flatMap(j => getStrArrayField(j, "exclude"))->Option.getOr([]),
-    variant: Standard,
+    variant: Composition,
   }
 }

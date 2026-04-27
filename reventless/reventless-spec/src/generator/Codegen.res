@@ -371,10 +371,64 @@ let renderMain = (~config: Config.config): string => {
   ]->Array.join("\n")
 }
 
-// ── Top-level render ─────────────────────────────────────────────────────────
+// ── Aws-variant render ───────────────────────────────────────────────────────
+// The AWS Plugin.res just delegates to the source plugin's `Plugin.Make`
+// functor; all slice/aggregate/readmodel declarations live in the standard
+// variant. The eta-expanded `make = () => Composition.make(...)` is required because
+// the standard `make`'s `(~uiBundleUrl: string=?, unit) => component` does not
+// match `PluginMaker.make: unit => component` for first-class module packing.
+//
+// When the standard variant has UI components (aggregates or readmodels), AWS
+// reads `<PLUGIN_NAME_SNAKE>_UI_BUNDLE_URL` from process.env and forwards it,
+// matching the platform-in-memory convention so the same env var works in both
+// deploy paths.
 
-let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
-  validateSliceTargets(~resolved)
+// Convert a PascalCase plugin name to SCREAMING_SNAKE_CASE for env var naming.
+// "Ordering" → "ORDERING"; "OnlineShop" → "ONLINE_SHOP".
+let pluginNameToEnvBase = (name: string): string =>
+  name
+  ->String.split("")
+  ->Array.mapWithIndex((ch, i) => {
+    let isUpper = ch !== "" && ch === ch->String.toUpperCase && ch !== ch->String.toLowerCase
+    i > 0 && isUpper ? "_" ++ ch : ch
+  })
+  ->Array.join("")
+  ->String.toUpperCase
+
+let renderAwsWrapper = (
+  ~name: string,
+  ~compositionNamespace: string,
+  ~hasUiComponents: bool,
+): string => {
+  let header = ["// AUTO-GENERATED — do not edit. Run `npm run generate` to update."]
+  let externLines = if hasUiComponents {
+    let envVar = pluginNameToEnvBase(name) ++ "_UI_BUNDLE_URL"
+    [
+      "",
+      "@val external uiBundleUrl: option<string> = \"process.env." ++ envVar ++ "\"",
+    ]
+  } else {
+    []
+  }
+  let functorLines = [
+    "",
+    "module Make = (",
+    "  Platform: ReventlessInfra.Platform.T",
+    "    with type api = ReventlessAws.Types.AppSync.api",
+    "    and type role = ReventlessAws.Types.AppSync.role,",
+    ") => {",
+    "  module Composition = " ++ compositionNamespace ++ ".Plugin.Make(Platform)",
+  ]
+  let makeLines = hasUiComponents
+    ? ["  let make = () => Composition.make(~uiBundleUrl?)"]
+    : ["  let make = () => Composition.make()"]
+  let footer = ["}", ""]
+  Array.flat([header, externLines, functorLines, makeLines, footer])->Array.join("\n")
+}
+
+// ── Composition-variant render ───────────────────────────────────────────────
+
+let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): string => {
   let hasReadModels = resolved.readModels->Array.length > 0
   let lines: array<string> = []
 
@@ -387,18 +441,7 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
     lines->Array.push("")
   }
 
-  switch config.variant {
-  | Standard =>
-    lines->Array.push("module Make = (Platform: ReventlessInfra.Platform.T) => {")
-  | Aws({sourceNamespace}) =>
-    lines->Array.push("module Make = (")
-    lines->Array.push("  Platform: ReventlessInfra.Platform.T")
-    lines->Array.push("    with type api = ReventlessAws.Types.AppSync.api")
-    lines->Array.push("    and type role = ReventlessAws.Types.AppSync.role,")
-    lines->Array.push(") => {")
-    lines->Array.push("  open " ++ sourceNamespace)
-    lines->Array.push("")
-  }
+  lines->Array.push("module Make = (Platform: ReventlessInfra.Platform.T) => {")
 
   let push = (sectionLines: array<string>) => {
     sectionLines->Array.forEach(l => lines->Array.push(l))
@@ -517,16 +560,10 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
   | None => ()
   }
 
-  // make() call
-  // uiBundleUrl is only meaningful when:
-  //  (a) the plugin has aggregates or read models (makeAutoUIManifest derives
-  //      panels/pages from those kinds), AND
-  //  (b) the variant is Standard — the AWS variant's generated Main.res passes
-  //      the plugin directly to deployPlugin, which requires `unit => component`.
-  let hasUiComponents = switch config.variant {
-  | Standard => resolved.aggregates->Array.length > 0 || resolved.readModels->Array.length > 0
-  | Aws(_) => false
-  }
+  // make() call — Composition variant only (Aws variant uses renderAwsWrapper).
+  // uiBundleUrl is only meaningful when the plugin has aggregates or read
+  // models, since makeAutoUIManifest derives panels/pages from those kinds.
+  let hasUiComponents = resolved.aggregates->Array.length > 0 || resolved.readModels->Array.length > 0
   let makeSig = hasUiComponents ? "  let make = (~uiBundleUrl=?) =>" : "  let make = () =>"
   lines->Array.push(makeSig)
   lines->Array.push("    Platform.Plugin.make(")
@@ -587,4 +624,17 @@ let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
   lines->Array.push("")
 
   lines->Array.join("\n")
+}
+
+// ── Top-level render ─────────────────────────────────────────────────────────
+
+let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
+  validateSliceTargets(~resolved)
+  switch config.variant {
+  | Aws({compositionNamespace}) =>
+    let hasUiComponents =
+      resolved.aggregates->Array.length > 0 || resolved.readModels->Array.length > 0
+    renderAwsWrapper(~name=config.name, ~compositionNamespace, ~hasUiComponents)
+  | Composition => renderComposition(~config, ~resolved)
+  }
 }

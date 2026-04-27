@@ -9,13 +9,13 @@ let () = {
 
   let (variant, srcDirArg) = if argv2 === "--aws" {
     if argv3 !== "" && argv4 !== "" {
-      (Config.Aws({sourceNamespace: argv3}), argv4)
+      (Config.Aws({compositionNamespace: argv3}), argv4)
     } else {
       Console.error("Usage: generate-plugin --aws <Namespace> <srcDir>")
-      (Config.Standard, "")
+      (Config.Composition, "")
     }
   } else {
-    (Config.Standard, argv2)
+    (Config.Composition, argv2)
   }
 
   if srcDirArg === "" {
@@ -33,7 +33,7 @@ let () = {
     let source = Codegen.render(~config, ~resolved)
 
     let outputDir = switch variant {
-    | Config.Standard => srcDir
+    | Config.Composition => srcDir
     | Config.Aws(_) => Generator_Node.join([Generator_Node.cwd(), "src"])
     }
 
@@ -42,7 +42,7 @@ let () = {
     Console.log("Generated: " ++ pluginPath)
 
     switch variant {
-    | Config.Standard => ()
+    | Config.Composition => ()
     | Config.Aws(_) =>
       let mainSource = Codegen.renderMain(~config)
       let mainPath = Generator_Node.join([outputDir, "Main.res"])
