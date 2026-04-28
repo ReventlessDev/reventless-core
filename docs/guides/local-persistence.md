@@ -40,14 +40,15 @@ The default `Platform.Make()` picks up `REVENTLESS_LOCAL_BACKEND` via `Backend.f
 
 ---
 
-## What gets persisted
+## Verifying the active backend
 
-Currently Phase 2 ships with SQLite-backed adapters for:
+On startup `makePlatform` logs which backend is in use:
 
-- **EventLog** — per-aggregate event streams, with optimistic concurrency via primary-key conflict
-- **QueryDb** — read-model tables, one per registered QueryDb
-
-The remaining surfaces (DCB event log, task bucket) fall back to in-memory. Restart will lose DCB-sourced state even when SQLite is active — see the [local-persistence plan](../plans/done/in-memory-local-persistence.md) for the roadmap.
+```
+[Platform] backend: memory
+[Platform] backend: sqlite (./.reventless/local.db)
+[Platform] backend: sqlite (./.reventless/local.db, resetOnStart)
+```
 
 ---
 
