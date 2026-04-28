@@ -210,7 +210,7 @@ The two annotations are split because their cost profiles differ — `@scan` rea
 
 ## Phase 3 — AWS adapter (extended Scan + index-routed Query)
 
-**Status.** Phase 3a shipped (resolver extension + wiring + unit tests). Phase 3b shipped (deploy-time `@scanSort` validation warning). Phase 3c planned (DynamoDB-Local integration suite).
+**Status.** Phase 3a shipped (resolver extension + wiring + unit tests). Phase 3b shipped (deploy-time `@scanSort` validation warning). Phase 3c **deferred** — the 19 unit tests on the JS resolver template already cover request/response handler logic (filter assembly, range clauses, per-page sort, null handling), and DynamoDB-Local would only verify FilterExpression parsing against DynamoDB's grammar without exercising the AppSync runtime itself. Marginal coverage doesn't justify the CI cost.
 
 **Depends on:** Phases 1 and 2.
 
