@@ -66,6 +66,8 @@ let indexedStateSchemaWithAnnotations = indexedStateSchema->S.Metadata.set(
     drillTargets: [],
     drillTargetKeys: [],
     collapsed: [],
+    scan: [],
+    scanSort: [],
   },
 )
 
@@ -88,6 +90,33 @@ let orderedStateSchemaWithAnnotations = orderedStateSchema->S.Metadata.set(
     drillTargets: [],
     drillTargetKeys: [],
     collapsed: [],
+    scan: [],
+    scanSort: [],
+  },
+)
+
+@schema
+type scanState = {
+  productId: @s.matches(Reventless.DcbTag.string) string,
+  status: string,
+  name: string,
+  description: string,
+}
+let scanStateSchemaWithAnnotations = scanStateSchema->S.Metadata.set(
+  ~id=Reventless.StateAnnotations.stateAnnotationsId,
+  {
+    ids: ["productId"],
+    compositeIds: [],
+    subIds: [],
+    compositeSubIds: [],
+    indexes: [],
+    hidden: [],
+    summary: [],
+    drillTargets: [],
+    drillTargetKeys: [],
+    collapsed: [],
+    scan: ["status"],
+    scanSort: ["name"],
   },
 )
 
@@ -559,6 +588,40 @@ describe("GraphQL_SchemaInspector", () => {
       // Connection field arg list includes orderBy
       expect(sdl->String.includes("orderBy: IndexedProductOrderBy"))->toBe(true)
     })
+
+    testPromise(
+      "read model with @scan / @scanSort folds opt-in fields into Filter / OrderBy",
+      async () => {
+        let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+          ~mutationEntries=[],
+          ~queryEntries=[
+            {
+              singleFieldName: "Scan_Item",
+              listFieldName: "Scan_Items",
+              returnTypeName: "ScanItem",
+              stateSchema: scanStateSchemaWithAnnotations->S.castToUnknown,
+              authorization: None,
+              includeIdParam: true,
+              connectionSpec: true,
+            },
+          ],
+        )
+        let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+        let sdl = inspection.sdlPreview
+        // @scan field becomes filterable via <field>Eq
+        expect(sdl->String.includes("statusEq: String"))->toBe(true)
+        // @scan does not promote the field to sortable
+        expect(sdl->String.includes("enum ScanItemOrderField"))->toBe(true)
+        // @scanSort field appears in OrderField enum
+        expect(sdl->String.includes("name"))->toBe(true)
+        expect(sdl->String.includes("orderBy: ScanItemOrderBy"))->toBe(true)
+        // @scanSort alone does not auto-add an Eq filter for that field
+        expect(sdl->String.includes("nameEq:"))->toBe(false)
+        // @scan range form is not emitted (eq only)
+        expect(sdl->String.includes("statusFrom:"))->toBe(false)
+        expect(sdl->String.includes("statusTo:"))->toBe(false)
+      },
+    )
 
     testPromise("read model with @subId emits range filters + OrderBy on the sort key", async () => {
       let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(

@@ -68,7 +68,9 @@ let indexedStateSchemaWithAnnotations = S.Metadata.set(indexedStateSchema, State
   summary: [],
   drillTargets: [],
   drillTargetKeys: [],
-  collapsed: []
+  collapsed: [],
+  scan: [],
+  scanSort: []
 });
 
 let orderedStateSchema = S.schema(s => ({
@@ -87,7 +89,31 @@ let orderedStateSchemaWithAnnotations = S.Metadata.set(orderedStateSchema, State
   summary: [],
   drillTargets: [],
   drillTargetKeys: [],
-  collapsed: []
+  collapsed: [],
+  scan: [],
+  scanSort: []
+});
+
+let scanStateSchema = S.schema(s => ({
+  productId: s.m(DcbTag$Reventless.string),
+  status: s.m(S.string),
+  name: s.m(S.string),
+  description: s.m(S.string)
+}));
+
+let scanStateSchemaWithAnnotations = S.Metadata.set(scanStateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: ["productId"],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: ["status"],
+  scanSort: ["name"]
 });
 
 describe("GraphQL_SchemaInspector", () => {
@@ -413,6 +439,26 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl.includes("direction: SortOrder!")).toBe(true);
       expect(sdl.includes("orderBy: IndexedProductOrderBy")).toBe(true);
     });
+    test("read model with @scan / @scanSort folds opt-in fields into Filter / OrderBy", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Scan_Item",
+          listFieldName: "Scan_Items",
+          returnTypeName: "ScanItem",
+          stateSchema: scanStateSchemaWithAnnotations,
+          authorization: undefined,
+          includeIdParam: true,
+          connectionSpec: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("statusEq: String")).toBe(true);
+      expect(sdl.includes("enum ScanItemOrderField")).toBe(true);
+      expect(sdl.includes("name")).toBe(true);
+      expect(sdl.includes("orderBy: ScanItemOrderBy")).toBe(true);
+      expect(sdl.includes("nameEq:")).toBe(false);
+      expect(sdl.includes("statusFrom:")).toBe(false);
+      expect(sdl.includes("statusTo:")).toBe(false);
+    });
     test("read model with @subId emits range filters + OrderBy on the sort key", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Ordered_Item",
@@ -503,5 +549,7 @@ export {
   indexedStateSchemaWithAnnotations,
   orderedStateSchema,
   orderedStateSchemaWithAnnotations,
+  scanStateSchema,
+  scanStateSchemaWithAnnotations,
 }
 /*  Not a pure module */

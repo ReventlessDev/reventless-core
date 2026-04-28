@@ -28,6 +28,8 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   drillTargets: [],
   drillTargetKeys: [],
   collapsed: [],
+  scan: [],
+  scanSort: [],
 }
 
 describe("SuryToJsonSchema:", () => {
@@ -262,6 +264,44 @@ describe("SuryToJsonSchema:", () => {
       expect(
         componentsSchema->Option.flatMap(s => getProperty(s, "x-reventless-drillTargetKey")),
       )->toBe(None)
+    })
+
+    test("emits x-reventless-scan on field listed in scan", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "status": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, scan: ["status"]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let statusSchema = getPropertyOf(json, "status")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        statusSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-scan"))
+        ->Option.flatMap(JSON.Decode.bool),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-scan")),
+      ))->toEqual((Some(true), None))
+    })
+
+    test("emits x-reventless-scanSort on field listed in scanSort", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "name": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, scanSort: ["name"]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let nameSchema = getPropertyOf(json, "name")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        nameSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-scanSort"))
+        ->Option.flatMap(JSON.Decode.bool),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-scanSort")),
+      ))->toEqual((Some(true), None))
     })
 
     test("emits x-reventless-collapsed on field listed in collapsed", () => {

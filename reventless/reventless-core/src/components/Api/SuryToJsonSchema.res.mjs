@@ -52,6 +52,12 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
   if (spec.collapsed.includes(fieldName)) {
     obj["x-reventless-collapsed"] = true;
   }
+  if (spec.scan.includes(fieldName)) {
+    obj["x-reventless-scan"] = true;
+  }
+  if (spec.scanSort.includes(fieldName)) {
+    obj["x-reventless-scanSort"] = true;
+  }
   return obj;
 }
 

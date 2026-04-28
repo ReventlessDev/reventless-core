@@ -97,9 +97,62 @@ Order in the result is decided once: `orderBy` always wins when supplied, otherw
 
 ---
 
-## Phase 2 — `@scan` and `@scanSort` opt-in for non-indexed fields
+## Phase 1.5 — Keyset pagination on the in-memory connection list resolver
 
 **Status.** Planned.
+
+**Depends on:** Phase 1 (capability + filter/sort parsing — shipped).
+
+**Goal.** Make the in-memory connection list resolver honour `first / after / last / before` and emit an accurate `pageInfo`. Phase 1 wired the filter and sort args end-to-end, but left pagination as a stub: every response returns all matching items in one page with `hasNextPage: false / hasPreviousPage: false` and a positional integer cursor. The UI's hybrid pipeline ([reventless-ui Phase 6.5](../../../reventless-ui/docs/plans/autoui-improvements-ui.md#phase-65--server-side-filter--sort--pagination-hybrid-)) already emits `first / after / last / before`; the controls hide themselves because `pageInfo` never reports more pages.
+
+**Why this matters.** Without real pagination on this resolver, `first / after / last / before` are accepted by the SDL but no-op against the in-memory backend. AWS Phase 3 will keyset-paginate against DynamoDB, so without this phase the two backends diverge: cursor cycling works against AWS, returns a single full page on in-memory. The fix is small, isolated, and brings the backends into agreement so the UI's pagination controls work in dev.
+
+**What's there today.** The list resolver in [QueryDbResolvers_GraphQL.res:418](../../reventless/reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res) maps the entire filtered+sorted result to edges with positional cursors and emits a hard-coded `hasNextPage: false / hasPreviousPage: false`. The companion items resolver in the same file (around line 569) **already** implements correct keyset pagination via base64 sort-key cursors and a take-N+1 / hasMore probe; this phase ports that pattern over.
+
+**Files to change.**
+
+- **[reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res](../../reventless/reventless-in-memory/src/adapter/QueryDb/QueryDbResolvers_GraphQL.res)** — Replace the trailing block of the list resolver (around line 418) with the items resolver's keyset pattern, parameterised by the cursor field:
+  1. **Cursor field.** When `orderBy` is supplied, the cursor encodes the row's value for `orderBy.field`; otherwise it falls back to `id` (the natural primary-key order). The id-tiebreak the sort step already applies keeps cursors stable across requests that share a sort field.
+  2. **Cursor-keyed boundary.** Apply `after` / `before` against the cursor field's stringified value before the `first` / `last` slice — mirrors the items resolver's `cursorFiltered` step.
+  3. **Take-N+1 hasMore probe.** Slice `first + 1` (or `last + 1`) off the head; `hasMore = taken.length > n`. For backward pagination, reverse the page after taking.
+  4. **`pageInfo` flags.** `hasNextPage = !isBackward && hasMore`; `hasPreviousPage = isBackward && hasMore`. `startCursor` / `endCursor` come from the first and last items of the returned page.
+  5. **Default page size.** When neither `first` nor `last` is supplied, default to a sensible bound (e.g. 50 — matching the UI's `defaultPageSize` constant). A `null` default would defeat the purpose; the bound is necessary for the keyset model.
+- **Shared cursor helper.** Lift `encodeCursor / decodeCursor` out of the items resolver into a private `module Cursor` at the top of the file (or a sibling `Cursor.res`) so both resolvers reference one implementation. The items resolver also gets a tiny renaming-only diff.
+- **[reventless-in-memory/tests/adapter/...](../../reventless/reventless-in-memory/tests/)** — Add resolver behavioural tests covering:
+  - `first: 2` over a 5-row fixture returns 2 edges and `pageInfo.hasNextPage = true`.
+  - Subsequent `after: <endCursor>` returns the next 2 edges, no overlap with the previous page; the third request returns the final row with `hasNextPage = false`.
+  - `last: 2 / before: <startCursor>` from the third page walks back through pages 2 and 1 in correct order; `hasPreviousPage` flips at the first page.
+  - `filter.<field>Eq` + `first / after` paginates only the narrowed subset; cursors stay stable.
+  - `orderBy: { field, direction: DESC }` + `first / after` paginates the reverse-sorted view; cursors decode against the descending order.
+  - Bare request (no `first`, no `after`) returns a single bounded page (asserts the default size is enforced and `hasNextPage` is correct against the fixture size).
+
+**Concrete steps.**
+
+1. Extract `encodeCursor / decodeCursor` from the items resolver into a private helper. No behaviour change.
+2. Replace the list resolver's trailing edge-mapping + `pageInfo` block with the keyset implementation. The existing filter (`narrowItems`) and sort (`sortItems`) steps stay; pagination slots in after them, before edge construction.
+3. Wire `defaultListPageSize = 50` at the module top.
+4. Ship the resolver tests above. Update any pre-existing list-resolver test that asserted "all matching rows in a single page" against a fixture larger than the default page size — that assertion was passing for the wrong reason.
+5. Smoke-test against the dev stack: bookmark a page-2 URL, confirm `‹ Prev / Next ›` works, confirm filter / sort changes reset cursors and the response page count is consistent.
+
+**Validation.**
+
+- ✅ Existing requests without pagination args return the same shape, except `hasNextPage` now reports correctly whether more rows exist past the default page size.
+- ✅ `first / after` paginates forward; cursor decoding stays stable.
+- ✅ `last / before` paginates backward; the returned page is in original (forward) order with `hasPreviousPage` set correctly.
+- ✅ `filter.<field>Eq` + `orderBy` + cursor pagination compose: filter → sort → cursor-slice, in that order.
+- ✅ Phase 6.5's UI controls (`‹ Prev` / `Next ›`) become functional against the in-memory backend.
+
+**Open questions / out of scope.**
+
+- **Total count.** Same caveat as Phase 3 — Relay's `pageInfo` has no `totalCount`. Adding it would require a separate scan-and-count or a counter. Out of scope here.
+- **Cursor opacity.** The chosen cursor encodes the sort field's value as base64; not a true opaque token. Acceptable for in-memory dev (AWS Phase 3's `LastEvaluatedKey` is similarly transparent). If real opacity is needed later, a separate plan can encrypt/sign.
+- **Cross-tenant / consistent-hash cursors.** Not relevant for the in-memory stream model; flagged here only so the v1 simple cursor doesn't get retro-fitted into something it isn't.
+
+---
+
+## Phase 2 — `@scan` and `@scanSort` opt-in for non-indexed fields
+
+**Status.** Shipped.
 
 **Depends on:** Phase 1.
 
@@ -134,6 +187,15 @@ The two annotations are split because their cost profiles differ — `@scan` rea
 - ✅ A field annotated `@scanSort` becomes sortable via `orderBy.field`.
 - ✅ Combinations work: `@scan` + `@index` on the same field is a contradiction-free no-op (the field would already be in `filterFields` via `@index`).
 - ✅ Read models without `@scan` / `@scanSort` continue to emit only the natively-derived Filter / OrderBy from Phase 1.
+
+**Implementation notes (shipped).**
+
+- PPX (`reventless-ppx/src/ppx/StateAnnotations.ml`) recognises `@scan` and `@scanSort` field attributes via `has_scan_field_attr` / `has_scan_sort_field_attr`, strips them through a new `strip_scan_attrs` pass (wired alongside `strip_visibility_attrs` and `strip_drill_collapsed_attrs` in `ReventlessPpx.ml`), and folds the field names into the `stateSchema->S.Metadata.set` record emitted by `make_state_annotations_binding`.
+- `Reventless.StateAnnotations.stateAnnotationSpec` (in `reventless-spec`) gains `scan: array<string>` and `scanSort: array<string>` fields.
+- `SuryToJsonSchema.mergeAnnotations` emits `x-reventless-scan: true` and `x-reventless-scanSort: true` on the matching property schemas. Two new test cases in `SuryToJsonSchemaTest.res` cover both.
+- `GraphQL_FragmentGenerator.deriveServerCapability` reads `spec.scan` and `spec.scanSort` and pushes them into `filterFields` (eq-only, no range) and `sortFields` respectively. No resolver change was needed: Phase 1's `narrowItems` / `sortItems` already operate on arbitrary fields.
+- SDL coverage: 1 new case in `GraphQL_SchemaInspectorTest.res` (a `@scan status` field appears as `statusEq: String` and the `@scanSort name` field appears in `OrderField`); 2 new cases in `SuryToJsonSchemaTest.res`; 1 new fixture + 5 assertions in `packages/reventless-ppx/test/run.sh`. Full suites green: 366 in-memory tests, 304 core tests, 163 PPX integration tests.
+- `ppx-osx-x64.exe` and `ppx-linux.exe` rebuilt (osx-x64 via `dune build`; linux via Docker per the `Dockerfile` at `packages/reventless-ppx/Dockerfile`).
 
 ---
 
@@ -205,15 +267,18 @@ The connection field stays bound to one resolver. Inside the resolver we widen t
 ## Cross-repo dependency snapshot
 
 ```
-reventless-core (this plan)            reventless-ui (autoui-improvements-ui.md)
-─────────────────────────────────      ──────────────────────────────────────
-Phase 1 (auto-derive Filter/OrderBy) ──┐
-   │                                   │
-   ▼                                   ▼
-Phase 2 (@scan / @scanSort opt-in) ─→ Phase 6.5 (hybrid client pipeline)
-   │                                   │
-   ▼                                   │
-Phase 3 (AWS adapter — Scan + ──────────┘  (no client change required)
+reventless-core (this plan)              reventless-ui (autoui-improvements-ui.md)
+─────────────────────────────────        ──────────────────────────────────────
+Phase 1 (auto-derive Filter/OrderBy) ✅ ──┐
+   │                                      │
+   ▼                                      ▼
+Phase 1.5 (in-memory keyset paginate) ──→ Phase 6.5 (hybrid client pipeline) ✅
+   │                                      │  (controls dark until 1.5 ships)
+   ▼                                      │
+Phase 2 (@scan / @scanSort opt-in)        │
+   │                                      │
+   ▼                                      │
+Phase 3 (AWS adapter — Scan +     ────────┘  (no client change required)
         index promotion)
 ```
 

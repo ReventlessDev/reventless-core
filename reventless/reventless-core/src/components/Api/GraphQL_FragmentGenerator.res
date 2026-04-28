@@ -198,6 +198,12 @@ let deriveServerCapability = (schema: S.t<unknown>): serverCapability => {
       pushFilter(name, ~range=false)
       pushSort(name)
     })
+    // @scan / @scanSort are explicit opt-ins for non-indexed fields. They
+    // expand the SDL surface only — the in-memory resolver's narrow / sort
+    // helpers already operate on arbitrary fields, so no additional code
+    // path is needed here.
+    spec.scan->Array.forEach(name => pushFilter(name, ~range=false))
+    spec.scanSort->Array.forEach(name => pushSort(name))
 
     {filterFields, sortFields}
   }

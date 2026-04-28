@@ -984,6 +984,45 @@ let get_drill_target_args (attr : attribute) : (string * string option) =
     (slice, key)
   | _ -> ("", None)
 
+(* ── @scan / @scanSort: opt-in for non-indexed fields to participate in
+       server-side filter / sort. No behavioural effect at the PPX level —
+       flow through the metadata pipeline so JSON Schema can surface them as
+       x-reventless-scan / x-reventless-scanSort, and so the GraphQL fragment
+       generator can fold the field names into Filter / OrderBy. ── *)
+
+let has_scan_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt "scan") attrs
+
+let has_scan_sort_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt "scanSort") attrs
+
+let strip_scan_field_attrs (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "scan"
+         || String.equal attr.attr_name.txt "scanSort")
+  ) attrs
+
+(** Strip @scan and @scanSort from @schema type state record fields. *)
+let strip_scan_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_scan_field_attrs ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
 (* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
 
 (** Build a string-array AST expression. *)
@@ -1049,9 +1088,16 @@ let make_state_annotations_binding ~loc fields : structure_item option =
   let collapsed = List.filter_map (fun (ld : label_declaration) ->
     if has_collapsed_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
+  let scan = List.filter_map (fun (ld : label_declaration) ->
+    if has_scan_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
+  let scan_sort = List.filter_map (fun (ld : label_declaration) ->
+    if has_scan_sort_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
      && indexes = [] && hidden = [] && summary = []
-     && drill_targets = [] && drill_target_keys = [] && collapsed = [] then None
+     && drill_targets = [] && drill_target_keys = [] && collapsed = []
+     && scan = [] && scan_sort = [] then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -1071,7 +1117,9 @@ let make_state_annotations_binding ~loc fields : structure_item option =
             ({ txt = Lident "summary"; loc }, estr_array ~loc summary);
             ({ txt = Lident "drillTargets"; loc }, str_tuple_array ~loc drill_targets);
             ({ txt = Lident "drillTargetKeys"; loc }, str_tuple_array ~loc drill_target_keys);
-            ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed) ],
+            ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);
+            ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
+            ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort) ],
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =

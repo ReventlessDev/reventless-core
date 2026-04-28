@@ -573,6 +573,20 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @scan + @scanSort (server-query opt-in) ─────────────
+
+cat > "$PLUGIN/src/ReadModel/ScanReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  @scan status: string,
+  @scanSort name: string,
+  description: string,
+}
+EOF
+
 # ─── Fixture: @drillTarget + @collapsed (hierarchical rendering hints) ────
 
 cat > "$PLUGIN/src/ReadModel/DrillReadModel.res" <<'EOF'
@@ -1069,6 +1083,15 @@ assert_js_contains "$JS" 'hidden: \["deploymentId"\]' "@hidden: 'deploymentId' r
 assert_js_contains "$JS" 'summary: \["pluginName"\]'  "@summary: 'pluginName' recorded in summary array"
 assert_js_not_contains "$JS" '@hidden'              "@hidden: annotation stripped from output"
 assert_js_not_contains "$JS" '@summary'             "@summary: annotation stripped from output"
+
+echo ""
+echo "=== Test: @scan + @scanSort → metadata fields populated ==="
+JS="$PLUGIN/src/ReadModel/ScanReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId'        "@scan/@scanSort: stateAnnotations metadata emitted"
+assert_js_contains "$JS" 'scan: \["status"\]'        "@scan: 'status' recorded in scan array"
+assert_js_contains "$JS" 'scanSort: \["name"\]'      "@scanSort: 'name' recorded in scanSort array"
+assert_js_not_contains "$JS" '@scan'                 "@scan: annotation stripped from output"
+assert_js_not_contains "$JS" '@scanSort'             "@scanSort: annotation stripped from output"
 
 echo ""
 echo "=== Test: @drillTarget + @collapsed → metadata fields populated ==="

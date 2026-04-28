@@ -57,6 +57,12 @@ let mergeAnnotations = (
     if spec.collapsed->Array.includes(fieldName) {
       obj->Dict.set("x-reventless-collapsed", JSON.Encode.bool(true))
     }
+    if spec.scan->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-scan", JSON.Encode.bool(true))
+    }
+    if spec.scanSort->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-scanSort", JSON.Encode.bool(true))
+    }
     JSON.Encode.object(obj)
   }
 

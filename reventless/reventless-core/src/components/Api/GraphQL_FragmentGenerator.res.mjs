@@ -187,6 +187,8 @@ function deriveServerCapability(schema) {
     pushFilter(name, false);
     pushSort(name);
   });
+  spec.scan.forEach(name => pushFilter(name, false));
+  spec.scanSort.forEach(pushSort);
   return {
     filterFields: filterFields,
     sortFields: sortFields
