@@ -559,6 +559,20 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @hidden + @summary (visibility annotations) ───────
+
+cat > "$PLUGIN/src/ReadModel/VisibilityReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  @id id: string,
+  @summary pluginName: string,
+  @hidden deploymentId: string,
+  description: string,
+}
+EOF
+
 # ─── Fixture: StateViewSlice without @subId ───────────────────────
 
 cat > "$PLUGIN/src/StateViewSlice/SimpleView.res" <<'EOF'
@@ -1026,6 +1040,15 @@ assert_js_not_contains "$JS" '@compositeId'          "@compositeId+@resolves: @c
 assert_js_not_contains "$JS" '@resolves'             "@compositeId+@resolves: @resolves annotation stripped"
 
 echo ""
+echo "=== Test: @hidden + @summary → metadata fields populated ==="
+JS="$PLUGIN/src/ReadModel/VisibilityReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId'      "@hidden/@summary: stateAnnotations metadata emitted"
+assert_js_contains "$JS" 'hidden: \["deploymentId"\]' "@hidden: 'deploymentId' recorded in hidden array"
+assert_js_contains "$JS" 'summary: \["pluginName"\]'  "@summary: 'pluginName' recorded in summary array"
+assert_js_not_contains "$JS" '@hidden'              "@hidden: annotation stripped from output"
+assert_js_not_contains "$JS" '@summary'             "@summary: annotation stripped from output"
+
+echo ""
 echo "=== Test: @@reventless.projection (split-form StateViewSlice) ==="
 JS="$PLUGIN/src/StateViewSlice/SplitView_Projection.res.mjs"
 assert_js_contains "$JS" 'StateViewSlice/SplitView_Projection.res.mjs' "projection moduleUrl"
@@ -1185,6 +1208,32 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/OrphanSkReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @hidden + @summary on same field ==="
+
+cat > "$ERROR/src/ReadModel/HiddenSummaryConflictReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = {
+  id: string,
+  @hidden
+  @summary
+  deploymentId: string,
+}
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@hidden + @summary conflict" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@hidden and @summary cannot both appear"; then
+    pass "@hidden + @summary on same field → correct compile error"
+  else
+    fail "@hidden + @summary conflict" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/ReadModel/HiddenSummaryConflictReadModel.res"
 
 echo ""
 echo "=== Test: PPX error — @noTag (old name) produces deprecation error ==="

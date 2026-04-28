@@ -33,26 +33,23 @@
 
 ---
 
-## Phase 2 — New `@hidden` and `@summary` annotations
+## Phase 2 — New `@hidden` and `@summary` annotations ✅ DONE
 
 **Depends on:** Phase 1 (extension property pipeline established).
 
 **Goal.** Allow type authors to explicitly control downstream UI field visibility beyond what structural annotations convey.
 
-**Files to change.**
-- PPX annotation parser: recognise `@hidden` and `@summary` on fields within `@schema type state`.
-- JSON Schema generator: emit `"x-reventless-hidden": true` and `"x-reventless-summary": true`.
+**Implementation.** Reuses the Phase 1 metadata pipeline:
 
-**Concrete steps.**
-1. Add `@hidden` to the PPX's known annotation set. When found on a state field, emit `"x-reventless-hidden": true` in that field's JSON Schema.
-2. Add `@summary` similarly, emitting `"x-reventless-summary": true`.
-3. Document: `@hidden` = field should not appear in summary/list views; `@summary` = field should always appear in summary/list views.
-4. Update schema snapshot tests.
+1. `Reventless.StateAnnotations.stateAnnotationSpec` (`reventless/reventless-spec/src/components/StateAnnotations.res`) gained two fields: `hidden: array<string>` and `summary: array<string>`.
+2. The PPX (`packages/reventless-ppx/src/ppx/StateAnnotations.ml`) recognises `@hidden` and `@summary` on fields within `@schema type state` (`has_hidden_field_attr`, `has_summary_field_attr`), strips them via `strip_visibility_attrs` (wired into `ReventlessPpx.ml` after the existing strippers), and validates that no field carries both (`validate_visibility_annotations` raises `@hidden and @summary cannot both appear on the same field 'X'`). The collected names are written into the metadata record.
+3. `SuryToJsonSchema.mergeAnnotations` (`reventless/reventless-core/src/components/Api/SuryToJsonSchema.res`) emits `"x-reventless-hidden": true` and `"x-reventless-summary": true` on the matching field schemas.
 
-**Validation.**
-- A test type with `@hidden deploymentId: string` produces JSON Schema with `"x-reventless-hidden": true`.
-- A test type with `@summary pluginName: string` produces JSON Schema with `"x-reventless-summary": true`.
-- Unknown annotations still produce a warning (existing behaviour preserved).
+**Tests.**
+- PPX integration test (`packages/reventless-ppx/test/run.sh`, `VisibilityReadModel.res`) verifies `hidden: ["deploymentId"]` and `summary: ["pluginName"]` appear in the compiled metadata and that the `@hidden`/`@summary` source annotations are stripped from the output. A negative test (`HiddenSummaryConflictReadModel.res`) verifies the conflict error is raised.
+- Unit tests (`reventless/reventless-core/tests/api/SuryToJsonSchemaTest.res`) cover the `x-reventless-hidden` and `x-reventless-summary` extension properties and confirm they are absent from unannotated sibling fields.
+
+**Convention.** `@hidden` = field should not appear in summary/list views; `@summary` = field should always appear in summary/list views. The two are mutually exclusive on a single field.
 
 ---
 

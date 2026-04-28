@@ -51,6 +51,8 @@ describe("SuryToJsonSchema:", () => {
         subIds: [],
         compositeSubIds: [],
         indexes: [],
+        hidden: [],
+        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let entityIdSchema = getPropertyOf(json, "entityId")
@@ -75,6 +77,8 @@ describe("SuryToJsonSchema:", () => {
         subIds: [],
         compositeSubIds: [],
         indexes: [],
+        hidden: [],
+        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let envSchema = getPropertyOf(json, "environment")
@@ -102,6 +106,8 @@ describe("SuryToJsonSchema:", () => {
         subIds: ["version"],
         compositeSubIds: [],
         indexes: [],
+        hidden: [],
+        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let versionSchema = getPropertyOf(json, "version")
@@ -125,6 +131,8 @@ describe("SuryToJsonSchema:", () => {
         subIds: [],
         compositeSubIds: [],
         indexes: [("ownerId", "byOwner")],
+        hidden: [],
+        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let ownerIdSchema = getPropertyOf(json, "ownerId")
@@ -148,6 +156,8 @@ describe("SuryToJsonSchema:", () => {
         subIds: [],
         compositeSubIds: [],
         indexes: [("category", "")],
+        hidden: [],
+        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let categorySchema = getPropertyOf(json, "category")
@@ -171,12 +181,68 @@ describe("SuryToJsonSchema:", () => {
         subIds: [],
         compositeSubIds: [],
         indexes: [],
+        hidden: [],
+        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let nameSchema = getPropertyOf(json, "name")
       expect(
         nameSchema->Option.flatMap(s => getProperty(s, "x-reventless-id")),
       )->toBe(None)
+    })
+
+    test("emits x-reventless-hidden on field listed in hidden", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "deploymentId": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({
+        ids: [],
+        compositeIds: [],
+        subIds: [],
+        compositeSubIds: [],
+        indexes: [],
+        hidden: ["deploymentId"],
+        summary: [],
+      })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let deploymentIdSchema = getPropertyOf(json, "deploymentId")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        deploymentIdSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-hidden"))
+        ->Option.flatMap(JSON.Decode.bool),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-hidden")),
+      ))->toEqual((Some(true), None))
+    })
+
+    test("emits x-reventless-summary on field listed in summary", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "pluginName": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({
+        ids: [],
+        compositeIds: [],
+        subIds: [],
+        compositeSubIds: [],
+        indexes: [],
+        hidden: [],
+        summary: ["pluginName"],
+      })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let pluginNameSchema = getPropertyOf(json, "pluginName")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        pluginNameSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-summary"))
+        ->Option.flatMap(JSON.Decode.bool),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-summary")),
+      ))->toEqual((Some(true), None))
     })
   })
 })

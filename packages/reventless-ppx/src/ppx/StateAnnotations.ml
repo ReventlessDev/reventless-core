@@ -876,6 +876,53 @@ let generate_config ~loc (str : structure) : structure_item =
     else
       gen_config_call_full ~loc ~index_exprs ~id_resolver_exprs ~ids_resolver_exprs
 
+(* ── @hidden / @summary: visibility annotations (no behavioural effect; flow
+       through the metadata pipeline so JSON Schema can surface them as
+       x-reventless-hidden / x-reventless-summary). ── *)
+
+let has_hidden_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt "hidden") attrs
+
+let has_summary_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) -> String.equal attr.attr_name.txt "summary") attrs
+
+let strip_visibility_field_attrs (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "hidden"
+         || String.equal attr.attr_name.txt "summary")
+  ) attrs
+
+(** Strip @hidden and @summary from @schema type state record fields. *)
+let strip_visibility_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_visibility_field_attrs ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
+(** Validate that no @schema type state field carries both @hidden and @summary. *)
+let validate_visibility_annotations (fields : label_declaration list) : unit =
+  List.iter (fun (ld : label_declaration) ->
+    if has_hidden_field_attr ld.pld_attributes
+       && has_summary_field_attr ld.pld_attributes then
+      Location.raise_errorf ~loc:ld.pld_loc
+        "@hidden and @summary cannot both appear on the same field '%s'"
+        ld.pld_name.txt
+  ) fields
+
 (* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
 
 (** Build a string-array AST expression. *)
@@ -916,8 +963,14 @@ let make_state_annotations_binding ~loc fields : structure_item option =
     | Some attr -> Some (ld.pld_name.txt, get_index_name attr)
     | None -> None
   ) fields in
+  let hidden = List.filter_map (fun (ld : label_declaration) ->
+    if has_hidden_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
+  let summary = List.filter_map (fun (ld : label_declaration) ->
+    if has_summary_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
-     && indexes = [] then None
+     && indexes = [] && hidden = [] && summary = [] then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -932,7 +985,9 @@ let make_state_annotations_binding ~loc fields : structure_item option =
             ({ txt = Lident "compositeIds"; loc }, estr_array ~loc composite_ids);
             ({ txt = Lident "subIds"; loc }, estr_array ~loc sub_ids);
             ({ txt = Lident "compositeSubIds"; loc }, estr_array ~loc composite_sub_ids);
-            ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes) ],
+            ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes);
+            ({ txt = Lident "hidden"; loc }, estr_array ~loc hidden);
+            ({ txt = Lident "summary"; loc }, estr_array ~loc summary) ],
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =
@@ -961,6 +1016,7 @@ let generate_state_annotations ~loc (str : structure) : structure_item list =
   match find_schema_state_record str with
   | None -> []
   | Some fields ->
+    validate_visibility_annotations fields;
     (match make_state_annotations_binding ~loc fields with
      | None -> []
      | Some s -> [s])

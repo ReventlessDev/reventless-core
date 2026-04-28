@@ -35,6 +35,12 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
     let value = indexName === "" ? true : indexName;
     obj["x-reventless-index"] = value;
   }
+  if (spec.hidden.includes(fieldName)) {
+    obj["x-reventless-hidden"] = true;
+  }
+  if (spec.summary.includes(fieldName)) {
+    obj["x-reventless-summary"] = true;
+  }
   return obj;
 }
 

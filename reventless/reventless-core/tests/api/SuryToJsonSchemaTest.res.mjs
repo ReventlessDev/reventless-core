@@ -47,7 +47,9 @@ Jest.describe("SuryToJsonSchema:", () => {
         compositeIds: [],
         subIds: [],
         compositeSubIds: [],
-        indexes: []
+        indexes: [],
+        hidden: [],
+        summary: []
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let entityIdSchema = getPropertyOf(json, "entityId");
@@ -67,7 +69,9 @@ Jest.describe("SuryToJsonSchema:", () => {
         ],
         subIds: [],
         compositeSubIds: [],
-        indexes: []
+        indexes: [],
+        hidden: [],
+        summary: []
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let envSchema = getPropertyOf(json, "environment");
@@ -90,7 +94,9 @@ Jest.describe("SuryToJsonSchema:", () => {
         compositeIds: [],
         subIds: ["version"],
         compositeSubIds: [],
-        indexes: []
+        indexes: [],
+        hidden: [],
+        summary: []
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let versionSchema = getPropertyOf(json, "version");
@@ -109,7 +115,9 @@ Jest.describe("SuryToJsonSchema:", () => {
         indexes: [[
             "ownerId",
             "byOwner"
-          ]]
+          ]],
+        hidden: [],
+        summary: []
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let ownerIdSchema = getPropertyOf(json, "ownerId");
@@ -128,7 +136,9 @@ Jest.describe("SuryToJsonSchema:", () => {
         indexes: [[
             "category",
             ""
-          ]]
+          ]],
+        hidden: [],
+        summary: []
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let categorySchema = getPropertyOf(json, "category");
@@ -144,11 +154,63 @@ Jest.describe("SuryToJsonSchema:", () => {
         compositeIds: [],
         subIds: [],
         compositeSubIds: [],
-        indexes: []
+        indexes: [],
+        hidden: [],
+        summary: []
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let nameSchema = getPropertyOf(json, "name");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(nameSchema, s => getProperty(s, "x-reventless-id"))), undefined);
+    });
+    Jest.test("emits x-reventless-hidden on field listed in hidden", () => {
+      let schema = S.schema(s => ({
+        id: s.m(S.string),
+        deploymentId: s.m(S.string)
+      }));
+      let schema$p = withSpec(schema, {
+        ids: [],
+        compositeIds: [],
+        subIds: [],
+        compositeSubIds: [],
+        indexes: [],
+        hidden: ["deploymentId"],
+        summary: []
+      });
+      let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
+      let deploymentIdSchema = getPropertyOf(json, "deploymentId");
+      let idSchema = getPropertyOf(json, "id");
+      return Jest.Expect.toEqual(Jest.Expect.expect([
+        Stdlib_Option.flatMap(Stdlib_Option.flatMap(deploymentIdSchema, s => getProperty(s, "x-reventless-hidden")), Stdlib_JSON.Decode.bool),
+        Stdlib_Option.flatMap(idSchema, s => getProperty(s, "x-reventless-hidden"))
+      ]), [
+        true,
+        undefined
+      ]);
+    });
+    Jest.test("emits x-reventless-summary on field listed in summary", () => {
+      let schema = S.schema(s => ({
+        id: s.m(S.string),
+        pluginName: s.m(S.string)
+      }));
+      let schema$p = withSpec(schema, {
+        ids: [],
+        compositeIds: [],
+        subIds: [],
+        compositeSubIds: [],
+        indexes: [],
+        hidden: [],
+        summary: ["pluginName"]
+      });
+      let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
+      let pluginNameSchema = getPropertyOf(json, "pluginName");
+      let idSchema = getPropertyOf(json, "id");
+      return Jest.Expect.toEqual(Jest.Expect.expect([
+        Stdlib_Option.flatMap(Stdlib_Option.flatMap(pluginNameSchema, s => getProperty(s, "x-reventless-summary")), Stdlib_JSON.Decode.bool),
+        Stdlib_Option.flatMap(idSchema, s => getProperty(s, "x-reventless-summary"))
+      ]), [
+        true,
+        undefined
+      ]);
     });
   });
 });

@@ -38,6 +38,12 @@ let mergeAnnotations = (
       obj->Dict.set("x-reventless-index", value)
     | None => ()
     }
+    if spec.hidden->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-hidden", JSON.Encode.bool(true))
+    }
+    if spec.summary->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-summary", JSON.Encode.bool(true))
+    }
     JSON.Encode.object(obj)
   }
 
