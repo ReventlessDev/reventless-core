@@ -18,7 +18,7 @@ This is a Lerna monorepo. Packages are organized by type — **always place new 
 |--------|---------|---------|
 | `rescript/` | ReScript bindings for JS/npm libraries | `rescript-uuid`, `rescript-graphql-yoga` |
 | `reventless/` | Reventless framework + extension packages | `reventless-spec`, `reventless-in-memory` |
-| `examples/` | Example applications | `examples/online-shop-aggregates/`, `examples/online-shop-dcb/` |
+| `examples/` | Example applications | `examples/online-shop-aggregates/`, `examples/online-shop-dcb/`. Codegen-generated examples live under `examples/codegen/<adapter>/<fixture-stem>/` and are diffed against `reventless-codegen` test fixtures by `ForwardGoldenTest.res`. |
 | `packages/` | Build tooling and documentation only | `doc` |
 
 All four folders are Lerna workspaces (`lerna.json` packages) and pnpm workspaces (declared in `pnpm-workspace.yaml`).
