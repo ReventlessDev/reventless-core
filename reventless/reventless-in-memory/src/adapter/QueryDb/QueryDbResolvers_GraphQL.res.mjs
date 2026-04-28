@@ -12,6 +12,7 @@ import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
 import * as SortKey_Filter$ReventlessInMemory from "./SortKey_Filter.res.mjs";
 import * as DomainGraphQL_Server$ReventlessInMemory from "../DomainGraphQL_Server.res.mjs";
+import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 function Make(Bus) {
   let extractIdentity = ctx => {
@@ -107,12 +108,16 @@ function Make(Bus) {
       return obj;
     };
     let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
+    let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name];
+    let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
     let match;
     if (connectionSpec) {
-      let connectionTypeName = returnTypeName + "Connection";
       let filterTypeName = returnTypeName + "Filter";
-      server.registerTypes([`input ` + filterTypeName + ` {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`]);
-      let sdl = [`  ` + listQueryName + `(filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + connectionTypeName + `!`];
+      let orderByTypes = GraphQL_FragmentGenerator$ReventlessCore.deriveConnectionOrderByType(returnTypeName, capability);
+      let hasOrderBy = orderByTypes.length !== 0;
+      let typesToRegister = [GraphQL_FragmentGenerator$ReventlessCore.deriveConnectionFilterType(filterTypeName, capability)].concat(orderByTypes);
+      server.registerTypes(typesToRegister);
+      let sdl = [GraphQL_FragmentGenerator$ReventlessCore.deriveConnectionQueryField(listQueryName, returnTypeName, filterTypeName, hasOrderBy)];
       let resolver = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
@@ -141,17 +146,80 @@ function Make(Bus) {
         let ids = Stdlib_Option.map(Stdlib_Option.flatMap(filterDict["ids"], Stdlib_JSON.Decode.array), arr => Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string));
         let getLabel = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[labelField]), Stdlib_JSON.Decode.string), "");
         let getId = item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d["id"]), Stdlib_JSON.Decode.string), "");
+        let getFieldString = (item, field) => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[field]), v => {
+          let s = Stdlib_JSON.Decode.string(v);
+          if (s !== undefined) {
+            return s;
+          } else {
+            return Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString());
+          }
+        });
+        let perFieldChecks = capability.filterFields.flatMap(f => {
+          let checks = [];
+          let v = filterDict[f.name + "Eq"];
+          if (v !== undefined && v !== null) {
+            let s = Stdlib_JSON.Decode.string(v);
+            let expected = s !== undefined ? s : Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v), f => f.toString()), "");
+            checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v === expected));
+          }
+          if (f.range) {
+            let v$1 = filterDict[f.name + "From"];
+            if (v$1 !== undefined && v$1 !== null) {
+              let from = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$1), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$1), f => f.toString()), ""));
+              checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v >= from));
+            }
+            let v$2 = filterDict[f.name + "To"];
+            if (v$2 !== undefined && v$2 !== null) {
+              let to_ = Stdlib_Option.getOr(Stdlib_JSON.Decode.string(v$2), Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_JSON.Decode.float(v$2), f => f.toString()), ""));
+              checks.push(item => Stdlib_Option.mapOr(getFieldString(item, f.name), false, v => v <= to_));
+            }
+          }
+          return checks;
+        });
         let filtered = items.filter(item => {
           let passSearch = search !== undefined && search.length > 0 ? getLabel(item).toLowerCase().includes(search.toLowerCase()) : true;
           let passPrefix = searchPrefix !== undefined && searchPrefix.length > 0 ? getLabel(item).toLowerCase().startsWith(searchPrefix.toLowerCase()) : true;
           let passIds = ids !== undefined && ids.length !== 0 ? ids.some(i => i === getId(item)) : true;
-          if (passSearch && passPrefix) {
-            return passIds;
+          let passPerField = perFieldChecks.every(check => check(item));
+          if (passSearch && passPrefix && passIds) {
+            return passPerField;
           } else {
             return false;
           }
         });
-        let edges = filtered.map((item, i) => ({
+        let orderByDict = Stdlib_Option.flatMap(argsDict["orderBy"], Stdlib_JSON.Decode.object);
+        let sorted;
+        if (orderByDict !== undefined) {
+          let field = Stdlib_Option.flatMap(orderByDict["field"], Stdlib_JSON.Decode.string);
+          let direction = Stdlib_Option.getOr(Stdlib_Option.flatMap(orderByDict["direction"], Stdlib_JSON.Decode.string), "ASC");
+          if (field !== undefined) {
+            sorted = filtered.toSorted((a, b) => {
+              let av = Stdlib_Option.getOr(getFieldString(a, field), "");
+              let bv = Stdlib_Option.getOr(getFieldString(b, field), "");
+              let primary = av < bv ? -1 : (
+                  av > bv ? 1 : 0
+                );
+              let primary$1 = direction === "DESC" ? -primary | 0 : primary;
+              if (primary$1 !== 0) {
+                return primary$1;
+              }
+              let aid = getId(a);
+              let bid = getId(b);
+              if (aid < bid) {
+                return -1;
+              } else if (aid > bid) {
+                return 1;
+              } else {
+                return 0;
+              }
+            });
+          } else {
+            sorted = filtered;
+          }
+        } else {
+          sorted = filtered;
+        }
+        let edges = sorted.map((item, i) => ({
           node: item,
           cursor: i.toString()
         }));
@@ -209,9 +277,9 @@ function Make(Bus) {
     let itemsSdl;
     if (subIdField !== undefined) {
       let filterTypeName$1 = returnTypeName + "ItemsFilter";
-      let connectionTypeName$1 = returnTypeName + "Connection";
+      let connectionTypeName = returnTypeName + "Connection";
       server.registerTypes([`input ` + filterTypeName$1 + ` {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`]);
-      itemsSdl = [`  ` + singleQueryName + `Items(id: ID!, filter: ` + filterTypeName$1 + `, first: Int, after: String, last: Int, before: String): ` + connectionTypeName$1 + `!`];
+      itemsSdl = [`  ` + singleQueryName + `Items(id: ID!, filter: ` + filterTypeName$1 + `, first: Int, after: String, last: Int, before: String): ` + connectionTypeName + `!`];
     } else {
       itemsSdl = [];
     }

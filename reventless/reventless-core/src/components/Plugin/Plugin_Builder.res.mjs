@@ -169,6 +169,7 @@ function Make(Spec) {
             qn$1 = newrecord;
           }
           Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[R.Spec.name] = qn$1;
+          Plugin_Helpers$ReventlessCore.stateSchemaRegistry[R.Spec.name] = R.Spec.stateSchema;
         });
         let baseFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
         let subResult = Plugin_SubscriptionSchema$ReventlessCore.generate(mutationEntries, queryEntries, eventLogEntries);

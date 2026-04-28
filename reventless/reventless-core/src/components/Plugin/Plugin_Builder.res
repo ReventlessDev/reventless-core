@@ -212,6 +212,10 @@ module Make = (
       | None => qn
       }
       Plugin_Helpers.queryFieldNamesRegistry->Dict.set(R.Spec.name, qn)
+      Plugin_Helpers.stateSchemaRegistry->Dict.set(
+        R.Spec.name,
+        R.Spec.stateSchema->S.castToUnknown,
+      )
     })
 
     let apiSchemaFragment = {

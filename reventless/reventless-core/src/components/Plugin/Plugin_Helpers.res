@@ -567,6 +567,14 @@ type dcbAppSyncResolverParams = {
 let queryFieldNamesRegistry: dict<Api_Naming.queryNames> = Dict.make()
 
 // ---------------------------------------------------------------------------
+// State schema registry — populated alongside queryFieldNamesRegistry so that
+// the in-memory QueryDb resolver can derive the same `serverCapability`
+// (filter / orderBy fields) the FragmentGenerator computed at SDL emission
+// time. Keyed by Spec.name like queryFieldNamesRegistry.
+// ---------------------------------------------------------------------------
+let stateSchemaRegistry: dict<S.t<unknown>> = Dict.make()
+
+// ---------------------------------------------------------------------------
 // Aggregate mutation field names registry — populated by Plugin_Builder during
 // construct() to map aggregate Spec.name → plugin-prefixed mutation field names.
 // Read by CommandGenerator_Builder.connect() to provide plugin-prefixed mutation field names.

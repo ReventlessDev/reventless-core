@@ -125,8 +125,121 @@ let deriveConnectionTypes = (~singularTypeName: string): array<string> => [
 let deriveSubIdFilterType = (~filterTypeName: string): string =>
   `input ${filterTypeName} {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`
 
-let deriveConnectionFilterType = (~filterTypeName: string): string =>
-  `input ${filterTypeName} {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`
+// ── Server-side filter / sort capability ─────────────────────────────────────
+// Derived from the structural annotations carried on the state schema
+// (`@id`, `@compositeId`, `@subId`, `@compositeSubId`, `@index`). Both the
+// SDL emitter and the in-memory resolver consume the same record so the
+// emitted Filter / OrderBy and the runtime narrow / sort cannot drift.
+
+type filterField = {
+  name: string,
+  gqlType: string,
+  range: bool,
+}
+
+type serverCapability = {
+  filterFields: array<filterField>,
+  sortFields: array<string>,
+}
+
+let emptyCapability: serverCapability = {filterFields: [], sortFields: []}
+
+// Convert a SchemaType.schemaType to its GraphQL scalar name (input position).
+// Mirrors the scalar branches of fromSchemaType — kept inline because we don't
+// emit `!`/list wrappers for filter inputs.
+let scalarOfSchemaType = (st: SchemaType.schemaType): string =>
+  switch st {
+  | ScalarString => "String"
+  | ScalarNumber => "Float"
+  | ScalarBoolean => "Boolean"
+  | ScalarBigInt => "String"
+  | EntityId => "ID"
+  | _ => "String"
+  }
+
+let deriveServerCapability = (schema: S.t<unknown>): serverCapability => {
+  switch Reventless.StateAnnotations.getSpec(schema) {
+  | None => emptyCapability
+  | Some(spec) =>
+    let fieldTypes = SchemaType.fromSuryObject(~typeName="", schema)->Option.getOr(Dict.make())
+    let scalarOf = (fieldName: string): string =>
+      fieldTypes->Dict.get(fieldName)->Option.mapOr("String", scalarOfSchemaType)
+
+    let filterFields: array<filterField> = []
+    let sortFields: array<string> = []
+    let seenFilter: Set.t<string> = Set.make()
+    let seenSort: Set.t<string> = Set.make()
+
+    let pushFilter = (name, ~range) =>
+      if !(seenFilter->Set.has(name)) {
+        seenFilter->Set.add(name)
+        filterFields->Array.push({name, gqlType: scalarOf(name), range})
+      }
+    let pushSort = name =>
+      if !(seenSort->Set.has(name)) {
+        seenSort->Set.add(name)
+        sortFields->Array.push(name)
+      }
+
+    spec.ids->Array.forEach(name => {
+      pushFilter(name, ~range=false)
+      pushSort(name)
+    })
+    spec.compositeIds->Array.forEach(name => pushFilter(name, ~range=false))
+    spec.subIds->Array.forEach(name => {
+      pushFilter(name, ~range=true)
+      pushSort(name)
+    })
+    spec.compositeSubIds->Array.forEach(name => {
+      pushFilter(name, ~range=true)
+      pushSort(name)
+    })
+    spec.indexes->Array.forEach(((name, _indexName)) => {
+      pushFilter(name, ~range=false)
+      pushSort(name)
+    })
+
+    {filterFields, sortFields}
+  }
+}
+
+let deriveConnectionFilterType = (
+  ~filterTypeName: string,
+  ~capability: serverCapability=emptyCapability,
+): string => {
+  let baseFields = ["search: String", "searchPrefix: String", "ids: [ID!]"]
+  let perFieldFilters =
+    capability.filterFields->Array.flatMap(f => {
+      let eq = `${f.name}Eq: ${f.gqlType}`
+      if f.range {
+        [eq, `${f.name}From: ${f.gqlType}`, `${f.name}To: ${f.gqlType}`]
+      } else {
+        [eq]
+      }
+    })
+  let allFields = Array.concat(baseFields, perFieldFilters)
+  let body = allFields->Array.map(f => `  ${f}`)->Array.join("\n")
+  `input ${filterTypeName} {\n${body}\n}`
+}
+
+// Emits an `enum <Type>OrderField` and `input <Type>OrderBy` pair when the
+// capability has any sort fields. Returns [] when no field is sortable so
+// the connection field doesn't reference a non-existent OrderBy type.
+let deriveConnectionOrderByType = (
+  ~singularTypeName: string,
+  ~capability: serverCapability,
+): array<string> =>
+  if capability.sortFields->Array.length == 0 {
+    []
+  } else {
+    let orderFieldEnumName = singularTypeName ++ "OrderField"
+    let orderByInputName = singularTypeName ++ "OrderBy"
+    let valuesStr = capability.sortFields->Array.map(f => `  ${f}`)->Array.join("\n")
+    [
+      `enum ${orderFieldEnumName} {\n${valuesStr}\n}`,
+      `input ${orderByInputName} {\n  field: ${orderFieldEnumName}!\n  direction: SortOrder!\n}`,
+    ]
+  }
 
 let deriveItemsQueryField = (
   ~singleFieldName: string,
@@ -162,8 +275,11 @@ let deriveConnectionQueryField = (
   ~listFieldName: string,
   ~singularTypeName: string,
   ~filterTypeName: string,
-): string =>
-  `  ${listFieldName}(filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${singularTypeName}Connection!`
+  ~hasOrderBy: bool=false,
+): string => {
+  let orderByArg = hasOrderBy ? `, orderBy: ${singularTypeName}OrderBy` : ""
+  `  ${listFieldName}(filter: ${filterTypeName}${orderByArg}, first: Int, after: String, last: Int, before: String): ${singularTypeName}Connection!`
+}
 
 // ── Mutation field derivation ──────────────────────────────────────────────
 
@@ -318,15 +434,31 @@ let generate = (
         deriveConnectionTypes(~singularTypeName=entry.returnTypeName)
         ->Array.forEach(t => types->Array.push(t))
       }
+      let capability = deriveServerCapability(entry.stateSchema)
       let connectionFilterTypeName = entry.returnTypeName ++ "Filter"
       if !(seenTypes->Set.has(connectionFilterTypeName)) {
         seenTypes->Set.add(connectionFilterTypeName)
-        types->Array.push(deriveConnectionFilterType(~filterTypeName=connectionFilterTypeName))
+        types->Array.push(
+          deriveConnectionFilterType(~filterTypeName=connectionFilterTypeName, ~capability),
+        )
+      }
+      let orderByTypes =
+        deriveConnectionOrderByType(~singularTypeName=entry.returnTypeName, ~capability)
+      let hasOrderBy = orderByTypes->Array.length > 0
+      if hasOrderBy {
+        let orderFieldEnumName = entry.returnTypeName ++ "OrderField"
+        let orderByInputName = entry.returnTypeName ++ "OrderBy"
+        if !(seenTypes->Set.has(orderFieldEnumName)) {
+          seenTypes->Set.add(orderFieldEnumName)
+          seenTypes->Set.add(orderByInputName)
+          orderByTypes->Array.forEach(t => types->Array.push(t))
+        }
       }
       let listField = deriveConnectionQueryField(
         ~listFieldName,
         ~singularTypeName=entry.returnTypeName,
         ~filterTypeName=connectionFilterTypeName,
+        ~hasOrderBy,
       )
       queries->Array.push(listField)
     } else {

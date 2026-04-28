@@ -39,6 +39,58 @@ type unionCommand =
   | Create({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
   | Rename({itemId: @s.matches(Reventless.DcbTag.string) string, newName: string})
 
+// State schemas exercising structural annotations (Phase 1 server capability)
+@schema
+type plainState = {
+  productId: @s.matches(Reventless.DcbTag.string) string,
+  name: string,
+}
+
+@schema
+type indexedState = {
+  productId: @s.matches(Reventless.DcbTag.string) string,
+  ownerId: string,
+  status: string,
+  name: string,
+}
+let indexedStateSchemaWithAnnotations = indexedStateSchema->S.Metadata.set(
+  ~id=Reventless.StateAnnotations.stateAnnotationsId,
+  {
+    ids: ["productId"],
+    compositeIds: [],
+    subIds: [],
+    compositeSubIds: [],
+    indexes: [("ownerId", "byOwner")],
+    hidden: [],
+    summary: [],
+    drillTargets: [],
+    drillTargetKeys: [],
+    collapsed: [],
+  },
+)
+
+@schema
+type orderedState = {
+  productId: @s.matches(Reventless.DcbTag.string) string,
+  createdAt: string,
+  name: string,
+}
+let orderedStateSchemaWithAnnotations = orderedStateSchema->S.Metadata.set(
+  ~id=Reventless.StateAnnotations.stateAnnotationsId,
+  {
+    ids: ["productId"],
+    compositeIds: [],
+    subIds: ["createdAt"],
+    compositeSubIds: [],
+    indexes: [],
+    hidden: [],
+    summary: [],
+    drillTargets: [],
+    drillTargetKeys: [],
+    collapsed: [],
+  },
+)
+
 // ── Granular Level Tests ────────────────────────────────────────────────────
 
 describe("GraphQL_SchemaInspector", () => {
@@ -444,6 +496,94 @@ describe("GraphQL_SchemaInspector", () => {
   })
 
   // ── Platform Level — GraphQL_Server diagnostics ─────────────────────────
+
+  // ── Phase 1: server capability — auto-derived Filter / OrderBy ─────────
+
+  describe("server capability — auto-derived Filter / OrderBy", () => {
+    testPromise("read model with no annotations emits the unchanged search-only Filter", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Plain_View",
+            listFieldName: "Plain_Views",
+            returnTypeName: "PlainView",
+            stateSchema: plainStateSchema->S.castToUnknown,
+            authorization: None,
+            includeIdParam: false,
+            connectionSpec: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      // Filter has only the legacy block
+      expect(sdl->String.includes("input PlainViewFilter"))->toBe(true)
+      expect(sdl->String.includes("search: String"))->toBe(true)
+      expect(sdl->String.includes("searchPrefix: String"))->toBe(true)
+      expect(sdl->String.includes("ids: [ID!]"))->toBe(true)
+      // No per-field eq inputs
+      expect(sdl->String.includes("Eq:"))->toBe(false)
+      // No OrderBy / OrderField types or arg
+      expect(sdl->String.includes("PlainViewOrderBy"))->toBe(false)
+      expect(sdl->String.includes("PlainViewOrderField"))->toBe(false)
+      expect(sdl->String.includes("orderBy:"))->toBe(false)
+    })
+
+    testPromise("read model with @id + @index emits Eq filters + OrderBy + orderBy arg", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Indexed_Product",
+            listFieldName: "Indexed_Products",
+            returnTypeName: "IndexedProduct",
+            stateSchema: indexedStateSchemaWithAnnotations->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+            connectionSpec: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      // Per-field eq inputs derived from @id and @index
+      expect(sdl->String.includes("input IndexedProductFilter"))->toBe(true)
+      expect(sdl->String.includes("productIdEq: ID"))->toBe(true)
+      // ownerId is detected as an entity reference → ID (matches SchemaType.fromSury behaviour)
+      expect(sdl->String.includes("ownerIdEq: ID"))->toBe(true)
+      // OrderField enum lists the same fields
+      expect(sdl->String.includes("enum IndexedProductOrderField"))->toBe(true)
+      expect(sdl->String.includes("input IndexedProductOrderBy"))->toBe(true)
+      expect(sdl->String.includes("direction: SortOrder!"))->toBe(true)
+      // Connection field arg list includes orderBy
+      expect(sdl->String.includes("orderBy: IndexedProductOrderBy"))->toBe(true)
+    })
+
+    testPromise("read model with @subId emits range filters + OrderBy on the sort key", async () => {
+      let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
+        ~mutationEntries=[],
+        ~queryEntries=[
+          {
+            singleFieldName: "Ordered_Item",
+            listFieldName: "Ordered_Items",
+            returnTypeName: "OrderedItem",
+            stateSchema: orderedStateSchemaWithAnnotations->S.castToUnknown,
+            authorization: None,
+            includeIdParam: true,
+            connectionSpec: true,
+          },
+        ],
+      )
+      let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
+      let sdl = inspection.sdlPreview
+      expect(sdl->String.includes("createdAtEq: String"))->toBe(true)
+      expect(sdl->String.includes("createdAtFrom: String"))->toBe(true)
+      expect(sdl->String.includes("createdAtTo: String"))->toBe(true)
+      expect(sdl->String.includes("enum OrderedItemOrderField"))->toBe(true)
+      expect(sdl->String.includes("orderBy: OrderedItemOrderBy"))->toBe(true)
+    })
+  })
 
   describe("GraphQL_Server diagnostics", () => {
     testPromise("diagnostics detects resolver without SDL field", async () => {

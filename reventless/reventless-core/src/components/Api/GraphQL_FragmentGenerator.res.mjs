@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) {
   while (true) {
@@ -114,8 +115,119 @@ function deriveSubIdFilterType(filterTypeName) {
   return `input ` + filterTypeName + ` {\n  prefix: String\n  from: String\n  to: String\n  eq: String\n  order: SortOrder\n}`;
 }
 
-function deriveConnectionFilterType(filterTypeName) {
-  return `input ` + filterTypeName + ` {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`;
+let emptyCapability_filterFields = [];
+
+let emptyCapability_sortFields = [];
+
+let emptyCapability = {
+  filterFields: emptyCapability_filterFields,
+  sortFields: emptyCapability_sortFields
+};
+
+function scalarOfSchemaType(st) {
+  if (typeof st === "object") {
+    return "String";
+  }
+  switch (st) {
+    case "ScalarNumber" :
+      return "Float";
+    case "ScalarBoolean" :
+      return "Boolean";
+    case "EntityId" :
+      return "ID";
+    default:
+      return "String";
+  }
+}
+
+function deriveServerCapability(schema) {
+  let spec = StateAnnotations$Reventless.getSpec(schema);
+  if (spec === undefined) {
+    return emptyCapability;
+  }
+  let fieldTypes = Stdlib_Option.getOr(SchemaType$ReventlessCore.fromSuryObject("", schema), {});
+  let scalarOf = fieldName => Stdlib_Option.mapOr(fieldTypes[fieldName], "String", scalarOfSchemaType);
+  let filterFields = [];
+  let sortFields = [];
+  let seenFilter = new Set();
+  let seenSort = new Set();
+  let pushFilter = (name, range) => {
+    if (!seenFilter.has(name)) {
+      seenFilter.add(name);
+      filterFields.push({
+        name: name,
+        gqlType: scalarOf(name),
+        range: range
+      });
+      return;
+    }
+  };
+  let pushSort = name => {
+    if (!seenSort.has(name)) {
+      seenSort.add(name);
+      sortFields.push(name);
+      return;
+    }
+  };
+  spec.ids.forEach(name => {
+    pushFilter(name, false);
+    pushSort(name);
+  });
+  spec.compositeIds.forEach(name => pushFilter(name, false));
+  spec.subIds.forEach(name => {
+    pushFilter(name, true);
+    pushSort(name);
+  });
+  spec.compositeSubIds.forEach(name => {
+    pushFilter(name, true);
+    pushSort(name);
+  });
+  spec.indexes.forEach(param => {
+    let name = param[0];
+    pushFilter(name, false);
+    pushSort(name);
+  });
+  return {
+    filterFields: filterFields,
+    sortFields: sortFields
+  };
+}
+
+function deriveConnectionFilterType(filterTypeName, capabilityOpt) {
+  let capability = capabilityOpt !== undefined ? capabilityOpt : emptyCapability;
+  let baseFields = [
+    "search: String",
+    "searchPrefix: String",
+    "ids: [ID!]"
+  ];
+  let perFieldFilters = capability.filterFields.flatMap(f => {
+    let eq = f.name + `Eq: ` + f.gqlType;
+    if (f.range) {
+      return [
+        eq,
+        f.name + `From: ` + f.gqlType,
+        f.name + `To: ` + f.gqlType
+      ];
+    } else {
+      return [eq];
+    }
+  });
+  let allFields = baseFields.concat(perFieldFilters);
+  let body = allFields.map(f => `  ` + f).join("\n");
+  return `input ` + filterTypeName + ` {\n` + body + `\n}`;
+}
+
+function deriveConnectionOrderByType(singularTypeName, capability) {
+  if (capability.sortFields.length === 0) {
+    return [];
+  }
+  let orderFieldEnumName = singularTypeName + "OrderField";
+  let orderByInputName = singularTypeName + "OrderBy";
+  let valuesStr = capability.sortFields.map(f => `  ` + f).join("\n");
+  return [
+    `enum ` + orderFieldEnumName + ` {\n` + valuesStr + `\n}`,
+    `input ` + orderByInputName + ` {\n  field: ` + orderFieldEnumName + `!\n  direction: SortOrder!\n}`
+  ];
 }
 
 function deriveItemsQueryField(singleFieldName, returnTypeName, filterTypeName) {
@@ -139,8 +251,10 @@ function deriveListQueryField(listFieldName, pluralTypeName) {
   return `  ` + listFieldName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`;
 }
 
-function deriveConnectionQueryField(listFieldName, singularTypeName, filterTypeName) {
-  return `  ` + listFieldName + `(filter: ` + filterTypeName + `, first: Int, after: String, last: Int, before: String): ` + singularTypeName + `Connection!`;
+function deriveConnectionQueryField(listFieldName, singularTypeName, filterTypeName, hasOrderByOpt) {
+  let hasOrderBy = hasOrderByOpt !== undefined ? hasOrderByOpt : false;
+  let orderByArg = hasOrderBy ? `, orderBy: ` + singularTypeName + `OrderBy` : "";
+  return `  ` + listFieldName + `(filter: ` + filterTypeName + orderByArg + `, first: Int, after: String, last: Int, before: String): ` + singularTypeName + `Connection!`;
 }
 
 function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, variantSchema) {
@@ -232,12 +346,26 @@ function generate(mutationEntries, queryEntries) {
           types.push(t);
         });
       }
+      let capability = deriveServerCapability(entry.stateSchema);
       let connectionFilterTypeName = entry.returnTypeName + "Filter";
       if (!seenTypes.has(connectionFilterTypeName)) {
         seenTypes.add(connectionFilterTypeName);
-        types.push(deriveConnectionFilterType(connectionFilterTypeName));
+        types.push(deriveConnectionFilterType(connectionFilterTypeName, capability));
       }
-      let listField = deriveConnectionQueryField(listFieldName, entry.returnTypeName, connectionFilterTypeName);
+      let orderByTypes = deriveConnectionOrderByType(entry.returnTypeName, capability);
+      let hasOrderBy = orderByTypes.length !== 0;
+      if (hasOrderBy) {
+        let orderFieldEnumName = entry.returnTypeName + "OrderField";
+        let orderByInputName = entry.returnTypeName + "OrderBy";
+        if (!seenTypes.has(orderFieldEnumName)) {
+          seenTypes.add(orderFieldEnumName);
+          seenTypes.add(orderByInputName);
+          orderByTypes.forEach(t => {
+            types.push(t);
+          });
+        }
+      }
+      let listField = deriveConnectionQueryField(listFieldName, entry.returnTypeName, connectionFilterTypeName, hasOrderBy);
       queries.push(listField);
       return;
     }
@@ -281,7 +409,11 @@ export {
   derivePluralWrapperType,
   deriveConnectionTypes,
   deriveSubIdFilterType,
+  emptyCapability,
+  scalarOfSchemaType,
+  deriveServerCapability,
   deriveConnectionFilterType,
+  deriveConnectionOrderByType,
   deriveItemsQueryField,
   deriveObjectQueryField,
   deriveListQueryField,

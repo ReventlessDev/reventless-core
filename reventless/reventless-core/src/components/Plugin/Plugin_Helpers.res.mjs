@@ -341,6 +341,8 @@ function clearOnPlatformDeployed() {
 
 let queryFieldNamesRegistry = {};
 
+let stateSchemaRegistry = {};
+
 let aggregateMutationFieldsRegistry = {};
 
 let noHooks_adminExtensionPoints = {
@@ -855,6 +857,7 @@ export {
   replayPlatformDeployedHook,
   clearOnPlatformDeployed,
   queryFieldNamesRegistry,
+  stateSchemaRegistry,
   aggregateMutationFieldsRegistry,
   noHooks,
   NoopHooksConfig,

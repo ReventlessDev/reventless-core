@@ -215,16 +215,33 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
 
     // -- List query -------------------------------------------------------------
+    // Look up the registered state schema (populated alongside queryFieldNamesRegistry)
+    // so the resolver derives the same serverCapability the FragmentGenerator emitted.
+    let stateSchemaOpt = Plugin_Helpers.stateSchemaRegistry->Dict.get(name)
+    let capability = switch stateSchemaOpt {
+    | Some(s) => GraphQL_FragmentGenerator.deriveServerCapability(s)
+    | None => GraphQL_FragmentGenerator.emptyCapability
+    }
     let (listSdl, listResolver): (array<string>, GraphQL_ServerInstance.resolverFn) = if connectionSpec {
       // Relay Connection spec format
-      let connectionTypeName = returnTypeName ++ "Connection"
       let filterTypeName = returnTypeName ++ "Filter"
-      server.registerTypes(
-        ~sdlTypes=[
-          `input ${filterTypeName} {\n  search: String\n  searchPrefix: String\n  ids: [ID!]\n}`,
-        ],
+      let orderByTypes = GraphQL_FragmentGenerator.deriveConnectionOrderByType(
+        ~singularTypeName=returnTypeName,
+        ~capability,
       )
-      let sdl = [`  ${listQueryName}(filter: ${filterTypeName}, first: Int, after: String, last: Int, before: String): ${connectionTypeName}!`]
+      let hasOrderBy = orderByTypes->Array.length > 0
+      let typesToRegister = [
+        GraphQL_FragmentGenerator.deriveConnectionFilterType(~filterTypeName, ~capability),
+      ]->Array.concat(orderByTypes)
+      server.registerTypes(~sdlTypes=typesToRegister)
+      let sdl = [
+        GraphQL_FragmentGenerator.deriveConnectionQueryField(
+          ~listFieldName=listQueryName,
+          ~singularTypeName=returnTypeName,
+          ~filterTypeName,
+          ~hasOrderBy,
+        ),
+      ]
       let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
         switch await runInterceptor(~ctx, ~args) {
         | Deny(_) =>
@@ -270,6 +287,66 @@ module Make = (Bus: InMemory_Bus.T) => {
             ->Option.flatMap(d => d->Dict.get("id"))
             ->Option.flatMap(JSON.Decode.string)
             ->Option.getOr("")
+          // Per-field eq / from / to filters derived from capability — applied
+          // alongside the legacy search/searchPrefix/ids block.
+          let getFieldString = (item, field) =>
+            item
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get(field))
+            ->Option.flatMap(v =>
+              switch v->JSON.Decode.string {
+              | Some(s) => Some(s)
+              | None =>
+                v
+                ->JSON.Decode.float
+                ->Option.map(f => Float.toString(f))
+              }
+            )
+          let perFieldChecks: array<JSON.t => bool> = capability.filterFields->Array.flatMap(f => {
+            let checks: array<JSON.t => bool> = []
+            switch filterDict->Dict.get(f.name ++ "Eq") {
+            | Some(v) when v != JSON.Encode.null =>
+              let expected = switch v->JSON.Decode.string {
+              | Some(s) => s
+              | None =>
+                v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr("")
+              }
+              checks->Array.push(item =>
+                getFieldString(item, f.name)->Option.mapOr(false, v => v == expected)
+              )
+            | _ => ()
+            }
+            if f.range {
+              switch filterDict->Dict.get(f.name ++ "From") {
+              | Some(v) when v != JSON.Encode.null =>
+                let from =
+                  v
+                  ->JSON.Decode.string
+                  ->Option.getOr(
+                    v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""),
+                  )
+                checks->Array.push(item =>
+                  getFieldString(item, f.name)->Option.mapOr(false, v => v >= from)
+                )
+              | _ => ()
+              }
+              switch filterDict->Dict.get(f.name ++ "To") {
+              | Some(v) when v != JSON.Encode.null =>
+                let to_ =
+                  v
+                  ->JSON.Decode.string
+                  ->Option.getOr(
+                    v->JSON.Decode.float->Option.map(f => Float.toString(f))->Option.getOr(""),
+                  )
+                checks->Array.push(item =>
+                  getFieldString(item, f.name)->Option.mapOr(false, v => v <= to_)
+                )
+              | _ => ()
+              }
+            }
+            checks
+          })
+
           let filtered = items->Array.filter(item => {
             let passSearch = switch search {
             | Some(s) if s->String.length > 0 =>
@@ -286,9 +363,59 @@ module Make = (Bus: InMemory_Bus.T) => {
               idList->Array.some(i => i == getId(item))
             | _ => true
             }
-            passSearch && passPrefix && passIds
+            let passPerField = perFieldChecks->Array.every(check => check(item))
+            passSearch && passPrefix && passIds && passPerField
           })
-          let edges = filtered->Array.mapWithIndex((item, i) => {
+
+          // Apply orderBy when provided. Sorts on the requested field; ties
+          // broken by id so keyset-style cursors stay stable across requests
+          // that share a sort field.
+          let orderByDict =
+            argsDict
+            ->Dict.get("orderBy")
+            ->Option.flatMap(JSON.Decode.object)
+          let sorted = switch orderByDict {
+          | Some(ob) =>
+            let field = ob->Dict.get("field")->Option.flatMap(JSON.Decode.string)
+            let direction =
+              ob
+              ->Dict.get("direction")
+              ->Option.flatMap(JSON.Decode.string)
+              ->Option.getOr("ASC")
+            switch field {
+            | Some(f) =>
+              let cmp = (a, b) => {
+                let av = getFieldString(a, f)->Option.getOr("")
+                let bv = getFieldString(b, f)->Option.getOr("")
+                let primary = if av < bv {
+                  -1
+                } else if av > bv {
+                  1
+                } else {
+                  0
+                }
+                let primary = direction == "DESC" ? -primary : primary
+                if primary != 0 {
+                  primary
+                } else {
+                  let aid = getId(a)
+                  let bid = getId(b)
+                  if aid < bid {
+                    -1
+                  } else if aid > bid {
+                    1
+                  } else {
+                    0
+                  }
+                }
+              }
+              filtered->Array.toSorted((a, b) => cmp(a, b)->Int.toFloat)
+            | None => filtered
+            }
+          | None => filtered
+          }
+
+          let edges = sorted->Array.mapWithIndex((item, i) => {
             Obj.magic({"node": item, "cursor": Int.toString(i)})
           })
           let startCursor = edges->Array.get(0)->Option.map(_ => Int.toString(0))

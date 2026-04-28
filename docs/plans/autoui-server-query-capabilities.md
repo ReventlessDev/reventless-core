@@ -30,7 +30,7 @@ Order in the result is decided once: `orderBy` always wins when supplied, otherw
 
 ## Phase 1 — Auto-derive Filter and OrderBy from existing annotations
 
-**Status.** Planned.
+**Status.** Shipped.
 
 **Depends on:** [autoui-schema-annotations.md](autoui-schema-annotations.md) Phase 1 (structural annotations propagated into the JSON Schema as `x-reventless-*` extension properties — already shipped).
 
@@ -87,6 +87,13 @@ Order in the result is decided once: `orderBy` always wins when supplied, otherw
 - ✅ New per-field `eq` filters narrow rows server-side; `pageInfo` and cursors stay correct.
 - ✅ `orderBy` reorders the server-side result; cursor decoding still works because the cursor is already keyed by sort key value.
 - ✅ AWS in-memory parity: the AWS resolver path (still in [Platform.res](../../reventless/reventless-in-memory/src/Platform.res) for direct `connectionResponse` calls) either honours the same args or explicitly returns an "unsupported filter" error (TBD in Phase 3 — out of scope for Phase 1).
+
+**Implementation notes (shipped).**
+
+- `serverCapability`, `emptyCapability`, `deriveServerCapability`, `deriveConnectionFilterType`, `deriveConnectionOrderByType`, and `deriveConnectionQueryField (~hasOrderBy)` live in `GraphQL_FragmentGenerator.res`.
+- `Plugin_Helpers.stateSchemaRegistry` carries the `S.t<unknown>` for each registered read model; populated in `Plugin_Builder.res` and `Dcb_Builder.res` next to the existing `queryFieldNamesRegistry` writes.
+- The in-memory resolver (`QueryDbResolvers_GraphQL.res`) reads the schema from the registry, calls `deriveServerCapability`, and uses the same SDL emitters so its registered SDL stays in lockstep with the fragment SDL. Filter parsing applies per-field `Eq` / `From` / `To` alongside the existing `search` / `searchPrefix` / `ids` block; `orderBy` sorts the narrowed list (id-tiebreak) before pagination.
+- SDL coverage: 3 new cases in `GraphQL_SchemaInspectorTest.res` — no annotations (unchanged Filter), `@id` + `@index` (per-field Eq + OrderBy + `orderBy` arg), `@subId` (Eq/From/To + OrderBy on the sort key). Full suites green: 365 in-memory tests, 302 core tests.
 
 ---
 

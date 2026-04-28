@@ -227,6 +227,7 @@ function Make(DcbEventLogStorage) {
           qn$1 = newrecord;
         }
         Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[V.Spec.name] = qn$1;
+        Plugin_Helpers$ReventlessCore.stateSchemaRegistry[V.Spec.name] = V.Spec.stateSchema;
       });
       automationSlices.forEach(A => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForSliceQueryDb(name, A.queryDbName, undefined);

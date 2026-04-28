@@ -334,6 +334,10 @@ module Make = (
           | None => qn
           }
           Plugin_Helpers.queryFieldNamesRegistry->Dict.set(V.Spec.name, qn)
+          Plugin_Helpers.stateSchemaRegistry->Dict.set(
+            V.Spec.name,
+            V.Spec.stateSchema->S.castToUnknown,
+          )
         })
 
         automationSlices->Array.forEach((

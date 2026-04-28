@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../src/test/TestRunner.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as GraphQL_Server$ReventlessInMemory from "../../src/adapter/GraphQL_Server.res.mjs";
@@ -41,6 +42,53 @@ let unionCommandSchema = S.union([
     newName: s.m(S.string)
   }))
 ]);
+
+let plainStateSchema = S.schema(s => ({
+  productId: s.m(DcbTag$Reventless.string),
+  name: s.m(S.string)
+}));
+
+let indexedStateSchema = S.schema(s => ({
+  productId: s.m(DcbTag$Reventless.string),
+  ownerId: s.m(S.string),
+  status: s.m(S.string),
+  name: s.m(S.string)
+}));
+
+let indexedStateSchemaWithAnnotations = S.Metadata.set(indexedStateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: ["productId"],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [[
+      "ownerId",
+      "byOwner"
+    ]],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: []
+});
+
+let orderedStateSchema = S.schema(s => ({
+  productId: s.m(DcbTag$Reventless.string),
+  createdAt: s.m(S.string),
+  name: s.m(S.string)
+}));
+
+let orderedStateSchemaWithAnnotations = S.Metadata.set(orderedStateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: ["productId"],
+  compositeIds: [],
+  subIds: ["createdAt"],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: []
+});
 
 describe("GraphQL_SchemaInspector", () => {
   describe("inspectScalar", () => {
@@ -323,6 +371,67 @@ describe("GraphQL_SchemaInspector", () => {
       expect(summary.includes("Plugin_Item(id) -> PluginItem")).toBe(true);
     });
   });
+  describe("server capability — auto-derived Filter / OrderBy", () => {
+    test("read model with no annotations emits the unchanged search-only Filter", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Plain_View",
+          listFieldName: "Plain_Views",
+          returnTypeName: "PlainView",
+          stateSchema: plainStateSchema,
+          authorization: undefined,
+          includeIdParam: false,
+          connectionSpec: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("input PlainViewFilter")).toBe(true);
+      expect(sdl.includes("search: String")).toBe(true);
+      expect(sdl.includes("searchPrefix: String")).toBe(true);
+      expect(sdl.includes("ids: [ID!]")).toBe(true);
+      expect(sdl.includes("Eq:")).toBe(false);
+      expect(sdl.includes("PlainViewOrderBy")).toBe(false);
+      expect(sdl.includes("PlainViewOrderField")).toBe(false);
+      expect(sdl.includes("orderBy:")).toBe(false);
+    });
+    test("read model with @id + @index emits Eq filters + OrderBy + orderBy arg", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Indexed_Product",
+          listFieldName: "Indexed_Products",
+          returnTypeName: "IndexedProduct",
+          stateSchema: indexedStateSchemaWithAnnotations,
+          authorization: undefined,
+          includeIdParam: true,
+          connectionSpec: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("input IndexedProductFilter")).toBe(true);
+      expect(sdl.includes("productIdEq: ID")).toBe(true);
+      expect(sdl.includes("ownerIdEq: ID")).toBe(true);
+      expect(sdl.includes("enum IndexedProductOrderField")).toBe(true);
+      expect(sdl.includes("input IndexedProductOrderBy")).toBe(true);
+      expect(sdl.includes("direction: SortOrder!")).toBe(true);
+      expect(sdl.includes("orderBy: IndexedProductOrderBy")).toBe(true);
+    });
+    test("read model with @subId emits range filters + OrderBy on the sort key", async () => {
+      let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
+          singleFieldName: "Ordered_Item",
+          listFieldName: "Ordered_Items",
+          returnTypeName: "OrderedItem",
+          stateSchema: orderedStateSchemaWithAnnotations,
+          authorization: undefined,
+          includeIdParam: true,
+          connectionSpec: true
+        }]);
+      let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
+      let sdl = inspection.sdlPreview;
+      expect(sdl.includes("createdAtEq: String")).toBe(true);
+      expect(sdl.includes("createdAtFrom: String")).toBe(true);
+      expect(sdl.includes("createdAtTo: String")).toBe(true);
+      expect(sdl.includes("enum OrderedItemOrderField")).toBe(true);
+      expect(sdl.includes("orderBy: OrderedItemOrderBy")).toBe(true);
+    });
+  });
   describe("GraphQL_Server diagnostics", () => {
     test("diagnostics detects resolver without SDL field", async () => {
       GraphQL_Server$ReventlessInMemory.reset();
@@ -389,5 +498,10 @@ export {
   svStateSchema,
   addCommandSchema,
   unionCommandSchema,
+  plainStateSchema,
+  indexedStateSchema,
+  indexedStateSchemaWithAnnotations,
+  orderedStateSchema,
+  orderedStateSchemaWithAnnotations,
 }
 /*  Not a pure module */
