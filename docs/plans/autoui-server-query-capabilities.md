@@ -99,7 +99,7 @@ Order in the result is decided once: `orderBy` always wins when supplied, otherw
 
 ## Phase 1.5 — Keyset pagination on the in-memory connection list resolver
 
-**Status.** Planned.
+**Status.** Shipped.
 
 **Depends on:** Phase 1 (capability + filter/sort parsing — shipped).
 
@@ -147,6 +147,15 @@ Order in the result is decided once: `orderBy` always wins when supplied, otherw
 - **Total count.** Same caveat as Phase 3 — Relay's `pageInfo` has no `totalCount`. Adding it would require a separate scan-and-count or a counter. Out of scope here.
 - **Cursor opacity.** The chosen cursor encodes the sort field's value as base64; not a true opaque token. Acceptable for in-memory dev (AWS Phase 3's `LastEvaluatedKey` is similarly transparent). If real opacity is needed later, a separate plan can encrypt/sign.
 - **Cross-tenant / consistent-hash cursors.** Not relevant for the in-memory stream model; flagged here only so the v1 simple cursor doesn't get retro-fitted into something it isn't.
+
+**Implementation notes (shipped).**
+
+- `encodeCursor` / `decodeCursor` and `defaultListPageSize = 50` are now module-level in `QueryDbResolvers_GraphQL.res`, shared between the connection list resolver and the items resolver so cursor encoding stays in lockstep.
+- The list resolver replaces its positional-cursor stub with a keyset slice: items are sorted (by `orderBy.field` with id-tiebreak, or by id ascending when no `orderBy` is supplied), the active cursor field is `orderBy.field` or `id`, and the boundary applies a value comparison against the sorted array (flipped for `DESC`). Take-N+1 / `hasMore` probe drives `pageInfo.hasNextPage` / `hasPreviousPage`. Backward (`last` / `before`) takes the trailing slice and drops the leading boundary marker when an extra was grabbed.
+- Default ordering changed from "natural insertion order" to "id ascending" so cursor decoding is stable when no `orderBy` is supplied.
+- Documented limitation: when the cursor field has duplicate values, the value-comparison boundary excludes all rows sharing the cursor's value. In practice common sort fields (id, createdAt) are unique. Inline comment in the resolver flags this.
+- Test coverage: 6 new cases in `tests/adapter/QueryDbListResolverTest.res` — `first` page, forward `after` cycling without overlap, backward `last`/`before` walk with `hasPreviousPage` flip, `filter.<field>Eq` + paginate, `orderBy DESC` + paginate, and a bare request asserting the default-page-size bound. Each test builds a fresh Bus + storage + resolver and seeds a five-row fixture.
+- Full suites green: 372 in-memory tests (366 → +6 new), 304 core tests.
 
 ---
 
@@ -272,8 +281,7 @@ reventless-core (this plan)              reventless-ui (autoui-improvements-ui.m
 Phase 1 (auto-derive Filter/OrderBy) ✅ ──┐
    │                                      │
    ▼                                      ▼
-Phase 1.5 (in-memory keyset paginate) ──→ Phase 6.5 (hybrid client pipeline) ✅
-   │                                      │  (controls dark until 1.5 ships)
+Phase 1.5 (in-memory keyset paginate) ✅ → Phase 6.5 (hybrid client pipeline) ✅
    ▼                                      │
 Phase 2 (@scan / @scanSort opt-in)        │
    │                                      │

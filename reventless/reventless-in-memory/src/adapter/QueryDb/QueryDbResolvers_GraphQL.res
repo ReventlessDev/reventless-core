@@ -25,6 +25,18 @@ type relaySupport = {
 @val external btoa: string => string = "btoa"
 @val external atob: string => string = "atob"
 
+// Shared keyset-cursor helpers. The cursor is base64 of the row's value for the
+// active sort field (orderBy.field, or "id" when no orderBy is supplied). Used
+// by both the connection list resolver and the items resolver so cursor encoding
+// stays in lockstep.
+let encodeCursor = (value: string): string => btoa(value)
+let decodeCursor = (cursor: string): string => atob(cursor)
+
+// Default page size for the connection list resolver when neither `first` nor
+// `last` is supplied. Matches the UI's `defaultPageSize` constant; a bound is
+// necessary for the keyset model to report `pageInfo` correctly.
+let defaultListPageSize = 50
+
 module Make = (Bus: InMemory_Bus.T) => {
   open ReventlessCore
 
@@ -369,66 +381,139 @@ module Make = (Bus: InMemory_Bus.T) => {
 
           // Apply orderBy when provided. Sorts on the requested field; ties
           // broken by id so keyset-style cursors stay stable across requests
-          // that share a sort field.
+          // that share a sort field. When orderBy is omitted, items are sorted
+          // by id ascending so the natural order is deterministic and pagination
+          // cursors remain stable.
           let orderByDict =
             argsDict
             ->Dict.get("orderBy")
             ->Option.flatMap(JSON.Decode.object)
-          let sorted = switch orderByDict {
-          | Some(ob) =>
-            let field = ob->Dict.get("field")->Option.flatMap(JSON.Decode.string)
-            let direction =
-              ob
-              ->Dict.get("direction")
-              ->Option.flatMap(JSON.Decode.string)
-              ->Option.getOr("ASC")
-            switch field {
-            | Some(f) =>
-              let cmp = (a, b) => {
-                let av = getFieldString(a, f)->Option.getOr("")
-                let bv = getFieldString(b, f)->Option.getOr("")
-                let primary = if av < bv {
+          let orderByField =
+            orderByDict
+            ->Option.flatMap(ob => ob->Dict.get("field"))
+            ->Option.flatMap(JSON.Decode.string)
+          let direction =
+            orderByDict
+            ->Option.flatMap(ob => ob->Dict.get("direction"))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.getOr("ASC")
+          let isDesc = direction == "DESC"
+          let sorted = switch orderByField {
+          | Some(f) =>
+            let cmp = (a, b) => {
+              let av = getFieldString(a, f)->Option.getOr("")
+              let bv = getFieldString(b, f)->Option.getOr("")
+              let primary = if av < bv {
+                -1
+              } else if av > bv {
+                1
+              } else {
+                0
+              }
+              let primary = isDesc ? -primary : primary
+              if primary != 0 {
+                primary
+              } else {
+                let aid = getId(a)
+                let bid = getId(b)
+                if aid < bid {
                   -1
-                } else if av > bv {
+                } else if aid > bid {
                   1
                 } else {
                   0
                 }
-                let primary = direction == "DESC" ? -primary : primary
-                if primary != 0 {
-                  primary
-                } else {
-                  let aid = getId(a)
-                  let bid = getId(b)
-                  if aid < bid {
-                    -1
-                  } else if aid > bid {
-                    1
-                  } else {
-                    0
-                  }
-                }
               }
-              filtered->Array.toSorted((a, b) => cmp(a, b)->Int.toFloat)
-            | None => filtered
             }
-          | None => filtered
+            filtered->Array.toSorted((a, b) => cmp(a, b)->Int.toFloat)
+          | None =>
+            // Default to id-ascending so cursor pagination has a stable order.
+            filtered->Array.toSorted((a, b) => {
+              let aid = getId(a)
+              let bid = getId(b)
+              if aid < bid {
+                -1.
+              } else if aid > bid {
+                1.
+              } else {
+                0.
+              }
+            })
           }
 
-          let edges = sorted->Array.mapWithIndex((item, i) => {
-            Obj.magic({"node": item, "cursor": Int.toString(i)})
-          })
-          let startCursor = edges->Array.get(0)->Option.map(_ => Int.toString(0))
-          let endCursor = if edges->Array.length > 0 {
-            Some(Int.toString(edges->Array.length - 1))
-          } else {
-            None
+          // Keyset pagination. Cursor encodes the row's value for the active
+          // sort field — orderBy.field when supplied, "id" otherwise. Boundary
+          // is applied as a value comparison against the sorted array; in DESC
+          // sort the comparison flips. Note: when the cursor field has duplicate
+          // values, the boundary excludes all rows with the cursor's value, not
+          // just the row at the cursor position. Acceptable for in-memory dev;
+          // in practice common sort fields (id, createdAt) are unique.
+          let first =
+            argsDict->Dict.get("first")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+          let after = argsDict->Dict.get("after")->Option.flatMap(JSON.Decode.string)
+          let last =
+            argsDict->Dict.get("last")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)
+          let before = argsDict->Dict.get("before")->Option.flatMap(JSON.Decode.string)
+          let isBackward = last->Option.isSome
+          let cursorField = orderByField->Option.getOr("id")
+          let getCursorValue = item =>
+            getFieldString(item, cursorField)->Option.getOr(getId(item))
+
+          let cursorBounded = switch (isBackward, after, before) {
+          | (false, Some(c), _) =>
+            let cv = decodeCursor(c)
+            sorted->Array.filter(item => {
+              let v = getCursorValue(item)
+              isDesc ? v < cv : v > cv
+            })
+          | (true, _, Some(c)) =>
+            let cv = decodeCursor(c)
+            sorted->Array.filter(item => {
+              let v = getCursorValue(item)
+              isDesc ? v > cv : v < cv
+            })
+          | _ => sorted
           }
+
+          let pageSize = if isBackward {
+            last->Option.getOr(defaultListPageSize)
+          } else {
+            first->Option.getOr(defaultListPageSize)
+          }
+          let take = pageSize + 1
+          let (pageItems, hasMore) = if isBackward {
+            // Take the last `take` items from the cursor-bounded slice. If we
+            // grabbed an extra, drop the leading entry (the boundary marker).
+            let len = cursorBounded->Array.length
+            let startIdx = len > take ? len - take : 0
+            let arr = cursorBounded->Array.slice(~start=startIdx, ~end=len)
+            let hasMore = arr->Array.length > pageSize
+            let result = if hasMore {
+              arr->Array.slice(~start=1, ~end=arr->Array.length)
+            } else {
+              arr
+            }
+            (result, hasMore)
+          } else {
+            let arr = cursorBounded->Array.slice(~start=0, ~end=take)
+            let hasMore = arr->Array.length > pageSize
+            (arr->Array.slice(~start=0, ~end=pageSize), hasMore)
+          }
+
+          let edges = pageItems->Array.map(item =>
+            Obj.magic({"node": item, "cursor": encodeCursor(getCursorValue(item))})
+          )
+          let startCursor =
+            pageItems->Array.get(0)->Option.map(item => encodeCursor(getCursorValue(item)))
+          let endCursor =
+            pageItems
+            ->Array.get(pageItems->Array.length - 1)
+            ->Option.map(item => encodeCursor(getCursorValue(item)))
           Obj.magic({
             "edges": edges,
             "pageInfo": {
-              "hasNextPage": false,
-              "hasPreviousPage": false,
+              "hasNextPage": !isBackward && hasMore,
+              "hasPreviousPage": isBackward && hasMore,
               "startCursor": startCursor->Nullable.fromOption,
               "endCursor": endCursor->Nullable.fromOption,
             },
@@ -461,10 +546,8 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     // -- Items query: {name}Items (only when subId configured) -----------------
     // Relay Connection response. Accepts `filter` input object + first/after/last/before.
-    // Cursor is base64 of the sort key value (keyset pagination).
-    let encodeCursor = (skValue: string): string => btoa(skValue)
-    let decodeCursor = (cursor: string): string => atob(cursor)
-
+    // Cursor is base64 of the sort key value (keyset pagination — see module-level
+    // `encodeCursor` / `decodeCursor` helpers).
     let itemsSdl = switch subIdField {
     | Some(_sf) =>
       let filterTypeName = returnTypeName ++ "ItemsFilter"

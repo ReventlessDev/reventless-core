@@ -14,6 +14,14 @@ import * as SortKey_Filter$ReventlessInMemory from "./SortKey_Filter.res.mjs";
 import * as DomainGraphQL_Server$ReventlessInMemory from "../DomainGraphQL_Server.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
+function encodeCursor(value) {
+  return btoa(value);
+}
+
+function decodeCursor(cursor) {
+  return atob(cursor);
+}
+
 function Make(Bus) {
   let extractIdentity = ctx => {
     try {
@@ -188,48 +196,113 @@ function Make(Bus) {
           }
         });
         let orderByDict = Stdlib_Option.flatMap(argsDict["orderBy"], Stdlib_JSON.Decode.object);
+        let orderByField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["field"]), Stdlib_JSON.Decode.string);
+        let direction = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(orderByDict, ob => ob["direction"]), Stdlib_JSON.Decode.string), "ASC");
+        let isDesc = direction === "DESC";
         let sorted;
-        if (orderByDict !== undefined) {
-          let field = Stdlib_Option.flatMap(orderByDict["field"], Stdlib_JSON.Decode.string);
-          let direction = Stdlib_Option.getOr(Stdlib_Option.flatMap(orderByDict["direction"], Stdlib_JSON.Decode.string), "ASC");
-          if (field !== undefined) {
-            sorted = filtered.toSorted((a, b) => {
-              let av = Stdlib_Option.getOr(getFieldString(a, field), "");
-              let bv = Stdlib_Option.getOr(getFieldString(b, field), "");
-              let primary = av < bv ? -1 : (
-                  av > bv ? 1 : 0
-                );
-              let primary$1 = direction === "DESC" ? -primary | 0 : primary;
-              if (primary$1 !== 0) {
-                return primary$1;
-              }
-              let aid = getId(a);
-              let bid = getId(b);
-              if (aid < bid) {
-                return -1;
-              } else if (aid > bid) {
-                return 1;
+        if (orderByField !== undefined) {
+          sorted = filtered.toSorted((a, b) => {
+            let av = Stdlib_Option.getOr(getFieldString(a, orderByField), "");
+            let bv = Stdlib_Option.getOr(getFieldString(b, orderByField), "");
+            let primary = av < bv ? -1 : (
+                av > bv ? 1 : 0
+              );
+            let primary$1 = isDesc ? -primary | 0 : primary;
+            if (primary$1 !== 0) {
+              return primary$1;
+            }
+            let aid = getId(a);
+            let bid = getId(b);
+            if (aid < bid) {
+              return -1;
+            } else if (aid > bid) {
+              return 1;
+            } else {
+              return 0;
+            }
+          });
+        } else {
+          sorted = filtered.toSorted((a, b) => {
+            let aid = getId(a);
+            let bid = getId(b);
+            if (aid < bid) {
+              return -1;
+            } else if (aid > bid) {
+              return 1;
+            } else {
+              return 0;
+            }
+          });
+        }
+        let first = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["first"], Stdlib_JSON.Decode.float), prim => prim | 0);
+        let after = Stdlib_Option.flatMap(argsDict["after"], Stdlib_JSON.Decode.string);
+        let last = Stdlib_Option.map(Stdlib_Option.flatMap(argsDict["last"], Stdlib_JSON.Decode.float), prim => prim | 0);
+        let before = Stdlib_Option.flatMap(argsDict["before"], Stdlib_JSON.Decode.string);
+        let isBackward = Stdlib_Option.isSome(last);
+        let cursorField = Stdlib_Option.getOr(orderByField, "id");
+        let getCursorValue = item => Stdlib_Option.getOr(getFieldString(item, cursorField), getId(item));
+        let cursorBounded;
+        if (isBackward) {
+          if (before !== undefined) {
+            let cv = atob(before);
+            cursorBounded = sorted.filter(item => {
+              let v = getCursorValue(item);
+              if (isDesc) {
+                return v > cv;
               } else {
-                return 0;
+                return v < cv;
               }
             });
           } else {
-            sorted = filtered;
+            cursorBounded = sorted;
           }
+        } else if (after !== undefined) {
+          let cv$1 = atob(after);
+          cursorBounded = sorted.filter(item => {
+            let v = getCursorValue(item);
+            if (isDesc) {
+              return v < cv$1;
+            } else {
+              return v > cv$1;
+            }
+          });
         } else {
-          sorted = filtered;
+          cursorBounded = sorted;
         }
-        let edges = sorted.map((item, i) => ({
+        let pageSize = isBackward ? Stdlib_Option.getOr(last, 50) : Stdlib_Option.getOr(first, 50);
+        let take = pageSize + 1 | 0;
+        let match$1;
+        if (isBackward) {
+          let len = cursorBounded.length;
+          let startIdx = len > take ? len - take | 0 : 0;
+          let arr = cursorBounded.slice(startIdx, len);
+          let hasMore = arr.length > pageSize;
+          let result = hasMore ? arr.slice(1, arr.length) : arr;
+          match$1 = [
+            result,
+            hasMore
+          ];
+        } else {
+          let arr$1 = cursorBounded.slice(0, take);
+          let hasMore$1 = arr$1.length > pageSize;
+          match$1 = [
+            arr$1.slice(0, pageSize),
+            hasMore$1
+          ];
+        }
+        let hasMore$2 = match$1[1];
+        let pageItems = match$1[0];
+        let edges = pageItems.map(item => ({
           node: item,
-          cursor: i.toString()
+          cursor: btoa(getCursorValue(item))
         }));
-        let startCursor = Stdlib_Option.map(edges[0], param => (0).toString());
-        let endCursor = edges.length !== 0 ? (edges.length - 1 | 0).toString() : undefined;
+        let startCursor = Stdlib_Option.map(pageItems[0], item => btoa(getCursorValue(item)));
+        let endCursor = Stdlib_Option.map(pageItems[pageItems.length - 1 | 0], item => btoa(getCursorValue(item)));
         return {
           edges: edges,
           pageInfo: {
-            hasNextPage: false,
-            hasPreviousPage: false,
+            hasNextPage: !isBackward && hasMore$2,
+            hasPreviousPage: isBackward && hasMore$2,
             startCursor: Stdlib_Nullable.fromOption(startCursor),
             endCursor: Stdlib_Nullable.fromOption(endCursor)
           }
@@ -273,7 +346,6 @@ function Make(Bus) {
         listQueryName,
         match[1]
       ]];
-    let decodeCursor = cursor => atob(cursor);
     let itemsSdl;
     if (subIdField !== undefined) {
       let filterTypeName$1 = returnTypeName + "ItemsFilter";
@@ -431,7 +503,12 @@ function Make(Bus) {
   };
 }
 
+let defaultListPageSize = 50;
+
 export {
+  encodeCursor,
+  decodeCursor,
+  defaultListPageSize,
   Make,
 }
 /* S Not a pure module */
