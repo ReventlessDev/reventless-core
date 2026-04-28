@@ -923,6 +923,67 @@ let validate_visibility_annotations (fields : label_declaration list) : unit =
         ld.pld_name.txt
   ) fields
 
+(* ── @drillTarget / @collapsed: hierarchical rendering hints (no behavioural
+       effect; flow through the metadata pipeline so JSON Schema can surface
+       them as x-reventless-drillTarget / x-reventless-drillTargetKey /
+       x-reventless-collapsed). ── *)
+
+let has_drill_target_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) ->
+    String.equal attr.attr_name.txt "drillTarget"
+  ) attrs
+
+let has_collapsed_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) ->
+    String.equal attr.attr_name.txt "collapsed"
+  ) attrs
+
+let strip_drill_collapsed_field_attrs (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "drillTarget"
+         || String.equal attr.attr_name.txt "collapsed")
+  ) attrs
+
+(** Strip @drillTarget and @collapsed from @schema type state record fields. *)
+let strip_drill_collapsed_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_drill_collapsed_field_attrs ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
+
+(** Find the `@drillTarget(...)` attribute on a field, if present. *)
+let find_drill_target_attr (attrs : attributes) =
+  List.find_opt (fun (a : attribute) ->
+    String.equal a.attr_name.txt "drillTarget"
+  ) attrs
+
+(** Extract `(sliceName, optional keyPath)` from a `@drillTarget` attribute.
+    Accepts either `@drillTarget("SliceName")` (string literal) or
+    `@drillTarget({slice: "SliceName", key: "field1/field2"})` (record). *)
+let get_drill_target_args (attr : attribute) : (string * string option) =
+  match attr.attr_payload with
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_constant (Pconst_string (s, _, _)); _}, _); _ }] ->
+    (s, None)
+  | PStr [{ pstr_desc = Pstr_eval ({pexp_desc = Pexp_record (fields, _); _}, _); _ }] ->
+    let slice = (match find_record_str "slice" fields with Some s -> s | None -> "") in
+    let key = find_record_str "key" fields in
+    (slice, key)
+  | _ -> ("", None)
+
 (* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
 
 (** Build a string-array AST expression. *)
@@ -969,8 +1030,28 @@ let make_state_annotations_binding ~loc fields : structure_item option =
   let summary = List.filter_map (fun (ld : label_declaration) ->
     if has_summary_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
+  let drill_targets = List.filter_map (fun (ld : label_declaration) ->
+    match find_drill_target_attr ld.pld_attributes with
+    | Some attr ->
+      let (slice, _) = get_drill_target_args attr in
+      Some (ld.pld_name.txt, slice)
+    | None -> None
+  ) fields in
+  let drill_target_keys = List.filter_map (fun (ld : label_declaration) ->
+    match find_drill_target_attr ld.pld_attributes with
+    | Some attr ->
+      let (_, key_opt) = get_drill_target_args attr in
+      (match key_opt with
+       | Some key -> Some (ld.pld_name.txt, key)
+       | None -> None)
+    | None -> None
+  ) fields in
+  let collapsed = List.filter_map (fun (ld : label_declaration) ->
+    if has_collapsed_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
-     && indexes = [] && hidden = [] && summary = [] then None
+     && indexes = [] && hidden = [] && summary = []
+     && drill_targets = [] && drill_target_keys = [] && collapsed = [] then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -987,7 +1068,10 @@ let make_state_annotations_binding ~loc fields : structure_item option =
             ({ txt = Lident "compositeSubIds"; loc }, estr_array ~loc composite_sub_ids);
             ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes);
             ({ txt = Lident "hidden"; loc }, estr_array ~loc hidden);
-            ({ txt = Lident "summary"; loc }, estr_array ~loc summary) ],
+            ({ txt = Lident "summary"; loc }, estr_array ~loc summary);
+            ({ txt = Lident "drillTargets"; loc }, str_tuple_array ~loc drill_targets);
+            ({ txt = Lident "drillTargetKeys"; loc }, str_tuple_array ~loc drill_target_keys);
+            ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed) ],
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =

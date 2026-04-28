@@ -17,6 +17,19 @@ let getPropertyOf = (schema: JSON.t, fieldName: string): option<JSON.t> =>
   | None => None
   }
 
+let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
+  ids: [],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+}
+
 describe("SuryToJsonSchema:", () => {
   describe("deriveObjectSchema with no annotations:", () => {
     test("emits plain JSON Schema when no metadata is attached", () => {
@@ -45,15 +58,7 @@ describe("SuryToJsonSchema:", () => {
           "name": s.matches(S.string),
         }
       )->S.castToUnknown
-      let schema' = schema->withSpec({
-        ids: ["entityId"],
-        compositeIds: [],
-        subIds: [],
-        compositeSubIds: [],
-        indexes: [],
-        hidden: [],
-        summary: [],
-      })
+      let schema' = schema->withSpec({...emptySpec, ids: ["entityId"]})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let entityIdSchema = getPropertyOf(json, "entityId")
       expect(
@@ -72,13 +77,8 @@ describe("SuryToJsonSchema:", () => {
         }
       )->S.castToUnknown
       let schema' = schema->withSpec({
-        ids: [],
+        ...emptySpec,
         compositeIds: ["environment", "platformName"],
-        subIds: [],
-        compositeSubIds: [],
-        indexes: [],
-        hidden: [],
-        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let envSchema = getPropertyOf(json, "environment")
@@ -100,15 +100,7 @@ describe("SuryToJsonSchema:", () => {
           "version": s.matches(S.string),
         }
       )->S.castToUnknown
-      let schema' = schema->withSpec({
-        ids: [],
-        compositeIds: [],
-        subIds: ["version"],
-        compositeSubIds: [],
-        indexes: [],
-        hidden: [],
-        summary: [],
-      })
+      let schema' = schema->withSpec({...emptySpec, subIds: ["version"]})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let versionSchema = getPropertyOf(json, "version")
       expect(
@@ -126,13 +118,8 @@ describe("SuryToJsonSchema:", () => {
         }
       )->S.castToUnknown
       let schema' = schema->withSpec({
-        ids: [],
-        compositeIds: [],
-        subIds: [],
-        compositeSubIds: [],
+        ...emptySpec,
         indexes: [("ownerId", "byOwner")],
-        hidden: [],
-        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let ownerIdSchema = getPropertyOf(json, "ownerId")
@@ -151,13 +138,8 @@ describe("SuryToJsonSchema:", () => {
         }
       )->S.castToUnknown
       let schema' = schema->withSpec({
-        ids: [],
-        compositeIds: [],
-        subIds: [],
-        compositeSubIds: [],
+        ...emptySpec,
         indexes: [("category", "")],
-        hidden: [],
-        summary: [],
       })
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let categorySchema = getPropertyOf(json, "category")
@@ -175,15 +157,7 @@ describe("SuryToJsonSchema:", () => {
           "name": s.matches(S.string),
         }
       )->S.castToUnknown
-      let schema' = schema->withSpec({
-        ids: ["entityId"],
-        compositeIds: [],
-        subIds: [],
-        compositeSubIds: [],
-        indexes: [],
-        hidden: [],
-        summary: [],
-      })
+      let schema' = schema->withSpec({...emptySpec, ids: ["entityId"]})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let nameSchema = getPropertyOf(json, "name")
       expect(
@@ -198,15 +172,7 @@ describe("SuryToJsonSchema:", () => {
           "deploymentId": s.matches(S.string),
         }
       )->S.castToUnknown
-      let schema' = schema->withSpec({
-        ids: [],
-        compositeIds: [],
-        subIds: [],
-        compositeSubIds: [],
-        indexes: [],
-        hidden: ["deploymentId"],
-        summary: [],
-      })
+      let schema' = schema->withSpec({...emptySpec, hidden: ["deploymentId"]})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let deploymentIdSchema = getPropertyOf(json, "deploymentId")
       let idSchema = getPropertyOf(json, "id")
@@ -225,15 +191,7 @@ describe("SuryToJsonSchema:", () => {
           "pluginName": s.matches(S.string),
         }
       )->S.castToUnknown
-      let schema' = schema->withSpec({
-        ids: [],
-        compositeIds: [],
-        subIds: [],
-        compositeSubIds: [],
-        indexes: [],
-        hidden: [],
-        summary: ["pluginName"],
-      })
+      let schema' = schema->withSpec({...emptySpec, summary: ["pluginName"]})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
       let pluginNameSchema = getPropertyOf(json, "pluginName")
       let idSchema = getPropertyOf(json, "id")
@@ -242,6 +200,86 @@ describe("SuryToJsonSchema:", () => {
         ->Option.flatMap(s => getProperty(s, "x-reventless-summary"))
         ->Option.flatMap(JSON.Decode.bool),
         idSchema->Option.flatMap(s => getProperty(s, "x-reventless-summary")),
+      ))->toEqual((Some(true), None))
+    })
+
+    test("emits x-reventless-drillTarget as the slice name", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "components": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({
+        ...emptySpec,
+        drillTargets: [("components", "ResourceInventory")],
+      })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let componentsSchema = getPropertyOf(json, "components")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        componentsSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-drillTarget"))
+        ->Option.flatMap(JSON.Decode.string),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-drillTarget")),
+      ))->toEqual((Some("ResourceInventory"), None))
+    })
+
+    test("emits x-reventless-drillTargetKey as the key path", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "components": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({
+        ...emptySpec,
+        drillTargets: [("components", "ResourceInventory")],
+        drillTargetKeys: [("components", "kind/name")],
+      })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let componentsSchema = getPropertyOf(json, "components")
+      expect(
+        componentsSchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-drillTargetKey"))
+        ->Option.flatMap(JSON.Decode.string),
+      )->toBe(Some("kind/name"))
+    })
+
+    test("does not emit x-reventless-drillTargetKey when no key was supplied", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "components": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({
+        ...emptySpec,
+        drillTargets: [("components", "ResourceInventory")],
+      })
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let componentsSchema = getPropertyOf(json, "components")
+      expect(
+        componentsSchema->Option.flatMap(s => getProperty(s, "x-reventless-drillTargetKey")),
+      )->toBe(None)
+    })
+
+    test("emits x-reventless-collapsed on field listed in collapsed", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "primaryResource": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, collapsed: ["primaryResource"]})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      let primarySchema = getPropertyOf(json, "primaryResource")
+      let idSchema = getPropertyOf(json, "id")
+      expect((
+        primarySchema
+        ->Option.flatMap(s => getProperty(s, "x-reventless-collapsed"))
+        ->Option.flatMap(JSON.Decode.bool),
+        idSchema->Option.flatMap(s => getProperty(s, "x-reventless-collapsed")),
       ))->toEqual((Some(true), None))
     })
   })

@@ -53,17 +53,20 @@
 
 ---
 
-## Phase 3 — `@drillTarget` and `@collapsed` annotations
+## Phase 3 — `@drillTarget` and `@collapsed` annotations ✅ DONE
 
-**Depends on:** Phase 1.
+**Depends on:** Phase 1 (extension property pipeline established).
 
 **Goal.** Allow type authors to provide hints about hierarchical rendering of nested fields.
 
-**Concrete steps.**
-1. Add `@drillTarget("SliceName")` annotation. When found on an array field, emit `"x-reventless-drillTarget": "SliceName"`. Support optional key parameter via `@drillTarget("SliceName", key="field1/field2")` → `"x-reventless-drillTargetKey": "field1/field2"`.
-2. Add `@collapsed` annotation. When found on an object field, emit `"x-reventless-collapsed": true`.
-3. Document: `@drillTarget` = navigate to another view instead of inline expansion; `@collapsed` = suppress expansion, show inline summary.
+**Implementation.** Reuses the Phase 1 metadata pipeline:
 
-**Validation.**
-- `@drillTarget("ResourceInventory") components: array<componentEntry>` produces the expected JSON Schema extensions.
-- `@collapsed primaryResource: primaryResource` produces `"x-reventless-collapsed": true`.
+1. `Reventless.StateAnnotations.stateAnnotationSpec` (`reventless/reventless-spec/src/components/StateAnnotations.res`) gained three fields: `drillTargets: array<(string, string)>` (`(fieldName, sliceName)` pairs), `drillTargetKeys: array<(string, string)>` (`(fieldName, keyPath)` pairs — only fields with an explicit `key` parameter), and `collapsed: array<string>`.
+2. The PPX (`packages/reventless-ppx/src/ppx/StateAnnotations.ml`) recognises `@drillTarget(...)` and `@collapsed` on fields within `@schema type state` (`has_drill_target_field_attr`, `has_collapsed_field_attr`, `find_drill_target_attr`, `get_drill_target_args`), strips them via `strip_drill_collapsed_attrs` (wired into `ReventlessPpx.ml` after the existing strippers), and writes the collected names/pairs into the metadata record. `@drillTarget` accepts both the short string-literal form `@drillTarget("SliceName")` and the record form `@drillTarget({slice: "SliceName", key: "field1/field2"})`.
+3. `SuryToJsonSchema.mergeAnnotations` (`reventless/reventless-core/src/components/Api/SuryToJsonSchema.res`) emits `"x-reventless-drillTarget": "SliceName"`, `"x-reventless-drillTargetKey": "field1/field2"` (only when supplied), and `"x-reventless-collapsed": true` on the matching field schemas.
+
+**Tests.**
+- PPX integration test (`packages/reventless-ppx/test/run.sh`, `DrillReadModel.res`) verifies `drillTargets`, `drillTargetKeys`, and `collapsed` keys appear in the compiled metadata for both the short and record forms, that the slice name and key path are preserved, and that the `@drillTarget`/`@collapsed` source annotations are stripped from the output.
+- Unit tests (`reventless/reventless-core/tests/api/SuryToJsonSchemaTest.res`) cover the `x-reventless-drillTarget`, `x-reventless-drillTargetKey`, and `x-reventless-collapsed` extension properties and confirm `x-reventless-drillTargetKey` is absent when no key is supplied.
+
+**Convention.** `@drillTarget("SliceName")` = navigate to the named slice/view instead of inline expansion (typically used on `array<...>` fields); `@drillTarget({slice: "SliceName", key: "field1/field2"})` = same, plus a key path identifying which sub-fields of each array element form the drill-down key; `@collapsed` = render the field as an inline summary instead of expanding (typically used on object fields).

@@ -573,6 +573,28 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @drillTarget + @collapsed (hierarchical rendering hints) ────
+
+cat > "$PLUGIN/src/ReadModel/DrillReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type componentEntry = { kind: string, name: string }
+
+@schema
+type primaryResource = { resourceId: string, label: string }
+
+@schema
+type state = {
+  @id id: string,
+  @drillTarget("ResourceInventory") components: array<componentEntry>,
+  @drillTarget({slice: "ResourceInventory", key: "kind/name"})
+  componentsByKey: array<componentEntry>,
+  @collapsed primaryResource: primaryResource,
+  description: string,
+}
+EOF
+
 # ─── Fixture: StateViewSlice without @subId ───────────────────────
 
 cat > "$PLUGIN/src/StateViewSlice/SimpleView.res" <<'EOF'
@@ -1047,6 +1069,20 @@ assert_js_contains "$JS" 'hidden: \["deploymentId"\]' "@hidden: 'deploymentId' r
 assert_js_contains "$JS" 'summary: \["pluginName"\]'  "@summary: 'pluginName' recorded in summary array"
 assert_js_not_contains "$JS" '@hidden'              "@hidden: annotation stripped from output"
 assert_js_not_contains "$JS" '@summary'             "@summary: annotation stripped from output"
+
+echo ""
+echo "=== Test: @drillTarget + @collapsed → metadata fields populated ==="
+JS="$PLUGIN/src/ReadModel/DrillReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId'              "@drillTarget/@collapsed: stateAnnotations metadata emitted"
+assert_js_contains "$JS" 'drillTargets:'                   "@drillTarget: drillTargets key present in metadata"
+assert_js_contains "$JS" 'drillTargetKeys:'                "@drillTarget: drillTargetKeys key present in metadata"
+assert_js_contains "$JS" '"components"'                    "@drillTarget short form: 'components' field name recorded"
+assert_js_contains "$JS" '"componentsByKey"'               "@drillTarget record form: 'componentsByKey' field name recorded"
+assert_js_contains "$JS" '"ResourceInventory"'             "@drillTarget: slice name 'ResourceInventory' recorded"
+assert_js_contains "$JS" '"kind/name"'                     "@drillTarget(key): 'kind/name' key path recorded"
+assert_js_contains "$JS" 'collapsed: \["primaryResource"\]' "@collapsed: 'primaryResource' recorded in collapsed array"
+assert_js_not_contains "$JS" '@drillTarget'                "@drillTarget: annotation stripped from output"
+assert_js_not_contains "$JS" '@collapsed'                  "@collapsed: annotation stripped from output"
 
 echo ""
 echo "=== Test: @@reventless.projection (split-form StateViewSlice) ==="

@@ -41,6 +41,17 @@ function mergeAnnotations(fieldSchema, fieldName, spec) {
   if (spec.summary.includes(fieldName)) {
     obj["x-reventless-summary"] = true;
   }
+  let match$1 = spec.drillTargets.find(param => param[0] === fieldName);
+  if (match$1 !== undefined) {
+    obj["x-reventless-drillTarget"] = match$1[1];
+  }
+  let match$2 = spec.drillTargetKeys.find(param => param[0] === fieldName);
+  if (match$2 !== undefined) {
+    obj["x-reventless-drillTargetKey"] = match$2[1];
+  }
+  if (spec.collapsed.includes(fieldName)) {
+    obj["x-reventless-collapsed"] = true;
+  }
   return obj;
 }
 

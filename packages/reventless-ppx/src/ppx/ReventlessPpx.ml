@@ -471,6 +471,7 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_index_attrs
                       |> StateAnnotations.strip_resolver_attrs
                       |> StateAnnotations.strip_visibility_attrs
+                      |> StateAnnotations.strip_drill_collapsed_attrs
                  else body in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then

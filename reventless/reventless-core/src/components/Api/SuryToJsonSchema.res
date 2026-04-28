@@ -44,6 +44,19 @@ let mergeAnnotations = (
     if spec.summary->Array.includes(fieldName) {
       obj->Dict.set("x-reventless-summary", JSON.Encode.bool(true))
     }
+    switch spec.drillTargets->Array.find(((field, _)) => field === fieldName) {
+    | Some((_, sliceName)) =>
+      obj->Dict.set("x-reventless-drillTarget", JSON.Encode.string(sliceName))
+    | None => ()
+    }
+    switch spec.drillTargetKeys->Array.find(((field, _)) => field === fieldName) {
+    | Some((_, keyPath)) =>
+      obj->Dict.set("x-reventless-drillTargetKey", JSON.Encode.string(keyPath))
+    | None => ()
+    }
+    if spec.collapsed->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-collapsed", JSON.Encode.bool(true))
+    }
     JSON.Encode.object(obj)
   }
 
