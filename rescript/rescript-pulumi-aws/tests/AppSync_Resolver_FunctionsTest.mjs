@@ -147,6 +147,211 @@ describe('listAllItems', () => {
 })
 
 // ---------------------------------------------------------------------------
+// listAllItemsConnection — Phase 3 server-side filter/sort
+// ---------------------------------------------------------------------------
+describe('listAllItemsConnection', () => {
+  describe('default (no capability args)', () => {
+    const { request, response } = evalResolver(F.listAllItemsConnection('name'))
+
+    test('request returns Scan without filter when no args', () => {
+      const ctx = makeCtx({ args: {} })
+      const result = request(ctx)
+      expect(result.operation).toBe('Scan')
+      expect(result.limit).toBe(50)
+      expect(result.nextToken).toBeNull()
+      expect(result.filter).toBeUndefined()
+    })
+
+    test('request adds search clause as contains(labelField)', () => {
+      const ctx = makeCtx({ args: { filter: { search: 'Wid' } } })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe('contains(#label, :search)')
+      expect(result.filter.expressionNames['#label']).toBe('name')
+    })
+
+    test('request adds searchPrefix as begins_with(labelField)', () => {
+      const ctx = makeCtx({ args: { filter: { searchPrefix: 'Wid' } } })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe('begins_with(#label, :searchPrefix)')
+    })
+
+    test('request adds ids as IN clause', () => {
+      const ctx = makeCtx({ args: { filter: { ids: ['a', 'b'] } } })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe('#id IN (:id0, :id1)')
+      expect(result.filter.expressionValues[':id0']).toEqual({ S: 'a' })
+    })
+
+    test('response returns edges + pageInfo with positional cursors', () => {
+      const ctx = makeCtx({
+        args: {},
+        result: { items: [{ id: 'a' }, { id: 'b' }], nextToken: 'next' },
+      })
+      const r = response(ctx)
+      expect(r.edges).toHaveLength(2)
+      expect(r.edges[0].node).toEqual({ id: 'a' })
+      expect(r.pageInfo.hasNextPage).toBe(true)
+      expect(r.pageInfo.hasPreviousPage).toBe(false)
+    })
+  })
+
+  describe('with filterFields (per-field Eq)', () => {
+    const code = F.listAllItemsConnection('name', ['status', 'ownerId'])
+    const { request } = evalResolver(code)
+
+    test('request adds status = :statusEq when filter.statusEq is set', () => {
+      const ctx = makeCtx({ args: { filter: { statusEq: 'active' } } })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe('#status = :statusEq')
+      expect(result.filter.expressionNames['#status']).toBe('status')
+      expect(result.filter.expressionValues[':statusEq']).toEqual({ S: 'active' })
+    })
+
+    test('request combines multiple per-field eq with AND', () => {
+      const ctx = makeCtx({
+        args: { filter: { statusEq: 'active', ownerIdEq: 'u1' } },
+      })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe('#status = :statusEq AND #ownerId = :ownerIdEq')
+    })
+
+    test('request omits clause when value is null/undefined/empty', () => {
+      const ctx = makeCtx({ args: { filter: { statusEq: '', ownerIdEq: null } } })
+      const result = request(ctx)
+      expect(result.filter).toBeUndefined()
+    })
+
+    test('request combines per-field eq with legacy search', () => {
+      const ctx = makeCtx({
+        args: { filter: { search: 'Wid', statusEq: 'active' } },
+      })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe(
+        'contains(#label, :search) AND #status = :statusEq',
+      )
+    })
+  })
+
+  describe('with rangeFields (per-field From/To)', () => {
+    const code = F.listAllItemsConnection('name', ['createdAt'], ['createdAt'])
+    const { request } = evalResolver(code)
+
+    test('request adds >= clause for From', () => {
+      const ctx = makeCtx({ args: { filter: { createdAtFrom: '2026-01-01' } } })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe('#createdAt >= :createdAtFrom')
+    })
+
+    test('request adds <= clause for To', () => {
+      const ctx = makeCtx({ args: { filter: { createdAtTo: '2026-12-31' } } })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe('#createdAt <= :createdAtTo')
+    })
+
+    test('request combines From + To with AND', () => {
+      const ctx = makeCtx({
+        args: {
+          filter: { createdAtFrom: '2026-01-01', createdAtTo: '2026-12-31' },
+        },
+      })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe(
+        '#createdAt >= :createdAtFrom AND #createdAt <= :createdAtTo',
+      )
+    })
+
+    test('eq + range can compose on the same field', () => {
+      const ctx = makeCtx({
+        args: { filter: { createdAtEq: '2026-06-15', createdAtFrom: '2026-01-01' } },
+      })
+      const result = request(ctx)
+      expect(result.filter.expression).toBe(
+        '#createdAt = :createdAtEq AND #createdAt >= :createdAtFrom',
+      )
+    })
+  })
+
+  describe('with sortFields (per-page sort)', () => {
+    const code = F.listAllItemsConnection('name', [], [], ['name', 'createdAt'])
+    const { response } = evalResolver(code)
+
+    test('response sorts items ASC by orderBy.field', () => {
+      const ctx = makeCtx({
+        args: { orderBy: { field: 'name', direction: 'ASC' } },
+        result: {
+          items: [{ name: 'C' }, { name: 'A' }, { name: 'B' }],
+          nextToken: null,
+        },
+      })
+      const r = response(ctx)
+      expect(r.edges.map(e => e.node.name)).toEqual(['A', 'B', 'C'])
+    })
+
+    test('response sorts items DESC by orderBy.field', () => {
+      const ctx = makeCtx({
+        args: { orderBy: { field: 'name', direction: 'DESC' } },
+        result: {
+          items: [{ name: 'A' }, { name: 'C' }, { name: 'B' }],
+          nextToken: null,
+        },
+      })
+      const r = response(ctx)
+      expect(r.edges.map(e => e.node.name)).toEqual(['C', 'B', 'A'])
+    })
+
+    test('response leaves order untouched when orderBy.field is not in sortFields', () => {
+      const ctx = makeCtx({
+        args: { orderBy: { field: 'unknown', direction: 'ASC' } },
+        result: { items: [{ name: 'C' }, { name: 'A' }], nextToken: null },
+      })
+      const r = response(ctx)
+      expect(r.edges.map(e => e.node.name)).toEqual(['C', 'A'])
+    })
+
+    test('response leaves order untouched when no orderBy supplied', () => {
+      const ctx = makeCtx({
+        args: {},
+        result: { items: [{ name: 'C' }, { name: 'A' }], nextToken: null },
+      })
+      const r = response(ctx)
+      expect(r.edges.map(e => e.node.name)).toEqual(['C', 'A'])
+    })
+
+    test('response sorts null/undefined values to the end', () => {
+      const ctx = makeCtx({
+        args: { orderBy: { field: 'name', direction: 'ASC' } },
+        result: {
+          items: [{ name: 'B' }, { name: null }, { name: 'A' }],
+          nextToken: null,
+        },
+      })
+      const r = response(ctx)
+      expect(r.edges.map(e => e.node.name)).toEqual(['A', 'B', null])
+    })
+  })
+
+  describe('combined filter + sort', () => {
+    const code = F.listAllItemsConnection('name', ['status'], [], ['name'])
+    const { request, response } = evalResolver(code)
+
+    test('request emits filter; response sorts page', () => {
+      const reqCtx = makeCtx({
+        args: {
+          filter: { statusEq: 'active' },
+          orderBy: { field: 'name', direction: 'ASC' },
+        },
+      })
+      expect(request(reqCtx).filter.expression).toBe('#status = :statusEq')
+      const respCtx = makeCtx({
+        args: { orderBy: { field: 'name', direction: 'ASC' } },
+        result: { items: [{ name: 'B' }, { name: 'A' }], nextToken: null },
+      })
+      expect(response(respCtx).edges.map(e => e.node.name)).toEqual(['A', 'B'])
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
 // queryByIndexSortFiltered — complex template, most important to test
 // ---------------------------------------------------------------------------
 describe('queryByIndexSortFiltered', () => {

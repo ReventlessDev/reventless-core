@@ -210,7 +210,7 @@ The two annotations are split because their cost profiles differ — `@scan` rea
 
 ## Phase 3 — AWS adapter (extended Scan + index-routed Query)
 
-**Status.** Planned.
+**Status.** Phase 3a shipped (resolver extension + wiring + unit tests). Phase 3b shipped (deploy-time `@scanSort` validation warning). Phase 3c planned (DynamoDB-Local integration suite).
 
 **Depends on:** Phases 1 and 2.
 
@@ -230,37 +230,36 @@ The connection field stays bound to one resolver. Inside the resolver we widen t
 | `<subIdField>From/To` | Scan + FilterExpression | O(n) | v1.5 promotes to `Query` with key-condition |
 | `search` / `searchPrefix` / `ids` | Scan + FilterExpression | O(n) | unchanged from today |
 | `<scanField>Eq` | Scan + FilterExpression | O(n) | same code path as `<indexField>Eq` — `@scan` only changes SDL gating |
-| `orderBy` aligned with table sort key | Scan with `ScanIndexForward=false` for DESC | same as Scan | direction toggle only |
-| `orderBy` on `@scanSort` field | Scan + JS-runtime sort over the **page** | full scan + per-page sort | clearly wrong for a global ordering — see open question 2 |
+| Any `orderBy` on the Scan path | JS-runtime sort over the **page** | full scan + per-page sort | DynamoDB Scan returns indeterminate order and `ScanIndexForward` is Query-only. Per-page sort is the correct mechanism here; v1.5 index promotion lifts this caveat for fields that are an index sort key. `@scanSort` on a non-key field is per-page even after v1.5. |
 
 **Files to change.**
 
 - **[rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res](../../rescript/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res)** — Extend `listAllItemsConnection`:
-  1. **Per-field `*Eq` filter expressions.** The deploy-time emitter already takes `~labelField`. Add a new parameter `~filterFields: array<string>` (the same set Phase 1's `deriveServerCapability` produces). Inside the JS resolver template, iterate the `filter` object's keys: for any `<field>Eq` whose `<field>` is in `filterFields`, append `#<field> = :<field>` to the expression. Same for `<field>From` / `<field>To` (range) and (future) `<field>In` (`IN` clause).
-  2. **`orderBy` direction flip.** New parameter `~sortFields: array<string>` and a `~tableSortField: string` (the read model's natural DynamoDB sort key, typically `@subId` or `@compositeSubId`). When `args.orderBy` is provided AND `orderBy.field === tableSortField`, set `ScanIndexForward` accordingly. When it doesn't match, fall back to JS-runtime sort over the returned page (with a comment marking this as a known limitation — see open question 2).
+  1. **Per-field `*Eq` filter expressions** (Phase 3a). The deploy-time emitter already takes `~labelField`. Add `~filterFields: array<string>` (the same set Phase 1's `deriveServerCapability` produces). Inside the JS resolver template, iterate the `filter` object's keys: for any `<field>Eq` whose `<field>` is in `filterFields`, append `#<field> = :<field>Eq` to the expression. Add `~rangeFields: array<string>` for `<field>From` / `<field>To` clauses.
+  2. **`orderBy` per-page sort** (Phase 3a). `~sortFields: array<string>` lists which fields can drive the response-side sort. When `args.orderBy.field` is in `sortFields`, the response handler stable-sorts the returned page in JS. Per-page only — see the table above.
   3. **Cursor stays `args.after` → `nextToken`.** Backward (`before` / `last`) deferred — see open question 3.
-- **[reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)** — Around line 176 where `listAllItemsConnection(~labelField)` is called, also pass the new `~filterFields` and `~sortFields` derived from the same `deriveServerCapability` helper that Phase 1 added. The AppSync resolver is deploy-time generated, so the supported field set is baked into the resolver code at deploy time — no runtime introspection, no surprise.
-- **New: `validateBackendCompatibility(schema, ~backend)`** in `GraphQL_FragmentGenerator.res` (or a sibling) — called during AWS deploy. Emits a Pulumi log warning when a schema declares `@scanSort` on a field that isn't the natural sort key of any table or GSI, naming the read model and field. The deploy still succeeds; the warning is the explicit signal that the request will be expensive in production. (No env-level `ALLOW_SCAN` gate in v1 — annotations are already explicit.)
-- **[reventless-aws/tests/](../../reventless/reventless-aws/tests/)** — Add adapter integration tests using the existing test harness (look for analogous tests around `QueryDbResolvers_AppSync`):
+- **[reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)** (Phase 3a) — Around line 176 where `listAllItemsConnection(~labelField)` is called, also pass the new `~filterFields` / `~rangeFields` / `~sortFields` derived from `deriveServerCapability` against the schema looked up in `Plugin_Helpers.stateSchemaRegistry`. The AppSync resolver is deploy-time generated, so the supported field set is baked into the resolver code at deploy time — no runtime introspection, no surprise.
+- **`validateScanSortAlignment(schema, ~readModelName, ~knownSortFields)`** (Phase 3b — shipped) in `GraphQL_FragmentGenerator.res`, called from `QueryDbResolvers_AppSync.res` at deploy time. Returns one warning string per `@scanSort` field that is not also a sort key of the table or any GSI; the resolver-maker logs each via `Logger.warn(~comp="QueryDbResolvers_AppSync", _)`. The deploy still succeeds; the warning is the explicit signal that the request will be expensive in production. (No env-level `ALLOW_SCAN` gate — annotations are already explicit.)
+- **[reventless-aws/tests/](../../reventless/reventless-aws/tests/)** (Phase 3c — planned) — Adapter integration tests against DynamoDB Local:
   - List with `<indexField>Eq` returns narrowed rows.
-  - List with `orderBy.field=<tableSortField>&direction=DESC` returns reverse-ordered rows.
+  - List with `orderBy.field=<sortField>&direction=DESC` returns reverse-ordered rows within the page.
   - List with `<scanSort>` field returns rows sorted within the page (acknowledging the limitation).
   - List with `idEq` continues to work alongside the existing `byId` query path.
 
 **Concrete steps.**
 
-1. Extend `listAllItemsConnection` with `~filterFields` and `~sortFields` parameters and the new JS resolver branches. Keep the existing `search / searchPrefix / ids` block working byte-for-byte so existing connections stay identical when no new fields are present.
-2. Wire `QueryDbResolvers_AppSync.res` to compute the capability set per read model at deploy time and pass it through.
-3. Add the validation pass for `@scanSort` mismatches. Make the warning unconditional but non-fatal.
-4. Adapter integration tests (DynamoDB Local).
-5. Document the new args in the resolver-function file's docstring (already a convention there) and in the autoui guide.
+1. ✅ (3a) Extend `listAllItemsConnection` with `~filterFields` / `~rangeFields` / `~sortFields` parameters and the new JS resolver branches. The legacy `search / searchPrefix / ids` block stays byte-for-byte; new clauses are emitted only when the corresponding array is non-empty.
+2. ✅ (3a) Wire `QueryDbResolvers_AppSync.res` to compute the capability set per read model at deploy time and pass it through.
+3. ✅ (3b) Add the validation pass for `@scanSort` mismatches. Warning is unconditional but non-fatal (logged via `Logger.warn`, deploy continues).
+4. (3c) Adapter integration tests (DynamoDB Local).
+5. Document the new args in the resolver-function file's docstring (already done) and in the autoui guide.
 
 **Validation.**
 
-- ✅ Existing AWS deployments without any new annotations behave identically (resolver template extended only when `~filterFields` is non-empty / `~sortFields` is non-empty).
+- ✅ Existing AWS deployments without any new annotations behave identically (resolver template extended only when `~filterFields` / `~rangeFields` / `~sortFields` is non-empty — backward-compat call sites pass nothing).
 - ✅ A read model with `@index("byOwner")` on `ownerId`: querying with `filter.ownerIdEq="…"` returns only matching rows. v1 uses Scan + FilterExpression; v1.5 promotes to a Query against the `byOwner` GSI.
-- ✅ A read model with `orderBy.field` aligned to the natural table sort key: `direction: DESC` reverses the order via `ScanIndexForward=false`.
-- ✅ A read model with `@scanSort` on a non-key field: rows come back sorted within the page; deploy-time warning is logged.
+- ✅ A read model with `orderBy.field` in `sortFields`: rows come back sorted within the page in the requested direction (per-page only — global ordering across pages requires v1.5 index promotion).
+- ✅ A read model with `@scanSort` on a non-key field: deploy-time warning is logged via `Logger.warn(~comp="QueryDbResolvers_AppSync", …)`.
 - ✅ Cursor pagination (`first / after`) keeps working through all of the above. Backward pagination (`before / last`) intentionally returns `null` cursors — open question 3.
 
 **Open questions.**
@@ -269,7 +268,22 @@ The connection field stays bound to one resolver. Inside the resolver we widen t
 2. **Global ordering vs per-page ordering with `@scanSort`.** A scan returns up to `limit` items per request and the cursor encodes the LastEvaluatedKey, not the sort position. Sorting *within* the page is per-page, not global — clicking through pages will reveal an inconsistent order. The deploy-time warning makes this visible; a future "small-table" annotation (e.g. `@bounded(maxRows: 1000)`) could trigger a single full-scan-then-sort-then-paginate-in-memory implementation. Out of scope here.
 3. **Backward pagination on AWS.** DynamoDB doesn't support reverse cursors directly. To honour `before / last` we'd need to flip `ScanIndexForward`, swap which boundary the cursor encodes, and reverse the result. Doable but adds a non-trivial branch. v1 leaves the `before / last` args in the SDL (they're mandated by Relay) but returns `pageInfo.hasPreviousPage = false` from AWS so the UI's `<Pagination>` simply hides the back arrow.
 4. **`totalCount`.** Reintroducing `totalCount: Int` on the connection for AWS would require a `Scan(Select=COUNT)` round trip per page (or a separate GraphQL field). Likely a separate plan; flagged here only so that a future "Showing 1–50 of N" UI ask can find the design rationale.
-5. **Index-routed promotion (v1.5).** When the request shape *exactly* matches a single GSI (one `<indexField>Eq` plus optional `orderBy` aligned to that GSI's sort key), the resolver could dispatch `Query` instead of `Scan`. This needs either a pipeline resolver or a runtime branch inside the JS resolver. Both work; the branch keeps the resolver count down. Optional v1.5.
+5. **Index-routed promotion (v1.5).** When the request shape *exactly* matches a single GSI (one `<indexField>Eq` plus optional `orderBy` aligned to that GSI's sort key), the resolver could dispatch `Query` instead of `Scan`. This needs either a pipeline resolver or a runtime branch inside the JS resolver. Both work; the branch keeps the resolver count down. Optional v1.5. Index-routed Query is also where the `ScanIndexForward` direction flip becomes meaningful — Scan does not honour it, so on the v1 Scan path the only correct direction-toggle mechanism is JS-runtime page-sort.
+
+**Implementation notes (Phase 3a shipped).**
+
+- `listAllItemsConnection` in [AppSync_Resolver_Functions.res](../../rescript/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res) now takes optional `~filterFields`, `~rangeFields`, `~sortFields` arrays. Each field name in `filterFields` produces an `if (filter.<f>Eq …) { … parts.push('#<f> = :<f>Eq') }` branch in the request handler; range fields produce additional `>=` / `<=` branches; sort fields gate a `items.slice().sort(…)` block in the response handler. When all arrays are empty the rendered template is byte-for-byte identical to the prior version (no new lines, no new constants).
+- [QueryDbResolvers_AppSync.res:172](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L172) reads the registered state schema from `Plugin_Helpers.stateSchemaRegistry`, calls `GraphQL_FragmentGenerator.deriveServerCapability`, then maps `capability.filterFields` / `sortFields` into the three string arrays passed to the resolver. Same source of truth as the in-memory adapter and the SDL emitter, so the AWS resolver and the SDL stay in lockstep.
+- Per-page sort caveat is documented in the resolver's docstring and in the inline comment around the JS sort block. `null` / `undefined` values sort to the end regardless of direction.
+- Resolver-level test coverage in [AppSync_Resolver_FunctionsTest.mjs](../../rescript/rescript-pulumi-aws/tests/AppSync_Resolver_FunctionsTest.mjs): 19 new cases under a `listAllItemsConnection` describe block (default behaviour, per-field `Eq`, range `From` / `To`, per-page sort ASC / DESC, `null`-sort-to-end, orderBy on unknown field is a no-op, combined filter+sort).
+- Full suites green: 1164 tests across 129 suites (+19 in `AppSync_Resolver_FunctionsTest`).
+
+**Implementation notes (Phase 3b shipped).**
+
+- `GraphQL_FragmentGenerator.validateScanSortAlignment(~schema, ~readModelName, ~knownSortFields)` returns one warning string per `@scanSort` field that is not also in `knownSortFields`. Pure function — caller logs.
+- [QueryDbResolvers_AppSync.res:185](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L185) builds `knownSortFields = [subIdField] ++ indexes->filterMap(.subIdField)` and feeds the warnings to `Logger.warn(~comp="QueryDbResolvers_AppSync", …)` at deploy time. No-op when the schema isn't registered or has no `@scanSort` fields.
+- 3 new test cases in `GraphQL_SchemaInspectorTest.res` cover: warning fired for an unaligned field, silent when aligned with a known sort key, silent when there are no `@scanSort` fields.
+- Full suites green: 1167 tests across 129 suites (+3 over Phase 3a).
 
 ---
 

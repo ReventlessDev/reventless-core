@@ -623,6 +623,45 @@ describe("GraphQL_SchemaInspector", () => {
       },
     )
 
+    testPromise(
+      "validateScanSortAlignment warns when @scanSort field is not a sort key",
+      async () => {
+        // scanStateSchemaWithAnnotations has @scanSort on "name". With no table
+        // sort key and no GSIs, "name" is not aligned with any sort key.
+        let warnings = ReventlessCore.GraphQL_FragmentGenerator.validateScanSortAlignment(
+          ~schema=scanStateSchemaWithAnnotations->S.castToUnknown,
+          ~readModelName="ScanItem",
+          ~knownSortFields=[],
+        )
+        expect(warnings->Array.length)->toBe(1)
+        let msg = warnings->Array.getUnsafe(0)
+        expect(msg->String.includes("ScanItem"))->toBe(true)
+        expect(msg->String.includes("name"))->toBe(true)
+        expect(msg->String.includes("per-page"))->toBe(true)
+      },
+    )
+    testPromise(
+      "validateScanSortAlignment is silent when @scanSort field aligns with a known sort key",
+      async () => {
+        let warnings = ReventlessCore.GraphQL_FragmentGenerator.validateScanSortAlignment(
+          ~schema=scanStateSchemaWithAnnotations->S.castToUnknown,
+          ~readModelName="ScanItem",
+          ~knownSortFields=["name"],
+        )
+        expect(warnings)->toEqual([])
+      },
+    )
+    testPromise(
+      "validateScanSortAlignment is a no-op when there are no @scanSort fields",
+      async () => {
+        let warnings = ReventlessCore.GraphQL_FragmentGenerator.validateScanSortAlignment(
+          ~schema=indexedStateSchemaWithAnnotations->S.castToUnknown,
+          ~readModelName="IndexedProduct",
+          ~knownSortFields=[],
+        )
+        expect(warnings)->toEqual([])
+      },
+    )
     testPromise("read model with @subId emits range filters + OrderBy on the sort key", async () => {
       let fragment = ReventlessCore.GraphQL_FragmentGenerator.generate(
         ~mutationEntries=[],

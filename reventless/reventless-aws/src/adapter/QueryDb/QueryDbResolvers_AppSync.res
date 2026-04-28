@@ -8,6 +8,8 @@ open PulumiAws.AppSync
 module Resolver = AppSync_Resolver_Retrying
 open Reventless.ReadModel
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type api = Types.AppSync.api
 type role = Types.AppSync.role
 
@@ -169,11 +171,47 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
     | Some({labelField: ?lf}) => lf->Option.getOr("id")
     | None => "id"
     }
+    // Derive server-side filter / sort capability from the registered state schema
+    // (Phase 1's deriveServerCapability). Empty arrays when the schema isn't
+    // registered or has no indexable fields — the resolver template emits the same
+    // SDL the in-memory adapter does, so the AWS Filter / OrderBy stays in lockstep
+    // with the SDL emitted by GraphQL_FragmentGenerator at runtime.
+    let stateSchemaOpt = ReventlessCore.Plugin_Helpers.stateSchemaRegistry->Dict.get(name)
+    let capability = switch stateSchemaOpt {
+    | Some(s) => ReventlessCore.GraphQL_FragmentGenerator.deriveServerCapability(s)
+    | None => ReventlessCore.GraphQL_FragmentGenerator.emptyCapability
+    }
+    let filterFieldNames = capability.filterFields->Array.map(f => f.name)
+    let rangeFieldNames =
+      capability.filterFields->Array.filterMap(f => f.range ? Some(f.name) : None)
+    let sortFieldNames = capability.sortFields
+    // Deploy-time warning when a `@scanSort` field is not also the sort key of any
+    // table or GSI — the resolver can still serve the request, but it will be a
+    // JS-runtime per-page sort over a full Scan (expensive in production).
+    switch stateSchemaOpt {
+    | Some(s) =>
+      let knownSortFields =
+        switch subIdField {
+        | Some(f) => [f]
+        | None => []
+        }->Array.concat(indexes->Array.filterMap(({subIdField: ?sf}) => sf))
+      ReventlessCore.GraphQL_FragmentGenerator.validateScanSortAlignment(
+        ~schema=s,
+        ~readModelName=name,
+        ~knownSortFields,
+      )->Array.forEach(msg => log.warn(~comp="QueryDbResolvers_AppSync", msg))
+    | None => ()
+    }
     let resolverAll = makeQueryResolver(
       ~resolverName=fieldNameForAll->String.capitalize,
       ~field=fieldNameForAll->Pulumi.Input.make,
       ~code=if connectionSpec {
-        Resolver.Functions.listAllItemsConnection(~labelField)
+        Resolver.Functions.listAllItemsConnection(
+          ~labelField,
+          ~filterFields=filterFieldNames,
+          ~rangeFields=rangeFieldNames,
+          ~sortFields=sortFieldNames,
+        )
       } else {
         Resolver.Functions.listAllItems
       },

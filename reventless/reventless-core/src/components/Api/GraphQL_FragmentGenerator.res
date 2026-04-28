@@ -209,6 +209,31 @@ let deriveServerCapability = (schema: S.t<unknown>): serverCapability => {
   }
 }
 
+// Returns one warning per `@scanSort` field that is NOT also a sort key of the
+// table or any GSI. The Scan-based AWS resolver evaluates such requests as a
+// JS-runtime per-page sort over a full Scan — correct, but expensive. The
+// schema author should either point the field at an index sort key or
+// explicitly accept the per-page-sort caveat. Returns [] when validation is
+// not applicable (no schema, no `@scanSort` fields).
+let validateScanSortAlignment = (
+  ~schema: S.t<unknown>,
+  ~readModelName: string,
+  ~knownSortFields: array<string>,
+): array<string> =>
+  switch Reventless.StateAnnotations.getSpec(schema) {
+  | None => []
+  | Some(spec) =>
+    spec.scanSort->Array.filterMap(field =>
+      if knownSortFields->Array.includes(field) {
+        None
+      } else {
+        Some(
+          `Read model "${readModelName}": @scanSort field "${field}" is not the sort key of any table or GSI. Sort requests for this field will be evaluated as a JS-runtime per-page sort over a full Scan — expensive in production. Add it as the sort key of an index, or accept the per-page-sort caveat.`,
+        )
+      }
+    )
+  }
+
 let deriveConnectionFilterType = (
   ~filterTypeName: string,
   ~capability: serverCapability=emptyCapability,

@@ -403,7 +403,8 @@ ${resultResponseCode}
 // ---------------------------------------------------------------------------
 
 /**
- * Scan with optional `filter` arg: `{search?, searchPrefix?, ids?}`.
+ * Scan with optional `filter` arg: `{search?, searchPrefix?, ids?, <field>Eq?, <field>From?, <field>To?}`
+ * and optional `orderBy: {field, direction}`.
  *
  * `search`       → `contains(labelField, :v)` — case-sensitive on DynamoDB. Callers that
  *                  need case-insensitive matching should project a lowercased label column
@@ -412,11 +413,70 @@ ${resultResponseCode}
  *                  Phase 6 `@searchable` provisions a GSI to promote this to a query.
  * `ids`          → FilterExpression `#id IN (:id0, :id1, …)`. Simple scan-based
  *                  path; BatchGetItem optimisation is deferred (open question 1).
+ * `<field>Eq`    → FilterExpression `#<field> = :<field>Eq`, one per `~filterFields` entry.
+ * `<field>From`  → FilterExpression `#<field> >= :<field>From`, one per `~rangeFields` entry.
+ * `<field>To`    → FilterExpression `#<field> <= :<field>To`, one per `~rangeFields` entry.
+ * `orderBy`      → JS-runtime sort over the returned page when `orderBy.field` is in
+ *                  `~sortFields`. **Per-page only**, not global — DynamoDB Scan returns
+ *                  items in indeterminate order and `ScanIndexForward` does not apply
+ *                  to Scan. Index-routed Query (v1.5) lifts this caveat for indexed
+ *                  sort fields; `@scanSort` on a non-indexed field is per-page even then.
  *
- * Empty-string filter values are treated as "no filter" — consistent with the
+ * Empty-string and null filter values are treated as "no filter" — consistent with the
  * in-memory adapter so clients don't need to conditionally omit keys.
  */
-let listAllItemsConnection = (~labelField: string) =>
+let listAllItemsConnection = (
+  ~labelField: string,
+  ~filterFields: array<string>=[],
+  ~rangeFields: array<string>=[],
+  ~sortFields: array<string>=[],
+) => {
+  let filterClauses =
+    filterFields
+    ->Array.map(f => `
+  if (filter.${f}Eq !== undefined && filter.${f}Eq !== null && filter.${f}Eq !== '') {
+    names['#${f}'] = '${f}';
+    values[':${f}Eq'] = util.dynamodb.toDynamoDB(filter.${f}Eq);
+    parts.push('#${f} = :${f}Eq');
+  }`)
+    ->Array.join("")
+  let rangeClauses =
+    rangeFields
+    ->Array.map(f => `
+  if (filter.${f}From !== undefined && filter.${f}From !== null && filter.${f}From !== '') {
+    names['#${f}'] = '${f}';
+    values[':${f}From'] = util.dynamodb.toDynamoDB(filter.${f}From);
+    parts.push('#${f} >= :${f}From');
+  }
+  if (filter.${f}To !== undefined && filter.${f}To !== null && filter.${f}To !== '') {
+    names['#${f}'] = '${f}';
+    values[':${f}To'] = util.dynamodb.toDynamoDB(filter.${f}To);
+    parts.push('#${f} <= :${f}To');
+  }`)
+    ->Array.join("")
+  let sortFieldsLiteral =
+    sortFields->Array.map(f => `'${f}'`)->Array.join(", ")
+  let sortBlock = if sortFields->Array.length == 0 {
+    ""
+  } else {
+    `
+  // Per-page sort (Scan returns items in indeterminate order; ScanIndexForward
+  // does not apply to Scan). Global ordering across pages requires v1.5 index
+  // promotion; @scanSort is per-page even then.
+  const orderBy = ctx.args.orderBy;
+  const sortFields = [${sortFieldsLiteral}];
+  if (orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
+    const direction = orderBy.direction === 'DESC' ? -1 : 1;
+    items = items.slice().sort((a, b) => {
+      const av = a[orderBy.field];
+      const bv = b[orderBy.field];
+      if (av === bv) return 0;
+      if (av === undefined || av === null) return 1;
+      if (bv === undefined || bv === null) return -1;
+      return av < bv ? -1 * direction : 1 * direction;
+    });
+  }`
+  }
   `${importUtil}
 export function request(ctx) {
   const filter = ctx.args.filter ?? {};
@@ -441,7 +501,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }
+  }${filterClauses}${rangeClauses}
   const req = {
     operation: 'Scan',
     limit: (ctx.args.first ?? 50),
@@ -458,7 +518,7 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result?.items ?? [];
+  let items = ctx.result?.items ?? [];${sortBlock}
   const edges = items.map((item, i) => ({
     node: item,
     cursor: ctx.args.after ? ctx.args.after + '_' + i : '' + i,
@@ -474,6 +534,7 @@ export function response(ctx) {
   };
 }
 `->Pulumi.Input.make
+}
 
 // ---------------------------------------------------------------------------
 // DynamoDB nested resolvers — resolve linked item(s) by ID

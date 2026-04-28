@@ -459,6 +459,22 @@ describe("GraphQL_SchemaInspector", () => {
       expect(sdl.includes("statusFrom:")).toBe(false);
       expect(sdl.includes("statusTo:")).toBe(false);
     });
+    test("validateScanSortAlignment warns when @scanSort field is not a sort key", async () => {
+      let warnings = GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(scanStateSchemaWithAnnotations, "ScanItem", []);
+      expect(warnings.length).toBe(1);
+      let msg = warnings[0];
+      expect(msg.includes("ScanItem")).toBe(true);
+      expect(msg.includes("name")).toBe(true);
+      expect(msg.includes("per-page")).toBe(true);
+    });
+    test("validateScanSortAlignment is silent when @scanSort field aligns with a known sort key", async () => {
+      let warnings = GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(scanStateSchemaWithAnnotations, "ScanItem", ["name"]);
+      expect(warnings).toEqual([]);
+    });
+    test("validateScanSortAlignment is a no-op when there are no @scanSort fields", async () => {
+      let warnings = GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(indexedStateSchemaWithAnnotations, "IndexedProduct", []);
+      expect(warnings).toEqual([]);
+    });
     test("read model with @subId emits range filters + OrderBy on the sort key", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Ordered_Item",

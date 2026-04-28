@@ -360,7 +360,45 @@ export function request(ctx) {
 ` + resultResponseCode + `
 `;
 
-function listAllItemsConnection(labelField) {
+function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sortFieldsOpt) {
+  let filterFields = filterFieldsOpt !== undefined ? filterFieldsOpt : [];
+  let rangeFields = rangeFieldsOpt !== undefined ? rangeFieldsOpt : [];
+  let sortFields = sortFieldsOpt !== undefined ? sortFieldsOpt : [];
+  let filterClauses = filterFields.map(f => `
+  if (filter.` + f + `Eq !== undefined && filter.` + f + `Eq !== null && filter.` + f + `Eq !== '') {
+    names['#` + f + `'] = '` + f + `';
+    values[':` + f + `Eq'] = util.dynamodb.toDynamoDB(filter.` + f + `Eq);
+    parts.push('#` + f + ` = :` + f + `Eq');
+  }`).join("");
+  let rangeClauses = rangeFields.map(f => `
+  if (filter.` + f + `From !== undefined && filter.` + f + `From !== null && filter.` + f + `From !== '') {
+    names['#` + f + `'] = '` + f + `';
+    values[':` + f + `From'] = util.dynamodb.toDynamoDB(filter.` + f + `From);
+    parts.push('#` + f + ` >= :` + f + `From');
+  }
+  if (filter.` + f + `To !== undefined && filter.` + f + `To !== null && filter.` + f + `To !== '') {
+    names['#` + f + `'] = '` + f + `';
+    values[':` + f + `To'] = util.dynamodb.toDynamoDB(filter.` + f + `To);
+    parts.push('#` + f + ` <= :` + f + `To');
+  }`).join("");
+  let sortFieldsLiteral = sortFields.map(f => `'` + f + `'`).join(", ");
+  let sortBlock = sortFields.length === 0 ? "" : `
+  // Per-page sort (Scan returns items in indeterminate order; ScanIndexForward
+  // does not apply to Scan). Global ordering across pages requires v1.5 index
+  // promotion; @scanSort is per-page even then.
+  const orderBy = ctx.args.orderBy;
+  const sortFields = [` + sortFieldsLiteral + `];
+  if (orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
+    const direction = orderBy.direction === 'DESC' ? -1 : 1;
+    items = items.slice().sort((a, b) => {
+      const av = a[orderBy.field];
+      const bv = b[orderBy.field];
+      if (av === bv) return 0;
+      if (av === undefined || av === null) return 1;
+      if (bv === undefined || bv === null) return -1;
+      return av < bv ? -1 * direction : 1 * direction;
+    });
+  }`;
   return importUtil + `
 export function request(ctx) {
   const filter = ctx.args.filter ?? {};
@@ -385,7 +423,7 @@ export function request(ctx) {
       return key;
     });
     parts.push('#id IN (' + placeholders.join(', ') + ')');
-  }
+  }` + filterClauses + rangeClauses + `
   const req = {
     operation: 'Scan',
     limit: (ctx.args.first ?? 50),
@@ -402,7 +440,7 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  const items = ctx.result?.items ?? [];
+  let items = ctx.result?.items ?? [];` + sortBlock + `
   const edges = items.map((item, i) => ({
     node: item,
     cursor: ctx.args.after ? ctx.args.after + '_' + i : '' + i,
