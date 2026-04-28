@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.39 (2026-04-28)
+
+### Features
+
+* **api:** auto-derive Filter/OrderBy from state annotations ([320001f](https://github.com/ReventlessDev/reventless-core/commit/320001f69dfc1166974932014dcf85f872aaba62))
+* **aws:** server-side filter/sort on connection list resolver ([baa3f4e](https://github.com/ReventlessDev/reventless-core/commit/baa3f4e7937ff14d8e6ad2b309dbae57a242cf47))
+* **in-memory:** keyset pagination on connection list resolver ([6750cc6](https://github.com/ReventlessDev/reventless-core/commit/6750cc628a33517338125d15c8e7bbb27123cf38))
+* **in-memory:** log active storage backend on platform startup ([deff1b8](https://github.com/ReventlessDev/reventless-core/commit/deff1b89b6e7c737cfaddc8b53ff35dd3899e4e2))
+* **ppx:** add [@scan](https://github.com/scan) and [@scan](https://github.com/scan)Sort opt-in for server-side filter/sort ([534a4bf](https://github.com/ReventlessDev/reventless-core/commit/534a4bf2116ec6f597f87dadc785767c3dc54ace))
+
+
 # 3.0.0-alpha.38 (2026-04-27)
 
 ### Bug Fixes
