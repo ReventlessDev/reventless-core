@@ -875,3 +875,92 @@ let generate_config ~loc (str : structure) : structure_item =
       gen_config_call ~loc index_exprs
     else
       gen_config_call_full ~loc ~index_exprs ~id_resolver_exprs ~ids_resolver_exprs
+
+(* ── State annotation metadata: propagate structural annotations to JSON Schema ── *)
+
+(** Build a string-array AST expression. *)
+let estr_array ~loc strs =
+  { pexp_desc = Pexp_array (List.map (Ast_builder.Default.estring ~loc) strs);
+    pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+
+(** Build a `(string, string)` tuple AST expression. *)
+let str_tuple ~loc a b =
+  { pexp_desc = Pexp_tuple [
+      Ast_builder.Default.estring ~loc a;
+      Ast_builder.Default.estring ~loc b;
+    ];
+    pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+
+(** Build an array of `(string, string)` tuples. *)
+let str_tuple_array ~loc pairs =
+  { pexp_desc = Pexp_array (List.map (fun (a, b) -> str_tuple ~loc a b) pairs);
+    pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+
+(** Build the `let stateSchema = stateSchema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)`
+    shadowing binding. Returns `None` when the state has no structural annotations. *)
+let make_state_annotations_binding ~loc fields : structure_item option =
+  let ids = List.filter_map (fun (ld : label_declaration) ->
+    if has_id_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
+  let composite_ids = List.filter_map (fun (ld : label_declaration) ->
+    if has_composite_id_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
+  let sub_ids = List.filter_map (fun (ld : label_declaration) ->
+    if has_subid_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
+  let composite_sub_ids = List.filter_map (fun (ld : label_declaration) ->
+    if has_composite_subid_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
+  ) fields in
+  let indexes = List.filter_map (fun (ld : label_declaration) ->
+    match find_index_attr ld.pld_attributes with
+    | Some attr -> Some (ld.pld_name.txt, get_index_name attr)
+    | None -> None
+  ) fields in
+  if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
+     && indexes = [] then None
+  else
+    let ident lid =
+      { pexp_desc = Pexp_ident { txt = lid; loc };
+        pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    let state_schema_expr = ident (Lident "stateSchema") in
+    let metadata_set_expr = ident (Ldot (Ldot (Lident "S", "Metadata"), "set")) in
+    let annotations_id_expr =
+      ident (Ldot (Ldot (Lident "Reventless", "StateAnnotations"), "stateAnnotationsId")) in
+    let spec_record =
+      { pexp_desc = Pexp_record (
+          [ ({ txt = Lident "ids"; loc }, estr_array ~loc ids);
+            ({ txt = Lident "compositeIds"; loc }, estr_array ~loc composite_ids);
+            ({ txt = Lident "subIds"; loc }, estr_array ~loc sub_ids);
+            ({ txt = Lident "compositeSubIds"; loc }, estr_array ~loc composite_sub_ids);
+            ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes) ],
+          None);
+        pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    let apply_expr =
+      { pexp_desc = Pexp_apply (
+          metadata_set_expr,
+          [ (Nolabel, state_schema_expr);
+            (Labelled "id", annotations_id_expr);
+            (Nolabel, spec_record) ]);
+        pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    let binding =
+      { pvb_pat = { ppat_desc = Ppat_var { txt = "stateSchema"; loc };
+                    ppat_loc = loc;
+                    ppat_loc_stack = [];
+                    ppat_attributes = [] };
+        pvb_expr = apply_expr;
+        pvb_attributes = [];
+        pvb_loc = loc } in
+    Some
+      { pstr_desc = Pstr_value (Nonrecursive, [binding]);
+        pstr_loc = loc }
+
+(** Returns `[binding]` shadowing `stateSchema` with attached annotation metadata,
+    or `[]` when the state record carries no structural annotations.
+    Must be called BEFORE the structural attributes are stripped. *)
+let generate_state_annotations ~loc (str : structure) : structure_item list =
+  match find_schema_state_record str with
+  | None -> []
+  | Some fields ->
+    (match make_state_annotations_binding ~loc fields with
+     | None -> []
+     | Some s -> [s])

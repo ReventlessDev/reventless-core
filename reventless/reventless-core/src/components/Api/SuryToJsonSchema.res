@@ -8,6 +8,39 @@ let str = JSON.Encode.string
 let jsonObject = (entries: array<(string, JSON.t)>): JSON.t =>
   JSON.Encode.object(Dict.fromArray(entries))
 
+// Merge x-reventless-* extension properties from a Reventless.StateAnnotations.stateAnnotationSpec
+// into a property schema (a JSON Schema object). Returns the schema unchanged when the field
+// has no annotations or when the schema is not a JSON object.
+let mergeAnnotations = (
+  fieldSchema: JSON.t,
+  fieldName: string,
+  spec: Reventless.StateAnnotations.stateAnnotationSpec,
+): JSON.t =>
+  switch fieldSchema->JSON.Decode.object {
+  | None => fieldSchema
+  | Some(obj) =>
+    if spec.ids->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-id", JSON.Encode.bool(true))
+    }
+    if spec.compositeIds->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-compositeId", JSON.Encode.bool(true))
+    }
+    if spec.subIds->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-subId", JSON.Encode.bool(true))
+    }
+    if spec.compositeSubIds->Array.includes(fieldName) {
+      obj->Dict.set("x-reventless-compositeSubId", JSON.Encode.bool(true))
+    }
+    switch spec.indexes->Array.find(((field, _)) => field === fieldName) {
+    | Some((_, indexName)) =>
+      let value =
+        indexName === "" ? JSON.Encode.bool(true) : JSON.Encode.string(indexName)
+      obj->Dict.set("x-reventless-index", value)
+    | None => ()
+    }
+    JSON.Encode.object(obj)
+  }
+
 // ── SchemaType → JSON Schema ─────────────────────────────────────────────
 
 let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
@@ -31,13 +64,21 @@ let rec fromSchemaType = (st: SchemaType.schemaType): JSON.t =>
   | Unknown => jsonObject([("type", str("string"))])
   }
 
-and objectRefToJsonSchema = (fields: dict<SchemaType.schemaType>): JSON.t => {
+and objectRefToJsonSchema = (
+  ~annotations: option<Reventless.StateAnnotations.stateAnnotationSpec>=?,
+  fields: dict<SchemaType.schemaType>,
+): JSON.t => {
   let props = Dict.make()
   let required: array<string> = []
   fields
   ->Dict.toArray
   ->Array.forEach(((fieldName, fieldType)) => {
-    props->Dict.set(fieldName, fromSchemaType(fieldType))
+    let baseSchema = fromSchemaType(fieldType)
+    let withAnnotations = switch annotations {
+    | Some(spec) => mergeAnnotations(baseSchema, fieldName, spec)
+    | None => baseSchema
+    }
+    props->Dict.set(fieldName, withAnnotations)
     required->Array.push(fieldName)
   })
   let entries: array<(string, JSON.t)> = [
@@ -54,7 +95,9 @@ and objectRefToJsonSchema = (fields: dict<SchemaType.schemaType>): JSON.t => {
 
 let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
   switch SchemaType.fromSuryObject(~typeName="", schema) {
-  | Some(fields) => objectRefToJsonSchema(fields)
+  | Some(fields) =>
+    let annotations = Reventless.StateAnnotations.getSpec(schema)
+    objectRefToJsonSchema(~annotations?, fields)
   | None => jsonObject([("type", str("object"))])
   }
 

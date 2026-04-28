@@ -451,12 +451,18 @@ let transform (str : structure) : structure =
       (* Generate subIdConfig and makeId BEFORE stripping annotations *)
       let sub_id_items = gen_sub_id_config ~loc body in
       let make_id_items = gen_make_id ~loc body in
+      let state_annotations_items =
+        if is_readmodel || is_stateview
+        then StateAnnotations.generate_state_annotations ~loc body
+        else []
+      in
       let readmodel_suffix =
         if is_readmodel
         then [gen_config_let ~loc body] @ sub_id_items @ make_id_items
+             @ state_annotations_items
         else if is_stateview then
           (if not (Util.has_let_binding "config" body) then [gen_config_let ~loc body] else [])
-          @ sub_id_items @ make_id_items
+          @ sub_id_items @ make_id_items @ state_annotations_items
         else []
       in
       let body = if is_readmodel || is_stateview
