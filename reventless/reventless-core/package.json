@@ -15,6 +15,9 @@
       "js",
       "mjs"
     ],
+    "setupFiles": [
+      "<rootDir>/jest.setup.cjs"
+    ],
     "moduleNameMapper": {
       "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
       "^spdx-license-ids$": "<rootDir>/../../node_modules/spdx-license-ids/index.json",
