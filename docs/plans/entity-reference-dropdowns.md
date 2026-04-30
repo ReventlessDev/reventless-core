@@ -32,7 +32,7 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 **Validation.**
 - `npm run test` passes in `reventless-core` and `reventless-in-memory`.
 - `grep -r totalCount reventless` returns zero matches outside of this plan document and its analysis counterpart.
-- In-memory dev-app boots; Relay list queries return `edges` + `pageInfo` with no schema errors.
+- In-memory reventless-playground boots; Relay list queries return `edges` + `pageInfo` with no schema errors.
 
 **Commit message.**
 `feat!: remove totalCount from Connection SDL — field was unreliable in production (AWS never populated it)`

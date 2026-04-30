@@ -40,9 +40,9 @@ pnpm run dev:full
 | Priority | Condition | UI dev server | Hot reload |
 |----------|-----------|---------------|------------|
 | 1 | `reventless-ui` symlink resolves (source repo checked out) | Vite from source repo | Yes — UI source changes reflected immediately |
-| 2 | Symlink dangling / absent | `dev-app` binary from installed `@reventless/dev-app` | No — published snapshot |
+| 2 | Symlink dangling / absent | `reventless-playground` binary from installed `@reventlessdev/reventless-playground` | No — published snapshot |
 
-`@reventless/dev-app` is a `devDependency` of this package. It is always available without checking out the UI source repo.
+`@reventlessdev/reventless-playground` is a `devDependency` of this package. It is always available without checking out the UI source repo.
 
 ---
 
@@ -87,7 +87,7 @@ Platform.makePlatform(
 Platform.startServers()
 ```
 
-Add run scripts to the plugin's `package.json`, add `@reventless/dev-app` as a `devDependency`, and create a `reventless-ui` symlink the same way:
+Add run scripts to the plugin's `package.json`, add `@reventlessdev/reventless-playground` as a `devDependency`, and create a `reventless-ui` symlink the same way:
 
 ```bash
 ln -s ../../../../reventless-ui reventless-ui
@@ -95,11 +95,11 @@ ln -s ../../../../reventless-ui reventless-ui
 
 ```json
 "devDependencies": {
-  "@reventless/dev-app": "*"
+  "@reventlessdev/reventless-playground": "*"
 },
 "scripts": {
   "dev:local": "tsx src/LocalDev.res.mjs",
-  "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || dev-app",
+  "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-playground",
   "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run dev:local' 'pnpm run dev:ui'"
 }
 ```

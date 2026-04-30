@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-platform-in-memory",
-  "version": "1.0.0-alpha.27",
+  "version": "1.0.0-alpha.28",
   "description": "Online Shop Hybrid example — full platform with Catalog + Ordering plugins (in-memory)",
   "scripts": {
     "build": "rescript build",
@@ -9,11 +9,11 @@
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "serve": "npx tsx src/Main.res.mjs",
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
-    "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || dev-app",
+    "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-playground",
     "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run serve' 'npx wait-on tcp:4001 && pnpm run dev:ui'"
   },
   "optionalDependencies": {
-    "@reventlessdev/dev-app": ">=0.2.0-alpha"
+    "@reventlessdev/reventless-playground": ">=3.0.0-alpha.0"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "workspace:*",

@@ -195,7 +195,7 @@ let createFragments: (
 - Bundle has zero URLs / fetches — it's pure logic plus React components. Deployable anywhere (CDN, dev server) without config.
 - The JSON definition lives on the backend (already surfaced via `Platform_UIDefinitions`) — one source of truth.
 - Matches the Step 1 separation: deployment facts (URLs, env) stay in the composition root; domain facts (schemas) stay in the backend; presentation logic (components, auto-generation) lives in bundles.
-- Parsing JSON → `AutoTypes.pluginDefinition` is a small helper the dashboard owns (mirrors `DevPluginSetup.parsePluginDefinitions` from dev-app). One implementation, used by all bundles.
+- Parsing JSON → `AutoTypes.pluginDefinition` is a small helper the dashboard owns (mirrors `DevPluginSetup.parsePluginDefinitions` from reventless-playground). One implementation, used by all bundles.
 
 **Rejected alternatives:**
 
