@@ -1043,6 +1043,9 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../reventless-spec
+      uuid:
+        specifier: ^13.0.0
+        version: 13.0.0
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1

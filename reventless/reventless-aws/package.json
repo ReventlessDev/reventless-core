@@ -27,7 +27,8 @@
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",
-    "@reventlessdev/reventless-spec": "workspace:*"
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
