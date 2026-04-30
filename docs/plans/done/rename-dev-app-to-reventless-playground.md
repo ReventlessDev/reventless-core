@@ -1,6 +1,8 @@
 # Plan: Adopt `@reventlessdev/reventless-playground` (rename of `@reventlessdev/dev-app`)
 
-Consumes the rename owned by [reventless-ui/docs/plans/rename-dev-app-to-reventless-playground.md](../../../reventless-ui/docs/plans/rename-dev-app-to-reventless-playground.md). Run **after** the new package is published on npm and the old name is deprecated.
+**Status.** ✅ Shipped 2026-04-30 in commit `d79381cda` (refactor(deps): adopt @reventlessdev/reventless-playground). The pin landed at `^3.0.0-alpha.0` (not `^0.3.0-alpha.0` as this plan originally projected) — the upstream rename ended up coordinated with a workspace-wide major bump to track `reventless-core` 3.x. The old `@reventlessdev/dev-app` was **not** deprecated on GHCR (no native deprecate API on GitHub Packages) — this consumer-side migration is the official transition path.
+
+Consumes the rename owned by [reventless-ui/docs/plans/done/rename-dev-app-to-reventless-playground.md](../../../../reventless-ui/docs/plans/done/rename-dev-app-to-reventless-playground.md). Run **after** the new package is published on npm and the old name is deprecated.
 
 ## Goal
 
@@ -25,7 +27,7 @@ If the package is not yet published, do not start this plan — the install will
 
 ### 1. Example consumer
 
-[examples/online-shop-hybrid/platform-in-memory/package.json](../../examples/online-shop-hybrid/platform-in-memory/package.json):
+[examples/online-shop-hybrid/platform-in-memory/package.json](../../../examples/online-shop-hybrid/platform-in-memory/package.json):
 
 - Line 12 — `dev:ui` script:
   ```diff
@@ -42,7 +44,7 @@ Bump the package version (`1.0.0-alpha.27` or whatever is next in the alpha trai
 
 ### 2. Local dev guide
 
-[docs/guides/local-dev.md](../guides/local-dev.md) — update every reference to the old name:
+[docs/guides/local-dev.md](../../guides/local-dev.md) — update every reference to the old name:
 
 - Line 43 — table row in "How the UI dev server is resolved":
   ```diff
@@ -84,7 +86,7 @@ These are decision documents (no code refs into the package). Update prose only:
 
 For active plans, the rule is: if a paragraph still drives upcoming work, update the name; if it's just describing past state, leave it.
 
-The CHANGELOG entry in [examples/online-shop-hybrid/platform-in-memory/CHANGELOG.md](../../examples/online-shop-hybrid/platform-in-memory/CHANGELOG.md) is git history — leave verbatim.
+The CHANGELOG entry in [examples/online-shop-hybrid/platform-in-memory/CHANGELOG.md](../../../examples/online-shop-hybrid/platform-in-memory/CHANGELOG.md) is git history — leave verbatim.
 
 ### 4. Lockfile
 
