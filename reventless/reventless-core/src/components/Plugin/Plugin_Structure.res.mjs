@@ -10,6 +10,7 @@ import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
+import * as SuryToJsonSchema$ReventlessCore from "../Api/SuryToJsonSchema.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -228,7 +229,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(S.toJSONSchema(R.Spec.stateSchema)),
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(R.Spec.stateSchema)),
       consumedEventTypes: [],
       linkedWriteSide: [],
       labelField: match[0],
@@ -243,7 +244,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(S.toJSONSchema(SVS.Spec.stateSchema)),
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(SVS.Spec.stateSchema)),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: match$1[0],

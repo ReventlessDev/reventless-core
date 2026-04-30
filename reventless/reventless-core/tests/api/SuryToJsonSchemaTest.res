@@ -323,4 +323,66 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), None))
     })
   })
+
+  // Parity sanity-check: deriveObjectSchema and the legacy S.toJSONSchema must
+  // agree on `properties` keyset and `required` array for unannotated objects,
+  // so swapping the encoder at Plugin_Structure.res:261/280 doesn't drop fields.
+  describe("parity with S.toJSONSchema for unannotated objects:", () => {
+    let getKeys = (schema: JSON.t): array<string> =>
+      switch getProperty(schema, "properties")->Option.flatMap(JSON.Decode.object) {
+      | Some(obj) => obj->Dict.keysToArray
+      | None => []
+      }
+
+    let getRequired = (schema: JSON.t): array<string> =>
+      switch getProperty(schema, "required")->Option.flatMap(JSON.Decode.array) {
+      | Some(arr) => arr->Array.filterMap(JSON.Decode.string)
+      | None => []
+      }
+
+    let sortStrings = (xs: array<string>): array<string> =>
+      xs->Array.toSorted(String.compare)
+
+    test("properties keyset matches between deriveObjectSchema and S.toJSONSchema", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "name": s.matches(S.string),
+          "count": s.matches(S.int),
+        }
+      )->S.castToUnknown
+      let derived = SuryToJsonSchema.deriveObjectSchema(schema)
+      let native = (schema->S.toJSONSchema->Obj.magic: JSON.t)
+      expect(derived->getKeys->sortStrings)->toEqual(native->getKeys->sortStrings)
+    })
+
+    test("required array matches between deriveObjectSchema and S.toJSONSchema", () => {
+      let schema = S.schema(s =>
+        {
+          "id": s.matches(S.string),
+          "name": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let derived = SuryToJsonSchema.deriveObjectSchema(schema)
+      let native = (schema->S.toJSONSchema->Obj.magic: JSON.t)
+      expect(derived->getRequired->sortStrings)->toEqual(native->getRequired->sortStrings)
+    })
+
+    test("S.toJSONSchema does NOT emit x-reventless-* keys even when metadata is set", () => {
+      let withSpec = (schema, spec) =>
+        schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)
+      let schema = S.schema(s =>
+        {
+          "entityId": s.matches(S.string),
+          "name": s.matches(S.string),
+        }
+      )->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, ids: ["entityId"]})
+      let native = (schema'->S.toJSONSchema->Obj.magic: JSON.t)
+      let entityIdSchema = getPropertyOf(native, "entityId")
+      expect(
+        entityIdSchema->Option.flatMap(s => getProperty(s, "x-reventless-id")),
+      )->toBe(None)
+    })
+  })
 })

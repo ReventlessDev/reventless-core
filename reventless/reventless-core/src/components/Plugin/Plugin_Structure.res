@@ -258,7 +258,10 @@ let make = (
       ({
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
-        schema: (R.Spec.stateSchema->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
+        schema: R.Spec.stateSchema
+        ->S.castToUnknown
+        ->SuryToJsonSchema.deriveObjectSchema
+        ->JSON.stringify,
         consumedEventTypes: [],
         linkedWriteSide: [],
         labelField,
@@ -277,7 +280,10 @@ let make = (
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,
-        schema: (SVS.Spec.stateSchema->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
+        schema: SVS.Spec.stateSchema
+        ->S.castToUnknown
+        ->SuryToJsonSchema.deriveObjectSchema
+        ->JSON.stringify,
         consumedEventTypes: consumed,
         linkedWriteSide: linkedWriteSideFor(consumed),
         labelField,

@@ -3,7 +3,9 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../../src/components/Api/SuryToJsonSchema.res.mjs";
 
@@ -468,6 +470,68 @@ Jest.describe("SuryToJsonSchema:", () => {
         true,
         undefined
       ]);
+    });
+  });
+  Jest.describe("parity with S.toJSONSchema for unannotated objects:", () => {
+    let getKeys = schema => {
+      let obj = Stdlib_Option.flatMap(getProperty(schema, "properties"), Stdlib_JSON.Decode.object);
+      if (obj !== undefined) {
+        return Object.keys(obj);
+      } else {
+        return [];
+      }
+    };
+    let getRequired = schema => {
+      let arr = Stdlib_Option.flatMap(getProperty(schema, "required"), Stdlib_JSON.Decode.array);
+      if (arr !== undefined) {
+        return Stdlib_Array.filterMap(arr, Stdlib_JSON.Decode.string);
+      } else {
+        return [];
+      }
+    };
+    let sortStrings = xs => xs.toSorted(Primitive_string.compare);
+    Jest.test("properties keyset matches between deriveObjectSchema and S.toJSONSchema", () => {
+      let schema = S.schema(s => ({
+        id: s.m(S.string),
+        name: s.m(S.string),
+        count: s.m(S.int)
+      }));
+      let derived = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema);
+      let native = S.toJSONSchema(schema);
+      return Jest.Expect.toEqual(Jest.Expect.expect(sortStrings(getKeys(derived))), sortStrings(getKeys(native)));
+    });
+    Jest.test("required array matches between deriveObjectSchema and S.toJSONSchema", () => {
+      let schema = S.schema(s => ({
+        id: s.m(S.string),
+        name: s.m(S.string)
+      }));
+      let derived = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema);
+      let native = S.toJSONSchema(schema);
+      return Jest.Expect.toEqual(Jest.Expect.expect(sortStrings(getRequired(derived))), sortStrings(getRequired(native)));
+    });
+    Jest.test("S.toJSONSchema does NOT emit x-reventless-* keys even when metadata is set", () => {
+      let withSpec = (schema, spec) => S.Metadata.set(schema, StateAnnotations$Reventless.stateAnnotationsId, spec);
+      let schema = S.schema(s => ({
+        entityId: s.m(S.string),
+        name: s.m(S.string)
+      }));
+      let schema$p = withSpec(schema, {
+        ids: ["entityId"],
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort
+      });
+      let native = S.toJSONSchema(schema$p);
+      let entityIdSchema = getPropertyOf(native, "entityId");
+      return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(entityIdSchema, s => getProperty(s, "x-reventless-id"))), undefined);
     });
   });
 });

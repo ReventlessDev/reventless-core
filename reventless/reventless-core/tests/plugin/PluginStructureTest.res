@@ -70,6 +70,15 @@ module PsCustomersViewSlice: ReventlessInfra.StateViewSlice.T = {
   type component = svsComponent
   let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
 }
+module PsAnnotatedViewSlice: ReventlessInfra.StateViewSlice.T = {
+  module Spec = PsAnnotatedView
+  module Projection = {
+    let project = PsAnnotatedView.project
+    let moduleUrl = PsAnnotatedView.moduleUrl
+  }
+  type component = svsComponent
+  let make = (~dcbEventLog as _, ~opts as _=?): component => Obj.magic(0)
+}
 
 let structure = Plugin_Structure.make(
   ~name="TestPlugin",
@@ -78,6 +87,7 @@ let structure = Plugin_Structure.make(
     module(PsOrdersViewSlice),
     module(PsAvailableProductsViewSlice),
     module(PsCustomersViewSlice),
+    module(PsAnnotatedViewSlice),
   ],
 )
 
@@ -147,8 +157,8 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   })
 
   describe("stateViewSlices", () => {
-    test("produces three SVS entries in declaration order", () => {
-      expect(structure.stateViewSlices->Array.length)->toBe(3)
+    test("produces four SVS entries in declaration order", () => {
+      expect(structure.stateViewSlices->Array.length)->toBe(4)
     })
 
     test("OrdersView: consumedEventTypes contains the three order events (qualified)", () => {
@@ -199,6 +209,76 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
         "displayName",
         ["firstName", "lastName"],
       ))
+    })
+  })
+
+  // Phase 4: queryableDef.schema must carry x-reventless-* extension keys for
+  // annotated state types. Plugin_Structure now uses SuryToJsonSchema.deriveObjectSchema
+  // (annotation-aware) instead of S.toJSONSchema (metadata-blind).
+  describe("queryableDef.schema propagates x-reventless-* annotations", () => {
+    let getProperty = (json: JSON.t, key: string): option<JSON.t> =>
+      switch json->JSON.Decode.object {
+      | Some(obj) => obj->Dict.get(key)
+      | None => None
+      }
+
+    let getPropertyOf = (json: JSON.t, fieldName: string): option<JSON.t> =>
+      switch getProperty(json, "properties") {
+      | Some(props) =>
+        switch props->JSON.Decode.object {
+        | Some(obj) => obj->Dict.get(fieldName)
+        | None => None
+        }
+      | None => None
+      }
+
+    let parseSchema = (svs: Reventless.Plugin.queryableDef): JSON.t =>
+      svs.schema->JSON.parseOrThrow
+
+    let annotatedSchema = structure.stateViewSlices->Array.getUnsafe(3)->parseSchema
+
+    test("itemId carries x-reventless-id", () => {
+      expect(
+        annotatedSchema
+        ->getPropertyOf("itemId")
+        ->Option.flatMap(s => getProperty(s, "x-reventless-id"))
+        ->Option.flatMap(JSON.Decode.bool),
+      )->toBe(Some(true))
+    })
+
+    test("version carries x-reventless-subId", () => {
+      expect(
+        annotatedSchema
+        ->getPropertyOf("version")
+        ->Option.flatMap(s => getProperty(s, "x-reventless-subId"))
+        ->Option.flatMap(JSON.Decode.bool),
+      )->toBe(Some(true))
+    })
+
+    test("ownerId carries x-reventless-index = byOwner", () => {
+      expect(
+        annotatedSchema
+        ->getPropertyOf("ownerId")
+        ->Option.flatMap(s => getProperty(s, "x-reventless-index"))
+        ->Option.flatMap(JSON.Decode.string),
+      )->toBe(Some("byOwner"))
+    })
+
+    test("unannotated field 'name' has no x-reventless-* keys", () => {
+      let nameField = annotatedSchema->getPropertyOf("name")
+      expect((
+        nameField->Option.flatMap(s => getProperty(s, "x-reventless-id")),
+        nameField->Option.flatMap(s => getProperty(s, "x-reventless-subId")),
+        nameField->Option.flatMap(s => getProperty(s, "x-reventless-index")),
+      ))->toEqual((None, None, None))
+    })
+
+    test("unannotated state-view slice (Orders) emits no x-reventless-* keys", () => {
+      let ordersSchema = structure.stateViewSlices->Array.getUnsafe(0)->parseSchema
+      let orderIdField = ordersSchema->getPropertyOf("orderId")
+      expect(
+        orderIdField->Option.flatMap(s => getProperty(s, "x-reventless-id")),
+      )->toBe(None)
     })
   })
 })
