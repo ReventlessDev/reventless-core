@@ -174,12 +174,23 @@ let kind_for_base base =
      "Foo", "Foos", "FooSlice", "FooSlices"
    The [slice_base_to_kind] table maps each base to its emitted kind name.
 
+   Also recognises the Aggregate-pattern architectural folders [Aggregate]
+   and [ReadModel] (and their plurals) — they aren't slice bases but they
+   are valid `tests/<Entity>/Aggregate|ReadModel/<Spec>_GWT.res` host
+   folders, mapped to [Behavior] (with the Aggregate-side functor) and
+   [MultiSourceProjection] respectively. The functor-name selection that
+   distinguishes [Make] from [MakeFromAggregate] happens later in
+   [GwtInference] based on [is_in_aggregate_folder].
+
    Falls back to substring matching for non-slice kinds (Projection,
    Behavior) and for filenames like "AutomationGwtTest" or
    "StateChangeSliceGwtTest" that bundle the kind with a test suffix.
    StateChange* / StateView* substrings map to Behavior / Projection per
    Plan 02 Phase 3b. *)
 let dsl_kind_of_segment part : string option =
+  if part = "Aggregate" || part = "Aggregates" then Some "Behavior"
+  else if part = "ReadModel" || part = "ReadModels" then Some "MultiSourceProjection"
+  else
   let try_base base =
     if part = base
        || part = base ^ "s"

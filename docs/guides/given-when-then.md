@@ -68,17 +68,22 @@ Two cross-cutting DSLs round out the surface:
    `StateView`, `Automation`, `InboundTranslation`, `OutboundTranslation`),
    the long singular form (`StateChangeSlice`), and the plural form
    (`StateChangeSlices`), matching the same vocabulary `@@reventless.spec`
-   uses for production files. When multiple segments of the path match,
-   the segment closest to the file wins. Spec resolution picks (1) the
-   first top-level module defined in the test file, if any, otherwise
-   (2) the filename stem with the `_GWT` / `GwtTest` / `Gwt` suffix
-   stripped — treated as an external module reference, so no local
-   binding or `module Spec = …` alias is needed in the consumer pattern.
+   uses for production files. The Aggregate-pattern architectural folders
+   `Aggregate` (mapped to the `Behavior` DSL with the
+   `Behavior_GWT.MakeFromAggregate` adapter) and `ReadModel` (mapped to
+   `MultiSourceProjection_GWT.Make`) are also recognised. When multiple
+   segments of the path match, the segment closest to the file wins. Spec
+   resolution picks (1) the first top-level module defined in the test
+   file, if any, otherwise (2) the filename stem with the `_GWT` /
+   `GwtTest` / `Gwt` suffix stripped — treated as an external module
+   reference, so no local binding or `module Spec = …` alias is needed in
+   the consumer pattern.
 
    Explicit forms (when the path-based inference doesn't fit):
    ```rescript
-   @@reventless.gwt(AddCategorySlice)                // explicit Spec (external module reference)
-   @@reventless.gwt(CategorySpec, CategoryBehavior)  // Behavior DSL (two-arg functor)
+   @@reventless.gwt(AddCategorySlice)                          // explicit Spec (external module reference)
+   @@reventless.gwt(CategorySpec, CategoryBehavior)            // Behavior DSL (two-arg functor)
+   @@reventless.gwt(Categories_Projections.CategoryMapping)    // MultiSourceProjection — qualified Mapping payload
    ```
    Both payload forms resolve the Spec (and Behavior) names through the
    compiler, so the modules do not need to be defined locally in the test
@@ -792,9 +797,21 @@ Full field reference lives in
 - **`EventMappingTest`** — rename to `EventMapping_GWT` (backward-compat
   alias) or, for new work, adopt `Mapping_GWT` directly and drop down to
   explicit `FromBehavior` / `FromStateChangeSlice` adapters.
-- **Cross-plugin E2E tests** — stay as-is. They dispatch real commands
-  through the in-memory bus and assert on emitted events; they're integration
-  tests, not GWTs. The runner doesn't try to consume them.
+- **Cross-plugin E2E tests** — stay as-is in framework or app code that
+  genuinely needs them. They dispatch real commands through the in-memory
+  bus and assert on emitted events; they're integration tests, not GWTs.
+  The runner doesn't try to consume them.
+
+  In the **example plugins** (`examples/online-shop-aggregates/`,
+  `online-shop-dcb/`, `online-shop-hybrid/`) the convention is stricter: the
+  `tests/` tree contains **only `*_GWT.res` files** — no `E2E`, no ad-hoc
+  `*BehaviorTest.res` / `*DecisionTest.res` / `*ProjectionTest.res`. Tests
+  mirror `src/` 1:1 (so the PPX folder-segment heuristic resolves the kind).
+  When adding new components to the examples, ship one `*_GWT.res` per
+  Aggregate / StateChangeSlice / StateViewSlice / StateViewSliceStream /
+  ReadModel / AutomationSlice / InboundTranslationSlice /
+  OutboundTranslationSlice. AWS adapter packages and `*-spec` packages keep
+  zero tests.
 - **Stage dependency** — tests continue to work under Jest during migration
   because `JestBind` routes to either runner based on `Collector.isActive()`.
   You can move one package at a time.

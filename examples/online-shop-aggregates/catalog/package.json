@@ -14,7 +14,8 @@
   },
   "jest": {
     "testMatch": [
-      "<rootDir>/tests/**/*Test.res.mjs"
+      "<rootDir>/tests/**/*Test.res.mjs",
+      "<rootDir>/tests/**/*_GWT.res.mjs"
     ],
     "moduleFileExtensions": [
       "js",
