@@ -1233,6 +1233,51 @@ module MakeWithConfig = (
       }
       connectionResponse(items)
     })
+
+    // Platform_PlatformEventGraph[s] — derived on-demand from pluginStructuresStore.
+    // Mirrors the per-plugin entries that AWS produces via PlatformEventGraphReadModel.
+    let eventGraphQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
+    let buildEventGraphEntries = (): array<JSON.t> =>
+      pluginStructuresStore.contents
+      ->Dict.toArray
+      ->Array.map(((id, structure)) => {
+        let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
+        let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
+          ~pluginName,
+          structure,
+        )
+        state->S.reverseConvertToJsonOrThrow(
+          ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
+        )
+      })
+    queryResolvers->Dict.set(
+      eventGraphQueryEntry.singleFieldName,
+      async (_root, args, _ctx): JSON.t => {
+        let id =
+          args
+          ->JSON.Decode.object
+          ->Option.flatMap(d => d->Dict.get("id"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.getOr("")
+        switch pluginStructuresStore.contents->Dict.get(id) {
+        | Some(structure) =>
+          let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
+          let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
+            ~pluginName,
+            structure,
+          )
+          state->S.reverseConvertToJsonOrThrow(
+            ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
+          )
+        | None => JSON.Encode.null
+        }
+      },
+    )
+    queryResolvers->Dict.set(
+      eventGraphQueryEntry.listFieldName,
+      async (_root, _args, _ctx): JSON.t => connectionResponse(buildEventGraphEntries()),
+    )
+
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Register Platform_UIDefinitions query — returns all plugin AutoUI definitions.
@@ -1612,6 +1657,16 @@ module MakeWithConfig = (
     queryResolvers->Dict.set(uiFragmentQueryEntry2.listFieldName, async (_root, _args, _ctx): JSON.t =>
       connectionResponse([])
     )
+    let eventGraphQueryEntry2 =
+      ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
+    queryResolvers->Dict.set(
+      eventGraphQueryEntry2.singleFieldName,
+      async (_root, _args, _ctx): JSON.t => JSON.Encode.null,
+    )
+    queryResolvers->Dict.set(
+      eventGraphQueryEntry2.listFieldName,
+      async (_root, _args, _ctx): JSON.t => connectionResponse([]),
+    )
     adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     let mutationResolvers = Dict.make()
@@ -1771,6 +1826,52 @@ module MakeWithConfig = (
       queryResolvers->Dict.set(
         uiFragmentQueryEntry3.listFieldName,
         async (_root, _args, _ctx): JSON.t => connectionResponse([]),
+      )
+      let eventGraphQueryEntry3 =
+        ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
+      // Single-plugin path: derive the entry on-demand from pluginStructuresStore
+      // (seeded after this resolver block runs, but resolvers are called at query time).
+      queryResolvers->Dict.set(
+        eventGraphQueryEntry3.singleFieldName,
+        async (_root, args, _ctx): JSON.t => {
+          let id =
+            args
+            ->JSON.Decode.object
+            ->Option.flatMap(d => d->Dict.get("id"))
+            ->Option.flatMap(JSON.Decode.string)
+            ->Option.getOr("")
+          switch pluginStructuresStore.contents->Dict.get(id) {
+          | Some(structure) =>
+            let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
+            let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
+              ~pluginName,
+              structure,
+            )
+            state->S.reverseConvertToJsonOrThrow(
+              ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
+            )
+          | None => JSON.Encode.null
+          }
+        },
+      )
+      queryResolvers->Dict.set(
+        eventGraphQueryEntry3.listFieldName,
+        async (_root, _args, _ctx): JSON.t => {
+          let items =
+            pluginStructuresStore.contents
+            ->Dict.toArray
+            ->Array.map(((id, structure)) => {
+              let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
+              let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
+                ~pluginName,
+                structure,
+              )
+              state->S.reverseConvertToJsonOrThrow(
+                ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
+              )
+            })
+          connectionResponse(items)
+        },
       )
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
