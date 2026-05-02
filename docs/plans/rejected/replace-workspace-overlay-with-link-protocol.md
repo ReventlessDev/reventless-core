@@ -14,9 +14,18 @@ errors. No pnpm flag, override protocol (`link:`/`file:`/`portal:`),
 or node-linker setting fixes this.
 
 **The chosen path forward (2026-05-03): keep the existing overlay
-system.** The `apply-workspace-overlay.mjs` + `restore-workspace-base.mjs`
-+ `symlink-overlay-deps.mjs` (Phase 2.5, shipped 2026-05-01) machinery
-in this repo is the proven solution. The recurring CI fragility (the
+system as-is** (`apply-workspace-overlay.mjs` +
+`restore-workspace-base.mjs`). A second proposed fix
+(`symlink-overlay-deps.mjs` on the `feat/overlay-symlink-sibling-deps`
+branch, parked 2026-05-01) was validated end-to-end on 2026-05-03 and
+**also failed**: symlinking shared source dirs exposes stale
+`lib/ocaml/*.cmi` outputs from the sibling's last build, which were
+compiled against the sibling's own deps. ReScript reports
+`inconsistent assumptions over interface S` — the same class of error
+the script was supposed to fix. See
+[../../../../private-consumer/private-consumer-repo/docs/plans/improve-core-dep-update-workflow.md](../../../../private-consumer/private-consumer-repo/docs/plans/improve-core-dep-update-workflow.md)
+Fix 1 for the validation log. The `feat/overlay-symlink-sibling-deps`
+branch should not be merged. The recurring CI fragility (the
 gitignored runtime workspace file going missing in fresh checkouts) is
 addressed by ensuring every CI workflow runs `node
 scripts/workspace-setup.mjs` before `pnpm install`, plus removing
