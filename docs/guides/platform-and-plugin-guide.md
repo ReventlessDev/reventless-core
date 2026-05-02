@@ -21,6 +21,7 @@ This guide walks through building platforms with plugins using Reventless. It co
    - [DCB Event Log](#dcb-event-log)
    - [StateChangeSlice](#statechangeslice)
    - [StateViewSlice](#stateviewslice)
+   - [StateViewSliceStream](#stateviewslicestream)
    - [DCB Plugin Composition](#dcb-plugin-composition)
    - [DCB Extension Point / Extension Adapter Pattern](#dcb-extension-point--extension-adapter-pattern)
    - [DCB Directory Layout](#dcb-directory-layout)
@@ -885,6 +886,49 @@ let project = event =>
 | `project` | Map events to `Set`/`Update`/`Ignore` operations |
 
 The `project` function uses the same operations as aggregate projections (`Set`, `Update`, `Ignore`), but receives events directly from the shared log rather than through mapping modules.
+
+---
+
+### StateViewSliceStream
+
+`StateViewSliceStream` is a variant of `StateViewSlice` whose query view is **also exposed as a live subscription source**. Use it when clients need to subscribe to state changes (push), not just query the current value (pull).
+
+**Spec and projection are identical to `StateViewSlice`** — same `Spec`, same `Projection`, same `project` function, same DSL. The only thing that differs is the folder name and the platform factory the generator picks.
+
+**Folder convention:**
+
+| Folder | Generator emits | Builder used (AWS) |
+|--------|------------------|--------------------|
+| `StateViewSlice/` | `Platform.StateViewSlice.Make(Spec, Projection)` | `StateViewSlice_Builder` (plain DynamoDB QueryDb) |
+| `StateViewSliceStream/` | `Platform.StateViewSliceStream.Make(Spec, Projection)` | `StateViewSlice_Builder_Stream` (DynamoDB QueryDb **with stream enabled**) |
+
+**What the stream variant adds (AWS):**
+
+- The QueryDb table is provisioned with a **DynamoDB Stream**.
+- The slice registers itself in `QueryDbStorage_DynamoDbStream.streamRegistry` on `make`.
+- The platform wires a `StateTopic_AppSync` Lambda per registered slice that forwards stream changes into the AppSync **Events API**, enabling GraphQL subscriptions on the projected state.
+
+**What it does not change:**
+
+- In the in-memory platform, `StateViewSliceStream` is an alias for `StateViewSlice` (no DynamoDB streams to enable).
+- The shape of `Spec` / `Projection` files — you can move a slice between the two folders without editing its contents.
+
+**Example layout:**
+
+```
+src/Product/StateViewSliceStream/
+├── Products.res                  // Spec — identical shape to a StateViewSlice spec
+├── Products_Projection.res
+├── ProductDemand.res
+└── ProductDemand_Projection.res
+```
+
+**Choosing between the two:**
+
+- Plain `StateViewSlice/` — query-only views (typical read models). Cheaper: no DynamoDB Stream, no extra Lambda.
+- `StateViewSliceStream/` — views clients live-subscribe to via GraphQL subscriptions on the AppSync Events API.
+
+Switching is a folder rename — the spec/projection code stays the same.
 
 ---
 
