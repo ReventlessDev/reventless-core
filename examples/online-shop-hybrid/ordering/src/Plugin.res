@@ -10,8 +10,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct, SyncCatalogProduct_Behavior)
 
   // StateViewSlices
-  module AvailableProductsViewSlice = Platform.StateViewSlice.Make(AvailableProductsView, AvailableProductsView_Projection)
-  module OrdersViewSlice = Platform.StateViewSlice.Make(OrdersView, OrdersView_Projection)
+  module AvailableProductsSlice = Platform.StateViewSlice.Make(AvailableProducts, AvailableProducts_Projection)
+  module OrdersSlice = Platform.StateViewSlice.Make(Orders, Orders_Projection)
 
   // AutomationSlices
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
@@ -22,44 +22,40 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CustomerAggregate = Platform.Aggregate.Make(
     Customer,
-    CustomerBehavior,
+    Customer_Behavior,
     ReventlessInfra.NoEventMappings.Make(Customer),
   )
 
   // ReadModels
-  @reventless.projections
-  module CustomersProjectionsWrapper: Mappings with module Target := CustomersReadModel = {
-    let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
-  }
-  module CustomersReadModel = Platform.ReadModel.Make(CustomersReadModel, CustomersProjectionsWrapper)
+  module CustomersReadModel = Platform.ReadModel.Make(Customers, Customers_Projections)
 
   // ExtensionPoints
-  module OrdersExtensionPoint = Platform.ExtensionPoint.Make(OrdersExtensionPointMapping)
+  module Orders_ExtensionPoint = Platform.ExtensionPoint.Make(Orders_ExtensionPointMapping)
 
   // Extensions
-  module ProductsExtension = Platform.Extension.Make(ProductsExtension.Mapping)
+  module Products_Extension = Platform.Extension.Make(Products_Extension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Ordering",
     ~aggregates=[module(CustomerAggregate)],
     ~readModels=[module(CustomersReadModel)],
-    ~stateViewSlices=[module(AvailableProductsViewSlice), module(OrdersViewSlice)],
+    ~stateViewSlices=[module(AvailableProductsSlice), module(OrdersSlice)],
     ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
     ~automationSlices=[module(AutoShipOrderSlice)],
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
-    ~extensions=[module(ProductsExtension)],
+    ~extensions=[module(Products_Extension)],
   )
 
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(OrdersExtensionPoint)],
-      ~extensions=[module(ProductsExtension)],
+      ~extensionPoints=[module(Orders_ExtensionPoint)],
+      ~extensions=[module(Products_Extension)],
       ~aggregates=[module(CustomerAggregate)],
       ~readModels=[module(CustomersReadModel)],
       ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
-      ~stateViewSlices=[module(AvailableProductsViewSlice), module(OrdersViewSlice)],
+      ~stateViewSlices=[module(AvailableProductsSlice), module(OrdersSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],
       ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
       ~pluginStructure=pluginStructure,

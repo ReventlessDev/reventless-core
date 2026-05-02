@@ -1,4 +1,4 @@
-// AvailableProductsView StateViewSlice.
+// AvailableProducts StateViewSlice.
 // Projects synced catalog product events into a queryable "available products" read model.
 
 @@reventless.spec

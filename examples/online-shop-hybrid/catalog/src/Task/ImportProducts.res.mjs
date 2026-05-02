@@ -13,8 +13,11 @@ function setup(_queryEngine, _queryBucketName, _opts) {
 
 let name = "ImportProducts";
 
+let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/Task/ImportProducts.res.mjs";
+
 export {
   name,
   setup,
+  moduleUrl,
 }
 /* No side effect */

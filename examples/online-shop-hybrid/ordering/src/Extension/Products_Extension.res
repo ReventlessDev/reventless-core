@@ -1,10 +1,10 @@
-// Ordering's extension subscribing to Catalog's ProductsExtensionPoint.
+// Ordering's extension subscribing to Catalog's Products_ExtensionPoint.
 // Routes ProductBecameAvailable / ProductPriceChanged events to SyncCatalogProduct commands.
 
-open ReventlessInfra.ExtensionMapping
+@@reventless.extension
 
 module Mapping = {
-  module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
+  module ExtensionPoint = CatalogSpec.Products_ExtensionPoint
   module Delegate = SyncCatalogProduct
 
   open ExtensionPoint

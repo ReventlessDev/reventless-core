@@ -1,7 +1,7 @@
-// Maps internal Catalog events to the stable ProductsExtensionPoint public API.
+// Maps internal Catalog events to the stable Products_ExtensionPoint public API.
 @@reventless.spec
 
-module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
+module ExtensionPoint = CatalogSpec.Products_ExtensionPoint
 
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
@@ -20,11 +20,11 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   | Delegate.ProductAdded({productId, name, price}) => [
       PublishEvent(
         productId,
-        CatalogSpec.ProductsExtensionPoint.ProductBecameAvailable({productId, name, price}),
+        CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
       ),
     ]
   | Delegate.ProductPriceChanged({productId, price}) => [
-      PublishEvent(productId, CatalogSpec.ProductsExtensionPoint.ProductPriceChanged({productId, price})),
+      PublishEvent(productId, CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price})),
     ]
   }
 )

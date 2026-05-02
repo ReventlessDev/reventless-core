@@ -1,7 +1,7 @@
 // Catalog activity read model — a denormalised audit row per entity (category
 // or product) that has changed in the catalog. Populated from BOTH the Category
 // Aggregate and the Product DCB log via a multi-source mapping. See
-// `CatalogActivityProjections.res` and Plan 03 (mixed-source ReadModel).
+// `CatalogActivity_Projections.res` for the mixed-source projection.
 
 @@reventless.spec
 

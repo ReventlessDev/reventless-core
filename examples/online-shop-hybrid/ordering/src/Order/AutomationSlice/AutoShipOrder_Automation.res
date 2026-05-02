@@ -1,11 +1,39 @@
 @@reventless.automation
 
-// Bridge: re-export the per-source mappings from the sibling `_Mappings.res`.
-// The merged `_Automation.res` shape (process + mappings inline) is the new
-// convention; this two-line bridge keeps the legacy 3-file split working
-// against the 2-arg `Platform.AutomationSlice.Make` signature until Phase 3.5
-// folds `_Mappings.res` into this file.
-module type Mapping = AutoShipOrder_Mappings.Mapping
-let mappings = AutoShipOrder_Mappings.mappings
+// Single DCB source — events from the ordering plugin's own event log.
+// `name` MUST equal `<pluginName>DcbEventLog` so the dispatch in
+// `AutomationSlice_Callback` resolves it to the topic key `Plugin_Builder`
+// registers under.
+// `module Id = Reventless.Id.String` and dcbTags on `*Id` fields are
+// auto-injected by `@@reventless.automation` (Source-module scan).
+module OrderingDcbSource = {
+  let name = "OrderingDcbEventLog"
+  @schema
+  type event =
+    | OrderPlaced({orderId: string})
+    | OrderShipped({orderId: string})
+}
+
+module FromOrderingDcb = Mapping.Make(
+  OrderingDcbSource,
+  AutoShipOrder,
+  {
+    open OrderingDcbSource
+
+    let collect = (event, _ctx) =>
+      switch event {
+      | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: AutoShipOrder.todoItem))]
+      | OrderShipped(_) => []
+      }
+
+    let resolve = event =>
+      switch event {
+      | OrderShipped({orderId}) => Some(orderId)
+      | OrderPlaced(_) => None
+      }
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(FromOrderingDcb)]
 
 let process = (id, _item) => Some((id, ShipOrder({orderId: id})))

@@ -3,7 +3,7 @@
 
 open Customer
 
-include ReventlessGwt.Behavior_GWT.MakeFromAggregate(Customer, CustomerBehavior)
+include ReventlessGwt.Behavior_GWT.MakeFromAggregate(Customer, Customer_Behavior)
 
 describe("CustomerBehavior:", () => {
   describe("Register", () => {

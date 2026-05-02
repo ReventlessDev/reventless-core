@@ -2,8 +2,8 @@
 // When OrderPlaced is emitted, automatically issue a ShipOrder command.
 // Resolved when OrderShipped arrives.
 //
-// Plan 04: consumed events now come from sibling `_Mappings.res` (one Mapping
-// per source). The framework derives the consumed-event set from each
+// Consumed events come from per-source `Mapping.Make` modules in the sibling
+// `_Automation.res`. The framework derives the consumed-event set from each
 // mapping's `sourceEventSchema` — no manual union here.
 
 @@reventless.spec

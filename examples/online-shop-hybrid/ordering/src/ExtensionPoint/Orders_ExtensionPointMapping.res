@@ -1,8 +1,8 @@
-// Maps internal Ordering events to the stable OrdersExtensionPoint public API.
+// Maps internal Ordering events to the stable Orders_ExtensionPoint public API.
 // Decomposes batch OrderPlaced / OrderCancelled events into per-product EP events.
 @@reventless.spec
 
-module ExtensionPoint = OrderingSpec.OrdersExtensionPoint
+module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint
 
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
@@ -22,12 +22,12 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
     productId->Array.map(pid =>
       PublishEvent(
         pid,
-        OrderingSpec.OrdersExtensionPoint.ItemOrdered({productId: pid, orderId, customerId}),
+        OrderingSpec.Orders_ExtensionPoint.ItemOrdered({productId: pid, orderId, customerId}),
       )
     )
   | Delegate.OrderCancelled({orderId, productId}) =>
     productId->Array.map(pid =>
-      PublishEvent(pid, OrderingSpec.OrdersExtensionPoint.ItemOrderCancelled({productId: pid, orderId}))
+      PublishEvent(pid, OrderingSpec.Orders_ExtensionPoint.ItemOrderCancelled({productId: pid, orderId}))
     )
   }
 )

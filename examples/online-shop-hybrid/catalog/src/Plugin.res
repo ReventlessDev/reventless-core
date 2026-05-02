@@ -10,8 +10,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module RecordProductDemandSlice = Platform.StateChangeSlice.Make(RecordProductDemand, RecordProductDemand_Behavior)
 
   // StateViewSliceStreams
-  module ProductDemandViewStreamSlice = Platform.StateViewSliceStream.Make(ProductDemandView, ProductDemandView_Projection)
-  module ProductsViewStreamSlice = Platform.StateViewSliceStream.Make(ProductsView, ProductsView_Projection)
+  module ProductDemandStreamSlice = Platform.StateViewSliceStream.Make(ProductDemand, ProductDemand_Projection)
+  module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
 
   // InboundTranslationSlices
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
@@ -19,52 +19,44 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
-    CategoryBehavior,
+    Category_Behavior,
     ReventlessInfra.NoEventMappings.Make(Category),
   )
 
   // ReadModels
-  @reventless.projections
-  module CatalogActivityProjectionsWrapper: Mappings with module Target := CatalogActivityReadModel = {
-    let mappings: array<module(Mapping)> = [module(CatalogActivityProjections.CategoryActivityMapping), module(CatalogActivityProjections.ProductActivityMapping)]
-  }
-  module CatalogActivityReadModel = Platform.ReadModel.Make(CatalogActivityReadModel, CatalogActivityProjectionsWrapper)
-  @reventless.projections
-  module CategoriesProjectionsWrapper: Mappings with module Target := CategoriesReadModel = {
-    let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
-  }
-  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
+  module CatalogActivityReadModel = Platform.ReadModel.Make(CatalogActivity, CatalogActivity_Projections)
+  module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
 
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
   // ExtensionPoints
-  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
+  module Products_ExtensionPoint = Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)
 
   // Extensions
-  module OrdersExtension = Platform.Extension.Make(OrdersExtension.Mapping)
+  module Orders_Extension = Platform.Extension.Make(Orders_Extension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate)],
     ~readModels=[module(CatalogActivityReadModel), module(CategoriesReadModel)],
-    ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
+    ~stateViewSlices=[module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
     ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
-    ~extensions=[module(OrdersExtension)],
+    ~extensions=[module(Orders_Extension)],
   )
 
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPoint)],
-      ~extensions=[module(OrdersExtension)],
+      ~extensionPoints=[module(Products_ExtensionPoint)],
+      ~extensions=[module(Orders_Extension)],
       ~aggregates=[module(CategoryAggregate)],
       ~readModels=[module(CatalogActivityReadModel), module(CategoriesReadModel)],
       ~tasks=[module(ImportProductsTask)],
       ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
-      ~stateViewSlices=[module(ProductDemandViewStreamSlice), module(ProductsViewStreamSlice)],
+      ~stateViewSlices=[module(ProductDemandStreamSlice), module(ProductsStreamSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
       ~pluginStructure=pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>

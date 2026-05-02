@@ -1,6 +1,5 @@
 // Catalog activity mappings: a single ReadModel fed by TWO sources — the
-// Category Aggregate and the catalog plugin's DCB EventLog. Demonstrates the
-// mixed-source pattern enabled by Plan 03.
+// Category Aggregate and the catalog plugin's DCB EventLog.
 //
 // The Aggregate source resolves to `Mapping.sourceName = "Category"` (the
 // Aggregate Spec.name).
@@ -8,16 +7,15 @@
 // The DCB source resolves to `Mapping.sourceName = "CatalogDcbEventLog"`,
 // which is the key under which `Plugin_Builder` registers the catalog plugin's
 // DCB EventTopic in `allEventTopics` AND the `meta.service` value DcbEventLog
-// stamps on every published event. See Plan 03 / Phase 1.5 for why these two
-// must match.
+// stamps on every published event — these two must match for the dispatch to
+// route DCB events into this projection.
 
-open Reventless.Message
-open Reventless.Projection
+@@reventless.mappings
 
 // ─────────────────────────────────────────────────────────────
 // DCB source spec — `name` MUST equal `<pluginName>DcbEventLog`.
-// Hand-rolled `Source`-shaped module (the canonical pattern for DCB sources;
-// `Reventless.Projection.DcbSource.Make` is also available).
+// `module Id = Reventless.Id.String` and dcbTags on `*Id` fields are
+// auto-injected by `@@reventless.mappings` (Source-module scan).
 //
 // `event` is a typed subset of the DCB log's full event union — only the
 // variants this consumer cares about. Unknown variants from sibling slices
@@ -27,7 +25,6 @@ open Reventless.Projection
 // ─────────────────────────────────────────────────────────────
 
 module CatalogDcbSource = {
-  module Id = Reventless.Id.String
   let name = "CatalogDcbEventLog"
 
   @schema
@@ -42,7 +39,7 @@ module CatalogDcbSource = {
 
 module CategoryActivityMapping = Mapping.Make(
   Category,
-  CatalogActivityReadModel,
+  CatalogActivity,
   {
     open Category
     let project = ({event, id, _}) =>
@@ -51,14 +48,14 @@ module CategoryActivityMapping = Mapping.Make(
         Set(
           id,
           {
-            CatalogActivityReadModel.kind: Category,
-            lastChange: (Added: CatalogActivityReadModel.change),
+            CatalogActivity.kind: Category,
+            lastChange: (Added: CatalogActivity.change),
           },
         )
       | Renamed(_) =>
-        Update(id, state => {...state, lastChange: (Renamed: CatalogActivityReadModel.change)})
+        Update(id, state => {...state, lastChange: (Renamed: CatalogActivity.change)})
       | Archived =>
-        Update(id, state => {...state, lastChange: (Archived: CatalogActivityReadModel.change)})
+        Update(id, state => {...state, lastChange: (Archived: CatalogActivity.change)})
       }
   },
 )
@@ -69,15 +66,17 @@ module CategoryActivityMapping = Mapping.Make(
 
 module ProductActivityMapping = Mapping.Make(
   CatalogDcbSource,
-  CatalogActivityReadModel,
+  CatalogActivity,
   {
     open CatalogDcbSource
     let project = ({event, _}) =>
       switch event {
       | ProductAdded({productId}) =>
-        Set(productId, {CatalogActivityReadModel.kind: Product, lastChange: Added})
+        Set(productId, {CatalogActivity.kind: Product, lastChange: Added})
       | ProductRenamed({productId}) =>
         Update(productId, state => {...state, lastChange: Renamed})
       }
   },
 )
+
+let mappings: array<module(Mapping)> = [module(CategoryActivityMapping), module(ProductActivityMapping)]

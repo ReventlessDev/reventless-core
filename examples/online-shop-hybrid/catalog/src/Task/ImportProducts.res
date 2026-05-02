@@ -1,11 +1,9 @@
-open Reventless
-
-let name = "ImportProducts"
+@@reventless.task
 
 let setup = (
-  _queryEngine: QueryEngine.operations,
-  _queryBucketName: ReventlessInfra.Task.queryBucketName,
-  _opts: Pulumi.ComponentResource.options,
+  _queryEngine,
+  _queryBucketName,
+  _opts,
 ): Task.config => {
   Task.buckets: [
     {
