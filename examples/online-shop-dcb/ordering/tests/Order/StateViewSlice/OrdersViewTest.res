@@ -8,7 +8,7 @@ let baseOrder: OrdersView.state = {
   orderId: "ord-1",
   customerId: "cust-1",
   productIds: ["prod-1"],
-  status: "placed",
+  status: Placed,
 }
 
 // Apply the first Update action's function to a base state for assertion.
@@ -36,7 +36,7 @@ describe("OrdersView_Projection.project:", () => {
           OrdersView.orderId: "ord-1",
           customerId: "cust-1",
           productIds: ["prod-1"],
-          status: "placed",
+          status: Placed,
         },
       ),
     ])
@@ -46,7 +46,7 @@ describe("OrdersView_Projection.project:", () => {
     expect(
       OrdersView_Projection.project(OrdersView.OrderShipped({orderId: "ord-1"}))
       ->applyFirstUpdate(baseOrder),
-    )->toEqual({...baseOrder, status: "shipped"})
+    )->toEqual({...baseOrder, status: Shipped})
   )
 
   test("OrderCancelled Update function sets status to cancelled", () =>
@@ -55,6 +55,6 @@ describe("OrdersView_Projection.project:", () => {
         OrdersView.OrderCancelled({orderId: "ord-1"}),
       )
       ->applyFirstUpdate(baseOrder),
-    )->toEqual({...baseOrder, status: "cancelled"})
+    )->toEqual({...baseOrder, status: Cancelled})
   )
 })

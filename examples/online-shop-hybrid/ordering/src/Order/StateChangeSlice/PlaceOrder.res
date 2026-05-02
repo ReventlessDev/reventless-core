@@ -15,7 +15,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | PlaceOrder({orderId: string, @noDcbTag customerId: string, productId: array<string>})
+  PlaceOrder({@partitionTag orderId: string, customerId: string, productId: array<string>})
 
 @schema
 type error =
@@ -24,4 +24,4 @@ type error =
 
 @schema
 type event =
-  | OrderPlaced({@partitionTag orderId: string, customerId: string, productId: array<string>})
+  OrderPlaced({@partitionTag orderId: string, customerId: string, productId: array<string>})

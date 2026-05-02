@@ -4,9 +4,15 @@
 @@reventless.spec
 
 @schema
+type status =
+  | Placed
+  | Shipped
+  | Cancelled
+
+@schema
 type state = {
   customerId: string,
   productIds: array<string>,
-  status: string, // "placed" | "shipped" | "cancelled"
+  status: status,
 }
 

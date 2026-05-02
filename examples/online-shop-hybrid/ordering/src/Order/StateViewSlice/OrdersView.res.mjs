@@ -21,11 +21,17 @@ let consumedEventSchema = S.union([
   }))
 ]);
 
+let statusSchema = S.union([
+  S.literal("Placed"),
+  S.literal("Shipped"),
+  S.literal("Cancelled")
+]);
+
 let stateSchema = S.schema(s => ({
   orderId: s.m(S.string),
   customerId: s.m(S.string),
   productId: s.m(S.array(S.string)),
-  status: s.m(S.string)
+  status: s.m(statusSchema)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -42,6 +48,7 @@ export {
   name,
   Id,
   consumedEventSchema,
+  statusSchema,
   stateSchema,
   config,
   subIdConfig,

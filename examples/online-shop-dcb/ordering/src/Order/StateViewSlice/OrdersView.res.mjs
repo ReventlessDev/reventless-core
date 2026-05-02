@@ -4,11 +4,17 @@ import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
+let statusSchema = S.union([
+  S.literal("Placed"),
+  S.literal("Shipped"),
+  S.literal("Cancelled")
+]);
+
 let stateSchema = S.schema(s => ({
   orderId: s.m(S.string),
   customerId: s.m(S.string),
   productIds: s.m(S.array(S.string)),
-  status: s.m(S.string)
+  status: s.m(statusSchema)
 }));
 
 let consumedEventSchema = S.union([
@@ -41,10 +47,11 @@ let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/Order/StateViewSlic
 export {
   name,
   Id,
+  statusSchema,
   stateSchema,
   consumedEventSchema,
   config,
   subIdConfig,
   moduleUrl,
 }
-/* stateSchema Not a pure module */
+/* statusSchema Not a pure module */

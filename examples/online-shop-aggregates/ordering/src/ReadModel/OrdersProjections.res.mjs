@@ -15,7 +15,7 @@ function project(param) {
       _1: state => ({
         customerId: state.customerId,
         productIds: state.productIds,
-        status: "shipped"
+        status: "Shipped"
       })
     };
   } else if (event.TAG === "Placed") {
@@ -25,7 +25,7 @@ function project(param) {
       _1: {
         customerId: event.customerId,
         productIds: event.productIds,
-        status: "placed"
+        status: "Placed"
       }
     };
   } else {
@@ -35,7 +35,7 @@ function project(param) {
       _1: state => ({
         customerId: state.customerId,
         productIds: state.productIds,
-        status: "cancelled"
+        status: "Cancelled"
       })
     };
   }

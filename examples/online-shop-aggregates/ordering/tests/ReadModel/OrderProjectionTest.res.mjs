@@ -29,7 +29,7 @@ describe("OrderProjection:", () => {
       "prod-1",
       "prod-2"
     ],
-    status: "placed"
+    status: "Placed"
   }));
   test("Shipped after placing updates status to shipped", undefined, () => thenState(whenEvent(givenEvents([{
       TAG: "Placed",
@@ -38,7 +38,7 @@ describe("OrderProjection:", () => {
     }]), "Shipped"), {
     customerId: "cust-1",
     productIds: ["prod-1"],
-    status: "shipped"
+    status: "Shipped"
   }));
   test("Cancelled after placing updates status to cancelled", undefined, () => thenState(whenEvent(givenEvents([{
       TAG: "Placed",
@@ -50,7 +50,7 @@ describe("OrderProjection:", () => {
   }), {
     customerId: "cust-1",
     productIds: ["prod-1"],
-    status: "cancelled"
+    status: "Cancelled"
   }));
 });
 

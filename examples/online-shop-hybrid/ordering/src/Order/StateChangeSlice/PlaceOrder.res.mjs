@@ -13,8 +13,8 @@ let consumedEventSchema = S.union([
 
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
-  orderId: s.m(DcbTag$Reventless.string),
-  customerId: s.m(S.string),
+  orderId: s.m(DcbTag$Reventless.partition),
+  customerId: s.m(DcbTag$Reventless.string),
   productId: s.m(S.array(DcbTag$Reventless.string))
 }));
 

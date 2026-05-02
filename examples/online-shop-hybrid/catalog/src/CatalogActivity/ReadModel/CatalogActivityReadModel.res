@@ -6,9 +6,18 @@
 @@reventless.spec
 
 @schema
+type kind =
+  | Category
+  | Product
+
+@schema
+type change =
+  | Added
+  | Renamed
+  | Archived
+
+@schema
 type state = {
-  /** "category" or "product" */
-  kind: string,
-  /** Last event type observed for this entity (e.g. "Added", "Renamed"). */
-  lastChange: string,
+  kind: kind,
+  lastChange: change,
 }

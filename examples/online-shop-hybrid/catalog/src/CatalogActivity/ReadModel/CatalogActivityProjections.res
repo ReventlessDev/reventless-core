@@ -48,9 +48,17 @@ module CategoryActivityMapping = Mapping.Make(
     let project = ({event, id, _}) =>
       switch event {
       | Added(_) =>
-        Set(id, {CatalogActivityReadModel.kind: "category", lastChange: "Added"})
-      | Renamed(_) => Update(id, state => {...state, lastChange: "Renamed"})
-      | Archived => Update(id, state => {...state, lastChange: "Archived"})
+        Set(
+          id,
+          {
+            CatalogActivityReadModel.kind: Category,
+            lastChange: (Added: CatalogActivityReadModel.change),
+          },
+        )
+      | Renamed(_) =>
+        Update(id, state => {...state, lastChange: (Renamed: CatalogActivityReadModel.change)})
+      | Archived =>
+        Update(id, state => {...state, lastChange: (Archived: CatalogActivityReadModel.change)})
       }
   },
 )
@@ -67,9 +75,9 @@ module ProductActivityMapping = Mapping.Make(
     let project = ({event, _}) =>
       switch event {
       | ProductAdded({productId}) =>
-        Set(productId, {CatalogActivityReadModel.kind: "product", lastChange: "Added"})
+        Set(productId, {CatalogActivityReadModel.kind: Product, lastChange: Added})
       | ProductRenamed({productId}) =>
-        Update(productId, state => {...state, lastChange: "Renamed"})
+        Update(productId, state => {...state, lastChange: Renamed})
       }
   },
 )

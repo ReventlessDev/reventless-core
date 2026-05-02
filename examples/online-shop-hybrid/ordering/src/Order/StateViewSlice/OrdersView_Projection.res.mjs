@@ -12,7 +12,7 @@ function project(event) {
             orderId: orderId,
             customerId: event.customerId,
             productId: event.productId,
-            status: "placed"
+            status: "Placed"
           }
         }];
     case "OrderShipped" :
@@ -23,7 +23,7 @@ function project(event) {
             orderId: state.orderId,
             customerId: state.customerId,
             productId: state.productId,
-            status: "shipped"
+            status: "Shipped"
           })
         }];
     case "OrderCancelled" :
@@ -34,7 +34,7 @@ function project(event) {
             orderId: state.orderId,
             customerId: state.customerId,
             productId: state.productId,
-            status: "cancelled"
+            status: "Cancelled"
           })
         }];
   }

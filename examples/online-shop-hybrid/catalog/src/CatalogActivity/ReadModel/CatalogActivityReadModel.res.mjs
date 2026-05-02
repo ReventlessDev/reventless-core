@@ -3,9 +3,20 @@
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
+let kindSchema = S.union([
+  S.literal("Category"),
+  S.literal("Product")
+]);
+
+let changeSchema = S.union([
+  S.literal("Added"),
+  S.literal("Renamed"),
+  S.literal("Archived")
+]);
+
 let stateSchema = S.schema(s => ({
-  kind: s.m(S.string),
-  lastChange: s.m(S.string)
+  kind: s.m(kindSchema),
+  lastChange: s.m(changeSchema)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
@@ -21,9 +32,11 @@ let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog/src/CatalogActivity/R
 export {
   name,
   Id,
+  kindSchema,
+  changeSchema,
   stateSchema,
   config,
   subIdConfig,
   moduleUrl,
 }
-/* stateSchema Not a pure module */
+/* kindSchema Not a pure module */

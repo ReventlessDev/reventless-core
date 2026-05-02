@@ -10,9 +10,18 @@ module OrderMapping = Mapping.Make(
     let project = ({event, id, _}) =>
       switch event {
       | Placed({customerId, productIds}) =>
-        Set(id, {OrdersReadModel.customerId: customerId, productIds, status: "placed"})
-      | Shipped => Update(id, state => {...state, status: "shipped"})
-      | Cancelled(_) => Update(id, state => {...state, status: "cancelled"})
+        Set(
+          id,
+          {
+            OrdersReadModel.customerId: customerId,
+            productIds,
+            status: (Placed: OrdersReadModel.status),
+          },
+        )
+      | Shipped =>
+        Update(id, state => {...state, status: (Shipped: OrdersReadModel.status)})
+      | Cancelled(_) =>
+        Update(id, state => {...state, status: (Cancelled: OrdersReadModel.status)})
       }
   },
 )

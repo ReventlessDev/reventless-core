@@ -15,7 +15,7 @@ describe("OrderProjection:", () => {
     ->thenState({
       OrdersReadModel.customerId: "cust-1",
       productIds: ["prod-1", "prod-2"],
-      status: "placed",
+      status: Placed,
     })
   )
 
@@ -25,7 +25,7 @@ describe("OrderProjection:", () => {
     ->thenState({
       OrdersReadModel.customerId: "cust-1",
       productIds: ["prod-1"],
-      status: "shipped",
+      status: Shipped,
     })
   )
 
@@ -35,7 +35,7 @@ describe("OrderProjection:", () => {
     ->thenState({
       OrdersReadModel.customerId: "cust-1",
       productIds: ["prod-1"],
-      status: "cancelled",
+      status: Cancelled,
     })
   )
 })

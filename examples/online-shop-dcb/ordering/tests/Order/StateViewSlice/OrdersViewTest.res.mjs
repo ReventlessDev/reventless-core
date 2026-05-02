@@ -10,7 +10,7 @@ let baseOrder = {
   orderId: "ord-1",
   customerId: "cust-1",
   productIds: baseOrder_productIds,
-  status: "placed"
+  status: "Placed"
 };
 
 function applyFirstUpdate(actions, baseState) {
@@ -36,7 +36,7 @@ Jest.describe("OrdersView_Projection.project:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productIds: ["prod-1"],
-        status: "placed"
+        status: "Placed"
       }
     }]));
   Jest.test("OrderShipped Update function sets status to shipped", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(OrdersView_Projection$OrderingPlugin.project({
@@ -46,7 +46,7 @@ Jest.describe("OrdersView_Projection.project:", () => {
     orderId: "ord-1",
     customerId: "cust-1",
     productIds: baseOrder_productIds,
-    status: "shipped"
+    status: "Shipped"
   }));
   Jest.test("OrderCancelled Update function sets status to cancelled", () => Jest.Expect.toEqual(Jest.Expect.expect(applyFirstUpdate(OrdersView_Projection$OrderingPlugin.project({
     TAG: "OrderCancelled",
@@ -55,7 +55,7 @@ Jest.describe("OrdersView_Projection.project:", () => {
     orderId: "ord-1",
     customerId: "cust-1",
     productIds: baseOrder_productIds,
-    status: "cancelled"
+    status: "Cancelled"
   }));
 });
 

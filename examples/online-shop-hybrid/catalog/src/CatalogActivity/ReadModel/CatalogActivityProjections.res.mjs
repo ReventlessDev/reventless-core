@@ -46,7 +46,7 @@ function project(param) {
       TAG: "Set",
       _0: id,
       _1: {
-        kind: "category",
+        kind: "Category",
         lastChange: "Added"
       }
     };
@@ -82,7 +82,7 @@ function project$1(param) {
       TAG: "Set",
       _0: event.productId,
       _1: {
-        kind: "product",
+        kind: "Product",
         lastChange: "Added"
       }
     };
