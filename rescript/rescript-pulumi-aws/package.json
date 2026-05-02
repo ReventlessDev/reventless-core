@@ -8,7 +8,22 @@
     "bundle": "node scripts/bundle-resolvers.mjs",
     "start": "rescript watch",
     "clean": "rescript clean",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --testPathPattern=rescript-pulumi-aws"
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ],
+    "setupFiles": [
+      "<rootDir>/../../jest.setup.cjs"
+    ],
+    "moduleNameMapper": {
+      "^@aws-appsync/utils$": "<rootDir>/tests/__mocks__/appsync-utils.mjs"
+    }
   },
   "dependencies": {
     "@pulumi/aws": "~7.19.0",
