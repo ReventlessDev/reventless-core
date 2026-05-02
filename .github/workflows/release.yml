@@ -82,7 +82,7 @@ jobs:
       - name: Check for releasable changes
         id: changes
         run: |
-          CHANGED=$(npx lerna changed --json 2>/dev/null || echo "[]")
+          CHANGED=$(npx lerna changed --json)
           COUNT=$(echo "$CHANGED" | jq 'length')
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           if [[ "$COUNT" -eq 0 ]]; then
