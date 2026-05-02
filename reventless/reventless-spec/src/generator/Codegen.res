@@ -479,18 +479,10 @@ let renderAwsWrapper = (
 // ── Composition-variant render ───────────────────────────────────────────────
 
 let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): string => {
-  let hasReadModels = resolved.readModels->Array.length > 0
   let lines: array<string> = []
 
   // Header
   lines->Array.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.")
-
-  // Open Reventless.Projection only when ReadModels are present
-  if hasReadModels {
-    lines->Array.push("open Reventless.Projection")
-    lines->Array.push("")
-  }
-
   lines->Array.push("module Make = (Platform: ReventlessInfra.Platform.T) => {")
 
   let push = (sectionLines: array<string>) => {

@@ -338,13 +338,8 @@ function renderAwsWrapper(name, compositionNamespace, hasUiComponents) {
 }
 
 function renderComposition(config, resolved) {
-  let hasReadModels = resolved.readModels.length !== 0;
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
-  if (hasReadModels) {
-    lines.push("open Reventless.Projection");
-    lines.push("");
-  }
   lines.push("module Make = (Platform: ReventlessInfra.Platform.T) => {");
   let push = sectionLines => {
     sectionLines.forEach(l => {
