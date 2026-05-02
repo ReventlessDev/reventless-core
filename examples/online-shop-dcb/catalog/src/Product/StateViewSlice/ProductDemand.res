@@ -1,4 +1,4 @@
-// ProductDemandView StateViewSlice.
+// ProductDemand StateViewSlice.
 // Projects catalog events into a per-product demand counter (order count).
 @@reventless.spec
 

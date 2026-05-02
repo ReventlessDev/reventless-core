@@ -1,4 +1,4 @@
-// OrdersExtensionPoint spec — stable public API from Ordering to Catalog.
+// Orders_ExtensionPoint spec — stable public API from Ordering to Catalog.
 // Extensions subscribing to this EP receive per-product order demand events.
 
 @@reventless.spec

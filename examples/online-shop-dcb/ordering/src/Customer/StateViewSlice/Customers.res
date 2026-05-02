@@ -1,4 +1,4 @@
-// CustomersView StateViewSlice.
+// Customers StateViewSlice.
 // Projects customer events from the shared ordering event log into a Customers read model.
 @@reventless.spec
 

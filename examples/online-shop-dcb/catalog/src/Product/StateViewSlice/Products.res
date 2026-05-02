@@ -1,4 +1,4 @@
-// ProductsView StateViewSlice.
+// Products StateViewSlice.
 // Projects product events from the shared catalog event log into a Products read model.
 @@reventless.spec
 

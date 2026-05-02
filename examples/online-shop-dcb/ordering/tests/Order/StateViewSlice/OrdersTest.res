@@ -1,10 +1,10 @@
-// Pure unit tests for OrdersView StateViewSlice projection.
+// Pure unit tests for Orders StateViewSlice projection.
 
 open Reventless
 open Jest
 open Expect
 
-let baseOrder: OrdersView.state = {
+let baseOrder: Orders.state = {
   orderId: "ord-1",
   customerId: "cust-1",
   productIds: ["prod-1"],
@@ -19,11 +19,11 @@ let applyFirstUpdate = (actions, baseState) =>
     | _ => s
     })
 
-describe("OrdersView_Projection.project:", () => {
+describe("Orders_Projection.project:", () => {
   test("OrderPlaced creates new state", () =>
     expect(
-      OrdersView_Projection.project(
-        OrdersView.OrderPlaced({
+      Orders_Projection.project(
+        Orders.OrderPlaced({
           orderId: "ord-1",
           customerId: "cust-1",
           productIds: ["prod-1"],
@@ -33,7 +33,7 @@ describe("OrdersView_Projection.project:", () => {
       Projection.Set(
         "ord-1",
         {
-          OrdersView.orderId: "ord-1",
+          Orders.orderId: "ord-1",
           customerId: "cust-1",
           productIds: ["prod-1"],
           status: Placed,
@@ -44,15 +44,15 @@ describe("OrdersView_Projection.project:", () => {
 
   test("OrderShipped Update function sets status to shipped", () =>
     expect(
-      OrdersView_Projection.project(OrdersView.OrderShipped({orderId: "ord-1"}))
+      Orders_Projection.project(Orders.OrderShipped({orderId: "ord-1"}))
       ->applyFirstUpdate(baseOrder),
     )->toEqual({...baseOrder, status: Shipped})
   )
 
   test("OrderCancelled Update function sets status to cancelled", () =>
     expect(
-      OrdersView_Projection.project(
-        OrdersView.OrderCancelled({orderId: "ord-1"}),
+      Orders_Projection.project(
+        Orders.OrderCancelled({orderId: "ord-1"}),
       )
       ->applyFirstUpdate(baseOrder),
     )->toEqual({...baseOrder, status: Cancelled})

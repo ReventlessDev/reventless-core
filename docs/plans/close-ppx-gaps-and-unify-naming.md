@@ -158,7 +158,7 @@ Before any renames, migrate `online-shop-aggregates/{catalog,ordering}/src/` fro
 
 Affected entities: `Category`, `Customer`, `Order`, `Product`, `CatalogProduct`, plus any `*Behavior` test files.
 
-**aggregates done in PR3** — dcb + hybrid still use `<Entity>Behavior.res` for their aggregate behaviors. Pairing now tries `<Spec>_Behavior` first, falls back to `<Spec>Behavior`, so both shapes work during the migration.
+**aggregates done in PR3** — dcb already uses `<Spec>_Behavior.res` throughout (slices), no aggregate folder. **dcb done in PR4** (no Aggregate behaviors to rename). hybrid still has `<Entity>Behavior.res` (e.g., `CategoryBehavior.res`, `CustomerBehavior.res`). Pairing now tries `<Spec>_Behavior` first, falls back to `<Spec>Behavior`, so both shapes work during the migration.
 
 ### 3.2 — Aggregate event mappings — ✅ DONE for aggregates (PR3)
 
@@ -180,7 +180,7 @@ Affected entities: `Category`, `Customer`, `Order`, `Product`, `CatalogProduct`,
 
 **PPX update:** `Util.is_readmodel_filename` is now folder-aware (returns true for any file inside a `ReadModel/` folder) so the @@reventless.spec auto-injection of `config` + `subIdConfig` still fires for the bare-plural spec files.
 
-### 3.4 — StateViewSlice files
+### 3.4 — StateViewSlice files — ✅ DONE for dcb (PR4)
 
 - `<Name>View.res` → `<Name>.res` (drop `View` suffix).
 - `<Name>View_Projection.res` → `<Name>_Projection.res`.
@@ -188,7 +188,9 @@ Affected entities: `Category`, `Customer`, `Order`, `Product`, `CatalogProduct`,
 
 Affected: `OrdersView`, `ProductsView`, `ProductDemandView`, `AvailableProductsView`, etc.
 
-### 3.5 — AutomationSlice merge
+**dcb done in PR4** — renamed: `CategoriesView` → `Categories`, `ProductsView` → `Products`, `ProductDemandView` → `ProductDemand`, `OrdersView` → `Orders`, `CustomersView` → `Customers`, `AvailableProductsView` → `AvailableProducts`, plus all `*View_Projection.res` → `*_Projection.res`. Test files renamed in parallel: `CategoriesViewTest.res` → `CategoriesTest.res` etc. Plugin.res regenerates correctly.
+
+### 3.5 — AutomationSlice merge — ✅ DONE for dcb (PR4)
 
 For each `*_Automation.res` + `*_Mappings.res` pair:
 
@@ -199,6 +201,8 @@ For each `*_Automation.res` + `*_Mappings.res` pair:
 
 Affected: `AutoShipOrder` in `online-shop-dcb/ordering/` and `online-shop-hybrid/ordering/`.
 
+**dcb done in PR4** — `AutoShipOrder_Mappings.res` merged into `AutoShipOrder_Automation.res` (process + per-source mappings + `OrderingDcbSource` module inline). Bridge file deleted. The `@@reventless.automation` PPX auto-injects `open Reventless.AutomationSlice`, the `Mappings.Make` wrapper, and `module type Mapping`, plus runs the Source-module scan (injects `module Id` + dcbTags into `OrderingDcbSource`).
+
 ### 3.6 — Extension files — ✅ DONE for aggregates (PR3)
 
 - `<Name>Extension.res` → `<Name>_Extension.res`.
@@ -206,6 +210,8 @@ Affected: `AutoShipOrder` in `online-shop-dcb/ordering/` and `online-shop-hybrid
 - Verify the Delegate transform applies (DCB extensions only — Aggregate-style extensions don't have a Delegate).
 
 **aggregates done in PR3** (catalog `Orders_Extension.res`, ordering `Products_Extension.res`). The Aggregate-style extensions reference real Aggregate modules as `module Delegate = ProductDemand` etc., so the Delegate auto-transform skips them harmlessly (the transform only fires on inline `Pmod_structure` modules).
+
+**dcb done in PR4** — catalog `Orders_Extension.res`, ordering `Products_Extension.res`. DCB-style extensions reference StateChangeSlice modules (e.g. `module Delegate = RecordProductDemand`, `module Delegate = SyncCatalogProduct`), so again the auto-transform skips harmlessly. `open ReventlessInfra.ExtensionMapping` removed; `@@reventless.extension` injects it.
 
 ### 3.7 — ExtensionPoint files — ✅ DONE for aggregates (PR3)
 
@@ -215,9 +221,13 @@ Affected: `AutoShipOrder` in `online-shop-dcb/ordering/` and `online-shop-hybrid
 
 **aggregates done in PR3.** `Util.top_level_only_suffixes` extended with underscored variants (`_ExtensionPoint`, `_ExtensionPointMapping`, `_ReadModel`, `_Extension`, `_Aggregate`, `_Plugin`) tried before the bare versions, so `filename_to_name` strips the underscore cleanly.
 
+**dcb done in PR4** — `ProductsExtensionPoint` → `Products_ExtensionPoint` (catalog-spec), `OrdersExtensionPoint` → `Orders_ExtensionPoint` (ordering-spec), `ProductsExtensionPointMapping` → `Products_ExtensionPointMapping` (catalog plugin), `OrdersExtensionPointMapping` → `Orders_ExtensionPointMapping` (ordering plugin). Cross-references in Extension files and EP mapping files updated to dotted-namespace form `OrderingSpec.Orders_ExtensionPoint` etc.
+
 ### 3.8 — DCB Source modules in projection files
 
 For every `module XDcbSource = { ... }` block inside `_Projections.res` files (e.g., `CatalogActivityProjections.res`), the new `@@reventless.mappings` PPX scan now handles the transforms. Remove the hand-rolled `module Id = Reventless.Id.String` and ensure event fields rely on dcbTag auto-injection.
+
+**dcb in PR4**: subsumed by Phase 3.5 — `OrderingDcbSource` inside `AutoShipOrder_Automation.res` now relies on the PPX's Source-module scan (auto-inject `module Id`, run dcbTags). dcb has no `_Projections.res` files (it uses StateViewSlice's `_Projection.res` instead, which doesn't host inner Source modules).
 
 ### 3.9 — Task files — ✅ DONE for aggregates (PR3)
 
@@ -299,5 +309,7 @@ Reasonable PR boundaries:
 
 - **PR 1**: Phases 1 + 2 (PPX surface + framework adjustment). No example changes.
 - **PR 2**: Phase 3.0 (aggregates restructure to per-entity layout).
-- **PR 3, 4, 5**: Phase 3.1–3.9 applied per example domain (one PR each: aggregates, dcb, hybrid).
+- **PR 3** ✅: aggregates sweep (3.0–3.9 except 3.4/3.5 which are N/A there).
+- **PR 4** ✅: dcb sweep (3.4 StateViewSlice, 3.5 AutomationSlice merge, 3.6 Extension, 3.7 ExtensionPoint; 3.1–3.3 / 3.8–3.9 N/A for dcb). Build clean, all dcb tests pass; no codegen changes needed (existing `_Behavior` resolution + `_Extension`/`_ExtensionPoint` suffix handling from PR3 covered dcb out of the box).
+- **PR 5**: Phase 3.1–3.9 applied to `online-shop-hybrid` (still pending: `CategoryBehavior.res`/`CustomerBehavior.res` no-underscore, `*ReadModel.res`/`*Projections.res` no-underscore, `*View.res` suffix, `*Extension.res`/`*ExtensionPoint.res` no-underscore, `AutoShipOrder_Mappings.res` merge, plus `CatalogActivityProjections.res` DCB Source modules — Phase 3.8).
 - **PR 6**: Phases 4 + 5 + 6 (codegen + docs + PPX retirement) together.

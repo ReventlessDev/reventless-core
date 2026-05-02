@@ -1,10 +1,10 @@
-// Pure unit tests for CategoriesView StateViewSlice projection.
+// Pure unit tests for Categories StateViewSlice projection.
 
 open Reventless
 open Jest
 open Expect
 
-let baseCategory: CategoriesView.state = {categoryId: "c1", name: "Electronics", archived: false}
+let baseCategory: Categories.state = {categoryId: "c1", name: "Electronics", archived: false}
 
 // Apply the first Update action's function to a base state for assertion.
 let applyFirstUpdate = (actions, baseState) =>
@@ -14,32 +14,32 @@ let applyFirstUpdate = (actions, baseState) =>
     | _ => s
     })
 
-describe("CategoriesView_Projection.project:", () => {
+describe("Categories_Projection.project:", () => {
   test("CategoryAdded creates new state", () =>
     expect(
-      CategoriesView_Projection.project(
-        CategoriesView.CategoryAdded({categoryId: "c1", name: "Electronics"}),
+      Categories_Projection.project(
+        Categories.CategoryAdded({categoryId: "c1", name: "Electronics"}),
       ),
     )->toEqual([
       Projection.Set(
         "c1",
-        {CategoriesView.categoryId: "c1", name: "Electronics", archived: false},
+        {Categories.categoryId: "c1", name: "Electronics", archived: false},
       ),
     ])
   )
 
   test("CategoryRenamed Update function changes name", () =>
     expect(
-      CategoriesView_Projection.project(
-        CategoriesView.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}),
+      Categories_Projection.project(
+        Categories.CategoryRenamed({categoryId: "c1", name: "Consumer Electronics"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, name: "Consumer Electronics"})
   )
 
   test("CategoryArchived Update function sets archived=true", () =>
     expect(
-      CategoriesView_Projection.project(
-        CategoriesView.CategoryArchived({categoryId: "c1"}),
+      Categories_Projection.project(
+        Categories.CategoryArchived({categoryId: "c1"}),
       )->applyFirstUpdate(baseCategory),
     )->toEqual({...baseCategory, archived: true})
   )

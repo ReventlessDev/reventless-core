@@ -11,35 +11,35 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
 
   // StateViewSlices
-  module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView, CategoriesView_Projection)
-  module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView, ProductDemandView_Projection)
-  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView, ProductsView_Projection)
+  module CategoriesSlice = Platform.StateViewSlice.Make(Categories, Categories_Projection)
+  module ProductDemandSlice = Platform.StateViewSlice.Make(ProductDemand, ProductDemand_Projection)
+  module ProductsSlice = Platform.StateViewSlice.Make(Products, Products_Projection)
 
   // InboundTranslationSlices
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
 
   // ExtensionPoints
-  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
+  module Products_ExtensionPoint = Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)
 
   // Extensions
-  module OrdersExtension = Platform.Extension.Make(OrdersExtension.Mapping)
+  module Orders_Extension = Platform.Extension.Make(Orders_Extension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
-    ~stateViewSlices=[module(CategoriesViewSlice), module(ProductDemandViewSlice), module(ProductsViewSlice)],
+    ~stateViewSlices=[module(CategoriesSlice), module(ProductDemandSlice), module(ProductsSlice)],
     ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
-    ~extensions=[module(OrdersExtension)],
+    ~extensions=[module(Orders_Extension)],
   )
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPoint)],
-      ~extensions=[module(OrdersExtension)],
+      ~extensionPoints=[module(Products_ExtensionPoint)],
+      ~extensions=[module(Orders_Extension)],
       ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
-      ~stateViewSlices=[module(CategoriesViewSlice), module(ProductDemandViewSlice), module(ProductsViewSlice)],
+      ~stateViewSlices=[module(CategoriesSlice), module(ProductDemandSlice), module(ProductsSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],
       ~pluginStructure=pluginStructure,
     )

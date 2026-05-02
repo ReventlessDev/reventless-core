@@ -1,4 +1,4 @@
-// CategoriesView StateViewSlice.
+// Categories StateViewSlice.
 // Projects category events from the shared catalog event log into a Categories read model.
 @@reventless.spec
 

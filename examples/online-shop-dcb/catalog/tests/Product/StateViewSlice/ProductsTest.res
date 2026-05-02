@@ -1,10 +1,10 @@
-// Pure unit tests for ProductsView StateViewSlice projection.
+// Pure unit tests for Products StateViewSlice projection.
 
 open Reventless
 open Jest
 open Expect
 
-let baseProduct: ProductsView.state = {
+let baseProduct: Products.state = {
   productId: "p1",
   name: "Laptop",
   description: "A laptop",
@@ -19,11 +19,11 @@ let applyFirstUpdate = (actions, baseState) =>
     | _ => s
     })
 
-describe("ProductsView_Projection.project:", () => {
+describe("Products_Projection.project:", () => {
   test("ProductAdded creates new state", () =>
     expect(
-      ProductsView_Projection.project(
-        ProductsView.ProductAdded({
+      Products_Projection.project(
+        Products.ProductAdded({
           productId: "p1",
           name: "Laptop",
           description: "A laptop",
@@ -33,23 +33,23 @@ describe("ProductsView_Projection.project:", () => {
     )->toEqual([
       Projection.Set(
         "p1",
-        {ProductsView.productId: "p1", name: "Laptop", description: "A laptop", price: 999.99},
+        {Products.productId: "p1", name: "Laptop", description: "A laptop", price: 999.99},
       ),
     ])
   )
 
   test("ProductNameChanged Update function changes name", () =>
     expect(
-      ProductsView_Projection.project(
-        ProductsView.ProductNameChanged({productId: "p1", name: "Gaming Laptop"}),
+      Products_Projection.project(
+        Products.ProductNameChanged({productId: "p1", name: "Gaming Laptop"}),
       )->applyFirstUpdate(baseProduct),
     )->toEqual({...baseProduct, name: "Gaming Laptop"})
   )
 
   test("ProductDescriptionChanged Update function changes description", () =>
     expect(
-      ProductsView_Projection.project(
-        ProductsView.ProductDescriptionChanged({
+      Products_Projection.project(
+        Products.ProductDescriptionChanged({
           productId: "p1",
           description: "A high-end laptop",
         }),
@@ -59,8 +59,8 @@ describe("ProductsView_Projection.project:", () => {
 
   test("ProductPriceChanged Update function changes price", () =>
     expect(
-      ProductsView_Projection.project(
-        ProductsView.ProductPriceChanged({productId: "p1", price: 899.99}),
+      Products_Projection.project(
+        Products.ProductPriceChanged({productId: "p1", price: 899.99}),
       )->applyFirstUpdate(baseProduct),
     )->toEqual({...baseProduct, price: 899.99})
   )
