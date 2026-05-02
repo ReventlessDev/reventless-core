@@ -26,20 +26,29 @@ function isImplStem(stem) {
 
 function findEventMappings(srcDir) {
   let dict = {};
-  let emDir = Nodepath.join(srcDir, "EventMappings");
-  if (Nodefs.existsSync(emDir)) {
-    Generator_Node$Reventless.readDir(emDir).forEach(entry => {
+  let walk = dir => {
+    Generator_Node$Reventless.readDir(dir).forEach(entry => {
+      let name = entry.name;
+      if (entry.isDirectory()) {
+        if (name !== "Plugin" && name !== "tests" && name !== "lib") {
+          return walk(Nodepath.join(dir, name));
+        } else {
+          return;
+        }
+      }
       if (!entry.isFile()) {
         return;
       }
-      let filename = entry.name;
-      if (!filename.endsWith("_EventMappings.res")) {
+      if (!name.endsWith("_EventMappings.res")) {
         return;
       }
-      let stem = filename.slice(0, filename.length - 4 | 0);
+      let stem = name.slice(0, name.length - 4 | 0);
       let aggName = stem.slice(0, stem.length - 14 | 0);
       dict[aggName] = stem;
     });
+  };
+  if (Nodefs.existsSync(srcDir)) {
+    walk(srcDir);
   }
   return dict;
 }

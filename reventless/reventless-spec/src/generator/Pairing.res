@@ -50,21 +50,30 @@ type resolved = {
   extensions: array<string>,
 }
 
-// Scan srcDir/EventMappings/ and collect {AggName → mappingStem} dict.
+// Scan srcDir recursively for `<Agg>_EventMappings.res` files and collect
+// {AggName → mappingStem} dict. Supports both the legacy flat layout
+// (`srcDir/EventMappings/<Agg>_EventMappings.res`) and the per-entity layout
+// (`srcDir/<Agg>/Aggregate/<Agg>_EventMappings.res`) by simply walking the
+// whole tree. `Plugin/`, `tests/`, and `lib/` are skipped.
 let findEventMappings = (~srcDir: string): Dict.t<string> => {
   let dict = Dict.make()
-  let emDir = Generator_Node.join([srcDir, "EventMappings"])
-  if Generator_Node.existsSync(emDir) {
-    Generator_Node.readDir(emDir)->Array.forEach(entry => {
-      if entry->Generator_Node.isFile {
-        let filename = entry->Generator_Node.direntName
-        if filename->String.endsWith("_EventMappings.res") {
-          let stem = filename->String.slice(~start=0, ~end=filename->String.length - 4)
+  let rec walk = (dir: string) =>
+    Generator_Node.readDir(dir)->Array.forEach(entry => {
+      let name = entry->Generator_Node.direntName
+      if entry->Generator_Node.isDirectory {
+        if name !== "Plugin" && name !== "tests" && name !== "lib" {
+          walk(Generator_Node.join([dir, name]))
+        }
+      } else if entry->Generator_Node.isFile {
+        if name->String.endsWith("_EventMappings.res") {
+          let stem = name->String.slice(~start=0, ~end=name->String.length - 4)
           let aggName = stem->String.slice(~start=0, ~end=stem->String.length - 14) // "_EventMappings" = 14 chars
           Dict.set(dict, aggName, stem)
         }
       }
     })
+  if Generator_Node.existsSync(srcDir) {
+    walk(srcDir)
   }
   dict
 }

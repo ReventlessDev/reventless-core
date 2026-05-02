@@ -2,24 +2,24 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Product$CatalogPlugin from "./Aggregate/Product.res.mjs";
+import * as Product$CatalogPlugin from "./Product/Aggregate/Product.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
-import * as Category$CatalogPlugin from "./Aggregate/Category.res.mjs";
-import * as ProductDemand$CatalogPlugin from "./Aggregate/ProductDemand.res.mjs";
+import * as Category$CatalogPlugin from "./Category/Aggregate/Category.res.mjs";
+import * as ProductDemand$CatalogPlugin from "./ProductDemand/Aggregate/ProductDemand.res.mjs";
 import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as OrdersExtension$CatalogPlugin from "./Extension/OrdersExtension.res.mjs";
-import * as ProductBehavior$CatalogPlugin from "./Aggregate/ProductBehavior.res.mjs";
-import * as CategoryBehavior$CatalogPlugin from "./Aggregate/CategoryBehavior.res.mjs";
+import * as ProductBehavior$CatalogPlugin from "./Product/Aggregate/ProductBehavior.res.mjs";
+import * as CategoryBehavior$CatalogPlugin from "./Category/Aggregate/CategoryBehavior.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as ProductsReadModel$CatalogPlugin from "./ReadModel/ProductsReadModel.res.mjs";
-import * as CategoriesReadModel$CatalogPlugin from "./ReadModel/CategoriesReadModel.res.mjs";
+import * as ProductsReadModel$CatalogPlugin from "./Product/ReadModel/ProductsReadModel.res.mjs";
+import * as CategoriesReadModel$CatalogPlugin from "./Category/ReadModel/CategoriesReadModel.res.mjs";
 import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/OrdersExtensionPoint.res.mjs";
-import * as ProductsProjections$CatalogPlugin from "./ReadModel/ProductsProjections.res.mjs";
+import * as ProductsProjections$CatalogPlugin from "./Product/ReadModel/ProductsProjections.res.mjs";
 import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/ProductsExtensionPoint.res.mjs";
-import * as CategoriesProjections$CatalogPlugin from "./ReadModel/CategoriesProjections.res.mjs";
-import * as ProductDemandBehavior$CatalogPlugin from "./Aggregate/ProductDemandBehavior.res.mjs";
-import * as ProductDemandReadModel$CatalogPlugin from "./ReadModel/ProductDemandReadModel.res.mjs";
-import * as ProductDemandProjections$CatalogPlugin from "./ReadModel/ProductDemandProjections.res.mjs";
+import * as CategoriesProjections$CatalogPlugin from "./Category/ReadModel/CategoriesProjections.res.mjs";
+import * as ProductDemandBehavior$CatalogPlugin from "./ProductDemand/Aggregate/ProductDemandBehavior.res.mjs";
+import * as ProductDemandReadModel$CatalogPlugin from "./ProductDemand/ReadModel/ProductDemandReadModel.res.mjs";
+import * as ProductDemandProjections$CatalogPlugin from "./ProductDemand/ReadModel/ProductDemandProjections.res.mjs";
 import * as ProductsExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/ProductsExtensionPointMapping.res.mjs";
 
 function Make(Platform) {

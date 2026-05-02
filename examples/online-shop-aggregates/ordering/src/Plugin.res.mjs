@@ -2,26 +2,26 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Order$OrderingPlugin from "./Aggregate/Order.res.mjs";
+import * as Order$OrderingPlugin from "./Order/Aggregate/Order.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
-import * as Customer$OrderingPlugin from "./Aggregate/Customer.res.mjs";
-import * as OrderBehavior$OrderingPlugin from "./Aggregate/OrderBehavior.res.mjs";
-import * as CatalogProduct$OrderingPlugin from "./Aggregate/CatalogProduct.res.mjs";
-import * as OrdersReadModel$OrderingPlugin from "./ReadModel/OrdersReadModel.res.mjs";
-import * as CustomerBehavior$OrderingPlugin from "./Aggregate/CustomerBehavior.res.mjs";
+import * as Customer$OrderingPlugin from "./Customer/Aggregate/Customer.res.mjs";
+import * as OrderBehavior$OrderingPlugin from "./Order/Aggregate/OrderBehavior.res.mjs";
+import * as CatalogProduct$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProduct.res.mjs";
+import * as OrdersReadModel$OrderingPlugin from "./Order/ReadModel/OrdersReadModel.res.mjs";
+import * as CustomerBehavior$OrderingPlugin from "./Customer/Aggregate/CustomerBehavior.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as OrdersProjections$OrderingPlugin from "./ReadModel/OrdersProjections.res.mjs";
+import * as OrdersProjections$OrderingPlugin from "./Order/ReadModel/OrdersProjections.res.mjs";
 import * as ProductsExtension$OrderingPlugin from "./Extension/ProductsExtension.res.mjs";
-import * as CustomersReadModel$OrderingPlugin from "./ReadModel/CustomersReadModel.res.mjs";
+import * as CustomersReadModel$OrderingPlugin from "./Customer/ReadModel/CustomersReadModel.res.mjs";
 import * as OrderNotifications$OrderingPlugin from "./Task/OrderNotifications.res.mjs";
 import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/OrdersExtensionPoint.res.mjs";
-import * as Order_EventMappings$OrderingPlugin from "./EventMappings/Order_EventMappings.res.mjs";
+import * as Order_EventMappings$OrderingPlugin from "./Order/Aggregate/Order_EventMappings.res.mjs";
 import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/ProductsExtensionPoint.res.mjs";
-import * as CustomersProjections$OrderingPlugin from "./ReadModel/CustomersProjections.res.mjs";
-import * as CatalogProductBehavior$OrderingPlugin from "./Aggregate/CatalogProductBehavior.res.mjs";
-import * as AvailableProductsReadModel$OrderingPlugin from "./ReadModel/AvailableProductsReadModel.res.mjs";
+import * as CustomersProjections$OrderingPlugin from "./Customer/ReadModel/CustomersProjections.res.mjs";
+import * as CatalogProductBehavior$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProductBehavior.res.mjs";
+import * as AvailableProductsReadModel$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProductsReadModel.res.mjs";
 import * as OrdersExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
-import * as AvailableProductsProjections$OrderingPlugin from "./ReadModel/AvailableProductsProjections.res.mjs";
+import * as AvailableProductsProjections$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProductsProjections.res.mjs";
 
 function Make(Platform) {
   let CatalogProductAggregate = Platform.Aggregate.Make({

@@ -2,9 +2,9 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
-import * as Category$CatalogPlugin from "../../src/Aggregate/Category.res.mjs";
+import * as Category$CatalogPlugin from "../../src/Category/Aggregate/Category.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
-import * as CategoryBehavior$CatalogPlugin from "../../src/Aggregate/CategoryBehavior.res.mjs";
+import * as CategoryBehavior$CatalogPlugin from "../../src/Category/Aggregate/CategoryBehavior.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";

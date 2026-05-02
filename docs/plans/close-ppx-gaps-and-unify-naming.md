@@ -133,7 +133,7 @@ The merged `_Automation.res` (process + mappings) replaces the current 3-file sh
 
 Apply the file renames and PPX adoption across all three example domains: `online-shop-aggregates`, `online-shop-dcb`, `online-shop-hybrid`. Each domain has `catalog/`, `ordering/`, plus `*-spec/` and `*-aws/` packages.
 
-### 3.0 — Restructure `online-shop-aggregates` to per-entity folder layout
+### 3.0 — Restructure `online-shop-aggregates` to per-entity folder layout — ✅ DONE (PR2)
 
 Before any renames, migrate `online-shop-aggregates/{catalog,ordering}/src/` from flat folders (`Aggregate/`, `EventMappings/`, `ReadModel/`, `Extension/`, `ExtensionPoint/`, `Task/`) to per-entity folders matching DCB and hybrid (`<Entity>/Aggregate/`, `<Entity>/ReadModel/`, etc.).
 
@@ -142,6 +142,12 @@ Before any renames, migrate `online-shop-aggregates/{catalog,ordering}/src/` fro
 - Update Plugin.res via `generate-plugin` (it should already handle per-entity layout).
 
 **Verification:** all aggregates-example tests pass before proceeding to renames.
+
+**Codegen tweaks needed for per-entity layout (also landed in PR2):**
+- `Pairing.findEventMappings` was a flat-folder scan over `srcDir/EventMappings/`; rewrote it to recursively walk `srcDir` (skipping `Plugin/`, `tests/`, `lib/`) so it finds `<Entity>/Aggregate/<Agg>_EventMappings.res` too.
+- `Discovery.isSkipped` was extended to skip `*_EventMappings.res` so the per-entity Aggregate folder doesn't double-pick those files as Aggregate specs (which would hunt for a non-existent `*_EventMappingsBehavior`).
+- Catalog and ordering tests moved to `tests/<Entity>/` to mirror the hybrid layout.
+- The `SideEffect/` folder (ordering-only) moved under `Order/SideEffect/` for entity locality.
 
 ### 3.1 — Aggregate behaviors
 
