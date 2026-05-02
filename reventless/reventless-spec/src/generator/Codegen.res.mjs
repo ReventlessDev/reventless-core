@@ -41,21 +41,9 @@ function renderAggregates(aggregates) {
 
 function renderReadModels(readModels) {
   return readModels.flatMap(param => {
-    let projections = param.projections;
     let readModel = param.readModel;
-    if (param.isMappingsAdopted) {
-      let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
-      return ["  module " + wrapperName + " = Platform.ReadModel.Make(" + readModel + ", " + projections + ")"];
-    }
-    let mappingEntries = param.mappingModules.map(m => "module(" + projections + "." + m + ")");
-    let mappingsLine = "    let mappings: array<module(Mapping)> = [" + mappingEntries.join(", ") + "]";
-    return [
-      "  @reventless.projections",
-      "  module " + projections + "Wrapper: Mappings with module Target := " + readModel + " = {",
-      mappingsLine,
-      "  }",
-      "  module " + readModel + " = Platform.ReadModel.Make(" + readModel + ", " + projections + "Wrapper)"
-    ];
+    let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
+    return ["  module " + wrapperName + " = Platform.ReadModel.Make(" + readModel + ", " + param.projections + ")"];
   });
 }
 
@@ -236,6 +224,31 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
   }
   ls.push("  )");
   return ls;
+}
+
+function validateUniqueSpecStems(discovered) {
+  let byStem = {};
+  discovered.forEach(d => {
+    let existing = Stdlib_Option.getOr(byStem[d.stem], []);
+    existing.push(d.relPath);
+    byStem[d.stem] = existing;
+  });
+  Object.entries(byStem).forEach(param => {
+    let paths = param[1];
+    if (paths.length <= 1) {
+      return;
+    }
+    let pathList = paths.toSorted((a, b) => {
+      if (a < b) {
+        return -1.0;
+      } else if (a > b) {
+        return 1.0;
+      } else {
+        return 0.0;
+      }
+    }).join("\n  - ");
+    Stdlib_JsError.throwWithMessage("Generator: stem `" + param[0] + "` is used by multiple files. Filename stems must be unique across a plugin so the generated module names don't collide:\n  - " + pathList);
+  });
 }
 
 function validateSliceTargets(resolved) {
@@ -447,7 +460,8 @@ function renderComposition(config, resolved) {
   return lines.join("\n");
 }
 
-function render(config, resolved) {
+function render(config, resolved, discovered) {
+  validateUniqueSpecStems(discovered);
   validateSliceTargets(resolved);
   let match = config.variant;
   if (typeof match !== "object") {
@@ -475,6 +489,7 @@ export {
   renderExtensionMakeParam,
   renderTaskMakeParam,
   renderPluginStructureCall,
+  validateUniqueSpecStems,
   validateSliceTargets,
   renderMain,
   pluginNameToEnvBase,

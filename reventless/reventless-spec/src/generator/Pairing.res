@@ -28,17 +28,13 @@ let isImplStem = (stem: string): bool =>
   || stem->String.endsWith(mappingsSuffixForAutomation)
 
 type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>}
-// mappingModules: module names found inside the projections file (e.g. ["ProductMapping"])
-// isMappingsAdopted: true when the projections file follows the
-//   Phase-3.3 convention (`<Plural>_Projections.res` with `@@reventless.mappings`
-//   already declaring `let mappings`). When true, codegen emits a direct
-//   `Platform.ReadModel.Make(spec, projStem)` instead of the legacy
-//   `@reventless.projections` wrapper module.
+// readModelDef pairs a ReadModel spec with its sibling `_Projections.res`
+// file. Codegen emits `Platform.ReadModel.Make(<spec>, <projections>)` and
+// expects the projections file to declare `let mappings` via
+// `@@reventless.mappings`.
 type readModelDef = {
   readModel: string,
   projections: string,
-  mappingModules: array<string>,
-  isMappingsAdopted: bool,
 }
 type extensionPointDef = {group: option<string>, mappings: array<string>}
 
@@ -106,29 +102,6 @@ let findEventMappings = (~srcDir: string): Dict.t<string> => {
     walk(srcDir, [])
   }
   dict
-}
-
-// Read a projections .res file and extract names of mapping modules.
-// Looks for lines starting with "module XyzMapping = Mapping.Make(".
-let extractMappingModules = (filePath: string): array<string> => {
-  let result: array<string> = []
-  try {
-    let content = Generator_Node.readFileSync(filePath)
-    content->String.split("\n")->Array.forEach(line => {
-      let trimmed = line->String.trimStart
-      if trimmed->String.startsWith("module ") && trimmed->String.includes("= Mapping.Make(") {
-        // Extract module name: "module FooMapping = Mapping.Make(..." → "FooMapping"
-        let afterModule = trimmed->String.slice(~start=7, ~end=trimmed->String.length)
-        switch afterModule->String.indexOf(" ") {
-        | -1 => ()
-        | spaceIdx => result->Array.push(afterModule->String.slice(~start=0, ~end=spaceIdx))
-        }
-      }
-    })
-  } catch {
-  | _ => ()
-  }
-  result
 }
 
 let sortedStems = (stems: array<string>): array<string> =>
@@ -255,9 +228,11 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
     })
 
   // ── ReadModel pairing ──────────────────────────────────────────────────────
-  // Tries the Phase-3.3 form first (spec `<Plural>` + impl `<Plural>_Projections`),
-  // then falls back to the legacy form (`<Plural>ReadModel` + `<Plural>Projections`).
-  // The flag `isMappingsAdopted` tells codegen which output shape to emit.
+  // Pairs spec `<Plural>` with impl `<Plural>_Projections.res`. The legacy
+  // unpaired forms (`<Plural>ReadModel.res` / `<Plural>Projections.res`) are
+  // no longer recognised — see PR3-5 of the close-ppx-gaps-and-unify-naming
+  // plan for the migration; downstream codebases should rename to the
+  // underscored form.
   let readModels =
     readModelStems
     ->sortedStems
@@ -269,22 +244,12 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         rm
       }
       let underscoredProj = baseName ++ "_Projections"
-      let bareProj = baseName ++ "Projections"
-      let pickProj = (~stem: string) =>
-        Dict.get(projectionsByRelPath, stem)->Option.map(p => (stem, p))
-      let chosen = switch pickProj(~stem=underscoredProj) {
-      | Some(_) as v => v
-      | None => pickProj(~stem=bareProj)
-      }
-      switch chosen {
+      switch Dict.get(projectionsByRelPath, underscoredProj) {
       | None =>
-        Console.warn("Generator: ReadModel `" ++ rm ++ "` has no matching `" ++ underscoredProj ++ "` or `" ++ bareProj ++ "` — skipping")
+        Console.warn("Generator: ReadModel `" ++ rm ++ "` has no matching `" ++ underscoredProj ++ ".res` — skipping")
         None
-      | Some((projStem, projRelPath)) =>
-        let filePath = Generator_Node.join([srcDir, projRelPath])
-        let mappingModules = extractMappingModules(filePath)
-        let isMappingsAdopted = projStem === underscoredProj
-        Some({readModel: rm, projections: projStem, mappingModules, isMappingsAdopted})
+      | Some(_) =>
+        Some({readModel: rm, projections: underscoredProj})
       }
     })
 

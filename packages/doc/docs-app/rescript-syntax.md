@@ -524,13 +524,27 @@ let apply = (state, event) =>
   }
 ```
 
-#### `@reventless.projections`
+#### `@@reventless.mappings`
 
-Used inside plugin functor bodies to wire projection mappings:
+File-level attribute on `<Plural>_Projections.res` (multi-source ReadModel projections) and `<Entity>_Mappings.res` (Aggregate event-mapping siblings). The PPX infers the domain from the folder (`ReadModel/` → `Reventless.Projection`, `Aggregate/` → `Reventless.EventMapping`), injects the `Mappings.Make` wrapper and the `module type Mapping`, scans inner DCB Source modules, and lets the user write only the per-source `Mapping.Make` modules and the `let mappings` array:
 
 ```rescript
-@reventless.projections
-module CatalogProjections = CatalogProjections.Make with module Target := CatalogReadModel
+@@reventless.mappings
+
+module ProductMapping = Mapping.Make(
+  Product,
+  Products,
+  {
+    open Product
+    let project = ({event, id, _}) =>
+      switch event {
+      | Added({name}) => Set(id, {Products.name: name})
+      | _ => Ignore
+      }
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(ProductMapping)]
 ```
 
 ### @schema

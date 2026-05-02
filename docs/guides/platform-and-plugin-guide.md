@@ -193,23 +193,25 @@ catalog/
 └── src/
     ├── Aggregate/
     │   ├── Product.res              # Aggregate spec (types)
-    │   ├── ProductBehavior.res      # Aggregate behavior (state machine)
+    │   ├── Product_Behavior.res      # Aggregate behavior (state machine)
     │   ├── Category.res
-    │   ├── CategoryBehavior.res
+    │   ├── Category_Behavior.res
     │   ├── ProductDemand.res        # Extension-driven aggregate
-    │   └── ProductDemandBehavior.res
+    │   └── ProductDemand_Behavior.res
     ├── ReadModel/
-    │   ├── ProductsReadModel.res    # Read model spec (state shape)
-    │   ├── ProductsProjections.res  # Projection mappings
-    │   ├── CategoriesReadModel.res
-    │   ├── CategoriesProjections.res
-    │   ├── ProductDemandReadModel.res
-    │   └── ProductDemandProjections.res
+    │   ├── Products.res    # Read model spec (state shape)
+    │   ├── Products_Projections.res  # Projection mappings
+    │   ├── Categories.res
+    │   ├── Categories_Projections.res
+    │   ├── ProductDemands.res
+    │   └── ProductDemands_Projections.res
     ├── ExtensionPoint/
-    │   └── ProductsExtensionPoint.res  # Maps aggregate events → EP events
+    │   └── Products_ExtensionPointMapping.res  # Maps aggregate events → EP events
     ├── Extension/
-    │   └── OrdersExtension.res         # Maps EP events → aggregate commands
-    └── Plugin.res                      # Auto-generated composition root
+    │   └── Orders_Extension.res                # Maps EP events → aggregate commands
+    ├── Task/
+    │   └── ImportProducts.res                  # Background task (S3 → commands)
+    └── Plugin.res                              # Auto-generated composition root
 ```
 
 ---
@@ -293,7 +295,7 @@ module InventoryAggregate = Platform.Aggregate.Make(
 
 A behavior implements the aggregate state machine: state evolution from events, and command decisions.
 
-**`ProductBehavior.res`**:
+**`Product_Behavior.res`**:
 ```rescript
 @@reventless.behavior
 
@@ -344,7 +346,7 @@ let decide = (state, command) =>
 
 A read model defines the query-side state shape.
 
-**`ProductsReadModel.res`**:
+**`Products.res`**:
 ```rescript
 @@reventless.spec
 
@@ -355,13 +357,9 @@ type state = {
   description: string,
   price: float,
 }
-
-open Reventless.ReadModel
-let config = config()
-let subIdConfig = None
 ```
 
-The PPX derives `let name = "Products"` from the filename (`ProductsReadModel.res` → strips `ReadModel` → `"Products"`).
+The PPX derives `let name = "Products"` from the filename and, because the file lives under a `ReadModel/` folder and declares `@schema type state` without a `let config`, also auto-injects `open Reventless.ReadModel; let config = config(); let subIdConfig = None`.
 
 - **`state`** — the record stored per entity in the query database
 - **`config`** — default configuration (pagination, etc.)
@@ -373,27 +371,30 @@ The PPX derives `let name = "Products"` from the filename (`ProductsReadModel.re
 
 Projections map aggregate events to read model state changes.
 
-**`ProductsProjections.res`** (single-source):
+**`Products_Projections.res`** (single-source):
 ```rescript
-open Reventless.Message
-open Reventless.Projection
+@@reventless.mappings
 
 module ProductMapping = Mapping.Make(
-  Product,           // Source aggregate
-  ProductsReadModel, // Target read model
+  Product,    // Source aggregate
+  Products,   // Target read model
   {
     open Product     // Open aggregate for unqualified event access
     let project = ({event, id, _}) =>
       switch event {
       | Added({name, description, price}) =>
-        Set(id, {ProductsReadModel.productId: id, name, description, price})
+        Set(id, {Products.productId: id, name, description, price})
       | NameUpdated({name}) => Update(id, state => {...state, name})
       | DescriptionUpdated({description}) => Update(id, state => {...state, description})
       | PriceUpdated({price}) => Update(id, state => {...state, price})
       }
   },
 )
+
+let mappings: array<module(Mapping)> = [module(ProductMapping)]
 ```
+
+The `@@reventless.mappings` PPX infers the domain from the folder (`ReadModel/` → `Reventless.Projection`), injects `open Reventless.Projection` (and `open Reventless.Message` for the `event` record destructuring), and wires up `module type Mapping` so the user only writes the per-source `Mapping.Make` modules and the `let mappings` array.
 
 **Projection operations:**
 
@@ -405,20 +406,19 @@ module ProductMapping = Mapping.Make(
 
 **Multi-source projections** — when a read model combines events from multiple aggregates, define one mapping per source:
 
-**`ProductDemandProjections.res`**:
+**`ProductDemands_Projections.res`**:
 ```rescript
-open Reventless.Message
-open Reventless.Projection
+@@reventless.mappings
 
 module ProductMapping = Mapping.Make(
   Product,
-  ProductDemandReadModel,
+  ProductDemands,
   {
     open Product
     let project = ({event, id, _}) =>
       switch event {
       | Added({name}) =>
-        Set(id, {ProductDemandReadModel.productId: id, name, orderCount: 0})
+        Set(id, {ProductDemands.productId: id, name, orderCount: 0})
       | _ => Ignore
       }
   },
@@ -426,25 +426,27 @@ module ProductMapping = Mapping.Make(
 
 module ProductDemandMapping = Mapping.Make(
   ProductDemand,
-  ProductDemandReadModel,
+  ProductDemands,
   {
     open ProductDemand
     let project = ({event, id, _}) =>
       switch event {
       | Recorded(_) =>
-        Update(id, (state: ProductDemandReadModel.state) => {
+        Update(id, (state: ProductDemands.state) => {
           ...state, orderCount: state.orderCount + 1
         })
       | Revoked(_) =>
-        Update(id, (state: ProductDemandReadModel.state) => {
+        Update(id, (state: ProductDemands.state) => {
           ...state, orderCount: max(0, state.orderCount - 1)
         })
       }
   },
 )
+
+let mappings: array<module(Mapping)> = [module(ProductMapping), module(ProductDemandMapping)]
 ```
 
-When the target read model type is ambiguous in the `Update` callback, annotate the `state` parameter: `(state: ProductDemandReadModel.state)`.
+When the target read model type is ambiguous in the `Update` callback, annotate the `state` parameter: `(state: ProductDemands.state)`.
 
 ---
 
@@ -510,7 +512,7 @@ let mapOutgoingEvent = Some((id, event, _meta, _queryEngine) =>
 
 An extension **subscribes to another plugin's extension point** and routes the incoming events to local aggregate commands.
 
-**`OrdersExtension.res`** (Catalog subscribing to Ordering):
+**`Orders_Extension.res`** (Catalog subscribing to Ordering):
 ```rescript
 open ReventlessInfra.ExtensionMapping
 
@@ -587,7 +589,7 @@ The generator walks `src/` and classifies `.res` files by their parent folder na
 | Folder name(s) | Component |
 |---|---|
 | `Aggregate[s]` | Aggregate — paired with `*Behavior.res` |
-| `ReadModel[s]` | Read model — paired with `*Projections.res` |
+| `ReadModel[s]` | Read model — paired with `*_Projections.res` |
 | `Task[s]` | Task |
 | `ExtensionPoint[s]` | Extension point mapping |
 | `Extension[s]` | Extension mapping |
@@ -604,7 +606,7 @@ Always excluded: `Plugin/`, `tests/`, `lib/`, `*Test.res`, `*Fixtures.res`.
 Each file in `Extension/` must expose its mapping as an inner module named **`Mapping`** (not `DemandMapping`, `ProductMapping`, etc.):
 
 ```rescript
-// OrdersExtension.res
+// Orders_Extension.res
 open ReventlessInfra.ExtensionMapping
 
 module Mapping = {
@@ -614,47 +616,35 @@ module Mapping = {
 }
 ```
 
-The generator references it as `OrdersExtension.Mapping`.
+The generator references it as `Orders_Extension.Mapping`.
 
 #### Generated output (aggregate catalog)
 
 ```rescript
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
-open Reventless.Projection
-
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(
-    Category, CategoryBehavior, ReventlessInfra.NoEventMappings.Make(Category),
+    Category, Category_Behavior, ReventlessInfra.NoEventMappings.Make(Category),
   )
   module ProductAggregate = Platform.Aggregate.Make(
-    Product, ProductBehavior, ReventlessInfra.NoEventMappings.Make(Product),
+    Product, Product_Behavior, ReventlessInfra.NoEventMappings.Make(Product),
   )
   module ProductDemandAggregate = Platform.Aggregate.Make(
-    ProductDemand, ProductDemandBehavior, ReventlessInfra.NoEventMappings.Make(ProductDemand),
+    ProductDemand, ProductDemand_Behavior, ReventlessInfra.NoEventMappings.Make(ProductDemand),
   )
 
-  // ReadModels
-  @reventless.projections
-  module CategoriesProjectionsWrapper: Mappings with module Target := CategoriesReadModel = {
-    let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
-  }
-  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
-
-  @reventless.projections
-  module ProductDemandProjectionsWrapper: Mappings with module Target := ProductDemandReadModel = {
-    let mappings: array<module(Mapping)> = [
-      module(ProductDemandProjections.ProductMapping),
-      module(ProductDemandProjections.ProductDemandMapping),
-    ]
-  }
-  module ProductDemandReadModel = Platform.ReadModel.Make(ProductDemandReadModel, ProductDemandProjectionsWrapper)
+  // ReadModels — the projections file declares `let mappings` via
+  // `@@reventless.mappings`, so the generator references it directly.
+  // The wrapper LHS appends `ReadModel` so it doesn't shadow the bare-named spec.
+  module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
+  module ProductDemandsReadModel = Platform.ReadModel.Make(ProductDemands, ProductDemands_Projections)
 
   // ExtensionPoints
-  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
+  module Products_ExtensionPoint = Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)
 
   // Extensions
-  module OrdersExtension = Platform.Extension.Make(OrdersExtension.Mapping)
+  module Orders_Extension = Platform.Extension.Make(Orders_Extension.Mapping)
 
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
@@ -663,17 +653,17 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPoint)],
-      ~extensions=[module(OrdersExtension)],
+      ~extensionPoints=[module(Products_ExtensionPoint)],
+      ~extensions=[module(Orders_Extension)],
       ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-      ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), ...],
+      ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), ...],
       ~tasks=[module(ImportProductsTask)],
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,
           ~name="Catalog",
           ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-          ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), ...],
+          ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), ...],
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )
@@ -685,9 +675,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 The generated file is **committed to git** — changes are visible in code review, and CI compiles it directly without re-running the generator.
 
 **Notes on the generated code:**
-- `@reventless.projections` wraps each projections module; the PPX injects `module M`, `module type Mapping`, and `let moduleUrl`
-- `Platform.ExtensionPoint.Make` takes just the mapping module — no `Config` second argument
-- Aggregates with a custom event-mappings file (e.g. `Order_EventMappings.res` under `src/EventMappings/`) are wired automatically: `Platform.Aggregate.Make(Order, OrderBehavior, Order_EventMappings)`. Event mappings let an aggregate receive events published by other aggregates (via EventTopic subscriptions) and route them to local commands. The default third argument, `ReventlessInfra.NoEventMappings.Make(Spec)`, is used when no such inbound routing is needed
+- The wrapper LHS for ReadModels appends `ReadModel` (e.g. `module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)`) so it doesn't shadow the bare-named spec module (`Categories`).
+- `Platform.ExtensionPoint.Make` takes just the mapping module — no `Config` second argument.
+- Aggregates with a custom event-mappings file (e.g. `Order_Mappings.res`) are wired automatically: `Platform.Aggregate.Make(Order, Order_Behavior, Order_Mappings)`. Event mappings let an aggregate receive events published by other aggregates (via EventTopic subscriptions) and route them to local commands. The default third argument, `ReventlessInfra.NoEventMappings.Make(Spec)`, is used when no such inbound routing is needed.
 
 ---
 
@@ -849,20 +839,23 @@ See `examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/PlaceOrder.
 
 A StateViewSlice projects events from the shared event log into a query-side read model. It replaces the ReadModel + Projection pattern from the aggregate approach.
 
-**`ProductsView.res`**:
+**`Products.res`** (spec):
 ```rescript
-open Reventless.Projection
-open CatalogEventLog
-
-let name = "ProductsView"
-
-module DcbEventLogSpec = CatalogEventLog
-
-@schema
-type event = CatalogEventLog.event
+@@reventless.spec
 
 @schema
 type state = {productId: string, name: string, description: string, price: float}
+
+@schema
+type consumedEvent =
+  | ProductAdded({productId: string, name: string, description: string, price: float})
+  | ProductNameChanged({productId: string, name: string})
+  | ProductPriceChanged({productId: string, price: float})
+```
+
+**`Products_Projection.res`** (body):
+```rescript
+@@reventless.projection
 
 let project = event =>
   switch event {
@@ -871,21 +864,17 @@ let project = event =>
     ]
   | ProductNameChanged({productId, name}) => [Update(productId, state => {...state, name})]
   | ProductPriceChanged({productId, price}) => [Update(productId, state => {...state, price})]
-  | _ => []
   }
 ```
 
-**StateViewSlice spec fields:**
+**StateViewSlice file split:**
 
-| Field | Purpose |
-|-------|---------|
-| `name` | Unique view name |
-| `module DcbEventLogSpec` | Links to the shared event log |
-| `event` | Event type (always `= DcbEventLogSpec.event`) |
-| `state` | Read model record shape |
-| `project` | Map events to `Set`/`Update`/`Ignore` operations |
+| File | Purpose |
+|---|---|
+| `<Name>.res` | Spec — declares `@schema type state` and `@schema type consumedEvent` (the typed subset of the shared DCB log this view cares about). The PPX auto-injects `let name`, `module Id`, `let config`, `let subIdConfig`, `open Reventless.Projection`. |
+| `<Name>_Projection.res` | Body — the `let project = event => ...` function returning `Set`/`Update`/`UpdateWithDefault`/`Delete`/`Ignore` operations. The PPX auto-opens the spec module so event variants resolve unqualified. |
 
-The `project` function uses the same operations as aggregate projections (`Set`, `Update`, `Ignore`), but receives events directly from the shared log rather than through mapping modules.
+The `project` function uses the same operations as aggregate projections, but receives events directly from the shared DCB log rather than through per-source mapping modules.
 
 ---
 
@@ -945,7 +934,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // ... more slices ...
 
   // ── StateViewSlices (read-side) ────────────────────────────
-  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
+  module ProductsSlice = Platform.StateViewSlice.Make(Products, Products_Projection)
   // ... more views ...
 
   // ── Extension Point (outbound) ──────────────────────────────
@@ -954,8 +943,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   )
 
   // ── Extension (inbound from Ordering) ───────────────────────
-  module OrdersExtension = Platform.Extension.Make(
-    OrdersExtension.Mapping,
+  module Orders_Extension = Platform.Extension.Make(
+    Orders_Extension.Mapping,
   )
 
   let make = () =>
@@ -970,7 +959,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         // ... all write slices ...
       ],
       ~stateViewSlices=[
-        module(ProductsViewSlice),
+        module(ProductsSlice),
         // ... all view slices ...
       ],
     )
@@ -988,7 +977,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
 Extension points and extensions in DCB work the same as in aggregates, but require a **shim module** to expose the DCB event log as an `Aggregate.Spec`. This is because the EP/Extension mapping infrastructure expects aggregate-shaped modules.
 
-**Extension point mapping** (`ProductsExtensionPointMapping.res`):
+**Extension point mapping** (`Products_ExtensionPointMapping.res`):
 ```rescript
 open Reventless
 open ReventlessInfra.ExtensionPointMapping
@@ -1019,7 +1008,7 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
 )
 ```
 
-**Extension mapping** (`OrdersExtension.res`):
+**Extension mapping** (`Orders_Extension.res`):
 ```rescript
 open ReventlessInfra.ExtensionMapping
 
@@ -1043,7 +1032,7 @@ module Mapping = {
 }
 ```
 
-The extension file exports `module Mapping` — the generator references it as `OrdersExtension.Mapping`.
+The extension file exports `module Mapping` — the generator references it as `Orders_Extension.Mapping`.
 
 ---
 
@@ -1068,15 +1057,17 @@ online-shop-dcb/
 │       │   │   ├── ChangeProductName.res
 │       │   │   └── ...
 │       │   └── StateViewSlice/
-│       │       ├── ProductsView.res
-│       │       └── ProductDemandView.res
+│       │       ├── Products.res
+│       │       ├── Products_Projection.res
+│       │       ├── ProductDemand.res
+│       │       └── ProductDemand_Projection.res
 │       ├── Category/
 │       │   ├── StateChangeSlice/
 │       │   └── StateViewSlice/
 │       ├── ExtensionPoint/
-│       │   └── ProductsExtensionPointMapping.res
+│       │   └── Products_ExtensionPointMapping.res
 │       ├── Extension/
-│       │   └── OrdersExtension.res
+│       │   └── Orders_Extension.res
 │       ├── Plugin/
 │       │   └── CatalogEventLog.res    # Shared event log type
 │       └── Plugin.res                  # Auto-generated composition root
@@ -1158,16 +1149,16 @@ A hybrid plugin passes both `~aggregates` and DCB slice arrays to `Plugin.make`:
 // CatalogPlugin.res — hybrid: Category aggregate + Product/Demand DCB
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // --- Aggregate-based: Category (independent entity) ---
-  module CategoryAggregate = Platform.Aggregate.Make(Category, CategoryBehavior)
-  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjections)
+  module CategoryAggregate = Platform.Aggregate.Make(Category, Category_Behavior)
+  module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
 
   // --- DCB-based: Product + ProductDemand (cross-entity consistency) ---
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
   // ... more slices
 
-  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
-  module ProductDemandViewSlice = Platform.StateViewSlice.Make(ProductDemandView)
+  module ProductsSlice = Platform.StateViewSlice.Make(Products, Products_Projection)
+  module ProductDemandSlice = Platform.StateViewSlice.Make(ProductDemand, ProductDemand_Projection)
 
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
@@ -1180,8 +1171,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(ChangeProductNameSlice),
       ],
       ~stateViewSlices=[
-        module(ProductsViewSlice),
-        module(ProductDemandViewSlice),
+        module(ProductsSlice),
+        module(ProductDemandSlice),
       ],
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
@@ -1237,7 +1228,7 @@ module MyReadModel = {
 Extension point mappings work identically for aggregate and DCB events. The existing DCB extension point adapter pattern (shim module) is the same whether the plugin is pure DCB or hybrid:
 
 ```rescript
-// ProductsExtensionPointMapping.res — maps DCB events to extension point
+// Products_ExtensionPointMapping.res — maps DCB events to extension point
 module DcbEventLogSpec = CatalogEventLog
 
 let extensionPointSpec = module(CatalogSpec.ProductsExtensionPoint)
@@ -1260,10 +1251,10 @@ catalog/
 │   ├── Category/
 │   │   ├── Aggregate/
 │   │   │   ├── Category.res          # Aggregate spec
-│   │   │   └── CategoryBehavior.res  # Aggregate behavior
+│   │   │   └── Category_Behavior.res  # Aggregate behavior
 │   │   └── ReadModel/
-│   │       ├── CategoriesReadModel.res
-│   │       └── CategoriesProjections.res
+│   │       ├── Categories.res
+│   │       └── Categories_Projections.res
 │   ├── Product/
 │   │   ├── StateChangeSlice/
 │   │   │   ├── AddProduct.res
@@ -1274,7 +1265,7 @@ catalog/
 │   │   └── CatalogEventLog.res       # DCB events (excludes Category)
 │   ├── Plugin.res                     # Auto-generated composition root
 │   └── ExtensionPoint/
-│       └── ProductsExtensionPointMapping.res
+│       └── Products_ExtensionPointMapping.res
 └── tests/
     ├── Category/
     │   └── CategoryBehaviorTest.res   # Aggregate behavior (pure unit test)
@@ -1471,7 +1462,7 @@ ExtensionPoint mapping                 Extension mapping
 ### Example: Ordering notifies Catalog of new orders
 
 1. **Ordering** publishes `OrdersExtensionPoint` events when an order is placed
-2. **Catalog** subscribes via `OrdersExtension` and routes to `ProductDemand` aggregate
+2. **Catalog** subscribes via `Orders_Extension` and routes to `ProductDemand` aggregate
 
 **Spec** (`ordering-spec/src/OrdersExtensionPoint.res`):
 ```rescript
@@ -1489,7 +1480,7 @@ type event =
   )
 ```
 
-**Subscriber** (`catalog/src/Extension/OrdersExtension.res`):
+**Subscriber** (`catalog/src/Extension/Orders_Extension.res`):
 ```rescript
 // Maps ItemOrdered → ProductDemand.Record command
 | ItemOrdered({productId, orderId}) => [

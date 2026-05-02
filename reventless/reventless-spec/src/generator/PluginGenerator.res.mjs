@@ -53,7 +53,7 @@ if (srcDirArg === "") {
   };
   let discovered = Discovery$Reventless.scan(srcDir, config_exclude);
   let resolved = Pairing$Reventless.resolve(discovered, srcDir);
-  let source = Codegen$Reventless.render(config, resolved);
+  let source = Codegen$Reventless.render(config, resolved, discovered);
   let outputDir;
   outputDir = typeof variant !== "object" ? srcDir : Nodepath.join(process.cwd(), "src");
   let pluginPath = Nodepath.join(outputDir, "Plugin.res");

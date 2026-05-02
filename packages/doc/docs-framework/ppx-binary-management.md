@@ -147,7 +147,7 @@ This runs `test/run.sh`, which:
 3. Compiles them with `npx rescript build`
 4. Asserts expected patterns in the generated `.res.mjs` output
 
-The test suite covers all PPX annotations: `@@reventless.spec`, `@@reventless.behavior`, `@@reventless.dcbTags`, `@reventless.projections`, `@partitionTag`, `@noTag`, `@dcbTag`, and `@compositePartitionTag`.
+The test suite covers all PPX annotations: `@@reventless.spec`, `@@reventless.behavior`, `@@reventless.mappings`, `@@reventless.automation`, `@@reventless.extension`, `@@reventless.task`, `@@reventless.dcbTags`, `@partitionTag`, `@noTag`, `@dcbTag`, and `@compositePartitionTag`.
 
 ## Workflow When Changing PPX Source
 

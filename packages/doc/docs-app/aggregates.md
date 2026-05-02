@@ -247,27 +247,25 @@ If an aggregate has no event mappings, use `ReventlessInfra.NoEventMappings.Make
 The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) over `Platform.T`**. This keeps your application code decoupled from the AWS infrastructure—only the composition root imports `reventless-aws`.
 
 ```rescript
-// CatalogPlugin.res
+// CatalogPlugin.res — auto-generated; the user just runs `pnpm run generate`.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
-    ProductBehavior,
+    Product_Behavior,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
 
-  @reventless.projections
-  module ProductProjections: Reventless.Projection.Mappings with module Target := ProductsReadModel = {
-    let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
-  }
-
-  module ProductReadModel = Platform.ReadModel.Make(ProductsReadModel, ProductProjections)
+  // Wrapper LHS appends `ReadModel` so it doesn't shadow the bare-named
+  // `Products` spec module. The projections file declares `let mappings`
+  // via `@@reventless.mappings`, so the generator references it directly.
+  module ProductsReadModel = Platform.ReadModel.Make(Products, Products_Projections)
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
       ~aggregates=[module(ProductAggregate)],
-      ~readModels=[module(ProductReadModel)],
+      ~readModels=[module(ProductsReadModel)],
     )
 }
 ```

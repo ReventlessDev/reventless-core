@@ -77,28 +77,6 @@ function findEventMappings(srcDir) {
   return dict;
 }
 
-function extractMappingModules(filePath) {
-  let result = [];
-  try {
-    let content = Nodefs.readFileSync(filePath, "utf8");
-    content.split("\n").forEach(line => {
-      let trimmed = line.trimStart();
-      if (!(trimmed.startsWith("module ") && trimmed.includes("= Mapping.Make("))) {
-        return;
-      }
-      let afterModule = trimmed.slice(7, trimmed.length);
-      let spaceIdx = afterModule.indexOf(" ");
-      if (spaceIdx !== -1) {
-        result.push(afterModule.slice(0, spaceIdx));
-        return;
-      }
-    });
-  } catch (exn) {
-    
-  }
-  return result;
-}
-
 function sortedStems(stems) {
   return stems.toSorted((a, b) => {
     if (a < b) {
@@ -253,26 +231,16 @@ function resolve(discovered, srcDir) {
   let readModels = Stdlib_Array.filterMap(sortedStems(readModelStems), rm => {
     let baseName = rm.endsWith("ReadModel") ? rm.slice(0, rm.length - 9 | 0) : rm;
     let underscoredProj = baseName + "_Projections";
-    let bareProj = baseName + "Projections";
-    let pickProj = stem => Stdlib_Option.map(projectionsByRelPath[stem], p => [
-      stem,
-      p
-    ]);
-    let v = pickProj(underscoredProj);
-    let chosen = v !== undefined ? v : pickProj(bareProj);
-    if (chosen !== undefined) {
-      let projStem = chosen[0];
-      let filePath = Nodepath.join(srcDir, chosen[1]);
-      let mappingModules = extractMappingModules(filePath);
-      let isMappingsAdopted = projStem === underscoredProj;
+    let match = projectionsByRelPath[underscoredProj];
+    if (match !== undefined) {
       return {
         readModel: rm,
-        projections: projStem,
-        mappingModules: mappingModules,
-        isMappingsAdopted: isMappingsAdopted
+        projections: underscoredProj
       };
+    } else {
+      console.warn("Generator: ReadModel `" + rm + "` has no matching `" + underscoredProj + ".res` — skipping");
+      return;
     }
-    console.warn("Generator: ReadModel `" + rm + "` has no matching `" + underscoredProj + "` or `" + bareProj + "` — skipping");
   });
   let epByGroup = {};
   let flatEpMappings = [];
@@ -335,7 +303,6 @@ export {
   mappingsSuffixForAutomation,
   isImplStem,
   findEventMappings,
-  extractMappingModules,
   sortedStems,
   extractTargetName,
   resolve,

@@ -30,7 +30,7 @@ let () = {
     let config = {...Config.read(~srcDir), variant}
     let discovered = Discovery.scan(~srcDir, ~exclude=config.exclude)
     let resolved = Pairing.resolve(discovered, ~srcDir)
-    let source = Codegen.render(~config, ~resolved)
+    let source = Codegen.render(~config, ~resolved, ~discovered)
 
     let outputDir = switch variant {
     | Config.Composition => srcDir

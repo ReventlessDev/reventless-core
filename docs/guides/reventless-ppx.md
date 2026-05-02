@@ -655,38 +655,68 @@ For these cases, use the manual declarations.
 
 ---
 
-## `@reventless.projections`
+## `@@reventless.mappings`
 
-Use on **projection module bindings** inside plugin functor bodies. This attribute works at any nesting depth (inside functors, modules, etc.).
+File-level attribute on `<Plural>_Projections.res` (multi-source ReadModel projections in `ReadModel/`) and `<Entity>_Mappings.res` (Aggregate event-mapping siblings in `Aggregate/`). Replaces the retired `@reventless.projections` module-level attribute.
 
-**What it injects** (into the module body):
+**What it injects** (at the top of the file):
 | Binding | Condition | Value |
 |---------|-----------|-------|
-| `module M` | Not already declared | `Reventless.Projection.Mappings.Make(Target)` |
+| `open Reventless.<Domain>` | Not already opened | `Projection` (in `ReadModel/`) or `EventMapping` (in `Aggregate/`) or `AutomationSlice` (in `AutomationSlice/`) |
+| `open Reventless.Message` | In `ReadModel/` and not already opened | — |
+| `module Target` | Not already declared | Alias to the spec module (`<Stem>` with `_Mappings` / `_Projections` suffix stripped) |
+| `module M` | Not already declared | `Reventless.<Domain>.Mappings.Make(Target)` |
 | `module type Mapping` | Not already declared | `M.Mapping` |
 | `let moduleUrl` | Not already declared | Computed npm specifier |
+| `let counter = None` | In `Aggregate/` and not already declared | — |
 
-The `Target` module is extracted from the module constraint (`with module Target := XReadModel`).
+The PPX also scans inner modules: any `module X = { ... }` containing both `let name = "..."` and `@schema type event` is treated as a DCB Source — `module Id = Reventless.Id.String` is injected (if absent) and dcbTags are applied to the event type's `*Id` fields.
 
 **Before (manual):**
 ```rescript
-module ProductProjections: Mappings with module Target := ProductsReadModel = {
-  module M = Mappings.Make(ProductsReadModel)
-  module type Mapping = M.Mapping
-  let moduleUrl: string = %raw(`import.meta.url`)
-  let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
-}
+open Reventless.Message
+open Reventless.Projection
+
+module ProductMapping = Mapping.Make(
+  Product,
+  Products,
+  {
+    open Product
+    let project = ({event, id, _}) =>
+      switch event {
+      | Added({name}) => Set(id, {Products.name: name})
+      | _ => Ignore
+      }
+  },
+)
+
+module M = Mappings.Make(Products)
+module type Mapping = M.Mapping
+let moduleUrl: string = %raw(`import.meta.url`)
+let mappings: array<module(Mapping)> = [module(ProductMapping)]
 ```
 
 **After (with PPX):**
 ```rescript
-@reventless.projections
-module ProductProjections: Mappings with module Target := ProductsReadModel = {
-  let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
-}
+@@reventless.mappings
+
+module ProductMapping = Mapping.Make(
+  Product,
+  Products,
+  {
+    open Product
+    let project = ({event, id, _}) =>
+      switch event {
+      | Added({name}) => Set(id, {Products.name: name})
+      | _ => Ignore
+      }
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(ProductMapping)]
 ```
 
-The `Mapping` module type is available for the `mappings` type annotation because the PPX injects `module type Mapping = M.Mapping` before the developer-authored code.
+The plugin generator references the projections module directly: `module ProductsReadModel = Platform.ReadModel.Make(Products, Products_Projections)`. No more `@reventless.projections` wrapper module in `Plugin.res`.
 
 ---
 
@@ -748,7 +778,7 @@ The developer only writes `let name` and the `@schema type event`. Everything el
 | `@s.matches(DcbTag.partition)` on partition key field | Use `@partitionTag` field annotation |
 | `@s.matches(DcbTag.string)` on non-`*Id` field | Use `@dcbTag` field annotation |
 | Suppress auto-tagging on a `*Id` field | Use `@noDcbTag` field annotation |
-| `module M = Mappings.Make(...)` + boilerplate | Auto-injected by `@reventless.projections` |
+| `module M = Mappings.Make(...)` + boilerplate | Auto-injected by `@@reventless.mappings` (file-level) |
 | `open Reventless.ReadModel; let config = config(); let subIdConfig = None` | Auto-injected by `@@reventless.spec` for `*ReadModel*` files |
 | `module Id`, `@schema command/error = unit`, `@s.matches`, `moduleUrl` in Delegate | Auto-injected in `*ExtensionPointMapping*` files; use `@reventless.delegate` elsewhere |
 | `let makeId = ...` in ReadModel/StateViewSlice spec | Use `@id` or `@compositeId` on `@schema type state` fields |

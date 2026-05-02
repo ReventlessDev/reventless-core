@@ -241,42 +241,14 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
     { mb with pmb_expr = new_body; pmb_attributes = attrs }
   | _ -> { mb with pmb_attributes = attrs }
 
-(* --- Phase 5: @reventless.projections inside module bodies --- *)
+(* --- Retired: @reventless.projections (use @@reventless.mappings instead) --- *)
 
-let extract_target_from_constraint (mty : module_type) : Longident.t option =
-  match mty.pmty_desc with
-  | Pmty_with (_, constraints) ->
-    let rec find = function
-      | [] -> None
-      | Pwith_modsubst ({ txt = Lident "Target"; _ }, { txt = lid; _ }) :: _ -> Some lid
-      | _ :: rest -> find rest
-    in
-    find constraints
-  | _ -> None
+let raise_projections_retired ~loc =
+  Location.raise_errorf ~loc
+    "[reventless-ppx] @reventless.projections has been removed. Move the per-source `Mapping.Make` modules and the `let mappings: array<module(Mapping)> = [...]` line into the slice-local `_Projections.res` file (in `ReadModel/`) and add `@@reventless.mappings` at the top. The auto-generated Plugin.res then references the projections module directly: `Platform.ReadModel.Make(<Spec>, <Spec>_Projections)`."
 
-let gen_mappings_make ~loc (target : Longident.t) =
-  let mappings_make = Ldot (Ldot (Ldot (Lident "Reventless", "Projection"), "Mappings"), "Make") in
-  let target_mod = {
-    pmod_desc = Pmod_ident { txt = target; loc };
-    pmod_loc = loc;
-    pmod_attributes = [];
-  } in
-  { pstr_desc = Pstr_module {
-      pmb_name = { txt = Some "M"; loc };
-      pmb_expr = {
-        pmod_desc = Pmod_apply ({
-          pmod_desc = Pmod_ident { txt = mappings_make; loc };
-          pmod_loc = loc;
-          pmod_attributes = [];
-        }, target_mod);
-        pmod_loc = loc;
-        pmod_attributes = [];
-      };
-      pmb_attributes = [];
-      pmb_loc = loc;
-    };
-    pstr_loc = loc }
-
+(* Shared helper used by the file-level @@reventless.mappings /
+   @@reventless.automation kinds — emits [module type Mapping = M.Mapping]. *)
 let gen_module_type_mapping ~loc =
   { pstr_desc = Pstr_modtype {
       pmtd_name = { txt = "Mapping"; loc };
@@ -290,37 +262,16 @@ let gen_module_type_mapping ~loc =
     };
     pstr_loc = loc }
 
-let transform_projections_module ~loc ~specifier (mb : module_binding) : module_binding =
-  let attrs = List.filter (fun (a : attribute) ->
-    not (String.equal a.attr_name.txt "reventless.projections")
-  ) mb.pmb_attributes in
-  match mb.pmb_expr.pmod_desc with
-  | Pmod_constraint (body_expr, mty) ->
-    let target = extract_target_from_constraint mty in
-    (match target, body_expr.pmod_desc with
-     | Some target_lid, Pmod_structure body ->
-       let prefix =
-         (if not (Util.has_module_binding "M" body) then [gen_mappings_make ~loc target_lid] else [])
-         @ (if not (Util.has_module_binding "Mapping" body) then [gen_module_type_mapping ~loc] else [])
-         @ (if not (Util.has_let_binding "moduleUrl" body) then [ModuleUrl.gen_module_url ~loc specifier] else [])
-       in
-       let new_body = { body_expr with pmod_desc = Pmod_structure (prefix @ body) } in
-       { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_constraint (new_body, mty) };
-                 pmb_attributes = attrs }
-     | _ -> { mb with pmb_attributes = attrs })
-  | _ -> { mb with pmb_attributes = attrs }
-
 let rec walk_structure ~specifier ~is_spec (str : structure) : structure =
   List.map (fun (item : structure_item) ->
     match item.pstr_desc with
     | Pstr_module mb ->
-      let has_proj = Util.has_attr "reventless.projections" mb.pmb_attributes in
+      if Util.has_attr "reventless.projections" mb.pmb_attributes then
+        raise_projections_retired ~loc:item.pstr_loc;
       let has_del = Util.has_attr "reventless.delegate" mb.pmb_attributes in
       let is_delegate = has_del ||
         (is_spec && (match mb.pmb_name.txt with Some "Delegate" -> true | _ -> false)) in
-      let mb = if has_proj then
-        transform_projections_module ~loc:item.pstr_loc ~specifier mb
-      else if is_delegate then
+      let mb = if is_delegate then
         transform_delegate_module ~loc:item.pstr_loc ~specifier mb
       else mb in
       let mb = { mb with pmb_expr = walk_module_expr ~specifier ~is_spec mb.pmb_expr } in
@@ -344,8 +295,7 @@ let has_module_level_attr_deep (str : structure) =
     List.iter (fun (item : structure_item) ->
       match item.pstr_desc with
       | Pstr_module mb ->
-        if Util.has_attr "reventless.projections" mb.pmb_attributes
-           || Util.has_attr "reventless.delegate" mb.pmb_attributes
+        if Util.has_attr "reventless.delegate" mb.pmb_attributes
         then found := true;
         scan_mod mb.pmb_expr
       | _ -> ()

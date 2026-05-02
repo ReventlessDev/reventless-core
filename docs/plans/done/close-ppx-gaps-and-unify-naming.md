@@ -265,7 +265,7 @@ After each example sweep:
 
 ---
 
-## Phase 4 — Update plugin generator
+## Phase 4 — Update plugin generator — ✅ DONE (PR6)
 
 `packages/reventless-codegen/` (or wherever `generate-plugin` lives) must:
 
@@ -278,7 +278,7 @@ After each example sweep:
 
 ---
 
-## Phase 5 — Documentation & convention sweep
+## Phase 5 — Documentation & convention sweep — ✅ DONE (PR6)
 
 - Update `.claude/rules/conventions.md` and `.claude/rules/app-developer.md` with the new file naming table and the new PPX inventory. Add the spec-stem-uniqueness rule.
 - Update `docs/guides/platform-and-plugin-guide.md` (the canonical reference per memory) — every code listing, every snippet, every folder-tree illustration.
@@ -287,7 +287,7 @@ After each example sweep:
 
 ---
 
-## Phase 6 — Retire deprecated PPX surfaces
+## Phase 6 — Retire deprecated PPX surfaces — ✅ DONE (PR6)
 
 - Remove `@reventless.projections` handling from `ReventlessPpx.ml`. Add a clear error message if a user still applies it: "use `@@reventless.mappings` in the slice-local `_Projections.res` file instead".
 - Rebuild PPX binaries (osx + linux).
@@ -328,4 +328,8 @@ Reasonable PR boundaries:
 - **PR 3** ✅: aggregates sweep (3.0–3.9 except 3.4/3.5 which are N/A there).
 - **PR 4** ✅: dcb sweep (3.4 StateViewSlice, 3.5 AutomationSlice merge, 3.6 Extension, 3.7 ExtensionPoint; 3.1–3.3 / 3.8–3.9 N/A for dcb). Build clean, all dcb tests pass; no codegen changes needed (existing `_Behavior` resolution + `_Extension`/`_ExtensionPoint` suffix handling from PR3 covered dcb out of the box).
 - **PR 5** ✅: hybrid sweep — Phases 3.1, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 (3.2 N/A — hybrid Aggregates have no separate `_EventMappings.res`). Build clean, all hybrid tests pass (the single pre-existing `OrderingE2ETest` "after syncing missing product, PlaceOrder succeeds" failure is unrelated to renames; observed identically on PR4).
+- **PR 6** ✅: Phases 4 + 5 + 6.
+  - Phase 4: Pairing.res drops the legacy `<Plural>Projections` (no underscore) form and the `extractMappingModules` helper; Codegen.res's `renderReadModels` collapses to the single direct shape (no more `@reventless.projections` wrapper emission); new `validateUniqueSpecStems` lint errors when two `.res` files share a stem within a plugin (the case PR3 hit with `Aggregate/ProductDemand.res` + `ReadModel/ProductDemand.res`); render signature gains `~discovered` so the lint runs before any output.
+  - Phase 5: `.claude/rules/app-developer.md` rewritten with the new file naming table, full PPX inventory (`@@reventless.mappings` / `.automation` / `.extension` / `.task`), spec-stem-uniqueness rule, and removal of `@reventless.projections`. `docs/guides/platform-and-plugin-guide.md` swept end-to-end: folder trees, code listings, ReadModel/Projection/StateViewSlice examples, and the generated-Plugin.res sample all use the new convention. `packages/doc/docs-app/aggregates.md`, `rescript-syntax.md`, and `docs-framework/ppx-binary-management.md` updated.
+  - Phase 6: `@reventless.projections` PPX handler replaced with `Location.raise_errorf` containing a clear migration message; `walk_structure` and `has_module_level_attr_deep` no longer scan for the retired attribute. PPX binaries rebuilt: `ppx-osx-x64.exe` (locally) and `ppx-linux.exe` (Docker). PPX test suite: 173/173 passing.
 - **PR 6**: Phases 4 + 5 + 6 (codegen + docs + PPX retirement) together.

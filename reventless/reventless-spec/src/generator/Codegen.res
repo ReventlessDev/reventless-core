@@ -62,35 +62,18 @@ let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> 
   })
 
 let renderReadModels = (readModels: array<Pairing.readModelDef>): array<string> =>
-  readModels->Array.flatMap(({readModel, projections, mappingModules, isMappingsAdopted}) => {
-    if isMappingsAdopted {
-      // Phase-3.3 form: the projections file already declares `let mappings`
-      // via `@@reventless.mappings`, so we just reference it directly. The
-      // wrapping module name appends `ReadModel` so the LHS doesn't shadow
-      // the bare-named spec module (e.g., `Categories`).
-      let wrapperName = if readModel->String.endsWith("ReadModel") {
-        readModel
-      } else {
-        readModel ++ "ReadModel"
-      }
-      [
-        "  module " ++ wrapperName ++ " = Platform.ReadModel.Make(" ++ readModel ++ ", " ++ projections ++ ")",
-      ]
+  readModels->Array.flatMap(({readModel, projections}) => {
+    // The projections file declares `let mappings` via `@@reventless.mappings`,
+    // so we reference it directly. The wrapping module name appends `ReadModel`
+    // so the LHS doesn't shadow the bare-named spec module (e.g., `Categories`).
+    let wrapperName = if readModel->String.endsWith("ReadModel") {
+      readModel
     } else {
-      // Legacy form: emit an inline `@reventless.projections` wrapper that
-      // collects the per-source `Mapping.Make` modules from the projections
-      // file into a `let mappings` array.
-      let mappingEntries =
-        mappingModules->Array.map(m => "module(" ++ projections ++ "." ++ m ++ ")")
-      let mappingsLine = "    let mappings: array<module(Mapping)> = [" ++ mappingEntries->Array.join(", ") ++ "]"
-      [
-        "  @reventless.projections",
-        "  module " ++ projections ++ "Wrapper: Mappings with module Target := " ++ readModel ++ " = {",
-        mappingsLine,
-        "  }",
-        "  module " ++ readModel ++ " = Platform.ReadModel.Make(" ++ readModel ++ ", " ++ projections ++ "Wrapper)",
-      ]
+      readModel ++ "ReadModel"
     }
+    [
+      "  module " ++ wrapperName ++ " = Platform.ReadModel.Make(" ++ readModel ++ ", " ++ projections ++ ")",
+    ]
   })
 
 let renderTasks = (tasks: array<string>): array<string> =>
@@ -322,6 +305,37 @@ let renderPluginStructureCall = (
   }
 }
 
+// ── Duplicate spec-stem lint ─────────────────────────────────────────────────
+// Within one plugin, every spec file's stem produces a top-level ReScript
+// module name. Two spec files with the same stem (across folders) collide at
+// link time with a confusing error. We catch the collision here with a clear
+// message naming both file paths.
+
+let validateUniqueSpecStems = (~discovered: array<Discovery.discoveredFile>) => {
+  // Each discovered .res file becomes a top-level ReScript module named after
+  // its filename stem. Two files with the same stem in different folders
+  // collide at link time, so we surface the conflict here with both paths.
+  let byStem: Dict.t<array<string>> = Dict.make()
+  discovered->Array.forEach((d: Discovery.discoveredFile) => {
+    let existing = byStem->Dict.get(d.stem)->Option.getOr([])
+    existing->Array.push(d.relPath)
+    byStem->Dict.set(d.stem, existing)
+  })
+  byStem
+  ->Dict.toArray
+  ->Array.forEach(((stem, paths)) => {
+    if paths->Array.length > 1 {
+      let pathList = paths->Array.toSorted((a, b) => if a < b {-1.0} else if a > b {1.0} else {0.0})->Array.join("\n  - ")
+      JsError.throwWithMessage(
+        "Generator: stem `" ++
+        stem ++
+        "` is used by multiple files. Filename stems must be unique across a plugin so the generated module names don't collide:\n  - " ++
+        pathList,
+      )
+    }
+  })
+}
+
 // ── targetName validation ────────────────────────────────────────────────────
 
 let validateSliceTargets = (~resolved: Pairing.resolved) => {
@@ -517,7 +531,7 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
     )->push
   }
 
-  // AutomationSlices — Plan 04 3-arg form: (Spec, _Automation, _Mappings)
+  // AutomationSlices — 2-arg form: (Spec, _Automation)
   if resolved.automationSlices->Array.length > 0 {
     lines->Array.push("  // AutomationSlices")
     renderAutomationSlices(resolved.automationSlices)->push
@@ -674,7 +688,12 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
 
 // ── Top-level render ─────────────────────────────────────────────────────────
 
-let render = (~config: Config.config, ~resolved: Pairing.resolved): string => {
+let render = (
+  ~config: Config.config,
+  ~resolved: Pairing.resolved,
+  ~discovered: array<Discovery.discoveredFile>,
+): string => {
+  validateUniqueSpecStems(~discovered)
   validateSliceTargets(~resolved)
   switch config.variant {
   | Aws({compositionNamespace}) =>

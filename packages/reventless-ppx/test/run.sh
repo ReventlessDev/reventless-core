@@ -99,20 +99,9 @@ type event = Placed
 type error = unit
 EOF
 
-# Projections inside functor — @reventless.projections
-mkdir -p "$PLUGIN/src/Plugin"
-cat > "$PLUGIN/src/Plugin/TestPlugin.res" <<'EOF'
-open Reventless.Projection
-
-module type PlatformT = { let x: int }
-
-module Make = (Platform: PlatformT) => {
-  @reventless.projections
-  module ProductProjections: Mappings with module Target := ProductsReadModel = {
-    let mappings = []
-  }
-}
-EOF
+# Note: `@reventless.projections` was retired — projection mappings now live
+# in slice-local `<Plural>_Projections.res` files with `@@reventless.mappings`
+# (covered by the multi-source ReadModel fixture below).
 
 # ─── Fixture: spec package (no reventless-spec, namespace ends in Spec) ──
 
@@ -969,12 +958,8 @@ JS="$PLUGIN/src/Aggregate/Order.res.mjs"
 assert_js_contains "$JS" 'let name = "CustomOrder"'       "explicit name preserved"
 assert_js_not_contains "$JS" 'let name = "Order"'         "does not inject derived name"
 
-echo ""
-echo "=== Test: @reventless.projections inside functor ==="
-JS="$PLUGIN/src/Plugin/TestPlugin.res.mjs"
-assert_js_contains "$JS" 'moduleUrl'                       "projections moduleUrl injected"
-# The PPX should inject Mappings.Make which compiles to a module reference
-pass "projections module compiles (M + Mapping + moduleUrl injected correctly)"
+# Note: `@reventless.projections` was retired — its replacement is
+# `@@reventless.mappings` covered by the multi-source ReadModel fixture below.
 
 # ─── Compile spec package ───────────────────────────────────────────
 
