@@ -3,25 +3,24 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Order$OrderingPlugin from "./Order/Aggregate/Order.res.mjs";
-import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
+import * as Orders$OrderingPlugin from "./Order/ReadModel/Orders.res.mjs";
 import * as Customer$OrderingPlugin from "./Customer/Aggregate/Customer.res.mjs";
-import * as OrderBehavior$OrderingPlugin from "./Order/Aggregate/OrderBehavior.res.mjs";
+import * as Customers$OrderingPlugin from "./Customer/ReadModel/Customers.res.mjs";
 import * as CatalogProduct$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProduct.res.mjs";
-import * as OrdersReadModel$OrderingPlugin from "./Order/ReadModel/OrdersReadModel.res.mjs";
-import * as CustomerBehavior$OrderingPlugin from "./Customer/Aggregate/CustomerBehavior.res.mjs";
+import * as Order_Behavior$OrderingPlugin from "./Order/Aggregate/Order_Behavior.res.mjs";
+import * as Order_Mappings$OrderingPlugin from "./Order/Aggregate/Order_Mappings.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as OrdersProjections$OrderingPlugin from "./Order/ReadModel/OrdersProjections.res.mjs";
-import * as ProductsExtension$OrderingPlugin from "./Extension/ProductsExtension.res.mjs";
-import * as CustomersReadModel$OrderingPlugin from "./Customer/ReadModel/CustomersReadModel.res.mjs";
+import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProducts.res.mjs";
+import * as Customer_Behavior$OrderingPlugin from "./Customer/Aggregate/Customer_Behavior.res.mjs";
 import * as OrderNotifications$OrderingPlugin from "./Task/OrderNotifications.res.mjs";
-import * as OrdersExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/OrdersExtensionPoint.res.mjs";
-import * as Order_EventMappings$OrderingPlugin from "./Order/Aggregate/Order_EventMappings.res.mjs";
-import * as ProductsExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/ProductsExtensionPoint.res.mjs";
-import * as CustomersProjections$OrderingPlugin from "./Customer/ReadModel/CustomersProjections.res.mjs";
-import * as CatalogProductBehavior$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProductBehavior.res.mjs";
-import * as AvailableProductsReadModel$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProductsReadModel.res.mjs";
-import * as OrdersExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
-import * as AvailableProductsProjections$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProductsProjections.res.mjs";
+import * as Orders_Projections$OrderingPlugin from "./Order/ReadModel/Orders_Projections.res.mjs";
+import * as Products_Extension$OrderingPlugin from "./Extension/Products_Extension.res.mjs";
+import * as Orders_ExtensionPoint$OrderingSpec from "@reventlessdev/online-shop-aggregates-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
+import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-aggregates-catalog-spec/src/Products_ExtensionPoint.res.mjs";
+import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModel/Customers_Projections.res.mjs";
+import * as CatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/Aggregate/CatalogProduct_Behavior.res.mjs";
+import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
+import * as AvailableProducts_Projections$OrderingPlugin from "./CatalogProduct/ReadModel/AvailableProducts_Projections.res.mjs";
 
 function Make(Platform) {
   let CatalogProductAggregate = Platform.Aggregate.Make({
@@ -32,10 +31,10 @@ function Make(Platform) {
     commandSchema: CatalogProduct$OrderingPlugin.commandSchema,
     moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl
   })({
-    initialState: CatalogProductBehavior$OrderingPlugin.initialState,
-    evolve: CatalogProductBehavior$OrderingPlugin.evolve,
-    decide: CatalogProductBehavior$OrderingPlugin.decide,
-    moduleUrl: CatalogProductBehavior$OrderingPlugin.moduleUrl
+    initialState: CatalogProduct_Behavior$OrderingPlugin.initialState,
+    evolve: CatalogProduct_Behavior$OrderingPlugin.evolve,
+    decide: CatalogProduct_Behavior$OrderingPlugin.decide,
+    moduleUrl: CatalogProduct_Behavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: CatalogProduct$OrderingPlugin.name,
     Id: Id$Reventless.$$String,
@@ -49,10 +48,10 @@ function Make(Platform) {
     commandSchema: Customer$OrderingPlugin.commandSchema,
     moduleUrl: Customer$OrderingPlugin.moduleUrl
   })({
-    initialState: CustomerBehavior$OrderingPlugin.initialState,
-    evolve: CustomerBehavior$OrderingPlugin.evolve,
-    decide: CustomerBehavior$OrderingPlugin.decide,
-    moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl
+    initialState: Customer_Behavior$OrderingPlugin.initialState,
+    evolve: Customer_Behavior$OrderingPlugin.evolve,
+    decide: Customer_Behavior$OrderingPlugin.decide,
+    moduleUrl: Customer_Behavior$OrderingPlugin.moduleUrl
   })(NoEventMappings$ReventlessInfra.Make({
     name: Customer$OrderingPlugin.name,
     Id: Id$Reventless.$$String,
@@ -66,80 +65,56 @@ function Make(Platform) {
     commandSchema: Order$OrderingPlugin.commandSchema,
     moduleUrl: Order$OrderingPlugin.moduleUrl
   })({
-    initialState: OrderBehavior$OrderingPlugin.initialState,
-    evolve: OrderBehavior$OrderingPlugin.evolve,
-    decide: OrderBehavior$OrderingPlugin.decide,
-    moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl
+    initialState: Order_Behavior$OrderingPlugin.initialState,
+    evolve: Order_Behavior$OrderingPlugin.evolve,
+    decide: Order_Behavior$OrderingPlugin.decide,
+    moduleUrl: Order_Behavior$OrderingPlugin.moduleUrl
   })({
-    moduleUrl: Order_EventMappings$OrderingPlugin.moduleUrl,
-    mappings: Order_EventMappings$OrderingPlugin.mappings,
+    moduleUrl: Order_Mappings$OrderingPlugin.moduleUrl,
+    mappings: Order_Mappings$OrderingPlugin.mappings,
     counter: undefined
   });
-  Projection$Reventless.Mappings.Make({
-    Id: Id$Reventless.$$String,
-    name: AvailableProductsReadModel$OrderingPlugin.name,
-    stateSchema: AvailableProductsReadModel$OrderingPlugin.stateSchema,
-    subIdConfig: undefined
-  });
-  let mappings = [AvailableProductsProjections$OrderingPlugin.CatalogProductMapping];
-  let AvailableProductsProjectionsWrapper = {
-    moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Plugin.res.mjs",
-    mappings: mappings
-  };
   let AvailableProductsReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
-    name: AvailableProductsReadModel$OrderingPlugin.name,
-    moduleUrl: AvailableProductsReadModel$OrderingPlugin.moduleUrl,
-    stateSchema: AvailableProductsReadModel$OrderingPlugin.stateSchema,
-    config: AvailableProductsReadModel$OrderingPlugin.config,
+    name: AvailableProducts$OrderingPlugin.name,
+    moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
+    stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
+    config: AvailableProducts$OrderingPlugin.config,
     subIdConfig: undefined
-  })(AvailableProductsProjectionsWrapper);
-  Projection$Reventless.Mappings.Make({
-    Id: Id$Reventless.$$String,
-    name: CustomersReadModel$OrderingPlugin.name,
-    stateSchema: CustomersReadModel$OrderingPlugin.stateSchema,
-    subIdConfig: undefined
+  })({
+    moduleUrl: AvailableProducts_Projections$OrderingPlugin.moduleUrl,
+    mappings: AvailableProducts_Projections$OrderingPlugin.mappings
   });
-  let mappings$1 = [CustomersProjections$OrderingPlugin.CustomerMapping];
-  let CustomersProjectionsWrapper = {
-    moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Plugin.res.mjs",
-    mappings: mappings$1
-  };
   let CustomersReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
-    name: CustomersReadModel$OrderingPlugin.name,
-    moduleUrl: CustomersReadModel$OrderingPlugin.moduleUrl,
-    stateSchema: CustomersReadModel$OrderingPlugin.stateSchema,
-    config: CustomersReadModel$OrderingPlugin.config,
+    name: Customers$OrderingPlugin.name,
+    moduleUrl: Customers$OrderingPlugin.moduleUrl,
+    stateSchema: Customers$OrderingPlugin.stateSchema,
+    config: Customers$OrderingPlugin.config,
     subIdConfig: undefined
-  })(CustomersProjectionsWrapper);
-  Projection$Reventless.Mappings.Make({
-    Id: Id$Reventless.$$String,
-    name: OrdersReadModel$OrderingPlugin.name,
-    stateSchema: OrdersReadModel$OrderingPlugin.stateSchema,
-    subIdConfig: undefined
+  })({
+    moduleUrl: Customers_Projections$OrderingPlugin.moduleUrl,
+    mappings: Customers_Projections$OrderingPlugin.mappings
   });
-  let mappings$2 = [OrdersProjections$OrderingPlugin.OrderMapping];
-  let OrdersProjectionsWrapper = {
-    moduleUrl: "@reventlessdev/online-shop-aggregates-ordering/src/Plugin.res.mjs",
-    mappings: mappings$2
-  };
   let OrdersReadModel = Platform.ReadModel.Make({
     Id: Id$Reventless.$$String,
-    name: OrdersReadModel$OrderingPlugin.name,
-    moduleUrl: OrdersReadModel$OrderingPlugin.moduleUrl,
-    stateSchema: OrdersReadModel$OrderingPlugin.stateSchema,
-    config: OrdersReadModel$OrderingPlugin.config,
+    name: Orders$OrderingPlugin.name,
+    moduleUrl: Orders$OrderingPlugin.moduleUrl,
+    stateSchema: Orders$OrderingPlugin.stateSchema,
+    config: Orders$OrderingPlugin.config,
     subIdConfig: undefined
-  })(OrdersProjectionsWrapper);
+  })({
+    moduleUrl: Orders_Projections$OrderingPlugin.moduleUrl,
+    mappings: Orders_Projections$OrderingPlugin.mappings
+  });
   let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
-  let OrdersExtensionPoint = Platform.ExtensionPoint.Make({
+  let Orders_ExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
-      name: OrdersExtensionPoint$OrderingSpec.name,
-      moduleUrl: OrdersExtensionPoint$OrderingSpec.moduleUrl,
-      commandSchema: OrdersExtensionPoint$OrderingSpec.commandSchema,
-      eventSchema: OrdersExtensionPoint$OrderingSpec.eventSchema,
-      directiveSchema: OrdersExtensionPoint$OrderingSpec.directiveSchema
+      name: Orders_ExtensionPoint$OrderingSpec.name,
+      moduleUrl: Orders_ExtensionPoint$OrderingSpec.moduleUrl,
+      commandSchema: Orders_ExtensionPoint$OrderingSpec.commandSchema,
+      eventSchema: Orders_ExtensionPoint$OrderingSpec.eventSchema,
+      directiveSchema: Orders_ExtensionPoint$OrderingSpec.directiveSchema
     },
     Delegate: {
       Id: Id$Reventless.$$String,
@@ -149,16 +124,16 @@ function Make(Platform) {
       commandSchema: Order$OrderingPlugin.commandSchema,
       moduleUrl: Order$OrderingPlugin.moduleUrl
     },
-    mapIncomingCommand: OrdersExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
-    mapOutgoingEvent: OrdersExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
+    mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
+    mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });
-  let ProductsExtension = Platform.Extension.Make({
+  let Products_Extension = Platform.Extension.Make({
     ExtensionPoint: {
-      name: ProductsExtensionPoint$CatalogSpec.name,
-      moduleUrl: ProductsExtensionPoint$CatalogSpec.moduleUrl,
-      commandSchema: ProductsExtensionPoint$CatalogSpec.commandSchema,
-      eventSchema: ProductsExtensionPoint$CatalogSpec.eventSchema,
-      directiveSchema: ProductsExtensionPoint$CatalogSpec.directiveSchema
+      name: Products_ExtensionPoint$CatalogSpec.name,
+      moduleUrl: Products_ExtensionPoint$CatalogSpec.moduleUrl,
+      commandSchema: Products_ExtensionPoint$CatalogSpec.commandSchema,
+      eventSchema: Products_ExtensionPoint$CatalogSpec.eventSchema,
+      directiveSchema: Products_ExtensionPoint$CatalogSpec.directiveSchema
     },
     Delegate: {
       Id: Id$Reventless.$$String,
@@ -168,8 +143,8 @@ function Make(Platform) {
       commandSchema: CatalogProduct$OrderingPlugin.commandSchema,
       moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl
     },
-    mapIncomingEvent: ProductsExtension$OrderingPlugin.Mapping.mapIncomingEvent,
-    mapOutgoingEvent: ProductsExtension$OrderingPlugin.Mapping.mapOutgoingEvent
+    mapIncomingEvent: Products_Extension$OrderingPlugin.Mapping.mapIncomingEvent,
+    mapOutgoingEvent: Products_Extension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
   let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [
     CatalogProductAggregate,
@@ -179,8 +154,8 @@ function Make(Platform) {
     AvailableProductsReadModel,
     CustomersReadModel,
     OrdersReadModel
-  ], undefined, undefined, undefined, undefined, undefined, [ProductsExtension]);
-  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [OrdersExtensionPoint], [ProductsExtension], [
+  ], undefined, undefined, undefined, undefined, undefined, [Products_Extension]);
+  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [Orders_ExtensionPoint], [Products_Extension], [
     CatalogProductAggregate,
     CustomerAggregate,
     OrderAggregate
@@ -201,15 +176,12 @@ function Make(Platform) {
     CatalogProductAggregate: CatalogProductAggregate,
     CustomerAggregate: CustomerAggregate,
     OrderAggregate: OrderAggregate,
-    AvailableProductsProjectionsWrapper: AvailableProductsProjectionsWrapper,
     AvailableProductsReadModel: AvailableProductsReadModel,
-    CustomersProjectionsWrapper: CustomersProjectionsWrapper,
     CustomersReadModel: CustomersReadModel,
-    OrdersProjectionsWrapper: OrdersProjectionsWrapper,
     OrdersReadModel: OrdersReadModel,
     OrderNotificationsTask: OrderNotificationsTask,
-    OrdersExtensionPoint: OrdersExtensionPoint,
-    ProductsExtension: ProductsExtension,
+    Orders_ExtensionPoint: Orders_ExtensionPoint,
+    Products_Extension: Products_Extension,
     pluginStructure: pluginStructure,
     make: make
   };

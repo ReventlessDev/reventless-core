@@ -2,9 +2,9 @@
 // Uses the ProjectionTest DSL for async projection testing.
 
 open Product
-open ProductsReadModel
+open Products
 
-include ReventlessGwt.MultiSourceProjection_GWT.Make(ProductsProjections.ProductMapping)
+include ReventlessGwt.MultiSourceProjection_GWT.Make(Products_Projections.ProductMapping)
 
 describe("ProductProjection:", () => {
   test("Added sets initial read model state", () =>

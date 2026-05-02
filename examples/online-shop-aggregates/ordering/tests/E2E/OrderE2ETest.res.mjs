@@ -3,7 +3,7 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Order$OrderingPlugin from "../../src/Order/Aggregate/Order.res.mjs";
-import * as OrderBehavior$OrderingPlugin from "../../src/Order/Aggregate/OrderBehavior.res.mjs";
+import * as Order_Behavior$OrderingPlugin from "../../src/Order/Aggregate/Order_Behavior.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
@@ -31,10 +31,10 @@ let OrderAgg = AggregateMaker.Make({
   commandSchema: Order$OrderingPlugin.commandSchema,
   moduleUrl: Order$OrderingPlugin.moduleUrl
 })({
-  initialState: OrderBehavior$OrderingPlugin.initialState,
-  evolve: OrderBehavior$OrderingPlugin.evolve,
-  decide: OrderBehavior$OrderingPlugin.decide,
-  moduleUrl: OrderBehavior$OrderingPlugin.moduleUrl
+  initialState: Order_Behavior$OrderingPlugin.initialState,
+  evolve: Order_Behavior$OrderingPlugin.evolve,
+  decide: Order_Behavior$OrderingPlugin.decide,
+  moduleUrl: Order_Behavior$OrderingPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Order$OrderingPlugin.name,
   Id: Id$Reventless.$$String,

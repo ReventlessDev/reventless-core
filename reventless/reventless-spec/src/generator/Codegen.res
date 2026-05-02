@@ -62,18 +62,35 @@ let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> 
   })
 
 let renderReadModels = (readModels: array<Pairing.readModelDef>): array<string> =>
-  readModels->Array.flatMap(({readModel, projections, mappingModules}) => {
-    // Generate inline module list so @reventless.projections can infer the correct Mapping type
-    let mappingEntries =
-      mappingModules->Array.map(m => "module(" ++ projections ++ "." ++ m ++ ")")
-    let mappingsLine = "    let mappings: array<module(Mapping)> = [" ++ mappingEntries->Array.join(", ") ++ "]"
-    [
-      "  @reventless.projections",
-      "  module " ++ projections ++ "Wrapper: Mappings with module Target := " ++ readModel ++ " = {",
-      mappingsLine,
-      "  }",
-      "  module " ++ readModel ++ " = Platform.ReadModel.Make(" ++ readModel ++ ", " ++ projections ++ "Wrapper)",
-    ]
+  readModels->Array.flatMap(({readModel, projections, mappingModules, isMappingsAdopted}) => {
+    if isMappingsAdopted {
+      // Phase-3.3 form: the projections file already declares `let mappings`
+      // via `@@reventless.mappings`, so we just reference it directly. The
+      // wrapping module name appends `ReadModel` so the LHS doesn't shadow
+      // the bare-named spec module (e.g., `Categories`).
+      let wrapperName = if readModel->String.endsWith("ReadModel") {
+        readModel
+      } else {
+        readModel ++ "ReadModel"
+      }
+      [
+        "  module " ++ wrapperName ++ " = Platform.ReadModel.Make(" ++ readModel ++ ", " ++ projections ++ ")",
+      ]
+    } else {
+      // Legacy form: emit an inline `@reventless.projections` wrapper that
+      // collects the per-source `Mapping.Make` modules from the projections
+      // file into a `let mappings` array.
+      let mappingEntries =
+        mappingModules->Array.map(m => "module(" ++ projections ++ "." ++ m ++ ")")
+      let mappingsLine = "    let mappings: array<module(Mapping)> = [" ++ mappingEntries->Array.join(", ") ++ "]"
+      [
+        "  @reventless.projections",
+        "  module " ++ projections ++ "Wrapper: Mappings with module Target := " ++ readModel ++ " = {",
+        mappingsLine,
+        "  }",
+        "  module " ++ readModel ++ " = Platform.ReadModel.Make(" ++ readModel ++ ", " ++ projections ++ "Wrapper)",
+      ]
+    }
   })
 
 let renderTasks = (tasks: array<string>): array<string> =>
@@ -176,7 +193,18 @@ let renderReadModelMakeParam = (readModels: array<Pairing.readModelDef>): option
   if readModels->Array.length === 0 {
     None
   } else {
-    let entries = readModels->Array.map(({readModel}) => "module(" ++ readModel ++ ")")
+    // The wrapping module name in Plugin.res is the legacy `<rm>` (when the
+    // spec already ends in `ReadModel`) or `<rm>ReadModel` (post-Phase-3.3,
+    // when the spec is the bare plural like `Categories`). Mirrors the LHS
+    // chosen by [renderReadModels] above.
+    let entries = readModels->Array.map(({readModel}) => {
+      let wrapperName = if readModel->String.endsWith("ReadModel") {
+        readModel
+      } else {
+        readModel ++ "ReadModel"
+      }
+      "module(" ++ wrapperName ++ ")"
+    })
     Some("      ~readModels=[" ++ entries->Array.join(", ") ++ "],")
   }
 
@@ -252,7 +280,14 @@ let renderPluginStructureCall = (
       ls->Array.push("    ~aggregates=[" ++ entries->Array.join(", ") ++ "],")
     }
     if readModels->Array.length > 0 {
-      let entries = readModels->Array.map(({readModel}) => "module(" ++ readModel ++ ")")
+      let entries = readModels->Array.map(({readModel}) => {
+        let wrapperName = if readModel->String.endsWith("ReadModel") {
+          readModel
+        } else {
+          readModel ++ "ReadModel"
+        }
+        "module(" ++ wrapperName ++ ")"
+      })
       ls->Array.push("    ~readModels=[" ++ entries->Array.join(", ") ++ "],")
     }
     let allStateViewEntries = Array.flat([
@@ -575,7 +610,17 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
     let aggEntries =
       resolved.aggregates->Array.map(({spec}) => "module(" ++ spec ++ "Aggregate)")
     let rmEntries =
-      resolved.readModels->Array.map(({readModel}) => "module(" ++ readModel ++ ")")
+      resolved.readModels->Array.map(({readModel}) => {
+        // Mirror the wrapper-name choice in [renderReadModels] / [renderReadModelMakeParam]:
+        // post-Phase-3.3 specs are bare plurals (`Categories`), so the
+        // wrapping module appends `ReadModel` to disambiguate.
+        let wrapperName = if readModel->String.endsWith("ReadModel") {
+          readModel
+        } else {
+          readModel ++ "ReadModel"
+        }
+        "module(" ++ wrapperName ++ ")"
+      })
     let ls: array<string> = []
     ls->Array.push("      ~uiFragments=?uiBundleUrl->Option.map(url =>")
     ls->Array.push("        Platform.Plugin.makeAutoUIManifest(")

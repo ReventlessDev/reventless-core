@@ -4,7 +4,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Category$CatalogPlugin from "../../src/Category/Aggregate/Category.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
-import * as CategoryBehavior$CatalogPlugin from "../../src/Category/Aggregate/CategoryBehavior.res.mjs";
+import * as Category_Behavior$CatalogPlugin from "../../src/Category/Aggregate/Category_Behavior.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
@@ -31,10 +31,10 @@ let CategoryAgg = AggregateMaker.Make({
   commandSchema: Category$CatalogPlugin.commandSchema,
   moduleUrl: Category$CatalogPlugin.moduleUrl
 })({
-  initialState: CategoryBehavior$CatalogPlugin.initialState,
-  evolve: CategoryBehavior$CatalogPlugin.evolve,
-  decide: CategoryBehavior$CatalogPlugin.decide,
-  moduleUrl: CategoryBehavior$CatalogPlugin.moduleUrl
+  initialState: Category_Behavior$CatalogPlugin.initialState,
+  evolve: Category_Behavior$CatalogPlugin.evolve,
+  decide: Category_Behavior$CatalogPlugin.decide,
+  moduleUrl: Category_Behavior$CatalogPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Category$CatalogPlugin.name,
   Id: Id$Reventless.$$String,

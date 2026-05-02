@@ -5,61 +5,49 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
-    CategoryBehavior,
+    Category_Behavior,
     ReventlessInfra.NoEventMappings.Make(Category),
   )
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
-    ProductBehavior,
+    Product_Behavior,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
   module ProductDemandAggregate = Platform.Aggregate.Make(
     ProductDemand,
-    ProductDemandBehavior,
+    ProductDemand_Behavior,
     ReventlessInfra.NoEventMappings.Make(ProductDemand),
   )
 
   // ReadModels
-  @reventless.projections
-  module CategoriesProjectionsWrapper: Mappings with module Target := CategoriesReadModel = {
-    let mappings: array<module(Mapping)> = [module(CategoriesProjections.CategoryMapping)]
-  }
-  module CategoriesReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoriesProjectionsWrapper)
-  @reventless.projections
-  module ProductDemandProjectionsWrapper: Mappings with module Target := ProductDemandReadModel = {
-    let mappings: array<module(Mapping)> = [module(ProductDemandProjections.ProductMapping), module(ProductDemandProjections.ProductDemandMapping)]
-  }
-  module ProductDemandReadModel = Platform.ReadModel.Make(ProductDemandReadModel, ProductDemandProjectionsWrapper)
-  @reventless.projections
-  module ProductsProjectionsWrapper: Mappings with module Target := ProductsReadModel = {
-    let mappings: array<module(Mapping)> = [module(ProductsProjections.ProductMapping)]
-  }
-  module ProductsReadModel = Platform.ReadModel.Make(ProductsReadModel, ProductsProjectionsWrapper)
+  module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
+  module ProductDemandsReadModel = Platform.ReadModel.Make(ProductDemands, ProductDemands_Projections)
+  module ProductsReadModel = Platform.ReadModel.Make(Products, Products_Projections)
 
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
   // ExtensionPoints
-  module ProductsExtensionPoint = Platform.ExtensionPoint.Make(ProductsExtensionPointMapping)
+  module Products_ExtensionPoint = Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)
 
   // Extensions
-  module OrdersExtension = Platform.Extension.Make(OrdersExtension.Mapping)
+  module Orders_Extension = Platform.Extension.Make(Orders_Extension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
     ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-    ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), module(ProductsReadModel)],
-    ~extensions=[module(OrdersExtension)],
+    ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), module(ProductsReadModel)],
+    ~extensions=[module(Orders_Extension)],
   )
 
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(ProductsExtensionPoint)],
-      ~extensions=[module(OrdersExtension)],
+      ~extensionPoints=[module(Products_ExtensionPoint)],
+      ~extensions=[module(Orders_Extension)],
       ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-      ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), module(ProductsReadModel)],
+      ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), module(ProductsReadModel)],
       ~tasks=[module(ImportProductsTask)],
       ~pluginStructure=pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
@@ -67,7 +55,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
           ~remoteEntryUrl=url,
           ~name="Catalog",
           ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-          ~readModels=[module(CategoriesReadModel), module(ProductDemandReadModel), module(ProductsReadModel)],
+          ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), module(ProductsReadModel)],
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )

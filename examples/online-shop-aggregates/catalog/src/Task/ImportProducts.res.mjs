@@ -45,9 +45,12 @@ function setup(_queryEngine, _queryBucketName, _opts) {
 
 let name = "ImportProducts";
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/Task/ImportProducts.res.mjs";
+
 export {
   name,
   importCallback,
   setup,
+  moduleUrl,
 }
 /* Message-Reventless Not a pure module */

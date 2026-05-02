@@ -5,59 +5,47 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CatalogProductAggregate = Platform.Aggregate.Make(
     CatalogProduct,
-    CatalogProductBehavior,
+    CatalogProduct_Behavior,
     ReventlessInfra.NoEventMappings.Make(CatalogProduct),
   )
   module CustomerAggregate = Platform.Aggregate.Make(
     Customer,
-    CustomerBehavior,
+    Customer_Behavior,
     ReventlessInfra.NoEventMappings.Make(Customer),
   )
   module OrderAggregate = Platform.Aggregate.Make(
     Order,
-    OrderBehavior,
-    Order_EventMappings,
+    Order_Behavior,
+    Order_Mappings,
   )
 
   // ReadModels
-  @reventless.projections
-  module AvailableProductsProjectionsWrapper: Mappings with module Target := AvailableProductsReadModel = {
-    let mappings: array<module(Mapping)> = [module(AvailableProductsProjections.CatalogProductMapping)]
-  }
-  module AvailableProductsReadModel = Platform.ReadModel.Make(AvailableProductsReadModel, AvailableProductsProjectionsWrapper)
-  @reventless.projections
-  module CustomersProjectionsWrapper: Mappings with module Target := CustomersReadModel = {
-    let mappings: array<module(Mapping)> = [module(CustomersProjections.CustomerMapping)]
-  }
-  module CustomersReadModel = Platform.ReadModel.Make(CustomersReadModel, CustomersProjectionsWrapper)
-  @reventless.projections
-  module OrdersProjectionsWrapper: Mappings with module Target := OrdersReadModel = {
-    let mappings: array<module(Mapping)> = [module(OrdersProjections.OrderMapping)]
-  }
-  module OrdersReadModel = Platform.ReadModel.Make(OrdersReadModel, OrdersProjectionsWrapper)
+  module AvailableProductsReadModel = Platform.ReadModel.Make(AvailableProducts, AvailableProducts_Projections)
+  module CustomersReadModel = Platform.ReadModel.Make(Customers, Customers_Projections)
+  module OrdersReadModel = Platform.ReadModel.Make(Orders, Orders_Projections)
 
   // Tasks
   module OrderNotificationsTask = Platform.Task.Make(OrderNotifications)
 
   // ExtensionPoints
-  module OrdersExtensionPoint = Platform.ExtensionPoint.Make(OrdersExtensionPointMapping)
+  module Orders_ExtensionPoint = Platform.ExtensionPoint.Make(Orders_ExtensionPointMapping)
 
   // Extensions
-  module ProductsExtension = Platform.Extension.Make(ProductsExtension.Mapping)
+  module Products_Extension = Platform.Extension.Make(Products_Extension.Mapping)
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Ordering",
     ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
     ~readModels=[module(AvailableProductsReadModel), module(CustomersReadModel), module(OrdersReadModel)],
-    ~extensions=[module(ProductsExtension)],
+    ~extensions=[module(Products_Extension)],
   )
 
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=60,
-      ~extensionPoints=[module(OrdersExtensionPoint)],
-      ~extensions=[module(ProductsExtension)],
+      ~extensionPoints=[module(Orders_ExtensionPoint)],
+      ~extensions=[module(Products_Extension)],
       ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
       ~readModels=[module(AvailableProductsReadModel), module(CustomersReadModel), module(OrdersReadModel)],
       ~tasks=[module(OrderNotificationsTask)],

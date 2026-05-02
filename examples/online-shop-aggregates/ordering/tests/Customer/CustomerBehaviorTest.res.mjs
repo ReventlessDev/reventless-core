@@ -2,7 +2,7 @@
 
 import * as Customer$OrderingPlugin from "../../src/Customer/Aggregate/Customer.res.mjs";
 import * as Behavior_GWT$ReventlessGwt from "@reventlessdev/reventless-gwt/src/Behavior_GWT.res.mjs";
-import * as CustomerBehavior$OrderingPlugin from "../../src/Customer/Aggregate/CustomerBehavior.res.mjs";
+import * as Customer_Behavior$OrderingPlugin from "../../src/Customer/Aggregate/Customer_Behavior.res.mjs";
 
 let include = Behavior_GWT$ReventlessGwt.MakeFromAggregate({
   name: Customer$OrderingPlugin.name,
@@ -16,10 +16,10 @@ let include = Behavior_GWT$ReventlessGwt.MakeFromAggregate({
     eventSchema: Customer$OrderingPlugin.eventSchema,
     errorSchema: Customer$OrderingPlugin.errorSchema
   },
-  initialState: CustomerBehavior$OrderingPlugin.initialState,
-  evolve: CustomerBehavior$OrderingPlugin.evolve,
-  decide: CustomerBehavior$OrderingPlugin.decide,
-  moduleUrl: CustomerBehavior$OrderingPlugin.moduleUrl
+  initialState: Customer_Behavior$OrderingPlugin.initialState,
+  evolve: Customer_Behavior$OrderingPlugin.evolve,
+  decide: Customer_Behavior$OrderingPlugin.decide,
+  moduleUrl: Customer_Behavior$OrderingPlugin.moduleUrl
 });
 
 let describe = include.describe;

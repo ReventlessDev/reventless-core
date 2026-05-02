@@ -17,7 +17,7 @@ let _ = ReventlessInMemory.TestRunner.setup()
 module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module CategoryAgg = AggregateMaker.Make(
   Category,
-  CategoryBehavior,
+  Category_Behavior,
   ReventlessInfra.NoEventMappings.Make(Category),
 )
 

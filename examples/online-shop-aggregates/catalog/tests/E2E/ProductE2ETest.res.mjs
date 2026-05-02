@@ -3,8 +3,8 @@
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Product$CatalogPlugin from "../../src/Product/Aggregate/Product.res.mjs";
-import * as ProductBehavior$CatalogPlugin from "../../src/Product/Aggregate/ProductBehavior.res.mjs";
 import * as TestRunner$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/test/TestRunner.res.mjs";
+import * as Product_Behavior$CatalogPlugin from "../../src/Product/Aggregate/Product_Behavior.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/adapter/InMemory_Bus.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "@reventlessdev/reventless-in-memory/src/components/Aggregate_Builder.res.mjs";
@@ -31,10 +31,10 @@ let ProductAgg = AggregateMaker.Make({
   commandSchema: Product$CatalogPlugin.commandSchema,
   moduleUrl: Product$CatalogPlugin.moduleUrl
 })({
-  initialState: ProductBehavior$CatalogPlugin.initialState,
-  evolve: ProductBehavior$CatalogPlugin.evolve,
-  decide: ProductBehavior$CatalogPlugin.decide,
-  moduleUrl: ProductBehavior$CatalogPlugin.moduleUrl
+  initialState: Product_Behavior$CatalogPlugin.initialState,
+  evolve: Product_Behavior$CatalogPlugin.evolve,
+  decide: Product_Behavior$CatalogPlugin.decide,
+  moduleUrl: Product_Behavior$CatalogPlugin.moduleUrl
 })(NoEventMappings$ReventlessInfra.Make({
   name: Product$CatalogPlugin.name,
   Id: Id$Reventless.$$String,

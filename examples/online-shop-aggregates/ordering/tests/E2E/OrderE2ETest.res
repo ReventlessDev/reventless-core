@@ -15,7 +15,7 @@ let _ = Bus.subscribeToEvents("OrderAggrEventTopic", async (_, _, _) => {
 let _ = ReventlessInMemory.TestRunner.setup()
 
 module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
-module OrderAgg = AggregateMaker.Make(Order, OrderBehavior, ReventlessInfra.NoEventMappings.Make(Order))
+module OrderAgg = AggregateMaker.Make(Order, Order_Behavior, ReventlessInfra.NoEventMappings.Make(Order))
 
 let agg = OrderAgg.make(~api=())
 

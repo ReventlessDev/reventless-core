@@ -26,12 +26,24 @@ function isImplStem(stem) {
 
 function findEventMappings(srcDir) {
   let dict = {};
-  let walk = dir => {
+  let parentDirIsAggregate = relSegments => {
+    let n = relSegments.length;
+    if (n === 0) {
+      return false;
+    }
+    let parent = relSegments[n - 1 | 0];
+    if (parent === "Aggregate") {
+      return true;
+    } else {
+      return parent === "EventMappings";
+    }
+  };
+  let walk = (dir, segments) => {
     Generator_Node$Reventless.readDir(dir).forEach(entry => {
       let name = entry.name;
       if (entry.isDirectory()) {
         if (name !== "Plugin" && name !== "tests" && name !== "lib") {
-          return walk(Nodepath.join(dir, name));
+          return walk(Nodepath.join(dir, name), segments.concat([name]));
         } else {
           return;
         }
@@ -39,16 +51,28 @@ function findEventMappings(srcDir) {
       if (!entry.isFile()) {
         return;
       }
+      if (name.endsWith("_Mappings.res") && parentDirIsAggregate(segments)) {
+        let stem = name.slice(0, name.length - 4 | 0);
+        let aggName = stem.slice(0, stem.length - 9 | 0);
+        dict[aggName] = stem;
+        return;
+      }
       if (!name.endsWith("_EventMappings.res")) {
         return;
       }
-      let stem = name.slice(0, name.length - 4 | 0);
-      let aggName = stem.slice(0, stem.length - 14 | 0);
-      dict[aggName] = stem;
+      let stem$1 = name.slice(0, name.length - 4 | 0);
+      let aggName$1 = stem$1.slice(0, stem$1.length - 14 | 0);
+      let match = dict[aggName$1];
+      if (match !== undefined) {
+        return;
+      } else {
+        dict[aggName$1] = stem$1;
+        return;
+      }
     });
   };
   if (Nodefs.existsSync(srcDir)) {
-    walk(srcDir);
+    walk(srcDir, []);
   }
   return dict;
 }
@@ -210,32 +234,45 @@ function resolve(discovered, srcDir) {
     }
   });
   let aggregates = Stdlib_Array.filterMap(sortedStems(aggregateSpecs), spec => {
-    let behaviorStem = spec + "Behavior";
-    if (aggregateBehaviors.includes(behaviorStem)) {
+    let underscored = spec + "_Behavior";
+    let bare = spec + "Behavior";
+    let behaviorStem = aggregateBehaviors.includes(underscored) ? underscored : (
+        aggregateBehaviors.includes(bare) ? bare : undefined
+      );
+    if (behaviorStem !== undefined) {
       return {
         spec: spec,
         behavior: behaviorStem,
         eventMappings: eventMappings[spec]
       };
     } else {
-      console.warn("Generator: Aggregate spec `" + spec + "` has no matching `" + behaviorStem + "` — skipping");
+      console.warn("Generator: Aggregate spec `" + spec + "` has no matching `" + underscored + "` or `" + bare + "` — skipping");
       return;
     }
   });
   let readModels = Stdlib_Array.filterMap(sortedStems(readModelStems), rm => {
     let baseName = rm.endsWith("ReadModel") ? rm.slice(0, rm.length - 9 | 0) : rm;
-    let projStem = baseName + "Projections";
-    let projRelPath = projectionsByRelPath[projStem];
-    if (projRelPath !== undefined) {
-      let filePath = Nodepath.join(srcDir, projRelPath);
+    let underscoredProj = baseName + "_Projections";
+    let bareProj = baseName + "Projections";
+    let pickProj = stem => Stdlib_Option.map(projectionsByRelPath[stem], p => [
+      stem,
+      p
+    ]);
+    let v = pickProj(underscoredProj);
+    let chosen = v !== undefined ? v : pickProj(bareProj);
+    if (chosen !== undefined) {
+      let projStem = chosen[0];
+      let filePath = Nodepath.join(srcDir, chosen[1]);
       let mappingModules = extractMappingModules(filePath);
+      let isMappingsAdopted = projStem === underscoredProj;
       return {
         readModel: rm,
         projections: projStem,
-        mappingModules: mappingModules
+        mappingModules: mappingModules,
+        isMappingsAdopted: isMappingsAdopted
       };
     }
-    console.warn("Generator: ReadModel `" + rm + "` has no matching `" + projStem + "` — skipping");
+    console.warn("Generator: ReadModel `" + rm + "` has no matching `" + underscoredProj + "` or `" + bareProj + "` — skipping");
   });
   let epByGroup = {};
   let flatEpMappings = [];

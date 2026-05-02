@@ -786,16 +786,7 @@ let transform (str : structure) : structure =
        | Behavior | Projection | Automation | Translation ->
          let spec_name = match spec_name_opt with
            | Some n -> n
-           | None ->
-             (* For [Behavior], preserve the legacy [filename_to_name]-based
-                derivation so [ProductBehavior.res] outside slice folders still
-                resolves to [Product]. Inside slice folders, use the
-                [_<Kind>] / [<Kind>] suffix-stripping derivation that handles
-                the new [X_<Kind>.res] convention. *)
-             (match kind with
-              | Behavior when not (Util.is_in_slice_folder fname) ->
-                Util.filename_to_name fname
-              | _ -> derive_impl_spec_name ~kind fname)
+           | None -> derive_impl_spec_name ~kind fname
          in
          (* Inject type annotations on recognised function bindings. The split
             form's Spec puts both [consumedEvent] and [event] in the impl file's

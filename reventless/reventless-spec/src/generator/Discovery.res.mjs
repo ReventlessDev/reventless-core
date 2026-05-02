@@ -102,10 +102,10 @@ function stemOf(filename) {
 }
 
 function isSkipped(stem) {
-  if (stem.endsWith("Test") || stem.endsWith("Fixtures")) {
+  if (stem.endsWith("Test") || stem.endsWith("Fixtures") || stem.endsWith("_EventMappings")) {
     return true;
   } else {
-    return stem.endsWith("_EventMappings");
+    return stem.endsWith("_Mappings");
   }
 }
 

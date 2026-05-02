@@ -1,7 +1,7 @@
 // Unit tests for Customer projection mappings.
 // Uses the ProjectionTest DSL for async projection testing.
 
-include ReventlessGwt.MultiSourceProjection_GWT.Make(CustomersProjections.CustomerMapping)
+include ReventlessGwt.MultiSourceProjection_GWT.Make(Customers_Projections.CustomerMapping)
 
 describe("CustomerProjection:", () => {
   test("Registered sets initial read model state", () =>
@@ -13,7 +13,7 @@ describe("CustomerProjection:", () => {
       }),
     )
     ->thenState({
-      CustomersReadModel.email: "alice@example.com",
+      Customers.email: "alice@example.com",
       address: "123 Main St",
       deactivated: false,
     })
@@ -28,7 +28,7 @@ describe("CustomerProjection:", () => {
     ])
     ->whenEvent(Customer.EmailUpdated({email: "alice2@example.com"}))
     ->thenState({
-      CustomersReadModel.email: "alice2@example.com",
+      Customers.email: "alice2@example.com",
       address: "123 Main St",
       deactivated: false,
     })
@@ -43,7 +43,7 @@ describe("CustomerProjection:", () => {
     ])
     ->whenEvent(Customer.AddressUpdated({address: "789 Pine Rd"}))
     ->thenState({
-      CustomersReadModel.email: "alice@example.com",
+      Customers.email: "alice@example.com",
       address: "789 Pine Rd",
       deactivated: false,
     })
@@ -58,7 +58,7 @@ describe("CustomerProjection:", () => {
     ])
     ->whenEvent(Customer.Deactivated)
     ->thenState({
-      CustomersReadModel.email: "alice@example.com",
+      Customers.email: "alice@example.com",
       address: "123 Main St",
       deactivated: true,
     })

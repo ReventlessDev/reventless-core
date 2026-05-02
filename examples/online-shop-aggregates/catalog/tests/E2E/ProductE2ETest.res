@@ -17,7 +17,7 @@ let _ = ReventlessInMemory.TestRunner.setup()
 module AggregateMaker = ReventlessInMemory.Aggregate_Builder.Make(Bus)
 module ProductAgg = AggregateMaker.Make(
   Product,
-  ProductBehavior,
+  Product_Behavior,
   ReventlessInfra.NoEventMappings.Make(Product),
 )
 

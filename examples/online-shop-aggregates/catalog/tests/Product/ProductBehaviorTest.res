@@ -3,7 +3,7 @@
 
 open Product
 
-include ReventlessGwt.Behavior_GWT.MakeFromAggregate(Product, ProductBehavior)
+include ReventlessGwt.Behavior_GWT.MakeFromAggregate(Product, Product_Behavior)
 
 describe("ProductBehavior:", () => {
   describe("Add", () => {

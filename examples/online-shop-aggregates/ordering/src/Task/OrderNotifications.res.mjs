@@ -19,8 +19,11 @@ function setup(_queryEngine, _queryBucketName, _opts) {
 
 let name = "OrderNotifications";
 
+let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Task/OrderNotifications.res.mjs";
+
 export {
   name,
   setup,
+  moduleUrl,
 }
 /* Id-Reventless Not a pure module */

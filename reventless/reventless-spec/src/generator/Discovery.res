@@ -77,10 +77,12 @@ let stemOf = (filename: string): option<string> =>
 let isSkipped = (stem: string): bool =>
   stem->String.endsWith("Test")
   || stem->String.endsWith("Fixtures")
-  // `_EventMappings` files in per-entity Aggregate/ folders are picked up
-  // by the dedicated [Pairing.findEventMappings] walker; treating them as
-  // Aggregate specs would hunt for a non-existent `_EventMappingsBehavior`.
+  // `_EventMappings` and `_Mappings` files in per-entity Aggregate/ folders
+  // are picked up by the dedicated [Pairing.findEventMappings] walker;
+  // treating them as Aggregate specs would hunt for a non-existent
+  // `_EventMappingsBehavior` / `_MappingsBehavior`.
   || stem->String.endsWith("_EventMappings")
+  || stem->String.endsWith("_Mappings")
 
 // Collect .res files directly in dir (non-recursive) into acc.
 let collectFiles = (

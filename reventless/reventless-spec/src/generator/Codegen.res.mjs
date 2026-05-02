@@ -43,6 +43,10 @@ function renderReadModels(readModels) {
   return readModels.flatMap(param => {
     let projections = param.projections;
     let readModel = param.readModel;
+    if (param.isMappingsAdopted) {
+      let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
+      return ["  module " + wrapperName + " = Platform.ReadModel.Make(" + readModel + ", " + projections + ")"];
+    }
     let mappingEntries = param.mappingModules.map(m => "module(" + projections + "." + m + ")");
     let mappingsLine = "    let mappings: array<module(Mapping)> = [" + mappingEntries.join(", ") + "]";
     return [
@@ -138,7 +142,11 @@ function renderReadModelMakeParam(readModels) {
   if (readModels.length === 0) {
     return;
   }
-  let entries = readModels.map(param => "module(" + param.readModel + ")");
+  let entries = readModels.map(param => {
+    let readModel = param.readModel;
+    let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
+    return "module(" + wrapperName + ")";
+  });
   return "      ~readModels=[" + entries.join(", ") + "],";
 }
 
@@ -192,7 +200,11 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
     ls.push("    ~aggregates=[" + entries.join(", ") + "],");
   }
   if (readModels.length !== 0) {
-    let entries$1 = readModels.map(param => "module(" + param.readModel + ")");
+    let entries$1 = readModels.map(param => {
+      let readModel = param.readModel;
+      let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
+      return "module(" + wrapperName + ")";
+    });
     ls.push("    ~readModels=[" + entries$1.join(", ") + "],");
   }
   let allStateViewEntries = [
@@ -388,7 +400,11 @@ function renderComposition(config, resolved) {
   let uiFragmentsParam;
   if (hasUiComponents) {
     let aggEntries = resolved.aggregates.map(param => "module(" + param.spec + "Aggregate)");
-    let rmEntries = resolved.readModels.map(param => "module(" + param.readModel + ")");
+    let rmEntries = resolved.readModels.map(param => {
+      let readModel = param.readModel;
+      let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
+      return "module(" + wrapperName + ")";
+    });
     let ls = [];
     ls.push("      ~uiFragments=?uiBundleUrl->Option.map(url =>");
     ls.push("        Platform.Plugin.makeAutoUIManifest(");

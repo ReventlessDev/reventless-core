@@ -1,9 +1,7 @@
 // Import products from a CSV file uploaded to S3.
 // Each row is translated to a Product.Add command.
 
-open Reventless
-
-let name = "ImportProducts"
+@@reventless.task
 
 let importCallback = (~eventName, ~key) => {
   if eventName->String.includes("ObjectCreated") {

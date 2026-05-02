@@ -158,17 +158,27 @@ Before any renames, migrate `online-shop-aggregates/{catalog,ordering}/src/` fro
 
 Affected entities: `Category`, `Customer`, `Order`, `Product`, `CatalogProduct`, plus any `*Behavior` test files.
 
-### 3.2 — Aggregate event mappings
+**aggregates done in PR3** — dcb + hybrid still use `<Entity>Behavior.res` for their aggregate behaviors. Pairing now tries `<Spec>_Behavior` first, falls back to `<Spec>Behavior`, so both shapes work during the migration.
+
+### 3.2 — Aggregate event mappings — ✅ DONE for aggregates (PR3)
 
 - `<Entity>_EventMappings.res` → `<Entity>_Mappings.res` (drop the `Event` prefix; PPX recognises `_Mappings.res` in `Aggregate/` folder).
 - Replace the hand-rolled wrapper with `@@reventless.mappings` at the top. Resulting file body shrinks to: per-source `Mapping.Make` modules + `let mappings = [module(...)]` + (if needed) `let counter = None`.
 
-### 3.3 — ReadModel files
+**aggregates done in PR3** (only `Order_Mappings.res`). dcb + hybrid only have AutomationSlice `_Mappings.res` siblings (handled by Phase 3.5). `Pairing.findEventMappings` now walks the tree and matches both `_Mappings.res` (in `Aggregate/`) and legacy `_EventMappings.res`.
+
+### 3.3 — ReadModel files — ✅ DONE for aggregates (PR3)
 
 - `<Plural>ReadModel.res` → `<Plural>.res` (drop `ReadModel` suffix from spec).
 - `<Plural>Projections.res` → `<Plural>_Projections.res` (add underscore).
 - Replace hand-rolled `open Reventless.Message`, `open Reventless.Projection` headers in `_Projections.res` with `@@reventless.mappings`.
 - Update Plugin generator: stop emitting the `@reventless.projections` wrapper module; instead reference `<Plural>_Projections` directly: `Platform.ReadModel.Make(<Plural>, <Plural>_Projections)`.
+
+**aggregates done in PR3.** Codegen now flags ReadModel pairs where the projections file is the new `_Projections` form and emits the direct shape; legacy `Projections` form still gets the `@reventless.projections` wrapper. Wrapping module name in Plugin.res appends `ReadModel` (e.g., `module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)`) to keep the LHS distinct from the bare-named spec.
+
+**Spec stem collision encountered:** catalog had both an `Aggregate/ProductDemand.res` and a `ReadModel/ProductDemand.res` (post-rename). Renamed the read model to `ProductDemands.res` (plural per the convention) — this is exactly the case the Phase-4 lint is meant to catch automatically.
+
+**PPX update:** `Util.is_readmodel_filename` is now folder-aware (returns true for any file inside a `ReadModel/` folder) so the @@reventless.spec auto-injection of `config` + `subIdConfig` still fires for the bare-plural spec files.
 
 ### 3.4 — StateViewSlice files
 
@@ -189,26 +199,32 @@ For each `*_Automation.res` + `*_Mappings.res` pair:
 
 Affected: `AutoShipOrder` in `online-shop-dcb/ordering/` and `online-shop-hybrid/ordering/`.
 
-### 3.6 — Extension files
+### 3.6 — Extension files — ✅ DONE for aggregates (PR3)
 
 - `<Name>Extension.res` → `<Name>_Extension.res`.
 - Add `@@reventless.extension` at the top; remove the now-redundant `open ReventlessInfra.ExtensionMapping`.
 - Verify the Delegate transform applies (DCB extensions only — Aggregate-style extensions don't have a Delegate).
 
-### 3.7 — ExtensionPoint files
+**aggregates done in PR3** (catalog `Orders_Extension.res`, ordering `Products_Extension.res`). The Aggregate-style extensions reference real Aggregate modules as `module Delegate = ProductDemand` etc., so the Delegate auto-transform skips them harmlessly (the transform only fires on inline `Pmod_structure` modules).
+
+### 3.7 — ExtensionPoint files — ✅ DONE for aggregates (PR3)
 
 - `<Name>ExtensionPoint.res` → `<Name>_ExtensionPoint.res` (in `*-spec/` packages).
 - `<Name>ExtensionPointMapping.res` → `<Name>_ExtensionPointMapping.res` (in plugin packages).
 - Update all references (Plugin.res, Extension files referencing the EP).
 
+**aggregates done in PR3.** `Util.top_level_only_suffixes` extended with underscored variants (`_ExtensionPoint`, `_ExtensionPointMapping`, `_ReadModel`, `_Extension`, `_Aggregate`, `_Plugin`) tried before the bare versions, so `filename_to_name` strips the underscore cleanly.
+
 ### 3.8 — DCB Source modules in projection files
 
 For every `module XDcbSource = { ... }` block inside `_Projections.res` files (e.g., `CatalogActivityProjections.res`), the new `@@reventless.mappings` PPX scan now handles the transforms. Remove the hand-rolled `module Id = Reventless.Id.String` and ensure event fields rely on dcbTag auto-injection.
 
-### 3.9 — Task files
+### 3.9 — Task files — ✅ DONE for aggregates (PR3)
 
 - Add `@@reventless.task` to each `Task/*.res`.
 - Remove the hand-rolled `let name`, `open Reventless`, etc. that the PPX now injects.
+
+**aggregates done in PR3** (catalog `ImportProducts.res`, ordering `OrderNotifications.res`).
 
 ### 3.10 — Per-example verification
 

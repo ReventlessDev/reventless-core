@@ -96,8 +96,18 @@ let slice_layer_suffixes = [
 
 (* Framework component suffixes: describe top-level architectural types.
    Only stripped when the file is NOT inside a slice folder.
-   Inside a slice folder these can be part of the entity name (e.g. SyncPlugin). *)
+   Inside a slice folder these can be part of the entity name (e.g. SyncPlugin).
+
+   The underscored variants are tried first so post-Phase-3-rename files
+   like [Products_ExtensionPoint.res] strip cleanly to ["Products"] instead
+   of leaving a trailing underscore. *)
 let top_level_only_suffixes = [
+  "_ExtensionPointMapping";
+  "_ExtensionPoint";
+  "_ReadModel";
+  "_Extension";
+  "_Aggregate";
+  "_Plugin";
   "ExtensionPointMapping";
   "ExtensionPoint";
   "ReadModel";
@@ -304,6 +314,9 @@ let is_extensionpointmapping_filename fname =
   in
   slen >= sublen && check 0
 
+(* True if the file is a ReadModel spec — either by filename (legacy
+   `<Plural>ReadModel.res`) or by parent folder (post-Phase-3-3 layout
+   `ReadModel/<Plural>.res`, where the spec drops the ReadModel suffix). *)
 let is_readmodel_filename fname =
   let base = Filename.basename fname in
   let without_ext = match String.index_opt base '.' with
@@ -318,7 +331,9 @@ let is_readmodel_filename fname =
     else if String.sub without_ext i sublen = sub then true
     else check (i + 1)
   in
-  slen >= sublen && check 0
+  let in_filename = slen >= sublen && check 0 in
+  let in_folder = is_in_folder fname "ReadModel" in
+  in_filename || in_folder
 
 let is_stateview_filename fname =
   let dir = Filename.dirname fname in

@@ -29,7 +29,17 @@ let isImplStem = (stem: string): bool =>
 
 type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>}
 // mappingModules: module names found inside the projections file (e.g. ["ProductMapping"])
-type readModelDef = {readModel: string, projections: string, mappingModules: array<string>}
+// isMappingsAdopted: true when the projections file follows the
+//   Phase-3.3 convention (`<Plural>_Projections.res` with `@@reventless.mappings`
+//   already declaring `let mappings`). When true, codegen emits a direct
+//   `Platform.ReadModel.Make(spec, projStem)` instead of the legacy
+//   `@reventless.projections` wrapper module.
+type readModelDef = {
+  readModel: string,
+  projections: string,
+  mappingModules: array<string>,
+  isMappingsAdopted: bool,
+}
 type extensionPointDef = {group: option<string>, mappings: array<string>}
 
 type resolved = {
@@ -50,30 +60,50 @@ type resolved = {
   extensions: array<string>,
 }
 
-// Scan srcDir recursively for `<Agg>_EventMappings.res` files and collect
-// {AggName → mappingStem} dict. Supports both the legacy flat layout
-// (`srcDir/EventMappings/<Agg>_EventMappings.res`) and the per-entity layout
-// (`srcDir/<Agg>/Aggregate/<Agg>_EventMappings.res`) by simply walking the
-// whole tree. `Plugin/`, `tests/`, and `lib/` are skipped.
+// Scan srcDir recursively for `<Agg>_EventMappings.res` and `<Agg>_Mappings.res`
+// files and collect {AggName → mappingStem} dict. Supports the legacy flat
+// layout (`srcDir/EventMappings/`), the per-entity layout
+// (`srcDir/<Agg>/Aggregate/<Agg>_EventMappings.res`), AND the Phase-3-2
+// post-rename form (`<Agg>_Mappings.res`). `Plugin/`, `tests/`, `lib/` are
+// skipped. The new `_Mappings.res` form is only matched inside an
+// `Aggregate/` (or `EventMappings/`) folder so AutomationSlice's own
+// `_Mappings.res` siblings don't get scooped up.
 let findEventMappings = (~srcDir: string): Dict.t<string> => {
   let dict = Dict.make()
-  let rec walk = (dir: string) =>
+  let parentDirIsAggregate = (relSegments: array<string>): bool =>
+    switch relSegments->Array.length {
+    | 0 => false
+    | n =>
+      let parent = relSegments->Array.getUnsafe(n - 1)
+      parent === "Aggregate" || parent === "EventMappings"
+    }
+  let rec walk = (dir: string, segments: array<string>) =>
     Generator_Node.readDir(dir)->Array.forEach(entry => {
       let name = entry->Generator_Node.direntName
       if entry->Generator_Node.isDirectory {
         if name !== "Plugin" && name !== "tests" && name !== "lib" {
-          walk(Generator_Node.join([dir, name]))
+          walk(Generator_Node.join([dir, name]), Array.concat(segments, [name]))
         }
       } else if entry->Generator_Node.isFile {
-        if name->String.endsWith("_EventMappings.res") {
+        if name->String.endsWith("_Mappings.res") && parentDirIsAggregate(segments) {
           let stem = name->String.slice(~start=0, ~end=name->String.length - 4)
-          let aggName = stem->String.slice(~start=0, ~end=stem->String.length - 14) // "_EventMappings" = 14 chars
+          // "_Mappings" = 9 chars
+          let aggName = stem->String.slice(~start=0, ~end=stem->String.length - 9)
           Dict.set(dict, aggName, stem)
+        } else if name->String.endsWith("_EventMappings.res") {
+          let stem = name->String.slice(~start=0, ~end=name->String.length - 4)
+          // "_EventMappings" = 14 chars
+          let aggName = stem->String.slice(~start=0, ~end=stem->String.length - 14)
+          // Don't overwrite a `_Mappings.res` discovered earlier.
+          switch Dict.get(dict, aggName) {
+          | Some(_) => ()
+          | None => Dict.set(dict, aggName, stem)
+          }
         }
       }
     })
   if Generator_Node.existsSync(srcDir) {
-    walk(srcDir)
+    walk(srcDir, [])
   }
   dict
 }
@@ -196,43 +226,65 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   })
 
   // ── Aggregate pairing ──────────────────────────────────────────────────────
+  // Tries the post-Phase-3.1 `<Spec>_Behavior` form first, then falls back
+  // to the legacy `<Spec>Behavior` (no underscore).
   let aggregates =
     aggregateSpecs
     ->sortedStems
     ->Array.filterMap(spec => {
-      let behaviorStem = spec ++ "Behavior"
-      if aggregateBehaviors->Array.includes(behaviorStem) {
+      let underscored = spec ++ "_Behavior"
+      let bare = spec ++ "Behavior"
+      let behaviorStem = if aggregateBehaviors->Array.includes(underscored) {
+        Some(underscored)
+      } else if aggregateBehaviors->Array.includes(bare) {
+        Some(bare)
+      } else {
+        None
+      }
+      switch behaviorStem {
+      | Some(behavior) =>
         Some({
           spec,
-          behavior: behaviorStem,
+          behavior,
           eventMappings: Dict.get(eventMappings, spec),
         })
-      } else {
-        Console.warn("Generator: Aggregate spec `" ++ spec ++ "` has no matching `" ++ behaviorStem ++ "` — skipping")
+      | None =>
+        Console.warn("Generator: Aggregate spec `" ++ spec ++ "` has no matching `" ++ underscored ++ "` or `" ++ bare ++ "` — skipping")
         None
       }
     })
 
   // ── ReadModel pairing ──────────────────────────────────────────────────────
+  // Tries the Phase-3.3 form first (spec `<Plural>` + impl `<Plural>_Projections`),
+  // then falls back to the legacy form (`<Plural>ReadModel` + `<Plural>Projections`).
+  // The flag `isMappingsAdopted` tells codegen which output shape to emit.
   let readModels =
     readModelStems
     ->sortedStems
     ->Array.filterMap(rm => {
-      // FooReadModel → FooProjections (strip "ReadModel", add "Projections")
+      // Strip optional ReadModel suffix to get the base plural name.
       let baseName = if rm->String.endsWith("ReadModel") {
         rm->String.slice(~start=0, ~end=rm->String.length - 9)
       } else {
         rm
       }
-      let projStem = baseName ++ "Projections"
-      switch Dict.get(projectionsByRelPath, projStem) {
+      let underscoredProj = baseName ++ "_Projections"
+      let bareProj = baseName ++ "Projections"
+      let pickProj = (~stem: string) =>
+        Dict.get(projectionsByRelPath, stem)->Option.map(p => (stem, p))
+      let chosen = switch pickProj(~stem=underscoredProj) {
+      | Some(_) as v => v
+      | None => pickProj(~stem=bareProj)
+      }
+      switch chosen {
       | None =>
-        Console.warn("Generator: ReadModel `" ++ rm ++ "` has no matching `" ++ projStem ++ "` — skipping")
+        Console.warn("Generator: ReadModel `" ++ rm ++ "` has no matching `" ++ underscoredProj ++ "` or `" ++ bareProj ++ "` — skipping")
         None
-      | Some(projRelPath) =>
+      | Some((projStem, projRelPath)) =>
         let filePath = Generator_Node.join([srcDir, projRelPath])
         let mappingModules = extractMappingModules(filePath)
-        Some({readModel: rm, projections: projStem, mappingModules})
+        let isMappingsAdopted = projStem === underscoredProj
+        Some({readModel: rm, projections: projStem, mappingModules, isMappingsAdopted})
       }
     })
 
