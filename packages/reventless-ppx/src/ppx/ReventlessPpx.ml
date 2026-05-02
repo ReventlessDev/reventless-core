@@ -10,20 +10,34 @@ type impl_kind =
   | Projection    (* StateViewSlice *)
   | Automation    (* AutomationSlice *)
   | Translation   (* InboundTranslationSlice + OutboundTranslationSlice *)
+  | Mappings      (* multi-source Aggregate _Mappings.res + ReadModel _Projections.res *)
+  | Extension     (* Extension/<Name>_Extension.res *)
+  | Task          (* Task/<Name>.res *)
 
 let impl_kind_name = function
   | Behavior -> "Behavior"
   | Projection -> "Projection"
   | Automation -> "Automation"
   | Translation -> "Translation"
+  | Mappings -> "Mappings"
+  | Extension -> "Extension"
+  | Task -> "Task"
 
 let impl_kind_attr_name = function
   | Behavior -> "reventless.behavior"
   | Projection -> "reventless.projection"
   | Automation -> "reventless.automation"
   | Translation -> "reventless.translation"
+  | Mappings -> "reventless.mappings"
+  | Extension -> "reventless.extension"
+  | Task -> "reventless.task"
 
-let all_impl_kinds = [Behavior; Projection; Automation; Translation]
+(* Kinds that follow the "open <Spec>; module Spec = <Spec>; let moduleUrl"
+   classic implementation shape. The new Mappings/Extension/Task kinds have
+   bespoke generation logic. *)
+let classic_impl_kinds = [Behavior; Projection; Automation; Translation]
+
+let all_impl_kinds = [Behavior; Projection; Automation; Translation; Mappings; Extension; Task]
 
 type mode =
   | Spec of string option
@@ -378,6 +392,277 @@ let has_no_api_attr (str : structure) =
   scan_str str;
   !found
 
+(* --- Phase: file-level Mappings / Extension / Task PPX kinds ----------------- *)
+
+(* Build [open Reventless.<Sub>]. Used for [Reventless.Projection] /
+   [Reventless.Message] / [Reventless.EventMapping] / [Reventless.AutomationSlice]. *)
+let gen_open_reventless_sub ~loc sub =
+  let lid = { txt = Ldot (Lident "Reventless", sub); loc } in
+  { pstr_desc = Pstr_open {
+      popen_expr = { pmod_desc = Pmod_ident lid; pmod_loc = loc; pmod_attributes = [] };
+      popen_override = Fresh;
+      popen_loc = loc;
+      popen_attributes = [];
+    };
+    pstr_loc = loc }
+
+let gen_open_extension_mapping ~loc =
+  let lid = { txt = Ldot (Lident "ReventlessInfra", "ExtensionMapping"); loc } in
+  { pstr_desc = Pstr_open {
+      popen_expr = { pmod_desc = Pmod_ident lid; pmod_loc = loc; pmod_attributes = [] };
+      popen_override = Fresh;
+      popen_loc = loc;
+      popen_attributes = [];
+    };
+    pstr_loc = loc }
+
+(* Build [module M = Reventless.<Domain>.Mappings.Make(<SpecName>)]. *)
+let gen_mappings_make_call ~loc ~domain spec_name =
+  let make_lid = Ldot (Ldot (Ldot (Lident "Reventless", domain), "Mappings"), "Make") in
+  let spec_mod = {
+    pmod_desc = Pmod_ident { txt = Lident spec_name; loc };
+    pmod_loc = loc;
+    pmod_attributes = [];
+  } in
+  { pstr_desc = Pstr_module {
+      pmb_name = { txt = Some "M"; loc };
+      pmb_expr = {
+        pmod_desc = Pmod_apply ({
+          pmod_desc = Pmod_ident { txt = make_lid; loc };
+          pmod_loc = loc;
+          pmod_attributes = [];
+        }, spec_mod);
+        pmod_loc = loc;
+        pmod_attributes = [];
+      };
+      pmb_attributes = [];
+      pmb_loc = loc;
+    };
+    pstr_loc = loc }
+
+let gen_let_counter_none ~loc =
+  [%stri let counter = None]
+
+(* DCB Source detection — a module qualifies if its body has
+   both [let name = "..."] and [@schema type event].
+   The new file-level kinds (@@reventless.mappings, @@reventless.automation)
+   scan their inner modules for these and inject [module Id] + dcbTags. *)
+let module_looks_like_dcb_source (mb : module_binding) : bool =
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body ->
+    let has_name_string =
+      List.exists (fun (item : structure_item) ->
+        match item.pstr_desc with
+        | Pstr_value (_, bindings) ->
+          List.exists (fun (vb : value_binding) ->
+            match vb.pvb_pat.ppat_desc with
+            | Ppat_var { txt = "name"; _ } ->
+              (match vb.pvb_expr.pexp_desc with
+               | Pexp_constant (Pconst_string _) -> true
+               | _ -> false)
+            | _ -> false
+          ) bindings
+        | _ -> false
+      ) body
+    in
+    let has_schema_event_type =
+      List.exists (fun (item : structure_item) ->
+        match item.pstr_desc with
+        | Pstr_type (_, decls) ->
+          List.exists (fun (td : type_declaration) ->
+            String.equal td.ptype_name.txt "event"
+            && Util.has_attr "schema" td.ptype_attributes
+          ) decls
+        | _ -> false
+      ) body
+    in
+    has_name_string && has_schema_event_type
+  | _ -> false
+
+let transform_dcb_source_module ~loc (mb : module_binding) : module_binding =
+  match mb.pmb_expr.pmod_desc with
+  | Pmod_structure body ->
+    let body = DcbTagInference.transform_structure ~loc body in
+    let body =
+      if not (Util.has_module_binding "Id" body) then
+        gen_module_id ~loc :: body
+      else body
+    in
+    { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure body } }
+  | _ -> mb
+
+(* One-level scan of file-level inner modules. *)
+let walk_for_dcb_sources (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_module mb when module_looks_like_dcb_source mb ->
+      let mb' = transform_dcb_source_module ~loc:item.pstr_loc mb in
+      { item with pstr_desc = Pstr_module mb' }
+    | _ -> item
+  ) str
+
+(* Detect the target domain for @@reventless.mappings from the file's folder. *)
+type mappings_domain =
+  | DomainProjection
+  | DomainEventMapping
+  | DomainAutomationSlice
+
+let mappings_domain_module = function
+  | DomainProjection -> "Projection"
+  | DomainEventMapping -> "EventMapping"
+  | DomainAutomationSlice -> "AutomationSlice"
+
+let detect_mappings_domain ~loc fname =
+  if Util.is_in_readmodel_folder fname then DomainProjection
+  else if Util.is_in_aggregate_folder fname then DomainEventMapping
+  else if Util.is_in_automationslice_folder fname then DomainAutomationSlice
+  else
+    Location.raise_errorf ~loc
+      "[reventless-ppx] @@reventless.mappings must live under Aggregate/, ReadModel/, or AutomationSlice/ — got %s"
+      fname
+
+(* Spec name derivation for Mappings — handles _Mappings, _Projections, and
+   the legacy non-underscored Mappings/Projections suffixes. *)
+let derive_mappings_spec_name fname =
+  let base = Filename.basename fname in
+  let stem = match String.index_opt base '.' with
+    | Some i -> String.sub base 0 i
+    | None -> base
+  in
+  let try_strip suffix =
+    let stripped = Util.strip_suffix stem suffix in
+    if not (String.equal stripped stem) && String.length stripped > 0 then Some stripped
+    else None
+  in
+  match try_strip "_Mappings" with
+  | Some n -> n
+  | None ->
+    (match try_strip "_Projections" with
+     | Some n -> n
+     | None ->
+       (match try_strip "Mappings" with
+        | Some n -> n
+        | None ->
+          (match try_strip "Projections" with
+           | Some n -> n
+           | None -> stem)))
+
+(* For Extension files. Filename forms:
+   - <Name>_Extension.res (new convention) → strip _Extension
+   - <Name>Extension.res  (legacy) → strip Extension *)
+let derive_extension_name fname =
+  let base = Filename.basename fname in
+  let stem = match String.index_opt base '.' with
+    | Some i -> String.sub base 0 i
+    | None -> base
+  in
+  let try_strip suffix =
+    let stripped = Util.strip_suffix stem suffix in
+    if not (String.equal stripped stem) && String.length stripped > 0 then Some stripped
+    else None
+  in
+  match try_strip "_Extension" with
+  | Some n -> n
+  | None ->
+    (match try_strip "Extension" with
+     | Some n -> n
+     | None -> stem)
+
+(* For Task files. Filename IS the task name (no suffix per Plan convention). *)
+let derive_task_name fname =
+  let base = Filename.basename fname in
+  match String.index_opt base '.' with
+  | Some i -> String.sub base 0 i
+  | None -> base
+
+(* Inject the AutomationSlice.Mappings.Make wrapper alongside the existing
+   `open Spec; module Spec = Spec` injections. Used by @@reventless.automation
+   in the merged AutomationSlice file shape (Plan 04 + the gap-closure plan). *)
+let automation_mappings_extension ~loc ~spec_name body =
+  let body = walk_for_dcb_sources body in
+  let extra = ref [] in
+  if not (Util.has_open_dotted "Reventless" "AutomationSlice" body) then
+    extra := !extra @ [gen_open_reventless_sub ~loc "AutomationSlice"];
+  if not (Util.has_module_binding "M" body) then
+    extra := !extra @ [gen_mappings_make_call ~loc ~domain:"AutomationSlice" spec_name];
+  if not (Util.has_modtype_binding "Mapping" body) then
+    extra := !extra @ [gen_module_type_mapping ~loc];
+  !extra @ body
+
+(* @@reventless.mappings dispatch — file-level on _Mappings.res / _Projections.res. *)
+let dispatch_mappings_impl ~loc ~specifier ~spec_name fname body =
+  let domain = detect_mappings_domain ~loc fname in
+  let domain_mod = mappings_domain_module domain in
+  let body = walk_for_dcb_sources body in
+  let prefix = ref [] in
+  if not (Util.has_open_dotted "Reventless" domain_mod body) then
+    prefix := !prefix @ [gen_open_reventless_sub ~loc domain_mod];
+  if domain = DomainProjection
+     && not (Util.has_open_dotted "Reventless" "Message" body) then
+    prefix := !prefix @ [gen_open_reventless_sub ~loc "Message"];
+  if not (Util.has_module_binding "Target" body) then
+    prefix := !prefix @ [gen_module_alias ~loc ~alias_name:"Target" ~target_name:spec_name];
+  if not (Util.has_module_binding "M" body) then
+    prefix := !prefix @ [gen_mappings_make_call ~loc ~domain:domain_mod spec_name];
+  if not (Util.has_modtype_binding "Mapping" body) then
+    prefix := !prefix @ [gen_module_type_mapping ~loc];
+  let suffix = ref [] in
+  if domain = DomainEventMapping
+     && not (Util.has_let_binding "counter" body) then
+    suffix := !suffix @ [gen_let_counter_none ~loc];
+  if not (Util.has_let_binding "moduleUrl" body) then
+    suffix := !suffix @ [ModuleUrl.gen_module_url ~loc specifier];
+  !prefix @ body @ !suffix
+
+(* @@reventless.extension dispatch — file-level on Extension/<Name>_Extension.res.
+   Auto-opens ReventlessInfra.ExtensionMapping and applies the Delegate transform
+   inside the file's Mapping module. *)
+let dispatch_extension_impl ~loc ~specifier body =
+  let body = List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_module mb
+      when (match mb.pmb_name.txt with Some "Mapping" -> true | _ -> false) ->
+      (match mb.pmb_expr.pmod_desc with
+       | Pmod_structure inner ->
+         let inner' = List.map (fun (inner_item : structure_item) ->
+           match inner_item.pstr_desc with
+           | Pstr_module inner_mb
+             when (match inner_mb.pmb_name.txt with Some "Delegate" -> true | _ -> false) ->
+             let inner_mb' =
+               transform_delegate_module ~loc:inner_item.pstr_loc ~specifier inner_mb
+             in
+             { inner_item with pstr_desc = Pstr_module inner_mb' }
+           | _ -> inner_item
+         ) inner in
+         let mb' = { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure inner' } } in
+         { item with pstr_desc = Pstr_module mb' }
+       | _ -> item)
+    | _ -> item
+  ) body in
+  let prefix = ref [] in
+  if not (Util.has_open_dotted "ReventlessInfra" "ExtensionMapping" body) then
+    prefix := !prefix @ [gen_open_extension_mapping ~loc];
+  let suffix =
+    if not (Util.has_let_binding "moduleUrl" body) then
+      [ModuleUrl.gen_module_url ~loc specifier]
+    else []
+  in
+  !prefix @ body @ suffix
+
+(* @@reventless.task dispatch — file-level on Task/<Name>.res. *)
+let dispatch_task_impl ~loc ~specifier ~name body =
+  let prefix = ref [] in
+  if not (Util.has_open "Reventless" body) then
+    prefix := !prefix @ [gen_open ~loc "Reventless"];
+  if not (Util.has_let_binding "name" body) then
+    prefix := !prefix @ [gen_name ~loc name];
+  let suffix =
+    if not (Util.has_let_binding "moduleUrl" body) then
+      [ModuleUrl.gen_module_url ~loc specifier]
+    else []
+  in
+  !prefix @ body @ suffix
+
 let transform (str : structure) : structure =
   let str = GwtInference.transform str in
   let initial_mode = detect_mode str in
@@ -483,48 +768,84 @@ let transform (str : structure) : structure =
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in
-      let spec_name = match spec_name_opt with
-        | Some n -> n
-        | None ->
-          (* For [Behavior], preserve the legacy [filename_to_name]-based
-             derivation so [ProductBehavior.res] outside slice folders still
-             resolves to [Product]. Inside slice folders, use the
-             [_<Kind>] / [<Kind>] suffix-stripping derivation that handles
-             the new [X_<Kind>.res] convention. *)
-          (match kind with
-           | Behavior when not (Util.is_in_slice_folder fname) ->
-             Util.filename_to_name fname
-           | _ -> derive_impl_spec_name ~kind fname)
-      in
-      (* Inject type annotations on recognised function bindings. The split
-         form's Spec puts both [consumedEvent] and [event] in the impl file's
-         scope (via [open Spec]); without explicit annotations the merged
-         form's declaration-order disambiguation no longer holds. *)
-      let body =
-        match TypeAnnotationInjection.kind_from_impl_kind
-                ~fname (impl_kind_name kind) with
-        | Some inj_kind ->
-          TypeAnnotationInjection.transform_structure ~kind:inj_kind body
-        | None -> body
-      in
-      let prefix = ref [] in
-      (* Projection implementations need [Reventless.Projection]'s action
-         constructors ([Set], [Update], …) in scope. This mirrors the
-         auto-open the Spec branch does for [is_stateview_filename] files in
-         the merged form. *)
-      if kind = Projection
-         && not (Util.has_open_dotted "Reventless" "Projection" body) then
-        prefix := !prefix @ [gen_open_projection ~loc];
-      if not (Util.has_open spec_name body) then
-        prefix := !prefix @ [gen_open ~loc spec_name];
-      if not (Util.has_module_binding "Spec" body) then
-        prefix := !prefix @ [gen_module_alias ~loc ~alias_name:"Spec" ~target_name:spec_name];
-      let suffix =
-        if not (Util.has_let_binding "moduleUrl" body) then
-          [ModuleUrl.gen_module_url ~loc specifier]
-        else []
-      in
-      !prefix @ body @ suffix
+      (match kind with
+       | Mappings ->
+         let spec_name = match spec_name_opt with
+           | Some n -> n
+           | None -> derive_mappings_spec_name fname
+         in
+         dispatch_mappings_impl ~loc ~specifier ~spec_name fname body
+       | Extension ->
+         dispatch_extension_impl ~loc ~specifier body
+       | Task ->
+         let name = match spec_name_opt with
+           | Some n -> n
+           | None -> derive_task_name fname
+         in
+         dispatch_task_impl ~loc ~specifier ~name body
+       | Behavior | Projection | Automation | Translation ->
+         let spec_name = match spec_name_opt with
+           | Some n -> n
+           | None ->
+             (* For [Behavior], preserve the legacy [filename_to_name]-based
+                derivation so [ProductBehavior.res] outside slice folders still
+                resolves to [Product]. Inside slice folders, use the
+                [_<Kind>] / [<Kind>] suffix-stripping derivation that handles
+                the new [X_<Kind>.res] convention. *)
+             (match kind with
+              | Behavior when not (Util.is_in_slice_folder fname) ->
+                Util.filename_to_name fname
+              | _ -> derive_impl_spec_name ~kind fname)
+         in
+         (* Inject type annotations on recognised function bindings. The split
+            form's Spec puts both [consumedEvent] and [event] in the impl file's
+            scope (via [open Spec]); without explicit annotations the merged
+            form's declaration-order disambiguation no longer holds. *)
+         let body =
+           match TypeAnnotationInjection.kind_from_impl_kind
+                   ~fname (impl_kind_name kind) with
+           | Some inj_kind ->
+             TypeAnnotationInjection.transform_structure ~kind:inj_kind body
+           | None -> body
+         in
+         (* @@reventless.automation: in the merged AutomationSlice file shape
+            (process + per-source Mapping.Make + let mappings), inject the
+            AutomationSlice.Mappings.Make wrapper and scan inner DCB Source
+            modules. Trigger conditions:
+              - file lives under AutomationSlice/
+              - file declares `let mappings = …` (signals merged shape)
+              - file does NOT declare its own `module type Mapping` (which
+                would mean it's a re-export bridge to a sibling _Mappings.res
+                — no PPX wrapper needed there).
+            The legacy 3-file shape (process only) and the bridge shape both
+            skip this extension to avoid emitting unused
+            `open Reventless.AutomationSlice` / `module M`. *)
+         let body =
+           if kind = Automation
+              && Util.is_in_automationslice_folder fname
+              && Util.has_let_binding "mappings" body
+              && not (Util.has_modtype_binding "Mapping" body)
+           then automation_mappings_extension ~loc ~spec_name body
+           else body
+         in
+         let prefix = ref [] in
+         (* Projection implementations need [Reventless.Projection]'s action
+            constructors ([Set], [Update], …) in scope. This mirrors the
+            auto-open the Spec branch does for [is_stateview_filename] files in
+            the merged form. *)
+         if kind = Projection
+            && not (Util.has_open_dotted "Reventless" "Projection" body) then
+           prefix := !prefix @ [gen_open_projection ~loc];
+         if not (Util.has_open spec_name body) then
+           prefix := !prefix @ [gen_open ~loc spec_name];
+         if not (Util.has_module_binding "Spec" body) then
+           prefix := !prefix @ [gen_module_alias ~loc ~alias_name:"Spec" ~target_name:spec_name];
+         let suffix =
+           if not (Util.has_let_binding "moduleUrl" body) then
+             [ModuleUrl.gen_module_url ~loc specifier]
+           else []
+         in
+         !prefix @ body @ suffix)
 
 let () =
   Driver.register_transformation

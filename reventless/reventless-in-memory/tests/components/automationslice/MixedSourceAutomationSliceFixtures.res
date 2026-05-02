@@ -57,12 +57,9 @@ module AutoFulfillSpec = {
   let targetName = "MarkFulfilled"
 }
 
-module AutoFulfillAutomation = {
-  module Spec = AutoFulfillSpec
-  let process = (id, item: AutoFulfillSpec.todoItem) =>
-    Some((id, AutoFulfillSpec.MarkFulfilled({orderId: item.orderId, productId: item.productId})))
-  let moduleUrl: string = %raw(`import.meta.url`)
-}
+// Forward-declared per-source mappings live below; the merged `Automation`
+// module type also exposes `mappings` + `module type Mapping`, which we
+// populate after `FromOrderAggregate` / `FromInventoryDcb` are in scope.
 
 // ─────────────────────────────────────────────────────────────
 // Mapping 1: Aggregate source → todoItem (with `fromAggregate=true`)
@@ -116,10 +113,13 @@ module FromInventoryDcb = AutomationSlice.Mapping.Make(
 // Mappings collection
 // ─────────────────────────────────────────────────────────────
 
-module AutoFulfillMappings: AutomationSlice.Mappings with module Target := AutoFulfillSpec = {
+module AutoFulfillAutomation: AutomationSlice.Automation
+  with module Spec := AutoFulfillSpec = {
+  let process = (id, item: AutoFulfillSpec.todoItem) =>
+    Some((id, AutoFulfillSpec.MarkFulfilled({orderId: item.orderId, productId: item.productId})))
+  let moduleUrl: string = %raw(`import.meta.url`)
   module M = AutomationSlice.Mappings.Make(AutoFulfillSpec)
   module type Mapping = M.Mapping
-  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(FromOrderAggregate), module(FromInventoryDcb)]
 }
 
@@ -161,7 +161,6 @@ module AutomationSliceMaker = AutomationSlice_Builder.Make(Bus)
 module AutoFulfill = AutomationSliceMaker.Make(
   AutoFulfillSpec,
   AutoFulfillAutomation,
-  AutoFulfillMappings,
 )
 
 // Mirrors the context that `Plugin_Builder` constructs for in-memory deployments

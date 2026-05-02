@@ -6,15 +6,9 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AutomationSlice_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res.mjs";
 import * as AutomationSliceFixtures$ReventlessInMemory from "./AutomationSliceFixtures.res.mjs";
 
-let Callback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec)({
-  process: AutomationSliceFixtures$ReventlessInMemory.ShipOrderAutomation.process,
-  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.ShipOrderAutomation.moduleUrl
-})(AutomationSliceFixtures$ReventlessInMemory.ShipOrderMappings);
+let Callback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.ShipOrderSpec)(AutomationSliceFixtures$ReventlessInMemory.ShipOrderAutomation);
 
-let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec)({
-  process: AutomationSliceFixtures$ReventlessInMemory.SkipProcessAutomation.process,
-  moduleUrl: AutomationSliceFixtures$ReventlessInMemory.SkipProcessAutomation.moduleUrl
-})(AutomationSliceFixtures$ReventlessInMemory.SkipProcessMappings);
+let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessInMemory.SkipProcessSpec)(AutomationSliceFixtures$ReventlessInMemory.SkipProcessAutomation);
 
 describe("AutomationSlice Callback (mixed-source)", () => {
   beforeEach(() => {

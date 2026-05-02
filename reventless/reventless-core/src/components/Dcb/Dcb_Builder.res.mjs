@@ -97,7 +97,7 @@ function Make(DcbEventLogStorage) {
       ]).concat(stateViewSlices.map(V => [
         V.Spec.name,
         V.Spec.consumedEventSchema
-      ])).concat(automationSlices.flatMap(A => A.Mappings.mappings.map(M => [
+      ])).concat(automationSlices.flatMap(A => A.Automation.mappings.map(M => [
         A.Spec.name,
         M.sourceEventSchema
       ]))).concat(outboundTranslationSlices.map(O => [

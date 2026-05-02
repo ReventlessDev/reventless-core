@@ -21,13 +21,11 @@ module Make = (Api: {
   module Make = (
     Spec: Reventless.AutomationSlice.Spec,
     Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-    Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
   ): (ReventlessCore.AutomationSlice.T with module Spec = Spec) => {
-    module InnerMake = Inner.Make(Spec, Automation, Mappings)
+    module InnerMake = Inner.Make(Spec, Automation)
 
     module Spec = Spec
     module Automation = Automation
-    module Mappings = Mappings
     type component = InnerMake.component
     let queryDbName = InnerMake.queryDbName
     let sourceNames = InnerMake.sourceNames

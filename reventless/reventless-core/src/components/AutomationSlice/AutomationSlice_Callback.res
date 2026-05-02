@@ -49,7 +49,6 @@ module type T = {
 module Make = (
   Spec: Reventless.AutomationSlice.Spec,
   Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-  Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
 ): (T with module Spec = Spec and module Automation := Automation) => {
   module Spec = Spec
   module Automation = Automation
@@ -73,8 +72,8 @@ module Make = (
     handle: (JSON.t, Reventless.AutomationSlice.context) => unit,
   }
 
-  let dispatches: array<dispatch> = Mappings.mappings->Array.map((
-    module(M: Mappings.Mapping),
+  let dispatches: array<dispatch> = Automation.mappings->Array.map((
+    module(M: Automation.Mapping),
   ) => {
     let decoder = Reventless.DcbDecode.makeDecoder(M.sourceEventSchema)
     let handle = (json: JSON.t, ctx: Reventless.AutomationSlice.context) => {

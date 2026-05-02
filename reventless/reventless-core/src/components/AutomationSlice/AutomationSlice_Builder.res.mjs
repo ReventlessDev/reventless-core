@@ -20,10 +20,10 @@ import * as AutomationSlice_Callback$ReventlessCore from "./AutomationSlice_Call
 
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
-    let Make = Spec => (Automation => (Mappings => {
-      let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec)(Automation)(Mappings);
+    let Make = Spec => (Automation => {
+      let Callback = AutomationSlice_Callback$ReventlessCore.Make(Spec)(Automation);
       let queryDbName = Spec.name + "Todo";
-      let sourceNames = Belt_SetString.toArray(Belt_SetString.fromArray(Mappings.mappings.map(M => M.sourceName)));
+      let sourceNames = Belt_SetString.toArray(Belt_SetString.fromArray(Automation.mappings.map(M => M.sourceName)));
       let moduleUrl = import.meta.url;
       let config = ReadModel$Reventless.config(undefined, undefined, undefined);
       let SpecificQueryDb = QueryDb_Builder$ReventlessCore.Make({
@@ -95,12 +95,11 @@ function Make(RuntimeEnvironment) {
       return {
         Spec: Spec,
         Automation: Automation,
-        Mappings: Mappings,
         queryDbName: queryDbName,
         sourceNames: sourceNames,
         make: make
       };
-    }));
+    });
     return {
       finish: EventCollectorRuntimeBuilder.finish,
       Make: Make

@@ -174,7 +174,6 @@ module type T = {
     module Make: (
       Spec: Reventless.AutomationSlice.Spec,
       Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-      Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
     ) => AutomationSlice.T with module Spec = Spec
   }
 

@@ -9,13 +9,11 @@ open AutomationSliceFixtures
 module Callback = ReventlessCore.AutomationSlice_Callback.Make(
   ShipOrderSpec,
   ShipOrderAutomation,
-  ShipOrderMappings,
 )
 
 module SkipCallback = ReventlessCore.AutomationSlice_Callback.Make(
   SkipProcessSpec,
   SkipProcessAutomation,
-  SkipProcessMappings,
 )
 
 open ReventlessCore.AutomationSlice_Callback

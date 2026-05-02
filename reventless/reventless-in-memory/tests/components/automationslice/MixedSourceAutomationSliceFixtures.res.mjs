@@ -73,25 +73,6 @@ let AutoFulfillSpec = {
   targetName: "MarkFulfilled"
 };
 
-function process(id, item) {
-  return [
-    id,
-    {
-      TAG: "MarkFulfilled",
-      orderId: item.orderId,
-      productId: item.productId
-    }
-  ];
-}
-
-let moduleUrl$1 = import.meta.url;
-
-let AutoFulfillAutomation = {
-  Spec: undefined,
-  process: process,
-  moduleUrl: moduleUrl$1
-};
-
 function collect(event, _ctx) {
   let productId = event.productId;
   let orderId = event.orderId;
@@ -151,17 +132,29 @@ let FromInventoryDcb = AutomationSlice$Reventless.Mapping.Make({
   resolve: resolve$1
 });
 
-AutomationSlice$Reventless.Mappings.Make(AutoFulfillSpec);
+function process(id, item) {
+  return [
+    id,
+    {
+      TAG: "MarkFulfilled",
+      orderId: item.orderId,
+      productId: item.productId
+    }
+  ];
+}
 
-let moduleUrl$2 = import.meta.url;
+let moduleUrl$1 = import.meta.url;
+
+AutomationSlice$Reventless.Mappings.Make(AutoFulfillSpec);
 
 let mappings = [
   FromOrderAggregate,
   FromInventoryDcb
 ];
 
-let AutoFulfillMappings = {
-  moduleUrl: moduleUrl$2,
+let AutoFulfillAutomation = {
+  process: process,
+  moduleUrl: moduleUrl$1,
   mappings: mappings
 };
 
@@ -190,10 +183,7 @@ TestRunner$ReventlessInMemory.setup();
 
 let AutomationSliceMaker = AutomationSlice_Builder$ReventlessInMemory.Make(Bus);
 
-let AutoFulfill = AutomationSliceMaker.Make(AutoFulfillSpec)({
-  process: process,
-  moduleUrl: moduleUrl$1
-})(AutoFulfillMappings);
+let AutoFulfill = AutomationSliceMaker.Make(AutoFulfillSpec)(AutoFulfillAutomation);
 
 let testContext = {
   environment: "in-memory",
@@ -254,10 +244,9 @@ export {
   OrderAggregateSource,
   InventoryDcbSource,
   AutoFulfillSpec,
-  AutoFulfillAutomation,
   FromOrderAggregate,
   FromInventoryDcb,
-  AutoFulfillMappings,
+  AutoFulfillAutomation,
   aggregateResource,
   dcbResource,
   allEventTopics,

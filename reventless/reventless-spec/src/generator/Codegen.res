@@ -33,8 +33,11 @@ let renderSlices = (
     ++ ")"
   )
 
-// AutomationSlice has an extra `Mappings` arg (Plan 04) — emits a 3-arg
-// `Platform.AutomationSlice.Make(<Stem>, <Stem>_Automation, <Stem>_Mappings)`.
+// AutomationSlice — 2-arg form. The merged `_Automation.res` shape exposes
+// both `process` and the `mappings` array, so plugin assembly drops to
+// `Platform.AutomationSlice.Make(<Stem>, <Stem>_Automation)`. Legacy 3-file
+// shapes use a one-line bridge in `_Automation.res` to re-export `mappings`
+// from the sibling `_Mappings.res`.
 let renderAutomationSlices = (stems: array<string>): array<string> =>
   stems->Array.map(stem =>
     "  module "
@@ -43,9 +46,7 @@ let renderAutomationSlices = (stems: array<string>): array<string> =>
     ++ stem
     ++ ", "
     ++ stem
-    ++ "_Automation, "
-    ++ stem
-    ++ "_Mappings)"
+    ++ "_Automation)"
   )
 
 let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> =>

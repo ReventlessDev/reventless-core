@@ -29,17 +29,16 @@ function Make(Bus) {
   })({
     make: QueryDbResolvers.make
   })(EventCollectorChannel)(EventCollectorRuntimeBuilder)(Api);
-  let Make$1 = Spec => (Automation => (Mappings => {
-    let Inner = CoreMaker.Make(Spec)(Automation)(Mappings);
+  let Make$1 = Spec => (Automation => {
+    let Inner = CoreMaker.Make(Spec)(Automation);
     return {
       Spec: Spec,
       Automation: Automation,
-      Mappings: Mappings,
       queryDbName: Inner.queryDbName,
       sourceNames: Inner.sourceNames,
       make: Inner.make
     };
-  }));
+  });
   return {
     RuntimeEnvironment: undefined,
     EventCollectorChannel: EventCollectorChannel,

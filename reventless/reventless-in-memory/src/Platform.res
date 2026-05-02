@@ -554,9 +554,8 @@ module MakeWithConfig = (
     module Make = (
       Spec: Reventless.AutomationSlice.Spec,
       Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-      Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
     ): (ReventlessInfra.AutomationSlice.T with module Spec = Spec) =>
-      AutomationSliceMaker.Make(Spec, Automation, Mappings)
+      AutomationSliceMaker.Make(Spec, Automation)
   }
 
   module OutboundTranslationSlice = {

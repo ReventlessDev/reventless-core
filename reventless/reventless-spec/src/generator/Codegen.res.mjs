@@ -22,7 +22,7 @@ function renderSlices(platformFactory, suffix, implSuffix, stems) {
 }
 
 function renderAutomationSlices(stems) {
-  return stems.map(stem => "  module " + stem + "Slice = Platform.AutomationSlice.Make(" + stem + ", " + stem + "_Automation, " + stem + "_Mappings)");
+  return stems.map(stem => "  module " + stem + "Slice = Platform.AutomationSlice.Make(" + stem + ", " + stem + "_Automation)");
 }
 
 function renderAggregates(aggregates) {

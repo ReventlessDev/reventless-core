@@ -75,27 +75,6 @@ module type Spec = {
   let targetName: string
 }
 
-/**
-The Automation — the source-agnostic processing function.
-
-Plan 04 moved `collect` and `resolve` to per-source `Mapping` modules (where
-they switch over the source's own `event` type). `process` stays here because
-it operates on `todoItem`, which is uniform across sources.
-*/
-module type Automation = {
-  module Spec: Spec
-
-  /**
-  Process: given a pending TODO item, produce a command.
-  The processor calls this for each pending item. Returns the target ID and command.
-  May return `None` to skip processing (e.g., wait for more data).
-  */
-  let process: (string, Spec.todoItem) => option<(string, Spec.command)>
-
-  /** File URL of this Automation module (`import.meta.url`). */
-  let moduleUrl: string
-}
-
 // ── Plan 04: Mixed-source mappings ───────────────────────────────────────────
 //
 // An AutomationSlice can declare per-source mappings that consume Aggregate
@@ -148,6 +127,51 @@ module type Mapping = {
   let sourceName: string
   let collect: (sourceEvent, context) => array<(string, todoItem)>
   let resolve: sourceEvent => option<string>
+}
+
+/**
+The Automation — the source-agnostic processing function.
+
+Plan 04 moved `collect` and `resolve` to per-source `Mapping` modules (where
+they switch over the source's own `event` type). `process` stays here because
+it operates on `todoItem`, which is uniform across sources.
+
+The "close PPX gaps" plan merged the previous `Mappings` shape into this type:
+the same module that exposes `process` also exposes the per-source `mappings`
+array and the inner `module type Mapping`. This collapses the Plan 04 3-arg
+`AutomationSlice.Make(Spec, Automation, Mappings)` into a 2-arg
+`Make(Spec, Automation)` and lets the merged `_Automation.res` file (process +
+per-source `Mapping.Make` + `let mappings`) live as a single source file.
+*/
+module type Automation = {
+  module Spec: Spec
+
+  /**
+  Process: given a pending TODO item, produce a command.
+  The processor calls this for each pending item. Returns the target ID and command.
+  May return `None` to skip processing (e.g., wait for more data).
+  */
+  let process: (string, Spec.todoItem) => option<(string, Spec.command)>
+
+  /** File URL of this Automation module (`import.meta.url`). */
+  let moduleUrl: string
+
+  /**
+  The per-source `Mapping` type — substituted onto the slice's `Spec`. The
+  PPX-injected `module M = Reventless.AutomationSlice.Mappings.Make(Spec)`
+  + `module type Mapping = M.Mapping` produces exactly this shape; legacy
+  3-file files re-export it via `module type Mapping = <Stem>_Mappings.Mapping`.
+  */
+  module type Mapping = Mapping
+    with type todoItem = Spec.todoItem
+    and type command = Spec.command
+
+  /**
+  The per-source mappings registered with this slice. Each entry is a first-class
+  module satisfying `Mapping`. The framework walks these to discover source
+  topics and dispatch decoded events to the matching `collect`/`resolve`.
+  */
+  let mappings: array<module(Mapping)>
 }
 
 /**

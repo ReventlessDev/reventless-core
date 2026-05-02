@@ -45,6 +45,13 @@ let has_module_binding name structure =
     | _ -> false
   ) structure
 
+let has_modtype_binding name structure =
+  List.exists (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_modtype mtd -> String.equal mtd.pmtd_name.txt name
+    | _ -> false
+  ) structure
+
 let has_open name structure =
   List.exists (fun (item : structure_item) ->
     match item.pstr_desc with
@@ -244,6 +251,23 @@ let is_in_slice_folder fname =
   let dir = Filename.dirname fname in
   let parts = String.split_on_char '/' dir in
   List.exists is_slice_folder_segment parts
+
+(* Generic "is the file inside a folder named [segment]?" check used by the
+   file-level Mappings/Extension/Task PPX kinds to disambiguate the target
+   domain (Aggregate vs ReadModel) and the kind itself (Extension vs Task). *)
+let is_in_folder fname segment =
+  let dir_parts = String.split_on_char '/' (Filename.dirname fname) in
+  List.exists (String.equal segment) dir_parts
+
+let is_in_aggregate_folder fname = is_in_folder fname "Aggregate"
+let is_in_readmodel_folder fname = is_in_folder fname "ReadModel"
+let is_in_extension_folder fname = is_in_folder fname "Extension"
+let is_in_task_folder fname = is_in_folder fname "Task"
+let is_in_automationslice_folder fname =
+  let dir_parts = String.split_on_char '/' (Filename.dirname fname) in
+  List.exists (fun part ->
+    String.equal part "AutomationSlice" || String.equal part "AutomationSlices"
+  ) dir_parts
 
 let filename_to_name fname =
   let base = Filename.basename fname in

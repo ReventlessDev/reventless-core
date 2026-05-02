@@ -27,14 +27,12 @@ module Make = (
   module Make = (
     Spec: Reventless.AutomationSlice.Spec,
     Automation: Reventless.AutomationSlice.Automation with module Spec := Spec,
-    Mappings: Reventless.AutomationSlice.Mappings with module Target := Spec,
   ): (AutomationSlice.T with module Spec = Spec) => {
     module Spec = Spec
     module Automation = Automation
-    module Mappings = Mappings
     type component = AutomationSlice.component
 
-    module Callback = AutomationSlice_Callback.Make(Spec, Automation, Mappings)
+    module Callback = AutomationSlice_Callback.Make(Spec, Automation)
 
     let queryDbName = Spec.name ++ "Todo"
 
@@ -42,8 +40,8 @@ module Make = (
     // mappings can share a source name (e.g., two mappings reading the same
     // Aggregate's events for different reasons).
     let sourceNames =
-      Mappings.mappings
-      ->Array.map((module(M: Mappings.Mapping)) => M.sourceName)
+      Automation.mappings
+      ->Array.map((module(M: Automation.Mapping)) => M.sourceName)
       ->Belt.Set.String.fromArray
       ->Belt.Set.String.toArray
 

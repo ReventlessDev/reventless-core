@@ -25,7 +25,6 @@ import * as RefundOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/R
 import * as AvailableProductsView$OrderingPlugin from "./CatalogProduct/StateViewSlice/AvailableProductsView.res.mjs";
 import * as OrdersView_Projection$OrderingPlugin from "./Order/StateViewSlice/OrdersView_Projection.res.mjs";
 import * as SendOrderConfirmation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
-import * as AutoShipOrder_Mappings$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Mappings.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
 import * as OrdersExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/OrdersExtensionPointMapping.res.mjs";
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";
@@ -135,10 +134,8 @@ function Make(Platform) {
     targetName: AutoShipOrder$OrderingPlugin.targetName
   })({
     process: AutoShipOrder_Automation$OrderingPlugin.process,
-    moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl
-  })({
-    moduleUrl: AutoShipOrder_Mappings$OrderingPlugin.moduleUrl,
-    mappings: AutoShipOrder_Mappings$OrderingPlugin.mappings
+    moduleUrl: AutoShipOrder_Automation$OrderingPlugin.moduleUrl,
+    mappings: AutoShipOrder_Automation$OrderingPlugin.mappings
   });
   let SendOrderConfirmationSlice = Platform.OutboundTranslationSlice.Make({
     name: SendOrderConfirmation$OrderingPlugin.name,

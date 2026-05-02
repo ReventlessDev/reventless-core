@@ -683,6 +683,10 @@ type todoItem = { id: string }
 
 @schema
 type command = DoIt({ id: string })
+
+let maxRetries = 3
+let heartbeatInterval = 60
+let targetName = "Doer"
 EOF
 
 cat > "$PLUGIN/src/AutomationSlice/Sweep_Automation.res" <<'EOF'
@@ -739,6 +743,191 @@ let collect = (event: consumedEvent) => switch event {
 }
 let translate = async (id, item: outboundItem) =>
   Ok(Some((id, Done({id: item.id}))))
+EOF
+
+# ─── Fixture: @@reventless.mappings — ReadModel/<Stem>_Projections.res ──
+
+# Source module — satisfies Reventless.Projection.Source via the spec PPX.
+cat > "$PLUGIN/src/Aggregate/Source.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Touch
+@schema
+type event = Touched({sourceId: string})
+@schema
+type error = unit
+EOF
+
+# A ReadModel target with a state schema and an explicit string @id field.
+# Filename includes "ReadModel" so the @@reventless.spec PPX auto-generates
+# config + subIdConfig (today's convention; renamed in Phase 3.3).
+cat > "$PLUGIN/src/ReadModel/MirrorReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id mirrorId: string, name: string }
+EOF
+
+# The Projections file under ReadModel/. The PPX should inject:
+#   open Reventless.Projection
+#   open Reventless.Message
+#   module Target = MirrorReadModel
+#   module M = Reventless.Projection.Mappings.Make(MirrorReadModel)
+#   module type Mapping = M.Mapping
+#   let moduleUrl
+cat > "$PLUGIN/src/ReadModel/MirrorReadModel_Projections.res" <<'EOF'
+@@reventless.mappings
+
+module SourceMapping = Mapping.Make(
+  Source,
+  MirrorReadModel,
+  {
+    open Source
+    let project = ({event, id, _}: Reventless.Message.event'<string, Source.event>) =>
+      switch event {
+      | Touched({sourceId}) =>
+        Set(id, ({mirrorId: sourceId, name: "demo"}: MirrorReadModel.state))
+      }
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(SourceMapping)]
+EOF
+
+# ─── Fixture: @@reventless.mappings — Aggregate/<Stem>_Mappings.res ──
+
+# Aggregate Spec satisfying EventMapping.Source AND EventMapping.Target.
+cat > "$PLUGIN/src/Aggregate/Echo.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type command = Send({echoId: string})
+@schema
+type event = Sent({echoId: string})
+@schema
+type error = unit
+EOF
+
+# The Aggregate _Mappings.res — uses Echo as both source and target (self-mapping).
+# PPX should inject:
+#   open Reventless.EventMapping
+#   module Target = Echo
+#   module M = Reventless.EventMapping.Mappings.Make(Echo)
+#   module type Mapping = M.Mapping
+#   let counter = None       (Aggregate-only)
+#   let moduleUrl
+cat > "$PLUGIN/src/Aggregate/Echo_Mappings.res" <<'EOF'
+@@reventless.mappings
+
+module SelfMapping = {
+  module Source = Echo
+  module Target = Echo
+  let map = (id, event, _q) => switch event {
+    | Echo.Sent(_) => [Publish(id, Echo.Send({echoId: "x"}))]
+  }
+}
+
+let mappings: array<module(Mapping)> = [module(SelfMapping)]
+EOF
+
+# ─── Fixture: @@reventless.mappings — DCB Source module scan ─────────
+
+# A Projections file with an inner "DCB Source" module (let name + @schema type event).
+# The PPX should inject `module Id = Reventless.Id.String` + apply dcbTags inside.
+cat > "$PLUGIN/src/ReadModel/SourceScanReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id sourceScanId: string, name: string }
+EOF
+
+cat > "$PLUGIN/src/ReadModel/SourceScanReadModel_Projections.res" <<'EOF'
+@@reventless.mappings
+
+// Inner module that LOOKS like a DCB source — the PPX should auto-inject
+// `module Id = Reventless.Id.String` and apply dcbTags on `*Id` event fields.
+module DcbScannedSource = {
+  let name = "ScannedDcbEventLog"
+  @schema
+  type event = | Scanned({scanId: string})
+}
+
+let mappings: array<module(Mapping)> = []
+EOF
+
+# ─── Fixture: @@reventless.automation extension — merged form ────────
+
+# A merged AutomationSlice file with process + a per-source Mapping.Make call
+# + let mappings. The PPX should inject the AutomationSlice.Mappings.Make
+# wrapper alongside the existing classic injections.
+cat > "$PLUGIN/src/AutomationSlice/MergedAutomation.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type todoItem = { mergedId: string }
+@schema
+type command = MergedDo({mergedId: string})
+
+let maxRetries = 1
+let heartbeatInterval = 1
+let targetName = "MergedTarget"
+EOF
+
+cat > "$PLUGIN/src/AutomationSlice/MergedAutomation_Automation.res" <<'EOF'
+@@reventless.automation
+
+// Inner DCB Source — `module Id` and dcbTags should be auto-injected.
+module MergedAutomationDcbSource = {
+  let name = "MergedDcbEventLog"
+  @schema
+  type event = | Triggered({mergedId: string})
+}
+
+module FromDcb = Mapping.Make(
+  MergedAutomationDcbSource,
+  MergedAutomation,
+  {
+    open MergedAutomationDcbSource
+    let collect = (event, _ctx) => switch event {
+      | Triggered({mergedId}) =>
+        [(mergedId, ({mergedId: mergedId}: MergedAutomation.todoItem))]
+    }
+    let resolve = _event => None
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(FromDcb)]
+
+let process = (id, item: MergedAutomation.todoItem) =>
+  Some((id, MergedDo({mergedId: item.mergedId})))
+EOF
+
+# ─── Fixture: @@reventless.extension — Extension/<Name>_Extension.res ─
+
+mkdir -p "$DCB/src/Extension"
+cat > "$DCB/src/Extension/Demo_Extension.res" <<'EOF'
+@@reventless.extension
+
+module Mapping = {
+  // Inner Delegate — should get dcbTags + module Id injected by the PPX
+  // (the same auto-transform spec files apply to a `module Delegate`).
+  module Delegate = {
+    let name = "DemoDelegate"
+    @schema
+    type event = | DemoEvent({demoId: string})
+  }
+}
+EOF
+
+# ─── Fixture: @@reventless.task — Task/<Name>.res ────────────────────
+
+mkdir -p "$PLUGIN/src/Task"
+cat > "$PLUGIN/src/Task/CleanupJob.res" <<'EOF'
+@@reventless.task
+
+let setup = (_queryEngine, _queryBucketName, _opts) =>
+  ({Task.buckets: []}: Task.config)
 EOF
 
 # ─── Build PPX ──────────────────────────────────────────────────────
@@ -1139,6 +1328,42 @@ echo "=== Test: @@reventless.translation (split-form OutboundTranslationSlice) =
 JS="$PLUGIN/src/OutboundTranslationSlice/Notify_Translation.res.mjs"
 assert_js_contains "$JS" 'OutboundTranslationSlice/Notify_Translation.res.mjs' "outbound translation moduleUrl"
 pass "outbound translation compiles (sync collect + async translate)"
+
+echo ""
+echo "=== Test: @@reventless.mappings (ReadModel/<Stem>_Projections.res) ==="
+JS="$PLUGIN/src/ReadModel/MirrorReadModel_Projections.res.mjs"
+assert_js_contains "$JS" 'ReadModel/MirrorReadModel_Projections.res.mjs' "mappings (RM): moduleUrl injected"
+pass "mappings (RM): file compiles — open Reventless.Projection + module Target/M/Mapping injected"
+
+echo ""
+echo "=== Test: @@reventless.mappings (Aggregate/<Stem>_Mappings.res) ==="
+JS="$PLUGIN/src/Aggregate/Echo_Mappings.res.mjs"
+assert_js_contains "$JS" 'Aggregate/Echo_Mappings.res.mjs' "mappings (Aggr): moduleUrl injected"
+pass "mappings (Aggr): file compiles — open Reventless.EventMapping + module Target/M/Mapping + counter=None injected"
+
+echo ""
+echo "=== Test: @@reventless.mappings — DCB Source module scan injects module Id + dcbTags ==="
+JS="$PLUGIN/src/ReadModel/SourceScanReadModel_Projections.res.mjs"
+assert_js_contains "$JS" 'DcbTag' "Source scan: DcbTag referenced in inner Source module"
+
+echo ""
+echo "=== Test: @@reventless.automation (merged form — Mappings.Make wrapper auto-injected) ==="
+JS="$PLUGIN/src/AutomationSlice/MergedAutomation_Automation.res.mjs"
+assert_js_contains "$JS" 'AutomationSlice/MergedAutomation_Automation.res.mjs' "merged automation: moduleUrl injected"
+assert_js_contains "$JS" 'DcbTag' "merged automation: inner DCB Source got dcbTags"
+pass "merged automation: file compiles with one Mapping.Make + let mappings + process (Mappings.Make wrapper auto-injected)"
+
+echo ""
+echo "=== Test: @@reventless.extension (Extension/<Name>_Extension.res — Delegate auto-transformed) ==="
+JS="$DCB/src/Extension/Demo_Extension.res.mjs"
+assert_js_contains "$JS" 'Extension/Demo_Extension.res.mjs' "extension: moduleUrl injected"
+assert_js_contains "$JS" 'DcbTag' "extension: inner Mapping.Delegate got dcbTags + module Id"
+
+echo ""
+echo "=== Test: @@reventless.task (Task/<Name>.res — name + open + moduleUrl) ==="
+JS="$PLUGIN/src/Task/CleanupJob.res.mjs"
+assert_js_contains "$JS" 'let name = "CleanupJob"' "task: name derived from filename"
+assert_js_contains "$JS" 'Task/CleanupJob.res.mjs' "task: moduleUrl injected"
 
 # ─── Fixture: error package (expected to fail compilation) ──────────
 

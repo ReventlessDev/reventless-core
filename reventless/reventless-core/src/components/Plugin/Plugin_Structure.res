@@ -339,8 +339,8 @@ let make = (
       // multi-source slice contributes the union; a single-source slice
       // contributes that one source's variants.
       let allConsumedVariants =
-        AS.Mappings.mappings
-        ->Array.flatMap((module(M: AS.Mappings.Mapping)) =>
+        AS.Automation.mappings
+        ->Array.flatMap((module(M: AS.Automation.Mapping)) =>
           variantNames(M.sourceEventSchema->S.castToUnknown)
         )
         ->Belt.Set.String.fromArray

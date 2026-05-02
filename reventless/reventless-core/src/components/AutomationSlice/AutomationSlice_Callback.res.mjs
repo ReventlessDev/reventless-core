@@ -31,7 +31,7 @@ let todoRowSchema = S.schema(s => ({
 }));
 
 function Make(Spec) {
-  return Automation => (Mappings => {
+  return Automation => {
     let todoItems = {};
     let makeMeta = () => ({
       service: `AutomationSlice:` + Spec.name,
@@ -41,7 +41,7 @@ function Make(Spec) {
       msgId: Uuid.v4(),
       correlationId: ""
     });
-    let dispatches = Mappings.mappings.map(M => {
+    let dispatches = Automation.mappings.map(M => {
       let decoder = DcbDecode$Reventless.makeDecoder(M.sourceEventSchema);
       let handle = (json, ctx) => {
         let match = Message$ReventlessCore.splitMessage(json);
@@ -185,7 +185,7 @@ function Make(Spec) {
       phase1: phase1,
       phase2: phase2
     };
-  });
+  };
 }
 
 export {

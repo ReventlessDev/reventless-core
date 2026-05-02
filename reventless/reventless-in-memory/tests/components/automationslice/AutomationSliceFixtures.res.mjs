@@ -86,36 +86,6 @@ let SkipProcessSpec = {
   targetName: "Noop"
 };
 
-function process(id, _item) {
-  return [
-    id,
-    {
-      TAG: "CreateShipment",
-      orderId: id
-    }
-  ];
-}
-
-let moduleUrl$2 = import.meta.url;
-
-let ShipOrderAutomation = {
-  Spec: undefined,
-  process: process,
-  moduleUrl: moduleUrl$2
-};
-
-function process$1(_id, _item) {
-  
-}
-
-let moduleUrl$3 = import.meta.url;
-
-let SkipProcessAutomation = {
-  Spec: undefined,
-  process: process$1,
-  moduleUrl: moduleUrl$3
-};
-
 function collect(event, _ctx) {
   if (event.TAG !== "OrderPlaced") {
     return [];
@@ -177,25 +147,41 @@ let SkipProcessMapping = AutomationSlice$Reventless.Mapping.Make({
   resolve: resolve$1
 });
 
-AutomationSlice$Reventless.Mappings.Make(ShipOrderSpec);
+function process(id, _item) {
+  return [
+    id,
+    {
+      TAG: "CreateShipment",
+      orderId: id
+    }
+  ];
+}
 
-let moduleUrl$4 = import.meta.url;
+let moduleUrl$2 = import.meta.url;
+
+AutomationSlice$Reventless.Mappings.Make(ShipOrderSpec);
 
 let mappings = [ShipOrderMapping];
 
-let ShipOrderMappings = {
-  moduleUrl: moduleUrl$4,
+let ShipOrderAutomation = {
+  process: process,
+  moduleUrl: moduleUrl$2,
   mappings: mappings
 };
 
-AutomationSlice$Reventless.Mappings.Make(SkipProcessSpec);
+function process$1(_id, _item) {
+  
+}
 
-let moduleUrl$5 = import.meta.url;
+let moduleUrl$3 = import.meta.url;
+
+AutomationSlice$Reventless.Mappings.Make(SkipProcessSpec);
 
 let mappings$1 = [SkipProcessMapping];
 
-let SkipProcessMappings = {
-  moduleUrl: moduleUrl$5,
+let SkipProcessAutomation = {
+  process: process$1,
+  moduleUrl: moduleUrl$3,
   mappings: mappings$1
 };
 
@@ -265,12 +251,10 @@ export {
   SkipProcessSource,
   ShipOrderSpec,
   SkipProcessSpec,
-  ShipOrderAutomation,
-  SkipProcessAutomation,
   ShipOrderMapping,
   SkipProcessMapping,
-  ShipOrderMappings,
-  SkipProcessMappings,
+  ShipOrderAutomation,
+  SkipProcessAutomation,
   testContext,
   encodeShipOrderEvent,
   encodeSkipProcessEvent,

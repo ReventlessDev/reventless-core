@@ -59,21 +59,12 @@ module SkipProcessSpec = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Automation impls — process only (collect/resolve live in mappings)
+// Automation impls — `process` plus per-source `mappings` (the merged
+// shape the Automation module type now requires after the 2-arg Make
+// rework; collect/resolve still live on each per-source Mapping module).
+// Forward-declared below the per-source Mapping modules to keep the
+// declaration order self-contained.
 // ─────────────────────────────────────────────────────────────
-
-module ShipOrderAutomation = {
-  module Spec = ShipOrderSpec
-  let process = (id, _item: ShipOrderSpec.todoItem) =>
-    Some((id, ShipOrderSpec.CreateShipment({orderId: id})))
-  let moduleUrl: string = %raw(`import.meta.url`)
-}
-
-module SkipProcessAutomation = {
-  module Spec = SkipProcessSpec
-  let process = (_id, _item: SkipProcessSpec.todoItem) => None
-  let moduleUrl: string = %raw(`import.meta.url`)
-}
 
 // ─────────────────────────────────────────────────────────────
 // Mappings — collect/resolve over each source's event type
@@ -113,19 +104,22 @@ module SkipProcessMapping = Reventless.AutomationSlice.Mapping.Make(
   },
 )
 
-module ShipOrderMappings: Reventless.AutomationSlice.Mappings
-  with module Target := ShipOrderSpec = {
+module ShipOrderAutomation: Reventless.AutomationSlice.Automation
+  with module Spec := ShipOrderSpec = {
+  let process = (id, _item: ShipOrderSpec.todoItem) =>
+    Some((id, ShipOrderSpec.CreateShipment({orderId: id})))
+  let moduleUrl: string = %raw(`import.meta.url`)
   module M = Reventless.AutomationSlice.Mappings.Make(ShipOrderSpec)
   module type Mapping = M.Mapping
-  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(ShipOrderMapping)]
 }
 
-module SkipProcessMappings: Reventless.AutomationSlice.Mappings
-  with module Target := SkipProcessSpec = {
+module SkipProcessAutomation: Reventless.AutomationSlice.Automation
+  with module Spec := SkipProcessSpec = {
+  let process = (_id, _item: SkipProcessSpec.todoItem) => None
+  let moduleUrl: string = %raw(`import.meta.url`)
   module M = Reventless.AutomationSlice.Mappings.Make(SkipProcessSpec)
   module type Mapping = M.Mapping
-  let moduleUrl: string = %raw(`import.meta.url`)
   let mappings: array<module(Mapping)> = [module(SkipProcessMapping)]
 }
 

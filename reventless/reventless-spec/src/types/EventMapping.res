@@ -92,3 +92,9 @@ module type T = {
     QueryEngine.operations,
   ) => array<action<Target.Id.t, Target.command>>
 }
+
+module Mappings = {
+  module Make = (Target: Target) => {
+    module type Mapping = T with module Target := Target
+  }
+}

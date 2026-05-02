@@ -278,7 +278,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     };
   });
   let automationSliceDefs = automationSlices.map(AS => {
-    let allConsumedVariants = Belt_SetString.toArray(Belt_SetString.fromArray(AS.Mappings.mappings.flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
+    let allConsumedVariants = Belt_SetString.toArray(Belt_SetString.fromArray(AS.Automation.mappings.flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
     return {
       name: AS.Spec.name,
       consumedEventTypes: qualify(name, allConsumedVariants),

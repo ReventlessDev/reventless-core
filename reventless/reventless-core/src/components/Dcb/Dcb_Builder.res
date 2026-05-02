@@ -104,7 +104,7 @@ module Make = (
             // (slice, source) pair so unknown variants surface against the right
             // mapping context.
             automationSlices->Array.flatMap((module(A: AutomationSlice.T)) =>
-              A.Mappings.mappings->Array.map((module(M: A.Mappings.Mapping)) =>
+              A.Automation.mappings->Array.map((module(M: A.Automation.Mapping)) =>
                 (A.Spec.name, M.sourceEventSchema->S.castToUnknown)
               )
             ),

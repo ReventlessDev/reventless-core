@@ -538,7 +538,7 @@ function MakeWithConfig(Config) {
   let StateViewSliceStream = {
     Make: Make$7
   };
-  let Make$8 = Spec => (Automation => (Mappings => AutomationSliceMaker.Make(Spec)(Automation)(Mappings)));
+  let Make$8 = Spec => (Automation => AutomationSliceMaker.Make(Spec)(Automation));
   let AutomationSlice = {
     Make: Make$8
   };
@@ -2424,7 +2424,7 @@ function Make($star) {
   let StateViewSliceStream = {
     Make: Make$8
   };
-  let Make$9 = Spec => (Automation => (Mappings => AutomationSliceMaker.Make(Spec)(Automation)(Mappings)));
+  let Make$9 = Spec => (Automation => AutomationSliceMaker.Make(Spec)(Automation));
   let AutomationSlice = {
     Make: Make$9
   };
