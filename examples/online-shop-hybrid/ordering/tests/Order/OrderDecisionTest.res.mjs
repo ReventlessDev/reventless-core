@@ -12,14 +12,17 @@ Jest.describe("PlaceOrder:", () => {
       s.add(id);
     });
     return {
-      exists: false,
+      placedOrderIds: new Set(),
       availableProductIds: s
     };
   };
   Jest.describe("evolve", () => {
-    Jest.test("OrderPlaced sets exists=true", () => {
-      let state = PlaceOrder_Behavior$OrderingPlugin.evolve(withProducts(["prod-1"]), "OrderPlaced");
-      return Jest.Expect.toBe(Jest.Expect.expect(state.exists), true);
+    Jest.test("OrderPlaced records the orderId in placedOrderIds", () => {
+      let state = PlaceOrder_Behavior$OrderingPlugin.evolve(withProducts(["prod-1"]), {
+        TAG: "OrderPlaced",
+        orderId: "ord-1"
+      });
+      return Jest.Expect.toBe(Jest.Expect.expect(state.placedOrderIds.has("ord-1")), true);
     });
     Jest.test("CatalogProductSynced adds to availableProductIds", () => {
       let state = PlaceOrder_Behavior$OrderingPlugin.evolve(PlaceOrder_Behavior$OrderingPlugin.initialState, {
@@ -70,10 +73,8 @@ Jest.describe("PlaceOrder:", () => {
     }));
     Jest.test("on existing order returns OrderAlreadyPlaced", () => {
       let state = withProducts(["prod-1"]);
-      return Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder_Behavior$OrderingPlugin.decide({
-        exists: true,
-        availableProductIds: state.availableProductIds
-      }, {
+      state.placedOrderIds.add("ord-1");
+      return Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder_Behavior$OrderingPlugin.decide(state, {
         TAG: "PlaceOrder",
         orderId: "ord-1",
         customerId: "cust-1",
@@ -81,6 +82,24 @@ Jest.describe("PlaceOrder:", () => {
       })), {
         TAG: "Error",
         _0: "OrderAlreadyPlaced"
+      });
+    });
+    Jest.test("OrderPlaced from a sibling order does not block this order", () => {
+      let state = withProducts(["prod-1"]);
+      state.placedOrderIds.add("ord-other");
+      return Jest.Expect.toEqual(Jest.Expect.expect(PlaceOrder_Behavior$OrderingPlugin.decide(state, {
+        TAG: "PlaceOrder",
+        orderId: "ord-1",
+        customerId: "cust-1",
+        productId: ["prod-1"]
+      })), {
+        TAG: "Ok",
+        _0: [{
+            TAG: "OrderPlaced",
+            orderId: "ord-1",
+            customerId: "cust-1",
+            productId: ["prod-1"]
+          }]
       });
     });
   });

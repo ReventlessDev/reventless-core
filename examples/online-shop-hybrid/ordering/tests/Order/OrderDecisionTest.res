@@ -5,21 +5,21 @@ open Jest
 open Expect
 
 describe("PlaceOrder:", () => {
-  let withProducts = productIds => {
+  let withProducts = (productIds): PlaceOrder_Behavior.state => {
     let s = Set.make()
     productIds->Array.forEach(id => s->Set.add(id))
-    {PlaceOrder_Behavior.exists: false, availableProductIds: s}
+    {placedOrderIds: Set.make(), availableProductIds: s}
   }
 
   describe("evolve", () => {
     test(
-      "OrderPlaced sets exists=true",
+      "OrderPlaced records the orderId in placedOrderIds",
       () => {
         let state = PlaceOrder_Behavior.evolve(
           withProducts(["prod-1"]),
-          PlaceOrder.OrderPlaced,
+          PlaceOrder.OrderPlaced({orderId: "ord-1"}),
         )
-        expect(state.exists)->toBe(true)
+        expect(state.placedOrderIds->Set.has("ord-1"))->toBe(true)
       },
     )
 
@@ -78,9 +78,10 @@ describe("PlaceOrder:", () => {
       "on existing order returns OrderAlreadyPlaced",
       () => {
         let state = withProducts(["prod-1"])
+        state.placedOrderIds->Set.add("ord-1")
         expect(
           PlaceOrder_Behavior.decide(
-            {...state, exists: true},
+            state,
             PlaceOrder.PlaceOrder({
               orderId: "ord-1",
               customerId: "cust-1",
@@ -88,6 +89,35 @@ describe("PlaceOrder:", () => {
             }),
           ),
         )->toEqual(Error(PlaceOrder.OrderAlreadyPlaced))
+      },
+    )
+
+    test(
+      "OrderPlaced from a sibling order does not block this order",
+      () => {
+        // Regression: the multi-clause query also fetches OrderPlaced events
+        // from sibling orders that share a productId. They must not falsely
+        // mark "this order exists".
+        let state = withProducts(["prod-1"])
+        state.placedOrderIds->Set.add("ord-other")
+        expect(
+          PlaceOrder_Behavior.decide(
+            state,
+            PlaceOrder.PlaceOrder({
+              orderId: "ord-1",
+              customerId: "cust-1",
+              productId: ["prod-1"],
+            }),
+          ),
+        )->toEqual(
+          Ok([
+            PlaceOrder.OrderPlaced({
+              orderId: "ord-1",
+              customerId: "cust-1",
+              productId: ["prod-1"],
+            }),
+          ]),
+        )
       },
     )
   })

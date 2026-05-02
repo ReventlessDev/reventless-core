@@ -8,9 +8,13 @@
 
 @@reventless.spec
 
+// `OrderPlaced` carries `orderId` (not partial) so the decision model can
+// discriminate placements across the multi-clause query. Without it,
+// OrderPlaced events from sibling orders that share a `productId` tag would
+// leak in and falsely set "this order exists".
 @schema
 type consumedEvent =
-  | OrderPlaced
+  | OrderPlaced({orderId: string})
   | CatalogProductSynced({productId: string})
 
 @schema
