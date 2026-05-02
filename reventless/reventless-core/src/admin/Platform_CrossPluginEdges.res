@@ -14,10 +14,16 @@ let pluginPrefix = (name: string): string => {
 }
 
 /** Compute cross-plugin edges from all known pluginStructure entries.
-    Handles two mechanisms:
-    - EventTypeMatch: write-side in plugin A produces event types consumed by a SVS in plugin B.
-    - Extension: an Extension in plugin A subscribes to an ExtensionPoint owned by plugin B
-      (inferred from the dotted EP name prefix, e.g. "Catalog.Products" → owner "Catalog"). */
+    Handles four mechanisms:
+    - EventTypeMatch: write-side in plugin A produces event types consumed by a
+      StateViewSlice, AutomationSlice, or OutboundTranslationSlice in plugin B.
+    - AutomationSlice: an AutomationSlice in plugin A routes commands to a writable
+      (aggregate or StateChangeSlice) in plugin B, identified by `targetName`.
+    - InboundTranslation: an InboundTranslationSlice in plugin A routes translated
+      commands to a writable in plugin B, identified by `targetName`.
+    - Extension: an Extension in plugin A subscribes to an ExtensionPoint owned by
+      plugin B (inferred from the dotted EP name prefix, e.g. "Catalog.Products"
+      → owner "Catalog"). */
 let computeEdges = (pluginEntries: array<(string, pluginStructure)>): array<graphEdge> => {
   let edges: array<graphEdge> = []
 
@@ -41,21 +47,58 @@ let computeEdges = (pluginEntries: array<(string, pluginStructure)>): array<grap
       )
     )
 
-  // Collect StateViewSlices with their consumed event types.
-  let svsConsumed =
+  // Collect every event-consuming component (SVS, AutomationSlice, OutboundTranslationSlice).
+  let eventConsumers =
     pluginEntries->Array.flatMap(((pluginName, structure)) =>
-      structure.stateViewSlices->Array.map(svs => (pluginName, svs.name, svs.consumedEventTypes))
+      Array.flat([
+        structure.stateViewSlices->Array.map(svs => (
+          pluginName,
+          svs.name,
+          "StateViewSlice",
+          svs.consumedEventTypes,
+        )),
+        structure.automationSlices->Array.map(a => (
+          pluginName,
+          a.name,
+          "AutomationSlice",
+          a.consumedEventTypes,
+        )),
+        structure.outboundTranslationSlices->Array.map(o => (
+          pluginName,
+          o.name,
+          "OutboundTranslationSlice",
+          o.consumedEventTypes,
+        )),
+      ])
     )
 
-  // EventTypeMatch: write-side in one plugin → SVS in a different plugin.
+  // Resolution helper: which plugin owns a given writable (aggregate or SCS)?
+  // Returns (pluginName, kind) where kind is "Aggregate" or "StateChangeSlice".
+  let findWritableOwner = (~name): option<(string, string)> => {
+    let owner = ref(None)
+    pluginEntries->Array.forEach(((pluginName, structure)) =>
+      switch owner.contents {
+      | Some(_) => ()
+      | None =>
+        if structure.aggregates->Array.some(a => a.name == name) {
+          owner := Some((pluginName, "Aggregate"))
+        } else if structure.stateChangeSlices->Array.some(s => s.name == name) {
+          owner := Some((pluginName, "StateChangeSlice"))
+        }
+      }
+    )
+    owner.contents
+  }
+
+  // EventTypeMatch: write-side in one plugin → event consumer in a different plugin.
   writeSides->Array.forEach(((srcPlugin, srcComp, srcKind, produced)) => {
-    svsConsumed->Array.forEach(((tgtPlugin, tgtSVS, consumed)) => {
+    eventConsumers->Array.forEach(((tgtPlugin, tgtComp, tgtKind, consumed)) => {
       if srcPlugin != tgtPlugin {
         let viaEvents = produced->Array.filter(e => consumed->Array.includes(e))
         if viaEvents->Array.length > 0 {
           edges->Array.push({
             source: nodeFor(~pluginName=srcPlugin, ~name=srcComp, ~kind=srcKind),
-            target: nodeFor(~pluginName=tgtPlugin, ~name=tgtSVS, ~kind="StateViewSlice"),
+            target: nodeFor(~pluginName=tgtPlugin, ~name=tgtComp, ~kind=tgtKind),
             mechanism: "EventTypeMatch",
             viaEvents,
             implicit: false,
@@ -64,6 +107,42 @@ let computeEdges = (pluginEntries: array<(string, pluginStructure)>): array<grap
       }
     })
   })
+
+  // AutomationSlice → cross-plugin writable target.
+  // viaEvents holds the produced command type names (the field name is shared with
+  // EventTypeMatch by design — see SDL comment).
+  pluginEntries->Array.forEach(((pluginName, structure)) =>
+    structure.automationSlices->Array.forEach(a =>
+      switch findWritableOwner(~name=a.targetName) {
+      | Some((tgtPlugin, tgtKind)) if tgtPlugin != pluginName =>
+        edges->Array.push({
+          source: nodeFor(~pluginName, ~name=a.name, ~kind="AutomationSlice"),
+          target: nodeFor(~pluginName=tgtPlugin, ~name=a.targetName, ~kind=tgtKind),
+          mechanism: "AutomationSlice",
+          viaEvents: a.producedCommandTypes,
+          implicit: false,
+        })
+      | _ => ()
+      }
+    )
+  )
+
+  // InboundTranslationSlice → cross-plugin writable target.
+  pluginEntries->Array.forEach(((pluginName, structure)) =>
+    structure.inboundTranslationSlices->Array.forEach(its =>
+      switch findWritableOwner(~name=its.targetName) {
+      | Some((tgtPlugin, tgtKind)) if tgtPlugin != pluginName =>
+        edges->Array.push({
+          source: nodeFor(~pluginName, ~name=its.name, ~kind="InboundTranslationSlice"),
+          target: nodeFor(~pluginName=tgtPlugin, ~name=its.targetName, ~kind=tgtKind),
+          mechanism: "InboundTranslation",
+          viaEvents: its.commandTypes,
+          implicit: false,
+        })
+      | _ => ()
+      }
+    )
+  )
 
   // Extension → ExtensionPoint: infer EP owner plugin from dotted name prefix.
   pluginEntries->Array.forEach(((pluginName, structure)) => {
@@ -85,6 +164,9 @@ let computeEdges = (pluginEntries: array<(string, pluginStructure)>): array<grap
 }
 
 // GraphQL SDL type definitions for the platformCrossPluginEdges query.
+// `viaEvents` is interpreted by `mechanism`:
+//   - EventTypeMatch / Extension → list of event type names
+//   - AutomationSlice / InboundTranslation → list of command type names
 let sdlTypes = [
   `type Platform_GraphNode {\n  pluginName: String!\n  componentName: String!\n  kind: String!\n}`,
   `type Platform_GraphEdge {\n  source: Platform_GraphNode!\n  target: Platform_GraphNode!\n  mechanism: String!\n  viaEvents: [String!]!\n  implicit: Boolean!\n}`,

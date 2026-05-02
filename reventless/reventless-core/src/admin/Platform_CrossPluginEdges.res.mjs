@@ -27,25 +27,69 @@ function computeEdges(pluginEntries) {
       s.producedEventTypes
     ]));
   });
-  let svsConsumed = pluginEntries.flatMap(param => {
+  let eventConsumers = pluginEntries.flatMap(param => {
+    let structure = param[1];
     let pluginName = param[0];
-    return param[1].stateViewSlices.map(svs => [
-      pluginName,
-      svs.name,
-      svs.consumedEventTypes
-    ]);
+    return [
+      structure.stateViewSlices.map(svs => [
+        pluginName,
+        svs.name,
+        "StateViewSlice",
+        svs.consumedEventTypes
+      ]),
+      structure.automationSlices.map(a => [
+        pluginName,
+        a.name,
+        "AutomationSlice",
+        a.consumedEventTypes
+      ]),
+      structure.outboundTranslationSlices.map(o => [
+        pluginName,
+        o.name,
+        "OutboundTranslationSlice",
+        o.consumedEventTypes
+      ])
+    ].flat();
   });
+  let findWritableOwner = name => {
+    let owner = {
+      contents: undefined
+    };
+    pluginEntries.forEach(param => {
+      let structure = param[1];
+      let pluginName = param[0];
+      let match = owner.contents;
+      if (match !== undefined) {
+        return;
+      } else if (structure.aggregates.some(a => a.name === name)) {
+        owner.contents = [
+          pluginName,
+          "Aggregate"
+        ];
+        return;
+      } else if (structure.stateChangeSlices.some(s => s.name === name)) {
+        owner.contents = [
+          pluginName,
+          "StateChangeSlice"
+        ];
+        return;
+      } else {
+        return;
+      }
+    });
+    return owner.contents;
+  };
   writeSides.forEach(param => {
     let produced = param[3];
     let srcKind = param[2];
     let srcComp = param[1];
     let srcPlugin = param[0];
-    svsConsumed.forEach(param => {
+    eventConsumers.forEach(param => {
       let tgtPlugin = param[0];
       if (srcPlugin === tgtPlugin) {
         return;
       }
-      let consumed = param[2];
+      let consumed = param[3];
       let viaEvents = produced.filter(e => consumed.includes(e));
       if (viaEvents.length !== 0) {
         edges.push({
@@ -57,10 +101,66 @@ function computeEdges(pluginEntries) {
           target: {
             pluginName: tgtPlugin,
             componentName: param[1],
-            kind: "StateViewSlice"
+            kind: param[2]
           },
           mechanism: "EventTypeMatch",
           viaEvents: viaEvents,
+          implicit: false
+        });
+        return;
+      }
+    });
+  });
+  pluginEntries.forEach(param => {
+    let pluginName = param[0];
+    param[1].automationSlices.forEach(a => {
+      let match = findWritableOwner(a.targetName);
+      if (match === undefined) {
+        return;
+      }
+      let tgtPlugin = match[0];
+      if (tgtPlugin !== pluginName) {
+        edges.push({
+          source: {
+            pluginName: pluginName,
+            componentName: a.name,
+            kind: "AutomationSlice"
+          },
+          target: {
+            pluginName: tgtPlugin,
+            componentName: a.targetName,
+            kind: match[1]
+          },
+          mechanism: "AutomationSlice",
+          viaEvents: a.producedCommandTypes,
+          implicit: false
+        });
+        return;
+      }
+    });
+  });
+  pluginEntries.forEach(param => {
+    let pluginName = param[0];
+    param[1].inboundTranslationSlices.forEach(its => {
+      let match = findWritableOwner(its.targetName);
+      if (match === undefined) {
+        return;
+      }
+      let tgtPlugin = match[0];
+      if (tgtPlugin !== pluginName) {
+        edges.push({
+          source: {
+            pluginName: pluginName,
+            componentName: its.name,
+            kind: "InboundTranslationSlice"
+          },
+          target: {
+            pluginName: tgtPlugin,
+            componentName: its.targetName,
+            kind: match[1]
+          },
+          mechanism: "InboundTranslation",
+          viaEvents: its.commandTypes,
           implicit: false
         });
         return;
