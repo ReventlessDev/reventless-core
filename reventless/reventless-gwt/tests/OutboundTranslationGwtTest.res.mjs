@@ -83,6 +83,8 @@ describe("SendTrackingEmail OutboundTranslationSlice", () => {
 
 let Spec = include.Spec;
 
+let testSync = include.testSync;
+
 let thenCommand = include.thenCommand;
 
 let thenNoCommand = include.thenNoCommand;
@@ -94,6 +96,7 @@ export {
   Spec,
   describe,
   test,
+  testSync,
   givenEvent,
   whenCollect,
   thenTodos,

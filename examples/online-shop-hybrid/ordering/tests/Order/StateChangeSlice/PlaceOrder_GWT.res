@@ -27,4 +27,13 @@ describe("PlaceOrder StateChangeSlice", () => {
     ->whenCmd(PlaceOrder({orderId: "o1", customerId: "c1", productId: ["p1"]}))
     ->thenError(OrderAlreadyPlaced)
   )
+
+  test("a sibling OrderPlaced for a different orderId does not block placement", () =>
+    givenEvents([
+      CatalogProductSynced({productId: "p1"}),
+      OrderPlaced({orderId: "o2"}),
+    ])
+    ->whenCmd(PlaceOrder({orderId: "o1", customerId: "c1", productId: ["p1"]}))
+    ->thenEvent(OrderPlaced({orderId: "o1", customerId: "c1", productId: ["p1"]}))
+  )
 })

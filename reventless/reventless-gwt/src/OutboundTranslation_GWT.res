@@ -29,6 +29,10 @@ module type T = {
 
   let describe: (string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => promise<Outcome.outcome>) => unit
+  // Sync companion for the `collect` leg, whose combinators return
+  // `Outcome.outcome` directly (no Promise). The async `test` works for
+  // collect bodies too, but only after a manual `Promise.resolve` wrapper.
+  let testSync: (string, unit => Outcome.outcome) => unit
 
   type translateResult =
     result<option<(string, Spec.inboundCommand)>, string>
@@ -72,6 +76,7 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   let describe = JestBind.describe
   let test = (name, ~timeout=?, body) =>
     JestBind.testPromise(~slice=Spec.name, name, ~timeout?, body)
+  let testSync = (name, body) => JestBind.test(~slice=Spec.name, name, body)
 
   type translateResult =
     result<option<(string, Spec.inboundCommand)>, string>

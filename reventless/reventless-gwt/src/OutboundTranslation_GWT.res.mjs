@@ -9,6 +9,7 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 function Make(Spec) {
   S.enableJson();
   let test = (name, timeout, body) => JestBind$ReventlessGwt.testPromise(Spec.name, name, timeout, body);
+  let testSync = (name, body) => JestBind$ReventlessGwt.test(Spec.name, name, body);
   let encItems = arr => arr.map(param => [
     param[0],
     Message$ReventlessCore.encode(param[1], Spec.outboundItemSchema)
@@ -140,6 +141,7 @@ function Make(Spec) {
     Spec: Spec,
     describe: JestBind$ReventlessGwt.describe,
     test: test,
+    testSync: testSync,
     givenEvent: givenEvent,
     whenCollect: whenCollect,
     thenTodos: thenTodos,

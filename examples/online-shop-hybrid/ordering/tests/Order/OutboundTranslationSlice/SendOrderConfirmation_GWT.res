@@ -10,11 +10,10 @@ module SendOrderConfirmationSlice = {
 @@reventless.gwt
 
 describe("SendOrderConfirmation OutboundTranslationSlice", () => {
-  test("collect: OrderPlaced queues an outbound TODO", () =>
+  testSync("collect: OrderPlaced queues an outbound TODO", () =>
     givenEvent(OrderPlaced({orderId: "o1", customerId: "c1"}))
     ->whenCollect
     ->thenTodos([("o1", {orderId: "o1", customerId: "c1"})])
-    ->Promise.resolve
   )
 
   test("translate success marks the TODO Completed", () =>
