@@ -14,6 +14,14 @@ import * as SuryToJsonSchema$ReventlessCore from "../Api/SuryToJsonSchema.res.mj
 
 let log = Logger$ReventlessCore.fromEnv();
 
+function isIdLikeFieldName(name) {
+  if (name === "id" || name.endsWith("Id")) {
+    return true;
+  } else {
+    return name.endsWith("Ids");
+  }
+}
+
 function labelFieldsFromStateSchema(entityName, stateSchema) {
   let spec = DisplayName$Reventless.getSpec(stateSchema);
   if (spec !== undefined) {
@@ -24,7 +32,7 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   }
   let firstStringItem;
   firstStringItem = stateSchema.type === "object" ? stateSchema.items.find(item => {
-      if (item.location === "TAG" || item.location === "id") {
+      if (item.location === "TAG" || isIdLikeFieldName(item.location)) {
         return false;
       }
       let match = item.schema;
@@ -320,6 +328,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
 
 export {
   log,
+  isIdLikeFieldName,
   labelFieldsFromStateSchema,
   make,
 }

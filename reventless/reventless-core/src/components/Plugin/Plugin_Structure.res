@@ -8,8 +8,15 @@ let log = Logger.fromEnv()
 // Returns (labelField, searchableFields) from a state schema.
 // Source ladder:
 //   1. @displayName spec present → "displayName" + spec.fields (raw underlying fields)
-//   2. First non-id, non-TAG, string-typed field in declaration order
+//   2. First non-id, non-`*Id`/`*Ids`, non-TAG, string-typed field in declaration order
 //   3. "id" fallback with a logged warning (no searchable fields)
+//
+// `*Id` / `*Ids` fields (e.g. `productId`, `customerId`, `orderIds`) are entity
+// references, not human-readable labels — skipping them lets a sibling like
+// `name` win even when it appears later in declaration order.
+let isIdLikeFieldName = (name: string): bool =>
+  name == "id" || name->String.endsWith("Id") || name->String.endsWith("Ids")
+
 let labelFieldsFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
@@ -21,7 +28,7 @@ let labelFieldsFromStateSchema = (
     | Object({items}) =>
       items->Array.find(item =>
         item.location != "TAG" &&
-        item.location != "id" &&
+        !isIdLikeFieldName(item.location) &&
         switch item.schema {
         | String(_) => true
         | _ => false
