@@ -8,22 +8,43 @@ module type T = {
 }
 
 module Make = (Spec: Spec): T => {
+  // Pair each registered SideEffect with the variant TAGs declared by its
+  // Source.eventSchema. Used to pre-filter incoming envelopes — sibling
+  // variants on the same source that the SideEffect does not declare are
+  // silently skipped instead of producing decode-failure noise.
+  let sideEffectsWithTags =
+    Spec.sideEffects->Array.map((module(SideEffect: Reventless.SideEffect.T)) => (
+      module(SideEffect: Reventless.SideEffect.T),
+      Reventless.DcbTag.extractVariantNames(SideEffect.Source.eventSchema),
+    ))
+
   // Matches an incoming event JSON to a registered SideEffect module by comparing
   // the event's meta.service against each SideEffect.Source.name.
-  let findSideEffect = (sideEffects, eventJson') =>
+  let findSideEffect = (sideEffectsWithTags, eventJson') =>
     eventJson'
     ->JSON.Decode.object
     ->Option.flatMap(eventObj' => {
       let metaJson = eventObj'->Dict.get("meta")
       switch metaJson->Option.map(meta => meta->S.parseJsonOrThrow(Message.metaSchema)) {
       | Some(eventMeta) =>
-        let sideEffect =
-          sideEffects->Array.find((module(SideEffect: Reventless.SideEffect.T)) =>
+        let entry =
+          sideEffectsWithTags->Array.find(((module(SideEffect: Reventless.SideEffect.T), _)) =>
             SideEffect.Source.name == eventMeta.service
           )
-        switch sideEffect {
+        switch entry {
         | None => None
-        | Some(sideEffect) => Some((eventObj', eventMeta, sideEffect))
+        | Some((sideEffect, acceptedTags)) =>
+          // Pre-filter by TAG: skip silently when the variant is not declared.
+          let tag =
+            eventObj'
+            ->Dict.get("event")
+            ->Option.map(Message.variantNameOfJson)
+            ->Option.getOr("unknown")
+          if !(acceptedTags->Array.includes(tag)) {
+            None
+          } else {
+            Some((eventObj', eventMeta, sideEffect))
+          }
         }
       | exception err =>
         let errMsg =
@@ -42,7 +63,7 @@ module Make = (Spec: Spec): T => {
   let handleJsonEvents: EventCollector.jsonEventsHandler = stream =>
     stream
     ->Stream.mapEffect(eventJson' =>
-      switch Spec.sideEffects->findSideEffect(eventJson') {
+      switch sideEffectsWithTags->findSideEffect(eventJson') {
       | Some((eventObj, eventMeta, sideEffect)) =>
         module SideEffect = unpack(sideEffect)
         let sourceName = SideEffect.Source.name

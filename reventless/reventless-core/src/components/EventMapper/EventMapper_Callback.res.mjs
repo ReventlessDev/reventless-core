@@ -11,6 +11,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Duration from "effect/Duration";
 import * as Schedule from "effect/Schedule";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
@@ -19,7 +20,11 @@ import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 function MakeCounterHandler(Target) {
   return Mappings => (Ops => {
     let target = Target.name;
-    let findMapping = (mappings, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
+    let mappingsWithTags = Mappings.mappings.map(M => [
+      M,
+      DcbTag$Reventless.extractVariantNames(M.Source.eventSchema)
+    ]);
+    let findMapping = (mappingsWithTags, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
       let eventMeta;
       try {
         eventMeta = Stdlib_Option.map(eventObj$p["meta"], metaJson => Message$ReventlessCore.decode(metaJson, Message$ReventlessCore.metaSchema));
@@ -31,14 +36,16 @@ function MakeCounterHandler(Target) {
       }
       if (eventMeta !== undefined) {
         let source = eventMeta.service;
-        let mapping = mappings.find(Mapping => Mapping.Source.name === source);
-        if (mapping !== undefined) {
+        let entry = mappingsWithTags.find(param => param[0].Source.name === source);
+        if (entry !== undefined) {
+          let mapping = entry[0];
           let source$1 = mapping.Source.name;
           Effect$1.runSync(Effect$1.logInfo(`EventMapper.map: found mapping ` + source$1 + ` -> ` + target));
           return [
             eventObj$p,
             eventMeta,
-            mapping
+            mapping,
+            entry[1]
           ];
         }
         Effect$1.runSync(Effect$1.logInfo(`EventMapper.map: No mapping ` + source + ` -> ` + target + ` found`));
@@ -121,12 +128,16 @@ function MakeCounterHandler(Target) {
       let match = Stdlib_Array.partition(Stdlib_Array.filterMap(eventsJson$p.map((eventJson$p, idx) => {
         let idx$1 = idx + 1 | 0;
         Effect$1.runSync(Effect$1.logInfo(`EventMapper.eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
-        let match = findMapping(Mappings.mappings, eventJson$p);
+        let match = findMapping(mappingsWithTags, eventJson$p);
         if (match === undefined) {
           return;
         }
         let mapping = match[2];
         let eventObj = match[0];
+        let tag = Stdlib_Option.getOr(Stdlib_Option.map(eventObj["event"], Message$ReventlessCore.variantNameOfJson), "unknown");
+        if (!match[3].includes(tag)) {
+          return;
+        }
         try {
           let idDecoded = Stdlib_Option.map(eventObj["id"], id => Message$ReventlessCore.decode(id, mapping.Source.Id.schema));
           let eventDecoded = Stdlib_Option.map(eventObj["event"], event => Message$ReventlessCore.decode(event, mapping.Source.eventSchema));

@@ -4,18 +4,7 @@ type mapImpl<'msg, 'action> = 'msg => 'action
 let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<'action> = (
   decode,
   map,
-) =>
-  json =>
-    switch json->decode {
-    | msg => msg->map
-    | exception err =>
-      let jsonStr = json->JSON.stringify
-      JsError.throwWithMessage(
-        `Error: Couldn't decode source message: ${err
-          ->JSON.stringifyAny
-          ->Option.getOrThrow}, ${jsonStr}`,
-      )
-    }
+) => json => json->decode->map
 
 module type Spec = {
   module type Source
@@ -33,6 +22,13 @@ module type Mapper = {
 module type Mapping = {
   module Spec: Spec // to be removed via destructive replace in functor call
   let sourceName: string
+  /**
+  Variant TAGs declared by this mapping's source-event schema. The mapping
+  pipeline pre-filters incoming JSON by TAG and only invokes `project` for
+  variants in this list — sibling variants on the same source log are
+  silently skipped without any decode attempt.
+  */
+  let acceptedTags: array<string>
   type target
 
   let project: JSON.t => Spec.action<string, target>
@@ -60,17 +56,23 @@ module Mapper = (
         Mapping.sourceName == sourceName
       )
     )
-  let map = (~sourceName, json) =>
+
+  let variantTagOfEnvelope = json =>
+    json
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("event"))
+    ->Option.map(Message.variantNameOfJson)
+    ->Option.getOr("unknown")
+
+  let map = (~sourceName, json) => {
+    let tag = variantTagOfEnvelope(json)
     findMappings(
       sourceName,
       Mappings.mappings,
     )->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
-      try Some(json->Mapping.project) catch {
-      | exn =>
-        let errMsg =
-          exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(`Mapping failed: ${errMsg}`)->Effect.runSync
-        None
-      }
+      // Skip silently when the variant is not in this mapping's source schema —
+      // the mapping has explicitly opted out of these variants.
+      Mapping.acceptedTags->Array.includes(tag) ? Some(json->Mapping.project) : None
     )
+  }
 }

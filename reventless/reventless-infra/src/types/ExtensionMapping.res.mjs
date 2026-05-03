@@ -2,13 +2,14 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Uuid from "uuid";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as LogPrefix$Reventless from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as PluginExtensionPointSpec$ReventlessInfra from "./PluginExtensionPointSpec.res.mjs";
 
 let cmp = Primitive_string.compare;
@@ -34,6 +35,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
+  let acceptedTags = DcbTag$Reventless.extractVariantNames(Delegate.eventSchema);
   let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(LogPrefix$Reventless.fmtComp(comp, undefined) + msg));
   let encodeMeta = (meta, service) => ({
     service: service,
@@ -126,16 +128,14 @@ function Make(MappingImpl) {
       }
     });
   };
+  let variantTagOfEnvelope = json => Stdlib_Option.getOr(Stdlib_Option.map(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["event"]), Message$Reventless.variantNameOfJson), "unknown");
   let mapOutgoingEvent = Stdlib_Option.map(MappingImpl.mapOutgoingEvent, mapOutgoingEventImpl => ((extra, extra$1) => {
-    let val;
-    try {
-      val = Message$Reventless.decodeEvent$p(extra, Delegate.Id.schema, Delegate.eventSchema);
-    } catch (raw_err) {
-      let err = Primitive_exceptions.internalToException(raw_err);
-      console.log("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err);
+    let tag = variantTagOfEnvelope(extra);
+    if (!acceptedTags.includes(tag)) {
       return [];
     }
-    let meta = val.meta;
+    let match = Message$Reventless.decodeEvent$p(extra, Delegate.Id.schema, Delegate.eventSchema);
+    let meta = match.meta;
     let encodeExtensionPointCommandJson = (commandJson, id, extensionPointName, action) => {
       compLog(`Extension(` + delegateName + `)`, action + `: ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(commandJson)) + `(` + id + `)`);
       return {
@@ -145,7 +145,7 @@ function Make(MappingImpl) {
       };
     };
     let encodeExtensionPointCommand = (command, id, extensionPointName, action) => encodeExtensionPointCommandJson(Message$Reventless.encode(command, Spec.commandSchema), id, extensionPointName, action);
-    return mapOutgoingEventImpl(Delegate.Id.toString(val.id), val.event, meta, extra$1).map(x => {
+    return mapOutgoingEventImpl(Delegate.Id.toString(match.id), match.event, meta, extra$1).map(x => {
       switch (x.TAG) {
         case "PublishExtensionPointCommand" :
           let command = x._1;

@@ -33,6 +33,7 @@ module Make = (
     let mappings: array<module(Mapping)> = Mappings.mappings->Array.map((module(M)) => {
       module GenericMapping = {
         let sourceName = M.sourceName
+        let acceptedTags = Reventless.DcbTag.extractVariantNames(M.sourceEventSchema)
         module Source = Projection.Mapping.MakeGenericSource(M)
         let project = MapperNto1.makeGenericMap(Source.decode', M.project)
       }

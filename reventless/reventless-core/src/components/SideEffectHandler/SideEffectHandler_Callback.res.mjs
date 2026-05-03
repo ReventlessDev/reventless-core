@@ -8,13 +8,18 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 
 function Make(Spec) {
-  let findSideEffect = (sideEffects, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
+  let sideEffectsWithTags = Spec.sideEffects.map(SideEffect => [
+    SideEffect,
+    DcbTag$Reventless.extractVariantNames(SideEffect.Source.eventSchema)
+  ]);
+  let findSideEffect = (sideEffectsWithTags, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
     let metaJson = eventObj$p["meta"];
     let eventMeta;
     try {
@@ -26,12 +31,16 @@ function Make(Spec) {
       return;
     }
     if (eventMeta !== undefined) {
-      let sideEffect = sideEffects.find(SideEffect => SideEffect.Source.name === eventMeta.service);
-      if (sideEffect !== undefined) {
+      let entry = sideEffectsWithTags.find(param => param[0].Source.name === eventMeta.service);
+      if (entry === undefined) {
+        return;
+      }
+      let tag = Stdlib_Option.getOr(Stdlib_Option.map(eventObj$p["event"], Message$ReventlessCore.variantNameOfJson), "unknown");
+      if (entry[1].includes(tag)) {
         return [
           eventObj$p,
           eventMeta,
-          sideEffect
+          entry[0]
         ];
       } else {
         return;
@@ -40,7 +49,7 @@ function Make(Spec) {
     Effect$1.runSync(Effect$1.logError("SideEffects.map: Invalid JSON object"));
   });
   let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => {
-    let match = findSideEffect(Spec.sideEffects, eventJson$p);
+    let match = findSideEffect(sideEffectsWithTags, eventJson$p);
     if (match === undefined) {
       return Effect$1.succeed();
     }

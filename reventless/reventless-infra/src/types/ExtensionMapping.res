@@ -196,6 +196,12 @@ module Make = (MappingImpl: Mapping): (
   let delegateName = Delegate.name
   let extensionPointName = Spec.name
 
+  // Variant TAGs the Delegate cares about — derived from the Delegate's event
+  // schema at functor instantiation. Used to pre-filter incoming envelopes:
+  // sibling variants on the source log (events the Delegate did not declare)
+  // are silently skipped without any decode attempt.
+  let acceptedTags = Reventless.DcbTag.extractVariantNames(Delegate.eventSchema)
+
   let compLog = (comp, msg) =>
     Effect.logInfo(`${Reventless.LogPrefix.fmtComp(~comp, ())}${msg}`)->Effect.runSync
 
@@ -290,9 +296,26 @@ module Make = (MappingImpl: Mapping): (
 
   let mapIncomingEvent = doMapIncomingEvent(MappingImpl.mapIncomingEvent, ...)
 
-  let doMapOutgoingEvent = (mapOutgoingEventImpl, targetEvent'Json, pluginDef) =>
-    switch targetEvent'Json->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema) {
-    | {id, meta, event} =>
+  let variantTagOfEnvelope = json =>
+    json
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("event"))
+    ->Option.map(Reventless.Message.variantNameOfJson)
+    ->Option.getOr("unknown")
+
+  let doMapOutgoingEvent = (mapOutgoingEventImpl, targetEvent'Json, pluginDef) => {
+    let tag = variantTagOfEnvelope(targetEvent'Json)
+    // Pre-filter by TAG: sibling variants from the source log that the Delegate
+    // did not declare are not this mapping's concern — skip silently with no
+    // decode attempt.
+    if !(acceptedTags->Array.includes(tag)) {
+      []
+    } else {
+      let {id, meta, event} =
+        targetEvent'Json->Reventless.Message.decodeEvent'(
+          Delegate.Id.schema,
+          Delegate.eventSchema,
+        )
       let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
         compLog(`Extension(${delegateName})`, `${action}: ${commandJson->Reventless.Message.variantNameOfJson->Reventless.AnsiStyle.bold}(${id})`)
         {
@@ -342,10 +365,8 @@ module Make = (MappingImpl: Mapping): (
           AbstractCall(() => handler(directive))
         }
       )
-    | exception err =>
-      Console.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
-      []
     }
+  }
 
   let mapOutgoingEvent =
     MappingImpl.mapOutgoingEvent->Option.map(mapOutgoingEventImpl =>

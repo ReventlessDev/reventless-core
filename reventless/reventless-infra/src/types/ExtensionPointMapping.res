@@ -164,6 +164,12 @@ module Make = (MappingImpl: Mapping): (
   let delegateName = Delegate.name
   let extensionPointName = Spec.name
 
+  // Variant TAGs the Delegate cares about — derived from the Delegate's event
+  // schema at functor instantiation. Used to pre-filter incoming envelopes:
+  // sibling variants on the source log (events the Delegate did not declare)
+  // are silently skipped without any decode attempt.
+  let acceptedTags = Reventless.DcbTag.extractVariantNames(Delegate.eventSchema)
+
   let compLog = (comp, msg) =>
     Effect.logInfo(`${Reventless.LogPrefix.fmtComp(~comp, ())}${msg}`)->Effect.runSync
 
@@ -209,15 +215,32 @@ module Make = (MappingImpl: Mapping): (
 
   let mapIncomingCommands = doMapIncomingCommands(MappingImpl.mapIncomingCommand, ...)
 
+  let variantTagOfEnvelope = json =>
+    json
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("event"))
+    ->Option.map(Reventless.Message.variantNameOfJson)
+    ->Option.getOr("unknown")
+
   let doMapOutgoingEvent = (
     mapOutgoingEventImpl,
     targetEventJson',
     createSchedule,
     deleteSchedule,
     queryEngine,
-  ) =>
-    switch targetEventJson'->Reventless.Message.decodeEvent'(Delegate.Id.schema, Delegate.eventSchema) {
-    | {id, meta, event} =>
+  ) => {
+    let tag = variantTagOfEnvelope(targetEventJson')
+    // Pre-filter by TAG: sibling variants from the source log that the Delegate
+    // did not declare are not this mapping's concern — skip silently with no
+    // decode attempt.
+    if !(acceptedTags->Array.includes(tag)) {
+      []
+    } else {
+      let {id, meta, event} =
+        targetEventJson'->Reventless.Message.decodeEvent'(
+          Delegate.Id.schema,
+          Delegate.eventSchema,
+        )
       mapOutgoingEventImpl(
         id->Delegate.Id.toString,
         event,
@@ -250,10 +273,8 @@ module Make = (MappingImpl: Mapping): (
           AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, directive))
         }
       )
-    | exception err =>
-      Console.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
-      []
     }
+  }
 
   let mapOutgoingEvent =
     MappingImpl.mapOutgoingEvent->Option.map(mapOutgoingEventImpl =>

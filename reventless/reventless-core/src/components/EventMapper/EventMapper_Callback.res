@@ -18,9 +18,18 @@ module MakeCounterHandler = (
 ): CounterHandler => {
   let target = Target.name
 
+  // Pair each mapping with the variant TAGs it declares via Source.eventSchema.
+  // Used to pre-filter incoming envelopes by TAG before attempting decode —
+  // sibling variants on the same source aggregate that this mapping does not
+  // declare are silently skipped instead of producing decode-failure noise.
+  let mappingsWithTags = Mappings.mappings->Array.map((module(M: Mappings.Mapping)) => (
+    module(M: Mappings.Mapping),
+    Reventless.DcbTag.extractVariantNames(M.Source.eventSchema),
+  ))
+
   // Looks up the event mapping for a given event JSON by matching the source service name
   // from the event's meta against the registered Mapping modules.
-  let findMapping = (mappings, eventJson') => {
+  let findMapping = (mappingsWithTags, eventJson') => {
     eventJson'
     ->JSON.Decode.object
     ->Option.flatMap(eventObj' => {
@@ -29,17 +38,19 @@ module MakeCounterHandler = (
       ->Option.map(metaJson => metaJson->Message.decode(Message.metaSchema)) {
       | Some(eventMeta) =>
         let source = eventMeta.service
-        let mapping =
-          mappings->Array.find((module(Mapping: Mappings.Mapping)) => Mapping.Source.name == source)
-        switch mapping {
+        let entry =
+          mappingsWithTags->Array.find(((module(Mapping: Mappings.Mapping), _)) =>
+            Mapping.Source.name == source
+          )
+        switch entry {
         | None =>
           Effect.logInfo(`EventMapper.map: No mapping ${source} -> ${target} found`)->Effect.runSync
           None
-        | Some(mapping) =>
+        | Some((mapping, acceptedTags)) =>
           module Mapping = unpack(mapping)
           let source = Mapping.Source.name
           Effect.logInfo(`EventMapper.map: found mapping ${source} -> ${target}`)->Effect.runSync
-          Some((eventObj', eventMeta, mapping))
+          Some((eventObj', eventMeta, mapping, acceptedTags))
         }
       | None =>
         Effect.logError(
@@ -114,37 +125,50 @@ module MakeCounterHandler = (
               eventJson',
             )}`,
         )->Effect.runSync
-        switch findMapping(Mappings.mappings, eventJson') {
+        switch findMapping(mappingsWithTags, eventJson') {
         // TODO: support multiple mappings for the same source
-        | Some((eventObj, eventMeta, mapping)) =>
+        | Some((eventObj, eventMeta, mapping, acceptedTags)) =>
           module Mapping = unpack(mapping)
-          try {
-            let idDecoded =
-              eventObj
-              ->Dict.get("id")
-              ->Option.map(id => id->Message.decode(Mapping.Source.Id.schema))
-            let eventDecoded =
-              eventObj
-              ->Dict.get("event")
-              ->Option.map(event => event->Message.decode(Mapping.Source.eventSchema))
+          // Pre-filter by TAG: sibling variants from the same source aggregate
+          // that this mapping does not declare are not its concern — skip
+          // silently with no decode attempt. Real decode failures on declared
+          // variants still throw and are logged below.
+          let tag =
+            eventObj
+            ->Dict.get("event")
+            ->Option.map(Message.variantNameOfJson)
+            ->Option.getOr("unknown")
+          if !(acceptedTags->Array.includes(tag)) {
+            None
+          } else {
+            try {
+              let idDecoded =
+                eventObj
+                ->Dict.get("id")
+                ->Option.map(id => id->Message.decode(Mapping.Source.Id.schema))
+              let eventDecoded =
+                eventObj
+                ->Dict.get("event")
+                ->Option.map(event => event->Message.decode(Mapping.Source.eventSchema))
 
-            switch (idDecoded, eventDecoded) {
-            | (Some(eventId), Some(event)) =>
-              Mapping.map(eventId, event, Ops.queryEngine)->processMappingActions(eventMeta)->Some
-            | _ =>
+              switch (idDecoded, eventDecoded) {
+              | (Some(eventId), Some(event)) =>
+                Mapping.map(eventId, event, Ops.queryEngine)->processMappingActions(eventMeta)->Some
+              | _ =>
+                Effect.logError(
+                  `EventMapper.map: Invalid event: ${eventJson'->JSON.stringify}`,
+                )->Effect.runSync
+                None
+              }
+            } catch {
+            | err =>
+              let errMsg =
+                err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
               Effect.logError(
-                `EventMapper.map: Invalid event: ${eventJson'->JSON.stringify}`,
+                `EventMapper.map: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
               )->Effect.runSync
               None
             }
-          } catch {
-          | err =>
-            let errMsg =
-              err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-            Effect.logError(
-              `EventMapper.map: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
-            )->Effect.runSync
-            None
           }
         | None => None
         }
