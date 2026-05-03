@@ -75,10 +75,11 @@ async function buildHandler() {
     publishJson: async (_name, _meta, _json) => {},
   });
 
-  await Promise.all(config.stateChangeSliceModules.map(async modPath => {
-    const specModule = await dynamicImport(modPath);
+  await Promise.all(config.stateChangeSliceModules.map(async ({ spec, behavior }) => {
+    const specModule = await dynamicImport(spec);
+    const behaviorModule = await dynamicImport(behavior);
     const patchedSpec = patchSpecId(specModule);
-    const sliceCallback = stateChangeSliceCallbackMake(patchedSpec);
+    const sliceCallback = stateChangeSliceCallbackMake(patchedSpec)(behaviorModule);
     const commandSchema = patchedSpec.commandSchema;
     const typeNames = extractVariantNames(commandSchema);
 

@@ -18,27 +18,32 @@ let configRef: ref<adminConfig> = ref({
   clonerEnabled: false,
 })
 
+type sliceModulePaths = {
+  specPath: string,
+  behaviorPath: string,
+}
+
 type dcbConfig = {
   pluginName: string,
   dcbTableName: option<Pulumi.Output.t<string>>,
-  stateChangeSliceSpecPaths: array<string>,
+  stateChangeSliceModulePaths: array<sliceModulePaths>,
 }
 
 let dcbConfigRef: ref<dcbConfig> = ref({
   pluginName: "",
   dcbTableName: None,
-  stateChangeSliceSpecPaths: [],
+  stateChangeSliceModulePaths: [],
 })
 
-let registeredSliceSpecPaths: array<string> = []
+let registeredSliceModulePaths: array<sliceModulePaths> = []
 
-let registerStateChangeSliceSpec = (specModulePath: string) => {
-  let _ = registeredSliceSpecPaths->Array.push(specModulePath)
+let registerStateChangeSliceSpec = (~specPath: string, ~behaviorPath: string) => {
+  let _ = registeredSliceModulePaths->Array.push({specPath, behaviorPath})
 }
 
-let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceSpecPaths=[], ()) => {
-  dcbConfigRef := {pluginName, dcbTableName, stateChangeSliceSpecPaths}
-  stateChangeSliceSpecPaths->Array.length
+let registerDcbConfig = (~pluginName, ~dcbTableName=?, ~stateChangeSliceModulePaths=[], ()) => {
+  dcbConfigRef := {pluginName, dcbTableName, stateChangeSliceModulePaths}
+  stateChangeSliceModulePaths->Array.length
 }
 
 let registerDcbTableName = (dcbTableName: Pulumi.Output.t<string>) =>
@@ -253,9 +258,10 @@ module Make = (
     dcbCommandTopic,
   ) => {
     let dcbConfig = dcbConfigRef.contents
-    // Merge spec paths: auto-registered (from moduleUrl) + manually registered (from registerDcbConfig)
-    let allSpecPaths = registeredSliceSpecPaths->Array.concat(dcbConfig.stateChangeSliceSpecPaths)
-    if allSpecPaths->Array.length == 0 {
+    // Merge slice module paths: auto-registered (from moduleUrl) + manually registered (from registerDcbConfig)
+    let allSlicePaths =
+      registeredSliceModulePaths->Array.concat(dcbConfig.stateChangeSliceModulePaths)
+    if allSlicePaths->Array.length == 0 {
       Console.warn("PluginRuntime_Builder: forDcbCommandTopic skipped (no slice specs)")
     } else {
       let commandTopicResource = dcbCommandTopic->ReventlessCore.Component.toPulumiResource
@@ -279,10 +285,16 @@ module Make = (
       envVars->Dict.set("DCB_TABLE", dcbTableName->Pulumi.Output.asInput)
       envVars->Dict.set("QUEUE_URL", queue.id->Pulumi.Output.asInput)
 
-      // Build HANDLER_CONFIG JSON with all slice spec module paths
-      let sliceSpecsJson =
-        allSpecPaths
-        ->Array.map(p => p->JSON.stringifyAny->Option.getOr(`""`))
+      // Build HANDLER_CONFIG JSON: array of {spec, behavior} objects so the entry point
+      // can dynamically import both modules and apply the curried StateChangeSlice_Callback.Make
+      // functor (Make(Spec)(Behavior)).
+      let sliceModulesJson =
+        allSlicePaths
+        ->Array.map(({specPath, behaviorPath}) => {
+          let s = specPath->JSON.stringifyAny->Option.getOr(`""`)
+          let b = behaviorPath->JSON.stringifyAny->Option.getOr(`""`)
+          `{"spec":${s},"behavior":${b}}`
+        })
         ->Array.join(",")
 
       let handlerConfigJson =
@@ -290,15 +302,17 @@ module Make = (
         ->Pulumi.Output.apply(((table, queueUrl)) => {
           let pluginName =
             dcbConfig.pluginName->JSON.stringifyAny->Option.getOr(`""`)
-          `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginName},"stateChangeSliceModules":[${sliceSpecsJson}]}`
+          `{"dcbEventLogTableName":"${table}","queueUrl":"${queueUrl}","pluginName":${pluginName},"stateChangeSliceModules":[${sliceModulesJson}]}`
         })
       envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
       // Build code asset
       let packageDirs: dict<string> = Dict.make()
-      allSpecPaths->Array.forEach(specPath => {
-        let pkg = Util_Bundle.extractPackageName(specPath)
-        packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
+      allSlicePaths->Array.forEach(({specPath, behaviorPath}) => {
+        let specPkg = Util_Bundle.extractPackageName(specPath)
+        packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+        let behaviorPkg = Util_Bundle.extractPackageName(behaviorPath)
+        packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
       })
       // Include reventless-aws itself so hand-written entry point (.mjs) files
       // in the zip take precedence over the Lambda layer, ensuring the latest

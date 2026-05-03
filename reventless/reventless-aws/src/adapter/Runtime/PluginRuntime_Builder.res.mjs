@@ -28,24 +28,27 @@ let dcbConfigRef = {
   contents: {
     pluginName: "",
     dcbTableName: undefined,
-    stateChangeSliceSpecPaths: []
+    stateChangeSliceModulePaths: []
   }
 };
 
-let registeredSliceSpecPaths = [];
+let registeredSliceModulePaths = [];
 
-function registerStateChangeSliceSpec(specModulePath) {
-  registeredSliceSpecPaths.push(specModulePath);
+function registerStateChangeSliceSpec(specPath, behaviorPath) {
+  registeredSliceModulePaths.push({
+    specPath: specPath,
+    behaviorPath: behaviorPath
+  });
 }
 
-function registerDcbConfig(pluginName, dcbTableName, stateChangeSliceSpecPathsOpt, param) {
-  let stateChangeSliceSpecPaths = stateChangeSliceSpecPathsOpt !== undefined ? stateChangeSliceSpecPathsOpt : [];
+function registerDcbConfig(pluginName, dcbTableName, stateChangeSliceModulePathsOpt, param) {
+  let stateChangeSliceModulePaths = stateChangeSliceModulePathsOpt !== undefined ? stateChangeSliceModulePathsOpt : [];
   dcbConfigRef.contents = {
     pluginName: pluginName,
     dcbTableName: dcbTableName,
-    stateChangeSliceSpecPaths: stateChangeSliceSpecPaths
+    stateChangeSliceModulePaths: stateChangeSliceModulePaths
   };
-  return stateChangeSliceSpecPaths.length;
+  return stateChangeSliceModulePaths.length;
 }
 
 function registerDcbTableName(dcbTableName) {
@@ -53,7 +56,7 @@ function registerDcbTableName(dcbTableName) {
   dcbConfigRef.contents = {
     pluginName: init.pluginName,
     dcbTableName: dcbTableName,
-    stateChangeSliceSpecPaths: init.stateChangeSliceSpecPaths
+    stateChangeSliceModulePaths: init.stateChangeSliceModulePaths
   };
 }
 
@@ -93,7 +96,7 @@ function Make(EventCollectorChannel) {
     dcbConfigRef.contents = {
       pluginName: pluginName,
       dcbTableName: init.dcbTableName,
-      stateChangeSliceSpecPaths: init.stateChangeSliceSpecPaths
+      stateChangeSliceModulePaths: init.stateChangeSliceModulePaths
     };
   };
   let outputOrPlaceholder = opt => {
@@ -170,8 +173,8 @@ function Make(EventCollectorChannel) {
     let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     let dcbConfig = dcbConfigRef.contents;
-    let allSpecPaths = registeredSliceSpecPaths.concat(dcbConfig.stateChangeSliceSpecPaths);
-    if (allSpecPaths.length === 0) {
+    let allSlicePaths = registeredSliceModulePaths.concat(dcbConfig.stateChangeSliceModulePaths);
+    if (allSlicePaths.length === 0) {
       console.warn("PluginRuntime_Builder: forDcbCommandTopic skipped (no slice specs)");
       return;
     }
@@ -189,19 +192,25 @@ function Make(EventCollectorChannel) {
     let envVars = {};
     envVars["DCB_TABLE"] = dcbTableName;
     envVars["QUEUE_URL"] = queue.id;
-    let sliceSpecsJson = allSpecPaths.map(p => Stdlib_Option.getOr(JSON.stringify(p), `""`)).join(",");
+    let sliceModulesJson = allSlicePaths.map(param => {
+      let s = Stdlib_Option.getOr(JSON.stringify(param.specPath), `""`);
+      let b = Stdlib_Option.getOr(JSON.stringify(param.behaviorPath), `""`);
+      return `{"spec":` + s + `,"behavior":` + b + `}`;
+    }).join(",");
     let handlerConfigJson = Pulumi.all([
       dcbTableName,
       queue.id
     ]).apply(param => {
       let pluginName = Stdlib_Option.getOr(JSON.stringify(dcbConfig.pluginName), `""`);
-      return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginName + `,"stateChangeSliceModules":[` + sliceSpecsJson + `]}`;
+      return `{"dcbEventLogTableName":"` + param[0] + `","queueUrl":"` + param[1] + `","pluginName":` + pluginName + `,"stateChangeSliceModules":[` + sliceModulesJson + `]}`;
     });
     envVars["HANDLER_CONFIG"] = handlerConfigJson;
     let packageDirs = {};
-    allSpecPaths.forEach(specPath => {
-      let pkg = Util_Bundle$ReventlessAws.extractPackageName(specPath);
-      packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+    allSlicePaths.forEach(param => {
+      let specPkg = Util_Bundle$ReventlessAws.extractPackageName(param.specPath);
+      packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+      let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(param.behaviorPath);
+      packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
     });
     packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
     let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs);
@@ -231,7 +240,7 @@ function Make(EventCollectorChannel) {
 export {
   configRef,
   dcbConfigRef,
-  registeredSliceSpecPaths,
+  registeredSliceModulePaths,
   registerStateChangeSliceSpec,
   registerDcbConfig,
   registerDcbTableName,

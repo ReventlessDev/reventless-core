@@ -5,7 +5,8 @@ module Make = (
   Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
 ): (ReventlessCore.StateChangeSlice.T with module Spec = Spec) => {
   PluginRuntime_Builder.registerStateChangeSliceSpec(
-    Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+    ~specPath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+    ~behaviorPath=Util_Bundle.getModuleSpecifier(Behavior.moduleUrl),
   )
   module Inner = ReventlessCore.StateChangeSlice_Builder.Make(Spec, Behavior)
   module Spec = Spec

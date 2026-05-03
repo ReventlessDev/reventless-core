@@ -6,7 +6,7 @@ import * as StateChangeSlice_Builder$ReventlessCore from "@reventlessdev/reventl
 
 function Make(Spec) {
   return Behavior => {
-    PluginRuntime_Builder$ReventlessAws.registerStateChangeSliceSpec(Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl));
+    PluginRuntime_Builder$ReventlessAws.registerStateChangeSliceSpec(Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Behavior.moduleUrl));
     let Inner = StateChangeSlice_Builder$ReventlessCore.Make(Spec)(Behavior);
     return {
       Spec: Spec,
