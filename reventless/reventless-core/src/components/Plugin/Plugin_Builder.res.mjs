@@ -7,6 +7,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "./Plugin.res.mjs";
 import * as StackReference$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/StackReference.res.mjs";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
@@ -92,6 +93,17 @@ function Make(Spec) {
       PluginRuntimeBuilder.registerPluginName(name);
       let version = PackageVersion$Reventless.fromCaller();
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Plugin$ReventlessCore.componentType), name, (extra, extra$1) => {
+        let _prevPluginName = Logger$ReventlessCore.currentPluginName.contents;
+        Logger$ReventlessCore.currentPluginName.contents = extra$1;
+        Logger$ReventlessCore.registerComponentPlugin(extra$1, extra$1);
+        aggregates.forEach(M => Logger$ReventlessCore.registerComponentPlugin(M.Spec.name, extra$1));
+        readModels.forEach(R => Logger$ReventlessCore.registerComponentPlugin(R.Spec.name, extra$1));
+        stateChangeSlices.forEach(Sc => Logger$ReventlessCore.registerComponentPlugin(Sc.Spec.name, extra$1));
+        stateViewSlices.forEach(Sv => Logger$ReventlessCore.registerComponentPlugin(Sv.Spec.name, extra$1));
+        automationSlices.forEach(As => Logger$ReventlessCore.registerComponentPlugin(As.Spec.name, extra$1));
+        outboundTranslationSlices.forEach(Ots => Logger$ReventlessCore.registerComponentPlugin(Ots.Spec.name, extra$1));
+        inboundTranslationSlices.forEach(Its => Logger$ReventlessCore.registerComponentPlugin(Its.Spec.name, extra$1));
+        tasks.forEach(T => Logger$ReventlessCore.registerComponentPlugin(T.Spec.name, extra$1));
         let s = Spec.hooks.scheduler.contents;
         let scheduler = s !== undefined ? s : Stdlib_JsError.throwWithMessage("Plugin_Builder: scheduler not set — call makePlatform/deployPlugin first");
         let match = Spec.hooks.api.contents;
@@ -463,6 +475,7 @@ function Make(Spec) {
         };
         Component$ReventlessCore.setOutputs(extra, pluginOutputs);
         Plugin_Helpers$ReventlessCore.interopMetaOutput.contents = builderOutputs.apply(outputs => S.reverseConvertToJsonOrThrow(Plugin_Helpers$ReventlessCore.toInteropMeta(outputs), ExportMeta$ReventlessInterop.schema));
+        Logger$ReventlessCore.currentPluginName.contents = _prevPluginName;
       }, opts);
     };
     return {

@@ -60,6 +60,46 @@ module Make = (
     self,
     name,
   ) => {
+    // Tag all logs emitted during this plugin's construction with `[name]`.
+    // Restored at the end of construct; nested constructs (none today) would stack.
+    let _prevPluginName = Logger.currentPluginName.contents
+    Logger.currentPluginName := Some(name)
+
+    // Register every component → plugin so runtime logs (fired after construct
+    // returns) can resolve a comp like `StateChangeSlice(AddProduct)` to its
+    // owning plugin via `Logger.componentPluginRegistry`. Also register the
+    // plugin's own name so dotted EP / Plugin / CommandTopic log comps resolve.
+    let registerComp = compName =>
+      Logger.registerComponentPlugin(~componentName=compName, ~pluginName=name)
+    registerComp(name)
+    aggregates->Array.forEach((module(M: ReventlessInfra.Aggregate.T with type api = api)) =>
+      registerComp(M.Spec.name)
+    )
+    readModels->Array.forEach((
+      module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+    ) => registerComp(R.Spec.name))
+    stateChangeSlices->Array.forEach((module(Sc: ReventlessInfra.StateChangeSlice.T)) =>
+      registerComp(Sc.Spec.name)
+    )
+    stateViewSlices->Array.forEach((module(Sv: ReventlessInfra.StateViewSlice.T)) =>
+      registerComp(Sv.Spec.name)
+    )
+    automationSlices->Array.forEach((module(As: ReventlessInfra.AutomationSlice.T)) =>
+      registerComp(As.Spec.name)
+    )
+    outboundTranslationSlices->Array.forEach((
+      module(Ots: ReventlessInfra.OutboundTranslationSlice.T),
+    ) => registerComp(Ots.Spec.name))
+    inboundTranslationSlices->Array.forEach((
+      module(Its: ReventlessInfra.InboundTranslationSlice.T),
+    ) => registerComp(Its.Spec.name))
+    tasks->Array.forEach((module(T: ReventlessInfra.Task.T)) => registerComp(T.Spec.name))
+    // Extensions deliberately not registered: their Spec.name is the filename stem
+    // (e.g. "Products") and would collide with same-named SVS/ReadModels in other
+    // plugins. Extension log comps already use the fully-qualified EP form
+    // `Extension(Catalog.Products.Ordering)`; the lastDot transformation resolves
+    // them to the consumer plugin via its self-registration.
+
     // Read platform context from hooks refs (populated by makePlatform/deployPlugin).
     let scheduler = switch Spec.hooks.scheduler.contents {
     | Some(s) => s
@@ -679,6 +719,8 @@ module Make = (
         ->toInteropMeta
         ->S.reverseConvertToJsonOrThrow(ReventlessInterop.ExportMeta.schema)
       )
+
+    Logger.currentPluginName := _prevPluginName
   }
 
   let makeAutoUIManifest = (

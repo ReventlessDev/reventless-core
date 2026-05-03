@@ -61,11 +61,13 @@ let hms = () => {
   `${h}:${m}:${s}`
 }
 
-let fmtComp = (~comp=?, ()) =>
-  switch comp {
-  | Some(c) => `${Reventless.AnsiStyle.bold(`[${c}]`)} `
-  | None => ""
-  }
+// Plugin-name resolution + prefix formatting live in `Reventless.LogPrefix`
+// so that infra-layer log helpers (ExtensionPointMapping, ExtensionMapping)
+// can share the same logic without depending on this package.
+let currentPluginName = Reventless.LogPrefix.currentPluginName
+let registerComponentPlugin = Reventless.LogPrefix.registerComponentPlugin
+let fmtComp = Reventless.LogPrefix.fmtComp
+let fmtPlainPrefix = Reventless.LogPrefix.fmtPlainPrefix
 
 // Central emit — all log output flows through here.
 // ~detail: structured data shown only in CloudWatch (expandable on click).
@@ -76,11 +78,7 @@ let emit = (~level: level, ~comp=?, ~detail: option<JSON.t>=?, msg: string) => {
 
   if isLambda {
     // CloudWatch structured JSON — message in summary, detail expandable on click
-    let compStr = switch comp {
-    | Some(c) => `[${c}] `
-    | None => ""
-    }
-    let message = `${compStr}${msg}`
+    let message = `${fmtPlainPrefix(~comp?, ())}${msg}`
     switch detail {
     | Some(d) =>
       let obj = Dict.fromArray([

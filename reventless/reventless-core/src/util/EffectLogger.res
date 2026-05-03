@@ -77,11 +77,10 @@ install()
 // ~detail: structured JSON data — shown only in CloudWatch (expandable on click).
 //   In-memory terminal output shows only the message line.
 
-let withComp = (~comp=?, msg) =>
-  switch comp {
-  | Some(c) => `${Reventless.AnsiStyle.bold(`[${c}]`)} ${msg}`
-  | None => msg
-  }
+let withComp = (~comp=?, msg) => {
+  let prefix = Logger.fmtComp(~comp?, ())
+  prefix == "" ? msg : `${prefix}${msg}`
+}
 
 let encode = (~comp=?, ~detail=?, msg) => {
   let text = withComp(~comp?, msg)

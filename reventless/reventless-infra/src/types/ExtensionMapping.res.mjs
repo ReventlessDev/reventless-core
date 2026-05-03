@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
+import * as LogPrefix$Reventless from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as PluginExtensionPointSpec$ReventlessInfra from "./PluginExtensionPointSpec.res.mjs";
 
@@ -33,7 +34,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
-  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(AnsiStyle$Reventless.bold(`[` + comp + `]`) + ` ` + msg));
+  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(LogPrefix$Reventless.fmtComp(comp, undefined) + msg));
   let encodeMeta = (meta, service) => ({
     service: service,
     time: meta.time,

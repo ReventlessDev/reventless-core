@@ -197,7 +197,7 @@ module Make = (MappingImpl: Mapping): (
   let extensionPointName = Spec.name
 
   let compLog = (comp, msg) =>
-    Effect.logInfo(`${Reventless.AnsiStyle.bold(`[${comp}]`)} ${msg}`)->Effect.runSync
+    Effect.logInfo(`${Reventless.LogPrefix.fmtComp(~comp, ())}${msg}`)->Effect.runSync
 
   let encodeMeta = (meta: Reventless.Message.meta, service) => {
     ...meta,

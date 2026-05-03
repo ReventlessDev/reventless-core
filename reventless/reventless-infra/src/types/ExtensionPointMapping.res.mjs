@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
+import * as LogPrefix$Reventless from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
 function Make(MappingImpl) {
@@ -13,7 +14,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
-  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(AnsiStyle$Reventless.bold(`[` + comp + `]`) + ` ` + msg));
+  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(LogPrefix$Reventless.fmtComp(comp, undefined) + msg));
   let mapIncomingCommands = (extra, extra$1, extra$2, extra$3) => {
     let mapIncomingEventImpl = MappingImpl.mapIncomingCommand;
     return extra.map(param => {
