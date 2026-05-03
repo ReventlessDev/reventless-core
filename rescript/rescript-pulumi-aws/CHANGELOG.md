@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.24 (2026-05-03)
+
+### Bug Fixes
+
+* **appsync:** IAM-safe identity in command/mutation resolvers ([3098ea0](https://github.com/ReventlessDev/reventless-core/commit/3098ea0b06d1eccc7c5d28470ab4824a3bf7df43))
+
+
 # 2.4.0-alpha.23 (2026-05-03)
 
 ### Bug Fixes

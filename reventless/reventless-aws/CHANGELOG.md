@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.76 (2026-05-03)
+
+### Bug Fixes
+
+* **appsync:** IAM-safe identity in command/mutation resolvers ([3098ea0](https://github.com/ReventlessDev/reventless-core/commit/3098ea0b06d1eccc7c5d28470ab4824a3bf7df43))
+* **aws:** apply curried Behavior in DcbCommandTopic Lambda entry point ([62a8471](https://github.com/ReventlessDev/reventless-core/commit/62a84711caee29b3241e43b9cffdd3dbd667b436))
+
+### BREAKING CHANGES
+
+* **aws:** to the runtime config shape, replaced atomically inside
+the same Lambda zip.
+
+
+
 # 3.0.0-alpha.75 (2026-05-03)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
