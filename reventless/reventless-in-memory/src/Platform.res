@@ -1281,27 +1281,21 @@ module MakeWithConfig = (
       async (_root, _args, _ctx): JSON.t => connectionResponse(buildEventGraphEntries()),
     )
 
-    platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
-
-    // Register Platform_UIDefinitions query — returns all plugin AutoUI definitions.
-    // SDL strings and the encoder are shared with the AWS adapter via
-    // ReventlessCore.Platform_UIDefinitionsApi so both responses are byte-identical.
-    platformGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_UIDefinitionsApi.sdlTypes)
-    platformGraphQL.registerQueries(
-      ~sdlFields=[ReventlessCore.Platform_UIDefinitionsApi.sdlQueryField],
-      ~resolvers=Dict.fromArray([
-        (
-          "Platform_UIDefinitions",
-          async (_root, _args, _ctx): JSON.t =>
-            pluginStructuresStore.contents
-            ->Dict.toArray
-            ->Array.map(((pluginId, def)) =>
-              ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
-            )
-            ->JSON.Encode.array,
-        ),
-      ]),
+    // Platform_UIDefinitions resolver — SDL is already stitched into baseParts via
+    // AdminApi.baseFragment so we register only the resolver here. Encoder is shared
+    // with the AWS adapter so responses are byte-identical.
+    queryResolvers->Dict.set(
+      "Platform_UIDefinitions",
+      async (_root, _args, _ctx): JSON.t =>
+        pluginStructuresStore.contents
+        ->Dict.toArray
+        ->Array.map(((pluginId, def)) =>
+          ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+        )
+        ->JSON.Encode.array,
     )
+
+    platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Helper: extract plugin id from mutation args, load state, apply status change, save.
     let statusToString = (s: ReventlessCore.PluginReadModelSpec.status) =>
@@ -1801,6 +1795,20 @@ module MakeWithConfig = (
           connectionResponse(items)
         },
       )
+      // Platform_UIDefinitions resolver — SDL is already stitched into baseParts via
+      // AdminApi.baseFragment so we register only the resolver here. Uses the shared
+      // encoder so the dynamic-plugin admin server emits the same canonical shape as
+      // the main platform server (and as AWS).
+      queryResolvers->Dict.set(
+        "Platform_UIDefinitions",
+        async (_root, _args, _ctx): JSON.t =>
+          pluginStructuresStore.contents
+          ->Dict.toArray
+          ->Array.map(((pluginId, def)) =>
+            ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+          )
+          ->JSON.Encode.array,
+      )
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
       let mutationResolvers = Dict.make()
@@ -1848,25 +1856,6 @@ module MakeWithConfig = (
           (
             "onUIFragmentChange",
             GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver(dpSubTopic2),
-          ),
-        ]),
-      )
-      // Register Platform_UIDefinitions query on this server. Uses the shared
-      // SDL/encoder so the dynamic-plugin admin server emits the same canonical
-      // shape as the main platform server (and as AWS).
-      adminGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_UIDefinitionsApi.sdlTypes)
-      adminGraphQL.registerQueries(
-        ~sdlFields=[ReventlessCore.Platform_UIDefinitionsApi.sdlQueryField],
-        ~resolvers=Dict.fromArray([
-          (
-            "Platform_UIDefinitions",
-            async (_root, _args, _ctx): JSON.t =>
-              pluginStructuresStore.contents
-              ->Dict.toArray
-              ->Array.map(((pluginId, def)) =>
-                ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
-              )
-              ->JSON.Encode.array,
           ),
         ]),
       )

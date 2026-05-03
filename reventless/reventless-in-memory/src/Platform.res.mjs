@@ -1189,12 +1189,8 @@ function MakeWithConfig(Config) {
       return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
+    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    platformGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
-    platformGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
-        "Platform_UIDefinitions",
-        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
-      ]]));
     let statusToString = s => {
       switch (s) {
         case "Connected" :
@@ -1537,6 +1533,7 @@ function MakeWithConfig(Config) {
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
         return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
+      queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
@@ -1576,11 +1573,6 @@ function MakeWithConfig(Config) {
       adminGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
-        ]]));
-      adminGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
-      adminGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
-          "Platform_UIDefinitions",
-          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
         ]]));
       adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
       adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
@@ -2773,12 +2765,8 @@ function Make($star) {
       return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
+    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    platformGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
-    platformGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
-        "Platform_UIDefinitions",
-        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
-      ]]));
     let statusToString = s => {
       switch (s) {
         case "Connected" :
@@ -3113,6 +3101,7 @@ function Make($star) {
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
         return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
+      queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
@@ -3152,11 +3141,6 @@ function Make($star) {
       adminGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
-        ]]));
-      adminGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
-      adminGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
-          "Platform_UIDefinitions",
-          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
         ]]));
       adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
       adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
