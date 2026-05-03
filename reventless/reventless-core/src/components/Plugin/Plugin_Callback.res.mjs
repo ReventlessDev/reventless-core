@@ -3,11 +3,22 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
+import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
+  let warnedServices = {
+    contents: undefined
+  };
+  let knownServiceNames = () => Belt_SetString.toArray(Belt_SetString.fromArray([
+    Spec.incomingConnectExtensionEventHandlers,
+    Spec.outgoingExtensionPointEventHandlers,
+    Spec.outgoingExtensionEventHandlers,
+    Spec.incomingExtensionEventHandlers
+  ].flatMap(d => Object.keys(d))));
+  let ownDcbEventLogServiceName = Spec.pluginDefinition.name + `DcbEventLog`;
   let handleEventEffect = (eventJson$p, jsonEventsHandlersByService) => Stdlib_Option.mapOr(Stdlib_Option.flatMap(Message$ReventlessCore.serviceNameOfMsg(eventJson$p), serviceName => jsonEventsHandlersByService[serviceName]), Effect.succeed(), jsonEventsHandlers => Effect.map(Effect.all(jsonEventsHandlers.map(jsonEventsHandler => Effect.promise(() => jsonEventsHandler(eventJson$p, Spec.pluginDefinition))), {
     concurrency: "unbounded"
   }), param => {}));
@@ -24,7 +35,12 @@ function Make(Spec) {
           concurrency: "unbounded"
         }), param => {})));
       } else {
-        return Effect.succeed();
+        if (serviceName === ownDcbEventLogServiceName || Belt_SetString.has(warnedServices.contents, serviceName)) {
+          return Effect.succeed();
+        }
+        warnedServices.contents = Belt_SetString.add(warnedServices.contents, serviceName);
+        let known = knownServiceNames().join(", ");
+        return EffectLogger$ReventlessCore.logWarn(`Plugin(` + id + `)`, undefined, `incoming event has service="` + serviceName + `" but no handler is registered for it — known services: [` + known + `]. Likely cause: an ExtensionPointMapping/Extension Delegate.name does not match the source's serviceName (DCB sources use "<plugin>DcbEventLog").`);
       }
     });
   }));

@@ -14,6 +14,41 @@ module type T = {
 }
 
 module Make = (Spec: Spec): T => {
+  let warnedServices = ref(Belt.Set.String.empty)
+
+  let knownServiceNames = () =>
+    [
+      Spec.incomingConnectExtensionEventHandlers,
+      Spec.outgoingExtensionPointEventHandlers,
+      Spec.outgoingExtensionEventHandlers,
+      Spec.incomingExtensionEventHandlers,
+    ]
+    ->Array.flatMap(d => d->Dict.keysToArray)
+    ->Belt.Set.String.fromArray
+    ->Belt.Set.String.toArray
+
+  // A plugin's own DCB EventLog feeds Plugin_Callback through the shared
+  // EventCollector, but the events terminate at intra-plugin SVS/RM consumers
+  // via a different path. When no outgoing EP/Extension wants them here, that
+  // is normal — silence the warning rather than misleadingly suggesting a
+  // Delegate.name mismatch.
+  let ownDcbEventLogServiceName = `${Spec.pluginDefinition.name}DcbEventLog`
+
+  let warnUnmatchedServiceOnce = (~id, ~serviceName) =>
+    if (
+      serviceName == ownDcbEventLogServiceName ||
+        warnedServices.contents->Belt.Set.String.has(serviceName)
+    ) {
+      Effect.succeed()
+    } else {
+      warnedServices := warnedServices.contents->Belt.Set.String.add(serviceName)
+      let known = knownServiceNames()->Array.join(", ")
+      EffectLogger.logWarn(
+        ~comp=`Plugin(${id})`,
+        `incoming event has service="${serviceName}" but no handler is registered for it — known services: [${known}]. Likely cause: an ExtensionPointMapping/Extension Delegate.name does not match the source's serviceName (DCB sources use "<plugin>DcbEventLog").`,
+      )
+    }
+
   let handleEventEffect = (eventJson', jsonEventsHandlersByService) =>
     eventJson'
     ->Message.serviceNameOfMsg
@@ -55,7 +90,7 @@ module Make = (Spec: Spec): T => {
             )
           )
         } else {
-          Effect.succeed()
+          warnUnmatchedServiceOnce(~id, ~serviceName)
         }
       })
     })
