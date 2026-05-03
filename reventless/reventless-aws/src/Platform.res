@@ -986,7 +986,7 @@ module MakeWithConfig = (
 
     // Phase 2: Admin resolvers go on the Platform API (platformApi) in split mode,
     // on the shared Domain API in unified mode.
-    let _admin = Admin.construct(
+    let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
       ~aggregates=[module(PluginAggregate)],
@@ -1001,6 +1001,22 @@ module MakeWithConfig = (
       ~outboundTranslationSlices=[],
       ~inboundTranslationSlices=[],
     )
+
+    // Mount the Platform_UIDefinitions Lambda resolver on the Platform API
+    // (split mode) or Domain API (unified mode — platformApi == domainApi above).
+    switch admin.readModelsOutputs->Dict.get("Plugin") {
+    | Some(pluginRm) =>
+      switch pluginRm.queryDb.resources->Array.get(0) {
+      | Some(r) =>
+        Platform_UIDefinitions_Lambda.make(
+          ~api=platformApi,
+          ~pluginReadModelTableName=r.name,
+          ~opts={},
+        )
+      | None => ()
+      }
+    | None => ()
+    }
 
     // Build each plugin.
     let pluginComponents = plugins->Array.map(plugin => {
@@ -1214,6 +1230,18 @@ module MakeWithConfig = (
       ~clonerEnabled=Config.cloner,
       (),
     )
+
+    // Mount the Platform_UIDefinitions Lambda resolver on the Platform API
+    // (split mode) or Domain API (unified mode — platformApi == domainApi above).
+    switch pluginReadModelTableName {
+    | Some(tableName) =>
+      Platform_UIDefinitions_Lambda.make(
+        ~api=platformApi,
+        ~pluginReadModelTableName=tableName,
+        ~opts={},
+      )
+    | None => ()
+    }
 
     if Config.splitApi {
       // Split mode: push admin schema to the Platform (core) API.

@@ -44,6 +44,7 @@ import * as DomainGraphQL_Server$ReventlessInMemory from "./adapter/DomainGraphQ
 import * as QueryEngine_InMemory$ReventlessInMemory from "./adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
 import * as ClonerRunner_InMemory$ReventlessInMemory from "./adapter/Cloner/ClonerRunner_InMemory.res.mjs";
 import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
+import * as Platform_UIDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIDefinitionsApi.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessInMemory from "./adapter/PlatformGraphQL_Server.res.mjs";
 import * as StateViewSlice_Builder$ReventlessInMemory from "./components/StateViewSlice_Builder.res.mjs";
@@ -838,7 +839,8 @@ function MakeWithConfig(Config) {
         outputs.extensionPoints,
         outputs.extensions,
         outputs.apiSchemaFragment,
-        outputs.uiFragments
+        outputs.uiFragments,
+        outputs.pluginStructure
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
@@ -869,6 +871,7 @@ function MakeWithConfig(Config) {
         };
         let state_apiSchemaFragment = param[5];
         let state_uiFragments = param[6];
+        let state_structure = param[7];
         let state = {
           name: state_name,
           version: state_version,
@@ -880,7 +883,8 @@ function MakeWithConfig(Config) {
           status: "Connected",
           statusChange: state_statusChange,
           apiSchemaFragment: state_apiSchemaFragment,
-          uiFragments: state_uiFragments
+          uiFragments: state_uiFragments,
+          structure: state_structure
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
@@ -1186,215 +1190,10 @@ function MakeWithConfig(Config) {
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    let uiDefsSdlTypes = [
-      `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
-      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
-      `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
-      `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
-      `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
-      `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
-      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
-    ];
-    let encodeFieldReference = r => Object.fromEntries([
-      [
-        "fieldName",
-        r.fieldName
-      ],
-      [
-        "entity",
-        r.entity
-      ],
-      [
-        "plugin",
-        Stdlib_Option.mapOr(r.plugin, null, prim => prim)
-      ]
-    ]);
-    let encodeCommandDef = c => {
-      let match = c.level;
-      let tmp;
-      tmp = match === "Collection" ? "Collection" : "Instance";
-      return Object.fromEntries([
-        [
-          "name",
-          c.name
-        ],
-        [
-          "schema",
-          c.schema
-        ],
-        [
-          "level",
-          tmp
-        ],
-        [
-          "aggregateIdField",
-          Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
-        ],
-        [
-          "mutationField",
-          c.mutationField
-        ],
-        [
-          "references",
-          c.references.map(encodeFieldReference)
-        ]
-      ]);
-    };
-    let encodeQueryableDef = r => Object.fromEntries([
-      [
-        "name",
-        r.name
-      ],
-      [
-        "queryField",
-        r.queryField
-      ],
-      [
-        "schema",
-        r.schema
-      ],
-      [
-        "consumedEventTypes",
-        r.consumedEventTypes.map(prim => prim)
-      ],
-      [
-        "linkedWriteSide",
-        r.linkedWriteSide.map(prim => prim)
-      ],
-      [
-        "labelField",
-        r.labelField
-      ],
-      [
-        "searchableFields",
-        r.searchableFields.map(prim => prim)
-      ]
-    ]);
-    let encodeWritableDef = w => Object.fromEntries([
-      [
-        "name",
-        w.name
-      ],
-      [
-        "commands",
-        w.commands.map(encodeCommandDef)
-      ],
-      [
-        "linkedViews",
-        w.linkedViews.map(prim => prim)
-      ],
-      [
-        "consistencyRead",
-        Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
-      ],
-      [
-        "producedEventTypes",
-        w.producedEventTypes.map(prim => prim)
-      ],
-      [
-        "consumedEventTypes",
-        w.consumedEventTypes.map(prim => prim)
-      ]
-    ]);
-    platformGraphQL.registerTypes(uiDefsSdlTypes);
-    platformGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+    platformGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
+    platformGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
         "Platform_UIDefinitions",
-        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
-          let pluginId = param[0];
-          let def = param[1];
-          return Object.fromEntries([
-            [
-              "pluginId",
-              pluginId
-            ],
-            [
-              "readModels",
-              def.readModels.map(encodeQueryableDef)
-            ],
-            [
-              "stateViewSlices",
-              def.stateViewSlices.map(encodeQueryableDef)
-            ],
-            [
-              "stateChangeSlices",
-              def.stateChangeSlices.map(encodeWritableDef)
-            ],
-            [
-              "aggregates",
-              def.aggregates.map(encodeWritableDef)
-            ],
-            [
-              "automationSlices",
-              def.automationSlices.map(a => Object.fromEntries([
-                [
-                  "name",
-                  a.name
-                ],
-                [
-                  "consumedEventTypes",
-                  a.consumedEventTypes.map(prim => prim)
-                ],
-                [
-                  "producedCommandTypes",
-                  a.producedCommandTypes.map(prim => prim)
-                ]
-              ]))
-            ],
-            [
-              "outboundTranslationSlices",
-              def.outboundTranslationSlices.map(o => Object.fromEntries([
-                [
-                  "name",
-                  o.name
-                ],
-                [
-                  "consumedEventTypes",
-                  o.consumedEventTypes.map(prim => prim)
-                ],
-                [
-                  "inboundCommandTypes",
-                  o.inboundCommandTypes.map(prim => prim)
-                ]
-              ]))
-            ],
-            [
-              "inboundTranslationSlices",
-              def.inboundTranslationSlices.map(i => Object.fromEntries([
-                [
-                  "name",
-                  i.name
-                ],
-                [
-                  "commandTypes",
-                  i.commandTypes.map(prim => prim)
-                ]
-              ]))
-            ],
-            [
-              "extensions",
-              def.extensions.map(e => Object.fromEntries([
-                [
-                  "name",
-                  e.name
-                ],
-                [
-                  "delegateNames",
-                  e.delegateNames.map(prim => prim)
-                ],
-                [
-                  "eventTypes",
-                  e.eventTypes.map(prim => prim)
-                ],
-                [
-                  "commandTypes",
-                  e.commandTypes.map(prim => prim)
-                ]
-              ]))
-            ]
-          ]);
-        })
+        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
       ]]));
     let statusToString = s => {
       switch (s) {
@@ -1778,142 +1577,10 @@ function MakeWithConfig(Config) {
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
-      let dpUiDefsSdlTypes = [
-        `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
-        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
-        `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
-      ];
-      adminGraphQL.registerTypes(dpUiDefsSdlTypes);
-      adminGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+      adminGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
+      adminGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
           "Platform_UIDefinitions",
-          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
-            let def = param[1];
-            let encodeRef = r => Object.fromEntries([
-              [
-                "fieldName",
-                r.fieldName
-              ],
-              [
-                "entity",
-                r.entity
-              ],
-              [
-                "plugin",
-                Stdlib_Option.mapOr(r.plugin, null, prim => prim)
-              ]
-            ]);
-            let encodeCmd = c => {
-              let match = c.level;
-              let tmp;
-              tmp = match === "Collection" ? "Collection" : "Instance";
-              return Object.fromEntries([
-                [
-                  "name",
-                  c.name
-                ],
-                [
-                  "schema",
-                  c.schema
-                ],
-                [
-                  "level",
-                  tmp
-                ],
-                [
-                  "aggregateIdField",
-                  Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
-                ],
-                [
-                  "mutationField",
-                  c.mutationField
-                ],
-                [
-                  "references",
-                  c.references.map(encodeRef)
-                ]
-              ]);
-            };
-            let encodeQbl = r => Object.fromEntries([
-              [
-                "name",
-                r.name
-              ],
-              [
-                "queryField",
-                r.queryField
-              ],
-              [
-                "schema",
-                r.schema
-              ],
-              [
-                "consumedEventTypes",
-                r.consumedEventTypes.map(prim => prim)
-              ],
-              [
-                "linkedWriteSide",
-                r.linkedWriteSide.map(prim => prim)
-              ],
-              [
-                "labelField",
-                r.labelField
-              ],
-              [
-                "searchableFields",
-                r.searchableFields.map(prim => prim)
-              ]
-            ]);
-            let encodeWbl = w => Object.fromEntries([
-              [
-                "name",
-                w.name
-              ],
-              [
-                "commands",
-                w.commands.map(encodeCmd)
-              ],
-              [
-                "linkedViews",
-                w.linkedViews.map(prim => prim)
-              ],
-              [
-                "consistencyRead",
-                Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
-              ],
-              [
-                "producedEventTypes",
-                w.producedEventTypes.map(prim => prim)
-              ],
-              [
-                "consumedEventTypes",
-                w.consumedEventTypes.map(prim => prim)
-              ]
-            ]);
-            return Object.fromEntries([
-              [
-                "pluginId",
-                param[0]
-              ],
-              [
-                "readModels",
-                def.readModels.map(encodeQbl)
-              ],
-              [
-                "stateViewSlices",
-                def.stateViewSlices.map(encodeQbl)
-              ],
-              [
-                "stateChangeSlices",
-                def.stateChangeSlices.map(encodeWbl)
-              ],
-              [
-                "aggregates",
-                def.aggregates.map(encodeWbl)
-              ]
-            ]);
-          })
+          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
         ]]));
       adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
       adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
@@ -2761,7 +2428,8 @@ function Make($star) {
         outputs.extensionPoints,
         outputs.extensions,
         outputs.apiSchemaFragment,
-        outputs.uiFragments
+        outputs.uiFragments,
+        outputs.pluginStructure
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
@@ -2792,6 +2460,7 @@ function Make($star) {
         };
         let state_apiSchemaFragment = param[5];
         let state_uiFragments = param[6];
+        let state_structure = param[7];
         let state = {
           name: state_name,
           version: state_version,
@@ -2803,7 +2472,8 @@ function Make($star) {
           status: "Connected",
           statusChange: state_statusChange,
           apiSchemaFragment: state_apiSchemaFragment,
-          uiFragments: state_uiFragments
+          uiFragments: state_uiFragments,
+          structure: state_structure
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
@@ -3104,215 +2774,10 @@ function Make($star) {
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    let uiDefsSdlTypes = [
-      `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
-      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
-      `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
-      `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
-      `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
-      `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
-      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
-    ];
-    let encodeFieldReference = r => Object.fromEntries([
-      [
-        "fieldName",
-        r.fieldName
-      ],
-      [
-        "entity",
-        r.entity
-      ],
-      [
-        "plugin",
-        Stdlib_Option.mapOr(r.plugin, null, prim => prim)
-      ]
-    ]);
-    let encodeCommandDef = c => {
-      let match = c.level;
-      let tmp;
-      tmp = match === "Collection" ? "Collection" : "Instance";
-      return Object.fromEntries([
-        [
-          "name",
-          c.name
-        ],
-        [
-          "schema",
-          c.schema
-        ],
-        [
-          "level",
-          tmp
-        ],
-        [
-          "aggregateIdField",
-          Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
-        ],
-        [
-          "mutationField",
-          c.mutationField
-        ],
-        [
-          "references",
-          c.references.map(encodeFieldReference)
-        ]
-      ]);
-    };
-    let encodeQueryableDef = r => Object.fromEntries([
-      [
-        "name",
-        r.name
-      ],
-      [
-        "queryField",
-        r.queryField
-      ],
-      [
-        "schema",
-        r.schema
-      ],
-      [
-        "consumedEventTypes",
-        r.consumedEventTypes.map(prim => prim)
-      ],
-      [
-        "linkedWriteSide",
-        r.linkedWriteSide.map(prim => prim)
-      ],
-      [
-        "labelField",
-        r.labelField
-      ],
-      [
-        "searchableFields",
-        r.searchableFields.map(prim => prim)
-      ]
-    ]);
-    let encodeWritableDef = w => Object.fromEntries([
-      [
-        "name",
-        w.name
-      ],
-      [
-        "commands",
-        w.commands.map(encodeCommandDef)
-      ],
-      [
-        "linkedViews",
-        w.linkedViews.map(prim => prim)
-      ],
-      [
-        "consistencyRead",
-        Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
-      ],
-      [
-        "producedEventTypes",
-        w.producedEventTypes.map(prim => prim)
-      ],
-      [
-        "consumedEventTypes",
-        w.consumedEventTypes.map(prim => prim)
-      ]
-    ]);
-    platformGraphQL.registerTypes(uiDefsSdlTypes);
-    platformGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+    platformGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
+    platformGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
         "Platform_UIDefinitions",
-        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
-          let pluginId = param[0];
-          let def = param[1];
-          return Object.fromEntries([
-            [
-              "pluginId",
-              pluginId
-            ],
-            [
-              "readModels",
-              def.readModels.map(encodeQueryableDef)
-            ],
-            [
-              "stateViewSlices",
-              def.stateViewSlices.map(encodeQueryableDef)
-            ],
-            [
-              "stateChangeSlices",
-              def.stateChangeSlices.map(encodeWritableDef)
-            ],
-            [
-              "aggregates",
-              def.aggregates.map(encodeWritableDef)
-            ],
-            [
-              "automationSlices",
-              def.automationSlices.map(a => Object.fromEntries([
-                [
-                  "name",
-                  a.name
-                ],
-                [
-                  "consumedEventTypes",
-                  a.consumedEventTypes.map(prim => prim)
-                ],
-                [
-                  "producedCommandTypes",
-                  a.producedCommandTypes.map(prim => prim)
-                ]
-              ]))
-            ],
-            [
-              "outboundTranslationSlices",
-              def.outboundTranslationSlices.map(o => Object.fromEntries([
-                [
-                  "name",
-                  o.name
-                ],
-                [
-                  "consumedEventTypes",
-                  o.consumedEventTypes.map(prim => prim)
-                ],
-                [
-                  "inboundCommandTypes",
-                  o.inboundCommandTypes.map(prim => prim)
-                ]
-              ]))
-            ],
-            [
-              "inboundTranslationSlices",
-              def.inboundTranslationSlices.map(i => Object.fromEntries([
-                [
-                  "name",
-                  i.name
-                ],
-                [
-                  "commandTypes",
-                  i.commandTypes.map(prim => prim)
-                ]
-              ]))
-            ],
-            [
-              "extensions",
-              def.extensions.map(e => Object.fromEntries([
-                [
-                  "name",
-                  e.name
-                ],
-                [
-                  "delegateNames",
-                  e.delegateNames.map(prim => prim)
-                ],
-                [
-                  "eventTypes",
-                  e.eventTypes.map(prim => prim)
-                ],
-                [
-                  "commandTypes",
-                  e.commandTypes.map(prim => prim)
-                ]
-              ]))
-            ]
-          ]);
-        })
+        async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
       ]]));
     let statusToString = s => {
       switch (s) {
@@ -3688,142 +3153,10 @@ function Make($star) {
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic2)
         ]]));
-      let dpUiDefsSdlTypes = [
-        `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
-        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
-        `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`
-      ];
-      adminGraphQL.registerTypes(dpUiDefsSdlTypes);
-      adminGraphQL.registerQueries([`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`], Object.fromEntries([[
+      adminGraphQL.registerTypes(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes);
+      adminGraphQL.registerQueries([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField], Object.fromEntries([[
           "Platform_UIDefinitions",
-          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => {
-            let def = param[1];
-            let encodeRef = r => Object.fromEntries([
-              [
-                "fieldName",
-                r.fieldName
-              ],
-              [
-                "entity",
-                r.entity
-              ],
-              [
-                "plugin",
-                Stdlib_Option.mapOr(r.plugin, null, prim => prim)
-              ]
-            ]);
-            let encodeCmd = c => {
-              let match = c.level;
-              let tmp;
-              tmp = match === "Collection" ? "Collection" : "Instance";
-              return Object.fromEntries([
-                [
-                  "name",
-                  c.name
-                ],
-                [
-                  "schema",
-                  c.schema
-                ],
-                [
-                  "level",
-                  tmp
-                ],
-                [
-                  "aggregateIdField",
-                  Stdlib_Option.mapOr(c.aggregateIdField, null, prim => prim)
-                ],
-                [
-                  "mutationField",
-                  c.mutationField
-                ],
-                [
-                  "references",
-                  c.references.map(encodeRef)
-                ]
-              ]);
-            };
-            let encodeQbl = r => Object.fromEntries([
-              [
-                "name",
-                r.name
-              ],
-              [
-                "queryField",
-                r.queryField
-              ],
-              [
-                "schema",
-                r.schema
-              ],
-              [
-                "consumedEventTypes",
-                r.consumedEventTypes.map(prim => prim)
-              ],
-              [
-                "linkedWriteSide",
-                r.linkedWriteSide.map(prim => prim)
-              ],
-              [
-                "labelField",
-                r.labelField
-              ],
-              [
-                "searchableFields",
-                r.searchableFields.map(prim => prim)
-              ]
-            ]);
-            let encodeWbl = w => Object.fromEntries([
-              [
-                "name",
-                w.name
-              ],
-              [
-                "commands",
-                w.commands.map(encodeCmd)
-              ],
-              [
-                "linkedViews",
-                w.linkedViews.map(prim => prim)
-              ],
-              [
-                "consistencyRead",
-                Stdlib_Option.mapOr(w.consistencyRead, null, prim => prim)
-              ],
-              [
-                "producedEventTypes",
-                w.producedEventTypes.map(prim => prim)
-              ],
-              [
-                "consumedEventTypes",
-                w.consumedEventTypes.map(prim => prim)
-              ]
-            ]);
-            return Object.fromEntries([
-              [
-                "pluginId",
-                param[0]
-              ],
-              [
-                "readModels",
-                def.readModels.map(encodeQbl)
-              ],
-              [
-                "stateViewSlices",
-                def.stateViewSlices.map(encodeQbl)
-              ],
-              [
-                "stateChangeSlices",
-                def.stateChangeSlices.map(encodeWbl)
-              ],
-              [
-                "aggregates",
-                def.aggregates.map(encodeWbl)
-              ]
-            ]);
-          })
+          async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]))
         ]]));
       adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
       adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[

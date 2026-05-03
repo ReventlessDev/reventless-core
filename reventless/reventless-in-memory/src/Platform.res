@@ -825,8 +825,9 @@ module MakeWithConfig = (
           outputs.extensions,
           outputs.apiSchemaFragment,
           outputs.uiFragments,
+          outputs.pluginStructure,
         )
-        ->Pulumi.Output.all7
+        ->Pulumi.Output.all8
         ->Pulumi.Output.apply(((
           id,
           version,
@@ -835,6 +836,7 @@ module MakeWithConfig = (
           extensions,
           apiSchemaFragment,
           uiFragments,
+          pluginStructure,
         )) => {
           let state: ReventlessCore.PluginReadModelSpec.state = {
             name: id->String.split("@")->Array.get(0)->Option.getOr(id),
@@ -863,6 +865,7 @@ module MakeWithConfig = (
             statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
             apiSchemaFragment,
             uiFragments,
+            structure: pluginStructure,
           }
           let entry =
             state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
@@ -1281,95 +1284,20 @@ module MakeWithConfig = (
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Register Platform_UIDefinitions query — returns all plugin AutoUI definitions.
-    let uiDefsSdlTypes = [
-      `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-      `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
-      `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-      `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
-      `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
-      `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
-      `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
-      `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
-      `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`,
-    ]
-    let uiDefsQueryField = `  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`
-    let encodeStrings = (ss: array<string>): JSON.t => ss->Array.map(JSON.Encode.string)->JSON.Encode.array
-    let encodeFieldReference = (r: Reventless.Plugin.fieldReference): JSON.t =>
-      Dict.fromArray([
-        ("fieldName", JSON.Encode.string(r.fieldName)),
-        ("entity", JSON.Encode.string(r.entity)),
-        ("plugin", r.plugin->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-      ])->JSON.Encode.object
-    let encodeCommandDef = (c: Reventless.Plugin.commandDef): JSON.t =>
-      Dict.fromArray([
-        ("name", JSON.Encode.string(c.name)),
-        ("schema", JSON.Encode.string(c.schema)),
-        ("level", JSON.Encode.string(switch c.level { | Collection => "Collection" | Instance => "Instance" })),
-        ("aggregateIdField", c.aggregateIdField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-        ("mutationField", JSON.Encode.string(c.mutationField)),
-        ("references", c.references->Array.map(encodeFieldReference)->JSON.Encode.array),
-      ])->JSON.Encode.object
-    let encodeQueryableDef = (r: Reventless.Plugin.queryableDef): JSON.t =>
-      Dict.fromArray([
-        ("name", JSON.Encode.string(r.name)),
-        ("queryField", JSON.Encode.string(r.queryField)),
-        ("schema", JSON.Encode.string(r.schema)),
-        ("consumedEventTypes", encodeStrings(r.consumedEventTypes)),
-        ("linkedWriteSide", encodeStrings(r.linkedWriteSide)),
-        ("labelField", JSON.Encode.string(r.labelField)),
-        ("searchableFields", encodeStrings(r.searchableFields)),
-      ])->JSON.Encode.object
-    let encodeWritableDef = (w: Reventless.Plugin.writableDef): JSON.t =>
-      Dict.fromArray([
-        ("name", JSON.Encode.string(w.name)),
-        ("commands", w.commands->Array.map(encodeCommandDef)->JSON.Encode.array),
-        ("linkedViews", encodeStrings(w.linkedViews)),
-        ("consistencyRead", w.consistencyRead->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-        ("producedEventTypes", encodeStrings(w.producedEventTypes)),
-        ("consumedEventTypes", encodeStrings(w.consumedEventTypes)),
-      ])->JSON.Encode.object
-    let encodePluginStructureEntry = (~pluginId: string, def: Reventless.Plugin.pluginStructure): JSON.t =>
-      Dict.fromArray([
-        ("pluginId", JSON.Encode.string(pluginId)),
-        ("readModels", def.readModels->Array.map(encodeQueryableDef)->JSON.Encode.array),
-        ("stateViewSlices", def.stateViewSlices->Array.map(encodeQueryableDef)->JSON.Encode.array),
-        ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWritableDef)->JSON.Encode.array),
-        ("aggregates", def.aggregates->Array.map(encodeWritableDef)->JSON.Encode.array),
-        ("automationSlices", def.automationSlices->Array.map(a =>
-          Dict.fromArray([
-            ("name", JSON.Encode.string(a.name)),
-            ("consumedEventTypes", encodeStrings(a.consumedEventTypes)),
-            ("producedCommandTypes", encodeStrings(a.producedCommandTypes)),
-          ])->JSON.Encode.object)->JSON.Encode.array),
-        ("outboundTranslationSlices", def.outboundTranslationSlices->Array.map(o =>
-          Dict.fromArray([
-            ("name", JSON.Encode.string(o.name)),
-            ("consumedEventTypes", encodeStrings(o.consumedEventTypes)),
-            ("inboundCommandTypes", encodeStrings(o.inboundCommandTypes)),
-          ])->JSON.Encode.object)->JSON.Encode.array),
-        ("inboundTranslationSlices", def.inboundTranslationSlices->Array.map(i =>
-          Dict.fromArray([
-            ("name", JSON.Encode.string(i.name)),
-            ("commandTypes", encodeStrings(i.commandTypes)),
-          ])->JSON.Encode.object)->JSON.Encode.array),
-        ("extensions", def.extensions->Array.map(e =>
-          Dict.fromArray([
-            ("name", JSON.Encode.string(e.name)),
-            ("delegateNames", encodeStrings(e.delegateNames)),
-            ("eventTypes", encodeStrings(e.eventTypes)),
-            ("commandTypes", encodeStrings(e.commandTypes)),
-          ])->JSON.Encode.object)->JSON.Encode.array),
-      ])->JSON.Encode.object
-    platformGraphQL.registerTypes(~sdlTypes=uiDefsSdlTypes)
+    // SDL strings and the encoder are shared with the AWS adapter via
+    // ReventlessCore.Platform_UIDefinitionsApi so both responses are byte-identical.
+    platformGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_UIDefinitionsApi.sdlTypes)
     platformGraphQL.registerQueries(
-      ~sdlFields=[uiDefsQueryField],
+      ~sdlFields=[ReventlessCore.Platform_UIDefinitionsApi.sdlQueryField],
       ~resolvers=Dict.fromArray([
         (
           "Platform_UIDefinitions",
           async (_root, _args, _ctx): JSON.t =>
             pluginStructuresStore.contents
             ->Dict.toArray
-            ->Array.map(((pluginId, def)) => encodePluginStructureEntry(~pluginId, def))
+            ->Array.map(((pluginId, def)) =>
+              ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+            )
             ->JSON.Encode.array,
         ),
       ]),
@@ -1923,67 +1851,21 @@ module MakeWithConfig = (
           ),
         ]),
       )
-      // Register Platform_UIDefinitions query on this server.
-      let dpUiDefsSdlTypes = [
-        `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-        `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
-        `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-        `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
-        `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n}`,
-      ]
-      adminGraphQL.registerTypes(~sdlTypes=dpUiDefsSdlTypes)
+      // Register Platform_UIDefinitions query on this server. Uses the shared
+      // SDL/encoder so the dynamic-plugin admin server emits the same canonical
+      // shape as the main platform server (and as AWS).
+      adminGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_UIDefinitionsApi.sdlTypes)
       adminGraphQL.registerQueries(
-        ~sdlFields=[`  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`],
+        ~sdlFields=[ReventlessCore.Platform_UIDefinitionsApi.sdlQueryField],
         ~resolvers=Dict.fromArray([
           (
             "Platform_UIDefinitions",
             async (_root, _args, _ctx): JSON.t =>
               pluginStructuresStore.contents
               ->Dict.toArray
-              ->Array.map(((pluginId, def)) => {
-                let encodeStrings = (ss: array<string>): JSON.t => ss->Array.map(JSON.Encode.string)->JSON.Encode.array
-                let encodeRef = (r: Reventless.Plugin.fieldReference) =>
-                  Dict.fromArray([
-                    ("fieldName", JSON.Encode.string(r.fieldName)),
-                    ("entity", JSON.Encode.string(r.entity)),
-                    ("plugin", r.plugin->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-                  ])->JSON.Encode.object
-                let encodeCmd = (c: Reventless.Plugin.commandDef) =>
-                  Dict.fromArray([
-                    ("name", JSON.Encode.string(c.name)),
-                    ("schema", JSON.Encode.string(c.schema)),
-                    ("level", JSON.Encode.string(switch c.level { | Collection => "Collection" | Instance => "Instance" })),
-                    ("aggregateIdField", c.aggregateIdField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-                    ("mutationField", JSON.Encode.string(c.mutationField)),
-                    ("references", c.references->Array.map(encodeRef)->JSON.Encode.array),
-                  ])->JSON.Encode.object
-                let encodeQbl = (r: Reventless.Plugin.queryableDef) =>
-                  Dict.fromArray([
-                    ("name", JSON.Encode.string(r.name)),
-                    ("queryField", JSON.Encode.string(r.queryField)),
-                    ("schema", JSON.Encode.string(r.schema)),
-                    ("consumedEventTypes", encodeStrings(r.consumedEventTypes)),
-                    ("linkedWriteSide", encodeStrings(r.linkedWriteSide)),
-                    ("labelField", JSON.Encode.string(r.labelField)),
-                    ("searchableFields", encodeStrings(r.searchableFields)),
-                  ])->JSON.Encode.object
-                let encodeWbl = (w: Reventless.Plugin.writableDef) =>
-                  Dict.fromArray([
-                    ("name", JSON.Encode.string(w.name)),
-                    ("commands", w.commands->Array.map(encodeCmd)->JSON.Encode.array),
-                    ("linkedViews", encodeStrings(w.linkedViews)),
-                    ("consistencyRead", w.consistencyRead->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
-                    ("producedEventTypes", encodeStrings(w.producedEventTypes)),
-                    ("consumedEventTypes", encodeStrings(w.consumedEventTypes)),
-                  ])->JSON.Encode.object
-                Dict.fromArray([
-                  ("pluginId", JSON.Encode.string(pluginId)),
-                  ("readModels", def.readModels->Array.map(encodeQbl)->JSON.Encode.array),
-                  ("stateViewSlices", def.stateViewSlices->Array.map(encodeQbl)->JSON.Encode.array),
-                  ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWbl)->JSON.Encode.array),
-                  ("aggregates", def.aggregates->Array.map(encodeWbl)->JSON.Encode.array),
-                ])->JSON.Encode.object
-              })
+              ->Array.map(((pluginId, def)) =>
+                ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+              )
               ->JSON.Encode.array,
           ),
         ]),

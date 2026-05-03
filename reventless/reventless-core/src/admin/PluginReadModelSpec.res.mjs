@@ -23,7 +23,8 @@ let stateSchema = S.schema(s => ({
   statusChange: s.m(Message$ReventlessCore.statusChangeSchema),
   apiSchemaFragment: s.m(Plugin$Reventless.apiSchemaFragmentOptionSchema),
   apiTarget: s.m(S.option(S.string)),
-  uiFragments: s.m(Plugin$Reventless.uiFragmentManifestOptionSchema)
+  uiFragments: s.m(Plugin$Reventless.uiFragmentManifestOptionSchema),
+  structure: s.m(Plugin$Reventless.pluginStructureOptionSchema)
 }));
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);

@@ -59,6 +59,7 @@ import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTo
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
 import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
+import * as Platform_UIDefinitions_Lambda$ReventlessAws from "./adapter/Api/Platform_UIDefinitions_Lambda.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
 import * as StateViewSlice_Builder_Stream$ReventlessAws from "./components/StateViewSlice_Builder_Stream.res.mjs";
@@ -739,10 +740,17 @@ function MakeWithConfig(Config) {
         };
       }
     }
-    Admin.construct(version, [], [PluginAggregate], [
+    let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
       PlatformEventGraphReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
+    let pluginRm = admin.readModelsOutputs["Plugin"];
+    if (pluginRm !== undefined) {
+      let r = pluginRm.queryDb.resources[0];
+      if (r !== undefined) {
+        Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
+      }
+    }
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -863,6 +871,9 @@ function MakeWithConfig(Config) {
     }
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, Config.cloner, undefined);
+    if (pluginReadModelTableName !== undefined) {
+      Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
+    }
     if (Config.splitApi) {
       let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
@@ -1633,10 +1644,17 @@ function Make($star) {
         platformApiRole: platformApiRole
       };
     }
-    Admin.construct(version, [], [PluginAggregate], [
+    let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
       PlatformEventGraphReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
+    let pluginRm = admin.readModelsOutputs["Plugin"];
+    if (pluginRm !== undefined) {
+      let r = pluginRm.queryDb.resources[0];
+      if (r !== undefined) {
+        Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
+      }
+    }
     let pluginComponents = plugins.map(plugin => plugin.make());
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
@@ -1745,6 +1763,9 @@ function Make($star) {
     }
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, false, undefined);
+    if (pluginReadModelTableName !== undefined) {
+      Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
+    }
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
     Output$Pulumi.flatMap(platformApi, api => Output$Pulumi.flatMap(api.id, apiId => {

@@ -26,6 +26,7 @@ let state: PluginReadModelSpec.state = {
   statusChange: ReventlessGwt.TestFixtures.statusChange,
   apiSchemaFragment: None,
   uiFragments: None,
+  structure: None,
 }
 
 let uiManifest: Reventless.Plugin.uiFragmentManifest = {

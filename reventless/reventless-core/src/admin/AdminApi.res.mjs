@@ -5,6 +5,7 @@ import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "./PluginBaseFragment.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
+import * as Platform_UIDefinitionsApi$ReventlessCore from "./Platform_UIDefinitionsApi.res.mjs";
 
 let cloneArgsSchema = S.schema(s => ({
   restoreDateTime: s.m(S.option(S.string))
@@ -45,9 +46,9 @@ function baseFragment(cloner) {
   let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
   return GraphQL_Stitcher$ReventlessCore.encode({
-    types: parts.types.concat(uiFragmentSubscriptionTypes),
+    types: parts.types.concat(uiFragmentSubscriptionTypes).concat(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes),
     mutations: parts.mutations.concat(uiFragmentMutationFields),
-    queries: parts.queries,
+    queries: parts.queries.concat([Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField]),
     subscriptions: [uiFragmentSubscriptionField]
   });
 }

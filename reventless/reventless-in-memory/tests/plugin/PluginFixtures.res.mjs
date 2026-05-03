@@ -45,7 +45,8 @@ let state = {
   status: "Connected",
   statusChange: TestFixtures$ReventlessGwt.statusChange,
   apiSchemaFragment: undefined,
-  uiFragments: undefined
+  uiFragments: undefined,
+  structure: undefined
 };
 
 let uiManifest_panels = [];
