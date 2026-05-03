@@ -5,16 +5,16 @@
 
 @schema
 type consumedEvent =
-  | OrderPlaced({orderId: string})
+  | OrderPlaced({orderId: string, customerName: string})
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
 
 @schema
-type state = {orderId: string}
+type state = {orderId: string, customerName: string}
 
 let project = event =>
   switch event {
-  | OrderPlaced({orderId}) => [Set(orderId, {orderId: orderId})]
+  | OrderPlaced({orderId, customerName}) => [Set(orderId, {orderId, customerName})]
   | OrderShipped({orderId}) => [Update(orderId, s => s)]
   | OrderCancelled({orderId}) => [Update(orderId, s => s)]
   }

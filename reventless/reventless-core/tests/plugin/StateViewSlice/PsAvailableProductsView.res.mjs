@@ -7,7 +7,8 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "CatalogProductSynced",
-    productId: s.m(DcbTag$Reventless.string)
+    productId: s.m(DcbTag$Reventless.string),
+    name: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "CatalogProductPriceChanged",
@@ -16,7 +17,8 @@ let consumedEventSchema = S.union([
 ]);
 
 let stateSchema = S.schema(s => ({
-  productId: s.m(S.string)
+  productId: s.m(S.string),
+  name: s.m(S.string)
 }));
 
 function project(event) {
@@ -32,7 +34,8 @@ function project(event) {
       TAG: "Set",
       _0: productId,
       _1: {
-        productId: productId
+        productId: productId,
+        name: event.name
       }
     }];
 }

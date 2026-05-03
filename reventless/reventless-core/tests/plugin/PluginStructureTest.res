@@ -190,17 +190,17 @@ describe("Plugin_Structure.make — Phase 2 graph fields", () => {
   })
 
   describe("labelField / searchableFields", () => {
-    test("OrdersView: no @displayName → first non-id string field wins (orderId)", () => {
+    test("OrdersView: no @displayName → first non-`*Id` string field wins (customerName)", () => {
       let ordersView = structure.stateViewSlices->Array.getUnsafe(0)
       expect((ordersView.labelField, ordersView.searchableFields))->toEqual((
-        "orderId",
-        ["orderId"],
+        "customerName",
+        ["customerName"],
       ))
     })
 
-    test("AvailableProductsView: no @displayName → first non-id string field wins (productId)", () => {
+    test("AvailableProductsView: no @displayName → first non-`*Id` string field wins (name)", () => {
       let apv = structure.stateViewSlices->Array.getUnsafe(1)
-      expect((apv.labelField, apv.searchableFields))->toEqual(("productId", ["productId"]))
+      expect((apv.labelField, apv.searchableFields))->toEqual(("name", ["name"]))
     })
 
     test("Customers: composite @displayName → labelField=displayName, searchableFields=raw source fields in declaration order", () => {

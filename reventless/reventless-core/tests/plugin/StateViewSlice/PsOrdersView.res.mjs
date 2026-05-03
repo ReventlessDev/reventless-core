@@ -7,7 +7,8 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
-    orderId: s.m(DcbTag$Reventless.string)
+    orderId: s.m(DcbTag$Reventless.string),
+    customerName: s.m(S.string)
   })),
   S.schema(s => ({
     TAG: "OrderShipped",
@@ -20,7 +21,8 @@ let consumedEventSchema = S.union([
 ]);
 
 let stateSchema = S.schema(s => ({
-  orderId: s.m(S.string)
+  orderId: s.m(S.string),
+  customerName: s.m(S.string)
 }));
 
 function project(event) {
@@ -31,7 +33,8 @@ function project(event) {
           TAG: "Set",
           _0: orderId,
           _1: {
-            orderId: orderId
+            orderId: orderId,
+            customerName: event.customerName
           }
         }];
     case "OrderShipped" :

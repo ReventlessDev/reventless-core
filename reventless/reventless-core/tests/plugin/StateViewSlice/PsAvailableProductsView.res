@@ -5,14 +5,14 @@
 
 @schema
 type consumedEvent =
-  | CatalogProductSynced({productId: string})
+  | CatalogProductSynced({productId: string, name: string})
   | CatalogProductPriceChanged({productId: string})
 
 @schema
-type state = {productId: string}
+type state = {productId: string, name: string}
 
 let project = event =>
   switch event {
-  | CatalogProductSynced({productId}) => [Set(productId, {productId: productId})]
+  | CatalogProductSynced({productId, name}) => [Set(productId, {productId, name})]
   | CatalogProductPriceChanged({productId}) => [Update(productId, s => s)]
   }

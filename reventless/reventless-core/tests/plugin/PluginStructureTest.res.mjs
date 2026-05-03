@@ -262,24 +262,24 @@ Jest.describe("Plugin_Structure.make — Phase 2 graph fields", () => {
     });
   });
   Jest.describe("labelField / searchableFields", () => {
-    Jest.test("OrdersView: no @displayName → first non-id string field wins (orderId)", () => {
+    Jest.test("OrdersView: no @displayName → first non-`*Id` string field wins (customerName)", () => {
       let ordersView = structure.stateViewSlices[0];
       return Jest.Expect.toEqual(Jest.Expect.expect([
         ordersView.labelField,
         ordersView.searchableFields
       ]), [
-        "orderId",
-        ["orderId"]
+        "customerName",
+        ["customerName"]
       ]);
     });
-    Jest.test("AvailableProductsView: no @displayName → first non-id string field wins (productId)", () => {
+    Jest.test("AvailableProductsView: no @displayName → first non-`*Id` string field wins (name)", () => {
       let apv = structure.stateViewSlices[1];
       return Jest.Expect.toEqual(Jest.Expect.expect([
         apv.labelField,
         apv.searchableFields
       ]), [
-        "productId",
-        ["productId"]
+        "name",
+        ["name"]
       ]);
     });
     Jest.test("Customers: composite @displayName → labelField=displayName, searchableFields=raw source fields in declaration order", () => {
