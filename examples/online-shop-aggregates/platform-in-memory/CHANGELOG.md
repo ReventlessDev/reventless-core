@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.24 (2026-05-03)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-in-memory
+
+
+
+
+
 # 1.0.0-alpha.23 (2026-05-03)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-in-memory

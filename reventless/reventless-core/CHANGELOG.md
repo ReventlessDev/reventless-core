@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.66 (2026-05-03)
+
+### Bug Fixes
+
+* **core:** canonical pluralization for read model query field names ([71312a3](https://github.com/ReventlessDev/reventless-core/commit/71312a3554359057e05abd9881fe2689dc97e73a))
+* **core:** exclude *Id / *Ids fields from labelField inference ([01b2944](https://github.com/ReventlessDev/reventless-core/commit/01b29440b2f32de44aa4ce1e63d12c08c0737bd1))
+
+
 # 3.0.0-alpha.65 (2026-05-03)
 
 ### Bug Fixes

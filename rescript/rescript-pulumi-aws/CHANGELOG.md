@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.23 (2026-05-03)
+
+### Bug Fixes
+
+* **appsync:** rewrite per-page sort to satisfy APPSYNC_JS 1.0.0 ([a285d2b](https://github.com/ReventlessDev/reventless-core/commit/a285d2b9f3da7cc4a30442969a23dfaad4ebca42))
+
+
 # 2.4.0-alpha.22 (2026-05-03)
 
 ### Features

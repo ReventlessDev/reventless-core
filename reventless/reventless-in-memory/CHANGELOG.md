@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.42 (2026-05-03)
+
+### Bug Fixes
+
+* **in-memory:** accept raw localIds in QueryDb filter.ids ([b1d113b](https://github.com/ReventlessDev/reventless-core/commit/b1d113b751d1a5958d867b47f0ddfcd0349e4558))
+* **in-memory:** drop duplicate Platform_UIDefinitions SDL registration ([3bf7997](https://github.com/ReventlessDev/reventless-core/commit/3bf799755ebf3718e345e5d3b785af4ba3371773))
+
+
 # 3.0.0-alpha.41 (2026-05-03)
 
 ### Features
