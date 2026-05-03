@@ -103,16 +103,34 @@ module Make = (
                 async () => {
                   // Phase 1: collect outbound items
                   Callback.phase1(eventsArr)
-                  // Phase 2: translate pending items
+                  // Sync the post-phase-1 TODO state so consumers awaiting the
+                  // originating publishEvent observe Pending rows immediately.
+                  await syncToQueryDb(queryDbOps)
+                  // Phase 2 must NOT be awaited here. If a translation publishes
+                  // an inbound command whose downstream events fan back to this
+                  // same topic, awaiting would self-deadlock the bus — same
+                  // shape as AutomationSlice. Detach it; errors are logged.
                   switch publishJsonsRef.contents {
-                  | Some(pj) => await Callback.phase2(pj)
+                  | Some(pj) =>
+                    let _ =
+                      Callback.phase2(pj)
+                      ->Promise.then(() => syncToQueryDb(queryDbOps))
+                      ->Promise.catch(exn => {
+                        let errMsg =
+                          exn
+                          ->JsExn.fromException
+                          ->Option.flatMap(JsExn.message)
+                          ->Option.getOr("unknown")
+                        Effect.logError(
+                          `OutboundTranslationSlice(${Spec.name}): detached phase 2 error: ${errMsg}`,
+                        )->Effect.runSync
+                        Promise.resolve()
+                      })
                   | None =>
                     Console.error(
                       `OutboundTranslationSlice(${Spec.name}): publishJsons not yet resolved`,
                     )
                   }
-                  // Sync TODO state to QueryDb for observability
-                  await syncToQueryDb(queryDbOps)
                 },
               )
             )

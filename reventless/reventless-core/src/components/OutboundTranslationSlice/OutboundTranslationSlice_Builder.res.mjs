@@ -2,11 +2,14 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
@@ -71,13 +74,17 @@ function Make(RuntimeEnvironment) {
             }
           })), events => Stream$1.fromIterable(events))), eventsArr => Effect.promise(async () => {
             Callback.phase1(eventsArr);
+            await syncToQueryDb(queryDbOps);
             let pj = publishJsonsRef.contents;
             if (pj !== undefined) {
-              await Callback.phase2(pj);
+              Stdlib_Promise.$$catch(Callback.phase2(pj).then(() => syncToQueryDb(queryDbOps)), exn => {
+                let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+                Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): detached phase 2 error: ` + errMsg));
+                return Promise.resolve();
+              });
             } else {
               console.error(`OutboundTranslationSlice(` + Spec.name + `): publishJsons not yet resolved`);
             }
-            return await syncToQueryDb(queryDbOps);
           }));
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;
