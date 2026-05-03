@@ -389,15 +389,19 @@ function listAllItemsConnection(labelField, filterFieldsOpt, rangeFieldsOpt, sor
   const orderBy = ctx.args.orderBy;
   const sortFields = [` + sortFieldsLiteral + `];
   if (orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
-    const direction = orderBy.direction === 'DESC' ? -1 : 1;
-    items = items.slice().sort((a, b) => {
-      const av = a[orderBy.field];
-      const bv = b[orderBy.field];
-      if (av === bv) return 0;
-      if (av === undefined || av === null) return 1;
-      if (bv === undefined || bv === null) return -1;
-      return av < bv ? -1 * direction : 1 * direction;
+    const field = orderBy.field;
+    const nulls = items.filter(it => it[field] === null || it[field] === undefined);
+    const nonNulls = items.filter(it => it[field] !== null && it[field] !== undefined);
+    const encoded = nonNulls.map(it => {
+      const v = it[field];
+      const key = (typeof v === 'number')
+        ? ('0000000000000000000000' + v).slice(-22)
+        : ('' + v);
+      return key + '\\x01' + JSON.stringify(it);
     });
+    encoded.sort();
+    if (orderBy.direction === 'DESC') encoded.reverse();
+    items = encoded.map(e => JSON.parse(e.split('\\x01')[1])).concat(nulls);
   }`;
   return importUtil + `
 export function request(ctx) {

@@ -328,6 +328,33 @@ describe('listAllItemsConnection', () => {
       const r = response(ctx)
       expect(r.edges.map(e => e.node.name)).toEqual(['A', 'B', null])
     })
+
+    test('response keeps nulls at the end under DESC direction', () => {
+      const ctx = makeCtx({
+        args: { orderBy: { field: 'name', direction: 'DESC' } },
+        result: {
+          items: [{ name: 'A' }, { name: null }, { name: 'B' }],
+          nextToken: null,
+        },
+      })
+      const r = response(ctx)
+      expect(r.edges.map(e => e.node.name)).toEqual(['B', 'A', null])
+    })
+
+    test('response sorts numeric fields in numeric (not lexicographic) order', () => {
+      // The schwartzian transform pads numbers so '10' sorts after '2', not before.
+      const code = F.listAllItemsConnection('name', [], [], ['count'])
+      const { response: numResp } = evalResolver(code)
+      const ctx = makeCtx({
+        args: { orderBy: { field: 'count', direction: 'ASC' } },
+        result: {
+          items: [{ count: 10 }, { count: 2 }, { count: 100 }],
+          nextToken: null,
+        },
+      })
+      const r = numResp(ctx)
+      expect(r.edges.map(e => e.node.count)).toEqual([2, 10, 100])
+    })
   })
 
   describe('combined filter + sort', () => {

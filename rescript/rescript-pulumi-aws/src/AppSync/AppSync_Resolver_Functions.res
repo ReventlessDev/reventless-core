@@ -459,6 +459,15 @@ let listAllItemsConnection = (
   let sortBlock = if sortFields->Array.length == 0 {
     ""
   } else {
+    // APPSYNC_JS 1.0.0 forbids: Array.prototype.sort(comparator), arrow/function
+    // expressions passed to sort, for/while loops, recursion, and ++/--. So we
+    // can't run a comparator-driven sort and we can't write our own loop. Use a
+    // schwartzian transform: encode each item as `<sortKey>\x01<json>`, run the
+    // no-comparator default sort (lexicographic), reverse for DESC, and decode.
+    // Numeric fields get zero-padded so lex order matches numeric order for
+    // non-negative values (typical for IDs, counts, timestamps). Negatives sort
+    // lexicographically — acceptable since DynamoDB sort keys are rarely signed
+    // numbers. Nulls split out and append to the end regardless of direction.
     `
   // Per-page sort (Scan returns items in indeterminate order; ScanIndexForward
   // does not apply to Scan). Global ordering across pages requires v1.5 index
@@ -466,15 +475,19 @@ let listAllItemsConnection = (
   const orderBy = ctx.args.orderBy;
   const sortFields = [${sortFieldsLiteral}];
   if (orderBy && orderBy.field && sortFields.indexOf(orderBy.field) >= 0) {
-    const direction = orderBy.direction === 'DESC' ? -1 : 1;
-    items = items.slice().sort((a, b) => {
-      const av = a[orderBy.field];
-      const bv = b[orderBy.field];
-      if (av === bv) return 0;
-      if (av === undefined || av === null) return 1;
-      if (bv === undefined || bv === null) return -1;
-      return av < bv ? -1 * direction : 1 * direction;
+    const field = orderBy.field;
+    const nulls = items.filter(it => it[field] === null || it[field] === undefined);
+    const nonNulls = items.filter(it => it[field] !== null && it[field] !== undefined);
+    const encoded = nonNulls.map(it => {
+      const v = it[field];
+      const key = (typeof v === 'number')
+        ? ('0000000000000000000000' + v).slice(-22)
+        : ('' + v);
+      return key + '\\x01' + JSON.stringify(it);
     });
+    encoded.sort();
+    if (orderBy.direction === 'DESC') encoded.reverse();
+    items = encoded.map(e => JSON.parse(e.split('\\x01')[1])).concat(nulls);
   }`
   }
   `${importUtil}
