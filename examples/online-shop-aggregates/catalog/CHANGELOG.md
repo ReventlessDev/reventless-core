@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.29 (2026-05-03)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog
+
+
+
+
+
 # 3.0.0-alpha.28 (2026-05-03)
 
 * refactor(examples)!: migrate online-shop-aggregates to new naming + adopt new PPX ([9dac635](https://github.com/ReventlessDev/reventless-core/commit/9dac6353b88e6c6bba88d1ce9d4a0594be976f62))

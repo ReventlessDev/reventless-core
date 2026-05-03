@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.74 (2026-05-03)
+
+### Features
+
+* **aws:** makeUiBundleDistribution uploads assets and supports SPA history fallback ([79ee054](https://github.com/ReventlessDev/reventless-core/commit/79ee054b78d2d0ecf91d5c87e888d8bb11e83067))
+* **aws:** mirror Platform_UIDefinitions GraphQL query — Lambda DataSource backed by Plugin read model ([76e57cc](https://github.com/ReventlessDev/reventless-core/commit/76e57ccc681a66be4909bd94e131145978169c9c))
+
+
 # 3.0.0-alpha.73 (2026-05-03)
 
 ### Bug Fixes

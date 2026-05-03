@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.27 (2026-05-03)
+
+### Bug Fixes
+
+* **examples:** Orders EP Delegate.name must match DCB log convention ([1f6c094](https://github.com/ReventlessDev/reventless-core/commit/1f6c09494bf295ae4743cdedc01c16f97e9ff8d6))
+
+
 # 1.0.0-alpha.26 (2026-05-03)
 
 ### Bug Fixes

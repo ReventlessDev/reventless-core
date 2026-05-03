@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.22 (2026-05-03)
+
+### Features
+
+* **aws:** makeUiBundleDistribution uploads assets and supports SPA history fallback ([79ee054](https://github.com/ReventlessDev/reventless-core/commit/79ee054b78d2d0ecf91d5c87e888d8bb11e83067))
+
+
 # 2.4.0-alpha.21 (2026-05-03)
 
 ### Bug Fixes

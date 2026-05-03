@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.65 (2026-05-03)
+
+### Bug Fixes
+
+* **tests:** drop redundant ReventlessCore prefix in Platform_UIDefinitionsApiTest ([4585564](https://github.com/ReventlessDev/reventless-core/commit/4585564a841642b72bacf72a4192167cb0a34ef9))
+### Features
+
+* **aws:** mirror Platform_UIDefinitions GraphQL query — Lambda DataSource backed by Plugin read model ([76e57cc](https://github.com/ReventlessDev/reventless-core/commit/76e57ccc681a66be4909bd94e131145978169c9c))
+
+
 # 3.0.0-alpha.64 (2026-05-03)
 
 ### Bug Fixes
