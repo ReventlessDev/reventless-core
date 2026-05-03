@@ -673,23 +673,34 @@ export function request(ctx) {
 function invokeCommandGenerator(command) {
   return importUtil + `
 export function request(ctx) {
+  const id = ctx.identity;
+  const isCognito = id != null && id.sub != null;
   return {
     operation: 'Invoke',
     payload: {
       command: '` + command + `',
       arguments: ctx.args,
       meta: {
-        ip: ctx.identity.sourceIp,
-        user: ctx.identity.username,
+        ip: id?.sourceIp ?? null,
+        user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },
-      identity: {
-        userId: ctx.identity.sub,
-        username: ctx.identity.username,
-        groups: ctx.identity.claims?.['cognito:groups'] ?? [],
-        claims: ctx.identity.claims,
-        provider: 'Cognito'
-      }
+      identity: isCognito
+        ? {
+            userId: id.sub,
+            username: id.username,
+            groups: id.claims?.['cognito:groups'] ?? [],
+            claims: id.claims,
+            provider: 'Cognito'
+          }
+        : id != null
+          ? {
+              userArn: id.userArn ?? null,
+              accountId: id.accountId ?? null,
+              username: id.username ?? null,
+              provider: 'IAM'
+            }
+          : null
     }
   };
 }
@@ -700,23 +711,34 @@ export function request(ctx) {
 function invokeDcbMutation(tag) {
   return importUtil + `
 export function request(ctx) {
+  const id = ctx.identity;
+  const isCognito = id != null && id.sub != null;
   return {
     operation: 'Invoke',
     payload: {
       command: '` + tag + `',
       arguments: ctx.args,
       meta: {
-        ip: ctx.identity.sourceIp,
-        user: ctx.identity.username,
+        ip: id?.sourceIp ?? null,
+        user: id?.username ?? null,
         info: ctx.info.parentTypeName + '.' + ctx.info.fieldName
       },
-      identity: {
-        userId: ctx.identity.sub,
-        username: ctx.identity.username,
-        groups: ctx.identity.claims?.['cognito:groups'] ?? [],
-        claims: ctx.identity.claims,
-        provider: 'Cognito'
-      }
+      identity: isCognito
+        ? {
+            userId: id.sub,
+            username: id.username,
+            groups: id.claims?.['cognito:groups'] ?? [],
+            claims: id.claims,
+            provider: 'Cognito'
+          }
+        : id != null
+          ? {
+              userArn: id.userArn ?? null,
+              accountId: id.accountId ?? null,
+              username: id.username ?? null,
+              provider: 'IAM'
+            }
+          : null
     }
   };
 }

@@ -481,9 +481,63 @@ describe('invokeCommandGenerator', () => {
     expect(payload.identity.username).toBe('testuser')
   })
 
+  test('request emits IAM identity when ctx.identity has userArn but no sub', () => {
+    const ctx = makeCtx({
+      identity: {
+        userArn: 'arn:aws:iam::123:role/SyncRole',
+        accountId: '123',
+        username: 'AROAEXAMPLE:caller',
+        sourceIp: ['10.0.0.1'],
+      },
+    })
+    const { payload } = request(ctx)
+    expect(payload.identity.provider).toBe('IAM')
+    expect(payload.identity.userArn).toBe('arn:aws:iam::123:role/SyncRole')
+    expect(payload.identity.accountId).toBe('123')
+    expect(payload.identity.username).toBe('AROAEXAMPLE:caller')
+    expect(payload.meta.ip).toEqual(['10.0.0.1'])
+    expect(payload.meta.user).toBe('AROAEXAMPLE:caller')
+  })
+
+  test('request emits null identity when ctx.identity is null (API_KEY)', () => {
+    const ctx = makeCtx({ identity: null })
+    const { payload } = request(ctx)
+    expect(payload.identity).toBeNull()
+    expect(payload.meta.ip).toBeNull()
+    expect(payload.meta.user).toBeNull()
+    expect(payload.command).toBe('CreateProduct')
+  })
+
   test('response returns ctx.result', () => {
     const ctx = makeCtx({ result: { msgId: '42' } })
     expect(response(ctx)).toEqual({ msgId: '42' })
+  })
+})
+
+describe('invokeDcbMutation', () => {
+  const { request } = evalResolver(F.invokeDcbMutation('Product'))
+
+  test('request emits Cognito identity by default', () => {
+    const ctx = makeCtx({ args: { sku: 'X1' } })
+    const { payload } = request(ctx)
+    expect(payload.command).toBe('Product')
+    expect(payload.arguments).toEqual({ sku: 'X1' })
+    expect(payload.identity.provider).toBe('Cognito')
+  })
+
+  test('request emits IAM identity when ctx.identity has userArn but no sub', () => {
+    const ctx = makeCtx({
+      identity: { userArn: 'arn:aws:iam::123:role/Sync', accountId: '123' },
+    })
+    const { payload } = request(ctx)
+    expect(payload.identity.provider).toBe('IAM')
+    expect(payload.identity.userArn).toBe('arn:aws:iam::123:role/Sync')
+  })
+
+  test('request emits null identity when ctx.identity is null', () => {
+    const ctx = makeCtx({ identity: null })
+    const { payload } = request(ctx)
+    expect(payload.identity).toBeNull()
   })
 })
 

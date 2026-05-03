@@ -25,18 +25,29 @@ let queryInterceptorConfig: ref<option<interceptorConfig>> = ref(None)
 let interceptorCode = readModelName =>
   `import { util } from '@aws-appsync/utils';
 export function request(ctx) {
+  const id = ctx.identity;
+  const isCognito = id != null && id.sub != null;
   return {
     operation: 'Invoke',
     payload: {
       readModelName: '${readModelName}',
       arguments: ctx.args,
-      identity: {
-        userId: ctx.identity.sub,
-        username: ctx.identity.username,
-        groups: ctx.identity.claims?.['cognito:groups'] ?? [],
-        claims: ctx.identity.claims,
-        provider: 'Cognito'
-      }
+      identity: isCognito
+        ? {
+            userId: id.sub,
+            username: id.username,
+            groups: id.claims?.['cognito:groups'] ?? [],
+            claims: id.claims,
+            provider: 'Cognito'
+          }
+        : id != null
+          ? {
+              userArn: id.userArn ?? null,
+              accountId: id.accountId ?? null,
+              username: id.username ?? null,
+              provider: 'IAM'
+            }
+          : null
     }
   };
 }
