@@ -18,6 +18,7 @@ module PluginMessage_Runtime = Util_PluginMessage_Runtime
 module ResourceNaming = Util_ResourceNaming
 module S3 = Util_S3
 module S3_Runtime = Util_S3_Runtime
+module StaticBundle = Util_StaticBundle
 module SesPolicy_Runtime = Util_SesPolicy_Runtime
 module SNS = Util_SNS
 module SNS_FIFO = Util_SNS_FIFO

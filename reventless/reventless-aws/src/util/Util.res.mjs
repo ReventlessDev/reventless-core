@@ -41,6 +41,8 @@ let S3;
 
 let S3_Runtime;
 
+let StaticBundle;
+
 let SesPolicy_Runtime;
 
 let SNS;
@@ -80,6 +82,7 @@ export {
   ResourceNaming,
   S3,
   S3_Runtime,
+  StaticBundle,
   SesPolicy_Runtime,
   SNS,
   SNS_FIFO,

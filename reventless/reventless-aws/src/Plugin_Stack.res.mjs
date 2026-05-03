@@ -2,10 +2,14 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
 
 let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6";
 
-function makeUiBundleDistribution(pluginId, bundleVersion) {
+function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt) {
+  let spaFallback = spaFallbackOpt !== undefined ? spaFallbackOpt : false;
+  let indexDocument = indexDocumentOpt !== undefined ? indexDocumentOpt : "index.html";
   let name = pluginId + "-" + bundleVersion;
   let bucket = new (Aws.s3.BucketV2)(name + "-bundle");
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {
@@ -21,6 +25,20 @@ function makeUiBundleDistribution(pluginId, bundleVersion) {
     signingProtocol: "sigv4"
   });
   let originId = pluginId + "-s3";
+  let customErrorResponses = spaFallback ? [
+      {
+        errorCode: 403,
+        responseCode: 200,
+        responsePagePath: "/" + indexDocument,
+        errorCachingMinTtl: 0
+      },
+      {
+        errorCode: 404,
+        responseCode: 200,
+        responsePagePath: "/" + indexDocument,
+        errorCachingMinTtl: 0
+      }
+    ] : [];
   let distribution = new (Aws.cloudfront.Distribution)(name + "-cdn", {
     enabled: true,
     origins: Pulumi.all([
@@ -52,7 +70,9 @@ function makeUiBundleDistribution(pluginId, bundleVersion) {
     viewerCertificate: {
       cloudfrontDefaultCertificate: true
     },
-    comment: pluginId + " UI bundle CDN"
+    comment: pluginId + " UI bundle CDN",
+    customErrorResponses: customErrorResponses,
+    defaultRootObject: indexDocument
   });
   new (Aws.s3.BucketPolicy)(name + "-bundle-policy", {
     bucket: bucket.id,
@@ -77,6 +97,21 @@ function makeUiBundleDistribution(pluginId, bundleVersion) {
         }]
     }))
   });
+  if (assetsDir !== undefined) {
+    let entries = Util_StaticBundle$ReventlessAws.walk(assetsDir);
+    if (entries.length === 0) {
+      Stdlib_JsError.throwWithMessage(`Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ` + assetsDir);
+    }
+    entries.forEach(entry => {
+      new (Aws.s3.BucketObject)(name + "-asset-" + Util_StaticBundle$ReventlessAws.sanitizeName(entry.relativePath), {
+        bucket: bucket.id,
+        key: entry.relativePath,
+        source: entry.fileAsset,
+        contentType: Util_StaticBundle$ReventlessAws.contentTypeFor(entry.relativePath),
+        etag: entry.contentHash
+      });
+    });
+  }
   return {
     distributionUrl: distribution.domainName.apply(d => "https://" + d),
     bucketName: bucket.bucket

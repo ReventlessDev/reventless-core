@@ -31,6 +31,13 @@ type viewerCertificate = {
   minimumProtocolVersion?: Pulumi.Input.t<string>,
 }
 
+type customErrorResponse = {
+  errorCode: Pulumi.Input.t<int>,
+  responseCode?: Pulumi.Input.t<int>,
+  responsePagePath?: Pulumi.Input.t<string>,
+  errorCachingMinTtl?: Pulumi.Input.t<int>,
+}
+
 type args = {
   enabled: Pulumi.Input.t<bool>,
   origins: Pulumi.Input.t<array<origin>>,
@@ -38,6 +45,7 @@ type args = {
   restrictions: Pulumi.Input.t<restrictions>,
   viewerCertificate: Pulumi.Input.t<viewerCertificate>,
   comment?: Pulumi.Input.t<string>,
+  customErrorResponses?: Pulumi.Input.t<array<customErrorResponse>>,
   defaultRootObject?: Pulumi.Input.t<string>,
   httpVersion?: Pulumi.Input.t<string>,
   isIpv6Enabled?: Pulumi.Input.t<bool>,

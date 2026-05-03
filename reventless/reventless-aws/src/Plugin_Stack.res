@@ -6,7 +6,35 @@ type bundleDistribution = {
   bucketName: Pulumi.Output.t<string>,
 }
 
-let makeUiBundleDistribution = (~pluginId: string, ~bundleVersion: string): bundleDistribution => {
+/**
+ * Provision an S3 bucket + CloudFront distribution for a UI bundle. When
+ * `~assetsDir` is supplied, every file under it is uploaded as a `BucketObject`
+ * with the correct MIME type and an etag derived from the file's SHA-256 so
+ * Pulumi only re-uploads files that actually changed. When `~spaFallback=true`,
+ * CloudFront 403/404 responses fall back to the index document so client-side
+ * routes resolve correctly on first paint.
+ *
+ * Recommended call site for a SPA bundle:
+ * ```rescript
+ * let { distributionUrl } = Plugin_Stack.makeUiBundleDistribution(
+ *   ~pluginId="my-console-bundle",
+ *   ~bundleVersion="1.0.0",
+ *   ~assetsDir=projectRoot ++ "/../../bundles/my-console/dist",
+ *   ~spaFallback=true,
+ * )
+ * ```
+ *
+ * The caller must build the bundle (`vite build` or equivalent) before
+ * `pulumi up`. Supplying `~assetsDir` for a missing or empty directory
+ * fails fast with a clear error message.
+ */
+let makeUiBundleDistribution = (
+  ~pluginId: string,
+  ~bundleVersion: string,
+  ~assetsDir: option<string>=?,
+  ~spaFallback: bool=false,
+  ~indexDocument: string="index.html",
+): bundleDistribution => {
   let name = pluginId ++ "-" ++ bundleVersion
 
   let bucket = PulumiAws.S3.BucketV2.make(~name=name ++ "-bundle")
@@ -32,6 +60,23 @@ let makeUiBundleDistribution = (~pluginId: string, ~bundleVersion: string): bund
   )
 
   let originId = pluginId ++ "-s3"
+
+  let customErrorResponses = spaFallback
+    ? [
+        {
+          PulumiAws.CloudFront.Distribution.errorCode: Pulumi.Input.make(403),
+          responseCode: Pulumi.Input.make(200),
+          responsePagePath: Pulumi.Input.make("/" ++ indexDocument),
+          errorCachingMinTtl: Pulumi.Input.make(0),
+        },
+        {
+          errorCode: Pulumi.Input.make(404),
+          responseCode: Pulumi.Input.make(200),
+          responsePagePath: Pulumi.Input.make("/" ++ indexDocument),
+          errorCachingMinTtl: Pulumi.Input.make(0),
+        },
+      ]
+    : []
 
   let distribution = PulumiAws.CloudFront.Distribution.make(
     ~name=name ++ "-cdn",
@@ -65,6 +110,8 @@ let makeUiBundleDistribution = (~pluginId: string, ~bundleVersion: string): bund
         PulumiAws.CloudFront.Distribution.cloudfrontDefaultCertificate: Pulumi.Input.make(true),
       }),
       comment: Pulumi.Input.make(pluginId ++ " UI bundle CDN"),
+      defaultRootObject: Pulumi.Input.make(indexDocument),
+      customErrorResponses: Pulumi.Input.make(customErrorResponses),
     },
   )
 
@@ -96,6 +143,29 @@ let makeUiBundleDistribution = (~pluginId: string, ~bundleVersion: string): bund
         ->Pulumi.Output.asInput,
     },
   )
+
+  switch assetsDir {
+  | None => ()
+  | Some(dir) =>
+    let entries = Util.StaticBundle.walk(dir)
+    if entries->Array.length == 0 {
+      JsError.throwWithMessage(
+        `Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ${dir}`,
+      )
+    }
+    entries->Array.forEach(entry => {
+      let _ = PulumiAws.S3.BucketObject.make(
+        ~name=name ++ "-asset-" ++ Util.StaticBundle.sanitizeName(entry.relativePath),
+        ~args={
+          bucket: bucket.id->Pulumi.Output.asInput,
+          key: Pulumi.Input.make(entry.relativePath),
+          source: Pulumi.Input.make(entry.fileAsset),
+          contentType: Pulumi.Input.make(Util.StaticBundle.contentTypeFor(entry.relativePath)),
+          etag: Pulumi.Input.make(entry.contentHash),
+        },
+      )
+    })
+  }
 
   {
     distributionUrl: distribution.domainName->Pulumi.Output.apply(d => "https://" ++ d),

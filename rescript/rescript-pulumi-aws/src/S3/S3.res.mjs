@@ -7,6 +7,8 @@ let BucketV2;
 
 let BucketAclV2;
 
+let BucketObject;
+
 let BucketOwnershipControls;
 
 let BucketPublicAccessBlock;
@@ -17,6 +19,7 @@ export {
   Bucket,
   BucketV2,
   BucketAclV2,
+  BucketObject,
   BucketOwnershipControls,
   BucketPublicAccessBlock,
   BucketPolicy,
