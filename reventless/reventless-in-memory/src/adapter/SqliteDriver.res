@@ -7,6 +7,10 @@ type statement
 @module("node:sqlite") @new
 external openDatabaseSync: string => t = "DatabaseSync"
 
+@module("node:path") external dirname: string => string = "dirname"
+type mkdirOpts = {recursive: bool}
+@module("node:fs") external mkdirSync: (string, mkdirOpts) => unit = "mkdirSync"
+
 @send external _close: t => unit = "close"
 @send external _exec: (t, string) => unit = "exec"
 @send external _prepare: (t, string) => statement = "prepare"
@@ -19,7 +23,12 @@ let _getApply: (statement, array<JSON.t>) => Nullable.t<dict<JSON.t>> = %raw(`fu
 let _allApply: (statement, array<JSON.t>) => array<dict<JSON.t>> = %raw(`function(s, a) { return s.all.apply(s, a); }`)
 let _iterateApply: (statement, array<JSON.t>) => Iterator.t<dict<JSON.t>> = %raw(`function(s, a) { return s.iterate.apply(s, a); }`)
 
-let openDb = (~path) => openDatabaseSync(path)
+let openDb = (~path) => {
+  if path !== ":memory:" {
+    mkdirSync(dirname(path), {recursive: true})
+  }
+  openDatabaseSync(path)
+}
 let close = db => _close(db)
 let exec = (db, sql) => _exec(db, sql)
 let prepare = (db, sql) => _prepare(db, sql)

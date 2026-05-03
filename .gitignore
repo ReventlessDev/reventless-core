@@ -33,6 +33,10 @@ logs/security/
 # Reventless PPX dune build output
 packages/reventless-ppx/src/_build/
 
+# Local SQLite databases written by the in-memory platform's persistence mode
+# (default path documented in docs/guides/local-persistence.md).
+.reventless/
+
 # ast-grep tree-sitter grammar (compiled binary, rebuild with gcc)
 rescript.dylib
 
