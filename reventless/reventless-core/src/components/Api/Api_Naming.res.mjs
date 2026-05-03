@@ -39,10 +39,14 @@ function sliceMutationField(plugin, slice) {
   return plugin + `_` + slice;
 }
 
+function canonicalPlural(n) {
+  return pluralize(singularize(n));
+}
+
 function queryFieldNamesForReadModel(plugin, name, connectionSpecOpt) {
   let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   let singular = singularize(name);
-  let plural = pluralize(name);
+  let plural = pluralize(singularize(name));
   return {
     singleFieldName: plugin + `_` + singular,
     listFieldName: plugin + `_` + plural,
@@ -57,7 +61,7 @@ function queryFieldNamesForStateView(plugin, viewName, connectionSpecOpt) {
   let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   let entity = stripViewSuffix(viewName);
   let singular = singularize(entity);
-  let plural = pluralize(entity);
+  let plural = pluralize(singularize(entity));
   return {
     singleFieldName: plugin + `_` + singular,
     listFieldName: plugin + `_` + plural,
@@ -72,9 +76,9 @@ function queryFieldNamesForSliceQueryDb(plugin, queryDbName, connectionSpecOpt) 
   let connectionSpec = connectionSpecOpt !== undefined ? connectionSpecOpt : true;
   return {
     singleFieldName: plugin + `_` + queryDbName,
-    listFieldName: plugin + `_` + pluralize(queryDbName),
+    listFieldName: plugin + `_` + pluralize(singularize(queryDbName)),
     returnTypeName: plugin + `_` + queryDbName,
-    pluralTypeName: plugin + `_` + pluralize(queryDbName),
+    pluralTypeName: plugin + `_` + pluralize(singularize(queryDbName)),
     includeIdParam: false,
     connectionSpec: connectionSpec
   };
@@ -90,6 +94,7 @@ export {
   stripViewSuffix,
   aggregateMutationField,
   sliceMutationField,
+  canonicalPlural,
   queryFieldNamesForReadModel,
   queryFieldNamesForStateView,
   queryFieldNamesForSliceQueryDb,

@@ -39,9 +39,15 @@ let aggregateMutationField = (~plugin: string, ~aggregate: string, ~command: str
 
 let sliceMutationField = (~plugin: string, ~slice: string) => `${plugin}_${slice}`
 
+// Pluralize via the singular stem so already-plural names normalise correctly:
+// "Orders" → "Order" → "Orders" (was "Orderses"); "Categories" → "Category" →
+// "Categories" (was "Categorieses"). For singular entity names like
+// "ProductDemand" the singularize is a no-op and pluralize behaves as usual.
+let canonicalPlural = (n: string) => pluralize(singularize(n))
+
 let queryFieldNamesForReadModel = (~plugin: string, ~name: string, ~connectionSpec: bool=true): queryNames => {
   let singular = singularize(name)
-  let plural = pluralize(name)
+  let plural = canonicalPlural(name)
   {
     singleFieldName: `${plugin}_${singular}`,
     listFieldName: `${plugin}_${plural}`,
@@ -55,7 +61,7 @@ let queryFieldNamesForReadModel = (~plugin: string, ~name: string, ~connectionSp
 let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connectionSpec: bool=true): queryNames => {
   let entity = stripViewSuffix(viewName)
   let singular = singularize(entity)
-  let plural = pluralize(entity)
+  let plural = canonicalPlural(entity)
   {
     singleFieldName: `${plugin}_${singular}`,
     listFieldName: `${plugin}_${plural}`,
@@ -69,9 +75,9 @@ let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connecti
 let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string, ~connectionSpec: bool=true): queryNames => {
   {
     singleFieldName: `${plugin}_${queryDbName}`,
-    listFieldName: `${plugin}_${pluralize(queryDbName)}`,
+    listFieldName: `${plugin}_${canonicalPlural(queryDbName)}`,
     returnTypeName: `${plugin}_${queryDbName}`,
-    pluralTypeName: `${plugin}_${pluralize(queryDbName)}`,
+    pluralTypeName: `${plugin}_${canonicalPlural(queryDbName)}`,
     includeIdParam: false,
     connectionSpec,
   }
