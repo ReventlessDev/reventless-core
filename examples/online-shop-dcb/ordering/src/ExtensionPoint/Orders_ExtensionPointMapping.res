@@ -7,7 +7,7 @@ module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint
 // DCB adapter: defines the event type used for outgoing event mapping.
 // Only the events relevant to the extension point are included.
 module Delegate = {
-  let name = "OrderingEventLog"
+  let name = "OrderingDcbEventLog"
   @schema
   type event =
     | OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
