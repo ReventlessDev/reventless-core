@@ -370,9 +370,17 @@ module Make = (Bus: InMemory_Bus.T) => {
               getLabel(item)->String.toLowerCase->String.startsWith(p->String.toLowerCase)
             | _ => true
             }
+            // Filter `ids` accepts either the Relay-encoded global ID (the
+            // form returned by node.id) or the entity's raw local ID — so
+            // callers that hold a foreign-key value like `customerId =
+            // "cust-1"` can hydrate labels without first encoding to
+            // `Ordering_Customer:cust-1` base64.
             let passIds = switch ids {
             | Some(idList) if idList->Array.length > 0 =>
-              idList->Array.some(i => i == getId(item))
+              let itemId = getId(item)
+              let itemLocalId =
+                DomainGraphQL_Server.decodeGlobalId(itemId)->Option.map(((_, lid)) => lid)
+              idList->Array.some(i => i == itemId || itemLocalId == Some(i))
             | _ => true
             }
             let passPerField = perFieldChecks->Array.every(check => check(item))

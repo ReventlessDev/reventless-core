@@ -7,6 +7,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
@@ -187,7 +188,20 @@ function Make(Bus) {
         let filtered = items.filter(item => {
           let passSearch = search !== undefined && search.length > 0 ? getLabel(item).toLowerCase().includes(search.toLowerCase()) : true;
           let passPrefix = searchPrefix !== undefined && searchPrefix.length > 0 ? getLabel(item).toLowerCase().startsWith(searchPrefix.toLowerCase()) : true;
-          let passIds = ids !== undefined && ids.length !== 0 ? ids.some(i => i === getId(item)) : true;
+          let passIds;
+          if (ids !== undefined && ids.length !== 0) {
+            let itemId = getId(item);
+            let itemLocalId = Stdlib_Option.map(DomainGraphQL_Server$ReventlessInMemory.decodeGlobalId(itemId), param => param[1]);
+            passIds = ids.some(i => {
+              if (i === itemId) {
+                return true;
+              } else {
+                return Primitive_object.equal(itemLocalId, i);
+              }
+            });
+          } else {
+            passIds = true;
+          }
           let passPerField = perFieldChecks.every(check => check(item));
           if (passSearch && passPrefix && passIds) {
             return passPerField;
