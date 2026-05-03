@@ -2,12 +2,15 @@
 
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
@@ -66,8 +69,12 @@ function Make(RuntimeEnvironment) {
           let ec = SpecificEventCollector.make(Spec.name, eventTopics, opts);
           let jsonEventsHandler = stream => Effect.flatMap(Stream.runCollect(stream), jsons => Effect.promise(async () => {
             Callback.phase1(jsons, context);
-            await Callback.phase2(publishJsonsFn);
-            return await syncToQueryDb(queryDbOps);
+            await syncToQueryDb(queryDbOps);
+            Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn).then(() => syncToQueryDb(queryDbOps)), exn => {
+              let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+              Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): detached phase 2 error: ` + errMsg));
+              return Promise.resolve();
+            });
           }));
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
           let resources = Component$ReventlessCore.outputs(queryDb).resources;

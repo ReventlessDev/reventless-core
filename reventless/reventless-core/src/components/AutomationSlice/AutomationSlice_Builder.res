@@ -130,10 +130,31 @@ module Make = (
                 async () => {
                   // Phase 1: per-source decode + collect/resolve, threaded with context
                   Callback.phase1(jsons, context)
-                  // Phase 2: process pending items (process + encode + publish)
-                  await Callback.phase2(publishJsonsFn)
-                  // Sync TODO state to QueryDb for observability
+                  // Sync the post-phase-1 TODO state so consumers awaiting the
+                  // originating publishEvent observe Pending rows immediately.
                   await syncToQueryDb(queryDbOps)
+                  // Phase 2 must NOT be awaited here. Phase 2 publishes commands
+                  // whose downstream events get fanned out by the bus to all
+                  // subscribers of this same topic — including this very fiber.
+                  // Awaiting would self-deadlock: the bus's allDone for the
+                  // inner event needs this fiber to dequeue it, but the fiber
+                  // is still inside this handler. Detaching mirrors the
+                  // fire-and-forget shape InMemory_Bus already uses for
+                  // cross-plugin EP→Extension routing.
+                  let _ =
+                    Callback.phase2(publishJsonsFn)
+                    ->Promise.then(() => syncToQueryDb(queryDbOps))
+                    ->Promise.catch(exn => {
+                      let errMsg =
+                        exn
+                        ->JsExn.fromException
+                        ->Option.flatMap(JsExn.message)
+                        ->Option.getOr("unknown")
+                      Effect.logError(
+                        `AutomationSlice(${Spec.name}): detached phase 2 error: ${errMsg}`,
+                      )->Effect.runSync
+                      Promise.resolve()
+                    })
                 },
               )
             )
