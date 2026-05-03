@@ -75,7 +75,7 @@ let makeCommandJson = (id, command): JSON.t => {
   cmd'->Message.encodeCommand'(TestSpec.Id.schema, TestSpec.commandSchema)
 }
 
-let makeTopicItem = (id, command): ReventlessCore.CommandTopic.topicItem<JSON.t> => {
+let makeTopicItem = (id, command): CommandTopic.topicItem<JSON.t> => {
   reference: id,
   command: makeCommandJson(id, command),
 }

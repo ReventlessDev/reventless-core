@@ -1,5 +1,3 @@
-@@warning("-44")
-open Reventless
 open Reventless.Projection
 
 S.enableJson()
@@ -32,7 +30,7 @@ module TargetSpec = {
   @schema
   type state = {name: string, price: float}
 
-  let config = ReadModel.config()
+  let config = Reventless.ReadModel.config()
   let subIdConfig = None
 }
 
@@ -44,7 +42,7 @@ module ItemMapping = Mapping.Make(
   SourceSpec,
   TargetSpec,
   {
-    let project = (msg: Message.event'<string, SourceSpec.event>) =>
+    let project = (msg: Reventless.Message.event'<string, SourceSpec.event>) =>
       switch msg.event {
       | ItemCreated({name, price}) => Create(msg.id, ({name, price}: TargetSpec.state))
       | ItemPriceUpdated({newPrice}) => Update(msg.id, s => {...s, price: newPrice})
@@ -57,7 +55,7 @@ module ItemMapping = Mapping.Make(
 // Test metadata
 // ─────────────────────────────────────────────────────────────
 
-let testMeta: Message.meta = {
+let testMeta: Reventless.Message.meta = {
   service: "SourceAggregate",
   time: "2024-01-01T00:00:00.000Z",
   ip: "127.0.0.1",
@@ -67,10 +65,10 @@ let testMeta: Message.meta = {
 }
 
 let makeSourceEvent' = (id, event) => ({
-  Message.id,
+  Reventless.Message.id,
   meta: testMeta,
   event,
-}: Message.event'<string, SourceSpec.event>)
+}: Reventless.Message.event'<string, SourceSpec.event>)
 
 // ─────────────────────────────────────────────────────────────
 // EventMapper_Callback test fixtures
@@ -160,7 +158,7 @@ module CountOrderMappings: EventMapper.Mappings with module Target = CmdTargetSp
 // Shared mocks for EventMapper_Callback tests
 // ─────────────────────────────────────────────────────────────
 
-let capturedCmds: ref<array<Message.commandJson>> = ref([])
+let capturedCmds: ref<array<Reventless.Message.commandJson>> = ref([])
 let capturedCountItems: ref<array<ReventlessInfra.Counter.countItem>> = ref([])
 let capturedCounterTargets: ref<array<ReventlessInfra.Counter.counterTargetRef>> = ref([])
 
@@ -195,8 +193,8 @@ module TestCounterHandler = EventMapper_Callback.MakeCounterHandler(
 // configurable mock for commonEventsHandler — reassigned in each test
 let mockCommonHandler: ref<
   array<JSON.t> => promise<(
-    promise<array<Message.commandJson>>,
-    array<ReventlessCore.Counter.action>,
+    promise<array<Reventless.Message.commandJson>>,
+    array<Counter.action>,
   )>,
 > = ref(async _ => (Promise.resolve([]), []))
 
@@ -226,7 +224,7 @@ module MockECOps: EventMapper_Callback.EventCollectorOps = {
 // MakeEventCollectorHandler under test
 module TestECHandler = EventMapper_Callback.MakeEventCollectorHandler(MockECOps)
 
-let evtMapTestMeta: Message.meta = {
+let evtMapTestMeta: Reventless.Message.meta = {
   service: CmdSourceSpec.name,
   time: "2024-01-01T00:00:00Z",
   ip: "127.0.0.1",
@@ -240,7 +238,7 @@ let makeEventJson = (~service=CmdSourceSpec.name, id, eventJson): JSON.t =>
     ("id", JSON.Encode.string(id)),
     (
       "meta",
-      {...evtMapTestMeta, service: service}->Message.encode(Message.metaSchema),
+      {...evtMapTestMeta, service: service}->Reventless.Message.encode(Reventless.Message.metaSchema),
     ),
     ("event", eventJson),
   ]

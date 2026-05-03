@@ -5,8 +5,8 @@ module type CounterOps = {
 
 module type CounterHandler = {
   let commonEventsHandler: array<JSON.t> => promise<(
-    promise<array<ReventlessCore.Message.commandJson>>,
-    array<ReventlessCore.Counter.action>,
+    promise<array<Message.commandJson>>,
+    array<Counter.action>,
   )>
   let handleCounterEvents: Counter.jsonEventsHandler
 }
@@ -229,8 +229,8 @@ module type EventCollectorOps = {
   let count: Counter.count
   let addToCounterTarget: Counter.addToCounterTarget
   let commonEventsHandler: array<JSON.t> => promise<(
-    promise<array<ReventlessCore.Message.commandJson>>,
-    array<ReventlessCore.Counter.action>,
+    promise<array<Message.commandJson>>,
+    array<Counter.action>,
   )>
 }
 

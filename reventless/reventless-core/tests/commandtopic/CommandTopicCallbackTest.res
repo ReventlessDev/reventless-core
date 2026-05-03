@@ -27,7 +27,7 @@ describe("CommandTopic_Callback.handleJsonCommands:", () => {
 
   describe("malformed command JSON", () => {
     testPromise("skipped gracefully — commandsHandler called with empty array", async () => {
-      let invalidItem: ReventlessCore.CommandTopic.topicItem<JSON.t> = {
+      let invalidItem: CommandTopic.topicItem<JSON.t> = {
         reference: "ref-1",
         command: JSON.Encode.string("not-a-command-object"),
       }
@@ -52,7 +52,7 @@ describe("CommandTopic_Callback.handleJsonCommands:", () => {
   describe("mixed valid and invalid commands", () => {
     testPromise("only valid commands reach commandsHandler", async () => {
       let validItem = makeTopicItem("agg-1", TestSpec.CreateItem({itemId: "item-1"}))
-      let invalidItem: ReventlessCore.CommandTopic.topicItem<JSON.t> = {
+      let invalidItem: CommandTopic.topicItem<JSON.t> = {
         reference: "ref-bad",
         command: JSON.Encode.null,
       }

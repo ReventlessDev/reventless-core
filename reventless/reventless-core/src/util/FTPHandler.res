@@ -86,7 +86,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             | entities =>
               result :=
                 (await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp))->Ok
-            | exception JsExn(e) => result := e->ReventlessCore.Util.Error.message->Error
+            | exception JsExn(e) => result := e->Util.Error.message->Error
             }
           | Upload(readableStream, filename) =>
             let ws =

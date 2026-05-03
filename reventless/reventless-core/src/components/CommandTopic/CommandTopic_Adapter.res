@@ -43,10 +43,10 @@ module type Channel = {
 }
 
 type remoteChannel = {
-  resources: array<ReventlessCore.Adapter.resolvedResource>,
+  resources: array<ReventlessInfra.Adapter.resolvedResource>,
   remotePublish: CommandTopic.publishJsons,
 }
-type remoteChannelMaker = array<ReventlessCore.Adapter.resolvedResource> => remoteChannel
+type remoteChannelMaker = array<ReventlessInfra.Adapter.resolvedResource> => remoteChannel
 
 module type RemoteChannel = {
   let make: remoteChannelMaker
