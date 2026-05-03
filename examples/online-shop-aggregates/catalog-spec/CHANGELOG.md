@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.19 (2026-05-03)
+
+* refactor(examples)!: migrate online-shop-aggregates to new naming + adopt new PPX ([9dac635](https://github.com/ReventlessDev/reventless-core/commit/9dac6353b88e6c6bba88d1ce9d4a0594be976f62))
+
+### BREAKING CHANGES
+
+* external code consuming the
+`@reventlessdev/online-shop-aggregates-*` packages must update module name
+references (e.g., `CategoriesReadModel` → `Categories`,
+`ProductsExtensionPoint` → `Products_ExtensionPoint`, `CategoryBehavior` →
+`Category_Behavior`).
+
+Verified: zero warnings, 1174/1175 tests pass — same single pre-existing
+testPromise race in OrderingE2ETest as PR1/PR2.
+
+
+
 # 3.0.0-alpha.18 (2026-04-28)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-spec

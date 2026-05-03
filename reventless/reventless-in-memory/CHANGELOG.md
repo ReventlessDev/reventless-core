@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.40 (2026-05-03)
+
+### Bug Fixes
+
+* **in-memory:** mkdir SQLite parent directory on openDb ([2c90016](https://github.com/ReventlessDev/reventless-core/commit/2c90016ae7f208456d2328bad36a39e7aea90c39))
+* feat(ppx)!: add @@reventless.mappings/extension/task; collapse AutomationSlice.Make to 2 args ([c0268ac](https://github.com/ReventlessDev/reventless-core/commit/c0268ac42c1c887fe25467af61b412ab2e27a5a7))
+### Features
+
+* **in-memory:** expose Platform_PlatformEventGraph[s] admin queries from pluginStructuresStore ([a1655cc](https://github.com/ReventlessDev/reventless-core/commit/a1655ccd65d86d5f52f9fef78b0a676f28f29a33))
+
+### BREAKING CHANGES
+
+* Platform.AutomationSlice.Make is now 2-arg (Spec, Automation).
+External callers must either rerun generate-plugin or merge their _Mappings
+contents into _Automation (or add the same two-line bridge).
+
+Verified: zero warnings, 1174/1175 tests pass — the single failing test
+(OrderingE2ETest "after syncing missing product, PlaceOrder succeeds") was
+confirmed pre-existing on alpha (the known testPromise concurrency race).
+
+
+
 # 3.0.0-alpha.39 (2026-04-28)
 
 ### Features

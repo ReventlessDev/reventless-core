@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.45 (2026-05-03)
+
+* feat(ppx)!: add @@reventless.mappings/extension/task; collapse AutomationSlice.Make to 2 args ([c0268ac](https://github.com/ReventlessDev/reventless-core/commit/c0268ac42c1c887fe25467af61b412ab2e27a5a7))
+### Features
+
+* **logger:** prefix plugin-component logs with stable-color [PluginName] bracket ([ed61eaf](https://github.com/ReventlessDev/reventless-core/commit/ed61eaf5cf84d8b8925c148050a2c51ddb65226a))
+
+### BREAKING CHANGES
+
+* Platform.AutomationSlice.Make is now 2-arg (Spec, Automation).
+External callers must either rerun generate-plugin or merge their _Mappings
+contents into _Automation (or add the same two-line bridge).
+
+Verified: zero warnings, 1174/1175 tests pass — the single failing test
+(OrderingE2ETest "after syncing missing product, PlaceOrder succeeds") was
+confirmed pre-existing on alpha (the known testPromise concurrency race).
+
+
+
 # 3.0.0-alpha.44 (2026-04-28)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

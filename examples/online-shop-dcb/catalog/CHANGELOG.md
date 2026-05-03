@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.31 (2026-05-03)
+
+### Bug Fixes
+
+* **plugin:** silence false-positive own-DCB-eventlog warning + correct example Delegate.name ([df721b2](https://github.com/ReventlessDev/reventless-core/commit/df721b2ce716fd2952f80177999ca11798a08117))
+### Features
+
+* **ppx,examples:** full GWT coverage for example plugins ([9331744](https://github.com/ReventlessDev/reventless-core/commit/9331744d232802d996f3897d7eca6e8c6b735f68))
+
+
 # 1.0.0-alpha.30 (2026-04-28)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-catalog

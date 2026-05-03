@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.64 (2026-05-03)
+
+### Bug Fixes
+
+* **api:** wire deriveObjectSchema into Plugin_Structure queryable defs ([1a14ff6](https://github.com/ReventlessDev/reventless-core/commit/1a14ff6ad7652eb733a7197ef3b072fedf514f89))
+* **automation-slice:** detach phase 2 from event-subscriber fiber ([ddaebfc](https://github.com/ReventlessDev/reventless-core/commit/ddaebfc2e13c3b0e9b3de1380ca4fa49c1c12630))
+* **outbound-translation:** detach phase 2 from event-subscriber fiber ([ed1c10c](https://github.com/ReventlessDev/reventless-core/commit/ed1c10c9f0b42d7e0940274bd77f41da1f7de78d))
+* **plugin:** silence false-positive own-DCB-eventlog warning + correct example Delegate.name ([df721b2](https://github.com/ReventlessDev/reventless-core/commit/df721b2ce716fd2952f80177999ca11798a08117))
+* feat(ppx)!: add @@reventless.mappings/extension/task; collapse AutomationSlice.Make to 2 args ([c0268ac](https://github.com/ReventlessDev/reventless-core/commit/c0268ac42c1c887fe25467af61b412ab2e27a5a7))
+### Features
+
+* **admin:** emit AutomationSlice, InboundTranslation, and broader EventTypeMatch cross-plugin edges ([a3e16a9](https://github.com/ReventlessDev/reventless-core/commit/a3e16a958e76128f53c5e1e434220abc110e9fb7))
+* **logger:** prefix plugin-component logs with stable-color [PluginName] bracket ([ed61eaf](https://github.com/ReventlessDev/reventless-core/commit/ed61eaf5cf84d8b8925c148050a2c51ddb65226a))
+
+### BREAKING CHANGES
+
+* Platform.AutomationSlice.Make is now 2-arg (Spec, Automation).
+External callers must either rerun generate-plugin or merge their _Mappings
+contents into _Automation (or add the same two-line bridge).
+
+Verified: zero warnings, 1174/1175 tests pass — the single failing test
+(OrderingE2ETest "after syncing missing product, PlaceOrder succeeds") was
+confirmed pre-existing on alpha (the known testPromise concurrency race).
+
+
+
 # 3.0.0-alpha.63 (2026-04-28)
 
 ### Bug Fixes

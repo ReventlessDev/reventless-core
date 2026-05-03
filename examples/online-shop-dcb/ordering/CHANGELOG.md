@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.30 (2026-05-03)
+
+### Bug Fixes
+
+* three follow-ups from the GWT-coverage migration ([3be14a4](https://github.com/ReventlessDev/reventless-core/commit/3be14a4cab276a989ae4a93aa650a6086ec118cf))
+* feat(ppx)!: add @@reventless.mappings/extension/task; collapse AutomationSlice.Make to 2 args ([c0268ac](https://github.com/ReventlessDev/reventless-core/commit/c0268ac42c1c887fe25467af61b412ab2e27a5a7))
+### Features
+
+* **ppx,examples:** full GWT coverage for example plugins ([9331744](https://github.com/ReventlessDev/reventless-core/commit/9331744d232802d996f3897d7eca6e8c6b735f68))
+
+### BREAKING CHANGES
+
+* Platform.AutomationSlice.Make is now 2-arg (Spec, Automation).
+External callers must either rerun generate-plugin or merge their _Mappings
+contents into _Automation (or add the same two-line bridge).
+
+Verified: zero warnings, 1174/1175 tests pass — the single failing test
+(OrderingE2ETest "after syncing missing product, PlaceOrder succeeds") was
+confirmed pre-existing on alpha (the known testPromise concurrency race).
+
+
+
 # 1.0.0-alpha.29 (2026-04-28)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering

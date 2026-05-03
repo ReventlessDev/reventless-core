@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.28 (2026-05-03)
+
+* feat(ppx,codegen)!: retire @reventless.projections; add spec-stem-uniqueness lint ([a6fa11f](https://github.com/ReventlessDev/reventless-core/commit/a6fa11fa26086fd356e16b01b6f15b819630534e))
+
+### BREAKING CHANGES
+
+* any user code applying @reventless.projections to
+an inline wrapper module inside Plugin.res fails to compile with a
+clear migration message. Move the per-source Mapping.Make modules
+and the let mappings array into the slice-local
+<Plural>_Projections.res file (in ReadModel/) and add
+@@reventless.mappings at the top. Auto-generated Plugin.res then
+references the projections module directly.
+
+
+
 # 1.0.0-alpha.27 (2026-04-26)
 
 * feat!: mixed-source AutomationSlice — Plan 04 ([fae3fbf](https://github.com/ReventlessDev/reventless-core/commit/fae3fbf93b12ecf62d0883fe7335ed73c6f52d67))

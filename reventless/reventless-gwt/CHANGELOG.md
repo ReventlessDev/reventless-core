@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.3 (2026-05-03)
+
+### Bug Fixes
+
+* three follow-ups from the GWT-coverage migration ([3be14a4](https://github.com/ReventlessDev/reventless-core/commit/3be14a4cab276a989ae4a93aa650a6086ec118cf))
+
+
 # 1.0.0-alpha.2 (2026-04-28)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

@@ -3,6 +3,48 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.35 (2026-05-03)
+
+* feat(codegen)!: drop View suffix from StateView slice file names ([476dd8c](https://github.com/ReventlessDev/reventless-core/commit/476dd8c8c91f67b198faaef51aa1b29d26099844))
+* feat(ppx,codegen)!: retire @reventless.projections; add spec-stem-uniqueness lint ([a6fa11f](https://github.com/ReventlessDev/reventless-core/commit/a6fa11fa26086fd356e16b01b6f15b819630534e))
+* refactor(examples)!: migrate online-shop-aggregates to new naming + adopt new PPX ([9dac635](https://github.com/ReventlessDev/reventless-core/commit/9dac6353b88e6c6bba88d1ce9d4a0594be976f62))
+* feat(ppx)!: add @@reventless.mappings/extension/task; collapse AutomationSlice.Make to 2 args ([c0268ac](https://github.com/ReventlessDev/reventless-core/commit/c0268ac42c1c887fe25467af61b412ab2e27a5a7))
+### Features
+
+* **logger:** prefix plugin-component logs with stable-color [PluginName] bracket ([ed61eaf](https://github.com/ReventlessDev/reventless-core/commit/ed61eaf5cf84d8b8925c148050a2c51ddb65226a))
+
+### BREAKING CHANGES
+
+* any downstream consumers regenerating from EventModeling
+JSON via reventless-codegen will see StateView slices' spec file rename
+from <Title>View.res to <Title>.res (with the matching _Projection.res
+sibling). Move existing files with `git mv` if the canonical model still
+titles them "*View".
+* any user code applying @reventless.projections to
+an inline wrapper module inside Plugin.res fails to compile with a
+clear migration message. Move the per-source Mapping.Make modules
+and the let mappings array into the slice-local
+<Plural>_Projections.res file (in ReadModel/) and add
+@@reventless.mappings at the top. Auto-generated Plugin.res then
+references the projections module directly.
+* external code consuming the
+`@reventlessdev/online-shop-aggregates-*` packages must update module name
+references (e.g., `CategoriesReadModel` → `Categories`,
+`ProductsExtensionPoint` → `Products_ExtensionPoint`, `CategoryBehavior` →
+`Category_Behavior`).
+
+Verified: zero warnings, 1174/1175 tests pass — same single pre-existing
+testPromise race in OrderingE2ETest as PR1/PR2.
+* Platform.AutomationSlice.Make is now 2-arg (Spec, Automation).
+External callers must either rerun generate-plugin or merge their _Mappings
+contents into _Automation (or add the same two-line bridge).
+
+Verified: zero warnings, 1174/1175 tests pass — the single failing test
+(OrderingE2ETest "after syncing missing product, PlaceOrder succeeds") was
+confirmed pre-existing on alpha (the known testPromise concurrency race).
+
+
+
 # 3.0.0-alpha.34 (2026-04-28)
 
 ### Features

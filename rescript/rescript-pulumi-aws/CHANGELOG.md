@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.21 (2026-05-03)
+
+### Bug Fixes
+
+* **rescript-pulumi-aws:** inline jest config so pnpm -r test finds the suite ([9eb55eb](https://github.com/ReventlessDev/reventless-core/commit/9eb55eb81cf63ed4fa05b1108f69f5f41f55dc82))
+
+
 # 2.4.0-alpha.20 (2026-04-28)
 
 ### Features
