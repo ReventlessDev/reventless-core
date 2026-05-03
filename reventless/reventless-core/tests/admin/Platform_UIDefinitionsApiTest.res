@@ -70,7 +70,7 @@ let structure: pluginStructure = {
   ],
 }
 
-let encoded = ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(
+let encoded = Platform_UIDefinitionsApi.encodePluginStructureEntry(
   ~pluginId="Catalog",
   structure,
 )
