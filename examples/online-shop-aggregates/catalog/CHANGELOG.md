@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.31 (2026-05-04)
+
+### Bug Fixes
+
+* **aws:** drop empty Config functor args; thread per-spec metadata as direct params ([17837a3](https://github.com/ReventlessDev/reventless-core/commit/17837a3fde52581a06516c69c80e6a1ea5689d9a))
+
+
 # 3.0.0-alpha.30 (2026-05-03)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog

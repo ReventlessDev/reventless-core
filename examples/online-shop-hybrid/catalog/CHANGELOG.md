@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.29 (2026-05-04)
+
+### Bug Fixes
+
+* **aws:** drop empty Config functor args; thread per-spec metadata as direct params ([17837a3](https://github.com/ReventlessDev/reventless-core/commit/17837a3fde52581a06516c69c80e6a1ea5689d9a))
+* **catalog-example:** give CatalogActivity a name field for label resolution ([e47c193](https://github.com/ReventlessDev/reventless-core/commit/e47c1937fd073e05b427e4c8311e91385c3c3e64))
+
+
 # 1.0.0-alpha.28 (2026-05-03)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

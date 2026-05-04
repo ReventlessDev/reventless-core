@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.67 (2026-05-04)
+
+### Bug Fixes
+
+* **aws:** drop empty Config functor args; thread per-spec metadata as direct params ([17837a3](https://github.com/ReventlessDev/reventless-core/commit/17837a3fde52581a06516c69c80e6a1ea5689d9a))
+* **dcb:** derive envelope id from command partition tag in makeGenerateCommand ([bf44d9e](https://github.com/ReventlessDev/reventless-core/commit/bf44d9e2da877200075efb40f35013417f6b6200))
+
+
 # 3.0.0-alpha.66 (2026-05-03)
 
 ### Bug Fixes
