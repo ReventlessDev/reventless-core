@@ -13,8 +13,11 @@ import * as Counter_Operations$ReventlessCore from "./Counter_Operations.res.mjs
 
 function Make(QueryDbStorage) {
   return Api => (Handler => {
-    let make = (name, jsonEventsHandler, ttlOpt, opts) => {
+    let make = (name, jsonEventsHandler, ttlOpt, specModulePathOpt, mappingsModulePathOpt, publishChannelIdOpt, opts) => {
       let ttl = ttlOpt !== undefined ? ttlOpt : 604800;
+      let specModulePath = specModulePathOpt !== undefined ? specModulePathOpt : "";
+      let mappingsModulePath = mappingsModulePathOpt !== undefined ? mappingsModulePathOpt : "";
+      let publishChannelId = publishChannelIdOpt !== undefined ? publishChannelIdOpt : Pulumi.output("");
       return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Counter$ReventlessCore.componentType), ComponentType$ReventlessCore.name(name, Counter$ReventlessCore.componentType), (extra, extra$1) => {
         let ttl$1 = ttl;
         let opts_parent = Component$ReventlessCore.toPulumiResource(extra);
@@ -67,7 +70,7 @@ function Make(QueryDbStorage) {
             countsDbCount: param.count,
             jsonEventsHandler: jsonEventsHandler
           });
-          return Handler.make(extra$1, name, Component$ReventlessCore.outputs(referencesDb), name$1, Component$ReventlessCore.outputs(countsDb), Callback.counterHandler, opts2);
+          return Handler.make(extra$1, name, Component$ReventlessCore.outputs(referencesDb), name$1, Component$ReventlessCore.outputs(countsDb), Callback.counterHandler, specModulePath, mappingsModulePath, publishChannelId, opts2);
         });
         Component$ReventlessCore.setOperations(extra, Pulumi.all([
           Component$ReventlessCore.operations(referencesDb),

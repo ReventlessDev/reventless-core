@@ -107,7 +107,11 @@ function Make(Platform) {
     moduleUrl: Orders_Projections$OrderingPlugin.moduleUrl,
     mappings: Orders_Projections$OrderingPlugin.mappings
   });
-  let OrderNotificationsTask = Platform.Task.Make(OrderNotifications$OrderingPlugin);
+  let OrderNotificationsTask = Platform.Task.Make({
+    name: OrderNotifications$OrderingPlugin.name,
+    moduleUrl: OrderNotifications$OrderingPlugin.moduleUrl,
+    setup: OrderNotifications$OrderingPlugin.setup
+  });
   let Orders_ExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: Orders_ExtensionPoint$OrderingSpec.name,

@@ -278,6 +278,7 @@ let createTasks = (
   tasks,
   ~aggregatesOutputs,
   ~scheduler,
+  ~schedulerRoleUrn,
   ~publishToAggregates,
   ~queryEngine,
   ~resourceNaming,
@@ -289,6 +290,7 @@ let createTasks = (
         ~queryBucketName=(~taskName, ~bucketName="Bucket") =>
           ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, ~taskName, ~bucketName),
         ~scheduler,
+        ~schedulerRoleUrn,
         ~publishToAggregates,
         ~queryEngine,
         ~resourceNaming,
@@ -654,6 +656,12 @@ type platformHooks = {
   // corrupting ReScript option boxing (BS_PRIVATE_NESTED_SOME_NONE sentinel).
   // Cast back via Obj.magic in Plugin_Builder where concrete types are known.
   scheduler: ref<option<Pulumi.Output.t<Scheduler.operations>>>,
+  // URN identifying the principal/role the scheduler invokes targets as.
+  // Populated by deployment-aware platforms; empty Output on platforms that
+  // don't expose this (e.g. in-memory). Threaded through Plugin_Builder into
+  // each Task's runtime config so bundled handlers can talk to the
+  // underlying scheduler service.
+  schedulerRoleUrn: ref<Pulumi.Output.t<string>>,
   api: ref<option<hookedValue<unknown>>>,
   apiRole: ref<option<hookedValue<unknown>>>,
   // Current deploy target, set by deployPlugin before plugin.make() is called.
@@ -668,6 +676,7 @@ type platformHooks = {
 let noHooks: platformHooks = {
   adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
   scheduler: ref(None),
+  schedulerRoleUrn: ref(Pulumi.Output.make("")),
   api: ref(None),
   apiRole: ref(None),
   deployTarget: ref("Domain"),

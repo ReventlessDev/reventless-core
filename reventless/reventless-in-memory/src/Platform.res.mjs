@@ -356,6 +356,9 @@ function MakeWithConfig(Config) {
   let hooks_scheduler = {
     contents: undefined
   };
+  let hooks_schedulerRoleUrn = {
+    contents: Pulumi.output("")
+  };
   let hooks_api = {
     contents: undefined
   };
@@ -374,6 +377,7 @@ function MakeWithConfig(Config) {
     mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
+    schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooks_api,
     apiRole: hooks_apiRole,
     deployTarget: hooks_deployTarget
@@ -1938,6 +1942,9 @@ function Make($star) {
   let hooks_scheduler = {
     contents: undefined
   };
+  let hooks_schedulerRoleUrn = {
+    contents: Pulumi.output("")
+  };
   let hooks_api = {
     contents: undefined
   };
@@ -1956,6 +1963,7 @@ function Make($star) {
     mcpSchemaRegistrationHook: hooks_mcpSchemaRegistrationHook,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
+    schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooks_api,
     apiRole: hooks_apiRole,
     deployTarget: hooks_deployTarget

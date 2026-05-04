@@ -73,9 +73,25 @@ module Make = (
         )
         let resources = aggregateResources->filterAggregateResources(aggregateNames)
 
+        // Each adapter chooses what string the EP runtime should treat as the
+        // publish address for a target aggregate; by convention we expose the
+        // first command-topic resource's `id`. The in-memory ExtensionPoint
+        // runtime builder ignores this dict, so including every aggregate
+        // (not just mapping targets) and the empty fallback are both harmless.
+        let publishToAggregatesQueueUrls =
+          aggregateResources->Dict.mapValues(resources =>
+            switch resources->Array.get(0) {
+            | Some(r: ReventlessInfra.Adapter.resource) => r.id
+            | None => Pulumi.Output.make("")
+            }
+          )
+
         commandTopic->ExtensionPointRuntimeBuilder.forCommandTopic(
           ~handler,
           ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...),
+          ~specModulePath=Spec.moduleUrl,
+          ~mappingsModulePath=Mappings.moduleUrl,
+          ~publishToAggregatesQueueUrls,
         )
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)

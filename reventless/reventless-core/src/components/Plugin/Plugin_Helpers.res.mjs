@@ -211,11 +211,11 @@ let tasksOutputs = {
   contents: []
 };
 
-function createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, resourceNaming, opts) {
+function createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, opts) {
   tasksOutputs.contents = tasks.map(SpecificTask => SpecificTask.outputs(SpecificTask.make((taskName, bucketNameOpt) => {
     let bucketName = bucketNameOpt !== undefined ? bucketNameOpt : "Bucket";
     return ResourceQueryRuntime$ReventlessCore.bucketNameOfTaskExn(tasksOutputs.contents, taskName, bucketName);
-  }, scheduler, publishToAggregates, queryEngine, resourceNaming, aggregatesOutputs, opts)));
+  }, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, aggregatesOutputs, opts)));
   return tasksOutputs.contents;
 }
 
@@ -353,6 +353,10 @@ let noHooks_scheduler = {
   contents: undefined
 };
 
+let noHooks_schedulerRoleUrn = {
+  contents: Pulumi.output("")
+};
+
 let noHooks_api = {
   contents: undefined
 };
@@ -368,6 +372,7 @@ let noHooks_deployTarget = {
 let noHooks = {
   adminExtensionPoints: noHooks_adminExtensionPoints,
   scheduler: noHooks_scheduler,
+  schedulerRoleUrn: noHooks_schedulerRoleUrn,
   api: noHooks_api,
   apiRole: noHooks_apiRole,
   deployTarget: noHooks_deployTarget

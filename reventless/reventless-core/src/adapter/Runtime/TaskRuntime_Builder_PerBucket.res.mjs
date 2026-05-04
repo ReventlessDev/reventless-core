@@ -5,7 +5,7 @@ import * as Component$ReventlessCore from "../../components/Component.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return TaskBucket => {
-    let forBucketCallback = (handler, connect, memorySizeOpt, timeoutOpt, name, task) => {
+    let forBucketCallback = (handler, connect, memorySizeOpt, timeoutOpt, name, param, param$1, param$2, task) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
       let resource = Component$ReventlessCore.toPulumiResource(task);

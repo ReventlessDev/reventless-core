@@ -13,18 +13,23 @@ let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
 let TaskBuilderWithBus = Task_Builder$ReventlessInMemory.Make(Bus);
 
+let moduleUrl = import.meta.url;
+
 function setup(_queryEngine, _queryBucketName, _opts) {
   return {};
 }
 
 let NoBucketsSpec = {
   name: "NoBucketsTask",
+  moduleUrl: moduleUrl,
   setup: setup
 };
 
 let capturedEvents = {
   contents: []
 };
+
+let moduleUrl$1 = import.meta.url;
 
 function setup$1(_queryEngine, _queryBucketName, _opts) {
   return {
@@ -44,6 +49,7 @@ function setup$1(_queryEngine, _queryBucketName, _opts) {
 
 let OneBucketSpec = {
   name: "OneBucketTask",
+  moduleUrl: moduleUrl$1,
   setup: setup$1
 };
 

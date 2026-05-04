@@ -19,6 +19,9 @@ let makeHandler = () =>
     ~countsName="counts",
     ~countsDb=Obj.magic(()),
     ~counterHandler=Obj.magic(()),
+    ~specModulePath="",
+    ~mappingsModulePath="",
+    ~publishChannelId=Pulumi.Output.make(""),
     ~opts={},
   )
 

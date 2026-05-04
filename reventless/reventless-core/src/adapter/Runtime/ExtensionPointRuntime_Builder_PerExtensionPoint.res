@@ -11,7 +11,16 @@ module Make = (
   type runtimeParts = RuntimeEnvironment.parts
   module CommandTopicChannel = CommandTopicChannel
 
-  let forCommandTopic = (~handler, ~connect, ~memorySize=1024, ~timeout=30, commandTopic) => {
+  let forCommandTopic = (
+    ~handler,
+    ~connect,
+    ~memorySize=1024,
+    ~timeout=30,
+    ~specModulePath as _,
+    ~mappingsModulePath as _,
+    ~publishToAggregatesQueueUrls as _,
+    commandTopic,
+  ) => {
     let resource = commandTopic->Component.toPulumiResource
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),

@@ -7,8 +7,11 @@ import * as PluginExtensionPoint_Plugin$ReventlessCore from "./PluginExtensionPo
 function Make(Spec) {
   return RuntimeEnvironment => (CommandTopicChannel => (EventTopicAdapter => (ExtensionPointRuntimeBuilder => {
     let PluginMappingInstance = PluginExtensionPoint_Plugin$ReventlessCore.Make(Spec);
+    let name = PluginMappingInstance.Mapping.delegateName;
     let mappings = [PluginMappingInstance.Mapping];
     let Mappings = {
+      name: name,
+      moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
       mappings: mappings
     };
     return ExtensionPoint_Builder$ReventlessCore.Make({

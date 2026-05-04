@@ -108,6 +108,7 @@ module Make = (
         "Plugin_Builder: scheduler not set — call makePlatform/deployPlugin first",
       )
     }
+    let schedulerRoleUrn = Spec.hooks.schedulerRoleUrn.contents
     let api: api = switch Spec.hooks.api.contents {
     | Some({val}) => Obj.magic(val)
     | None =>
@@ -611,6 +612,7 @@ module Make = (
           tasks,
           ~aggregatesOutputs,
           ~scheduler,
+          ~schedulerRoleUrn,
           ~publishToAggregates,
           ~queryEngine,
           ~resourceNaming=Spec.resourceNaming,

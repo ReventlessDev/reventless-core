@@ -106,6 +106,7 @@ function Make(Spec) {
         tasks.forEach(T => Logger$ReventlessCore.registerComponentPlugin(T.Spec.name, extra$1));
         let s = Spec.hooks.scheduler.contents;
         let scheduler = s !== undefined ? s : Stdlib_JsError.throwWithMessage("Plugin_Builder: scheduler not set — call makePlatform/deployPlugin first");
+        let schedulerRoleUrn = Spec.hooks.schedulerRoleUrn.contents;
         let match = Spec.hooks.api.contents;
         let api = match !== undefined ? match.val : Stdlib_JsError.throwWithMessage("Plugin_Builder: api not set — call makePlatform/deployPlugin first");
         let match$1 = Spec.hooks.apiRole.contents;
@@ -382,7 +383,7 @@ function Make(Spec) {
           } else {
             EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, undefined, extensionsHandlers, extensionPointsHandlers, undefined);
           }
-          let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
+          let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);
           Stdlib_Option.forEach(Spec.hooks.subscriptionInfraHook, hook => hook({
             allQueryDbs: allQueryDbs,

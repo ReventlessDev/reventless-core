@@ -18,9 +18,7 @@ function Make(Bus) {
   })({
     make: CommandTopicChannel.make
   });
-  let Make$1 = Spec => (Mappings => ExtensionPoint_Builder$ReventlessCore.Make(Spec)({
-    mappings: Mappings.mappings
-  })({
+  let Make$1 = Spec => (Mappings => ExtensionPoint_Builder$ReventlessCore.Make(Spec)(Mappings)({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
     extractCorrelationId: RuntimeEnvironment_InMemory$ReventlessInMemory.extractCorrelationId,

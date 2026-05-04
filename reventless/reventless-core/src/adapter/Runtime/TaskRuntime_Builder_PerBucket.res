@@ -19,6 +19,9 @@ module Make = (
     ~memorySize=1024,
     ~timeout=30,
     ~name,
+    ~callbackModulePath as _,
+    ~publishToAggregatesQueueUrls as _,
+    ~schedulerConfig as _,
     task: Task.component,
   ) => {
     let resource = task->Component.toPulumiResource

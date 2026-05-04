@@ -10,7 +10,7 @@ let targetRefStore = {
   contents: {}
 };
 
-function make(param, param$1, param$2, param$3, param$4, param$5, param$6) {
+function make(param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8, param$9) {
   return {
     addToCounterTarget: async param => {
       let counterId = param.counterId;

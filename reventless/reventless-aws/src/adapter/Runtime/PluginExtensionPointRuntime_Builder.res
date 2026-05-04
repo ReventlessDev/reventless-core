@@ -4,48 +4,36 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
-type pluginEPInfo = {
-  publishToAggregatesQueueUrls: dict<Pulumi.Output.t<string>>,
+// Admin-specific data that the Plugin extension point Lambda needs but that
+// the generic ExtensionPointRuntime_Builder.T params don't carry. Wired in
+// from `Platform.res` after `Admin.construct()` exposes the read model and
+// scheduler resources; consumed lazily at deploy-resolve time when
+// `forCommandTopic` runs inside its `Pulumi.Output.apply`.
+type adminExtras = {
   pluginReadModelTableName: option<Pulumi.Output.t<string>>,
   schedulerRoleArn: option<Pulumi.Output.t<string>>,
 }
 
-let info: ref<pluginEPInfo> = ref({
-  publishToAggregatesQueueUrls: Dict.make(),
+let adminExtras: ref<adminExtras> = ref({
   pluginReadModelTableName: None,
   schedulerRoleArn: None,
 })
 
-let registerPluginExtensionPoint = (
-  ~publishToAggregatesQueueUrls=Dict.make(),
-  ~pluginReadModelTableName=?,
-  ~schedulerRoleArn=?,
-  (),
-) =>
-  info := {
-    publishToAggregatesQueueUrls,
-    pluginReadModelTableName,
-    schedulerRoleArn,
-  }
+let registerPluginExtensionPoint = (~pluginReadModelTableName=?, ~schedulerRoleArn=?, ()) =>
+  adminExtras := {pluginReadModelTableName, schedulerRoleArn}
 
-let forCommandTopic: ReventlessCore.Runtime.forComponent<
-  ReventlessCore.Runtime.effectHandler<
-    CommandTopicChannel.callbackEvent,
-    context,
-    unit,
-    string,
-  >,
-  runtimeParts,
-  ReventlessCore.CommandTopic.component<'op>,
-> = (
+let forCommandTopic = (
   ~handler as _,
   ~connect,
   ~memorySize=1024,
   ~timeout=30,
+  ~specModulePath as _,
+  ~mappingsModulePath as _,
+  ~publishToAggregatesQueueUrls,
   commandTopic,
 ) => {
   let commandTopicResource = commandTopic->ReventlessCore.Component.toPulumiResource
-  let info = info.contents
+  let extras = adminExtras.contents
 
   let channel = commandTopic->ReventlessCore.CommandTopic_Adapter.channel
   let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
@@ -66,7 +54,7 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
 
   // Build publishToAggregates env var mapping
   let publishToAggregatesEnvVars: dict<string> = Dict.make()
-  info.publishToAggregatesQueueUrls->Dict.forEachWithKey((queueUrlOutput, aggName) => {
+  publishToAggregatesQueueUrls->Dict.forEachWithKey((queueUrlOutput, aggName) => {
     let envVar = `PTA_${aggName}_QUEUE_URL`
     envVars->Dict.set(envVar, queueUrlOutput->Pulumi.Output.asInput)
     publishToAggregatesEnvVars->Dict.set(aggName, envVar)
@@ -89,8 +77,8 @@ let forCommandTopic: ReventlessCore.Runtime.forComponent<
   let handlerConfigJson =
     Pulumi.Output.all([
       queue.id,
-      info.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
-      info.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
+      extras.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
+      extras.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
       queue.arn,
       queueName,
     ])

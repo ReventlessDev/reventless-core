@@ -331,9 +331,7 @@ module MakeWithConfig = (
         let moduleUrl = Spec.moduleUrl
         let mappings: array<module(Mapping)> = [module(CompiledMapping)]
       }
-      module Inner = ExtensionPoint_Builder.Make(Spec, Mappings, {
-        let publishToAggregatesQueueUrls = Dict.make()
-      })
+      module Inner = ExtensionPoint_Builder.Make(Spec, Mappings)
       include Inner
     }
 
@@ -353,9 +351,7 @@ module MakeWithConfig = (
         let moduleUrl = Spec.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2)]
       }
-      module Inner = ExtensionPoint_Builder.Make(Spec, Mappings, {
-        let publishToAggregatesQueueUrls = Dict.make()
-      })
+      module Inner = ExtensionPoint_Builder.Make(Spec, Mappings)
       include Inner
     }
 
@@ -382,19 +378,14 @@ module MakeWithConfig = (
         let moduleUrl = Spec.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2), module(CM3)]
       }
-      module Inner = ExtensionPoint_Builder.Make(Spec, Mappings, {
-        let publishToAggregatesQueueUrls = Dict.make()
-      })
+      module Inner = ExtensionPoint_Builder.Make(Spec, Mappings)
       include Inner
     }
 
     module MakeMulti = (
       Spec: ReventlessInfra.ExtensionPointMapping.Spec,
       Mappings: ReventlessInfra.ExtensionPoint.Mappings with module Spec := Spec,
-    ): ReventlessInfra.ExtensionPoint.T =>
-      ExtensionPoint_Builder.Make(Spec, Mappings, {
-        let publishToAggregatesQueueUrls = Dict.make()
-      })
+    ): ReventlessInfra.ExtensionPoint.T => ExtensionPoint_Builder.Make(Spec, Mappings)
   }
 
   module Extension = {
@@ -415,18 +406,10 @@ module MakeWithConfig = (
   module Task = {
     module Make = (Spec: ReventlessInfra.Task.Spec): (
       ReventlessInfra.Task.T with module Spec = Spec
-    ) =>
-      Task_Builder_PerBucket.Make(Spec, {
-        let callbackModulePaths = Dict.make()
-        let publishToAggregatesQueueUrls = Dict.make()
-      })
+    ) => Task_Builder_PerBucket.Make(Spec)
   }
 
-  module Counter = Counter_Builder.Make(ApiConfig, {
-    let specModulePath = ""
-    let mappingsModulePath = ""
-    let publishQueueUrl = Pulumi.Output.make("")
-  })
+  module Counter = Counter_Builder.Make(ApiConfig)
 
   module StateChangeSlice = {
     module Make = (
@@ -540,6 +523,7 @@ module MakeWithConfig = (
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
     // Platform context — populated by makePlatform/deployPlugin before plugin build.
     scheduler: ref(None),
+    schedulerRoleUrn: ref(Pulumi.Output.make("")),
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
     deployTarget: ref("Domain"),
@@ -943,6 +927,11 @@ module MakeWithConfig = (
 
   let makeScheduler = () => {
     let component = Scheduler.make()
+    // Surface the IAM role ARN so bundled Task Lambdas can call PutRule with
+    // the right `roleArn`. ScheduledPublisher_CloudWatchEvents stashes it as
+    // `outputs.resource.urn` (no dedicated field on Scheduler.outputs).
+    let outputs = component->ReventlessCore.Component.outputs
+    hooks.schedulerRoleUrn := outputs.resource.urn
     component->ReventlessCore.Component.operations
   }
 
@@ -1191,22 +1180,6 @@ module MakeWithConfig = (
       ~inboundTranslationSlices=[],
     )
 
-    // Extract admin aggregate/read-model data directly from admin outputs.
-    // (Previously done via onAdminComponentsCreated hook — eliminated now that
-    // Admin.construct() returns all needed data synchronously.)
-    let publishToAggregatesQueueUrls = Dict.make()
-    switch admin.aggregatesOutputs->Dict.get("Plugin") {
-    | Some(pluginAgg) =>
-      let queueUrl =
-        pluginAgg.commandTopic->Pulumi.Output.flatMap(ct =>
-          switch ct.resources->Array.get(0) {
-          | Some(r) => r.id
-          | None => Pulumi.Output.make("")
-          }
-        )
-      publishToAggregatesQueueUrls->Dict.set("Plugin", queueUrl)
-    | None => ()
-    }
     // Extract Plugin RM table name as Output.t<string>.
     // IMPORTANT: Do NOT use option<Pulumi.Output.t<…>> — Pulumi Outputs use property
     // lifting, which breaks ReScript's internal option encoding (BS_PRIVATE_NESTED_SOME_NONE).
@@ -1220,7 +1193,6 @@ module MakeWithConfig = (
     | None => None
     }
     PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
-      ~publishToAggregatesQueueUrls,
       ~pluginReadModelTableName?,
       (),
     )

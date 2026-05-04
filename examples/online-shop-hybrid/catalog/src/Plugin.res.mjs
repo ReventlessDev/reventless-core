@@ -173,7 +173,11 @@ function Make(Platform) {
     moduleUrl: Categories_Projections$CatalogPlugin.moduleUrl,
     mappings: Categories_Projections$CatalogPlugin.mappings
   });
-  let ImportProductsTask = Platform.Task.Make(ImportProducts$CatalogPlugin);
+  let ImportProductsTask = Platform.Task.Make({
+    name: ImportProducts$CatalogPlugin.name,
+    moduleUrl: ImportProducts$CatalogPlugin.moduleUrl,
+    setup: ImportProducts$CatalogPlugin.setup
+  });
   let Products_ExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: Products_ExtensionPoint$CatalogSpec.name,

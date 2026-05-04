@@ -114,6 +114,7 @@ module MakeWithConfig = (
     adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
     // Platform context — populated by makePlatform/deployPlugin before plugin build.
     scheduler: ref(None),
+    schedulerRoleUrn: ref(Pulumi.Output.make("")),
     api: ref(None),
     apiRole: ref(None),
     deployTarget: ref("Domain"),

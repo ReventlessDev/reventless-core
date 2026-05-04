@@ -11,6 +11,9 @@ module Make = (
   let construct = (
     ~jsonEventsHandler: Counter.jsonEventsHandler,
     ~ttl: option<int>,
+    ~specModulePath,
+    ~mappingsModulePath,
+    ~publishChannelId,
     self,
     name,
   ) => {
@@ -75,6 +78,9 @@ module Make = (
           ~countsName=CountsSpec.name,
           ~countsDb=countsDb->Component.outputs,
           ~counterHandler=Callback.counterHandler,
+          ~specModulePath,
+          ~mappingsModulePath,
+          ~publishChannelId,
           ~opts=opts2,
         )
       })
@@ -104,11 +110,26 @@ module Make = (
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec
 
-  let make = (~name, ~jsonEventsHandler, ~ttl=oneWeek, ~opts=?) =>
+  let make = (
+    ~name,
+    ~jsonEventsHandler,
+    ~ttl=oneWeek,
+    ~specModulePath="",
+    ~mappingsModulePath="",
+    ~publishChannelId=Pulumi.Output.make(""),
+    ~opts=?,
+  ) =>
     Component.make(
       ~componentType=Counter.componentType->ComponentType.toString,
       ~name=name->ComponentType.name(Counter.componentType),
-      ~construct=construct(~jsonEventsHandler, ~ttl=Some(ttl), ...),
+      ~construct=construct(
+        ~jsonEventsHandler,
+        ~ttl=Some(ttl),
+        ~specModulePath,
+        ~mappingsModulePath,
+        ~publishChannelId,
+        ...
+      ),
       ~opts,
     )
 

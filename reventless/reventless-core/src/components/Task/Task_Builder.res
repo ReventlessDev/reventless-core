@@ -24,6 +24,7 @@ module Make = (
   let construct = (
     ~queryBucketName,
     ~scheduler,
+    ~schedulerRoleUrn,
     ~publishToAggregates,
     ~queryEngine,
     ~resourceNaming: ReventlessInfra.ResourceNaming.operations,
@@ -33,6 +34,21 @@ module Make = (
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let allCommandTopics = allAggregates->Aggregate.allCommandTopics
+
+    // Each adapter chooses what string the Task runtime should treat as the
+    // publish address for a target aggregate. By convention we expose the
+    // first command-topic resource's `id` — bundled adapters interpret it as
+    // their channel address; adapters that don't need it (e.g. in-memory)
+    // ignore the dict in their TaskRuntime_Builder.
+    let publishToAggregatesQueueUrls =
+      allAggregates->Dict.mapValues(agg =>
+        agg.commandTopic->Pulumi.Output.flatMap(ct =>
+          switch ct.resources->Array.get(0) {
+          | Some(r) => r.id
+          | None => Pulumi.Output.make("")
+          }
+        )
+      )
 
     let publishCommands: Task.publishCommands = (aggregateName, cmdJsons) => {
       (publishToAggregates->Dict.get(aggregateName)->Option.getOrThrow)(cmdJsons)
@@ -98,6 +114,23 @@ module Make = (
       }
     }
 
+    // Build schedulerConfig from the side-effect handler's collector channel
+    // — the resource scheduled events fire into — paired with the platform
+    // scheduler's invoker URN. Bundled adapters thread these into the
+    // deployed handler so it can talk to the underlying scheduler service;
+    // adapters without a real scheduler ignore the dict.
+    let schedulerConfig: option<TaskRuntime_Builder.schedulerConfig> =
+      sideEffectHandler->Option.flatMap(seh => {
+        let sehOutputs = seh->Component.outputs
+        sehOutputs.eventCollector.resources
+        ->Array.get(0)
+        ->Option.map(r => {
+          TaskRuntime_Builder.schedulerRoleUrn: schedulerRoleUrn,
+          targetUrn: r.urn,
+          targetName: r.name,
+        })
+      })
+
     let bucketNames = config.buckets->Option.map(buckets =>
       buckets
       ->Array.map(bucketSpec => {
@@ -121,6 +154,9 @@ module Make = (
               ~memorySize=4096,
               ~timeout=600,
               ~name=bucketName,
+              ~callbackModulePath=Spec.moduleUrl,
+              ~publishToAggregatesQueueUrls,
+              ~schedulerConfig,
             ),
         )
 
@@ -140,6 +176,7 @@ module Make = (
   let make = (
     ~queryBucketName,
     ~scheduler,
+    ~schedulerRoleUrn,
     ~publishToAggregates,
     ~queryEngine,
     ~resourceNaming,
@@ -152,6 +189,7 @@ module Make = (
       ~construct=construct(
         ~queryBucketName,
         ~scheduler,
+        ~schedulerRoleUrn,
         ~publishToAggregates,
         ~queryEngine,
         ~resourceNaming,

@@ -4,6 +4,7 @@
 let noHooks: ReventlessCore.Plugin_Helpers.platformHooks = {
   adminExtensionPoints: ref(Pulumi.Output.make(Dict.make())),
   scheduler: ref(None),
+  schedulerRoleUrn: ref(Pulumi.Output.make("")),
   api: ref(None),
   apiRole: ref(None),
   deployTarget: ref("Domain"),

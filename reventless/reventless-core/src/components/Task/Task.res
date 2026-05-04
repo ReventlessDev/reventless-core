@@ -25,6 +25,7 @@ module type Spec = ReventlessInfra.Task.Spec
 type maker = (
   ~queryBucketName: queryBucketName,
   ~scheduler: Scheduler.operations,
+  ~schedulerRoleUrn: Pulumi.Output.t<string>,
   ~publishToAggregates: dict<CommandTopic.publishJsons>,
   ~queryEngine: Reventless.QueryEngine.operations,
   ~resourceNaming: ReventlessInfra.ResourceNaming.operations,

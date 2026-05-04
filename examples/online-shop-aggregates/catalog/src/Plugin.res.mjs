@@ -108,6 +108,7 @@ function Make(Platform) {
   });
   let ImportProductsTask = Platform.Task.Make({
     name: ImportProducts$CatalogPlugin.name,
+    moduleUrl: ImportProducts$CatalogPlugin.moduleUrl,
     setup: ImportProducts$CatalogPlugin.setup
   });
   let Products_ExtensionPoint = Platform.ExtensionPoint.Make({

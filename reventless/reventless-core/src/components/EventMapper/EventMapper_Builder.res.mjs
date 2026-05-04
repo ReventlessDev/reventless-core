@@ -37,7 +37,7 @@ function Make(Target) {
           }),
           undefined
         ], Counter => {
-          let counter = Counter.make(name, CounterHandler.handleCounterEvents, undefined, opts);
+          let counter = Counter.make(name, CounterHandler.handleCounterEvents, undefined, undefined, undefined, undefined, opts);
           return [
             Counter.operations(counter),
             Counter.outputs(counter)

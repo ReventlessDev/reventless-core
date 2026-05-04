@@ -9,28 +9,25 @@ import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
-let info = {
+let adminExtras = {
   contents: {
-    publishToAggregatesQueueUrls: {},
     pluginReadModelTableName: undefined,
     schedulerRoleArn: undefined
   }
 };
 
-function registerPluginExtensionPoint(publishToAggregatesQueueUrlsOpt, pluginReadModelTableName, schedulerRoleArn, param) {
-  let publishToAggregatesQueueUrls = publishToAggregatesQueueUrlsOpt !== undefined ? publishToAggregatesQueueUrlsOpt : ({});
-  info.contents = {
-    publishToAggregatesQueueUrls: publishToAggregatesQueueUrls,
+function registerPluginExtensionPoint(pluginReadModelTableName, schedulerRoleArn, param) {
+  adminExtras.contents = {
     pluginReadModelTableName: pluginReadModelTableName,
     schedulerRoleArn: schedulerRoleArn
   };
 }
 
-function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic) {
+function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, param$1, param$2, publishToAggregatesQueueUrls, commandTopic) {
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let commandTopicResource = Component$ReventlessCore.toPulumiResource(commandTopic);
-  let info$1 = info.contents;
+  let extras = adminExtras.contents;
   let channel = commandTopic.channel;
   let channelParts = channel.parts;
   let queue = channelParts.queue;
@@ -48,7 +45,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
     }
   };
   let publishToAggregatesEnvVars = {};
-  Stdlib_Dict.forEachWithKey(info$1.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
+  Stdlib_Dict.forEachWithKey(publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
     let envVar = `PTA_` + aggName + `_QUEUE_URL`;
     envVars[envVar] = queueUrlOutput;
     publishToAggregatesEnvVars[aggName] = envVar;
@@ -57,8 +54,8 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
   let queueName = queue.id.apply(id => Stdlib_Option.getOr(id.split("/").at(-1), id));
   let handlerConfigJson = Pulumi.all([
     queue.id,
-    outputOrPlaceholder(info$1.pluginReadModelTableName),
-    outputOrPlaceholder(info$1.schedulerRoleArn),
+    outputOrPlaceholder(extras.pluginReadModelTableName),
+    outputOrPlaceholder(extras.schedulerRoleArn),
     queue.arn,
     queueName
   ]).apply(values => {
@@ -71,7 +68,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs", {});
-  connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts));
+  return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts));
 }
 
 function finish() {
@@ -85,7 +82,7 @@ let RuntimeEnvironment;
 export {
   CommandTopicChannel,
   RuntimeEnvironment,
-  info,
+  adminExtras,
   registerPluginExtensionPoint,
   forCommandTopic,
   finish,

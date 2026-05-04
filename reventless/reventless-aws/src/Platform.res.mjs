@@ -263,15 +263,10 @@ function MakeWithConfig(Config) {
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
-    let Mappings_moduleUrl = Spec.moduleUrl;
-    let Mappings = {
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)({
       name: name,
-      moduleUrl: Mappings_moduleUrl,
+      moduleUrl: Spec.moduleUrl,
       mappings: mappings
-    };
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   };
   let Make2 = Mapping1 => (Mapping2 => {
@@ -283,15 +278,10 @@ function MakeWithConfig(Config) {
       CM1,
       CM2
     ];
-    let Mappings_moduleUrl = Spec.moduleUrl;
-    let Mappings = {
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)({
       name: name,
-      moduleUrl: Mappings_moduleUrl,
+      moduleUrl: Spec.moduleUrl,
       mappings: mappings
-    };
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
   let Make3 = Mapping1 => (Mapping2 => (Mapping3 => {
@@ -305,23 +295,13 @@ function MakeWithConfig(Config) {
       CM2,
       CM3
     ];
-    let Mappings_moduleUrl = Spec.moduleUrl;
-    let Mappings = {
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)({
       name: name,
-      moduleUrl: Mappings_moduleUrl,
+      moduleUrl: Spec.moduleUrl,
       mappings: mappings
-    };
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   }));
-  let MakeMulti = Spec => (Mappings => {
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
-    });
-  });
+  let MakeMulti = Spec => (Mappings => ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings));
   let ExtensionPoint = {
     Make: Make$2,
     Make2: Make2,
@@ -343,23 +323,11 @@ function MakeWithConfig(Config) {
   let Extension = {
     Make: Make$3
   };
-  let Make$4 = Spec => {
-    let callbackModulePaths = {};
-    let publishToAggregatesQueueUrls = {};
-    return Task_Builder_PerBucket$ReventlessAws.Make(Spec)({
-      callbackModulePaths: callbackModulePaths,
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
-    });
-  };
+  let Make$4 = Task_Builder_PerBucket$ReventlessAws.Make;
   let Task = {
     Make: Make$4
   };
-  let publishQueueUrl = Pulumi.output("");
-  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig)({
-    specModulePath: "",
-    mappingsModulePath: "",
-    publishQueueUrl: publishQueueUrl
-  });
+  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
   let Make$5 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
   let MakeAsync$1 = Spec => (Behavior => {
     let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
@@ -624,6 +592,9 @@ function MakeWithConfig(Config) {
   let hooks_scheduler = {
     contents: undefined
   };
+  let hooks_schedulerRoleUrn = {
+    contents: Pulumi.output("")
+  };
   let hooks_deployTarget = {
     contents: "Domain"
   };
@@ -638,6 +609,7 @@ function MakeWithConfig(Config) {
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
+    schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
     deployTarget: hooks_deployTarget
@@ -713,9 +685,15 @@ function MakeWithConfig(Config) {
     config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
   })(PlatformEventGraphMappings);
+  let makeScheduler = () => {
+    let component = Scheduler$ReventlessAws.make(undefined);
+    let outputs = Component$ReventlessCore.outputs(component);
+    hooks_schedulerRoleUrn.contents = outputs.resource.urn;
+    return Component$ReventlessCore.operations(component);
+  };
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
-    let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
@@ -785,7 +763,7 @@ function MakeWithConfig(Config) {
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
-    let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
@@ -848,19 +826,6 @@ function MakeWithConfig(Config) {
       PluginReadModel,
       PlatformEventGraphReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
-    let publishToAggregatesQueueUrls = {};
-    let pluginAgg = admin.aggregatesOutputs["Plugin"];
-    if (pluginAgg !== undefined) {
-      let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
-        let r = ct.resources[0];
-        if (r !== undefined) {
-          return r.id;
-        } else {
-          return Pulumi.output("");
-        }
-      });
-      publishToAggregatesQueueUrls["Plugin"] = queueUrl;
-    }
     let pluginRm = admin.readModelsOutputs["Plugin"];
     let pluginReadModelTableName;
     if (pluginRm !== undefined) {
@@ -869,7 +834,7 @@ function MakeWithConfig(Config) {
     } else {
       pluginReadModelTableName = undefined;
     }
-    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (pluginReadModelTableName !== undefined) {
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
@@ -949,7 +914,7 @@ function MakeWithConfig(Config) {
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     hooks_deployTarget.contents = tmp;
-    let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     let targetApi = resolveTargetApi();
     let targetApiRole = resolveTargetApiRole();
@@ -970,11 +935,7 @@ function MakeWithConfig(Config) {
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,
-    Counter: {
-      make: Counter.make,
-      outputs: Counter.outputs,
-      operations: Counter.operations
-    },
+    Counter: Counter,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: {
       Make: include.Make
@@ -1173,15 +1134,10 @@ function Make($star) {
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
-    let Mappings_moduleUrl = Spec.moduleUrl;
-    let Mappings = {
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)({
       name: name,
-      moduleUrl: Mappings_moduleUrl,
+      moduleUrl: Spec.moduleUrl,
       mappings: mappings
-    };
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   };
   let Make2 = Mapping1 => (Mapping2 => {
@@ -1193,15 +1149,10 @@ function Make($star) {
       CM1,
       CM2
     ];
-    let Mappings_moduleUrl = Spec.moduleUrl;
-    let Mappings = {
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)({
       name: name,
-      moduleUrl: Mappings_moduleUrl,
+      moduleUrl: Spec.moduleUrl,
       mappings: mappings
-    };
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   });
   let Make3 = Mapping1 => (Mapping2 => (Mapping3 => {
@@ -1215,23 +1166,13 @@ function Make($star) {
       CM2,
       CM3
     ];
-    let Mappings_moduleUrl = Spec.moduleUrl;
-    let Mappings = {
+    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)({
       name: name,
-      moduleUrl: Mappings_moduleUrl,
+      moduleUrl: Spec.moduleUrl,
       mappings: mappings
-    };
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
     });
   }));
-  let MakeMulti = Spec => (Mappings => {
-    let publishToAggregatesQueueUrls = {};
-    return ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings)({
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
-    });
-  });
+  let MakeMulti = Spec => (Mappings => ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings));
   let ExtensionPoint = {
     Make: Make$3,
     Make2: Make2,
@@ -1253,23 +1194,11 @@ function Make($star) {
   let Extension = {
     Make: Make$4
   };
-  let Make$5 = Spec => {
-    let callbackModulePaths = {};
-    let publishToAggregatesQueueUrls = {};
-    return Task_Builder_PerBucket$ReventlessAws.Make(Spec)({
-      callbackModulePaths: callbackModulePaths,
-      publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
-    });
-  };
+  let Make$5 = Task_Builder_PerBucket$ReventlessAws.Make;
   let Task = {
     Make: Make$5
   };
-  let publishQueueUrl = Pulumi.output("");
-  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig)({
-    specModulePath: "",
-    mappingsModulePath: "",
-    publishQueueUrl: publishQueueUrl
-  });
+  let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
   let Make$6 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
   let MakeAsync$1 = Spec => (Behavior => {
     let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
@@ -1533,6 +1462,9 @@ function Make($star) {
   let hooks_scheduler = {
     contents: undefined
   };
+  let hooks_schedulerRoleUrn = {
+    contents: Pulumi.output("")
+  };
   let hooks_deployTarget = {
     contents: "Domain"
   };
@@ -1547,6 +1479,7 @@ function Make($star) {
     onHeartbeatEpChannelAvailable: hooks_onHeartbeatEpChannelAvailable,
     adminExtensionPoints: hooks_adminExtensionPoints,
     scheduler: hooks_scheduler,
+    schedulerRoleUrn: hooks_schedulerRoleUrn,
     api: hooksApiRef,
     apiRole: hooksApiRoleRef,
     deployTarget: hooks_deployTarget
@@ -1622,9 +1555,15 @@ function Make($star) {
     config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
   })(PlatformEventGraphMappings);
+  let makeScheduler = () => {
+    let component = Scheduler$ReventlessAws.make(undefined);
+    let outputs = Component$ReventlessCore.outputs(component);
+    hooks_schedulerRoleUrn.contents = outputs.resource.urn;
+    return Component$ReventlessCore.operations(component);
+  };
   let makePlatform = (version, plugins) => {
     console.log(`[Platform] v` + version);
-    let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
@@ -1683,7 +1622,7 @@ function Make($star) {
   };
   let deployPlatform = version => {
     console.log(`[Platform:deployPlatform] v` + version);
-    let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApiRole);
@@ -1740,19 +1679,6 @@ function Make($star) {
       PluginReadModel,
       PlatformEventGraphReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
-    let publishToAggregatesQueueUrls = {};
-    let pluginAgg = admin.aggregatesOutputs["Plugin"];
-    if (pluginAgg !== undefined) {
-      let queueUrl = Output$Pulumi.flatMap(pluginAgg.commandTopic, ct => {
-        let r = ct.resources[0];
-        if (r !== undefined) {
-          return r.id;
-        } else {
-          return Pulumi.output("");
-        }
-      });
-      publishToAggregatesQueueUrls["Plugin"] = queueUrl;
-    }
     let pluginRm = admin.readModelsOutputs["Plugin"];
     let pluginReadModelTableName;
     if (pluginRm !== undefined) {
@@ -1761,7 +1687,7 @@ function Make($star) {
     } else {
       pluginReadModelTableName = undefined;
     }
-    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(publishToAggregatesQueueUrls, pluginReadModelTableName, undefined, undefined);
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, false, undefined);
     if (pluginReadModelTableName !== undefined) {
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
@@ -1833,7 +1759,7 @@ function Make($star) {
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     hooks_deployTarget.contents = tmp;
-    let scheduler = Component$ReventlessCore.operations(Scheduler$ReventlessAws.make(undefined));
+    let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     let targetApi = resolveTargetApi();
     let targetApiRole = resolveTargetApiRole();
@@ -1845,14 +1771,6 @@ function Make($star) {
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
     return Pulumi$Pulumi.getOutputs();
-  };
-  let Counter_make = Counter.make;
-  let Counter_outputs = Counter.outputs;
-  let Counter_operations = Counter.operations;
-  let Counter$1 = {
-    make: Counter_make,
-    outputs: Counter_outputs,
-    operations: Counter_operations
   };
   let StateViewSlice = {
     Make: include.Make
@@ -1877,7 +1795,7 @@ function Make($star) {
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,
-    Counter: Counter$1,
+    Counter: Counter,
     StateChangeSlice: StateChangeSlice,
     StateViewSlice: StateViewSlice,
     StateViewSliceStream: StateViewSliceStream,

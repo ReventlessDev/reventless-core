@@ -3,15 +3,9 @@ module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
 module EventCollectorRuntimeBuilder = EventCollectorRuntime_Builder_PerEventCollector
 
-module type Config = {
-  let specModulePath: string
-  let mappingsModulePath: string
-}
-
 module Make = (
   Spec: Reventless.ReadModel.Spec,
   Mappings: Reventless.Projection.Mappings with module Target := Spec,
-  Config: Config,
 ): (
   ReventlessInfra.ReadModel.T
     with module Spec = Spec
@@ -44,8 +38,8 @@ module Make = (
 
     EventCollectorRuntimeBuilder.registerReadModel(
       ~readModelName=Spec.name,
-      ~specModulePath=Config.specModulePath,
-      ~mappingsModulePath=Config.mappingsModulePath,
+      ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+      ~mappingsModulePath=Util_Bundle.getModuleSpecifier(Mappings.moduleUrl),
       ~queryDbTableName,
     )
 

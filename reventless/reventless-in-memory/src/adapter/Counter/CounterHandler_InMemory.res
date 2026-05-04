@@ -15,6 +15,9 @@ let make: Counter_Adapter.handlerMaker = (
   ~countsName as _,
   ~countsDb as _,
   ~counterHandler as _,
+  ~specModulePath as _,
+  ~mappingsModulePath as _,
+  ~publishChannelId as _,
   ~opts as _,
 ) => {
   addToCounterTarget: async ({ReventlessInfra.Counter.counterId, target, targetRef}) => {

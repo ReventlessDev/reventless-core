@@ -18,7 +18,7 @@ let counterEvents = {
 
 let counter = CounterMaker.make("TestCounter", stream => Effect.map(Stream.runCollect(stream), chunk => {
   counterEvents.contents = counterEvents.contents.concat(chunk);
-}), undefined, undefined);
+}), undefined, undefined, undefined, undefined, undefined);
 
 async function resolveOps() {
   return await TestRunner$ReventlessInMemory.resolve(CounterMaker.operations(counter));

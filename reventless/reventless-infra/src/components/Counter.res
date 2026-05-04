@@ -65,6 +65,15 @@ module type T = {
     ~name: string,
     ~jsonEventsHandler: jsonEventsHandler,
     ~ttl: int=?,
+    /** ESM specifier of the counter target's spec module. Used by bundling
+        adapters that load callbacks via `import()`; other adapters ignore it. */
+    ~specModulePath: string=?,
+    /** ESM specifier of the counter target's mappings module. Used by bundling
+        adapters that load callbacks via `import()`; other adapters ignore it. */
+    ~mappingsModulePath: string=?,
+    /** Publish-channel address of the aggregate this counter dispatches commands
+        to. Used by bundling adapters; other adapters ignore it. */
+    ~publishChannelId: Pulumi.Output.t<string>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
   let outputs: component => outputs

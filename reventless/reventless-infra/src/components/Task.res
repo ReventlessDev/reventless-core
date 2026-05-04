@@ -39,6 +39,8 @@ module CatalogImportTask: Task.Spec = {
 module type Spec = {
   /** Logical task name (used as a Lambda function name prefix). */
   let name: string
+  /** ESM specifier for this Spec module — populated by `@@reventless.task` PPX. */
+  let moduleUrl: string
   let setup: setup
 }
 
@@ -72,6 +74,11 @@ module type T = {
   let make: (
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.operations,
+    /** URN identifying the principal/role the scheduler invokes targets as.
+        Bundled adapters thread this into the runtime config so the deployed
+        handler can call the underlying scheduler service. Adapters without
+        a real scheduler (e.g. in-memory) ignore it. */
+    ~schedulerRoleUrn: Pulumi.Output.t<string>,
     ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~queryEngine: Reventless.QueryEngine.operations,
     ~resourceNaming: ResourceNaming.operations,

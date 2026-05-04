@@ -24,6 +24,7 @@ module TaskBuilderWithBus = Task_Builder.Make(Bus)
 
 module NoBucketsSpec = {
   let name = "NoBucketsTask"
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let setup = (
     _queryEngine: Reventless.QueryEngine.operations,
@@ -40,6 +41,7 @@ let capturedEvents: ref<array<(string, string)>> = ref([])
 
 module OneBucketSpec = {
   let name = "OneBucketTask"
+  let moduleUrl: string = %raw(`import.meta.url`)
 
   let setup = (
     _queryEngine: Reventless.QueryEngine.operations,

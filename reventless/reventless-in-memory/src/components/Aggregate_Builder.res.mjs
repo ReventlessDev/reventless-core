@@ -18,6 +18,10 @@ let noHooks_scheduler = {
   contents: undefined
 };
 
+let noHooks_schedulerRoleUrn = {
+  contents: Pulumi.output("")
+};
+
 let noHooks_api = {
   contents: undefined
 };
@@ -33,6 +37,7 @@ let noHooks_deployTarget = {
 let noHooks = {
   adminExtensionPoints: noHooks_adminExtensionPoints,
   scheduler: noHooks_scheduler,
+  schedulerRoleUrn: noHooks_schedulerRoleUrn,
   api: noHooks_api,
   apiRole: noHooks_apiRole,
   deployTarget: noHooks_deployTarget

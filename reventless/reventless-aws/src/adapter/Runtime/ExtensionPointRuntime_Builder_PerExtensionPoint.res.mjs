@@ -8,54 +8,40 @@ import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
-let extensionPointInfos = {};
-
-function registerExtensionPoint(name, specModulePath, mappingsModulePath, publishToAggregatesQueueUrls) {
-  extensionPointInfos[name] = {
-    specModulePath: specModulePath,
-    mappingsModulePath: mappingsModulePath,
-    publishToAggregatesQueueUrls: publishToAggregatesQueueUrls
-  };
-}
-
-function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, commandTopic) {
+function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, specModuleUrl, mappingsModuleUrl, publishToAggregatesQueueUrls, commandTopic) {
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
   let commandTopicResource = Component$ReventlessCore.toPulumiResource(commandTopic);
-  let epName = Stdlib_Option.getOr(commandTopicResource.__name, "Unnamed");
-  let hit = extensionPointInfos[epName];
-  let matchedInfo = hit !== undefined ? hit : Stdlib_Option.map(Object.entries(extensionPointInfos).find(param => epName.includes(param[0].replaceAll(".", ""))), param => param[1]);
-  if (matchedInfo !== undefined) {
-    let channel = commandTopic.channel;
-    let channelParts = channel.parts;
-    let queue = channelParts.queue;
-    let name = ComponentType$ReventlessCore.nameOpt(commandTopicResource.__name, CommandTopic$ReventlessCore.componentType);
-    let opts_parent = commandTopicResource;
-    let opts = {
-      parent: opts_parent
-    };
-    let envVars = {};
-    envVars["EP_QUEUE_URL"] = queue.id;
-    let publishToAggregatesEnvVars = {};
-    Stdlib_Dict.forEachWithKey(matchedInfo.publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
-      let envVar = `PTA_` + aggName + `_QUEUE_URL`;
-      envVars[envVar] = queueUrlOutput;
-      publishToAggregatesEnvVars[aggName] = envVar;
-    });
-    let specModule = Stdlib_Option.getOr(JSON.stringify(matchedInfo.specModulePath), `""`);
-    let mappingsModule = Stdlib_Option.getOr(JSON.stringify(matchedInfo.mappingsModulePath), `""`);
-    let publishToAggregatesJson = Object.entries(publishToAggregatesEnvVars).map(param => Stdlib_Option.getOr(JSON.stringify(param[0]), `""`) + `: ` + Stdlib_Option.getOr(JSON.stringify(param[1]), `""`)).join(",");
-    let handlerConfigJson = queue.id.apply(queueUrl => `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queueUrl":"` + queueUrl + `","publishToAggregates":{` + publishToAggregatesJson + `}}`);
-    envVars["HANDLER_CONFIG"] = handlerConfigJson;
-    let packageDirs = {};
-    let specPkg = Util_Bundle$ReventlessAws.extractPackageName(matchedInfo.specModulePath);
-    let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(matchedInfo.mappingsModulePath);
-    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-    packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.mjs", packageDirs);
-    return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts));
-  }
-  console.warn(`ExtensionPointRuntime_Builder_PerExtensionPoint: no handler registered for ` + epName);
+  let channel = commandTopic.channel;
+  let channelParts = channel.parts;
+  let queue = channelParts.queue;
+  let name = ComponentType$ReventlessCore.nameOpt(commandTopicResource.__name, CommandTopic$ReventlessCore.componentType);
+  let opts_parent = commandTopicResource;
+  let opts = {
+    parent: opts_parent
+  };
+  let specModulePath = Util_Bundle$ReventlessAws.getModuleSpecifier(specModuleUrl);
+  let mappingsModulePath = Util_Bundle$ReventlessAws.getModuleSpecifier(mappingsModuleUrl);
+  let envVars = {};
+  envVars["EP_QUEUE_URL"] = queue.id;
+  let publishToAggregatesEnvVars = {};
+  Stdlib_Dict.forEachWithKey(publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {
+    let envVar = `PTA_` + aggName + `_QUEUE_URL`;
+    envVars[envVar] = queueUrlOutput;
+    publishToAggregatesEnvVars[aggName] = envVar;
+  });
+  let specModule = Stdlib_Option.getOr(JSON.stringify(specModulePath), `""`);
+  let mappingsModule = Stdlib_Option.getOr(JSON.stringify(mappingsModulePath), `""`);
+  let publishToAggregatesJson = Object.entries(publishToAggregatesEnvVars).map(param => Stdlib_Option.getOr(JSON.stringify(param[0]), `""`) + `: ` + Stdlib_Option.getOr(JSON.stringify(param[1]), `""`)).join(",");
+  let handlerConfigJson = queue.id.apply(queueUrl => `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queueUrl":"` + queueUrl + `","publishToAggregates":{` + publishToAggregatesJson + `}}`);
+  envVars["HANDLER_CONFIG"] = handlerConfigJson;
+  let packageDirs = {};
+  let specPkg = Util_Bundle$ReventlessAws.extractPackageName(specModulePath);
+  let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(mappingsModulePath);
+  packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+  packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.mjs", packageDirs);
+  return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts));
 }
 
 function finish() {
@@ -69,8 +55,6 @@ let RuntimeEnvironment;
 export {
   CommandTopicChannel,
   RuntimeEnvironment,
-  extensionPointInfos,
-  registerExtensionPoint,
   forCommandTopic,
   finish,
 }

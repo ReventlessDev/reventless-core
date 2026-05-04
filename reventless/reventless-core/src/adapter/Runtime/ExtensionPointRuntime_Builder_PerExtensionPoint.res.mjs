@@ -7,7 +7,7 @@ import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 
 function Make(RuntimeEnvironment) {
   return CommandTopicChannel => {
-    let forCommandTopic = (handler, connect, memorySizeOpt, timeoutOpt, commandTopic) => {
+    let forCommandTopic = (handler, connect, memorySizeOpt, timeoutOpt, param, param$1, param$2, commandTopic) => {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
       let resource = Component$ReventlessCore.toPulumiResource(commandTopic);

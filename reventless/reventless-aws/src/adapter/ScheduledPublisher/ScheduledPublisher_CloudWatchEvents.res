@@ -36,9 +36,11 @@ let make: ReventlessCore.Scheduler_Adapter.scheduledPublisherMaker = (~name, ~op
 
   {
     resource: ReventlessInfra.Adapter.make(
-      ~name=""->Pulumi.Output.make,
-      ~id=""->Pulumi.Output.make,
-      ~urn=""->Pulumi.Output.make,
+      // urn carries the CloudWatch Events role ARN — bundled Lambdas read it
+      // via Scheduler.outputs.resource.urn to call PutRule with the right roleArn.
+      ~name=role.name,
+      ~id=role.id,
+      ~urn=role.arn,
       ~service="CloudWatchEvents"->Pulumi.Output.make,
       ~resourceType="aws:cloudwatch:EventRule"->Pulumi.Output.make,
     ),

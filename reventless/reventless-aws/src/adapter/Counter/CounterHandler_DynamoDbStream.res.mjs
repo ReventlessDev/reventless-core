@@ -9,72 +9,53 @@ import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSou
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as CounterHandler_DynamoDbStream_Runtime$ReventlessAws from "./CounterHandler_DynamoDbStream_Runtime.res.mjs";
 
-let counterInfos = {};
-
-function registerCounter(counterName, specModulePath, mappingsModulePath, publishQueueUrl) {
-  counterInfos[counterName] = {
-    specModulePath: specModulePath,
-    mappingsModulePath: mappingsModulePath,
-    publishQueueUrl: publishQueueUrl
-  };
-}
-
-function make(name, referencesName, referencesDb, countsName, countsDb, param, opts) {
+function make(name, referencesName, referencesDb, countsName, countsDb, param, specModulePath, mappingsModulePath, publishChannelId, opts) {
   let referencesDbResource = Util_DynamoDbStream$ReventlessAws.findResource(referencesDb.resources);
   let referencesStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(referencesDbResource);
   let countsDbResource = Util_DynamoDbStream$ReventlessAws.findResource(countsDb.resources);
   let countsStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(countsDbResource);
-  let info = counterInfos[name];
-  if (info !== undefined) {
-    let envVars = {};
-    let countsTableName = countsDb.resources[0].name;
-    let targetSpecModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-    let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
-    let handlerConfigJson = Pulumi.all([
-      countsTableName,
-      info.publishQueueUrl,
-      referencesStream.urn
-    ]).apply(param => `{"targetSpecModule":` + targetSpecModule + `,"mappingsModule":` + mappingsModule + `,"countsTableName":"` + param[0] + `","publishQueueUrl":"` + param[1] + `","referencesStreamArn":"` + param[2] + `","countsStreamArn":""}`);
-    let fullHandlerConfigJson = Pulumi.all([
-      handlerConfigJson,
-      countsStream.urn
-    ]).apply(param => param[0].replace(`"countsStreamArn":""`, `"countsStreamArn":"` + param[1] + `"`));
-    envVars["HANDLER_CONFIG"] = fullHandlerConfigJson;
-    let packageDirs = {};
-    let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-    let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
-    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-    packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-    let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs";`;
-    let archiveContents = {};
-    archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
-    Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
-      archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
-    });
-    let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-    let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
-    let componentOpts_parent = opts.parent;
-    let componentOpts = {
-      parent: componentOpts_parent
-    };
-    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, code, sourceCodeHash, envVars, 1024, 30, componentOpts);
-    let lambda = runtime.parts.lambda;
-    let subscribe = (sourceName, source) => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, sourceName, source, opts);
-    subscribe(referencesName, referencesStream);
-    subscribe(countsName, countsStream);
-    return {
-      addToCounterTarget: counterTarget => CounterHandler_DynamoDbStream_Runtime$ReventlessAws.addToCounterTarget(countsDbResource, counterTarget)
-    };
-  }
-  console.warn(`CounterHandler_DynamoDbStream: no bundled info registered for "` + name + `"`);
+  let envVars = {};
+  let countsTableName = countsDb.resources[0].name;
+  let targetSpecModule = Stdlib_Option.getOr(JSON.stringify(specModulePath), `""`);
+  let mappingsModule = Stdlib_Option.getOr(JSON.stringify(mappingsModulePath), `""`);
+  let handlerConfigJson = Pulumi.all([
+    countsTableName,
+    publishChannelId,
+    referencesStream.urn
+  ]).apply(param => `{"targetSpecModule":` + targetSpecModule + `,"mappingsModule":` + mappingsModule + `,"countsTableName":"` + param[0] + `","publishChannelId":"` + param[1] + `","referencesStreamArn":"` + param[2] + `","countsStreamArn":""}`);
+  let fullHandlerConfigJson = Pulumi.all([
+    handlerConfigJson,
+    countsStream.urn
+  ]).apply(param => param[0].replace(`"countsStreamArn":""`, `"countsStreamArn":"` + param[1] + `"`));
+  envVars["HANDLER_CONFIG"] = fullHandlerConfigJson;
+  let packageDirs = {};
+  let specPkg = Util_Bundle$ReventlessAws.extractPackageName(specModulePath);
+  let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(mappingsModulePath);
+  packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+  packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+  let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs";`;
+  let archiveContents = {};
+  archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
+  Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
+    archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
+  });
+  let code = new (Pulumi.asset.AssetArchive)(archiveContents);
+  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
+  let componentOpts_parent = opts.parent;
+  let componentOpts = {
+    parent: componentOpts_parent
+  };
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, code, sourceCodeHash, envVars, 1024, 30, componentOpts);
+  let lambda = runtime.parts.lambda;
+  let subscribe = (sourceName, source) => Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, sourceName, source, opts);
+  subscribe(referencesName, referencesStream);
+  subscribe(countsName, countsStream);
   return {
-    addToCounterTarget: async _counterTarget => {}
+    addToCounterTarget: counterTarget => CounterHandler_DynamoDbStream_Runtime$ReventlessAws.addToCounterTarget(countsDbResource, counterTarget)
   };
 }
 
 export {
-  counterInfos,
-  registerCounter,
   make,
 }
 /* @pulumi/pulumi Not a pure module */
