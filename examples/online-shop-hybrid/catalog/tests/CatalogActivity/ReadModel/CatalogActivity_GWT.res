@@ -10,27 +10,39 @@ module ProductGwt = ReventlessGwt.MultiSourceProjection_GWT.Make(
 )
 
 CategoryGwt.describe("CatalogActivity ReadModel ← Category Aggregate", () => {
-  CategoryGwt.test("Category.Added sets kind=Category lastChange=Added", () =>
+  CategoryGwt.test("Category.Added sets name + kind=Category lastChange=Added", () =>
     CategoryGwt.givenEvents([])
     ->CategoryGwt.whenEvent(Category.Added({name: "Electronics"}))
-    ->CategoryGwt.thenState({CatalogActivity.kind: Category, lastChange: Added})
+    ->CategoryGwt.thenState({
+      CatalogActivity.name: "Electronics",
+      kind: Category,
+      lastChange: Added,
+    })
   )
 
-  CategoryGwt.test("Category.Renamed sets lastChange=Renamed", () =>
+  CategoryGwt.test("Category.Renamed updates name + lastChange=Renamed", () =>
     CategoryGwt.givenEvents([Category.Added({name: "Electronics"})])
     ->CategoryGwt.whenEvent(Category.Renamed({name: "Consumer Electronics"}))
-    ->CategoryGwt.thenState({CatalogActivity.kind: Category, lastChange: Renamed})
+    ->CategoryGwt.thenState({
+      CatalogActivity.name: "Consumer Electronics",
+      kind: Category,
+      lastChange: Renamed,
+    })
   )
 
-  CategoryGwt.test("Category.Archived sets lastChange=Archived", () =>
+  CategoryGwt.test("Category.Archived keeps name and sets lastChange=Archived", () =>
     CategoryGwt.givenEvents([Category.Added({name: "Electronics"})])
     ->CategoryGwt.whenEvent(Category.Archived)
-    ->CategoryGwt.thenState({CatalogActivity.kind: Category, lastChange: Archived})
+    ->CategoryGwt.thenState({
+      CatalogActivity.name: "Electronics",
+      kind: Category,
+      lastChange: Archived,
+    })
   )
 })
 
 ProductGwt.describe("CatalogActivity ReadModel ← Catalog DCB EventLog", () => {
-  ProductGwt.test("ProductAdded sets kind=Product lastChange=Added", () =>
+  ProductGwt.test("ProductAdded sets name + kind=Product lastChange=Added", () =>
     ProductGwt.givenEvents([])
     ->ProductGwt.whenEvent(
       CatalogActivity_Projections.CatalogDcbSource.ProductAdded({
@@ -42,11 +54,11 @@ ProductGwt.describe("CatalogActivity ReadModel ← Catalog DCB EventLog", () => 
     )
     ->ProductGwt.thenStateWithId(
       "p1",
-      {CatalogActivity.kind: Product, lastChange: Added},
+      {CatalogActivity.name: "Laptop", kind: Product, lastChange: Added},
     )
   )
 
-  ProductGwt.test("ProductRenamed sets lastChange=Renamed", () =>
+  ProductGwt.test("ProductRenamed updates name + lastChange=Renamed", () =>
     ProductGwt.givenEvents([
       CatalogActivity_Projections.CatalogDcbSource.ProductAdded({
         productId: "p1",
@@ -63,7 +75,7 @@ ProductGwt.describe("CatalogActivity ReadModel ← Catalog DCB EventLog", () => 
     )
     ->ProductGwt.thenStateWithId(
       "p1",
-      {CatalogActivity.kind: Product, lastChange: Renamed},
+      {CatalogActivity.name: "Gaming Laptop", kind: Product, lastChange: Renamed},
     )
   )
 })

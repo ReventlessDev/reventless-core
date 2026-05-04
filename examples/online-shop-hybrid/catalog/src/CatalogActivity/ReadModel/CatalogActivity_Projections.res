@@ -44,16 +44,21 @@ module CategoryActivityMapping = Mapping.Make(
     open Category
     let project = ({event, id, _}) =>
       switch event {
-      | Added(_) =>
+      | Added({name}) =>
         Set(
           id,
           {
-            CatalogActivity.kind: Category,
+            CatalogActivity.name: name,
+            kind: Category,
             lastChange: (Added: CatalogActivity.change),
           },
         )
-      | Renamed(_) =>
-        Update(id, state => {...state, lastChange: (Renamed: CatalogActivity.change)})
+      | Renamed({name}) =>
+        Update(id, state => {
+          ...state,
+          name,
+          lastChange: (Renamed: CatalogActivity.change),
+        })
       | Archived =>
         Update(id, state => {...state, lastChange: (Archived: CatalogActivity.change)})
       }
@@ -71,10 +76,10 @@ module ProductActivityMapping = Mapping.Make(
     open CatalogDcbSource
     let project = ({event, _}) =>
       switch event {
-      | ProductAdded({productId}) =>
-        Set(productId, {CatalogActivity.kind: Product, lastChange: Added})
-      | ProductRenamed({productId}) =>
-        Update(productId, state => {...state, lastChange: Renamed})
+      | ProductAdded({productId, name}) =>
+        Set(productId, {CatalogActivity.name: name, kind: Product, lastChange: Added})
+      | ProductRenamed({productId, name}) =>
+        Update(productId, state => {...state, name, lastChange: Renamed})
       }
   },
 )

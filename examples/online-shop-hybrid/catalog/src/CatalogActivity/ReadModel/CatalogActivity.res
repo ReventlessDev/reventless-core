@@ -18,6 +18,7 @@ type change =
 
 @schema
 type state = {
+  name: string,
   kind: kind,
   lastChange: change,
 }
