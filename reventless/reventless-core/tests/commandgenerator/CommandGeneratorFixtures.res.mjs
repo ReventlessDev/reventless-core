@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "../../src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
 
 S.enableJson();
@@ -104,6 +105,35 @@ let TestGenerator = CommandGenerator_Callback$ReventlessCore.Make(MockPublishSpe
   moduleUrl: moduleUrl
 });
 
+let singleTagCommandSchema = S.schema(s => ({
+  TAG: "CreateItem",
+  itemId: s.m(DcbTag$Reventless.string),
+  name: s.m(S.string)
+}));
+
+let compositeTagCommandSchema = S.schema(s => ({
+  TAG: "DeployVersion",
+  environment: s.m(DcbTag$Reventless.compositePartitionMember(0, "-")),
+  service: s.m(DcbTag$Reventless.compositePartitionMember(1, undefined)),
+  version: s.m(S.string)
+}));
+
+let singleTagSliceGen = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, undefined, "SingleTagSlice", singleTagCommandSchema, "StateChangeSlice", false);
+
+let compositeTagSliceGen = CommandGenerator_Callback$ReventlessCore.makeGenerateCommand(publishJsons, undefined, "CompositeTagSlice", compositeTagCommandSchema, "StateChangeSlice", false);
+
+function makeSlicePayload(command, args) {
+  return {
+    command: command,
+    arguments: args,
+    meta: {
+      ip: ["127.0.0.1"],
+      user: "test-user",
+      info: ""
+    }
+  };
+}
+
 function makeZeroParamPayload(id, command) {
   return {
     command: command,
@@ -149,6 +179,11 @@ export {
   capturedCmds,
   MockPublishSpec,
   TestGenerator,
+  singleTagCommandSchema,
+  compositeTagCommandSchema,
+  singleTagSliceGen,
+  compositeTagSliceGen,
+  makeSlicePayload,
   makeZeroParamPayload,
   makeOneParamPayload,
   reset,

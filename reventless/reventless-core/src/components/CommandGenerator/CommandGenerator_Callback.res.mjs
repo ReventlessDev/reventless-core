@@ -5,6 +5,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
@@ -28,7 +29,6 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
     let stripIdFromParams = $staropt$star !== undefined ? $staropt$star : true;
     return Effect.flatMap(Effect.tap(Effect.sync(() => {
       let msgId = Message$ReventlessCore.uuid();
-      let id = payload.arguments.id;
       let meta_time = Message$ReventlessCore.nowAsISOString();
       let meta_ip = Stdlib_Option.getOr(payload.meta.ip.shift(), "");
       let meta_user = payload.meta.user;
@@ -48,6 +48,30 @@ function makeGenerateCommand(publishJsons, publishJsonsAndWait, serviceName, com
             "TAG",
             commandStr
           ]].concat(params)) : commandStr;
+      let suppliedId = payload.arguments.id;
+      let id;
+      if (componentKind === "Aggregate" || !(suppliedId == null)) {
+        id = suppliedId;
+      } else {
+        try {
+          let derived = DcbTag$Reventless.derivePartitionTag([[
+              serviceName,
+              "",
+              commandSchema
+            ]]);
+          if (derived.TAG === "Simple") {
+            let tags = DcbTag$Reventless.extractTagsFromJson(commandSchema, commandJson);
+            id = Stdlib_Option.getOr(DcbTag$Reventless.getPartitionTagValue([{
+                tags: tags
+              }], derived._0), "");
+          } else {
+            let tags$1 = DcbTag$Reventless.extractTagsFromJson(commandSchema, commandJson);
+            id = DcbTag$Reventless.getCompositePartitionKeyValue(tags$1, derived._0);
+          }
+        } catch (exn) {
+          id = "";
+        }
+      }
       return [
         meta,
         commandJson,

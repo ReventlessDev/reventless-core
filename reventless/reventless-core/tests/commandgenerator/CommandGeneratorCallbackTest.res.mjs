@@ -81,6 +81,80 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       expect(threw).toBe(true);
     });
   });
+  describe("StateChangeSlice envelope id derivation", () => {
+    test("single @partitionTag: id derived from tagged field when args have no id", async () => {
+      let payload = CommandGeneratorFixtures$ReventlessCore.makeSlicePayload("CreateItem", Object.fromEntries([
+        [
+          "itemId",
+          "item-42"
+        ],
+        [
+          "name",
+          "Widget"
+        ]
+      ]));
+      let outcome = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.singleTagSliceGen(payload));
+      let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
+      expect(publishedCmd.id).toBe("item-42");
+      let msgId;
+      switch (outcome.TAG) {
+        case "Accepted" :
+        case "Rejected" :
+          msgId = "";
+          break;
+        case "Pending" :
+          msgId = outcome.msgId;
+          break;
+      }
+      expect(msgId.length > 0).toBe(true);
+    });
+    test("composite @compositePartitionTag: id is joined partition-key value", async () => {
+      let payload = CommandGeneratorFixtures$ReventlessCore.makeSlicePayload("DeployVersion", Object.fromEntries([
+        [
+          "environment",
+          "prod"
+        ],
+        [
+          "service",
+          "checkout"
+        ],
+        [
+          "version",
+          "1.2.3"
+        ]
+      ]));
+      await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.compositeTagSliceGen(payload));
+      let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
+      expect(publishedCmd.id).toBe("prod-checkout");
+    });
+    test("explicit id in args wins over derivation (regression check)", async () => {
+      let payload = CommandGeneratorFixtures$ReventlessCore.makeSlicePayload("CreateItem", Object.fromEntries([
+        [
+          "id",
+          "explicit-id"
+        ],
+        [
+          "itemId",
+          "item-99"
+        ],
+        [
+          "name",
+          "Gadget"
+        ]
+      ]));
+      await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.singleTagSliceGen(payload));
+      let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
+      expect(publishedCmd.id).toBe("explicit-id");
+    });
+  });
+  describe("Aggregate envelope id (regression)", () => {
+    test("explicit id in args is preserved unchanged", async () => {
+      let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-7", "Create");
+      await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
+      let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
+      expect(publishedCmd.id).toBe("agg-7");
+    });
+  });
 });
 
 /*  Not a pure module */

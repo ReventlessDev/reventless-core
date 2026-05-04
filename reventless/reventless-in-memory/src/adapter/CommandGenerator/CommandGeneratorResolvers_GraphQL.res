@@ -172,8 +172,10 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: G
 
 // -- registerDcb (Phase 1 — synchronous, DCB StateChangeSlices) ---------------
 // Called by Dcb_Builder via dcbMutationResolverHook. Registers SDL + resolver
-// stubs for DCB mutations. Unlike aggregate mutations, DCB commands use a tagged
-// ID field (e.g., itemId) instead of a separate id: ID! parameter.
+// stubs for DCB mutations. Unlike aggregate mutations, DCB commands use tagged
+// ID field(s) (e.g., itemId, or composite-partition members) — the envelope id
+// is derived inside makeGenerateCommand from the command schema, so the resolver
+// just forwards args verbatim.
 
 let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
   ensureCommandResultTypes(server)
@@ -184,21 +186,6 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: Gr
   let constructorNames = Reventless.DcbTag.extractVariantNames(commandSchema->Obj.magic)
   let tag = constructorNames->Array.get(0)->Option.getOr(fieldName)
 
-  // Find the tagged ID field name (the one with @s.matches(DcbTag.string))
-  let idFieldName = switch variantSchema {
-  | Object({properties}) =>
-    properties
-    ->Dict.toArray
-    ->Array.findMap(((name, fieldSchema)) =>
-      if Reventless.DcbTag.isTagged(fieldSchema) {
-        Some(name)
-      } else {
-        None
-      }
-    )
-  | _ => None
-  }
-
   let handlerRef = ref(None)
   handlerRefs->Dict.set(fieldName, handlerRef)
 
@@ -206,23 +193,9 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: Gr
     switch handlerRef.contents {
     | Some(generateCommand) =>
       let identity = extractIdentity(ctx)
-      let argsDict: dict<JSON.t> = args->Obj.magic
-
-      // Extract entity ID from tagged field and add as "id" for generateCommand.
-      // Skip if the tagged field is already called "id" (it's already present).
-      switch idFieldName {
-      | Some(idField) if idField != "id" =>
-        let id = switch argsDict->Dict.get(idField) {
-        | Some(JSON.String(s)) => s
-        | _ => ""
-        }
-        argsDict->Dict.set("id", JSON.Encode.string(id))
-      | _ => ()
-      }
-
       let payload: CommandGenerator.payload = {
         command: tag,
-        arguments: argsDict->Obj.magic,
+        arguments: args->Obj.magic,
         meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
         identity,
       }

@@ -69,6 +69,47 @@ module MockPublishSpec: CommandGenerator_Callback.Spec = {
 module TestGenerator = CommandGenerator_Callback.Make(MockPublishSpec, CmdGenAggSpec)
 
 // ─────────────────────────────────────────────────────────────
+// DCB StateChangeSlice command schemas (for envelope-id derivation)
+// ─────────────────────────────────────────────────────────────
+
+@schema
+type singleTagCommand =
+  CreateItem({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
+
+@schema
+type compositeTagCommand =
+  | DeployVersion({
+      environment: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=0, ~sep="-"))
+      string,
+      service: @s.matches(Reventless.DcbTag.compositePartitionMember(~position=1)) string,
+      version: string,
+    })
+
+let singleTagSliceGen = CommandGenerator_Callback.makeGenerateCommand(
+  ~publishJsons=MockPublishSpec.publishJsons,
+  ~serviceName="SingleTagSlice",
+  ~commandSchema=singleTagCommandSchema->S.castToUnknown,
+  ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+  ~stripIdFromParams=false,
+)
+
+let compositeTagSliceGen = CommandGenerator_Callback.makeGenerateCommand(
+  ~publishJsons=MockPublishSpec.publishJsons,
+  ~serviceName="CompositeTagSlice",
+  ~commandSchema=compositeTagCommandSchema->S.castToUnknown,
+  ~componentKind=CommandGenerator_Callback.StateChangeSlice,
+  ~stripIdFromParams=false,
+)
+
+// Build a payload for a StateChangeSlice command — args must NOT include `id`.
+let makeSlicePayload = (~command, ~args: dict<JSON.t>): CommandGenerator.payload =>
+  Obj.magic({
+    "command": command,
+    "arguments": Obj.magic(args),
+    "meta": {"ip": ["127.0.0.1"], "user": "test-user", "info": ""},
+  })
+
+// ─────────────────────────────────────────────────────────────
 // Payload builders
 // ─────────────────────────────────────────────────────────────
 

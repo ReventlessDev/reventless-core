@@ -41,7 +41,6 @@ let makeGenerateCommand = (
   (payload: CommandGenerator.payload) =>
     Effect.sync(() => {
       let msgId = Message.uuid()
-      let id = payload.arguments.id
       let meta = {
         {
           Message.service: serviceName,
@@ -73,6 +72,39 @@ let makeGenerateCommand = (
       let commandJson = switch params->Array.length {
       | 0 => commandStr
       | _ => [("TAG", commandStr)]->Array.concat(params)->Dict.fromArray->JSON.Encode.object
+      }
+      // Resolve the envelope id.
+      // - Aggregates always rely on the resolver-supplied id (id: ID! arg in SDL).
+      // - DCB StateChangeSlices fall back to deriving the id from the command's
+      //   partition tag(s) when the resolver didn't supply one — this is what makes
+      //   @compositePartitionTag work end-to-end without per-call-site id stuffing.
+      let suppliedId = payload.arguments.id
+      let id = switch componentKind {
+      | Aggregate => suppliedId
+      | StateChangeSlice =>
+        switch (suppliedId->Obj.magic: Nullable.t<string>)->Nullable.toOption {
+        | Some(idValue) => idValue
+        | None =>
+          try {
+            let derived = Reventless.DcbTag.derivePartitionTag([
+              (serviceName, "", commandSchema),
+            ])
+            switch derived {
+            | Simple(pt) =>
+              let tags = Reventless.DcbTag.extractTagsFromJson(commandSchema, commandJson)
+              Reventless.DcbTag.getPartitionTagValue([{tags: tags}], pt)->Option.getOr("")
+            | Composite(spec) =>
+              let tags = Reventless.DcbTag.extractTagsFromJson(commandSchema, commandJson)
+              Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
+            }
+          } catch {
+          // Permissive schemas (e.g. S.json on the AppSync direct-invocation path)
+          // have no tagged fields — derivePartitionTag throws. Fall back to "" so
+          // existing transports keep their pre-fix behavior; the slice decoder
+          // surfaces the missing id downstream as it did before.
+          | _ => ""
+          }
+        }
       }
       (meta, commandJson, id)
     })
