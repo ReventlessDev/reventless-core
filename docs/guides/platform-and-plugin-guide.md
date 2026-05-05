@@ -1021,16 +1021,18 @@ module Mapping = {
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | ItemOrdered({productId, orderId}) => [
-        PublishAggregateCommand(productId, RecordDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(RecordDemand({productId, orderId})),
       ]
     | ItemOrderCancelled({productId, orderId}) => [
-        PublishAggregateCommand(productId, RevokeDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(RevokeDemand({productId, orderId})),
       ]
     }
 
   let mapOutgoingEvent = None
 }
 ```
+
+When the `Delegate` is a StateChangeSlice, use `PublishStateChangeSliceCommand(command)` (no id argument) — the framework derives the FIFO grouping id from the command's `@partitionTag` (or `@compositePartitionTag`) field. Use `PublishAggregateCommand(id, command)` only when the `Delegate` is an Aggregate.
 
 The extension file exports `module Mapping` — the generator references it as `Orders_Extension.Mapping`.
 

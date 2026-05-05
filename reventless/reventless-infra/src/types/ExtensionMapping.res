@@ -16,6 +16,9 @@ Actions returned by an extension's `mapIncomingEvent` function.
 
 When an extension point emits an event, the extension's mapping can:
 - publish a command to the aggregate it wraps (`PublishAggregateCommand`)
+- publish a command to the StateChangeSlice it wraps (`PublishStateChangeSliceCommand`)
+  — no id argument; the framework derives the FIFO grouping id from the command's
+  `@partitionTag` (or `@compositePartitionTag`) field.
 - publish a command back to the extension point (`PublishExtensionPointCommand`)
 - forward a command to another extension point opaquely (`ForwardCommand`)
 - invoke an arbitrary async callback (`Call`)
@@ -24,6 +27,9 @@ type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'msg> =
   | PublishAggregateCommand(id, 'aggregateCommand)
   | PublishAggregateCommandAsync(promise<(id, 'aggregateCommand)>)
   | PublishAggregateCommandsAsync(promise<array<(id, 'aggregateCommand)>>)
+  | PublishStateChangeSliceCommand('aggregateCommand)
+  | PublishStateChangeSliceCommandAsync(promise<'aggregateCommand>)
+  | PublishStateChangeSliceCommandsAsync(promise<array<'aggregateCommand>>)
   | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
   | Call('msg => promise<unit>, 'msg)
@@ -202,6 +208,32 @@ module Make = (MappingImpl: Mapping): (
   // are silently skipped without any decode attempt.
   let acceptedTags = Reventless.DcbTag.extractVariantNames(Delegate.eventSchema)
 
+  // Lazily-computed partition-tag derivation for `PublishStateChangeSliceCommand*`.
+  // Derived from the Delegate's command schema; throws if no `@partitionTag` /
+  // `@compositePartitionTag` annotation exists (i.e. the Delegate is an Aggregate,
+  // not a StateChangeSlice — in which case the user should use
+  // `PublishAggregateCommand` instead).
+  let derivedPartitionTagLazy = ref(None)
+  let getDerivedPartitionTag = () =>
+    switch derivedPartitionTagLazy.contents {
+    | Some(d) => d
+    | None =>
+      let d = Reventless.DcbTag.derivePartitionTag([
+        (Delegate.name, Delegate.moduleUrl, Delegate.commandSchema->S.castToUnknown),
+      ])
+      derivedPartitionTagLazy := Some(d)
+      d
+    }
+  let derivePartitionId = (targetCmd: Delegate.command): string =>
+    switch getDerivedPartitionTag() {
+    | Simple(pt) =>
+      let tags = Reventless.DcbTag.extractTags(Delegate.commandSchema, targetCmd)
+      Reventless.DcbTag.getPartitionTagValue([{tags: tags}], pt)->Option.getOr("")
+    | Composite(spec) =>
+      let tags = Reventless.DcbTag.extractTags(Delegate.commandSchema, targetCmd)
+      Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
+    }
+
   let compLog = (comp, msg) =>
     Effect.logInfo(`${Reventless.LogPrefix.fmtComp(~comp, ())}${msg}`)->Effect.runSync
 
@@ -258,6 +290,24 @@ module Make = (MappingImpl: Mapping): (
           (await promise)->Array.map(((targetId, targetCmd)) => (
             delegateName,
             targetCmd->encodeTargetCommandJson(targetId),
+          ))
+        AbstractPublishAggregateCommandsAsync(promise->toCommandJsons)
+      | PublishStateChangeSliceCommand(targetCmd) =>
+        AbstractPublishAggregateCommand(
+          delegateName,
+          targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd)),
+        )
+      | PublishStateChangeSliceCommandAsync(promise) =>
+        let toCommandJson = async promise => {
+          let targetCmd = await promise
+          (delegateName, targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd)))
+        }
+        AbstractPublishAggregateCommandAsync(promise->toCommandJson)
+      | PublishStateChangeSliceCommandsAsync(promise) =>
+        let toCommandJsons = async promise =>
+          (await promise)->Array.map(targetCmd => (
+            delegateName,
+            targetCmd->encodeTargetCommandJson(derivePartitionId(targetCmd)),
           ))
         AbstractPublishAggregateCommandsAsync(promise->toCommandJsons)
       | PublishExtensionPointCommand(id, command)

@@ -12,10 +12,10 @@ module Mapping = {
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | ProductBecameAvailable({productId, name, price}) => [
-        PublishAggregateCommand(productId, SyncNewProduct({productId, name, price})),
+        PublishStateChangeSliceCommand(SyncNewProduct({productId, name, price})),
       ]
     | ProductPriceChanged({productId, price}) => [
-        PublishAggregateCommand(productId, ChangeSyncedPrice({productId, price})),
+        PublishStateChangeSliceCommand(ChangeSyncedPrice({productId, price})),
       ]
     }
 

@@ -644,7 +644,7 @@ type event =
 type directive = unit
 ```
 
-The DCB extension wraps the `RecordProductDemand` slice command type in an `Aggregate` adapter module so `ExtensionMapping.Make` can encode outgoing commands:
+The DCB extension declares the `RecordProductDemand` slice as its `Delegate` and uses `PublishStateChangeSliceCommand` — no id is passed because the framework derives the FIFO grouping id from the command's `@partitionTag` field:
 
 ```rescript
 // OrdersExtension.res
@@ -657,28 +657,20 @@ module Spec = OrdersExtensionPointSpec
 module DemandMappingImpl = {
   module ExtensionPoint = Spec
 
-  // DCB adapter: wraps RecordProductDemand as Aggregate.Spec so ExtensionMapping.Make
-  // can encode commands routed to this StateChangeSlice.
-  module Aggregate = {
-    let name = RecordProductDemand.name
-    module Id = Id.String
-    type command = RecordProductDemand.command
-    let commandSchema = RecordProductDemand.commandSchema
-    @schema type event = unit // unused: mapOutgoingEvent = None
-    @schema type error = unit
-  }
+  // The Delegate is a StateChangeSlice — the framework reads `@partitionTag`
+  // off `commandSchema` to derive the FIFO grouping id, so `PublishStateChangeSliceCommand`
+  // takes only the command (no id).
+  module Delegate = RecordProductDemand
 
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | Spec.ItemOrdered({productId, orderId}) => [
-        PublishAggregateCommand(
-          productId,
+        PublishStateChangeSliceCommand(
           RecordProductDemand.RecordDemand({productId, orderId}),
         ),
       ]
     | Spec.ItemOrderCancelled({productId, orderId}) => [
-        PublishAggregateCommand(
-          productId,
+        PublishStateChangeSliceCommand(
           RecordProductDemand.RevokeDemand({productId, orderId}),
         ),
       ]
@@ -688,7 +680,7 @@ module DemandMappingImpl = {
 }
 ```
 
-The extension file exports only the mapping implementation (`DemandMappingImpl`). The functor application and `Mappings` wrapper are built in the plugin file — the same pattern as the aggregate approach. The mapping logic — routing `ItemOrdered` to `RecordDemand` and `ItemOrderCancelled` to `RevokeDemand` — is the same as in the aggregate-based approach. Only the `module Aggregate` adapter differs.
+The extension file exports only the mapping implementation (`DemandMappingImpl`). The functor application and `Mappings` wrapper are built in the plugin file — the same pattern as the aggregate approach. The mapping logic — routing `ItemOrdered` to `RecordDemand` and `ItemOrderCancelled` to `RevokeDemand` — is the same as in the aggregate-based approach. The only difference is that `Delegate` references a `StateChangeSlice` and the action is `PublishStateChangeSliceCommand` instead of `PublishAggregateCommand`.
 
 ### 6. Plugin
 

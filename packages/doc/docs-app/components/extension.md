@@ -148,10 +148,19 @@ type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'msg> =
   | PublishAggregateCommand(id, 'aggregateCommand)           // Send command to local Aggregate
   | PublishAggregateCommandAsync(Js.Promise.t<(id, 'aggregateCommand)>)
   | PublishAggregateCommandsAsync(Js.Promise.t<array<(id, 'aggregateCommand)>>)
+  | PublishStateChangeSliceCommand('aggregateCommand)        // Send command to local StateChangeSlice
+  | PublishStateChangeSliceCommandAsync(Js.Promise.t<'aggregateCommand>)
+  | PublishStateChangeSliceCommandsAsync(Js.Promise.t<array<'aggregateCommand>>)
   | PublishExtensionPointCommand(id, 'extensionPointCommand) // Send command back to ExtensionPoint
   | ForwardCommand(forwardCommand)                           // Forward to another ExtensionPoint
   | Call('msg => Js.Promise.t<unit>, 'msg)                   // Execute side-effect
 ```
+
+Use `PublishAggregateCommand(id, …)` when the `Delegate` is an `Aggregate` — the
+`id` is the aggregate's identity. Use `PublishStateChangeSliceCommand(…)` when
+the `Delegate` is a `StateChangeSlice` — no id is needed because the framework
+derives the FIFO grouping id from the command's `@partitionTag` (or
+`@compositePartitionTag`) field.
 
 ### Outgoing Command Actions
 

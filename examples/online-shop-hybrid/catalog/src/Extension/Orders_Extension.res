@@ -12,10 +12,10 @@ module Mapping = {
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | ItemOrdered({productId, orderId}) => [
-        PublishAggregateCommand(productId, RecordDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(RecordDemand({productId, orderId})),
       ]
     | ItemOrderCancelled({productId, orderId}) => [
-        PublishAggregateCommand(productId, RevokeDemand({productId, orderId})),
+        PublishStateChangeSliceCommand(RevokeDemand({productId, orderId})),
       ]
     }
 

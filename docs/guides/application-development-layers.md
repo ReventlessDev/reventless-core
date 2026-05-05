@@ -383,9 +383,10 @@ module Mappings = {
 
 > Note: `ExtensionPointMapping` and `ExtensionMapping` reference infra types
 > (`ReventlessInfra.ExtensionPointMapping`, `ReventlessInfra.ExtensionMapping`)
-> because their mapping actions (`PublishEvent`, `PublishAggregateCommand`)
-> are infrastructure concepts. They are still logically part of the domain
-> specification layer — they just touch the layer 1/2 boundary.
+> because their mapping actions (`PublishEvent`, `PublishAggregateCommand`,
+> `PublishStateChangeSliceCommand`) are infrastructure concepts. They are still
+> logically part of the domain specification layer — they just touch the
+> layer 1/2 boundary.
 
 ---
 

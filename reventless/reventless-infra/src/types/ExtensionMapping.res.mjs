@@ -36,6 +36,33 @@ function Make(MappingImpl) {
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
   let acceptedTags = DcbTag$Reventless.extractVariantNames(Delegate.eventSchema);
+  let derivedPartitionTagLazy = {
+    contents: undefined
+  };
+  let getDerivedPartitionTag = () => {
+    let d = derivedPartitionTagLazy.contents;
+    if (d !== undefined) {
+      return d;
+    }
+    let d$1 = DcbTag$Reventless.derivePartitionTag([[
+        Delegate.name,
+        Delegate.moduleUrl,
+        Delegate.commandSchema
+      ]]);
+    derivedPartitionTagLazy.contents = d$1;
+    return d$1;
+  };
+  let derivePartitionId = targetCmd => {
+    let pt = getDerivedPartitionTag();
+    if (pt.TAG === "Simple") {
+      let tags = DcbTag$Reventless.extractTags(Delegate.commandSchema, targetCmd);
+      return Stdlib_Option.getOr(DcbTag$Reventless.getPartitionTagValue([{
+          tags: tags
+        }], pt._0), "");
+    }
+    let tags$1 = DcbTag$Reventless.extractTags(Delegate.commandSchema, targetCmd);
+    return DcbTag$Reventless.getCompositePartitionKeyValue(tags$1, pt._0);
+  };
   let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(LogPrefix$Reventless.fmtComp(comp, undefined) + msg));
   let encodeMeta = (meta, service) => ({
     service: service,
@@ -93,6 +120,34 @@ function Make(MappingImpl) {
           return {
             TAG: "AbstractPublishAggregateCommandsAsync",
             _0: toCommandJsons(x._0)
+          };
+        case "PublishStateChangeSliceCommand" :
+          let targetCmd = x._0;
+          return {
+            TAG: "AbstractPublishAggregateCommand",
+            _0: delegateName,
+            _1: encodeTargetCommandJson(targetCmd, derivePartitionId(targetCmd))
+          };
+        case "PublishStateChangeSliceCommandAsync" :
+          let toCommandJson$1 = async promise => {
+            let targetCmd = await promise;
+            return [
+              delegateName,
+              encodeTargetCommandJson(targetCmd, derivePartitionId(targetCmd))
+            ];
+          };
+          return {
+            TAG: "AbstractPublishAggregateCommandAsync",
+            _0: toCommandJson$1(x._0)
+          };
+        case "PublishStateChangeSliceCommandsAsync" :
+          let toCommandJsons$1 = async promise => (await promise).map(targetCmd => [
+            delegateName,
+            encodeTargetCommandJson(targetCmd, derivePartitionId(targetCmd))
+          ]);
+          return {
+            TAG: "AbstractPublishAggregateCommandsAsync",
+            _0: toCommandJsons$1(x._0)
           };
         case "PublishExtensionPointCommand" :
           let command = x._1;

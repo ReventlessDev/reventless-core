@@ -246,7 +246,7 @@ An **Extension Point Mapping** sits in the publishing Plugin's implementation pa
 
 An **Extension** is the subscription a Plugin registers to receive events from another Plugin's Extension Point. It references the other Plugin's spec package and provides:
 
-- An **Extension Mapping** — translates incoming Extension Point events to internal commands using `PublishAggregateCommand(id, command)` (aggregate-based) or the equivalent DCB form. One Extension can register multiple mappings if different Extension Point events route to different internal entities.
+- An **Extension Mapping** — translates incoming Extension Point events to internal commands. Use `PublishAggregateCommand(id, command)` when the local target is an Aggregate, or `PublishStateChangeSliceCommand(command)` when the local target is a StateChangeSlice (the slice's FIFO grouping id is derived from the command's `@partitionTag`). One Extension can register multiple mappings if different Extension Point events route to different internal entities.
 
 The subscribing Plugin depends only on the other Plugin's spec package — never on its implementation. This is what allows both Plugins to be deployed and versioned independently.
 

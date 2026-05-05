@@ -140,7 +140,12 @@ module ProductMapping = {
 }
 ```
 
-### DCB Target (Shim Pattern)
+### DCB Target (StateChangeSlice)
+
+When the local target is a `StateChangeSlice`, reference it directly as the
+`Delegate` and use `PublishStateChangeSliceCommand` — the framework derives
+the FIFO grouping id from the command's `@partitionTag` (or
+`@compositePartitionTag`) field, so no id argument is needed.
 
 ```rescript
 // ordering/src/Extension/ProductsExtension.res
@@ -150,28 +155,17 @@ open ReventlessInfra.ExtensionMapping
 
 module ProductMapping = {
   module ExtensionPoint = CatalogSpec.ProductsExtensionPoint
-  module Target = SyncCatalogProduct  // StateChangeSlice
+  module Delegate = SyncCatalogProduct  // StateChangeSlice spec
 
-  // DCB shim: wrap slice as Aggregate.Spec for command encoding
-  module Aggregate = {
-    let name = Target.name
-    module Id = Id.String
-    type command = Target.command
-    let commandSchema = Target.commandSchema
-    @schema type event = unit
-    @schema type error = unit
-    let moduleUrl: string = %raw(`import.meta.url`)
-  }
-
-  open Source
-  open Target
+  open ExtensionPoint
+  open SyncCatalogProduct
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
     | ProductBecameAvailable({productId, name, price}) => [
-        PublishAggregateCommand(productId, SyncNewProduct({productId, name, price})),
+        PublishStateChangeSliceCommand(SyncNewProduct({productId, name, price})),
       ]
     | ProductPriceChanged({productId, price}) => [
-        PublishAggregateCommand(productId, ChangeSyncedPrice({productId, price})),
+        PublishStateChangeSliceCommand(ChangeSyncedPrice({productId, price})),
       ]
     }
 
