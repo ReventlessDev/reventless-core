@@ -377,6 +377,22 @@ let singleTagCommandSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
+let singleProductEventSchema = S.schema(s => ({
+  TAG: "CatalogProductSynced",
+  productId: s.m(DcbTag$Reventless.string)
+}));
+
+let multiProductCommandSchema = S.schema(s => ({
+  TAG: "PlaceOrderWithMany",
+  orderId: s.m(DcbTag$Reventless.string),
+  productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
+}));
+
+let customKeyEventSchema = S.schema(s => ({
+  TAG: "ProductLabelled",
+  sku: s.m(DcbTag$Reventless.stringForKey("productSku"))
+}));
+
 let compositeEventSchema = S.schema(s => ({
   TAG: "SyncPlugin",
   environment: s.m(DcbTag$Reventless.compositePartitionMember(0, undefined)),
@@ -453,6 +469,9 @@ export {
   multiFieldEventSchema,
   crossEntityCommandSchema,
   singleTagCommandSchema,
+  singleProductEventSchema,
+  multiProductCommandSchema,
+  customKeyEventSchema,
   compositeEventSchema,
   compositeEventCustomSepSchema,
   compositeMultiVariantSchema,

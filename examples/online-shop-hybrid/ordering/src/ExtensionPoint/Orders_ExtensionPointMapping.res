@@ -10,23 +10,23 @@ module Delegate = {
   let name = "OrderingDcbEventLog"
   @schema
   type event =
-    | OrderPlaced({orderId: string, customerId: string, productId: array<string>})
-    | OrderCancelled({orderId: string, productId: array<string>})
+    | OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
+    | OrderCancelled({orderId: string, productIds: array<string>})
 }
 
 let mapIncomingCommand = (_id, _command, _meta) => []
 
 let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
-  | Delegate.OrderPlaced({orderId, customerId, productId}) =>
-    productId->Array.map(pid =>
+  | Delegate.OrderPlaced({orderId, customerId, productIds}) =>
+    productIds->Array.map(pid =>
       PublishEvent(
         pid,
         OrderingSpec.Orders_ExtensionPoint.ItemOrdered({productId: pid, orderId, customerId}),
       )
     )
-  | Delegate.OrderCancelled({orderId, productId}) =>
-    productId->Array.map(pid =>
+  | Delegate.OrderCancelled({orderId, productIds}) =>
+    productIds->Array.map(pid =>
       PublishEvent(pid, OrderingSpec.Orders_ExtensionPoint.ItemOrderCancelled({productId: pid, orderId}))
     )
   }

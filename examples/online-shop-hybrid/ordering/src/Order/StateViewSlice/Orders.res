@@ -5,7 +5,7 @@
 
 @schema
 type consumedEvent =
-  | OrderPlaced({orderId: string, customerId: string, productId: array<string>})
+  | OrderPlaced({orderId: string, customerId: string, productIds: array<string>})
   | OrderShipped({orderId: string})
   | OrderCancelled({orderId: string})
 
@@ -19,6 +19,6 @@ type status =
 type state = {
   orderId: string,
   customerId: string,
-  productId: array<string>,
+  productIds: array<string>,
   status: status,
 }

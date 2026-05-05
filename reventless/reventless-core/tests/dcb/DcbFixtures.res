@@ -288,6 +288,29 @@ type crossEntityCommand =
 type singleTagCommand =
   CreateItem({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
 
+// --- Tag-key override fixtures ---
+
+// Producer using the singular field name (the default convention).
+@schema
+type singleProductEvent =
+  CatalogProductSynced({productId: @s.matches(Reventless.DcbTag.string) string})
+
+// Consumer using the plural field name with stringForKey override; both producer
+// and consumer must serialize tags under the same key ("productId") to interoperate.
+@schema
+type multiProductCommand =
+  | PlaceOrderWithMany({
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+      productIds: array<@s.matches(Reventless.DcbTag.stringForKey(~key="productId")) string>,
+    })
+
+// Scalar field override — non-Id name remapped via @dcbTag("explicitKey") at the PPX
+// level; the runtime side is exercised here directly with stringForKey.
+@schema
+type customKeyEvent = ProductLabelled({
+  sku: @s.matches(Reventless.DcbTag.stringForKey(~key="productSku")) string,
+})
+
 // --- Composite partition tag test schemas ---
 
 @schema

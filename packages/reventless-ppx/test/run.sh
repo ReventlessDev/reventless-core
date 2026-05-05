@@ -297,6 +297,23 @@ type event =
     })
 EOF
 
+# @dcbTag("explicitKey"): payload form remaps the tag key on a non-*Id field.
+# Also covers an array<string> body: @dcbTag("productId") productSkus: array<string>.
+cat > "$DCB/src/SkuRemap.res" <<'EOF'
+@@reventless.spec
+@@reventless.dcbTags
+
+@schema
+type event =
+  | ScalarRemapped({
+      @dcbTag("productSku") sku: string,
+      name: string,
+    })
+  | ArrayRemapped({
+      @dcbTag("productId") productSkus: array<string>,
+    })
+EOF
+
 # StateView slice — View suffix should still be stripped inside slice folder
 mkdir -p "$PLUGIN/src/StateView"
 cat > "$PLUGIN/src/StateView/ProductsView.res" <<'EOF'
@@ -1069,6 +1086,21 @@ echo "=== Test: @dcbTag injects DcbTag.string on non-*Id field ==="
 JS="$DCB/src/SkuCatalog.res.mjs"
 assert_js_contains    "$JS" 'DcbTag'    "@dcbTag: DcbTag referenced for non-*Id field"
 assert_js_not_contains "$JS" 'dcbTag'   "@dcbTag: field attr stripped"
+
+echo ""
+echo "=== Test: *Ids: array<string> auto-singularises tag key via stringForKey ==="
+JS="$DCB/src/StateChangeSlice/TransferItems.res.mjs"
+# itemIds should be tagged via DcbTag.stringForKey(~key="itemId")
+assert_js_contains "$JS" 'stringForKey' "*Ids array: stringForKey constructor emitted"
+assert_js_contains "$JS" '"itemId"'      "*Ids array: singularised key 'itemId' present in output"
+
+echo ""
+echo "=== Test: @dcbTag(\"key\") payload form — scalar and array<string> ==="
+JS="$DCB/src/SkuRemap.res.mjs"
+assert_js_contains "$JS" 'stringForKey' "@dcbTag(key): stringForKey constructor emitted"
+assert_js_contains "$JS" '"productSku"'  "@dcbTag(key): scalar override key 'productSku' present"
+assert_js_contains "$JS" '"productId"'   "@dcbTag(key): array override key 'productId' present"
+assert_js_not_contains "$JS" 'dcbTag'    "@dcbTag(key): field attr stripped"
 
 echo ""
 echo "=== Test: slice folder — slice-layer suffix View still stripped ==="

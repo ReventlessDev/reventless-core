@@ -752,4 +752,95 @@ describe("DcbTag:", () => {
       },
     )
   })
+
+  describe("stringForKey (tag-key override)", () => {
+    test(
+      "isTagged is true for stringForKey schema",
+      () =>
+        expect(
+          Reventless.DcbTag.isTagged(
+            Reventless.DcbTag.stringForKey(~key="productId")->Reventless.DcbTag.toUnknownSchema,
+          ),
+        )->toBe(true),
+    )
+
+    test(
+      "extractTags returns the override key for a scalar field",
+      () =>
+        expect(
+          Reventless.DcbTag.extractTags(
+            DcbFixtures.customKeyEventSchema,
+            DcbFixtures.ProductLabelled({sku: "SKU-42"}),
+          ),
+        )->toEqual([{Reventless.DcbTag.key: "productSku", value: "SKU-42"}]),
+    )
+
+    test(
+      "extractTagsExpanded uses the override key on every array element",
+      () =>
+        expect(
+          Reventless.DcbTag.extractTagsExpanded(
+            DcbFixtures.multiProductCommandSchema,
+            DcbFixtures.PlaceOrderWithMany({
+              orderId: "ord-1",
+              productIds: ["prod-1", "prod-2"],
+            }),
+          ),
+        )->toEqual([
+          {Reventless.DcbTag.key: "orderId", value: "ord-1"},
+          {key: "productId", value: "prod-1"},
+          {key: "productId", value: "prod-2"},
+        ]),
+    )
+
+    test(
+      "buildQueryFromCommand emits the override key in OR clauses",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["OrderPlaced", "CatalogProductSynced"],
+            ~schema=DcbFixtures.multiProductCommandSchema,
+            ~value=DcbFixtures.PlaceOrderWithMany({
+              orderId: "ord-1",
+              productIds: ["prod-1", "prod-2"],
+            }),
+          ),
+        )->toEqual([
+          {
+            Reventless.DcbTag.eventTypes: ["OrderPlaced", "CatalogProductSynced"],
+            tags: [{key: "orderId", value: "ord-1"}],
+          },
+          {
+            eventTypes: ["OrderPlaced", "CatalogProductSynced"],
+            tags: [{key: "productId", value: "prod-1"}],
+          },
+          {
+            eventTypes: ["OrderPlaced", "CatalogProductSynced"],
+            tags: [{key: "productId", value: "prod-2"}],
+          },
+        ]),
+    )
+
+    test(
+      "singular producer + plural consumer share the same tag key (round-trip)",
+      () => {
+        // Producer: singular field name `productId: string`.
+        let producerTags: array<Reventless.DcbTag.tag> = Reventless.DcbTag.extractTags(
+          DcbFixtures.singleProductEventSchema,
+          DcbFixtures.CatalogProductSynced({productId: "prod-1"}),
+        )
+        // Consumer: plural field name `productIds: array<string>` with key override.
+        let consumerTags: array<Reventless.DcbTag.tag> = Reventless.DcbTag.extractTagsExpanded(
+          DcbFixtures.multiProductCommandSchema,
+          DcbFixtures.PlaceOrderWithMany({orderId: "ord-1", productIds: ["prod-1"]}),
+        )
+        let producerHead: Reventless.DcbTag.tag = producerTags->Array.getUnsafe(0)
+        let consumerProductTag: Reventless.DcbTag.tag =
+          consumerTags
+          ->Array.find(t => t.Reventless.DcbTag.key != "orderId")
+          ->Option.getOrThrow
+        expect(consumerProductTag.key)->toBe(producerHead.key)
+      },
+    )
+  })
 })

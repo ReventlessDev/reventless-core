@@ -1,12 +1,12 @@
 @@reventless.behavior
 
-type state = {exists: bool, shipped: bool, cancelled: bool, productId: array<string>}
+type state = {exists: bool, shipped: bool, cancelled: bool, productIds: array<string>}
 
-let initialState = {exists: false, shipped: false, cancelled: false, productId: []}
+let initialState = {exists: false, shipped: false, cancelled: false, productIds: []}
 
 let evolve = (state, event) =>
   switch event {
-  | OrderPlaced({productId}) => {exists: true, shipped: false, cancelled: false, productId}
+  | OrderPlaced({productIds}) => {exists: true, shipped: false, cancelled: false, productIds}
   | OrderShipped => {...state, shipped: true}
   | OrderCancelled => {...state, cancelled: true}
   | OrderReopened => {...state, cancelled: false}
@@ -22,7 +22,7 @@ let decide = (state, command) =>
     } else if state.cancelled {
       Ok([]) // idempotent — already cancelled
     } else {
-      Ok([OrderCancelled({orderId: theId, productId: state.productId})])
+      Ok([OrderCancelled({orderId: theId, productIds: state.productIds})])
     }
   | ReopenOrder({orderId: theId}) =>
     if !state.exists {

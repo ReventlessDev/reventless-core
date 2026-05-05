@@ -80,6 +80,15 @@ let ends_with_id name =
   && name.[len - 2] = 'I'
   && (len = 2 || name.[len - 3] <> 'I')
 
+(** Returns the singular form of a name ending in [Ids] by stripping the
+    trailing [s] (e.g. [productIds] → [productId]). The caller is expected to
+    have verified the input ends with [Ids]; this helper is intentionally
+    narrow — no general English pluralization is implemented. *)
+let drop_trailing_s name =
+  let len = String.length name in
+  if len > 0 && name.[len - 1] = 's' then String.sub name 0 (len - 1)
+  else name
+
 let strip_suffix s suffix =
   let slen = String.length s in
   let suflen = String.length suffix in

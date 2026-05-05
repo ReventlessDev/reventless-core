@@ -15,7 +15,13 @@ let dcbPartitionTagId = S.Metadata.Id.make("dcb", "partitionTag");
 
 let dcbCompositePartitionMemberId = S.Metadata.Id.make("dcb", "compositePartitionMember");
 
+let dcbTagKeyOverrideId = S.Metadata.Id.make("dcb", "tagKeyOverride");
+
 let string = S.Metadata.set(S.string, dcbTagId, true);
+
+function stringForKey(key) {
+  return S.Metadata.set(S.Metadata.set(S.string, dcbTagId, true), dcbTagKeyOverrideId, key);
+}
 
 let int = S.Metadata.set(S.int, dcbTagId, true);
 
@@ -53,6 +59,22 @@ function isPartitionTag(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbPartitionTagId));
 }
 
+function resolveTagKey(fieldName, fieldSchema) {
+  return Stdlib_Option.getOr(S.Metadata.get(fieldSchema, dcbTagKeyOverrideId), fieldName);
+}
+
+function resolveArrayTagKey(fieldName, fieldSchema) {
+  if (fieldSchema.type !== "array") {
+    return fieldName;
+  }
+  let itemSchema = fieldSchema.additionalItems;
+  if (itemSchema === "strip" || itemSchema === "strict") {
+    return fieldName;
+  } else {
+    return Stdlib_Option.getOr(S.Metadata.get(itemSchema, dcbTagKeyOverrideId), fieldName);
+  }
+}
+
 function jsonValueToString(json) {
   switch (typeof json) {
     case "boolean" :
@@ -72,10 +94,11 @@ function jsonValueToString(json) {
 
 function extractTagsFromProperties(properties, jsonDict) {
   return Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let fieldSchema = param[1];
     let fieldName = param[0];
-    if (isTagged(param[1])) {
+    if (isTagged(fieldSchema)) {
       return Stdlib_Option.map(jsonDict[fieldName], jsonValue => ({
-        key: fieldName,
+        key: resolveTagKey(fieldName, fieldSchema),
         value: jsonValueToString(jsonValue)
       }));
     }
@@ -182,7 +205,7 @@ function extractTagsFromPropertiesExpanded(properties, jsonDict) {
       let jsonValue = jsonDict[fieldName];
       if (jsonValue !== undefined) {
         return [{
-            key: fieldName,
+            key: resolveTagKey(fieldName, fieldSchema),
             value: jsonValueToString(jsonValue)
           }];
       } else {
@@ -193,18 +216,17 @@ function extractTagsFromPropertiesExpanded(properties, jsonDict) {
       return [];
     }
     let match = jsonDict[fieldName];
-    if (match !== undefined) {
-      if (Array.isArray(match)) {
-        return match.map(element => ({
-          key: fieldName,
-          value: jsonValueToString(element)
-        }));
-      } else {
-        return [];
-      }
-    } else {
+    if (match === undefined) {
       return [];
     }
+    if (!Array.isArray(match)) {
+      return [];
+    }
+    let tagKey = resolveArrayTagKey(fieldName, fieldSchema);
+    return match.map(element => ({
+      key: tagKey,
+      value: jsonValueToString(element)
+    }));
   });
 }
 
@@ -568,7 +590,9 @@ export {
   dcbTagId,
   dcbPartitionTagId,
   dcbCompositePartitionMemberId,
+  dcbTagKeyOverrideId,
   string,
+  stringForKey,
   int,
   partition,
   compositePartitionMember,
@@ -576,6 +600,8 @@ export {
   isTagged,
   isTaggedArray,
   isPartitionTag,
+  resolveTagKey,
+  resolveArrayTagKey,
   jsonValueToString,
   extractTagsFromProperties,
   extractTagsFromJson,

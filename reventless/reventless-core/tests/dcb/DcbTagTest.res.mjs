@@ -538,6 +538,93 @@ Jest.describe("DcbTag:", () => {
     Jest.test("hasTaggedArrayFields detects tagged arrays", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.hasTaggedArrayFields(DcbFixtures$ReventlessCore.crossEntityCommandSchema)), true));
     Jest.test("hasTaggedArrayFields returns false for scalar-only schemas", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.hasTaggedArrayFields(DcbFixtures$ReventlessCore.singleTagCommandSchema)), false));
   });
+  Jest.describe("stringForKey (tag-key override)", () => {
+    Jest.test("isTagged is true for stringForKey schema", () => Jest.Expect.toBe(Jest.Expect.expect(DcbTag$Reventless.isTagged(DcbTag$Reventless.stringForKey("productId"))), true));
+    Jest.test("extractTags returns the override key for a scalar field", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.customKeyEventSchema, {
+      TAG: "ProductLabelled",
+      sku: "SKU-42"
+    })), [{
+        key: "productSku",
+        value: "SKU-42"
+      }]));
+    Jest.test("extractTagsExpanded uses the override key on every array element", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.extractTagsExpanded(DcbFixtures$ReventlessCore.multiProductCommandSchema, {
+      TAG: "PlaceOrderWithMany",
+      orderId: "ord-1",
+      productIds: [
+        "prod-1",
+        "prod-2"
+      ]
+    })), [
+      {
+        key: "orderId",
+        value: "ord-1"
+      },
+      {
+        key: "productId",
+        value: "prod-1"
+      },
+      {
+        key: "productId",
+        value: "prod-2"
+      }
+    ]));
+    Jest.test("buildQueryFromCommand emits the override key in OR clauses", () => Jest.Expect.toEqual(Jest.Expect.expect(DcbTag$Reventless.buildQueryFromCommand([
+      "OrderPlaced",
+      "CatalogProductSynced"
+    ], DcbFixtures$ReventlessCore.multiProductCommandSchema, {
+      TAG: "PlaceOrderWithMany",
+      orderId: "ord-1",
+      productIds: [
+        "prod-1",
+        "prod-2"
+      ]
+    })), [
+      {
+        eventTypes: [
+          "OrderPlaced",
+          "CatalogProductSynced"
+        ],
+        tags: [{
+            key: "orderId",
+            value: "ord-1"
+          }]
+      },
+      {
+        eventTypes: [
+          "OrderPlaced",
+          "CatalogProductSynced"
+        ],
+        tags: [{
+            key: "productId",
+            value: "prod-1"
+          }]
+      },
+      {
+        eventTypes: [
+          "OrderPlaced",
+          "CatalogProductSynced"
+        ],
+        tags: [{
+            key: "productId",
+            value: "prod-2"
+          }]
+      }
+    ]));
+    Jest.test("singular producer + plural consumer share the same tag key (round-trip)", () => {
+      let producerTags = DcbTag$Reventless.extractTags(DcbFixtures$ReventlessCore.singleProductEventSchema, {
+        TAG: "CatalogProductSynced",
+        productId: "prod-1"
+      });
+      let consumerTags = DcbTag$Reventless.extractTagsExpanded(DcbFixtures$ReventlessCore.multiProductCommandSchema, {
+        TAG: "PlaceOrderWithMany",
+        orderId: "ord-1",
+        productIds: ["prod-1"]
+      });
+      let producerHead = producerTags[0];
+      let consumerProductTag = Stdlib_Option.getOrThrow(consumerTags.find(t => t.key !== "orderId"), undefined);
+      return Jest.Expect.toBe(Jest.Expect.expect(consumerProductTag.key), producerHead.key);
+    });
+  });
 });
 
 /*  Not a pure module */

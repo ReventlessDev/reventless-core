@@ -99,6 +99,13 @@ let dcbCompositePartitionMemberId: S.Metadata.Id.t<compositePartitionMemberMeta>
   S.Metadata.Id.make(~namespace="dcb", ~name="compositePartitionMember")
 
 /**
+Internal sury metadata ID carrying an explicit tag-key override. When present,
+tag extraction uses the stored string as the tag `key` instead of the field name.
+*/
+let dcbTagKeyOverrideId: S.Metadata.Id.t<string> =
+  S.Metadata.Id.make(~namespace="dcb", ~name="tagKeyOverride")
+
+/**
 A sury string schema annotated as a DCB tag field.
 
 Use with `@s.matches(DcbTag.string)` on event and command record fields that
@@ -120,6 +127,30 @@ and array element types.
 ```
 */
 let string: S.t<string> = S.string->S.Metadata.set(~id=dcbTagId, true)
+
+/**
+A sury string schema annotated as a DCB tag field with an explicit tag-key override.
+
+Use when a field's record name differs from the desired tag key — for example,
+plural-named multi-value fields whose elements should still be stored under the
+singular tag key shared with single-value producers.
+
+The PPX emits this constructor automatically for `*Ids: array<string>` fields
+(stripping the trailing `s` to derive the key) and for `@dcbTag("explicitKey")`
+annotations carrying a string payload.
+
+@example
+```rescript
+@schema type event =
+  OrderPlaced({
+    orderId: string,
+    productIds: array<@s.matches(DcbTag.stringForKey(~key="productId")) string>,
+  })
+// productIds: ["p1", "p2"] → tags [{key: "productId", value: "p1"}, {key: "productId", value: "p2"}]
+```
+*/
+let stringForKey = (~key: string): S.t<string> =>
+  S.string->S.Metadata.set(~id=dcbTagId, true)->S.Metadata.set(~id=dcbTagKeyOverrideId, key)
 
 /**
 A sury int schema annotated as a DCB tag field.
@@ -201,6 +232,24 @@ let isTaggedArray = (fieldSchema: S.t<unknown>) =>
 let isPartitionTag = (fieldSchema: S.t<unknown>) =>
   S.Metadata.get(fieldSchema, ~id=dcbPartitionTagId)->Option.isSome
 
+/**
+Resolves the tag key for a scalar tagged field: the explicit override metadata if
+present, otherwise the field name.
+*/
+let resolveTagKey = (fieldName: string, fieldSchema: S.t<unknown>): string =>
+  S.Metadata.get(fieldSchema, ~id=dcbTagKeyOverrideId)->Option.getOr(fieldName)
+
+/**
+Resolves the tag key for an array tagged field. The override metadata sits on the
+inner element schema; falls back to the field name when no override is set.
+*/
+let resolveArrayTagKey = (fieldName: string, fieldSchema: S.t<unknown>): string =>
+  switch fieldSchema {
+  | Array({additionalItems: Schema(itemSchema)}) =>
+    S.Metadata.get(itemSchema, ~id=dcbTagKeyOverrideId)->Option.getOr(fieldName)
+  | _ => fieldName
+  }
+
 /** Converts a JSON value to its string representation for use as a tag value. */
 let jsonValueToString = json =>
   switch json {
@@ -221,7 +270,10 @@ let extractTagsFromProperties = (properties: dict<S.t<unknown>>, jsonDict: dict<
     if isTagged(fieldSchema) {
       jsonDict
       ->Dict.get(fieldName)
-      ->Option.map(jsonValue => {key: fieldName, value: jsonValue->jsonValueToString})
+      ->Option.map(jsonValue => {
+        key: resolveTagKey(fieldName, fieldSchema),
+        value: jsonValue->jsonValueToString,
+      })
     } else {
       None
     }
@@ -346,8 +398,9 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
 Extracts tags from a flat JSON object, expanding array values into per-element tags.
 
 For scalar tagged fields, behaves identically to `extractTagsFromProperties`.
-For array tagged fields, produces one tag per element:
-`productIds: ["p1", "p2"]` → `[{key: "productIds", value: "p1"}, {key: "productIds", value: "p2"}]`
+For array tagged fields, produces one tag per element. Tag keys honour an optional
+`DcbTag.stringForKey(~key=...)` override on the (inner) schema; otherwise the field
+name is used.
 */
 let extractTagsFromPropertiesExpanded = (
   properties: dict<S.t<unknown>>,
@@ -358,13 +411,17 @@ let extractTagsFromPropertiesExpanded = (
   ->Array.flatMap(((fieldName, fieldSchema)) =>
     if isTagged(fieldSchema) {
       switch jsonDict->Dict.get(fieldName) {
-      | Some(jsonValue) => [{key: fieldName, value: jsonValue->jsonValueToString}]
+      | Some(jsonValue) => [
+          {key: resolveTagKey(fieldName, fieldSchema), value: jsonValue->jsonValueToString},
+        ]
       | None => []
       }
     } else if isTaggedArray(fieldSchema) {
       switch jsonDict->Dict.get(fieldName) {
-      | Some(JSON.Array(elements)) =>
-        elements->Array.map(element => {key: fieldName, value: element->jsonValueToString})
+      | Some(JSON.Array(elements)) => {
+          let tagKey = resolveArrayTagKey(fieldName, fieldSchema)
+          elements->Array.map(element => {key: tagKey, value: element->jsonValueToString})
+        }
       | _ => []
       }
     } else {

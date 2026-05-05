@@ -22,6 +22,26 @@ let dcb_tag_attr ~loc =
 let dcb_partition_attr ~loc =
   s_matches_attr ~loc (Ldot (Ldot (Lident "Reventless", "DcbTag"), "partition"))
 
+(** Builds @s.matches(Reventless.DcbTag.stringForKey(~key="<key>")) on a type expression. *)
+let dcb_tag_for_key_attr ~loc ~key =
+  let dcb_tag_ident =
+    { txt = Ldot (Ldot (Lident "Reventless", "DcbTag"), "stringForKey"); loc }
+  in
+  let key_arg = (Labelled "key", Ast_builder.Default.estring ~loc key) in
+  let call_expr =
+    { pexp_desc = Pexp_apply (
+        { pexp_desc = Pexp_ident dcb_tag_ident;
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] },
+        [key_arg]);
+      pexp_loc = loc;
+      pexp_loc_stack = [];
+      pexp_attributes = [] }
+  in
+  let payload = PStr [{ pstr_desc = Pstr_eval (call_expr, []); pstr_loc = loc }] in
+  { attr_name = { txt = "s.matches"; loc };
+    attr_payload = payload;
+    attr_loc = loc }
+
 let ends_with_ids name =
   let len = String.length name in
   len >= 4
@@ -85,11 +105,20 @@ let check_deprecated_no_tag (str : structure) : unit =
     | _ -> ()
   ) str
 
-(** @dcbTag — explicit opt-in DCB tag for fields that don't follow *Id naming. *)
+(** @dcbTag — explicit opt-in DCB tag for fields that don't follow *Id naming.
+    Optional string payload [@dcbTag("explicitKey")] overrides the tag key. *)
 let has_explicit_dcb_tag_field_attr (attrs : attributes) =
   List.exists (fun (attr : attribute) ->
     String.equal attr.attr_name.txt "dcbTag"
   ) attrs
+
+(** Returns [Some "explicitKey"] when [@dcbTag("explicitKey")] is present, [None] otherwise. *)
+let get_explicit_dcb_tag_key (attrs : attributes) : string option =
+  match List.find_opt (fun (attr : attribute) ->
+    String.equal attr.attr_name.txt "dcbTag"
+  ) attrs with
+  | Some attr -> Util.get_string_payload attr
+  | None -> None
 
 let strip_explicit_dcb_tag_field_attr (attrs : attributes) =
   List.filter (fun (attr : attribute) ->
@@ -115,14 +144,21 @@ let transform_label_decl ~loc (ld : label_declaration) =
                      ptyp_attributes = attr :: ld.pld_type.ptyp_attributes } in
     { ld with pld_type = new_type }
   else if Util.ends_with_id ld.pld_name.txt || ends_with_ids ld.pld_name.txt then
-    (* *Id: array<string> or *Ids: array<string> → annotate inner element type *)
+    (* *Id: array<string> → annotate inner element with bare DcbTag.string
+       *Ids: array<string> → annotate inner element with DcbTag.stringForKey(~key="<name minus s>"),
+       so plural-named fields share a tag key with their singular-named producers *)
     (match ld.pld_type.ptyp_desc with
      | Ptyp_constr ({ txt = Lident "array"; _ } as arr_lid, [elem])
        when (match elem.ptyp_desc with
              | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
              | _ -> false)
             && not (has_s_matches_attr elem.ptyp_attributes) ->
-       let attr = dcb_tag_attr ~loc in
+       let attr =
+         if ends_with_ids ld.pld_name.txt then
+           dcb_tag_for_key_attr ~loc ~key:(Util.drop_trailing_s ld.pld_name.txt)
+         else
+           dcb_tag_attr ~loc
+       in
        let new_elem = { elem with ptyp_attributes = attr :: elem.ptyp_attributes } in
        let new_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [new_elem]) } in
        { ld with pld_type = new_type }
@@ -194,17 +230,41 @@ let transform_partition_tags ~loc (str : structure) : structure =
     else ld
   ) str
 
-(** @dcbTag → @s.matches(Reventless.DcbTag.string). Runs unconditionally. *)
+(** Builds the attribute injected by [@dcbTag] / [@dcbTag("explicitKey")]:
+    bare [DcbTag.string] when no payload, [DcbTag.stringForKey(~key=...)] otherwise. *)
+let dcb_explicit_tag_attr ~loc ~key_override =
+  match key_override with
+  | Some key -> dcb_tag_for_key_attr ~loc ~key
+  | None -> dcb_tag_attr ~loc
+
+(** @dcbTag → @s.matches(Reventless.DcbTag.string) on string fields, or on the inner
+    element type of [array<string>] fields. With a string payload [@dcbTag("key")] the
+    emitted attribute uses [DcbTag.stringForKey(~key="key")]. Runs unconditionally. *)
 let transform_explicit_dcb_tags ~loc (str : structure) : structure =
   map_schema_fields (fun ld ->
-    if has_explicit_dcb_tag_field_attr ld.pld_attributes
-       && is_string_type ld.pld_type
-       && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
-      { ld with
-        pld_type = { ld.pld_type with
-                     ptyp_attributes = (dcb_tag_attr ~loc) :: ld.pld_type.ptyp_attributes };
-        pld_attributes = strip_explicit_dcb_tag_field_attr ld.pld_attributes }
-    else ld
+    if not (has_explicit_dcb_tag_field_attr ld.pld_attributes) then ld
+    else
+      let key_override = get_explicit_dcb_tag_key ld.pld_attributes in
+      let attr = dcb_explicit_tag_attr ~loc ~key_override in
+      if is_string_type ld.pld_type
+         && not (has_s_matches_attr ld.pld_type.ptyp_attributes) then
+        { ld with
+          pld_type = { ld.pld_type with
+                       ptyp_attributes = attr :: ld.pld_type.ptyp_attributes };
+          pld_attributes = strip_explicit_dcb_tag_field_attr ld.pld_attributes }
+      else
+        match ld.pld_type.ptyp_desc with
+        | Ptyp_constr ({ txt = Lident "array"; _ } as arr_lid, [elem])
+          when (match elem.ptyp_desc with
+                | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
+                | _ -> false)
+               && not (has_s_matches_attr elem.ptyp_attributes) ->
+          let new_elem = { elem with ptyp_attributes = attr :: elem.ptyp_attributes } in
+          let new_type = { ld.pld_type with ptyp_desc = Ptyp_constr (arr_lid, [new_elem]) } in
+          { ld with
+            pld_type = new_type;
+            pld_attributes = strip_explicit_dcb_tag_field_attr ld.pld_attributes }
+        | _ -> ld
   ) str
 
 (** @noDcbTag — strips the field attribute, leaving the type untouched. Runs unconditionally. *)

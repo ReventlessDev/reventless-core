@@ -5,7 +5,7 @@
 
 @schema
 type consumedEvent =
-  | OrderPlaced({productId: array<string>})
+  | OrderPlaced({productIds: array<string>})
   | OrderShipped
   | OrderCancelled
   | OrderReopened
@@ -24,6 +24,6 @@ type error =
 type event =
   | OrderCancelled({
       orderId: string,
-      productId: array<string>,
+      productIds: array<string>,
     })
   | OrderReopened({orderId: string})

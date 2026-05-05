@@ -560,7 +560,7 @@ The callback uses per-slice encoding/decoding:
 
 1. Builds the query automatically using `DcbTag.buildQueryFromCommand(~eventTypes=queryEventTypes, ~schema=Spec.commandSchema, ~value=command)` where `queryEventTypes` is derived at module init from `DcbDecode.makeDecoder(Spec.consumedEventSchema).eventTypes`. The query mode is determined by schema introspection:
    - **Scalar tags only** (e.g., `productId: @s.matches(DcbTag.string) string`) → single AND clause (standard single-entity query)
-   - **Tagged array fields** (e.g., `productId: array<@s.matches(DcbTag.string) string>`) → per-element OR clauses (cross-entity query for commands referencing multiple entities)
+   - **Tagged array fields** (e.g., `productIds: array<@s.matches(DcbTag.stringForKey(~key="productId")) string>`) → per-element OR clauses (cross-entity query for commands referencing multiple entities). The PPX accepts both spellings: `productId: array<string>` (singular field name, tag key inferred from the field) and `productIds: array<string>` (plural field name, trailing `s` stripped → tag key `productId`); both store under the same tag key so plural and singular producers/consumers interoperate.
 2. Streams events from the event log: `dcbEventLog.readStream(~query)`
 3. Decodes each raw event using `decoder.decode(~eventType, ~data)`, skipping unrecognised events
 4. Folds decoded events into the decision state: `Stream.runFold` with `Spec.evolve` starting from `Spec.initialState`
