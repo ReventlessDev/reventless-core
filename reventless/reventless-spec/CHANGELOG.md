@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.36 (2026-05-05)
+
+### Features
+
+* **dcb:** allow plural *Ids field names with shared singular tag key ([19a5167](https://github.com/ReventlessDev/reventless-core/commit/19a5167ed904c6152c137af738f869ee4d26287e))
+
+
 # 3.0.0-alpha.35 (2026-05-03)
 
 * feat(codegen)!: drop View suffix from StateView slice file names ([476dd8c](https://github.com/ReventlessDev/reventless-core/commit/476dd8c8c91f67b198faaef51aa1b29d26099844))
