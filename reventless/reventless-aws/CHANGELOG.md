@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.79 (2026-05-07)
+
+### Bug Fixes
+
+* **aws:** make DCB conditional append atomic via TransactWriteItems ([e95ae85](https://github.com/ReventlessDev/reventless-core/commit/e95ae856beec54a96a55d7929880ca16cabc6cf9))
+
+
 # 3.0.0-alpha.78 (2026-05-05)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
