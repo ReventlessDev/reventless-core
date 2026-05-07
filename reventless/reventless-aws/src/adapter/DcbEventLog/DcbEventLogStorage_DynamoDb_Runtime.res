@@ -479,37 +479,217 @@ let writeEventsWithPosition = async (
   ->Effect.runPromise
 }
 
+// --- DCB consistency fences ---
+//
+// A fence is a sentinel item in the same table whose `lastPosition` is bumped
+// inside every conditional append. Each tag value (`<key>:<value>`) gets its
+// own fence at `id = "fence#<key>:<value>", position = "FENCE"`. The id prefix
+// is distinct from event partition keys (`<key>:<value>`), so event reads never
+// see fence items.
+//
+// On conditional append: every tag value present in `cond.query` gets a
+// `ConditionalUpdate` checking that nothing has bumped the fence past `after`
+// since the slice's decision-model read. Every tag value present in the new
+// events' tags ALSO gets bumped (without condition) so future readers querying
+// those tags will detect this commit.
+//
+// All Puts and Updates ride a single `TransactWriteItems` call — atomic by
+// DynamoDB. Conflicts surface as `TransactionCanceledException` →
+// `DynamoDb_Error.StaleState` → `Error("Conflict: …")`.
+
+let fenceSortKey = "FENCE"
+
+let fencePartitionKey = (tag: Reventless.DcbTag.tag) => `fence#${tag.key}:${tag.value}`
+
+let fenceKey = (tag: Reventless.DcbTag.tag): dict<JSON.t> =>
+  Dict.fromArray([
+    ("id", fencePartitionKey(tag)->JSON.Encode.string),
+    ("position", fenceSortKey->JSON.Encode.string),
+  ])
+
+// Collect every distinct tag from a query. Each queryItem's tags are AND'd,
+// across queryItems they're OR'd — both contribute to the fence set.
+let collectQueryTags = (query: Reventless.DcbTag.query): array<Reventless.DcbTag.tag> => {
+  let seen = Set.make()
+  let acc = []
+  query->Array.forEach(qi =>
+    switch qi.tags {
+    | None => ()
+    | Some(tags) =>
+      tags->Array.forEach(tag => {
+        let k = `${tag.key}:${tag.value}`
+        if !(seen->Set.has(k)) {
+          seen->Set.add(k)
+          acc->Array.push(tag)
+        }
+      })
+    }
+  )
+  acc
+}
+
+let collectEventTags = (
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+): array<Reventless.DcbTag.tag> => {
+  let seen = Set.make()
+  let acc = []
+  events->Array.forEach(event =>
+    event.tags->Array.forEach(tag => {
+      let k = `${tag.key}:${tag.value}`
+      if !(seen->Set.has(k)) {
+        seen->Set.add(k)
+        acc->Array.push(tag)
+      }
+    })
+  )
+  acc
+}
+
+// Conditional fence update: a writer may commit only if no one bumped the
+// fence past the position the slice observed when building its decision model.
+// `after = None` means "no events seen" — the strictest form is
+// `attribute_not_exists(lastPosition)`.
+let buildConditionalFenceUpdate = (
+  tableName: string,
+  tag: Reventless.DcbTag.tag,
+  ~newPosition: string,
+  ~after: option<string>,
+): TransactWriteCommand.update => {
+  let values = Dict.fromArray([(":new", newPosition->JSON.Encode.string)])
+  let conditionExpression = switch after {
+  | None => "attribute_not_exists(lastPosition)"
+  | Some(pos) =>
+    values->Dict.set(":after", pos->JSON.Encode.string)
+    "attribute_not_exists(lastPosition) OR lastPosition <= :after"
+  }
+  {
+    TransactWriteCommand.key: fenceKey(tag),
+    tableName,
+    updateExpression: "SET lastPosition = :new",
+    conditionExpression,
+    expressionAttributeValues: values,
+  }
+}
+
+// Unconditional bump — used for tags appearing in new events but not in the
+// query. Future readers querying those tags will see the bump and conflict
+// against any concurrent writer.
+let buildUnconditionalFenceUpdate = (
+  tableName: string,
+  tag: Reventless.DcbTag.tag,
+  ~newPosition: string,
+): TransactWriteCommand.update => {
+  let values = Dict.fromArray([(":new", newPosition->JSON.Encode.string)])
+  {
+    TransactWriteCommand.key: fenceKey(tag),
+    tableName,
+    updateExpression: "SET lastPosition = :new",
+    expressionAttributeValues: values,
+  }
+}
+
+// `TransactWriteItems` is capped at 100 items per call. We surface a clear
+// error before calling AWS rather than leaking ValidationException upstream.
+let transactWriteItemsLimit = 100
+
+let appendUnconditional = async (
+  table: resolvedTable,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  ~partitionTag=?,
+) => {
+  let position = generatePosition()
+  switch await writeEventsWithPosition(table, events, position, ~partitionTag?) {
+  | Ok() => Ok(position)
+  | Error(msg) => Error(msg)
+  }
+}
+
+let appendConditional = async (
+  table: resolvedTable,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  cond: Reventless.DcbTag.appendCondition,
+  ~partitionTag=?,
+) => {
+  let queryTags = collectQueryTags(cond.query)
+  let eventTags = collectEventTags(events)
+
+  // Tags present in new events but NOT already in the query — bump
+  // unconditionally so future readers querying these tags detect us.
+  let queryTagSet = Set.make()
+  queryTags->Array.forEach(t => queryTagSet->Set.add(`${t.key}:${t.value}`))
+  let extraEventTags =
+    eventTags->Array.filter(t => !(queryTagSet->Set.has(`${t.key}:${t.value}`)))
+
+  let totalItems = events->Array.length + queryTags->Array.length + extraEventTags->Array.length
+
+  if queryTags->Array.length == 0 {
+    Error(
+      "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag",
+    )
+  } else if totalItems > transactWriteItemsLimit {
+    Error(
+      `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
+    )
+  } else {
+    let basePosition = generatePosition()
+
+    let conditionalUpdates =
+      queryTags->Array.map(tag =>
+        buildConditionalFenceUpdate(
+          table.name,
+          tag,
+          ~newPosition=basePosition,
+          ~after=cond.after,
+        )
+      )
+    let unconditionalUpdates =
+      extraEventTags->Array.map(tag =>
+        buildUnconditionalFenceUpdate(table.name, tag, ~newPosition=basePosition)
+      )
+
+    let putItems = events->Array.mapWithIndex((event, idx) => {
+      let position = generatePositionForBatch(basePosition, idx)
+      let item = toItem(position, event, ~partitionTag?)
+      let put: TransactWriteCommand.put = {
+        TransactWriteCommand.item: item,
+        tableName: table.name,
+      }
+      {TransactWriteCommand.put: put}
+    })
+    let updateItems =
+      Array.concat(conditionalUpdates, unconditionalUpdates)->Array.map(update => {
+        TransactWriteCommand.update: update,
+      })
+
+    let input: TransactWriteCommand.input = {
+      transactItems: Array.concat(putItems, updateItems),
+    }
+    let result = await Effect.tryPromise(
+      ~catch=DynamoDb_Error.classify,
+      () => input->TransactWriteCommand.send,
+    )
+    ->Effect.map(_ => Ok(basePosition))
+    ->Effect.catchAll(err =>
+      switch err {
+      | DynamoDb_Error.StaleState(msg) =>
+        Effect.succeed(Error(`Conflict: ${msg}`))
+      | Transient(msg) | Permanent(msg) =>
+        Effect.succeed(Error(`DCB append failed: ${msg}`))
+      }
+    )
+    ->Effect.runPromise
+    result
+  }
+}
+
 let append = (table: resolvedTable, ~partitionTag=?) =>
   async (
     events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
     ~condition=?,
   ) => {
     switch condition {
-    | None => {
-        // Unconditional append
-        let position = generatePosition()
-        switch await writeEventsWithPosition(table, events, position, ~partitionTag?) {
-        | Ok() => Ok(position)
-        | Error(msg) => Error(msg)
-        }
-      }
-
-    | Some(cond: Reventless.DcbTag.appendCondition) => {
-        // Conditional append: check for conflicts first
-        let readResult = await read(table)(~query=cond.query, ~after=?cond.after)
-
-        if readResult.events->Array.length > 0 {
-          // Conflict detected
-          Error("Conflict: matching events exist after specified position")
-        } else {
-          // No conflicts, proceed with append
-          let position = generatePosition()
-          switch await writeEventsWithPosition(table, events, position, ~partitionTag?) {
-          | Ok() => Ok(position)
-          | Error(msg) => Error(msg)
-          }
-        }
-      }
+    | None => await appendUnconditional(table, events, ~partitionTag?)
+    | Some(cond) => await appendConditional(table, events, cond, ~partitionTag?)
     }
   }
 

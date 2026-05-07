@@ -370,42 +370,175 @@ async function writeEventsWithPosition(table, events, basePosition, partitionTag
   return await Effect$1.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
 }
 
+let fenceSortKey = "FENCE";
+
+function fencePartitionKey(tag) {
+  return `fence#` + tag.key + `:` + tag.value;
+}
+
+function fenceKey(tag) {
+  return Object.fromEntries([
+    [
+      "id",
+      fencePartitionKey(tag)
+    ],
+    [
+      "position",
+      fenceSortKey
+    ]
+  ]);
+}
+
+function collectQueryTags(query) {
+  let seen = new Set();
+  let acc = [];
+  query.forEach(qi => {
+    let tags = qi.tags;
+    if (tags !== undefined) {
+      tags.forEach(tag => {
+        let k = tag.key + `:` + tag.value;
+        if (!seen.has(k)) {
+          seen.add(k);
+          acc.push(tag);
+          return;
+        }
+      });
+      return;
+    }
+  });
+  return acc;
+}
+
+function collectEventTags(events) {
+  let seen = new Set();
+  let acc = [];
+  events.forEach(event => {
+    event.tags.forEach(tag => {
+      let k = tag.key + `:` + tag.value;
+      if (!seen.has(k)) {
+        seen.add(k);
+        acc.push(tag);
+        return;
+      }
+    });
+  });
+  return acc;
+}
+
+function buildConditionalFenceUpdate(tableName, tag, newPosition, after) {
+  let values = Object.fromEntries([[
+      ":new",
+      newPosition
+    ]]);
+  let conditionExpression = after !== undefined ? (values[":after"] = after, "attribute_not_exists(lastPosition) OR lastPosition <= :after") : "attribute_not_exists(lastPosition)";
+  return {
+    Key: fenceKey(tag),
+    TableName: tableName,
+    UpdateExpression: "SET lastPosition = :new",
+    ConditionExpression: conditionExpression,
+    ExpressionAttributeValues: values
+  };
+}
+
+function buildUnconditionalFenceUpdate(tableName, tag, newPosition) {
+  let values = Object.fromEntries([[
+      ":new",
+      newPosition
+    ]]);
+  return {
+    Key: fenceKey(tag),
+    TableName: tableName,
+    UpdateExpression: "SET lastPosition = :new",
+    ExpressionAttributeValues: values
+  };
+}
+
+async function appendUnconditional(table, events, partitionTag) {
+  let position = generatePosition();
+  let msg = await writeEventsWithPosition(table, events, position, partitionTag);
+  if (msg.TAG === "Ok") {
+    return {
+      TAG: "Ok",
+      _0: position
+    };
+  } else {
+    return {
+      TAG: "Error",
+      _0: msg._0
+    };
+  }
+}
+
+async function appendConditional(table, events, cond, partitionTag) {
+  let queryTags = collectQueryTags(cond.query);
+  let eventTags = collectEventTags(events);
+  let queryTagSet = new Set();
+  queryTags.forEach(t => {
+    queryTagSet.add(t.key + `:` + t.value);
+  });
+  let extraEventTags = eventTags.filter(t => !queryTagSet.has(t.key + `:` + t.value));
+  let totalItems = (events.length + queryTags.length | 0) + extraEventTags.length | 0;
+  if (queryTags.length === 0) {
+    return {
+      TAG: "Error",
+      _0: "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag"
+    };
+  }
+  if (totalItems > 100) {
+    return {
+      TAG: "Error",
+      _0: `DCB append: TransactWriteItems limit exceeded (` + totalItems.toString() + ` > ` + (100).toString() + `); reduce events or distinct tag values per command`
+    };
+  }
+  let basePosition = generatePosition();
+  let conditionalUpdates = queryTags.map(tag => buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after));
+  let unconditionalUpdates = extraEventTags.map(tag => buildUnconditionalFenceUpdate(table.name, tag, basePosition));
+  let putItems = events.map((event, idx) => {
+    let position = generatePositionForBatch(basePosition, idx);
+    let item = toItem(position, event, partitionTag);
+    let put_TableName = table.name;
+    let put = {
+      Item: item,
+      TableName: put_TableName
+    };
+    return {
+      Put: put
+    };
+  });
+  let updateItems = conditionalUpdates.concat(unconditionalUpdates).map(update => ({
+    Update: update
+  }));
+  let input_TransactItems = putItems.concat(updateItems);
+  let input = {
+    TransactItems: input_TransactItems
+  };
+  return await Effect$1.runPromise(Effect$1.catchAll(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
+    TAG: "Ok",
+    _0: basePosition
+  })), err => {
+    switch (err.TAG) {
+      case "StaleState" :
+        return Effect$1.succeed({
+          TAG: "Error",
+          _0: `Conflict: ` + err._0
+        });
+      case "Transient" :
+      case "Permanent" :
+        break;
+    }
+    return Effect$1.succeed({
+      TAG: "Error",
+      _0: `DCB append failed: ` + err._0
+    });
+  }));
+}
+
 function append(table, partitionTag) {
   return async (events, condition) => {
     if (condition !== undefined) {
-      let readResult = await read(table)(condition.query, condition.after);
-      if (readResult.events.length !== 0) {
-        return {
-          TAG: "Error",
-          _0: "Conflict: matching events exist after specified position"
-        };
-      }
-      let position = generatePosition();
-      let msg = await writeEventsWithPosition(table, events, position, partitionTag);
-      if (msg.TAG === "Ok") {
-        return {
-          TAG: "Ok",
-          _0: position
-        };
-      } else {
-        return {
-          TAG: "Error",
-          _0: msg._0
-        };
-      }
-    }
-    let position$1 = generatePosition();
-    let msg$1 = await writeEventsWithPosition(table, events, position$1, partitionTag);
-    if (msg$1.TAG === "Ok") {
-      return {
-        TAG: "Ok",
-        _0: position$1
-      };
+      return await appendConditional(table, events, condition, partitionTag);
     } else {
-      return {
-        TAG: "Error",
-        _0: msg$1._0
-      };
+      return await appendUnconditional(table, events, partitionTag);
     }
   };
 }
@@ -631,6 +764,8 @@ function readStream(table) {
   };
 }
 
+let transactWriteItemsLimit = 100;
+
 export {
   generatePosition,
   generatePositionForBatch,
@@ -651,6 +786,16 @@ export {
   mergeSortedEvents,
   read,
   writeEventsWithPosition,
+  fenceSortKey,
+  fencePartitionKey,
+  fenceKey,
+  collectQueryTags,
+  collectEventTags,
+  buildConditionalFenceUpdate,
+  buildUnconditionalFenceUpdate,
+  transactWriteItemsLimit,
+  appendUnconditional,
+  appendConditional,
   append,
   queryByPartitionKeyStream,
   queryBySingleTagStream,
