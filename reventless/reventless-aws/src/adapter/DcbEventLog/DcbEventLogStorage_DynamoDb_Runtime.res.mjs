@@ -209,7 +209,8 @@ async function scanWithFilter(table, eventTypes, after) {
   }
 }
 
-async function queryByPartitionKey(table, partitionKey, after) {
+function buildQueryByPartitionKeyInput(table, partitionKey, after, strongConsistencyOpt) {
+  let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
   let expressionAttributeValues = Object.fromEntries([[
       ":pk",
       partitionKey
@@ -224,16 +225,18 @@ async function queryByPartitionKey(table, partitionKey, after) {
       "id = :pk",
       undefined
     ];
-  let queryParams_TableName = table.name;
-  let queryParams_ExpressionAttributeNames = match[1];
-  let queryParams_ExpressionAttributeValues = expressionAttributeValues;
-  let queryParams_KeyConditionExpression = match[0];
-  let queryParams = {
-    TableName: queryParams_TableName,
-    ExpressionAttributeNames: queryParams_ExpressionAttributeNames,
-    ExpressionAttributeValues: queryParams_ExpressionAttributeValues,
-    KeyConditionExpression: queryParams_KeyConditionExpression
+  let consistentRead = strongConsistency ? true : undefined;
+  return {
+    TableName: table.name,
+    ConsistentRead: consistentRead,
+    ExpressionAttributeNames: match[1],
+    ExpressionAttributeValues: expressionAttributeValues,
+    KeyConditionExpression: match[0]
   };
+}
+
+async function queryByPartitionKey(table, partitionKey, after) {
+  let queryParams = buildQueryByPartitionKeyInput(table, partitionKey, after, undefined);
   return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
@@ -543,31 +546,9 @@ function append(table, partitionTag) {
   };
 }
 
-function queryByPartitionKeyStream(table, partitionKey, after) {
-  let expressionAttributeValues = Object.fromEntries([[
-      ":pk",
-      partitionKey
-    ]]);
-  let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      "id = :pk AND #pos > :after",
-      Object.fromEntries([[
-          "#pos",
-          "position"
-        ]])
-    ]) : [
-      "id = :pk",
-      undefined
-    ];
-  let baseParams_TableName = table.name;
-  let baseParams_ExpressionAttributeNames = match[1];
-  let baseParams_ExpressionAttributeValues = expressionAttributeValues;
-  let baseParams_KeyConditionExpression = match[0];
-  let baseParams = {
-    TableName: baseParams_TableName,
-    ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
-    ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
-    KeyConditionExpression: baseParams_KeyConditionExpression
-  };
+function queryByPartitionKeyStream(table, partitionKey, after, strongConsistencyOpt) {
+  let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
+  let baseParams = buildQueryByPartitionKeyInput(table, partitionKey, after, strongConsistency);
   return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
     if (cursor !== undefined) {
@@ -728,7 +709,7 @@ function executeQueryItemStream(table, queryItem, after) {
       tags.length !== 0;
     } else {
       let tag = tags[0];
-      return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after);
+      return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after, true);
     }
   }
   let eventTypes = queryItem.eventTypes;
@@ -777,6 +758,7 @@ export {
   queryBySingleTag,
   queryByCompositeTags,
   scanWithFilter,
+  buildQueryByPartitionKeyInput,
   queryByPartitionKey,
   executeQueryItem,
   deduplicateByPosition,

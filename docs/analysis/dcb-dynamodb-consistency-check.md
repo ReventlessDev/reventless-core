@@ -128,9 +128,11 @@ This defeats the entire point of the `appendCondition`.
 
 DynamoDB GSIs **cannot** be read with strong consistency — fundamental product constraint. A just-written event may not appear on the GSI for tens of milliseconds, widening the race window beyond the network RTT.
 
-### 3. Single-tag base-table query does not request strong consistency
+### 3. Single-tag base-table query does not request strong consistency — **resolved on the single-tag path**
 
-`queryByPartitionKeyStream` ([L518](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L518)) hits the base table (`id = pk`). This path *could* set `consistentRead: true` but doesn't. So even when the query happens to be a single-tag lookup that could be strongly consistent, it isn't.
+`queryByPartitionKeyStream` hits the base table (`id = pk`). This path *could* set `consistentRead: true` but historically didn't, so even single-tag lookups that could have been strongly consistent went through the eventually-consistent default.
+
+Resolved by [`docs/plans/done/dcb-strong-consistency-single-tag-reads.md`](../plans/done/dcb-strong-consistency-single-tag-reads.md): `queryByPartitionKeyStream` now accepts `~strongConsistency` and `executeQueryItemStream` passes `true` on the single-tag branch. GSI-backed branches (multi-tag composite, tagless scan) cannot opt in — DynamoDB rejects `consistentRead: true` on GSIs — so they remain eventually consistent. The fence-based atomic append (issue #1) ensures correctness either way; strong reads on the single-tag path just save the avoidable conflict-retry round trip when the GSI is lagging.
 
 ### 4. `Scan` fallback for tagless queryItems
 

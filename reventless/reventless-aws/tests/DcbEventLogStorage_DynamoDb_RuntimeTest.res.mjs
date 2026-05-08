@@ -208,6 +208,30 @@ describe("Runtime.buildUnconditionalFenceUpdate", () => {
   });
 });
 
+describe("Runtime.buildQueryByPartitionKeyInput", () => {
+  test("omits consistentRead by default (eventually consistent)", () => {
+    let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, undefined);
+    expect(input.ConsistentRead).toEqual(undefined);
+  });
+  test("omits consistentRead when ~strongConsistency=false", () => {
+    let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, false);
+    expect(input.ConsistentRead).toEqual(undefined);
+  });
+  test("sets consistentRead=true when ~strongConsistency=true", () => {
+    let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, true);
+    expect(input.ConsistentRead).toEqual(true);
+  });
+  test("does not target a GSI (uses base table)", () => {
+    let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, true);
+    expect(input.IndexName).toEqual(undefined);
+  });
+  test("threads ~after into the key condition without dropping consistentRead", () => {
+    let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", "50", true);
+    expect(input.ConsistentRead).toEqual(true);
+    expect(input.KeyConditionExpression).toEqual("id = :pk AND #pos > :after");
+  });
+});
+
 describe("Runtime.appendConditional", () => {
   test("rejects tagless conditions with a clear error", async () => {
     let cond_query = [{

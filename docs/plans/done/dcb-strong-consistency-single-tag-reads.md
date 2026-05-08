@@ -112,4 +112,8 @@ Strongly-consistent reads cost 1 RCU per 4KB read; eventually-consistent reads c
 
 ## Status
 
-Not started.
+Done (2026-05-08). Step 1 chose default-on inside `executeQueryItemStream` — the public `readStream` API is unchanged. `queryByPartitionKeyStream` (and the parallel `queryByPartitionKey` via a shared `buildQueryByPartitionKeyInput` helper) now accept `~strongConsistency: bool=false`; the single-tag branch in `executeQueryItemStream` passes `true`. Multi-tag and scan branches do not accept the flag — structurally guaranteed at the type level — so DynamoDB never sees `consistentRead: true` on a GSI query.
+
+Unit tests (Step 3) live in [`DcbEventLogStorage_DynamoDb_RuntimeTest.res`](../../reventless/reventless-aws/tests/DcbEventLogStorage_DynamoDb_RuntimeTest.res) under `Runtime.buildQueryByPartitionKeyInput`: they cover default-off, explicit-off, explicit-on, base-table targeting (no `indexName`), and `~after` threading.
+
+Step 4 (AWS integration test regression) is left for the integration test plan to pick up. Step 5 — analysis-doc update marking issue #3 resolved on the single-tag path — landed in [`docs/analysis/dcb-dynamodb-consistency-check.md`](../analysis/dcb-dynamodb-consistency-check.md).

@@ -258,15 +258,19 @@ let scanWithFilter = async (
 
 // --- Partition Key Query (direct table query, no GSI) ---
 
-let queryByPartitionKey = async (
+// Builds the QueryCommand.input for a single-partition lookup against the base
+// table. Strong consistency is supported here because base-table reads can
+// opt in (GSIs cannot — fundamental DynamoDB constraint), so this helper
+// accepts an optional ~strongConsistency flag.
+let buildQueryByPartitionKeyInput = (
   table: resolvedTable,
   partitionKey: string,
   ~after: option<string>=?,
-) => {
+  ~strongConsistency: bool=false,
+): QueryCommand.input => {
   let expressionAttributeValues = Dict.fromArray([
     (":pk", partitionKey->JSON.Encode.string),
   ])
-
   let (keyConditionExpression, expressionAttributeNames) = switch after {
   | None => ("id = :pk", None)
   | Some(afterPos) => {
@@ -274,14 +278,22 @@ let queryByPartitionKey = async (
       ("id = :pk AND #pos > :after", Some(Dict.fromArray([("#pos", "position")])))
     }
   }
-
-  let queryParams: QueryCommand.input = {
+  let consistentRead = strongConsistency ? Some(true) : None
+  {
     tableName: table.name,
-    keyConditionExpression: keyConditionExpression,
-    expressionAttributeValues: expressionAttributeValues,
+    ?consistentRead,
+    keyConditionExpression,
+    expressionAttributeValues,
     ?expressionAttributeNames,
   }
+}
 
+let queryByPartitionKey = async (
+  table: resolvedTable,
+  partitionKey: string,
+  ~after: option<string>=?,
+) => {
+  let queryParams = buildQueryByPartitionKeyInput(table, partitionKey, ~after?)
   await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
 }
 
@@ -699,23 +711,14 @@ let queryByPartitionKeyStream = (
   table: resolvedTable,
   partitionKey: string,
   ~after: option<string>=?,
+  ~strongConsistency: bool=false,
 ) => {
-  let expressionAttributeValues = Dict.fromArray([
-    (":pk", partitionKey->JSON.Encode.string),
-  ])
-  let (keyConditionExpression, expressionAttributeNames) = switch after {
-  | None => ("id = :pk", None)
-  | Some(afterPos) => {
-      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      ("id = :pk AND #pos > :after", Some(Dict.fromArray([("#pos", "position")])))
-    }
-  }
-  let baseParams: QueryCommand.input = {
-    tableName: table.name,
-    keyConditionExpression: keyConditionExpression,
-    expressionAttributeValues: expressionAttributeValues,
-    ?expressionAttributeNames,
-  }
+  let baseParams = buildQueryByPartitionKeyInput(
+    table,
+    partitionKey,
+    ~after?,
+    ~strongConsistency,
+  )
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
       ~catch=DynamoDb_Error.classify,
@@ -899,9 +902,18 @@ let executeQueryItemStream = (
   ~after: option<string>=?,
 ) => {
   switch queryItem.tags {
-  // Single tag: direct partition key lookup
+  // Single tag: direct partition key lookup. Base-table reads support strong
+  // consistency, which the slice's decision-model read needs to avoid stale
+  // events that would otherwise force an avoidable fence-conflict retry.
+  // GSI-backed branches (composite, scan) cannot opt in — fundamental
+  // DynamoDB constraint — so they stay eventually consistent.
   | Some([tag]) =>
-    queryByPartitionKeyStream(table, `${tag.key}:${tag.value}`, ~after?)
+    queryByPartitionKeyStream(
+      table,
+      `${tag.key}:${tag.value}`,
+      ~after?,
+      ~strongConsistency=true,
+    )
 
   // Multiple tags: use composite GSI
   | Some(tags) if tags->Array.length > 1 =>

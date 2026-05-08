@@ -161,6 +161,51 @@ describe("Runtime.buildUnconditionalFenceUpdate", () => {
   })
 })
 
+describe("Runtime.buildQueryByPartitionKeyInput", () => {
+  test("omits consistentRead by default (eventually consistent)", () => {
+    let input = Runtime.buildQueryByPartitionKeyInput(table, "orderId:o1")
+    expect(input.consistentRead)->toEqual(None)
+  })
+
+  test("omits consistentRead when ~strongConsistency=false", () => {
+    let input = Runtime.buildQueryByPartitionKeyInput(
+      table,
+      "orderId:o1",
+      ~strongConsistency=false,
+    )
+    expect(input.consistentRead)->toEqual(None)
+  })
+
+  test("sets consistentRead=true when ~strongConsistency=true", () => {
+    let input = Runtime.buildQueryByPartitionKeyInput(
+      table,
+      "orderId:o1",
+      ~strongConsistency=true,
+    )
+    expect(input.consistentRead)->toEqual(Some(true))
+  })
+
+  test("does not target a GSI (uses base table)", () => {
+    let input = Runtime.buildQueryByPartitionKeyInput(
+      table,
+      "orderId:o1",
+      ~strongConsistency=true,
+    )
+    expect(input.indexName)->toEqual(None)
+  })
+
+  test("threads ~after into the key condition without dropping consistentRead", () => {
+    let input = Runtime.buildQueryByPartitionKeyInput(
+      table,
+      "orderId:o1",
+      ~after="50",
+      ~strongConsistency=true,
+    )
+    expect(input.consistentRead)->toEqual(Some(true))
+    expect(input.keyConditionExpression)->toEqual(Some("id = :pk AND #pos > :after"))
+  })
+})
+
 describe("Runtime.appendConditional", () => {
   testAsync("rejects tagless conditions with a clear error", async () => {
     let cond: Reventless.DcbTag.appendCondition = {
