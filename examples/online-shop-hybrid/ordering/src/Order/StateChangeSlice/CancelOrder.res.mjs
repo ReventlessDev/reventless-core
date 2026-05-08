@@ -7,7 +7,7 @@ import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/compon
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
-    productId: s.m(S.array(DcbTag$Reventless.string))
+    productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
   })),
   S.literal("OrderShipped"),
   S.literal("OrderCancelled"),
@@ -34,7 +34,7 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderCancelled",
     orderId: s.m(DcbTag$Reventless.string),
-    productId: s.m(S.array(DcbTag$Reventless.string))
+    productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
   })),
   S.schema(s => ({
     TAG: "OrderReopened",

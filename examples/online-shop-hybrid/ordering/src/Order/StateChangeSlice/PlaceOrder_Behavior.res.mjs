@@ -33,8 +33,8 @@ function decide(state, command) {
       _0: "OrderAlreadyPlaced"
     };
   }
-  let productId = command.productId;
-  let missing = productId.filter(pid => !state.availableProductIds.includes(pid));
+  let productIds = command.productIds;
+  let missing = productIds.filter(pid => !state.availableProductIds.includes(pid));
   if (missing.length !== 0) {
     return {
       TAG: "Error",
@@ -50,7 +50,7 @@ function decide(state, command) {
           TAG: "OrderPlaced",
           orderId: orderId,
           customerId: command.customerId,
-          productId: productId
+          productIds: productIds
         }]
     };
   }
