@@ -124,4 +124,30 @@ Update [`docs/analysis/dcb-dynamodb-consistency-check.md`](../../analysis/dcb-dy
 
 ## Status
 
-Not started.
+**Done (2026-05-10).** Took **Option A**.
+
+Audit confirmed no direct callers of `appendUnconditional` outside the internal `append` switch — `grep -rn "appendUnconditional\|condition=None\|~condition=None"` across the workspace returned only the runtime-internal callsite. Translation slices flow through commands rather than the adapter `append`, so the migration was safe with no caller updates.
+
+### What landed
+
+- Extracted `buildEventPuts` helper. Both append paths now share the same event-Put construction.
+- Extracted `runTransactWrite` helper. Single `TransactWriteItems` call site with shared error classification (`StaleState → Conflict:`, `Transient/Permanent → DCB append failed:`).
+- Rewrote `appendUnconditional`: per-event Puts plus one `buildUnconditionalFenceUpdate` per event tag, single `TransactWriteItems`.
+  - 100-item rejection up front.
+  - Empty-events early-return preserves the public contract that callers may pass `[]`.
+- Deleted `writeEventsWithPosition` (the only `BatchWriteItem` consumer in the DCB log path).
+- Two new unit tests in `DcbEventLogStorage_DynamoDb_RuntimeTest.res`:
+  - `Runtime.buildEventPuts` — emits one Put per event with the table name; returns no Puts for empty events.
+  - `Runtime.appendUnconditional` — rejects > 100 items with a clear `limit exceeded` error before any AWS call.
+  - All 26 tests pass; root build clean (zero warnings).
+
+### Trade-offs accepted
+
+- Per-write cost rose from `1× WCU/item` (`BatchWriteItem`) to `2× WCU/item` (`TransactWriteItems`). For a single-event/single-tag append, that's 1 → 4 WCU. Translation/seed/replay paths now pay this for the correctness benefit.
+- 100-item per-call cap (the `TransactWriteItems` limit) replaces the 25-item cap of `BatchWriteItem`. Net more headroom per call, though both still require chunking at the call site for large imports.
+
+### Open follow-ups
+
+- **Integration test against real DynamoDB** — deferred to [`dcb-dynamodb-atomic-append-integration-test.md`](../Backlog/dcb-dynamodb-atomic-append-integration-test.md). Should add a scenario: after an unconditional append, a subsequent conditional append on the same tags is forced to use `lastPosition <= :after` instead of `attribute_not_exists`.
+- **Multi-table fence semantics** — not actionable here; only relevant if a translation slice is configured to write events into a different table than the conditional writers read from. No such configuration exists in the repo today.
+- **Backwards compat with seed/import scripts** producing > 100 events per call — must chunk at the call site. None exist in the workspace today; document the requirement when one appears.

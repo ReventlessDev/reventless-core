@@ -232,6 +232,57 @@ describe("Runtime.buildQueryByPartitionKeyInput", () => {
   });
 });
 
+describe("Runtime.buildEventPuts", () => {
+  let event = (eventType, tags) => ({
+    eventType: eventType,
+    data: {},
+    tags: tags
+  });
+  test("emits one Put per event with the table name", () => {
+    let puts = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildEventPuts(table, [
+      event("Created", [{
+          key: "orderId",
+          value: "o1"
+        }]),
+      event("Shipped", [{
+          key: "orderId",
+          value: "o1"
+        }])
+    ], "100", undefined);
+    expect(puts.length).toBe(2);
+    let first = puts[0];
+    expect(Stdlib_Option.map(first.Put, p => p.TableName)).toEqual("TestTable");
+  });
+  test("returns no Puts when events is empty", () => {
+    let puts = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildEventPuts(table, [], "100", undefined);
+    expect(puts.length).toBe(0);
+  });
+});
+
+describe("Runtime.appendUnconditional", () => {
+  test("rejects appends exceeding 100 items with a clear error", async () => {
+    let manyTags = Stdlib_Array.fromInitializer(100, i => ({
+      key: "k",
+      value: `v` + i.toString()
+    }));
+    let events = manyTags.map(t => {
+      let eventType = "Foo";
+      let tags = [t];
+      return {
+        eventType: eventType,
+        data: {},
+        tags: tags
+      };
+    });
+    let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendUnconditional(table, events, undefined);
+    if (result.TAG === "Ok") {
+      expect("expected Error, got Ok").toBe("");
+      return;
+    }
+    expect(result._0.includes("limit exceeded")).toBe(true);
+  });
+});
+
 describe("Runtime.appendConditional", () => {
   test("rejects tagless conditions with a clear error", async () => {
     let cond_query = [{

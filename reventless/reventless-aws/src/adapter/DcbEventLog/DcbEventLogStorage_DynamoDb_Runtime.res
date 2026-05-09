@@ -473,24 +473,6 @@ let read = (table: resolvedTable) =>
     }
   }
 
-let writeEventsWithPosition = async (
-  table: resolvedTable,
-  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
-  basePosition: string,
-  ~partitionTag=?,
-) => {
-  let items = events->Array.mapWithIndex((event, idx) => {
-    let position = generatePositionForBatch(basePosition, idx)
-    toItem(position, event, ~partitionTag?)
-  })
-
-  await items
-  ->Array.map(toPutRequest)
-  ->toTable(table.name)
-  ->batchWriteWithRetries
-  ->Effect.runPromise
-}
-
 // --- DCB consistency fences ---
 //
 // A fence is a sentinel item in the same table whose `lastPosition` is bumped
@@ -604,15 +586,73 @@ let buildUnconditionalFenceUpdate = (
 // error before calling AWS rather than leaking ValidationException upstream.
 let transactWriteItemsLimit = 100
 
+let buildEventPuts = (
+  table: resolvedTable,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  basePosition: string,
+  ~partitionTag=?,
+) =>
+  events->Array.mapWithIndex((event, idx) => {
+    let position = generatePositionForBatch(basePosition, idx)
+    let item = toItem(position, event, ~partitionTag?)
+    let put: TransactWriteCommand.put = {
+      TransactWriteCommand.item: item,
+      tableName: table.name,
+    }
+    {TransactWriteCommand.put: put}
+  })
+
+let runTransactWrite = async (
+  input: TransactWriteCommand.input,
+  basePosition: string,
+  ~errorPrefix: string,
+) =>
+  await Effect.tryPromise(~catch=DynamoDb_Error.classify, () => input->TransactWriteCommand.send)
+  ->Effect.map(_ => Ok(basePosition))
+  ->Effect.catchAll(err =>
+    switch err {
+    | DynamoDb_Error.StaleState(msg) => Effect.succeed(Error(`Conflict: ${msg}`))
+    | Transient(msg) | Permanent(msg) =>
+      Effect.succeed(Error(`${errorPrefix}: ${msg}`))
+    }
+  )
+  ->Effect.runPromise
+
+// Writes events without a consistency check but still bumps every event-tag
+// fence so concurrent conditional writers cannot miss this commit. The fence
+// bumps are unconditional — there is no `after` to check against — but they
+// share a single `TransactWriteItems` with the event Puts so the operation is
+// atomic. Use this path for imports, seeding, and replay tooling that don't
+// need optimistic concurrency but must remain visible to DCB readers.
 let appendUnconditional = async (
   table: resolvedTable,
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
   ~partitionTag=?,
 ) => {
-  let position = generatePosition()
-  switch await writeEventsWithPosition(table, events, position, ~partitionTag?) {
-  | Ok() => Ok(position)
-  | Error(msg) => Error(msg)
+  let eventTags = collectEventTags(events)
+  let totalItems = events->Array.length + eventTags->Array.length
+
+  if events->Array.length == 0 {
+    Ok(generatePosition())
+  } else if totalItems > transactWriteItemsLimit {
+    Error(
+      `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
+    )
+  } else {
+    let basePosition = generatePosition()
+    let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
+    let updateItems =
+      eventTags->Array.map(tag => {
+        TransactWriteCommand.update: buildUnconditionalFenceUpdate(
+          table.name,
+          tag,
+          ~newPosition=basePosition,
+        ),
+      })
+    let input: TransactWriteCommand.input = {
+      transactItems: Array.concat(putItems, updateItems),
+    }
+    await runTransactWrite(input, basePosition, ~errorPrefix="DCB append failed")
   }
 }
 
@@ -659,15 +699,7 @@ let appendConditional = async (
         buildUnconditionalFenceUpdate(table.name, tag, ~newPosition=basePosition)
       )
 
-    let putItems = events->Array.mapWithIndex((event, idx) => {
-      let position = generatePositionForBatch(basePosition, idx)
-      let item = toItem(position, event, ~partitionTag?)
-      let put: TransactWriteCommand.put = {
-        TransactWriteCommand.item: item,
-        tableName: table.name,
-      }
-      {TransactWriteCommand.put: put}
-    })
+    let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
     let updateItems =
       Array.concat(conditionalUpdates, unconditionalUpdates)->Array.map(update => {
         TransactWriteCommand.update: update,
@@ -676,21 +708,7 @@ let appendConditional = async (
     let input: TransactWriteCommand.input = {
       transactItems: Array.concat(putItems, updateItems),
     }
-    let result = await Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => input->TransactWriteCommand.send,
-    )
-    ->Effect.map(_ => Ok(basePosition))
-    ->Effect.catchAll(err =>
-      switch err {
-      | DynamoDb_Error.StaleState(msg) =>
-        Effect.succeed(Error(`Conflict: ${msg}`))
-      | Transient(msg) | Permanent(msg) =>
-        Effect.succeed(Error(`DCB append failed: ${msg}`))
-      }
-    )
-    ->Effect.runPromise
-    result
+    await runTransactWrite(input, basePosition, ~errorPrefix="DCB append failed")
   }
 }
 

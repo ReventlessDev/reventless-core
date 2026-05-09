@@ -365,14 +365,6 @@ function read(table) {
   };
 }
 
-async function writeEventsWithPosition(table, events, basePosition, partitionTag) {
-  let items = events.map((event, idx) => {
-    let position = generatePositionForBatch(basePosition, idx);
-    return toItem(position, event, partitionTag);
-  });
-  return await Effect$1.runPromise(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(items.map(Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name)));
-}
-
 let fenceSortKey = "FENCE";
 
 function fencePartitionKey(tag) {
@@ -456,20 +448,68 @@ function buildUnconditionalFenceUpdate(tableName, tag, newPosition) {
   };
 }
 
+function buildEventPuts(table, events, basePosition, partitionTag) {
+  return events.map((event, idx) => {
+    let position = generatePositionForBatch(basePosition, idx);
+    let item = toItem(position, event, partitionTag);
+    let put_TableName = table.name;
+    let put = {
+      Item: item,
+      TableName: put_TableName
+    };
+    return {
+      Put: put
+    };
+  });
+}
+
+async function runTransactWrite(input, basePosition, errorPrefix) {
+  return await Effect$1.runPromise(Effect$1.catchAll(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
+    TAG: "Ok",
+    _0: basePosition
+  })), err => {
+    switch (err.TAG) {
+      case "StaleState" :
+        return Effect$1.succeed({
+          TAG: "Error",
+          _0: `Conflict: ` + err._0
+        });
+      case "Transient" :
+      case "Permanent" :
+        break;
+    }
+    return Effect$1.succeed({
+      TAG: "Error",
+      _0: errorPrefix + `: ` + err._0
+    });
+  }));
+}
+
 async function appendUnconditional(table, events, partitionTag) {
-  let position = generatePosition();
-  let msg = await writeEventsWithPosition(table, events, position, partitionTag);
-  if (msg.TAG === "Ok") {
+  let eventTags = collectEventTags(events);
+  let totalItems = events.length + eventTags.length | 0;
+  if (events.length === 0) {
     return {
       TAG: "Ok",
-      _0: position
-    };
-  } else {
-    return {
-      TAG: "Error",
-      _0: msg._0
+      _0: generatePosition()
     };
   }
+  if (totalItems > 100) {
+    return {
+      TAG: "Error",
+      _0: `DCB append: TransactWriteItems limit exceeded (` + totalItems.toString() + ` > ` + (100).toString() + `); reduce events or distinct tag values per command`
+    };
+  }
+  let basePosition = generatePosition();
+  let putItems = buildEventPuts(table, events, basePosition, partitionTag);
+  let updateItems = eventTags.map(tag => ({
+    Update: buildUnconditionalFenceUpdate(table.name, tag, basePosition)
+  }));
+  let input_TransactItems = putItems.concat(updateItems);
+  let input = {
+    TransactItems: input_TransactItems
+  };
+  return await runTransactWrite(input, basePosition, "DCB append failed");
 }
 
 async function appendConditional(table, events, cond, partitionTag) {
@@ -496,18 +536,7 @@ async function appendConditional(table, events, cond, partitionTag) {
   let basePosition = generatePosition();
   let conditionalUpdates = queryTags.map(tag => buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after));
   let unconditionalUpdates = extraEventTags.map(tag => buildUnconditionalFenceUpdate(table.name, tag, basePosition));
-  let putItems = events.map((event, idx) => {
-    let position = generatePositionForBatch(basePosition, idx);
-    let item = toItem(position, event, partitionTag);
-    let put_TableName = table.name;
-    let put = {
-      Item: item,
-      TableName: put_TableName
-    };
-    return {
-      Put: put
-    };
-  });
+  let putItems = buildEventPuts(table, events, basePosition, partitionTag);
   let updateItems = conditionalUpdates.concat(unconditionalUpdates).map(update => ({
     Update: update
   }));
@@ -515,25 +544,7 @@ async function appendConditional(table, events, cond, partitionTag) {
   let input = {
     TransactItems: input_TransactItems
   };
-  return await Effect$1.runPromise(Effect$1.catchAll(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
-    TAG: "Ok",
-    _0: basePosition
-  })), err => {
-    switch (err.TAG) {
-      case "StaleState" :
-        return Effect$1.succeed({
-          TAG: "Error",
-          _0: `Conflict: ` + err._0
-        });
-      case "Transient" :
-      case "Permanent" :
-        break;
-    }
-    return Effect$1.succeed({
-      TAG: "Error",
-      _0: `DCB append failed: ` + err._0
-    });
-  }));
+  return await runTransactWrite(input, basePosition, "DCB append failed");
 }
 
 function append(table, partitionTag) {
@@ -767,7 +778,6 @@ export {
   dedupByPosition,
   mergeSortedEvents,
   read,
-  writeEventsWithPosition,
   fenceSortKey,
   fencePartitionKey,
   fenceKey,
@@ -776,6 +786,8 @@ export {
   buildConditionalFenceUpdate,
   buildUnconditionalFenceUpdate,
   transactWriteItemsLimit,
+  buildEventPuts,
+  runTransactWrite,
   appendUnconditional,
   appendConditional,
   append,

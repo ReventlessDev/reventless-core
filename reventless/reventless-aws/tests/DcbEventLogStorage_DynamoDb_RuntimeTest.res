@@ -206,6 +206,49 @@ describe("Runtime.buildQueryByPartitionKeyInput", () => {
   })
 })
 
+describe("Runtime.buildEventPuts", () => {
+  let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+    eventType,
+    data: JSON.Object(Dict.make()),
+    tags,
+  }
+
+  test("emits one Put per event with the table name", () => {
+    let puts = Runtime.buildEventPuts(
+      table,
+      [event("Created", [tag("orderId", "o1")]), event("Shipped", [tag("orderId", "o1")])],
+      "100",
+    )
+    expect(puts->Array.length)->toBe(2)
+    let first = puts->Array.getUnsafe(0)
+    expect(first.put->Option.map(p => p.tableName))->toEqual(Some("TestTable"))
+  })
+
+  test("returns no Puts when events is empty", () => {
+    let puts = Runtime.buildEventPuts(table, [], "100")
+    expect(puts->Array.length)->toBe(0)
+  })
+})
+
+describe("Runtime.appendUnconditional", () => {
+  let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+    eventType,
+    data: JSON.Object(Dict.make()),
+    tags,
+  }
+
+  testAsync("rejects appends exceeding 100 items with a clear error", async () => {
+    // 100 distinct tag values across events → 100 fence bumps + 1 event = 101 items.
+    let manyTags = Array.fromInitializer(~length=100, i => tag("k", `v${i->Int.toString}`))
+    let events = manyTags->Array.map(t => event("Foo", [t]))
+    let result = await Runtime.appendUnconditional(table, events)
+    switch result {
+    | Error(msg) => expect(msg->String.includes("limit exceeded"))->toBe(true)
+    | Ok(_) => expect("expected Error, got Ok")->toBe("")
+    }
+  })
+})
+
 describe("Runtime.appendConditional", () => {
   testAsync("rejects tagless conditions with a clear error", async () => {
     let cond: Reventless.DcbTag.appendCondition = {
