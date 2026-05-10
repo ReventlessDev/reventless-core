@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.45 (2026-05-10)
+
+### Bug Fixes
+
+* **aggregate:** propagate decide-errors as Rejected outcomes ([7eb1d59](https://github.com/ReventlessDev/reventless-core/commit/7eb1d599dd7d02791bffa915c19c40479ce6e9da))
+
+
 # 3.0.0-alpha.44 (2026-05-05)
 
 **Note:** Version bump only for package @reventlessdev/reventless-in-memory

@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.30 (2026-05-10)
+
+### Bug Fixes
+
+* **aggregate:** atomic multi-event append via TransactWriteItems ([ef077f4](https://github.com/ReventlessDev/reventless-core/commit/ef077f4ddf7f5467d12ac8a8de4723016632db7c))
+* **aggregate:** cap appendWithCondition at 100 events up front ([7079401](https://github.com/ReventlessDev/reventless-core/commit/70794017b47272ffaae4242d476e7c2406d334e9))
+* **aggregate:** propagate decide-errors as Rejected outcomes ([7eb1d59](https://github.com/ReventlessDev/reventless-core/commit/7eb1d599dd7d02791bffa915c19c40479ce6e9da))
+
+
 # 1.0.0-alpha.29 (2026-05-05)
 
 ### Features
