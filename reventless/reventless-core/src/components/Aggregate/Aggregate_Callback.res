@@ -51,41 +51,75 @@ module Make = (
     msgId: Message.uuid(),
   }
 
-  // Folds a single command into the running accumulator: (currentState, collectedEvents).
-  // Delegates to Behavior.decide and handles errors by logging and continuing.
-  // Short-circuits on prior Error — subsequent commands in the batch are skipped.
-  let processCommand = (acc, command': Message.command'<Spec.Id.t, Spec.command>) =>
-    switch acc {
-    | Ok((state, events)) =>
-      let decide = () =>
-        switch Behavior.decide(state, command'.command) {
-        | Ok(generatedEvents) =>
-          let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
-          Ok((newState, Array.concat(events, [(generatedEvents, command'->updateMeta)])))
-        | Error(error) =>
-          let errorJson = error->Message.encode(Spec.errorSchema)->JSON.stringify
-          let id = command'.id->Spec.Id.toString
-          EffectLogger.logError(~comp, `decide error: ${errorJson} id=${id}`)->Effect.runSync
-          Ok((state, events))
-        }
-      Effect.succeed(decide())
-    | Error(_) as error => Effect.succeed(error)
+  // Per-command outcome carried through the fold, paired with the originating reference and meta.
+  type cmdOutcome =
+    | CmdOk(array<Spec.event>)
+    | CmdRejected({errorCode: string, errorDetail: string})
+
+  // Folds a single command into the running accumulator: (currentState, perCommandOutcomes).
+  // A domain rejection from Behavior.decide is recorded as `CmdRejected` (no state change,
+  // surviving commands in the batch continue); a successful decide records `CmdOk(events)`
+  // and advances state via `Behavior.evolve`.
+  let processCommand = (
+    (state, outcomes): (Behavior.state, array<(string, cmdOutcome, Message.meta)>),
+    topicItem: CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>,
+  ) => {
+    let {reference, command: command'} = topicItem
+    let meta = command'->updateMeta
+    switch Behavior.decide(state, command'.command) {
+    | Ok(generatedEvents) =>
+      let newState = generatedEvents->Array.reduce(state, Behavior.evolve)
+      (newState, Array.concat(outcomes, [(reference, CmdOk(generatedEvents), meta)]))
+    | Error(error) =>
+      let errorJson = error->Message.encode(Spec.errorSchema)
+      let errorCode = errorJson->Message.variantNameOfJson
+      // Strip the TAG so detail carries only the rejection payload (empty for unit errors).
+      let (_, payloadDict) = errorJson->Message.splitMessage
+      let errorDetail =
+        payloadDict->Dict.toArray->Array.length == 0
+          ? ""
+          : payloadDict->JSON.Encode.object->JSON.stringify
+      let id = command'.id->Spec.Id.toString
+      EffectLogger.logError(
+        ~comp,
+        `decide rejected: ${errorCode} ${errorDetail} id=${id}`,
+      )->Effect.runSync
+      (state, Array.concat(outcomes, [(reference, CmdRejected({errorCode, errorDetail}), meta)]))
     }
+  }
 
   let maxConflictRetries = 3
 
+  // Reports per-command outcomes on the inline side-channels and produces the
+  // per-reference Ok/Error array consumed by SQS-style consumers. Domain rejections
+  // are always Ok(reference) — SQS deletes the message because retry would not help —
+  // and the rich error code/detail flows to producers via reportRejected.
+  let reportFinalOutcomes = (
+    outcomes: array<(string, cmdOutcome, Message.meta)>,
+    ~entityId: string,
+    ~appendSucceeded: bool,
+    ~appendedEventCount: int,
+  ): array<result<string, string>> =>
+    outcomes->Array.map(((reference, outcome, _meta)) =>
+      switch outcome {
+      | CmdRejected({errorCode, errorDetail}) =>
+        CommandTopic_Helpers.reportRejected(reference, {errorCode, errorDetail})
+        Ok(reference)
+      | CmdOk(_) if appendSucceeded =>
+        CommandTopic_Helpers.reportAccepted(reference, {entityId, eventCount: appendedEventCount})
+        Ok(reference)
+      | CmdOk(_) => Error(reference)
+      }
+    )
+
   // Replays the event log, processes commands, and attempts to append.
-  // Returns Ok(references) on success, Error("conflict") on optimistic locking failure,
-  // or Error(references) on other append failures.
+  // Returns Ok(references) on success or non-conflict failure (per-reference Ok/Error
+  // reflects per-command success), Error("conflict") on optimistic-locking failure
+  // (caller retries the whole replay+process+append cycle).
   let replayProcessAppend = (
     id,
     topicItemsForId: array<CommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>>,
   ) => {
-    let (references, commands') =
-      topicItemsForId
-      ->Array.map(({reference, command}) => (reference, command))
-      ->Array.unzip
-
     let idStr = id->Spec.Id.toString
 
     Ops.eventLog.replayStream(id)
@@ -94,65 +128,67 @@ module Make = (
       EffectLogger.logInfo(~comp, `replay: id=${idStr}, ${n->Int.toString} event(s)`)
     )
     ->Effect.flatMap(((initialState, sequenceNr)) => {
-      commands'
-      ->Array.reduce(Effect.succeed(Ok((initialState, []))), (accEffect, command') =>
-        accEffect->Effect.flatMap(acc => processCommand(acc, command'))
-      )
-      ->Effect.flatMap(result => {
-        let events = switch result {
-        | Ok((_, generatedEventsWithMeta)) =>
-          generatedEventsWithMeta
-          ->Array.map(((events, meta)) => events->Array.map(event => {Message.id, meta, event}))
-          ->Array.flat
-        | Error(error) => JsError.throwWithMessage(error)
-        }
-        switch events {
-        | [] =>
-          references->Array.forEach(reference =>
-            CommandTopic_Helpers.reportAccepted(reference, {entityId: idStr, eventCount: 0})
-          )
-          EffectLogger.logInfo(~comp, `no events produced: id=${idStr}`)->Effect.map(
-            _ => Ok(references->Array.map(reference => Ok(reference))),
-          )
-        | generatedEvents' =>
-          let eventCount = generatedEvents'->Array.length->Int.toString
-          let eventDetails =
-            generatedEvents'->Array.map(event' => event'->eventDetail)->Array.join(", ")
-          let eventJsons =
-            generatedEvents'->Array.map(event' => event'->eventJson)->JSON.Encode.array
-          EffectLogger.logInfo(
-            ~comp,
-            ~detail=eventJsons,
-            `produced ${eventCount} event(s): [${eventDetails}]`,
-          )
-          ->Effect.flatMap(
-            _ => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, generatedEvents')),
-          )
-          ->Effect.flatMap(
-            appendResult =>
-              switch appendResult {
-              | Ok(_) =>
-                references->Array.forEach(reference =>
-                  CommandTopic_Helpers.reportAccepted(reference, {
-                    entityId: idStr,
-                    eventCount: generatedEvents'->Array.length,
-                  })
-                )
-                EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(
-                  _ => Ok(references->Array.map(reference => Ok(reference))),
-                )
-              | Error(msg) if msg->String.includes("conflict") =>
-                EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
-                  _ => Error("conflict"),
-                )
-              | Error(_) =>
-                EffectLogger.logError(~comp, `append failed: id=${idStr}`)->Effect.map(
-                  _ => Ok(references->Array.map(reference => Error(reference))),
-                )
-              },
-          )
-        }
-      })
+      let (_finalState, outcomes) =
+        topicItemsForId->Array.reduce((initialState, []), processCommand)
+
+      let eventsToAppend =
+        outcomes
+        ->Array.map(((_reference, outcome, meta)) =>
+          switch outcome {
+          | CmdOk(events) => events->Array.map(event => {Message.id, meta, event})
+          | CmdRejected(_) => []
+          }
+        )
+        ->Array.flat
+
+      switch eventsToAppend {
+      | [] =>
+        let perRef = reportFinalOutcomes(
+          outcomes,
+          ~entityId=idStr,
+          ~appendSucceeded=true,
+          ~appendedEventCount=0,
+        )
+        EffectLogger.logInfo(~comp, `no events produced: id=${idStr}`)->Effect.map(_ => Ok(perRef))
+      | generatedEvents' =>
+        let eventCount = generatedEvents'->Array.length->Int.toString
+        let eventDetails =
+          generatedEvents'->Array.map(event' => event'->eventDetail)->Array.join(", ")
+        let eventJsons = generatedEvents'->Array.map(event' => event'->eventJson)->JSON.Encode.array
+        EffectLogger.logInfo(
+          ~comp,
+          ~detail=eventJsons,
+          `produced ${eventCount} event(s): [${eventDetails}]`,
+        )
+        ->Effect.flatMap(
+          _ => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, generatedEvents')),
+        )
+        ->Effect.flatMap(
+          appendResult =>
+            switch appendResult {
+            | Ok(_) =>
+              let perRef = reportFinalOutcomes(
+                outcomes,
+                ~entityId=idStr,
+                ~appendSucceeded=true,
+                ~appendedEventCount=generatedEvents'->Array.length,
+              )
+              EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(_ => Ok(perRef))
+            | Error(msg) if msg->String.includes("conflict") =>
+              EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
+                _ => Error("conflict"),
+              )
+            | Error(_) =>
+              let perRef = reportFinalOutcomes(
+                outcomes,
+                ~entityId=idStr,
+                ~appendSucceeded=false,
+                ~appendedEventCount=0,
+              )
+              EffectLogger.logError(~comp, `append failed: id=${idStr}`)->Effect.map(_ => Ok(perRef))
+            },
+        )
+      }
     })
   }
 

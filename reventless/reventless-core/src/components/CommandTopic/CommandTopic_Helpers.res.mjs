@@ -11,8 +11,16 @@ let acceptedResultChannel = {
   contents: undefined
 };
 
+let rejectedResultChannel = {
+  contents: undefined
+};
+
 function reportAccepted(reference, result) {
   Stdlib_Option.forEach(acceptedResultChannel.contents, cb => cb(reference, result));
+}
+
+function reportRejected(reference, result) {
+  Stdlib_Option.forEach(rejectedResultChannel.contents, cb => cb(reference, result));
 }
 
 function encodeCommandJson(cmdJson) {
@@ -41,20 +49,36 @@ async function runInlineAndCollect(jsons, handleCmds) {
     };
   });
   let acceptedResults = {};
+  let rejectedResults = {};
   acceptedResultChannel.contents = (reference, result) => {
     acceptedResults[reference] = result;
   };
+  rejectedResultChannel.contents = (reference, result) => {
+    rejectedResults[reference] = result;
+  };
   let results = await Effect.runPromise(handleCmds(Stream.fromIterable(items)));
   acceptedResultChannel.contents = undefined;
+  rejectedResultChannel.contents = undefined;
   return jsons.map((cmdJson, i) => {
     let msgId = cmdJson.meta.msgId;
-    let match = results[i];
-    if (match !== undefined && match.TAG !== "Ok") {
+    let match = rejectedResults[msgId];
+    if (match !== undefined) {
+      let errorDetail = match.errorDetail;
+      let detail = errorDetail === "" ? undefined : errorDetail;
+      return {
+        TAG: "Rejected",
+        msgId: msgId,
+        errorCode: match.errorCode,
+        errorDetail: detail
+      };
+    }
+    let match$1 = results[i];
+    if (match$1 !== undefined && match$1.TAG !== "Ok") {
       return {
         TAG: "Rejected",
         msgId: msgId,
         errorCode: "Conflict",
-        errorDetail: match._0
+        errorDetail: match$1._0
       };
     }
     let ar = Stdlib_Option.getOr(acceptedResults[msgId], {
@@ -102,7 +126,9 @@ function getHandlers(typeName) {
 
 export {
   acceptedResultChannel,
+  rejectedResultChannel,
   reportAccepted,
+  reportRejected,
   encodeCommandJson,
   runInlineAndCollect,
   callHandlerWithArray,

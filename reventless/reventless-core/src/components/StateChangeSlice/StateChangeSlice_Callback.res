@@ -160,8 +160,18 @@ module Make = (
             }
           )
         | Error(error) =>
-          let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)->JSON.stringify
-          EffectLogger.logError(~comp, `decide error=${errorJson}`)->Effect.map(_ => Ok("rejected"))
+          let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)
+          let errorCode = errorJson->Message.variantNameOfJson
+          let (_, payloadDict) = errorJson->Message.splitMessage
+          let errorDetail =
+            payloadDict->Dict.toArray->Array.length == 0
+              ? ""
+              : payloadDict->JSON.Encode.object->JSON.stringify
+          CommandTopic_Helpers.reportRejected(cmdJson.meta.msgId, {errorCode, errorDetail})
+          EffectLogger.logError(
+            ~comp,
+            `decide rejected: ${errorCode} ${errorDetail}`,
+          )->Effect.map(_ => Ok("rejected"))
         }
       )
 

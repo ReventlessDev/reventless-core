@@ -124,4 +124,10 @@ Update existing slice / aggregate GWT tests as needed.
 
 ## Status
 
-Not started.
+Done. Implemented in this PR:
+
+- `CommandTopic_Helpers.res` — added `type rejectedResult`, `rejectedResultChannel`, `reportRejected`. `runInlineAndCollect` now sets both channels and gives `rejectedResultChannel` precedence over both `Accepted` and the synthesized `"Conflict"` Rejected.
+- `Aggregate_Callback.res` — replaced the `result<(state, events), error>` accumulator with a `(state, array<(reference, cmdOutcome, meta)>)` shape. `processCommand` now records `CmdOk(events)` / `CmdRejected({errorCode, errorDetail})` and never short-circuits. New `reportFinalOutcomes` walks the outcomes after append, calling `reportAccepted` for `CmdOk` and `reportRejected` for `CmdRejected`. Rejected refs always return `Ok(reference)` (SQS deletes — domain rejections aren't transient). The dead `Error(error) => JsError.throwWithMessage(error)` branch and `Error(_) as error` short-circuit branch are gone (also closes the `aggregate-remove-dead-error-branches` plan in the same change).
+- `StateChangeSlice_Callback.res` — decide-error branch now extracts `errorCode`/`errorDetail` and calls `reportRejected` on the same channel.
+- Tests — `tests/aggregate/AggregateRejectionTest.res` (4 cases: single rejection, mixed batch, all-reject, payload-less variant) and `tests/commandtopic/CommandTopicHelpersRejectionTest.res` (3 cases: precedence over Accepted, precedence over Error→Conflict, fallback to Conflict).
+- Docs — `aggregate.md` "Rejection contract" subsection; analysis doc marked resolved.

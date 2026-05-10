@@ -11,13 +11,28 @@ during inline `publishJsonsAndWait` execution and read by `runInlineAndCollect` 
 */
 type acceptedResult = {entityId?: string, eventCount: int}
 
+/**
+Carries an encoded domain rejection from `Behavior.decide` back to a synchronous producer.
+`errorCode` is the variant tag of `Spec.errorSchema` (e.g. `"AlreadyExists"`); `errorDetail`
+is the JSON-stringified error payload (or empty string for payload-less variants).
+*/
+type rejectedResult = {errorCode: string, errorDetail: string}
+
 // Side-channel for publishJsonsAndWait result propagation.
 // Set by runInlineAndCollect before invoking the handler; cleared after.
 // Callback implementations call reportAccepted during inline dispatch.
 let acceptedResultChannel: ref<option<(string, acceptedResult) => unit>> = ref(None)
 
+// Sibling side-channel for domain rejections — populated by callbacks when
+// `Behavior.decide` returns `Error`. Read by runInlineAndCollect to build
+// `Rejected` outcomes that carry the real error code and detail.
+let rejectedResultChannel: ref<option<(string, rejectedResult) => unit>> = ref(None)
+
 let reportAccepted = (reference: string, result: acceptedResult) =>
   acceptedResultChannel.contents->Option.forEach(cb => cb(reference, result))
+
+let reportRejected = (reference: string, result: rejectedResult) =>
+  rejectedResultChannel.contents->Option.forEach(cb => cb(reference, result))
 
 // Placed here (rather than CommandTopic.res) so runInlineAndCollect can use commandOutcome
 // without importing Adapter.res → @pulumi/pulumi. Re-exported by CommandTopic via include.
@@ -51,21 +66,34 @@ let runInlineAndCollect = async (
     item
   })
   let acceptedResults: dict<acceptedResult> = Dict.make()
+  let rejectedResults: dict<rejectedResult> = Dict.make()
   acceptedResultChannel.contents = Some(
     (reference, result) => acceptedResults->Dict.set(reference, result),
   )
+  rejectedResultChannel.contents = Some(
+    (reference, result) => rejectedResults->Dict.set(reference, result),
+  )
   let results = await handleCmds(Stream.fromIterable(items))->Effect.runPromise
   acceptedResultChannel.contents = None
+  rejectedResultChannel.contents = None
   jsons->Array.mapWithIndex((cmdJson, i) => {
     let msgId = cmdJson.meta.msgId
-    switch results->Array.get(i) {
-    | Some(Error(msg)) =>
-      Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
-    | _ =>
-      let ar = acceptedResults->Dict.get(msgId)->Option.getOr({eventCount: 0})
-      switch ar.entityId {
-      | Some(entityId) => Accepted({msgId, entityId, eventCount: ar.eventCount})
-      | None => Accepted({msgId, eventCount: ar.eventCount})
+    // Domain rejection from Behavior.decide takes precedence over both Accepted
+    // and the synthesized "Conflict" — it carries the most informative error.
+    switch rejectedResults->Dict.get(msgId) {
+    | Some({errorCode, errorDetail}) =>
+      let detail = errorDetail == "" ? None : Some(errorDetail)
+      Rejected({msgId, errorCode, errorDetail: detail})
+    | None =>
+      switch results->Array.get(i) {
+      | Some(Error(msg)) =>
+        Rejected({msgId, errorCode: "Conflict", errorDetail: Some(msg)})
+      | _ =>
+        let ar = acceptedResults->Dict.get(msgId)->Option.getOr({eventCount: 0})
+        switch ar.entityId {
+        | Some(entityId) => Accepted({msgId, entityId, eventCount: ar.eventCount})
+        | None => Accepted({msgId, eventCount: ar.eventCount})
+        }
       }
     }
   })

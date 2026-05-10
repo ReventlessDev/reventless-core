@@ -25,7 +25,11 @@ let componentType = "CommandTopic";
 
 let acceptedResultChannel = CommandTopic_Helpers$ReventlessCore.acceptedResultChannel;
 
+let rejectedResultChannel = CommandTopic_Helpers$ReventlessCore.rejectedResultChannel;
+
 let reportAccepted = CommandTopic_Helpers$ReventlessCore.reportAccepted;
+
+let reportRejected = CommandTopic_Helpers$ReventlessCore.reportRejected;
 
 let encodeCommandJson = CommandTopic_Helpers$ReventlessCore.encodeCommandJson;
 
@@ -45,7 +49,9 @@ export {
   componentType,
   NotPublishedToChannel,
   acceptedResultChannel,
+  rejectedResultChannel,
   reportAccepted,
+  reportRejected,
   encodeCommandJson,
   runInlineAndCollect,
   callHandlerWithArray,

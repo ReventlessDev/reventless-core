@@ -106,4 +106,4 @@ Move plan to `done/`. Update the analysis caveat to mark resolved.
 
 ## Status
 
-Not started. Trivial; ship opportunistically.
+Done — folded into [`aggregate-propagate-decide-errors`](aggregate-propagate-decide-errors.md). The new accumulator shape `(state, array<(reference, cmdOutcome, meta)>)` removes the outer `result` wrapper outright; the dead `Error(_) as error` arm in `processCommand` and the `JsError.throwWithMessage` arm in `replayProcessAppend` are gone. Existing Aggregate tests continue to pass unchanged.

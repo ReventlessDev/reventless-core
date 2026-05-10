@@ -181,6 +181,15 @@ The `evolve` function calculates the next state based on the current state and t
 
 The `decide` function takes the current state and a command, and returns `result<array<event>, error>`. It combines the former `create` and `execute` functions into a single function. Return `Ok([...events])` for accepted commands and `Error(error)` for rejected commands.
 
+### Rejection contract
+
+When `decide` returns `Error(error)`:
+
+- Producers using a synchronous channel (in-memory, `CommandTopicChannel_SQS_Sync`) receive `Rejected({errorCode, errorDetail})` from the `CommandResult`. `errorCode` is the variant tag of `Spec.errorSchema` (e.g. `"AlreadyExists"`); `errorDetail` carries the JSON-stringified payload — `None` for payload-less variants.
+- Async producers (`CommandTopicChannel_SQS_FIFO`) see the SQS message removed from the queue: domain rejections are deterministic, so retry would not help.
+- Within a batch of N commands for the same aggregate, a rejected command does not cancel the surviving ones — they still run, produce events, and report `Accepted`.
+- A successful `decide` that returns `Ok([])` (an idempotent no-op) reports `Accepted({eventCount: 0})` — distinct from `Rejected`.
+
 ### Call Sequence
 
 ```d2

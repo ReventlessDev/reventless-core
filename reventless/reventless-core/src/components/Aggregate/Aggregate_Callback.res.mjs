@@ -4,7 +4,6 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
-import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
@@ -33,13 +32,78 @@ function Make(Spec) {
         correlationId: init.correlationId
       };
     };
+    let processCommand = (param, topicItem) => {
+      let reference = topicItem.reference;
+      let command$p = topicItem.command;
+      let outcomes = param[1];
+      let state = param[0];
+      let meta = updateMeta(command$p);
+      let generatedEvents = Behavior.decide(state, command$p.command);
+      if (generatedEvents.TAG === "Ok") {
+        let generatedEvents$1 = generatedEvents._0;
+        let newState = Stdlib_Array.reduce(generatedEvents$1, state, Behavior.evolve);
+        return [
+          newState,
+          outcomes.concat([[
+              reference,
+              {
+                TAG: "CmdOk",
+                _0: generatedEvents$1
+              },
+              meta
+            ]])
+        ];
+      }
+      let errorJson = Message$ReventlessCore.encode(generatedEvents._0, Spec.errorSchema);
+      let errorCode = Message$ReventlessCore.variantNameOfJson(errorJson);
+      let match = Message$ReventlessCore.splitMessage(errorJson);
+      let payloadDict = match[1];
+      let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
+      let id = Spec.Id.toString(command$p.id);
+      Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decide rejected: ` + errorCode + ` ` + errorDetail + ` id=` + id));
+      return [
+        state,
+        outcomes.concat([[
+            reference,
+            {
+              TAG: "CmdRejected",
+              errorCode: errorCode,
+              errorDetail: errorDetail
+            },
+            meta
+          ]])
+      ];
+    };
+    let reportFinalOutcomes = (outcomes, entityId, appendSucceeded, appendedEventCount) => outcomes.map(param => {
+      let outcome = param[1];
+      let reference = param[0];
+      if (outcome.TAG === "CmdOk") {
+        if (appendSucceeded) {
+          CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
+            entityId: entityId,
+            eventCount: appendedEventCount
+          });
+          return {
+            TAG: "Ok",
+            _0: reference
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: reference
+          };
+        }
+      }
+      CommandTopic_Helpers$ReventlessCore.reportRejected(reference, {
+        errorCode: outcome.errorCode,
+        errorDetail: outcome.errorDetail
+      });
+      return {
+        TAG: "Ok",
+        _0: reference
+      };
+    });
     let replayProcessAppend = (id, topicItemsForId) => {
-      let match = Stdlib_Array.unzip(topicItemsForId.map(param => [
-        param.reference,
-        param.command
-      ]));
-      let commands$p = match[1];
-      let references = match[0];
       let idStr = Spec.Id.toString(id);
       return Effect.flatMap(Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id), [
         Behavior.initialState,
@@ -49,108 +113,59 @@ function Make(Spec) {
         param[1] + 1 | 0
       ]), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, `replay: id=` + idStr + `, ` + param[1].toString() + ` event(s)`)), param => {
         let sequenceNr = param[1];
-        return Effect.flatMap(Stdlib_Array.reduce(commands$p, Effect.succeed({
-          TAG: "Ok",
-          _0: [
-            param[0],
-            []
-          ]
-        }), (accEffect, command$p) => Effect.flatMap(accEffect, acc => {
-          if (acc.TAG !== "Ok") {
-            return Effect.succeed(acc);
+        let match = Stdlib_Array.reduce(topicItemsForId, [
+          param[0],
+          []
+        ], processCommand);
+        let outcomes = match[1];
+        let eventsToAppend = outcomes.map(param => {
+          let meta = param[2];
+          let outcome = param[1];
+          if (outcome.TAG === "CmdOk") {
+            return outcome._0.map(event => ({
+              id: id,
+              meta: meta,
+              event: event
+            }));
+          } else {
+            return [];
           }
-          let match = acc._0;
-          let events = match[1];
-          let state = match[0];
-          let decide = () => {
-            let generatedEvents = Behavior.decide(state, command$p.command);
-            if (generatedEvents.TAG === "Ok") {
-              let generatedEvents$1 = generatedEvents._0;
-              let newState = Stdlib_Array.reduce(generatedEvents$1, state, Behavior.evolve);
-              return {
-                TAG: "Ok",
-                _0: [
-                  newState,
-                  events.concat([[
-                      generatedEvents$1,
-                      updateMeta(command$p)
-                    ]])
-                ]
-              };
-            }
-            let errorJson = JSON.stringify(Message$ReventlessCore.encode(generatedEvents._0, Spec.errorSchema));
-            let id = Spec.Id.toString(command$p.id);
-            Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `decide error: ` + errorJson + ` id=` + id));
-            return {
-              TAG: "Ok",
-              _0: [
-                state,
-                events
-              ]
-            };
-          };
-          return Effect.succeed(decide());
-        })), result => {
-          let events;
-          events = result.TAG === "Ok" ? result._0[1].map(param => {
-              let meta = param[1];
-              return param[0].map(event => ({
-                id: id,
-                meta: meta,
-                event: event
-              }));
-            }).flat() : Stdlib_JsError.throwWithMessage(result._0);
-          if (events.length !== 0) {
-            let eventCount = events.length.toString();
-            let eventDetails = events.map(event$p => {
-              let json = Message$ReventlessCore.encode(event$p.event, Spec.eventSchema);
-              let name = LogFormat$ReventlessCore.bold(Message$ReventlessCore.variantNameOfJson(json));
-              let id = Spec.Id.toString(event$p.id);
-              return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
-            }).join(", ");
-            let eventJsons = events.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
-            return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, events))), appendResult => {
-              if (appendResult.TAG !== "Ok") {
-                if (appendResult._0.includes("conflict")) {
-                  return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
-                    TAG: "Error",
-                    _0: "conflict"
-                  }));
-                } else {
-                  return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr), () => ({
-                    TAG: "Ok",
-                    _0: references.map(reference => ({
-                      TAG: "Error",
-                      _0: reference
-                    }))
-                  }));
-                }
-              }
-              references.forEach(reference => CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
-                entityId: idStr,
-                eventCount: events.length
-              }));
+        }).flat();
+        if (eventsToAppend.length !== 0) {
+          let eventCount = eventsToAppend.length.toString();
+          let eventDetails = eventsToAppend.map(event$p => {
+            let json = Message$ReventlessCore.encode(event$p.event, Spec.eventSchema);
+            let name = LogFormat$ReventlessCore.bold(Message$ReventlessCore.variantNameOfJson(json));
+            let id = Spec.Id.toString(event$p.id);
+            return name + `(` + id + LogFormat$ReventlessCore.variantFields(json) + `)`;
+          }).join(", ");
+          let eventJsons = eventsToAppend.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
+          return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, eventsToAppend))), appendResult => {
+            if (appendResult.TAG === "Ok") {
+              let perRef = reportFinalOutcomes(outcomes, idStr, true, eventsToAppend.length);
               return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: id=` + idStr), () => ({
                 TAG: "Ok",
-                _0: references.map(reference => ({
-                  TAG: "Ok",
-                  _0: reference
-                }))
+                _0: perRef
               }));
-            });
-          }
-          references.forEach(reference => CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
-            entityId: idStr,
-            eventCount: 0
-          }));
-          return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
-            TAG: "Ok",
-            _0: references.map(reference => ({
+            }
+            if (appendResult._0.includes("conflict")) {
+              return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
+                TAG: "Error",
+                _0: "conflict"
+              }));
+            }
+            let perRef$1 = reportFinalOutcomes(outcomes, idStr, false, 0);
+            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr), () => ({
               TAG: "Ok",
-              _0: reference
-            }))
-          }));
-        });
+              _0: perRef$1
+            }));
+          });
+        }
+        let perRef = reportFinalOutcomes(outcomes, idStr, true, 0);
+        return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
+          TAG: "Ok",
+          _0: perRef
+        }));
       });
     };
     let handleCommands = stream => Effect.flatMap(groupTopicItemsByIdStream(stream), groups => Effect.map(Effect.all(groups.map(param => {

@@ -126,8 +126,16 @@ function Make(Spec) {
             }));
           });
         }
-        let errorJson = JSON.stringify(S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema));
-        return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `decide error=` + errorJson), () => ({
+        let errorJson = S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema);
+        let errorCode = Message$ReventlessCore.variantNameOfJson(errorJson);
+        let match = Message$ReventlessCore.splitMessage(errorJson);
+        let payloadDict = match[1];
+        let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
+        CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
+          errorCode: errorCode,
+          errorDetail: errorDetail
+        });
+        return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `decide rejected: ` + errorCode + ` ` + errorDetail), () => ({
           TAG: "Ok",
           _0: "rejected"
         }));
