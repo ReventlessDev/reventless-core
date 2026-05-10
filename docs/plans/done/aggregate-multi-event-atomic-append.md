@@ -118,4 +118,11 @@ Move this plan to `done/`. Update the analysis correctness verdict to mark resol
 
 ## Status
 
-Not started.
+Done. Implemented Option A:
+
+- `putItemsSequentialConditional` deleted from `EventLogStorage_DynamoDb_Runtime.res`.
+- `appendWithCondition` now routes any `count >= 2` through `transactWriteConditional`.
+- Extracted `buildTransactItems` as a pure helper (testable shape; mirrors the DCB adapter's `buildEventPuts`).
+- Tests in `EventLogStorage_DynamoDb_RuntimeTest.res` cover: shape for 2 items, scaling to 100 items (TransactWriteItems hard limit), empty input, and the existing > 100 fail-fast guard. Full `reventless-aws` test suite (82 tests) green; zero compiler warnings.
+- `packages/doc/docs-app/components/aggregate.md` carries a new "Cost model (DynamoDB adapter)" subsection right after the event-count cap admonition.
+- Analysis [`aggregate-command-handling-review.md`](../../analysis/aggregate-command-handling-review.md) updated: routing table, caveats, performance table, action backlog, and Summary all reflect the now-uniform atomic path.

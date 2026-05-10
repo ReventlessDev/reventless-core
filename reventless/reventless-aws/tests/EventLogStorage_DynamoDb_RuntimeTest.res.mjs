@@ -10,12 +10,16 @@ let table = {
   hashKey: "id"
 };
 
+function mkJson(i) {
+  return Object.fromEntries([[
+      "seq",
+      i.toString()
+    ]]);
+}
+
 describe("Runtime.append", () => {
   test("rejects > 100 events with a clear error before any AWS call", async () => {
-    let jsons = Stdlib_Array.fromInitializer(101, i => Object.fromEntries([[
-        "seq",
-        i.toString()
-      ]]));
+    let jsons = Stdlib_Array.fromInitializer(101, mkJson);
     let result = await EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table)(0, "test-id", jsons);
     if (result.TAG === "Ok") {
       expect("expected Error, got Ok").toBe("");
@@ -27,10 +31,36 @@ describe("Runtime.append", () => {
   });
 });
 
+describe("Runtime.buildTransactItems", () => {
+  test("builds one Put per event with attribute_not_exists(seq) condition", () => {
+    let jsons = Stdlib_Array.fromInitializer(2, mkJson);
+    let items = EventLogStorage_DynamoDb_Runtime$ReventlessAws.buildTransactItems("TestTable", jsons);
+    expect(items.length).toBe(2);
+    let first = items[0];
+    let p = first.Put;
+    if (p !== undefined) {
+      expect(p.TableName).toBe("TestTable");
+      expect(p.ConditionExpression).toEqual("attribute_not_exists(seq)");
+    } else {
+      expect("expected Put, got None").toBe("");
+    }
+  });
+  test("scales to 100 items (TransactWriteItems hard limit)", () => {
+    let jsons = Stdlib_Array.fromInitializer(100, mkJson);
+    let items = EventLogStorage_DynamoDb_Runtime$ReventlessAws.buildTransactItems("TestTable", jsons);
+    expect(items.length).toBe(100);
+  });
+  test("returns empty array for empty input", () => {
+    let items = EventLogStorage_DynamoDb_Runtime$ReventlessAws.buildTransactItems("TestTable", []);
+    expect(items.length).toBe(0);
+  });
+});
+
 let Runtime;
 
 export {
   Runtime,
   table,
+  mkJson,
 }
 /*  Not a pure module */

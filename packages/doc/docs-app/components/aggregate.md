@@ -185,6 +185,18 @@ The `decide` function takes the current state and a command, and returns `result
 A single command may produce at most **100 events**. This is the DynamoDB `TransactWriteItems` hard limit; the AWS adapter rejects oversized commands up front with a clear error. Larger fan-outs must be split across multiple commands.
 :::
 
+#### Cost model (DynamoDB adapter)
+
+A command that produces:
+
+| Events    | DynamoDB call         | Write cost per event |
+| --------- | --------------------- | -------------------- |
+| 1         | `PutItem`             | 1× WCU               |
+| 2 – 100   | `TransactWriteItems`  | 2× WCU               |
+| > 100     | rejected up front     | —                    |
+
+Multi-event commands always commit atomically: either every event is durable, or none are. The 2× WCU on the 2–100 band is the price DynamoDB charges for transactional atomicity.
+
 ### Rejection contract
 
 When `decide` returns `Error(error)`:

@@ -2,7 +2,6 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
-import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
@@ -18,32 +17,20 @@ function putItemConditional(tableName, json) {
   }));
 }
 
-function putItemsSequentialConditional(tableName, jsons) {
-  return Stdlib_Array.reduce(jsons, Effect$1.succeed({
-    TAG: "Ok",
-    _0: undefined
-  }), (acc, json) => Effect$1.flatMap(acc, result => {
-    if (result.TAG === "Ok") {
-      return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, json)), param => ({
-        TAG: "Ok",
-        _0: undefined
-      }));
-    } else {
-      return Effect$1.succeed(result);
-    }
-  }));
-}
-
-function transactWriteConditional(tableName, jsons) {
-  let transactItems = jsons.map(json => ({
+function buildTransactItems(tableName, jsons) {
+  return jsons.map(json => ({
     Put: {
       Item: json,
       TableName: tableName,
       ConditionExpression: "attribute_not_exists(seq)"
     }
   }));
+}
+
+function transactWriteConditional(tableName, jsons) {
+  let input_TransactItems = buildTransactItems(tableName, jsons);
   let input = {
-    TransactItems: transactItems
+    TransactItems: input_TransactItems
   };
   return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
     TAG: "Ok",
@@ -63,8 +50,6 @@ function appendWithCondition(tableName, jsons) {
       TAG: "Ok",
       _0: undefined
     }));
-  } else if (count <= 5) {
-    return putItemsSequentialConditional(tableName, jsons);
   } else {
     return transactWriteConditional(tableName, jsons);
   }
@@ -132,7 +117,7 @@ function appendStream(table) {
 
 export {
   putItemConditional,
-  putItemsSequentialConditional,
+  buildTransactItems,
   transactWriteConditional,
   appendWithCondition,
   append,

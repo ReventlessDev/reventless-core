@@ -9,11 +9,12 @@ let table: Util_DynamoDb_Runtime.resolvedTable = {
   hashKey: "id",
 }
 
+let mkJson = i =>
+  [("seq", i->Int.toString->JSON.Encode.string)]->Dict.fromArray->JSON.Encode.object
+
 describe("Runtime.append", () => {
   testAsync("rejects > 100 events with a clear error before any AWS call", async () => {
-    let jsons = Array.fromInitializer(~length=101, i =>
-      [("seq", i->Int.toString->JSON.Encode.string)]->Dict.fromArray->JSON.Encode.object
-    )
+    let jsons = Array.fromInitializer(~length=101, mkJson)
     let result = await Runtime.append(table)(0, "test-id", jsons)
     switch result {
     | Error(msg) =>
@@ -21,5 +22,31 @@ describe("Runtime.append", () => {
       expect(msg->String.includes("101"))->toBe(true)
     | Ok(_) => expect("expected Error, got Ok")->toBe("")
     }
+  })
+})
+
+describe("Runtime.buildTransactItems", () => {
+  test("builds one Put per event with attribute_not_exists(seq) condition", () => {
+    let jsons = Array.fromInitializer(~length=2, mkJson)
+    let items = Runtime.buildTransactItems(table.name, jsons)
+    expect(items->Array.length)->toBe(2)
+    let first = items->Array.getUnsafe(0)
+    switch first.put {
+    | Some(p) =>
+      expect(p.tableName)->toBe("TestTable")
+      expect(p.conditionExpression)->toEqual(Some("attribute_not_exists(seq)"))
+    | None => expect("expected Put, got None")->toBe("")
+    }
+  })
+
+  test("scales to 100 items (TransactWriteItems hard limit)", () => {
+    let jsons = Array.fromInitializer(~length=100, mkJson)
+    let items = Runtime.buildTransactItems(table.name, jsons)
+    expect(items->Array.length)->toBe(100)
+  })
+
+  test("returns empty array for empty input", () => {
+    let items = Runtime.buildTransactItems(table.name, [])
+    expect(items->Array.length)->toBe(0)
   })
 })

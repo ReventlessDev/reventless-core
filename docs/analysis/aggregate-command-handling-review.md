@@ -40,9 +40,8 @@ Single DDB table keyed by `(id PK, seq SK)` where `seq` is a zero-padded 9-digit
 | Event count | Strategy | Atomic? | WCU |
 |---|---|---|---|
 | 1 | Single conditional `PutItem` | ✓ | 1× |
-| 2–5 | Sequential conditional `PutItem` ([L13-25](../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L13-L25)) | ✗ | 1× per event |
-| 6–100 | `TransactWriteItems` with `attribute_not_exists(seq)` per put ([L27-40](../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L27-L40)) | ✓ | 2× per event |
-| > 100 | Not handled — `TransactWriteItems` silently truncated by AWS unless callers cap | ⚠ | — |
+| 2–100 | `TransactWriteItems` with `attribute_not_exists(seq)` per put | ✓ | 2× per event |
+| > 100 | Rejected up front with `"max 100 events per command"` | ✓ (fail-fast) | — |
 
 Replay uses `consistentRead: true` ([L77](../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L77)) — strongly consistent, so any committed write from another Lambda is visible.
 
@@ -70,10 +69,7 @@ Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTo
 
 ### Caveats and footguns
 
-- ⚠ **Multi-event sequential put (count 2–5) is not atomic.** `putItemsSequentialConditional` does N independent conditional puts ([L13-25](../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res#L13-L25)). If put #1 succeeds and put #2 fails with a **non-transient** error (e.g., `ValidationException`, `AccessDeniedException`, item-size limit), event #1 is durably committed but the handler reports `Error` to the producer. Recovery path:
-  - **Transient mid-batch error**: storage-level retry re-runs the whole `appendWithCondition`. The first put now hits `attribute_not_exists` violation → `StaleState` → `"conflict"` → Aggregate's conflict-retry replays and observes the partial event → produces correct deltas → ends consistent. ✓ (recovery works.)
-  - **Non-transient mid-batch error**: no retry; the fail-fast Effect propagates and the Aggregate handler returns `Error` to SQS for the whole batch. The first event is now committed but the producer thinks the command was rejected, and SQS will redeliver. The redelivery's replay sees event #1 already applied; `decide` runs against the post-event-1 state. If `decide` is deterministic, it still produces an event #2 and writes it; the user-visible outcome is that "command produced 2 events" took two SQS attempts to settle. Not strictly a correctness bug for deterministic domains but the producer outcome (`Rejected` then `Accepted`) is misleading for the same `msgId`.
-  - **Mitigation**: route count 2–5 through `TransactWriteItems` too. The threshold exists to save 50% WCU on small multi-event commands; whether that saving justifies the partial-write ambiguity is a domain call.
+- ✓ **Multi-event appends are atomic.** Resolved by [`aggregate-multi-event-atomic-append`](../plans/done/aggregate-multi-event-atomic-append.md): the count-2-to-5 sequential branch is gone; counts ≥ 2 always go through `TransactWriteItems`. Either every event commits or none do. Cost: +100% WCU on the 2–5 band (1× → 2× per event), documented in [aggregate.md](../../packages/doc/docs-app/components/aggregate.md). The misleading "Rejected then Accepted for the same msgId" sequence on non-transient mid-batch errors can no longer occur.
 - ✓ **`appendWithCondition` enforces the `count ≤ 100` cap up front.** Resolved by [`aggregate-event-count-cap-validation`](../plans/done/aggregate-event-count-cap-validation.md): `appendWithCondition` returns `Error("EventLog.append: max 100 events per command, got N")` before any AWS SDK call. The non-transient string skips `Effect.retry`'s `isTransient` filter and fails fast.
 - ✓ **Decide errors propagate as `Rejected`.** Originally `processCommand`'s `Error(error)` branch logged and returned `Ok` unchanged, so a domain rejection (e.g., `OrderAlreadyShipped`) was indistinguishable from a successful no-op at the producer. Resolved by the [`aggregate-propagate-decide-errors`](../plans/done/aggregate-propagate-decide-errors.md) plan: the accumulator now records per-command `CmdOk` / `CmdRejected` outcomes, a sibling `rejectedResultChannel` carries `{errorCode, errorDetail}` to synchronous producers, and rejected commands still return `Ok(reference)` so SQS deletes them (domain rejections are deterministic — redelivery doesn't help). Surviving commands inside the same batch continue to produce events and report `Accepted`. The DCB/StateChangeSlice path was migrated to the same channel in the same change.
 - ✓ **Dead branches removed.** The `Error(_) as error` short-circuit in `processCommand` and the `Error(error) => JsError.throwWithMessage(error)` branch in `replayProcessAppend` were unreachable (the old `processCommand` always returned `Ok`). Both went away with the accumulator refactor in [`aggregate-propagate-decide-errors`](../plans/done/aggregate-propagate-decide-errors.md), folding the `aggregate-remove-dead-error-branches` cleanup into the same change.
@@ -105,8 +101,7 @@ Every AWS Aggregate builder pairs `EventLogStorage.DynamoDbStream` with `EventTo
 | Replay on every batch | O(N) DDB reads × 2× RCU (strong) | No snapshot, no in-memory cache between invocations. Acceptable for short-lived aggregates; problematic for log-heavy ones (e.g., long-running orders, persistent counters). |
 | Per-command decide | O(events_in_batch) | Pure ReScript, in-memory; negligible. |
 | Append (1 event) | 1× WCU + 1× stream record | Optimal. |
-| Append (2–5 events) | N× WCU + N× stream records | Sequential — N round-trips of latency. Saves 50% WCU vs the transact path. |
-| Append (6–100 events) | 2× N WCU + N× stream records | One round-trip but doubled WCU per item (TransactWriteItems pricing). |
+| Append (2–100 events) | 2× N WCU + N× stream records | One round-trip via `TransactWriteItems`; doubled WCU per item is the price of atomicity. |
 | Conflict retry | 1 extra replay + 1 extra append per attempt | Capped at 3 retries; in steady-state contention this dominates. |
 | Cross-aggregate concurrency | Unbounded `Effect.all` | Limited only by DDB partition throughput and Lambda memory. Hot partitions can throttle; transient retries help but exhaustion still possible under sustained burst. |
 
@@ -152,7 +147,7 @@ The biggest realistic win is **snapshotting**: turns replay cost from O(N) to O(
 |---|------|-------|--------|------------------|-------------------|
 | 1 | [`aggregate-propagate-decide-errors`](../plans/done/aggregate-propagate-decide-errors.md) ✓ done | **Correctness — P0** | Medium (~3–5 d incl. tests) | Zero | Most user-visible gap. Domain rejections now flow back as `Rejected({errorCode, errorDetail})`. |
 | 2 | [`aggregate-event-count-cap-validation`](../plans/Backlog/aggregate-event-count-cap-validation.md) | **Correctness sharp edge — P1** | Tiny (~½ d) | Zero | One-line guard. Matches the DCB path's pre-flight rejection of > 100-item transactions. Cheapest possible win. |
-| 3 | [`aggregate-multi-event-atomic-append`](../plans/Backlog/aggregate-multi-event-atomic-append.md) | **Correctness — P1** | Small (~2–3 d) | +100% WCU on 2–5-event commands (single-event commands unchanged) | Closes the partial-write window for non-transient mid-batch errors. Cost increase is real but bounded; ship after #2 so the cap is enforced uniformly. |
+| 3 | [`aggregate-multi-event-atomic-append`](../plans/done/aggregate-multi-event-atomic-append.md) ✓ done | **Correctness — P1** | Small (~2–3 d) | +100% WCU on 2–5-event commands (single-event commands unchanged) | Closed the partial-write window for non-transient mid-batch errors. Counts ≥ 2 now always go through `TransactWriteItems`. |
 | 4 | [`aggregate-remove-dead-error-branches`](../plans/done/aggregate-remove-dead-error-branches.md) ✓ done | **Cleanup — P2** | Tiny (~½ d) | Zero | Folded into #1's PR — the new accumulator shape removed both branches outright. |
 | 5 | [`aggregate-msgid-causation-correlation`](../plans/Backlog/aggregate-msgid-causation-correlation.md) | **Observability — P2** | Small (~2–3 d) | Zero | Closes the command→event correlation gap. Schema-additive (`@s.optional causationId`); backwards compatible. |
 | 6 | [`aggregate-replay-cost-documentation`](../plans/Backlog/aggregate-replay-cost-documentation.md) | **Documentation — P2** | Small (~1–2 d incl. benchmark) | Zero | Operators sizing long-aggregate workloads need the cost / throughput-ceiling profile written down. Prerequisite for justifying or deferring #7. |
@@ -197,10 +192,10 @@ If you optimise for *value over a 6-month horizon* (correctness first, then runt
 | Dimension | Verdict |
 |---|---|
 | **Correctness (single-event commands)** | ✓ Sound. OCC + strong-consistent replay + DDB-Streams outbox is the textbook recipe. |
-| **Correctness (multi-event commands, count 2–5)** | ⚠ Partial-write window on non-transient mid-batch errors; recovers on transient errors via OCC retry. |
+| **Correctness (multi-event commands, count 2–100)** | ✓ Atomic via `TransactWriteItems` (resolved by [`aggregate-multi-event-atomic-append`](../plans/done/aggregate-multi-event-atomic-append.md)). |
 | **Correctness (decide errors)** | ✓ Propagated as `Rejected({errorCode, errorDetail})` via `rejectedResultChannel`; rejected refs still return `Ok(reference)` so SQS deletes them. |
 | **Consistency** | ✓ Per-aggregate FIFO and strong-read replay close all the obvious windows; cross-aggregate ordering is intentionally not preserved. |
 | **Performance** | △ Acceptable for short aggregates; degrades linearly with event-log length. No snapshotting. |
 | **Cost** | △ Replay-dominated. Snapshots would cut steady-state cost ~10× on long aggregates. |
 
-The architecture is sound; with the silent-decide-error gap closed (decide rejections now flow back as `Rejected({errorCode, errorDetail})`), the remaining implementation rough edge is the multi-event partial-write window (count 2–5, non-transient mid-batch error). Performance and cost are dominated by the no-snapshot replay model, which is a deliberate simplicity choice rather than a defect.
+The architecture is sound; with the silent-decide-error gap closed (decide rejections now flow back as `Rejected({errorCode, errorDetail})`) and the multi-event partial-write window closed (counts ≥ 2 always use `TransactWriteItems`), the remaining work is observability (#5 causation correlation) and capacity (#6 / #7 snapshotting). Performance and cost are dominated by the no-snapshot replay model, which is a deliberate simplicity choice rather than a defect.

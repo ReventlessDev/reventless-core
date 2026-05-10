@@ -10,29 +10,19 @@ let putItemConditional = (tableName, json) =>
   ->PutCommand.make
   ->PutCommand.send
 
-let putItemsSequentialConditional = (tableName, jsons) =>
-  jsons->Array.reduce(Effect.succeed(Ok()), (acc, json) =>
-    acc->Effect.flatMap(result =>
-      switch result {
-      | Ok() =>
-        Effect.tryPromise(
-          ~catch=DynamoDb_Error.classify,
-          () => putItemConditional(tableName, json),
-        )->Effect.map(_ => Ok())
-      | Error(_) as err => Effect.succeed(err)
-      }
-    )
-  )
-
-let transactWriteConditional = (tableName, jsons) => {
-  let transactItems = jsons->Array.map(json => {
+let buildTransactItems = (tableName, jsons) =>
+  jsons->Array.map(json => {
     TransactWriteCommand.put: {
       TransactWriteCommand.item: json,
       tableName,
       conditionExpression: "attribute_not_exists(seq)",
     },
   })
-  let input: TransactWriteCommand.input = {transactItems: transactItems}
+
+let transactWriteConditional = (tableName, jsons) => {
+  let input: TransactWriteCommand.input = {
+    transactItems: buildTransactItems(tableName, jsons),
+  }
   Effect.tryPromise(
     ~catch=DynamoDb_Error.classify,
     () => input->TransactWriteCommand.send,
@@ -52,8 +42,6 @@ let appendWithCondition = (tableName, jsons) => {
       ~catch=DynamoDb_Error.classify,
       () => putItemConditional(tableName, jsons->Array.getUnsafe(0)),
     )->Effect.map(_ => Ok())
-  } else if count <= 5 {
-    putItemsSequentialConditional(tableName, jsons)
   } else {
     transactWriteConditional(tableName, jsons)
   }
