@@ -67,4 +67,4 @@ Move this plan to `done/`. Update the analysis to mark resolved.
 
 ## Status
 
-Not started. Ship as a precursor to (or alongside) [`aggregate-multi-event-atomic-append.md`](aggregate-multi-event-atomic-append.md).
+Done. The guard lives at the top of [`appendWithCondition`](../../../reventless/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res); coverage is in [`EventLogStorage_DynamoDb_RuntimeTest.res`](../../../reventless/reventless-aws/tests/EventLogStorage_DynamoDb_RuntimeTest.res). The cap is documented in [`aggregate.md`](../../../packages/doc/docs-app/components/aggregate.md) under `decide`. Sibling [`aggregate-multi-event-atomic-append.md`](../Backlog/aggregate-multi-event-atomic-append.md) can now build on the unified-path assumption.

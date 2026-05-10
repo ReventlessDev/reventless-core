@@ -53,7 +53,12 @@ function transactWriteConditional(tableName, jsons) {
 
 function appendWithCondition(tableName, jsons) {
   let count = jsons.length;
-  if (count === 1) {
+  if (count > 100) {
+    return Effect$1.succeed({
+      TAG: "Error",
+      _0: `EventLog.append: max 100 events per command, got ` + count.toString()
+    });
+  } else if (count === 1) {
     return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => putItemConditional(tableName, jsons[0])), param => ({
       TAG: "Ok",
       _0: undefined

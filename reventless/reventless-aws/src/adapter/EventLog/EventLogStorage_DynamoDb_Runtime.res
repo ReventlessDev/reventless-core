@@ -41,7 +41,13 @@ let transactWriteConditional = (tableName, jsons) => {
 
 let appendWithCondition = (tableName, jsons) => {
   let count = jsons->Array.length
-  if count == 1 {
+  if count > 100 {
+    Effect.succeed(
+      Error(
+        `EventLog.append: max 100 events per command, got ${count->Int.toString}`,
+      ),
+    )
+  } else if count == 1 {
     Effect.tryPromise(
       ~catch=DynamoDb_Error.classify,
       () => putItemConditional(tableName, jsons->Array.getUnsafe(0)),

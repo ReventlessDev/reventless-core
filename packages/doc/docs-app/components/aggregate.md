@@ -181,6 +181,10 @@ The `evolve` function calculates the next state based on the current state and t
 
 The `decide` function takes the current state and a command, and returns `result<array<event>, error>`. It combines the former `create` and `execute` functions into a single function. Return `Ok([...events])` for accepted commands and `Error(error)` for rejected commands.
 
+:::caution Event-count cap
+A single command may produce at most **100 events**. This is the DynamoDB `TransactWriteItems` hard limit; the AWS adapter rejects oversized commands up front with a clear error. Larger fan-outs must be split across multiple commands.
+:::
+
 ### Rejection contract
 
 When `decide` returns `Error(error)`:
