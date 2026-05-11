@@ -59,7 +59,8 @@
   "pnpm": {
     "overrides": {
       "@docusaurus/theme-common": "3.9.2",
-      "graphql": "^16.0.0"
+      "graphql": "^16.0.0",
+      "webpackbar": "^7.0.0"
     }
   },
   "version": "",
