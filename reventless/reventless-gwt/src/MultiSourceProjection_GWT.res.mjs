@@ -176,17 +176,10 @@ function Make(Projection) {
     event: event
   })));
   let givenEventsWithTime = events => update({}, events.map(param => {
-    let init = meta.contents;
+    let newrecord = {...meta.contents};
     return {
       id: testId.contents,
-      meta: {
-        service: init.service,
-        time: param[0],
-        ip: init.ip,
-        user: init.user,
-        msgId: init.msgId,
-        correlationId: init.correlationId
-      },
+      meta: (newrecord.time = param[0], newrecord),
       event: param[1]
     };
   }));
@@ -201,32 +194,18 @@ function Make(Projection) {
     event: event
   }))))());
   let whenEventWithTime = (store, time, event) => (() => (async () => {
-    let init = meta.contents;
+    let newrecord = {...meta.contents};
     return await update(await store, [{
         id: testId.contents,
-        meta: {
-          service: init.service,
-          time: time,
-          ip: init.ip,
-          user: init.user,
-          msgId: init.msgId,
-          correlationId: init.correlationId
-        },
+        meta: (newrecord.time = time, newrecord),
         event: event
       }]);
   })());
   let whenEventsWithTime = (store, events) => (() => (async () => await update(await store, events.map(param => {
-    let init = meta.contents;
+    let newrecord = {...meta.contents};
     return {
       id: testId.contents,
-      meta: {
-        service: init.service,
-        time: param[0],
-        ip: init.ip,
-        user: init.user,
-        msgId: init.msgId,
-        correlationId: init.correlationId
-      },
+      meta: (newrecord.time = param[0], newrecord),
       event: param[1]
     };
   })))());

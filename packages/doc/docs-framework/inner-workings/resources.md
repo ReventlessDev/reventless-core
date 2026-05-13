@@ -62,8 +62,8 @@ Resources are created during infrastructure provisioning by adapter implementati
 let make: Reventless.EventLog_Adapter.storageMaker = (~name, ~opts) => {
   let table = Util.DynamoDb.makeTable(
     name,
-    ~attributes=[{name: "id", type_: "S"}, {name: "sequenceNr", type_: "S"}],
-    ~rangeKey="sequenceNr",
+    ~attributes=[{name: "id", type_: "S"}, {name: "position", type_: "S"}],
+    ~rangeKey="position",
     ~tags=AWS.Tags.make(~name, Reventless.EventLog.componentType),
     ~opts,
   )
@@ -257,8 +257,8 @@ Complete flow from table creation to resource exposure:
 // 1. Create the DynamoDB table using Pulumi
 let table = Util.DynamoDb.makeTable(
   name,
-  ~attributes=[{name: "id", type_: "S"}, {name: "sequenceNr", type_: "S"}],
-  ~rangeKey="sequenceNr",
+  ~attributes=[{name: "id", type_: "S"}, {name: "position", type_: "S"}],
+  ~rangeKey="position",
   ~tags=AWS.Tags.make(~name, Reventless.EventLog.componentType),
   ~opts,
 )

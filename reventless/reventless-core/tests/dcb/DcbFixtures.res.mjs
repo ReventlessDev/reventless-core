@@ -6,6 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 
 S.enableJson();
 
@@ -256,7 +257,9 @@ function makeMockStorage() {
         position: pos,
         eventType: event.eventType,
         data: event.data,
-        tags: event.tags
+        tags: event.tags,
+        meta: event.meta,
+        recordedAt: Message$ReventlessCore.nowAsISOString()
       };
     });
     events.contents = events.contents.concat(storedEvents);

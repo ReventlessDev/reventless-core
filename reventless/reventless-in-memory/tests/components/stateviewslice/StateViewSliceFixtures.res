@@ -91,7 +91,8 @@ let encodeEvent = (event: ItemEventLog.event): ReventlessInfra.DcbEventLog.rawEv
   let json = event->S.reverseConvertToJsonOrThrow(ItemEventLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(ItemEventLog.eventSchema, event)
-  {eventType, data: JSON.Object(data), tags}
+  let meta = ReventlessCore.Message.generateMeta(~service="test")
+  {eventType, data: JSON.Object(data), tags, meta}
 }
 
 // Append an event to the DcbEventLog (publishes to event topic automatically)

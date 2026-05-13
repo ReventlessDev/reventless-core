@@ -29,20 +29,14 @@ function Make(MappingImpl) {
           let targetId = x._0;
           let cmdJson = Message$Reventless.encode(targetCmd, Delegate.commandSchema);
           compLog(`ExtensionPoint(` + extensionPointName + `)`, `EP→` + delegateName + `: ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(cmdJson)) + `(` + targetId + `)`);
+          let newrecord = {...meta};
           return {
             TAG: "AbstractPublishCommand",
             _0: delegateName,
             _1: reference,
             _2: {
               id: targetId,
-              meta: {
-                service: Delegate.name,
-                time: meta.time,
-                ip: meta.ip,
-                user: meta.user,
-                msgId: Uuid.v4(),
-                correlationId: meta.correlationId
-              },
+              meta: (newrecord.msgId = Uuid.v4(), newrecord.service = Delegate.name, newrecord),
               commandJson: Message$Reventless.encode(targetCmd, Delegate.commandSchema)
             }
           };
@@ -72,25 +66,14 @@ function Make(MappingImpl) {
           let id = eventAction._0;
           let eventJson = Message$Reventless.encode(eventAction._1, Spec.eventSchema);
           compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → ` + AnsiStyle$Reventless.bold(Message$Reventless.variantNameOfJson(eventJson)) + `(` + id + `)`);
-          let meta_service = Spec.name;
-          let meta_time = meta.time;
-          let meta_ip = meta.ip;
-          let meta_user = meta.user;
-          let meta_msgId = Uuid.v4();
-          let meta_correlationId = meta.correlationId;
-          let meta$1 = {
-            service: meta_service,
-            time: meta_time,
-            ip: meta_ip,
-            user: meta_user,
-            msgId: meta_msgId,
-            correlationId: meta_correlationId
-          };
-          let eventJson$p = Message$Reventless.composeEventJson$p(id, meta$1, eventJson);
+          let newrecord = {...meta};
+          newrecord.msgId = Uuid.v4();
+          newrecord.service = Spec.name;
+          let eventJson$p = Message$Reventless.composeEventJson$p(id, newrecord, eventJson);
           return {
             TAG: "AbstractPublishEvent",
             _0: id,
-            _1: meta$1,
+            _1: newrecord,
             _2: eventJson$p
           };
         case "PublishEventAsync" :

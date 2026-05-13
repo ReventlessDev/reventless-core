@@ -11,7 +11,8 @@ let encodeEvent = (event: DcbFixtures.ItemEventLog.event): ReventlessInfra.DcbEv
   let json = event->S.reverseConvertToJsonOrThrow(DcbFixtures.ItemEventLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(DcbFixtures.ItemEventLog.eventSchema, event)
-  {eventType, data: JSON.Object(data), tags}
+  let meta = ReventlessCore.Message.generateMeta(~service="test")
+  {eventType, data: JSON.Object(data), tags, meta}
 }
 
 describe("DcbEventLog.appendStream (in-memory adapter)", () => {
@@ -60,6 +61,7 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
           eventType: se.eventType,
           data: se.data,
           tags: se.tags,
+          meta: se.meta,
         }
         rawEvent
       })

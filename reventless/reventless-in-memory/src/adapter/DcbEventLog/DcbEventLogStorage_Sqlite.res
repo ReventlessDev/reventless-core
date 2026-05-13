@@ -26,7 +26,7 @@ open Reventless
 
 let ensureSchema = (db: SqliteDriver.t) => {
   db->SqliteDriver.exec(
-    "CREATE TABLE IF NOT EXISTS dcb_event (log_name TEXT NOT NULL, position INTEGER NOT NULL, event_type TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (log_name, position))",
+    "CREATE TABLE IF NOT EXISTS dcb_event (log_name TEXT NOT NULL, position INTEGER NOT NULL, event_type TEXT NOT NULL, data TEXT NOT NULL, meta TEXT NOT NULL, recorded_at TEXT NOT NULL, PRIMARY KEY (log_name, position))",
   )
   db->SqliteDriver.exec(
     "CREATE TABLE IF NOT EXISTS dcb_tag (log_name TEXT NOT NULL, position INTEGER NOT NULL, tag_key TEXT NOT NULL, tag_value TEXT NOT NULL)",
@@ -119,7 +119,7 @@ let buildQuerySql = (
     }
     let _ = sqlEscape
     (
-      `SELECT position, event_type, data FROM dcb_event WHERE ${baseWhere} ORDER BY position ASC`,
+      `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ${baseWhere} ORDER BY position ASC`,
       baseParams,
     )
   } else {
@@ -128,7 +128,7 @@ let buildQuerySql = (
       clauses->Array.map(((sql, _)) => sql)->Array.join(" OR ")
     let combinedParams = clauses->Array.flatMap(((_, p)) => p)
     (
-      `SELECT position, event_type, data FROM dcb_event WHERE ${combinedWhere} ORDER BY position ASC`,
+      `SELECT position, event_type, data, meta, recorded_at FROM dcb_event WHERE ${combinedWhere} ORDER BY position ASC`,
       combinedParams,
     )
   }
@@ -146,7 +146,7 @@ let makeStorage = (
   ensureSchema(db)
 
   let insertEventStmt = db->SqliteDriver.prepare(
-    "INSERT INTO dcb_event(log_name, position, event_type, data) VALUES(?,?,?,?)",
+    "INSERT INTO dcb_event(log_name, position, event_type, data, meta, recorded_at) VALUES(?,?,?,?,?,?)",
   )
   let insertTagStmt = db->SqliteDriver.prepare(
     "INSERT INTO dcb_tag(log_name, position, tag_key, tag_value) VALUES(?,?,?,?)",
@@ -207,11 +207,25 @@ let makeStorage = (
       | Some(JSON.String(s)) => parseDataPayload(s)
       | _ => JSON.Encode.null
       }
+      let meta = switch row->Dict.get("meta") {
+      | Some(JSON.String(s)) =>
+        switch JSON.parseOrThrow(s) {
+        | metaJson => metaJson->S.parseJsonOrThrow(Reventless.Message.metaSchema)
+        | exception _ => JsError.throwWithMessage("invalid meta JSON in dcb_event row")
+        }
+      | _ => JsError.throwWithMessage("missing meta column in dcb_event row")
+      }
+      let recordedAt = switch row->Dict.get("recorded_at") {
+      | Some(JSON.String(s)) => s
+      | _ => ""
+      }
       ({
         DcbEventLog_Adapter.position: Int.toString(position),
         eventType,
         data,
         tags: tagsForPosition(position),
+        meta,
+        recordedAt,
       }: DcbEventLog_Adapter.rawSequencedEvent)
     })
   }
@@ -252,11 +266,15 @@ let makeStorage = (
         newEvents->Array.forEach(event => {
           mutable_ := mutable_.contents + 1
           let pos = mutable_.contents
+          let metaJson = event.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)
+          let recordedAt = ReventlessCore.Message.nowAsISOString()
           insertEventStmt->SqliteDriver.run([
             JSON.Encode.string(name),
             JSON.Encode.int(pos),
             JSON.Encode.string(event.eventType),
             JSON.Encode.string(JSON.stringify(event.data)),
+            JSON.Encode.string(JSON.stringify(metaJson)),
+            JSON.Encode.string(recordedAt),
           ])
           event.tags->Array.forEach(tag => {
             insertTagStmt->SqliteDriver.run([

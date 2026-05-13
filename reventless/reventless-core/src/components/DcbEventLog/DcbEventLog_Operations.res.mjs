@@ -15,7 +15,8 @@ function Make(Ops) {
   let name = Ops.name;
   let serviceName = Ops.serviceName;
   let publishToEventTopic = async rawEvents => {
-    let meta = Message$ReventlessCore.generateMeta(serviceName, undefined, undefined);
+    let re = rawEvents[0];
+    let representativeMeta = re !== undefined ? re.meta : Message$ReventlessCore.generateMeta(serviceName, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
     let rawEventsJson = rawEvents.map(rawEvent => Message$ReventlessCore.combineMessage(rawEvent.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(rawEvent.data), {})));
     let hook = EventPublish_Callback$ReventlessCore.beforePublishHook.contents;
     let finalRawEventsJson;
@@ -26,7 +27,7 @@ function Make(Ops) {
         entityId: name,
         eventCount: published_eventCount,
         eventsJson: rawEventsJson,
-        meta: meta
+        meta: representativeMeta
       };
       try {
         finalRawEventsJson = (await hook(published)).eventsJson;
@@ -40,10 +41,13 @@ function Make(Ops) {
       finalRawEventsJson = rawEventsJson;
     }
     await Promise.all(Stdlib_Array.zip(rawEvents, finalRawEventsJson).map(async param => {
-      let entityId = Stdlib_Option.getOr(Stdlib_Option.map(param[0].tags[0], t => t.value), name);
-      let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, meta, param[1]);
+      let rawEvent = param[0];
+      let entityId = Stdlib_Option.getOr(Stdlib_Option.map(rawEvent.tags[0], t => t.value), name);
+      let newrecord = {...rawEvent.meta};
+      newrecord.service = serviceName;
+      let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, newrecord, param[1]);
       try {
-        return await Ops.publishJson(serviceName, meta, eventJson$p);
+        return await Ops.publishJson(serviceName, newrecord, eventJson$p);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {
@@ -64,7 +68,7 @@ function Make(Ops) {
         entityId: name,
         eventCount: published_eventCount$1,
         eventsJson: finalRawEventsJson,
-        meta: meta
+        meta: representativeMeta
       };
       await hook$1(published$1);
       return;

@@ -47,14 +47,12 @@ module Make = (
 
   let now = () => Date.make()->Date.toISOString
 
-  let makeMeta = (): Reventless.Message.meta => {
-    service: `OutboundTranslationSlice:${Spec.name}`,
-    time: now(),
-    ip: "",
-    user: "",
-    msgId: Uuid.v4(),
-    correlationId: "",
-  }
+  // Root meta for messages emitted by this OutboundTranslationSlice. Source-event
+  // meta is not threaded from phase1 → phase2 today, so causation across the
+  // translation hop is not preserved. If sources later carry meta into todoItems,
+  // switch to Message.deriveMeta.
+  let makeMeta = (): Reventless.Message.meta =>
+    Message.generateMeta(~service=`OutboundTranslationSlice:${Spec.name}`)
 
   let phase1 = (events: array<Spec.consumedEvent>) => {
     events->Array.forEach(event => {

@@ -86,17 +86,22 @@ let TestSpec = {
 
 let TestHandler = SideEffectHandler_Callback$ReventlessCore.Make(TestSpec);
 
+let testMeta_ip = "127.0.0.1";
+
+let testMeta_user = "test-user";
+
 let testMeta = {
   service: name,
   time: "2024-01-01T00:00:00Z",
-  ip: "127.0.0.1",
-  user: "test-user",
+  ip: testMeta_ip,
+  user: testMeta_user,
   msgId: "se-msg-1",
   correlationId: "se-corr-1"
 };
 
 function makeEventJson(serviceOpt, id, event) {
   let service = serviceOpt !== undefined ? serviceOpt : name;
+  let newrecord = {...testMeta};
   return Object.fromEntries([
     [
       "id",
@@ -104,14 +109,7 @@ function makeEventJson(serviceOpt, id, event) {
     ],
     [
       "meta",
-      Message$ReventlessCore.encode({
-        service: service,
-        time: "2024-01-01T00:00:00Z",
-        ip: "127.0.0.1",
-        user: "test-user",
-        msgId: "se-msg-1",
-        correlationId: "se-corr-1"
-      }, Message$ReventlessCore.metaSchema)
+      Message$ReventlessCore.encode((newrecord.service = service, newrecord), Message$ReventlessCore.metaSchema)
     ],
     [
       "event",

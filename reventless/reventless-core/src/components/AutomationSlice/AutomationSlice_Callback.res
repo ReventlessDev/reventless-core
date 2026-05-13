@@ -57,14 +57,13 @@ module Make = (
 
   let now = () => Date.make()->Date.toISOString
 
-  let makeMeta = (): Reventless.Message.meta => {
-    service: `AutomationSlice:${Spec.name}`,
-    time: now(),
-    ip: "",
-    user: "",
-    msgId: Uuid.v4(),
-    correlationId: "",
-  }
+  // Root meta for commands emitted by this AutomationSlice. The triggering
+  // event's meta is not currently threaded from phase1 → phase2 (todoItems
+  // only carries `item` data), so causation across the automation hop is
+  // lost — emitted commands are roots of a fresh correlation chain. If we
+  // later thread source meta through todoItems, switch to deriveMeta.
+  let makeMeta = (): Reventless.Message.meta =>
+    Message.generateMeta(~service=`AutomationSlice:${Spec.name}`)
 
   // Per-source erased dispatch — pre-compile decoders once at module init.
   type dispatch = {

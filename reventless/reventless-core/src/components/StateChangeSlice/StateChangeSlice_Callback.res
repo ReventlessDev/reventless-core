@@ -23,13 +23,20 @@ module Make = (
   let decoder = Reventless.DcbDecode.makeDecoder(Spec.consumedEventSchema)
   let queryEventTypes = decoder.eventTypes
 
-  let encodeEvent = (event: Spec.event): ReventlessInfra.DcbEventLog.rawEvent => {
+  let encodeEvent = (
+    ~parentMeta: Message.meta,
+    event: Spec.event,
+  ): ReventlessInfra.DcbEventLog.rawEvent => {
     let json = event->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
     let (eventType, data) = json->Message.splitMessage
     let tags =
       Reventless.DcbTag.extractTags(Spec.eventSchema, event)
       ->Array.concat([{Reventless.DcbTag.key: "originatorSlice", value: Spec.name}])
-    {eventType, data: JSON.Object(data), tags}
+    // Inherit service from the triggering command — the DcbEventLog publish path
+    // overrides service to `<name>DcbEventLog` for routing so EventCollector
+    // subscriptions still match.
+    let meta = Message.deriveMeta(~parent=parentMeta)
+    {eventType, data: JSON.Object(data), tags, meta}
   }
 
   // Computed once at functor init — used to extract entityId for publishJsonsAndWait outcomes.
@@ -107,7 +114,7 @@ module Make = (
           )
           EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
         | Ok(newEvents) =>
-          let rawEvents = newEvents->Array.map(encodeEvent)
+          let rawEvents = newEvents->Array.map(e => encodeEvent(~parentMeta=command'.meta, e))
           let eventCount = rawEvents->Array.length->Int.toString
           let eventDetails =
             rawEvents

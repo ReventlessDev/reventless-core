@@ -2,6 +2,7 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 
 function tag(key, value) {
@@ -9,6 +10,10 @@ function tag(key, value) {
     key: key,
     value: value
   };
+}
+
+function testMeta() {
+  return Message$ReventlessCore.generateMeta("test", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
 }
 
 let table = {
@@ -128,10 +133,12 @@ describe("Runtime.collectEventTags", () => {
         value: "c1"
       }
     ];
+    let event1_meta = testMeta();
     let event1 = {
       eventType: "ProductAdded",
       data: event1_data,
-      tags: event1_tags
+      tags: event1_tags,
+      meta: event1_meta
     };
     let event2_data = {};
     let event2_tags = [
@@ -144,10 +151,12 @@ describe("Runtime.collectEventTags", () => {
         value: "c2"
       }
     ];
+    let event2_meta = testMeta();
     let event2 = {
       eventType: "ProductAdded",
       data: event2_data,
-      tags: event2_tags
+      tags: event2_tags,
+      meta: event2_meta
     };
     let result = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectEventTags([
       event1,
@@ -236,7 +245,8 @@ describe("Runtime.buildEventPuts", () => {
   let event = (eventType, tags) => ({
     eventType: eventType,
     data: {},
-    tags: tags
+    tags: tags,
+    meta: testMeta()
   });
   test("emits one Put per event with the table name", () => {
     let puts = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildEventPuts(table, [
@@ -271,7 +281,8 @@ describe("Runtime.appendUnconditional", () => {
       return {
         eventType: eventType,
         data: {},
-        tags: tags
+        tags: tags,
+        meta: testMeta()
       };
     });
     let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendUnconditional(table, events, undefined);
@@ -314,10 +325,12 @@ describe("Runtime.appendConditional", () => {
         key: "k",
         value: "v0"
       }];
+    let event_meta = testMeta();
     let event = {
       eventType: "Foo",
       data: event_data,
-      tags: event_tags
+      tags: event_tags,
+      meta: event_meta
     };
     let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event], cond, undefined);
     if (result.TAG === "Ok") {
@@ -333,6 +346,7 @@ let Runtime;
 export {
   Runtime,
   tag,
+  testMeta,
   table,
 }
 /*  Not a pure module */

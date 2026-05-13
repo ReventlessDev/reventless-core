@@ -38,7 +38,7 @@ function Make(Spec) {
     if (count === 0) {
       let match$1 = Counter$ReventlessCore.unmakeId(id);
       Effect.runSync(Effect.logInfo("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString())));
-      let meta = Message$ReventlessCore.generateMeta(ComponentType$ReventlessCore.toName("Counter"), undefined, "Counter");
+      let meta = Message$ReventlessCore.generateMeta(ComponentType$ReventlessCore.toName("Counter"), undefined, "Counter", undefined, undefined, undefined, undefined, undefined);
       return Object.fromEntries([
         [
           "id",

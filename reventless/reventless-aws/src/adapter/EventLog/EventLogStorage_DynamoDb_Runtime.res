@@ -5,7 +5,7 @@ let putItemConditional = (tableName, json) =>
   {
     PutCommand.tableName,
     item: json,
-    conditionExpression: "attribute_not_exists(seq)",
+    conditionExpression: "attribute_not_exists(position)",
   }
   ->PutCommand.make
   ->PutCommand.send
@@ -15,7 +15,7 @@ let buildTransactItems = (tableName, jsons) =>
     TransactWriteCommand.put: {
       TransactWriteCommand.item: json,
       tableName,
-      conditionExpression: "attribute_not_exists(seq)",
+      conditionExpression: "attribute_not_exists(position)",
     },
   })
 

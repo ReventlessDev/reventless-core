@@ -64,14 +64,12 @@ function Make(MappingImpl) {
     return DcbTag$Reventless.getCompositePartitionKeyValue(tags$1, pt._0);
   };
   let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(LogPrefix$Reventless.fmtComp(comp, undefined) + msg));
-  let encodeMeta = (meta, service) => ({
-    service: service,
-    time: meta.time,
-    ip: meta.ip,
-    user: meta.user,
-    msgId: Uuid.v4(),
-    correlationId: meta.correlationId
-  });
+  let encodeMeta = (meta, service) => {
+    let newrecord = {...meta};
+    newrecord.msgId = Uuid.v4();
+    newrecord.service = service;
+    return newrecord;
+  };
   let mapIncomingEvent = (extra, extra$1, extra$2) => {
     let mapIncomingEventImpl = MappingImpl.mapIncomingEvent;
     let meta = extra.meta;

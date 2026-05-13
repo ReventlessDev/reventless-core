@@ -95,10 +95,9 @@ module Make = (
     })
     publishPluginExtensionPointCommand({
       Message.id: "",
-      meta: {
-        ...commandJson.meta,
-        msgId: Message.uuid(),
-      },
+      // ForwardCommand wraps the original command — derive meta so this hop carries
+      // causation (causationId = original command's msgId) and inherits the rest.
+      meta: Message.deriveMeta(~parent=commandJson.meta),
       commandJson: command->Message.encode(PluginExtensionPointSpec.commandSchema),
     })
   }

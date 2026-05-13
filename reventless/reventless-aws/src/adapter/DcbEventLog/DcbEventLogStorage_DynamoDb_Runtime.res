@@ -58,6 +58,7 @@ let toItem = (
   position: string,
   event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent,
   ~partitionTag=?,
+  ~recordedAt: string,
 ): JSON.t => {
   // Create base item
   let item = Dict.make()
@@ -65,6 +66,7 @@ let toItem = (
   item->Dict.set("position", position->JSON.Encode.string)
   item->Dict.set("event", event.eventType->JSON.Encode.string)
   item->Dict.set("data", event.data)
+  item->Dict.set("recordedAt", recordedAt->JSON.Encode.string)
 
   // Add tags array
   let tagsJson = event.tags->Array.map(tag =>
@@ -76,6 +78,13 @@ let toItem = (
     ->JSON.Encode.object
   )
   item->Dict.set("tags", tagsJson->JSON.Encode.array)
+
+  // Flatten meta.* to top-level item attributes so individual meta keys stay
+  // GSI-projectable (matches the EventLog adapter behaviour). The DCB read
+  // path reassembles meta via `Reventless.Message.composeMeta`.
+  event.meta
+  ->ReventlessCore.Message.decomposeMeta
+  ->Array.forEach(((k, v)) => item->Dict.set(k, v))
 
   // Add individual tag attributes for GSI queries
   event.tags->Array.forEach(tag => {
@@ -127,11 +136,24 @@ let fromItem = (item: JSON.t): ReventlessCore.DcbEventLog_Adapter.rawSequencedEv
       )
     )
 
+    let recordedAt =
+      obj
+      ->Dict.get("recordedAt")
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.getOr("")
+
+    let meta =
+      obj
+      ->ReventlessCore.Message.composeMeta
+      ->S.parseJsonOrThrow(Reventless.Message.metaSchema)
+
     {
       position,
       eventType,
       data,
       tags,
+      meta,
+      recordedAt,
     }
   }
 }
@@ -594,7 +616,8 @@ let buildEventPuts = (
 ) =>
   events->Array.mapWithIndex((event, idx) => {
     let position = generatePositionForBatch(basePosition, idx)
-    let item = toItem(position, event, ~partitionTag?)
+    let recordedAt = ReventlessCore.Message.nowAsISOString()
+    let item = toItem(position, event, ~partitionTag?, ~recordedAt)
     let put: TransactWriteCommand.put = {
       TransactWriteCommand.item: item,
       tableName: table.name,

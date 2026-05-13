@@ -13,10 +13,12 @@ function encodeEvent(event) {
   let json = S.reverseConvertToJsonOrThrow(event, DcbFixtures$ReventlessInMemory.ItemEventLog.eventSchema);
   let match = Message$ReventlessCore.splitMessage(json);
   let tags = DcbTag$Reventless.extractTags(DcbFixtures$ReventlessInMemory.ItemEventLog.eventSchema, event);
+  let meta = Message$ReventlessCore.generateMeta("test", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   return {
     eventType: match[0],
     data: match[1],
-    tags: tags
+    tags: tags,
+    meta: meta
   };
 }
 
@@ -65,7 +67,8 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
     let srcStream = Stream.map(ops.readStream(DcbFixtures$ReventlessInMemory.tagQuery("as-src"), undefined), se => ({
       eventType: se.eventType,
       data: se.data,
-      tags: se.tags
+      tags: se.tags,
+      meta: se.meta
     }));
     await Effect.runPromise(ops.appendStream(srcStream, undefined));
     let dst = await ops.read(DcbFixtures$ReventlessInMemory.tagQuery("as-src"), undefined);

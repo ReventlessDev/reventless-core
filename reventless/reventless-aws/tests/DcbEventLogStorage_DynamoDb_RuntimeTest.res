@@ -4,6 +4,8 @@ module Runtime = DcbEventLogStorage_DynamoDb_Runtime
 
 let tag = (key, value): Reventless.DcbTag.tag => {key, value}
 
+let testMeta = () => ReventlessCore.Message.generateMeta(~service="test")
+
 let table: Util_DynamoDb_Runtime.resolvedTable = {
   id: "test-table-id",
   name: "TestTable",
@@ -79,11 +81,13 @@ describe("Runtime.collectEventTags", () => {
       eventType: "ProductAdded",
       data: JSON.Object(Dict.make()),
       tags: [tag("productId", "p1"), tag("categoryId", "c1")],
+      meta: testMeta(),
     }
     let event2: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {
       eventType: "ProductAdded",
       data: JSON.Object(Dict.make()),
       tags: [tag("productId", "p1"), tag("categoryId", "c2")],
+      meta: testMeta(),
     }
     let result = Runtime.collectEventTags([event1, event2])
     expect(result->Array.length)->toBe(3)
@@ -211,6 +215,7 @@ describe("Runtime.buildEventPuts", () => {
     eventType,
     data: JSON.Object(Dict.make()),
     tags,
+    meta: testMeta(),
   }
 
   test("emits one Put per event with the table name", () => {
@@ -235,6 +240,7 @@ describe("Runtime.appendUnconditional", () => {
     eventType,
     data: JSON.Object(Dict.make()),
     tags,
+    meta: testMeta(),
   }
 
   testAsync("rejects appends exceeding 100 items with a clear error", async () => {
@@ -272,6 +278,7 @@ describe("Runtime.appendConditional", () => {
       eventType: "Foo",
       data: JSON.Object(Dict.make()),
       tags: [tag("k", "v0")],
+      meta: testMeta(),
     }
     let result = await Runtime.appendConditional(table, [event], cond)
     switch result {

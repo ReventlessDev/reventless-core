@@ -52,28 +52,40 @@ Reventless defines several core message types:
 
 ### Meta Type (`meta`)
 
-The `meta` type provides essential metadata for every message in the system.
+The `meta` type provides envelope metadata for every message in the system. It is **shared** by both `event'` and `command'` envelopes — fields are kept generic so they apply equally to commands and events.
 
 ```rescript
 type meta = {
-  service: service,      // service name that created event or is addressed by command
-  time: string,          // when message was created (ISO string)
-  ip: string,            // IP of service that created message
-  user: string,          // user name that initiated message (if any)
-  msgId: string,         // unique message id
-  correlationId: string, // id of message that caused this message
+  service: service,         // producer service name
+  time: string,             // ISO-8601 producer timestamp
+  ip?: string,              // producer IP — absent when unknown (e.g. serverless)
+  user?: string,            // acting user — absent for system-initiated messages
+  msgId: string,            // unique id of this message
+  correlationId: string,    // root id of the correlation chain (defaults to msgId)
+  causationId?: string,     // id of the *direct* parent that caused this message
+  traceparent?: string,     // W3C Trace Context header, opaque pass-through
+  schemaVersion?: string,   // schema version of this message's payload variant
+  headers?: dict<string>,   // extensible bag (tenantId, feature flags, etc.)
 }
 ```
 
-**Purpose**: 
-- **Distributed Tracing**: Track messages across service boundaries
-- **Audit Trails**: Maintain complete history of who did what when
-- **Debugging**: Correlate related messages in complex flows
+**Field semantics**:
+- `service` / `time` / `msgId` are always present.
+- `correlationId` is always present; defaults to `msgId` when this message is the chain root.
+- `causationId` identifies the **direct** parent (the immediately preceding message in the chain); absent at the chain root. Together with `correlationId` this gives you both "the whole chain root" and "my parent" — enough to reconstruct the full causation graph.
+- `traceparent` is stored under that exact lowercase spelling because it is the literal W3C Trace Context HTTP header name, used verbatim by OpenTelemetry SDKs and AWS X-Ray. Adapters do zero case-translation between the HTTP header and the meta field.
+- `ip` / `user` are `option<string>` — *absent* means "unknown" / "system". There are no `""` / `"unknown"` sentinel values to special-case.
+- `headers` is an extensible string-keyed bag for cross-cutting context (tenant id, feature flags, request-scoped state); absent when empty. Read it with `meta.headers->Option.getOr(Dict.make())`.
 
-**Usage Patterns**:
-- Every message carries meta information
-- `correlationId` links causally related messages
-- `msgId` provides unique identification for each message
+**Building meta**:
+- `Message.generateMeta(~service, ~ip=?, ~user=?, ~causationId=?, ~traceparent=?, ~correlationId=?, ~schemaVersion=?, ~headers=?)` — root meta for messages starting a new chain.
+- `Message.deriveMeta(~parent, ~service=?)` — child meta for messages emitted in response to a triggering message. Sets `causationId = parent.msgId`, inherits `correlationId` (so the chain root id stays stable), inherits `ip` / `user` / `traceparent` / `schemaVersion` / `headers`, and produces a fresh `msgId` + `time`. The framework uses this in `Aggregate_Callback`, `StateChangeSlice_Callback`, `EventMapper_Callback`, and `Extension_Operations.forwardCommand`.
+
+**Purpose**:
+- **Distributed Tracing**: Track messages across service boundaries; `traceparent` hands off to OpenTelemetry / X-Ray.
+- **Causation Graph**: `causationId` (direct parent) + `correlationId` (chain root) reconstruct the full message graph.
+- **Audit Trails**: Maintain a complete history of who did what when.
+- **Multi-tenant Routing**: `headers.tenantId` is the conventional slot for tenant context.
 
 ### Context Type (`context`)
 

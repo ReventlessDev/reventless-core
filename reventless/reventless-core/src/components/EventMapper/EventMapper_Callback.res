@@ -74,12 +74,12 @@ module MakeCounterHandler = (
 
   let createCommandJson = (~delay=?, id, meta, command) => {
     Message.id: id->Target.Id.toString,
-    meta: {
-      ...meta,
-      service: Target.name,
-      msgId: Message.uuid(),
-      time: Message.nowAsISOString(),
-    },
+    // Derive a child meta from the source event:
+    // - fresh msgId + time
+    // - causationId = source event's msgId
+    // - service overridden to the target's name (this command is being routed to Target)
+    // - correlationId / ip / user / traceparent / schemaVersion / headers inherited
+    meta: Message.deriveMeta(~parent=meta, ~service=Target.name),
     commandJson: command->Message.encode(Target.commandSchema),
     ?delay,
   }

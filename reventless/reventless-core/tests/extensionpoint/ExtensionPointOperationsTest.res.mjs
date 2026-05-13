@@ -207,11 +207,13 @@ let EpOps = ExtensionPoint_Operations$ReventlessCore.Make({
 })(TestOps);
 
 function makeEventJsonForAgg(aggregateName) {
+  let meta_ip = "127.0.0.1";
+  let meta_user = "tester";
   let meta = {
     service: aggregateName,
     time: "2024-01-01T00:00:00Z",
-    ip: "127.0.0.1",
-    user: "tester",
+    ip: meta_ip,
+    user: meta_user,
     msgId: "msg-test",
     correlationId: "corr-test"
   };

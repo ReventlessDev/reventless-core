@@ -37,18 +37,15 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
   let encodeEvent' = (id, sequenceNr, event') => {
     let json = event'.Reventless.Message.event->Message.encode(Spec.eventSchema)
     let (eventType, data) = json->Message.splitMessage
-    [
-      ("id", id->Message.encode(Spec.Id.schema)),
-      (
-        "seq",
-        JSON.Encode.string(sequenceNr->Int.toString->String.padStart(9, "0")),
-      ),
-      ("event", JSON.String(eventType)),
-      ("data", JSON.Object(data)),
-    ]
-    ->Array.concat(event'.meta->Message.decomposeMeta)
-    ->Dict.fromArray
-    ->JSON.Encode.object
+    let stored: Reventless.StoredEvent.storedEvent<Spec.Id.t> = {
+      id,
+      position: sequenceNr->Int.toString->String.padStart(9, "0"),
+      event: eventType,
+      data: JSON.Object(data),
+      meta: event'.meta,
+      recordedAt: Message.nowAsISOString(),
+    }
+    stored->Message.storedEventToFlatJson(Spec.Id.schema)
   }
 
   let encodeEvents' = (events', id, startingSeqNr) =>

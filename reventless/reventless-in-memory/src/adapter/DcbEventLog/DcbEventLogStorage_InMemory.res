@@ -71,6 +71,8 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
             eventType: event.eventType,
             data: event.data,
             tags: event.tags,
+            meta: event.meta,
+            recordedAt: Message.nowAsISOString(),
           }
         })
       events := events.contents->Array.concat(storedEvents)

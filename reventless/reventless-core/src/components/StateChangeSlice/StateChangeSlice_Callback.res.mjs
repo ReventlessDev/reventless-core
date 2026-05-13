@@ -19,19 +19,6 @@ function Make(Spec) {
     let comp = `StateChangeSlice(` + Spec.name + `)`;
     let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);
     let queryEventTypes = decoder.eventTypes;
-    let encodeEvent = event => {
-      let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(event), undefined));
-      let match = Message$ReventlessCore.splitMessage(json);
-      let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, event).concat([{
-          key: "originatorSlice",
-          value: Spec.name
-        }]);
-      return {
-        eventType: match[0],
-        data: match[1],
-        tags: tags
-      };
-    };
     let derivedPartitionTag = DcbTag$Reventless.derivePartitionTag([[
         Spec.name,
         Behavior.moduleUrl,
@@ -84,7 +71,22 @@ function Make(Spec) {
               _0: "ok"
             }));
           }
-          let rawEvents = newEvents$1.map(encodeEvent);
+          let rawEvents = newEvents$1.map(e => {
+            let parentMeta = command$p.meta;
+            let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(e), undefined));
+            let match = Message$ReventlessCore.splitMessage(json);
+            let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, e).concat([{
+                key: "originatorSlice",
+                value: Spec.name
+              }]);
+            let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
+            return {
+              eventType: match[0],
+              data: match[1],
+              tags: tags,
+              meta: meta
+            };
+          });
           let eventCount = rawEvents.length.toString();
           let eventDetails = rawEvents.map(e => {
             let dict = e.data;

@@ -78,7 +78,7 @@ function Make(Spec) {
           rate: ScheduleOps$ReventlessCore.minutesFromNow(directive._1),
           payload: JSON.stringify(Message$ReventlessCore.encodeCommand$p({
             id: id,
-            meta: Message$ReventlessCore.generateMeta("Core.Plugin", undefined, "Scheduler"),
+            meta: Message$ReventlessCore.generateMeta("Core.Plugin", undefined, "Scheduler", undefined, undefined, undefined, undefined, undefined),
             command: "DisconnectPlugin"
           }, S.string, PluginExtensionPointSpec$ReventlessInfra.commandSchema))
         });

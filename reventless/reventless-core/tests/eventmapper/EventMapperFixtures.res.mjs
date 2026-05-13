@@ -357,17 +357,22 @@ let MockECOps = {
 
 let TestECHandler = EventMapper_Callback$ReventlessCore.MakeEventCollectorHandler(MockECOps);
 
+let evtMapTestMeta_ip = "127.0.0.1";
+
+let evtMapTestMeta_user = "test-user";
+
 let evtMapTestMeta = {
   service: name$2,
   time: "2024-01-01T00:00:00Z",
-  ip: "127.0.0.1",
-  user: "test-user",
+  ip: evtMapTestMeta_ip,
+  user: evtMapTestMeta_user,
   msgId: "test-msg-1",
   correlationId: "test-corr-1"
 };
 
 function makeEventJson(serviceOpt, id, eventJson) {
   let service = serviceOpt !== undefined ? serviceOpt : name$2;
+  let newrecord = {...evtMapTestMeta};
   return Object.fromEntries([
     [
       "id",
@@ -375,14 +380,7 @@ function makeEventJson(serviceOpt, id, eventJson) {
     ],
     [
       "meta",
-      Message$Reventless.encode({
-        service: service,
-        time: "2024-01-01T00:00:00Z",
-        ip: "127.0.0.1",
-        user: "test-user",
-        msgId: "test-msg-1",
-        correlationId: "test-corr-1"
-      }, Message$Reventless.metaSchema)
+      Message$Reventless.encode((newrecord.service = service, newrecord), Message$Reventless.metaSchema)
     ],
     [
       "event",

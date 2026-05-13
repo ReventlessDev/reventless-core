@@ -13,10 +13,10 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
   PluginSpec,
   PluginReadModelSpec,
   {
-    let project = ({event, id, meta: {time, user}}) => {
+    let project = ({event, id, meta: {time, user: ?user}}) => {
       let statusChange = {
         at: time,
-        by: user,
+        by: user->Option.getOr(""),
       }
       switch event {
       | PluginSpec.UnknownPluginDetected

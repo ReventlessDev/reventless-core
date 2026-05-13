@@ -10,7 +10,7 @@ let table: Util_DynamoDb_Runtime.resolvedTable = {
 }
 
 let mkJson = i =>
-  [("seq", i->Int.toString->JSON.Encode.string)]->Dict.fromArray->JSON.Encode.object
+  [("position", i->Int.toString->JSON.Encode.string)]->Dict.fromArray->JSON.Encode.object
 
 describe("Runtime.append", () => {
   testAsync("rejects > 100 events with a clear error before any AWS call", async () => {
@@ -26,7 +26,7 @@ describe("Runtime.append", () => {
 })
 
 describe("Runtime.buildTransactItems", () => {
-  test("builds one Put per event with attribute_not_exists(seq) condition", () => {
+  test("builds one Put per event with attribute_not_exists(position) condition", () => {
     let jsons = Array.fromInitializer(~length=2, mkJson)
     let items = Runtime.buildTransactItems(table.name, jsons)
     expect(items->Array.length)->toBe(2)
@@ -34,7 +34,7 @@ describe("Runtime.buildTransactItems", () => {
     switch first.put {
     | Some(p) =>
       expect(p.tableName)->toBe("TestTable")
-      expect(p.conditionExpression)->toEqual(Some("attribute_not_exists(seq)"))
+      expect(p.conditionExpression)->toEqual(Some("attribute_not_exists(position)"))
     | None => expect("expected Put, got None")->toBe("")
     }
   })

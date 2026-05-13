@@ -13,10 +13,10 @@ function make(name, opts) {
       type: "S"
     },
     {
-      name: "seq",
+      name: "position",
       type: "S"
     }
-  ], undefined, undefined, "seq", tags, opts, name);
+  ], undefined, undefined, "position", tags, opts, name);
   return {
     resources: [Util_DynamoDb$ReventlessAws.toResource(tags, table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => ({

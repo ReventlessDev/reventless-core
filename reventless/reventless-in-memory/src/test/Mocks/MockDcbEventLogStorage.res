@@ -93,6 +93,8 @@ let make = (~name="mock-dcb-log", ~indexes: array<string>=[], ~opts: Pulumi.Cust
             eventType: event.eventType,
             data: event.data,
             tags: event.tags,
+            meta: event.meta,
+            recordedAt: Message.nowAsISOString(),
           }
         })
         events := events.contents->Array.concat(storedEvents)

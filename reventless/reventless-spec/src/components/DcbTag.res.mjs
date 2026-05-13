@@ -9,6 +9,11 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
+let tagSchema = S.schema(s => ({
+  key: s.m(S.string),
+  value: s.m(S.string)
+}));
+
 let dcbTagId = S.Metadata.Id.make("dcb", "tag");
 
 let dcbPartitionTagId = S.Metadata.Id.make("dcb", "partitionTag");
@@ -587,6 +592,7 @@ function getPartitionTagValue(query, pt) {
 }
 
 export {
+  tagSchema,
   dcbTagId,
   dcbPartitionTagId,
   dcbCompositePartitionMemberId,
@@ -622,4 +628,4 @@ export {
   derivePartitionTag,
   getPartitionTagValue,
 }
-/* dcbTagId Not a pure module */
+/* tagSchema Not a pure module */

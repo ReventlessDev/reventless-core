@@ -30,7 +30,8 @@ let encodeEvent = (event: DcbFixtures.TestEventLogSpec.event): ReventlessInfra.D
   let json = event->S.reverseConvertToJsonOrThrow(DcbFixtures.TestEventLogSpec.eventSchema)
   let (eventType, data) = json->Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(DcbFixtures.TestEventLogSpec.eventSchema, event)
-  {eventType, data: JSON.Object(data), tags}
+  let meta = Message.generateMeta(~service="test")
+  {eventType, data: JSON.Object(data), tags, meta}
 }
 
 // Helper to decode a rawSequencedEvent back to a TestEventLogSpec event

@@ -290,7 +290,7 @@ module MakeWithConfig = (
                 switch e->JSON.Decode.object {
                 | Some(obj) =>
                   obj
-                  ->Dict.get("seq")
+                  ->Dict.get("position")
                   ->Option.flatMap(JSON.Decode.string)
                 | None => None
                 }

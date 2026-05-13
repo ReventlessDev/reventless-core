@@ -60,17 +60,9 @@ function Make(MappingSpec) {
           command: Message$ReventlessCore.toMessageBody(commandJson)
         }
       };
-      let init = commandJson.meta;
       return publishPluginExtensionPointCommand({
         id: "",
-        meta: {
-          service: init.service,
-          time: init.time,
-          ip: init.ip,
-          user: init.user,
-          msgId: Message$ReventlessCore.uuid(),
-          correlationId: init.correlationId
-        },
+        meta: Message$ReventlessCore.deriveMeta(commandJson.meta, undefined),
         commandJson: Message$ReventlessCore.encode(command, PluginExtensionPointSpec$ReventlessInfra.commandSchema)
       });
     };

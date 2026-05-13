@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 
 function posToInt(pos) {
   return Stdlib_Option.getOr(Stdlib_Int.fromString(pos, undefined), 0);
@@ -92,7 +93,9 @@ function make(nameOpt, indexesOpt, optsOpt) {
         position: pos,
         eventType: event.eventType,
         data: event.data,
-        tags: event.tags
+        tags: event.tags,
+        meta: event.meta,
+        recordedAt: Message$ReventlessCore.nowAsISOString()
       };
     });
     events.contents = events.contents.concat(storedEvents);

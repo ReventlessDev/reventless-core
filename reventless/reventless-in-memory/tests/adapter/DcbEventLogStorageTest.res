@@ -20,6 +20,7 @@ let makeEvent = (~eventType, ~data, ~tags=[]): ReventlessCore.DcbEventLog_Adapte
   eventType,
   data,
   tags,
+  meta: ReventlessCore.Message.generateMeta(~service="test"),
 }
 
 describe("DcbEventLogStorage_InMemory", () => {

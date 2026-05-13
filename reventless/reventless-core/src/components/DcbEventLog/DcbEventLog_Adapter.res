@@ -2,6 +2,7 @@ type rawStoredEvent = {
   eventType: string,
   data: JSON.t,
   tags: array<Reventless.DcbTag.tag>,
+  meta: Reventless.Message.meta,
 }
 
 type rawSequencedEvent = {
@@ -9,6 +10,8 @@ type rawSequencedEvent = {
   eventType: string,
   data: JSON.t,
   tags: array<Reventless.DcbTag.tag>,
+  meta: Reventless.Message.meta,
+  recordedAt: string,
 }
 
 type rawReadResult = {

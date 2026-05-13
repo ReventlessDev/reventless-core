@@ -45,11 +45,12 @@ module Make = (
       dict->Dict.toArray->Array.map(((id, items)) => (id->Spec.Id.makeFromString, items))
     )
 
-  let updateMeta = (command': Message.command'<'id, 'command>) => {
-    ...command'.meta,
-    time: Message.nowAsISOString(),
-    msgId: Message.uuid(),
-  }
+  // Derive meta for an event emitted from a command:
+  //   - fresh msgId + time
+  //   - correlationId, ip, user, traceparent, schemaVersion, headers inherited from the command
+  //   - causationId = the command's msgId (the *direct* parent of this event)
+  let updateMeta = (command': Message.command'<'id, 'command>) =>
+    Message.deriveMeta(~parent=command'.meta)
 
   // Per-command outcome carried through the fold, paired with the originating reference and meta.
   type cmdOutcome =

@@ -55,14 +55,7 @@ function MakeCounterHandler(Target) {
     });
     let createCommandJson = (delay, id, meta, command) => ({
       id: Target.Id.toString(id),
-      meta: {
-        service: Target.name,
-        time: Message$ReventlessCore.nowAsISOString(),
-        ip: meta.ip,
-        user: meta.user,
-        msgId: Message$ReventlessCore.uuid(),
-        correlationId: meta.correlationId
-      },
+      meta: Message$ReventlessCore.deriveMeta(meta, Target.name),
       commandJson: Message$ReventlessCore.encode(command, Target.commandSchema),
       delay: delay
     });

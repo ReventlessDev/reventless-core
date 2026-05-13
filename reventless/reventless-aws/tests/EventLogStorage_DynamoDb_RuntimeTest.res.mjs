@@ -12,7 +12,7 @@ let table = {
 
 function mkJson(i) {
   return Object.fromEntries([[
-      "seq",
+      "position",
       i.toString()
     ]]);
 }
@@ -32,7 +32,7 @@ describe("Runtime.append", () => {
 });
 
 describe("Runtime.buildTransactItems", () => {
-  test("builds one Put per event with attribute_not_exists(seq) condition", () => {
+  test("builds one Put per event with attribute_not_exists(position) condition", () => {
     let jsons = Stdlib_Array.fromInitializer(2, mkJson);
     let items = EventLogStorage_DynamoDb_Runtime$ReventlessAws.buildTransactItems("TestTable", jsons);
     expect(items.length).toBe(2);
@@ -40,7 +40,7 @@ describe("Runtime.buildTransactItems", () => {
     let p = first.Put;
     if (p !== undefined) {
       expect(p.TableName).toBe("TestTable");
-      expect(p.ConditionExpression).toEqual("attribute_not_exists(seq)");
+      expect(p.ConditionExpression).toEqual("attribute_not_exists(position)");
     } else {
       expect("expected Put, got None").toBe("");
     }

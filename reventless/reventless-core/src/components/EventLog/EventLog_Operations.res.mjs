@@ -33,24 +33,20 @@ function Make(Spec) {
       let sequenceNr = startingSeqNr + i | 0;
       let json = Message$ReventlessCore.encode(event.event, Spec.eventSchema);
       let match = Message$ReventlessCore.splitMessage(json);
-      return Object.fromEntries([
-        [
-          "id",
-          Message$ReventlessCore.encode(id, Spec.Id.schema)
-        ],
-        [
-          "seq",
-          sequenceNr.toString().padStart(9, "0")
-        ],
-        [
-          "event",
-          match[0]
-        ],
-        [
-          "data",
-          match[1]
-        ]
-      ].concat(Message$ReventlessCore.decomposeMeta(event.meta)));
+      let stored_position = sequenceNr.toString().padStart(9, "0");
+      let stored_event = match[0];
+      let stored_data = match[1];
+      let stored_meta = event.meta;
+      let stored_recordedAt = Message$ReventlessCore.nowAsISOString();
+      let stored = {
+        id: id,
+        position: stored_position,
+        event: stored_event,
+        data: stored_data,
+        meta: stored_meta,
+        recordedAt: stored_recordedAt
+      };
+      return Message$ReventlessCore.storedEventToFlatJson(stored, Spec.Id.schema);
     });
     let makePublishedEvent = (idStr, eventsJson, meta) => ({
       componentName: Spec.name,

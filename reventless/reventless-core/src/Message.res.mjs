@@ -5,6 +5,7 @@ import * as Uuid from "uuid";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 
@@ -58,21 +59,9 @@ function nowAsISOString() {
 }
 
 function toMessageBody(param) {
-  let meta = param.meta;
-  let commandMeta_service = meta.service;
-  let commandMeta_time = new Date().toISOString();
-  let commandMeta_ip = meta.ip;
-  let commandMeta_user = meta.user;
-  let commandMeta_msgId = Uuid.v4();
-  let commandMeta_correlationId = meta.correlationId;
-  let commandMeta = {
-    service: commandMeta_service,
-    time: commandMeta_time,
-    ip: commandMeta_ip,
-    user: commandMeta_user,
-    msgId: commandMeta_msgId,
-    correlationId: commandMeta_correlationId
-  };
+  let newrecord = {...param.meta};
+  newrecord.msgId = Uuid.v4();
+  newrecord.time = new Date().toISOString();
   return JSON.stringify(Object.fromEntries([
     [
       "id",
@@ -80,7 +69,7 @@ function toMessageBody(param) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(commandMeta, Message$Reventless.metaSchema)
+      S.reverseConvertToJsonOrThrow(newrecord, Message$Reventless.metaSchema)
     ],
     [
       "command",
@@ -161,9 +150,7 @@ function hrtimeToString(hrtime, now) {
   return now.toString() + ("-" + ("0".repeat(9 - milLength | 0) + milString));
 }
 
-function generateMeta(service, ipOpt, userOpt) {
-  let ip = ipOpt !== undefined ? ipOpt : "";
-  let user = userOpt !== undefined ? userOpt : "unknown";
+function generateMeta(service, ip, user, causationId, traceparent, correlationId, schemaVersion, headers) {
   let msgId = Uuid.v4();
   return {
     service: service,
@@ -171,7 +158,26 @@ function generateMeta(service, ipOpt, userOpt) {
     ip: ip,
     user: user,
     msgId: msgId,
-    correlationId: msgId
+    correlationId: Stdlib_Option.getOr(correlationId, msgId),
+    causationId: causationId,
+    traceparent: traceparent,
+    schemaVersion: schemaVersion,
+    headers: headers
+  };
+}
+
+function deriveMeta(parent, service) {
+  return {
+    service: Stdlib_Option.getOr(service, parent.service),
+    time: new Date().toISOString(),
+    ip: parent.ip,
+    user: parent.user,
+    msgId: Uuid.v4(),
+    correlationId: parent.correlationId,
+    causationId: parent.msgId,
+    traceparent: parent.traceparent,
+    schemaVersion: parent.schemaVersion,
+    headers: parent.headers
   };
 }
 
@@ -196,16 +202,8 @@ function composeEventJson$p(id, meta, eventJson) {
   ]);
 }
 
-function string(x) {
-  if (x !== undefined && x !== null) {
-    return x;
-  } else {
-    return "";
-  }
-}
-
 function composeMeta(dict) {
-  return Object.fromEntries([
+  let out = [
     [
       "service",
       Stdlib_Option.getOrThrow(dict["service"], undefined)
@@ -215,14 +213,6 @@ function composeMeta(dict) {
       Stdlib_Option.getOrThrow(dict["time"], undefined)
     ],
     [
-      "ip",
-      string(dict["ip"])
-    ],
-    [
-      "user",
-      string(dict["user"])
-    ],
-    [
       "msgId",
       Stdlib_Option.getOrThrow(dict["msgId"], undefined)
     ],
@@ -230,7 +220,90 @@ function composeMeta(dict) {
       "correlationId",
       Stdlib_Option.getOrThrow(dict["correlationId"], undefined)
     ]
-  ]);
+  ];
+  let optionalKeys = [
+    "ip",
+    "user",
+    "causationId",
+    "traceparent",
+    "schemaVersion",
+    "headers"
+  ];
+  let optional = Stdlib_Array.filterMap(optionalKeys.map(k => Stdlib_Option.map(dict[k], v => [
+    k,
+    v
+  ])), x => x);
+  return Object.fromEntries(out.concat(optional));
+}
+
+let metaKeys = [
+  "service",
+  "time",
+  "ip",
+  "user",
+  "msgId",
+  "correlationId",
+  "causationId",
+  "traceparent",
+  "schemaVersion",
+  "headers"
+];
+
+function storedEventToFlatJson(stored, idSchema) {
+  let fields = [
+    [
+      "id",
+      S.reverseConvertToJsonOrThrow(stored.id, idSchema)
+    ],
+    [
+      "position",
+      stored.position
+    ],
+    [
+      "event",
+      stored.event
+    ],
+    [
+      "data",
+      stored.data
+    ],
+    [
+      "recordedAt",
+      stored.recordedAt
+    ]
+  ];
+  let tags = stored.tags;
+  let withTags;
+  if (tags !== undefined) {
+    let tagsJson = S.reverseConvertToJsonOrThrow(tags, S.array(DcbTag$Reventless.tagSchema));
+    withTags = fields.concat([[
+        "tags",
+        tagsJson
+      ]]);
+  } else {
+    withTags = fields;
+  }
+  return Object.fromEntries(withTags.concat(decomposeMeta(stored.meta)));
+}
+
+function flatJsonToStoredEvent(json, idSchema) {
+  let dict = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined);
+  let id = S.parseJsonOrThrow(Stdlib_Option.getOrThrow(dict["id"], undefined), idSchema);
+  let position = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(dict["position"], undefined)), undefined);
+  let event = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(dict["event"], undefined)), undefined);
+  let data = Stdlib_Option.getOrThrow(dict["data"], undefined);
+  let recordedAt = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(dict["recordedAt"], undefined)), undefined);
+  let meta = S.parseJsonOrThrow(composeMeta(dict), Message$Reventless.metaSchema);
+  let tags = Stdlib_Option.map(dict["tags"], t => S.parseJsonOrThrow(t, S.array(DcbTag$Reventless.tagSchema)));
+  return {
+    id: id,
+    position: position,
+    event: event,
+    data: data,
+    meta: meta,
+    recordedAt: recordedAt,
+    tags: tags
+  };
 }
 
 function commandJsonOfCommand$p(idToString, commandSchema, cmd) {
@@ -327,10 +400,13 @@ export {
   InvalidCommand,
   hrtimeToString,
   generateMeta,
+  deriveMeta,
   decomposeMeta,
   composeEventJson$p,
-  string,
   composeMeta,
+  metaKeys,
+  storedEventToFlatJson,
+  flatJsonToStoredEvent,
   commandJsonOfCommand$p,
   splitMessage,
   combineMessage,

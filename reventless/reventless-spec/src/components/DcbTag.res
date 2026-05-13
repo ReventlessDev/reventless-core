@@ -16,6 +16,7 @@ annotated fields in an event's schema. The `key` is the field name and the
 // Produces tag: {key: "categoryId", value: "cat-1"}
 ```
 */
+@schema
 type tag = {key: string, value: string}
 
 /**

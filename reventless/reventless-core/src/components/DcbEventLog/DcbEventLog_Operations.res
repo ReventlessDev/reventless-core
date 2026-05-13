@@ -21,7 +21,19 @@ module Make = (Ops: Ops): T => {
   let serviceName = Ops.serviceName
 
   let publishToEventTopic = async (rawEvents: array<DcbEventLog.rawEvent>) => {
-    let meta = Message.generateMeta(~service=serviceName)
+    // Meta is now carried per-event by `rawEvent.meta` (set by the slice callback
+    // via `Message.deriveMeta(~parent=command.meta, …)` so causationId / correlationId
+    // propagate correctly). The publish-time `generateMeta(~service=serviceName)` is
+    // gone — each event publishes under its own envelope.
+    //
+    // The publishedEvent hook contract still carries a single `meta` per batch
+    // (its callers expect that shape); we use the first event's meta as the
+    // representative envelope for the batch. Hook authors who need per-event
+    // meta should read it off the eventsJson dicts.
+    let representativeMeta = switch rawEvents->Array.get(0) {
+    | Some(re) => re.meta
+    | None => Message.generateMeta(~service=serviceName)
+    }
 
     let rawEventsJson = rawEvents->Array.map(rawEvent =>
       Message.combineMessage(
@@ -39,7 +51,7 @@ module Make = (Ops: Ops): T => {
         entityId: name,
         eventCount: rawEventsJson->Array.length,
         eventsJson: rawEventsJson,
-        meta,
+        meta: representativeMeta,
       }
       try {
         let result = await hook(published)
@@ -59,8 +71,13 @@ module Make = (Ops: Ops): T => {
     ->Array.map(async ((rawEvent, eventJson)) => {
       let entityId =
         rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
-      let eventJson' = Message.composeEventJson'(entityId, meta, eventJson)
-      try await Ops.publishJson(serviceName, meta, eventJson') catch {
+      // Override `meta.service` to the DcbEventLog's name for the publish envelope —
+      // EventCollector subscriptions filter by service name, so all events published
+      // by this DcbEventLog must share that identity. The per-event causation,
+      // correlation, tracing and headers carry through unchanged.
+      let publishMeta: Message.meta = {...rawEvent.meta, service: serviceName}
+      let eventJson' = Message.composeEventJson'(entityId, publishMeta, eventJson)
+      try await Ops.publishJson(serviceName, publishMeta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
         Effect.logError(`DcbEventLog(${name}): EventTopic.publish Error: ${errMsg}`)->Effect.runSync
@@ -78,7 +95,7 @@ module Make = (Ops: Ops): T => {
           entityId: name,
           eventCount: finalRawEventsJson->Array.length,
           eventsJson: finalRawEventsJson,
-          meta,
+          meta: representativeMeta,
         }
         let _ = await hook(published)
       } catch {

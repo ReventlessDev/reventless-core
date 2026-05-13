@@ -8,18 +8,20 @@ type service = string
 Envelope metadata attached to every event and command.
 
 Every message that flows through Reventless carries this metadata so that
-audit trails, correlation, and routing are available without inspecting the
-domain payload.
+audit trails, correlation, distributed tracing, and routing are available
+without inspecting the domain payload.
+
+Shared by both `event'<>` and `command'<>` envelopes — fields are kept
+generic so they apply equally to commands and events.
 
 @example
 ```rescript
 let meta: Message.meta = {
   service: "CatalogService",
   time: "2024-01-01T00:00:00Z",
-  ip: "10.0.0.1",
-  user: "alice",
   msgId: "msg-abc",
   correlationId: "cmd-xyz",
+  user: "alice",
 }
 ```
 */
@@ -27,16 +29,29 @@ let meta: Message.meta = {
 type meta = {
   /** Name of the service that created or is addressed by this message. */
   service: service,
-  /** ISO-8601 timestamp of when the message was created. */
+  /** ISO-8601 timestamp of when the message was created (producer time). */
   time: string,
-  /** IP address of the service instance that created the message. */
-  ip: string,
-  /** Name of the user who initiated the action (empty string for system messages). */
-  user: string,
+  /** IP address of the service instance that created the message. Absent when unknown
+      (e.g. serverless contexts without a caller IP). */
+  ip?: string,
+  /** Identity of the actor who initiated the action. Absent for system-initiated messages. */
+  user?: string,
   /** Unique identifier for this message. */
   msgId: string,
-  /** Identifier of the upstream message that caused this one (for correlation chains). */
+  /** Identifier of the root message of the correlation chain. Always present;
+      defaults to `msgId` when this is the root. */
   correlationId: string,
+  /** Identifier of the *direct* parent message that caused this one. Absent at the chain root. */
+  causationId?: string,
+  /** W3C Trace Context `traceparent` header value (opaque pass-through).
+      Intentionally all-lowercase: matches the HTTP header name, OpenTelemetry SDKs,
+      and the CloudEvents distributed-tracing extension. */
+  traceparent?: string,
+  /** Schema version stamp for this message's payload variant. Absent = unversioned. */
+  schemaVersion?: string,
+  /** Extensible header bag for cross-cutting context (tenantId, feature flags, etc.).
+      Absent when empty — consumers normalise with `->Option.getOr(Dict.make())`. */
+  headers?: dict<string>,
 }
 
 /**

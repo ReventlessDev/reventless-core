@@ -1,83 +1,115 @@
 # Event Format & Metadata Review — Should Reventless Adopt CloudEvents?
 
-> Date: 2026-05-10
+> Date: 2026-05-10 (originally) · Updated: 2026-05-13 (Phase 1 shipped — see "Current State" below for the post-change shape; the analysis of CloudEvents in §4–6 still stands as Phase 2 commentary).
 > Companion to: [event-field-naming-comparison.md](./event-field-naming-comparison.md)
 >
 > Where the companion doc focuses on **field naming consistency** vs. other event-sourcing
 > products, this doc takes a **format-design** view: envelope shape, layering,
 > portability, and the question of adopting an external standard (CloudEvents).
+>
+> **Status:** Phase 1 (the "Standardise the Envelope Without CloudEvents" path in §5) is
+> implemented — see [`docs/plans/event-envelope-standardization.md`](../plans/event-envelope-standardization.md).
+> Phase 2 (CloudEvents wire format) remains on the shelf as a conditional bet.
 
 ## 1. Current State
 
 ### 1.1 The `Message.meta` envelope
 
-Defined in `reventless/reventless-spec/src/types/Message.res:26-40`:
+Defined in `reventless/reventless-spec/src/types/Message.res`:
 
 ```rescript
 @schema
 type meta = {
-  service: string,        // producer service name
-  time: string,           // ISO-8601 timestamp
-  ip: string,             // producer IP (defaults to "")
-  user: string,           // acting user (defaults to "unknown")
-  msgId: string,          // UUID, this message
-  correlationId: string,  // upstream message id (defaults to msgId)
+  service: service,         // producer service name
+  time: string,             // ISO-8601 producer timestamp
+  ip?: string,              // producer IP — absent when unknown
+  user?: string,            // acting user — absent for system-initiated messages
+  msgId: string,            // UUID, this message
+  correlationId: string,    // root id of the correlation chain (defaults to msgId)
+  causationId?: string,     // id of the *direct* parent that caused this message
+  traceparent?: string,     // W3C Trace Context header, opaque pass-through
+  schemaVersion?: string,   // schema version of this message's payload variant
+  headers?: dict<string>,   // extensible bag (tenantId, feature flags, etc.)
 }
 ```
 
-Generated via `Message.generateMeta(~service, ~ip="", ~user="unknown")`
-(`reventless-core/src/Message.res:164-167`). All six fields are **required** on the type;
-optional defaults are filled at construction time.
+`service`, `time`, `msgId`, `correlationId` are required; the rest are optional record fields (`field?: T`) — sury serialises absent fields as missing JSON keys (no `""` / `"unknown"` sentinels). `correlationId` defaults to `msgId` for a chain root.
+
+**Construction:**
+- `Message.generateMeta(~service, ~ip=?, ~user=?, ~causationId=?, ~traceparent=?, ~correlationId=?, ~schemaVersion=?, ~headers=?)` — root meta.
+- `Message.deriveMeta(~parent, ~service=?)` — child meta: fresh `msgId` + `time`, `causationId = parent.msgId`, inherits everything else. Used by `Aggregate_Callback`, `StateChangeSlice_Callback`, `EventMapper_Callback`, and `Extension_Operations.forwardCommand`.
 
 ### 1.2 The on-disk EventLog record (aggregate-style)
 
-`EventLog_Operations.res:37-52` produces, per stored event:
+`EventLog_Operations.encodeEvent'` builds a typed `StoredEvent` and serialises through `Message.storedEventToFlatJson` (meta keys hoisted to top level for DynamoDB GSI projectability):
 
 ```jsonc
 {
-  "id":  "<aggregateId>",     // partition key
-  "seq": "000000042",         // zero-padded sort key
-  "event": "ItemCreated",     // variant tag
+  "id":  "<aggregateId>",          // partition key
+  "position": "000000042",         // sort key — zero-padded sequence string
+  "event": "ItemCreated",          // variant tag
   "data":  { /* variant fields, sury-encoded, no TAG */ },
+  "recordedAt": "2026-05-13T10:00:00.000Z",  // storage time (set at append)
 
-  // flattened meta:
+  // flattened meta — required keys always present, optional keys when set:
   "service": "...",
   "time":    "...",
-  "ip":      "...",
-  "user":    "...",
   "msgId":   "...",
-  "correlationId": "..."
+  "correlationId": "...",
+  "causationId":   "...",          // present when emitted from a parent message
+  // "ip", "user", "traceparent", "schemaVersion", "headers" — present only when set
 }
 ```
 
-Notable: meta is **flattened to top-level attributes** (DynamoDB-friendly,
-projectable in GSIs), and the variant **payload is unwrapped** — the `TAG`
-discriminator is moved out into the dedicated `event` column.
+The DynamoDB table's range key was renamed from `seq` to `position` to unify with the DCB log; the OCC condition is `attribute_not_exists(position)`.
 
 ### 1.3 The on-disk DcbEventLog record (DCB-style)
 
-`DcbEventLogStorage_DynamoDb_Runtime.res:57-93`:
+`DcbEventLogStorage_DynamoDb_Runtime.toItem` writes the same shape, plus DCB-specific extras:
 
 ```jsonc
 {
-  "id":       "tagKey:tagValue",  // partition key derived from tags
-  "position": "<unixMs>-<uuid>",  // global sort key
+  "id":       "tagKey:tagValue",   // partition key derived from tags
+  "position": "<unixMs>-<uuid>",   // global sort key
   "event":    "CategoryAdded",
   "data":     { /* variant fields */ },
+  "recordedAt": "2026-05-13T10:00:00.000Z",  // NEW — storage time (set at append)
   "tags":     [ {"key": "...", "value": "..."}, ... ],
 
-  // GSI helpers:
+  // flattened meta — same shape as EventLog (NEW: was previously absent):
+  "service": "...",
+  "time":    "...",
+  "msgId":   "...",
+  "correlationId": "...",
+  // optional meta keys when set: causationId / ip / user / traceparent / schemaVersion / headers
+
+  // DynamoDB-only GSI helpers, derived from `tags`:
   "tag_<key>":      "value",
   "tag_composite":  "k1:v1#k2:v2#..."
-  // NO meta fields
 }
 ```
 
-The DCB log carries **no envelope metadata at all** in storage. Meta is
-re-generated at publish time in `DcbEventLog_Operations.res:24` and only
-travels to the `EventTopic`.
+The DCB log now **persists meta at append time**. `DcbEventLog_Operations.publishToEventTopic` no longer regenerates meta — it uses each event's stored `meta` and overrides only `service` to `<name>DcbEventLog` for EventCollector routing.
 
-### 1.4 In-flight Pub/Sub envelopes
+### 1.4 The `StoredEvent` type (single source of truth)
+
+Both records above are flattenings of a single logical type — `Reventless.StoredEvent.storedEvent<'id>`:
+
+```rescript
+type storedEvent<'id> = {
+  id: 'id,
+  position: string,
+  event: string,           // variant tag (storage column unchanged)
+  data: JSON.t,            // sury-encoded payload, TAG stripped
+  meta: Message.meta,
+  recordedAt: string,
+  tags?: array<DcbTag.tag>,
+}
+```
+
+`Message.storedEventToFlatJson` / `flatJsonToStoredEvent` are the bridges to the on-disk dict shape (meta flattened to top-level). DynamoDB-only `tag_<key>` / `tag_composite` are synthesised by the DCB adapter from `tags` — they are *not* fields on `StoredEvent`.
+
+### 1.5 In-flight Pub/Sub envelopes
 
 When messages cross transport boundaries (SQS, SNS, in-memory bus), they are
 wrapped as either:

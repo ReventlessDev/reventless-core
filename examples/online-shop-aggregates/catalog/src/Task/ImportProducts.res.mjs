@@ -9,11 +9,13 @@ function importCallback(eventName, key) {
   }
   console.log("[ImportProducts] Processing file: " + key);
   let meta_time = Date.now().toString();
+  let meta_ip = "";
+  let meta_user = "system";
   let meta = {
     service: "ImportProducts",
     time: meta_time,
-    ip: "",
-    user: "system",
+    ip: meta_ip,
+    user: meta_user,
     msgId: key,
     correlationId: key
   };

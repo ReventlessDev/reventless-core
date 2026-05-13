@@ -9,22 +9,31 @@ type outputs = {resources: array<Adapter.resource>, eventTopic: EventTopic.outpu
 /**
 A raw event ready to be stored in the DCB log.
 Produced by slice callbacks after encoding with their eventSchema.
+
+`meta` is the envelope metadata for this event (causation, correlation, tracing).
+Slice callbacks derive it from the triggering message's context.
 */
 type rawEvent = {
   eventType: string,
   data: JSON.t,
   tags: array<Reventless.DcbTag.tag>,
+  meta: Reventless.Message.meta,
 }
 
 /**
 A raw event read from the DCB log at a known position.
 Consumed by slice callbacks for decoding with their consumedEventSchema.
+
+`meta` is the envelope metadata that was written at append time.
+`recordedAt` is the storage timestamp, set by the storage adapter at append.
 */
 type rawSequencedEvent = {
   position: Reventless.DcbTag.sequencePosition,
   eventType: string,
   data: JSON.t,
   tags: array<Reventless.DcbTag.tag>,
+  meta: Reventless.Message.meta,
+  recordedAt: string,
 }
 
 /**

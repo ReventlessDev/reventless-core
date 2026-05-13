@@ -10,4 +10,7 @@ let meta = {
 
 let context = {Reventless.Message.meta, id}
 
-let statusChange = {Reventless.Message.at: context.meta.time, by: context.meta.user}
+let statusChange = {
+  Reventless.Message.at: context.meta.time,
+  by: context.meta.user->Option.getOr(""),
+}

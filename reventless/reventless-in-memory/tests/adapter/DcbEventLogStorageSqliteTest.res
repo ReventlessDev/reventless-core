@@ -18,6 +18,7 @@ let stored = (eventType, tags, data): ReventlessCore.DcbEventLog_Adapter.rawStor
   eventType,
   data,
   tags,
+  meta: ReventlessCore.Message.generateMeta(~service="test"),
 }
 
 describe("DcbEventLogStorage_Sqlite", () => {

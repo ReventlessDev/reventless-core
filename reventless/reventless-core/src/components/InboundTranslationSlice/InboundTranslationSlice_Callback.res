@@ -43,14 +43,12 @@ module Make = (
 
   let now = () => Date.make()->Date.toISOString
 
-  let makeMeta = (): Reventless.Message.meta => {
-    service: `InboundTranslationSlice:${Spec.name}`,
-    time: now(),
-    ip: "",
-    user: "",
-    msgId: Uuid.v4(),
-    correlationId: "",
-  }
+  // InboundTranslationSlice ingests external (non-Reventless) messages — there's
+  // no upstream Reventless meta to derive from, so emitted commands are roots
+  // of a fresh correlation chain. `traceparent` populated from an inbound HTTP
+  // header would need to be threaded in here by the API/ingress adapter.
+  let makeMeta = (): Reventless.Message.meta =>
+    Message.generateMeta(~service=`InboundTranslationSlice:${Spec.name}`)
 
   let receive = async (
     publishJsons: ReventlessInfra.CommandTopic.publishJsons,

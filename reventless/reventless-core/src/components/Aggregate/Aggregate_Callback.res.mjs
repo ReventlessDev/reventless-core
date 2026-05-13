@@ -21,23 +21,12 @@ function Make(Spec) {
       Spec.Id.makeFromString(param[0]),
       param[1]
     ]));
-    let updateMeta = command$p => {
-      let init = command$p.meta;
-      return {
-        service: init.service,
-        time: Message$ReventlessCore.nowAsISOString(),
-        ip: init.ip,
-        user: init.user,
-        msgId: Message$ReventlessCore.uuid(),
-        correlationId: init.correlationId
-      };
-    };
     let processCommand = (param, topicItem) => {
       let reference = topicItem.reference;
       let command$p = topicItem.command;
       let outcomes = param[1];
       let state = param[0];
-      let meta = updateMeta(command$p);
+      let meta = Message$ReventlessCore.deriveMeta(command$p.meta, undefined);
       let generatedEvents = Behavior.decide(state, command$p.command);
       if (generatedEvents.TAG === "Ok") {
         let generatedEvents$1 = generatedEvents._0;

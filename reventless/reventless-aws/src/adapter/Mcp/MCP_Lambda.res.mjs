@@ -130,14 +130,14 @@ async function readEventLogHistory(tableName, entityId, limit, after) {
       ":id",
       entityId
     ]]);
-  let exclusiveStartKey = Stdlib_Option.map(after, afterSeq => Object.fromEntries([
+  let exclusiveStartKey = Stdlib_Option.map(after, afterPos => Object.fromEntries([
     [
       "id",
       entityId
     ],
     [
-      "seq",
-      afterSeq
+      "position",
+      afterPos
     ]
   ]));
   let stream = Stream$1.catchAll(Util_DynamoDb_Runtime$ReventlessAws.queryStream({
@@ -161,7 +161,7 @@ async function readEventLogHistory(tableName, entityId, limit, after) {
     ];
   let hasMore = match[1];
   let limited = match[0];
-  let nextAfter = hasMore ? Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(limited.at(-1), Stdlib_JSON.Decode.object), obj => obj["seq"]), Stdlib_JSON.Decode.string) : undefined;
+  let nextAfter = hasMore ? Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(limited.at(-1), Stdlib_JSON.Decode.object), obj => obj["position"]), Stdlib_JSON.Decode.string) : undefined;
   return paginatedResponse(limited, hasMore, nextAfter);
 }
 

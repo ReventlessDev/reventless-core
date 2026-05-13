@@ -2,8 +2,8 @@ let make: ReventlessCore.EventLog_Adapter.storageMaker = (~name, ~opts) => {
   let tags = AWS.Tags.make(~name, ReventlessCore.EventLog.componentType)
   let table = Util.DynamoDbStream.makeTable(
     name,
-    ~attributes=[{name: "id", type_: "S"}, {name: "seq", type_: "S"}],
-    ~rangeKey="seq",
+    ~attributes=[{name: "id", type_: "S"}, {name: "position", type_: "S"}],
+    ~rangeKey="position",
     ~streamViewType=NEW_IMAGE,
     ~tags,
     ~opts,

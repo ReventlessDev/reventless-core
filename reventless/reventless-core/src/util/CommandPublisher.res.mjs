@@ -41,7 +41,7 @@ function Make(Spec) {
         let commandJson = Message$ReventlessCore.encode(param[1], Spec.commandSchema);
         return {
           id: param[0],
-          meta: Message$ReventlessCore.generateMeta(Spec.name, undefined, Config.user),
+          meta: Message$ReventlessCore.generateMeta(Spec.name, undefined, Config.user, undefined, undefined, undefined, undefined, undefined),
           commandJson: commandJson
         };
       });

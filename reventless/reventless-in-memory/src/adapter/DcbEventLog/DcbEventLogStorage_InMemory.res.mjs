@@ -6,6 +6,7 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as BackendState$ReventlessInMemory from "../BackendState.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessInMemory from "./DcbEventLogStorage_Sqlite.res.mjs";
 
@@ -82,7 +83,9 @@ function makeStorage(_name, param, param$1, param$2) {
         position: pos,
         eventType: event.eventType,
         data: event.data,
-        tags: event.tags
+        tags: event.tags,
+        meta: event.meta,
+        recordedAt: Message$ReventlessCore.nowAsISOString()
       };
     });
     events.contents = events.contents.concat(storedEvents);

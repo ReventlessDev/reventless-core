@@ -8,10 +8,14 @@ S.enableJson();
 let metaSchema = S.schema(s => ({
   service: s.m(S.string),
   time: s.m(S.string),
-  ip: s.m(S.string),
-  user: s.m(S.string),
+  ip: s.m(S.option(S.string)),
+  user: s.m(S.option(S.string)),
   msgId: s.m(S.string),
-  correlationId: s.m(S.string)
+  correlationId: s.m(S.string),
+  causationId: s.m(S.option(S.string)),
+  traceparent: s.m(S.option(S.string)),
+  schemaVersion: s.m(S.option(S.string)),
+  headers: s.m(S.option(S.dict(S.string)))
 }));
 
 let contextSchema = S.schema(s => ({

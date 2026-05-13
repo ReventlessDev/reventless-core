@@ -14,10 +14,10 @@ function make(name, opts) {
       type: "S"
     },
     {
-      name: "seq",
+      name: "position",
       type: "S"
     }
-  ], undefined, undefined, "seq", "NEW_IMAGE", tags, opts, name);
+  ], undefined, undefined, "position", "NEW_IMAGE", tags, opts, name);
   return {
     resources: [Util_DynamoDbStream$ReventlessAws.toResource(tags, table)],
     operations: Util_DynamoDb$ReventlessAws.toResolvedTableOutput(table).apply(resolvedTable => ({

@@ -193,10 +193,10 @@ let readEventLogHistory = async (
 
   let expressionAttributeValues = [(":id", entityId->JSON.Encode.string)]->Dict.fromArray
 
-  let exclusiveStartKey = after->Option.map(afterSeq =>
+  let exclusiveStartKey = after->Option.map(afterPos =>
     Dict.fromArray([
       ("id", entityId->JSON.Encode.string),
-      ("seq", afterSeq->JSON.Encode.string),
+      ("position", afterPos->JSON.Encode.string),
     ])
   )
 
@@ -231,7 +231,7 @@ let readEventLogHistory = async (
     limited
     ->Array.at(-1)
     ->Option.flatMap(JSON.Decode.object)
-    ->Option.flatMap(obj => obj->Dict.get("seq"))
+    ->Option.flatMap(obj => obj->Dict.get("position"))
     ->Option.flatMap(JSON.Decode.string)
   } else {
     None

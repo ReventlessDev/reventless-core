@@ -281,7 +281,7 @@ function MakeWithConfig(Config) {
         return paginate(events, e => {
           let obj = Stdlib_JSON.Decode.object(e);
           if (obj !== undefined) {
-            return Stdlib_Option.flatMap(obj["seq"], Stdlib_JSON.Decode.string);
+            return Stdlib_Option.flatMap(obj["position"], Stdlib_JSON.Decode.string);
           }
         });
       }
@@ -1867,7 +1867,7 @@ function Make($star) {
         return paginate(events, e => {
           let obj = Stdlib_JSON.Decode.object(e);
           if (obj !== undefined) {
-            return Stdlib_Option.flatMap(obj["seq"], Stdlib_JSON.Decode.string);
+            return Stdlib_Option.flatMap(obj["position"], Stdlib_JSON.Decode.string);
           }
         });
       }

@@ -199,11 +199,13 @@ function encodeShipOrderEvent(event) {
     }
     dict = d$1;
   }
+  let meta_ip = "";
+  let meta_user = "";
   let meta = {
     service: name,
     time: "2026-01-01T00:00:00Z",
-    ip: "",
-    user: "",
+    ip: meta_ip,
+    user: meta_user,
     msgId: "msg-1",
     correlationId: ""
   };
@@ -226,11 +228,13 @@ function encodeSkipProcessEvent(event) {
     }
     dict = d$1;
   }
+  let meta_ip = "";
+  let meta_user = "";
   let meta = {
     service: name$1,
     time: "2026-01-01T00:00:00Z",
-    ip: "",
-    user: "",
+    ip: meta_ip,
+    user: meta_user,
     msgId: "msg-1",
     correlationId: ""
   };

@@ -161,9 +161,48 @@ let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) =
 }
 
 
-let generateMeta = (~service, ~ip="", ~user="unknown") => {
+let generateMeta = (
+  ~service,
+  ~ip=?,
+  ~user=?,
+  ~causationId=?,
+  ~traceparent=?,
+  ~correlationId=?,
+  ~schemaVersion=?,
+  ~headers=?,
+) => {
   let msgId = uuid()
-  {service, ip, user, time: nowAsISOString(), msgId, correlationId: msgId}
+  {
+    service,
+    time: nowAsISOString(),
+    msgId,
+    correlationId: correlationId->Option.getOr(msgId),
+    ip: ?ip,
+    user: ?user,
+    causationId: ?causationId,
+    traceparent: ?traceparent,
+    schemaVersion: ?schemaVersion,
+    headers: ?headers,
+  }
+}
+
+// Derive a child message's meta from a triggering parent message:
+//   - fresh `msgId` and `time`
+//   - `correlationId` inherited (so the chain root id stays stable)
+//   - `causationId` = parent.msgId (the *direct* parent)
+//   - `ip`, `user`, `traceparent`, `schemaVersion`, `headers` inherited as-is
+//   - `service` overridable; defaults to parent's service
+let deriveMeta = (~parent: meta, ~service=?) => {
+  service: service->Option.getOr(parent.service),
+  time: nowAsISOString(),
+  msgId: uuid(),
+  correlationId: parent.correlationId,
+  causationId: parent.msgId,
+  ip: ?parent.ip,
+  user: ?parent.user,
+  traceparent: ?parent.traceparent,
+  schemaVersion: ?parent.schemaVersion,
+  headers: ?parent.headers,
 }
 
 let decomposeMeta = meta =>
@@ -182,24 +221,89 @@ let composeEventJson' = (id, meta, eventJson) =>
   ->Dict.fromArray
   ->JSON.Encode.object
 
-let string = x =>
-  switch x {
-  | Some(ip) if ip == JSON.Encode.null => ""->JSON.Encode.string
-  | Some(ip) => ip
-  | None => ""->JSON.Encode.string
-  }
-
-let composeMeta = (dict: dict<JSON.t>) =>
-  [
+// Build a meta JSON object from a flat dict (e.g. one whose top-level keys are
+// the meta.* attributes of a DynamoDB item). Required keys must be present;
+// optional keys are passed through when present and omitted when absent.
+let composeMeta = (dict: dict<JSON.t>) => {
+  let out = [
     ("service", dict->Dict.get("service")->Option.getOrThrow),
     ("time", dict->Dict.get("time")->Option.getOrThrow),
-    ("ip", dict->Dict.get("ip")->string),
-    ("user", dict->Dict.get("user")->string),
     ("msgId", dict->Dict.get("msgId")->Option.getOrThrow),
     ("correlationId", dict->Dict.get("correlationId")->Option.getOrThrow),
   ]
-  ->Dict.fromArray
-  ->JSON.Encode.object
+  let optionalKeys = ["ip", "user", "causationId", "traceparent", "schemaVersion", "headers"]
+  let optional =
+    optionalKeys
+    ->Array.map(k => dict->Dict.get(k)->Option.map(v => (k, v)))
+    ->Array.filterMap(x => x)
+  out->Array.concat(optional)->Dict.fromArray->JSON.Encode.object
+}
+
+// The set of keys that belong to `meta`. Used by `flatJsonToStoredEvent` to
+// separate meta keys from envelope keys when reading flat on-disk items.
+let metaKeys = [
+  "service",
+  "time",
+  "ip",
+  "user",
+  "msgId",
+  "correlationId",
+  "causationId",
+  "traceparent",
+  "schemaVersion",
+  "headers",
+]
+
+/*
+  StoredEvent ↔ flat on-disk JSON helpers.
+
+  `StoredEvent` is the logical shape (nested `meta:meta`). The on-disk shape is
+  a flat top-level dict so DynamoDB GSIs can project individual meta attributes
+  (the §1.2/§3.2 behaviour today, preserved here). These two helpers are the
+  single bridge between the two — used by both EventLog (aggregate) and
+  DcbEventLog (DCB) storage paths.
+*/
+
+/** Encode a typed `StoredEvent` to the flat on-disk JSON shape. */
+let storedEventToFlatJson = (
+  stored: Reventless.StoredEvent.storedEvent<'id>,
+  idSchema: S.t<'id>,
+): JSON.t => {
+  let fields = [
+    ("id", stored.id->S.reverseConvertToJsonOrThrow(idSchema)),
+    ("position", JSON.String(stored.position)),
+    ("event", JSON.String(stored.event)),
+    ("data", stored.data),
+    ("recordedAt", JSON.String(stored.recordedAt)),
+  ]
+  let withTags = switch stored.tags {
+  | Some(tags) =>
+    let tagsJson = tags->S.reverseConvertToJsonOrThrow(S.array(Reventless.DcbTag.tagSchema))
+    fields->Array.concat([("tags", tagsJson)])
+  | None => fields
+  }
+  withTags->Array.concat(stored.meta->decomposeMeta)->Dict.fromArray->JSON.Encode.object
+}
+
+/** Decode the flat on-disk JSON shape into a typed `StoredEvent`. */
+let flatJsonToStoredEvent = (
+  json: JSON.t,
+  idSchema: S.t<'id>,
+): Reventless.StoredEvent.storedEvent<'id> => {
+  let dict = json->JSON.Decode.object->Option.getOrThrow
+  let id = dict->Dict.get("id")->Option.getOrThrow->S.parseJsonOrThrow(idSchema)
+  let position = dict->Dict.get("position")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
+  let event = dict->Dict.get("event")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
+  let data = dict->Dict.get("data")->Option.getOrThrow
+  let recordedAt =
+    dict->Dict.get("recordedAt")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
+  let meta = composeMeta(dict)->S.parseJsonOrThrow(metaSchema)
+  let tags =
+    dict
+    ->Dict.get("tags")
+    ->Option.map(t => t->S.parseJsonOrThrow(S.array(Reventless.DcbTag.tagSchema)))
+  {id, position, event, data, recordedAt, meta, tags: ?tags}
+}
 
 // type decoder<'a> = JSON.t => result<'a, Decco.decodeError>
 // type encoder<'a> = 'a => JSON.t

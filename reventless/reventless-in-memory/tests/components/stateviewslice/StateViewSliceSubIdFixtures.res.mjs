@@ -138,10 +138,12 @@ function encodeEvent(event) {
   let json = S.reverseConvertToJsonOrThrow(event, eventSchema);
   let match = Message$ReventlessCore.splitMessage(json);
   let tags = DcbTag$Reventless.extractTags(eventSchema, event);
+  let meta = Message$ReventlessCore.generateMeta("test", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   return {
     eventType: match[0],
     data: match[1],
-    tags: tags
+    tags: tags,
+    meta: meta
   };
 }
 

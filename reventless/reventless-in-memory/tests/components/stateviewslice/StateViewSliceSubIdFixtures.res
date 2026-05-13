@@ -94,7 +94,8 @@ let encodeEvent = (event: ScoreEventLog.event): ReventlessInfra.DcbEventLog.rawE
   let json = event->S.reverseConvertToJsonOrThrow(ScoreEventLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(ScoreEventLog.eventSchema, event)
-  {eventType, data: JSON.Object(data), tags}
+  let meta = ReventlessCore.Message.generateMeta(~service="test")
+  {eventType, data: JSON.Object(data), tags, meta}
 }
 
 let appendEvent = async event => {
