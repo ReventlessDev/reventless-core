@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.37 (2026-05-13)
+
+* feat(spec)!: standardise event/command envelope (StoredEvent, optional meta, position, persisted DCB meta, causation) ([7ef3176](https://github.com/ReventlessDev/reventless-core/commit/7ef3176c6330810c817f43a52b881b5a0efee30e))
+
+### BREAKING CHANGES
+
+* meta.ip / meta.user go from required `string` to optional
+record fields (`?: string`). Code that did `meta.user == "unknown"` to
+detect system messages must check for field absence. Storage tables built
+before this change are not migrated (greenfield — recreate the EventLog /
+DcbEventLog tables; DynamoDB range key renamed from `seq` to `position`,
+SQLite dcb_event gains meta and recorded_at columns).
+
+
+
 # 3.0.0-alpha.36 (2026-05-05)
 
 ### Features
