@@ -6,6 +6,7 @@ import * as Stdlib_Int from "@rescript/runtime/lib/es6/Stdlib_Int.js";
 import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -40,6 +41,7 @@ import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Bu
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PlatformMCP_Server$ReventlessInMemory from "./adapter/PlatformMCP_Server.res.mjs";
 import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_PluginSpec.res.mjs";
+import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
 import * as DomainGraphQL_Server$ReventlessInMemory from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as QueryEngine_InMemory$ReventlessInMemory from "./adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
 import * as ClonerRunner_InMemory$ReventlessInMemory from "./adapter/Cloner/ClonerRunner_InMemory.res.mjs";
@@ -1194,6 +1196,19 @@ function MakeWithConfig(Config) {
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
     queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
+      let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+      let items = scanAll !== undefined ? scanAll() : [];
+      return Stdlib_Array.filterMap(items, item => {
+        let state;
+        try {
+          state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+        } catch (exn) {
+          return;
+        }
+        return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
+      });
+    };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {
       switch (s) {
@@ -2774,6 +2789,19 @@ function Make($star) {
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
     queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
+      let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+      let items = scanAll !== undefined ? scanAll() : [];
+      return Stdlib_Array.filterMap(items, item => {
+        let state;
+        try {
+          state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+        } catch (exn) {
+          return;
+        }
+        return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
+      });
+    };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {
       switch (s) {

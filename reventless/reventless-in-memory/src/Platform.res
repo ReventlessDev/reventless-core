@@ -1296,6 +1296,30 @@ module MakeWithConfig = (
         ->JSON.Encode.array,
     )
 
+    // Platform_UIFragments resolver — reads the seeded UIFragmentRegistry QueryDb
+    // (same store the admin UIFragment / UIFragments queries scan) and encodes via
+    // the shared Platform_UIFragmentsApi encoder so AWS and in-memory return the
+    // same JSON shape.
+    queryResolvers->Dict.set(
+      "Platform_UIFragments",
+      async (_root, _args, _ctx): JSON.t => {
+        let items = switch Bus.getQueryDbScan(uiFragmentQueryDbName) {
+        | Some(scanAll) => scanAll()
+        | None => []
+        }
+        items
+        ->Array.filterMap(item =>
+          switch item->S.parseOrThrow(
+            ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
+          ) {
+          | state => Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
+          | exception _ => None
+          }
+        )
+        ->JSON.Encode.array
+      },
+    )
+
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Helper: extract plugin id from mutation args, load state, apply status change, save.

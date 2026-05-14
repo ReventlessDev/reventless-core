@@ -54,6 +54,7 @@ import * as AppSync_Resolver_Retrying$ReventlessAws from "./adapter/Api/AppSync_
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
+import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as Aggregate_Builder_NoResolver$ReventlessAws from "./components/Aggregate_Builder_NoResolver.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
@@ -63,10 +64,12 @@ import * as Platform_UIDefinitions_Lambda$ReventlessAws from "./adapter/Api/Plat
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
 import * as StateViewSlice_Builder_Stream$ReventlessAws from "./components/StateViewSlice_Builder_Stream.res.mjs";
+import * as UIFragmentRegistryProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryProjection.res.mjs";
 import * as Aggregate_Builder_Single_Async$ReventlessAws from "./components/Aggregate_Builder_Single_Async.res.mjs";
 import * as Platform_EventGraphProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_EventGraphProjection.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
+import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryReadModelSpec.res.mjs";
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
 import * as Platform_EventGraphReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
@@ -685,6 +688,19 @@ function MakeWithConfig(Config) {
     config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
   })(PlatformEventGraphMappings);
+  let moduleUrl$2 = import.meta.url;
+  let UIFragmentRegistryReadModelMappings = {
+    moduleUrl: moduleUrl$2,
+    mappings: UIFragmentRegistryProjection$ReventlessCore.mappings
+  };
+  let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: UIFragmentRegistryReadModelSpec$ReventlessCore.name,
+    moduleUrl: UIFragmentRegistryReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema,
+    config: UIFragmentRegistryReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined
+  })(UIFragmentRegistryReadModelMappings);
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);
     let outputs = Component$ReventlessCore.outputs(component);
@@ -720,13 +736,21 @@ function MakeWithConfig(Config) {
     }
     let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
-      PlatformEventGraphReadModel
+      PlatformEventGraphReadModel,
+      UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugin"];
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
       if (r !== undefined) {
         Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
+      }
+    }
+    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    if (rm !== undefined) {
+      let r$1 = rm.queryDb.resources[0];
+      if (r$1 !== undefined) {
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
@@ -824,7 +848,8 @@ function MakeWithConfig(Config) {
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,
-      PlatformEventGraphReadModel
+      PlatformEventGraphReadModel,
+      UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugin"];
     let pluginReadModelTableName;
@@ -838,6 +863,13 @@ function MakeWithConfig(Config) {
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (pluginReadModelTableName !== undefined) {
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
+    }
+    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    if (rm !== undefined) {
+      let r$1 = rm.queryDb.resources[0];
+      if (r$1 !== undefined) {
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+      }
     }
     if (Config.splitApi) {
       let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
@@ -1555,6 +1587,19 @@ function Make($star) {
     config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined
   })(PlatformEventGraphMappings);
+  let moduleUrl$2 = import.meta.url;
+  let UIFragmentRegistryReadModelMappings = {
+    moduleUrl: moduleUrl$2,
+    mappings: UIFragmentRegistryProjection$ReventlessCore.mappings
+  };
+  let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: UIFragmentRegistryReadModelSpec$ReventlessCore.name,
+    moduleUrl: UIFragmentRegistryReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema,
+    config: UIFragmentRegistryReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined
+  })(UIFragmentRegistryReadModelMappings);
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);
     let outputs = Component$ReventlessCore.outputs(component);
@@ -1585,13 +1630,21 @@ function Make($star) {
     }
     let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
-      PlatformEventGraphReadModel
+      PlatformEventGraphReadModel,
+      UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugin"];
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
       if (r !== undefined) {
         Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
+      }
+    }
+    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    if (rm !== undefined) {
+      let r$1 = rm.queryDb.resources[0];
+      if (r$1 !== undefined) {
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
@@ -1677,7 +1730,8 @@ function Make($star) {
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,
-      PlatformEventGraphReadModel
+      PlatformEventGraphReadModel,
+      UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugin"];
     let pluginReadModelTableName;
@@ -1691,6 +1745,13 @@ function Make($star) {
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, false, undefined);
     if (pluginReadModelTableName !== undefined) {
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
+    }
+    let rm = admin.readModelsOutputs["UIFragmentRegistry"];
+    if (rm !== undefined) {
+      let r$1 = rm.queryDb.resources[0];
+      if (r$1 !== undefined) {
+        Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
+      }
     }
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);

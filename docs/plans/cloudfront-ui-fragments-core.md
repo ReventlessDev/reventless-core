@@ -38,33 +38,99 @@ What this plan does **not** cover: building the host shell React app, choosing/i
 
 **Verify:** `vite preview` in `ui/` serves a working bundle. The UI sibling plan's host shell can load this URL locally via federation.
 
-### 3. Wire `makeUiBundleDistribution` into `catalog-aws`
+### 3. Extend `plugin.json` + generator to provision a bundle distribution
 
-**Goal:** `pulumi up` on the catalog plugin stack provisions its bundle distribution and feeds the URL back to the lambda.
+**Goal:** `pulumi up` on the catalog plugin stack provisions its bundle distribution and feeds the URL back to the lambda — **without** hand-editing the auto-generated `Plugin.res`. All variability lives in `plugin.json`; the generator emits the `Plugin_Stack.makeUiBundleDistribution(...)` call.
 
-- Edit `examples/online-shop-hybrid/catalog-aws/src/Plugin.res` (currently auto-generated — decide if regeneration needs to support this or if the file becomes hand-maintained; recommend the latter, with a regen-safe block).
-- Call `Plugin_Stack.makeUiBundleDistribution(~pluginId="catalog", ~bundleVersion=…, ~assetsDir="../catalog/ui/dist", ~spaFallback=false)`. The bundleVersion can come from package.json or a hash of the dist directory.
-- Set `CATALOG_UI_BUNDLE_URL` on the plugin lambdas as a Pulumi env-var from `distributionUrl`. The lambda code (which reads `process.env.CATALOG_UI_BUNDLE_URL`) is unchanged.
-- Export `bundleDistributionUrl` and `bundleBucketName` as Pulumi stack outputs.
+**3a. Extend the `plugin.json` schema (`reventless/reventless-spec/src/generator/Config.res`)**
+
+Add an optional `uiBundle` block parsed into a new `Config.uiBundle` record:
+
+```json
+{
+  "name": "Catalog",
+  "uiBundle": {
+    "assetsDir": "../catalog/ui/dist",
+    "spaFallback": false
+  }
+}
+```
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `assetsDir` | string (required to enable UI bundle) | — | Path relative to the `*-aws` package root, pointing at the `vite build` output. Presence of this key is what tells the generator "emit `makeUiBundleDistribution`". |
+| `bundleVersion` | string (optional) | content hash of `assetsDir` | Namespaces the S3 prefix. Hash default means most users never set it. |
+| `spaFallback` | bool (optional) | `false` | `true` for SPA host shells (rewrites unknown paths to `/index.html`); plugin fragments stay `false`. |
+| `envVar` | string (optional) | `<NAME>_UI_BUNDLE_URL` (existing rule, Codegen.res:438-446) | Override only if a plugin needs an unusual env-var name. |
+
+The `Config.res` reader (currently `Config.res:7-8`, `getStrField`/`getIntField` style at `Config.res:78-80`) gains a nested record reader for the `uiBundle` block. Absent block ⇒ `None` ⇒ generator emits today's shape (no behaviour change for existing plugins).
+
+**3b. Extend `renderAwsWrapper` (`reventless/reventless-spec/src/generator/Codegen.res:448`)**
+
+When `config.uiBundle` is `Some(_)`, replace the current
+```rescript
+@val external uiBundleUrl: option<string> = "process.env.CATALOG_UI_BUNDLE_URL"
+…
+let make = () => Composition.make(~uiBundleUrl?)
+```
+with a Pulumi-resource call whose args come straight from the JSON:
+```rescript
+let { distributionUrl, bucketName } = ReventlessAws.Plugin_Stack.makeUiBundleDistribution(
+  ~pluginId="catalog",
+  ~bundleVersion=…,        // from plugin.json or computed hash
+  ~assetsDir="../catalog/ui/dist",
+  ~spaFallback=false,
+)
+…
+let make = () => Composition.make(~uiBundleUrl=distributionUrl)
+```
+Also emit `bundleDistributionUrl` and `bundleBucketName` as Pulumi stack outputs at the bottom of `Plugin.res` (or push them into the generated `Main.res` instead — pick whichever keeps the functor module clean).
+
+When `config.uiBundle` is `None`, emit the current shape unchanged (back-compat).
+
+**3c. Widen `Composition.make` to accept the Output form**
+
+Today the standard composition's `make` accepts `~uiBundleUrl: option<string>=?` (Codegen.res:609) and uses `Option.map` to build the fragment manifest (Codegen.res:631). With `makeUiBundleDistribution`, the URL is `Pulumi.Output.t<string>` at deploy time.
+
+Change the composition signature to accept `~uiBundleUrl: Pulumi.Output.t<string>=?` (or a sum type that admits both forms if in-memory still passes a plain string). The `makeAutoUIManifest` call already needs a `Pulumi.Output.t<string>` downstream — no change for the in-memory variant if it lifts plain strings via `Pulumi.Output.make`.
+
+**3d. Set the block in `examples/online-shop-hybrid/catalog/src/plugin.json`**
+
+```json
+{
+  "name": "Catalog",
+  "uiBundle": {
+    "assetsDir": "../catalog/ui/dist"
+  }
+}
+```
+
+The lambda code (which reads `process.env.CATALOG_UI_BUNDLE_URL`) is unchanged; the generator continues to set that env var, only its *value* now comes from the Pulumi output instead of the deploy-shell env.
 
 **Verify:**
+- `pnpm run generate` in `catalog-aws/` produces a `Plugin.res` containing the `makeUiBundleDistribution` call and no manual edits are needed.
 - `pulumi up` provisions S3 + CloudFront, uploads the `ui/dist/` files.
 - `pulumi stack output bundleDistributionUrl` returns the CloudFront URL.
 - Hitting `<bundleDistributionUrl>/remoteEntry.js` returns the federation manifest.
 - The catalog plugin lambda's `Plugin_Connected` event payload contains `uiFragments.remoteEntryUrl = <bundleDistributionUrl>`.
 - The new `Platform_UIFragments` query reflects this.
+- A plugin **without** a `uiBundle` block in `plugin.json` regenerates to byte-identical output as before (back-compat check).
 
-### 4. Add a host-UI Pulumi program
+### 4. Extend `platform-aws` to deploy the host UI shell
 
 **Goal:** the host shell from the UI sibling plan has a place to deploy to on AWS.
 
-- Create `examples/online-shop-hybrid/host-ui-aws/` with `Pulumi.yaml`, `Pulumi.alpha.yaml`, `package.json`, `rescript.json`, `src/Main.res`.
-- The `Main.res` calls `Plugin_Stack.makeUiBundleDistribution(~pluginId="host-ui", ~bundleVersion=…, ~assetsDir="../../../../reventless-ui/host-shell/dist", ~spaFallback=true)`.
-- Write a `config.json` to the dist directory *before* upload, containing `apiEndpoint`, `region`, `cognitoUserPoolId`, `cognitoClientId` resolved from a `Pulumi.StackReference` to the platform stack. Stack output names match the platform's outputs.
-- Export `hostShellUrl` as a stack output.
+The host UI isn't a Reventless plugin (no aggregates, no extension points) so the `plugin.json` generator mechanism from step 3 doesn't apply. It also doesn't need its own package: `platform-aws/src/Main.res` already has direct access to the API endpoint, Cognito IDs, etc. as Output values — wiring the host UI distribution there avoids a cross-stack `StackReference` indirection.
+
+- Edit `examples/online-shop-hybrid/platform-aws/src/Main.res` to call `Plugin_Stack.makeUiBundleDistribution(~pluginId="host-ui", ~bundleVersion=…, ~assetsDir="../../../reventless-ui/host-shell/dist", ~spaFallback=true)` after `deployPlatform` returns.
+- Write a `config.json` to the dist directory *before* upload, containing `apiEndpoint`, `region`, `cognitoUserPoolId`, `cognitoClientId` — values come directly from the platform's in-scope outputs, no `StackReference` needed.
+- Export `hostShellUrl` as a stack output alongside the existing platform exports (`platformApiId`, `domainApiEndpoint`, etc.).
+
+> Production users wanting an independent host-ui deploy cadence (separate team, separate `pulumi up`) can extract this into a `host-ui-aws` package later — it's a one-time refactor that adds a `Pulumi.StackReference` to the platform outputs.
 
 **Verify:**
-- `pulumi up` deploys the dist directory + a `config.json` next to `index.html`.
+- `pulumi up` on `platform-aws` deploys the dist directory + a `config.json` next to `index.html`.
+- `pulumi stack output hostShellUrl` returns the CloudFront URL.
 - Visiting `<hostShellUrl>` serves the host shell which then fetches `config.json` and queries `Platform_UIFragments` against the platform's `domainApiEndpoint`.
 
 ### 5. Refine cache behaviours in `makeUiBundleDistribution`
@@ -80,8 +146,8 @@ What this plan does **not** cover: building the host shell React app, choosing/i
 
 **Goal:** the catalog template generalises; `ordering/ui/` mirrors it; `docs/guides/` explains.
 
-- Copy `examples/online-shop-hybrid/catalog/ui/` to `examples/online-shop-hybrid/ordering/ui/`, swap names. Wire `ordering-aws/src/Plugin.res` the same as catalog.
-- Write `reventless-core: docs/guides/ui-fragments-deployment.md` covering: plugin `ui/` layout, vite-plugin-federation config, `makeUiBundleDistribution` call site, env-var injection, host-ui-aws Pulumi program, `config.json` runtime contract.
+- Copy `examples/online-shop-hybrid/catalog/ui/` to `examples/online-shop-hybrid/ordering/ui/`, swap names. Add the same `uiBundle` block to `ordering/src/plugin.json` (with `assetsDir: "../ordering/ui/dist"`) — no edits to `ordering-aws/src/Plugin.res` needed, the generator picks it up.
+- Write `reventless-core: docs/guides/ui-fragments-deployment.md` covering: plugin `ui/` layout, vite-plugin-federation config, the `plugin.json` `uiBundle` schema, what the generator emits, how the host UI is folded into `platform-aws`, `config.json` runtime contract.
 
 **Verify:** following the guide cold, a new plugin gains a working UI fragment.
 

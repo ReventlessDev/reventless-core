@@ -42,8 +42,12 @@ let baseFragment = (~cloner: bool) => {
   GraphQL_Stitcher.encode({
     types: parts.types
     ->Array.concat(uiFragmentSubscriptionTypes)
-    ->Array.concat(Platform_UIDefinitionsApi.sdlTypes),
-    queries: Array.concat(parts.queries, [Platform_UIDefinitionsApi.sdlQueryField]),
+    ->Array.concat(Platform_UIDefinitionsApi.sdlTypes)
+    ->Array.concat(Platform_UIFragmentsApi.sdlTypes),
+    queries: Array.concat(
+      parts.queries,
+      [Platform_UIDefinitionsApi.sdlQueryField, Platform_UIFragmentsApi.sdlQueryField],
+    ),
     mutations: Array.concat(parts.mutations, uiFragmentMutationFields),
     subscriptions: [uiFragmentSubscriptionField],
   })

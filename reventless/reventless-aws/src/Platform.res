@@ -921,6 +921,22 @@ module MakeWithConfig = (
     PlatformEventGraphMappings,
   )
 
+  // Admin-internal UIFragmentRegistry read model — projects UIFragmentRegistered/
+  // Updated/Deregistered events from the Plugin aggregate into a DynamoDB table the
+  // Platform_UIFragments admin query Lambda scans.
+  module UIFragmentRegistryReadModelMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.UIFragmentRegistryReadModelSpec = {
+    module M = ReventlessCore.UIFragmentRegistryProjection.Mappings
+    module type Mapping = M.Mapping
+    let moduleUrl: string = %raw(`import.meta.url`)
+    let mappings: array<module(Mapping)> = ReventlessCore.UIFragmentRegistryProjection.mappings
+  }
+
+  module UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver.Make(
+    ReventlessCore.UIFragmentRegistryReadModelSpec,
+    UIFragmentRegistryReadModelMappings,
+  )
+
   module type PluginMaker = {
     let make: unit => Plugin.component
   }
@@ -979,7 +995,11 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[],
       ~aggregates=[module(PluginAggregate)],
-      ~readModels=[module(PluginReadModel), module(PlatformEventGraphReadModel)],
+      ~readModels=[
+        module(PluginReadModel),
+        module(PlatformEventGraphReadModel),
+        module(UIFragmentRegistryReadModel),
+      ],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
@@ -1000,6 +1020,22 @@ module MakeWithConfig = (
         Platform_UIDefinitions_Lambda.make(
           ~api=platformApi,
           ~pluginReadModelTableName=r.name,
+          ~opts={},
+        )
+      | None => ()
+      }
+    | None => ()
+    }
+
+    // Mount the Platform_UIFragments Lambda resolver — scans the UIFragmentRegistry
+    // table provisioned above and returns one entry per registered plugin UI.
+    switch admin.readModelsOutputs->Dict.get("UIFragmentRegistry") {
+    | Some(rm) =>
+      switch rm.queryDb.resources->Array.get(0) {
+      | Some(r) =>
+        Platform_UIFragments_Lambda.make(
+          ~api=platformApi,
+          ~uiFragmentRegistryTableName=r.name,
           ~opts={},
         )
       | None => ()
@@ -1168,7 +1204,11 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[module(PluginExtensionPoint)],
       ~aggregates=[module(PluginAggregate)],
-      ~readModels=[module(PluginReadModel), module(PlatformEventGraphReadModel)],
+      ~readModels=[
+        module(PluginReadModel),
+        module(PlatformEventGraphReadModel),
+        module(UIFragmentRegistryReadModel),
+      ],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
       ~api=platformApi,
@@ -1212,6 +1252,22 @@ module MakeWithConfig = (
         ~pluginReadModelTableName=tableName,
         ~opts={},
       )
+    | None => ()
+    }
+
+    // Mount the Platform_UIFragments Lambda resolver — scans the UIFragmentRegistry
+    // table provisioned above and returns one entry per registered plugin UI.
+    switch admin.readModelsOutputs->Dict.get("UIFragmentRegistry") {
+    | Some(rm) =>
+      switch rm.queryDb.resources->Array.get(0) {
+      | Some(r) =>
+        Platform_UIFragments_Lambda.make(
+          ~api=platformApi,
+          ~uiFragmentRegistryTableName=r.name,
+          ~opts={},
+        )
+      | None => ()
+      }
     | None => ()
     }
 
