@@ -1556,7 +1556,13 @@ module MakeWithConfig = (
 
   }
 
-  let deployPlatform = (~version) => {
+  // In-memory ignores `~hostUiBundle` — the host shell is served by `vite dev`
+  // against the running in-process GraphQL server, not from a CDN.
+  type hostUiBundleConfig = {
+    assetsDir: string,
+    bundleVersion: string,
+  }
+  let deployPlatform = (~version, ~hostUiBundle as _: option<hostUiBundleConfig>=?) => {
     log.info(~comp="Platform", `deployPlatform v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)

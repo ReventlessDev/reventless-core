@@ -220,6 +220,16 @@ module type T = {
     let make: unit => Plugin.component
   }
 
+  /** Optional host UI shell bundle. When set, the platform hosts the static
+      shell (e.g. reventless-ui's host-shell `dist/`) on its own CDN and writes
+      a `config.json` next to `index.html` so the shell discovers the API
+      endpoint at boot. In-memory platforms typically ignore this — the shell
+      is served by `vite dev` against the running in-process GraphQL server. */
+  type hostUiBundleConfig = {
+    assetsDir: string,
+    bundleVersion: string,
+  }
+
   /** Deploy a complete platform: creates the scheduler, builds each plugin,
       creates admin components internally, and wires everything (schema stitching + stack exports). */
   let makePlatform: (
@@ -229,8 +239,12 @@ module type T = {
 
   /** Deploy only the platform (admin components, scheduler, shared API).
       No plugins are deployed — each plugin deploys independently via `deployPlugin`.
+      Pass `~hostUiBundle` to also host a static host-shell SPA from this stack.
       Returns the Pulumi stack outputs dict for use as the ESM `default` export. */
-  let deployPlatform: (~version: string) => dict<Pulumi.Output.t<JSON.t>>
+  let deployPlatform: (
+    ~version: string,
+    ~hostUiBundle: hostUiBundleConfig=?,
+  ) => dict<Pulumi.Output.t<JSON.t>>
 
   /** Deploy a single plugin as an independent stack.
       Creates its own scheduler and exports stack outputs for cross-stack consumption.

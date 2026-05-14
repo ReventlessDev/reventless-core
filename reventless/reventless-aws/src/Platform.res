@@ -1114,7 +1114,16 @@ module MakeWithConfig = (
     Pulumi.Pulumi.export("domainApiRoleArn", domainApiRole->Pulumi.Output.flatMap(role => role.arn))
   }
 
-  let deployPlatform = (~version) => {
+  // Optional host UI shell bundle: a static SPA (e.g. reventless-ui's host-shell)
+  // hosted on the platform's CloudFront-fronted S3 bucket. The platform writes a
+  // `config.json` next to `index.html` so the shell discovers `apiEndpoint` and
+  // `region` at boot without rebuild.
+  type hostUiBundleConfig = {
+    assetsDir: string,
+    bundleVersion: string,
+  }
+
+  let deployPlatform = (~version, ~hostUiBundle: option<hostUiBundleConfig>=?) => {
     Console.log(`[Platform:deployPlatform] v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
@@ -1433,6 +1442,51 @@ module MakeWithConfig = (
           adminResources,
         })
       })
+
+    // Host UI shell deployment — opt-in via ~hostUiBundle. The shell SPA is
+    // hosted on its own CloudFront distribution; `config.json` is generated at
+    // deploy time with the resolved API endpoint + region so the shell can
+    // boot without knowing them at build time. authMode is anonymous until
+    // Cognito wiring lands (see host-ui-login-core plan).
+    switch hostUiBundle {
+    | None => ()
+    | Some(cfg) =>
+      let {distributionUrl, bucketName} = Plugin_Stack.makeUiBundleDistribution(
+        ~pluginId="host-ui",
+        ~bundleVersion=cfg.bundleVersion,
+        ~assetsDir=cfg.assetsDir,
+        ~spaFallback=true,
+      )
+
+      let regionStr =
+        Pulumi.Config.make(Some("aws"))
+        ->Pulumi.Config.get("region")
+        ->Option.getOr("unknown")
+
+      let configJsonContent =
+        resolvedDomainApiEndpoint->Pulumi.Output.apply(endpoint =>
+          Dict.fromArray([
+            ("apiEndpoint", JSON.Encode.string(endpoint)),
+            ("region", JSON.Encode.string(regionStr)),
+            ("authMode", JSON.Encode.string("anonymous")),
+          ])
+          ->JSON.Encode.object
+          ->JSON.stringify
+        )
+
+      let _ = PulumiAws.S3.BucketObject.make(
+        ~name="host-ui-config-json",
+        ~args={
+          bucket: bucketName->Pulumi.Output.asInput,
+          key: Pulumi.Input.make("config.json"),
+          content: configJsonContent->Pulumi.Output.asInput,
+          contentType: Pulumi.Input.make("application/json"),
+        },
+      )
+
+      Pulumi.Pulumi.export("hostShellUrl", distributionUrl)
+    }
+
     Pulumi.Pulumi.getOutputs()
   }
 

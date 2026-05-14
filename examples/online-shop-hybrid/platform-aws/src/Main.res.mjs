@@ -5,7 +5,10 @@ import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/P
 
 let Platform = Platform$ReventlessAws.Make({});
 
-let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller());
+let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
+  assetsDir: "../../../../reventless-ui/reventless/host-shell/dist",
+  bundleVersion: PackageVersion$Reventless.fromCaller()
+});
 
 export {
   Platform,
