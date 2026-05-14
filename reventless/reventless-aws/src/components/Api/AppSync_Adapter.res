@@ -285,9 +285,9 @@ let makeApiResource = (
   // from each API call site (DomainApi, PlatformApi) is safe. Returned as a
   // single Output that yields the {userPoolId, awsRegion, defaultAction}
   // record AppSync expects.
-  let authConfigOut = ReventlessAws.Auth_Cognito.make(~name=`${name}-auth`)
+  let authConfigOut = Auth_Cognito.make(~name=`${name}-auth`)
   let userPoolConfigOut =
-    authConfigOut->Pulumi.Output.apply((c: ReventlessAws.Auth_Cognito.authConfig) =>
+    authConfigOut->Pulumi.Output.apply((c: Auth_Cognito.authConfig) =>
       (
         {
           userPoolId: c.userPoolId,
