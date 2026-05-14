@@ -7,7 +7,7 @@
 type command =
   | Add({name: string})
   | Rename({name: string})
-  | Archive
+  | @authorize(AllowGroups(["Admin"])) Archive
 
 @schema
 type event =

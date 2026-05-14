@@ -166,7 +166,7 @@ module Make = (
         if ApiNoApiHelpers.isNoApi(commandSchema) {
           []
         } else {
-          let constructorNames = Reventless.DcbTag.extractVariantNames(M.Spec.commandSchema)
+          let constructorNames = Reventless.DcbTag.extractAllVariantNames(M.Spec.commandSchema)
           let filteredConstructorNames = ApiNoApiHelpers.filterNoApiVariants(constructorNames, commandSchema)
           let fieldNames =
             filteredConstructorNames->Array.map(cname =>
@@ -332,7 +332,7 @@ module Make = (
       // ExtensionPoint/Extension names are not accessible from their T module type,
       // so only aggregates, read models, and DCB slice names are included.
 
-      let extractTypes = schema => Reventless.DcbTag.extractVariantNames(schema)
+      let extractTypes = schema => Reventless.DcbTag.extractAllVariantNames(schema)
       // Build per-component schema data and register it for the deployed hook.
       let aggregateComponents = aggregates->Array.map((
         module(M: ReventlessInfra.Aggregate.T with type api = api),

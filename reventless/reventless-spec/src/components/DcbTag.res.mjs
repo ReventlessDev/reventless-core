@@ -202,6 +202,95 @@ function extractVariantNames(schema) {
   }
 }
 
+function extractAllVariantNames(schema) {
+  switch (schema.type) {
+    case "string" :
+      let name = schema.const;
+      if (name !== undefined) {
+        return [name];
+      } else {
+        return [];
+      }
+    case "object" :
+      return Stdlib_Option.getOr(Stdlib_Option.flatMap(schema.items.find(item => item.location === "TAG"), item => {
+        let match = item.schema;
+        if (match.type !== "string") {
+          return;
+        }
+        let $$const = match.const;
+        if ($$const !== undefined) {
+          return [$$const];
+        }
+      }), []);
+    case "union" :
+      return Stdlib_Array.filterMap(schema.anyOf, variantSchema => {
+        switch (variantSchema.type) {
+          case "string" :
+            let $$const = variantSchema.const;
+            if ($$const !== undefined) {
+              return $$const;
+            } else {
+              return;
+            }
+          case "object" :
+            return Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+              let match = item.schema;
+              if (match.type !== "string") {
+                return;
+              }
+              let $$const = match.const;
+              if ($$const !== undefined) {
+                return $$const;
+              }
+            });
+          default:
+            return;
+        }
+      });
+    default:
+      return [];
+  }
+}
+
+function isVariantPayloadBearing(schema, name) {
+  let names = extractAllVariantNames(schema);
+  if (!names.includes(name)) {
+    return false;
+  }
+  switch (schema.type) {
+    case "object" :
+      return Stdlib_Option.getOr(Stdlib_Option.flatMap(schema.items.find(item => item.location === "TAG"), item => {
+        let match = item.schema;
+        if (match.type !== "string") {
+          return;
+        }
+        let $$const = match.const;
+        if ($$const !== undefined) {
+          return $$const === name;
+        }
+      }), false);
+    case "union" :
+      return schema.anyOf.some(variantSchema => {
+        if (variantSchema.type === "object") {
+          return Stdlib_Option.getOr(Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+            let match = item.schema;
+            if (match.type !== "string") {
+              return;
+            }
+            let $$const = match.const;
+            if ($$const !== undefined) {
+              return $$const === name;
+            }
+          }), false);
+        } else {
+          return false;
+        }
+      });
+    default:
+      return false;
+  }
+}
+
 function extractTagsFromPropertiesExpanded(properties, jsonDict) {
   return Object.entries(properties).flatMap(param => {
     let fieldSchema = param[1];
@@ -613,6 +702,8 @@ export {
   extractTagsFromJson,
   extractTags,
   extractVariantNames,
+  extractAllVariantNames,
+  isVariantPayloadBearing,
   extractTagsFromPropertiesExpanded,
   extractTagsFromJsonExpanded,
   extractTagsExpanded,

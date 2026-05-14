@@ -359,20 +359,26 @@ let generate = (
       anyOf->Array.forEachWithIndex((variantSchema, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
-          deriveMutationFieldFromObject(
+          switch deriveMutationFieldFromObject(
             ~fieldName,
             ~collectedTypes=types,
             ~seenTypes,
             variantSchema,
-          )
-          ->Option.forEach(field => {
+          ) {
+          | Some(field) =>
             let withId = if field->String.includes("(") {
               field->String.replace(`${fieldName}(`, `${fieldName}(id: ID!, `)
             } else {
               field->String.replace(`${fieldName}:`, `${fieldName}(id: ID!):`)
             }
             mutations->Array.push(withId)
-          })
+          | None =>
+            // Payload-less variant (S.literal("Ctor")) — no Object fields to
+            // derive args from, but still a valid mutation. Emit a bare form;
+            // CommandGeneratorResolvers_GraphQL.deriveSdlField uses the same
+            // fallback for the in-memory path.
+            mutations->Array.push(`  ${fieldName}(id: ID!): String!`)
+          }
         }
       })
     | Object(_) =>

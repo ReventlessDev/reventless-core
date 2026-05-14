@@ -348,7 +348,7 @@ function Make(DcbEventLogStorage) {
           return;
         }
         let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
-        let constructorNames = DcbTag$Reventless.extractVariantNames(S.Spec.commandSchema);
+        let constructorNames = DcbTag$Reventless.extractAllVariantNames(S.Spec.commandSchema);
         let tag = Stdlib_Option.getOr(constructorNames[0], S.Spec.name);
         return [
           fieldName,

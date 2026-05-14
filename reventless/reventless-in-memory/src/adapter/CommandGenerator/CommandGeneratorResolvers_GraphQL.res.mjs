@@ -44,10 +44,14 @@ function rejectForbidden(field) {
   ]);
 }
 
-function syntheticCommand(cname) {
-  return {
-    TAG: cname
-  };
+function syntheticCommand(cname, hasPayload) {
+  if (hasPayload) {
+    return {
+      TAG: cname
+    };
+  } else {
+    return cname;
+  }
 }
 
 function capitalize(s) {
@@ -168,21 +172,22 @@ function register(fields, commandSchema, commandAuthorization, server) {
     }
   });
   let resolvers = {};
-  fields.forEach(field => {
+  fields.forEach((field, i) => {
     let handlerRef = {
       contents: undefined
     };
     handlerRefs[field] = handlerRef;
+    let match = extractVariantSchema(commandSchema, i);
+    let hasPayload;
+    hasPayload = match.type === "object";
+    let commandName = extractCommandName(field);
     let resolver = async (_root, args, ctx) => {
       let generateCommand = handlerRef.contents;
       if (generateCommand === undefined) {
         return null;
       }
       let identity = extractIdentity(ctx);
-      let commandName = extractCommandName(field);
-      let rule = commandAuthorization({
-        TAG: commandName
-      });
+      let rule = commandAuthorization(syntheticCommand(commandName, hasPayload));
       if (!Authorization$Reventless.isAllowed(rule, identity)) {
         return rejectForbidden(field);
       }
@@ -208,8 +213,9 @@ function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
   ensureCommandResultTypes(server);
   let variantSchema = extractVariantSchema(commandSchema, undefined);
   let sdlFields = [deriveSdlField(fieldName, variantSchema)];
-  let constructorNames = DcbTag$Reventless.extractVariantNames(commandSchema);
+  let constructorNames = DcbTag$Reventless.extractAllVariantNames(commandSchema);
   let tag = Stdlib_Option.getOr(constructorNames[0], fieldName);
+  let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(commandSchema, tag);
   let handlerRef = {
     contents: undefined
   };
@@ -220,9 +226,7 @@ function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
       return null;
     }
     let identity = extractIdentity(ctx);
-    let rule = commandAuthorization({
-      TAG: tag
-    });
+    let rule = commandAuthorization(syntheticCommand(tag, hasPayload));
     if (!Authorization$Reventless.isAllowed(rule, identity)) {
       return rejectForbidden(fieldName);
     }

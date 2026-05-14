@@ -59,7 +59,7 @@ let make = (
   ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
   ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
 ): Reventless.Plugin.pluginStructure => {
-  let variantNames = schema => Reventless.DcbTag.extractVariantNames(schema)
+  let variantNames = schema => Reventless.DcbTag.extractAllVariantNames(schema)
   let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)
 
   // Aggregate commands that initialize a new aggregate instance are Collection-level

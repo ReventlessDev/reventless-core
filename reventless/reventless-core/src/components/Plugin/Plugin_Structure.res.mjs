@@ -159,19 +159,19 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   };
   let scsProduced = stateChangeSlices.map(SCS => [
     SCS.Spec.name,
-    qualify(name, DcbTag$Reventless.extractVariantNames(SCS.Spec.eventSchema))
+    qualify(name, DcbTag$Reventless.extractAllVariantNames(SCS.Spec.eventSchema))
   ]);
   let scsConsumed = stateChangeSlices.map(SCS => [
     SCS.Spec.name,
-    qualify(name, DcbTag$Reventless.extractVariantNames(SCS.Spec.consumedEventSchema))
+    qualify(name, DcbTag$Reventless.extractAllVariantNames(SCS.Spec.consumedEventSchema))
   ]);
   let aggProduced = aggregates.map(A => [
     A.Spec.name,
-    qualify(name, DcbTag$Reventless.extractVariantNames(A.Spec.eventSchema))
+    qualify(name, DcbTag$Reventless.extractAllVariantNames(A.Spec.eventSchema))
   ]);
   let svsConsumed = stateViewSlices.map(SVS => [
     SVS.Spec.name,
-    qualify(name, DcbTag$Reventless.extractVariantNames(SVS.Spec.consumedEventSchema))
+    qualify(name, DcbTag$Reventless.extractAllVariantNames(SVS.Spec.consumedEventSchema))
   ]);
   let rmSourceNames = readModels.map(R => [
     R.Spec.name,
@@ -286,23 +286,23 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     };
   });
   let automationSliceDefs = automationSlices.map(AS => {
-    let allConsumedVariants = Belt_SetString.toArray(Belt_SetString.fromArray(AS.Automation.mappings.flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
+    let allConsumedVariants = Belt_SetString.toArray(Belt_SetString.fromArray(AS.Automation.mappings.flatMap(M => DcbTag$Reventless.extractAllVariantNames(M.sourceEventSchema))));
     return {
       name: AS.Spec.name,
       consumedEventTypes: qualify(name, allConsumedVariants),
-      producedCommandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(AS.Spec.commandSchema)),
+      producedCommandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(AS.Spec.commandSchema)),
       targetName: AS.Spec.targetName
     };
   });
   let outboundTranslationSliceDefs = outboundTranslationSlices.map(OTS => ({
     name: OTS.Spec.name,
-    consumedEventTypes: qualify(name, DcbTag$Reventless.extractVariantNames(OTS.Spec.consumedEventSchema)),
-    inboundCommandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(OTS.Spec.inboundCommandSchema)),
+    consumedEventTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(OTS.Spec.consumedEventSchema)),
+    inboundCommandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(OTS.Spec.inboundCommandSchema)),
     targetName: OTS.Spec.targetName
   }));
   let inboundTranslationSliceDefs = inboundTranslationSlices.map(ITS => ({
     name: ITS.Spec.name,
-    commandTypes: qualify(name, DcbTag$Reventless.extractVariantNames(ITS.Spec.commandSchema)),
+    commandTypes: qualify(name, DcbTag$Reventless.extractAllVariantNames(ITS.Spec.commandSchema)),
     targetName: ITS.Spec.targetName
   }));
   let extensionDefs = extensions.map(E => {
@@ -310,8 +310,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     return {
       name: E.Spec.name,
       delegateNames: delegateNames,
-      eventTypes: qualify(E.Spec.name, DcbTag$Reventless.extractVariantNames(E.Spec.eventSchema)),
-      commandTypes: qualify(E.Spec.name, DcbTag$Reventless.extractVariantNames(E.Spec.commandSchema))
+      eventTypes: qualify(E.Spec.name, DcbTag$Reventless.extractAllVariantNames(E.Spec.eventSchema)),
+      commandTypes: qualify(E.Spec.name, DcbTag$Reventless.extractAllVariantNames(E.Spec.commandSchema))
     };
   });
   return {

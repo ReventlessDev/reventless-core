@@ -393,6 +393,97 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
   }
 }
 
+/**
+Like [`extractVariantNames`], but also includes payload-less variants
+(constructors compiled to `S.literal("Name")`).
+
+Use for **command schemas** where every constructor must be addressable
+(GraphQL mutation field derivation, plugin schema reporting, runtime
+dispatch). [`extractVariantNames`] keeps the payload-less filter required by
+DCB event-type lookups, where bare-string events carry no `type` field for
+WHERE-clause filtering.
+*/
+let extractAllVariantNames = (schema: S.t<'a>): array<string> => {
+  switch schema->toUnknownSchema {
+  | Union({anyOf}) =>
+    anyOf->Array.filterMap(variantSchema =>
+      switch variantSchema {
+      | Object({items}) =>
+        items
+        ->Array.find(item => item.location == "TAG")
+        ->Option.flatMap(item =>
+          switch item.schema {
+          | String({const}) => Some(const)
+          | _ => None
+          }
+        )
+      | String({const}) => Some(const)
+      | _ => None
+      }
+    )
+  | Object({items}) =>
+    items
+    ->Array.find(item => item.location == "TAG")
+    ->Option.flatMap(item =>
+      switch item.schema {
+      | String({const}) => Some([const])
+      | _ => None
+      }
+    )
+    ->Option.getOr([])
+  | String({const: ?Some(name)}) => [name]
+  | _ => []
+  }
+}
+
+/**
+Returns `true` if the given variant constructor (by name) carries a record
+payload (compiled to `{TAG, ...}`), `false` if payload-less (compiled to a
+bare string literal). Returns `false` for names not found in the schema.
+
+Used by resolver shims to synthesize the correct runtime shape when feeding
+a command value into the PPX-generated `commandAuthorization` switch.
+*/
+let isVariantPayloadBearing = (schema: S.t<'a>, name: string): bool => {
+  // Returns true iff a record-payload variant in the schema has TAG === name.
+  // Payload-less variants compile to S.literal("X") (String const), so they
+  // are not "payload-bearing" — only Object schemas with a matching TAG are.
+  let names = extractAllVariantNames(schema)
+  if !(names->Array.includes(name)) {
+    false
+  } else {
+    switch schema->toUnknownSchema {
+    | Union({anyOf}) =>
+      anyOf->Array.some(variantSchema =>
+        switch variantSchema {
+        | Object({items}) =>
+          items
+          ->Array.find(item => item.location == "TAG")
+          ->Option.flatMap(item =>
+            switch item.schema {
+            | String({const}) => Some(const == name)
+            | _ => None
+            }
+          )
+          ->Option.getOr(false)
+        | _ => false
+        }
+      )
+    | Object({items}) =>
+      items
+      ->Array.find(item => item.location == "TAG")
+      ->Option.flatMap(item =>
+        switch item.schema {
+        | String({const}) => Some(const == name)
+        | _ => None
+        }
+      )
+      ->Option.getOr(false)
+    | _ => false
+    }
+  }
+}
+
 // --- Array-expanded tag extraction ---
 
 /**

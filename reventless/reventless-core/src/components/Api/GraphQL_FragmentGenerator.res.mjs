@@ -308,12 +308,16 @@ function generate(mutationEntries, queryEntries) {
       case "union" :
         schema.anyOf.forEach((variantSchema, i) => {
           let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
-          if (fieldName.length > 0) {
-            return Stdlib_Option.forEach(deriveMutationFieldFromObject(fieldName, types, seenTypes, variantSchema), field => {
-              let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);
-              mutations.push(withId);
-            });
+          if (fieldName.length <= 0) {
+            return;
           }
+          let field = deriveMutationFieldFromObject(fieldName, types, seenTypes, variantSchema);
+          if (field !== undefined) {
+            let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);
+            mutations.push(withId);
+            return;
+          }
+          mutations.push(`  ` + fieldName + `(id: ID!): String!`);
         });
         return;
       default:

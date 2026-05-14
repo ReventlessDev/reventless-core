@@ -95,13 +95,18 @@ Verified: full monorepo build clean (zero warnings), 383/383 in-memory tests pas
 - **Resolver code path unchanged** — `CommandGeneratorResolvers_GraphQL` still synthesizes `{TAG: commandName}` (or the bare-string literal for payload-less variants — same runtime shape sury emits) and calls `commandAuthorization`; the switch the PPX emits dispatches to the right rule without any further plumbing.
 - **PPX binaries refreshed** — `ppx-osx-x64.exe` (local dune build) and `ppx-linux.exe` (Docker amd64) rebuilt; 184/184 integration tests pass (5 new for `@authorize`); zero-warning monorepo build; 383/383 in-memory tests still pass.
 
-#### A3.5 — Apply to catalog example + integration test — pending
+#### A3.5 — Apply to catalog example + integration test — ✅ done
 
-- `examples/online-shop-hybrid/catalog/src/Category/Aggregate/Category.res` — `@@reventless.authorize(AllowAuthenticated)` (matches the default — explicit) plus `@authorize(AllowGroups(["Admin"]))` on the `Archive` constructor.
-- `examples/online-shop-hybrid/catalog/src/Category/ReadModel/Categories.res` — `@@reventless.authorize(AllowAuthenticated)`.
-- Integration test: `X-User: admin` succeeds against Archive; `X-User: user` returns a 403-equivalent GraphQL error.
+- `examples/online-shop-hybrid/catalog/src/Category/Aggregate/Category.res` — `@authorize(AllowGroups(["Admin"]))` on the `Archive` constructor (file-level default `AllowAuthenticated` is implicit).
+- `examples/online-shop-hybrid/catalog/src/Category/ReadModel/Categories.res` — no annotation; the implicit `AllowAuthenticated` default applies.
+- **Latent gap closed first.** Pre-A3.5, `extractVariantNames` (used by `Plugin_Builder` to derive mutation field names) filtered out payload-less variants — so `Archive` never became a GraphQL mutation and the per-constructor `@authorize` on it was unreachable through the resolver path. Resolved by:
+  - New `Reventless.DcbTag.extractAllVariantNames` and `isVariantPayloadBearing` helpers (event-schema callers still use `extractVariantNames` to filter bare-string events from DCB query construction).
+  - Call sites for command schemas switched to `extractAllVariantNames`: `Plugin_Builder.res` (mutation field derivation + plugin schema reporting), `Plugin_Structure.res` (UI registry), `Dcb_Builder.res` (DCB routing tag), `Api/GraphQL_SchemaInspector.res` (introspection).
+  - `CommandGeneratorResolvers_GraphQL.syntheticCommand(name, ~hasPayload)` now emits a bare-string command value for payload-less constructors so the PPX-emitted switch's `typeof command !== "object"` branch fires. `hasPayload` is captured once per field at registration time.
+  - `GraphQL_FragmentGenerator.generate` handles bare variants in the Union path (emits `Cat_Archive(id: ID!): String!`) — the in-memory `deriveSdlField` already had the corresponding fallback.
+- **Integration test:** `tests/adapter/CommandAuthorizationTest.res` (7 cases) — admin/user/anonymous identities × Add (payload, default) / Archive (bare, Admin-only) at the resolver boundary, plus an assertion that `Cat_Archive` now appears in the registered SDL. Tests mirror the PPX output shape exactly so they regress if either side drifts.
 
-**Verify (whole A3):** `curl -H 'X-User: admin' …` on the restricted mutation succeeds; `X-User: user` (or no header, which yields `defaultUser` with only the `User` group) is rejected at the resolver boundary.
+**Verify (whole A3):** full monorepo build zero warnings; 390/390 in-memory tests pass (was 383/383, +7 new); 184/184 PPX tests pass.
 
 ### A4. Token issuance: `Auth_InMemory.Login` + YAML store — pending
 
