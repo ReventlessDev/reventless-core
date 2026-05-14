@@ -117,13 +117,13 @@ module Platform = ReventlessAws.Platform.Make()
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~hostUiBundle={
-    assetsDir: "../../../../reventless-ui/reventless/host-shell/dist",
+    assetsDir: "../../../../reventless-ui/reventless/reventless-host-shell/dist",
     bundleVersion: Reventless.PackageVersion.fromCaller(),
   },
 )
 ```
 
-`assetsDir` is resolved relative to the directory containing `Pulumi.yaml` (the `platform-aws/` folder). Build the host shell (`pnpm --filter @reventlessdev/host-shell build`) before `pulumi up`.
+`assetsDir` is resolved relative to the directory containing `Pulumi.yaml` (the `platform-aws/` folder). Build the host shell (`pnpm --filter @reventlessdev/reventless-host-shell build`) before `pulumi up`.
 
 ### Independent host-ui cadence
 

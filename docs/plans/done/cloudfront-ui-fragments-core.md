@@ -51,7 +51,7 @@ No example wires this up because Auto UI handles all the current plugins. Implem
 - New `hostUiBundleConfig` type in `reventless-infra/src/types/Platform.res` + optional `~hostUiBundle: hostUiBundleConfig=?` parameter on `deployPlatform`. Back-compat: omitting the parameter leaves the platform stack unchanged.
 - AWS implementation: when `~hostUiBundle` is `Some(_)`, the platform stack calls `Plugin_Stack.makeUiBundleDistribution(~pluginId="host-ui", ~spaFallback=true, …)`, uploads a `config.json` with the resolved `domainApiEndpoint` + `region` + `authMode: "anonymous"` as a separate `S3.BucketObject`, and exports `hostShellUrl`.
 - In-memory: signature widened to match; the value is ignored (host shell runs under `vite dev` against the in-process GraphQL server in local dev).
-- Example wired in `examples/online-shop-hybrid/platform-aws/src/Main.res` — points `assetsDir` at the sibling `reventless-ui/reventless/host-shell/dist`.
+- Example wired in `examples/online-shop-hybrid/platform-aws/src/Main.res` — points `assetsDir` at the sibling `reventless-ui/reventless/reventless-host-shell/dist`.
 - `authMode` is hardcoded to `"anonymous"`. Cognito wiring lands separately via `host-ui-login-core.md`; that plan will widen the `hostUiBundleConfig` record (or add platform-level Cognito outputs) and switch `authMode` to `"cognito"`.
 
 > Production users wanting an independent host-ui deploy cadence (separate team, separate `pulumi up`) can later extract this into a standalone `host-ui-aws` package — a small refactor that adds a `Pulumi.StackReference` reading the platform outputs.

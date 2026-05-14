@@ -11,7 +11,7 @@ module Platform = ReventlessAws.Platform.Make()
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~hostUiBundle={
-    assetsDir: "../../../../reventless-ui/reventless/host-shell/dist",
+    assetsDir: "../../../../reventless-ui/reventless/reventless-host-shell/dist",
     bundleVersion: Reventless.PackageVersion.fromCaller(),
   },
 )
