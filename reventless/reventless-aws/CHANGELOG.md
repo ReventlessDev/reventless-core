@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.84 (2026-05-14)
+
+### Bug Fixes
+
+* **aws:** chain admin schema push behind admin Pulumi outputs ([fba902c](https://github.com/ReventlessDev/reventless-core/commit/fba902cfebed9892aaf32b26cd0f0a0b949864d9))
+* **aws:** hash bundled file content for Lambda sourceCodeHash ([9fcbf39](https://github.com/ReventlessDev/reventless-core/commit/9fcbf39e8493cc2380e8ee5440a2a6697f758ecb))
+* **aws:** swap sury arg order in HeartbeatEntryPoint ([09c98d7](https://github.com/ReventlessDev/reventless-core/commit/09c98d71baa3777b50063fa4a3ce773bccc58047))
+* **aws:** walk up to find Pulumi.local.yaml beside Pulumi.yaml ([e53e581](https://github.com/ReventlessDev/reventless-core/commit/e53e581ecd7b1907d34f64f154ba373e2a198b7b))
+
+
 # 3.0.0-alpha.83 (2026-05-14)
 
 ### Bug Fixes
