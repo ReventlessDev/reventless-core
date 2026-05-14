@@ -2,20 +2,24 @@
 
 import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+import * as Util_Bundle$ReventlessAws from "@reventlessdev/reventless-aws/src/util/Util_Bundle.res.mjs";
 import * as Platform_Stack$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform_Stack.res.mjs";
 
 let Platform = Platform$ReventlessAws.Make({});
 
 let _cognitoUserPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
 
+let hostShellDist = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-host-shell") + "/dist";
+
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
-  assetsDir: "../../../node_modules/@reventlessdev/reventless-host-shell/dist",
+  assetsDir: hostShellDist,
   bundleVersion: PackageVersion$Reventless.fromCaller()
 });
 
 export {
   Platform,
   _cognitoUserPool,
+  hostShellDist,
   $$default as default,
 }
 /* Platform Not a pure module */

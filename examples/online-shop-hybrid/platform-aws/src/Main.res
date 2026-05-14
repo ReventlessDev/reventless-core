@@ -5,10 +5,9 @@
 // browser can discover plugin UIs via Platform_UIFragments + Auto UI without
 // any per-plugin bundle. The host shell `dist/` ships inside the published
 // `@reventlessdev/reventless-host-shell` package (`prepublishOnly` runs `vite
-// build` so the registry tarball carries pre-built bundle output). With
-// `node-linker=hoisted` (.npmrc), pnpm places the package at the repo-root
-// `node_modules/`, so `assetsDir` walks up three levels from this stack's
-// cwd. CI deploys work without a sibling working copy.
+// build` so the registry tarball carries pre-built bundle output). We resolve
+// the package via Node's module resolver so the location works regardless of
+// pnpm's installed layout (hoisted root vs nested per-workspace).
 
 module Platform = ReventlessAws.Platform.Make()
 
@@ -18,10 +17,13 @@ module Platform = ReventlessAws.Platform.Make()
 // via StackReference. Nothing in the production paths reads these yet.
 let _cognitoUserPool = ReventlessAws.Platform_Stack.resolveCognitoUserPool()
 
+let hostShellDist =
+  ReventlessAws.Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-host-shell") ++ "/dist"
+
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~hostUiBundle={
-    assetsDir: "../../../node_modules/@reventlessdev/reventless-host-shell/dist",
+    assetsDir: hostShellDist,
     bundleVersion: Reventless.PackageVersion.fromCaller(),
   },
 )
