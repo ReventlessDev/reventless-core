@@ -137,9 +137,20 @@ function Make(Spec) {
           }
           Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, M.Spec.commandAuthorization));
           let aggDef = Stdlib_Option.flatMap(pluginStructure, s => s.aggregates.find(d => d.name === M.Spec.name));
+          let fieldPermissions = {};
+          filteredConstructorNames.forEach((cname, idx) => {
+            let fieldName = fieldNames[idx];
+            let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(M.Spec.commandSchema, cname);
+            let syntheticCmd = hasPayload ? ({
+                TAG: cname
+              }) : cname;
+            let rule = M.Spec.commandAuthorization(syntheticCmd);
+            fieldPermissions[fieldName] = rule;
+          });
           return [{
               fieldNames: fieldNames,
               commandSchema: commandSchema,
+              fieldPermissions: fieldPermissions,
               linkedViews: Stdlib_Option.map(aggDef, d => d.linkedViews),
               consistencyRead: Stdlib_Option.flatMap(aggDef, d => d.consistencyRead)
             }];
@@ -154,6 +165,7 @@ function Make(Spec) {
             returnTypeName: qn.returnTypeName,
             stateSchema: R.Spec.stateSchema,
             authorization: undefined,
+            permission: R.Spec.authorization,
             connectionSpec: true,
             subIdField: subIdField
           };

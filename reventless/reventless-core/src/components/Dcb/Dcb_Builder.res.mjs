@@ -392,23 +392,51 @@ function Make(DcbEventLogStorage) {
           RuntimeBuilder.forDcbCommandTopic(asyncDcbHandler, asyncDcbConnectFn, undefined, undefined, asyncDcbCommandTopic);
         });
       };
+      let permissionForFirstConstructor = (commandSchema, commandAuthorization) => {
+        let names = DcbTag$Reventless.extractAllVariantNames(commandSchema);
+        let first = names[0];
+        if (first === undefined) {
+          return;
+        }
+        let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(commandSchema, first);
+        let syntheticCmd = hasPayload ? ({
+            TAG: first
+          }) : first;
+        return commandAuthorization(syntheticCmd);
+      };
       let mutationEntriesFromSlices = Stdlib_Array.filterMap(stateChangeSlices, S => {
         let commandSchema = S.Spec.commandSchema;
         if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
           return;
         }
         let sliceDef = Stdlib_Option.flatMap(pluginStructure, s => s.stateChangeSlices.find(d => d.name === S.Spec.name));
+        let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name);
+        let fieldPermissions = {};
+        let rule = permissionForFirstConstructor(commandSchema, S.Spec.commandAuthorization);
+        if (rule !== undefined) {
+          fieldPermissions[fieldName] = rule;
+        }
         return {
-          fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)],
+          fieldNames: [fieldName],
           commandSchema: commandSchema,
+          fieldPermissions: fieldPermissions,
           linkedViews: Stdlib_Option.map(sliceDef, d => d.linkedViews),
           consistencyRead: Stdlib_Option.flatMap(sliceDef, d => d.consistencyRead)
         };
       });
-      let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => ({
-        fieldNames: [Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name)],
-        commandSchema: ITS.Spec.externalInputSchema
-      }));
+      let mutationEntriesFromInboundSlices = inboundTranslationSlices.map(ITS => {
+        let fieldName = Api_Naming$ReventlessCore.sliceMutationField(name, ITS.Spec.name);
+        let fieldPermissions = {};
+        let rule = permissionForFirstConstructor(ITS.Spec.commandSchema, ITS.Spec.commandAuthorization);
+        if (rule !== undefined) {
+          fieldPermissions[fieldName] = rule;
+        }
+        return {
+          fieldNames: [fieldName],
+          commandSchema: ITS.Spec.externalInputSchema,
+          fieldPermissions: fieldPermissions
+        };
+      });
       let stateViewEntries = stateViewSlices.map(V => {
         let qn = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, V.Spec.name, undefined);
         let subIdField = Stdlib_Option.map(V.Spec.subIdConfig, c => c.subIdField);
@@ -420,6 +448,7 @@ function Make(DcbEventLogStorage) {
           returnTypeName: qn.returnTypeName,
           stateSchema: V.Spec.stateSchema,
           authorization: undefined,
+          permission: V.Spec.authorization,
           includeIdParam: qn.includeIdParam,
           connectionSpec: true,
           subIdField: subIdField,

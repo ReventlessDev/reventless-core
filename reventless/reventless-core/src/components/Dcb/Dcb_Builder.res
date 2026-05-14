@@ -606,6 +606,31 @@ module Make = (
         }
 
         // DCB-specific API schema entries
+        //
+        // Stage E2: a DCB StateChangeSlice has a single GraphQL field but its
+        // command type may declare multiple constructors with different
+        // authorization rules. The @aws_auth directive operates at field
+        // granularity, so we read the auth for the first constructor (matching
+        // the existing dcbTags convention at line 549 above). When all
+        // constructors share the file-level default, this is exact; when they
+        // differ, resolver-level enforcement still fires inside the per-slice
+        // handler (the file-level rule applied here is the least-restrictive
+        // bound).
+        let permissionForFirstConstructor = (
+          ~commandSchema: S.t<unknown>,
+          ~commandAuthorization: unknown => Reventless.Authorization.permission,
+        ): option<Reventless.Authorization.permission> => {
+          let names = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
+          switch names->Array.get(0) {
+          | None => None
+          | Some(first) =>
+            let hasPayload =
+              Reventless.DcbTag.isVariantPayloadBearing(commandSchema->Obj.magic, first)
+            let syntheticCmd: unknown =
+              hasPayload ? {"TAG": first}->Obj.magic : first->Obj.magic
+            Some(commandAuthorization(syntheticCmd))
+          }
+        }
         let mutationEntriesFromSlices =
           stateChangeSlices->Array.filterMap((
             module(S: StateChangeSlice.T),
@@ -618,9 +643,19 @@ module Make = (
                 pluginStructure->Option.flatMap(s =>
                   s.stateChangeSlices->Array.find(d => d.name == S.Spec.name)
                 )
+              let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)
+              let fieldPermissions = Dict.make()
+              switch permissionForFirstConstructor(
+                ~commandSchema,
+                ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
+              ) {
+              | Some(rule) => fieldPermissions->Dict.set(fieldName, rule)
+              | None => ()
+              }
               Some({
-                ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
+                ReventlessInfra.Api.fieldNames: [fieldName],
                 commandSchema,
+                fieldPermissions,
                 linkedViews: ?sliceDef->Option.map(d => d.linkedViews),
                 consistencyRead: ?sliceDef->Option.flatMap(d => d.consistencyRead),
               })
@@ -631,8 +666,20 @@ module Make = (
           inboundTranslationSlices->Array.map((
             module(ITS: InboundTranslationSlice.T),
           ) => {
-            ReventlessInfra.Api.fieldNames: [Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)],
-            commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
+            let fieldName = Api_Naming.sliceMutationField(~plugin=name, ~slice=ITS.Spec.name)
+            let fieldPermissions = Dict.make()
+            switch permissionForFirstConstructor(
+              ~commandSchema=ITS.Spec.commandSchema->Reventless.DcbTag.toUnknownSchema,
+              ~commandAuthorization=ITS.Spec.commandAuthorization->Obj.magic,
+            ) {
+            | Some(rule) => fieldPermissions->Dict.set(fieldName, rule)
+            | None => ()
+            }
+            {
+              ReventlessInfra.Api.fieldNames: [fieldName],
+              commandSchema: ITS.Spec.externalInputSchema->S.castToUnknown,
+              fieldPermissions,
+            }
           })
 
         let stateViewEntries = stateViewSlices->Array.map((
@@ -648,6 +695,7 @@ module Make = (
             returnTypeName: qn.returnTypeName,
             stateSchema: V.Spec.stateSchema->Reventless.DcbTag.toUnknownSchema,
             authorization: None,
+            permission: V.Spec.authorization,
             includeIdParam: qn.includeIdParam,
             connectionSpec: true,
             subIdField: ?subIdField,

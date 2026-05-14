@@ -115,6 +115,36 @@ let getClient = () =>
 // ── @aws_auth directive injection ─────────────────────────────────────────
 // Injects @aws_auth(cognito_groups: [...]) directives into SDL field strings
 // based on authorization metadata from schema entries.
+//
+// Two sources are merged:
+//   1. The legacy `authorization?: {tableName, group}` field — single group
+//      per entry, kept for the indexed-access auth path.
+//   2. The Stage E2 spec-level `Authorization.permission` fields
+//      (`fieldPermissions` on mutations, `permission` on queries) — derived
+//      from `@@reventless.authorize` / `@authorize` PPX annotations.
+//
+// When both are present on the same field, the spec-level permission wins
+// (it is more specific). `AllowGroups([g1, g2, ...])` emits
+// `@aws_auth(cognito_groups: ["g1", "g2", ...])`. `AllowAuthenticated` /
+// `AllowAnonymous` emit no directive (with Cognito as primary auth, any
+// reaching request is already authenticated). `AllowGroups([])` and
+// `DenyAll` emit a sentinel `__deny_all__` group that no Cognito user can
+// belong to — effectively blocking the field at the API layer.
+
+let _permissionToCognitoGroups = (
+  permission: Reventless.Authorization.permission,
+): option<array<string>> =>
+  switch permission {
+  | AllowGroups([]) => Some(["__deny_all__"])
+  | AllowGroups(groups) => Some(groups)
+  | DenyAll => Some(["__deny_all__"])
+  | AllowAuthenticated | AllowAnonymous => None
+  }
+
+let _formatGroupsDirective = (groups: array<string>): string => {
+  let quoted = groups->Array.map(g => `"${g}"`)->Array.join(", ")
+  `@aws_auth(cognito_groups: [${quoted}])`
+}
 
 let injectAwsAuth = (
   fragment: Reventless.Plugin.apiSchemaFragment,
@@ -123,25 +153,52 @@ let injectAwsAuth = (
 ): Reventless.Plugin.apiSchemaFragment => {
   let parts = ReventlessCore.GraphQL_Stitcher.decode(fragment)
 
-  // Build authorization lookup from mutation entries: fieldName -> group
-  let mutationAuthMap: Dict.t<string> = Dict.make()
+  // Build authorization lookup from mutation entries: fieldName -> groups.
+  // Spec-level `fieldPermissions` takes precedence over the legacy
+  // `authorization.group` per-entry single-group form.
+  let mutationAuthMap: Dict.t<array<string>> = Dict.make()
   mutationEntries->Array.forEach(entry => {
     switch entry.authorization {
     | Some({group}) =>
       entry.fieldNames->Array.forEach(fieldName =>
-        mutationAuthMap->Dict.set(fieldName, group)
+        mutationAuthMap->Dict.set(fieldName, [group])
       )
+    | None => ()
+    }
+    switch entry.fieldPermissions {
+    | Some(fp) =>
+      fp
+      ->Dict.toArray
+      ->Array.forEach(((fieldName, permission)) => {
+        switch _permissionToCognitoGroups(permission) {
+        | Some(groups) => mutationAuthMap->Dict.set(fieldName, groups)
+        | None => mutationAuthMap->Dict.delete(fieldName)
+        }
+      })
     | None => ()
     }
   })
 
-  // Build authorization lookup from query entries: fieldName -> group
-  let queryAuthMap: Dict.t<string> = Dict.make()
+  // Build authorization lookup from query entries: fieldName -> groups.
+  // Spec-level `permission` takes precedence over the legacy authorization.
+  let queryAuthMap: Dict.t<array<string>> = Dict.make()
   queryEntries->Array.forEach(entry => {
     switch entry.authorization {
     | Some({group}) =>
-      queryAuthMap->Dict.set(entry.singleFieldName, group)
-      queryAuthMap->Dict.set(entry.listFieldName, group)
+      queryAuthMap->Dict.set(entry.singleFieldName, [group])
+      queryAuthMap->Dict.set(entry.listFieldName, [group])
+    | None => ()
+    }
+    switch entry.permission {
+    | Some(permission) =>
+      switch _permissionToCognitoGroups(permission) {
+      | Some(groups) =>
+        queryAuthMap->Dict.set(entry.singleFieldName, groups)
+        queryAuthMap->Dict.set(entry.listFieldName, groups)
+      | None =>
+        queryAuthMap->Dict.delete(entry.singleFieldName)
+        queryAuthMap->Dict.delete(entry.listFieldName)
+      }
     | None => ()
     }
   })
@@ -149,7 +206,7 @@ let injectAwsAuth = (
   let augmentedMutations = parts.mutations->Array.map(field => {
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
     switch mutationAuthMap->Dict.get(fieldName) {
-    | Some(group) => `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
+    | Some(groups) => `${field}\n    ${_formatGroupsDirective(groups)}`
     | None => field
     }
   })
@@ -157,7 +214,7 @@ let injectAwsAuth = (
   let augmentedQueries = parts.queries->Array.map(field => {
     let fieldName = ReventlessCore.GraphQL_Stitcher.extractLeadingName(field)
     switch queryAuthMap->Dict.get(fieldName) {
-    | Some(group) => `${field} @aws_auth(cognito_groups: ["${group}"])`
+    | Some(groups) => `${field} ${_formatGroupsDirective(groups)}`
     | None => field
     }
   })

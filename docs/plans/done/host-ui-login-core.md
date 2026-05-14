@@ -205,16 +205,30 @@ End-to-end Pulumi verification deferred to a real `pulumi up`:
 
 ## Stage E — Spec-level authz parity on AWS (optional)
 
-### E1. Apply authorization declarations across the example domain
+### E1. Apply authorization declarations across the example domain — deferred
 
-- Same as A3, but applied to all aggregates and read models in `examples/online-shop-hybrid/`. On AWS, these feed the existing `@aws_auth(cognito_groups: …)` directive injection — already coded but only newly *effective* after Stage D.
+Authorization decisions on individual example aggregates/read models are policy choices that depend on the demo's intended audience. The framework default `AllowAuthenticated` already applies to every component without an explicit annotation, so the only thing missing is stricter rules where a demo wants to model role-gated operations. `Category.Archive` is already annotated as `AllowGroups(["Admin"])` from A3.5; further annotations can be added incrementally as the example domain evolves. **No code change required.**
 
-### E2. `requiredAccess` server-side enforcement
+### E2. Lift spec-level `Authorization.permission` into `@aws_auth` directives — ✅ done
 
-- In the SDL stitcher and `Plugin.makeAutoUIManifest`, lift `requiredAccess: Some("Admin")` from each panel/page into `@aws_auth(cognito_groups: ["Admin"])` on the corresponding mutation/query fields.
-- This is the only server-side change beyond the abstraction reference. Can be deferred indefinitely if client-side filtering (UI plan step B6) is judged sufficient for the threat model.
+The mechanism: `@@reventless.authorize(...)` (file-level) and `@authorize(...)` (per-constructor) already populate `commandAuthorization` / `authorization` on every aggregate / DCB slice / read model spec (Stage A3). On AWS those values previously had no effect — `Plugin_Builder` set `authorization: None` on every schema entry, so the existing `injectAwsAuth` directive injector never fired. E2 closes that gap end-to-end.
 
-**Verify:** a Cognito user not in the required group is rejected at the AppSync layer (before the resolver runs), regardless of what the UI sends.
+- **Entry types extended** ([reventless-infra/src/components/Api.res](../../reventless/reventless-infra/src/components/Api.res)):
+  - `mutationSchemaEntry.fieldPermissions?: dict<Authorization.permission>` — keyed by mutation field name (one entry per command constructor for aggregates; one entry per slice for DCB).
+  - `querySchemaEntry.permission?: Authorization.permission` — single rule applied to both single-id and list query fields of a read model / state view slice.
+- **Plugin_Builder** ([Plugin_Builder.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res)) — for each aggregate, iterates `filteredConstructorNames` and evaluates `M.Spec.commandAuthorization` against a synthetic command value (payload-bearing `{TAG: cname}` vs payload-less bare string — mirrors `CommandGeneratorResolvers_GraphQL.syntheticCommand` so the PPX-generated switch dispatches the same way at deploy and runtime). For each read model, reads `R.Spec.authorization`.
+- **Dcb_Builder** ([Dcb_Builder.res](../../reventless/reventless-core/src/components/Dcb/Dcb_Builder.res)) — same mechanism for `StateChangeSlice` and `InboundTranslationSlice` mutations (one GraphQL field per slice; reads the rule for the **first constructor**, matching the existing `dcbTags` convention — when constructors share the file-level default this is exact, otherwise resolver-level enforcement still fires). `StateViewSlice` populates `permission` from `V.Spec.authorization`.
+- **`injectAwsAuth`** ([AppSync_Adapter.res:115-217](../../reventless/reventless-aws/src/components/Api/AppSync_Adapter.res)) — reads the new `fieldPermissions` / `permission` fields in addition to the legacy `{tableName, group}` authorization, with spec-level always winning per-field. Permission → directive mapping:
+  - `AllowGroups([])` → `@aws_auth(cognito_groups: ["__deny_all__"])` (sentinel that no Cognito user belongs to)
+  - `AllowGroups(["g1", "g2"])` → `@aws_auth(cognito_groups: ["g1", "g2"])`
+  - `DenyAll` → `@aws_auth(cognito_groups: ["__deny_all__"])`
+  - `AllowAuthenticated` / `AllowAnonymous` → no directive emitted (with Cognito as primary auth from Stage D, any reaching request is already authenticated at the API level — equivalent to `AllowAuthenticated`)
+
+**Verify:** [`tests/AppSync_AdapterTest.res`](../../reventless/reventless-aws/tests/AppSync_AdapterTest.res) — 8 new cases for `injectAwsAuth`: `AllowGroups(["Admin"])` → single-group directive; multi-group `AllowGroups` → comma-separated; `AllowAuthenticated` → no directive; `DenyAll` → `__deny_all__` sentinel; per-field permissions (one field gets directive, another doesn't); query permission applied to both single + list fields; spec-level wins over legacy `{tableName, group}`; `AllowAuthenticated` overrides legacy (directive removed). Full reventless-aws suite: 98/102 pass (4 pre-existing failures in DcbEventLogStorage_DynamoDb_RuntimeTest unrelated — `uuid` v13 vs Jest 27 crypto). 416/416 in-memory tests still pass.
+
+**Verify (deferred to `pulumi up` + curl):** a Cognito user not in the required group is rejected at the AppSync layer (before the resolver runs), regardless of what the UI sends.
+
+> **Stage E gate:** AWS @aws_auth directive injection is wired to the spec-level `Authorization.permission` PPX annotations. Per-aggregate / per-slice / per-readmodel authz declared anywhere in `@@reventless.spec` / `@@reventless.behavior` files now enforces at the AppSync field layer in addition to the in-memory resolver layer. ✅
 
 ## Out of scope for this plan
 

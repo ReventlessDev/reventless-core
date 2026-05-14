@@ -191,9 +191,26 @@ module Make = (
               pluginStructure->Option.flatMap(s =>
                 s.aggregates->Array.find(d => d.name == M.Spec.name)
               )
+            // Stage E2 (host-ui-login-core): derive per-field permissions by
+            // evaluating the PPX-generated `commandAuthorization` against a
+            // synthetic command value per constructor. Mirrors the resolver-time
+            // shape from `CommandGeneratorResolvers_GraphQL.syntheticCommand` —
+            // payload-bearing variants compile to `{TAG, ...}`, payload-less to
+            // bare strings.
+            let fieldPermissions = Dict.make()
+            filteredConstructorNames->Array.forEachWithIndex((cname, idx) => {
+              let fieldName = fieldNames->Array.getUnsafe(idx)
+              let hasPayload =
+                Reventless.DcbTag.isVariantPayloadBearing(M.Spec.commandSchema->Obj.magic, cname)
+              let syntheticCmd: unknown =
+                hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
+              let rule = M.Spec.commandAuthorization(syntheticCmd->Obj.magic)
+              fieldPermissions->Dict.set(fieldName, rule)
+            })
             [{
               ReventlessInfra.Api.fieldNames,
               commandSchema,
+              fieldPermissions,
               linkedViews: ?aggDef->Option.map(d => d.linkedViews),
               consistencyRead: ?aggDef->Option.flatMap(d => d.consistencyRead),
             }]
@@ -215,6 +232,7 @@ module Make = (
           returnTypeName: qn.returnTypeName,
           stateSchema: R.Spec.stateSchema->S.castToUnknown,
           authorization: None,
+          permission: R.Spec.authorization,
           connectionSpec: true,
           subIdField: ?subIdField,
         }

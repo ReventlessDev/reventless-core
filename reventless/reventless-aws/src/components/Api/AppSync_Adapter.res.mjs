@@ -2,6 +2,7 @@
 
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Aws from "@pulumi/aws";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
@@ -76,43 +77,92 @@ function getClient() {
   return c$1;
 }
 
+function _permissionToCognitoGroups(permission) {
+  if (typeof permission !== "object") {
+    switch (permission) {
+      case "AllowAuthenticated" :
+      case "AllowAnonymous" :
+        return;
+      case "DenyAll" :
+        return ["__deny_all__"];
+    }
+  } else {
+    let groups = permission._0;
+    if (groups.length !== 0) {
+      return groups;
+    } else {
+      return ["__deny_all__"];
+    }
+  }
+}
+
+function _formatGroupsDirective(groups) {
+  let quoted = groups.map(g => `"` + g + `"`).join(", ");
+  return `@aws_auth(cognito_groups: [` + quoted + `])`;
+}
+
 function injectAwsAuth(fragment, mutationEntries, queryEntries) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
   let mutationAuthMap = {};
   mutationEntries.forEach(entry => {
     let match = entry.authorization;
-    if (match === undefined) {
+    if (match !== undefined) {
+      let group = match.group;
+      entry.fieldNames.forEach(fieldName => {
+        mutationAuthMap[fieldName] = [group];
+      });
+    }
+    let fp = entry.fieldPermissions;
+    if (fp !== undefined) {
+      Object.entries(fp).forEach(param => {
+        let fieldName = param[0];
+        let groups = _permissionToCognitoGroups(param[1]);
+        if (groups !== undefined) {
+          mutationAuthMap[fieldName] = groups;
+          return;
+        } else {
+          return Stdlib_Dict.$$delete(mutationAuthMap, fieldName);
+        }
+      });
       return;
     }
-    let group = match.group;
-    entry.fieldNames.forEach(fieldName => {
-      mutationAuthMap[fieldName] = group;
-    });
   });
   let queryAuthMap = {};
   queryEntries.forEach(entry => {
     let match = entry.authorization;
-    if (match === undefined) {
+    if (match !== undefined) {
+      let group = match.group;
+      queryAuthMap[entry.singleFieldName] = [group];
+      queryAuthMap[entry.listFieldName] = [group];
+    }
+    let permission = entry.permission;
+    if (permission === undefined) {
       return;
     }
-    let group = match.group;
-    queryAuthMap[entry.singleFieldName] = group;
-    queryAuthMap[entry.listFieldName] = group;
+    let groups = _permissionToCognitoGroups(permission);
+    if (groups !== undefined) {
+      queryAuthMap[entry.singleFieldName] = groups;
+      queryAuthMap[entry.listFieldName] = groups;
+      return;
+    } else {
+      Stdlib_Dict.$$delete(queryAuthMap, entry.singleFieldName);
+      return Stdlib_Dict.$$delete(queryAuthMap, entry.listFieldName);
+    }
   });
   let augmentedMutations = parts.mutations.map(field => {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
-    let group = mutationAuthMap[fieldName];
-    if (group !== undefined) {
-      return field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`;
+    let groups = mutationAuthMap[fieldName];
+    if (groups !== undefined) {
+      return field + `\n    ` + _formatGroupsDirective(groups);
     } else {
       return field;
     }
   });
   let augmentedQueries = parts.queries.map(field => {
     let fieldName = GraphQL_Stitcher$ReventlessCore.extractLeadingName(field);
-    let group = queryAuthMap[fieldName];
-    if (group !== undefined) {
-      return field + ` @aws_auth(cognito_groups: ["` + group + `"])`;
+    let groups = queryAuthMap[fieldName];
+    if (groups !== undefined) {
+      return field + ` ` + _formatGroupsDirective(groups);
     } else {
       return field;
     }
@@ -217,6 +267,8 @@ export {
   deploySchemaWithRetry,
   _client,
   getClient,
+  _permissionToCognitoGroups,
+  _formatGroupsDirective,
   injectAwsAuth,
   injectAwsAuthAll,
   makeApiResource,
