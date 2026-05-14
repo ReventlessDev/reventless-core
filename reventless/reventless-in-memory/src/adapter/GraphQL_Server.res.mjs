@@ -16,6 +16,8 @@ let handleLogin = DomainGraphQL_Server$ReventlessInMemory.handleLogin;
 
 let handleLogout = DomainGraphQL_Server$ReventlessInMemory.handleLogout;
 
+let _isInvalidBearer = DomainGraphQL_Server$ReventlessInMemory._isInvalidBearer;
+
 let _dispatch = DomainGraphQL_Server$ReventlessInMemory._dispatch;
 
 let extractHeaders = DomainGraphQL_Server$ReventlessInMemory.extractHeaders;
@@ -110,6 +112,7 @@ export {
   _loginRejected,
   handleLogin,
   handleLogout,
+  _isInvalidBearer,
   _dispatch,
   extractHeaders,
   identityFromAuthResult,

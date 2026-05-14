@@ -179,12 +179,19 @@ let authenticate = async (
   ctx: ReventlessCore.Auth_Adapter.requestContext,
 ): Identity.authResult => {
   // Decoding order: Bearer (when signature valid) → X-User/X-Groups → default.
-  let bearer =
-    getHeader(ctx.headers, "Authorization")
-    ->Option.flatMap(_bearerToken)
-    ->Option.flatMap(Login.verifyAndDecode)
-  switch bearer {
-  | Some(identity) => Authenticated(identity)
+  // A *present* Bearer that fails verification is rejected (AuthError) rather
+  // than falling through to defaultUser — otherwise a client whose token was
+  // invalidated (e.g. process-local HMAC secret rotated on restart) would
+  // silently keep working as defaultUser, and the host-shell `on401` logout
+  // path would never fire. No-Authorization stays permissive (defaultUser)
+  // so anonymous dev flows still work.
+  let bearerHeader = getHeader(ctx.headers, "Authorization")->Option.flatMap(_bearerToken)
+  switch bearerHeader {
+  | Some(token) =>
+    switch Login.verifyAndDecode(token) {
+    | Some(identity) => Authenticated(identity)
+    | None => AuthError("Invalid bearer token")
+    }
   | None =>
     let userHeader = getHeader(ctx.headers, "X-User")
     let groupsHeader = getHeader(ctx.headers, "X-Groups")

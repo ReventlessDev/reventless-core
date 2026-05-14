@@ -82,9 +82,26 @@ function handleLogout(_req, res) {
   res.end(null);
 }
 
+function _isInvalidBearer(req) {
+  let h = req.headers["authorization"];
+  if (h === undefined) {
+    return false;
+  }
+  if (!h.startsWith("Bearer ")) {
+    return false;
+  }
+  let token = h.slice(7, h.length).trim();
+  return Stdlib_Option.isNone(Auth_InMemory$ReventlessInMemory.Login.verifyAndDecode(token));
+}
+
 function _dispatch(req, res, yoga, getSdl) {
   let path = Stdlib_Option.getOr(req.url.split("?")[0], req.url);
-  if (path === "/sdl") {
+  if (path !== "/__inmemory/login" && _isInvalidBearer(req)) {
+    return _writeJson(res, 401, Object.fromEntries([[
+        "error",
+        "Invalid bearer token"
+      ]]));
+  } else if (path === "/sdl") {
     res.writeHead(200, {
       "Content-Type": "text/plain",
       "Access-Control-Allow-Origin": "*"
@@ -537,6 +554,7 @@ export {
   _loginRejected,
   handleLogin,
   handleLogout,
+  _isInvalidBearer,
   _dispatch,
   extractHeaders,
   identityFromAuthResult,

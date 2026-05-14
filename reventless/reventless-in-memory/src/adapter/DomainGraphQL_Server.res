@@ -22,7 +22,7 @@ let log = ReventlessCore.Logger.fromEnv()
 // /sdl serves the printed schema; /__inmemory/login & /logout serve the A4
 // token-issuance endpoints. Everything else falls through to graphql-yoga.
 
-type nodeRequest = {url: string, method: string}
+type nodeRequest = {url: string, method: string, headers: dict<string>}
 type nodeResponse
 @send external writeHead: (nodeResponse, int, {..}) => unit = "writeHead"
 @send external end_: (nodeResponse, string) => unit = "end"
@@ -105,12 +105,37 @@ let handleLogout = (_req: nodeRequest, res: nodeResponse): unit => {
   res->endEmpty
 }
 
+// Returns true when the request carries an `Authorization: Bearer <token>`
+// header whose token fails HMAC verification. No header (anonymous), or a
+// non-Bearer scheme (e.g. X-User flows), returns false — only an *invalid*
+// Bearer is a rejection. Mirrors the Auth_InMemory.authenticate decoding
+// rule so HTTP-level rejection matches resolver-level identity.
+let _isInvalidBearer = (req: nodeRequest): bool =>
+  switch req.headers->Dict.get("authorization") {
+  | Some(h) if String.startsWith(h, "Bearer ") =>
+    let token =
+      String.slice(h, ~start=7, ~end=String.length(h))->String.trim
+    Auth_InMemory.Login.verifyAndDecode(token)->Option.isNone
+  | _ => false
+  }
+
 // Shared dispatch for start() and rebuildSchema(). Order matters: built-in
 // endpoints win over the yoga catch-all so they aren't shadowed by graphql.
 let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: unit => string): unit => {
   // Strip query string before path matching.
   let path = req.url->String.split("?")->Array.get(0)->Option.getOr(req.url)
-  if path == "/sdl" {
+  // /__inmemory/login is the path that *issues* tokens — it never carries
+  // one. Every other path must reject an unverifiable Bearer with 401 so
+  // the host-shell's `on401` logout path can fire on stale tokens.
+  if path != "/__inmemory/login" && _isInvalidBearer(req) {
+    _writeJson(
+      res,
+      ~status=401,
+      JSON.Encode.object(
+        Dict.fromArray([("error", JSON.Encode.string("Invalid bearer token"))]),
+      ),
+    )
+  } else if path == "/sdl" {
     res->writeHead(200, {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
     res->end_(getSdl())
   } else if path == "/__inmemory/login" && req.method == "POST" {

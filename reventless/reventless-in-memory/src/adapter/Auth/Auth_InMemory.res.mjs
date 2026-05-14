@@ -176,27 +176,35 @@ function _bearerToken(header) {
 }
 
 async function authenticate(ctx) {
-  let bearer = Stdlib_Option.flatMap(Stdlib_Option.flatMap(ctx.headers["Authorization".toLowerCase()], _bearerToken), verifyAndDecode);
-  if (bearer !== undefined) {
-    return {
-      TAG: "Authenticated",
-      _0: bearer
-    };
+  let bearerHeader = Stdlib_Option.flatMap(ctx.headers["Authorization".toLowerCase()], _bearerToken);
+  if (bearerHeader !== undefined) {
+    let identity = verifyAndDecode(bearerHeader);
+    if (identity !== undefined) {
+      return {
+        TAG: "Authenticated",
+        _0: identity
+      };
+    } else {
+      return {
+        TAG: "AuthError",
+        _0: "Invalid bearer token"
+      };
+    }
   }
   let userHeader = ctx.headers["X-User".toLowerCase()];
   let groupsHeader = ctx.headers["X-Groups".toLowerCase()];
   if (userHeader !== undefined) {
-    let identity = users.contents[userHeader];
-    if (identity === undefined) {
+    let identity$1 = users.contents[userHeader];
+    if (identity$1 === undefined) {
       return "Anonymous";
     }
     let withGroups;
     if (groupsHeader !== undefined) {
-      let newrecord = {...identity};
+      let newrecord = {...identity$1};
       newrecord.groups = parseGroups(groupsHeader);
       withGroups = newrecord;
     } else {
-      withGroups = identity;
+      withGroups = identity$1;
     }
     return {
       TAG: "Authenticated",
