@@ -21,10 +21,30 @@
 
 @module("fs") external existsSync: string => bool = "existsSync"
 @module("fs") external readFileSync: (string, string) => string = "readFileSync"
+@module("path") external pathJoin: (string, string) => string = "join"
+@module("path") external pathDirname: string => string = "dirname"
+@val @scope("process") external processCwd: unit => string = "cwd"
 @val external processEnv: Dict.t<string> = "process.env"
 
 let _filename = "Pulumi.local.yaml"
+let _projectFile = "Pulumi.yaml"
 let _cache: ref<option<Dict.t<string>>> = ref(None)
+
+// Pulumi sets the Node program's cwd to the directory containing the `main`
+// entry (typically `src/`), not the project directory. Walk up from cwd to
+// find Pulumi.yaml, then read Pulumi.local.yaml next to it.
+let _findSidecar = (): option<string> => {
+  let rec find = dir => {
+    if existsSync(pathJoin(dir, _projectFile)) {
+      let candidate = pathJoin(dir, _filename)
+      existsSync(candidate) ? Some(candidate) : None
+    } else {
+      let parent = pathDirname(dir)
+      parent == dir ? None : find(parent)
+    }
+  }
+  find(processCwd())
+}
 
 let _stripQuotes = (s: string): string => {
   let n = String.length(s)
@@ -67,10 +87,9 @@ let _load = (): Dict.t<string> =>
   switch _cache.contents {
   | Some(d) => d
   | None =>
-    let d = if existsSync(_filename) {
-      _parse(readFileSync(_filename, "utf-8"))
-    } else {
-      Dict.make()
+    let d = switch _findSidecar() {
+    | Some(path) => _parse(readFileSync(path, "utf-8"))
+    | None => Dict.make()
     }
     _cache := Some(d)
     d
