@@ -77,9 +77,15 @@ Per-constructor `@authorize(<rule>)` on `type command` variants is planned for A
 
 After A3.2: full monorepo builds clean, 383/383 in-memory tests still pass, 179/179 PPX tests still pass. Roughly 120 `.res.mjs` downstream regenerations.
 
-#### A3.3 — Resolver enforcement (in-memory) — pending
+#### A3.3 — Resolver enforcement (in-memory) — ✅ done
 
-Wrap dispatch in `CommandGeneratorResolvers_GraphQL` and `QueryDbResolvers_GraphQL` with `Authorization.isAllowed(rule, ctx.identity)`. Return a GraphQL `403`-equivalent error on deny. **Keep the diff symmetric across both transports** — divergence between the in-memory and AWS resolver paths is a recurring source of bugs.
+- **Hook signature** — `Plugin_Helpers.platformHooks.mutationResolverHook` now takes `~commandAuthorization: unknown => Authorization.permission`. Threaded from `Plugin_Builder` (aggregate path, `M.Spec.commandAuthorization`) and `Dcb_Builder` (DCB sync + async slices, `S.Spec.commandAuthorization`). In-memory `Platform.res` forwards into `register` / `registerDcb`.
+- **Mutation resolvers** (`CommandGeneratorResolvers_GraphQL`) — synthesize a TAG-shaped command value per call (`{TAG: commandName}`), evaluate `commandAuthorization`, short-circuit with a `CommandRejected` outcome (`errorCode: "Forbidden"`, fresh msgId from `Message.uuid()`) when `Authorization.isAllowed(rule, identity)` is `false`. The dead `X-Identity` JSON-header parse was replaced by reading `ctx.identity` directly — `DomainGraphQL_Server.buildAuthContext` populates it via `Auth_InMemory.authenticate`. **A3.3b ready**: the synthetic value only carries the variant TAG, which is sufficient for the per-constructor `switch command { … }` the PPX will emit (record-payload-only constructors get GraphQL fields; payload-less variants are filtered out of `extractVariantNames`).
+- **Query resolvers** (`QueryDbResolvers_GraphQL`) — `QueryDb_Adapter.resolversMaker` gained `~authorization: Authorization.permission`; `QueryDb_Builder.Make` passes `Spec.authorization`; the in-memory resolver runs `Authorization.isAllowed(authorization, identity)` ahead of the existing `queryInterceptorHook`, returning `Deny("Forbidden")` on failure (each resolver already maps `Deny(_)` to an empty connection / null payload, so no SDL change is needed).
+- **AWS counterparts** — `QueryDbResolvers_AppSync`, `QueryDbResolvers_AppSync_NoOp`, and `QueryDbResolvers_NoOp` accept `~authorization` as a no-op (AWS path will enforce via `@aws_auth(cognito_groups: …)` in Stage E). Keeps the maker signatures aligned across in-memory and AWS without changing AWS behavior.
+- **Test fixture** — `tests/adapter/QueryDbListResolverTest.res` `emptyCtx` now carries a synthetic authenticated identity (`{userId: "test-user", groups: ["User"]}`) so the pagination-mechanics tests pass the new `AllowAuthenticated` check.
+
+Verified: full monorepo build clean (zero warnings), 383/383 in-memory tests pass, 179/179 PPX tests pass.
 
 #### A3.3b — Per-constructor `@authorize` annotation — pending
 

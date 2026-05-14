@@ -13,6 +13,7 @@ let make: QueryDb_Adapter.resolversMaker<api, role> = (
   ~subIdField as _,
   ~idResolverConfigs as _: array<idResolverConfig>,
   ~idsResolverConfigs as _: array<idsResolverConfig>,
+  ~authorization as _: Reventless.Authorization.permission,
   ~opts as _,
 ) => {
   resources: [],

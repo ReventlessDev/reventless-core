@@ -135,7 +135,7 @@ function Make(Spec) {
           if (fieldNames.length === 0) {
             return [];
           }
-          Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema));
+          Stdlib_Option.forEach(Spec.hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, M.Spec.commandAuthorization));
           let aggDef = Stdlib_Option.flatMap(pluginStructure, s => s.aggregates.find(d => d.name === M.Spec.name));
           return [{
               fieldNames: fieldNames,

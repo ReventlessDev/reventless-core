@@ -44,17 +44,15 @@ module Make = (Bus: InMemory_Bus.T) => {
   type role = unit
 
   // -- Identity extraction from GraphQL context ---------------------------------
-  // graphql-yoga provides { request: Request, ... } as the resolver context.
-  // We read the X-Identity header (JSON-encoded Identity.t) and fall back to anonymous.
-
-  @send external getHeader: ('headers, string) => Nullable.t<string> = "get"
+  // graphql-yoga's `context` factory in DomainGraphQL_Server.buildAuthContext
+  // runs Auth_InMemory.authenticate per request and attaches the resolved
+  // `Identity.t` to `ctx.identity`. Fallback to anonymous only when ctx is
+  // malformed.
 
   let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
     try {
-      let request = (ctx->Obj.magic)["request"]
-      let headers = request["headers"]
-      switch headers->getHeader("x-identity")->Nullable.toOption {
-      | Some(json) => json->JSON.parseOrThrow->S.parseOrThrow(Reventless.Identity.schema)
+      switch (ctx->Obj.magic)["identity"]->Nullable.toOption {
+      | Some(id) => (id: Reventless.Identity.t)
       | None => Reventless.Identity.anonymous
       }
     } catch {
@@ -82,6 +80,7 @@ module Make = (Bus: InMemory_Bus.T) => {
     ~subIdField,
     ~idResolverConfigs as _,
     ~idsResolverConfigs as _,
+    ~authorization,
     ~opts as _,
   ) => {
     // Read the active server and relay support from module-level refs set by Platform.res.
@@ -121,14 +120,16 @@ module Make = (Bus: InMemory_Bus.T) => {
     }
 
     let runInterceptor = async (~ctx, ~args): QueryDb_Callback.interceptResult => {
-      switch QueryDb_Callback.queryInterceptorHook.contents {
-      | None => Allow
-      | Some(interceptor) =>
-        await interceptor(
-          ~identity=extractIdentity(ctx),
-          ~readModelName=name,
-          ~args,
-        )
+      let identity = extractIdentity(ctx)
+      // Spec-level authorization runs first; failures short-circuit before
+      // the user-supplied interceptor (mirrors mutation enforcement).
+      if !Reventless.Authorization.isAllowed(authorization, identity) {
+        Deny("Forbidden")
+      } else {
+        switch QueryDb_Callback.queryInterceptorHook.contents {
+        | None => Allow
+        | Some(interceptor) => await interceptor(~identity, ~readModelName=name, ~args)
+        }
       }
     }
 

@@ -66,6 +66,10 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
   ~subIdField,
   ~idResolverConfigs: array<idResolverConfig>,
   ~idsResolverConfigs: array<idsResolverConfig>,
+  // AWS path enforces authorization via `@aws_auth(cognito_groups: …)` on the
+  // SDL fields (see Stage E in docs/plans/host-ui-login-core.md). Accepted but
+  // ignored here so the in-memory and AWS resolver maker signatures stay aligned.
+  ~authorization as _: Reventless.Authorization.permission,
   ~opts,
 ) => {
   let dataSourceName = dataSourceName->Pulumi.Output.asInput

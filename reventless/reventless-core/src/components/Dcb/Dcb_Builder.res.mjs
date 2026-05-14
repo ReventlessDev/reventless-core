@@ -173,13 +173,13 @@ function Make(DcbEventLogStorage) {
         syncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema);
+            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema, S.Spec.commandAuthorization);
           }
         });
         asyncSlices.forEach(S => {
           let commandSchema = S.Spec.commandSchema;
           if (!ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema);
+            return registerResolver("Dcb", [Api_Naming$ReventlessCore.sliceMutationField(name, S.Spec.name)], commandSchema, S.Spec.commandAuthorization);
           }
         });
       }

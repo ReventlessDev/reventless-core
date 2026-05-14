@@ -2,7 +2,7 @@
 
 
 function NoResolvers(Storage) {
-  let make = (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8) => ({
+  let make = (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8, param$9) => ({
     resources: [],
     resourcesMaker: param => []
   });

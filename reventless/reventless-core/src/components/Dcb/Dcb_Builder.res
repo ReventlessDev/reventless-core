@@ -236,6 +236,7 @@ module Make = (
                 ~kind=Dcb,
                 ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
                 ~commandSchema,
+                ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
               )
             }
           })
@@ -248,6 +249,7 @@ module Make = (
                 ~kind=Dcb,
                 ~fields=[Api_Naming.sliceMutationField(~plugin=name, ~slice=S.Spec.name)],
                 ~commandSchema,
+                ~commandAuthorization=S.Spec.commandAuthorization->Obj.magic,
               )
             }
           })

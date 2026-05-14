@@ -45,6 +45,7 @@ type resolversMaker<'api, 'role> = (
   ~subIdField: option<string>,
   ~idResolverConfigs: array<idResolverConfig>,
   ~idsResolverConfigs: array<idsResolverConfig>,
+  ~authorization: Reventless.Authorization.permission,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => resolvers
 
@@ -68,6 +69,7 @@ module NoResolvers = (Storage: Storage) => {
     ~subIdField as _,
     ~idResolverConfigs as _: array<idResolverConfig>,
     ~idsResolverConfigs as _: array<idsResolverConfig>,
+    ~authorization as _: Reventless.Authorization.permission,
     ~opts as _,
   ) => {
     resources: [],

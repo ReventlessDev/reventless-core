@@ -7,6 +7,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
@@ -42,13 +43,21 @@ let rowStateSchemaWithAnnotations = S.Metadata.set(rowStateSchema, StateAnnotati
   scanSort: ["name"]
 });
 
-let emptyCtx = Object.fromEntries([[
+let newrecord = {...Identity$Reventless.anonymous};
+
+let emptyCtx = Object.fromEntries([
+  [
     "request",
     Object.fromEntries([[
         "headers",
         {}
       ]])
-  ]]);
+  ],
+  [
+    "identity",
+    (newrecord.groups = ["User"], newrecord.username = "test-user", newrecord.userId = "test-user", newrecord)
+  ]
+]);
 
 function argsOf(entries) {
   return Object.fromEntries(entries);
@@ -132,7 +141,7 @@ async function buildFixture(name) {
   Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name] = rowStateSchemaWithAnnotations;
   let queryDb = Maker.make(undefined, undefined, undefined, undefined);
   let ops = await TestRunner$ReventlessInMemory.resolve(Component$ReventlessCore.operations(queryDb));
-  Resolvers.make(name, undefined, undefined, Pulumi.output(""), [], undefined, [], [], {});
+  Resolvers.make(name, undefined, undefined, Pulumi.output(""), [], undefined, [], [], "AllowAuthenticated", {});
   let r = DomainGraphQL_Server$ReventlessInMemory.getQueryResolver(listFieldName);
   let resolver = r !== undefined ? r : Stdlib_JsError.throwWithMessage("resolver not registered: " + listFieldName);
   let rows = [

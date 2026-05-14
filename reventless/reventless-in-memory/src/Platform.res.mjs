@@ -133,12 +133,12 @@ function MakeWithConfig(Config) {
       return PlatformMCP_Server$ReventlessInMemory.asInterface;
     }
   };
-  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
+  let hooks_mutationResolverHook = (kind, fields, commandSchema, commandAuthorization) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
-      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema, server);
+      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema, commandAuthorization, server);
     }
-    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema, server));
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema, commandAuthorization, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
   let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema) => InboundTranslationResolvers_GraphQL$ReventlessInMemory.register(fieldName, externalInputSchema, resolveTargetGraphQL());
@@ -1716,12 +1716,12 @@ function Make($star) {
       return PlatformMCP_Server$ReventlessInMemory.asInterface;
     }
   };
-  let hooks_mutationResolverHook = (kind, fields, commandSchema) => {
+  let hooks_mutationResolverHook = (kind, fields, commandSchema, commandAuthorization) => {
     let server = resolveTargetGraphQL();
     if (kind === "Aggregate") {
-      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema, server);
+      return CommandGeneratorResolvers_GraphQL$ReventlessInMemory.register(fields, commandSchema, commandAuthorization, server);
     }
-    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema, server));
+    fields.forEach(field => CommandGeneratorResolvers_GraphQL$ReventlessInMemory.registerDcb(field, commandSchema, commandAuthorization, server));
   };
   let hooks_mutationBindHook = CommandGeneratorResolvers_GraphQL$ReventlessInMemory.bindHandler;
   let hooks_inboundMutationResolverHook = (fieldName, externalInputSchema) => InboundTranslationResolvers_GraphQL$ReventlessInMemory.register(fieldName, externalInputSchema, resolveTargetGraphQL());

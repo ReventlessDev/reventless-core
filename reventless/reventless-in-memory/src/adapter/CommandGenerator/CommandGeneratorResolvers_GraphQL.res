@@ -15,23 +15,44 @@ type api = unit
 type runtimeParts = RuntimeEnvironment_InMemory.parts
 
 // -- Identity extraction from GraphQL context ---------------------------------
-// graphql-yoga provides { request: Request, ... } as the resolver context.
-// We read the X-Identity header (JSON-encoded Identity.t) and fall back to anonymous.
-
-@send external getHeader: ('headers, string) => Nullable.t<string> = "get"
+// graphql-yoga's `context` factory in DomainGraphQL_Server.buildAuthContext
+// runs Auth_InMemory.authenticate per request and attaches the resolved
+// `Identity.t` to `ctx.identity`. Resolvers read it from there; fallback to
+// anonymous only when ctx is malformed.
 
 let extractIdentity = (ctx: JSON.t): Reventless.Identity.t => {
   try {
-    let request = (ctx->Obj.magic)["request"]
-    let headers = request["headers"]
-    switch headers->getHeader("x-identity")->Nullable.toOption {
-    | Some(json) => json->JSON.parseOrThrow->S.parseOrThrow(Reventless.Identity.schema)
+    switch (ctx->Obj.magic)["identity"]->Nullable.toOption {
+    | Some(id) => (id: Reventless.Identity.t)
     | None => Reventless.Identity.anonymous
     }
   } catch {
   | _ => Reventless.Identity.anonymous
   }
 }
+
+// -- Authorization rejection --------------------------------------------------
+// Returns a `CommandRejected` outcome with a fresh msgId so the GraphQL union
+// resolves consistently — matches the existing CommandResult contract.
+
+let rejectForbidden = (~field: string): JSON.t =>
+  JSON.Object(
+    Dict.fromArray([
+      ("__typename", JSON.String("CommandRejected")),
+      ("msgId", JSON.String(ReventlessCore.Message.uuid())),
+      ("errorCode", JSON.String("Forbidden")),
+      ("errorDetail", JSON.String(`Mutation.${field}: identity is not authorized`)),
+    ]),
+  )
+
+// Build a synthetic command value sufficient for evaluating
+// `commandAuthorization`: ReScript variants with record payloads compile to
+// `{TAG: cname, ...payload}` and switch matches like `Add(_)` only check
+// `command.TAG === cname`. Payload-less constructors compile to bare strings,
+// but the GraphQL mutation registration in Plugin_Builder/Dcb_Builder only
+// emits fields for record-payload constructors (extractVariantNames filters
+// payload-less variants), so the TAG-shaped value is always sufficient here.
+let syntheticCommand: string => unknown = cname => {"TAG": cname}->Obj.magic
 
 let capitalize = s =>
   s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
@@ -132,7 +153,12 @@ let handlerRefs: dict<ref<option<CommandGenerator.commandGenerator>>> = Dict.mak
 // Called by Plugin_Builder via aggregateMutationResolverHook before any
 // Output.apply chains fire. Registers SDL + resolver stubs in GraphQL_Server.
 
-let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
+let register = (
+  ~fields: array<string>,
+  ~commandSchema: S.t<unknown>,
+  ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  ~server: GraphQL_ServerInstance.t,
+) => {
   ensureCommandResultTypes(server)
   // Aggregate commands target a specific instance — prepend id: ID!
   let sdlFields = fields->Array.mapWithIndex((field, i) => {
@@ -153,14 +179,19 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: G
       | Some(generateCommand) =>
         let identity = extractIdentity(ctx)
         let commandName = extractCommandName(field)
-        let payload: CommandGenerator.payload = {
-          command: commandName,
-          arguments: args->Obj.magic,
-          meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
-          identity,
+        let rule = commandAuthorization(syntheticCommand(commandName))
+        if !Reventless.Authorization.isAllowed(rule, identity) {
+          rejectForbidden(~field)
+        } else {
+          let payload: CommandGenerator.payload = {
+            command: commandName,
+            arguments: args->Obj.magic,
+            meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
+            identity,
+          }
+          let outcome = await generateCommand(payload)->Effect.runPromise
+          outcome->commandOutcomeToJson
         }
-        let outcome = await generateCommand(payload)->Effect.runPromise
-        outcome->commandOutcomeToJson
       | None => JSON.Encode.null
       }
     }
@@ -177,7 +208,12 @@ let register = (~fields: array<string>, ~commandSchema: S.t<unknown>, ~server: G
 // is derived inside makeGenerateCommand from the command schema, so the resolver
 // just forwards args verbatim.
 
-let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: GraphQL_ServerInstance.t) => {
+let registerDcb = (
+  ~fieldName: string,
+  ~commandSchema: S.t<unknown>,
+  ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  ~server: GraphQL_ServerInstance.t,
+) => {
   ensureCommandResultTypes(server)
   let variantSchema = extractVariantSchema(commandSchema)
   let sdlFields = [deriveSdlField(~fieldName, variantSchema)]
@@ -193,14 +229,19 @@ let registerDcb = (~fieldName: string, ~commandSchema: S.t<unknown>, ~server: Gr
     switch handlerRef.contents {
     | Some(generateCommand) =>
       let identity = extractIdentity(ctx)
-      let payload: CommandGenerator.payload = {
-        command: tag,
-        arguments: args->Obj.magic,
-        meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
-        identity,
+      let rule = commandAuthorization(syntheticCommand(tag))
+      if !Reventless.Authorization.isAllowed(rule, identity) {
+        rejectForbidden(~field=fieldName)
+      } else {
+        let payload: CommandGenerator.payload = {
+          command: tag,
+          arguments: args->Obj.magic,
+          meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
+          identity,
+        }
+        let outcome = await generateCommand(payload)->Effect.runPromise
+        outcome->commandOutcomeToJson
       }
-      let outcome = await generateCommand(payload)->Effect.runPromise
-      outcome->commandOutcomeToJson
     | None => JSON.Encode.null
     }
   }

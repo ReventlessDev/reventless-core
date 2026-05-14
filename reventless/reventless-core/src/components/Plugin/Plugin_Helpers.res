@@ -622,7 +622,15 @@ type subscriptionInfraParams = {
 type platformHooks = {
   // ── In-memory GraphQL mutation registration ────────────────────────────
   // Phase 1: register SDL + resolver stub synchronously.
-  mutationResolverHook?: (~kind: mutationKind, ~fields: array<string>, ~commandSchema: S.t<unknown>) => unit,
+  // `commandAuthorization` is the `command => permission` function from the
+  // aggregate / slice Spec; the resolver evaluates it per-request against
+  // `ctx.identity` to enforce per-constructor authorization rules.
+  mutationResolverHook?: (
+    ~kind: mutationKind,
+    ~fields: array<string>,
+    ~commandSchema: S.t<unknown>,
+    ~commandAuthorization: unknown => Reventless.Authorization.permission,
+  ) => unit,
   // Phase 2: bind generateCommand inside Output.apply.
   mutationBindHook?: (~field: string, ~generateCommand: CommandGenerator.commandGenerator) => unit,
   // InboundTranslationSlice — phase 1: register SDL + stub.

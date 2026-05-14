@@ -180,7 +180,12 @@ module Make = (
             // Register aggregate mutation SDL + resolver stubs synchronously via hook
             // (before Output.apply chains fire).
             Spec.hooks.mutationResolverHook->Option.forEach(registerResolver =>
-              registerResolver(~kind=Aggregate, ~fields=fieldNames, ~commandSchema)
+              registerResolver(
+                ~kind=Aggregate,
+                ~fields=fieldNames,
+                ~commandSchema,
+                ~commandAuthorization=M.Spec.commandAuthorization->Obj.magic,
+              )
             )
             let aggDef =
               pluginStructure->Option.flatMap(s =>

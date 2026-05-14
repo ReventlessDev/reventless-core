@@ -43,10 +43,14 @@ let rowStateSchemaWithAnnotations =
 // Helpers — invoke a registered resolver with synthetic args/ctx
 // ─────────────────────────────────────────────────────────────
 
+// Inject a synthetic authenticated identity so the resolver's spec-level
+// authorization check (AllowAuthenticated, see Resolvers.make below) lets
+// these list-resolver mechanics tests through.
 let emptyCtx: JSON.t = JSON.Encode.object(Dict.fromArray([
   ("request", JSON.Encode.object(Dict.fromArray([
     ("headers", JSON.Encode.object(Dict.make())),
   ]))),
+  ("identity", ({...Reventless.Identity.anonymous, userId: "test-user", username: "test-user", groups: ["User"]}: Reventless.Identity.t)->Obj.magic),
 ]))
 
 let argsOf = (entries: array<(string, JSON.t)>): JSON.t =>
@@ -144,6 +148,7 @@ let buildFixture = async (~name: string) => {
     ~subIdField=None,
     ~idResolverConfigs=[],
     ~idsResolverConfigs=[],
+    ~authorization=Reventless.Authorization.AllowAuthenticated,
     ~opts=({}: Pulumi.CustomResourceOptions.t),
   )
 

@@ -58,7 +58,7 @@ export function response(ctx) {
 `;
 }
 
-function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
+function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, param, opts) {
   let name$1 = Stdlib_String.capitalize(name);
   let registryEntry = Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[name$1];
   let fieldNameForSingle = registryEntry !== undefined ? registryEntry.singleFieldName : AppSync_Resolver_Functions$PulumiAws.uncapitalize(name$1);

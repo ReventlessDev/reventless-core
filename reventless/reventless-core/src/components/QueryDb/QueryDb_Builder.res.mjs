@@ -29,7 +29,7 @@ function Make(Spec) {
           deleteBatch: Operations.deleteBatch
         };
       }));
-      let resolvers = Resolvers.make(none$1, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, opts);
+      let resolvers = Resolvers.make(none$1, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, Spec.authorization, opts);
       let outputs_resources = storage.resources.concat(resolvers.resources);
       let outputs_resolversMaker = resolvers.resourcesMaker;
       let outputs = {
