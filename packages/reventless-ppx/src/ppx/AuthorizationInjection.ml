@@ -102,6 +102,105 @@ let gen_command_authorization ~loc rule =
   Ast_builder.Default.pstr_value ~loc Nonrecursive
     [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
 
+(* let commandAuthorization = command => switch command { … | _ => default }.
+   Per-constructor rules become explicit cases; un-annotated constructors
+   fall through to the default. *)
+let gen_command_authorization_switch
+    ~loc
+    ~(per_constructor_rules : (string * bool * expression) list)
+    ~(default_rule : expression) =
+  let cases =
+    List.map (fun (name, has_payload, rule) ->
+      let cstr_lid = { txt = Lident name; loc } in
+      let lhs =
+        if has_payload
+        then Ast_builder.Default.ppat_construct ~loc cstr_lid (Some (Ast_builder.Default.ppat_any ~loc))
+        else Ast_builder.Default.ppat_construct ~loc cstr_lid None
+      in
+      { pc_lhs = lhs; pc_guard = None; pc_rhs = rule }
+    ) per_constructor_rules
+  in
+  let wildcard_case = {
+    pc_lhs = Ast_builder.Default.ppat_any ~loc;
+    pc_guard = None;
+    pc_rhs = default_rule;
+  } in
+  let cases = cases @ [wildcard_case] in
+  let cmd_var_pat = Ast_builder.Default.ppat_var ~loc { txt = "command"; loc } in
+  let cmd_var_ident =
+    Ast_builder.Default.pexp_ident ~loc { txt = Lident "command"; loc }
+  in
+  let switch = Ast_builder.Default.pexp_match ~loc cmd_var_ident cases in
+  let fn = Ast_builder.Default.pexp_fun ~loc Nolabel None cmd_var_pat switch in
+  let pat = Ast_builder.Default.ppat_var ~loc { txt = "commandAuthorization"; loc } in
+  Ast_builder.Default.pstr_value ~loc Nonrecursive
+    [Ast_builder.Default.value_binding ~loc ~pat ~expr:fn]
+
+(* Per-constructor `@authorize(rule)` extraction --------------------------- *)
+(* Scans the `command` variant type for `@authorize(rule)` constructor
+   attributes. Returns [(constructor_name, has_payload, rule_expression)]
+   for each annotated constructor. Empty list when no constructor carries
+   the annotation — caller falls back to the constant-lambda form. *)
+let extract_constructor_rules (body : structure) : (string * bool * expression) list =
+  List.concat_map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.concat_map (fun (td : type_declaration) ->
+        if String.equal td.ptype_name.txt "command"
+           && Util.has_attr "schema" td.ptype_attributes
+        then
+          match td.ptype_kind with
+          | Ptype_variant ctors ->
+            List.filter_map (fun (cd : constructor_declaration) ->
+              let authorize_attr =
+                List.find_opt (fun (attr : attribute) ->
+                  String.equal attr.attr_name.txt "authorize"
+                ) cd.pcd_attributes
+              in
+              match authorize_attr with
+              | None -> None
+              | Some attr ->
+                (match attr.attr_payload with
+                 | PStr [{ pstr_desc = Pstr_eval (expr, _); _ }] ->
+                   let has_payload = match cd.pcd_args with
+                     | Pcstr_tuple [] -> false
+                     | _ -> true
+                   in
+                   Some (cd.pcd_name.txt, has_payload, expr)
+                 | _ -> None)
+            ) ctors
+          | _ -> []
+        else []
+      ) decls
+    | _ -> []
+  ) body
+
+(* Strip `@authorize` from constructor declarations in the `command` type so
+   sury-ppx (which runs after us) doesn't see an unknown attribute. *)
+let strip_authorize_attrs_from_command (body : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rec_flag, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if String.equal td.ptype_name.txt "command"
+           && Util.has_attr "schema" td.ptype_attributes
+        then
+          match td.ptype_kind with
+          | Ptype_variant ctors ->
+            let new_ctors = List.map (fun (cd : constructor_declaration) ->
+              { cd with pcd_attributes =
+                  List.filter (fun (attr : attribute) ->
+                    not (String.equal attr.attr_name.txt "authorize")
+                  ) cd.pcd_attributes }
+            ) ctors in
+            { td with ptype_kind = Ptype_variant new_ctors }
+          | _ -> td
+        else td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rec_flag, new_decls) }
+    | _ -> item
+  ) body
+
 (* let authorization = <rule> *)
 let gen_authorization ~loc rule =
   let pat = Ast_builder.Default.ppat_var ~loc { txt = "authorization"; loc } in
@@ -163,9 +262,15 @@ let is_spec_namespace_pkg loc =
 let inject ~loc fname (body : structure) : structure_item list * structure * structure_item list =
   if is_spec_namespace_pkg loc then ([], body, [])
   else
-  let pick (user_rule : expression option) (body_after_strip : structure) =
+  let pick
+      ~(per_constructor_rules : (string * bool * expression) list)
+      (user_rule : expression option)
+      (body_after_strip : structure) =
+    let has_user_payload =
+      Option.is_some user_rule || List.length per_constructor_rules > 0
+    in
     let needs_open =
-      Option.is_some user_rule
+      has_user_payload
       && not (Util.has_open_dotted "Reventless" "Authorization" body_after_strip)
     in
     let prefix = if needs_open then [gen_open_authorization ~loc] else [] in
@@ -183,18 +288,22 @@ let inject ~loc fname (body : structure) : structure_item list * structure * str
   | Other -> ([], body, [])
   | CommandCarrier ->
     let user_rule = extract_file_rule body in
+    let per_constructor_rules = extract_constructor_rules body in
     let body = strip_file_authorize_attrs body in
-    let (prefix, rule) = pick user_rule body in
+    let body = strip_authorize_attrs_from_command body in
+    let (prefix, default_rule) = pick ~per_constructor_rules user_rule body in
     let suffix =
       if Util.has_let_binding "commandAuthorization" body
       then []
-      else [gen_command_authorization ~loc rule]
+      else if List.length per_constructor_rules > 0
+      then [gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule]
+      else [gen_command_authorization ~loc default_rule]
     in
     (prefix, body, suffix)
   | QueryCarrier ->
     let user_rule = extract_file_rule body in
     let body = strip_file_authorize_attrs body in
-    let (prefix, rule) = pick user_rule body in
+    let (prefix, rule) = pick ~per_constructor_rules:[] user_rule body in
     let suffix =
       if Util.has_let_binding "authorization" body
       then []
@@ -265,19 +374,31 @@ let inject_into_inner_module
     if Util.has_let_binding field_name body then mb
     else
       let user_rule = extract_file_rule body in
+      let per_constructor_rules =
+        if is_command_carrier then extract_constructor_rules body else []
+      in
       let body = strip_file_authorize_attrs body in
+      let body =
+        if is_command_carrier then strip_authorize_attrs_from_command body else body
+      in
+      let has_user_payload =
+        Option.is_some user_rule || List.length per_constructor_rules > 0
+      in
       let needs_open =
-        Option.is_some user_rule
+        has_user_payload
         && not (Util.has_open_dotted "Reventless" "Authorization" body)
       in
       let prefix = if needs_open then [gen_open_authorization ~loc] else [] in
-      let rule = match user_rule with
+      let default_rule = match user_rule with
         | Some e -> e
         | None -> default_rule_expr ~loc
       in
-      let injection = if is_command_carrier
-        then gen_command_authorization ~loc rule
-        else gen_authorization ~loc rule
+      let injection =
+        if is_command_carrier then
+          if List.length per_constructor_rules > 0
+          then gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule
+          else gen_command_authorization ~loc default_rule
+        else gen_authorization ~loc default_rule
       in
       let new_body = prefix @ body @ [injection] in
       { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure new_body } }

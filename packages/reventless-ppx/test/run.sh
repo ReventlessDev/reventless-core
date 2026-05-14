@@ -90,6 +90,27 @@ cat > "$PLUGIN/src/ReadModel/ProductsReadModel.res" <<'EOF'
 type state = { productName: string }
 EOF
 
+# Authorization injection — per-constructor @authorize plus file-level default
+cat > "$PLUGIN/src/Aggregate/Category.res" <<'EOF'
+@@reventless.spec
+@@reventless.authorize(AllowGroups(["Catalog"]))
+
+@schema
+type command =
+  | Add({name: string})
+  | Rename({name: string})
+  | @authorize(AllowGroups(["Admin"])) Archive
+
+@schema
+type event =
+  | Added({name: string})
+  | Renamed({name: string})
+  | Archived
+
+@schema
+type error = unit
+EOF
+
 # Explicit name
 cat > "$PLUGIN/src/Aggregate/Order.res" <<'EOF'
 @@reventless.spec("CustomOrder")
@@ -961,6 +982,20 @@ JS="$PLUGIN/src/Aggregate/ProductBehavior.res.mjs"
 assert_js_contains "$JS" '@test/my-plugin/src/Aggregate/ProductBehavior.res.mjs' "behavior moduleUrl"
 # open + module Spec are compile-time only — success proves they were injected correctly
 pass "behavior compiles (open + module Spec injected correctly)"
+
+echo ""
+echo "=== Test: @authorize per-constructor + @@reventless.authorize file default ==="
+JS="$PLUGIN/src/Aggregate/Category.res.mjs"
+# File-level default lifted into the switch's wildcard branch
+assert_js_contains "$JS" '"Catalog"'                       "@authorize: file-level default group present"
+# Per-constructor rule lifted into a Archive case
+assert_js_contains "$JS" '"Admin"'                         "@authorize: per-ctor Admin group present"
+# Both lines refer to AllowGroups — qualified name fine, just confirm it's there
+assert_js_contains "$JS" 'AllowGroups'                     "@authorize: AllowGroups constructor used"
+# Generated switch retains a `command` parameter (not wildcard `_`)
+assert_js_contains "$JS" 'function commandAuthorization(command)' "@authorize: switch lambda parameter"
+# Sanity: @authorize attribute stripped from the AST so sury-ppx doesn't see it
+assert_js_not_contains "$JS" 'authorize'                   "@authorize: attribute stripped from output"
 
 echo ""
 echo "=== Test: @@reventless.spec (ReadModel suffix stripped + defaults auto-injected) ==="

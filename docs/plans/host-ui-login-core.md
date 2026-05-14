@@ -87,9 +87,13 @@ After A3.2: full monorepo builds clean, 383/383 in-memory tests still pass, 179/
 
 Verified: full monorepo build clean (zero warnings), 383/383 in-memory tests pass, 179/179 PPX tests pass.
 
-#### A3.3b — Per-constructor `@authorize` annotation — pending
+#### A3.3b — Per-constructor `@authorize` annotation — ✅ done
 
-Walk `@schema type command` constructors, build a `switch command { … }` that maps each constructor to its `@authorize(rule)` payload (or the file-level default). Wholly inside `AuthorizationInjection.ml`; the resolver code path doesn't change.
+- **PPX walk** — `AuthorizationInjection.extract_constructor_rules` scans `@schema type command` variant declarations and lifts every constructor-level `@authorize(rule)` attribute into a `(name, has_payload, rule_expr)` triple. `strip_authorize_attrs_from_command` then strips the attribute so sury-ppx never sees it.
+- **Generator switch** — `gen_command_authorization_switch` emits `let commandAuthorization = command => switch command { | Ctor(_) => rule₁ | Bare => rule₂ … | _ => default }`. Payload-bearing constructors get a `Ctor(_)` pattern; payload-less constructors compile to bare-string literals and use the no-argument `Bare` form so the runtime check `command === "Bare"` fires correctly. The wildcard branch carries the file-level `@@reventless.authorize(rule)` payload — or the framework default `AllowAuthenticated` when no file-level rule is set.
+- **Idempotent** — `inject` (file-level driver) and `inject_into_inner_module` (inline spec walk) both detect per-constructor attributes; bodies that already declare `commandAuthorization` are left untouched, so hand-rolled overrides win over PPX defaults. Open of `Reventless.Authorization` is added only when at least one constructor or file-level rule actually uses unqualified rule constructors.
+- **Resolver code path unchanged** — `CommandGeneratorResolvers_GraphQL` still synthesizes `{TAG: commandName}` (or the bare-string literal for payload-less variants — same runtime shape sury emits) and calls `commandAuthorization`; the switch the PPX emits dispatches to the right rule without any further plumbing.
+- **PPX binaries refreshed** — `ppx-osx-x64.exe` (local dune build) and `ppx-linux.exe` (Docker amd64) rebuilt; 184/184 integration tests pass (5 new for `@authorize`); zero-warning monorepo build; 383/383 in-memory tests still pass.
 
 #### A3.5 — Apply to catalog example + integration test — pending
 
