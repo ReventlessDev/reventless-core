@@ -6,6 +6,12 @@ let YG = DomainGraphQL_Server$ReventlessInMemory.YG;
 
 let log = DomainGraphQL_Server$ReventlessInMemory.log;
 
+let extractHeaders = DomainGraphQL_Server$ReventlessInMemory.extractHeaders;
+
+let identityFromAuthResult = DomainGraphQL_Server$ReventlessInMemory.identityFromAuthResult;
+
+let buildAuthContext = DomainGraphQL_Server$ReventlessInMemory.buildAuthContext;
+
 let encodeGlobalId = DomainGraphQL_Server$ReventlessInMemory.encodeGlobalId;
 
 let decodeGlobalId = DomainGraphQL_Server$ReventlessInMemory.decodeGlobalId;
@@ -87,6 +93,9 @@ let asInterface = DomainGraphQL_Server$ReventlessInMemory.asInterface;
 export {
   YG,
   log,
+  extractHeaders,
+  identityFromAuthResult,
+  buildAuthContext,
   encodeGlobalId,
   decodeGlobalId,
   mutationResolvers,

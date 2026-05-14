@@ -6,10 +6,39 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as GraphqlYoga from "graphql-yoga";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import * as Auth_InMemory$ReventlessInMemory from "./Auth/Auth_InMemory.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
+
+function extractHeaders(headers) {
+  let acc = {};
+  headers.forEach((value, key) => {
+    acc[key.toLowerCase()] = value;
+  });
+  return acc;
+}
+
+function identityFromAuthResult(result) {
+  if (typeof result !== "object" || result.TAG !== "Authenticated") {
+    return Identity$Reventless.anonymous;
+  } else {
+    return result._0;
+  }
+}
+
+async function buildAuthContext(initial) {
+  let headers = extractHeaders(initial.request.headers);
+  let requestContext = {
+    headers: headers
+  };
+  let result = await Auth_InMemory$ReventlessInMemory.authenticate(requestContext);
+  return {
+    identity: identityFromAuthResult(result)
+  };
+}
 
 function encodeGlobalId(typeName, localId) {
   return btoa(typeName + `:` + localId);
@@ -186,7 +215,8 @@ function start(portOpt, param) {
     schema: schema,
     graphiql: true,
     logging: debug,
-    maskedErrors: !debug
+    maskedErrors: !debug,
+    context: buildAuthContext
   });
   let server = Http.createServer((req, res) => {
     if (req.url !== "/sdl") {
@@ -248,7 +278,8 @@ function rebuildSchema(baseFragment, pluginFragments) {
     schema: schema,
     graphiql: true,
     logging: debug,
-    maskedErrors: !debug
+    maskedErrors: !debug,
+    context: buildAuthContext
   });
   let server = Http.createServer((req, res) => {
     if (req.url !== "/sdl") {
@@ -420,6 +451,9 @@ let YG;
 export {
   YG,
   log,
+  extractHeaders,
+  identityFromAuthResult,
+  buildAuthContext,
   encodeGlobalId,
   decodeGlobalId,
   mutationResolvers,

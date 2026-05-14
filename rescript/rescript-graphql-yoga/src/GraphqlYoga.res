@@ -61,12 +61,52 @@ external createSchema: {
  * server->listen(4000, () => Console.log("Listening on :4000"))
  * ```
  */
+/**
+ * Initial context passed to a context-factory function. Yoga populates it
+ * with the incoming Fetch API `Request` (plus `params`, `serverContext`,
+ * etc.); the factory's return value is merged into what resolvers see as
+ * their `context` argument.
+ *
+ * Typed as `JSON.t` so callers `Obj.magic` to the concrete shape they need
+ * — typically a record with a `request` field exposing `headers`.
+ */
+type initialContext = JSON.t
+
+/**
+ * Context factory: receives Yoga's initial context (with `request: Request`)
+ * and returns the additional fields merged into resolver `context`.
+ *
+ * Pattern:
+ * ```rescript
+ * let buildContext: initialContext => promise<JSON.t> = async initial => {
+ *   let req: {"request": fetchRequest} = Obj.magic(initial)
+ *   …extract identity from req.request.headers…
+ * }
+ * ```
+ */
+type contextFactory = initialContext => promise<JSON.t>
+
 @module("graphql-yoga")
 external createYoga: {
   "schema": schema,
   "graphiql": bool,
   "logging": bool,
   "maskedErrors": bool,
+} => yoga = "createYoga"
+
+/**
+ * Variant of `createYoga` that also installs a context factory. Yoga merges
+ * the factory's return value into the resolver `context` argument, so
+ * authentication adapters (e.g. `Auth_InMemory.authenticate`) can attach an
+ * `identity` field that resolvers read off `ctx.identity`.
+ */
+@module("graphql-yoga")
+external createYogaWithContext: {
+  "schema": schema,
+  "graphiql": bool,
+  "logging": bool,
+  "maskedErrors": bool,
+  "context": contextFactory,
 } => yoga = "createYoga"
 
 /**

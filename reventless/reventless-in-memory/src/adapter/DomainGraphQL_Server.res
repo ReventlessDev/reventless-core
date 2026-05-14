@@ -28,6 +28,41 @@ type nodeResponse
 type requestHandler = (nodeRequest, nodeResponse) => unit
 @module("http") external createServerWithHandler: requestHandler => YG.httpServer = "createServer"
 
+// -- Auth context factory ----------------------------------------------------
+//
+// Yoga's initial context wraps the Fetch API Request. We flatten its Headers
+// into a lowercase dict, hand it to Auth_InMemory.authenticate, and attach
+// the resolved identity to the context so resolvers see `ctx.identity`.
+
+type fetchHeaders
+type fetchRequest = {headers: fetchHeaders}
+type yogaInitialCtx = {request: fetchRequest}
+
+@send
+external headersForEach: (fetchHeaders, (string, string) => unit) => unit = "forEach"
+
+let extractHeaders = (headers: fetchHeaders): dict<string> => {
+  let acc = Dict.make()
+  headers->headersForEach((value, key) => acc->Dict.set(key->String.toLowerCase, value))
+  acc
+}
+
+let identityFromAuthResult = (result: Reventless.Identity.authResult): Reventless.Identity.t =>
+  switch result {
+  | Authenticated(id) => id
+  | Anonymous => Reventless.Identity.anonymous
+  | AuthError(_) => Reventless.Identity.anonymous
+  }
+
+let buildAuthContext = async (initial: YG.initialContext): JSON.t => {
+  let ctx: yogaInitialCtx = Obj.magic(initial)
+  let headers = extractHeaders(ctx.request.headers)
+  let requestContext: ReventlessCore.Auth_Adapter.requestContext = {headers: headers}
+  let result = await Auth_InMemory.authenticate(requestContext)
+  let identity = identityFromAuthResult(result)
+  Obj.magic({"identity": identity})
+}
+
 // -- Resolver type alias ---------------------------------------------------
 
 type resolverFn = YG.resolverFn
@@ -187,7 +222,13 @@ let start = (~port: int=4000, ()) => {
   lastFullSdl.contents = Some(sdl)
   let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
   activeSchema.contents = Some(schema)
-  let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": debug, "maskedErrors": !debug})
+  let yoga = YG.createYogaWithContext({
+    "schema": schema,
+    "graphiql": true,
+    "logging": debug,
+    "maskedErrors": !debug,
+    "context": buildAuthContext,
+  })
   // Custom HTTP handler: serves /sdl endpoint for Relay compiler, delegates rest to yoga
   let server = createServerWithHandler((req, res) => {
     if req.url == "/sdl" {
@@ -251,7 +292,13 @@ let rebuildSchema = (
   }
   let schema = YG.createSchema({"typeDefs": fullSdl, "resolvers": resolvers})
   activeSchema.contents = Some(schema)
-  let yoga = YG.createYoga({"schema": schema, "graphiql": true, "logging": debug, "maskedErrors": !debug})
+  let yoga = YG.createYogaWithContext({
+    "schema": schema,
+    "graphiql": true,
+    "logging": debug,
+    "maskedErrors": !debug,
+    "context": buildAuthContext,
+  })
   let server = createServerWithHandler((req, res) => {
     if req.url == "/sdl" {
       let sdlContent = switch activeSchema.contents {
