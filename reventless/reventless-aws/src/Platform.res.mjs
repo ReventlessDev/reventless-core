@@ -881,7 +881,15 @@ function MakeWithConfig(Config) {
     if (Config.splitApi) {
       let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
-      Output$Pulumi.flatMap(platformApi, api => Output$Pulumi.flatMap(api.id, apiId => {
+      let adminReadModelResourceNames = Object.values(admin.readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name));
+      let adminBarrier = Pulumi.all([
+        admin.extensionPointsOutputs.apply(param => {}),
+        Pulumi.all(adminReadModelResourceNames).apply(param => {})
+      ]);
+      Output$Pulumi.flatMap(Pulumi.all([
+        platformApi,
+        adminBarrier
+      ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
         console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
         let client = AppSync_Adapter$ReventlessAws.getClient();
         return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
@@ -1809,7 +1817,15 @@ function Make($star) {
     }
     let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
-    Output$Pulumi.flatMap(platformApi, api => Output$Pulumi.flatMap(api.id, apiId => {
+    let adminReadModelResourceNames = Object.values(admin.readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name));
+    let adminBarrier = Pulumi.all([
+      admin.extensionPointsOutputs.apply(param => {}),
+      Pulumi.all(adminReadModelResourceNames).apply(param => {})
+    ]);
+    Output$Pulumi.flatMap(Pulumi.all([
+      platformApi,
+      adminBarrier
+    ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
       console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
       return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {

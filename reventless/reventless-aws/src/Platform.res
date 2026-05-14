@@ -1292,20 +1292,37 @@ module MakeWithConfig = (
         ~baseFragment=adminBaseFragment,
         ~pluginFragments=[],
       )
-      let _ = platformApi->Pulumi.Output.flatMap(api =>
-        api.id->Pulumi.Output.flatMap(apiId => {
-          Console.log(`[deployPlatform] Pushing admin schema to core-api ${apiId}`)
-          let client = AppSync_Adapter.getClient()
-          client
-          ->AppSync_Adapter.startSchemaCreation({apiId, definition: sdl})
-          ->Promise.then(async _ => {
-            Console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE")
-            await AppSync_Adapter.waitForSchemaActive(client, apiId)
-            Console.log("[deployPlatform] core-api schema is ACTIVE")
+      // AWS AppSync holds an API-level lock during StartSchemaCreation and
+      // rejects concurrent CreateDataSource calls with
+      // ConcurrentModificationException. Chain the schema push on admin's
+      // Pulumi outputs so it fires after admin DataSources/Resolvers have
+      // been created.
+      let adminReadModelResourceNames =
+        admin.readModelsOutputs
+        ->Dict.valuesToArray
+        ->Array.flatMap(rm => rm.queryDb.resources->Array.map(r => r.name))
+      let adminBarrier =
+        (
+          admin.extensionPointsOutputs->Pulumi.Output.apply(_ => ()),
+          adminReadModelResourceNames->Pulumi.Output.all->Pulumi.Output.apply(_ => ()),
+        )->Pulumi.Output.all2
+      let _ =
+        (platformApi, adminBarrier)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.flatMap(((api, _)) =>
+          api.id->Pulumi.Output.flatMap(apiId => {
+            Console.log(`[deployPlatform] Pushing admin schema to core-api ${apiId}`)
+            let client = AppSync_Adapter.getClient()
+            client
+            ->AppSync_Adapter.startSchemaCreation({apiId, definition: sdl})
+            ->Promise.then(async _ => {
+              Console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE")
+              await AppSync_Adapter.waitForSchemaActive(client, apiId)
+              Console.log("[deployPlatform] core-api schema is ACTIVE")
+            })
+            ->Pulumi.Output.fromPromise
           })
-          ->Pulumi.Output.fromPromise
-        })
-      )
+        )
 
       // Platform API exports (split mode).
       Pulumi.Pulumi.export("platformApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
