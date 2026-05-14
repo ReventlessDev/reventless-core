@@ -1534,6 +1534,7 @@ module MakeWithConfig = (
     // (domain and platform) can register their schema first.
     // In unified mode, start immediately (backwards-compatible).
     if !Config.splitApi {
+      UserStore.autoLoadOnce()
       DomainGraphQL_Server.start()
       DomainMCP_Server.start()
     }

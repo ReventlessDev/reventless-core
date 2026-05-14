@@ -18,15 +18,109 @@ module YG = GraphqlYoga
 
 let log = ReventlessCore.Logger.fromEnv()
 
-// -- Node.js HTTP bindings for /sdl endpoint ---------------------------------
+// -- Node.js HTTP bindings ---------------------------------------------------
+// /sdl serves the printed schema; /__inmemory/login & /logout serve the A4
+// token-issuance endpoints. Everything else falls through to graphql-yoga.
 
-type nodeRequest = {url: string}
+type nodeRequest = {url: string, method: string}
 type nodeResponse
 @send external writeHead: (nodeResponse, int, {..}) => unit = "writeHead"
 @send external end_: (nodeResponse, string) => unit = "end"
+@send external endEmpty: (nodeResponse, @as(json`null`) _) => unit = "end"
+
+// Streaming body collector — request data fires once per chunk, end once at EOF.
+@send external _onData: (nodeRequest, @as("data") _, string => unit) => unit = "on"
+@send external _onEnd: (nodeRequest, @as("end") _, unit => unit) => unit = "on"
+@send external _setEncoding: (nodeRequest, string) => unit = "setEncoding"
+
+let readBody = (req: nodeRequest, onBody: string => unit): unit => {
+  let buf = ref("")
+  req->_setEncoding("utf8")
+  req->_onData(chunk => buf := buf.contents ++ chunk)
+  req->_onEnd(() => onBody(buf.contents))
+}
 
 type requestHandler = (nodeRequest, nodeResponse) => unit
 @module("http") external createServerWithHandler: requestHandler => YG.httpServer = "createServer"
+
+// -- /__inmemory/login + /logout handlers -----------------------------------
+
+let _writeJson = (res: nodeResponse, ~status: int, body: JSON.t): unit => {
+  res->writeHead(
+    status,
+    {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+  )
+  res->end_(body->JSON.stringify)
+}
+
+let _loginRejected = (res: nodeResponse, ~error: string): unit =>
+  _writeJson(
+    res,
+    ~status=401,
+    JSON.Encode.object(Dict.fromArray([("error", JSON.Encode.string(error))])),
+  )
+
+type _loginBody = {username: string, password: string}
+
+let handleLogin = (req: nodeRequest, res: nodeResponse): unit =>
+  readBody(req, body => {
+    let parsed = try {
+      Some((body->JSON.parseOrThrow->Obj.magic: _loginBody))
+    } catch {
+    | _ => None
+    }
+    switch parsed {
+    | None => _loginRejected(res, ~error="Invalid JSON body")
+    | Some({username, password}) =>
+      let _ = Auth_InMemory.Login.issue(~username, ~password)->Promise.then(result => {
+        switch result {
+        | Error(msg) => _loginRejected(res, ~error=msg)
+        | Ok(token) =>
+          // Echo back the identity the client will see in subsequent
+          // ctx.identity values, so the SPA doesn't need a second round-trip.
+          let identity = switch Auth_InMemory.lookupUser(username) {
+          | Some(i) => i
+          | None => Reventless.Identity.anonymous
+          }
+          let identityJson =
+            identity->S.reverseConvertToJsonOrThrow(Reventless.Identity.schema)
+          _writeJson(
+            res,
+            ~status=200,
+            JSON.Encode.object(
+              Dict.fromArray([
+                ("token", JSON.Encode.string(token)),
+                ("identity", identityJson),
+              ]),
+            ),
+          )
+        }
+        Promise.resolve()
+      })
+    }
+  })
+
+let handleLogout = (_req: nodeRequest, res: nodeResponse): unit => {
+  res->writeHead(204, {"Access-Control-Allow-Origin": "*"})
+  res->endEmpty
+}
+
+// Shared dispatch for start() and rebuildSchema(). Order matters: built-in
+// endpoints win over the yoga catch-all so they aren't shadowed by graphql.
+let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: unit => string): unit => {
+  // Strip query string before path matching.
+  let path = req.url->String.split("?")->Array.get(0)->Option.getOr(req.url)
+  if path == "/sdl" {
+    res->writeHead(200, {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
+    res->end_(getSdl())
+  } else if path == "/__inmemory/login" && req.method == "POST" {
+    handleLogin(req, res)
+  } else if path == "/__inmemory/logout" && req.method == "POST" {
+    handleLogout(req, res)
+  } else {
+    (yoga->Obj.magic)(req, res)
+  }
+}
 
 // -- Auth context factory ----------------------------------------------------
 //
@@ -229,19 +323,13 @@ let start = (~port: int=4000, ()) => {
     "maskedErrors": !debug,
     "context": buildAuthContext,
   })
-  // Custom HTTP handler: serves /sdl endpoint for Relay compiler, delegates rest to yoga
-  let server = createServerWithHandler((req, res) => {
-    if req.url == "/sdl" {
-      let sdlContent = switch activeSchema.contents {
-      | Some(s) => YG.printSchema(s)
-      | None => lastFullSdl.contents->Option.getOr("")
-      }
-      res->writeHead(200, {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
-      res->end_(sdlContent)
-    } else {
-      (yoga->Obj.magic)(req, res)
+  // Custom HTTP handler: serves /sdl + /__inmemory/{login,logout}, else yoga.
+  let getSdl = () =>
+    switch activeSchema.contents {
+    | Some(s) => YG.printSchema(s)
+    | None => lastFullSdl.contents->Option.getOr("")
     }
-  })
+  let server = createServerWithHandler((req, res) => _dispatch(req, res, yoga, getSdl))
   server->YG.listen(port, () =>
     log.info(~comp="GraphQL:Domain", `listening on http://localhost:${port->Int.toString}/graphql (SDL: /sdl)`)
   )
@@ -299,18 +387,12 @@ let rebuildSchema = (
     "maskedErrors": !debug,
     "context": buildAuthContext,
   })
-  let server = createServerWithHandler((req, res) => {
-    if req.url == "/sdl" {
-      let sdlContent = switch activeSchema.contents {
-      | Some(s) => YG.printSchema(s)
-      | None => lastFullSdl.contents->Option.getOr("")
-      }
-      res->writeHead(200, {"Content-Type": "text/plain", "Access-Control-Allow-Origin": "*"})
-      res->end_(sdlContent)
-    } else {
-      (yoga->Obj.magic)(req, res)
+  let getSdl = () =>
+    switch activeSchema.contents {
+    | Some(s) => YG.printSchema(s)
+    | None => lastFullSdl.contents->Option.getOr("")
     }
-  })
+  let server = createServerWithHandler((req, res) => _dispatch(req, res, yoga, getSdl))
   server->YG.listen(4000, () =>
     log.info(~comp="GraphQL:Domain", "rebuilt schema - http://localhost:4000/graphql (SDL: /sdl)")
   )

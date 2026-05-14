@@ -108,33 +108,23 @@ Verified: full monorepo build clean (zero warnings), 383/383 in-memory tests pas
 
 **Verify (whole A3):** full monorepo build zero warnings; 390/390 in-memory tests pass (was 383/383, +7 new); 184/184 PPX tests pass.
 
-### A4. Token issuance: `Auth_InMemory.Login` + YAML store — pending
+### A4. Token issuance: `Auth_InMemory.Login` + YAML store — ✅ done
 
 This is the only Stage A step that goes beyond the abstraction reference (which only specifies validation, not issuance).
 
-- Extend `Auth_InMemory` with a `Login` submodule:
-  ```rescript
-  module Login = {
-    let issue: (~username: string, ~password: string) => promise<result<string, string>>
-  }
-  ```
-  Token format: base64(JSON(`Identity.t`)) + "." + HMAC-SHA256(payload, secret). Secret = per-process random or `Platform.Make(~tokenSecret=…)`.
-- Extend `Auth_InMemory.authenticate` to recognise `Authorization: Bearer <token>` alongside the existing `X-User`/`X-Groups` paths. Decoding order: Bearer (if HMAC valid) → `X-User`/`X-Groups` → anonymous.
-- User store loader at `reventless/reventless-in-memory/src/adapter/Auth/UserStore.res`:
-  - Resolution order at `Platform.Make`: `~users` arg → `~usersFile` arg → `.reventless/users.yaml` relative to `process.cwd()` → empty (login rejects all, one-line stdout hint).
-  - YAML parsing: depend on a small yaml package (e.g. `js-yaml`) — add to the in-memory package only, not framework-wide.
-  - Type: `array<{username: string, password: string, groups: array<string>}>`.
-- Attach two HTTP endpoints to the existing graphql-yoga handler:
-  - `POST /__inmemory/login` body `{username, password}` → `{token, identity}` on success, 401 with `{error}` on failure.
-  - `POST /__inmemory/logout` always 204 no-content.
+- **`Auth_InMemory.Login`** (in [Auth_InMemory.res](../../reventless/reventless-in-memory/src/adapter/Auth/Auth_InMemory.res)) — `setCredentials` / `setTokenSecret` / `issue` / `verifyAndDecode` / `resetStore`. Token format: `<base64url(JSON(Identity.t))>.<base64url(HMAC-SHA256(payload, secret))>`; secret defaults to 32 random hex bytes per process, overridable via `setTokenSecret`. `setCredentials` mirrors the identity into the `X-User` registry so both header paths resolve consistently.
+- **`Auth_InMemory.authenticate`** order: `Authorization: Bearer <token>` (when HMAC valid) → `X-User`/`X-Groups` → `defaultUser` fallback (kept from A2 for dev convenience). Invalid Bearer values fall through silently to the next path so a stale token doesn't trap the user.
+- **`UserStore.res`** ([file](../../reventless/reventless-in-memory/src/adapter/Auth/UserStore.res)) — `load(~users?, ~usersFile?)` with resolution order: inline `~users` → `~usersFile` (errors propagate) → `.reventless/users.yaml` at `process.cwd()` (silent if absent, prints a one-line stdout hint). `autoLoadOnce()` is the idempotent variant used by `Platform.startServers` (split mode) and the inline-mode `start()` call. YAML parsing uses the `yaml` package (already at root); resolved entry: `{username, password, groups, userId?}`.
+- **`POST /__inmemory/login`** and **`/__inmemory/logout`** ([DomainGraphQL_Server.res](../../reventless/reventless-in-memory/src/adapter/DomainGraphQL_Server.res)) — `node:http` request body collected manually (yoga never sees these routes); 200 with `{token, identity}` on success, 401 with `{error}` for missing user / wrong password / malformed body; logout always 204. Routing factored into a shared `_dispatch` helper so both `start()` and `rebuildSchema()` keep the same path table.
+- **Jest 27 fetch polyfill rejected** — undici needs `ReadableStream` (Jest VM strips it); the HTTP test uses `node:http` directly. Same wire format the SPA will use via `fetch`.
+- **Tests** (26 new cases across 3 files):
+  - `Auth_InMemoryLoginTest.res` (11): `issue`/`verifyAndDecode` round-trips, tampered payload + signature rejection, malformed token, Bearer precedence over `X-User`, fallback to `X-User` when Bearer invalid, `setCredentials` mirroring into the X-User registry.
+  - `Auth_InMemoryUserStoreTest.res` (9): `parseString` happy/malformed/missing-field paths, `load(~users)`/`load(~usersFile)`/`load()` resolutions, inline-overrides-file precedence, `autoLoadOnce` idempotence.
+  - `Auth_InMemoryHttpTest.res` (6): real server on port 4321; 200 `{token, identity}` for valid creds, 401 for wrong password / unknown user / malformed body, 204 logout, Bearer round-trip through `authenticate`.
 
-**Verify:**
-1. Create `.reventless/users.yaml` with two users.
-2. `curl -X POST .../__inmemory/login -d '{"username":"alice","password":"alice"}'` returns a token.
-3. `curl -H 'Authorization: Bearer <token>' …` produces the same `ctx.identity` shape as `X-User: alice` did in A2.
-4. `Platform.Make(~users=[…])` works without touching disk — used by a new test in `reventless-in-memory/tests/`.
+**Verify:** monorepo build zero warnings; 416/416 in-memory tests pass (was 390, +26).
 
-> **Stage A gate:** in-memory platform supports both header-based and form-based identity; resolvers enforce per-spec authorization; no AWS changes yet.
+> **Stage A gate:** in-memory platform supports header-based and Bearer-token identity; resolvers enforce per-spec authorization; no AWS changes yet. ✅
 
 > **Hand-off to UI sibling plan:** Stage A complete unblocks UI sibling plan Stage B (the SPA shell can drive against the `POST /__inmemory/login` endpoint locally).
 

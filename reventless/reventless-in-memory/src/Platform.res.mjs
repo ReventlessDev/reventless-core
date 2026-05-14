@@ -21,6 +21,7 @@ import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/c
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as Backend$ReventlessInMemory from "./adapter/Backend.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
+import * as UserStore$ReventlessInMemory from "./adapter/Auth/UserStore.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as TestRunner$ReventlessInMemory from "./test/TestRunner.res.mjs";
@@ -1380,6 +1381,7 @@ function MakeWithConfig(Config) {
     }
     currentDeployTarget.contents = "Domain";
     if (!Config.splitApi) {
+      UserStore$ReventlessInMemory.autoLoadOnce();
       DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
       return DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     }

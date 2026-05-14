@@ -1,14 +1,14 @@
 // In-memory `Auth_Adapter.Provider` implementation. Designed for local
-// development and integration tests — no cryptographic verification.
+// development and integration tests.
 //
-// Header semantics (per host-ui-login-core plan, stage A2):
-//   X-User: <username>   → resolve identity from the in-process user store
-//   X-Groups: A,B,C       → override the resolved identity's groups
-//   neither               → Identity.anonymous
+// Header semantics (host-ui-login-core stages A2 + A4):
+//   Authorization: Bearer <token>  → decode + HMAC-verify a Login-issued token
+//   X-User: <username>             → resolve identity from the user store
+//   X-Groups: A,B,C                → override the resolved identity's groups
+//   none of the above              → Authenticated(defaultUser) (dev default)
 //
-// A4 will layer bearer-token issuance + a YAML-backed user store on top of
-// this; A2 ships built-in `user` / `admin` identities so plain header-based
-// flows work out of the box.
+// Stage A4 adds the `Login` submodule (token issuance + verification) and
+// the companion `UserStore` module (YAML hydration).
 
 open Reventless
 
@@ -60,38 +60,158 @@ let parseGroups = (s: string): array<string> =>
 let getHeader = (headers: dict<string>, name: string): option<string> =>
   headers->Dict.get(name->String.toLowerCase)
 
+// ── Login (Stage A4 — token issuance) ──────────────────────────────────────
+//
+// Issues opaque tokens of the form `<base64url-payload>.<base64url-sig>` where
+// payload = JSON(Identity.t) and sig = HMAC-SHA256(payload, secret). The
+// secret is process-local (random 32-byte hex at first use) and can be pinned
+// for tests via `Login.setTokenSecret`.
+//
+// Not security-grade — local dev only. AWS deployments verify Cognito-issued
+// JWTs at AppSync (Stage D) and never see these tokens.
+
+module Login = {
+  type credentials = {password: string, identity: Identity.t}
+
+  // Hydrated by `UserStore` at platform start; tests can inject directly.
+  let store: ref<dict<credentials>> = ref(Dict.make())
+
+  let setCredentials = (~username: string, ~password: string, ~identity: Identity.t): unit => {
+    store.contents->Dict.set(username, {password, identity})
+    // Mirror into the authenticate-side user registry so X-User flows still
+    // resolve a Login-registered user.
+    users.contents->Dict.set(username, identity)
+  }
+
+  let resetStore = (): unit => {
+    store := Dict.make()
+  }
+
+  // ── HMAC secret (lazy) ──
+  type buf
+  @module("node:crypto") external _randomBytes: int => buf = "randomBytes"
+  @send external _bufToString: (buf, string) => string = "toString"
+  type hmac
+  @module("node:crypto") external _createHmac: (string, string) => hmac = "createHmac"
+  @send external _update: (hmac, string) => hmac = "update"
+  @send external _digest: (hmac, string) => string = "digest"
+
+  let _secret: ref<option<string>> = ref(None)
+  let _getSecret = (): string =>
+    switch _secret.contents {
+    | Some(s) => s
+    | None =>
+      let s = _randomBytes(32)->_bufToString("hex")
+      _secret := Some(s)
+      s
+    }
+
+  let setTokenSecret = (s: string): unit => _secret := Some(s)
+
+  let _sign = (payload: string): string =>
+    _createHmac("sha256", _getSecret())->_update(payload)->_digest("base64url")
+
+  // base64url over arbitrary JSON strings: btoa-encode + URL-safe alphabet,
+  // strip `=` padding. Avoids pulling in Buffer for a single-line conversion.
+  @val external _btoa: string => string = "btoa"
+  @val external _atob: string => string = "atob"
+
+  let _b64urlEncode = (s: string): string =>
+    _btoa(s)
+    ->String.replaceAll("+", "-")
+    ->String.replaceAll("/", "_")
+    ->String.replaceAll("=", "")
+
+  let _b64urlDecode = (s: string): option<string> => {
+    let padLen = mod(4 - mod(s->String.length, 4), 4)
+    let padded = s ++ String.repeat("=", padLen)
+    let std = padded->String.replaceAll("-", "+")->String.replaceAll("_", "/")
+    try {
+      Some(_atob(std))
+    } catch {
+    | _ => None
+    }
+  }
+
+  /** Verifies credentials and returns a signed token (or an error string). */
+  let issue = async (~username: string, ~password: string): result<string, string> =>
+    switch store.contents->Dict.get(username) {
+    | Some({password: stored, identity}) if stored === password =>
+      let json = identity->S.reverseConvertToJsonOrThrow(Identity.schema)->JSON.stringify
+      let payload = _b64urlEncode(json)
+      let sig = _sign(payload)
+      Ok(`${payload}.${sig}`)
+    | _ => Error("Invalid credentials")
+    }
+
+  /**
+   * Returns the embedded Identity if signature verifies and the payload
+   * decodes; `None` for any tampered, malformed, or unsigned token.
+   */
+  let verifyAndDecode = (token: string): option<Identity.t> => {
+    let parts = token->String.split(".")
+    switch (parts->Array.get(0), parts->Array.get(1)) {
+    | (Some(payload), Some(sig)) if _sign(payload) === sig =>
+      _b64urlDecode(payload)->Option.flatMap(json =>
+        try {
+          Some(json->JSON.parseOrThrow->S.parseOrThrow(Identity.schema))
+        } catch {
+        | _ => None
+        }
+      )
+    | _ => None
+    }
+  }
+}
+
 // ── Provider implementation ───────────────────────────────────────────────
 
 type authConfig = unit
 
+let _bearerToken = (header: string): option<string> =>
+  if header->String.startsWith("Bearer ") {
+    Some(header->String.slice(~start=7, ~end=header->String.length)->String.trim)
+  } else {
+    None
+  }
+
 let authenticate = async (
   ctx: ReventlessCore.Auth_Adapter.requestContext,
 ): Identity.authResult => {
-  let userHeader = getHeader(ctx.headers, "X-User")
-  let groupsHeader = getHeader(ctx.headers, "X-Groups")
-  switch userHeader {
+  // Decoding order: Bearer (when signature valid) → X-User/X-Groups → default.
+  let bearer =
+    getHeader(ctx.headers, "Authorization")
+    ->Option.flatMap(_bearerToken)
+    ->Option.flatMap(Login.verifyAndDecode)
+  switch bearer {
+  | Some(identity) => Authenticated(identity)
   | None =>
-    switch groupsHeader {
+    let userHeader = getHeader(ctx.headers, "X-User")
+    let groupsHeader = getHeader(ctx.headers, "X-Groups")
+    switch userHeader {
     | None =>
-      // No X-User header: in-memory mode defaults to defaultUser so local dev
-      // against an AllowAuthenticated-defaulted backend "just works" without
-      // setting headers. Anonymous behaviour is reachable only by building an
-      // Identity.anonymous explicitly in code.
-      Authenticated(defaultUser)
-    | Some(g) =>
-      // X-Groups without X-User: defaultUser identity with the requested
-      // groups. Useful for tests that exercise group-only authorization paths.
-      Authenticated({...defaultUser, groups: parseGroups(g)})
-    }
-  | Some(username) =>
-    switch lookupUser(username) {
-    | None => Anonymous
-    | Some(identity) =>
-      let withGroups = switch groupsHeader {
-      | Some(g) => {...identity, groups: parseGroups(g)}
-      | None => identity
+      switch groupsHeader {
+      | None =>
+        // No headers: in-memory mode defaults to defaultUser so local dev
+        // against an AllowAuthenticated-defaulted backend "just works" without
+        // setting headers. Anonymous behaviour is reachable only by building
+        // an Identity.anonymous explicitly in code.
+        Authenticated(defaultUser)
+      | Some(g) =>
+        // X-Groups without X-User: defaultUser identity with the requested
+        // groups. Useful for tests that exercise group-only authorization paths.
+        Authenticated({...defaultUser, groups: parseGroups(g)})
       }
-      Authenticated(withGroups)
+    | Some(username) =>
+      switch lookupUser(username) {
+      | None => Anonymous
+      | Some(identity) =>
+        let withGroups = switch groupsHeader {
+        | Some(g) => {...identity, groups: parseGroups(g)}
+        | None => identity
+        }
+        Authenticated(withGroups)
+      }
     }
   }
 }

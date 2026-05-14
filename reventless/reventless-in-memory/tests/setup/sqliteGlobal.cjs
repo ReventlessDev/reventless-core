@@ -9,3 +9,4 @@ globalThis.__nodeSqlite = process.getBuiltinModule("node:sqlite");
 if (!globalThis.crypto) {
   globalThis.crypto = require("node:crypto").webcrypto;
 }
+

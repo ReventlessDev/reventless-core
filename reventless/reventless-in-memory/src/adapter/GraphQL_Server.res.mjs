@@ -6,6 +6,18 @@ let YG = DomainGraphQL_Server$ReventlessInMemory.YG;
 
 let log = DomainGraphQL_Server$ReventlessInMemory.log;
 
+let readBody = DomainGraphQL_Server$ReventlessInMemory.readBody;
+
+let _writeJson = DomainGraphQL_Server$ReventlessInMemory._writeJson;
+
+let _loginRejected = DomainGraphQL_Server$ReventlessInMemory._loginRejected;
+
+let handleLogin = DomainGraphQL_Server$ReventlessInMemory.handleLogin;
+
+let handleLogout = DomainGraphQL_Server$ReventlessInMemory.handleLogout;
+
+let _dispatch = DomainGraphQL_Server$ReventlessInMemory._dispatch;
+
 let extractHeaders = DomainGraphQL_Server$ReventlessInMemory.extractHeaders;
 
 let identityFromAuthResult = DomainGraphQL_Server$ReventlessInMemory.identityFromAuthResult;
@@ -93,6 +105,12 @@ let asInterface = DomainGraphQL_Server$ReventlessInMemory.asInterface;
 export {
   YG,
   log,
+  readBody,
+  _writeJson,
+  _loginRejected,
+  handleLogin,
+  handleLogout,
+  _dispatch,
   extractHeaders,
   identityFromAuthResult,
   buildAuthContext,
