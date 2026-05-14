@@ -44,6 +44,11 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
+      # Optional. When set, Platform_Stack uses the existing UserPool
+      # instead of auto-provisioning one. Forwarded to deploy jobs as
+      # REVENTLESS_COGNITO_USER_POOL_ID (read by Util_LocalConfig).
+      COGNITO_USER_POOL_ID:
+        required: false
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -227,6 +232,10 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
+      # Read by Util_LocalConfig (Platform_Stack.resolveCognitoUserPool).
+      # Unset/empty → falls through to Pulumi.local.yaml then Pulumi
+      # stack config; if still unset, auto-provisions a fresh UserPool.
+      REVENTLESS_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -347,6 +356,9 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ needs.detect-changes.outputs.region }}
+      # Forwarded for plugin stacks that wire AppSync auth themselves.
+      # Unset/empty → falls through to local sidecar / stack config.
+      REVENTLESS_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

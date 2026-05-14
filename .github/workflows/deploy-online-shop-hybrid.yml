@@ -21,6 +21,10 @@ concurrency:
 permissions:
   contents: write
   actions: read
+  # Required so the auto-issued GITHUB_TOKEN can read from
+  # npm.pkg.github.com during `pnpm install` (e.g. the
+  # @reventlessdev/reventless-host-shell tarball used by platform-aws).
+  packages: read
 
 jobs:
   deploy:
@@ -31,3 +35,8 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # Optional: when set, Platform_Stack uses the existing UserPool
+      # instead of auto-provisioning a fresh one. Create the secret in
+      # the repository or environment settings to enable; leave unset to
+      # let each deploy provision its own pool.
+      COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}

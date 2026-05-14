@@ -51,8 +51,26 @@ function _load() {
   return d$1;
 }
 
+function _envVarName(key) {
+  let buf = "REVENTLESS";
+  let n = key.length;
+  for (let i = 0; i < n; ++i) {
+    let ch = key.charAt(i);
+    let upper = ch.toUpperCase();
+    let isLetter = upper !== ch.toLowerCase();
+    let isUpper = isLetter && ch === upper;
+    buf = i === 0 || isUpper ? buf + "_" + upper : buf + upper;
+  }
+  return buf;
+}
+
 function get(key) {
-  return _load()[key];
+  let v = process.env[_envVarName(key)];
+  if (v !== undefined && v !== "") {
+    return v;
+  } else {
+    return _load()[key];
+  }
 }
 
 export {
@@ -61,6 +79,7 @@ export {
   _stripQuotes,
   _parse,
   _load,
+  _envVarName,
   get,
 }
 /* fs Not a pure module */

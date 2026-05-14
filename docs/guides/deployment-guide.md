@@ -277,24 +277,47 @@ config:
 
 The branch name determines the environment: push to `alpha` uses `Pulumi.alpha.yaml`, push to `main` uses `Pulumi.main.yaml`. If no matching file exists, no deployment occurs.
 
-#### Per-dev overrides (`Pulumi.local.yaml`)
+#### Per-instance overrides (env var, `Pulumi.local.yaml`)
 
-Each `-aws` package may carry a gitignored `Pulumi.local.yaml` sidecar holding dev-local values that should never be checked in (existing AWS resource IDs the dev is sharing across stacks, personal Cognito UserPool, etc.). It layers on top of the active `Pulumi.<stack>.yaml`: a key present in the sidecar wins.
+Some values vary per deploy target (existing AWS resource IDs to reuse, personal Cognito UserPools, etc.) and should not live in the checked-in `Pulumi.<stack>.yaml`. `Util_LocalConfig` (`reventless/reventless-aws/src/util/Util_LocalConfig.res`) reads two layered sources at deploy time; the first match wins, otherwise lookup falls through to Pulumi stack config (then auto-provision).
 
-Read at deploy time by `Util_LocalConfig` (`reventless/reventless-aws/src/util/Util_LocalConfig.res`) from the Pulumi project directory (`process.cwd()`). Only a minimal `key: value` subset is supported — no nesting, no arrays.
+| Precedence | Source | Typical use |
+|---|---|---|
+| 1 (highest) | Env var `REVENTLESS_<KEY_IN_SCREAMING_SNAKE>` | CI deploys (repo / environment secrets) |
+| 2 | `Pulumi.local.yaml` sidecar (gitignored) | Dev-local override |
+| 3 | `platform:<key>` in `Pulumi.<stack>.yaml` (checked in) | Shared default |
 
-Example — point the platform stack at an existing Cognito UserPool without editing the shared `Pulumi.alpha.yaml`:
+Currently consumed by: `cognitoUserPoolId` (BYO Cognito pool — see `Platform_Stack.res`). Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates.
+
+**Env var (CI deploys):**
+
+camelCase config key → `REVENTLESS_<SCREAMING_SNAKE>`. Example for `cognitoUserPoolId`:
 
 ```yaml
-# platform-aws/Pulumi.local.yaml — gitignored
+# .github/workflows/deploy-online-shop-hybrid.yml
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-reventless-aws.yml
+    secrets:
+      …
+    # In deploy-reventless-aws.yml, surface the env var to the pulumi step:
+    # env:
+    #   REVENTLESS_COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+```
+
+An empty value is treated as "not set" so a stray empty export does not mask the sidecar.
+
+**Sidecar (dev-local):**
+
+```yaml
+# platform-aws/Pulumi.local.yaml — gitignored, read from process.cwd()
 cognitoUserPoolId: eu-west-1_AbCdEfGhI
 ```
 
 Notes:
 - **Bare keys, no namespace prefix.** The same value in `Pulumi.<stack>.yaml` would be written `platform:cognitoUserPoolId: …`; the sidecar drops the `platform:` prefix because lookup happens after the namespace is bound.
-- Quotes optional, `#` introduces comments, blank lines ignored.
+- Format: minimal `key: value` lines. Quotes optional, `#` introduces comments, blank lines ignored — not a full YAML parser.
 - Gitignored at the repo root via `**/Pulumi.local.yaml` — verify with `git check-ignore -v platform-aws/Pulumi.local.yaml`.
-- Currently consumed by: `cognitoUserPoolId` (BYO Cognito pool — see `Platform_Stack.res`). Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates.
 
 #### Plugin UI bundle URL (optional)
 

@@ -16,11 +16,13 @@ type cognitoUserPool = {
  *   MFA, admin-only user creation). Caller is responsible for creating
  *   groups (`Admin`, `User`, …) and users via the AWS console / CLI.
  *
- * - **BYO**: `platform:cognitoUserPoolId` set — skip pool creation, look up
- *   the existing pool via `aws.cognito.getUserPool` for its ARN. The key can
- *   live in the checked-in `Pulumi.<stack>.yaml` or in a gitignored
- *   `Pulumi.local.yaml` sidecar (per-dev override; takes precedence over the
- *   stack file when both define it).
+ * - **BYO**: pool ID provided — skip pool creation, look up the existing
+ *   pool via `aws.cognito.getUserPool` for its ARN. Lookup precedence
+ *   (highest → lowest):
+ *     1. `REVENTLESS_COGNITO_USER_POOL_ID` env var (typically a CI secret).
+ *     2. `Pulumi.local.yaml` sidecar key `cognitoUserPoolId` (gitignored;
+ *        per-dev override).
+ *     3. `platform:cognitoUserPoolId` in the checked-in `Pulumi.<stack>.yaml`.
  *
  * In both modes the framework owns the `UserPoolClient` (SPA settings would
  * not reliably exist on a pre-existing client; the client is a child resource
