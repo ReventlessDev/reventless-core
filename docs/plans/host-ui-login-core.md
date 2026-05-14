@@ -128,44 +128,43 @@ This is the only Stage A step that goes beyond the abstraction reference (which 
 
 > **Hand-off to UI sibling plan:** Stage A complete unblocks UI sibling plan Stage B (the SPA shell can drive against the `POST /__inmemory/login` endpoint locally).
 
-## Stage C — Cognito UserPool provisioning (no behaviour change)
+## Stage C — Cognito UserPool provisioning (no behaviour change) — ✅ done
 
 (Stage B is entirely UI-side; see sibling plan.)
 
-### C1. Resolve UserPool via Pulumi config (BYO or auto)
+### C1. Resolve UserPool via Pulumi config (BYO or auto) — ✅ done
 
-Add a `Platform_Stack.resolveCognitoUserPool()` helper in `reventless/reventless-aws/src/Platform_Stack.res`.
-
-- Read `platform:cognitoUserPoolId` from `Pulumi.Config.make(Some("platform"))`.
-- **BYO branch** (config set): skip pool creation; create a `UserPoolClient` inside the existing pool with SPA settings; look up ARN via `aws.cognito.getUserPool({userPoolId})` data source.
-- **Auto branch** (config absent): create `UserPool` + `UserPoolClient`. UserPool config:
-  ```
-  adminCreateUserConfig: { allowAdminCreateUserOnly: true }
-  usernameAttributes: ["email"]
-  passwordPolicy: { minimumLength: 12, requireLowercase, requireUppercase, requireNumbers }
-  mfaConfiguration: "OFF"
-  ```
-  Client config (both branches): `generateSecret: false`, `explicitAuthFlows: ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]`, `preventUserExistenceErrors: "ENABLED"`, id/access TTL = 60min, refresh TTL = 30 days.
-- The framework **always** owns the client (even in BYO mode) — needs specific SPA settings that wouldn't reliably exist on a pre-existing client. The client is a child resource Pulumi can destroy without touching the parent pool.
-- Returns `{poolId, clientId, poolArn, managed: bool}` — all `Pulumi.Output.t`.
-- Wire from `examples/online-shop-hybrid/platform-aws/src/Main.res` — call `resolveCognitoUserPool` and forward the outputs.
+- **Bindings extended** ([Cognito_UserPool.res](../../rescript/rescript-pulumi-aws/src/Cognito/Cognito_UserPool.res), [Cognito_UserPoolClient.res](../../rescript/rescript-pulumi-aws/src/Cognito/Cognito_UserPoolClient.res)):
+  - `UserPool.args` gains `adminCreateUserConfig`, `usernameAttributes`, `passwordPolicy`, `mfaConfiguration` (plus nested `adminCreateUserConfig` / `passwordPolicy` record types).
+  - `UserPoolClient.args` gains `generateSecret`, `explicitAuthFlows`, `preventUserExistenceErrors`, `idTokenValidity`, `accessTokenValidity`, `refreshTokenValidity`, `tokenValidityUnits` (with nested `tokenValidityUnits` record).
+  - `Cognito_UserPool.getUserPoolOutput(~args={userPoolId, region?})` data source binding added; returns `Output.t<{arn, id, name}>`.
+- **Helper** ([Platform_Stack.res](../../reventless/reventless-aws/src/Platform_Stack.res)):
+  - Reads `platform:cognitoUserPoolId` from `Pulumi.Config.make(Some("platform"))`.
+  - **BYO branch** (config set): skips pool creation; creates a `UserPoolClient` against the supplied pool ID; ARN comes from `Cognito.UserPool.getUserPoolOutput({userPoolId})`.
+  - **Auto branch** (config absent): creates `UserPool` with `adminCreateUserConfig.allowAdminCreateUserOnly=true`, `usernameAttributes=["email"]`, `passwordPolicy={minimumLength:12, requireLowercase, requireUppercase, requireNumbers}`, `mfaConfiguration:"OFF"`; client created against `pool.id`.
+  - Client config (both branches): `generateSecret:false`, `explicitAuthFlows:["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]`, `preventUserExistenceErrors:"ENABLED"`, id/access TTL = 60 minutes, refresh TTL = 30 days, `tokenValidityUnits={accessToken:"minutes", idToken:"minutes", refreshToken:"days"}`.
+  - Returns `{poolId, clientId, poolArn, managed: bool}` — IDs/ARN are `Pulumi.Output.t<string>`.
+- **Wire site:** `examples/online-shop-hybrid/platform-aws/src/Main.res` calls `ReventlessAws.Platform_Stack.resolveCognitoUserPool()` ahead of `deployPlatform`. The struct is bound as `_cognitoUserPool` for now — Stage D will pass it into AppSync auth wiring.
 
 **Caller responsibilities (BYO path):** the existing pool must already have its groups created manually (`Admin`, `Catalog`, …); the framework never creates users or groups.
 
-### C2. Stack outputs
+### C2. Stack outputs — ✅ done
 
-Export from the platform stack:
+`resolveCognitoUserPool` exports all required outputs itself (no extra wiring in `deployPlatform`, which keeps the provider-agnostic `ReventlessInfra.Platform.T.deployPlatform` signature stable):
+
 - `cognitoUserPoolId`
 - `cognitoUserPoolClientId`
 - `cognitoUserPoolArn`
-- `cognitoRegion`
-- `cognitoUserPoolManaged` (string `"true"`/`"false"` — operational metadata)
+- `cognitoRegion` — read from `Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")`, defaults to `"unknown"`
+- `cognitoUserPoolManaged` — string `"true"`/`"false"` (operational metadata)
 
-**Verify:**
+**Verify:** full monorepo build zero warnings; 416/416 in-memory tests pass (no regression — Stage C is AWS-only and adds no runtime code outside Pulumi resource construction).
+
+End-to-end Pulumi verification deferred to a real `pulumi up`:
 1. No config: `pulumi up` creates pool + client; outputs populated; `aws cognito-idp admin-initiate-auth` against a manually-created user succeeds.
 2. `pulumi config set platform:cognitoUserPoolId …` + new stack: no pool created, only a client inside the existing pool; outputs reflect the BYO ID and the looked-up ARN.
 
-> **Stage C gate:** Cognito pool exists and issues tokens; AppSync still uses `AWS_IAM`; nothing in production paths consumes the tokens yet.
+> **Stage C gate:** Cognito pool exists and issues tokens; AppSync still uses `AWS_IAM`; nothing in production paths consumes the tokens yet. ✅
 
 ## Stage D — Wire Cognito into AppSync
 

@@ -990,6 +990,11 @@ module MakeWithConfig = (
   // this is a no-op (start() is called inline inside makePlatform/deployPlugin).
   let startServers = () => {
     if Config.splitApi {
+      // Hydrate Login store from .reventless/users.yaml (or ~users/~usersFile
+      // if provided programmatically) before the Domain server accepts
+      // requests. Unified mode does this in makePlatform; split mode defers
+      // server startup to here so it must do the same.
+      UserStore.autoLoadOnce()
       DomainGraphQL_Server.start()
       DomainMCP_Server.start()
       PlatformGraphQL_Server.start(~port=4001, ())

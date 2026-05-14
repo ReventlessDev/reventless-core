@@ -27,6 +27,10 @@ function makeAutoCommiting(name, args, opts) {
   let args$1 = args !== undefined ? ({
       name: args.name,
       lambdaConfig: lambdaConfig,
+      adminCreateUserConfig: args.adminCreateUserConfig,
+      usernameAttributes: args.usernameAttributes,
+      passwordPolicy: args.passwordPolicy,
+      mfaConfiguration: args.mfaConfiguration,
       tags: args.tags
     }) : ({
       lambdaConfig: lambdaConfig

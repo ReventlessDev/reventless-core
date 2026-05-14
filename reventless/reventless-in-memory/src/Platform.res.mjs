@@ -986,6 +986,7 @@ function MakeWithConfig(Config) {
   };
   let startServers = () => {
     if (Config.splitApi) {
+      UserStore$ReventlessInMemory.autoLoadOnce();
       DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
       DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
       PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
@@ -2568,6 +2569,7 @@ function Make($star) {
     });
   };
   let startServers = () => {
+    UserStore$ReventlessInMemory.autoLoadOnce();
     DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
     DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);

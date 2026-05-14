@@ -2,8 +2,11 @@
 
 import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform.res.mjs";
 import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
+import * as Platform_Stack$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform_Stack.res.mjs";
 
 let Platform = Platform$ReventlessAws.Make({});
+
+let _cognitoUserPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
 
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
   assetsDir: "../../../../reventless-ui/reventless/reventless-host-shell/dist",
@@ -12,6 +15,7 @@ let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), 
 
 export {
   Platform,
+  _cognitoUserPool,
   $$default as default,
 }
 /* Platform Not a pure module */

@@ -8,6 +8,12 @@
 
 module Platform = ReventlessAws.Platform.Make()
 
+// Provision (or look up via `platform:cognitoUserPoolId`) the Cognito UserPool
+// + SPA client used by Stage D AppSync auth wiring. Exports the pool/client
+// IDs and ARN as stack outputs so plugin stacks and the SPA can consume them
+// via StackReference. Nothing in the production paths reads these yet.
+let _cognitoUserPool = ReventlessAws.Platform_Stack.resolveCognitoUserPool()
+
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~hostUiBundle={

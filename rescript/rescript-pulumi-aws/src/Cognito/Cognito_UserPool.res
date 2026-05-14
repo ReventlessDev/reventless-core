@@ -28,9 +28,23 @@ type lambdaConfig = {
   verifyAuthChallengeResponse?: Input.t<string>,
 }
 
+type adminCreateUserConfig = {allowAdminCreateUserOnly?: Input.t<bool>}
+
+type passwordPolicy = {
+  minimumLength?: Input.t<int>,
+  requireLowercase?: Input.t<bool>,
+  requireNumbers?: Input.t<bool>,
+  requireSymbols?: Input.t<bool>,
+  requireUppercase?: Input.t<bool>,
+}
+
 type args = {
   name?: Input.t<string>,
   lambdaConfig?: Input.t<lambdaConfig>,
+  adminCreateUserConfig?: Input.t<adminCreateUserConfig>,
+  usernameAttributes?: Input.t<array<Input.t<string>>>,
+  passwordPolicy?: Input.t<passwordPolicy>,
+  mfaConfiguration?: Input.t<string>,
   tags?: Input.t<Aws.tags>,
 }
 
@@ -86,8 +100,26 @@ let makeAutoCommiting: (~name: string, ~args: args=?, ~opts: CustomResourceOptio
     {
       name: ?args.name,
       lambdaConfig: lambdaConfig->Input.make,
+      adminCreateUserConfig: ?args.adminCreateUserConfig,
+      usernameAttributes: ?args.usernameAttributes,
+      passwordPolicy: ?args.passwordPolicy,
+      mfaConfiguration: ?args.mfaConfiguration,
       tags: ?args.tags,
     }->Some
   }
   makeWithOptions(~name, ~args, ~opts)
 }
+
+type getArgs = {userPoolId: string, region?: string}
+
+type getResult = {
+  arn: string,
+  id: string,
+  name: string,
+}
+
+@module("@pulumi/aws") @scope("cognito") @val
+external getUserPoolOutput: (
+  ~args: getArgs,
+  ~opts: InvokeOptions.t=?,
+) => Output.t<getResult> = "getUserPoolOutput"
