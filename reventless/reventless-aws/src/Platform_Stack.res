@@ -17,7 +17,10 @@ type cognitoUserPool = {
  *   groups (`Admin`, `User`, …) and users via the AWS console / CLI.
  *
  * - **BYO**: `platform:cognitoUserPoolId` set — skip pool creation, look up
- *   the existing pool via `aws.cognito.getUserPool` for its ARN.
+ *   the existing pool via `aws.cognito.getUserPool` for its ARN. The key can
+ *   live in the checked-in `Pulumi.<stack>.yaml` or in a gitignored
+ *   `Pulumi.local.yaml` sidecar (per-dev override; takes precedence over the
+ *   stack file when both define it).
  *
  * In both modes the framework owns the `UserPoolClient` (SPA settings would
  * not reliably exist on a pre-existing client; the client is a child resource
@@ -30,7 +33,10 @@ type cognitoUserPool = {
  */
 let _resolveUncached = (): cognitoUserPool => {
   let cfg = Pulumi.Config.make(Some("platform"))
-  let existingPoolId = cfg->Pulumi.Config.get("cognitoUserPoolId")
+  let existingPoolId = switch Util_LocalConfig.get("cognitoUserPoolId") {
+  | Some(_) as v => v
+  | None => cfg->Pulumi.Config.get("cognitoUserPoolId")
+  }
 
   let result = switch existingPoolId {
   | Some(poolId) =>

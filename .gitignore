@@ -40,6 +40,12 @@ packages/reventless-ppx/src/_build/
 # ast-grep tree-sitter grammar (compiled binary, rebuild with gcc)
 rescript.dylib
 
+# Per-dev Pulumi config overrides — gitignored sidecar layered on top of the
+# checked-in `Pulumi.<stack>.yaml` files. Read by `Util_LocalConfig` at
+# deploy time. Keep dev-local values (e.g. existing AWS resource IDs)
+# off shared stack configs.
+**/Pulumi.local.yaml
+
 # Cross-repo dev linking (see docs/guides/cross-repo-dev-linking.md).
 # pnpm-workspace.base.yaml is the tracked source of truth.
 # pnpm-workspace.yaml is either a symlink to it (release mode) or a

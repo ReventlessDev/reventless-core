@@ -4,14 +4,14 @@ import * as Aws from "@pulumi/aws";
 import * as Pulumi$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Pulumi.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 
 function _resolveUncached() {
   let cfg = new Pulumi.Config("platform");
-  let existingPoolId = cfg.get("cognitoUserPoolId");
+  let v = Util_LocalConfig$ReventlessAws.get("cognitoUserPoolId");
+  let existingPoolId = v !== undefined ? v : cfg.get("cognitoUserPoolId");
   let result;
   if (existingPoolId !== undefined) {
-    let poolId = Primitive_option.valFromOption(existingPoolId);
     let tokenUnits_accessToken = "minutes";
     let tokenUnits_idToken = "minutes";
     let tokenUnits_refreshToken = "days";
@@ -21,7 +21,7 @@ function _resolveUncached() {
       refreshToken: tokenUnits_refreshToken
     };
     let client = new (Aws.cognito.UserPoolClient)("HostUiClient", {
-      userPoolId: poolId,
+      userPoolId: existingPoolId,
       generateSecret: false,
       explicitAuthFlows: [
         "ALLOW_USER_PASSWORD_AUTH",
@@ -34,10 +34,10 @@ function _resolveUncached() {
       tokenValidityUnits: tokenUnits
     });
     let lookup = Aws.cognito.getUserPoolOutput({
-      userPoolId: poolId
+      userPoolId: existingPoolId
     });
     result = {
-      poolId: Pulumi.output(poolId),
+      poolId: Pulumi.output(existingPoolId),
       clientId: client.id,
       poolArn: lookup.apply(r => r.arn),
       managed: false

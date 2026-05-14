@@ -277,6 +277,25 @@ config:
 
 The branch name determines the environment: push to `alpha` uses `Pulumi.alpha.yaml`, push to `main` uses `Pulumi.main.yaml`. If no matching file exists, no deployment occurs.
 
+#### Per-dev overrides (`Pulumi.local.yaml`)
+
+Each `-aws` package may carry a gitignored `Pulumi.local.yaml` sidecar holding dev-local values that should never be checked in (existing AWS resource IDs the dev is sharing across stacks, personal Cognito UserPool, etc.). It layers on top of the active `Pulumi.<stack>.yaml`: a key present in the sidecar wins.
+
+Read at deploy time by `Util_LocalConfig` (`reventless/reventless-aws/src/util/Util_LocalConfig.res`) from the Pulumi project directory (`process.cwd()`). Only a minimal `key: value` subset is supported — no nesting, no arrays.
+
+Example — point the platform stack at an existing Cognito UserPool without editing the shared `Pulumi.alpha.yaml`:
+
+```yaml
+# platform-aws/Pulumi.local.yaml — gitignored
+cognitoUserPoolId: eu-west-1_AbCdEfGhI
+```
+
+Notes:
+- **Bare keys, no namespace prefix.** The same value in `Pulumi.<stack>.yaml` would be written `platform:cognitoUserPoolId: …`; the sidecar drops the `platform:` prefix because lookup happens after the namespace is bound.
+- Quotes optional, `#` introduces comments, blank lines ignored.
+- Gitignored at the repo root via `**/Pulumi.local.yaml` — verify with `git check-ignore -v platform-aws/Pulumi.local.yaml`.
+- Currently consumed by: `cognitoUserPoolId` (BYO Cognito pool — see `Platform_Stack.res`). Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates.
+
 #### Plugin UI bundle URL (optional)
 
 Plugins with aggregates or read models accept an optional UI bundle URL — the location of the Module-Federation remote that exposes the plugin's React components for the platform shell. The generated AWS `Plugin.res` reads `<PLUGIN>_UI_BUNDLE_URL` from `process.env` (PascalCase plugin name → SCREAMING_SNAKE_CASE: `Catalog` → `CATALOG_UI_BUNDLE_URL`). Unset → no UI fragments are registered for that plugin.
