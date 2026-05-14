@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.28 (2026-05-14)
+
+### Bug Fixes
+
+* **example:** resolve host-shell dist via Node module resolver ([6d7c7f6](https://github.com/ReventlessDev/reventless-core/commit/6d7c7f627d03f1da8445f25f1d83672043f45825))
+
+
 # 1.0.0-alpha.27 (2026-05-14)
 
 ### Features

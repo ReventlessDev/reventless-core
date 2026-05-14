@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.83 (2026-05-14)
+
+### Bug Fixes
+
+* **aws:** use ALLOW defaultAction on AppSync userPoolConfig ([a461b62](https://github.com/ReventlessDev/reventless-core/commit/a461b62e472d306fbebe711f7a0bc97a4e191614))
+
+
 # 3.0.0-alpha.82 (2026-05-14)
 
 ### Bug Fixes
