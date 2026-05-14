@@ -26,6 +26,7 @@ import * as Plugin_Stack$ReventlessAws from "./Plugin_Stack.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
+import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
 import * as Counter_Builder$ReventlessAws from "./components/Counter_Builder.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
@@ -945,10 +946,20 @@ function MakeWithConfig(Config) {
     if (hostUiBundle !== undefined) {
       let match$1 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined);
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
-      let configJsonContent = resolvedDomainApiEndpoint.apply(endpoint => JSON.stringify(Object.fromEntries([
+      let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+      let configJsonContent = Pulumi.all([
+        resolvedDomainApiEndpoint,
+        resolvedPlatformApiEndpoint,
+        cognitoPool.poolId,
+        cognitoPool.clientId
+      ]).apply(param => JSON.stringify(Object.fromEntries([
         [
           "apiEndpoint",
-          endpoint
+          param[0]
+        ],
+        [
+          "platformApiEndpoint",
+          param[1]
         ],
         [
           "region",
@@ -956,7 +967,15 @@ function MakeWithConfig(Config) {
         ],
         [
           "authMode",
-          "anonymous"
+          "cognito"
+        ],
+        [
+          "cognitoUserPoolId",
+          param[2]
+        ],
+        [
+          "cognitoClientId",
+          param[3]
         ]
       ])));
       new (Aws.s3.BucketObject)("host-ui-config-json", {
@@ -1848,10 +1867,20 @@ function Make($star) {
     if (hostUiBundle !== undefined) {
       let match$1 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined);
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
-      let configJsonContent = resolvedDomainApiEndpoint.apply(endpoint => JSON.stringify(Object.fromEntries([
+      let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+      let configJsonContent = Pulumi.all([
+        resolvedDomainApiEndpoint,
+        resolvedPlatformApiEndpoint,
+        cognitoPool.poolId,
+        cognitoPool.clientId
+      ]).apply(param => JSON.stringify(Object.fromEntries([
         [
           "apiEndpoint",
-          endpoint
+          param[0]
+        ],
+        [
+          "platformApiEndpoint",
+          param[1]
         ],
         [
           "region",
@@ -1859,7 +1888,15 @@ function Make($star) {
         ],
         [
           "authMode",
-          "anonymous"
+          "cognito"
+        ],
+        [
+          "cognitoUserPoolId",
+          param[2]
+        ],
+        [
+          "cognitoClientId",
+          param[3]
         ]
       ])));
       new (Aws.s3.BucketObject)("host-ui-config-json", {

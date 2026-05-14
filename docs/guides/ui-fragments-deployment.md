@@ -91,7 +91,7 @@ No CDN, no S3, no bundle distributions. The host shell rebuilds itself on save l
 - Ordered cache behaviors layered on top of the default `CachingOptimized` policy:
   - `/remoteEntry.js`, `/index.html`, `/config.json` use `CachingDisabled` (TTL 0).
   - Hashed `/assets/*.<hash>.js` chunks keep the long-cache default.
-- A `config.json` `BucketObject` whose **content** is derived from Pulumi `Output`s at deploy time — `apiEndpoint`, `region`, `authMode`. No rebuild of the host shell SPA is needed when these change.
+- A `config.json` `BucketObject` whose **content** is derived from Pulumi `Output`s at deploy time — `apiEndpoint`, `platformApiEndpoint`, `region`, `authMode`, `cognitoUserPoolId`, `cognitoClientId`. No rebuild of the host shell SPA is needed when these change.
 - Stack output `hostShellUrl`.
 
 The host shell SPA itself is built upstream by `reventless-ui`'s `host-shell` package. `assetsDir` points at its `dist/` directory.
@@ -103,12 +103,17 @@ The host shell SPA itself is built upstream by `reventless-ui`'s `host-shell` pa
 ```json
 {
   "apiEndpoint": "https://<id>.appsync-api.<region>.amazonaws.com/graphql",
+  "platformApiEndpoint": "https://<id>.appsync-api.<region>.amazonaws.com/graphql",
   "region": "<aws region>",
-  "authMode": "anonymous"
+  "authMode": "cognito",
+  "cognitoUserPoolId": "<aws region>_XXXXXXXXX",
+  "cognitoClientId": "<26-char client id>"
 }
 ```
 
-`authMode` is `"anonymous"` today. When Cognito wiring lands (`host-ui-login-core.md`), the platform stack will write `"cognito"` with the user-pool and client IDs.
+`authMode: "cognito"` matches the AppSync auth wiring set up by Stage D of `docs/plans/done/host-ui-login-core.md` — every AWS AppSync GraphQL API uses `AMAZON_COGNITO_USER_POOLS` as its primary authenticationType with `AWS_IAM` as the single additional provider for server-to-server lambdas.
+
+`apiEndpoint` and `platformApiEndpoint` are written separately so the host shell can target the platform admin schema independently of plugin-domain queries; in unified-API mode (the default — `Config.splitApi=false`) both keys resolve to the same URL and the SPA treats them interchangeably. `cognitoUserPoolId` / `cognitoClientId` come from `Platform_Stack.resolveCognitoUserPool` (auto-provisioned or BYO via `REVENTLESS_COGNITO_USER_POOL_ID` env var / `Pulumi.local.yaml` / `Pulumi.<stack>.yaml`).
 
 ### Wiring it in your stack
 

@@ -1444,10 +1444,13 @@ module MakeWithConfig = (
       })
 
     // Host UI shell deployment — opt-in via ~hostUiBundle. The shell SPA is
-    // hosted on its own CloudFront distribution; `config.json` is generated at
-    // deploy time with the resolved API endpoint + region so the shell can
-    // boot without knowing them at build time. authMode is anonymous until
-    // Cognito wiring lands (see host-ui-login-core plan).
+    // hosted on its own CloudFront distribution; `config.json` is generated
+    // at deploy time with the resolved API endpoints, region, and Cognito
+    // pool/client IDs so the shell can boot without knowing them at build
+    // time. `authMode: "cognito"` matches the AppSync auth wiring established
+    // by Stage D (Auth_Cognito.make). Cognito values come from the
+    // process-cached `Platform_Stack.resolveCognitoUserPool` so no extra
+    // resources or stack exports are introduced here.
     switch hostUiBundle {
     | None => ()
     | Some(cfg) =>
@@ -1463,12 +1466,24 @@ module MakeWithConfig = (
         ->Pulumi.Config.get("region")
         ->Option.getOr("unknown")
 
+      let cognitoPool = Platform_Stack.resolveCognitoUserPool()
+
       let configJsonContent =
-        resolvedDomainApiEndpoint->Pulumi.Output.apply(endpoint =>
+        (
+          resolvedDomainApiEndpoint,
+          resolvedPlatformApiEndpoint,
+          cognitoPool.poolId,
+          cognitoPool.clientId,
+        )
+        ->Pulumi.Output.all4
+        ->Pulumi.Output.apply(((domainEp, platformEp, poolId, clientId)) =>
           Dict.fromArray([
-            ("apiEndpoint", JSON.Encode.string(endpoint)),
+            ("apiEndpoint", JSON.Encode.string(domainEp)),
+            ("platformApiEndpoint", JSON.Encode.string(platformEp)),
             ("region", JSON.Encode.string(regionStr)),
-            ("authMode", JSON.Encode.string("anonymous")),
+            ("authMode", JSON.Encode.string("cognito")),
+            ("cognitoUserPoolId", JSON.Encode.string(poolId)),
+            ("cognitoClientId", JSON.Encode.string(clientId)),
           ])
           ->JSON.Encode.object
           ->JSON.stringify
