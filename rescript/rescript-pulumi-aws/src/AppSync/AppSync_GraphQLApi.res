@@ -25,11 +25,22 @@ type authenticationType =
   | AMAZON_COGNITO_USER_POOLS
   | OPENID_CONNECT
 
+/** Entry of the `additionalAuthenticationProviders` array — minimal shape
+    covering the IAM and Cognito cases used by the Reventless platform.
+    Extend with `openidConnectConfig` / `lambdaAuthorizerConfig` if needed. */
+type additionalAuthenticationProvider = {
+  authenticationType: Pulumi.Input.t<authenticationType>,
+  userPoolConfig?: Pulumi.Input.t<userPoolConfig>,
+}
+
 type args = {
   authenticationType: Pulumi.Input.t<authenticationType>,
   name?: Pulumi.Input.t<string>,
   schema?: Pulumi.Input.t<string>,
   userPoolConfig?: Pulumi.Input.t<userPoolConfig>,
+  additionalAuthenticationProviders?: Pulumi.Input.t<
+    array<Pulumi.Input.t<additionalAuthenticationProvider>>,
+  >,
 }
 
 @module("@pulumi/aws") @scope("appsync") @new

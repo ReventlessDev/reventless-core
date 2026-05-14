@@ -168,39 +168,40 @@ End-to-end Pulumi verification deferred to a real `pulumi up`:
 
 ## Stage D — Wire Cognito into AppSync
 
-### D1. Implement `Auth_Cognito.authenticate`
+### D1. Implement `Auth_Cognito.authenticate` — ✅ done
 
-- Create `reventless/reventless-aws/src/adapter/Auth/Auth_Cognito.res` implementing `Auth_Adapter.Provider`.
-- Lambda runtime: extract identity from AppSync event context — `event.identity.sub` (→ `userId`), `event.identity.username` (→ `username`), `event.identity.claims['cognito:groups']` (→ `groups`), claims, `event.identity.issuer`. Reference implementation: `reventless/reventless-aws/src/adapter/Mcp/MCP_Lambda.res:350-385`.
-- Recognise IAM auth path (`event.identity.userArn` for server-to-server) as a separate identity type — return `Identity.t` with a synthetic `provider: Custom("aws-iam")` and the role ARN as `userId`.
+- [`reventless/reventless-aws/src/adapter/Auth/Auth_Cognito.res`](../../reventless/reventless-aws/src/adapter/Auth/Auth_Cognito.res) implements `Auth_Adapter.Provider` with two runtime entry points:
+  - **`authenticate(ctx)`** — header-driven (HTTP Lambda Function URL, API Gateway, MCP). Reads `Authorization: Bearer <token>` (case-insensitive), decodes JWT claims without signature verification (AppSync's `userPoolConfig` verifies upstream of the resolver). Returns `Anonymous` when no Bearer is present, `AuthError("malformed bearer token")` when the JWT cannot be decoded, `Authenticated(Identity.t)` otherwise.
+  - **`fromAppSyncIdentity(eventIdentity)`** — resolver-event path. Inspects the AppSync resolver's pre-validated `event.identity`. `sub` present → Cognito User Pool (reads `sub` → `userId`, `cognito:username` → `username`, `cognito:groups` → `groups`, full `claims` dict, `provider: Cognito`). `userArn` present (no `sub`) → AWS_IAM additional-provider path (role ARN → `userId`, `provider: Custom("aws-iam")`, empty groups). Neither → `Anonymous`.
+- **Deploy-time `make`** delegates to `Platform_Stack.resolveCognitoUserPool` (cached so calls from `Main.res` + `AppSync_Adapter.makeApiResource` converge on a single resource registration and one set of stack exports) and bundles `{userPoolId, userPoolArn, clientId, region}` as the provider's `authConfig`.
+- **`Identity.claims` is `dict<string>`** in the schema; the resolver-event path stringifies non-string JSON values so downstream consumers see a uniform shape.
 
-**Verify:** unit test parses representative Cognito event + IAM event payloads, produces correct `Identity.t`.
+**Verify:** [`tests/Auth_CognitoTest.res`](../../reventless/reventless-aws/tests/Auth_CognitoTest.res) — 12 cases. `authenticate` (6): no Authorization → `Anonymous`; non-Bearer → `Anonymous`; malformed Bearer → `AuthError`; valid JWT → `Authenticated` with `sub`/`cognito:username`/`cognito:groups`; missing `cognito:groups` → empty groups; case-insensitive header lookup. `fromAppSyncIdentity` (6): `None` → `Anonymous`; Cognito shape → `Authenticated` with `provider: Cognito`; missing `cognito:groups` → empty groups; IAM shape (`userArn`, no `sub`) → `provider: Custom("aws-iam")`; IAM `userArn` alone → `username` falls back to ARN; neither `sub` nor `userArn` → `Anonymous`. Full reventless-aws suite: 86/90 pass (4 pre-existing failures in DcbEventLogStorage_DynamoDb_RuntimeTest unrelated to auth — `uuid` v13 vs Jest 27 crypto). 416/416 in-memory tests still pass.
 
-### D2. Switch AppSync `authenticationType`
+### D2. Switch AppSync `authenticationType` — ✅ done
 
-- Edit `reventless/reventless-aws/src/components/Api/AppSync_Adapter.res:232`:
+- **`rescript-pulumi-aws`** ([AppSync_GraphQLApi.res](../../rescript/rescript-pulumi-aws/src/AppSync/AppSync_GraphQLApi.res)) — extended `args` with `additionalAuthenticationProviders?: array<additionalAuthenticationProvider>` and added the minimal `additionalAuthenticationProvider` record type (just `authenticationType` + optional `userPoolConfig`, sufficient for the IAM additional-provider case).
+- **`AppSync_Adapter.makeApiResource`** ([AppSync_Adapter.res:209-264](../../reventless/reventless-aws/src/components/Api/AppSync_Adapter.res)) now creates every AppSync GraphQL API with `AMAZON_COGNITO_USER_POOLS` primary auth + `AWS_IAM` as the single additional provider:
   ```rescript
-  authenticationType: AppSync.GraphQLApi.AMAZON_COGNITO_USER_POOLS->Pulumi.Input.make,
-  userPoolConfig: Some({
-    userPoolId: cognitoUserPoolId->Pulumi.Input.asInput,
-    awsRegion: region->Pulumi.Input.asInput,
-    defaultAction: "DENY",
-  }),
-  additionalAuthenticationProviders: Some([
-    { authenticationType: "AWS_IAM" },
-  ]),
+  authenticationType: AMAZON_COGNITO_USER_POOLS->Pulumi.Input.make,
+  userPoolConfig: <Output of {userPoolId, awsRegion, defaultAction: DENY}>,
+  additionalAuthenticationProviders: [{authenticationType: AWS_IAM}],
   ```
-- Apply to all three API call sites: `domainApi`, `platformApi`, `eventsApi`.
-- Re-verify the QueryDb resolver interceptor at `reventless/reventless-aws/src/components/Api/QueryDbResolvers_AppSync.res:25-58` correctly distinguishes Cognito identity from IAM identity (it already handles both — confirm).
-- Server-to-server lambdas (heartbeat, Plugin_Connected emission) explicitly sign their AppSync calls with IAM via the existing IAM role.
+  `userPoolConfig` is built by calling `Auth_Cognito.make(~name=`${name}-auth`)` and applying the resulting `authConfig` Output. Because `Platform_Stack.resolveCognitoUserPool` is now cached, all three call sites (`domainApi` line 91, `platformApi` at `makePlatform` line 972, `platformApi` at `deployPlatform` line 1137) converge on the same pool/client without re-exporting stack outputs.
+- **Server-to-server lambdas** (heartbeat, Plugin_Connected emission) continue to sign their AppSync calls with IAM via the existing IAM role — the new `additionalAuthenticationProviders: [AWS_IAM]` entry preserves that path unchanged.
+- **`Platform_Stack.resolveCognitoUserPool`** ([Platform_Stack.res](../../reventless/reventless-aws/src/Platform_Stack.res)) — split into `_resolveUncached` (the original body) plus a process-level `_cached` ref. First call provisions + exports; subsequent calls return the cached struct. Idempotent for the new dual-caller pattern (Main.res + Auth_Cognito.make).
+- **AppSync Events API unchanged** — the GraphQL API call sites the plan called out are the three `makeApiResource` invocations above. The Events API ([AppSync_EventsApi.res](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res)) uses `aws-native:appsync:Api` with its own auth-provider config and stays IAM-only; SPA subscriptions go through the GraphQL API endpoint.
+- **QueryDb resolver interceptor confirmed** — [`QueryDbResolvers_AppSync.res:25-58`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res) JS template already disambiguates `ctx.identity.sub` (Cognito) from `ctx.identity.userArn` (IAM) and emits the correct payload shape for `QueryInterceptor_Lambda.handler` in both cases. No change required.
 
-**Verify:**
+**Verify (deploy-time):** monorepo build zero warnings; full reventless-aws build clean (130 modules recompiled after binding extension); platform-aws example (`examples/online-shop-hybrid/platform-aws`) builds clean; 416/416 in-memory tests pass.
+
+**Verify (deploy-side, deferred to `pulumi up`):**
 1. Unauthenticated curl to the GraphQL endpoint returns 401.
 2. Curl with a valid Cognito id-token from C2 returns the expected payload.
 3. Heartbeat lambda still publishes `PluginHeartbeat` events (signed via IAM, traverses the additional-provider path).
 4. Plugin_Connected emission still works.
 
-> **Stage D gate:** AWS deployments enforce Cognito auth end-to-end. In-memory unaffected. UI sibling plan step 11 can now switch the SPA to AWS mode.
+> **Stage D gate:** AWS deployments enforce Cognito auth end-to-end (at the resource level — runtime verification deferred to `pulumi up`). In-memory unaffected. UI sibling plan step 11 can now switch the SPA to AWS mode. ✅
 
 ## Stage E — Spec-level authz parity on AWS (optional)
 

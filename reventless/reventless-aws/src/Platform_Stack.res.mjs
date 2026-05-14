@@ -6,7 +6,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 
-function resolveCognitoUserPool() {
+function _resolveUncached() {
   let cfg = new Pulumi.Config("platform");
   let existingPoolId = cfg.get("cognitoUserPoolId");
   let result;
@@ -99,7 +99,23 @@ function resolveCognitoUserPool() {
   return result;
 }
 
+let _cached = {
+  contents: undefined
+};
+
+function resolveCognitoUserPool() {
+  let p = _cached.contents;
+  if (p !== undefined) {
+    return p;
+  }
+  let p$1 = _resolveUncached();
+  _cached.contents = p$1;
+  return p$1;
+}
+
 export {
+  _resolveUncached,
+  _cached,
   resolveCognitoUserPool,
 }
 /* @pulumi/aws Not a pure module */

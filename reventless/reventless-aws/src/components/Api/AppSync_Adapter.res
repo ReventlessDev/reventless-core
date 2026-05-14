@@ -224,15 +224,38 @@ let makeApiResource = (
     ~opts=Some(customOpts),
   )
 
-  // Create the AppSync GraphQL API (schema pushed at runtime via updateSchema).
-  // No explicit name in args — Pulumi auto-names the AWS resource as "{name}-{hash}".
-  let graphQLApi = AppSync.GraphQLApi.make(
-    ~name,
-    ~args={
-      AppSync.GraphQLApi.authenticationType: AppSync.GraphQLApi.AWS_IAM->Pulumi.Input.make,
-    },
-    ~opts=Some(customOpts),
-  )
+  // Resolve the Cognito UserPool — cached inside Platform_Stack, so calling
+  // from each API call site (DomainApi, PlatformApi) is safe. Returned as a
+  // single Output that yields the {userPoolId, awsRegion, defaultAction}
+  // record AppSync expects.
+  let authConfigOut = ReventlessAws.Auth_Cognito.make(~name=`${name}-auth`)
+  let userPoolConfigOut =
+    authConfigOut->Pulumi.Output.apply((c: ReventlessAws.Auth_Cognito.authConfig) =>
+      (
+        {
+          userPoolId: c.userPoolId,
+          awsRegion: c.region,
+          defaultAction: AppSync.GraphQLApi.DENY,
+        }: AppSync.GraphQLApi.userPoolConfig
+      )
+    )
+
+  // Cognito as primary auth, AWS_IAM as additional provider for
+  // server-to-server lambdas (heartbeat, Plugin_Connected emission) signed via
+  // the existing IAM role.
+  let apiArgs: AppSync.GraphQLApi.args = {
+    authenticationType: AppSync.GraphQLApi
+    .AMAZON_COGNITO_USER_POOLS->Pulumi.Input.make,
+    userPoolConfig: userPoolConfigOut->Pulumi.Output.asInput,
+    additionalAuthenticationProviders: [
+      (
+        {
+          authenticationType: AppSync.GraphQLApi.AWS_IAM->Pulumi.Input.make,
+        }: AppSync.GraphQLApi.additionalAuthenticationProvider
+      )->Pulumi.Input.make,
+    ]->Pulumi.Input.make,
+  }
+  let graphQLApi = AppSync.GraphQLApi.make(~name, ~args=apiArgs, ~opts=Some(customOpts))
 
   (graphQLApi->Pulumi.Output.make, iamRole->Pulumi.Output.make)
 }

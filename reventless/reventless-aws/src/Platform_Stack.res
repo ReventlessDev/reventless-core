@@ -28,7 +28,7 @@ type cognitoUserPool = {
  * stack outputs so downstream stacks (and Stage D AppSync wiring) can read
  * them via `StackReference`.
  */
-let resolveCognitoUserPool = (): cognitoUserPool => {
+let _resolveUncached = (): cognitoUserPool => {
   let cfg = Pulumi.Config.make(Some("platform"))
   let existingPoolId = cfg->Pulumi.Config.get("cognitoUserPoolId")
 
@@ -129,3 +129,17 @@ let resolveCognitoUserPool = (): cognitoUserPool => {
 
   result
 }
+
+// Process-level cache so multiple callers (Main.res + Auth_Cognito.make from
+// inside Platform.MakeWithConfig) converge on the same pool/client and the
+// stack-export calls happen exactly once per Pulumi run.
+let _cached: ref<option<cognitoUserPool>> = ref(None)
+
+let resolveCognitoUserPool = (): cognitoUserPool =>
+  switch _cached.contents {
+  | Some(p) => p
+  | None =>
+    let p = _resolveUncached()
+    _cached := Some(p)
+    p
+  }

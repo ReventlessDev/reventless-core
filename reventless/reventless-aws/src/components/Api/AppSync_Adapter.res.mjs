@@ -11,6 +11,7 @@ import * as Duration from "effect/Duration";
 import * as Schedule from "effect/Schedule";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as ClientAppsync from "@aws-sdk/client-appsync";
+import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -168,9 +169,22 @@ function makeApiResource(name, opts) {
   let iamRole = new (Aws.iam.Role)(name + `-appsync-role`, {
     assumeRolePolicy: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"appsync.amazonaws.com"},"Action":"sts:AssumeRole"}]}`
   }, customOpts);
-  let graphQLApi = new (Aws.appsync.GraphQLApi)(name, {
-    authenticationType: "AWS_IAM"
-  }, customOpts);
+  let authConfigOut = Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined);
+  let userPoolConfigOut = authConfigOut.apply(c => ({
+    userPoolId: c.userPoolId,
+    defaultAction: "DENY",
+    awsRegion: c.region
+  }));
+  let apiArgs_userPoolConfig = userPoolConfigOut;
+  let apiArgs_additionalAuthenticationProviders = [{
+      authenticationType: "AWS_IAM"
+    }];
+  let apiArgs = {
+    authenticationType: "AMAZON_COGNITO_USER_POOLS",
+    userPoolConfig: apiArgs_userPoolConfig,
+    additionalAuthenticationProviders: apiArgs_additionalAuthenticationProviders
+  };
+  let graphQLApi = new (Aws.appsync.GraphQLApi)(name, apiArgs, customOpts);
   return [
     Pulumi.output(graphQLApi),
     Pulumi.output(iamRole)
