@@ -10,12 +10,14 @@ let buildContext = (headers: array<(string, string)>): ReventlessCore.Auth_Adapt
   headers: Dict.fromArray(headers),
 }
 
-testPromise("no X-User, no X-Groups → Anonymous", async () => {
+testPromise("no X-User, no X-Groups → defaultUser (in-memory dev convenience)", async () => {
   Auth_InMemory.resetUsers()
   let result = await Auth_InMemory.authenticate(buildContext([]))
   switch result {
-  | Anonymous => ()
-  | _ => JsError.throwWithMessage("expected Anonymous")
+  | Authenticated(identity) =>
+    expect(identity.username)->toEqual("user")
+    expect(identity.groups)->toEqual(["User"])
+  | _ => JsError.throwWithMessage("expected Authenticated(defaultUser)")
   }
 })
 
@@ -69,14 +71,14 @@ testPromise("X-Groups overrides the resolved identity's groups", async () => {
   }
 })
 
-testPromise("X-Groups alone yields anonymous identity tagged with groups", async () => {
+testPromise("X-Groups alone yields defaultUser tagged with the override groups", async () => {
   Auth_InMemory.resetUsers()
   let result = await Auth_InMemory.authenticate(
     buildContext([("x-groups", "Tester")]),
   )
   switch result {
   | Authenticated(identity) =>
-    expect(identity.userId)->toEqual("anonymous")
+    expect(identity.userId)->toEqual("local-user")
     expect(identity.groups)->toEqual(["Tester"])
   | _ => JsError.throwWithMessage("expected Authenticated")
   }

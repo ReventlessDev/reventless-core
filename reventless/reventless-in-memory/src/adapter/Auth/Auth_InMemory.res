@@ -72,14 +72,16 @@ let authenticate = async (
   switch userHeader {
   | None =>
     switch groupsHeader {
-    | None => Anonymous
+    | None =>
+      // No X-User header: in-memory mode defaults to defaultUser so local dev
+      // against an AllowAuthenticated-defaulted backend "just works" without
+      // setting headers. Anonymous behaviour is reachable only by building an
+      // Identity.anonymous explicitly in code.
+      Authenticated(defaultUser)
     | Some(g) =>
-      // X-Groups without X-User: anonymous identity tagged with the groups.
-      // Useful for tests that exercise group-only authorization paths.
-      Authenticated({
-        ...Identity.anonymous,
-        groups: parseGroups(g),
-      })
+      // X-Groups without X-User: defaultUser identity with the requested
+      // groups. Useful for tests that exercise group-only authorization paths.
+      Authenticated({...defaultUser, groups: parseGroups(g)})
     }
   | Some(username) =>
     switch lookupUser(username) {

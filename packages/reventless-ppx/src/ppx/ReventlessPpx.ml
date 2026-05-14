@@ -714,7 +714,15 @@ let transform (str : structure) : structure =
           [ModuleUrl.gen_module_url ~loc specifier]
         else []
       in
-      !prefix @ body @ readmodel_suffix @ suffix
+      (* Authorization auto-injection (Aggregate / *Slice → commandAuthorization,
+         ReadModel / StateViewSlice → authorization). Consumes a file-level
+         @@reventless.authorize(<rule>) attribute and falls back to the framework
+         default AllowAuthenticated. Idempotent on bodies already declaring the
+         binding. *)
+      let (authz_prefix, body, authz_suffix) =
+        AuthorizationInjection.inject ~loc loc.loc_start.pos_fname body
+      in
+      !prefix @ authz_prefix @ body @ readmodel_suffix @ suffix @ authz_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

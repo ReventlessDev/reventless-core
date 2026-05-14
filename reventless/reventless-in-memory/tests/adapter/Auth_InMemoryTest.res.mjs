@@ -9,14 +9,18 @@ function buildContext(headers) {
   };
 }
 
-test("no X-User, no X-Groups → Anonymous", async () => {
+test("no X-User, no X-Groups → defaultUser (in-memory dev convenience)", async () => {
   Auth_InMemory$ReventlessInMemory.resetUsers();
   let result = await Auth_InMemory$ReventlessInMemory.authenticate(buildContext([]));
   if (typeof result !== "object") {
-    return;
-  } else {
-    return Stdlib_JsError.throwWithMessage("expected Anonymous");
+    return Stdlib_JsError.throwWithMessage("expected Authenticated(defaultUser)");
   }
+  if (result.TAG !== "Authenticated") {
+    return Stdlib_JsError.throwWithMessage("expected Authenticated(defaultUser)");
+  }
+  let identity = result._0;
+  expect(identity.username).toEqual("user");
+  expect(identity.groups).toEqual(["User"]);
 });
 
 test("X-User: admin resolves built-in admin identity", async () => {
@@ -95,7 +99,7 @@ test("X-Groups overrides the resolved identity's groups", async () => {
   ]);
 });
 
-test("X-Groups alone yields anonymous identity tagged with groups", async () => {
+test("X-Groups alone yields defaultUser tagged with the override groups", async () => {
   Auth_InMemory$ReventlessInMemory.resetUsers();
   let result = await Auth_InMemory$ReventlessInMemory.authenticate(buildContext([[
       "x-groups",
@@ -108,7 +112,7 @@ test("X-Groups alone yields anonymous identity tagged with groups", async () => 
     return Stdlib_JsError.throwWithMessage("expected Authenticated");
   }
   let identity = result._0;
-  expect(identity.userId).toEqual("anonymous");
+  expect(identity.userId).toEqual("local-user");
   expect(identity.groups).toEqual(["Tester"]);
 });
 
