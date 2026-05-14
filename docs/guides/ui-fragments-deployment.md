@@ -96,6 +96,8 @@ No CDN, no S3, no bundle distributions. The host shell rebuilds itself on save l
 
 The host shell SPA itself is built upstream by `reventless-ui`'s `host-shell` package. `assetsDir` points at its `dist/` directory.
 
+`platform-aws` takes a versioned npm dependency on `@reventlessdev/reventless-host-shell`. The published tarball already contains pre-built `dist/` output (the package's `prepublishOnly` hook runs `vite build` before publish, and `dist/` is in its `files` allowlist). With the repo's `node-linker=hoisted` (`.npmrc`), `pnpm install` places it under the repo-root `node_modules/`, so deploy paths work in CI without checking out the sibling `reventless-ui` repo. To upgrade the shell, bump the dependency version in `platform-aws/package.json` and re-run `pulumi up`.
+
 ### `config.json` contract
 
 ```json
@@ -117,13 +119,13 @@ module Platform = ReventlessAws.Platform.Make()
 let default = Platform.deployPlatform(
   ~version=Reventless.PackageVersion.fromCaller(),
   ~hostUiBundle={
-    assetsDir: "../../../../reventless-ui/reventless/reventless-host-shell/dist",
+    assetsDir: "../../../node_modules/@reventlessdev/reventless-host-shell/dist",
     bundleVersion: Reventless.PackageVersion.fromCaller(),
   },
 )
 ```
 
-`assetsDir` is resolved relative to the directory containing `Pulumi.yaml` (the `platform-aws/` folder). Build the host shell (`pnpm --filter @reventlessdev/reventless-host-shell build`) before `pulumi up`.
+`assetsDir` is resolved relative to the directory containing `Pulumi.yaml` (the `platform-aws/` folder). The three `../` traverse up from `platform-aws/` → `online-shop-hybrid/` → `examples/` → repo root, where hoisted `node_modules/` lives. No separate build step is needed — `pnpm install` extracts the published tarball (which already contains `dist/`).
 
 ### Independent host-ui cadence
 

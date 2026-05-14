@@ -9,7 +9,7 @@ let Platform = Platform$ReventlessAws.Make({});
 let _cognitoUserPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
 
 let $$default = Platform.deployPlatform(PackageVersion$Reventless.fromCaller(), {
-  assetsDir: "../../../../reventless-ui/reventless/reventless-host-shell/dist",
+  assetsDir: "../../../node_modules/@reventlessdev/reventless-host-shell/dist",
   bundleVersion: PackageVersion$Reventless.fromCaller()
 });
 
