@@ -34,3 +34,13 @@ let getClaim = (identity: t, key: string): option<string> =>
   | Some(claims) => claims->Dict.get(key)
   | None => None
   }
+
+/**
+Outcome of a single `Auth_Adapter.Provider.authenticate` call.
+`AuthError` carries a short human-readable reason (logged, not returned
+verbatim to clients) — useful for diagnosing failed bearer-token validation.
+*/
+type authResult =
+  | Authenticated(t)
+  | Anonymous
+  | AuthError(string)
