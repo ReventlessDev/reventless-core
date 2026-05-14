@@ -3,6 +3,7 @@
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
@@ -36,11 +37,17 @@ function make(name, referencesName, referencesDb, countsName, countsDb, param, s
   let reExportCode = `export { handler } from "@reventlessdev/reventless-aws/src/adapter/Runtime/CounterEntryPoint.mjs";`;
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
+  let packageContentHashes = {
+    contents: []
+  };
   Stdlib_Dict.forEachWithKey(packageDirs, (pkgRoot, pkgName) => {
-    archiveContents[`node_modules/` + pkgName] = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
+    let match = Util_Bundle$ReventlessAws.createFilteredPackageArchive(pkgRoot);
+    archiveContents[`node_modules/` + pkgName] = match[0];
+    packageContentHashes.contents.push(pkgName + `:` + match[1]);
   });
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + Object.keys(packageDirs).join(","));
+  packageContentHashes.contents.sort(Primitive_string.compare);
+  let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(reExportCode + packageContentHashes.contents.join(","));
   let componentOpts_parent = opts.parent;
   let componentOpts = {
     parent: componentOpts_parent

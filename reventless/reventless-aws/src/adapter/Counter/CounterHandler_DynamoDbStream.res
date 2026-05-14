@@ -54,17 +54,20 @@ let make: ReventlessCore.Counter_Adapter.handlerMaker = (
     "index.mjs",
     Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
   )
+  let packageContentHashes: ref<array<string>> = ref([])
   packageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+    let (archive, contentHash) = Util_Bundle.createFilteredPackageArchive(pkgRoot)
     archiveContents->Dict.set(
       `node_modules/${pkgName}`,
-      Util_Bundle.createFilteredPackageArchive(pkgRoot)
-      ->Pulumi.Archive.archiveToAssetOrArchive,
+      archive->Pulumi.Archive.archiveToAssetOrArchive,
     )
+    packageContentHashes.contents->Array.push(`${pkgName}:${contentHash}`)
   })
 
   let code = Pulumi.Archive.assetArchive(archiveContents)
+  packageContentHashes.contents->Array.sort(String.compare)
   let sourceCodeHash = Util_Bundle.hashString(
-    reExportCode ++ packageDirs->Dict.keysToArray->Array.join(","),
+    reExportCode ++ packageContentHashes.contents->Array.join(","),
   )
 
   let componentOpts: Pulumi.ComponentResource.options = {parent: ?opts.parent}

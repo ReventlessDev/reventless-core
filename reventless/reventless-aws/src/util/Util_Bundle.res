@@ -124,21 +124,33 @@ let isSkippedDir = (n: string) =>
   n == ".git" ||
   n == "coverage"
 
-let rec walkDir = (dir: string, prefix: string, assets: dict<Pulumi.Archive.assetOrArchive>) => {
+// Reads file as a string for content hashing; Buffer would be slightly more
+// efficient but utf-8 keeps the hash stable across platforms and matches what
+// Lambda will execute.
+@module("fs") external readFileAsString: (string, string) => string = "readFileSync"
+
+let rec walkDir = (
+  ~dir: string,
+  ~prefix: string,
+  ~assets: dict<Pulumi.Archive.assetOrArchive>,
+  ~paths: array<(string, string)>,
+) => {
   let entries = readdirSync(dir, {"withFileTypes": true})
   entries->Array.forEach(entry => {
     let entryName = entry->direntName
     if entry->isDirectory {
       if !isSkippedDir(entryName) {
         let newPrefix = prefix == "" ? entryName : prefix ++ "/" ++ entryName
-        walkDir(join2(dir, entryName), newPrefix, assets)
+        walkDir(~dir=join2(dir, entryName), ~prefix=newPrefix, ~assets, ~paths)
       }
     } else if entryName == "package.json" || entryName->String.endsWith(".mjs") || entryName->String.endsWith(".js") {
       let relPath = prefix == "" ? entryName : prefix ++ "/" ++ entryName
+      let absPath = join2(dir, entryName)
       assets->Dict.set(
         relPath,
-        Pulumi.Asset.fileAsset(join2(dir, entryName))->Pulumi.Archive.assetToAssetOrArchive,
+        Pulumi.Asset.fileAsset(absPath)->Pulumi.Archive.assetToAssetOrArchive,
       )
+      paths->Array.push((relPath, absPath))
     }
   })
 }
@@ -146,11 +158,20 @@ let rec walkDir = (dir: string, prefix: string, assets: dict<Pulumi.Archive.asse
 /**
  * Create a filtered AssetArchive from a package directory.
  * Only includes *.mjs and package.json; excludes node_modules/, lib/, tests/, etc.
+ * Returns both the archive and a content hash covering every bundled file so
+ * callers can produce a sourceCodeHash that changes when any source changes.
  */
-let createFilteredPackageArchive = (packageRoot: string): Pulumi.Archive.t => {
+let createFilteredPackageArchive = (packageRoot: string): (Pulumi.Archive.t, string) => {
   let assets: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-  walkDir(packageRoot, "", assets)
-  Pulumi.Archive.assetArchive(assets)
+  let paths: array<(string, string)> = []
+  walkDir(~dir=packageRoot, ~prefix="", ~assets, ~paths)
+  // Sort so the hash is stable across filesystem traversal order.
+  paths->Array.sort(((a, _), (b, _)) => String.compare(a, b))
+  let combined =
+    paths
+    ->Array.map(((relPath, absPath)) => `${relPath}:${readFileAsString(absPath, "utf-8")}`)
+    ->Array.join("\n---\n")
+  (Pulumi.Archive.assetArchive(assets), hashString(combined))
 }
 
 type codeArchive = {
@@ -185,30 +206,18 @@ let buildCodeArchive = (~entryPointModule: string, ~packageDirs: dict<string>): 
     } else {
       packageDirs
     }
+  let packageContentHashes: ref<array<string>> = ref([])
   allPackageDirs->Dict.forEachWithKey((pkgRoot, pkgName) => {
+    let (archive, contentHash) = createFilteredPackageArchive(pkgRoot)
     archiveContents->Dict.set(
       `node_modules/${pkgName}`,
-      createFilteredPackageArchive(pkgRoot)->Pulumi.Archive.archiveToAssetOrArchive,
+      archive->Pulumi.Archive.archiveToAssetOrArchive,
     )
+    packageContentHashes.contents->Array.push(`${pkgName}:${contentHash}`)
   })
   let code = Pulumi.Archive.assetArchive(archiveContents)
-  // Include each package's version in the hash so Pulumi redeploys when
-  // a bundled package is updated (e.g. effect 3.19.19 → 3.21.0).
-  let pkgVersions =
-    allPackageDirs
-    ->Dict.toArray
-    ->Array.map(((pkgName, pkgRoot)) => {
-      let pkgJsonText = readFileSync(join2(pkgRoot, "package.json"), "utf-8")
-      let version =
-        pkgJsonText
-        ->JSON.parseOrThrow
-        ->JSON.Decode.object
-        ->Option.flatMap(obj => obj->Dict.get("version"))
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.getOr("unknown")
-      `${pkgName}@${version}`
-    })
-    ->Array.join(",")
-  let sourceCodeHash = hashString(reExportCode ++ pkgVersions)
+  packageContentHashes.contents->Array.sort(String.compare)
+  let sourceCodeHash =
+    hashString(reExportCode ++ packageContentHashes.contents->Array.join(","))
   {code, sourceCodeHash}
 }

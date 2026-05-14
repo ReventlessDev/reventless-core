@@ -9,6 +9,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 
 let packageRootCache = {};
 
@@ -85,7 +86,7 @@ function isSkippedDir(n) {
   }
 }
 
-function walkDir(dir, prefix, assets) {
+function walkDir(dir, prefix, assets, paths) {
   let entries = Fs.readdirSync(dir, {
     withFileTypes: true
   });
@@ -96,20 +97,31 @@ function walkDir(dir, prefix, assets) {
         return;
       }
       let newPrefix = prefix === "" ? entryName : prefix + "/" + entryName;
-      return walkDir(Path.join(dir, entryName), newPrefix, assets);
+      return walkDir(Path.join(dir, entryName), newPrefix, assets, paths);
     }
     if (!(entryName === "package.json" || entryName.endsWith(".mjs") || entryName.endsWith(".js"))) {
       return;
     }
     let relPath = prefix === "" ? entryName : prefix + "/" + entryName;
-    assets[relPath] = new (Pulumi.asset.FileAsset)(Path.join(dir, entryName));
+    let absPath = Path.join(dir, entryName);
+    assets[relPath] = new (Pulumi.asset.FileAsset)(absPath);
+    paths.push([
+      relPath,
+      absPath
+    ]);
   });
 }
 
 function createFilteredPackageArchive(packageRoot) {
   let assets = {};
-  walkDir(packageRoot, "", assets);
-  return new (Pulumi.asset.AssetArchive)(assets);
+  let paths = [];
+  walkDir(packageRoot, "", assets, paths);
+  paths.sort((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
+  let combined = paths.map(param => param[0] + `:` + Fs.readFileSync(param[1], "utf-8")).join("\n---\n");
+  return [
+    new (Pulumi.asset.AssetArchive)(assets),
+    hashString(combined)
+  ];
 }
 
 function buildCodeArchive(entryPointModule, packageDirs) {
@@ -124,16 +136,17 @@ function buildCodeArchive(entryPointModule, packageDirs) {
   } else {
     allPackageDirs = packageDirs;
   }
+  let packageContentHashes = {
+    contents: []
+  };
   Stdlib_Dict.forEachWithKey(allPackageDirs, (pkgRoot, pkgName) => {
-    archiveContents[`node_modules/` + pkgName] = createFilteredPackageArchive(pkgRoot);
+    let match = createFilteredPackageArchive(pkgRoot);
+    archiveContents[`node_modules/` + pkgName] = match[0];
+    packageContentHashes.contents.push(pkgName + `:` + match[1]);
   });
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
-  let pkgVersions = Object.entries(allPackageDirs).map(param => {
-    let pkgJsonText = Fs.readFileSync(Path.join(param[1], "package.json"), "utf-8");
-    let version = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(JSON.parse(pkgJsonText)), obj => obj["version"]), Stdlib_JSON.Decode.string), "unknown");
-    return param[0] + `@` + version;
-  }).join(",");
-  let sourceCodeHash = hashString(reExportCode + pkgVersions);
+  packageContentHashes.contents.sort(Primitive_string.compare);
+  let sourceCodeHash = hashString(reExportCode + packageContentHashes.contents.join(","));
   return {
     code: code,
     sourceCodeHash: sourceCodeHash
