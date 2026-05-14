@@ -5,6 +5,17 @@ Extends the example with `catalog-ui`, `ordering-ui`, and `dashboard` packages. 
 **Prerequisite plans:** `online-shop-hybrid-autoui-devapp.md` (Step 1 must be complete)  
 **Next plan:** `online-shop-hybrid-autoui-aws-e2e.md`
 
+> **Status note (2026-05-12):** the `dashboard` work in this plan has been
+> superseded by `reventless-ui: docs/plans/done/cloudfront-ui-fragments-ui.md`,
+> which delivered the host shell at `reventless-ui:reventless/host-shell` using
+> `@module-federation/vite` (MF 2.0) rather than `@originjs/vite-plugin-federation`,
+> and the federation runtime API (`registerRemotes` / `loadRemote`) instead of
+> the `federationRuntime.setRemote` API named below. The `Platform_UIFragments`
+> query is also now a flat array (`[Platform_UIFragmentEntry!]!`), not a
+> Connection — sections quoting `edges { node { ... } }` and `Platform_UIFragments(first: N)`
+> below are out of date. Treat the rest of this plan as the original e2e
+> blueprint; the dashboard slice already lives in the host-shell package.
+
 ---
 
 ## Goal
@@ -162,7 +173,7 @@ Step 1 ✅
              remoteEntryUrl, panels at "platform-summary" and "resource-detail"
              (Catalog.Categories.list, Catalog.Category.detail, Ordering.Customers.list,
              Ordering.Customer.detail)
-           - Env vars unset: Platform_UIFragments returns empty edges
+           - Env vars unset: Platform_UIFragments returns []
            - Root build: zero warnings
 ```
 

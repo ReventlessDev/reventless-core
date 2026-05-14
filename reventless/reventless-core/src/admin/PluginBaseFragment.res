@@ -5,6 +5,11 @@ let adminAuth: Reventless.ReadModel.authorization = {
   group: "Admin",
 }
 
+// The UIFragmentRegistry read model is queried exclusively via the explicit
+// flat `Platform_UIFragments: [Platform_UIFragmentEntry!]!` field declared in
+// `Platform_UIFragmentsApi.res` (and resolved by `Platform_UIFragments_Lambda.res`
+// on AWS / the seeded QueryDb in-memory). Reintroducing an auto-generated
+// connection field here collides with that name on SDL composition.
 let queryEntries: array<querySchemaEntry> = [
   {
     singleFieldName: Api_Naming.adminField(~name="Plugin"),
@@ -13,14 +18,6 @@ let queryEntries: array<querySchemaEntry> = [
     stateSchema: PluginReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
     excludeFields: ["eventCollector", "extensionPointNames", "extensionNames"],
-  },
-  {
-    singleFieldName: Api_Naming.adminField(~name="UIFragment"),
-    listFieldName: Api_Naming.adminField(~name="UIFragments"),
-    returnTypeName: Api_Naming.adminField(~name="UIFragment"),
-    stateSchema: UIFragmentRegistryReadModelSpec.stateSchema->S.castToUnknown,
-    authorization: Some(adminAuth),
-    excludeFields: ["registeredAt"],
   },
   {
     singleFieldName: Api_Naming.adminField(~name="PlatformEventGraph"),

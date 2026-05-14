@@ -1173,9 +1173,6 @@ module MakeWithConfig = (
     let adminQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(0)
     let singleQueryField = adminQueryEntry.singleFieldName
     let listQueryField = adminQueryEntry.listFieldName
-    let uiFragmentQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
-    let uiFragmentSingleField = uiFragmentQueryEntry.singleFieldName
-    let uiFragmentListField = uiFragmentQueryEntry.listFieldName
     let adminMutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=Config.cloner)
     let adminMutationFieldNames = adminMutationEntries->Array.flatMap(entry => entry.fieldNames)
 
@@ -1213,34 +1210,9 @@ module MakeWithConfig = (
       }
       connectionResponse(items)
     })
-    queryResolvers->Dict.set(uiFragmentSingleField, async (_root, args, _ctx): JSON.t => {
-      let id =
-        args
-        ->JSON.Decode.object
-        ->Option.flatMap(d => d->Dict.get("id"))
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.getOr("")
-      switch Bus.getQueryDb(uiFragmentQueryDbName) {
-      | Some(ops) =>
-        let items = await ops.loadStream(id)
-        ->Stream.runCollect
-        ->Effect.catchAll(_ => Effect.succeed([]))
-        ->Effect.runPromise
-        items->Array.get(0)->Option.getOr(JSON.Encode.null)
-      | None => JSON.Encode.null
-      }
-    })
-    queryResolvers->Dict.set(uiFragmentListField, async (_root, _args, _ctx): JSON.t => {
-      let items = switch Bus.getQueryDbScan(uiFragmentQueryDbName) {
-      | Some(scanAll) => scanAll()
-      | None => []
-      }
-      connectionResponse(items)
-    })
-
     // Platform_PlatformEventGraph[s] — derived on-demand from pluginStructuresStore.
     // Mirrors the per-plugin entries that AWS produces via PlatformEventGraphReadModel.
-    let eventGraphQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
+    let eventGraphQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
     let buildEventGraphEntries = (): array<JSON.t> =>
       pluginStructuresStore.contents
       ->Dict.toArray
@@ -1443,12 +1415,14 @@ module MakeWithConfig = (
     )
 
     // Register admin queries and mutations as MCP resources and tools.
-    // Route by field name: Plugin → pluginQueryDbName, UIFragment → uiFragmentQueryDbName.
+    // Route by field name: Plugin → pluginQueryDbName. UIFragments has its
+    // own explicit `Platform_UIFragments` flat-array resolver registered
+    // above; it isn't exposed as an MCP resource because the auto-generated
+    // single/list field shape was removed when the auto-generated query
+    // entry was dropped in favour of that explicit field.
     let adminFieldToQueryDb = Dict.fromArray([
       (singleQueryField, pluginQueryDbName),
       (listQueryField, pluginQueryDbName),
-      (uiFragmentSingleField, uiFragmentQueryDbName),
-      (uiFragmentListField, uiFragmentQueryDbName),
     ])
     platformMCP.registerResourcesFromEntries(
       ~pluginName="Admin",
@@ -1603,15 +1577,8 @@ module MakeWithConfig = (
     queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
       connectionResponse([])
     )
-    let uiFragmentQueryEntry2 = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
-    queryResolvers->Dict.set(uiFragmentQueryEntry2.singleFieldName, async (_root, _args, _ctx): JSON.t =>
-      JSON.Encode.null
-    )
-    queryResolvers->Dict.set(uiFragmentQueryEntry2.listFieldName, async (_root, _args, _ctx): JSON.t =>
-      connectionResponse([])
-    )
     let eventGraphQueryEntry2 =
-      ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
+      ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
     queryResolvers->Dict.set(
       eventGraphQueryEntry2.singleFieldName,
       async (_root, _args, _ctx): JSON.t => JSON.Encode.null,
@@ -1619,6 +1586,13 @@ module MakeWithConfig = (
     queryResolvers->Dict.set(
       eventGraphQueryEntry2.listFieldName,
       async (_root, _args, _ctx): JSON.t => connectionResponse([]),
+    )
+    // Platform_UIFragments — empty in the platform-only path (no plugins
+    // connected → no UI fragments registered). The SDL declares it as a
+    // non-null array so we must register a resolver returning [].
+    queryResolvers->Dict.set(
+      "Platform_UIFragments",
+      async (_root, _args, _ctx): JSON.t => JSON.Encode.array([]),
     )
     adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
@@ -1771,17 +1745,33 @@ module MakeWithConfig = (
       queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
         connectionResponse([])
       )
-      let uiFragmentQueryEntry3 = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
+      // Platform_UIFragments — single-plugin path. Seeded by
+      // seedUIFragmentRegistryQueryDb below if the plugin component carries
+      // a uiFragments manifest, otherwise scans an empty store.
       queryResolvers->Dict.set(
-        uiFragmentQueryEntry3.singleFieldName,
-        async (_root, _args, _ctx): JSON.t => JSON.Encode.null,
-      )
-      queryResolvers->Dict.set(
-        uiFragmentQueryEntry3.listFieldName,
-        async (_root, _args, _ctx): JSON.t => connectionResponse([]),
+        "Platform_UIFragments",
+        async (_root, _args, _ctx): JSON.t => {
+          let items = switch Bus.getQueryDbScan(
+            ReventlessCore.UIFragmentRegistryReadModelSpec.name,
+          ) {
+          | Some(scanAll) => scanAll()
+          | None => []
+          }
+          items
+          ->Array.filterMap(item =>
+            switch item->S.parseOrThrow(
+              ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
+            ) {
+            | state =>
+              Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
+            | exception _ => None
+            }
+          )
+          ->JSON.Encode.array
+        },
       )
       let eventGraphQueryEntry3 =
-        ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
+        ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
       // Single-plugin path: derive the entry on-demand from pluginStructuresStore
       // (seeded after this resolver block runs, but resolvers are called at query time).
       queryResolvers->Dict.set(

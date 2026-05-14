@@ -1141,9 +1141,6 @@ function MakeWithConfig(Config) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
-    let uiFragmentQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    let uiFragmentSingleField = uiFragmentQueryEntry.singleFieldName;
-    let uiFragmentListField = uiFragmentQueryEntry.listFieldName;
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     let platformGraphQL = resolveTargetGraphQL();
@@ -1164,20 +1161,7 @@ function MakeWithConfig(Config) {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
-    queryResolvers[uiFragmentSingleField] = async (_root, args, _ctx) => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
-      if (ops === undefined) {
-        return null;
-      }
-      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-      return Stdlib_Option.getOr(items[0], null);
-    };
-    queryResolvers[uiFragmentListField] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
-      return connectionResponse(scanAll !== undefined ? scanAll() : []);
-    };
-    let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[2];
+    let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
     let buildEventGraphEntries = () => Object.entries(pluginStructuresStore.contents).map(param => {
       let id = param[0];
       let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
@@ -1312,14 +1296,6 @@ function MakeWithConfig(Config) {
       [
         listQueryField,
         PluginReadModelSpec$ReventlessCore.name
-      ],
-      [
-        uiFragmentSingleField,
-        UIFragmentRegistryReadModelSpec$ReventlessCore.name
-      ],
-      [
-        uiFragmentListField,
-        UIFragmentRegistryReadModelSpec$ReventlessCore.name
       ]
     ]);
     platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
@@ -1428,12 +1404,10 @@ function MakeWithConfig(Config) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-    let uiFragmentQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    queryResolvers[uiFragmentQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[uiFragmentQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-    let eventGraphQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[2];
+    let eventGraphQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[1];
     queryResolvers[eventGraphQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[eventGraphQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
+    queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
@@ -1532,10 +1506,20 @@ function MakeWithConfig(Config) {
       let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
       queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
       queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-      let uiFragmentQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-      queryResolvers[uiFragmentQueryEntry3.singleFieldName] = async (_root, _args, _ctx) => null;
-      queryResolvers[uiFragmentQueryEntry3.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-      let eventGraphQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[2];
+      queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
+        let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+        let items = scanAll !== undefined ? scanAll() : [];
+        return Stdlib_Array.filterMap(items, item => {
+          let state;
+          try {
+            state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+          } catch (exn) {
+            return;
+          }
+          return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
+        });
+      };
+      let eventGraphQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[1];
       queryResolvers[eventGraphQueryEntry3.singleFieldName] = async (_root, args, _ctx) => {
         let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
         let structure = pluginStructuresStore.contents[id];
@@ -2734,9 +2718,6 @@ function Make($star) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
     let listQueryField = adminQueryEntry.listFieldName;
-    let uiFragmentQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    let uiFragmentSingleField = uiFragmentQueryEntry.singleFieldName;
-    let uiFragmentListField = uiFragmentQueryEntry.listFieldName;
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let adminMutationFieldNames = adminMutationEntries.flatMap(entry => entry.fieldNames);
     let platformGraphQL = resolveTargetGraphQL();
@@ -2757,20 +2738,7 @@ function Make($star) {
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
-    queryResolvers[uiFragmentSingleField] = async (_root, args, _ctx) => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
-      if (ops === undefined) {
-        return null;
-      }
-      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-      return Stdlib_Option.getOr(items[0], null);
-    };
-    queryResolvers[uiFragmentListField] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
-      return connectionResponse(scanAll !== undefined ? scanAll() : []);
-    };
-    let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[2];
+    let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
     let buildEventGraphEntries = () => Object.entries(pluginStructuresStore.contents).map(param => {
       let id = param[0];
       let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
@@ -2905,14 +2873,6 @@ function Make($star) {
       [
         listQueryField,
         PluginReadModelSpec$ReventlessCore.name
-      ],
-      [
-        uiFragmentSingleField,
-        UIFragmentRegistryReadModelSpec$ReventlessCore.name
-      ],
-      [
-        uiFragmentListField,
-        UIFragmentRegistryReadModelSpec$ReventlessCore.name
       ]
     ]);
     platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
@@ -3015,12 +2975,10 @@ function Make($star) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-    let uiFragmentQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    queryResolvers[uiFragmentQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[uiFragmentQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-    let eventGraphQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[2];
+    let eventGraphQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[1];
     queryResolvers[eventGraphQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[eventGraphQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
+    queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
@@ -3117,10 +3075,20 @@ function Make($star) {
       let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
       queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
       queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-      let uiFragmentQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-      queryResolvers[uiFragmentQueryEntry3.singleFieldName] = async (_root, _args, _ctx) => null;
-      queryResolvers[uiFragmentQueryEntry3.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-      let eventGraphQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[2];
+      queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
+        let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
+        let items = scanAll !== undefined ? scanAll() : [];
+        return Stdlib_Array.filterMap(items, item => {
+          let state;
+          try {
+            state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+          } catch (exn) {
+            return;
+          }
+          return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
+        });
+      };
+      let eventGraphQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[1];
       queryResolvers[eventGraphQueryEntry3.singleFieldName] = async (_root, args, _ctx) => {
         let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
         let structure = pluginStructuresStore.contents[id];
