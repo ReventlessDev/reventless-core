@@ -21,6 +21,10 @@ let eventSchema = S.schema(s => ({
   address: s.m(S.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "RegisterCustomer";
 
 let Id;
@@ -35,5 +39,6 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

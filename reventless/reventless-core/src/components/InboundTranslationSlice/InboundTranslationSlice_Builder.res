@@ -35,6 +35,7 @@ module Make = (
       let stateSchema = InboundTranslationSlice_Callback.auditRowSchema
       let config = Reventless.ReadModel.config()
       let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
+      let authorization: Reventless.Authorization.permission = AllowAuthenticated
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(AuditQueryDbSpec, QueryDbStorage, QueryDbResolvers)

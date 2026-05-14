@@ -52,13 +52,18 @@ function translate(input) {
   }
 }
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let PaymentWebhookSpec = {
   name: "PaymentWebhook",
   moduleUrl: moduleUrl$1,
   externalInputSchema: externalInputSchema,
   commandSchema: commandSchema,
   targetName: "ConfirmPayment",
-  translate: translate
+  translate: translate,
+  commandAuthorization: commandAuthorization
 };
 
 export {

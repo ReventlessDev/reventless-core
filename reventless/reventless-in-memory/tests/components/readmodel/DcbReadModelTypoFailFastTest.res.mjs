@@ -49,7 +49,8 @@ let RmSpec = {
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 function project(msg) {
@@ -111,7 +112,8 @@ let RmMaker = ReadModelMaker.Make({
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 })(TypoMappings);
 
 Jest.describe("ReadModel source-name fail-fast:", () => Jest.test("constructing a ReadModel whose Mapping.sourceName is missing throws", () => {

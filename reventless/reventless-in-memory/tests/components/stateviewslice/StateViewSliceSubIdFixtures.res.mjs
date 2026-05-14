@@ -72,7 +72,8 @@ let ScoresViewSpec = {
   consumedEventSchema: consumedEventSchema,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: subIdConfig
+  subIdConfig: subIdConfig,
+  authorization: "AllowAuthenticated"
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -124,7 +125,8 @@ let ScoresViewMaker = SVMaker.Make({
   stateSchema: stateSchema,
   consumedEventSchema: consumedEventSchema,
   config: config,
-  subIdConfig: subIdConfig
+  subIdConfig: subIdConfig,
+  authorization: "AllowAuthenticated"
 })({
   project: project,
   moduleUrl: moduleUrl$1

@@ -40,6 +40,7 @@ module Make = (
       let stateSchema = OutboundTranslationSlice_Callback.todoRowSchema
       let config = Reventless.ReadModel.config()
       let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
+      let authorization: Reventless.Authorization.permission = AllowAuthenticated
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(TodoQueryDbSpec, QueryDbStorage, QueryDbResolvers)

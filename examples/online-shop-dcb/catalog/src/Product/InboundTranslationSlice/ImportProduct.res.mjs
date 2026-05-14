@@ -19,6 +19,10 @@ let commandSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "ImportProduct";
 
 let Id;
@@ -34,5 +38,6 @@ export {
   commandSchema,
   targetName,
   moduleUrl,
+  commandAuthorization,
 }
 /* externalInputSchema Not a pure module */

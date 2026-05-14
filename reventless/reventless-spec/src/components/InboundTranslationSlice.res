@@ -50,6 +50,12 @@ module type Spec = {
 
   /** Name of the aggregate or StateChangeSlice that receives the produced command. */
   let targetName: string
+
+  /** Authorization rule evaluated at the GraphQL resolver entry before any
+      external input is translated. Auto-injected by `@@reventless.spec` and
+      on structurally-detected inline spec modules — defaults to
+      `AllowAuthenticated`. */
+  let commandAuthorization: command => Authorization.permission
 }
 
 /**

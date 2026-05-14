@@ -42,6 +42,10 @@ let errorSchema = S.union([
   S.literal("CustomerAlreadyDeactivated")
 ]);
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "Customer";
 
 let Id;
@@ -55,5 +59,6 @@ export {
   eventSchema,
   errorSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* commandSchema Not a pure module */

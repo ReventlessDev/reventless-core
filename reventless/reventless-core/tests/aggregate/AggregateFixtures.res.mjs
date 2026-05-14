@@ -38,13 +38,18 @@ let errorSchema = S.union([
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let AggSpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 let stateSchema = S.union([
@@ -203,7 +208,8 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
   eventSchema: eventSchema,
   errorSchema: errorSchema,
   commandSchema: commandSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 })({
   initialState: "NotCreated",
   evolve: evolve,
@@ -222,7 +228,8 @@ let TestHandler = Aggregate_Callback$ReventlessCore.Make({
     eventSchema: eventSchema,
     errorSchema: errorSchema,
     commandSchema: commandSchema,
-    moduleUrl: moduleUrl
+    moduleUrl: moduleUrl,
+    commandAuthorization: commandAuthorization
   },
   EventLog: {
     Spec: {

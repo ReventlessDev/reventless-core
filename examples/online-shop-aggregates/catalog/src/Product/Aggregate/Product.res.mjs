@@ -49,6 +49,10 @@ let errorSchema = S.union([
   S.literal("ProductNotFound")
 ]);
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "Product";
 
 let Id;
@@ -62,5 +66,6 @@ export {
   eventSchema,
   errorSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* commandSchema Not a pure module */

@@ -293,7 +293,8 @@ function Make(Spec) {
       eventSchema: PluginSpec$ReventlessCore.eventSchema,
       errorSchema: PluginSpec$ReventlessCore.errorSchema,
       commandSchema: PluginSpec$ReventlessCore.commandSchema,
-      moduleUrl: PluginSpec$ReventlessCore.moduleUrl
+      moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
+      commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
     },
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent

@@ -28,6 +28,10 @@ let eventSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "ChangeProductName";
 
 let Id;
@@ -42,5 +46,6 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

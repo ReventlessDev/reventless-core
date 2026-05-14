@@ -37,11 +37,16 @@ function translate(input) {
   }
 }
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let PaymentWebhookSlice = {
   name: "PaymentWebhook",
   externalInputSchema: externalInputSchema,
   commandSchema: commandSchema,
-  translate: translate
+  translate: translate,
+  commandAuthorization: commandAuthorization
 };
 
 let include = InboundTranslation_GWT$ReventlessGwt.Make(PaymentWebhookSlice);

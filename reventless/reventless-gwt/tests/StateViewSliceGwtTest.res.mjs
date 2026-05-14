@@ -30,7 +30,8 @@ let CategoriesView = {
   name: "CategoriesView",
   stateSchema: stateSchema,
   consumedEventSchema: consumedEventSchema,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 function project(event) {

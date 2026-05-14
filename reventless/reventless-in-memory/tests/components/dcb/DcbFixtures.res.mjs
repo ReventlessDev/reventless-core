@@ -45,6 +45,10 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("ItemAlreadyExists");
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let AddItemSpec = {
   name: name,
   Id: undefined,
@@ -52,7 +56,8 @@ let AddItemSpec = {
   eventSchema: eventSchema$1,
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -115,7 +120,8 @@ let AddItemMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
   eventSchema: eventSchema$1,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 })({
   initialState: false,
   evolve: evolve,

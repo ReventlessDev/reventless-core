@@ -23,10 +23,15 @@ let commandSchema = S.union([
   }))
 ]);
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let TestSpec = {
   Id: undefined,
   name: name,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 };
 
 let capturedItems = {
@@ -60,7 +65,8 @@ function commandsHandler(stream) {
 let TestOps_Spec = {
   Id: Id$Reventless.StringPure,
   name: name,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 };
 
 let TestOps = {

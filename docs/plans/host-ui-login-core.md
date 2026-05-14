@@ -20,32 +20,80 @@ Each stage has a verification gate; do not advance until it passes. Stage B is e
 
 ## Stage A — Abstraction + in-memory baseline (no AWS work)
 
-### A1. Define the auth abstraction types
+### A1. Define the auth abstraction types — ✅ done
 
-- In `reventless/reventless-spec/src/types/`:
-  - Verify `Identity.res` exposes the expected shape `{userId, username, groups, claims?, provider}` — it should already (see the abstraction reference).
-  - Add `permission` variant (`AllowGroups / AllowAuthenticated / AllowAnonymous / DenyAll`) and `authResult` (`Authenticated(identity) | Anonymous | AuthError(string)`).
-- Define `Auth_Adapter.Provider` module type in `reventless/reventless-core/src/adapter/Auth/Auth_Adapter.res` — `authenticate: requestContext => promise<authResult>` plus a deploy-time `make`. See the abstraction reference for the exact module-type signature.
+**Commit:** `a273c10d4`
 
-**Verify:** `pnpm run build` from root passes with zero warnings.
+- `reventless-spec/src/types/Identity.res` — added `authResult` variant (`Authenticated(t) | Anonymous | AuthError(string)`). Existing `t` already matched the expected shape.
+- `reventless-spec/src/types/Authorization.res` (new) — `permission` variant (`AllowGroups(array<string>) | AllowAuthenticated | AllowAnonymous | DenyAll`) plus `isAllowed: (permission, Identity.t) => bool` helper.
+- `reventless-core/src/adapter/Auth/Auth_Adapter.res` (new) — `requestContext` envelope (`{headers, sourceIp?, correlationId?, userAgent?}`) and `Provider` module type with abstract `authConfig`, `authenticate: requestContext => promise<Identity.authResult>`, deploy-time `make: (~name, ~opts=?) => Pulumi.Output.t<authConfig>`.
 
-### A2. Implement `Auth_InMemory.authenticate` (header-based)
+### A2. Implement `Auth_InMemory.authenticate` (header-based) — ✅ done
 
-- Create `reventless/reventless-in-memory/src/adapter/Auth/Auth_InMemory.res` implementing `Auth_Adapter.Provider`.
-- Extraction order: `X-User: alice|admin|…` → identity from configured users; `X-Groups: A,B,C` → overrides groups on the resolved identity; neither → `Identity.anonymous`.
-- Wire as the graphql-yoga `context` factory in `reventless/reventless-in-memory/src/adapter/DomainGraphQL_Server.res`. Resolvers receive `ctx.identity`.
+**Commit:** `fe7005204` (no-header tweak baked into commits `fe7005204` and `dd188ee86`).
 
-**Verify:** `curl -H 'X-User: admin' …` produces a request whose resolver sees `ctx.identity.groups = ["Admin"]`. A unit test on `Auth_InMemory` covers the extraction matrix.
+- `reventless-in-memory/src/adapter/Auth/Auth_InMemory.res` — built-in `defaultUser` (groups: `["User"]`) + `adminUser` (groups: `["Admin", "User"]`); mutable user registry seeded with both; `registerUser`/`resetUsers` for tests. Header parsing case-insensitive (`X-User` / `X-Groups`).
+- **Behavior decision (see [feedback memory](../../.claude/projects/-Users-martin-prj-ReventlessDev-reventless-core/memory/feedback_authz_default_and_in_memory_dev.md)):** no `X-User` header → `Authenticated(defaultUser)` (not `Anonymous`), so local dev "just works" against an `AllowAuthenticated`-defaulted backend. Anonymous is reachable only by explicit `Identity.anonymous`.
+- `rescript-graphql-yoga/src/GraphqlYoga.res` — new `createYogaWithContext` binding (re-binds graphql-yoga's `createYoga` with the `context` option). Existing callers stay on the original binding.
+- `reventless-in-memory/src/adapter/DomainGraphQL_Server.res` — `buildAuthContext` factory flattens Fetch API headers to a lowercase dict, calls `Auth_InMemory.authenticate`, attaches `ctx.identity`. Wired at both yoga instances (`start` + `rebuildSchema`).
+- Tests: 7 cases on the extraction matrix in `tests/adapter/Auth_InMemoryTest.res`. Full in-memory suite: 383/383 pass.
 
-### A3. Spec-level authorization on one example
+### A3. Spec-level authorization, PPX-driven
 
-- Add `commandAuthorization` (optional) to `Aggregate.Spec` and `authorization` (optional) to `ReadModel.Spec`. See the abstraction reference for the spec-level authorization conventions.
-- Enforce at resolver entry: in `CommandGeneratorResolvers_GraphQL` (in-memory) and `QueryDbResolvers_AppSync` (AWS) — wrap dispatch with `authorize(ctx.identity, rule)`. **Keep the diff symmetric across both transports** — divergence between the in-memory and AWS resolver paths is a recurring source of bugs.
-- Apply to one example aggregate in `examples/online-shop-hybrid/catalog/` and one read model. Use the syntax `let commandAuthorization = _ => AllowGroups(["Admin"])` for the simplest case.
+> Split into A3.1 (PPX top-level annotation) → A3.2 (Spec module types + PPX inline-spec walk) → A3.3 (resolver enforcement) → A3.3b (per-constructor `@authorize`) → A3.5 (apply to example + integration tests). A3.4 (Auth_InMemory no-header tweak) folded into A2.
 
-**Verify:** test a header-driven `X-User: admin` request to the restricted mutation succeeds; `X-User: alice` (non-Admin) is rejected with a 403-equivalent GraphQL error.
+The mechanism is declarative via PPX annotations — framework default is `AllowAuthenticated`, override with file-level `@@reventless.authorize(<rule>)`:
 
-### A4. Token issuance: `Auth_InMemory.Login` + YAML store
+```rescript
+@@reventless.spec
+@@reventless.authorize(AllowGroups(["Admin"]))   // whole aggregate
+
+@schema type command = …
+```
+
+Per-constructor `@authorize(<rule>)` on `type command` variants is planned for A3.3b (right after resolver enforcement lands).
+
+#### A3.1 — PPX file-level annotation + auto-inject defaults — ✅ done
+
+**Commit:** `dd188ee86`
+
+- `reventless-ppx/src/ppx/AuthorizationInjection.ml` (new) — folder-based detector (`Aggregate/`, `*StateChangeSlice*`, `*InboundTranslationSlice*` → command-carrier; `ReadModel/`, `*StateViewSlice*`, `*StateViewSliceStream*` → query-carrier); generators for `let commandAuthorization = _ => <rule>` and `let authorization = <rule>`; payload extraction from `@@reventless.authorize(<expr>)`; idempotent on bodies already declaring the binding.
+- `reventless-ppx/src/ppx/ReventlessPpx.ml` — `transform`'s `Spec` mode calls `AuthorizationInjection.inject` after the existing prefix/body/suffix assembly.
+- Framework default rule `Reventless.Authorization.AllowAuthenticated` emitted fully qualified — `open Reventless.Authorization` is only added when the file's payload uses unqualified constructors (avoids "unused open" warnings on every spec).
+- PPX binaries rebuilt: `ppx-osx-x64.exe`, `ppx-linux.exe` (Docker amd64). 179/179 PPX integration tests pass.
+
+#### A3.2 — Spec module types + PPX inline-spec walk + framework hand-edits — ✅ done
+
+**Commit:** see the final A3 squash (PPX inline-spec walk + Spec module types + deep-inline framework edits).
+
+- **Spec module types** now declare the authorization field:
+  - `Aggregate.Spec`, `StateChangeSlice.Spec`, `InboundTranslationSlice.Spec` → `let commandAuthorization: command => Authorization.permission`
+  - `ReadModel.Spec`, `StateViewSlice.Spec` → `let authorization: Authorization.permission`
+- **PPX inline-spec walk** — `AuthorizationInjection.walk_inline_specs` runs unconditionally at the start of `transform`. Structural detection of aggregate-shaped (`@schema type command`) and read-model-shaped (`@schema type state` + `let subIdConfig`) inner modules → injects `commandAuthorization` / `authorization` with the framework default. Eliminates the boilerplate for all 23-ish test fixtures and any `@@reventless.spec` file in unconventional locations (e.g. `src/admin/PluginSpec.res`).
+- **Spec-namespace packages skipped** — `CatalogSpec`, `OrderingSpec` etc. don't depend on reventless-spec, so injection (which references `Reventless.Authorization`) would not resolve there. The framework spec packages don't need the field because the types they declare (ExtensionPoint protocols, etc.) satisfy module types that don't require authorization.
+- **Top-level structural fallback** — `detect_kind_by_structure` handles `@@reventless.spec` files outside the folder convention (e.g. `src/admin/PluginSpec.res`).
+- **`transform_delegate_module` extended** — Delegate modules inside ExtensionPointMapping files get a `let commandAuthorization` stub alongside the auto-injected `Id`/`command`/`error`/`moduleUrl`.
+- **Hand-edits for `Pexp_letmodule` cases** — modules defined inside `let … = () => { module Foo = … }` function bodies are at AST positions the PPX walk doesn't reach. Eight framework files get an explicit one-liner: `Counter_Builder`, `Inbound/Outbound/AutomationSlice_Builder`, `StateViewSlice_Builder` (reads `Spec.authorization`), `infra/types/ExtensionMapping.NoDelegate`, plus 2 test fixtures (`QueryDbListResolverTest`, `InboundTranslationSliceCallbackTest`).
+
+After A3.2: full monorepo builds clean, 383/383 in-memory tests still pass, 179/179 PPX tests still pass. Roughly 120 `.res.mjs` downstream regenerations.
+
+#### A3.3 — Resolver enforcement (in-memory) — pending
+
+Wrap dispatch in `CommandGeneratorResolvers_GraphQL` and `QueryDbResolvers_GraphQL` with `Authorization.isAllowed(rule, ctx.identity)`. Return a GraphQL `403`-equivalent error on deny. **Keep the diff symmetric across both transports** — divergence between the in-memory and AWS resolver paths is a recurring source of bugs.
+
+#### A3.3b — Per-constructor `@authorize` annotation — pending
+
+Walk `@schema type command` constructors, build a `switch command { … }` that maps each constructor to its `@authorize(rule)` payload (or the file-level default). Wholly inside `AuthorizationInjection.ml`; the resolver code path doesn't change.
+
+#### A3.5 — Apply to catalog example + integration test — pending
+
+- `examples/online-shop-hybrid/catalog/src/Category/Aggregate/Category.res` — `@@reventless.authorize(AllowAuthenticated)` (matches the default — explicit) plus `@authorize(AllowGroups(["Admin"]))` on the `Archive` constructor.
+- `examples/online-shop-hybrid/catalog/src/Category/ReadModel/Categories.res` — `@@reventless.authorize(AllowAuthenticated)`.
+- Integration test: `X-User: admin` succeeds against Archive; `X-User: user` returns a 403-equivalent GraphQL error.
+
+**Verify (whole A3):** `curl -H 'X-User: admin' …` on the restricted mutation succeeds; `X-User: user` (or no header, which yields `defaultUser` with only the `User` group) is rejected at the resolver boundary.
+
+### A4. Token issuance: `Auth_InMemory.Login` + YAML store — pending
 
 This is the only Stage A step that goes beyond the abstraction reference (which only specifies validation, not issuance).
 

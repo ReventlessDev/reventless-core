@@ -28,6 +28,10 @@ let eventSchema = S.schema(s => ({
   price: s.m(S.float)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "ChangeProductPrice";
 
 let Id;
@@ -42,5 +46,6 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

@@ -26,7 +26,8 @@ let ItemQueryDbSpec = {
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -51,7 +52,8 @@ let QueryDbMaker = QueryDb_Builder$ReventlessCore.Make({
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 })({
   make: QDbStorage.make
 })(QDbResolvers);

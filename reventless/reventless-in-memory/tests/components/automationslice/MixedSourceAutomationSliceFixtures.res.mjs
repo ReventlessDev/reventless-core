@@ -63,6 +63,10 @@ let commandSchema = S.schema(s => ({
   productId: s.m(DcbTag$Reventless.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let AutoFulfillSpec = {
   name: name$2,
   moduleUrl: moduleUrl,
@@ -70,7 +74,8 @@ let AutoFulfillSpec = {
   commandSchema: commandSchema,
   maxRetries: 3,
   heartbeatInterval: 60,
-  targetName: "MarkFulfilled"
+  targetName: "MarkFulfilled",
+  commandAuthorization: commandAuthorization
 };
 
 function collect(event, _ctx) {

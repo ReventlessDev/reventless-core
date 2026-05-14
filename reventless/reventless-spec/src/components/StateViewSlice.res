@@ -65,6 +65,12 @@ module type Spec = {
 
   /** Optional composite-key configuration. `None` for single-key tables. */
   let subIdConfig: option<ReadModel.subIdConfig<state>>
+
+  /** Authorization rule evaluated at the GraphQL resolver entry before any
+      query is resolved. Auto-injected by `@@reventless.spec` and on
+      structurally-detected inline spec modules — defaults to
+      `AllowAuthenticated`. */
+  let authorization: Authorization.permission
 }
 
 /**

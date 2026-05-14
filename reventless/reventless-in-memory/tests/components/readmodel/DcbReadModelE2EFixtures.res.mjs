@@ -40,6 +40,10 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("ProductAlreadyExists");
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let AddProductSpec = {
   name: name,
   Id: undefined,
@@ -47,7 +51,8 @@ let AddProductSpec = {
   eventSchema: eventSchema,
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -113,7 +118,8 @@ let ProductsReadModelSpec = {
   moduleUrl: moduleUrl$2,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 function project(msg) {
@@ -178,7 +184,8 @@ let AddProductMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
   eventSchema: eventSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 })({
   initialState: false,
   evolve: evolve,
@@ -240,7 +247,8 @@ let ProductsReadModel = ReadModelMaker.Make({
   moduleUrl: moduleUrl$2,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 })(ProductsMappings);
 
 let rm = ProductsReadModel.make(undefined, undefined, allEventTopics, undefined);

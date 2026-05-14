@@ -22,12 +22,17 @@ let directiveSchema = S.literal("OpsEPNoDirective");
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let OpsEPSpec = {
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   directiveSchema: directiveSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 let capturedPublished = {

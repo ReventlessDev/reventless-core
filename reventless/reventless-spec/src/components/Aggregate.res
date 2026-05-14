@@ -54,4 +54,11 @@ module type Spec = {
   /** File URL of this module (`import.meta.url`). Used by AWS builders to derive
       the npm specifier for runtime dynamic imports. */
   let moduleUrl: string
+
+  /** Authorization rule evaluated at the GraphQL resolver entry before any
+      command is dispatched. Auto-injected by `@@reventless.spec` and on
+      structurally-detected inline spec modules — defaults to
+      `AllowAuthenticated`; override at the file/module level with
+      `@@reventless.authorize(<rule>)`. */
+  let commandAuthorization: command => Authorization.permission
 }

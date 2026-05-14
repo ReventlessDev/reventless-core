@@ -37,6 +37,8 @@ let subIdConfig;
 
 let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
 
+let authorization = "AllowAuthenticated";
+
 export {
   name,
   Id,
@@ -45,5 +47,6 @@ export {
   config,
   subIdConfig,
   moduleUrl,
+  authorization,
 }
 /* statusSchema Not a pure module */

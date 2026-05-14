@@ -16,7 +16,14 @@ let PaymentWebhookTranslation = {
   moduleUrl: moduleUrl
 };
 
-let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make(InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec)(PaymentWebhookTranslation);
+let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make({
+  name: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.name,
+  moduleUrl: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.moduleUrl,
+  externalInputSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.externalInputSchema,
+  commandSchema: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.commandSchema,
+  targetName: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.targetName,
+  commandAuthorization: InboundTranslationSliceFixtures$ReventlessInMemory.PaymentWebhookSpec.commandAuthorization
+})(PaymentWebhookTranslation);
 
 describe("InboundTranslationSlice Callback", () => {
   beforeEach(() => {
@@ -135,19 +142,19 @@ describe("InboundTranslationSlice Callback", () => {
           }
         ])
       });
-      let MultiSpec = {
+      let commandAuthorization = param => "AllowAuthenticated";
+      let MultiTranslation = {
+        translate: translate,
+        moduleUrl: moduleUrl
+      };
+      let MultiCallback = InboundTranslationSlice_Callback$ReventlessCore.Make({
         name: "BatchWebhook",
         moduleUrl: moduleUrl,
         externalInputSchema: externalInputSchema,
         commandSchema: commandSchema,
         targetName: "ConfirmPayment",
-        translate: translate
-      };
-      let MultiTranslation = {
-        translate: translate,
-        moduleUrl: moduleUrl
-      };
-      let MultiCallback = InboundTranslationSlice_Callback$ReventlessCore.Make(MultiSpec)(MultiTranslation);
+        commandAuthorization: commandAuthorization
+      })(MultiTranslation);
       let publishedCommands = {
         contents: []
       };
@@ -192,19 +199,19 @@ describe("InboundTranslationSlice Callback", () => {
         TAG: "Ok",
         _0: []
       });
-      let EmptySpec = {
+      let commandAuthorization = param => "AllowAuthenticated";
+      let EmptyTranslation = {
+        translate: translate,
+        moduleUrl: moduleUrl
+      };
+      let EmptyCallback = InboundTranslationSlice_Callback$ReventlessCore.Make({
         name: "EmptyWebhook",
         moduleUrl: moduleUrl,
         externalInputSchema: externalInputSchema,
         commandSchema: commandSchema,
         targetName: "ConfirmPayment",
-        translate: translate
-      };
-      let EmptyTranslation = {
-        translate: translate,
-        moduleUrl: moduleUrl
-      };
-      let EmptyCallback = InboundTranslationSlice_Callback$ReventlessCore.Make(EmptySpec)(EmptyTranslation);
+        commandAuthorization: commandAuthorization
+      })(EmptyTranslation);
       let publishedCommands = {
         contents: []
       };

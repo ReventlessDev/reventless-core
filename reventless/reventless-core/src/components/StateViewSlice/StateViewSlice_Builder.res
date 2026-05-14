@@ -33,6 +33,7 @@ module Make = (
       let stateSchema = Spec.stateSchema
       let config = Spec.config
       let subIdConfig = Spec.subIdConfig
+      let authorization = Spec.authorization
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(SvQueryDbSpec, QueryDbStorage, QueryDbResolvers)

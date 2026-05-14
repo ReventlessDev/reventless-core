@@ -48,7 +48,8 @@ let TargetSpec = {
   name: name$1,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 function project(msg) {
@@ -149,11 +150,16 @@ let commandSchema = S.union([
 
 let moduleUrl$2 = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let CmdTargetSpec = {
   Id: undefined,
   name: name$3,
   commandSchema: commandSchema,
-  moduleUrl: moduleUrl$2
+  moduleUrl: moduleUrl$2,
+  commandAuthorization: commandAuthorization
 };
 
 function map(id, event, _queryEngine) {
@@ -227,7 +233,8 @@ let OrderMappings_Target = {
   Id: Id$Reventless.StringPure,
   name: name$3,
   commandSchema: commandSchema,
-  moduleUrl: moduleUrl$2
+  moduleUrl: moduleUrl$2,
+  commandAuthorization: commandAuthorization
 };
 
 let OrderMappings = {
@@ -255,7 +262,8 @@ let CountOrderMappings_Target = {
   Id: Id$Reventless.StringPure,
   name: name$3,
   commandSchema: commandSchema,
-  moduleUrl: moduleUrl$2
+  moduleUrl: moduleUrl$2,
+  commandAuthorization: commandAuthorization
 };
 
 let CountOrderMappings = {

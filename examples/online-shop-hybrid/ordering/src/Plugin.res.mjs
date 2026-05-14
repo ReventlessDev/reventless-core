@@ -38,7 +38,8 @@ function Make(Platform) {
     consumedEventSchema: CancelOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: CancelOrder$OrderingPlugin.errorSchema,
     eventSchema: CancelOrder$OrderingPlugin.eventSchema,
-    commandSchema: CancelOrder$OrderingPlugin.commandSchema
+    commandSchema: CancelOrder$OrderingPlugin.commandSchema,
+    commandAuthorization: CancelOrder$OrderingPlugin.commandAuthorization
   })({
     initialState: CancelOrder_Behavior$OrderingPlugin.initialState,
     evolve: CancelOrder_Behavior$OrderingPlugin.evolve,
@@ -52,7 +53,8 @@ function Make(Platform) {
     consumedEventSchema: PlaceOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: PlaceOrder$OrderingPlugin.errorSchema,
     eventSchema: PlaceOrder$OrderingPlugin.eventSchema,
-    commandSchema: PlaceOrder$OrderingPlugin.commandSchema
+    commandSchema: PlaceOrder$OrderingPlugin.commandSchema,
+    commandAuthorization: PlaceOrder$OrderingPlugin.commandAuthorization
   })({
     initialState: PlaceOrder_Behavior$OrderingPlugin.initialState,
     evolve: PlaceOrder_Behavior$OrderingPlugin.evolve,
@@ -66,7 +68,8 @@ function Make(Platform) {
     consumedEventSchema: RefundOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: RefundOrder$OrderingPlugin.errorSchema,
     eventSchema: RefundOrder$OrderingPlugin.eventSchema,
-    commandSchema: RefundOrder$OrderingPlugin.commandSchema
+    commandSchema: RefundOrder$OrderingPlugin.commandSchema,
+    commandAuthorization: RefundOrder$OrderingPlugin.commandAuthorization
   })({
     initialState: RefundOrder_Behavior$OrderingPlugin.initialState,
     evolve: RefundOrder_Behavior$OrderingPlugin.evolve,
@@ -80,7 +83,8 @@ function Make(Platform) {
     consumedEventSchema: ShipOrder$OrderingPlugin.consumedEventSchema,
     errorSchema: ShipOrder$OrderingPlugin.errorSchema,
     eventSchema: ShipOrder$OrderingPlugin.eventSchema,
-    commandSchema: ShipOrder$OrderingPlugin.commandSchema
+    commandSchema: ShipOrder$OrderingPlugin.commandSchema,
+    commandAuthorization: ShipOrder$OrderingPlugin.commandAuthorization
   })({
     initialState: ShipOrder_Behavior$OrderingPlugin.initialState,
     evolve: ShipOrder_Behavior$OrderingPlugin.evolve,
@@ -94,7 +98,8 @@ function Make(Platform) {
     consumedEventSchema: SyncCatalogProduct$OrderingPlugin.consumedEventSchema,
     errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
     eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
-    commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema
+    commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
+    commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization
   })({
     initialState: SyncCatalogProduct_Behavior$OrderingPlugin.initialState,
     evolve: SyncCatalogProduct_Behavior$OrderingPlugin.evolve,
@@ -107,7 +112,8 @@ function Make(Platform) {
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
     consumedEventSchema: AvailableProducts$OrderingPlugin.consumedEventSchema,
     config: AvailableProducts$OrderingPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: AvailableProducts$OrderingPlugin.authorization
   })({
     project: AvailableProducts_Projection$OrderingPlugin.project,
     moduleUrl: AvailableProducts_Projection$OrderingPlugin.moduleUrl
@@ -118,7 +124,8 @@ function Make(Platform) {
     stateSchema: Orders$OrderingPlugin.stateSchema,
     consumedEventSchema: Orders$OrderingPlugin.consumedEventSchema,
     config: Orders$OrderingPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: Orders$OrderingPlugin.authorization
   })({
     project: Orders_Projection$OrderingPlugin.project,
     moduleUrl: Orders_Projection$OrderingPlugin.moduleUrl
@@ -156,7 +163,8 @@ function Make(Platform) {
     eventSchema: Customer$OrderingPlugin.eventSchema,
     errorSchema: Customer$OrderingPlugin.errorSchema,
     commandSchema: Customer$OrderingPlugin.commandSchema,
-    moduleUrl: Customer$OrderingPlugin.moduleUrl
+    moduleUrl: Customer$OrderingPlugin.moduleUrl,
+    commandAuthorization: Customer$OrderingPlugin.commandAuthorization
   })({
     initialState: Customer_Behavior$OrderingPlugin.initialState,
     evolve: Customer_Behavior$OrderingPlugin.evolve,
@@ -173,7 +181,8 @@ function Make(Platform) {
     moduleUrl: Customers$OrderingPlugin.moduleUrl,
     stateSchema: Customers$OrderingPlugin.stateSchema,
     config: Customers$OrderingPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: Customers$OrderingPlugin.authorization
   })({
     moduleUrl: Customers_Projections$OrderingPlugin.moduleUrl,
     mappings: Customers_Projections$OrderingPlugin.mappings
@@ -192,7 +201,8 @@ function Make(Platform) {
       eventSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.eventSchema,
       errorSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.errorSchema,
       commandSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandSchema,
-      moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl
+      moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl,
+      commandAuthorization: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandAuthorization
     },
     mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
@@ -211,7 +221,8 @@ function Make(Platform) {
       eventSchema: SyncCatalogProduct$OrderingPlugin.eventSchema,
       errorSchema: SyncCatalogProduct$OrderingPlugin.errorSchema,
       commandSchema: SyncCatalogProduct$OrderingPlugin.commandSchema,
-      moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl
+      moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
+      commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization
     },
     mapIncomingEvent: Products_Extension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Products_Extension$OrderingPlugin.Mapping.mapOutgoingEvent

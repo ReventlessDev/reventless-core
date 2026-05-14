@@ -33,7 +33,8 @@ let MetricSpec = {
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: subIdConfig
+  subIdConfig: subIdConfig,
+  authorization: "AllowAuthenticated"
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
@@ -58,7 +59,8 @@ let MetricQueryDbMaker = QueryDb_Builder$ReventlessCore.Make({
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: subIdConfig
+  subIdConfig: subIdConfig,
+  authorization: "AllowAuthenticated"
 })({
   make: QDbStorage.make
 })(QDbResolvers);

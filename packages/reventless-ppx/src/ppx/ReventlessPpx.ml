@@ -233,9 +233,14 @@ let transform_delegate_module ~loc ~specifier (mb : module_binding) : module_bin
       (if not (Util.has_module_binding "Id" body) then [gen_module_id ~loc] else [])
       @ (if not (Util.has_type_binding "command" body) then [gen_schema_unit_type ~loc "command"] else [])
     in
+    let auth_suffix =
+      if Util.has_let_binding "commandAuthorization" body then []
+      else [AuthorizationInjection.gen_command_authorization ~loc (AuthorizationInjection.default_rule_expr ~loc)]
+    in
     let suffix =
       (if not (Util.has_type_binding "error" body) then [gen_schema_unit_type ~loc "error"] else [])
       @ (if not (Util.has_let_binding "moduleUrl" body) then [ModuleUrl.gen_module_url ~loc specifier] else [])
+      @ auth_suffix
     in
     let new_body = { mb.pmb_expr with pmod_desc = Pmod_structure (prefix @ body @ suffix) } in
     { mb with pmb_expr = new_body; pmb_attributes = attrs }
@@ -615,6 +620,10 @@ let dispatch_task_impl ~loc ~specifier ~name body =
 
 let transform (str : structure) : structure =
   let str = GwtInference.transform str in
+  (* Inline spec-shaped inner modules (test fixtures, framework-internal
+     helpers) get auth-field injection before any other pass — independent
+     of @@reventless.spec mode. Cheap no-op when the file has no specs. *)
+  let str = AuthorizationInjection.walk_inline_specs str in
   let initial_mode = detect_mode str in
   let has_mode = initial_mode <> None in
   let is_spec = match initial_mode with Some (Spec _, _) -> true | _ -> false in

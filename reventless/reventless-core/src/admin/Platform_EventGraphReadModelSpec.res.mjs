@@ -168,6 +168,8 @@ let subIdConfig;
 
 let moduleUrl = "@reventlessdev/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res.mjs";
 
+let authorization = "AllowAuthenticated";
+
 export {
   name,
   Id,
@@ -180,5 +182,6 @@ export {
   config,
   subIdConfig,
   moduleUrl,
+  authorization,
 }
 /* stateSchema Not a pure module */

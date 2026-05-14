@@ -21,13 +21,18 @@ let Id = {
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization() {
+  return "AllowAuthenticated";
+}
+
 let NoDelegate = {
   name: "NoDelegate",
   Id: Id,
   eventSchema: S.unit,
   errorSchema: S.unit,
   commandSchema: S.unit,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 function Make(MappingImpl) {

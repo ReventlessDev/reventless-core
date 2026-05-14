@@ -23,7 +23,8 @@ let ItemQueryDbSpec = {
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 let store = {

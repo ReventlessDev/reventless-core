@@ -6,7 +6,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 let consumedEventSchema = S.union([
   S.schema(s => ({
     TAG: "OrderPlaced",
-    productIds: s.m(S.array(DcbTag$Reventless.string))
+    productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
   })),
   S.literal("OrderShipped"),
   S.literal("OrderCancelled")
@@ -25,8 +25,12 @@ let errorSchema = S.union([
 let eventSchema = S.schema(s => ({
   TAG: "OrderCancelled",
   orderId: s.m(DcbTag$Reventless.partition),
-  productIds: s.m(S.array(DcbTag$Reventless.string))
+  productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
 }));
+
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
 
 let name = "CancelOrder";
 
@@ -42,5 +46,6 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

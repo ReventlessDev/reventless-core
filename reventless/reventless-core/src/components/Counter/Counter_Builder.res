@@ -29,6 +29,7 @@ module Make = (
 
       let subIdConfig = None
       let config = Reventless.ReadModel.config()
+      let authorization: Reventless.Authorization.permission = AllowAuthenticated
     }
 
     module ReferencesDb = QueryDb_Builder.Make(
@@ -46,6 +47,7 @@ module Make = (
 
       let subIdConfig = None
       let config = Reventless.ReadModel.config()
+      let authorization: Reventless.Authorization.permission = AllowAuthenticated
     }
     module CountsDb = QueryDb_Builder.Make(
       CountsSpec,

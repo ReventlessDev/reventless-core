@@ -62,6 +62,8 @@ let subIdConfig;
 
 let moduleUrl = "@reventlessdev/reventless-core/tests/plugin/StateViewSlice/PsOrdersView.res.mjs";
 
+let authorization = "AllowAuthenticated";
+
 export {
   name,
   Id,
@@ -71,5 +73,6 @@ export {
   config,
   subIdConfig,
   moduleUrl,
+  authorization,
 }
 /* consumedEventSchema Not a pure module */

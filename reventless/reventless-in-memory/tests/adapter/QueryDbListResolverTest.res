@@ -105,6 +105,7 @@ let buildFixture = async (~name: string) => {
     type state = rowState
     let config = Reventless.ReadModel.config()
     let subIdConfig = None
+    let authorization: Reventless.Authorization.permission = AllowAuthenticated
   }
 
   module QDbResolversAdapter = ReventlessCore.QueryDb_Adapter.NoResolvers(Storage)

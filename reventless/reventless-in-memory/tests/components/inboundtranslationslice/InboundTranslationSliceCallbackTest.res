@@ -149,6 +149,9 @@ describe("InboundTranslationSlice Callback", () => {
               ConfirmPayment({orderId: input.orderId, paymentId: item}),
             )),
           )
+
+        let commandAuthorization = (_: command): Reventless.Authorization.permission =>
+          AllowAuthenticated
       }
 
       module MultiTranslation = {
@@ -206,6 +209,9 @@ describe("InboundTranslationSlice Callback", () => {
         let targetName = "ConfirmPayment"
 
         let translate = (_input: externalInput) => Ok([])
+
+        let commandAuthorization = (_: command): Reventless.Authorization.permission =>
+          AllowAuthenticated
       }
 
       module EmptyTranslation = {

@@ -43,7 +43,8 @@ function Make(QueryDbStorage) {
           moduleUrl: moduleUrl,
           stateSchema: Counter_Operations$ReventlessCore.referencesStateSchema,
           config: config,
-          subIdConfig: undefined
+          subIdConfig: undefined,
+          authorization: "AllowAuthenticated"
         })(QueryDbStorage)(QueryDb_Adapter$ReventlessCore.NoResolvers(QueryDbStorage));
         let name$1 = extra$1 + "Counts";
         let moduleUrl$1 = import.meta.url;
@@ -60,7 +61,8 @@ function Make(QueryDbStorage) {
           moduleUrl: moduleUrl$1,
           stateSchema: Counter_Callback$ReventlessCore.countsStateSchema,
           config: config$1,
-          subIdConfig: undefined
+          subIdConfig: undefined,
+          authorization: "AllowAuthenticated"
         })(QueryDbStorage)(QueryDb_Adapter$ReventlessCore.NoResolvers(QueryDbStorage));
         let referencesDb = ReferencesDb.make(Api.api(), Api.apiRole(), ttl$1, opts);
         let countsDb = CountsDb.make(Api.api(), Api.apiRole(), ttl$1, opts);

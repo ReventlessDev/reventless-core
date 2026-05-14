@@ -24,12 +24,17 @@ let eventSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let AddCategorySlice = {
   name: "AddCategory",
   consumedEventSchema: consumedEventSchema,
   commandSchema: commandSchema,
   errorSchema: errorSchema,
-  eventSchema: eventSchema
+  eventSchema: eventSchema,
+  commandAuthorization: commandAuthorization
 };
 
 let initialState = {
@@ -159,12 +164,17 @@ let eventSchema$1 = S.schema(s => ({
   id: s.m(S.string)
 }));
 
+function commandAuthorization$1(param) {
+  return "AllowAuthenticated";
+}
+
 let MissingTagSlice = {
   name: "MissingTagSlice",
   consumedEventSchema: consumedEventSchema$1,
   commandSchema: commandSchema$1,
   errorSchema: errorSchema$1,
-  eventSchema: eventSchema$1
+  eventSchema: eventSchema$1,
+  commandAuthorization: commandAuthorization$1
 };
 
 function evolve$1(state, _event) {

@@ -1,6 +1,4 @@
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
-open Reventless.Projection
-
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CatalogProductAggregate = Platform.Aggregate.Make(

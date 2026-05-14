@@ -32,6 +32,10 @@ function decide(_state, _command) {
   };
 }
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "ShipOrder";
 
 let Id;
@@ -51,5 +55,6 @@ export {
   eventSchema,
   decide,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

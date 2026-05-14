@@ -32,6 +32,10 @@ let eventSchema = S.schema(s => ({
   email: s.m(S.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "ChangeEmail";
 
 let Id;
@@ -46,5 +50,6 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

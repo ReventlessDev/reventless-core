@@ -58,6 +58,10 @@ let commandSchema = S.schema(s => ({
   orderId: s.m(DcbTag$Reventless.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let ShipOrderSpec = {
   name: "ShipOrder",
   moduleUrl: moduleUrl,
@@ -65,7 +69,8 @@ let ShipOrderSpec = {
   commandSchema: commandSchema,
   maxRetries: 3,
   heartbeatInterval: 60,
-  targetName: "CreateShipment"
+  targetName: "CreateShipment",
+  commandAuthorization: commandAuthorization
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -76,6 +81,10 @@ let todoItemSchema$1 = S.schema(s => ({
 
 let commandSchema$1 = S.literal("Noop");
 
+function commandAuthorization$1(param) {
+  return "AllowAuthenticated";
+}
+
 let SkipProcessSpec = {
   name: "SkipProcess",
   moduleUrl: moduleUrl$1,
@@ -83,7 +92,8 @@ let SkipProcessSpec = {
   commandSchema: commandSchema$1,
   maxRetries: 0,
   heartbeatInterval: 60,
-  targetName: "Noop"
+  targetName: "Noop",
+  commandAuthorization: commandAuthorization$1
 };
 
 function collect(event, _ctx) {

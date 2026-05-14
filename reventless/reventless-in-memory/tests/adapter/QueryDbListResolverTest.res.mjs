@@ -115,7 +115,8 @@ async function buildFixture(name) {
     moduleUrl: moduleUrl,
     stateSchema: rowStateSchema,
     config: config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: "AllowAuthenticated"
   })({
     make: Storage.make
   })(QDbResolversAdapter);

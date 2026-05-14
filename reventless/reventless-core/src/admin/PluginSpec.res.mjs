@@ -80,6 +80,10 @@ let errorSchema = S.union([
   S.literal("IsInactive")
 ]);
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "Plugin";
 
 let Id;
@@ -96,5 +100,6 @@ export {
   eventSchema,
   errorSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* commandSchema Not a pure module */

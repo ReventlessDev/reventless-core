@@ -33,6 +33,10 @@ let eventSchema = S.schema(s => ({
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApi(commandSchema);
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "RefundOrder";
 
 let Id;
@@ -47,5 +51,6 @@ export {
   eventSchema,
   commandSchema$1 as commandSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

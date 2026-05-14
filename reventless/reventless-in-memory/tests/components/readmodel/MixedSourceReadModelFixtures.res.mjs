@@ -31,7 +31,8 @@ let MixedReadModelSpec = {
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 let name$1 = "TestAggregateEventTopic";
@@ -198,7 +199,8 @@ let MixedRM = ReadModelMaker.Make({
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 })(MixedMappings);
 
 let rm = MixedRM.make(undefined, undefined, allEventTopics, undefined);

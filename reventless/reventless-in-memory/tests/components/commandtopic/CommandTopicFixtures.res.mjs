@@ -29,13 +29,18 @@ let errorSchema = S.literal("AlreadyExists");
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let ItemSpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});

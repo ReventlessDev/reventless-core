@@ -77,6 +77,13 @@ module type Spec = {
 
   /** Schema for the command type — used to extract DCB tags for the conditional read. */
   let commandSchema: S.t<command>
+
+  /** Authorization rule evaluated at the GraphQL resolver entry before any
+      command is dispatched. Auto-injected by `@@reventless.spec` and on
+      structurally-detected inline spec modules — defaults to
+      `AllowAuthenticated`; override at the file/module level with
+      `@@reventless.authorize(<rule>)`. */
+  let commandAuthorization: command => Authorization.permission
 }
 
 /**

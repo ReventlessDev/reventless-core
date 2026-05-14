@@ -28,12 +28,17 @@ let directiveSchema = S.literal("DirectiveA");
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let TestEPSpec = {
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   directiveSchema: directiveSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 let capturedPublishedCmds = {

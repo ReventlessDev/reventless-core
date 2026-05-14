@@ -25,6 +25,8 @@ let subIdConfig;
 
 let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Order/ReadModel/Orders.res.mjs";
 
+let authorization = "AllowAuthenticated";
+
 export {
   name,
   Id,
@@ -33,5 +35,6 @@ export {
   config,
   subIdConfig,
   moduleUrl,
+  authorization,
 }
 /* statusSchema Not a pure module */

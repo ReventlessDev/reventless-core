@@ -60,7 +60,8 @@ let TestHandler = StateChangeSlice_Callback$ReventlessCore.Make({
   consumedEventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.consumedEventSchema,
   errorSchema: DcbFixtures$ReventlessCore.TestCommandSpec.errorSchema,
   eventSchema: DcbFixtures$ReventlessCore.TestCommandSpec.eventSchema,
-  commandSchema: DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema
+  commandSchema: DcbFixtures$ReventlessCore.TestCommandSpec.commandSchema,
+  commandAuthorization: DcbFixtures$ReventlessCore.TestCommandSpec.commandAuthorization
 })(TestCommandBehavior);
 
 function makeTopicItem(reference, command) {

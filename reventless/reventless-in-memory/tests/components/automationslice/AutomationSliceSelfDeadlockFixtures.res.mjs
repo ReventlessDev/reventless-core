@@ -36,6 +36,10 @@ let commandSchema = S.schema(s => ({
 
 let errorSchema = S.literal("AlreadyPlaced");
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let PlaceSpec = {
   name: name,
   Id: undefined,
@@ -43,7 +47,8 @@ let PlaceSpec = {
   eventSchema: eventSchema,
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -101,6 +106,10 @@ let commandSchema$1 = S.schema(s => ({
 
 let errorSchema$1 = S.literal("NotPlaced");
 
+function commandAuthorization$1(param) {
+  return "AllowAuthenticated";
+}
+
 let ShipSpec = {
   name: name$1,
   Id: undefined,
@@ -108,7 +117,8 @@ let ShipSpec = {
   eventSchema: eventSchema$1,
   consumedEventSchema: consumedEventSchema$1,
   errorSchema: errorSchema$1,
-  commandSchema: commandSchema$1
+  commandSchema: commandSchema$1,
+  commandAuthorization: commandAuthorization$1
 };
 
 let moduleUrl$3 = import.meta.url;
@@ -196,6 +206,10 @@ let commandSchema$2 = S.schema(s => ({
   orderId: s.m(DcbTag$Reventless.string)
 }));
 
+function commandAuthorization$2(param) {
+  return "AllowAuthenticated";
+}
+
 let AutoShipSpec = {
   name: name$3,
   moduleUrl: moduleUrl$4,
@@ -203,7 +217,8 @@ let AutoShipSpec = {
   commandSchema: commandSchema$2,
   maxRetries: 3,
   heartbeatInterval: 60,
-  targetName: "Ship"
+  targetName: "Ship",
+  commandAuthorization: commandAuthorization$2
 };
 
 function collect(event, _ctx) {
@@ -315,7 +330,8 @@ let PlaceMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   consumedEventSchema: consumedEventSchema,
   errorSchema: errorSchema,
   eventSchema: eventSchema,
-  commandSchema: commandSchema
+  commandSchema: commandSchema,
+  commandAuthorization: commandAuthorization
 })({
   initialState: false,
   evolve: evolve,
@@ -332,7 +348,8 @@ let ShipMaker = StateChangeSlice_Builder$ReventlessInMemory.Make({
   consumedEventSchema: consumedEventSchema$1,
   errorSchema: errorSchema$1,
   eventSchema: eventSchema$1,
-  commandSchema: commandSchema$1
+  commandSchema: commandSchema$1,
+  commandAuthorization: commandAuthorization$1
 })({
   initialState: initialState,
   evolve: evolve$1,

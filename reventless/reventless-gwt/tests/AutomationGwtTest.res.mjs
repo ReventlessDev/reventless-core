@@ -60,6 +60,10 @@ function process(_id, item) {
   ];
 }
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let ShipOrderSlice = {
   name: "ShipOrder",
   consumedEventSchema: consumedEventSchema,
@@ -67,7 +71,8 @@ let ShipOrderSlice = {
   commandSchema: commandSchema,
   collect: collect,
   resolve: resolve,
-  process: process
+  process: process,
+  commandAuthorization: commandAuthorization
 };
 
 let include = Automation_GWT$ReventlessGwt.Make(ShipOrderSlice);

@@ -26,13 +26,18 @@ let errorSchema = S.literal("CGAlreadyExists");
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let CGSpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -77,7 +82,8 @@ let CGMaker = CommandGenerator_Builder$ReventlessCore.Make({
   eventSchema: eventSchema,
   errorSchema: errorSchema,
   commandSchema: commandSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 })(CommandGeneratorResolvers_InMemory$ReventlessInMemory);
 
 let capturedCmds = {

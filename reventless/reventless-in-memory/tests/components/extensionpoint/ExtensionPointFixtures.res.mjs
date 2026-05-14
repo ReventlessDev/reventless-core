@@ -27,12 +27,17 @@ let directiveSchema = S.literal("TEPNoDirective");
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let TestEPSpec = {
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   directiveSchema: directiveSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 let name$1 = "TargetAgg";
@@ -51,13 +56,18 @@ let errorSchema = S.literal("TEAggNoError");
 
 let moduleUrl$1 = import.meta.url;
 
+function commandAuthorization$1(param) {
+  return "AllowAuthenticated";
+}
+
 let DelegateAggSpec = {
   Id: undefined,
   name: name$1,
   commandSchema: commandSchema$1,
   eventSchema: eventSchema$1,
   errorSchema: errorSchema,
-  moduleUrl: moduleUrl$1
+  moduleUrl: moduleUrl$1,
+  commandAuthorization: commandAuthorization$1
 };
 
 function mapIncomingCommand(_id, cmd, _meta) {
@@ -100,7 +110,8 @@ let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make({
     eventSchema: eventSchema$1,
     errorSchema: errorSchema,
     commandSchema: commandSchema$1,
-    moduleUrl: moduleUrl$1
+    moduleUrl: moduleUrl$1,
+    commandAuthorization: commandAuthorization$1
   },
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: undefined

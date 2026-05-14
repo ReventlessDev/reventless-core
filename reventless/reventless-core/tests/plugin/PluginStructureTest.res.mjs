@@ -30,7 +30,8 @@ let PsPlaceOrderSlice_Spec = {
   consumedEventSchema: PsPlaceOrder$ReventlessCore.consumedEventSchema,
   errorSchema: PsPlaceOrder$ReventlessCore.errorSchema,
   eventSchema: PsPlaceOrder$ReventlessCore.eventSchema,
-  commandSchema: PsPlaceOrder$ReventlessCore.commandSchema
+  commandSchema: PsPlaceOrder$ReventlessCore.commandSchema,
+  commandAuthorization: PsPlaceOrder$ReventlessCore.commandAuthorization
 };
 
 let PsPlaceOrderSlice = {
@@ -58,7 +59,8 @@ let PsShipOrderSlice_Spec = {
   consumedEventSchema: PsShipOrder$ReventlessCore.consumedEventSchema,
   errorSchema: PsShipOrder$ReventlessCore.errorSchema,
   eventSchema: PsShipOrder$ReventlessCore.eventSchema,
-  commandSchema: PsShipOrder$ReventlessCore.commandSchema
+  commandSchema: PsShipOrder$ReventlessCore.commandSchema,
+  commandAuthorization: PsShipOrder$ReventlessCore.commandAuthorization
 };
 
 let PsShipOrderSlice = {
@@ -83,7 +85,8 @@ let PsOrdersViewSlice_Spec = {
   stateSchema: PsOrdersView$ReventlessCore.stateSchema,
   consumedEventSchema: PsOrdersView$ReventlessCore.consumedEventSchema,
   config: PsOrdersView$ReventlessCore.config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: PsOrdersView$ReventlessCore.authorization
 };
 
 let PsOrdersViewSlice = {
@@ -107,7 +110,8 @@ let PsAvailableProductsViewSlice_Spec = {
   stateSchema: PsAvailableProductsView$ReventlessCore.stateSchema,
   consumedEventSchema: PsAvailableProductsView$ReventlessCore.consumedEventSchema,
   config: PsAvailableProductsView$ReventlessCore.config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: PsAvailableProductsView$ReventlessCore.authorization
 };
 
 let PsAvailableProductsViewSlice = {
@@ -131,7 +135,8 @@ let PsCustomersViewSlice_Spec = {
   stateSchema: PsCustomersView$ReventlessCore.stateSchema,
   consumedEventSchema: PsCustomersView$ReventlessCore.consumedEventSchema,
   config: PsCustomersView$ReventlessCore.config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: PsCustomersView$ReventlessCore.authorization
 };
 
 let PsCustomersViewSlice = {
@@ -155,7 +160,8 @@ let PsAnnotatedViewSlice_Spec = {
   stateSchema: PsAnnotatedView$ReventlessCore.stateSchema,
   consumedEventSchema: PsAnnotatedView$ReventlessCore.consumedEventSchema,
   config: PsAnnotatedView$ReventlessCore.config,
-  subIdConfig: PsAnnotatedView$ReventlessCore.subIdConfig
+  subIdConfig: PsAnnotatedView$ReventlessCore.subIdConfig,
+  authorization: PsAnnotatedView$ReventlessCore.authorization
 };
 
 let PsAnnotatedViewSlice = {

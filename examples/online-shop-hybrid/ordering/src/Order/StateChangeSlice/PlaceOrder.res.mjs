@@ -36,6 +36,10 @@ let eventSchema = S.schema(s => ({
   productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "PlaceOrder";
 
 let Id;
@@ -50,5 +54,6 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

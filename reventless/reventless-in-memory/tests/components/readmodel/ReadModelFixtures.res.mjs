@@ -30,7 +30,8 @@ let ItemReadModelSpec = {
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 let name$1 = "TestItemEventTopic";
@@ -109,7 +110,8 @@ let ItemReadModel = ReadModelMaker.Make({
   moduleUrl: moduleUrl,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 })(ItemMappings);
 
 let rm = ItemReadModel.make(undefined, undefined, allEventTopics, undefined);

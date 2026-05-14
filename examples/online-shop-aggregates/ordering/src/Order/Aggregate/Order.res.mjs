@@ -32,6 +32,10 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyCancelled")
 ]);
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "Order";
 
 let Id;
@@ -45,5 +49,6 @@ export {
   eventSchema,
   errorSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* commandSchema Not a pure module */

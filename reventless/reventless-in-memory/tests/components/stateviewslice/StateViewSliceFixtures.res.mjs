@@ -67,7 +67,8 @@ let ItemsViewSpec = {
   consumedEventSchema: consumedEventSchema,
   stateSchema: stateSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -129,7 +130,8 @@ let ItemsViewMaker = SVMaker.Make({
   stateSchema: stateSchema,
   consumedEventSchema: consumedEventSchema,
   config: config,
-  subIdConfig: undefined
+  subIdConfig: undefined,
+  authorization: "AllowAuthenticated"
 })({
   project: project,
   moduleUrl: moduleUrl$1

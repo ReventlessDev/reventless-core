@@ -12,6 +12,10 @@ let commandSchema = S.schema(s => ({
   orderId: s.m(DcbTag$Reventless.string)
 }));
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "AutoShipOrder";
 
 let Id;
@@ -33,5 +37,6 @@ export {
   heartbeatInterval,
   targetName,
   moduleUrl,
+  commandAuthorization,
 }
 /* todoItemSchema Not a pure module */

@@ -29,7 +29,8 @@ function Make(Platform) {
     eventSchema: CatalogProduct$OrderingPlugin.eventSchema,
     errorSchema: CatalogProduct$OrderingPlugin.errorSchema,
     commandSchema: CatalogProduct$OrderingPlugin.commandSchema,
-    moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl
+    moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl,
+    commandAuthorization: CatalogProduct$OrderingPlugin.commandAuthorization
   })({
     initialState: CatalogProduct_Behavior$OrderingPlugin.initialState,
     evolve: CatalogProduct_Behavior$OrderingPlugin.evolve,
@@ -46,7 +47,8 @@ function Make(Platform) {
     eventSchema: Customer$OrderingPlugin.eventSchema,
     errorSchema: Customer$OrderingPlugin.errorSchema,
     commandSchema: Customer$OrderingPlugin.commandSchema,
-    moduleUrl: Customer$OrderingPlugin.moduleUrl
+    moduleUrl: Customer$OrderingPlugin.moduleUrl,
+    commandAuthorization: Customer$OrderingPlugin.commandAuthorization
   })({
     initialState: Customer_Behavior$OrderingPlugin.initialState,
     evolve: Customer_Behavior$OrderingPlugin.evolve,
@@ -63,7 +65,8 @@ function Make(Platform) {
     eventSchema: Order$OrderingPlugin.eventSchema,
     errorSchema: Order$OrderingPlugin.errorSchema,
     commandSchema: Order$OrderingPlugin.commandSchema,
-    moduleUrl: Order$OrderingPlugin.moduleUrl
+    moduleUrl: Order$OrderingPlugin.moduleUrl,
+    commandAuthorization: Order$OrderingPlugin.commandAuthorization
   })({
     initialState: Order_Behavior$OrderingPlugin.initialState,
     evolve: Order_Behavior$OrderingPlugin.evolve,
@@ -80,7 +83,8 @@ function Make(Platform) {
     moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
     config: AvailableProducts$OrderingPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: AvailableProducts$OrderingPlugin.authorization
   })({
     moduleUrl: AvailableProducts_Projections$OrderingPlugin.moduleUrl,
     mappings: AvailableProducts_Projections$OrderingPlugin.mappings
@@ -91,7 +95,8 @@ function Make(Platform) {
     moduleUrl: Customers$OrderingPlugin.moduleUrl,
     stateSchema: Customers$OrderingPlugin.stateSchema,
     config: Customers$OrderingPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: Customers$OrderingPlugin.authorization
   })({
     moduleUrl: Customers_Projections$OrderingPlugin.moduleUrl,
     mappings: Customers_Projections$OrderingPlugin.mappings
@@ -102,7 +107,8 @@ function Make(Platform) {
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
     stateSchema: Orders$OrderingPlugin.stateSchema,
     config: Orders$OrderingPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: Orders$OrderingPlugin.authorization
   })({
     moduleUrl: Orders_Projections$OrderingPlugin.moduleUrl,
     mappings: Orders_Projections$OrderingPlugin.mappings
@@ -126,7 +132,8 @@ function Make(Platform) {
       eventSchema: Order$OrderingPlugin.eventSchema,
       errorSchema: Order$OrderingPlugin.errorSchema,
       commandSchema: Order$OrderingPlugin.commandSchema,
-      moduleUrl: Order$OrderingPlugin.moduleUrl
+      moduleUrl: Order$OrderingPlugin.moduleUrl,
+      commandAuthorization: Order$OrderingPlugin.commandAuthorization
     },
     mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
@@ -145,7 +152,8 @@ function Make(Platform) {
       eventSchema: CatalogProduct$OrderingPlugin.eventSchema,
       errorSchema: CatalogProduct$OrderingPlugin.errorSchema,
       commandSchema: CatalogProduct$OrderingPlugin.commandSchema,
-      moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl
+      moduleUrl: CatalogProduct$OrderingPlugin.moduleUrl,
+      commandAuthorization: CatalogProduct$OrderingPlugin.commandAuthorization
     },
     mapIncomingEvent: Products_Extension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Products_Extension$OrderingPlugin.Mapping.mapOutgoingEvent

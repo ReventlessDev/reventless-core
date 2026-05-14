@@ -25,13 +25,18 @@ let errorSchema = S.literal("CategoryAlreadyExists");
 
 let moduleUrl = "";
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let CategorySpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 function evolve(_state, event) {
@@ -86,13 +91,18 @@ let errorSchema$1 = S.literal("ProductAlreadyMirrored");
 
 let moduleUrl$2 = "";
 
+function commandAuthorization$1(param) {
+  return "AllowAuthenticated";
+}
+
 let ProductSpec = {
   Id: undefined,
   name: name$1,
   commandSchema: commandSchema$1,
   eventSchema: eventSchema$1,
   errorSchema: errorSchema$1,
-  moduleUrl: moduleUrl$2
+  moduleUrl: moduleUrl$2,
+  commandAuthorization: commandAuthorization$1
 };
 
 function evolve$1(_state, event) {
@@ -171,6 +181,10 @@ function decide$2(state, command) {
   }
 }
 
+function commandAuthorization$2(param) {
+  return "AllowAuthenticated";
+}
+
 let NotificationSlice_initialState = {
   sent: false
 };
@@ -183,7 +197,8 @@ let NotificationSlice = {
   commandSchema: commandSchema$2,
   errorSchema: errorSchema$2,
   eventSchema: eventSchema$2,
-  decide: decide$2
+  decide: decide$2,
+  commandAuthorization: commandAuthorization$2
 };
 
 let consumedEventSchema$1 = S.schema(s => ({
@@ -229,6 +244,10 @@ function decide$3(state, command) {
   }
 }
 
+function commandAuthorization$3(param) {
+  return "AllowAuthenticated";
+}
+
 let InventorySlice_initialState = {
   reserved: false
 };
@@ -241,7 +260,8 @@ let InventorySlice = {
   commandSchema: commandSchema$3,
   errorSchema: errorSchema$3,
   eventSchema: eventSchema$3,
-  decide: decide$3
+  decide: decide$3,
+  commandAuthorization: commandAuthorization$3
 };
 
 let CategorySource = Mapping_GWT$ReventlessGwt.FromBehavior({
@@ -256,7 +276,8 @@ let CategorySource = Mapping_GWT$ReventlessGwt.FromBehavior({
   eventSchema: eventSchema,
   errorSchema: errorSchema,
   commandSchema: commandSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 })({
   Spec: {
     Id: {
@@ -270,7 +291,8 @@ let CategorySource = Mapping_GWT$ReventlessGwt.FromBehavior({
     eventSchema: eventSchema,
     errorSchema: errorSchema,
     commandSchema: commandSchema,
-    moduleUrl: moduleUrl
+    moduleUrl: moduleUrl,
+    commandAuthorization: commandAuthorization
   },
   initialState: "NotCreated",
   evolve: evolve,
@@ -290,7 +312,8 @@ let ProductTarget = Mapping_GWT$ReventlessGwt.FromBehavior({
   eventSchema: eventSchema$1,
   errorSchema: errorSchema$1,
   commandSchema: commandSchema$1,
-  moduleUrl: moduleUrl$2
+  moduleUrl: moduleUrl$2,
+  commandAuthorization: commandAuthorization$1
 })({
   Spec: {
     Id: {
@@ -304,7 +327,8 @@ let ProductTarget = Mapping_GWT$ReventlessGwt.FromBehavior({
     eventSchema: eventSchema$1,
     errorSchema: errorSchema$1,
     commandSchema: commandSchema$1,
-    moduleUrl: moduleUrl$2
+    moduleUrl: moduleUrl$2,
+    commandAuthorization: commandAuthorization$1
   },
   initialState: "Pristine",
   evolve: evolve$1,

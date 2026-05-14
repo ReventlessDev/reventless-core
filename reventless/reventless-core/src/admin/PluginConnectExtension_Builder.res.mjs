@@ -164,7 +164,8 @@ function Make(Spec) {
       eventSchema: ExtensionMapping$ReventlessInfra.NoDelegate.eventSchema,
       errorSchema: ExtensionMapping$ReventlessInfra.NoDelegate.errorSchema,
       commandSchema: ExtensionMapping$ReventlessInfra.NoDelegate.commandSchema,
-      moduleUrl: ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl
+      moduleUrl: ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl,
+      commandAuthorization: ExtensionMapping$ReventlessInfra.NoDelegate.commandAuthorization
     },
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined

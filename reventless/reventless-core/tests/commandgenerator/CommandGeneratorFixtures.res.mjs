@@ -30,13 +30,18 @@ let errorSchema = S.literal("InvalidCommand");
 
 let moduleUrl = import.meta.url;
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let CmdGenAggSpec = {
   Id: undefined,
   name: name,
   commandSchema: commandSchema,
   eventSchema: eventSchema,
   errorSchema: errorSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 };
 
 let moduleUrl$1 = import.meta.url;
@@ -102,7 +107,8 @@ let TestGenerator = CommandGenerator_Callback$ReventlessCore.Make(MockPublishSpe
   eventSchema: eventSchema,
   errorSchema: errorSchema,
   commandSchema: commandSchema,
-  moduleUrl: moduleUrl
+  moduleUrl: moduleUrl,
+  commandAuthorization: commandAuthorization
 });
 
 let singleTagCommandSchema = S.schema(s => ({

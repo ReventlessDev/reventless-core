@@ -72,6 +72,8 @@ let Id;
 
 let moduleUrl = "@reventlessdev/reventless-core/tests/plugin/StateViewSlice/PsAnnotatedView.res.mjs";
 
+let authorization = "AllowAuthenticated";
+
 export {
   name,
   Id,
@@ -82,5 +84,6 @@ export {
   makeId,
   stateSchema$1 as stateSchema,
   moduleUrl,
+  authorization,
 }
 /* consumedEventSchema Not a pure module */

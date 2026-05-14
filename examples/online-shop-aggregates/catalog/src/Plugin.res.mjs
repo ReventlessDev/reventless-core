@@ -28,7 +28,8 @@ function Make(Platform) {
     eventSchema: Category$CatalogPlugin.eventSchema,
     errorSchema: Category$CatalogPlugin.errorSchema,
     commandSchema: Category$CatalogPlugin.commandSchema,
-    moduleUrl: Category$CatalogPlugin.moduleUrl
+    moduleUrl: Category$CatalogPlugin.moduleUrl,
+    commandAuthorization: Category$CatalogPlugin.commandAuthorization
   })({
     initialState: Category_Behavior$CatalogPlugin.initialState,
     evolve: Category_Behavior$CatalogPlugin.evolve,
@@ -45,7 +46,8 @@ function Make(Platform) {
     eventSchema: Product$CatalogPlugin.eventSchema,
     errorSchema: Product$CatalogPlugin.errorSchema,
     commandSchema: Product$CatalogPlugin.commandSchema,
-    moduleUrl: Product$CatalogPlugin.moduleUrl
+    moduleUrl: Product$CatalogPlugin.moduleUrl,
+    commandAuthorization: Product$CatalogPlugin.commandAuthorization
   })({
     initialState: Product_Behavior$CatalogPlugin.initialState,
     evolve: Product_Behavior$CatalogPlugin.evolve,
@@ -62,7 +64,8 @@ function Make(Platform) {
     eventSchema: ProductDemand$CatalogPlugin.eventSchema,
     errorSchema: ProductDemand$CatalogPlugin.errorSchema,
     commandSchema: ProductDemand$CatalogPlugin.commandSchema,
-    moduleUrl: ProductDemand$CatalogPlugin.moduleUrl
+    moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
+    commandAuthorization: ProductDemand$CatalogPlugin.commandAuthorization
   })({
     initialState: ProductDemand_Behavior$CatalogPlugin.initialState,
     evolve: ProductDemand_Behavior$CatalogPlugin.evolve,
@@ -79,7 +82,8 @@ function Make(Platform) {
     moduleUrl: Categories$CatalogPlugin.moduleUrl,
     stateSchema: Categories$CatalogPlugin.stateSchema,
     config: Categories$CatalogPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: Categories$CatalogPlugin.authorization
   })({
     moduleUrl: Categories_Projections$CatalogPlugin.moduleUrl,
     mappings: Categories_Projections$CatalogPlugin.mappings
@@ -90,7 +94,8 @@ function Make(Platform) {
     moduleUrl: ProductDemands$CatalogPlugin.moduleUrl,
     stateSchema: ProductDemands$CatalogPlugin.stateSchema,
     config: ProductDemands$CatalogPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: ProductDemands$CatalogPlugin.authorization
   })({
     moduleUrl: ProductDemands_Projections$CatalogPlugin.moduleUrl,
     mappings: ProductDemands_Projections$CatalogPlugin.mappings
@@ -101,7 +106,8 @@ function Make(Platform) {
     moduleUrl: Products$CatalogPlugin.moduleUrl,
     stateSchema: Products$CatalogPlugin.stateSchema,
     config: Products$CatalogPlugin.config,
-    subIdConfig: undefined
+    subIdConfig: undefined,
+    authorization: Products$CatalogPlugin.authorization
   })({
     moduleUrl: Products_Projections$CatalogPlugin.moduleUrl,
     mappings: Products_Projections$CatalogPlugin.mappings
@@ -125,7 +131,8 @@ function Make(Platform) {
       eventSchema: Product$CatalogPlugin.eventSchema,
       errorSchema: Product$CatalogPlugin.errorSchema,
       commandSchema: Product$CatalogPlugin.commandSchema,
-      moduleUrl: Product$CatalogPlugin.moduleUrl
+      moduleUrl: Product$CatalogPlugin.moduleUrl,
+      commandAuthorization: Product$CatalogPlugin.commandAuthorization
     },
     mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
     mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
@@ -144,7 +151,8 @@ function Make(Platform) {
       eventSchema: ProductDemand$CatalogPlugin.eventSchema,
       errorSchema: ProductDemand$CatalogPlugin.errorSchema,
       commandSchema: ProductDemand$CatalogPlugin.commandSchema,
-      moduleUrl: ProductDemand$CatalogPlugin.moduleUrl
+      moduleUrl: ProductDemand$CatalogPlugin.moduleUrl,
+      commandAuthorization: ProductDemand$CatalogPlugin.commandAuthorization
     },
     mapIncomingEvent: Orders_Extension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Orders_Extension$CatalogPlugin.Mapping.mapOutgoingEvent

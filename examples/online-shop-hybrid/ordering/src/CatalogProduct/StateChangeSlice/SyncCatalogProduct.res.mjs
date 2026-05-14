@@ -43,6 +43,10 @@ let eventSchema = S.union([
   }))
 ]);
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let name = "SyncCatalogProduct";
 
 let Id;
@@ -59,5 +63,6 @@ export {
   errorSchema,
   eventSchema,
   moduleUrl,
+  commandAuthorization,
 }
 /* consumedEventSchema Not a pure module */

@@ -154,6 +154,10 @@ function decide(state, command) {
   }
 }
 
+function commandAuthorization(param) {
+  return "AllowAuthenticated";
+}
+
 let TestCommandSpec_initialState = {
   exists: false,
   currentName: undefined
@@ -169,7 +173,8 @@ let TestCommandSpec = {
   errorSchema: errorSchema,
   initialState: TestCommandSpec_initialState,
   evolve: evolve,
-  decide: decide
+  decide: decide,
+  commandAuthorization: commandAuthorization
 };
 
 function posToInt(pos) {
