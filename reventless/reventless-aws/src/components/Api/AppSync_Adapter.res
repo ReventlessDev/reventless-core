@@ -292,7 +292,7 @@ let makeApiResource = (
         {
           userPoolId: c.userPoolId,
           awsRegion: c.region,
-          defaultAction: AppSync.GraphQLApi.DENY,
+          defaultAction: AppSync.GraphQLApi.ALLOW,
         }: AppSync.GraphQLApi.userPoolConfig
       )
     )

@@ -222,7 +222,7 @@ function makeApiResource(name, opts) {
   let authConfigOut = Auth_Cognito$ReventlessAws.make(name + `-auth`, undefined);
   let userPoolConfigOut = authConfigOut.apply(c => ({
     userPoolId: c.userPoolId,
-    defaultAction: "DENY",
+    defaultAction: "ALLOW",
     awsRegion: c.region
   }));
   let apiArgs_userPoolConfig = userPoolConfigOut;
