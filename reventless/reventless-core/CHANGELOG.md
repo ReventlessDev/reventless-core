@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.71 (2026-05-14)
+
+### Bug Fixes
+
+* **admin:** drop UIFragments auto-query, keep flat Platform_UIFragments ([b615481](https://github.com/ReventlessDev/reventless-core/commit/b61548148cc998b65c696607022c5fa01935e491))
+### Features
+
+* **admin:** add Platform_UIFragments GraphQL query ([cf1ae27](https://github.com/ReventlessDev/reventless-core/commit/cf1ae27d19bf396dfa71c2539fd59874c9118ca0))
+* **auth:** enforce per-spec authorization at in-memory resolvers ([32c6552](https://github.com/ReventlessDev/reventless-core/commit/32c65522cf4afb61c7c56f8828a95af8db4a0ad4))
+* **auth:** expose payload-less commands to GraphQL + per-constructor authz test ([7a55b27](https://github.com/ReventlessDev/reventless-core/commit/7a55b27ea04e84368909b24fc5ca29f415d108da))
+* **auth:** scaffold provider-agnostic auth abstraction ([a273c10](https://github.com/ReventlessDev/reventless-core/commit/a273c10d4598d9d2fdcc7428dde3278818aba9b8))
+* **auth:** Stage E2 — lift spec-level Authorization.permission into [@aws](https://github.com/aws)_auth ([5f10fc9](https://github.com/ReventlessDev/reventless-core/commit/5f10fc94f501ad6e6f0d677f754acc3761281ab3))
+* **ppx:** inline-spec walk + Spec module types require authorization ([7db9ec0](https://github.com/ReventlessDev/reventless-core/commit/7db9ec0f186578ce0088973dba22da9257be6a61))
+
+
 # 3.0.0-alpha.70 (2026-05-13)
 
 * feat(spec)!: standardise event/command envelope (StoredEvent, optional meta, position, persisted DCB meta, causation) ([7ef3176](https://github.com/ReventlessDev/reventless-core/commit/7ef3176c6330810c817f43a52b881b5a0efee30e))

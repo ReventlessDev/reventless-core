@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.11 (2026-05-14)
+
+### Features
+
+* **auth:** in-memory Auth provider + graphql-yoga context factory ([fe70052](https://github.com/ReventlessDev/reventless-core/commit/fe7005204d7a4328b25e9371b3d342a7000be570))
+
+
 # 1.0.0-alpha.10 (2026-04-22)
 
 ### Features

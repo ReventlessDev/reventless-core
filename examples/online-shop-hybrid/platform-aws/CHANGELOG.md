@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.27 (2026-05-14)
+
+### Features
+
+* **auth:** Stage C — Cognito UserPool provisioning + A4 hydration fixup ([08d98e0](https://github.com/ReventlessDev/reventless-core/commit/08d98e00fc18de019190d7e6e977b09375d8ff61))
+* **platform-aws:** host the static host-shell SPA on the platform CDN ([529ae4f](https://github.com/ReventlessDev/reventless-core/commit/529ae4f4b54675d43f22bb6180186e88d240b744))
+* **platform-aws:** wire reventless-host-shell as npm dep for CI deploys ([c309ef2](https://github.com/ReventlessDev/reventless-core/commit/c309ef26fbe75cc232870efc50ed1c220f14ad39))
+* **ppx:** @[@reventless](https://github.com/reventless).authorize file-level annotation + auto-inject defaults ([dd188ee](https://github.com/ReventlessDev/reventless-core/commit/dd188ee86999fbb8f47d4badec5e21894c982171))
+
+
 # 1.0.0-alpha.26 (2026-05-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

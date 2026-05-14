@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.33 (2026-05-14)
+
+### Features
+
+* **auth:** expose payload-less commands to GraphQL + per-constructor authz test ([7a55b27](https://github.com/ReventlessDev/reventless-core/commit/7a55b27ea04e84368909b24fc5ca29f415d108da))
+* **ppx:** @[@reventless](https://github.com/reventless).authorize file-level annotation + auto-inject defaults ([dd188ee](https://github.com/ReventlessDev/reventless-core/commit/dd188ee86999fbb8f47d4badec5e21894c982171))
+* **ppx:** inline-spec walk + Spec module types require authorization ([7db9ec0](https://github.com/ReventlessDev/reventless-core/commit/7db9ec0f186578ce0088973dba22da9257be6a61))
+* **schema:** add partitionTag to productId in command and event schemas ([9dbabe3](https://github.com/ReventlessDev/reventless-core/commit/9dbabe3806eeb5f22c2fd2d2af727a6b441973b4))
+
+
 # 1.0.0-alpha.32 (2026-05-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.25 (2026-05-14)
+
+### Features
+
+* **auth:** Stage C — Cognito UserPool provisioning + A4 hydration fixup ([08d98e0](https://github.com/ReventlessDev/reventless-core/commit/08d98e00fc18de019190d7e6e977b09375d8ff61))
+* **auth:** Stage D — Cognito AppSync auth + Auth_Cognito provider ([6e4ce64](https://github.com/ReventlessDev/reventless-core/commit/6e4ce643490c9683e89cd0fe25f6fd44659ccd69))
+* **aws:** short-TTL cache behaviors for unhashed bundle entry points ([300964b](https://github.com/ReventlessDev/reventless-core/commit/300964bea011a7844abd65b5bd0fafc1c3f7eb4d))
+
+
 # 2.4.0-alpha.24 (2026-05-03)
 
 ### Bug Fixes

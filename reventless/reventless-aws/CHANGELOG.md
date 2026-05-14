@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.82 (2026-05-14)
+
+### Bug Fixes
+
+* **aws:** drop self-namespace ref in AppSync_Adapter ([c0b8e63](https://github.com/ReventlessDev/reventless-core/commit/c0b8e63cdad59c44cf8afe9b3afa79993bfa2fe8))
+### Features
+
+* **admin:** add Platform_UIFragments GraphQL query ([cf1ae27](https://github.com/ReventlessDev/reventless-core/commit/cf1ae27d19bf396dfa71c2539fd59874c9118ca0))
+* **auth:** enforce per-spec authorization at in-memory resolvers ([32c6552](https://github.com/ReventlessDev/reventless-core/commit/32c65522cf4afb61c7c56f8828a95af8db4a0ad4))
+* **auth:** Stage C — Cognito UserPool provisioning + A4 hydration fixup ([08d98e0](https://github.com/ReventlessDev/reventless-core/commit/08d98e00fc18de019190d7e6e977b09375d8ff61))
+* **auth:** Stage D — Cognito AppSync auth + Auth_Cognito provider ([6e4ce64](https://github.com/ReventlessDev/reventless-core/commit/6e4ce643490c9683e89cd0fe25f6fd44659ccd69))
+* **auth:** Stage E2 — lift spec-level Authorization.permission into [@aws](https://github.com/aws)_auth ([5f10fc9](https://github.com/ReventlessDev/reventless-core/commit/5f10fc94f501ad6e6f0d677f754acc3761281ab3))
+* **aws:** short-TTL cache behaviors for unhashed bundle entry points ([300964b](https://github.com/ReventlessDev/reventless-core/commit/300964bea011a7844abd65b5bd0fafc1c3f7eb4d))
+* **host-ui:** flip config.json authMode to cognito + emit pool/client IDs ([5cc6e7d](https://github.com/ReventlessDev/reventless-core/commit/5cc6e7df5c2ab5694019d75f344a46bba814b448))
+* **platform-aws:** host the static host-shell SPA on the platform CDN ([529ae4f](https://github.com/ReventlessDev/reventless-core/commit/529ae4f4b54675d43f22bb6180186e88d240b744))
+* **platform,ci:** env var override for Util_LocalConfig + CI deploy wiring ([39bf14a](https://github.com/ReventlessDev/reventless-core/commit/39bf14aa765c2ef72062886ab3133ca768a87fd0))
+* **platform:** Pulumi.local.yaml sidecar for per-dev config overrides ([96b5ea7](https://github.com/ReventlessDev/reventless-core/commit/96b5ea7e1caa5813355fcdecfb505d5e3e4a8d3f))
+* **ppx:** inline-spec walk + Spec module types require authorization ([7db9ec0](https://github.com/ReventlessDev/reventless-core/commit/7db9ec0f186578ce0088973dba22da9257be6a61))
+
+
 # 3.0.0-alpha.81 (2026-05-13)
 
 * feat(spec)!: standardise event/command envelope (StoredEvent, optional meta, position, persisted DCB meta, causation) ([7ef3176](https://github.com/ReventlessDev/reventless-core/commit/7ef3176c6330810c817f43a52b881b5a0efee30e))

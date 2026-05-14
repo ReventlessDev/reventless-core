@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.35 (2026-05-14)
+
+### Features
+
+* **ppx:** inline-spec walk + Spec module types require authorization ([7db9ec0](https://github.com/ReventlessDev/reventless-core/commit/7db9ec0f186578ce0088973dba22da9257be6a61))
+
+
 # 3.0.0-alpha.34 (2026-05-13)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

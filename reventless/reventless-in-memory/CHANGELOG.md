@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.47 (2026-05-14)
+
+### Bug Fixes
+
+* **admin:** drop UIFragments auto-query, keep flat Platform_UIFragments ([b615481](https://github.com/ReventlessDev/reventless-core/commit/b61548148cc998b65c696607022c5fa01935e491))
+* **in-memory:** return 401 on invalid Bearer token ([be03111](https://github.com/ReventlessDev/reventless-core/commit/be031118063abded740a7a10dd3c80cbd9f31d6d))
+### Features
+
+* **admin:** add Platform_UIFragments GraphQL query ([cf1ae27](https://github.com/ReventlessDev/reventless-core/commit/cf1ae27d19bf396dfa71c2539fd59874c9118ca0))
+* **auth:** enforce per-spec authorization at in-memory resolvers ([32c6552](https://github.com/ReventlessDev/reventless-core/commit/32c65522cf4afb61c7c56f8828a95af8db4a0ad4))
+* **auth:** expose payload-less commands to GraphQL + per-constructor authz test ([7a55b27](https://github.com/ReventlessDev/reventless-core/commit/7a55b27ea04e84368909b24fc5ca29f415d108da))
+* **auth:** in-memory Auth provider + graphql-yoga context factory ([fe70052](https://github.com/ReventlessDev/reventless-core/commit/fe7005204d7a4328b25e9371b3d342a7000be570))
+* **auth:** Stage A4 — Login token issuance + YAML user store + HTTP endpoints ([fa7bbb5](https://github.com/ReventlessDev/reventless-core/commit/fa7bbb573efca52b0c6617dbb3313fd3d755bd84))
+* **auth:** Stage C — Cognito UserPool provisioning + A4 hydration fixup ([08d98e0](https://github.com/ReventlessDev/reventless-core/commit/08d98e00fc18de019190d7e6e977b09375d8ff61))
+* **platform-aws:** host the static host-shell SPA on the platform CDN ([529ae4f](https://github.com/ReventlessDev/reventless-core/commit/529ae4f4b54675d43f22bb6180186e88d240b744))
+* **ppx:** @[@reventless](https://github.com/reventless).authorize file-level annotation + auto-inject defaults ([dd188ee](https://github.com/ReventlessDev/reventless-core/commit/dd188ee86999fbb8f47d4badec5e21894c982171))
+* **ppx:** inline-spec walk + Spec module types require authorization ([7db9ec0](https://github.com/ReventlessDev/reventless-core/commit/7db9ec0f186578ce0088973dba22da9257be6a61))
+
+
 # 3.0.0-alpha.46 (2026-05-13)
 
 * feat(spec)!: standardise event/command envelope (StoredEvent, optional meta, position, persisted DCB meta, causation) ([7ef3176](https://github.com/ReventlessDev/reventless-core/commit/7ef3176c6330810c817f43a52b881b5a0efee30e))

@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.15 (2026-05-14)
+
+### Features
+
+* **ppx:** @[@reventless](https://github.com/reventless).authorize file-level annotation + auto-inject defaults ([dd188ee](https://github.com/ReventlessDev/reventless-core/commit/dd188ee86999fbb8f47d4badec5e21894c982171))
+* **ppx:** inline-spec walk + Spec module types require authorization ([7db9ec0](https://github.com/ReventlessDev/reventless-core/commit/7db9ec0f186578ce0088973dba22da9257be6a61))
+* **ppx:** per-constructor [@authorize](https://github.com/authorize) annotation → switch lambda ([f5cd3bf](https://github.com/ReventlessDev/reventless-core/commit/f5cd3bf0676d087ca02607f5b2fedd420f10cf8d))
+
+
 # 1.0.0-alpha.14 (2026-05-05)
 
 ### Features
