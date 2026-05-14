@@ -28,7 +28,7 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "chokidar": "^3.6.0",
-    "picocolors": "^1.1.0"
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",

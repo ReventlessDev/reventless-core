@@ -11,8 +11,8 @@
     "test": "echo \"There are no tests for rescript-graphql-yoga.\""
   },
   "dependencies": {
-    "graphql": "^16.0.0",
-    "graphql-yoga": "^5.0.0"
+    "graphql": "^16.13.2",
+    "graphql-yoga": "^5.21.0"
   },
   "devDependencies": {
     "rescript": "^12.2.0"
