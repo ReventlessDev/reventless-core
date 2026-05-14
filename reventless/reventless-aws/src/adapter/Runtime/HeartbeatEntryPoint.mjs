@@ -20,7 +20,7 @@ const publishJsons = sqsPublishJsons(makeQueueRef(epQueueUrl), "SQS_FIFO");
 
 export async function handler(_event, _context) {
   const msgId = uuid();
-  const commandJson = reverseConvertToJsonOrThrow(commandSchema, { TAG: "Heartbeat", _0: timeout });
+  const commandJson = reverseConvertToJsonOrThrow({ TAG: "Heartbeat", _0: timeout }, commandSchema);
   const message = {
     id: pluginId,
     meta: {
