@@ -7,6 +7,8 @@ import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.m
 
 let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6";
 
+let cachingDisabledPolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad";
+
 function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt) {
   let spaFallback = spaFallbackOpt !== undefined ? spaFallbackOpt : false;
   let indexDocument = indexDocumentOpt !== undefined ? indexDocumentOpt : "index.html";
@@ -39,6 +41,24 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
         errorCachingMinTtl: 0
       }
     ] : [];
+  let noCacheBehavior = pattern => ({
+    pathPattern: pattern,
+    targetOriginId: originId,
+    viewerProtocolPolicy: "redirect-to-https",
+    allowedMethods: [
+      "GET",
+      "HEAD"
+    ],
+    cachedMethods: [
+      "GET",
+      "HEAD"
+    ],
+    cachePolicyId: cachingDisabledPolicyId
+  });
+  let orderedCacheBehaviors = [noCacheBehavior("/remoteEntry.js")].concat(spaFallback ? [
+      noCacheBehavior("/" + indexDocument),
+      noCacheBehavior("/config.json")
+    ] : []);
   let distribution = new (Aws.cloudfront.Distribution)(name + "-cdn", {
     enabled: true,
     origins: Pulumi.all([
@@ -62,6 +82,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
       ],
       cachePolicyId: cachingOptimizedPolicyId
     },
+    orderedCacheBehaviors: orderedCacheBehaviors,
     restrictions: {
       geoRestriction: {
         restrictionType: "none"
@@ -120,6 +141,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
 
 export {
   cachingOptimizedPolicyId,
+  cachingDisabledPolicyId,
   makeUiBundleDistribution,
 }
 /* @pulumi/aws Not a pure module */

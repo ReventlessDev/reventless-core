@@ -16,6 +16,19 @@ type defaultCacheBehavior = {
   compress?: Pulumi.Input.t<bool>,
 }
 
+// orderedCacheBehavior shares defaultCacheBehavior's shape but adds a
+// pathPattern selector — CloudFront evaluates these in order and the first
+// match wins; entries without a match fall back to the default behavior.
+type orderedCacheBehavior = {
+  pathPattern: Pulumi.Input.t<string>,
+  targetOriginId: Pulumi.Input.t<string>,
+  viewerProtocolPolicy: Pulumi.Input.t<string>,
+  allowedMethods: Pulumi.Input.t<array<string>>,
+  cachedMethods: Pulumi.Input.t<array<string>>,
+  cachePolicyId?: Pulumi.Input.t<string>,
+  compress?: Pulumi.Input.t<bool>,
+}
+
 type geoRestriction = {
   restrictionType: Pulumi.Input.t<string>,
 }
@@ -42,6 +55,7 @@ type args = {
   enabled: Pulumi.Input.t<bool>,
   origins: Pulumi.Input.t<array<origin>>,
   defaultCacheBehavior: Pulumi.Input.t<defaultCacheBehavior>,
+  orderedCacheBehaviors?: Pulumi.Input.t<array<orderedCacheBehavior>>,
   restrictions: Pulumi.Input.t<restrictions>,
   viewerCertificate: Pulumi.Input.t<viewerCertificate>,
   comment?: Pulumi.Input.t<string>,

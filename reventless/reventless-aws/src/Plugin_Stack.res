@@ -1,5 +1,11 @@
-// AWS managed cache policy — CachingOptimized (GET/HEAD, no query strings/cookies)
+// AWS managed cache policy — CachingOptimized (GET/HEAD, no query strings/cookies).
+// Suited for hashed asset chunks whose URL changes on every build.
 let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+
+// AWS managed cache policy — CachingDisabled (TTL 0). Used for unhashed entry
+// points (`index.html`, `remoteEntry.js`, `config.json`) so a fresh `pulumi up`
+// always surfaces the new manifest/config without a manual invalidation.
+let cachingDisabledPolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
 
 type bundleDistribution = {
   distributionUrl: Pulumi.Output.t<string>,
@@ -78,6 +84,23 @@ let makeUiBundleDistribution = (
       ]
     : []
 
+  // Pin paths that must never be cached at the CDN edge to the CachingDisabled
+  // policy. Always cover `remoteEntry.js` (federation manifest) and, for SPA
+  // shells, `index.html` + `config.json`. Hashed assets fall through to the
+  // CachingOptimized default behavior since their URL changes on every build.
+  let noCacheBehavior = (pattern: string): PulumiAws.CloudFront.Distribution.orderedCacheBehavior => {
+    pathPattern: Pulumi.Input.make(pattern),
+    targetOriginId: Pulumi.Input.make(originId),
+    viewerProtocolPolicy: Pulumi.Input.make("redirect-to-https"),
+    allowedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+    cachedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+    cachePolicyId: Pulumi.Input.make(cachingDisabledPolicyId),
+  }
+  let orderedCacheBehaviors = Array.concat(
+    [noCacheBehavior("/remoteEntry.js")],
+    spaFallback ? [noCacheBehavior("/" ++ indexDocument), noCacheBehavior("/config.json")] : [],
+  )
+
   let distribution = PulumiAws.CloudFront.Distribution.make(
     ~name=name ++ "-cdn",
     ~args={
@@ -94,13 +117,18 @@ let makeUiBundleDistribution = (
           ]
         )
         ->Pulumi.Output.asInput,
-      defaultCacheBehavior: Pulumi.Input.make({
-        PulumiAws.CloudFront.Distribution.targetOriginId: Pulumi.Input.make(originId),
-        viewerProtocolPolicy: Pulumi.Input.make("redirect-to-https"),
-        allowedMethods: Pulumi.Input.make(["GET", "HEAD"]),
-        cachedMethods: Pulumi.Input.make(["GET", "HEAD"]),
-        cachePolicyId: Pulumi.Input.make(cachingOptimizedPolicyId),
-      }),
+      defaultCacheBehavior: Pulumi.Input.make(
+        (
+          {
+            targetOriginId: Pulumi.Input.make(originId),
+            viewerProtocolPolicy: Pulumi.Input.make("redirect-to-https"),
+            allowedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+            cachedMethods: Pulumi.Input.make(["GET", "HEAD"]),
+            cachePolicyId: Pulumi.Input.make(cachingOptimizedPolicyId),
+          }: PulumiAws.CloudFront.Distribution.defaultCacheBehavior
+        ),
+      ),
+      orderedCacheBehaviors: Pulumi.Input.make(orderedCacheBehaviors),
       restrictions: Pulumi.Input.make({
         PulumiAws.CloudFront.Distribution.geoRestriction: Pulumi.Input.make({
           PulumiAws.CloudFront.Distribution.restrictionType: Pulumi.Input.make("none"),
