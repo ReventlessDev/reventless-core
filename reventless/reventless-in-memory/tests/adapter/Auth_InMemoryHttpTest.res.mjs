@@ -123,7 +123,7 @@ beforeAll(async () => {
     provider: "InMemory"
   });
   DomainGraphQL_Server$ReventlessInMemory.reset();
-  DomainGraphQL_Server$ReventlessInMemory.start(4321, undefined);
+  DomainGraphQL_Server$ReventlessInMemory.start(4321, undefined, undefined);
   return await new Promise((resolve, param) => {
     setTimeout(() => resolve(), 50);
   });

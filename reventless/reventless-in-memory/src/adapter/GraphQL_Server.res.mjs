@@ -20,10 +20,6 @@ let _isInvalidBearer = DomainGraphQL_Server$ReventlessInMemory._isInvalidBearer;
 
 let _dispatch = DomainGraphQL_Server$ReventlessInMemory._dispatch;
 
-let extractHeaders = DomainGraphQL_Server$ReventlessInMemory.extractHeaders;
-
-let identityFromAuthResult = DomainGraphQL_Server$ReventlessInMemory.identityFromAuthResult;
-
 let buildAuthContext = DomainGraphQL_Server$ReventlessInMemory.buildAuthContext;
 
 let encodeGlobalId = DomainGraphQL_Server$ReventlessInMemory.encodeGlobalId;
@@ -114,8 +110,6 @@ export {
   handleLogout,
   _isInvalidBearer,
   _dispatch,
-  extractHeaders,
-  identityFromAuthResult,
   buildAuthContext,
   encodeGlobalId,
   decodeGlobalId,

@@ -45,6 +45,7 @@ import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Bu
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PlatformMCP_Server$ReventlessInMemory from "./adapter/PlatformMCP_Server.res.mjs";
+import * as Auth_GraphqlContext$ReventlessInMemory from "./adapter/Auth/Auth_GraphqlContext.res.mjs";
 import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_PluginSpec.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
 import * as DomainGraphQL_Server$ReventlessInMemory from "./adapter/DomainGraphQL_Server.res.mjs";
@@ -1022,9 +1023,9 @@ function MakeWithConfig(Config) {
   let startServers = () => {
     if (Config.splitApi) {
       UserStore$ReventlessInMemory.autoLoadOnce();
-      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined, undefined);
       DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
-      PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
+      PlatformGraphQL_Server$ReventlessInMemory.start(4001, Auth_GraphqlContext$ReventlessInMemory.buildAuthContext, undefined);
       PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
     }
     if (graphqlDebug) {
@@ -1510,7 +1511,7 @@ function MakeWithConfig(Config) {
     currentDeployTarget.contents = "Domain";
     if (!Config.splitApi) {
       UserStore$ReventlessInMemory.autoLoadOnce();
-      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined, undefined);
       return DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     }
   };
@@ -1588,10 +1589,10 @@ function MakeWithConfig(Config) {
       ]
     ]));
     currentDeployTarget.contents = "Domain";
-    adminGraphQL.start(Config.splitApi ? 4001 : 4000, undefined);
+    adminGraphQL.start(Config.splitApi ? 4001 : 4000, Auth_GraphqlContext$ReventlessInMemory.buildAuthContext, undefined);
     adminMCP.start(Config.splitApi ? 3002 : 3001, undefined);
     if (Config.splitApi) {
-      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+      DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined, undefined);
       DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
@@ -1772,10 +1773,10 @@ function MakeWithConfig(Config) {
     Plugin_Helpers$ReventlessCore.replayPlatformDeployedHook();
     if (!Config.splitApi) {
       if (apiTarget === "Domain") {
-        DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+        DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined, undefined);
         DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
       } else {
-        PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
+        PlatformGraphQL_Server$ReventlessInMemory.start(4001, Auth_GraphqlContext$ReventlessInMemory.buildAuthContext, undefined);
         PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
       }
     }
@@ -2736,9 +2737,9 @@ function Make($star) {
   };
   let startServers = () => {
     UserStore$ReventlessInMemory.autoLoadOnce();
-    DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined, undefined);
     DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
-    PlatformGraphQL_Server$ReventlessInMemory.start(4001, undefined);
+    PlatformGraphQL_Server$ReventlessInMemory.start(4001, Auth_GraphqlContext$ReventlessInMemory.buildAuthContext, undefined);
     PlatformMCP_Server$ReventlessInMemory.start(3002, undefined);
     if (graphqlDebug) {
       DomainGraphQL_Server$ReventlessInMemory.printDiagnostics();
@@ -3291,9 +3292,9 @@ function Make($star) {
       ]
     ]));
     currentDeployTarget.contents = "Domain";
-    adminGraphQL.start(4001, undefined);
+    adminGraphQL.start(4001, Auth_GraphqlContext$ReventlessInMemory.buildAuthContext, undefined);
     adminMCP.start(3002, undefined);
-    DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined);
+    DomainGraphQL_Server$ReventlessInMemory.start(undefined, undefined, undefined);
     DomainMCP_Server$ReventlessInMemory.start(undefined, undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
       name: "in-memory",

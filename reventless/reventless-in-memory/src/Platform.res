@@ -1010,7 +1010,11 @@ module MakeWithConfig = (
       UserStore.autoLoadOnce()
       DomainGraphQL_Server.start()
       DomainMCP_Server.start()
-      PlatformGraphQL_Server.start(~port=4001, ())
+      PlatformGraphQL_Server.start(
+        ~port=4001,
+        ~contextFactory=Auth_GraphqlContext.buildAuthContext,
+        (),
+      )
       PlatformMCP_Server.start(~port=3002, ())
     }
     if graphqlDebug {
@@ -1781,7 +1785,18 @@ module MakeWithConfig = (
     currentDeployTarget.contents = Domain
 
     // Start servers immediately (deployPlatform is always called standalone).
-    adminGraphQL.start(~port=if Config.splitApi { 4001 } else { 4000 }, ())
+    // Wire `Auth_GraphqlContext.buildAuthContext` so the admin yoga server
+    // extracts identity from the bearer token, same as the Domain server.
+    // Without this, Platform_* queries / mutations run as `anonymous` and
+    // skip the group authorization that AppSync would enforce via
+    // `@aws_auth(cognito_groups: ["Admin"])` in production. The Domain
+    // server's `asInterface.start` accepts but ignores `~contextFactory`
+    // because it always wires its own internal auth context.
+    adminGraphQL.start(
+      ~port=if Config.splitApi { 4001 } else { 4000 },
+      ~contextFactory=Auth_GraphqlContext.buildAuthContext,
+      (),
+    )
     adminMCP.start(~port=if Config.splitApi { 3002 } else { 3001 }, ())
     if Config.splitApi {
       DomainGraphQL_Server.start()
@@ -2074,7 +2089,11 @@ module MakeWithConfig = (
         DomainGraphQL_Server.start()
         DomainMCP_Server.start()
       | Platform =>
-        PlatformGraphQL_Server.start(~port=4001, ())
+        PlatformGraphQL_Server.start(
+          ~port=4001,
+          ~contextFactory=Auth_GraphqlContext.buildAuthContext,
+          (),
+        )
         PlatformMCP_Server.start(~port=3002, ())
       }
     }

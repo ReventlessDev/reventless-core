@@ -149,38 +149,14 @@ let _dispatch = (req: nodeRequest, res: nodeResponse, yoga: YG.yoga, getSdl: uni
 
 // -- Auth context factory ----------------------------------------------------
 //
-// Yoga's initial context wraps the Fetch API Request. We flatten its Headers
-// into a lowercase dict, hand it to Auth_InMemory.authenticate, and attach
-// the resolved identity to the context so resolvers see `ctx.identity`.
+// Yoga's initial context wraps the Fetch API Request. The shared
+// `Auth_GraphqlContext.buildAuthContext` flattens headers into a lowercase
+// dict, runs them through `Auth_InMemory.authenticate`, and attaches the
+// resolved identity to the resolver context. Lifted into its own module so
+// the split-mode admin server (`GraphQL_ServerInstance`) enforces the same
+// bearer-token rules instead of leaving admin queries wide open.
 
-type fetchHeaders
-type fetchRequest = {headers: fetchHeaders}
-type yogaInitialCtx = {request: fetchRequest}
-
-@send
-external headersForEach: (fetchHeaders, (string, string) => unit) => unit = "forEach"
-
-let extractHeaders = (headers: fetchHeaders): dict<string> => {
-  let acc = Dict.make()
-  headers->headersForEach((value, key) => acc->Dict.set(key->String.toLowerCase, value))
-  acc
-}
-
-let identityFromAuthResult = (result: Reventless.Identity.authResult): Reventless.Identity.t =>
-  switch result {
-  | Authenticated(id) => id
-  | Anonymous => Reventless.Identity.anonymous
-  | AuthError(_) => Reventless.Identity.anonymous
-  }
-
-let buildAuthContext = async (initial: YG.initialContext): JSON.t => {
-  let ctx: yogaInitialCtx = Obj.magic(initial)
-  let headers = extractHeaders(ctx.request.headers)
-  let requestContext: ReventlessCore.Auth_Adapter.requestContext = {headers: headers}
-  let result = await Auth_InMemory.authenticate(requestContext)
-  let identity = identityFromAuthResult(result)
-  Obj.magic({"identity": identity})
-}
+let buildAuthContext = Auth_GraphqlContext.buildAuthContext
 
 // -- Resolver type alias ---------------------------------------------------
 
@@ -325,7 +301,11 @@ ${mutations}
   base ++ subscriptionsSdl
 }
 
-let start = (~port: int=4000, ()) => {
+// `~contextFactory` is accepted to satisfy the `GraphQL_ServerInstance.t`
+// interface but ignored — the data server always wires `buildAuthContext`
+// internally so the bearer-token rules + /__inmemory/login + /sdl dispatch
+// stay consistent across callers.
+let start = (~port: int=4000, ~contextFactory as _: option<YG.contextFactory>=?, ()) => {
   // Register node resolver if callback is set
   switch buildNodeResolver() {
   | Some((name, resolver)) => queryResolvers.contents->Dict.set(name, resolver)

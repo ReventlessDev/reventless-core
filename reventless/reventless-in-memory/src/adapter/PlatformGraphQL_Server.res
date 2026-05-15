@@ -7,12 +7,40 @@
 //
 // Does NOT include Relay-specific features (encodeGlobalId, node resolver)
 // since admin queries are not Relay-paginated.
+//
+// Authorization: every query AND mutation resolver registered here is
+// wrapped with `Auth_GraphqlContext.requireGroup(~group="Admin")` so
+// non-Admin identities raise an `UNAUTHORIZED` GraphQLError before the
+// underlying resolver runs. Mirrors AppSync's
+// `@aws_auth(cognito_groups: ["Admin"])` directive that gates Platform_*
+// fields in the AWS adapter.
+//
+// Mutations are wrapped (in addition to their per-command
+// `commandAuthorization` rule inside `CommandGeneratorResolvers_GraphQL.register`)
+// because the per-command rule defaults to `AllowAuthenticated` and the
+// in-memory adapter falls back to `defaultUser` on missing-bearer requests
+// — without the wrapper, anonymous callers could trigger admin mutations
+// (Plugin_Activate / _Deactivate, etc.) just by hitting the platform port.
 
 let instance: GraphQL_ServerInstance.t = GraphQL_ServerInstance.make(~label="GraphQL:Platform")
 
-// Re-export all instance functions for module-style access.
-let registerMutations = instance.registerMutations
-let registerQueries = instance.registerQueries
+// Wrap a resolver dict so every value enforces the Admin group. Keys are
+// preserved; resolvers fall through to the underlying instance once the
+// group check passes.
+let wrapAdmin = (
+  resolvers: dict<GraphQL_ServerInstance.resolverFn>,
+): dict<GraphQL_ServerInstance.resolverFn> => {
+  let wrapped = Dict.make()
+  resolvers->Dict.toArray->Array.forEach(((k, v)) =>
+    wrapped->Dict.set(k, Auth_GraphqlContext.requireGroup(~group="Admin", v))
+  )
+  wrapped
+}
+
+let registerMutations = (~sdlFields, ~resolvers) =>
+  instance.registerMutations(~sdlFields, ~resolvers=wrapAdmin(resolvers))
+let registerQueries = (~sdlFields, ~resolvers) =>
+  instance.registerQueries(~sdlFields, ~resolvers=wrapAdmin(resolvers))
 let registerSubscriptions = instance.registerSubscriptions
 let registerTypes = instance.registerTypes
 let getMutationResolver = instance.getMutationResolver
@@ -27,4 +55,21 @@ let diagnostics = instance.diagnostics
 let printDiagnostics = instance.printDiagnostics
 
 // Expose as GraphQL_ServerInstance.t for resolveTargetGraphQL() in Platform.res.
-let asInterface: GraphQL_ServerInstance.t = instance
+// `registerQueries` is the wrapped version so admin auth fires regardless of
+// whether callers reach the singleton directly or through `asInterface`.
+let asInterface: GraphQL_ServerInstance.t = {
+  registerMutations,
+  registerQueries,
+  registerSubscriptions,
+  registerTypes,
+  getMutationResolver,
+  getQueryResolver,
+  start,
+  stop,
+  reset,
+  buildSdl,
+  getFullSdl,
+  getSchema,
+  diagnostics,
+  printDiagnostics,
+}

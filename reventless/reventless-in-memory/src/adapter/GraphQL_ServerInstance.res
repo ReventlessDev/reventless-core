@@ -47,7 +47,13 @@ type t = {
   registerTypes: (~sdlTypes: array<string>) => unit,
   getMutationResolver: string => option<resolverFn>,
   getQueryResolver: string => option<resolverFn>,
-  start: (~port: int=?, unit) => unit,
+  // `~contextFactory` is the yoga context factory — when supplied, requests
+  // run through it so resolvers see `ctx.identity`. Omit (or pass None) for
+  // unauthenticated servers. In-memory `Platform.res` wires
+  // `Auth_GraphqlContext.buildAuthContext` here so the admin server enforces
+  // the same bearer-token rules as the data server instead of leaving
+  // Platform_* queries / mutations wide open.
+  start: (~port: int=?, ~contextFactory: YG.contextFactory=?, unit) => unit,
   stop: unit => unit,
   reset: unit => unit,
   buildSdl: unit => string,
@@ -148,7 +154,7 @@ ${mutations}
     | None => ()
     }
 
-  let start = (~port: int=4000, ()) => {
+  let start = (~port: int=4000, ~contextFactory: option<YG.contextFactory>=?, ()) => {
     let resolvers = Dict.make()
     resolvers->Dict.set("Query", queryResolvers.contents)
     resolvers->Dict.set("Mutation", mutationResolvers.contents)
@@ -159,12 +165,23 @@ ${mutations}
     lastFullSdl.contents = Some(sdl)
     let schema = YG.createSchema({"typeDefs": sdl, "resolvers": resolvers})
     activeSchema.contents = Some(schema)
-    let yoga = YG.createYoga({
-      "schema": schema,
-      "graphiql": true,
-      "logging": debug,
-      "maskedErrors": !debug,
-    })
+    let yoga = switch contextFactory {
+    | Some(ctx) =>
+      YG.createYogaWithContext({
+        "schema": schema,
+        "graphiql": true,
+        "logging": debug,
+        "maskedErrors": !debug,
+        "context": ctx,
+      })
+    | None =>
+      YG.createYoga({
+        "schema": schema,
+        "graphiql": true,
+        "logging": debug,
+        "maskedErrors": !debug,
+      })
+    }
     let server = YG.createServer(yoga)
     server->YG.listen(port, () =>
       log.info(~comp=label, `listening on http://localhost:${port->Int.toString}/graphql`)

@@ -11,6 +11,7 @@ import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/I
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as Auth_InMemory$ReventlessInMemory from "./Auth/Auth_InMemory.res.mjs";
+import * as Auth_GraphqlContext$ReventlessInMemory from "./Auth/Auth_GraphqlContext.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -115,33 +116,6 @@ function _dispatch(req, res, yoga, getSdl) {
   } else {
     return yoga(req, res);
   }
-}
-
-function extractHeaders(headers) {
-  let acc = {};
-  headers.forEach((value, key) => {
-    acc[key.toLowerCase()] = value;
-  });
-  return acc;
-}
-
-function identityFromAuthResult(result) {
-  if (typeof result !== "object" || result.TAG !== "Authenticated") {
-    return Identity$Reventless.anonymous;
-  } else {
-    return result._0;
-  }
-}
-
-async function buildAuthContext(initial) {
-  let headers = extractHeaders(initial.request.headers);
-  let requestContext = {
-    headers: headers
-  };
-  let result = await Auth_InMemory$ReventlessInMemory.authenticate(requestContext);
-  return {
-    identity: identityFromAuthResult(result)
-  };
 }
 
 function encodeGlobalId(typeName, localId) {
@@ -296,7 +270,7 @@ type Mutation {
   return base + subscriptionsSdl;
 }
 
-function start(portOpt, param) {
+function start(portOpt, param, param$1) {
   let port = portOpt !== undefined ? portOpt : 4000;
   let match = buildNodeResolver();
   if (match !== undefined) {
@@ -320,7 +294,7 @@ function start(portOpt, param) {
     graphiql: true,
     logging: debug,
     maskedErrors: !debug,
-    context: buildAuthContext
+    context: Auth_GraphqlContext$ReventlessInMemory.buildAuthContext
   });
   let getSdl = () => {
     let s = activeSchema.contents;
@@ -380,7 +354,7 @@ function rebuildSchema(baseFragment, pluginFragments) {
     graphiql: true,
     logging: debug,
     maskedErrors: !debug,
-    context: buildAuthContext
+    context: Auth_GraphqlContext$ReventlessInMemory.buildAuthContext
   });
   let getSdl = () => {
     let s = activeSchema.contents;
@@ -546,6 +520,8 @@ let asInterface = {
 
 let YG;
 
+let buildAuthContext = Auth_GraphqlContext$ReventlessInMemory.buildAuthContext;
+
 export {
   YG,
   log,
@@ -556,8 +532,6 @@ export {
   handleLogout,
   _isInvalidBearer,
   _dispatch,
-  extractHeaders,
-  identityFromAuthResult,
   buildAuthContext,
   encodeGlobalId,
   decodeGlobalId,

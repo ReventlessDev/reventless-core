@@ -96,7 +96,7 @@ type Mutation {
       return;
     }
   };
-  let start = (portOpt, param) => {
+  let start = (portOpt, contextFactory, param) => {
     let port = portOpt !== undefined ? portOpt : 4000;
     let resolvers = {};
     resolvers["Query"] = queryResolvers.contents;
@@ -111,12 +111,18 @@ type Mutation {
       resolvers: resolvers
     });
     activeSchema.contents = Primitive_option.some(schema);
-    let yoga = GraphqlYoga.createYoga({
-      schema: schema,
-      graphiql: true,
-      logging: debug,
-      maskedErrors: !debug
-    });
+    let yoga = contextFactory !== undefined ? GraphqlYoga.createYoga({
+        schema: schema,
+        graphiql: true,
+        logging: debug,
+        maskedErrors: !debug,
+        context: contextFactory
+      }) : GraphqlYoga.createYoga({
+        schema: schema,
+        graphiql: true,
+        logging: debug,
+        maskedErrors: !debug
+      });
     let server = Http.createServer(yoga);
     server.listen(port, () => log.info(label, undefined, `listening on http://localhost:` + port.toString() + `/graphql`));
     if (Object.keys(subscriptionResolvers.contents).length !== 0) {
