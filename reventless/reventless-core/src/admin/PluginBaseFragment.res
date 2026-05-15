@@ -5,6 +5,30 @@ let adminAuth: Reventless.ReadModel.authorization = {
   group: "Admin",
 }
 
+// Fields present on `PluginReadModelSpec.state` for projection/storage purposes
+// but intentionally absent from the public GraphQL surface. Shared with
+// `Platform_Admin_Structure` so the schema announced via `Platform_UIDefinitions`
+// stays aligned with the SDL — otherwise AutoUI generates list-view queries
+// for fields the server doesn't expose and every Plugin row fails to load.
+let pluginExcludeFields: array<string> = [
+  "eventCollector",
+  "extensionPointNames",
+  "extensionNames",
+]
+
+// Additional fields the SDL exposes but the Plugin list view should NOT
+// surface — they're option-of-nested-object types (e.g. apiSchemaFragment,
+// uiFragments, structure) which AutoUI currently renders as scalar columns
+// and queries without a sub-selection, failing schema validation. Other
+// callers (host-shell's Platform_UIDefinitions / Platform_UIFragments /
+// Platform_PlatformEventGraphs) keep querying them via dedicated fields
+// and resolver paths.
+let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat([
+  "apiSchemaFragment",
+  "uiFragments",
+  "structure",
+])
+
 // The UIFragmentRegistry read model is queried exclusively via the explicit
 // flat `Platform_UIFragments: [Platform_UIFragmentEntry!]!` field declared in
 // `Platform_UIFragmentsApi.res` (and resolved by `Platform_UIFragments_Lambda.res`
@@ -17,7 +41,7 @@ let queryEntries: array<querySchemaEntry> = [
     returnTypeName: Api_Naming.adminField(~name="Plugin"),
     stateSchema: PluginReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
-    excludeFields: ["eventCollector", "extensionPointNames", "extensionNames"],
+    excludeFields: pluginExcludeFields,
   },
   {
     singleFieldName: Api_Naming.adminField(~name="PlatformEventGraph"),

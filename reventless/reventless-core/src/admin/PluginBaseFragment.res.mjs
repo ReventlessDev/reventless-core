@@ -12,6 +12,18 @@ let adminAuth = {
   group: "Admin"
 };
 
+let pluginExcludeFields = [
+  "eventCollector",
+  "extensionPointNames",
+  "extensionNames"
+];
+
+let pluginUIOnlyExcludeFields = pluginExcludeFields.concat([
+  "apiSchemaFragment",
+  "uiFragments",
+  "structure"
+]);
+
 let queryEntries = [
   {
     singleFieldName: Api_Naming$ReventlessCore.adminField("Plugin"),
@@ -19,11 +31,7 @@ let queryEntries = [
     returnTypeName: Api_Naming$ReventlessCore.adminField("Plugin"),
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     authorization: adminAuth,
-    excludeFields: [
-      "eventCollector",
-      "extensionPointNames",
-      "extensionNames"
-    ]
+    excludeFields: pluginExcludeFields
   },
   {
     singleFieldName: Api_Naming$ReventlessCore.adminField("PlatformEventGraph"),
@@ -48,7 +56,9 @@ let pluginAggregateMutationEntries = fieldNames.length === 0 ? [] : [{
 
 export {
   adminAuth,
+  pluginExcludeFields,
+  pluginUIOnlyExcludeFields,
   queryEntries,
   pluginAggregateMutationEntries,
 }
-/* queryEntries Not a pure module */
+/* pluginUIOnlyExcludeFields Not a pure module */
