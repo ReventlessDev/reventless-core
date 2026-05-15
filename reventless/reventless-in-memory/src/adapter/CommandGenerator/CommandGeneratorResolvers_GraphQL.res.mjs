@@ -44,6 +44,50 @@ function rejectForbidden(field) {
   ]);
 }
 
+let pluginStatusGate = {
+  contents: undefined
+};
+
+function setPluginStatusGate(fn) {
+  pluginStatusGate.contents = fn;
+}
+
+function resetPluginStatusGate() {
+  pluginStatusGate.contents = undefined;
+}
+
+function rejectInactivePlugin(field, detail) {
+  return Object.fromEntries([
+    [
+      "__typename",
+      "CommandRejected"
+    ],
+    [
+      "msgId",
+      Message$ReventlessCore.uuid()
+    ],
+    [
+      "errorCode",
+      "InactivePlugin"
+    ],
+    [
+      "errorDetail",
+      `Mutation.` + field + `: ` + detail
+    ]
+  ]);
+}
+
+function checkPluginStatus(field) {
+  let gate = pluginStatusGate.contents;
+  if (gate === undefined) {
+    return;
+  }
+  let detail = gate(field);
+  if (detail !== undefined) {
+    return rejectInactivePlugin(field, detail);
+  }
+}
+
 function syntheticCommand(cname, hasPayload) {
   if (hasPayload) {
     return {
@@ -186,6 +230,10 @@ function register(fields, commandSchema, commandAuthorization, server) {
       if (generateCommand === undefined) {
         return null;
       }
+      let rejected = checkPluginStatus(field);
+      if (rejected !== undefined) {
+        return rejected;
+      }
       let identity = extractIdentity(ctx);
       let rule = commandAuthorization(syntheticCommand(commandName, hasPayload));
       if (!Authorization$Reventless.isAllowed(rule, identity)) {
@@ -224,6 +272,10 @@ function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
     let generateCommand = handlerRef.contents;
     if (generateCommand === undefined) {
       return null;
+    }
+    let rejected = checkPluginStatus(fieldName);
+    if (rejected !== undefined) {
+      return rejected;
     }
     let identity = extractIdentity(ctx);
     let rule = commandAuthorization(syntheticCommand(tag, hasPayload));
@@ -283,6 +335,11 @@ function make(param, param$1, fields, param$2, param$3, param$4, param$5) {
 export {
   extractIdentity,
   rejectForbidden,
+  pluginStatusGate,
+  setPluginStatusGate,
+  resetPluginStatusGate,
+  rejectInactivePlugin,
+  checkPluginStatus,
   syntheticCommand,
   capitalize,
   commandResultSdl,

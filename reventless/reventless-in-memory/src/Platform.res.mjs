@@ -8,6 +8,7 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
+import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
@@ -18,16 +19,19 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Api_Naming$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Naming.res.mjs";
+import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as Backend$ReventlessInMemory from "./adapter/Backend.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as UserStore$ReventlessInMemory from "./adapter/Auth/UserStore.res.mjs";
 import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin.res.mjs";
+import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as TestRunner$ReventlessInMemory from "./test/TestRunner.res.mjs";
 import * as BackendState$ReventlessInMemory from "./adapter/BackendState.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "./adapter/InMemory_Bus.res.mjs";
+import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
 import * as SqliteDriver$ReventlessInMemory from "./adapter/SqliteDriver.res.mjs";
 import * as Task_Builder$ReventlessInMemory from "./components/Task_Builder.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
@@ -606,8 +610,38 @@ function MakeWithConfig(Config) {
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
-  let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+  let $$let = AggregateMaker.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginSpec$ReventlessCore.name,
+    eventSchema: PluginSpec$ReventlessCore.eventSchema,
+    errorSchema: PluginSpec$ReventlessCore.errorSchema,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema,
+    moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
+    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
+  })({
+    initialState: PluginBehavior$ReventlessCore.initialState,
+    evolve: PluginBehavior$ReventlessCore.evolve,
+    decide: PluginBehavior$ReventlessCore.decide,
+    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
+  })(NoEventMappings$ReventlessInfra.Make({
+    name: PluginSpec$ReventlessCore.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema
+  }));
+  let InMemoryPluginAggregate_Spec = $$let.Spec;
+  let InMemoryPluginAggregate_make = $$let.make;
+  let InMemoryPluginAggregate_outputs = $$let.outputs;
+  let InMemoryPluginAggregate_operations = $$let.operations;
+  let InMemoryPluginAggregate_finish = $$let.finish;
+  let InMemoryPluginAggregate = {
+    Spec: InMemoryPluginAggregate_Spec,
+    make: InMemoryPluginAggregate_make,
+    outputs: InMemoryPluginAggregate_outputs,
+    operations: InMemoryPluginAggregate_operations,
+    finish: InMemoryPluginAggregate_finish
+  };
   let $$let$1 = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+  let $$let$2 = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
@@ -623,9 +657,9 @@ function MakeWithConfig(Config) {
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
-    make: $$let.make
-  })({
     make: $$let$1.make
+  })({
+    make: $$let$2.make
   })({
     silent: Config.silent,
     splitApi: Config.splitApi,
@@ -1096,7 +1130,7 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1141,6 +1175,38 @@ function MakeWithConfig(Config) {
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
+    CommandGeneratorResolvers_GraphQL$ReventlessInMemory.setPluginStatusGate(field => {
+      let parts = field.split("_");
+      let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
+      if (pluginPrefix === "Platform") {
+        return;
+      }
+      let statusByName = {};
+      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      if (scanAll !== undefined) {
+        scanAll().forEach(json => {
+          let state;
+          try {
+            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          } catch (exn) {
+            return;
+          }
+          statusByName[state.name] = state.status;
+        });
+      }
+      let match = statusByName[pluginPrefix];
+      if (match === undefined) {
+        return;
+      }
+      switch (match) {
+        case "Connected" :
+          return;
+        case "Disconnected" :
+          return "plugin is disconnected";
+        case "Inactive" :
+          return "plugin is inactive";
+      }
+    });
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
@@ -1183,7 +1249,39 @@ function MakeWithConfig(Config) {
       return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
-    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
+      let dict = {};
+      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      if (scanAll !== undefined) {
+        scanAll().forEach(json => {
+          let state;
+          try {
+            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          } catch (exn) {
+            return;
+          }
+          let id = state.name + "@" + state.version;
+          dict[id] = state.status;
+        });
+      }
+      return Object.entries(pluginStructuresStore.contents).filter(param => {
+        let pluginId = param[0];
+        if (pluginId === Platform_Admin_Structure$ReventlessCore.pluginId) {
+          return true;
+        }
+        let match = dict[pluginId];
+        if (match === undefined) {
+          return false;
+        }
+        switch (match) {
+          case "Connected" :
+            return true;
+          case "Disconnected" :
+          case "Inactive" :
+            return false;
+        }
+      }).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
@@ -1488,7 +1586,7 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -2191,8 +2289,38 @@ function Make($star) {
   };
   let EventCollectorChannel = EventCollectorChannel_InMemory$ReventlessInMemory.Make(Bus);
   let QE = QueryEngine_InMemory$ReventlessInMemory.Make(Bus);
-  let $$let = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+  let $$let = AggregateMaker.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginSpec$ReventlessCore.name,
+    eventSchema: PluginSpec$ReventlessCore.eventSchema,
+    errorSchema: PluginSpec$ReventlessCore.errorSchema,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema,
+    moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
+    commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
+  })({
+    initialState: PluginBehavior$ReventlessCore.initialState,
+    evolve: PluginBehavior$ReventlessCore.evolve,
+    decide: PluginBehavior$ReventlessCore.decide,
+    moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
+  })(NoEventMappings$ReventlessInfra.Make({
+    name: PluginSpec$ReventlessCore.name,
+    Id: Id$Reventless.$$String,
+    commandSchema: PluginSpec$ReventlessCore.commandSchema
+  }));
+  let InMemoryPluginAggregate_Spec = $$let.Spec;
+  let InMemoryPluginAggregate_make = $$let.make;
+  let InMemoryPluginAggregate_outputs = $$let.outputs;
+  let InMemoryPluginAggregate_operations = $$let.operations;
+  let InMemoryPluginAggregate_finish = $$let.finish;
+  let InMemoryPluginAggregate = {
+    Spec: InMemoryPluginAggregate_Spec,
+    make: InMemoryPluginAggregate_make,
+    outputs: InMemoryPluginAggregate_outputs,
+    operations: InMemoryPluginAggregate_operations,
+    finish: InMemoryPluginAggregate_finish
+  };
   let $$let$1 = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
+  let $$let$2 = CommandTopicChannel_InMemory$ReventlessInMemory.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
     make: RuntimeEnvironment_InMemory$ReventlessInMemory.make,
     groupBySource: RuntimeEnvironment_InMemory$ReventlessInMemory.groupBySource,
@@ -2208,9 +2336,9 @@ function Make($star) {
     asEventHandler: prim => prim,
     asEffectHandler: prim => prim
   })(EventCollectorChannel))(DcbEventLogStorage_InMemory$ReventlessInMemory.Make(Bus))(EventTopicPublisher_InMemory$ReventlessInMemory.Make(Bus))({
-    make: $$let.make
-  })({
     make: $$let$1.make
+  })({
+    make: $$let$2.make
   })({
     silent: false,
     splitApi: true,
@@ -2676,7 +2804,7 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -2721,6 +2849,38 @@ function Make($star) {
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
+    CommandGeneratorResolvers_GraphQL$ReventlessInMemory.setPluginStatusGate(field => {
+      let parts = field.split("_");
+      let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
+      if (pluginPrefix === "Platform") {
+        return;
+      }
+      let statusByName = {};
+      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      if (scanAll !== undefined) {
+        scanAll().forEach(json => {
+          let state;
+          try {
+            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          } catch (exn) {
+            return;
+          }
+          statusByName[state.name] = state.status;
+        });
+      }
+      let match = statusByName[pluginPrefix];
+      if (match === undefined) {
+        return;
+      }
+      switch (match) {
+        case "Connected" :
+          return;
+        case "Disconnected" :
+          return "plugin is disconnected";
+        case "Inactive" :
+          return "plugin is inactive";
+      }
+    });
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
@@ -2763,7 +2923,39 @@ function Make($star) {
       return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
-    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
+      let dict = {};
+      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      if (scanAll !== undefined) {
+        scanAll().forEach(json => {
+          let state;
+          try {
+            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          } catch (exn) {
+            return;
+          }
+          let id = state.name + "@" + state.version;
+          dict[id] = state.status;
+        });
+      }
+      return Object.entries(pluginStructuresStore.contents).filter(param => {
+        let pluginId = param[0];
+        if (pluginId === Platform_Admin_Structure$ReventlessCore.pluginId) {
+          return true;
+        }
+        let match = dict[pluginId];
+        if (match === undefined) {
+          return false;
+        }
+        switch (match) {
+          case "Connected" :
+            return true;
+          case "Disconnected" :
+          case "Inactive" :
+            return false;
+        }
+      }).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+    };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
@@ -3059,7 +3251,7 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep

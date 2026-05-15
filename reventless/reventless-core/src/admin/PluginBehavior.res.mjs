@@ -184,6 +184,7 @@ function decide(state, command) {
             };
         }
       case "Inactive" :
+        let pluginDefinition$3 = state._0;
         if (typeof command === "object") {
           if (command.TAG === "ReportIncompatibility") {
             return {
@@ -211,8 +212,8 @@ function decide(state, command) {
               TAG: "Ok",
               _0: [{
                   TAG: "Activated",
-                  _0: state._0
-                }]
+                  _0: pluginDefinition$3
+                }].concat(uiRegisterEvents(pluginDefinition$3.id, pluginDefinition$3.uiFragments))
             };
           default:
             return {

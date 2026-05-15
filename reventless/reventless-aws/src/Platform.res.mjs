@@ -58,7 +58,6 @@ import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollect
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
-import * as Aggregate_Builder_NoResolver$ReventlessAws from "./components/Aggregate_Builder_NoResolver.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
 import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
@@ -648,7 +647,7 @@ function MakeWithConfig(Config) {
     cloner: Config.cloner,
     hooks: hooks
   });
-  let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
+  let PluginAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,
@@ -1602,7 +1601,7 @@ function Make($star) {
     cloner: false,
     hooks: hooks
   });
-  let PluginAggregate = Aggregate_Builder_NoResolver$ReventlessAws.Make({
+  let PluginAggregate = Aggregate_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginSpec$ReventlessCore.name,
     eventSchema: PluginSpec$ReventlessCore.eventSchema,

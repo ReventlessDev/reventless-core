@@ -701,6 +701,62 @@ module NoopHooksConfig: HooksConfig = {
   let hooks = noHooks
 }
 
+// Derive admin-prefixed mutation field names from each aggregate's command schema,
+// drop @noApi variants, register them into aggregateMutationFieldsRegistry (consumed
+// by CommandGenerator_Builder.connect to wire AppSync resolvers in the auto-flow)
+// and fire mutationResolverHook so adapter-side SDL stubs get registered synchronously.
+// Returns the derived mutationSchemaEntries — the caller concatenates them with the
+// rest of the admin fragment's entries.
+let registerAdminAggregateMutations = (
+  type a,
+  aggregates: array<module(ReventlessInfra.Aggregate.T with type api = a)>,
+  ~hooks: platformHooks,
+): array<ReventlessInfra.Api.mutationSchemaEntry> =>
+  aggregates->Array.flatMap((module(M: ReventlessInfra.Aggregate.T with type api = a)) => {
+    let commandSchema = M.Spec.commandSchema->S.castToUnknown
+    if ApiNoApiHelpers.isNoApi(commandSchema) {
+      []
+    } else {
+      let constructorNames = Reventless.DcbTag.extractAllVariantNames(M.Spec.commandSchema)
+      let filteredConstructorNames =
+        ApiNoApiHelpers.filterNoApiVariants(constructorNames, commandSchema)
+      let fieldNames =
+        filteredConstructorNames->Array.map(cname =>
+          Api_Naming.adminField(~name=M.Spec.name ++ "_" ++ cname)
+        )
+      aggregateMutationFieldsRegistry->Dict.set(M.Spec.name, fieldNames)
+      if fieldNames->Array.length === 0 {
+        []
+      } else {
+        hooks.mutationResolverHook->Option.forEach(registerResolver =>
+          registerResolver(
+            ~kind=Aggregate,
+            ~fields=fieldNames,
+            ~commandSchema,
+            ~commandAuthorization=M.Spec.commandAuthorization->Obj.magic,
+          )
+        )
+        let fieldPermissions = Dict.make()
+        filteredConstructorNames->Array.forEachWithIndex((cname, idx) => {
+          let fieldName = fieldNames->Array.getUnsafe(idx)
+          let hasPayload =
+            Reventless.DcbTag.isVariantPayloadBearing(M.Spec.commandSchema->Obj.magic, cname)
+          let syntheticCmd: unknown =
+            hasPayload ? {"TAG": cname}->Obj.magic : cname->Obj.magic
+          let rule = M.Spec.commandAuthorization(syntheticCmd->Obj.magic)
+          fieldPermissions->Dict.set(fieldName, rule)
+        })
+        [
+          {
+            ReventlessInfra.Api.fieldNames,
+            commandSchema,
+            fieldPermissions,
+          },
+        ]
+      }
+    }
+  })
+
 // ---------------------------------------------------------------------------
 // Interop metadata — computed from builderOutputs at deploy time and stored so
 // that the plugin's entry-point module can export it as `_interopMeta`.

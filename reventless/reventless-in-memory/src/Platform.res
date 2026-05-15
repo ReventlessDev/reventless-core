@@ -633,6 +633,19 @@ module MakeWithConfig = (
 
   module EventCollectorChannel = EventCollectorChannel_InMemory.Make(Bus)
   module QE = QueryEngine_InMemory.Make(Bus)
+
+  // Admin-internal Plugin aggregate. Constructed here so it can be threaded into
+  // Admin.construct's ~aggregates parameter — registerAdminAggregateMutations then
+  // wires Platform_Plugin_Activate / Platform_Plugin_Deactivate through the standard
+  // CommandGenerator auto-flow (same path user-plugin aggregates use). Internal-protocol
+  // variants (Heartbeat, Connect, Disconnect, ReportIncompatibility) carry `@noApi` and
+  // are filtered out before SDL/resolver generation.
+  module InMemoryPluginAggregate: ReventlessInfra.Aggregate.T with type api = unit = AggregateMaker.Make(
+    ReventlessCore.PluginSpec,
+    ReventlessCore.PluginBehavior,
+    ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
+  )
+
   module Admin = ReventlessCore.Platform_Admin.Make(
     RuntimeEnvironment_InMemory,
     EventCollectorChannel,
@@ -1096,7 +1109,7 @@ module MakeWithConfig = (
     let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
-      ~aggregates=[],
+      ~aggregates=[module(InMemoryPluginAggregate)],
       ~readModels=[],
       ~scheduler,
       ~resourceNaming=InMemory_PluginSpec.resourceNaming,
@@ -1187,6 +1200,38 @@ module MakeWithConfig = (
 
     let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
     let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
+
+    // Wire the per-mutation plugin-status gate (Part 2.3 of the resolver plan).
+    // Resolves at call-time so updates to Plugin RM status are reflected immediately.
+    // Admin mutations (Platform_*) bypass the gate — the built-in admin plugin can't
+    // be deactivated and its mutations have a separate admin-group SDL directive on
+    // AWS. The first underscore-delimited segment of the mutation name is the owning
+    // plugin's Spec name.
+    CommandGeneratorResolvers_GraphQL.setPluginStatusGate(field => {
+      let parts = field->String.split("_")
+      let pluginPrefix = parts->Array.get(0)->Option.getOr("")
+      if pluginPrefix === "Platform" {
+        None
+      } else {
+        let statusByName = Dict.make()
+        switch Bus.getQueryDbScan(pluginQueryDbName) {
+        | Some(scanAll) =>
+          scanAll()->Array.forEach(json =>
+            switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+            | state => statusByName->Dict.set(state.name, state.status)
+            | exception _ => ()
+            }
+          )
+        | None => ()
+        }
+        switch statusByName->Dict.get(pluginPrefix) {
+        | Some(Connected) => None
+        | Some(Disconnected) => Some("plugin is disconnected")
+        | Some(Inactive) => Some("plugin is inactive")
+        | None => None
+        }
+      }
+    })
 
     // Set deploy target to Platform for admin schema registration.
     // resolveTargetGraphQL/MCP() will return PlatformGraphQL_Server / PlatformMCP_Server
@@ -1281,15 +1326,46 @@ module MakeWithConfig = (
     // Platform_UIDefinitions resolver — SDL is already stitched into baseParts via
     // AdminApi.baseFragment so we register only the resolver here. Encoder is shared
     // with the AWS adapter so responses are byte-identical.
+    //
+    // Filter by plugin lifecycle status to mirror the AWS DynamoDB filter in
+    // Platform_UIDefinitions_Lambda.res (`contains(#status, :connected)`). Plugins
+    // whose Plugin RM row is not Connected are hidden until reactivated. The built-in
+    // Platform_Admin entry has no Plugin RM row — include it unconditionally since
+    // it can't be deactivated.
     queryResolvers->Dict.set(
       "Platform_UIDefinitions",
-      async (_root, _args, _ctx): JSON.t =>
+      async (_root, _args, _ctx): JSON.t => {
+        let pluginStatusById = {
+          let dict = Dict.make()
+          switch Bus.getQueryDbScan(pluginQueryDbName) {
+          | Some(scanAll) =>
+            scanAll()->Array.forEach(json =>
+              switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+              | state =>
+                let id = state.name ++ "@" ++ state.version
+                dict->Dict.set(id, state.status)
+              | exception _ => ()
+              }
+            )
+          | None => ()
+          }
+          dict
+        }
+        let adminPluginId = ReventlessCore.Platform_Admin_Structure.pluginId
         pluginStructuresStore.contents
         ->Dict.toArray
+        ->Array.filter(((pluginId, _)) =>
+          pluginId === adminPluginId ||
+            switch pluginStatusById->Dict.get(pluginId) {
+            | Some(Connected) => true
+            | _ => false
+            }
+        )
         ->Array.map(((pluginId, def)) =>
           ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
         )
-        ->JSON.Encode.array,
+        ->JSON.Encode.array
+      },
     )
 
     // Platform_UIFragments resolver — reads the seeded UIFragmentRegistry QueryDb
@@ -1723,7 +1799,7 @@ module MakeWithConfig = (
     let admin = Admin.construct(
       ~version,
       ~extensionPoints=[],
-      ~aggregates=[],
+      ~aggregates=[module(InMemoryPluginAggregate)],
       ~readModels=[],
       ~scheduler,
       ~resourceNaming=InMemory_PluginSpec.resourceNaming,

@@ -45,6 +45,38 @@ let rejectForbidden = (~field: string): JSON.t =>
     ]),
   )
 
+// -- Plugin status gate -------------------------------------------------------
+// Set by the platform after Admin.construct to wire a per-mutation lookup against
+// the Plugin read model. Takes a mutation field name (e.g. "Catalog_Product_Add"),
+// returns Some(errorDetail) if the mutation should be rejected (plugin is Inactive
+// / not Connected), None otherwise. Platform_* admin mutations are exempt — the
+// gate function should return None for them. Wrapping a ref instead of a functor
+// argument keeps the module callable as-is from existing call sites.
+
+let pluginStatusGate: ref<option<string => option<string>>> = ref(None)
+let setPluginStatusGate = fn => pluginStatusGate := Some(fn)
+let resetPluginStatusGate = () => pluginStatusGate := None
+
+let rejectInactivePlugin = (~field: string, ~detail: string): JSON.t =>
+  JSON.Object(
+    Dict.fromArray([
+      ("__typename", JSON.String("CommandRejected")),
+      ("msgId", JSON.String(ReventlessCore.Message.uuid())),
+      ("errorCode", JSON.String("InactivePlugin")),
+      ("errorDetail", JSON.String(`Mutation.${field}: ${detail}`)),
+    ]),
+  )
+
+let checkPluginStatus = (~field: string): option<JSON.t> =>
+  switch pluginStatusGate.contents {
+  | Some(gate) =>
+    switch gate(field) {
+    | Some(detail) => Some(rejectInactivePlugin(~field, ~detail))
+    | None => None
+    }
+  | None => None
+  }
+
 // Build a synthetic command value sufficient for evaluating
 // `commandAuthorization`. ReScript variants with record payloads compile to
 // `{TAG: cname, ...payload}` and the PPX-generated switch matches `Ctor(_)`
@@ -186,19 +218,23 @@ let register = (
     let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
       switch handlerRef.contents {
       | Some(generateCommand) =>
-        let identity = extractIdentity(ctx)
-        let rule = commandAuthorization(syntheticCommand(commandName, ~hasPayload))
-        if !Reventless.Authorization.isAllowed(rule, identity) {
-          rejectForbidden(~field)
-        } else {
-          let payload: CommandGenerator.payload = {
-            command: commandName,
-            arguments: args->Obj.magic,
-            meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
-            identity,
+        switch checkPluginStatus(~field) {
+        | Some(rejected) => rejected
+        | None =>
+          let identity = extractIdentity(ctx)
+          let rule = commandAuthorization(syntheticCommand(commandName, ~hasPayload))
+          if !Reventless.Authorization.isAllowed(rule, identity) {
+            rejectForbidden(~field)
+          } else {
+            let payload: CommandGenerator.payload = {
+              command: commandName,
+              arguments: args->Obj.magic,
+              meta: {ip: [], user: identity.userId, info: `Mutation.${field}`},
+              identity,
+            }
+            let outcome = await generateCommand(payload)->Effect.runPromise
+            outcome->commandOutcomeToJson
           }
-          let outcome = await generateCommand(payload)->Effect.runPromise
-          outcome->commandOutcomeToJson
         }
       | None => JSON.Encode.null
       }
@@ -237,19 +273,23 @@ let registerDcb = (
   let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
     switch handlerRef.contents {
     | Some(generateCommand) =>
-      let identity = extractIdentity(ctx)
-      let rule = commandAuthorization(syntheticCommand(tag, ~hasPayload))
-      if !Reventless.Authorization.isAllowed(rule, identity) {
-        rejectForbidden(~field=fieldName)
-      } else {
-        let payload: CommandGenerator.payload = {
-          command: tag,
-          arguments: args->Obj.magic,
-          meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
-          identity,
+      switch checkPluginStatus(~field=fieldName) {
+      | Some(rejected) => rejected
+      | None =>
+        let identity = extractIdentity(ctx)
+        let rule = commandAuthorization(syntheticCommand(tag, ~hasPayload))
+        if !Reventless.Authorization.isAllowed(rule, identity) {
+          rejectForbidden(~field=fieldName)
+        } else {
+          let payload: CommandGenerator.payload = {
+            command: tag,
+            arguments: args->Obj.magic,
+            meta: {ip: [], user: identity.userId, info: `Mutation.${fieldName}`},
+            identity,
+          }
+          let outcome = await generateCommand(payload)->Effect.runPromise
+          outcome->commandOutcomeToJson
         }
-        let outcome = await generateCommand(payload)->Effect.runPromise
-        outcome->commandOutcomeToJson
       }
     | None => JSON.Encode.null
     }

@@ -93,7 +93,13 @@ let decide = (state, command) =>
     }
   | Inactive(pluginDefinition) =>
     switch command {
-    | Activate => Ok([Activated(pluginDefinition)])
+    | Activate =>
+      Ok(
+        Array.concat(
+          [(Activated(pluginDefinition): event)],
+          uiRegisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
+        ),
+      )
     | Heartbeat => Ok([]) // ignore
     | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)

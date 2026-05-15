@@ -877,11 +877,14 @@ module MakeWithConfig = (
 
   // Admin-internal Plugin aggregate — standalone component so the PluginExtensionPoint
   // can publish commands to it and its infrastructure appears in stack outputs.
-  // Use NoResolver variant — Plugin aggregate is internal (commands come via the
-  // ExtensionPoint's publishToAggregates, not through AppSync mutations).
+  // Uses the standard `Aggregate_Builder_Single` so admin-facing variants of
+  // `PluginSpec.command` (Activate / Deactivate) are exposed as AppSync mutations
+  // via the auto-resolver flow. Internal-protocol variants (Heartbeat, Connect,
+  // Disconnect, ReportIncompatibility) carry `@noApi` and are filtered out before
+  // SDL/resolver generation.
   module PluginAggregate: (
     ReventlessInfra.Aggregate.T with type api = Types.AppSync.api
-  ) = Aggregate_Builder_NoResolver.Make(
+  ) = Aggregate_Builder_Single.Make(
     ReventlessCore.PluginSpec,
     ReventlessCore.PluginBehavior,
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),

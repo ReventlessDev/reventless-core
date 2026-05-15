@@ -128,6 +128,11 @@ module Make = (
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
+    // Derive admin-prefixed mutation entries from each aggregate's command schema and
+    // wire CommandGenerator → AppSync / in-memory GraphQL resolvers via mutationResolverHook.
+    let adminAggregateMutationEntries =
+      aggregates->Plugin_Helpers.registerAdminAggregateMutations(~hooks=Config.hooks)
+
     let dcbResult = DcbBuilder.construct(
       ~name,
       ~childName=name,
@@ -142,7 +147,10 @@ module Make = (
 
     // Admin schema — composed from actual config
     let adminMutationEntries = AdminApi.mutationEntries(~cloner=Config.cloner)
-    let allMutationEntries = Array.concat(adminMutationEntries, dcbResult.mutationEntries)
+    let allMutationEntries = Array.concat(
+      Array.concat(adminAggregateMutationEntries, adminMutationEntries),
+      dcbResult.mutationEntries,
+    )
     let allQueryEntries = Array.concat(AdminApi.queryEntries, dcbResult.queryEntries)
     let adminFragment = GraphQL_FragmentGenerator.generate(
       ~mutationEntries=allMutationEntries,

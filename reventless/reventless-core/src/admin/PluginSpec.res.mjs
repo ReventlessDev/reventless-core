@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
+import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let commandSchema = S.union([
   S.literal("Heartbeat"),
@@ -80,6 +81,13 @@ let errorSchema = S.union([
   S.literal("IsInactive")
 ]);
 
+let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
+  "Heartbeat",
+  "Connect",
+  "Disconnect",
+  "ReportIncompatibility"
+]);
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -93,12 +101,12 @@ let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 export {
   name,
   Id,
-  commandSchema,
   uiFragmentRegisteredDataSchema,
   uiFragmentUpdatedDataSchema,
   uiFragmentDeregisteredDataSchema,
   eventSchema,
   errorSchema,
+  commandSchema$1 as commandSchema,
   moduleUrl,
   commandAuthorization,
 }

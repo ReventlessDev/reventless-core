@@ -9,11 +9,14 @@ let cloneMutationEntry: mutationSchemaEntry = {
   description: "Clone the system to a specific point in time",
 }
 
+// Aggregate-derived admin mutations (e.g. Plugin_Activate, Plugin_Deactivate) are
+// registered by `Plugin_Helpers.registerAdminAggregateMutations` during Admin.construct.
+// AdminApi.mutationEntries now contributes only the opt-in cloner mutation.
 let mutationEntries = (~cloner: bool) =>
   if cloner {
-    Array.concat(PluginBaseFragment.mutationEntries, [cloneMutationEntry])
+    [cloneMutationEntry]
   } else {
-    PluginBaseFragment.mutationEntries
+    []
   }
 
 let queryEntries = PluginBaseFragment.queryEntries

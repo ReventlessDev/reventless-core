@@ -20,9 +20,15 @@ let pluginName = pluginId
 let encodeSchema = (schema: S.t<unknown>): string =>
   schema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify
 
+// Args schema for the synthetic Auto UI metadata. Activate/Deactivate are payload-less
+// `PluginSpec.command` variants on the wire — the auto-resolver flow injects `id: ID!`.
+// Keep a local schema here so Auto UI's command-form metadata stays accurate.
+@schema
+type idArgs = {id: @s.matches(Reventless.DcbTag.string) string}
+
 let activateCommand: commandDef = {
   name: "Activate",
-  schema: PluginBaseFragment.activateArgsSchema->S.castToUnknown->encodeSchema,
+  schema: idArgsSchema->S.castToUnknown->encodeSchema,
   level: Instance,
   aggregateIdField: None,
   mutationField: Api_Naming.adminField(~name="Plugin_Activate"),
@@ -31,7 +37,7 @@ let activateCommand: commandDef = {
 
 let deactivateCommand: commandDef = {
   name: "Deactivate",
-  schema: PluginBaseFragment.deactivateArgsSchema->S.castToUnknown->encodeSchema,
+  schema: idArgsSchema->S.castToUnknown->encodeSchema,
   level: Instance,
   aggregateIdField: None,
   mutationField: Api_Naming.adminField(~name="Plugin_Deactivate"),

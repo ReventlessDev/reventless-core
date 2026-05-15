@@ -43,6 +43,7 @@ let createAggregatesWithoutEventMappers = (
   ->Array.map(aggregate => {(aggregate.name, aggregate)})
   ->Dict.fromArray
 
+
 let finishAggregates = (
   aggregatesOutputs: dict<Aggregate.outputs>,
 ) => {

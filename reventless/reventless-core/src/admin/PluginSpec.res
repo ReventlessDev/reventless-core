@@ -4,13 +4,13 @@ open Reventless.Plugin
 
 @schema
 type command =
-  | Heartbeat
-  | Connect(pluginDefinition)
-  | Disconnect
+  | @noApi Heartbeat
+  | @noApi Connect(pluginDefinition)
+  | @noApi Disconnect
   | Activate
   | Deactivate
   // Records a protocol-version incompatibility without changing plugin connection state.
-  | ReportIncompatibility(pluginDefinition)
+  | @noApi ReportIncompatibility(pluginDefinition)
 
 @schema
 type uiFragmentRegisteredData = {pluginId: string, manifest: uiFragmentManifest}

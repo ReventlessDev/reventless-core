@@ -29,24 +29,8 @@ let queryEntries: array<querySchemaEntry> = [
   },
 ]
 
-// Arg schemas for payload-less admin mutations
-@schema
-type activateArgs = {id: @s.matches(Reventless.DcbTag.string) string}
-
-@schema
-type deactivateArgs = {id: @s.matches(Reventless.DcbTag.string) string}
-
-let mutationEntries: array<mutationSchemaEntry> = [
-  {
-    fieldNames: [Api_Naming.adminField(~name="Plugin_Activate")],
-    commandSchema: activateArgsSchema->S.castToUnknown,
-    description: "Activate a plugin by ID",
-  },
-  {
-    fieldNames: [Api_Naming.adminField(~name="Plugin_Deactivate")],
-    commandSchema: deactivateArgsSchema->S.castToUnknown,
-    description: "Deactivate a plugin by ID",
-  },
-]
-
-let fragment = GraphQL_FragmentGenerator.generate(~mutationEntries, ~queryEntries)
+// Plugin_Activate / Plugin_Deactivate mutation entries are no longer hand-rolled here.
+// They are derived from `PluginSpec.command` by `Plugin_Helpers.registerAdminAggregateMutations`
+// during `Platform_Admin.construct`, which also wires the resolver/SDL hooks. Internal-protocol
+// variants (`Heartbeat`, `Connect`, `Disconnect`, `ReportIncompatibility`) carry `@noApi` so they
+// are filtered out before the GraphQL fragment is generated.

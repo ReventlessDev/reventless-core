@@ -11,6 +11,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Task$ReventlessCore from "../Task/Task.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
@@ -19,6 +20,7 @@ import * as Task$ReventlessInterop from "@reventlessdev/reventless-interop/src/c
 import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../ReadModel/ReadModel.res.mjs";
+import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
 import * as DcbEventLog$ReventlessCore from "../DcbEventLog/DcbEventLog.res.mjs";
 import * as EventMapper$ReventlessCore from "../EventMapper/EventMapper.res.mjs";
 import * as Aggregate$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Aggregate.res.mjs";
@@ -381,6 +383,38 @@ let noHooks = {
 let NoopHooksConfig = {
   hooks: noHooks
 };
+
+function registerAdminAggregateMutations(aggregates, hooks) {
+  return aggregates.flatMap(M => {
+    let commandSchema = M.Spec.commandSchema;
+    if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
+      return [];
+    }
+    let constructorNames = DcbTag$Reventless.extractAllVariantNames(M.Spec.commandSchema);
+    let filteredConstructorNames = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants(constructorNames, commandSchema);
+    let fieldNames = filteredConstructorNames.map(cname => Api_Naming$ReventlessCore.adminField(M.Spec.name + "_" + cname));
+    aggregateMutationFieldsRegistry[M.Spec.name] = fieldNames;
+    if (fieldNames.length === 0) {
+      return [];
+    }
+    Stdlib_Option.forEach(hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, M.Spec.commandAuthorization));
+    let fieldPermissions = {};
+    filteredConstructorNames.forEach((cname, idx) => {
+      let fieldName = fieldNames[idx];
+      let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(M.Spec.commandSchema, cname);
+      let syntheticCmd = hasPayload ? ({
+          TAG: cname
+        }) : cname;
+      let rule = M.Spec.commandAuthorization(syntheticCmd);
+      fieldPermissions[fieldName] = rule;
+    });
+    return [{
+        fieldNames: fieldNames,
+        commandSchema: commandSchema,
+        fieldPermissions: fieldPermissions
+      }];
+  });
+}
 
 let interopMetaOutput = {
   contents: null
@@ -866,6 +900,7 @@ export {
   aggregateMutationFieldsRegistry,
   noHooks,
   NoopHooksConfig,
+  registerAdminAggregateMutations,
   interopMetaOutput,
   taskFieldUnion,
   toInteropMeta,

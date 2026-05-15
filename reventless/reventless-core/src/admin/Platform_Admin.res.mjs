@@ -12,6 +12,7 @@ import * as Component$ReventlessCore from "../components/Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../components/ReadModel/ReadModel.res.mjs";
 import * as Dcb_Builder$ReventlessCore from "../components/Dcb/Dcb_Builder.res.mjs";
 import * as Admin_Callback$ReventlessCore from "./Admin_Callback.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "../components/Plugin/Plugin_Helpers.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../components/Builder_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../components/EventCollector/EventCollector_Builder.res.mjs";
@@ -67,9 +68,10 @@ function Make(RuntimeEnvironment) {
       });
       let aggregatesWithoutEventMappers = Builder_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
       let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
+      let adminAggregateMutationEntries = Plugin_Helpers$ReventlessCore.registerAdminAggregateMutations(aggregates, Config.hooks);
       let dcbResult = DcbBuilder.construct(name, name, undefined, undefined, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, opts);
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
-      let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
+      let allMutationEntries = adminAggregateMutationEntries.concat(adminMutationEntries).concat(dcbResult.mutationEntries);
       let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
       let adminFragment = GraphQL_FragmentGenerator$ReventlessCore.generate(allMutationEntries, allQueryEntries);
       if (dcbResult.mutationEntries.length !== 0 || dcbResult.queryEntries.length !== 0) {
