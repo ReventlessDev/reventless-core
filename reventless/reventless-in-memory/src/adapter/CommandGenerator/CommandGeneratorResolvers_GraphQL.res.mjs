@@ -194,6 +194,12 @@ function extractVariantSchema(commandSchema, indexOpt) {
   }
 }
 
+function variantIndexForField(commandSchema, field) {
+  let cname = extractCommandName(field);
+  let allNames = DcbTag$Reventless.extractAllVariantNames(commandSchema);
+  return allNames.indexOf(cname);
+}
+
 function deriveSdlField(fieldName, variantSchema) {
   let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, [], new Set(), variantSchema);
   if (field === undefined) {
@@ -207,8 +213,9 @@ let handlerRefs = {};
 
 function register(fields, commandSchema, commandAuthorization, server) {
   ensureCommandResultTypes(server);
-  let sdlFields = fields.map((field, i) => {
-    let sdl = deriveSdlField(field, extractVariantSchema(commandSchema, i));
+  let sdlFields = fields.map(field => {
+    let variantIndex = variantIndexForField(commandSchema, field);
+    let sdl = deriveSdlField(field, extractVariantSchema(commandSchema, variantIndex));
     if (sdl.includes("(")) {
       return sdl.replace(field + `(`, field + `(id: ID!, `);
     } else {
@@ -216,12 +223,13 @@ function register(fields, commandSchema, commandAuthorization, server) {
     }
   });
   let resolvers = {};
-  fields.forEach((field, i) => {
+  fields.forEach(field => {
     let handlerRef = {
       contents: undefined
     };
     handlerRefs[field] = handlerRef;
-    let match = extractVariantSchema(commandSchema, i);
+    let variantIndex = variantIndexForField(commandSchema, field);
+    let match = extractVariantSchema(commandSchema, variantIndex);
     let hasPayload;
     hasPayload = match.type === "object";
     let commandName = extractCommandName(field);
@@ -347,6 +355,7 @@ export {
   commandOutcomeToJson,
   extractCommandName,
   extractVariantSchema,
+  variantIndexForField,
   deriveSdlField,
   handlerRefs,
   register,

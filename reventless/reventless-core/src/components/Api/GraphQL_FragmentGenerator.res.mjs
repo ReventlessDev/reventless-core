@@ -293,6 +293,7 @@ function generate(mutationEntries, queryEntries) {
   let mutations = [];
   let queries = [];
   let seenTypes = new Set();
+  let constructorNameOf = fieldName => Stdlib_Option.getOr(fieldName.split("_")[fieldName.split("_").length - 1 | 0], fieldName);
   mutationEntries.forEach(entry => {
     let schema = entry.commandSchema;
     switch (schema.type) {
@@ -306,11 +307,35 @@ function generate(mutationEntries, queryEntries) {
           return;
         }
       case "union" :
-        schema.anyOf.forEach((variantSchema, i) => {
-          let fieldName = Stdlib_Option.getOr(entry.fieldNames[i], "");
-          if (fieldName.length <= 0) {
-            return;
+        let anyOf = schema.anyOf;
+        let variantNames = anyOf.map(v => {
+          switch (v.type) {
+            case "string" :
+              let $$const = v.const;
+              if ($$const !== undefined) {
+                return $$const;
+              } else {
+                return "";
+              }
+            case "object" :
+              return Stdlib_Option.getOr(Stdlib_Option.flatMap(v.items.find(item => item.location === "TAG"), item => {
+                let match = item.schema;
+                if (match.type !== "string") {
+                  return;
+                }
+                let $$const = match.const;
+                if ($$const !== undefined) {
+                  return $$const;
+                }
+              }), "");
+            default:
+              return "";
           }
+        });
+        entry.fieldNames.forEach(fieldName => {
+          let cname = constructorNameOf(fieldName);
+          let variantIndex = variantNames.indexOf(cname);
+          let variantSchema = variantIndex >= 0 ? Stdlib_Option.getOr(anyOf[variantIndex], schema) : schema;
           let field = deriveMutationFieldFromObject(fieldName, types, seenTypes, variantSchema);
           if (field !== undefined) {
             let withId = field.includes("(") ? field.replace(fieldName + `(`, fieldName + `(id: ID!, `) : field.replace(fieldName + `:`, fieldName + `(id: ID!):`);

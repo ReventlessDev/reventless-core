@@ -352,33 +352,64 @@ let generate = (
   let queries: array<string> = []
   let seenTypes = Set.make()
 
+  // Extract the constructor name from a mutation field name like
+  // `Plugin_Activate` / `Platform_Plugin_Activate` — always the last
+  // underscore-separated segment (e.g. `Activate`).
+  let constructorNameOf = (fieldName: string): string =>
+    fieldName->String.split("_")->Array.get(fieldName->String.split("_")->Array.length - 1)
+      ->Option.getOr(fieldName)
+
   mutationEntries->Array.forEach(entry => {
     let schema = entry.commandSchema
     switch schema {
     | Union({anyOf}) =>
-      anyOf->Array.forEachWithIndex((variantSchema, i) => {
-        let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
-        if fieldName->String.length > 0 {
-          switch deriveMutationFieldFromObject(
-            ~fieldName,
-            ~collectedTypes=types,
-            ~seenTypes,
-            variantSchema,
-          ) {
-          | Some(field) =>
-            let withId = if field->String.includes("(") {
-              field->String.replace(`${fieldName}(`, `${fieldName}(id: ID!, `)
-            } else {
-              field->String.replace(`${fieldName}:`, `${fieldName}(id: ID!):`)
+      // Map each fieldName to its variant in anyOf by matching the constructor
+      // name. Position-based pairing (anyOf index ↔ fieldNames index) breaks
+      // when `@noApi` filters out some variants but the schema still carries
+      // them — the field name "Platform_Plugin_Deactivate" would otherwise be
+      // married to the `Connect(pluginDefinition)` variant at unfiltered
+      // index 1, leaking a stale `_0: Platform_Plugin_Deactivate_0` arg.
+      let variantNames = anyOf->Array.map(v =>
+        switch v {
+        | Object({items}) =>
+          items
+          ->Array.find(item => item.location == "TAG")
+          ->Option.flatMap(item =>
+            switch item.schema {
+            | String({const}) => Some(const)
+            | _ => None
             }
-            mutations->Array.push(withId)
-          | None =>
-            // Payload-less variant (S.literal("Ctor")) — no Object fields to
-            // derive args from, but still a valid mutation. Emit a bare form;
-            // CommandGeneratorResolvers_GraphQL.deriveSdlField uses the same
-            // fallback for the in-memory path.
-            mutations->Array.push(`  ${fieldName}(id: ID!): String!`)
+          )
+          ->Option.getOr("")
+        | String({const}) => const
+        | _ => ""
+        }
+      )
+      entry.fieldNames->Array.forEach(fieldName => {
+        let cname = constructorNameOf(fieldName)
+        let variantIndex = variantNames->Array.indexOf(cname)
+        let variantSchema = variantIndex >= 0
+          ? anyOf->Array.get(variantIndex)->Option.getOr(schema)
+          : schema
+        switch deriveMutationFieldFromObject(
+          ~fieldName,
+          ~collectedTypes=types,
+          ~seenTypes,
+          variantSchema,
+        ) {
+        | Some(field) =>
+          let withId = if field->String.includes("(") {
+            field->String.replace(`${fieldName}(`, `${fieldName}(id: ID!, `)
+          } else {
+            field->String.replace(`${fieldName}:`, `${fieldName}(id: ID!):`)
           }
+          mutations->Array.push(withId)
+        | None =>
+          // Payload-less variant (S.literal("Ctor")) — no Object fields to
+          // derive args from, but still a valid mutation. Emit a bare form;
+          // CommandGeneratorResolvers_GraphQL.deriveSdlField uses the same
+          // fallback for the in-memory path.
+          mutations->Array.push(`  ${fieldName}(id: ID!): String!`)
         }
       })
     | Object(_) =>

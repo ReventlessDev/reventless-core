@@ -164,6 +164,19 @@ let extractVariantSchema = (commandSchema: S.t<unknown>, ~index=0) =>
   | _ => commandSchema
   }
 
+// Find the variant index in commandSchema that matches the constructor name
+// extracted from `field` (e.g. `Platform_Plugin_Activate` → `Activate`). When
+// the auto-flow filters @noApi variants out of `fields` but passes the
+// unfiltered commandSchema, position-based lookup mismatches names against
+// variant payloads — e.g. it would marry the `Platform_Plugin_Deactivate`
+// field name to the `Connect(pluginDefinition)` variant schema, leaking a
+// stale `_0` payload arg into the SDL. Looking up by name avoids that.
+let variantIndexForField = (commandSchema: S.t<unknown>, ~field: string): int => {
+  let cname = extractCommandName(field)
+  let allNames = Reventless.DcbTag.extractAllVariantNames(commandSchema->Obj.magic)
+  allNames->Array.indexOf(cname)
+}
+
 let deriveSdlField = (~fieldName, variantSchema: S.t<unknown>) =>
   switch GraphQL_FragmentGenerator.deriveMutationFieldFromObject(
     ~fieldName,
@@ -199,8 +212,9 @@ let register = (
 ) => {
   ensureCommandResultTypes(server)
   // Aggregate commands target a specific instance — prepend id: ID!
-  let sdlFields = fields->Array.mapWithIndex((field, i) => {
-    let sdl = deriveSdlField(~fieldName=field, extractVariantSchema(commandSchema, ~index=i))
+  let sdlFields = fields->Array.map(field => {
+    let variantIndex = variantIndexForField(commandSchema, ~field)
+    let sdl = deriveSdlField(~fieldName=field, extractVariantSchema(commandSchema, ~index=variantIndex))
     if sdl->String.includes("(") {
       sdl->String.replace(`${field}(`, `${field}(id: ID!, `)
     } else {
@@ -209,12 +223,13 @@ let register = (
   })
 
   let resolvers = Dict.make()
-  fields->Array.forEachWithIndex((field, i) => {
+  fields->Array.forEach(field => {
     let handlerRef = ref(None)
     handlerRefs->Dict.set(field, handlerRef)
     // hasPayload is fixed per field — capture once at registration time so
     // the resolver doesn't re-walk the schema per request.
-    let hasPayload = switch extractVariantSchema(commandSchema, ~index=i) {
+    let variantIndex = variantIndexForField(commandSchema, ~field)
+    let hasPayload = switch extractVariantSchema(commandSchema, ~index=variantIndex) {
     | Object(_) => true
     | _ => false
     }
