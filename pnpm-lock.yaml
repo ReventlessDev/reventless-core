@@ -844,6 +844,9 @@ importers:
       '@reventlessdev/rescript-node-streams':
         specifier: workspace:*
         version: link:../rescript-node-streams
+      '@smithy/node-http-handler':
+        specifier: ^4.5.3
+        version: 4.6.0
     devDependencies:
       rescript:
         specifier: ^12.2.0

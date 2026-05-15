@@ -23,7 +23,8 @@
     "@aws-sdk/client-sqs": "^3.1033.0",
     "@aws-sdk/lib-dynamodb": "^3.1033.0",
     "@aws-sdk/lib-storage": "^3.1033.0",
-    "@reventlessdev/rescript-node-streams": "workspace:*"
+    "@reventlessdev/rescript-node-streams": "workspace:*",
+    "@smithy/node-http-handler": "^4.5.3"
   },
   "devDependencies": {
     "rescript": "^12.2.0"
