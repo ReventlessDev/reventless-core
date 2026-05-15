@@ -1200,9 +1200,15 @@ importers:
       graphql:
         specifier: ^16.0.0
         version: 16.13.2
+      graphql-ws:
+        specifier: ^5.16.0
+        version: 5.16.2(graphql@16.13.2)
       graphql-yoga:
         specifier: ^5.21.0
         version: 5.21.0(graphql@16.13.2)
+      ws:
+        specifier: ^8.18.0
+        version: 8.20.0
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -8130,6 +8136,12 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  graphql-ws@5.16.2:
+    resolution: {integrity: sha512-E1uccsZxt/96jH/OwmLPuXMACILs76pKF2i3W861LpKBCYtGIyPQGtWLuBLkND4ox1KHns70e83PS4te50nvPQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      graphql: ^16.0.0
 
   graphql-yoga@5.21.0:
     resolution: {integrity: sha512-PS37UoDihx8209RRl1ogttzWevNYDnGvP7beHkwHzUpUdfZTHsVRTVe1ysGXre1EjwUAePbpez302YSrq70Ngw==}
@@ -23570,6 +23582,10 @@ snapshots:
   graceful-fs@4.2.10: {}
 
   graceful-fs@4.2.11: {}
+
+  graphql-ws@5.16.2(graphql@16.13.2):
+    dependencies:
+      graphql: 16.13.2
 
   graphql-yoga@5.21.0(graphql@16.13.2):
     dependencies:

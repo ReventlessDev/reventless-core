@@ -20,7 +20,7 @@ The current state is broken on multiple axes — separate workstreams below.
 | 2.1 Symmetric `Activate` emits `UIFragmentRegistered` | ✅ done | `PluginBehavior.Inactive → Activate` mirrors the `Connected → Deactivate` block |
 | 2.2 In-memory `Platform_UIDefinitions` status filter | ✅ done | Filters by Plugin RM status; built-in `Platform_Admin` always included |
 | 2.3 Resolver-level plugin status gate (Option B) | ✅ done (both adapters) | In-memory: `CommandGeneratorResolvers_GraphQL.setPluginStatusGate`. AWS: `AggregateEntryPoint.mjs::checkPluginStatus` cached scan against the Plugin RM table; `AggregateRuntime_Builder_Single.setPluginReadModelTable` injects the `PLUGIN_RM_TABLE_NAME` env var + `dynamodb:Scan` IAM policy. Both emit the split codes from the three-tier model (`PluginUnavailable` / `PluginInactive`). |
-| 2.4 Host-shell subscription to lifecycle | ⚠️ partial | Backend SDL (`Platform_PluginStatusChanged` mutation + `onPluginStatusChange: PluginStatusChangeEvent @aws_subscribe` field) added to `AdminApi.baseFragment`. In-memory `updatePluginStatus` publishes to the `"onPluginStatusChange"` PubSub topic; the platform server registers a matching subscription resolver. AWS-side emit (would invoke `Platform_PluginStatusChanged` from the PluginProjection Lambda) and frontend `graphql-ws` subscription client in `reventless-host-shell` still pending. |
+| 2.4 Host-shell subscription to lifecycle | ⚠️ partial | Backend SDL (`Platform_PluginStatusChanged` mutation + `onPluginStatusChange: PluginStatusChangeEvent @aws_subscribe` field) added to `AdminApi.baseFragment`. In-memory `updatePluginStatus` publishes to the `"onPluginStatusChange"` PubSub topic; the platform server registers a matching subscription resolver. **In-memory frontend wired (F4 in-memory done)** — host shell `RegisterFragments.res` subscribes to `onPluginStatusChange` + `onUIFragmentChange` via `graphql-ws`, re-fetches Platform_UIDefinitions/UIFragments on each event, and swaps the page/panel/route registries atomically via `setPluginPages` / `setPluginPanels` / `setPluginRoutes`. AWS-side emit (would invoke `Platform_PluginStatusChanged` from the PluginProjection Lambda) still pending. |
 
 ## Remaining follow-ups (deferred)
 
@@ -101,49 +101,66 @@ publishes to them. Fixing both AWS emits at once would be consistent.
 
 ### F4 — Host shell subscription wiring (Part 2.4 frontend, cross-repo)
 
-Concrete steps (the backend SDL contract + in-memory PubSub emit are
-already live as of F3 in-memory):
+Status: **in-memory frontend done.** AWS path still gated by F3-AWS emit.
 
-1. **Dependency**: add `graphql-ws` to `reventless-host-shell/package.json`
-   `dependencies`. Run `pnpm install` while the pnpm-workspace overlay is
-   in *release* (symlink to `.base`) so the lockfile updates cleanly; do
-   not run install with the overlay active (would contaminate the
-   lockfile per repo conventions).
-2. **ReScript bindings**: create a small `GraphqlWsClient.res` (or use
-   inline externals) exposing `createClient({url, connectionParams})` and
-   `client.subscribe({query, variables}, sink)`. Pattern after the existing
-   `fetchRaw` external in `RegisterFragments.res:20`.
-3. **Derive the WebSocket URL**: `Config.platformApiEndpoint` is an HTTP
-   URL today. Either add a sibling `platformApiSubscriptionEndpoint` to
-   `Config.t` or derive `wss://…` from the HTTPS endpoint at runtime.
-   On AppSync, real-time subscriptions use the dedicated
+What landed:
+
+1. **Yoga graphql-ws transport** (backend prerequisite — scope expanded
+   beyond the original plan because yoga's default subscription transport
+   is SSE-over-POST, which `graphql-ws` clients can't speak):
+   `reventless-in-memory/package.json` now depends on `graphql-ws@^5.16`
+   and `ws@^8.18`. `GraphQL_ServerInstance.start()` wraps the HTTP server
+   with `new WebSocketServer({server, path: "/graphql"})` and hands it
+   to `graphql-ws/lib/use/ws::useServer({schema}, wss)` whenever any
+   subscription resolvers are registered. Auth on the WS channel is
+   deferred — connections are unauthenticated for local dev (localhost
+   only); the HTTP query/mutation path keeps its `Authorization` header
+   check.
+2. **Registry teardown surface** (`reventless-ui/src/registry/*.res`):
+   `PageRegistry`, `PanelRegistry`, and `RouteRegistry` each now keep
+   two buckets — `static` (the existing `register` API used by
+   `RegisterShellPages` for the host home page) and `plugin` (swapped
+   atomically by the new `setPluginPages` / `setPluginPanels` /
+   `setPluginRoutes` APIs). Reads merge both. This preserves host pages
+   across plugin-list replacements without needing per-entry pluginId
+   tagging.
+3. **`Config.t` subscription endpoint**
+   (`reventless-host-shell/src/api/Config.res`): added
+   `platformApiSubscriptionEndpoint: string`, derived from
+   `platformApiEndpoint` via `deriveSubscriptionEndpoint` (http→ws,
+   https→wss) when not explicitly set in `config.json`. AppSync
+   deployments must override with the dedicated
    `wss://<api>.appsync-realtime-api.<region>.amazonaws.com/graphql`
-   endpoint and require Cognito JWT in `connectionParams.Authorization`.
-4. **Registry teardown surface**: extend `PageRegistry`, `PanelRegistry`,
-   and `RouteRegistry` (in `reventless-ui` proper) with either:
-   - `unregisterByPluginId(pluginId)`, or
-   - `replace(definitions)` that swaps the whole list atomically.
-   Atomic replace is simpler given the existing append-only `register`
-   API; the cost is a single React re-render per subscription event,
-   which is fine for an admin-rate change.
-5. **`RegisterFragments.res` subscription effect**: add a second
-   `React.useEffect` keyed on `[token]` that:
-   - Opens a graphql-ws subscription `subscription { onPluginStatusChange { pluginId status } }`.
-   - On each event (regardless of `status`), re-runs `fetchAndRegister`.
-   - Returns a cleanup that closes the client.
-   The simplest UX is *refetch on any transition*: `Platform_UIDefinitions`
-   already filters by status (Part 2.2), so deactivating a plugin removes
-   it from the next query result; activating restores it. Selective
-   teardown is an optimisation, not a requirement.
-6. **Optional**: also subscribe to `onUIFragmentChange` in the same
-   effect so module-federation overrides update live too.
-7. **Verification**: with the in-memory adapter running locally, click
-   Deactivate on a plugin in the admin UI; confirm the sidebar entry
-   disappears within ~1s without a page reload; Activate restores it.
+   host at deploy time.
+4. **`GraphqlWsClient.res`** (new file under
+   `reventless-host-shell/src/api/`): thin externals for
+   `createClient({url, connectionParams, lazy, retryAttempts})`,
+   `client.subscribe(payload, sink)`, and `client.dispose()`. Bearer
+   token (when present) is plumbed via `connectionParams.Authorization`
+   so AppSync's Cognito flow plugs in at the same seam.
+5. **`RegisterFragments.res` rework**: `registerAll` now accumulates
+   pages / panels / routes / publicLinks across every plugin in one
+   pass and calls `setPluginPages` / `setPluginPanels` /
+   `setPluginRoutes` once per registry, so re-runs replace cleanly
+   rather than re-appending. A second `React.useEffect` keyed on
+   `[token]` opens a `graphql-ws` client and subscribes to both
+   `onPluginStatusChange { pluginId status }` and
+   `onUIFragmentChange { pluginId fragmentId changeType }`. Either
+   event re-runs `fetchAndRegister`, so deactivated plugins drop out of
+   the next `Platform_UIDefinitions` result (status filter from 2.2)
+   and activated plugins reappear. Cleanup disposes the client.
+
+Manual verification (still pending): with the in-memory adapter running
+locally, click Deactivate on a plugin in the admin UI; confirm the
+sidebar entry disappears within ~1s without a page reload; Activate
+restores it. Existing automated tests pass
+(`tests/adapter/GraphQL_SubscriptionResolversTest.res.mjs`,
+`tests/adapter/Auth_InMemoryHttpTest.res.mjs`).
 
 Dependencies on parallel work: the AWS path also needs an emit (the AWS
-half of F3) before this works end-to-end against a deployed AppSync API.
-In-memory dev-loop testing works as soon as F4 lands.
+half of F3) and the deploy-time `config.json` writer needs to set
+`platformApiSubscriptionEndpoint` to the appsync-realtime-api host
+before this works end-to-end against a deployed AppSync API.
 
 ## Status snapshot (original — current state before this work)
 

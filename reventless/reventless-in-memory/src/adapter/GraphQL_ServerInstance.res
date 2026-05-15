@@ -8,6 +8,19 @@ let log = ReventlessCore.Logger.fromEnv()
 
 type resolverFn = YG.resolverFn
 
+// graphql-ws WebSocket transport for subscriptions. Yoga's built-in
+// subscription transport is SSE-over-POST; clients using the graphql-ws
+// protocol (e.g. host-shell, AppSync clients in prod) need an explicit
+// WebSocket endpoint. We attach a `WebSocketServer` to the same HTTP server
+// and hand it to `graphql-ws/lib/use/ws::useServer` along with the live
+// schema, which fans out subscription events to connected sockets.
+type wsServer
+@new @module("ws")
+external newWebSocketServer: {"server": YG.httpServer, "path": string} => wsServer =
+  "WebSocketServer"
+@module("graphql-ws/lib/use/ws")
+external wsUseServer: ({"schema": YG.schema}, wsServer) => unit = "useServer"
+
 @val external processEnv: dict<string> = "process.env"
 let debug = processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome
 
@@ -156,6 +169,11 @@ ${mutations}
     server->YG.listen(port, () =>
       log.info(~comp=label, `listening on http://localhost:${port->Int.toString}/graphql`)
     )
+    if subscriptionResolvers.contents->Dict.keysToArray->Array.length > 0 {
+      let wss = newWebSocketServer({"server": server, "path": "/graphql"})
+      wsUseServer({"schema": schema}, wss)
+      log.info(~comp=label, `graphql-ws subscriptions on ws://localhost:${port->Int.toString}/graphql`)
+    }
     activeServer.contents = Some(server)
   }
 
