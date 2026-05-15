@@ -138,7 +138,7 @@ test("authenticate accepts a valid Bearer token", async () => {
   expect(identity.groups).toEqual(["Viewer"]);
 });
 
-test("authenticate falls through to X-User when Bearer is invalid", async () => {
+test("authenticate rejects invalid Bearer even when X-User is present", async () => {
   resetAll();
   let result = await Auth_InMemory$ReventlessInMemory.authenticate(buildContext([
     [
@@ -150,13 +150,9 @@ test("authenticate falls through to X-User when Bearer is invalid", async () => 
       "admin"
     ]
   ]));
-  if (typeof result !== "object") {
-    return Stdlib_JsError.throwWithMessage("expected Authenticated(admin) via X-User fallback");
+  if (typeof result !== "object" || result.TAG === "Authenticated") {
+    return Stdlib_JsError.throwWithMessage("expected AuthError for invalid Bearer");
   }
-  if (result.TAG !== "Authenticated") {
-    return Stdlib_JsError.throwWithMessage("expected Authenticated(admin) via X-User fallback");
-  }
-  expect(result._0.username).toEqual("admin");
 });
 
 test("Bearer outranks X-User when both present and Bearer is valid", async () => {

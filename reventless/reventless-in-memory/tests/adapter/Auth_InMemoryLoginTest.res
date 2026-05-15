@@ -139,15 +139,16 @@ testPromise("authenticate accepts a valid Bearer token", async () => {
   }
 })
 
-testPromise("authenticate falls through to X-User when Bearer is invalid", async () => {
+testPromise("authenticate rejects invalid Bearer even when X-User is present", async () => {
   resetAll()
-  // No matching token. Bearer junk falls through to the X-User branch.
+  // A present-but-unverifiable Bearer must reject with AuthError so the
+  // host-shell `on401` logout path fires. X-User is ignored.
   let result = await Auth_InMemory.authenticate(
     buildContext([("authorization", "Bearer not-a-token"), ("x-user", "admin")]),
   )
   switch result {
-  | Authenticated(identity) => expect(identity.username)->toEqual("admin")
-  | _ => JsError.throwWithMessage("expected Authenticated(admin) via X-User fallback")
+  | AuthError(_) => ()
+  | _ => JsError.throwWithMessage("expected AuthError for invalid Bearer")
   }
 })
 

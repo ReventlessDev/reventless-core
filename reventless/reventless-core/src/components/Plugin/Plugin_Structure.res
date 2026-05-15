@@ -59,7 +59,13 @@ let make = (
   ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
   ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
 ): Reventless.Plugin.pluginStructure => {
-  let variantNames = schema => Reventless.DcbTag.extractAllVariantNames(schema)
+  // Event schemas: filter out payload-less variants — DCB event-type lookups
+  // can't WHERE-clause on bare-string events, so the plugin graph mustn't
+  // claim cross-component edges that the runtime can't honour.
+  let eventVariantNames = schema => Reventless.DcbTag.extractVariantNames(schema)
+  // Command schemas: keep every constructor (including payload-less) so the
+  // GraphQL mutation surface stays addressable.
+  let commandVariantNames = schema => Reventless.DcbTag.extractAllVariantNames(schema)
   let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)
 
   // Aggregate commands that initialize a new aggregate instance are Collection-level
@@ -158,24 +164,24 @@ let make = (
   let scsProduced =
     stateChangeSlices->Array.map((module(SCS: ReventlessInfra.StateChangeSlice.T)) => (
       SCS.Spec.name,
-      qualify(~prefix=name, variantNames(SCS.Spec.eventSchema)),
+      qualify(~prefix=name, eventVariantNames(SCS.Spec.eventSchema)),
     ))
   let scsConsumed =
     stateChangeSlices->Array.map((module(SCS: ReventlessInfra.StateChangeSlice.T)) => (
       SCS.Spec.name,
-      qualify(~prefix=name, variantNames(SCS.Spec.consumedEventSchema)),
+      qualify(~prefix=name, eventVariantNames(SCS.Spec.consumedEventSchema)),
     ))
 
   let aggProduced =
     aggregates->Array.map((module(A: ReventlessInfra.Aggregate.T with type api = api)) => (
       A.Spec.name,
-      qualify(~prefix=name, variantNames(A.Spec.eventSchema)),
+      qualify(~prefix=name, eventVariantNames(A.Spec.eventSchema)),
     ))
 
   let svsConsumed =
     stateViewSlices->Array.map((module(SVS: ReventlessInfra.StateViewSlice.T)) => (
       SVS.Spec.name,
-      qualify(~prefix=name, variantNames(SVS.Spec.consumedEventSchema)),
+      qualify(~prefix=name, eventVariantNames(SVS.Spec.consumedEventSchema)),
     ))
 
   let rmSourceNames =
@@ -348,14 +354,14 @@ let make = (
       let allConsumedVariants =
         AS.Automation.mappings
         ->Array.flatMap((module(M: AS.Automation.Mapping)) =>
-          variantNames(M.sourceEventSchema->S.castToUnknown)
+          eventVariantNames(M.sourceEventSchema->S.castToUnknown)
         )
         ->Belt.Set.String.fromArray
         ->Belt.Set.String.toArray
       ({
         Reventless.Plugin.name: AS.Spec.name,
         consumedEventTypes: qualify(~prefix=name, allConsumedVariants),
-        producedCommandTypes: qualify(~prefix=name, variantNames(AS.Spec.commandSchema)),
+        producedCommandTypes: qualify(~prefix=name, commandVariantNames(AS.Spec.commandSchema)),
         targetName: AS.Spec.targetName,
       }: Reventless.Plugin.automationSliceDef)
     })
@@ -365,8 +371,8 @@ let make = (
   let outboundTranslationSliceDefs =
     outboundTranslationSlices->Array.map((module(OTS: ReventlessInfra.OutboundTranslationSlice.T)) => ({
       Reventless.Plugin.name: OTS.Spec.name,
-      consumedEventTypes: qualify(~prefix=name, variantNames(OTS.Spec.consumedEventSchema)),
-      inboundCommandTypes: qualify(~prefix=name, variantNames(OTS.Spec.inboundCommandSchema)),
+      consumedEventTypes: qualify(~prefix=name, eventVariantNames(OTS.Spec.consumedEventSchema)),
+      inboundCommandTypes: qualify(~prefix=name, commandVariantNames(OTS.Spec.inboundCommandSchema)),
       targetName: OTS.Spec.targetName,
     }: Reventless.Plugin.outboundTranslationSliceDef))
 
@@ -375,7 +381,7 @@ let make = (
   let inboundTranslationSliceDefs =
     inboundTranslationSlices->Array.map((module(ITS: ReventlessInfra.InboundTranslationSlice.T)) => ({
       Reventless.Plugin.name: ITS.Spec.name,
-      commandTypes: qualify(~prefix=name, variantNames(ITS.Spec.commandSchema)),
+      commandTypes: qualify(~prefix=name, commandVariantNames(ITS.Spec.commandSchema)),
       targetName: ITS.Spec.targetName,
     }: Reventless.Plugin.inboundTranslationSliceDef))
 
@@ -387,8 +393,8 @@ let make = (
       ({
         Reventless.Plugin.name: E.Spec.name,
         delegateNames,
-        eventTypes: qualify(~prefix=E.Spec.name, variantNames(E.Spec.eventSchema)),
-        commandTypes: qualify(~prefix=E.Spec.name, variantNames(E.Spec.commandSchema)),
+        eventTypes: qualify(~prefix=E.Spec.name, eventVariantNames(E.Spec.eventSchema)),
+        commandTypes: qualify(~prefix=E.Spec.name, commandVariantNames(E.Spec.commandSchema)),
       }: Reventless.Plugin.extensionDef)
     })
 
