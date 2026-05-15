@@ -1473,12 +1473,24 @@ module MakeWithConfig = (
     }
 
     // Real resolvers for admin mutations — update plugin state in QueryDb.
+    //
+    // Activate replays the AWS event flow as two sequential writes, mirroring
+    // `PluginProjection.res`:
+    //   1. `Activated` event → status Disconnected
+    //   2. Plugin reconnects → `Reconnected` event → status Connected
+    // In Lambda the second step is driven by the plugin process noticing the
+    // status flip and emitting `Reconnect`; in-memory plugins are loaded in
+    // the same process and have nothing to "reconnect", so the resolver
+    // synthesises both transitions back-to-back. Both fire onPluginStatusChange
+    // subscription events, matching what subscribers would see against
+    // AppSync.
     let activateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Activate")
     let deactivateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Deactivate")
     let mutationResolvers = Dict.make()
-    mutationResolvers->Dict.set(activateField, async (_root, args, _ctx): JSON.t =>
-      await updatePluginStatus(~field=activateField, args, Disconnected)
-    )
+    mutationResolvers->Dict.set(activateField, async (_root, args, _ctx): JSON.t => {
+      let _ = await updatePluginStatus(~field=activateField, args, Disconnected)
+      await updatePluginStatus(~field=activateField, args, Connected)
+    })
     mutationResolvers->Dict.set(deactivateField, async (_root, args, _ctx): JSON.t =>
       await updatePluginStatus(~field=deactivateField, args, Inactive)
     )

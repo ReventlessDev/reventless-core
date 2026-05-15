@@ -1366,7 +1366,10 @@ function MakeWithConfig(Config) {
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
     let mutationResolvers = {};
-    mutationResolvers[activateField] = async (_root, args, _ctx) => await updatePluginStatus(activateField, args, "Disconnected");
+    mutationResolvers[activateField] = async (_root, args, _ctx) => {
+      await updatePluginStatus(activateField, args, "Disconnected");
+      return await updatePluginStatus(activateField, args, "Connected");
+    };
     mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
@@ -3076,7 +3079,10 @@ function Make($star) {
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
     let mutationResolvers = {};
-    mutationResolvers[activateField] = async (_root, args, _ctx) => await updatePluginStatus(activateField, args, "Disconnected");
+    mutationResolvers[activateField] = async (_root, args, _ctx) => {
+      await updatePluginStatus(activateField, args, "Disconnected");
+      return await updatePluginStatus(activateField, args, "Connected");
+    };
     mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
