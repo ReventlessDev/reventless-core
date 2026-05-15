@@ -89,7 +89,8 @@ function _getSecret() {
   if (s !== undefined) {
     return s;
   }
-  let s$1 = Nodecrypto.randomBytes(32).toString("hex");
+  let envSecret = process.env["REVENTLESS_INMEMORY_TOKEN_SECRET"];
+  let s$1 = envSecret !== undefined && envSecret.length >= 16 ? envSecret : Nodecrypto.randomBytes(32).toString("hex");
   _secret.contents = s$1;
   return s$1;
 }

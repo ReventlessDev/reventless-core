@@ -88,6 +88,13 @@ module Login = {
   }
 
   // ── HMAC secret (lazy) ──
+  //
+  // Reads `REVENTLESS_INMEMORY_TOKEN_SECRET` once on first use. When the env
+  // var is set (≥16 chars) the issued tokens survive process restarts, which
+  // matches the dev loop's expectation that a logged-in tab keeps working
+  // after a backend reload. When unset, falls back to a random per-process
+  // secret — secure for ephemeral test runs but invalidates every previously
+  // issued token on every restart.
   type buf
   @module("node:crypto") external _randomBytes: int => buf = "randomBytes"
   @send external _bufToString: (buf, string) => string = "toString"
@@ -96,12 +103,17 @@ module Login = {
   @send external _update: (hmac, string) => hmac = "update"
   @send external _digest: (hmac, string) => string = "digest"
 
+  @val external _processEnv: Dict.t<string> = "process.env"
+
   let _secret: ref<option<string>> = ref(None)
   let _getSecret = (): string =>
     switch _secret.contents {
     | Some(s) => s
     | None =>
-      let s = _randomBytes(32)->_bufToString("hex")
+      let s = switch _processEnv->Dict.get("REVENTLESS_INMEMORY_TOKEN_SECRET") {
+      | Some(envSecret) if String.length(envSecret) >= 16 => envSecret
+      | _ => _randomBytes(32)->_bufToString("hex")
+      }
       _secret := Some(s)
       s
     }
