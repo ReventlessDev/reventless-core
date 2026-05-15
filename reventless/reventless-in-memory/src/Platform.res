@@ -1176,6 +1176,15 @@ module MakeWithConfig = (
     seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
     seedPluginStructuresStore(~pluginComponents=plugins)
 
+    // Seed the built-in admin plugin's structure so its Auto UI (Plugin list with
+    // Activate/Deactivate buttons, PlatformEventGraph view) renders alongside the
+    // user plugins. Admin.construct does not flow through pluginStructure outputs,
+    // so we register the synthetic structure manually.
+    pluginStructuresStore.contents->Dict.set(
+      ReventlessCore.Platform_Admin_Structure.pluginId,
+      ReventlessCore.Platform_Admin_Structure.structure,
+    )
+
     let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
     let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
 

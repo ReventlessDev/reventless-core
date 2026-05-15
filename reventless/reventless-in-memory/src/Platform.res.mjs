@@ -44,6 +44,7 @@ import * as PlatformMCP_Server$ReventlessInMemory from "./adapter/PlatformMCP_Se
 import * as InMemory_PluginSpec$ReventlessInMemory from "./adapter/InMemory_PluginSpec.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
 import * as DomainGraphQL_Server$ReventlessInMemory from "./adapter/DomainGraphQL_Server.res.mjs";
+import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as QueryEngine_InMemory$ReventlessInMemory from "./adapter/QueryEngine/QueryEngine_InMemory.res.mjs";
 import * as ClonerRunner_InMemory$ReventlessInMemory from "./adapter/Cloner/ClonerRunner_InMemory.res.mjs";
 import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
@@ -1139,6 +1140,7 @@ function MakeWithConfig(Config) {
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
+    pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;
@@ -2718,6 +2720,7 @@ function Make($star) {
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
+    pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
     currentDeployTarget.contents = "Platform";
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     let singleQueryField = adminQueryEntry.singleFieldName;

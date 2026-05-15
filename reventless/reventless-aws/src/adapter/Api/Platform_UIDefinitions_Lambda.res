@@ -10,18 +10,24 @@
 
 open PulumiAws
 
-let makeHandlerCode = (~tableName as _: string): string =>
+// `adminEntryJson` is the JSON-stringified entry for the built-in Platform_Admin
+// plugin (Plugin aggregate with Activate/Deactivate, Plugin/PlatformEventGraph
+// read models). The admin never `Connect`s to itself, so its structure never
+// enters the Plugin read model — we inject it at deploy time so the host shell
+// renders Auto UI for it alongside user plugins.
+let makeHandlerCode = (~tableName as _: string, ~adminEntryJson: string): string =>
   `
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE = process.env.PLUGIN_RM_TABLE;
+const ADMIN_ENTRY = ${adminEntryJson};
 
 export async function handler() {
   if (!TABLE) {
     console.error("Platform_UIDefinitions: PLUGIN_RM_TABLE env var not set");
-    return [];
+    return [ADMIN_ENTRY];
   }
   const items = [];
   let exclusiveStartKey;
@@ -38,10 +44,11 @@ export async function handler() {
     exclusiveStartKey = out.LastEvaluatedKey;
   } while (exclusiveStartKey);
 
-  return items.flatMap(item => {
+  const userEntries = items.flatMap(item => {
     if (!item || !item.structure) return [];
     return [{ pluginId: item.name, ...item.structure }];
   });
+  return [ADMIN_ENTRY, ...userEntries];
 }
 `
 
@@ -101,8 +108,14 @@ let make = (
       )
     })
 
+  let adminEntryJson =
+    ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(
+      ~pluginId=ReventlessCore.Platform_Admin_Structure.pluginId,
+      ReventlessCore.Platform_Admin_Structure.structure,
+    )->JSON.stringify
+
   let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-  let handlerCodeStub = makeHandlerCode(~tableName="")
+  let handlerCodeStub = makeHandlerCode(~tableName="", ~adminEntryJson)
   archiveContents->Dict.set(
     "index.mjs",
     Pulumi.Asset.stringAsset(handlerCodeStub)->Pulumi.Archive.assetToAssetOrArchive,

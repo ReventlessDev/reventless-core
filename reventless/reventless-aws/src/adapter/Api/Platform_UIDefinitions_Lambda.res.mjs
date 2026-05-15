@@ -13,19 +13,22 @@ import * as ReadModel$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AppSync_Resolver_Native$ReventlessAws from "./AppSync_Resolver_Native.res.mjs";
+import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
+import * as Platform_UIDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIDefinitionsApi.res.mjs";
 
-function makeHandlerCode(param) {
+function makeHandlerCode(param, adminEntryJson) {
   return `
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE = process.env.PLUGIN_RM_TABLE;
+const ADMIN_ENTRY = ` + adminEntryJson + `;
 
 export async function handler() {
   if (!TABLE) {
     console.error("Platform_UIDefinitions: PLUGIN_RM_TABLE env var not set");
-    return [];
+    return [ADMIN_ENTRY];
   }
   const items = [];
   let exclusiveStartKey;
@@ -42,10 +45,11 @@ export async function handler() {
     exclusiveStartKey = out.LastEvaluatedKey;
   } while (exclusiveStartKey);
 
-  return items.flatMap(item => {
+  const userEntries = items.flatMap(item => {
     if (!item || !item.structure) return [];
     return [{ pluginId: item.name, ...item.structure }];
   });
+  return [ADMIN_ENTRY, ...userEntries];
 }
 `;
 }
@@ -84,40 +88,9 @@ function make(api, pluginReadModelTableName, opts) {
       role: lambdaRole.id
     }, opts$1);
   });
+  let adminEntryJson = JSON.stringify(Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.structure));
   let archiveContents = {};
-  let handlerCodeStub = `
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const TABLE = process.env.PLUGIN_RM_TABLE;
-
-export async function handler() {
-  if (!TABLE) {
-    console.error("Platform_UIDefinitions: PLUGIN_RM_TABLE env var not set");
-    return [];
-  }
-  const items = [];
-  let exclusiveStartKey;
-  do {
-    const out = await client.send(new ScanCommand({
-      TableName: TABLE,
-      FilterExpression: "contains(#status, :connected)",
-      ExpressionAttributeNames: { "#status": "status" },
-      ExpressionAttributeValues: { ":connected": "Connected" },
-      Limit: 1000,
-      ExclusiveStartKey: exclusiveStartKey,
-    }));
-    if (out.Items) items.push(...out.Items);
-    exclusiveStartKey = out.LastEvaluatedKey;
-  } while (exclusiveStartKey);
-
-  return items.flatMap(item => {
-    if (!item || !item.structure) return [];
-    return [{ pluginId: item.name, ...item.structure }];
-  });
-}
-`;
+  let handlerCodeStub = makeHandlerCode("", adminEntryJson);
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCodeStub);
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
   let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCodeStub);
