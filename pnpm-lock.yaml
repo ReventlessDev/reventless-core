@@ -674,8 +674,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.10
-        version: 3.0.0-alpha.10(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.11
+        version: 3.0.0-alpha.11(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -734,8 +734,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.10
-        version: 3.0.0-alpha.10(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.11
+        version: 3.0.0-alpha.11(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   packages/doc:
     dependencies:
@@ -4924,8 +4924,9 @@ packages:
       moment: ^2.30.1
       rescript: ^12.2.0
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.10':
-    resolution: {integrity: sha512-UgkCzZXdgmbW9Gb+Y5hfv33Ydq4MuCoTIuMVXuvn9MDcgiw65JKuhyiOxIQ7e6Hnbzd/CoelOTImDmg7b3DrRA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.10/449f39aa74b59f5f74c2106ed62c03d77abef88c}
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.11':
+    resolution: {integrity: sha512-/Mo9TWxSK9ynbZUOrnvrExMEjcHmelmgAZLoMdFIiYiAGZxmTZ7fOdOqdFTY+tJ+Ba0h0rG5EvYXjkUysmIkkA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.11/ecd582121e479544e1e08d45f0a497ff136cb63a}
+    hasBin: true
 
   '@reventlessdev/reventless-routes@3.0.0-alpha.5':
     resolution: {integrity: sha512-esZaMLcfmiMcsY3ECeuFJSEqJ4aj5522AQFDnig1F6Aze7RRFk8wBuGJ7l61oxugefHzZtH27XeC0ZU8SFDCjw==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-routes/3.0.0-alpha.5/5190cbbdedeb83a7e7e49cb8c09fa0d2d38d199c}
@@ -4935,8 +4936,8 @@ packages:
       react-dom: ^18.3.1
       rescript: ^12.2.0
 
-  '@reventlessdev/reventless-ui@3.0.0-alpha.10':
-    resolution: {integrity: sha512-mu2iFB+2JNoxU/arJDv4nxLBJ66+kVb5J+7rlrcDYfbf9C4zmFG6r2eaLkh94EP/VPyZB73x+a4hy95gMMLniQ==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ui/3.0.0-alpha.10/d8e0ca430cd9052bb2fab6abba8eb9ee997bf6d7}
+  '@reventlessdev/reventless-ui@3.0.0-alpha.11':
+    resolution: {integrity: sha512-/wWLm1fODGAWS1UGOXTIuwfRbLcs32gn0Aszo0G9iXfK7AIXEoupghRH0KfWr6nBrNQqWgps75ka5Fz3ZEPWdw==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ui/3.0.0-alpha.11/3c5ec0e763196b2866dfcf802fef8752fe618f41}
 
   '@rjsf/core@5.24.13':
     resolution: {integrity: sha512-ONTr14s7LFIjx2VRFLuOpagL76sM/HPy6/OhdBfq6UukINmTIs6+aFN0GgcR0aXQHFDXQ7f/fel0o/SO05Htdg==}
@@ -17925,7 +17926,7 @@ snapshots:
   '@jest/console@27.5.1':
     dependencies:
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       chalk: 4.1.2
       jest-message-util: 27.5.1
       jest-util: 27.5.1
@@ -17947,7 +17948,7 @@ snapshots:
       '@jest/test-result': 27.5.1
       '@jest/transform': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       emittery: 0.8.1
@@ -18016,7 +18017,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       jest-mock: 27.5.1
 
   '@jest/environment@29.7.0':
@@ -18041,7 +18042,7 @@ snapshots:
     dependencies:
       '@jest/types': 27.5.1
       '@sinonjs/fake-timers': 8.1.0
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       jest-message-util: 27.5.1
       jest-mock: 27.5.1
       jest-util: 27.5.1
@@ -18077,7 +18078,7 @@ snapshots:
       '@jest/test-result': 27.5.1
       '@jest/transform': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       chalk: 4.1.2
       collect-v8-coverage: 1.0.3
       exit: 0.1.2
@@ -18219,7 +18220,7 @@ snapshots:
     dependencies:
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       '@types/yargs': 16.0.11
       chalk: 4.1.2
 
@@ -19676,13 +19677,14 @@ snapshots:
       moment: 2.30.1
       rescript: 12.2.0
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.10(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.11(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
     dependencies:
       '@aws-sdk/client-cognito-identity-provider': 3.1033.0
       '@module-federation/runtime': 0.18.4
       '@module-federation/vite': 1.15.4(node-fetch@2.7.0(encoding@0.1.13))(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
       '@reventlessdev/reventless-routes': 3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)
-      '@reventlessdev/reventless-ui': 3.0.0-alpha.10(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)
+      '@reventlessdev/reventless-ui': 3.0.0-alpha.11(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)
+      graphql-ws: 5.16.2(graphql@16.13.2)
       jwt-decode: 4.0.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -19702,6 +19704,7 @@ snapshots:
       - dayjs
       - debug
       - encoding
+      - graphql
       - jiti
       - less
       - lightningcss
@@ -19731,7 +19734,7 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       rescript: 12.2.0
 
-  '@reventlessdev/reventless-ui@3.0.0-alpha.10(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)':
+  '@reventlessdev/reventless-ui@3.0.0-alpha.11(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)':
     dependencies:
       '@date-io/moment': 2.17.0(moment@2.30.1)
       '@emotion/react': 11.14.0(@types/react@19.2.14)(react@18.3.1)
@@ -24257,7 +24260,7 @@ snapshots:
       '@jest/environment': 27.5.1
       '@jest/test-result': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       chalk: 4.1.2
       co: 4.6.0
       dedent: 0.7.0
@@ -24447,7 +24450,7 @@ snapshots:
       '@jest/environment': 27.5.1
       '@jest/fake-timers': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       jest-mock: 27.5.1
       jest-util: 27.5.1
       jsdom: 16.7.0
@@ -24462,7 +24465,7 @@ snapshots:
       '@jest/environment': 27.5.1
       '@jest/fake-timers': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       jest-mock: 27.5.1
       jest-util: 27.5.1
 
@@ -24483,7 +24486,7 @@ snapshots:
     dependencies:
       '@jest/types': 27.5.1
       '@types/graceful-fs': 4.1.9
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.11
@@ -24518,7 +24521,7 @@ snapshots:
       '@jest/source-map': 27.5.1
       '@jest/test-result': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       chalk: 4.1.2
       co: 4.6.0
       expect: 27.5.1
@@ -24585,7 +24588,7 @@ snapshots:
   jest-mock@27.5.1:
     dependencies:
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
 
   jest-mock@29.7.0:
     dependencies:
@@ -24652,7 +24655,7 @@ snapshots:
       '@jest/test-result': 27.5.1
       '@jest/transform': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       chalk: 4.1.2
       emittery: 0.8.1
       graceful-fs: 4.2.11
@@ -24756,7 +24759,7 @@ snapshots:
 
   jest-serializer@27.5.1:
     dependencies:
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       graceful-fs: 4.2.11
 
   jest-snapshot@27.5.1:
@@ -24814,7 +24817,7 @@ snapshots:
   jest-util@27.5.1:
     dependencies:
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -24851,7 +24854,7 @@ snapshots:
     dependencies:
       '@jest/test-result': 27.5.1
       '@jest/types': 27.5.1
-      '@types/node': 25.6.0
+      '@types/node': 22.19.17
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       jest-util: 27.5.1
@@ -26639,7 +26642,7 @@ snapshots:
   ora@5.3.0:
     dependencies:
       bl: 4.1.0
-      chalk: 4.1.0
+      chalk: 4.1.2
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
       is-interactive: 1.0.0
