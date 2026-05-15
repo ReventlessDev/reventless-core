@@ -1312,6 +1312,17 @@ function MakeWithConfig(Config) {
           return "Inactive";
       }
     };
+    let pluginStatusSubTopic = "onPluginStatusChange";
+    let publishPluginStatusChange = (pluginId, status) => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.publish(pluginStatusSubTopic, Object.fromEntries([
+      [
+        "pluginId",
+        pluginId
+      ],
+      [
+        "status",
+        status
+      ]
+    ]));
     let updatePluginStatus = async (field, args, newStatus) => {
       let msgId = Message$ReventlessCore.uuid();
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -1341,6 +1352,7 @@ function MakeWithConfig(Config) {
             let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
+            publishPluginStatusChange(id, statusToString(newStatus));
           }
         } else {
           log.warn("Admin", undefined, field + `(` + id + `): plugin not found`);
@@ -1392,10 +1404,19 @@ function MakeWithConfig(Config) {
     CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(platformGraphQL);
     platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
-    platformGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
+    platformGraphQL.registerSubscriptions([
+      "  onUIFragmentChange: UIFragmentChangeEvent",
+      "  onPluginStatusChange: PluginStatusChangeEvent"
+    ], Object.fromEntries([
+      [
         "onUIFragmentChange",
         GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(uiFragmentSubTopic)
-      ]]));
+      ],
+      [
+        "onPluginStatusChange",
+        GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(pluginStatusSubTopic)
+      ]
+    ]));
     let adminFieldToQueryDb = Object.fromEntries([
       [
         singleQueryField,
@@ -1553,10 +1574,19 @@ function MakeWithConfig(Config) {
     addUIFragmentMutation2(Api_Naming$ReventlessCore.adminField("UIFragmentDeregistered"), "Deregistered");
     CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(adminGraphQL);
     adminGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
-    adminGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
+    adminGraphQL.registerSubscriptions([
+      "  onUIFragmentChange: UIFragmentChangeEvent",
+      "  onPluginStatusChange: PluginStatusChangeEvent"
+    ], Object.fromEntries([
+      [
         "onUIFragmentChange",
         GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic)
-      ]]));
+      ],
+      [
+        "onPluginStatusChange",
+        GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver("onPluginStatusChange")
+      ]
+    ]));
     currentDeployTarget.contents = "Domain";
     adminGraphQL.start(Config.splitApi ? 4001 : 4000, undefined);
     adminMCP.start(Config.splitApi ? 3002 : 3001, undefined);
@@ -2992,6 +3022,17 @@ function Make($star) {
           return "Inactive";
       }
     };
+    let pluginStatusSubTopic = "onPluginStatusChange";
+    let publishPluginStatusChange = (pluginId, status) => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.publish(pluginStatusSubTopic, Object.fromEntries([
+      [
+        "pluginId",
+        pluginId
+      ],
+      [
+        "status",
+        status
+      ]
+    ]));
     let updatePluginStatus = async (field, args, newStatus) => {
       let msgId = Message$ReventlessCore.uuid();
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
@@ -3021,6 +3062,7 @@ function Make($star) {
             let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
+            publishPluginStatusChange(id, statusToString(newStatus));
           }
         } else {
           log.warn("Admin", undefined, field + `(` + id + `): plugin not found`);
@@ -3072,10 +3114,19 @@ function Make($star) {
     CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(platformGraphQL);
     platformGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
     adminRegisteredServers.contents.push(platformGraphQL);
-    platformGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
+    platformGraphQL.registerSubscriptions([
+      "  onUIFragmentChange: UIFragmentChangeEvent",
+      "  onPluginStatusChange: PluginStatusChangeEvent"
+    ], Object.fromEntries([
+      [
         "onUIFragmentChange",
         GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(uiFragmentSubTopic)
-      ]]));
+      ],
+      [
+        "onPluginStatusChange",
+        GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(pluginStatusSubTopic)
+      ]
+    ]));
     let adminFieldToQueryDb = Object.fromEntries([
       [
         singleQueryField,
@@ -3226,10 +3277,19 @@ function Make($star) {
     addUIFragmentMutation2(Api_Naming$ReventlessCore.adminField("UIFragmentDeregistered"), "Deregistered");
     CommandGeneratorResolvers_GraphQL$ReventlessInMemory.ensureCommandResultTypes(adminGraphQL);
     adminGraphQL.registerMutations(adminMutationSdl(baseParts.mutations), mutationResolvers);
-    adminGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
+    adminGraphQL.registerSubscriptions([
+      "  onUIFragmentChange: UIFragmentChangeEvent",
+      "  onPluginStatusChange: PluginStatusChangeEvent"
+    ], Object.fromEntries([
+      [
         "onUIFragmentChange",
         GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver(dpSubTopic)
-      ]]));
+      ],
+      [
+        "onPluginStatusChange",
+        GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.makeFieldResolver("onPluginStatusChange")
+      ]
+    ]));
     currentDeployTarget.contents = "Domain";
     adminGraphQL.start(4001, undefined);
     adminMCP.start(3002, undefined);

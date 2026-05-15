@@ -1405,6 +1405,18 @@ module MakeWithConfig = (
       | Disconnected => "Disconnected"
       | Inactive => "Inactive"
       }
+    let pluginStatusSubTopic = "onPluginStatusChange"
+    let publishPluginStatusChange = (~pluginId, ~status) =>
+      GraphQL_SubscriptionResolvers_InMemory.publish(
+        pluginStatusSubTopic,
+        JSON.Encode.object(
+          Dict.fromArray([
+            ("pluginId", JSON.Encode.string(pluginId)),
+            ("status", JSON.Encode.string(status)),
+          ]),
+        ),
+      )
+
     let updatePluginStatus = async (
       ~field: string,
       args: JSON.t,
@@ -1438,6 +1450,8 @@ module MakeWithConfig = (
               updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
             let _ = await ops.save(id, entry, Any, None)
             log.info(~comp="Admin", `${field}(${id}): ${previousStatus} → ${newStatus->statusToString}`)
+            // Source C: fan the new status out to live onPluginStatusChange subscribers.
+            publishPluginStatusChange(~pluginId=id, ~status=newStatus->statusToString)
           | exception e =>
             log.error(
               ~comp="Admin",
@@ -1507,13 +1521,20 @@ module MakeWithConfig = (
     CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(platformGraphQL)
     platformGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
     adminRegisteredServers.contents->Array.push(platformGraphQL)
-    // Register onUIFragmentChange subscription (Source C).
+    // Register onUIFragmentChange + onPluginStatusChange subscriptions (Source C).
     platformGraphQL.registerSubscriptions(
-      ~sdlFields=["  onUIFragmentChange: UIFragmentChangeEvent"],
+      ~sdlFields=[
+        "  onUIFragmentChange: UIFragmentChangeEvent",
+        "  onPluginStatusChange: PluginStatusChangeEvent",
+      ],
       ~resolvers=Dict.fromArray([
         (
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver(uiFragmentSubTopic),
+        ),
+        (
+          "onPluginStatusChange",
+          GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver(pluginStatusSubTopic),
         ),
       ]),
     )
@@ -1741,11 +1762,18 @@ module MakeWithConfig = (
     CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(adminGraphQL)
     adminGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
     adminGraphQL.registerSubscriptions(
-      ~sdlFields=["  onUIFragmentChange: UIFragmentChangeEvent"],
+      ~sdlFields=[
+        "  onUIFragmentChange: UIFragmentChangeEvent",
+        "  onPluginStatusChange: PluginStatusChangeEvent",
+      ],
       ~resolvers=Dict.fromArray([
         (
           "onUIFragmentChange",
           GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver(dpSubTopic),
+        ),
+        (
+          "onPluginStatusChange",
+          GraphQL_SubscriptionResolvers_InMemory.makeFieldResolver("onPluginStatusChange"),
         ),
       ]),
     )

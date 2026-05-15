@@ -20,7 +20,7 @@ The current state is broken on multiple axes — separate workstreams below.
 | 2.1 Symmetric `Activate` emits `UIFragmentRegistered` | ✅ done | `PluginBehavior.Inactive → Activate` mirrors the `Connected → Deactivate` block |
 | 2.2 In-memory `Platform_UIDefinitions` status filter | ✅ done | Filters by Plugin RM status; built-in `Platform_Admin` always included |
 | 2.3 Resolver-level plugin status gate (Option B) | ✅ done (both adapters) | In-memory: `CommandGeneratorResolvers_GraphQL.setPluginStatusGate`. AWS: `AggregateEntryPoint.mjs::checkPluginStatus` cached scan against the Plugin RM table; `AggregateRuntime_Builder_Single.setPluginReadModelTable` injects the `PLUGIN_RM_TABLE_NAME` env var + `dynamodb:Scan` IAM policy. Both emit the split codes from the three-tier model (`PluginUnavailable` / `PluginInactive`). |
-| 2.4 Host-shell subscription to lifecycle | ❌ not started | Requires backend `onPluginStatusChange` emit + frontend graphql-ws subscription client in the `reventless-host-shell` package |
+| 2.4 Host-shell subscription to lifecycle | ⚠️ partial | Backend SDL (`Platform_PluginStatusChanged` mutation + `onPluginStatusChange: PluginStatusChangeEvent @aws_subscribe` field) added to `AdminApi.baseFragment`. In-memory `updatePluginStatus` publishes to the `"onPluginStatusChange"` PubSub topic; the platform server registers a matching subscription resolver. AWS-side emit (would invoke `Platform_PluginStatusChanged` from the PluginProjection Lambda) and frontend `graphql-ws` subscription client in `reventless-host-shell` still pending. |
 
 ## Remaining follow-ups (deferred)
 
@@ -78,14 +78,26 @@ Bundled cleanup: ✅ the in-memory gate
 split codes.
 
 ### F3 — Backend `onPluginStatusChange` subscription emit (Part 2.4 backend)
-- In-memory: in `Platform.res` after the existing `updatePluginStatus` save (or
-  after the future projection updates), publish a `{pluginId, status,
-  uiFragments}` payload to a new `"onPluginStatusChange"` PubSub topic.
-  Register an SDL field `onPluginStatusChange: PluginStatusChangeEvent` on the
-  Platform GraphQL server analogous to the existing `onUIFragmentChange`.
-- AWS: emit the same mutation field driven by the Plugin aggregate's
-  `Activated` / `Deactivated` events (consumer: a new
-  `Platform_OnPluginStatusChange` mutation wired via `@aws_subscribe`).
+**In-memory: ✅ done.** `AdminApi.baseFragment` declares
+`PluginStatusChangeEvent`, `Platform_PluginStatusChanged(pluginId, status)`,
+and the matching `onPluginStatusChange` subscription field with
+`@aws_subscribe`. `updatePluginStatus` (in
+`reventless-in-memory/src/Platform.res`) publishes to the
+`"onPluginStatusChange"` PubSub topic after saving the new status. The
+platform server registers a matching subscription resolver alongside the
+existing `onUIFragmentChange` one.
+
+**AWS: ❌ not yet done.** The AWS path needs to invoke
+`Platform_PluginStatusChanged` from a place that observes Plugin aggregate
+`Activated` / `Deactivated` events — most naturally the PluginProjection
+Lambda (the same one that updates the Plugin RM table). The Lambda would
+need IAM `appsync:GraphQL` on the Platform API and would call
+`Platform_PluginStatusChanged(pluginId, status)` for each transition;
+AppSync's `@aws_subscribe` directive then fans out to live subscribers.
+
+The same gap exists for the older `onUIFragmentChange` subscription — both
+declarations are present in the SDL but only the in-memory adapter actively
+publishes to them. Fixing both AWS emits at once would be consistent.
 
 ### F4 — Host shell subscription wiring (Part 2.4 frontend, cross-repo)
 - Add a GraphQL subscription client to `reventless-ui/reventless/reventless-host-shell`

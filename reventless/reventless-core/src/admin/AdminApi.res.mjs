@@ -43,17 +43,29 @@ let uiFragmentMutationFields = [
 
 let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`;
 
+let pluginStatusSubscriptionTypes = [
+  `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n}`,
+  `type PluginStatusChangeEvent {\n  pluginId: ID!\n  status: PluginStatus!\n}`
+];
+
+let pluginStatusMutationFields = [`  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`];
+
+let pluginStatusSubscriptionField = `  onPluginStatusChange: PluginStatusChangeEvent\n    @aws_subscribe(mutations: ["Platform_PluginStatusChanged"])`;
+
 function baseFragment(cloner) {
   let base = GraphQL_FragmentGenerator$ReventlessCore.generate(mutationEntries(cloner), PluginBaseFragment$ReventlessCore.queryEntries);
   let parts = GraphQL_Stitcher$ReventlessCore.decode(base);
   return GraphQL_Stitcher$ReventlessCore.encode({
-    types: parts.types.concat(uiFragmentSubscriptionTypes).concat(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes),
-    mutations: parts.mutations.concat(uiFragmentMutationFields),
+    types: parts.types.concat(uiFragmentSubscriptionTypes).concat(pluginStatusSubscriptionTypes).concat(Platform_UIDefinitionsApi$ReventlessCore.sdlTypes).concat(Platform_UIFragmentsApi$ReventlessCore.sdlTypes),
+    mutations: parts.mutations.concat(uiFragmentMutationFields).concat(pluginStatusMutationFields),
     queries: parts.queries.concat([
       Platform_UIDefinitionsApi$ReventlessCore.sdlQueryField,
       Platform_UIFragmentsApi$ReventlessCore.sdlQueryField
     ]),
-    subscriptions: [uiFragmentSubscriptionField]
+    subscriptions: [
+      uiFragmentSubscriptionField,
+      pluginStatusSubscriptionField
+    ]
   });
 }
 
@@ -67,6 +79,9 @@ export {
   uiFragmentSubscriptionTypes,
   uiFragmentMutationFields,
   uiFragmentSubscriptionField,
+  pluginStatusSubscriptionTypes,
+  pluginStatusMutationFields,
+  pluginStatusSubscriptionField,
   baseFragment,
 }
 /* cloneArgsSchema Not a pure module */

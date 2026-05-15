@@ -43,19 +43,39 @@ let uiFragmentMutationFields = [
 
 let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`
 
+// Plugin lifecycle Source C subscription. Mirrors the UIFragment pattern: the
+// platform invokes `Platform_PluginStatusChanged` after writing the new status
+// to the Plugin read model; AppSync routes that mutation via `@aws_subscribe`
+// to live `onPluginStatusChange` subscribers (host shell). The status enum
+// matches `PluginReadModelSpec.status` so consumers can mirror tier 1 / tier 2
+// transitions exactly.
+let pluginStatusSubscriptionTypes = [
+  `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n}`,
+  `type PluginStatusChangeEvent {\n  pluginId: ID!\n  status: PluginStatus!\n}`,
+]
+
+let pluginStatusMutationFields = [
+  `  Platform_PluginStatusChanged(pluginId: ID!, status: PluginStatus!): PluginStatusChangeEvent`,
+]
+
+let pluginStatusSubscriptionField = `  onPluginStatusChange: PluginStatusChangeEvent\n    @aws_subscribe(mutations: ["Platform_PluginStatusChanged"])`
+
 let baseFragment = (~cloner: bool) => {
   let base = GraphQL_FragmentGenerator.generate(~mutationEntries=mutationEntries(~cloner), ~queryEntries)
   let parts = GraphQL_Stitcher.decode(base)
   GraphQL_Stitcher.encode({
     types: parts.types
     ->Array.concat(uiFragmentSubscriptionTypes)
+    ->Array.concat(pluginStatusSubscriptionTypes)
     ->Array.concat(Platform_UIDefinitionsApi.sdlTypes)
     ->Array.concat(Platform_UIFragmentsApi.sdlTypes),
     queries: Array.concat(
       parts.queries,
       [Platform_UIDefinitionsApi.sdlQueryField, Platform_UIFragmentsApi.sdlQueryField],
     ),
-    mutations: Array.concat(parts.mutations, uiFragmentMutationFields),
-    subscriptions: [uiFragmentSubscriptionField],
+    mutations: parts.mutations
+    ->Array.concat(uiFragmentMutationFields)
+    ->Array.concat(pluginStatusMutationFields),
+    subscriptions: [uiFragmentSubscriptionField, pluginStatusSubscriptionField],
   })
 }
