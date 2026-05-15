@@ -9,11 +9,11 @@
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "serve": "npx tsx src/Main.res.mjs",
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
-    "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-playground",
+    "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
     "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run serve' 'npx wait-on tcp:4001 && pnpm run dev:ui'"
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-playground": "3.0.0-alpha.10"
+    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.10"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "workspace:*",
