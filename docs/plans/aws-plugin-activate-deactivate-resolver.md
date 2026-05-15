@@ -52,14 +52,24 @@ entry point (`reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs`).
 Before invoking the per-aggregate handler:
 - Extract the plugin prefix from `event.fieldName` (split on `_`).
 - Skip the check for `Platform_*` fields.
-- `GetItem` against the Plugin RM DynamoDB table by plugin name; if
-  `status != "Connected"`, return a `CommandRejected { errorCode:
-  "InactivePlugin" }` outcome.
+- `GetItem` against the Plugin RM DynamoDB table by plugin name; map the
+  `status` to a `CommandRejected` outcome with the appropriate error code:
+  - `Disconnected` → `errorCode: "PluginUnavailable"` (retryable; tier 1)
+  - `Inactive` → `errorCode: "PluginInactive"` (admin-controlled; tier 2)
+  - `Connected` → pass through
+
+  See [docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md)
+  for the rationale behind splitting the codes.
 
 This requires:
 - Granting the Lambda IAM `dynamodb:GetItem` on the Plugin RM table.
 - Plumbing the Plugin RM table name through to the Lambda (env var).
 - A cold-start cache so warm invocations don't hit DynamoDB on every command.
+
+Bundled cleanup: update the in-memory gate
+(`CommandGeneratorResolvers_GraphQL.setPluginStatusGate`) to emit the
+same split codes — currently returns a single `InactivePlugin` for both
+off-tiers.
 
 ### F3 — Backend `onPluginStatusChange` subscription emit (Part 2.4 backend)
 - In-memory: in `Platform.res` after the existing `updatePluginStatus` save (or
@@ -92,7 +102,7 @@ This requires:
 | `UIFragmentRegistry` row | ✅ deleted (UIFragmentDeregistered → Delete) | ❌ never restored — Activate does not emit UIFragmentRegistered |
 | `Platform_UIDefinitions` AWS | ✅ DynamoDB scan filters `status contains "Connected"` | ❌ (moot until registry restore wired) |
 | `Platform_UIDefinitions` in-memory | ❌ no status filter; store seeded once at boot | n/a |
-| Live AppSync / in-memory GraphQL SDL | ❌ never re-stitched; deactivated plugin's mutations / queries remain callable | ❌ |
+| Live AppSync / in-memory GraphQL SDL | ✅ stays in SDL by design (membership preserved); ❌ resolver gate missing — calls succeed instead of being rejected | ❌ resolver gate restoration missing |
 | Host shell page / panel registry | ❌ static at boot; no subscription | ❌ |
 
 # Part 1 — Resolver wiring on AWS
@@ -347,7 +357,7 @@ status is not `Connected`. Note: the built-in `Platform_Admin` entry
 seeded at [Platform.res:1182-1185](reventless-in-memory/src/Platform.res#L1182-L1185)
 has no Plugin QueryDb row — always include it (it can't be deactivated).
 
-## 2.3 Live API schema — pick a contract and enforce it
+## 2.3 Live API schema — runtime gate (membership stays, availability gates)
 
 This is the **biggest functional gap**. After Deactivate the deactivated
 plugin's GraphQL queries and mutations remain fully callable on both
@@ -356,34 +366,57 @@ adapters because `GraphQL_Stitcher.stitch` runs only at platform start
 in-memory `Platform.res` startServers path). Nothing subscribes to
 `Activated` / `Deactivated` events to re-stitch.
 
-Decide between two contracts before implementing:
+### Design principle
 
-- **Option A — re-stitch and redeploy on Deactivate / Activate.**
-  Subscribe to Plugin aggregate events at platform start. On
-  `Deactivated`, rebuild the SDL from the current Plugin read model
-  (filtering Inactive plugins' `apiSchemaFragment`) and call
-  `AppSync.startSchemaCreation` (AWS) / re-register types (in-memory). On
-  `Activated`, do the reverse. Pros: cleaner contract — deactivation
-  truly hides the surface. Cons: AppSync schema redeploy is slow (~30s)
-  and disruptive; in-memory needs `graphql-yoga` schema reload support.
-- **Option B — resolver-level status gate.** Wrap every plugin-supplied
-  resolver with an authorization-style check that looks up the plugin's
-  current status in the Plugin QueryDb / read model and rejects with
-  `Inactive plugin` if not `Connected`. Pros: fast, no schema churn.
-  Cons: leaks the schema (deactivated fields still discoverable via
-  introspection), every resolver pays the lookup cost.
+The plugin's GraphQL surface has two orthogonal axes — **membership**
+(types in the SDL) and **availability** (whether the resolver currently
+serves requests). Tiers 1 (`Disconnected`) and 2 (`Inactive`) change
+availability only; SDL membership stays untouched and is restored
+automatically on `Reconnected` / `Activated`. Only a future tier 3
+(decommission) crosses the membership line and triggers a real schema
+re-stitch. See [docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md)
+for the full tier × surface matrix and the rationale.
 
-Recommendation: **Option B** for the first pass because it's simpler and
-keeps the user-perceptible contract right; revisit Option A if
-introspection-time hiding becomes a requirement.
+Two consequences:
 
-If Option B: the existing `commandAuthorization` / `permission` machinery
-([Authorization.res](reventless-core/src/types/Authorization.res)) is the
-natural extension point — add a `pluginStatusCheck` interceptor in the
-mutation / query resolver path that resolves the plugin name from the
-mutation's plugin prefix (e.g. `Catalog_Product_Add` → `Catalog`) and
-denies if the plugin row's status ≠ `Connected`. Same logic on both
-adapters via the in-memory and AWS resolver wrappers.
+- **No SDL re-stitch on Deactivate or Activate.** A 30-second AppSync
+  redeploy on every admin toggle is not viable. Schema stability is also
+  the right contract for typed clients (codegen builds don't break on
+  routine status flips).
+- **Resolver-level status gate is the intended design**, not a
+  workaround for the cost of re-stitching. It encodes "availability" as
+  a runtime check that reads the Plugin RM `status` and rejects requests
+  to off-tier plugins, while leaving the SDL alone.
+
+### Implementation
+
+Add a `pluginStatusCheck` interceptor in the mutation / query resolver
+path that resolves the plugin name from the field's plugin prefix
+(e.g. `Catalog_Product_Add` → `Catalog`) and inspects the Plugin RM
+`status`. This rides alongside the existing `commandAuthorization` /
+`permission` machinery
+([Authorization.res](reventless-core/src/types/Authorization.res)).
+
+**Error codes** — return distinct codes for the two off-tiers so clients
+can choose the right policy:
+
+| Plugin RM status | Error code | Client policy |
+|---|---|---|
+| `Connected` | (passes) | n/a |
+| `Disconnected` (tier 1) | `PluginUnavailable` | retry with backoff — auto-recovery expected |
+| `Inactive` (tier 2) | `PluginInactive` | surface to user, do **not** retry — admin only |
+
+A single conflated error code forces clients to pick one wrong policy
+(aggressive retries against an admin-suspended plugin, or no retries
+against a transiently-disconnected plugin). The gate already has the
+status string, so differentiation is essentially free.
+
+**Status note**: the in-memory implementation
+(`CommandGeneratorResolvers_GraphQL.setPluginStatusGate`) currently
+returns a single `InactivePlugin` errorCode for both off-tiers.
+Splitting it into `PluginUnavailable` / `PluginInactive` is a small
+follow-up bundled into F2 below. F2 (the AWS Lambda gate) should ship
+with the split codes from day one.
 
 ## 2.4 Host shell — subscribe to lifecycle changes
 
@@ -419,11 +452,18 @@ UIFragment mutations fire.
 |---|---|---|
 | AppSync resolver wiring (AWS) | ✅ resolver routes to shared Lambda | ✅ same |
 | Plugin read model status | ✅ → Inactive | ✅ → Disconnected |
+| Plugin RM `apiSchemaFragment` / `uiFragments` (raw) | ✅ preserved | ✅ preserved |
+| GraphQL SDL membership | ✅ **preserved** (no re-stitch — membership is structural) | ✅ preserved |
 | `UIFragmentRegistry` row | ✅ deleted | ✅ restored by symmetric `UIFragmentRegistered` emit |
 | `Platform_UIDefinitions` AWS | ✅ filtered by status | ✅ |
 | `Platform_UIDefinitions` in-memory | ✅ filtered by status | ✅ |
-| Live GraphQL surface | ✅ resolver rejects Inactive plugins (Option B) | ✅ accepts again |
+| Live GraphQL resolver gate | ✅ rejects: `PluginInactive` (Inactive) / `PluginUnavailable` (Disconnected) | ✅ passes again |
 | Host shell page / panel registry | ✅ unmounts on subscription | ✅ re-mounts on subscription |
+
+The "GraphQL SDL membership preserved" row is the key invariant from the
+membership-vs-availability design — see
+[docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md).
+Tearing down the SDL on a routine admin toggle would be the wrong contract.
 
 ## Verification
 
@@ -463,9 +503,16 @@ UIFragment mutations fire.
 - Auto-discovery for new admin-only command variants — once Part 1
   lands, future `@noApi`-free variants in `PluginSpec.command` are
   automatically exposed.
-- Choosing Option A (full schema re-stitch on Deactivate) — explicitly
-  recommended against in 2.3 unless introspection hiding becomes a
-  requirement.
+- Full schema re-stitch on Deactivate — explicitly out of scope; SDL
+  membership is preserved across tier 1 and tier 2 transitions by
+  design (see 2.3 and the analysis doc).
+- **Decommission tier (tier 3 — `PluginDeregistered`)** — the lifecycle
+  step that *would* legitimately re-stitch the SDL is a separate future
+  workstream. It is the only tier that changes plugin membership rather
+  than availability. See
+  [docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md)
+  ("Open: decommission tier") and
+  [docs/analysis/event-graph-linking.md:237](../analysis/event-graph-linking.md#L237).
 
 ## Why this instead of a one-off Lambda for resolver wiring
 
@@ -480,6 +527,10 @@ user-plugin aggregates.
 
 ## References
 
+- [docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md)
+  — three-tier lifecycle model (transient outage / admin suspend /
+  decommission), membership-vs-availability principle, error-code
+  rationale, and the decommission-tier sketch.
 - `reventless-core/src/admin/PluginSpec.res` — command type (6 variants).
 - `reventless-core/src/admin/PluginBehavior.res` — decision logic; `Activate` asymmetry on line 96.
 - `reventless-core/src/admin/PluginProjection.res` — projection; `apiSchemaFragment` / `uiFragments` preserved across status updates via `UpdateWithDefault` updater.
