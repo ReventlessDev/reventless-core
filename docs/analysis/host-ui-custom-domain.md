@@ -66,7 +66,7 @@ The bar is higher than "make this one stack pretty." The framework should let `P
 
 The pieces needed for that:
 
-1. **A base domain owned by the org**, e.g. `app.reventless.dev` (or `app.example.com` for downstream framework users), with a Route53 hosted zone ID known to the framework.
+1. **A base domain owned by the deploying team**, e.g. `app.reventless.dev` (or `app.example.com` for downstream framework users), with a Route53 hosted zone ID known to the framework.
 2. **A naming convention** that maps `(project, stack)` → unique FQDN deterministically.
 3. **An automatic apply path** that hooks `Plugin_Stack.makeUiBundleDistribution` so every UI bundle in every plugin gets the pretty URL by default.
 4. **An explicit override hatch** for stacks that want a vanity URL or to disable the automation.
@@ -132,7 +132,7 @@ A pragmatic middle path: **auto-derive from project + stack by default, allow a 
 
 ## 5. Source of `baseDomain` and `hostedZoneId`
 
-Both values are essentially per-AWS-account / per-org constants. They almost never change. Three places they could live:
+Both values are essentially per-AWS-account / per-team constants. They almost never change. Three places they could live:
 
 1. **`Util_LocalConfig` keys**: same precedence ladder as `cognitoUserPoolId`. Env var (`REVENTLESS_HOST_UI_BASE_DOMAIN`, `REVENTLESS_HOST_UI_HOSTED_ZONE_ID`) → `Pulumi.local.yaml` → `Pulumi.<stack>.yaml`. Composes with what's already built.
 2. **Dedicated framework config file** at repo root (e.g. `reventless.yaml`). Cleaner for "everyone in this repo deploys to the same base domain"; redundant given the sidecar.
@@ -142,11 +142,52 @@ Both values are essentially per-AWS-account / per-org constants. They almost nev
 
 ---
 
-## 6. Wiring path through the framework
+## 6. Domain ownership & multi-tenancy
+
+`baseDomain` and `hostedZoneId` are **deployer-supplied configuration**, not framework constants. The framework never hardcodes a default — it reads both values from `Util_LocalConfig` (env → sidecar → stack config) at deploy time. The Reventless team and downstream users run the same code path with different values.
+
+### 6.1 Two scenarios, same mechanism
+
+**Reventless team deploying its own examples** (`examples/online-shop-hybrid` etc.):
+
+- The Reventless team owns `reventless.dev` (Route53 zone in the Reventless AWS account).
+- Repo-level GitHub Actions variables `HOST_UI_BASE_DOMAIN=app.reventless.dev` + `HOST_UI_HOSTED_ZONE_ID=Z...` flow into the deploy job.
+- Framework auto-derives `online-shop-hybrid-platform-alpha.app.reventless.dev` and provisions cert + alias in the Reventless account.
+- ACM cert lives in us-east-1 of the same AWS account as the rest of the stack — no cross-account dance.
+
+**Downstream framework user** (e.g. Acme Corp deploying its own app on Reventless):
+
+- Acme owns `acme.com` with a Route53 hosted zone in their AWS account.
+- Acme's CI exports `REVENTLESS_HOST_UI_BASE_DOMAIN=app.acme.com` + `REVENTLESS_HOST_UI_HOSTED_ZONE_ID=Z...` (or sets them in `Pulumi.<stack>.yaml`).
+- Framework derives `acme-orders-prod.app.acme.com` and provisions in Acme's AWS account.
+- Reventless's `reventless.dev` zone is never touched — Acme couldn't reach it anyway (different account).
+
+The natural permission boundary (Route53 + ACM are AWS-account-scoped) means there is no accidental cross-team provisioning even if env vars were misconfigured.
+
+### 6.2 Framework's responsibility
+
+1. **Never hardcode a domain in framework code.** Treat `reventless.dev` as Reventless's *deployment-time choice for its own example apps*, configured the same way downstream users configure theirs.
+2. **Default to "feature off"** when no domain is configured — keep the cloudfront.net URL. No surprise opt-in for forks.
+3. **Document the protocol, not the values.** Deployment guides should state which env vars exist, what AWS prerequisites the deployer needs (a Route53 zone they own, IAM permissions to issue ACM certs in us-east-1 + create records in that zone), and what URL convention the framework produces. Concrete domain values (`reventless.dev` etc.) belong in deployment-time secrets/variables, never in committed source or sample configs.
+4. **Example stack configs in this repo ship without a base domain.** The Reventless team sets the values via GitHub Actions repo variables on this repo; a fork that wants its own demo URL sets different values on its own fork.
+
+### 6.3 Subtleties
+
+**Hosted zone auto-discovery.** `aws.route53.getZone({name: baseDomain})` can resolve the zone ID at deploy time, dropping `hostedZoneId` from config. Reduces config burden to one value but assumes the zone name matches `baseDomain` literally — works if the zone is for `app.acme.com`, surprises users who own `acme.com` and host `app.acme.com` records there. Probably worth supporting both (auto-lookup by default, explicit zone ID override).
+
+**Cross-account / delegated subdomains.** Some orgs keep their public Route53 zone in a "shared services" account and deploy workloads to per-environment accounts. The framework would need a second AWS provider (for the zone account) to write validation + alias records, plus cross-account IAM. Out of scope for v1; documentable as: "if you need this, delegate a subdomain like `app.acme.com` to a hosted zone in the app's own account and point `baseDomain` at the delegated subdomain."
+
+**Shared-apex blast radius.** Any policy applied at the apex (HSTS preload, CAA records, DNSSEC, WAF web ACL on a shared CloudFront) affects every subdomain underneath. If Reventless ever runs customer-facing content on `reventless.dev`, keep framework demo URLs on a dedicated apex (e.g. `demos.reventless.dev`) so demo-only churn can't drag prod with it.
+
+**Template/placeholder discipline in docs.** When deployment guides show example env-var values, use a generic placeholder like `app.example.com` and explicitly call out the Reventless-team-specific values (`app.reventless.dev`) as illustrative of the protocol, not a default to copy. Avoids the failure mode where a fork copy-pastes `reventless.dev` and silently tries to provision in someone else's domain.
+
+---
+
+## 7. Wiring path through the framework
 
 Once bindings exist and `(baseDomain, hostedZoneId)` are sourced from config:
 
-### 6.1 `Plugin_Stack.makeUiBundleDistribution`
+### 7.1 `Plugin_Stack.makeUiBundleDistribution`
 
 Extend the signature:
 
@@ -179,7 +220,7 @@ When `customDomain` is `Some({fqdn, hostedZoneId})`:
 
 **Resource naming**: the cert + alias record are stable across deploys, so they must **not** include `bundleVersion` in their Pulumi names (the bucket + asset objects already do; that's correct for cache-busting). Use `${pluginId}-domain-cert`, `${pluginId}-domain-alias`, etc.
 
-### 6.2 `Platform.deployPlatform`
+### 7.2 `Platform.deployPlatform`
 
 Reads the auto-derived FQDN at the call site, passes through:
 
@@ -199,7 +240,7 @@ let customDomain = switch (baseDomain, hostedZoneId) {
 
 Pass `customDomain` into `Plugin_Stack.makeUiBundleDistribution`. Same pattern for `Platform.deployPlugin`, so per-plugin UI bundles automatically get their own subdomain too (`${pluginId}-${stack}.${baseDomain}` or similar).
 
-### 6.3 Generalization: every UI bundle gets the same treatment
+### 7.3 Generalization: every UI bundle gets the same treatment
 
 Because `Plugin_Stack.makeUiBundleDistribution` is the single funnel for all UI bundles (host-shell today, per-plugin SPAs tomorrow), wiring `customDomain` once at that function means every caller — including future ones — picks up the auto-domain behavior automatically. No per-call-site duplication.
 
@@ -216,7 +257,7 @@ Single-level (`catalog-online-shop-hybrid-alpha.app.reventless.dev`) is simpler 
 
 ---
 
-## 7. CI flow
+## 8. CI flow
 
 The CI workflow (`deploy-online-shop-hybrid.yml` → `deploy-reventless-aws.yml`) needs **no changes** beyond what's already in place after the recent env-var work:
 
@@ -228,7 +269,7 @@ Two new repo-level GitHub Actions **variables** (not secrets) cover it: `HOST_UI
 
 ---
 
-## 8. Special-case: out-of-band cert (BYO ARN, no in-stack provisioning)
+## 9. Special-case: out-of-band cert (BYO ARN, no in-stack provisioning)
 
 If the team prefers to provision one wildcard cert (`*.app.reventless.dev`) by hand or in a separate "domain-aws" stack and reuse it everywhere, the framework can support that with a slightly different signature:
 
@@ -246,7 +287,7 @@ For a project at this stage (alpha, frequent stack churn), **InStackCert is easi
 
 ---
 
-## 9. Gotchas to know up front
+## 10. Gotchas to know up front
 
 1. **First-deploy propagation delay.** CloudFront takes ~15 minutes to globally propagate `aliases` and `viewerCertificate` changes after the first `pulumi up`. Browsers caching the old cert may see TLS errors during the transition.
 2. **ACM validation can race.** `aws_acm_certificate_validation` is a synthetic resource that *waits* for ACM to issue the cert. Most validations succeed in 1-5 minutes but can take up to ~30. Pulumi will sit on the resource until it completes; long deploys are normal on first run.
@@ -258,7 +299,7 @@ For a project at this stage (alpha, frequent stack churn), **InStackCert is easi
 
 ---
 
-## 10. Effort estimate
+## 11. Effort estimate
 
 | Step | Effort |
 |---|---|
@@ -275,11 +316,10 @@ Linear scaling for additional UI bundles is zero — the framework handles them 
 
 ---
 
-## 11. Open questions
+## 12. Open questions
 
 - **Subdomain naming for plugin UIs**: single-segment (`catalog-online-shop-hybrid-alpha.app.reventless.dev`) or nested (`catalog.online-shop-hybrid-alpha.app.reventless.dev`)? Nested is nicer but needs a wildcard cert.
 - **Per-plugin UIs in scope yet?** Currently only the host-shell is deployed; plugin UIs use Auto UI generated from the GraphQL schema. The framework should support per-plugin custom URLs *when* per-plugin UIs land, but the work doesn't have to happen now.
-- **`baseDomain` ownership semantics**: who owns `reventless.dev`? If it's the framework org (ReventlessDev), downstream framework consumers need their own. If it's per-app, we should document that the `baseDomain` config is supplied by the deploying team, not the framework.
 - **HSTS preload**: if the apex `reventless.dev` is on the HSTS preload list, every subdomain inherits forced HTTPS. Fine for production, mildly annoying for local debugging if you ever need an HTTP fallback. Document but don't gate the work on it.
 
 ---
