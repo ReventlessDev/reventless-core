@@ -100,15 +100,50 @@ declarations are present in the SDL but only the in-memory adapter actively
 publishes to them. Fixing both AWS emits at once would be consistent.
 
 ### F4 — Host shell subscription wiring (Part 2.4 frontend, cross-repo)
-- Add a GraphQL subscription client to `reventless-ui/reventless/reventless-host-shell`
-  (likely `graphql-ws` over `wss://…/graphql`) — the host shell currently uses
-  plain `fetch` for queries.
-- In `RegisterFragments.res:212-234`, add a second `React.useEffect` that
-  subscribes to `onPluginStatusChange`. On each event, call new
-  `pageApi.unregister(pluginId)`, `panelApi.unregister(pluginId)`,
-  `routeApi.unregister(pluginId)` (to add) before re-registering from a fresh
-  `Platform_UIDefinitions` query result.
-- Add unregister methods to the three registries.
+
+Concrete steps (the backend SDL contract + in-memory PubSub emit are
+already live as of F3 in-memory):
+
+1. **Dependency**: add `graphql-ws` to `reventless-host-shell/package.json`
+   `dependencies`. Run `pnpm install` while the pnpm-workspace overlay is
+   in *release* (symlink to `.base`) so the lockfile updates cleanly; do
+   not run install with the overlay active (would contaminate the
+   lockfile per repo conventions).
+2. **ReScript bindings**: create a small `GraphqlWsClient.res` (or use
+   inline externals) exposing `createClient({url, connectionParams})` and
+   `client.subscribe({query, variables}, sink)`. Pattern after the existing
+   `fetchRaw` external in `RegisterFragments.res:20`.
+3. **Derive the WebSocket URL**: `Config.platformApiEndpoint` is an HTTP
+   URL today. Either add a sibling `platformApiSubscriptionEndpoint` to
+   `Config.t` or derive `wss://…` from the HTTPS endpoint at runtime.
+   On AppSync, real-time subscriptions use the dedicated
+   `wss://<api>.appsync-realtime-api.<region>.amazonaws.com/graphql`
+   endpoint and require Cognito JWT in `connectionParams.Authorization`.
+4. **Registry teardown surface**: extend `PageRegistry`, `PanelRegistry`,
+   and `RouteRegistry` (in `reventless-ui` proper) with either:
+   - `unregisterByPluginId(pluginId)`, or
+   - `replace(definitions)` that swaps the whole list atomically.
+   Atomic replace is simpler given the existing append-only `register`
+   API; the cost is a single React re-render per subscription event,
+   which is fine for an admin-rate change.
+5. **`RegisterFragments.res` subscription effect**: add a second
+   `React.useEffect` keyed on `[token]` that:
+   - Opens a graphql-ws subscription `subscription { onPluginStatusChange { pluginId status } }`.
+   - On each event (regardless of `status`), re-runs `fetchAndRegister`.
+   - Returns a cleanup that closes the client.
+   The simplest UX is *refetch on any transition*: `Platform_UIDefinitions`
+   already filters by status (Part 2.2), so deactivating a plugin removes
+   it from the next query result; activating restores it. Selective
+   teardown is an optimisation, not a requirement.
+6. **Optional**: also subscribe to `onUIFragmentChange` in the same
+   effect so module-federation overrides update live too.
+7. **Verification**: with the in-memory adapter running locally, click
+   Deactivate on a plugin in the admin UI; confirm the sidebar entry
+   disappears within ~1s without a page reload; Activate restores it.
+
+Dependencies on parallel work: the AWS path also needs an emit (the AWS
+half of F3) before this works end-to-end against a deployed AppSync API.
+In-memory dev-loop testing works as soon as F4 lands.
 
 ## Status snapshot (original — current state before this work)
 
