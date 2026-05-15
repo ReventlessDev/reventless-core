@@ -56,7 +56,7 @@ function resetPluginStatusGate() {
   pluginStatusGate.contents = undefined;
 }
 
-function rejectInactivePlugin(field, detail) {
+function rejectPluginStatus(field, errorCode, detail) {
   return Object.fromEntries([
     [
       "__typename",
@@ -68,7 +68,7 @@ function rejectInactivePlugin(field, detail) {
     ],
     [
       "errorCode",
-      "InactivePlugin"
+      errorCode
     ],
     [
       "errorDetail",
@@ -82,9 +82,9 @@ function checkPluginStatus(field) {
   if (gate === undefined) {
     return;
   }
-  let detail = gate(field);
-  if (detail !== undefined) {
-    return rejectInactivePlugin(field, detail);
+  let match = gate(field);
+  if (match !== undefined) {
+    return rejectPluginStatus(field, match[0], match[1]);
   }
 }
 
@@ -338,7 +338,7 @@ export {
   pluginStatusGate,
   setPluginStatusGate,
   resetPluginStatusGate,
-  rejectInactivePlugin,
+  rejectPluginStatus,
   checkPluginStatus,
   syntheticCommand,
   capitalize,

@@ -48,21 +48,25 @@ let rejectForbidden = (~field: string): JSON.t =>
 // -- Plugin status gate -------------------------------------------------------
 // Set by the platform after Admin.construct to wire a per-mutation lookup against
 // the Plugin read model. Takes a mutation field name (e.g. "Catalog_Product_Add"),
-// returns Some(errorDetail) if the mutation should be rejected (plugin is Inactive
-// / not Connected), None otherwise. Platform_* admin mutations are exempt — the
-// gate function should return None for them. Wrapping a ref instead of a functor
-// argument keeps the module callable as-is from existing call sites.
+// returns `Some((errorCode, errorDetail))` if the mutation should be rejected,
+// or `None` otherwise. Platform_* admin mutations are exempt — the gate function
+// should return None for them. The error code distinguishes the two off-tiers
+// from `docs/analysis/plugin-lifecycle-tiers.md`:
+//   - `PluginUnavailable` — tier 1 (Disconnected); retryable.
+//   - `PluginInactive`    — tier 2 (Inactive);     admin-controlled, do not retry.
+// Wrapping a ref instead of a functor argument keeps the module callable as-is
+// from existing call sites.
 
-let pluginStatusGate: ref<option<string => option<string>>> = ref(None)
+let pluginStatusGate: ref<option<string => option<(string, string)>>> = ref(None)
 let setPluginStatusGate = fn => pluginStatusGate := Some(fn)
 let resetPluginStatusGate = () => pluginStatusGate := None
 
-let rejectInactivePlugin = (~field: string, ~detail: string): JSON.t =>
+let rejectPluginStatus = (~field: string, ~errorCode: string, ~detail: string): JSON.t =>
   JSON.Object(
     Dict.fromArray([
       ("__typename", JSON.String("CommandRejected")),
       ("msgId", JSON.String(ReventlessCore.Message.uuid())),
-      ("errorCode", JSON.String("InactivePlugin")),
+      ("errorCode", JSON.String(errorCode)),
       ("errorDetail", JSON.String(`Mutation.${field}: ${detail}`)),
     ]),
   )
@@ -71,7 +75,7 @@ let checkPluginStatus = (~field: string): option<JSON.t> =>
   switch pluginStatusGate.contents {
   | Some(gate) =>
     switch gate(field) {
-    | Some(detail) => Some(rejectInactivePlugin(~field, ~detail))
+    | Some((errorCode, detail)) => Some(rejectPluginStatus(~field, ~errorCode, ~detail))
     | None => None
     }
   | None => None

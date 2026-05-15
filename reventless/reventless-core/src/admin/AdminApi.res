@@ -9,15 +9,19 @@ let cloneMutationEntry: mutationSchemaEntry = {
   description: "Clone the system to a specific point in time",
 }
 
-// Aggregate-derived admin mutations (e.g. Plugin_Activate, Plugin_Deactivate) are
-// registered by `Plugin_Helpers.registerAdminAggregateMutations` during Admin.construct.
-// AdminApi.mutationEntries now contributes only the opt-in cloner mutation.
-let mutationEntries = (~cloner: bool) =>
+// Aggregate-derived admin mutations come from
+// `PluginBaseFragment.pluginAggregateMutationEntries` so they end up in the
+// stitched SDL (the AWS path pushes `AdminApi.baseFragment` directly). The
+// corresponding resolver wiring is fired in parallel by
+// `Plugin_Helpers.registerAdminAggregateMutations` from `Platform_Admin.construct`.
+let mutationEntries = (~cloner: bool) => {
+  let base = PluginBaseFragment.pluginAggregateMutationEntries
   if cloner {
-    [cloneMutationEntry]
+    Array.concat(base, [cloneMutationEntry])
   } else {
-    []
+    base
   }
+}
 
 let queryEntries = PluginBaseFragment.queryEntries
 

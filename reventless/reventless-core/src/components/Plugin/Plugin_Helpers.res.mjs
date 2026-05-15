@@ -385,34 +385,18 @@ let NoopHooksConfig = {
 };
 
 function registerAdminAggregateMutations(aggregates, hooks) {
-  return aggregates.flatMap(M => {
+  aggregates.forEach(M => {
     let commandSchema = M.Spec.commandSchema;
     if (ApiNoApiHelpers$ReventlessCore.isNoApi(commandSchema)) {
-      return [];
+      return;
     }
     let constructorNames = DcbTag$Reventless.extractAllVariantNames(M.Spec.commandSchema);
     let filteredConstructorNames = ApiNoApiHelpers$ReventlessCore.filterNoApiVariants(constructorNames, commandSchema);
     let fieldNames = filteredConstructorNames.map(cname => Api_Naming$ReventlessCore.adminField(M.Spec.name + "_" + cname));
     aggregateMutationFieldsRegistry[M.Spec.name] = fieldNames;
-    if (fieldNames.length === 0) {
-      return [];
+    if (fieldNames.length !== 0) {
+      return Stdlib_Option.forEach(hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, M.Spec.commandAuthorization));
     }
-    Stdlib_Option.forEach(hooks.mutationResolverHook, registerResolver => registerResolver("Aggregate", fieldNames, commandSchema, M.Spec.commandAuthorization));
-    let fieldPermissions = {};
-    filteredConstructorNames.forEach((cname, idx) => {
-      let fieldName = fieldNames[idx];
-      let hasPayload = DcbTag$Reventless.isVariantPayloadBearing(M.Spec.commandSchema, cname);
-      let syntheticCmd = hasPayload ? ({
-          TAG: cname
-        }) : cname;
-      let rule = M.Spec.commandAuthorization(syntheticCmd);
-      fieldPermissions[fieldName] = rule;
-    });
-    return [{
-        fieldNames: fieldNames,
-        commandSchema: commandSchema,
-        fieldPermissions: fieldPermissions
-      }];
   });
 }
 

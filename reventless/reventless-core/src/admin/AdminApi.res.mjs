@@ -24,9 +24,9 @@ let cloneMutationEntry = {
 
 function mutationEntries(cloner) {
   if (cloner) {
-    return [cloneMutationEntry];
+    return PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries.concat([cloneMutationEntry]);
   } else {
-    return [];
+    return PluginBaseFragment$ReventlessCore.pluginAggregateMutationEntries;
   }
 }
 

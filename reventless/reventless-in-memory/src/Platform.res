@@ -1207,6 +1207,10 @@ module MakeWithConfig = (
     // be deactivated and its mutations have a separate admin-group SDL directive on
     // AWS. The first underscore-delimited segment of the mutation name is the owning
     // plugin's Spec name.
+    //
+    // Error codes follow the three-tier model in docs/analysis/plugin-lifecycle-tiers.md:
+    //   `Disconnected` → `PluginUnavailable` (retryable; tier 1)
+    //   `Inactive`     → `PluginInactive`    (admin-controlled; tier 2)
     CommandGeneratorResolvers_GraphQL.setPluginStatusGate(field => {
       let parts = field->String.split("_")
       let pluginPrefix = parts->Array.get(0)->Option.getOr("")
@@ -1226,8 +1230,8 @@ module MakeWithConfig = (
         }
         switch statusByName->Dict.get(pluginPrefix) {
         | Some(Connected) => None
-        | Some(Disconnected) => Some("plugin is disconnected")
-        | Some(Inactive) => Some("plugin is inactive")
+        | Some(Disconnected) => Some(("PluginUnavailable", "plugin is disconnected"))
+        | Some(Inactive) => Some(("PluginInactive", "plugin is inactive"))
         | None => None
         }
       }

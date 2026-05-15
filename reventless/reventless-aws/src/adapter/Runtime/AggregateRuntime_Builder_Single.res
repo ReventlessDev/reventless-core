@@ -24,6 +24,20 @@ let registerAggregate = (
     {specModulePath, behaviorModulePath, eventLogTableName},
   )
 
+// Plugin RM table name for the resolver-level plugin status gate (Part 2.3 of
+// the resolver plan). Set by the platform after Admin.construct returns; consumed
+// inside `finish()` to inject the `PLUGIN_RM_TABLE_NAME` env var and attach a
+// `dynamodb:Scan` IAM policy on the AllAggregates Lambda role. Left unset means
+// the gate is disabled (AggregateEntryPoint.mjs falls through to the handler).
+// The ARN is derived from the table name with region/account wildcards
+// (`arn:aws:dynamodb:*:*:table/<name>`) — same pattern as
+// `Platform_UIDefinitions_Lambda`.
+let pluginRmTableName: ref<option<Pulumi.Output.t<string>>> = ref(None)
+
+let setPluginReadModelTable = (~name: Pulumi.Output.t<string>) => {
+  pluginRmTableName := Some(name)
+}
+
 type storedSpec = {
   aggregateName: string,
   aggregateResource: Pulumi.Resource.t,
@@ -223,6 +237,11 @@ let finish = () =>
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+        switch pluginRmTableName.contents {
+        | Some(tableName) =>
+          envVars->Dict.set("PLUGIN_RM_TABLE_NAME", tableName->Pulumi.Output.asInput)
+        | None => ()
+        }
 
         // Build AssetArchive: static re-export + user packages
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
@@ -239,6 +258,42 @@ let finish = () =>
           ~timeout,
           ~opts,
         )
+
+        // Grant the AllAggregates Lambda dynamodb:Scan on the Plugin RM table so
+        // the in-Lambda plugin status gate (AggregateEntryPoint.mjs::checkPluginStatus)
+        // can read plugin status at command-dispatch time. Skipped if the platform
+        // didn't register a Plugin RM table — gate is then a no-op. ARN is built
+        // from the table name with region/account wildcards (mirrors the pattern
+        // in Platform_UIDefinitions_Lambda).
+        switch pluginRmTableName.contents {
+        | Some(tableName) =>
+          let _ =
+            (tableName, runtime.parts.lambdaRole.id)
+            ->Pulumi.Output.all2
+            ->Pulumi.Output.apply(((name, roleId)) => {
+              open PulumiAws.PolicyDocument
+              let _ = PulumiAws.IAM.RolePolicy.make(
+                ~name="AllAggregatesPluginRmScan",
+                ~args={
+                  PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
+                    ~id="AllAggregatesPluginRmScanPolicy",
+                    ~statements=[
+                      {
+                        sid: "AllowScanPluginRm",
+                        effect: Allow,
+                        actions: Actions(["dynamodb:Scan"]),
+                        resources: Resource(`arn:aws:dynamodb:*:*:table/${name}`),
+                      },
+                    ],
+                  )
+                  ->PulumiAws.PolicyDocument.toJsonString
+                  ->Pulumi.Input.make,
+                  role: roleId->Pulumi.Input.make,
+                },
+              )
+            })
+        | None => ()
+        }
 
         // Run all connect functions (IAM policies, event source mappings)
         specs->Array.forEach(({connects}) => {

@@ -15,11 +15,11 @@ The current state is broken on multiple axes — separate workstreams below.
 | 1.2 Admin-prefix mutation-field registration helper | ✅ done | `Plugin_Helpers.registerAdminAggregateMutations`, called from `Platform_Admin.construct` |
 | 1.3a Switch AWS Plugin aggregate to `Aggregate_Builder_Single` | ✅ done | Auto-flow now wires AppSync resolvers for `Platform_Plugin_Activate`/`Deactivate` |
 | 1.3b Wire in-memory `PluginAggregate` | ⚠️ partial | Aggregate constructed and threaded into `Admin.construct`; full Activate/Deactivate command routing requires also routing the Connect flow through the aggregate (currently in-memory bypasses Connect with `seedPluginQueryDb`). Hand-written resolvers preserved for now; deferred. |
-| 1.4 Drop hand-rolled `PluginBaseFragment.mutationEntries` | ✅ done | Synthetic `idArgs` retained only inside `Platform_Admin_Structure` for the Auto UI metadata |
+| 1.4 Drop hand-rolled `PluginBaseFragment.mutationEntries` | ✅ done | Auto-derived entries now in `PluginBaseFragment.pluginAggregateMutationEntries`; consumed by `AdminApi.mutationEntries` (so AWS push picks them up) and resolver wiring fired via `Plugin_Helpers.registerAdminAggregateMutations`. Synthetic `idArgs` retained only inside `Platform_Admin_Structure` for Auto UI metadata. |
 | 1.5 Cognito `@aws_auth` on admin fragment | ⏳ verify on deploy | `injectAwsAuthAll` still wraps the admin fragment; the auto-derived `Platform_Plugin_Activate`/`Deactivate` fields land in the same fragment |
 | 2.1 Symmetric `Activate` emits `UIFragmentRegistered` | ✅ done | `PluginBehavior.Inactive → Activate` mirrors the `Connected → Deactivate` block |
 | 2.2 In-memory `Platform_UIDefinitions` status filter | ✅ done | Filters by Plugin RM status; built-in `Platform_Admin` always included |
-| 2.3 Resolver-level plugin status gate (Option B) | ⚠️ in-memory done | `CommandGeneratorResolvers_GraphQL.setPluginStatusGate` wired; rejects with `InactivePlugin` `errorCode`. AWS Lambda-side gate not yet implemented. |
+| 2.3 Resolver-level plugin status gate (Option B) | ✅ done (both adapters) | In-memory: `CommandGeneratorResolvers_GraphQL.setPluginStatusGate`. AWS: `AggregateEntryPoint.mjs::checkPluginStatus` cached scan against the Plugin RM table; `AggregateRuntime_Builder_Single.setPluginReadModelTable` injects the `PLUGIN_RM_TABLE_NAME` env var + `dynamodb:Scan` IAM policy. Both emit the split codes from the three-tier model (`PluginUnavailable` / `PluginInactive`). |
 | 2.4 Host-shell subscription to lifecycle | ❌ not started | Requires backend `onPluginStatusChange` emit + frontend graphql-ws subscription client in the `reventless-host-shell` package |
 
 ## Remaining follow-ups (deferred)
@@ -46,30 +46,36 @@ Replace this with:
 Verify that the existing `seedPluginQueryDb` second call site (deployPlugin
 hot-path at `Platform.res:1961`) also routes via the aggregate.
 
-### F2 — AWS Lambda plugin-status gate (extends 2.3)
-Mirror the in-memory `pluginStatusGate` inside the AllAggregates Lambda
-entry point (`reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs`).
-Before invoking the per-aggregate handler:
-- Extract the plugin prefix from `event.fieldName` (split on `_`).
-- Skip the check for `Platform_*` fields.
-- `GetItem` against the Plugin RM DynamoDB table by plugin name; map the
-  `status` to a `CommandRejected` outcome with the appropriate error code:
+### F2 — AWS Lambda plugin-status gate (extends 2.3) ✅ done
+The gate now lives in `reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs::checkPluginStatus`,
+called before per-aggregate handler dispatch in Route 1 (AppSync direct
+invocation). It:
+- Extracts the field name from `event.meta.info` (`${parentType}.${fieldName}`).
+- Skips the check for `Platform_*` fields.
+- Scans the Plugin RM DynamoDB table (TTL-cached at the module level — see
+  `PLUGIN_RM_CACHE_TTL_MS`, default 5s) and maps the `status` field to a
+  `CommandRejected` outcome:
   - `Disconnected` → `errorCode: "PluginUnavailable"` (retryable; tier 1)
-  - `Inactive` → `errorCode: "PluginInactive"` (admin-controlled; tier 2)
-  - `Connected` → pass through
+  - `Inactive`     → `errorCode: "PluginInactive"`    (admin-controlled; tier 2)
+  - `Connected` / unknown → pass through to the handler
 
-  See [docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md)
-  for the rationale behind splitting the codes.
+See [docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md)
+for the rationale behind splitting the codes.
 
-This requires:
-- Granting the Lambda IAM `dynamodb:GetItem` on the Plugin RM table.
-- Plumbing the Plugin RM table name through to the Lambda (env var).
-- A cold-start cache so warm invocations don't hit DynamoDB on every command.
+Wiring (in `AggregateRuntime_Builder_Single.finish()`):
+- `PLUGIN_RM_TABLE_NAME` env var on the AllAggregates Lambda — set by
+  `AggregateRuntime_Builder_Single.setPluginReadModelTable(~name)`, called
+  from `reventless-aws/src/Platform.res` in both `makePlatform` and
+  `deployPlatform` after `Admin.construct` returns.
+- IAM: an `AllAggregatesPluginRmScan` inline role policy granting
+  `dynamodb:Scan` on `arn:aws:dynamodb:*:*:table/<name>` (mirrors the pattern
+  used by `Platform_UIDefinitions_Lambda`).
+- Gate is silently disabled if the env var is not set (legacy stacks /
+  test paths).
 
-Bundled cleanup: update the in-memory gate
-(`CommandGeneratorResolvers_GraphQL.setPluginStatusGate`) to emit the
-same split codes — currently returns a single `InactivePlugin` for both
-off-tiers.
+Bundled cleanup: ✅ the in-memory gate
+(`CommandGeneratorResolvers_GraphQL.setPluginStatusGate`) emits matching
+split codes.
 
 ### F3 — Backend `onPluginStatusChange` subscription emit (Part 2.4 backend)
 - In-memory: in `Platform.res` after the existing `updatePluginStatus` save (or

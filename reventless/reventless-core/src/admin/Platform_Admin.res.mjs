@@ -68,10 +68,10 @@ function Make(RuntimeEnvironment) {
       });
       let aggregatesWithoutEventMappers = Builder_Helpers$ReventlessCore.createAggregatesWithoutEventMappers(aggregates, api, opts);
       let aggregateEventTopics = Aggregate$ReventlessCore.allEventTopics(aggregatesWithoutEventMappers);
-      let adminAggregateMutationEntries = Plugin_Helpers$ReventlessCore.registerAdminAggregateMutations(aggregates, Config.hooks);
+      Plugin_Helpers$ReventlessCore.registerAdminAggregateMutations(aggregates, Config.hooks);
       let dcbResult = DcbBuilder.construct(name, name, undefined, undefined, aggregateEventTopics, stateChangeSlices, stateViewSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, undefined, opts);
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
-      let allMutationEntries = adminAggregateMutationEntries.concat(adminMutationEntries).concat(dcbResult.mutationEntries);
+      let allMutationEntries = adminMutationEntries.concat(dcbResult.mutationEntries);
       let allQueryEntries = AdminApi$ReventlessCore.queryEntries.concat(dcbResult.queryEntries);
       let adminFragment = GraphQL_FragmentGenerator$ReventlessCore.generate(allMutationEntries, allQueryEntries);
       if (dcbResult.mutationEntries.length !== 0 || dcbResult.queryEntries.length !== 0) {

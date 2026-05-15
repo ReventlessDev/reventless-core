@@ -128,10 +128,13 @@ module Make = (
     let aggregatesWithoutEventMappers = aggregates->createAggregatesWithoutEventMappers(~api, opts)
     let aggregateEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
-    // Derive admin-prefixed mutation entries from each aggregate's command schema and
-    // wire CommandGenerator → AppSync / in-memory GraphQL resolvers via mutationResolverHook.
-    let adminAggregateMutationEntries =
-      aggregates->Plugin_Helpers.registerAdminAggregateMutations(~hooks=Config.hooks)
+    // Wire CommandGenerator → AppSync / in-memory GraphQL resolvers via
+    // `mutationResolverHook` and populate `aggregateMutationFieldsRegistry`.
+    // The matching SDL entries are owned by
+    // `PluginBaseFragment.pluginAggregateMutationEntries` (picked up via
+    // `AdminApi.mutationEntries`) so the AWS path that pushes
+    // `AdminApi.baseFragment` directly stays aligned with the in-memory path.
+    aggregates->Plugin_Helpers.registerAdminAggregateMutations(~hooks=Config.hooks)
 
     let dcbResult = DcbBuilder.construct(
       ~name,
@@ -145,12 +148,12 @@ module Make = (
       ~opts,
     )
 
-    // Admin schema — composed from actual config
+    // Admin schema — composed from actual config. `AdminApi.mutationEntries`
+    // already includes the auto-derived `Platform_Plugin_Activate`/`Deactivate`
+    // entries (via `PluginBaseFragment.pluginAggregateMutationEntries`) so the
+    // SDL stays in sync with the resolver wiring fired above.
     let adminMutationEntries = AdminApi.mutationEntries(~cloner=Config.cloner)
-    let allMutationEntries = Array.concat(
-      Array.concat(adminAggregateMutationEntries, adminMutationEntries),
-      dcbResult.mutationEntries,
-    )
+    let allMutationEntries = Array.concat(adminMutationEntries, dcbResult.mutationEntries)
     let allQueryEntries = Array.concat(AdminApi.queryEntries, dcbResult.queryEntries)
     let adminFragment = GraphQL_FragmentGenerator.generate(
       ~mutationEntries=allMutationEntries,

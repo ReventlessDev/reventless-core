@@ -1202,9 +1202,15 @@ function MakeWithConfig(Config) {
         case "Connected" :
           return;
         case "Disconnected" :
-          return "plugin is disconnected";
+          return [
+            "PluginUnavailable",
+            "plugin is disconnected"
+          ];
         case "Inactive" :
-          return "plugin is inactive";
+          return [
+            "PluginInactive",
+            "plugin is inactive"
+          ];
       }
     });
     currentDeployTarget.contents = "Platform";
@@ -2876,9 +2882,15 @@ function Make($star) {
         case "Connected" :
           return;
         case "Disconnected" :
-          return "plugin is disconnected";
+          return [
+            "PluginUnavailable",
+            "plugin is disconnected"
+          ];
         case "Inactive" :
-          return "plugin is inactive";
+          return [
+            "PluginInactive",
+            "plugin is inactive"
+          ];
       }
     });
     currentDeployTarget.contents = "Platform";
