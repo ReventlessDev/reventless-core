@@ -60,6 +60,7 @@ type apiSchemaFragment = {encoded: string, protocol: string}
 let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
 // js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
 let stringOptionSchema = _jsNullable(S.string, ())
+let stringArrayOptionSchema = _jsNullable(S.array(S.string), ())
 
 // ── UI fragment manifest types ────────────────────────────────────────────────
 
@@ -117,6 +118,13 @@ type commandDef = {
   aggregateIdField: @s.matches(stringOptionSchema) option<string>,
   mutationField: string,
   references: array<fieldReference>,
+  /**
+  Status values under which this command is meaningful. `None` means the command
+  is always available (back-compat default). `Some([…])` lets AutoUI hide the
+  command on rows whose status field is not in the set — see `queryableDef.statusField`
+  for how the row's status is located. `Some([])` is the defensive "never show" form.
+  */
+  allowedStates: @s.matches(stringArrayOptionSchema) option<array<string>>,
 }
 
 @schema
@@ -140,6 +148,14 @@ type queryableDef = {
   fields (so clients with substring indexes can target them directly).
   */
   searchableFields: array<string>,
+  /**
+  Name of the state field whose value identifies the row's lifecycle status, used
+  by AutoUI together with `commandDef.allowedStates` to filter the per-row command
+  menu. Resolution order (codegen): (1) field annotated `@status`; (2) a field
+  literally named `"status"`; (3) `None`. Spec authors that hand-roll a
+  `queryableDef` set this explicitly.
+  */
+  statusField: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema

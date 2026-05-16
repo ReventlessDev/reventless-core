@@ -139,6 +139,7 @@ let make = (
               aggregateIdField,
               mutationField: mutationFieldFor(variantName),
               references,
+              allowedStates: None,
             })
           }
         | _ => None
@@ -279,6 +280,7 @@ let make = (
         linkedWriteSide: [],
         labelField,
         searchableFields,
+        statusField: None,
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -301,6 +303,7 @@ let make = (
         linkedWriteSide: linkedWriteSideFor(consumed),
         labelField,
         searchableFields,
+        statusField: None,
       }: Reventless.Plugin.queryableDef)
     })
 

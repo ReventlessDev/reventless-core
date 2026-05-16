@@ -69,6 +69,7 @@ let activateCommand: commandDef = {
   aggregateIdField: Some("id"),
   mutationField: Api_Naming.adminField(~name="Plugin_Activate"),
   references: [],
+  allowedStates: None,
 }
 
 let deactivateCommand: commandDef = {
@@ -78,6 +79,7 @@ let deactivateCommand: commandDef = {
   aggregateIdField: Some("id"),
   mutationField: Api_Naming.adminField(~name="Plugin_Deactivate"),
   references: [],
+  allowedStates: None,
 }
 
 let pluginAggregate: writableDef = {
@@ -99,6 +101,7 @@ let pluginReadModel: queryableDef = {
   linkedWriteSide: ["Plugin"],
   labelField: "name",
   searchableFields: ["name"],
+  statusField: None,
 }
 
 let eventGraphReadModel: queryableDef = {
@@ -109,6 +112,7 @@ let eventGraphReadModel: queryableDef = {
   linkedWriteSide: [],
   labelField: "pluginName",
   searchableFields: ["pluginName"],
+  statusField: None,
 }
 
 let structure: pluginStructure = {

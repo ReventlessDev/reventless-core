@@ -15,6 +15,7 @@ let cmd: commandDef = {
   references: [
     {fieldName: "categoryId", entity: "Category", plugin: Some("Catalog")},
   ],
+  allowedStates: None,
 }
 
 let qbl: queryableDef = {
@@ -25,6 +26,7 @@ let qbl: queryableDef = {
   linkedWriteSide: ["Product"],
   labelField: "displayName",
   searchableFields: ["displayName"],
+  statusField: None,
 }
 
 let wbl: writableDef = {
@@ -119,5 +121,69 @@ describe("encodePluginStructureEntry", () => {
 
   test("includes the automation slice name", () =>
     expect(json->String.includes("\"name\":\"Restocker\""))->toEqual(true)
+  )
+
+  test("encodes None allowedStates as null", () =>
+    expect(json->String.includes("\"allowedStates\":null"))->toEqual(true)
+  )
+
+  test("encodes None statusField as null", () =>
+    expect(json->String.includes("\"statusField\":null"))->toEqual(true)
+  )
+})
+
+describe("allowedStates + statusField populated", () => {
+  let cmdWithStates: commandDef = {
+    name: "Activate",
+    schema: "{}",
+    level: Instance,
+    aggregateIdField: Some("id"),
+    mutationField: "Platform_Plugin_Activate",
+    references: [],
+    allowedStates: Some(["Inactive"]),
+  }
+
+  let qblWithStatus: queryableDef = {
+    name: "Plugin",
+    queryField: "Platform_Plugins",
+    schema: "{}",
+    consumedEventTypes: [],
+    linkedWriteSide: ["Plugin"],
+    labelField: "name",
+    searchableFields: ["name"],
+    statusField: Some("status"),
+  }
+
+  let wblWithStates: writableDef = {
+    name: "Plugin",
+    commands: [cmdWithStates],
+    linkedViews: ["Plugin"],
+    consistencyRead: None,
+    producedEventTypes: [],
+    consumedEventTypes: [],
+  }
+
+  let structureWithStates: pluginStructure = {
+    readModels: [qblWithStatus],
+    stateViewSlices: [],
+    stateChangeSlices: [],
+    aggregates: [wblWithStates],
+    automationSlices: [],
+    outboundTranslationSlices: [],
+    inboundTranslationSlices: [],
+    extensions: [],
+  }
+
+  let json =
+    structureWithStates
+    ->Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId="Platform", _)
+    ->JSON.stringify
+
+  test("encodes populated allowedStates as a JSON array", () =>
+    expect(json->String.includes("\"allowedStates\":[\"Inactive\"]"))->toEqual(true)
+  )
+
+  test("encodes populated statusField as the field name string", () =>
+    expect(json->String.includes("\"statusField\":\"status\""))->toEqual(true)
   )
 })

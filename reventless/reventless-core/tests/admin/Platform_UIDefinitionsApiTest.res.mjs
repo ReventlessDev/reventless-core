@@ -18,7 +18,8 @@ let cmd = {
   level: "Collection",
   aggregateIdField: undefined,
   mutationField: "AddProduct",
-  references: cmd_references
+  references: cmd_references,
+  allowedStates: undefined
 };
 
 let qbl_consumedEventTypes = ["ProductAdded"];
@@ -34,7 +35,8 @@ let qbl = {
   consumedEventTypes: qbl_consumedEventTypes,
   linkedWriteSide: qbl_linkedWriteSide,
   labelField: "displayName",
-  searchableFields: qbl_searchableFields
+  searchableFields: qbl_searchableFields,
+  statusField: undefined
 };
 
 let wbl_commands = [cmd];
@@ -127,6 +129,70 @@ Jest.describe("encodePluginStructureEntry", () => {
   Jest.test("encodes Some plugin reference as its inner string", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"plugin\":\"Catalog\"")), true));
   Jest.test("includes the queryableDef name", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"name\":\"Products\"")), true));
   Jest.test("includes the automation slice name", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"name\":\"Restocker\"")), true));
+  Jest.test("encodes None allowedStates as null", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"allowedStates\":null")), true));
+  Jest.test("encodes None statusField as null", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"statusField\":null")), true));
+});
+
+Jest.describe("allowedStates + statusField populated", () => {
+  let cmdWithStates_aggregateIdField = "id";
+  let cmdWithStates_references = [];
+  let cmdWithStates_allowedStates = ["Inactive"];
+  let cmdWithStates = {
+    name: "Activate",
+    schema: "{}",
+    level: "Instance",
+    aggregateIdField: cmdWithStates_aggregateIdField,
+    mutationField: "Platform_Plugin_Activate",
+    references: cmdWithStates_references,
+    allowedStates: cmdWithStates_allowedStates
+  };
+  let qblWithStatus_consumedEventTypes = [];
+  let qblWithStatus_linkedWriteSide = ["Plugin"];
+  let qblWithStatus_searchableFields = ["name"];
+  let qblWithStatus_statusField = "status";
+  let qblWithStatus = {
+    name: "Plugin",
+    queryField: "Platform_Plugins",
+    schema: "{}",
+    consumedEventTypes: qblWithStatus_consumedEventTypes,
+    linkedWriteSide: qblWithStatus_linkedWriteSide,
+    labelField: "name",
+    searchableFields: qblWithStatus_searchableFields,
+    statusField: qblWithStatus_statusField
+  };
+  let wblWithStates_commands = [cmdWithStates];
+  let wblWithStates_producedEventTypes = [];
+  let wblWithStates_consumedEventTypes = [];
+  let wblWithStates_linkedViews = ["Plugin"];
+  let wblWithStates = {
+    name: "Plugin",
+    commands: wblWithStates_commands,
+    producedEventTypes: wblWithStates_producedEventTypes,
+    consumedEventTypes: wblWithStates_consumedEventTypes,
+    linkedViews: wblWithStates_linkedViews,
+    consistencyRead: undefined
+  };
+  let structureWithStates_readModels = [qblWithStatus];
+  let structureWithStates_stateViewSlices = [];
+  let structureWithStates_stateChangeSlices = [];
+  let structureWithStates_aggregates = [wblWithStates];
+  let structureWithStates_automationSlices = [];
+  let structureWithStates_outboundTranslationSlices = [];
+  let structureWithStates_inboundTranslationSlices = [];
+  let structureWithStates_extensions = [];
+  let structureWithStates = {
+    readModels: structureWithStates_readModels,
+    stateViewSlices: structureWithStates_stateViewSlices,
+    stateChangeSlices: structureWithStates_stateChangeSlices,
+    aggregates: structureWithStates_aggregates,
+    automationSlices: structureWithStates_automationSlices,
+    outboundTranslationSlices: structureWithStates_outboundTranslationSlices,
+    inboundTranslationSlices: structureWithStates_inboundTranslationSlices,
+    extensions: structureWithStates_extensions
+  };
+  let json = JSON.stringify(Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Platform", structureWithStates));
+  Jest.test("encodes populated allowedStates as a JSON array", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"allowedStates\":[\"Inactive\"]")), true));
+  Jest.test("encodes populated statusField as the field name string", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"statusField\":\"status\"")), true));
 });
 
 export {

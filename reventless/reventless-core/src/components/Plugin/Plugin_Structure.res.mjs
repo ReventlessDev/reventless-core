@@ -146,7 +146,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         level: match[0],
         aggregateIdField: match[1],
         mutationField: mutationFieldFor(variantName),
-        references: references
+        references: references,
+        allowedStates: undefined
       };
     });
   };
@@ -241,7 +242,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       consumedEventTypes: [],
       linkedWriteSide: [],
       labelField: match[0],
-      searchableFields: match[1]
+      searchableFields: match[1],
+      statusField: undefined
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
@@ -256,7 +258,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: match$1[0],
-      searchableFields: match$1[1]
+      searchableFields: match$1[1],
+      statusField: undefined
     };
   });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {

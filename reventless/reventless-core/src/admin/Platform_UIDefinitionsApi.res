@@ -8,9 +8,9 @@ open Reventless.Plugin
 
 let sdlTypes: array<string> = [
   `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-  `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n}`,
+  `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n  allowedStates: [String!]\n}`,
   `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-  `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n}`,
+  `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  statusField: String\n}`,
   `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
   `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
   `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
@@ -49,6 +49,10 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
     ),
     ("mutationField", JSON.Encode.string(c.mutationField)),
     ("references", c.references->Array.map(encodeFieldReference)->JSON.Encode.array),
+    (
+      "allowedStates",
+      c.allowedStates->Option.mapOr(JSON.Encode.null, encodeStrings),
+    ),
   ])->JSON.Encode.object
 
 let encodeQueryableDef = (r: queryableDef): JSON.t =>
@@ -60,6 +64,7 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
     ("linkedWriteSide", encodeStrings(r.linkedWriteSide)),
     ("labelField", JSON.Encode.string(r.labelField)),
     ("searchableFields", encodeStrings(r.searchableFields)),
+    ("statusField", r.statusField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
 let encodeWritableDef = (w: writableDef): JSON.t =>

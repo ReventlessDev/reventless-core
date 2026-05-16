@@ -29,6 +29,8 @@ let apiSchemaFragmentOptionSchema = SuryResMjs.js_nullable(apiSchemaFragmentSche
 
 let stringOptionSchema = SuryResMjs.js_nullable(S.string);
 
+let stringArrayOptionSchema = SuryResMjs.js_nullable(S.array(S.string));
+
 let panelManifestEntrySchema = S.schema(s => ({
   fragmentId: s.m(S.string),
   title: s.m(S.string),
@@ -76,7 +78,8 @@ let commandDefSchema = S.schema(s => ({
   level: s.m(commandLevelSchema),
   aggregateIdField: s.m(stringOptionSchema),
   mutationField: s.m(S.string),
-  references: s.m(S.array(fieldReferenceSchema))
+  references: s.m(S.array(fieldReferenceSchema)),
+  allowedStates: s.m(stringArrayOptionSchema)
 }));
 
 let queryableDefSchema = S.schema(s => ({
@@ -86,7 +89,8 @@ let queryableDefSchema = S.schema(s => ({
   consumedEventTypes: s.m(S.array(S.string)),
   linkedWriteSide: s.m(S.array(S.string)),
   labelField: s.m(S.string),
-  searchableFields: s.m(S.array(S.string))
+  searchableFields: s.m(S.array(S.string)),
+  statusField: s.m(stringOptionSchema)
 }));
 
 let writableDefSchema = S.schema(s => ({
@@ -184,6 +188,7 @@ export {
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
   stringOptionSchema,
+  stringArrayOptionSchema,
   panelManifestEntrySchema,
   menuEntrySchema,
   pageManifestEntrySchema,

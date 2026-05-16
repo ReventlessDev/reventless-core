@@ -56,7 +56,8 @@ let activateCommand = {
   level: "Instance",
   aggregateIdField: activateCommand_aggregateIdField,
   mutationField: activateCommand_mutationField,
-  references: activateCommand_references
+  references: activateCommand_references,
+  allowedStates: undefined
 };
 
 let deactivateCommand_schema = encodeSchema(idArgsSchema);
@@ -73,7 +74,8 @@ let deactivateCommand = {
   level: "Instance",
   aggregateIdField: deactivateCommand_aggregateIdField,
   mutationField: deactivateCommand_mutationField,
-  references: deactivateCommand_references
+  references: deactivateCommand_references,
+  allowedStates: undefined
 };
 
 let pluginAggregate_commands = [
@@ -113,7 +115,8 @@ let pluginReadModel = {
   consumedEventTypes: pluginReadModel_consumedEventTypes,
   linkedWriteSide: pluginReadModel_linkedWriteSide,
   labelField: "name",
-  searchableFields: pluginReadModel_searchableFields
+  searchableFields: pluginReadModel_searchableFields,
+  statusField: undefined
 };
 
 let eventGraphReadModel_queryField = Api_Naming$ReventlessCore.adminField("PlatformEventGraphs");
@@ -133,7 +136,8 @@ let eventGraphReadModel = {
   consumedEventTypes: eventGraphReadModel_consumedEventTypes,
   linkedWriteSide: eventGraphReadModel_linkedWriteSide,
   labelField: "pluginName",
-  searchableFields: eventGraphReadModel_searchableFields
+  searchableFields: eventGraphReadModel_searchableFields,
+  statusField: undefined
 };
 
 let structure_readModels = [

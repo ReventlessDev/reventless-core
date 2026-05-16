@@ -39,6 +39,7 @@ let queryable = (~name, ~consumedEventTypes=[]): queryableDef => {
   linkedWriteSide: [],
   labelField: "id",
   searchableFields: ["id"],
+  statusField: None,
 }
 
 let automation = (~name, ~consumedEventTypes, ~producedCommandTypes, ~targetName): automationSliceDef => {

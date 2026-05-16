@@ -97,6 +97,8 @@ let apiSchemaFragmentOptionSchema = Plugin$Reventless.apiSchemaFragmentOptionSch
 
 let stringOptionSchema = Plugin$Reventless.stringOptionSchema;
 
+let stringArrayOptionSchema = Plugin$Reventless.stringArrayOptionSchema;
+
 let panelManifestEntrySchema = Plugin$Reventless.panelManifestEntrySchema;
 
 let menuEntrySchema = Plugin$Reventless.menuEntrySchema;
@@ -149,6 +151,7 @@ export {
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
   stringOptionSchema,
+  stringArrayOptionSchema,
   panelManifestEntrySchema,
   menuEntrySchema,
   pageManifestEntrySchema,

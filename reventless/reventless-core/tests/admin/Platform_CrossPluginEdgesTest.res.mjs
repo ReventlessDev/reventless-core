@@ -53,7 +53,8 @@ function queryable(name, consumedEventTypesOpt) {
     consumedEventTypes: consumedEventTypes,
     linkedWriteSide: [],
     labelField: "id",
-    searchableFields: ["id"]
+    searchableFields: ["id"],
+    statusField: undefined
   };
 }
 
