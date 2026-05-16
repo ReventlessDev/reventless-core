@@ -600,6 +600,41 @@ type state = {
 }
 EOF
 
+# ─── Fixture: @@reventless.visibility on ReadModel + StateViewSlice ─
+
+# Default → visibility = Public
+cat > "$PLUGIN/src/ReadModel/VisibilityDefaultReadModel.res" <<'EOF'
+@@reventless.spec
+
+@schema
+type state = { @id id: string, name: string }
+EOF
+
+# @@reventless.visibility(Internal) on a ReadModel
+cat > "$PLUGIN/src/ReadModel/VisibilityInternalReadModel.res" <<'EOF'
+@@reventless.spec
+@@reventless.visibility(Internal)
+
+@schema
+type state = { @id id: string, name: string }
+EOF
+
+# @@reventless.visibility(Internal) on a StateViewSlice
+cat > "$PLUGIN/src/StateViewSlice/VisibilityInternalView.res" <<'EOF'
+@@reventless.spec
+@@reventless.visibility(Internal)
+
+@schema
+type state = { id: string, name: string }
+
+@schema
+type consumedEvent = Created({id: string, name: string})
+
+let project = event => switch event {
+  | Created({id, name}) => [Set(id, {id, name})]
+}
+EOF
+
 # ─── Fixture: @scan + @scanSort (server-query opt-in) ─────────────
 
 cat > "$PLUGIN/src/ReadModel/ScanReadModel.res" <<'EOF'
@@ -1546,6 +1581,35 @@ fi
 rm -f "$ERROR/src/ReadModel/OrphanSkReadModel.res"
 
 echo ""
+echo "=== Test: @@reventless.visibility default (no attr) → Public ==="
+JS="$PLUGIN/src/ReadModel/VisibilityDefaultReadModel.res.mjs"
+assert_js_contains "$JS" 'let visibility = "Public"' "default visibility binding is Public"
+
+echo ""
+echo "=== Test: @@reventless.visibility(Internal) on ReadModel → Internal ==="
+JS="$PLUGIN/src/ReadModel/VisibilityInternalReadModel.res.mjs"
+assert_js_contains "$JS" 'let visibility = "Internal"' "Internal visibility binding emitted"
+assert_js_not_contains "$JS" 'reventless.visibility' "@@reventless.visibility attribute stripped"
+
+echo ""
+echo "=== Test: @@reventless.visibility(Internal) on StateViewSlice → Internal ==="
+JS="$PLUGIN/src/StateViewSlice/VisibilityInternalView.res.mjs"
+assert_js_contains "$JS" 'let visibility = "Internal"' "Internal visibility binding emitted on StateViewSlice"
+
+echo ""
+echo "=== Test: @@reventless.visibility(Internal) → stateAnnotations metadata carries visibility ==="
+JS="$PLUGIN/src/ReadModel/VisibilityInternalReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId' "stateAnnotations binding emitted on Internal ReadModel"
+assert_js_contains "$JS" 'visibility: "Internal"' "Internal visibility recorded in stateAnnotations metadata"
+
+echo ""
+echo "=== Test: default visibility → metadata omits visibility (kept compact) ==="
+JS="$PLUGIN/src/ReadModel/VisibilityDefaultReadModel.res.mjs"
+assert_js_contains "$JS" 'stateAnnotationsId' "stateAnnotations binding present from @id annotation"
+assert_js_not_contains "$JS" 'visibility: "Public"' "Public visibility omitted from metadata (kept compact)"
+assert_js_not_contains "$JS" 'visibility: "Internal"' "Internal visibility absent from default-visibility ReadModel"
+
+echo ""
 echo "=== Test: PPX error — @hidden + @summary on same field ==="
 
 cat > "$ERROR/src/ReadModel/HiddenSummaryConflictReadModel.res" <<'EOF'
@@ -1570,6 +1634,33 @@ else
   fi
 fi
 rm -f "$ERROR/src/ReadModel/HiddenSummaryConflictReadModel.res"
+
+echo ""
+echo "=== Test: PPX error — @@reventless.visibility on an Aggregate ==="
+
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/VisibilityOnAggregate.res" <<'EOF'
+@@reventless.spec
+@@reventless.visibility(Internal)
+
+@schema
+type command = Create
+@schema
+type event = Created
+@schema
+type error = unit
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@@reventless.visibility on Aggregate" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@@reventless.visibility is only supported on ReadModel and StateViewSlice"; then
+    pass "@@reventless.visibility on Aggregate → correct compile error"
+  else
+    fail "@@reventless.visibility on Aggregate" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/VisibilityOnAggregate.res"
 
 echo ""
 echo "=== Test: PPX error — @noTag (old name) produces deprecation error ==="

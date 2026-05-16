@@ -1084,8 +1084,11 @@ let str_tuple_array ~loc pairs =
     pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
 
 (** Build the `let stateSchema = stateSchema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)`
-    shadowing binding. Returns `None` when the state has no structural annotations. *)
-let make_state_annotations_binding ~loc fields : structure_item option =
+    shadowing binding. Returns `None` when the state has no structural annotations
+    AND no file-level visibility override. The `~visibility` arg is the constructor
+    name extracted from `@@reventless.visibility(...)` ("Public" or "Internal"); the
+    default case is normalised to `None` upstream so the metadata stays compact. *)
+let make_state_annotations_binding ~loc ~visibility fields : structure_item option =
   let ids = List.filter_map (fun (ld : label_declaration) ->
     if has_id_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
@@ -1148,7 +1151,7 @@ let make_state_annotations_binding ~loc fields : structure_item option =
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
      && indexes = [] && hidden = [] && summary = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
-     && scan = [] && scan_sort = [] && status = None then None
+     && scan = [] && scan_sort = [] && status = None && visibility = None then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -1172,6 +1175,17 @@ let make_state_annotations_binding ~loc fields : structure_item option =
             pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
         { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some str_lit);
           pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+    let visibility_value =
+      match visibility with
+      | None ->
+        { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
+      | Some name ->
+        let str_lit =
+          { pexp_desc = Pexp_constant (Pconst_string (name, loc, None));
+            pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+        { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some str_lit);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let spec_record =
       { pexp_desc = Pexp_record (
           [ ({ Location.txt = Lident "ids"; loc }, estr_array ~loc ids);
@@ -1186,7 +1200,8 @@ let make_state_annotations_binding ~loc fields : structure_item option =
             ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);
             ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
             ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort);
-            ({ txt = Lident "status"; loc }, status_value) ],
+            ({ txt = Lident "status"; loc }, status_value);
+            ({ txt = Lident "visibility"; loc }, visibility_value) ],
           None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =
@@ -1208,14 +1223,29 @@ let make_state_annotations_binding ~loc fields : structure_item option =
       { pstr_desc = Pstr_value (Nonrecursive, [binding]);
         pstr_loc = loc }
 
+(** Extracts the constructor name from `@@reventless.visibility(<Case>)`, or
+    `None` when absent. Normalises `Public` (the default) to `None` so the
+    metadata is only emitted for non-default visibility — keeps the resulting
+    JSON Schema compact. *)
+let extract_file_visibility (str : structure) : string option =
+  match VisibilityInjection.extract_file_value str with
+  | None -> None
+  | Some expr ->
+    (match expr.pexp_desc with
+     | Pexp_construct ({ txt = Lident "Public"; _ }, None) -> None
+     | Pexp_construct ({ txt = Lident name; _ }, None) -> Some name
+     | _ -> None)
+
 (** Returns `[binding]` shadowing `stateSchema` with attached annotation metadata,
-    or `[]` when the state record carries no structural annotations.
-    Must be called BEFORE the structural attributes are stripped. *)
+    or `[]` when the state record carries no structural annotations and no
+    file-level visibility override. Must be called BEFORE the structural and
+    visibility attributes are stripped. *)
 let generate_state_annotations ~loc (str : structure) : structure_item list =
   match find_schema_state_record str with
   | None -> []
   | Some fields ->
     validate_visibility_annotations fields;
-    (match make_state_annotations_binding ~loc fields with
+    let visibility = extract_file_visibility str in
+    (match make_state_annotations_binding ~loc ~visibility fields with
      | None -> []
      | Some s -> [s])

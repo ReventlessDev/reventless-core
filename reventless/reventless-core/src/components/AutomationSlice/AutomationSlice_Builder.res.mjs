@@ -36,7 +36,8 @@ function Make(RuntimeEnvironment) {
         stateSchema: AutomationSlice_Callback$ReventlessCore.todoRowSchema,
         config: config,
         subIdConfig: undefined,
-        authorization: "AllowAuthenticated"
+        authorization: "AllowAuthenticated",
+        visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let syncToQueryDb = async queryDbOps => {

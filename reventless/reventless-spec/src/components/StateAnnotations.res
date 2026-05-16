@@ -46,6 +46,14 @@ type stateAnnotationSpec = {
   `"status"` when this annotation is absent).
   */
   status: option<string>,
+  /**
+  Component-level visibility hint from `@@reventless.visibility(...)`.
+  `Some("Internal")` when the file-level attribute is `Internal`; `None`
+  (omitted) for the default `Public`. `SuryToJsonSchema.deriveObjectSchema`
+  emits `x-reventless-visibility: "Internal"` on the schema when present —
+  the default case is omitted to keep schemas compact.
+  */
+  visibility: option<string>,
 }
 
 /** Sury metadata ID used to attach a `stateAnnotationSpec` to a state schema. */

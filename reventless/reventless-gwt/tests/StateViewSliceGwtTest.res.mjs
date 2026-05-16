@@ -31,7 +31,8 @@ let CategoriesView = {
   stateSchema: stateSchema,
   consumedEventSchema: consumedEventSchema,
   subIdConfig: undefined,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 };
 
 function project(event) {

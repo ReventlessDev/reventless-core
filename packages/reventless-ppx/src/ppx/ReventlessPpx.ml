@@ -624,6 +624,7 @@ let transform (str : structure) : structure =
      helpers) get auth-field injection before any other pass — independent
      of @@reventless.spec mode. Cheap no-op when the file has no specs. *)
   let str = AuthorizationInjection.walk_inline_specs str in
+  let str = VisibilityInjection.walk_inline_specs str in
   let initial_mode = detect_mode str in
   let has_mode = initial_mode <> None in
   let is_spec = match initial_mode with Some (Spec _, _) -> true | _ -> false in
@@ -733,7 +734,15 @@ let transform (str : structure) : structure =
       let (authz_prefix, body, authz_suffix) =
         AuthorizationInjection.inject ~loc loc.loc_start.pos_fname body
       in
-      !prefix @ authz_prefix @ body @ readmodel_suffix @ suffix @ authz_suffix
+      (* Visibility auto-injection (ReadModel / StateViewSlice only). Consumes
+         a file-level @@reventless.visibility(<case>) attribute and falls back
+         to the framework default Public. Idempotent on bodies already declaring
+         the binding. *)
+      let (vis_prefix, body, vis_suffix) =
+        VisibilityInjection.inject ~loc loc.loc_start.pos_fname body
+      in
+      !prefix @ authz_prefix @ vis_prefix @ body
+        @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

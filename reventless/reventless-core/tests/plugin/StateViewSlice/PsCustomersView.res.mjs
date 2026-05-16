@@ -52,6 +52,8 @@ let moduleUrl = "@reventlessdev/reventless-core/tests/plugin/StateViewSlice/PsCu
 
 let authorization = "AllowAuthenticated";
 
+let visibility = "Public";
+
 export {
   name,
   Id,
@@ -62,5 +64,6 @@ export {
   subIdConfig,
   moduleUrl,
   authorization,
+  visibility,
 }
 /* consumedEventSchema Not a pure module */

@@ -86,7 +86,8 @@ let PsOrdersViewSlice_Spec = {
   consumedEventSchema: PsOrdersView$ReventlessCore.consumedEventSchema,
   config: PsOrdersView$ReventlessCore.config,
   subIdConfig: undefined,
-  authorization: PsOrdersView$ReventlessCore.authorization
+  authorization: PsOrdersView$ReventlessCore.authorization,
+  visibility: PsOrdersView$ReventlessCore.visibility
 };
 
 let PsOrdersViewSlice = {
@@ -111,7 +112,8 @@ let PsAvailableProductsViewSlice_Spec = {
   consumedEventSchema: PsAvailableProductsView$ReventlessCore.consumedEventSchema,
   config: PsAvailableProductsView$ReventlessCore.config,
   subIdConfig: undefined,
-  authorization: PsAvailableProductsView$ReventlessCore.authorization
+  authorization: PsAvailableProductsView$ReventlessCore.authorization,
+  visibility: PsAvailableProductsView$ReventlessCore.visibility
 };
 
 let PsAvailableProductsViewSlice = {
@@ -136,7 +138,8 @@ let PsCustomersViewSlice_Spec = {
   consumedEventSchema: PsCustomersView$ReventlessCore.consumedEventSchema,
   config: PsCustomersView$ReventlessCore.config,
   subIdConfig: undefined,
-  authorization: PsCustomersView$ReventlessCore.authorization
+  authorization: PsCustomersView$ReventlessCore.authorization,
+  visibility: PsCustomersView$ReventlessCore.visibility
 };
 
 let PsCustomersViewSlice = {
@@ -161,7 +164,8 @@ let PsAnnotatedViewSlice_Spec = {
   consumedEventSchema: PsAnnotatedView$ReventlessCore.consumedEventSchema,
   config: PsAnnotatedView$ReventlessCore.config,
   subIdConfig: PsAnnotatedView$ReventlessCore.subIdConfig,
-  authorization: PsAnnotatedView$ReventlessCore.authorization
+  authorization: PsAnnotatedView$ReventlessCore.authorization,
+  visibility: PsAnnotatedView$ReventlessCore.visibility
 };
 
 let PsAnnotatedViewSlice = {

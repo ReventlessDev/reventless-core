@@ -122,6 +122,39 @@ In the Read Model, a sub id field can be used additionally to the id field. If y
 
 In this example, there is no sub id used, therefore `None` is provided
 
+### Visibility (hide from AutoUI)
+
+By default every ReadModel discovered by AutoUI gets a menu entry and a page in
+the generated host shell. Helper views — used only as join targets, automation
+decision state, or cross-plugin lookups — can opt out by adding a file-level
+attribute:
+
+```rescript title="CustomerLookup_ReadModelSpec.res" showLineNumbers
+@@reventless.spec
+@@reventless.visibility(Internal)
+
+@schema
+type state = {
+  @id customerId: string,
+  displayName: string,
+}
+```
+
+- `Public` (default) — the ReadModel appears in the AutoUI manifest.
+- `Internal` — the ReadModel is hidden from AutoUI panels and pages. GraphQL
+  exposure, authorization rules, resolver provisioning and the platform event
+  graph are **unaffected** — other plugins can still query it. Visibility is a
+  UX hint, not a security boundary; use `@@reventless.authorize(<rule>)` for
+  access control.
+
+The flag also propagates to the generated JSON Schema as
+`x-reventless-visibility: "Internal"`, which lets host shells, docs generators
+and dashboards surface internal status without re-running ReScript codegen.
+The default (`Public`) is omitted from the JSON Schema to keep it compact.
+
+The same attribute works on StateViewSlice files. It is rejected on
+Aggregate / `*Slice` (command-carrying) files with a clear compile error.
+
 ### config
 
 `Reventless.ReadModel.config` is a convenience function to create the actual config value. The function takes these optional arguments:

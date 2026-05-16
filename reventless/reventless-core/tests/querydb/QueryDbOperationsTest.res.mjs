@@ -22,7 +22,8 @@ let Ops = QueryDb_Operations$ReventlessCore.Make({
   stateSchema: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.stateSchema,
   config: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.config,
   subIdConfig: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.subIdConfig,
-  authorization: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.authorization
+  authorization: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.authorization,
+  visibility: QueryDbFixtures$ReventlessCore.ItemQueryDbSpec.visibility
 })({
   jsonOps: QueryDbFixtures$ReventlessCore.mockJsonOps
 });

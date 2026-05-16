@@ -49,7 +49,8 @@ let TargetSpec = {
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 };
 
 function project(msg) {

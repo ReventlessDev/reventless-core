@@ -37,6 +37,7 @@ let rowStateSchemaWithAnnotations =
       scan: ["status"],
       scanSort: ["name"],
       status: None,
+      visibility: None,
     },
   )
 
@@ -111,6 +112,7 @@ let buildFixture = async (~name: string) => {
     let config = Reventless.ReadModel.config()
     let subIdConfig = None
     let authorization: Reventless.Authorization.permission = AllowAuthenticated
+    let visibility: Reventless.Visibility.t = Public
   }
 
   module QDbResolversAdapter = ReventlessCore.QueryDb_Adapter.NoResolvers(Storage)

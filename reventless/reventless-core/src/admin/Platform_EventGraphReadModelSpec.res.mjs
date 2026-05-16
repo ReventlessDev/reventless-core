@@ -170,6 +170,8 @@ let moduleUrl = "@reventlessdev/reventless-core/src/admin/Platform_EventGraphRea
 
 let authorization = "AllowAuthenticated";
 
+let visibility = "Public";
+
 export {
   name,
   Id,
@@ -183,5 +185,6 @@ export {
   subIdConfig,
   moduleUrl,
   authorization,
+  visibility,
 }
 /* stateSchema Not a pure module */

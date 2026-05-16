@@ -41,7 +41,8 @@ let rowStateSchemaWithAnnotations = S.Metadata.set(rowStateSchema, StateAnnotati
   collapsed: [],
   scan: ["status"],
   scanSort: ["name"],
-  status: undefined
+  status: undefined,
+  visibility: undefined
 });
 
 let newrecord = {...Identity$Reventless.anonymous};
@@ -126,7 +127,8 @@ async function buildFixture(name) {
     stateSchema: rowStateSchema,
     config: config,
     subIdConfig: undefined,
-    authorization: "AllowAuthenticated"
+    authorization: "AllowAuthenticated",
+    visibility: "Public"
   })({
     make: Storage.make
   })(QDbResolversAdapter);

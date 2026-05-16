@@ -33,7 +33,8 @@ let CategoriesReadModel = {
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 };
 
 let CategoriesQuery = Query_GWT$ReventlessGwt.Make(Query_GWT$ReventlessGwt.FromReadModel({
@@ -49,7 +50,8 @@ let CategoriesQuery = Query_GWT$ReventlessGwt.Make(Query_GWT$ReventlessGwt.FromR
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 }));
 
 CategoriesQuery.describe("Categories ReadModel queries", () => {
@@ -246,7 +248,8 @@ let OrdersView = {
   project: project,
   config: config$1,
   subIdConfig: subIdConfig,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 };
 
 let OrdersQuery = Query_GWT$ReventlessGwt.Make(Query_GWT$ReventlessGwt.FromStateViewSlice({
@@ -256,7 +259,8 @@ let OrdersQuery = Query_GWT$ReventlessGwt.Make(Query_GWT$ReventlessGwt.FromState
   consumedEventSchema: consumedEventSchema,
   config: config$1,
   subIdConfig: subIdConfig,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 }));
 
 OrdersQuery.describe("OrdersView StateViewSlice queries", () => {

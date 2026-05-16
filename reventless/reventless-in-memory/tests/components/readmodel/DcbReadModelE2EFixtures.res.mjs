@@ -119,7 +119,8 @@ let ProductsReadModelSpec = {
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 };
 
 function project(msg) {
@@ -248,7 +249,8 @@ let ProductsReadModel = ReadModelMaker.Make({
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 })(ProductsMappings);
 
 let rm = ProductsReadModel.make(undefined, undefined, allEventTopics, undefined);

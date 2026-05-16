@@ -41,6 +41,7 @@ module Make = (
       let config = Reventless.ReadModel.config()
       let subIdConfig: option<Reventless.ReadModel.subIdConfig<state>> = None
       let authorization: Reventless.Authorization.permission = AllowAuthenticated
+      let visibility: Reventless.Visibility.t = Public
     }
 
     module SpecificQueryDb = QueryDb_Builder.Make(TodoQueryDbSpec, QueryDbStorage, QueryDbResolvers)

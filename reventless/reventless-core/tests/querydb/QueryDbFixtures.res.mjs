@@ -24,7 +24,8 @@ let ItemQueryDbSpec = {
   stateSchema: stateSchema,
   config: config,
   subIdConfig: undefined,
-  authorization: "AllowAuthenticated"
+  authorization: "AllowAuthenticated",
+  visibility: "Public"
 };
 
 let store = {

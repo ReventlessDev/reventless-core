@@ -83,7 +83,8 @@ function Make(Platform) {
     stateSchema: Categories$CatalogPlugin.stateSchema,
     config: Categories$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: Categories$CatalogPlugin.authorization
+    authorization: Categories$CatalogPlugin.authorization,
+    visibility: Categories$CatalogPlugin.visibility
   })({
     moduleUrl: Categories_Projections$CatalogPlugin.moduleUrl,
     mappings: Categories_Projections$CatalogPlugin.mappings
@@ -95,7 +96,8 @@ function Make(Platform) {
     stateSchema: ProductDemands$CatalogPlugin.stateSchema,
     config: ProductDemands$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: ProductDemands$CatalogPlugin.authorization
+    authorization: ProductDemands$CatalogPlugin.authorization,
+    visibility: ProductDemands$CatalogPlugin.visibility
   })({
     moduleUrl: ProductDemands_Projections$CatalogPlugin.moduleUrl,
     mappings: ProductDemands_Projections$CatalogPlugin.mappings
@@ -107,7 +109,8 @@ function Make(Platform) {
     stateSchema: Products$CatalogPlugin.stateSchema,
     config: Products$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: Products$CatalogPlugin.authorization
+    authorization: Products$CatalogPlugin.authorization,
+    visibility: Products$CatalogPlugin.visibility
   })({
     moduleUrl: Products_Projections$CatalogPlugin.moduleUrl,
     mappings: Products_Projections$CatalogPlugin.mappings

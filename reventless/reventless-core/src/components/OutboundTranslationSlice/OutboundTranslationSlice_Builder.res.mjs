@@ -35,7 +35,8 @@ function Make(RuntimeEnvironment) {
         stateSchema: OutboundTranslationSlice_Callback$ReventlessCore.todoRowSchema,
         config: config,
         subIdConfig: undefined,
-        authorization: "AllowAuthenticated"
+        authorization: "AllowAuthenticated",
+        visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let decoder = DcbDecode$Reventless.makeDecoder(Spec.consumedEventSchema);

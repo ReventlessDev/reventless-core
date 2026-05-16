@@ -31,6 +31,7 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   scan: [],
   scanSort: [],
   status: None,
+  visibility: None,
 }
 
 describe("SuryToJsonSchema:", () => {
@@ -322,6 +323,22 @@ describe("SuryToJsonSchema:", () => {
         ->Option.flatMap(JSON.Decode.bool),
         idSchema->Option.flatMap(s => getProperty(s, "x-reventless-collapsed")),
       ))->toEqual((Some(true), None))
+    })
+
+    test("emits x-reventless-visibility at top level when visibility is Internal", () => {
+      let schema = S.schema(s => {"id": s.matches(S.string)})->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, visibility: Some("Internal")})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      expect(
+        getProperty(json, "x-reventless-visibility")->Option.flatMap(JSON.Decode.string),
+      )->toBe(Some("Internal"))
+    })
+
+    test("omits x-reventless-visibility when visibility is None (default Public)", () => {
+      let schema = S.schema(s => {"id": s.matches(S.string)})->S.castToUnknown
+      let schema' = schema->withSpec({...emptySpec, visibility: None})
+      let json = SuryToJsonSchema.deriveObjectSchema(schema')
+      expect(getProperty(json, "x-reventless-visibility"))->toBe(None)
     })
   })
 

@@ -38,7 +38,11 @@ function Make(Spec) {
     let makeAutoUIManifest = (remoteEntryUrl, name, aggregates, readModels, readModelPositionsOpt, aggregatePositionsOpt) => {
       let readModelPositions = readModelPositionsOpt !== undefined ? readModelPositionsOpt : [];
       let aggregatePositions = aggregatePositionsOpt !== undefined ? aggregatePositionsOpt : [];
-      let panels = readModels.map(R => ({
+      let visibleReadModels = readModels.filter(R => {
+        let match = R.Spec.visibility;
+        return match === "Public";
+      });
+      let panels = visibleReadModels.map(R => ({
         fragmentId: name + "." + R.Spec.name + ".list",
         title: R.Spec.name,
         description: "",
@@ -51,7 +55,7 @@ function Make(Spec) {
         positions: aggregatePositions,
         requiredAccess: undefined
       })));
-      let pages = readModels.map(R => ({
+      let pages = visibleReadModels.map(R => ({
         fragmentId: name + "." + R.Spec.name + ".list",
         title: R.Spec.name,
         menuEntry: {

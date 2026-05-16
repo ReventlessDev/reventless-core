@@ -24,7 +24,8 @@ function Make(QueryDbStorage) {
         stateSchema: InboundTranslationSlice_Callback$ReventlessCore.auditRowSchema,
         config: config,
         subIdConfig: undefined,
-        authorization: "AllowAuthenticated"
+        authorization: "AllowAuthenticated",
+        visibility: "Public"
       })(QueryDbStorage)(QueryDbResolvers);
       let syncToQueryDb = async queryDbOps => {
         let items = Object.entries(Callback.auditLog);

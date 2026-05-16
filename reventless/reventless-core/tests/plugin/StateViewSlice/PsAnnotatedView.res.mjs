@@ -64,7 +64,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   collapsed: [],
   scan: [],
   scanSort: [],
-  status: undefined
+  status: undefined,
+  visibility: undefined
 });
 
 let name = "AnnotatedView";
@@ -74,6 +75,8 @@ let Id;
 let moduleUrl = "@reventlessdev/reventless-core/tests/plugin/StateViewSlice/PsAnnotatedView.res.mjs";
 
 let authorization = "AllowAuthenticated";
+
+let visibility = "Public";
 
 export {
   name,
@@ -86,5 +89,6 @@ export {
   stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
+  visibility,
 }
 /* consumedEventSchema Not a pure module */

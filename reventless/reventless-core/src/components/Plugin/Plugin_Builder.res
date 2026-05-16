@@ -756,9 +756,22 @@ module Make = (
     ~readModelPositions: array<string>=[],
     ~aggregatePositions: array<string>=[],
   ): Reventless.Plugin.uiFragmentManifest => {
+    // Internal ReadModels are hidden from the AutoUI manifest. They remain
+    // fully wired (resolvers, GraphQL schema, queryable defs, authorization)
+    // — visibility is a UX hint, not a security boundary. See
+    // private-consumer-repo/docs/analysis/component-visibility-and-metadata-annotations.md
+    let visibleReadModels =
+      readModels->Array.filter((
+        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
+      ) =>
+        switch R.Spec.visibility {
+        | Public => true
+        | Internal => false
+        }
+      )
     let panels =
       Array.concat(
-        readModels->Array.map((
+        visibleReadModels->Array.map((
           module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
         ) =>
           (
@@ -784,7 +797,7 @@ module Make = (
         ),
       )
     let pages =
-      readModels->Array.map((
+      visibleReadModels->Array.map((
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
       ) =>
         (

@@ -678,7 +678,8 @@ function MakeWithConfig(Config) {
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     config: PluginReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: PluginReadModelSpec$ReventlessCore.authorization
+    authorization: PluginReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginReadModelSpec$ReventlessCore.visibility
   })(PluginReadModelMappings);
   let moduleUrl$1 = import.meta.url;
   let PlatformEventGraphMappings = {
@@ -692,7 +693,8 @@ function MakeWithConfig(Config) {
     stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
     config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: Platform_EventGraphReadModelSpec$ReventlessCore.authorization
+    authorization: Platform_EventGraphReadModelSpec$ReventlessCore.authorization,
+    visibility: Platform_EventGraphReadModelSpec$ReventlessCore.visibility
   })(PlatformEventGraphMappings);
   let moduleUrl$2 = import.meta.url;
   let UIFragmentRegistryReadModelMappings = {
@@ -706,7 +708,8 @@ function MakeWithConfig(Config) {
     stateSchema: UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema,
     config: UIFragmentRegistryReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: UIFragmentRegistryReadModelSpec$ReventlessCore.authorization
+    authorization: UIFragmentRegistryReadModelSpec$ReventlessCore.authorization,
+    visibility: UIFragmentRegistryReadModelSpec$ReventlessCore.visibility
   })(UIFragmentRegistryReadModelMappings);
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);
@@ -1634,7 +1637,8 @@ function Make($star) {
     stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
     config: PluginReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: PluginReadModelSpec$ReventlessCore.authorization
+    authorization: PluginReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginReadModelSpec$ReventlessCore.visibility
   })(PluginReadModelMappings);
   let moduleUrl$1 = import.meta.url;
   let PlatformEventGraphMappings = {
@@ -1648,7 +1652,8 @@ function Make($star) {
     stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
     config: Platform_EventGraphReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: Platform_EventGraphReadModelSpec$ReventlessCore.authorization
+    authorization: Platform_EventGraphReadModelSpec$ReventlessCore.authorization,
+    visibility: Platform_EventGraphReadModelSpec$ReventlessCore.visibility
   })(PlatformEventGraphMappings);
   let moduleUrl$2 = import.meta.url;
   let UIFragmentRegistryReadModelMappings = {
@@ -1662,7 +1667,8 @@ function Make($star) {
     stateSchema: UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema,
     config: UIFragmentRegistryReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: UIFragmentRegistryReadModelSpec$ReventlessCore.authorization
+    authorization: UIFragmentRegistryReadModelSpec$ReventlessCore.authorization,
+    visibility: UIFragmentRegistryReadModelSpec$ReventlessCore.visibility
   })(UIFragmentRegistryReadModelMappings);
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);

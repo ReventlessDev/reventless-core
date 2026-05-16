@@ -122,7 +122,19 @@ let deriveObjectSchema = (schema: S.t<unknown>): JSON.t =>
   switch SchemaType.fromSuryObject(~typeName="", schema) {
   | Some(fields) =>
     let annotations = Reventless.StateAnnotations.getSpec(schema)
-    objectRefToJsonSchema(~annotations?, fields)
+    let objSchema = objectRefToJsonSchema(~annotations?, fields)
+    // Surface component-level visibility on the top-level object schema.
+    // Omitted entirely for the default `Public` (None) so schemas stay compact.
+    switch annotations {
+    | Some({visibility: Some(name)}) =>
+      switch objSchema->JSON.Decode.object {
+      | Some(obj) =>
+        obj->Dict.set("x-reventless-visibility", JSON.Encode.string(name))
+        JSON.Encode.object(obj)
+      | None => objSchema
+      }
+    | _ => objSchema
+    }
   | None => jsonObject([("type", str("object"))])
   }
 

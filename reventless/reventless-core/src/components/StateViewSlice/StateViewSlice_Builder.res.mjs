@@ -32,7 +32,8 @@ function Make(RuntimeEnvironment) {
         stateSchema: Spec.stateSchema,
         config: Spec.config,
         subIdConfig: Spec.subIdConfig,
-        authorization: Spec.authorization
+        authorization: Spec.authorization,
+        visibility: Spec.visibility
       })(QueryDbStorage)(QueryDbResolvers);
       let SpecificEventCollector = EventCollector_Builder$ReventlessCore.Make(RuntimeEnvironment)(EventCollectorChannel);
       let toProjectionOps = ops => ({

@@ -114,7 +114,8 @@ function Make(Platform) {
     consumedEventSchema: ProductDemand$CatalogPlugin.consumedEventSchema,
     config: ProductDemand$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: ProductDemand$CatalogPlugin.authorization
+    authorization: ProductDemand$CatalogPlugin.authorization,
+    visibility: ProductDemand$CatalogPlugin.visibility
   })({
     project: ProductDemand_Projection$CatalogPlugin.project,
     moduleUrl: ProductDemand_Projection$CatalogPlugin.moduleUrl
@@ -126,7 +127,8 @@ function Make(Platform) {
     consumedEventSchema: Products$CatalogPlugin.consumedEventSchema,
     config: Products$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: Products$CatalogPlugin.authorization
+    authorization: Products$CatalogPlugin.authorization,
+    visibility: Products$CatalogPlugin.visibility
   })({
     project: Products_Projection$CatalogPlugin.project,
     moduleUrl: Products_Projection$CatalogPlugin.moduleUrl
@@ -167,7 +169,8 @@ function Make(Platform) {
     stateSchema: CatalogActivity$CatalogPlugin.stateSchema,
     config: CatalogActivity$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: CatalogActivity$CatalogPlugin.authorization
+    authorization: CatalogActivity$CatalogPlugin.authorization,
+    visibility: CatalogActivity$CatalogPlugin.visibility
   })({
     moduleUrl: CatalogActivity_Projections$CatalogPlugin.moduleUrl,
     mappings: CatalogActivity_Projections$CatalogPlugin.mappings
@@ -179,7 +182,8 @@ function Make(Platform) {
     stateSchema: Categories$CatalogPlugin.stateSchema,
     config: Categories$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: Categories$CatalogPlugin.authorization
+    authorization: Categories$CatalogPlugin.authorization,
+    visibility: Categories$CatalogPlugin.visibility
   })({
     moduleUrl: Categories_Projections$CatalogPlugin.moduleUrl,
     mappings: Categories_Projections$CatalogPlugin.mappings

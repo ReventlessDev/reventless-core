@@ -113,7 +113,8 @@ function Make(Platform) {
     consumedEventSchema: AvailableProducts$OrderingPlugin.consumedEventSchema,
     config: AvailableProducts$OrderingPlugin.config,
     subIdConfig: undefined,
-    authorization: AvailableProducts$OrderingPlugin.authorization
+    authorization: AvailableProducts$OrderingPlugin.authorization,
+    visibility: AvailableProducts$OrderingPlugin.visibility
   })({
     project: AvailableProducts_Projection$OrderingPlugin.project,
     moduleUrl: AvailableProducts_Projection$OrderingPlugin.moduleUrl
@@ -125,7 +126,8 @@ function Make(Platform) {
     consumedEventSchema: Orders$OrderingPlugin.consumedEventSchema,
     config: Orders$OrderingPlugin.config,
     subIdConfig: undefined,
-    authorization: Orders$OrderingPlugin.authorization
+    authorization: Orders$OrderingPlugin.authorization,
+    visibility: Orders$OrderingPlugin.visibility
   })({
     project: Orders_Projection$OrderingPlugin.project,
     moduleUrl: Orders_Projection$OrderingPlugin.moduleUrl
@@ -182,7 +184,8 @@ function Make(Platform) {
     stateSchema: Customers$OrderingPlugin.stateSchema,
     config: Customers$OrderingPlugin.config,
     subIdConfig: undefined,
-    authorization: Customers$OrderingPlugin.authorization
+    authorization: Customers$OrderingPlugin.authorization,
+    visibility: Customers$OrderingPlugin.visibility
   })({
     moduleUrl: Customers_Projections$OrderingPlugin.moduleUrl,
     mappings: Customers_Projections$OrderingPlugin.mappings

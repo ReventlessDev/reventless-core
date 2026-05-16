@@ -21,6 +21,8 @@ let moduleUrl = "@reventlessdev/online-shop-aggregates-catalog/src/Product/ReadM
 
 let authorization = "AllowAuthenticated";
 
+let visibility = "Public";
+
 export {
   name,
   Id,
@@ -29,5 +31,6 @@ export {
   subIdConfig,
   moduleUrl,
   authorization,
+  visibility,
 }
 /* stateSchema Not a pure module */

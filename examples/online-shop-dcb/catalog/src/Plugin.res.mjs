@@ -158,7 +158,8 @@ function Make(Platform) {
     consumedEventSchema: Categories$CatalogPlugin.consumedEventSchema,
     config: Categories$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: Categories$CatalogPlugin.authorization
+    authorization: Categories$CatalogPlugin.authorization,
+    visibility: Categories$CatalogPlugin.visibility
   })({
     project: Categories_Projection$CatalogPlugin.project,
     moduleUrl: Categories_Projection$CatalogPlugin.moduleUrl
@@ -170,7 +171,8 @@ function Make(Platform) {
     consumedEventSchema: ProductDemand$CatalogPlugin.consumedEventSchema,
     config: ProductDemand$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: ProductDemand$CatalogPlugin.authorization
+    authorization: ProductDemand$CatalogPlugin.authorization,
+    visibility: ProductDemand$CatalogPlugin.visibility
   })({
     project: ProductDemand_Projection$CatalogPlugin.project,
     moduleUrl: ProductDemand_Projection$CatalogPlugin.moduleUrl
@@ -182,7 +184,8 @@ function Make(Platform) {
     consumedEventSchema: Products$CatalogPlugin.consumedEventSchema,
     config: Products$CatalogPlugin.config,
     subIdConfig: undefined,
-    authorization: Products$CatalogPlugin.authorization
+    authorization: Products$CatalogPlugin.authorization,
+    visibility: Products$CatalogPlugin.visibility
   })({
     project: Products_Projection$CatalogPlugin.project,
     moduleUrl: Products_Projection$CatalogPlugin.moduleUrl

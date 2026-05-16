@@ -71,6 +71,14 @@ module type Spec = {
       structurally-detected inline spec modules — defaults to
       `AllowAuthenticated`. */
   let authorization: Authorization.permission
+
+  /** AutoUI visibility hint. Auto-injected by `@@reventless.spec` and on
+      structurally-detected inline spec modules — defaults to
+      `Visibility.Public`; override at the file/module level with
+      `@@reventless.visibility(Internal)` to hide from the AutoUI manifest.
+      Does not affect GraphQL exposure, authorization, or resolver
+      provisioning. */
+  let visibility: Visibility.t
 }
 
 /**

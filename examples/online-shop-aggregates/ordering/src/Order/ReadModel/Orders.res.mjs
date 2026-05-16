@@ -31,7 +31,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   collapsed: [],
   scan: [],
   scanSort: [],
-  status: "status"
+  status: "status",
+  visibility: undefined
 });
 
 let name = "Orders";
@@ -44,6 +45,8 @@ let moduleUrl = "@reventlessdev/online-shop-aggregates-ordering/src/Order/ReadMo
 
 let authorization = "AllowAuthenticated";
 
+let visibility = "Public";
+
 export {
   name,
   Id,
@@ -53,5 +56,6 @@ export {
   stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
+  visibility,
 }
 /* statusSchema Not a pure module */

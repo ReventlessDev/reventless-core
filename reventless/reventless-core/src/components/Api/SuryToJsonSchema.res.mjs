@@ -177,7 +177,21 @@ function deriveObjectSchema(schema) {
       ]]);
   }
   let annotations = StateAnnotations$Reventless.getSpec(schema);
-  return objectRefToJsonSchema(annotations, fields);
+  let objSchema = objectRefToJsonSchema(annotations, fields);
+  if (annotations === undefined) {
+    return objSchema;
+  }
+  let name = annotations.visibility;
+  if (name === undefined) {
+    return objSchema;
+  }
+  let obj = Stdlib_JSON.Decode.object(objSchema);
+  if (obj !== undefined) {
+    obj["x-reventless-visibility"] = name;
+    return obj;
+  } else {
+    return objSchema;
+  }
 }
 
 function toJsonSchema(schema) {

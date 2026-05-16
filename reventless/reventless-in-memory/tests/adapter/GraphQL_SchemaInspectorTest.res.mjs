@@ -71,7 +71,8 @@ let indexedStateSchemaWithAnnotations = S.Metadata.set(indexedStateSchema, State
   collapsed: [],
   scan: [],
   scanSort: [],
-  status: undefined
+  status: undefined,
+  visibility: undefined
 });
 
 let orderedStateSchema = S.schema(s => ({
@@ -93,7 +94,8 @@ let orderedStateSchemaWithAnnotations = S.Metadata.set(orderedStateSchema, State
   collapsed: [],
   scan: [],
   scanSort: [],
-  status: undefined
+  status: undefined,
+  visibility: undefined
 });
 
 let scanStateSchema = S.schema(s => ({
@@ -116,7 +118,8 @@ let scanStateSchemaWithAnnotations = S.Metadata.set(scanStateSchema, StateAnnota
   collapsed: [],
   scan: ["status"],
   scanSort: ["name"],
-  status: undefined
+  status: undefined,
+  visibility: undefined
 });
 
 describe("GraphQL_SchemaInspector", () => {

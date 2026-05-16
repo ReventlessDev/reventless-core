@@ -64,7 +64,8 @@ let emptySpec = {
   collapsed: emptySpec_collapsed,
   scan: emptySpec_scan,
   scanSort: emptySpec_scanSort,
-  status: undefined
+  status: undefined,
+  visibility: undefined
 };
 
 Jest.describe("SuryToJsonSchema:", () => {
@@ -97,7 +98,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let entityIdSchema = getPropertyOf(json, "entityId");
@@ -125,7 +127,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let envSchema = getPropertyOf(json, "environment");
@@ -156,7 +159,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let versionSchema = getPropertyOf(json, "version");
@@ -183,7 +187,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let ownerIdSchema = getPropertyOf(json, "ownerId");
@@ -210,7 +215,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let categorySchema = getPropertyOf(json, "category");
@@ -234,7 +240,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let nameSchema = getPropertyOf(json, "name");
@@ -258,7 +265,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let deploymentIdSchema = getPropertyOf(json, "deploymentId");
@@ -289,7 +297,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let pluginNameSchema = getPropertyOf(json, "pluginName");
@@ -323,7 +332,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let componentsSchema = getPropertyOf(json, "components");
@@ -360,7 +370,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let componentsSchema = getPropertyOf(json, "components");
@@ -387,7 +398,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let componentsSchema = getPropertyOf(json, "components");
@@ -411,7 +423,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: ["status"],
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let statusSchema = getPropertyOf(json, "status");
@@ -442,7 +455,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: ["name"],
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let nameSchema = getPropertyOf(json, "name");
@@ -473,7 +487,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: ["primaryResource"],
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let primarySchema = getPropertyOf(json, "primaryResource");
@@ -485,6 +500,52 @@ Jest.describe("SuryToJsonSchema:", () => {
         true,
         undefined
       ]);
+    });
+    Jest.test("emits x-reventless-visibility at top level when visibility is Internal", () => {
+      let schema = S.schema(s => ({
+        id: s.m(S.string)
+      }));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined,
+        visibility: "Internal"
+      });
+      let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
+      return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(getProperty(json, "x-reventless-visibility"), Stdlib_JSON.Decode.string)), "Internal");
+    });
+    Jest.test("omits x-reventless-visibility when visibility is None (default Public)", () => {
+      let schema = S.schema(s => ({
+        id: s.m(S.string)
+      }));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined,
+        visibility: undefined
+      });
+      let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
+      return Jest.Expect.toBe(Jest.Expect.expect(getProperty(json, "x-reventless-visibility")), undefined);
     });
   });
   Jest.describe("parity with S.toJSONSchema for unannotated objects:", () => {
@@ -543,7 +604,8 @@ Jest.describe("SuryToJsonSchema:", () => {
         collapsed: emptySpec_collapsed,
         scan: emptySpec_scan,
         scanSort: emptySpec_scanSort,
-        status: undefined
+        status: undefined,
+        visibility: undefined
       });
       let native = S.toJSONSchema(schema$p);
       let entityIdSchema = getPropertyOf(native, "entityId");
