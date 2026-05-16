@@ -63,6 +63,12 @@ let pluginStatusSubscriptionField = `  onPluginStatusChange: PluginStatusChangeE
 let baseFragment = (~cloner: bool) => {
   let base = GraphQL_FragmentGenerator.generate(~mutationEntries=mutationEntries(~cloner), ~queryEntries)
   let parts = GraphQL_Stitcher.decode(base)
+  // Source C subscriptions for the admin Plugin aggregate mutations.
+  // The standard auto-resolver flow (CommandGeneratorResolvers_AppSync.make)
+  // always creates a Subscription.onX resolver per mutation field; without the
+  // matching SDL fields, AppSync's CreateResolver fails with "Type not found".
+  let pluginAggregateSubscriptionFields =
+    Plugin_SubscriptionSchema.sourceCFields(~mutationEntries=PluginBaseFragment.pluginAggregateMutationEntries)
   GraphQL_Stitcher.encode({
     types: parts.types
     ->Array.concat(uiFragmentSubscriptionTypes)
@@ -76,6 +82,7 @@ let baseFragment = (~cloner: bool) => {
     mutations: parts.mutations
     ->Array.concat(uiFragmentMutationFields)
     ->Array.concat(pluginStatusMutationFields),
-    subscriptions: [uiFragmentSubscriptionField, pluginStatusSubscriptionField],
+    subscriptions: [uiFragmentSubscriptionField, pluginStatusSubscriptionField]
+    ->Array.concat(pluginAggregateSubscriptionFields),
   })
 }
