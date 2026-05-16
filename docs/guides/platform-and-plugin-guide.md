@@ -39,6 +39,7 @@ This guide walks through building platforms with plugins using Reventless. It co
    - [Split API Mode](#split-api-mode)
 9. [Cross-Plugin Communication](#cross-plugin-communication)
 10. [AutoUI](#autoui)
+    - [Annotations that shape Auto UI](#annotations-that-shape-auto-ui)
 11. [Conventions & Pitfalls](#conventions--pitfalls)
 
 ---
@@ -1582,6 +1583,45 @@ When a plugin connects with `Some(manifest)`, the platform's admin handler emits
 ### No manual steps
 
 You never call `makeAutoUIManifest` by hand. The generator regenerates `Plugin.res` on every `pnpm run build`; new aggregates and read models appear in the manifest automatically. Toggle UI on per deployment by setting or unsetting the env var.
+
+### Annotations that shape Auto UI
+
+A handful of PPX annotations on aggregate / read-model / state-view spec files steer how AutoUI renders. None of them require any UI-side wiring — the generator threads them through `Platform_UIDefinitions` and the host shell's AutoUI consumes them directly. See [the PPX guide](reventless-ppx.md) for per-annotation detail.
+
+| Annotation | Placed on | What AutoUI does with it |
+|---|---|---|
+| `@displayName` | One or more `string` fields on a `@schema type state` | Picks the row label for list views and search results. Falls back to a non-`id` string field, then to `"id"`. (No canonical entry in the PPX guide yet.) |
+| [`@id`](reventless-ppx.md#id-compositeid--partition-key-derivation) | A `string` field on a `@schema type state` | Marks the entity primary key. Used by the auto-generated query and by AutoUI's row-id wiring on per-row command forms. |
+| [`@subId`](reventless-ppx.md#subid-compositesubid--sort-key-derivation) | A `string` field on a `@schema type state` | Adds a sort-key dimension to the entity's query field, so list views can drill into a specific sort key. |
+| [`@status`](reventless-ppx.md#status--mark-the-lifecycle-status-field) | One field on a `@schema type state` | Names the lifecycle status field. AutoUI compares this field per row against each command's `@allowedStates` to decide whether to show the command. Falls back to a field literally named `"status"` if absent. |
+| [`@allowedStates([…])`](reventless-ppx.md#allowedstates--per-variant-command-state-guard) | A single command variant on a `@schema type command` | Hides the command on rows whose `@status` field value isn't in the set. `[]` is "never show"; absent is "always show" (back-compat). |
+| [`@dcbTag`](reventless-ppx.md#partitiontag-notag-dcbtag--field-level-dcb-tag-control) and family | Field-level inside command / event variants | Drives DCB tag inference. Affects which arg becomes `id: ID!` on the auto-generated GraphQL mutation. |
+| [`@noApi`](reventless-ppx.md#noapi--exclude-commands-from-graphqlmcp-exposure) | Whole `@schema type command` or single variants | Excludes the command from the GraphQL surface entirely — AutoUI never sees it, so it never renders a button for it. |
+
+A typical entity flow:
+
+```rescript
+@@reventless.spec
+
+@schema
+type status = Placed | Shipped | Cancelled
+
+@schema
+type state = {
+  @id orderId: string,
+  @displayName customerId: string,    // list-view label
+  @status status: status,             // gates per-row commands
+}
+
+@schema
+type command =
+  | Place({customerId: string, productIds: array<string>})
+  | @allowedStates([Orders.Placed]) Ship
+  | @allowedStates([Orders.Placed]) Cancel
+  | @noApi InternalRefund({reason: string})  // hidden entirely
+```
+
+After build, AutoUI's Orders list view labels rows by `customerId`, and the per-row `…` menu shows `Ship` and `Cancel` only on `Placed` rows. `InternalRefund` is invisible to the UI.
 
 ---
 

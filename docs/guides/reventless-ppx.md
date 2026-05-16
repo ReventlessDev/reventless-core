@@ -280,6 +280,61 @@ The `@noApi` annotation is stripped from the compiled output by the PPX. Filteri
 
 ---
 
+### `@status` — mark the lifecycle status field
+
+Use on a single `@schema type state` field in a ReadModel or StateViewSlice spec to mark the field whose value identifies the entity's lifecycle status. AutoUI's command-menu filter reads the marked field per row and matches it against each command's `@allowedStates` set.
+
+```rescript
+@@reventless.spec
+
+@schema
+type status = Placed | Shipped | Cancelled
+
+@schema
+type state = {
+  orderId: string,
+  customerId: string,
+  @status status: status,
+}
+```
+
+The PPX emits the field name into `stateAnnotationSpec.status` (sury metadata attached to the state schema). Codegen reads it when building `queryableDef.statusField`.
+
+**Resolution order** (codegen, `Plugin_Structure.statusFieldFromStateSchema`): (1) field annotated `@status`; (2) field literally named `"status"` (conventional fallback — mirrors how `@displayName`/`labelField` falls back to a conventionally-named string field); (3) `None`. The convention is convenience only — an explicit `@status` on any other field shadows the implicit `status`-by-name match.
+
+**Constraint:** at most one `@status` per state record. The PPX errors on duplicate annotations within the same record.
+
+---
+
+### `@allowedStates` — per-variant command state guard
+
+Use on individual command variants in an aggregate or DCB-slice `@schema type command` to declare which lifecycle states the command is meaningful in. The payload is an expression list of status-type constructor references. AutoUI hides the command on rows whose status isn't in the set.
+
+```rescript
+// In Order.res (an Order aggregate spec):
+@@reventless.spec
+
+@schema
+type command =
+  | Place({customerId: string, productIds: array<string>})
+  | @allowedStates([Orders.Placed]) Ship
+  | @allowedStates([Orders.Placed]) Cancel
+```
+
+| Annotation | Placed on | Effect |
+|---|---|---|
+| `@allowedStates([…])` | A single command variant | Variant is shown only on rows where the row's `statusField` value is in the set |
+| (no annotation) | A single command variant | Variant is always shown (back-compat default) |
+| `@allowedStates([])` | A single command variant | Variant is never shown (defensive "never available" form) |
+
+The PPX extracts each constructor's leaf identifier as a string and emits `let commandSchema = ReventlessInfra.Api.markAllowedStates(commandSchema, [|("Ship", [|"Placed"|]); …|])` attaching the per-variant map to the schema metadata. The wire format on `Platform_UIDefinitions` is `commandDef.allowedStates: option<array<string>>` — `None` means "always show", `Some([…])` means "filter".
+
+**Supports payloadless and payload variants uniformly.** The PPX walks the attribute payload as syntactic AST and extracts the leaf identifier; it works for `Submitted` (payloadless), `OrdersStatus.Submitted` (qualified payloadless), `Shipped({trackingNumber})` (payload), and any combination. AutoUI's filter compares against the row's serialised status tag — sury emits payloadless variants as bare JSON strings and payload variants as `{TAG: …, …}` objects, both surfacing the constructor name.
+
+**Limitation: no compile-time existence check.** The constructor name is extracted as a string without verifying the constructor actually exists on the read model's status type. A typo (`@allowedStates([Orders.Plased])`) compiles cleanly; the filter just never matches that string. ReScript's dependency analysis runs pre-PPX, so a witness-binding approach (emitting `let _ = Orders.Placed`) would force ReScript to build the witness's module first — which it doesn't see as a dep, breaking the build order. Runtime cross-validation against the status-field schema is captured as future work in `AllowedStatesAnnotation.ml`.
+
+---
+
 ### `@id`, `@compositeId` — partition key derivation
 
 Use on `@schema type state` fields in ReadModel and StateViewSlice spec files. The PPX generates `let makeId` from the annotated field(s). This replaces a manual `let makeId` declaration.
