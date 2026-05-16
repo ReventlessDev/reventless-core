@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-in-memory",
-  "version": "3.0.0-alpha.50",
+  "version": "3.0.0-alpha.51",
   "description": "In-memory platform for Reventless (for testing without AWS)",
   "license": "MIT",
   "scripts": {

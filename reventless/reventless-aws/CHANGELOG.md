@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.89 (2026-05-16)
+
+### Bug Fixes
+
+* **admin:** attach AppSync resolvers to Platform_Plugin(s)/PlatformEventGraph(s) ([c2cd069](https://github.com/ReventlessDev/reventless-core/commit/c2cd069880f028296de5bb625984916e9e280fe6))
+
+
 # 3.0.0-alpha.88 (2026-05-16)
 
 ### Bug Fixes
