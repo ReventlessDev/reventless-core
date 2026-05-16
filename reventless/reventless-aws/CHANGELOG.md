@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.87 (2026-05-16)
+
+### Bug Fixes
+
+* **aws:** preserve subscription fields in AppSync auth injection ([78bb9a2](https://github.com/ReventlessDev/reventless-core/commit/78bb9a2f88309855e1fe258be6fe57077896fd00))
+
+
 # 3.0.0-alpha.86 (2026-05-16)
 
 ### Bug Fixes
