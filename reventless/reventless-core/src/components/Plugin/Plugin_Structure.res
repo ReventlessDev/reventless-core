@@ -17,6 +17,33 @@ let log = Logger.fromEnv()
 let isIdLikeFieldName = (name: string): bool =>
   name == "id" || name->String.endsWith("Id") || name->String.endsWith("Ids")
 
+// Resolve the field that holds the entity's lifecycle status, used by
+// AutoUI to filter the per-row command menu against each command's
+// `allowedStates`. Resolution order:
+//   1. Field annotated `@status` (PPX-emitted; see StateAnnotations).
+//   2. Field literally named `"status"` (convention; mirrors how
+//      labelField falls back to a conventionally-named string field).
+//   3. None — filter is inert for this read model.
+let statusFieldFromStateSchema = (
+  stateSchema: S.t<unknown>,
+): option<string> => {
+  let annotated = switch Reventless.StateAnnotations.getSpec(stateSchema) {
+  | Some(spec) => spec.status
+  | None => None
+  }
+  switch annotated {
+  | Some(_) as some => some
+  | None =>
+    switch stateSchema {
+    | Object({items}) =>
+      items
+      ->Array.find(item => item.location == "status")
+      ->Option.map(item => item.location)
+    | _ => None
+    }
+  }
+}
+
 let labelFieldsFromStateSchema = (
   ~entityName: string,
   stateSchema: S.t<unknown>,
@@ -110,6 +137,7 @@ let make = (
   let toCommandDef = (
     ~isAggregate,
     ~mutationFieldFor: string => string,
+    ~parentSchema: S.t<unknown>,
     v: S.t<unknown>,
   ): option<Reventless.Plugin.commandDef> =>
     switch v {
@@ -132,6 +160,12 @@ let make = (
                   }: Reventless.Plugin.fieldReference
                 ))
               )
+            // Per-variant `allowedStates` lives on the *parent* command schema
+            // (the PPX attaches a single dict<variantName, [|states|]> via
+            // markAllowedStates). Look it up by variant name; back-compat
+            // None when the variant lacks an @allowedStates annotation.
+            let allowedStates =
+              ApiAllowedStatesHelpers.getAllowedStates(parentSchema, ~variantName)
             Some({
               Reventless.Plugin.name: variantName,
               schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
@@ -139,7 +173,7 @@ let make = (
               aggregateIdField,
               mutationField: mutationFieldFor(variantName),
               references,
-              allowedStates: None,
+              allowedStates,
             })
           }
         | _ => None
@@ -154,10 +188,14 @@ let make = (
     commandSchema: S.t<unknown>,
   ): array<Reventless.Plugin.commandDef> =>
     switch commandSchema {
-    | Union({anyOf}) => anyOf->Array.filterMap(v => toCommandDef(~isAggregate, ~mutationFieldFor, v))
+    | Union({anyOf}) =>
+      anyOf->Array.filterMap(v =>
+        toCommandDef(~isAggregate, ~mutationFieldFor, ~parentSchema=commandSchema, v)
+      )
     | _ =>
       // Single-variant command types compile to a bare Object schema, not a Union.
-      toCommandDef(~isAggregate, ~mutationFieldFor, commandSchema)->Option.mapOr([], def => [def])
+      toCommandDef(~isAggregate, ~mutationFieldFor, ~parentSchema=commandSchema, commandSchema)
+      ->Option.mapOr([], def => [def])
     }
 
   // ── Per-component event type extraction ────────────────────────────────────
@@ -265,22 +303,20 @@ let make = (
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
     ) => {
       let qf = Api_Naming.queryFieldNamesForReadModel(~plugin=name, ~name=R.Spec.name)
+      let stateSchema = R.Spec.stateSchema->S.castToUnknown
       let (labelField, searchableFields) = labelFieldsFromStateSchema(
         ~entityName=R.Spec.name,
-        R.Spec.stateSchema->S.castToUnknown,
+        stateSchema,
       )
       ({
         Reventless.Plugin.name: R.Spec.name,
         queryField: qf.listFieldName,
-        schema: R.Spec.stateSchema
-        ->S.castToUnknown
-        ->SuryToJsonSchema.deriveObjectSchema
-        ->JSON.stringify,
+        schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
         consumedEventTypes: [],
         linkedWriteSide: [],
         labelField,
         searchableFields,
-        statusField: None,
+        statusField: statusFieldFromStateSchema(stateSchema),
       }: Reventless.Plugin.queryableDef)
     })
 
@@ -288,22 +324,20 @@ let make = (
     stateViewSlices->Array.mapWithIndex((module(SVS: ReventlessInfra.StateViewSlice.T), i) => {
       let qf = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=SVS.Spec.name)
       let (_, consumed) = svsConsumed->Array.getUnsafe(i)
+      let stateSchema = SVS.Spec.stateSchema->S.castToUnknown
       let (labelField, searchableFields) = labelFieldsFromStateSchema(
         ~entityName=SVS.Spec.name,
-        SVS.Spec.stateSchema->S.castToUnknown,
+        stateSchema,
       )
       ({
         Reventless.Plugin.name: SVS.Spec.name,
         queryField: qf.listFieldName,
-        schema: SVS.Spec.stateSchema
-        ->S.castToUnknown
-        ->SuryToJsonSchema.deriveObjectSchema
-        ->JSON.stringify,
+        schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
         consumedEventTypes: consumed,
         linkedWriteSide: linkedWriteSideFor(consumed),
         labelField,
         searchableFields,
-        statusField: None,
+        statusField: statusFieldFromStateSchema(stateSchema),
       }: Reventless.Plugin.queryableDef)
     })
 

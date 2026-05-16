@@ -657,6 +657,7 @@ let transform (str : structure) : structure =
     let body = DcbTagInference.strip_no_tag_attrs body in
     let body = DisplayNameInference.transform_structure body in
     let body = NoApiAnnotation.transform ~loc body in
+    let body = AllowedStatesAnnotation.transform ~loc body in
     match mode with
     | Spec name_opt ->
       let name = derive_spec_name ~loc name_opt in
@@ -717,6 +718,7 @@ let transform (str : structure) : structure =
                       |> StateAnnotations.strip_visibility_attrs
                       |> StateAnnotations.strip_drill_collapsed_attrs
                       |> StateAnnotations.strip_scan_attrs
+                      |> StateAnnotations.strip_status_attrs
                  else body in
       let suffix =
         if not (Util.has_let_binding "moduleUrl" body) then

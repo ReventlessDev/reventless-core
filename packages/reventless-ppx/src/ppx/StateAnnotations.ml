@@ -66,6 +66,22 @@ let strip_composite_subid_field_attr (attrs : attributes) =
     not (String.equal attr.attr_name.txt "compositeSubId")
   ) attrs
 
+(* ── @status attribute helpers ──
+   Marks the lifecycle status field on a state record. AutoUI's command-menu
+   filter reads the marked field per row and matches it against each command's
+   `allowedStates` set. At most one `@status` per record; duplicates are
+   reported in [make_state_annotations_binding]. *)
+
+let has_status_field_attr (attrs : attributes) =
+  List.exists (fun (attr : attribute) ->
+    String.equal attr.attr_name.txt "status"
+  ) attrs
+
+let strip_status_field_attr (attrs : attributes) =
+  List.filter (fun (attr : attribute) ->
+    not (String.equal attr.attr_name.txt "status")
+  ) attrs
+
 let is_string_type (ct : core_type) =
   match ct.ptyp_desc with
   | Ptyp_constr ({ txt = Lident "string"; _ }, []) -> true
@@ -248,6 +264,30 @@ let generate_sub_id_config ~loc (str : structure) : structure_item list =
     end
     else
       [[%stri let subIdConfig = None]]
+
+(* ── @status: structure-level strip ── *)
+
+(** Strip @status attributes from @schema type state record fields. Mirrors
+    [strip_id_attrs] / [strip_subid_attrs]. *)
+let strip_status_attrs (str : structure) : structure =
+  List.map (fun (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (rf, decls) ->
+      let new_decls = List.map (fun (td : type_declaration) ->
+        if not (String.equal td.ptype_name.txt "state"
+                && Util.has_attr "schema" td.ptype_attributes) then td
+        else
+          match td.ptype_kind with
+          | Ptype_record fields ->
+            let new_fields = List.map (fun (ld : label_declaration) ->
+              { ld with pld_attributes = strip_status_field_attr ld.pld_attributes }
+            ) fields in
+            { td with ptype_kind = Ptype_record new_fields }
+          | _ -> td
+      ) decls in
+      { item with pstr_desc = Pstr_type (rf, new_decls) }
+    | _ -> item
+  ) str
 
 (* ── @id / @compositeId: makeId generation ── *)
 
@@ -1094,10 +1134,21 @@ let make_state_annotations_binding ~loc fields : structure_item option =
   let scan_sort = List.filter_map (fun (ld : label_declaration) ->
     if has_scan_sort_field_attr ld.pld_attributes then Some ld.pld_name.txt else None
   ) fields in
+  let status_fields = List.filter_map (fun (ld : label_declaration) ->
+    if has_status_field_attr ld.pld_attributes then Some (ld.pld_name.txt, ld.pld_loc) else None
+  ) fields in
+  let status =
+    match status_fields with
+    | [] -> None
+    | [(name, _)] -> Some name
+    | (_, _) :: (_, loc2) :: _ ->
+      Location.raise_errorf ~loc:loc2
+        "duplicate @status annotation; only one field per state record may carry @status"
+  in
   if ids = [] && composite_ids = [] && sub_ids = [] && composite_sub_ids = []
      && indexes = [] && hidden = [] && summary = []
      && drill_targets = [] && drill_target_keys = [] && collapsed = []
-     && scan = [] && scan_sort = [] then None
+     && scan = [] && scan_sort = [] && status = None then None
   else
     let ident lid =
       { pexp_desc = Pexp_ident { txt = lid; loc };
@@ -1106,21 +1157,40 @@ let make_state_annotations_binding ~loc fields : structure_item option =
     let metadata_set_expr = ident (Ldot (Ldot (Lident "S", "Metadata"), "set")) in
     let annotations_id_expr =
       ident (Ldot (Ldot (Lident "Reventless", "StateAnnotations"), "stateAnnotationsId")) in
+    let base_fields =
+      [ ({ Location.txt = Lident "ids"; loc }, estr_array ~loc ids);
+        ({ txt = Lident "compositeIds"; loc }, estr_array ~loc composite_ids);
+        ({ txt = Lident "subIds"; loc }, estr_array ~loc sub_ids);
+        ({ txt = Lident "compositeSubIds"; loc }, estr_array ~loc composite_sub_ids);
+        ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes);
+        ({ txt = Lident "hidden"; loc }, estr_array ~loc hidden);
+        ({ txt = Lident "summary"; loc }, estr_array ~loc summary);
+        ({ txt = Lident "drillTargets"; loc }, str_tuple_array ~loc drill_targets);
+        ({ txt = Lident "drillTargetKeys"; loc }, str_tuple_array ~loc drill_target_keys);
+        ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);
+        ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
+        ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort) ] in
+    (* `status?: string` is an optional field on the spec record. Synthesised
+       fields always include the @res.optional attribute on both the field
+       label and the value, otherwise sury-ppx skips the optional handling
+       and emits the field as required (Location.none required per the
+       feedback memory on ppx-injected optional fields). *)
+    let optional_attr =
+      [ { attr_name = { txt = "res.optional"; loc = Location.none };
+          attr_payload = PStr [];
+          attr_loc = Location.none } ] in
+    let status_field =
+      match status with
+      | None -> []
+      | Some name ->
+        let label_loc = { Location.txt = Lident "status"; loc = Location.none } in
+        let value =
+          { pexp_desc = Pexp_constant (Pconst_string (name, Location.none, None));
+            pexp_loc = Location.none; pexp_loc_stack = [];
+            pexp_attributes = optional_attr } in
+        [ ({ label_loc with loc = Location.none }, value) ] in
     let spec_record =
-      { pexp_desc = Pexp_record (
-          [ ({ txt = Lident "ids"; loc }, estr_array ~loc ids);
-            ({ txt = Lident "compositeIds"; loc }, estr_array ~loc composite_ids);
-            ({ txt = Lident "subIds"; loc }, estr_array ~loc sub_ids);
-            ({ txt = Lident "compositeSubIds"; loc }, estr_array ~loc composite_sub_ids);
-            ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes);
-            ({ txt = Lident "hidden"; loc }, estr_array ~loc hidden);
-            ({ txt = Lident "summary"; loc }, estr_array ~loc summary);
-            ({ txt = Lident "drillTargets"; loc }, str_tuple_array ~loc drill_targets);
-            ({ txt = Lident "drillTargetKeys"; loc }, str_tuple_array ~loc drill_target_keys);
-            ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);
-            ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
-            ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort) ],
-          None);
+      { pexp_desc = Pexp_record (base_fields @ status_field, None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =
       { pexp_desc = Pexp_apply (

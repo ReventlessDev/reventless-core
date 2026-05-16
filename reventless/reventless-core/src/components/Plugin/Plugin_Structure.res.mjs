@@ -10,7 +10,9 @@ import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../Api/SuryToJsonSchema.res.mjs";
+import * as ApiAllowedStatesHelpers$ReventlessCore from "../Api/ApiAllowedStatesHelpers.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -19,6 +21,18 @@ function isIdLikeFieldName(name) {
     return true;
   } else {
     return name.endsWith("Ids");
+  }
+}
+
+function statusFieldFromStateSchema(stateSchema) {
+  let spec = StateAnnotations$Reventless.getSpec(stateSchema);
+  let annotated = spec !== undefined ? spec.status : undefined;
+  if (annotated !== undefined) {
+    return annotated;
+  } else if (stateSchema.type === "object") {
+    return Stdlib_Option.map(stateSchema.items.find(item => item.location === "status"), item => item.location);
+  } else {
+    return;
   }
 }
 
@@ -118,7 +132,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       ];
     }
   };
-  let toCommandDef = (isAggregate, mutationFieldFor, v) => {
+  let toCommandDef = (isAggregate, mutationFieldFor, parentSchema, v) => {
     if (v.type !== "object") {
       return;
     }
@@ -140,6 +154,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
           plugin: target.plugin
         }));
       });
+      let allowedStates = ApiAllowedStatesHelpers$ReventlessCore.getAllowedStates(parentSchema, variantName);
       return {
         name: variantName,
         schema: JSON.stringify(S.toJSONSchema(v)),
@@ -147,15 +162,15 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
         aggregateIdField: match[1],
         mutationField: mutationFieldFor(variantName),
         references: references,
-        allowedStates: undefined
+        allowedStates: allowedStates
       };
     });
   };
   let extractCommandDefs = (isAggregate, mutationFieldFor, commandSchema) => {
     if (commandSchema.type === "union") {
-      return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, v));
+      return Stdlib_Array.filterMap(commandSchema.anyOf, v => toCommandDef(isAggregate, mutationFieldFor, commandSchema, v));
     } else {
-      return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema), [], def => [def]);
+      return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandSchema), [], def => [def]);
     }
   };
   let scsProduced = stateChangeSlices.map(SCS => [
@@ -234,32 +249,34 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   };
   let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
-    let match = labelFieldsFromStateSchema(R.Spec.name, R.Spec.stateSchema);
+    let stateSchema = R.Spec.stateSchema;
+    let match = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
     return {
       name: R.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(R.Spec.stateSchema)),
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
       consumedEventTypes: [],
       linkedWriteSide: [],
       labelField: match[0],
       searchableFields: match[1],
-      statusField: undefined
+      statusField: statusFieldFromStateSchema(stateSchema)
     };
   });
   let stateViewDefs = stateViewSlices.map((SVS, i) => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, SVS.Spec.name, undefined);
     let match = svsConsumed[i];
     let consumed = match[1];
-    let match$1 = labelFieldsFromStateSchema(SVS.Spec.name, SVS.Spec.stateSchema);
+    let stateSchema = SVS.Spec.stateSchema;
+    let match$1 = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
-      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(SVS.Spec.stateSchema)),
+      schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
       labelField: match$1[0],
       searchableFields: match$1[1],
-      statusField: undefined
+      statusField: statusFieldFromStateSchema(stateSchema)
     };
   });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
@@ -332,6 +349,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
 export {
   log,
   isIdLikeFieldName,
+  statusFieldFromStateSchema,
   labelFieldsFromStateSchema,
   make,
 }
