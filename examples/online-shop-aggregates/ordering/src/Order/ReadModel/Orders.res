@@ -13,6 +13,6 @@ type status =
 type state = {
   customerId: string,
   productIds: array<string>,
-  status: status,
+  @status status: status,
 }
 

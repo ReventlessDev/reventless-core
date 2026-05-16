@@ -1,6 +1,4 @@
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
-open Reventless.Projection
-
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)

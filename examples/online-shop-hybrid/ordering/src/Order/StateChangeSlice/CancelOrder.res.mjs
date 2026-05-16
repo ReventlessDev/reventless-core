@@ -44,6 +44,11 @@ let eventSchema = S.union([
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, ["ReopenOrder"]);
 
+let commandSchema$2 = Api$ReventlessInfra.markAllowedStates(commandSchema$1, [[
+    "CancelOrder",
+    ["Placed"]
+  ]]);
+
 function commandAuthorization(param) {
   return "AllowAuthenticated";
 }
@@ -60,7 +65,7 @@ export {
   consumedEventSchema,
   errorSchema,
   eventSchema,
-  commandSchema$1 as commandSchema,
+  commandSchema$2 as commandSchema,
   moduleUrl,
   commandAuthorization,
 }

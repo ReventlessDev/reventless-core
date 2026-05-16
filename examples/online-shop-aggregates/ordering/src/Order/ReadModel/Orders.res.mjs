@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let statusSchema = S.union([
   S.literal("Placed"),
@@ -17,6 +18,22 @@ let stateSchema = S.schema(s => ({
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
+let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: [],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  status: "status"
+});
+
 let name = "Orders";
 
 let Id;
@@ -31,9 +48,9 @@ export {
   name,
   Id,
   statusSchema,
-  stateSchema,
   config,
   subIdConfig,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
 }

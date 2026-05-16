@@ -6,8 +6,8 @@
 @schema
 type command =
   | Place({customerId: string, productIds: array<string>})
-  | Ship
-  | Cancel
+  | @allowedStates([Orders.Placed]) Ship
+  | @allowedStates([Orders.Placed]) Cancel
 
 @schema
 type event =

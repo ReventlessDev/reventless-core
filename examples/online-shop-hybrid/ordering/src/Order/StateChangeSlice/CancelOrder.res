@@ -12,7 +12,7 @@ type consumedEvent =
 
 @schema
 type command =
-  | CancelOrder({orderId: string})
+  | @allowedStates([Orders.Placed]) CancelOrder({orderId: string})
   | @noApi ReopenOrder({orderId: string})  // Internal: admin/automation only
 
 @schema
