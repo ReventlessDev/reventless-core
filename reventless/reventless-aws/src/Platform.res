@@ -902,9 +902,12 @@ module MakeWithConfig = (
     let mappings: array<module(Mapping)> = ReventlessCore.PluginProjection.mappings
   }
 
-  // Use NoResolver variant — Plugin read model is internal (accessed via queryEngine,
-  // not through AppSync GraphQL API). No AppSync resolvers needed.
-  module PluginReadModel = ReadModel_Builder_NoResolver.Make(
+  // Standard ReadModel builder — attaches AppSync DynamoDB resolvers to the
+  // admin-prefixed `Platform_Plugin` / `Platform_Plugins` SDL fields declared by
+  // PluginBaseFragment.queryEntries. Field-name alignment is handled by the
+  // queryFieldNamesRegistry entries that Platform_Admin.construct populates
+  // from AdminApi.queryEntries before this builder runs.
+  module PluginReadModel = ReadModel_Builder_Single.Make(
     ReventlessCore.PluginReadModelSpec,
     PluginReadModelMappings,
   )
@@ -919,7 +922,7 @@ module MakeWithConfig = (
     let mappings: array<module(Mapping)> = ReventlessCore.Platform_EventGraphProjection.mappings
   }
 
-  module PlatformEventGraphReadModel = ReadModel_Builder_NoResolver.Make(
+  module PlatformEventGraphReadModel = ReadModel_Builder_Single.Make(
     ReventlessCore.Platform_EventGraphReadModelSpec,
     PlatformEventGraphMappings,
   )

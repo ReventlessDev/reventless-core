@@ -15,6 +15,7 @@ import * as Admin_Callback$ReventlessCore from "./Admin_Callback.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "../components/Plugin/Plugin_Helpers.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../components/Builder_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
+import * as Plugin_Structure$ReventlessCore from "../components/Plugin/Plugin_Structure.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../components/EventCollector/EventCollector_Builder.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -95,6 +96,31 @@ function Make(RuntimeEnvironment) {
       if (dcbOutputs !== undefined) {
         aggregateEventTopics[name + "DcbEventLog"] = dcbOutputs.eventTopic;
       }
+      AdminApi$ReventlessCore.queryEntries.forEach(entry => {
+        let prefix = "Platform_";
+        let entityName = entry.returnTypeName.startsWith(prefix) ? entry.returnTypeName.slice(prefix.length, entry.returnTypeName.length) : entry.returnTypeName;
+        let match = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(entityName, entry.stateSchema);
+        let qn_singleFieldName = entry.singleFieldName;
+        let qn_listFieldName = entry.listFieldName;
+        let qn_returnTypeName = entry.returnTypeName;
+        let qn_pluralTypeName = entry.listFieldName;
+        let qn_connectionFilterTypeName = entry.returnTypeName + "Filter";
+        let qn_labelField = match[0];
+        let qn_includeIdParam = Stdlib_Option.getOr(entry.includeIdParam, true);
+        let qn_connectionSpec = Stdlib_Option.getOr(entry.connectionSpec, true);
+        let qn = {
+          singleFieldName: qn_singleFieldName,
+          listFieldName: qn_listFieldName,
+          returnTypeName: qn_returnTypeName,
+          pluralTypeName: qn_pluralTypeName,
+          connectionFilterTypeName: qn_connectionFilterTypeName,
+          labelField: qn_labelField,
+          includeIdParam: qn_includeIdParam,
+          connectionSpec: qn_connectionSpec
+        };
+        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[entityName] = qn;
+        Plugin_Helpers$ReventlessCore.stateSchemaRegistry[entityName] = entry.stateSchema;
+      });
       let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, aggregateEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);

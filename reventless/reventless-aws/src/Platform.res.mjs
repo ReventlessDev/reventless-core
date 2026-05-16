@@ -671,7 +671,7 @@ function MakeWithConfig(Config) {
     moduleUrl: moduleUrl,
     mappings: PluginProjection$ReventlessCore.mappings
   };
-  let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+  let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,
     moduleUrl: PluginReadModelSpec$ReventlessCore.moduleUrl,
@@ -686,7 +686,7 @@ function MakeWithConfig(Config) {
     moduleUrl: moduleUrl$1,
     mappings: Platform_EventGraphProjection$ReventlessCore.mappings
   };
-  let PlatformEventGraphReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+  let PlatformEventGraphReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: Platform_EventGraphReadModelSpec$ReventlessCore.name,
     moduleUrl: Platform_EventGraphReadModelSpec$ReventlessCore.moduleUrl,
@@ -1630,7 +1630,7 @@ function Make($star) {
     moduleUrl: moduleUrl,
     mappings: PluginProjection$ReventlessCore.mappings
   };
-  let PluginReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+  let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginReadModelSpec$ReventlessCore.name,
     moduleUrl: PluginReadModelSpec$ReventlessCore.moduleUrl,
@@ -1645,7 +1645,7 @@ function Make($star) {
     moduleUrl: moduleUrl$1,
     mappings: Platform_EventGraphProjection$ReventlessCore.mappings
   };
-  let PlatformEventGraphReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+  let PlatformEventGraphReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: Platform_EventGraphReadModelSpec$ReventlessCore.name,
     moduleUrl: Platform_EventGraphReadModelSpec$ReventlessCore.moduleUrl,

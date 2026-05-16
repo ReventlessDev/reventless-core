@@ -189,6 +189,42 @@ module Make = (
     | None => ()
     }
 
+    // Pre-populate the query field names + state schema registries for admin
+    // read models. Plugin_Builder does this for plugin-owned read models inside
+    // its own loop, but admin RMs are passed in from outside and skip that path.
+    // Without these entries, QueryDbResolvers_{AppSync,GraphQL}.make falls back
+    // to lowercased Spec.name field names (e.g. `plugin`/`plugins`), which don't
+    // match the `Platform_Plugin`/`Platform_Plugins` SDL fields declared by
+    // PluginBaseFragment.queryEntries — leaving the SDL fields without a
+    // resolver and producing "Cannot return null for non-nullable type" errors.
+    AdminApi.queryEntries->Array.forEach(entry => {
+      let prefix = "Platform_"
+      let entityName = if entry.returnTypeName->String.startsWith(prefix) {
+        entry.returnTypeName->String.slice(
+          ~start=prefix->String.length,
+          ~end=entry.returnTypeName->String.length,
+        )
+      } else {
+        entry.returnTypeName
+      }
+      let (labelField, _searchableFields) = Plugin_Structure.labelFieldsFromStateSchema(
+        ~entityName,
+        entry.stateSchema,
+      )
+      let qn: Api_Naming.queryNames = {
+        singleFieldName: entry.singleFieldName,
+        listFieldName: entry.listFieldName,
+        returnTypeName: entry.returnTypeName,
+        pluralTypeName: entry.listFieldName,
+        includeIdParam: entry.includeIdParam->Option.getOr(true),
+        connectionSpec: entry.connectionSpec->Option.getOr(true),
+        labelField,
+        connectionFilterTypeName: entry.returnTypeName ++ "Filter",
+      }
+      Plugin_Helpers.queryFieldNamesRegistry->Dict.set(entityName, qn)
+      Plugin_Helpers.stateSchemaRegistry->Dict.set(entityName, entry.stateSchema)
+    })
+
     let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
