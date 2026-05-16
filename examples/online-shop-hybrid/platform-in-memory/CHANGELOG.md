@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.37 (2026-05-16)
+
+### Bug Fixes
+
+* **deps:** bump @reventlessdev/reventless-host-shell to 3.0.0-alpha.11 ([a89211c](https://github.com/ReventlessDev/reventless-core/commit/a89211cd2f1bf23f4eb84223e7d37d7dda5194a5))
+* **deps:** bump @reventlessdev/reventless-host-shell to 3.0.0-alpha.12 ([a5f8ac0](https://github.com/ReventlessDev/reventless-core/commit/a5f8ac02652a3d29435ec1248671ba13ae199599))
+### Features
+
+* **example:** switch online-shop-hybrid dev:ui to host-shell ([65e2cf8](https://github.com/ReventlessDev/reventless-core/commit/65e2cf8fadaa46c97741b2cf945d6ceae7d22fe4))
+
+
 # 1.0.0-alpha.36 (2026-05-14)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-in-memory

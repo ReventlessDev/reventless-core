@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.34 (2026-05-16)
+
+### Features
+
+* **examples:** annotate Order [@allowed](https://github.com/allowed)States + [@status](https://github.com/status) across online-shop examples ([b63a6c1](https://github.com/ReventlessDev/reventless-core/commit/b63a6c184e74443df21cb5abdefdafca5a143668))
+
+
 # 1.0.0-alpha.33 (2026-05-14)
 
 ### Features

@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.72 (2026-05-16)
+
+### Bug Fixes
+
+* **api:** match admin command variants by name not position ([8aabea3](https://github.com/ReventlessDev/reventless-core/commit/8aabea3704879b63b69ee184cf8fdd85cf0a1e55))
+* **core:** align Plugin RM UIDefinitions schema with SDL for AutoUI ([99dd7c0](https://github.com/ReventlessDev/reventless-core/commit/99dd7c0d9442f8b2ecd5e93989dc3116279bd70c))
+* **core:** populate Plugin admin allowedStates + statusField for AutoUI filter ([2a7fe34](https://github.com/ReventlessDev/reventless-core/commit/2a7fe34393e1feece7b2de6bad535e8e0d4e1e91))
+* **core:** restore payload-less filter for event-schema extraction ([664d88f](https://github.com/ReventlessDev/reventless-core/commit/664d88f24f19f967f9680694d947f766bd4bc263))
+* **ppx:** drop [@allowed](https://github.com/allowed)States witness; spec.status as option<string> ([cc0eed0](https://github.com/ReventlessDev/reventless-core/commit/cc0eed0e499c70009603619dd9f23a6bb2dd35df))
+### Features
+
+* add onPluginStatusChange subscription contract + in-memory emit ([1859dae](https://github.com/ReventlessDev/reventless-core/commit/1859daefec3e74ad4e0a87c11cc45b32f99f6962))
+* **admin:** expose built-in Platform admin plugin in host shell Auto UI ([e9a8cb2](https://github.com/ReventlessDev/reventless-core/commit/e9a8cb20efb958e582738720ddb5812bdf950876))
+* complete plugin status gate on both adapters with tiered error codes ([2a8309b](https://github.com/ReventlessDev/reventless-core/commit/2a8309bbf324b276dbcede1be85a5f90dedd82eb))
+* **ppx:** [@status](https://github.com/status) field annotation + [@allowed](https://github.com/allowed)States command annotation ([15f0478](https://github.com/ReventlessDev/reventless-core/commit/15f0478209dbb4e5d385332cf8cf320c694ac1c1))
+* **spec:** allowedStates + statusField metadata for AutoUI command filtering ([b5d138b](https://github.com/ReventlessDev/reventless-core/commit/b5d138bb706515f7c6ba5daf7f4ef481cc35d024))
+* wire admin Plugin aggregate through standard auto-resolver flow ([73a58d3](https://github.com/ReventlessDev/reventless-core/commit/73a58d3b93922989a51bc15724dd92baa15b7037))
+
+
 # 3.0.0-alpha.71 (2026-05-14)
 
 ### Bug Fixes

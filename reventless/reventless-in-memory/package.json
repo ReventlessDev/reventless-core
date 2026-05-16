@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-in-memory",
-  "version": "3.0.0-alpha.47",
+  "version": "3.0.0-alpha.48",
   "description": "In-memory platform for Reventless (for testing without AWS)",
   "license": "MIT",
   "scripts": {
@@ -40,8 +40,8 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "graphql": "^16.13.2",
-    "graphql-yoga": "^5.21.0",
     "graphql-ws": "^5.16.0",
+    "graphql-yoga": "^5.21.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

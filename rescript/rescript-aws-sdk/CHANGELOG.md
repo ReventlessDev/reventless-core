@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.2.0-alpha.11 (2026-05-16)
+
+### Bug Fixes
+
+* **rescript-aws-sdk:** declare @smithy/node-http-handler dependency ([329966a](https://github.com/ReventlessDev/reventless-core/commit/329966a2ae6c709023dcc390990277cc06f61a19))
+
+
 # 2.2.0-alpha.10 (2026-05-14)
 
 **Note:** Version bump only for package @reventlessdev/rescript-aws-sdk

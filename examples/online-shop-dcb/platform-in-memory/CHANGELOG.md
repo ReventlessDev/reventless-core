@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.29 (2026-05-16)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-in-memory
+
+
+
+
+
 # 1.0.0-alpha.28 (2026-05-14)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-platform-in-memory

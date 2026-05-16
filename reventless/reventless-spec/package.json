@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-spec",
-  "version": "3.0.0-alpha.38",
+  "version": "3.0.0-alpha.39",
   "description": "Specifications for Reventless",
   "license": "MIT",
   "bin": {
