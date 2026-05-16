@@ -554,7 +554,7 @@ function MakeWithConfig(Config) {
         }
         console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
-        await AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+        await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
           apiId: apiId,
           definition: sdl
         });
@@ -772,10 +772,10 @@ function MakeWithConfig(Config) {
       Output$Pulumi.flatMap(platformApi, api => Output$Pulumi.flatMap(api.id, apiId => {
         console.log(`[makePlatform] Pushing admin schema to core-api ` + apiId);
         let client = AppSync_Adapter$ReventlessAws.getClient();
-        return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+        return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
           apiId: apiId,
           definition: sdl
-        }).then(async param => {
+        }).then(async () => {
           console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE");
           await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
           console.log("[makePlatform] core-api schema is ACTIVE");
@@ -846,7 +846,7 @@ function MakeWithConfig(Config) {
       });
       let baseFragment = Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, fragments);
-      await AppSync_Adapter$ReventlessAws.startSchemaCreation(AppSync_Adapter$ReventlessAws.getClient(), {
+      return await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl
       });
@@ -894,10 +894,10 @@ function MakeWithConfig(Config) {
       ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
         console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
         let client = AppSync_Adapter$ReventlessAws.getClient();
-        return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+        return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
           apiId: apiId,
           definition: sdl
-        }).then(async param => {
+        }).then(async () => {
           console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE");
           await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
           console.log("[deployPlatform] core-api schema is ACTIVE");
@@ -1510,7 +1510,7 @@ function Make($star) {
         }
         console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
-        await AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+        await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
           apiId: apiId,
           definition: sdl
         });
@@ -1722,10 +1722,10 @@ function Make($star) {
     Output$Pulumi.flatMap(platformApi, api => Output$Pulumi.flatMap(api.id, apiId => {
       console.log(`[makePlatform] Pushing admin schema to core-api ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
         apiId: apiId,
         definition: sdl
-      }).then(async param => {
+      }).then(async () => {
         console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
         console.log("[makePlatform] core-api schema is ACTIVE");
@@ -1785,7 +1785,7 @@ function Make($star) {
         }
       });
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(emptyBaseFragment, fragments);
-      await AppSync_Adapter$ReventlessAws.startSchemaCreation(AppSync_Adapter$ReventlessAws.getClient(), {
+      return await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(AppSync_Adapter$ReventlessAws.getClient(), {
         apiId: apiId,
         definition: sdl
       });
@@ -1832,10 +1832,10 @@ function Make($star) {
     ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
       console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreation(client, {
+      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
         apiId: apiId,
         definition: sdl
-      }).then(async param => {
+      }).then(async () => {
         console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
         console.log("[deployPlatform] core-api schema is ACTIVE");

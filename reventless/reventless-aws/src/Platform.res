@@ -718,7 +718,7 @@ module MakeWithConfig = (
                   `[preResolversSchemaHook] Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
                 )
                 let client = AppSync_Adapter.getClient()
-                let _ = await client->AppSync_Adapter.startSchemaCreation({
+                await client->AppSync_Adapter.startSchemaCreationRetrying({
                   apiId,
                   definition: sdl,
                 })
@@ -1079,7 +1079,7 @@ module MakeWithConfig = (
           Console.log(`[makePlatform] Pushing admin schema to core-api ${apiId}`)
           let client = AppSync_Adapter.getClient()
           client
-          ->AppSync_Adapter.startSchemaCreation({apiId, definition: sdl})
+          ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
           ->Promise.then(async _ => {
             Console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE")
             await AppSync_Adapter.waitForSchemaActive(client, apiId)
@@ -1207,7 +1207,7 @@ module MakeWithConfig = (
           ~baseFragment,
           ~pluginFragments=fragments,
         )
-        let _ = await AppSync_Adapter.getClient()->AppSync_Adapter.startSchemaCreation({
+        await AppSync_Adapter.getClient()->AppSync_Adapter.startSchemaCreationRetrying({
           apiId,
           definition: sdl,
         })
@@ -1325,7 +1325,7 @@ module MakeWithConfig = (
             Console.log(`[deployPlatform] Pushing admin schema to core-api ${apiId}`)
             let client = AppSync_Adapter.getClient()
             client
-            ->AppSync_Adapter.startSchemaCreation({apiId, definition: sdl})
+            ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
             ->Promise.then(async _ => {
               Console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE")
               await AppSync_Adapter.waitForSchemaActive(client, apiId)

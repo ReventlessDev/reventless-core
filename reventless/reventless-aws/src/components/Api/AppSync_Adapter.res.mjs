@@ -8,11 +8,10 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
-import * as Duration from "effect/Duration";
-import * as Schedule from "effect/Schedule";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
+import * as AppSync_Error$ReventlessAws from "../../errors/AppSync_Error.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
@@ -22,6 +21,10 @@ function sha256Hex(input) {
 
 function startSchemaCreation(client, input) {
   return client.send(new ClientAppsync.StartSchemaCreationCommand(input));
+}
+
+function startSchemaCreationRetrying(client, input) {
+  return Effect$1.runPromise(Effect$1.retry(Effect.tryPromise(AppSync_Error$ReventlessAws.classify, () => client.send(new ClientAppsync.StartSchemaCreationCommand(input)).then(param => Promise.resolve())), AppSync_Error$ReventlessAws.retrySchedule));
 }
 
 async function waitForSchemaActive(client, apiId, maxAttemptsOpt, attemptOpt) {
@@ -50,17 +53,11 @@ async function waitForSchemaActive(client, apiId, maxAttemptsOpt, attemptOpt) {
   }
 }
 
-function deploySchemaWithRetry(client, apiId, definition, options) {
-  let opts = options !== undefined ? options : ({
-      maxRetries: 5,
-      baseDelayMs: 1000
-    });
-  let effect = Effect.tryPromise(exn => exn, () => client.send(new ClientAppsync.StartSchemaCreationCommand({
+function deploySchemaWithRetry(client, apiId, definition) {
+  return Effect$1.retry(Effect.tryPromise(AppSync_Error$ReventlessAws.classify, () => client.send(new ClientAppsync.StartSchemaCreationCommand({
     apiId: apiId,
     definition: definition
-  })).then(param => Promise.resolve()));
-  let retrySchedule = Schedule.compose(Schedule.exponential(Duration.millis(opts.baseDelayMs)), Schedule.recurs(opts.maxRetries));
-  return Effect$1.retry(effect, retrySchedule);
+  })).then(param => Promise.resolve())), AppSync_Error$ReventlessAws.retrySchedule);
 }
 
 let _client = {
@@ -262,7 +259,7 @@ function updateSchema(api, baseFragment, pluginFragments) {
     contents: Promise.resolve()
   };
   api.apply(graphQLApi => graphQLApi.id.apply(apiId => {
-    let effect = deploySchemaWithRetry(getClient(), apiId, sdl, undefined);
+    let effect = deploySchemaWithRetry(getClient(), apiId, sdl);
     let p = Effect$1.runPromise(effect);
     resultPromise.contents = p;
   }));
@@ -272,6 +269,7 @@ function updateSchema(api, baseFragment, pluginFragments) {
 export {
   sha256Hex,
   startSchemaCreation,
+  startSchemaCreationRetrying,
   waitForSchemaActive,
   deploySchemaWithRetry,
   _client,

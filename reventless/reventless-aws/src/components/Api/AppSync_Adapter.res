@@ -40,6 +40,26 @@ external send: (appSyncClient, startSchemaCreationCommand) => promise<unknown> =
 let startSchemaCreation = (client: appSyncClient, input: startSchemaCreationInput) =>
   client->send(input->makeStartSchemaCreationCommand)
 
+// Retrying wrapper: AppSync holds an API-level lock during schema creation and
+// rejects concurrent StartSchemaCreation calls with HTTP 409
+// ConcurrentModificationException ("Schema is currently being altered, please
+// wait until that is complete."). When multiple processes deploy plugin stacks
+// in parallel against the same AppSync API, they race on this lock. Retry with
+// jittered exponential backoff so a losing call can wait for the in-progress
+// schema to finish and try again. Permanent errors (e.g. invalid SDL) are not
+// retried — see AppSync_Error.classify.
+let startSchemaCreationRetrying = (
+  client: appSyncClient,
+  input: startSchemaCreationInput,
+): promise<unit> => {
+  Effect.tryPromise(
+    ~catch=AppSync_Error.classify,
+    () => startSchemaCreation(client, input)->Promise.then(_ => Promise.resolve()),
+  )
+  ->Effect.retry(AppSync_Error.retrySchedule)
+  ->Effect.runPromise
+}
+
 // GetSchemaCreationStatus — poll until schema is ACTIVE
 type getSchemaCreationStatusInput = {apiId: string}
 type getSchemaCreationStatusCommand
@@ -72,34 +92,15 @@ let rec waitForSchemaActive = async (client, apiId, ~maxAttempts=30, ~attempt=0)
   }
 }
 
-type schemaDeployOptions = {
-  maxRetries: int,
-  baseDelayMs: int,
-}
-
 let deploySchemaWithRetry = (
   client: appSyncClient,
   apiId: string,
   definition: string,
-  ~options: option<schemaDeployOptions>=?,
-): Effect.t<unit, unknown, unit> => {
-  let opts = switch options {
-  | Some(o) => o
-  | None => {maxRetries: 5, baseDelayMs: 1000}
-  }
-
-  let effect = Effect.tryPromise(
-    ~catch=exn => exn,
+): Effect.t<unit, AppSync_Error.t, unit> =>
+  Effect.tryPromise(
+    ~catch=AppSync_Error.classify,
     () => startSchemaCreation(client, {apiId, definition})->Promise.then(_ => Promise.resolve()),
-  )
-
-  let retrySchedule = Schedule.compose(
-    Schedule.exponential(Duration.millis(opts.baseDelayMs)),
-    Schedule.recurs(opts.maxRetries),
-  )
-
-  effect->Effect.retry(retrySchedule)
-}
+  )->Effect.retry(AppSync_Error.retrySchedule)
 
 // Lazy singleton AppSync client (runtime only)
 let _client: ref<option<appSyncClient>> = ref(None)
