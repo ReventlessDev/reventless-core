@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.86 (2026-05-16)
+
+### Bug Fixes
+
+* **aws:** use s3.Bucket instead of deprecated s3.BucketV2 ([1d89aec](https://github.com/ReventlessDev/reventless-core/commit/1d89aecde42d61904a2b1c905b76468bbf230db3))
+
+
 # 3.0.0-alpha.85 (2026-05-16)
 
 ### Features
