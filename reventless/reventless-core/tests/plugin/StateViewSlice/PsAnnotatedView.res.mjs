@@ -63,7 +63,8 @@ let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stat
   drillTargetKeys: [],
   collapsed: [],
   scan: [],
-  scanSort: []
+  scanSort: [],
+  status: undefined
 });
 
 let name = "AnnotatedView";

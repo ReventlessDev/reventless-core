@@ -1157,40 +1157,37 @@ let make_state_annotations_binding ~loc fields : structure_item option =
     let metadata_set_expr = ident (Ldot (Ldot (Lident "S", "Metadata"), "set")) in
     let annotations_id_expr =
       ident (Ldot (Ldot (Lident "Reventless", "StateAnnotations"), "stateAnnotationsId")) in
-    let base_fields =
-      [ ({ Location.txt = Lident "ids"; loc }, estr_array ~loc ids);
-        ({ txt = Lident "compositeIds"; loc }, estr_array ~loc composite_ids);
-        ({ txt = Lident "subIds"; loc }, estr_array ~loc sub_ids);
-        ({ txt = Lident "compositeSubIds"; loc }, estr_array ~loc composite_sub_ids);
-        ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes);
-        ({ txt = Lident "hidden"; loc }, estr_array ~loc hidden);
-        ({ txt = Lident "summary"; loc }, estr_array ~loc summary);
-        ({ txt = Lident "drillTargets"; loc }, str_tuple_array ~loc drill_targets);
-        ({ txt = Lident "drillTargetKeys"; loc }, str_tuple_array ~loc drill_target_keys);
-        ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);
-        ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
-        ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort) ] in
-    (* `status?: string` is an optional field on the spec record. Synthesised
-       fields always include the @res.optional attribute on both the field
-       label and the value, otherwise sury-ppx skips the optional handling
-       and emits the field as required (Location.none required per the
-       feedback memory on ppx-injected optional fields). *)
-    let optional_attr =
-      [ { attr_name = { txt = "res.optional"; loc = Location.none };
-          attr_payload = PStr [];
-          attr_loc = Location.none } ] in
-    let status_field =
+    (* `status: option<string>` is always emitted (None when no @status
+       annotation is present). Wrapping in Some/None keeps the AST simple
+       and avoids the @res.optional attribute gymnastics that an optional
+       (?:) field would require. *)
+    let status_value =
       match status with
-      | None -> []
+      | None ->
+        { pexp_desc = Pexp_construct ({ txt = Lident "None"; loc }, None);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] }
       | Some name ->
-        let label_loc = { Location.txt = Lident "status"; loc = Location.none } in
-        let value =
-          { pexp_desc = Pexp_constant (Pconst_string (name, Location.none, None));
-            pexp_loc = Location.none; pexp_loc_stack = [];
-            pexp_attributes = optional_attr } in
-        [ ({ label_loc with loc = Location.none }, value) ] in
+        let str_lit =
+          { pexp_desc = Pexp_constant (Pconst_string (name, loc, None));
+            pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
+        { pexp_desc = Pexp_construct ({ txt = Lident "Some"; loc }, Some str_lit);
+          pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let spec_record =
-      { pexp_desc = Pexp_record (base_fields @ status_field, None);
+      { pexp_desc = Pexp_record (
+          [ ({ Location.txt = Lident "ids"; loc }, estr_array ~loc ids);
+            ({ txt = Lident "compositeIds"; loc }, estr_array ~loc composite_ids);
+            ({ txt = Lident "subIds"; loc }, estr_array ~loc sub_ids);
+            ({ txt = Lident "compositeSubIds"; loc }, estr_array ~loc composite_sub_ids);
+            ({ txt = Lident "indexes"; loc }, str_tuple_array ~loc indexes);
+            ({ txt = Lident "hidden"; loc }, estr_array ~loc hidden);
+            ({ txt = Lident "summary"; loc }, estr_array ~loc summary);
+            ({ txt = Lident "drillTargets"; loc }, str_tuple_array ~loc drill_targets);
+            ({ txt = Lident "drillTargetKeys"; loc }, str_tuple_array ~loc drill_target_keys);
+            ({ txt = Lident "collapsed"; loc }, estr_array ~loc collapsed);
+            ({ txt = Lident "scan"; loc }, estr_array ~loc scan);
+            ({ txt = Lident "scanSort"; loc }, estr_array ~loc scan_sort);
+            ({ txt = Lident "status"; loc }, status_value) ],
+          None);
         pexp_loc = loc; pexp_loc_stack = []; pexp_attributes = [] } in
     let apply_expr =
       { pexp_desc = Pexp_apply (

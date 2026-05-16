@@ -108,31 +108,17 @@ let extract_variant_entries ~loc (td : type_declaration)
     ) constructors
   | _ -> []
 
-(* Emit `let _ = Module.Constructor` at structure top per unique constructor
-   referenced. The compiler resolves and type-checks the constructor here. *)
-let gen_witness_bindings ~loc entries =
-  let seen = Hashtbl.create 16 in
-  List.concat_map (fun (_variant, pairs) ->
-    List.filter_map (fun (_name, lid, lid_loc) ->
-      let key = Longident.flatten_exn lid |> String.concat "." in
-      if Hashtbl.mem seen key then None
-      else begin
-        Hashtbl.add seen key ();
-        let ref_expr =
-          { pexp_desc = Pexp_ident { txt = lid; loc = lid_loc };
-            pexp_loc = lid_loc; pexp_loc_stack = []; pexp_attributes = [] } in
-        let binding =
-          { pvb_pat = { ppat_desc = Ppat_any;
-                        ppat_loc = loc;
-                        ppat_loc_stack = [];
-                        ppat_attributes = [] };
-            pvb_expr = ref_expr;
-            pvb_attributes = [];
-            pvb_loc = loc } in
-        Some { pstr_desc = Pstr_value (Nonrecursive, [binding]); pstr_loc = loc }
-      end
-    ) pairs
-  ) entries
+(* Witness bindings (`let _ = Module.Constructor`) were considered to
+   give compile-time existence checks on the referenced constructors,
+   but PPX-emitted bindings are not visible to ReScript's dep analysis
+   (which runs pre-PPX). Adding `let _ = Orders.Placed` to a file that
+   doesn't otherwise reference `Orders` doesn't make ReScript build
+   `Orders` first, so the witness fails when `Orders` hasn't been
+   compiled yet. Dropping the witness: typos in the input now go
+   undetected at compile time. Future work: surface a runtime
+   validation at platform start that cross-checks each `allowedStates`
+   array against the corresponding read model's status-field schema. *)
+let gen_witness_bindings ~loc:_ _entries = []
 
 (* Emit `let commandSchema = ReventlessInfra.Api.markAllowedStates(commandSchema, [...])`.
    Mirrors `gen_no_api_variants_metadata_binding`. *)

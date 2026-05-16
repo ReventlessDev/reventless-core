@@ -70,7 +70,8 @@ let indexedStateSchemaWithAnnotations = S.Metadata.set(indexedStateSchema, State
   drillTargetKeys: [],
   collapsed: [],
   scan: [],
-  scanSort: []
+  scanSort: [],
+  status: undefined
 });
 
 let orderedStateSchema = S.schema(s => ({
@@ -91,7 +92,8 @@ let orderedStateSchemaWithAnnotations = S.Metadata.set(orderedStateSchema, State
   drillTargetKeys: [],
   collapsed: [],
   scan: [],
-  scanSort: []
+  scanSort: [],
+  status: undefined
 });
 
 let scanStateSchema = S.schema(s => ({
@@ -113,7 +115,8 @@ let scanStateSchemaWithAnnotations = S.Metadata.set(scanStateSchema, StateAnnota
   drillTargetKeys: [],
   collapsed: [],
   scan: ["status"],
-  scanSort: ["name"]
+  scanSort: ["name"],
+  status: undefined
 });
 
 describe("GraphQL_SchemaInspector", () => {

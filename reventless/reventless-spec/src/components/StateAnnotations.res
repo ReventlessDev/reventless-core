@@ -39,13 +39,13 @@ type stateAnnotationSpec = {
   scan: array<string>,
   scanSort: array<string>,
   /**
-  Field annotated `@status` on the state record (PPX-emitted). Present only
+  Field annotated `@status` on the state record (PPX-emitted). `Some(name)`
   when one such annotation exists; the PPX errors on duplicate `@status`
   annotations within the same record. Codegen consumes this to populate
   `queryableDef.statusField` (with a fallback to a field literally named
   `"status"` when this annotation is absent).
   */
-  status?: string,
+  status: option<string>,
 }
 
 /** Sury metadata ID used to attach a `stateAnnotationSpec` to a state schema. */

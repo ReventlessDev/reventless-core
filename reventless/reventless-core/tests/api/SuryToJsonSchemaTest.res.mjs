@@ -63,7 +63,8 @@ let emptySpec = {
   drillTargetKeys: emptySpec_drillTargetKeys,
   collapsed: emptySpec_collapsed,
   scan: emptySpec_scan,
-  scanSort: emptySpec_scanSort
+  scanSort: emptySpec_scanSort,
+  status: undefined
 };
 
 Jest.describe("SuryToJsonSchema:", () => {
@@ -83,8 +84,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         entityId: s.m(S.string),
         name: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.ids = ["entityId"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: ["entityId"],
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let entityIdSchema = getPropertyOf(json, "entityId");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(Stdlib_Option.flatMap(entityIdSchema, s => getProperty(s, "x-reventless-id")), Stdlib_JSON.Decode.bool)), true);
@@ -95,11 +109,24 @@ Jest.describe("SuryToJsonSchema:", () => {
         platformName: s.m(S.string),
         name: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.compositeIds = [
-        "environment",
-        "platformName"
-      ], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: [
+          "environment",
+          "platformName"
+        ],
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let envSchema = getPropertyOf(json, "environment");
       let platformSchema = getPropertyOf(json, "platformName");
@@ -116,8 +143,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         itemId: s.m(S.string),
         version: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.subIds = ["version"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: ["version"],
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let versionSchema = getPropertyOf(json, "version");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(Stdlib_Option.flatMap(versionSchema, s => getProperty(s, "x-reventless-subId")), Stdlib_JSON.Decode.bool)), true);
@@ -127,11 +167,24 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         ownerId: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.indexes = [[
-          "ownerId",
-          "byOwner"
-        ]], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: [[
+            "ownerId",
+            "byOwner"
+          ]],
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let ownerIdSchema = getPropertyOf(json, "ownerId");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(Stdlib_Option.flatMap(ownerIdSchema, s => getProperty(s, "x-reventless-index")), Stdlib_JSON.Decode.string)), "byOwner");
@@ -141,11 +194,24 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         category: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.indexes = [[
-          "category",
-          ""
-        ]], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: [[
+            "category",
+            ""
+          ]],
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let categorySchema = getPropertyOf(json, "category");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(Stdlib_Option.flatMap(categorySchema, s => getProperty(s, "x-reventless-index")), Stdlib_JSON.Decode.bool)), true);
@@ -155,8 +221,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         entityId: s.m(S.string),
         name: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.ids = ["entityId"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: ["entityId"],
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let nameSchema = getPropertyOf(json, "name");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(nameSchema, s => getProperty(s, "x-reventless-id"))), undefined);
@@ -166,8 +245,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         deploymentId: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.hidden = ["deploymentId"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: ["deploymentId"],
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let deploymentIdSchema = getPropertyOf(json, "deploymentId");
       let idSchema = getPropertyOf(json, "id");
@@ -184,8 +276,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         pluginName: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.summary = ["pluginName"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: ["pluginName"],
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let pluginNameSchema = getPropertyOf(json, "pluginName");
       let idSchema = getPropertyOf(json, "id");
@@ -202,11 +307,24 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         components: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.drillTargets = [[
-          "components",
-          "ResourceInventory"
-        ]], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: [[
+            "components",
+            "ResourceInventory"
+          ]],
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let componentsSchema = getPropertyOf(json, "components");
       let idSchema = getPropertyOf(json, "id");
@@ -223,14 +341,27 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         components: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.drillTargetKeys = [[
-          "components",
-          "kind/name"
-        ]], newrecord.drillTargets = [[
-          "components",
-          "ResourceInventory"
-        ]], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: [[
+            "components",
+            "ResourceInventory"
+          ]],
+        drillTargetKeys: [[
+            "components",
+            "kind/name"
+          ]],
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let componentsSchema = getPropertyOf(json, "components");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(Stdlib_Option.flatMap(componentsSchema, s => getProperty(s, "x-reventless-drillTargetKey")), Stdlib_JSON.Decode.string)), "kind/name");
@@ -240,11 +371,24 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         components: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.drillTargets = [[
-          "components",
-          "ResourceInventory"
-        ]], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: [[
+            "components",
+            "ResourceInventory"
+          ]],
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let componentsSchema = getPropertyOf(json, "components");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(componentsSchema, s => getProperty(s, "x-reventless-drillTargetKey"))), undefined);
@@ -254,8 +398,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         status: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.scan = ["status"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: ["status"],
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let statusSchema = getPropertyOf(json, "status");
       let idSchema = getPropertyOf(json, "id");
@@ -272,8 +429,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         name: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.scanSort = ["name"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: ["name"],
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let nameSchema = getPropertyOf(json, "name");
       let idSchema = getPropertyOf(json, "id");
@@ -290,8 +460,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         id: s.m(S.string),
         primaryResource: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.collapsed = ["primaryResource"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: emptySpec_ids,
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: ["primaryResource"],
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let json = SuryToJsonSchema$ReventlessCore.deriveObjectSchema(schema$p);
       let primarySchema = getPropertyOf(json, "primaryResource");
       let idSchema = getPropertyOf(json, "id");
@@ -347,8 +530,21 @@ Jest.describe("SuryToJsonSchema:", () => {
         entityId: s.m(S.string),
         name: s.m(S.string)
       }));
-      let newrecord = {...emptySpec};
-      let schema$p = withSpec(schema, (newrecord.ids = ["entityId"], newrecord));
+      let schema$p = withSpec(schema, {
+        ids: ["entityId"],
+        compositeIds: emptySpec_compositeIds,
+        subIds: emptySpec_subIds,
+        compositeSubIds: emptySpec_compositeSubIds,
+        indexes: emptySpec_indexes,
+        hidden: emptySpec_hidden,
+        summary: emptySpec_summary,
+        drillTargets: emptySpec_drillTargets,
+        drillTargetKeys: emptySpec_drillTargetKeys,
+        collapsed: emptySpec_collapsed,
+        scan: emptySpec_scan,
+        scanSort: emptySpec_scanSort,
+        status: undefined
+      });
       let native = S.toJSONSchema(schema$p);
       let entityIdSchema = getPropertyOf(native, "entityId");
       return Jest.Expect.toBe(Jest.Expect.expect(Stdlib_Option.flatMap(entityIdSchema, s => getProperty(s, "x-reventless-id"))), undefined);

@@ -30,6 +30,7 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
   collapsed: [],
   scan: [],
   scanSort: [],
+  status: None,
 }
 
 describe("SuryToJsonSchema:", () => {

@@ -40,7 +40,8 @@ let rowStateSchemaWithAnnotations = S.Metadata.set(rowStateSchema, StateAnnotati
   drillTargetKeys: [],
   collapsed: [],
   scan: ["status"],
-  scanSort: ["name"]
+  scanSort: ["name"],
+  status: undefined
 });
 
 let newrecord = {...Identity$Reventless.anonymous};
