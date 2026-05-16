@@ -247,7 +247,7 @@ The UI repo references `rescript-moment` from this repo using: `"file:../../../r
 
 Most ReScript packages here use `package-specs.in-source: true`, so compiled `.res.mjs` files land alongside `.res` sources. The convention is:
 
-- **Tracked**: outputs under `src/` and per-package `tests/` (where applicable). Either a publish-surface deliverable or shared workspace state run by CI.
-- **Not tracked**: outputs under `example/` or `examples/`. These are demo-only sub-projects whose `.res.mjs` files regenerate on every root rescript build and are unstable across root-vs-standalone builds. Gitignored at the root via `**/example/**/*.res.mjs` and `**/examples/**/*.res.mjs`. Mirrored in `reventless-ui/.gitignore` for cross-repo consistency.
+- **Tracked**: outputs under `src/` and per-package `tests/` (where applicable). Either a publish-surface deliverable, shared workspace state run by CI, or — for monorepo `examples/` apps — the entry point that Pulumi (`Main.res.mjs`) and `pnpm run run` (`Main.res.mjs` + transitive `Plugin.res.mjs` etc.) resolve at runtime. ReScript only emits in-source for build-root packages, so transitively-built deps don't reliably populate `src/` on a fresh `pnpm run build`; tracking the outputs avoids per-package build orchestration.
+- **Not tracked**: outputs under `rescript/*/src/example/` and `rescript/*/src/examples/` — inline usage demos inside ReScript binding packages (e.g. `rescript-aws-sdk/src/example`, `rescript-uuid/src/examples`). These regenerate on every build and aren't part of any publish surface or deploy path.
 
-If you add a new package with an `example/` (or similar demo) source dir, the existing root gitignore already covers it — no per-package gitignore needed. If you genuinely need to track demo outputs (e.g. for a published live demo), use a different directory name and update this note. Per-package `.gitignore` files (like `rescript/rescript-effect/.gitignore` covering its own `tests/`) remain as local exceptions where needed.
+Per-package `.gitignore` files (like `rescript/rescript-effect/.gitignore` covering its own `tests/`) remain as local exceptions where needed.
