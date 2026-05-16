@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.40 (2026-05-16)
+
+### Features
+
+* **ppx:** add @[@reventless](https://github.com/reventless).visibility to hide components from AutoUI ([bd302cf](https://github.com/ReventlessDev/reventless-core/commit/bd302cfc5bd5d4dfe50c8e1bf8596ab67e36c74e))
+
+
 # 1.0.0-alpha.39 (2026-05-16)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-dcb-ordering

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.88 (2026-05-16)
+
+### Bug Fixes
+
+* **aws:** retry AppSync StartSchemaCreation on ConcurrentModificationException ([932722a](https://github.com/ReventlessDev/reventless-core/commit/932722ab1ed0074b8925a36392add298f77a24fc))
+### Features
+
+* **ppx:** add @[@reventless](https://github.com/reventless).visibility to hide components from AutoUI ([bd302cf](https://github.com/ReventlessDev/reventless-core/commit/bd302cfc5bd5d4dfe50c8e1bf8596ab67e36c74e))
+
+
 # 3.0.0-alpha.87 (2026-05-16)
 
 ### Bug Fixes

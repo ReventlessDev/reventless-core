@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.36 (2026-05-16)
+
+### Bug Fixes
+
+* **example:** hide hybrid AvailableProducts StateViewSlice from AutoUI ([a7a5d4f](https://github.com/ReventlessDev/reventless-core/commit/a7a5d4f0d823342dc26cf588f063cd662f20246a))
+### Features
+
+* **ppx:** add @[@reventless](https://github.com/reventless).visibility to hide components from AutoUI ([bd302cf](https://github.com/ReventlessDev/reventless-core/commit/bd302cfc5bd5d4dfe50c8e1bf8596ab67e36c74e))
+
+
 # 1.0.0-alpha.35 (2026-05-16)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

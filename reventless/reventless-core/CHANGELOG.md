@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.74 (2026-05-16)
+
+### Bug Fixes
+
+* also filter Internal queryables from pluginStructure ([abdf247](https://github.com/ReventlessDev/reventless-core/commit/abdf2472299e975f7d1aa4b31318ba7e9919a206))
+### Features
+
+* **ppx:** add @[@reventless](https://github.com/reventless).visibility to hide components from AutoUI ([bd302cf](https://github.com/ReventlessDev/reventless-core/commit/bd302cfc5bd5d4dfe50c8e1bf8596ab67e36c74e))
+
+
 # 3.0.0-alpha.73 (2026-05-16)
 
 ### Bug Fixes

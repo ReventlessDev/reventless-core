@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.50 (2026-05-16)
+
+### Bug Fixes
+
+* **in-memory:** back PlatformEventGraph with seeded QueryDb so node.id resolves ([0ec207f](https://github.com/ReventlessDev/reventless-core/commit/0ec207f4f280573d0c2f3f7205ebfac8fe36af74))
+### Features
+
+* **ppx:** add @[@reventless](https://github.com/reventless).visibility to hide components from AutoUI ([bd302cf](https://github.com/ReventlessDev/reventless-core/commit/bd302cfc5bd5d4dfe50c8e1bf8596ab67e36c74e))
+
+
 # 3.0.0-alpha.49 (2026-05-16)
 
 **Note:** Version bump only for package @reventlessdev/reventless-in-memory
