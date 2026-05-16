@@ -225,14 +225,19 @@ let injectAwsAuth = (
         ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
         ("mutations", JSON.Encode.array(augmentedMutations->Array.map(JSON.Encode.string))),
         ("queries", JSON.Encode.array(augmentedQueries->Array.map(JSON.Encode.string))),
+        (
+          "subscriptions",
+          JSON.Encode.array(parts.subscriptions->Array.map(JSON.Encode.string)),
+        ),
       ]),
     )->JSON.stringify
 
   {Reventless.Plugin.encoded, protocol: "graphql"}
 }
 
-// Injects @aws_auth with the given group on ALL mutation and query fields in a fragment.
-// Used for the base fragment where all fields share the same authorization group.
+// Injects @aws_auth with the given group on ALL mutation, query, and subscription
+// fields in a fragment. Used for the base fragment where all fields share the
+// same authorization group.
 let injectAwsAuthAll = (
   fragment: Reventless.Plugin.apiSchemaFragment,
   ~group: string,
@@ -245,6 +250,9 @@ let injectAwsAuthAll = (
   let augmentedQueries = parts.queries->Array.map(field =>
     `${field} @aws_auth(cognito_groups: ["${group}"])`
   )
+  let augmentedSubscriptions = parts.subscriptions->Array.map(field =>
+    `${field}\n    @aws_auth(cognito_groups: ["${group}"])`
+  )
 
   let encoded =
     JSON.Encode.object(
@@ -252,6 +260,10 @@ let injectAwsAuthAll = (
         ("types", JSON.Encode.array(parts.types->Array.map(JSON.Encode.string))),
         ("mutations", JSON.Encode.array(augmentedMutations->Array.map(JSON.Encode.string))),
         ("queries", JSON.Encode.array(augmentedQueries->Array.map(JSON.Encode.string))),
+        (
+          "subscriptions",
+          JSON.Encode.array(augmentedSubscriptions->Array.map(JSON.Encode.string)),
+        ),
       ]),
     )->JSON.stringify
 

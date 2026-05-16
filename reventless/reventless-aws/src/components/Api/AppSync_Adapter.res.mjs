@@ -179,6 +179,10 @@ function injectAwsAuth(fragment, mutationEntries, queryEntries) {
     [
       "queries",
       augmentedQueries.map(prim => prim)
+    ],
+    [
+      "subscriptions",
+      parts.subscriptions.map(prim => prim)
     ]
   ]));
   return {
@@ -191,6 +195,7 @@ function injectAwsAuthAll(fragment, group) {
   let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
   let augmentedMutations = parts.mutations.map(field => field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`);
   let augmentedQueries = parts.queries.map(field => field + ` @aws_auth(cognito_groups: ["` + group + `"])`);
+  let augmentedSubscriptions = parts.subscriptions.map(field => field + `\n    @aws_auth(cognito_groups: ["` + group + `"])`);
   let encoded = JSON.stringify(Object.fromEntries([
     [
       "types",
@@ -203,6 +208,10 @@ function injectAwsAuthAll(fragment, group) {
     [
       "queries",
       augmentedQueries.map(prim => prim)
+    ],
+    [
+      "subscriptions",
+      augmentedSubscriptions.map(prim => prim)
     ]
   ]));
   return {

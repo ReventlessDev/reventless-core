@@ -55,6 +55,31 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
       expect(field)->toContain(`cognito_groups: ["SuperAdmin"]`)
     })
   })
+
+  // Regression: `injectAwsAuthAll` used to re-encode the fragment without the
+  // `subscriptions` array, silently dropping every Subscription field on the
+  // admin base. That caused AppSync to reject the auto-generated resolver for
+  // `Subscription.onPlatform_Plugin_Activate` (and Deactivate) with "Type not
+  // found" at deploy time. The subscription fields must survive the round-trip
+  // and pick up the same @aws_auth group as mutations/queries.
+  test("preserves subscription fields with @aws_auth directive", () => {
+    let original = decodeFragment(baseFragment)
+    let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
+    let parts = decodeFragment(augmented)
+    expect(parts.subscriptions->Array.length)->toBe(original.subscriptions->Array.length)
+    expect(parts.subscriptions->Array.length)->toBeGreaterThan(0)
+    parts.subscriptions->Array.forEach(field => {
+      expect(field)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
+    })
+  })
+
+  test("admin Plugin aggregate subscription fields survive the round-trip", () => {
+    let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
+    let parts = decodeFragment(augmented)
+    let joined = parts.subscriptions->Array.join("\n")
+    expect(joined)->toContain("onPlatform_Plugin_Activate")
+    expect(joined)->toContain("onPlatform_Plugin_Deactivate")
+  })
 })
 
 describe("AppSync_Adapter.injectAwsAuth", () => {

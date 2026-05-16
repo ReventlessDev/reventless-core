@@ -53,6 +53,23 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
       expect(field).toContain(`cognito_groups: ["SuperAdmin"]`);
     });
   });
+  test("preserves subscription fields with @aws_auth directive", () => {
+    let original = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
+    expect(parts.subscriptions.length).toBe(original.subscriptions.length);
+    expect(parts.subscriptions.length).toBeGreaterThan(0);
+    parts.subscriptions.forEach(field => {
+      expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+    });
+  });
+  test("admin Plugin aggregate subscription fields survive the round-trip", () => {
+    let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
+    let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
+    let joined = parts.subscriptions.join("\n");
+    expect(joined).toContain("onPlatform_Plugin_Activate");
+    expect(joined).toContain("onPlatform_Plugin_Deactivate");
+  });
 });
 
 describe("AppSync_Adapter.injectAwsAuth", () => {
