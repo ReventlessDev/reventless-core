@@ -853,6 +853,95 @@ function MakeWithConfig(Config) {
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };
+  let platformEventGraphQueryDbOpsRef = {
+    contents: undefined
+  };
+  let ensurePlatformEventGraphQueryDbStore = () => {
+    let ops = platformEventGraphQueryDbOpsRef.contents;
+    if (ops !== undefined) {
+      return ops;
+    }
+    let store = {
+      contents: {}
+    };
+    let allItems = {
+      contents: []
+    };
+    let syncAll = () => {
+      allItems.contents = Object.entries(store.contents).flatMap(param => {
+        let id = param[0];
+        return param[1].map(item => {
+          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+          if (Stdlib_Option.isSome(obj["id"])) {
+            return item;
+          }
+          let copy = {};
+          Object.entries(obj).forEach(param => {
+            copy[param[0]] = param[1];
+          });
+          copy["id"] = id;
+          return copy;
+        });
+      });
+    };
+    let ops_load = async id => ({
+      TAG: "Ok",
+      _0: Stdlib_Option.getOr(store.contents[id], [])
+    });
+    let ops_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
+    let ops_save = async (id, state, param, param$1) => {
+      store.contents[id] = [state];
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops_saveBatch = async batch => {
+      batch.forEach(param => {
+        store.contents[param[0]] = [param[1]];
+      });
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops_count = async (param, param$1, inc) => ({
+      TAG: "Ok",
+      _0: inc
+    });
+    let ops_delete = async (id, param) => {
+      Stdlib_Dict.$$delete(store.contents, id);
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops_deleteBatch = async ids => {
+      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops$1 = {
+      load: ops_load,
+      loadStream: ops_loadStream,
+      save: ops_save,
+      saveBatch: ops_saveBatch,
+      count: ops_count,
+      delete: ops_delete,
+      deleteBatch: ops_deleteBatch
+    };
+    Bus.registerQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name, ops$1);
+    Bus.registerQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => allItems.contents);
+    Bus.registerQueryDbStream(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
+    platformEventGraphQueryDbOpsRef.contents = ops$1;
+    return ops$1;
+  };
   let pluginStructuresStore = {
     contents: {}
   };
@@ -964,6 +1053,33 @@ function MakeWithConfig(Config) {
         uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
+  };
+  let seedPlatformEventGraphQueryDb = pluginComponents => {
+    let ops = ensurePlatformEventGraphQueryDbStore();
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.pluginStructure
+      ]).apply(param => {
+        let ps = param[1];
+        if (ps === undefined) {
+          return;
+        }
+        let id = param[0];
+        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
+        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, ps);
+        let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        ops.save(id, entry, "Any", undefined);
+      });
+    });
+  };
+  let seedAdminPlatformEventGraphEntry = () => {
+    let ops = ensurePlatformEventGraphQueryDbStore();
+    let adminName = Stdlib_Option.getOr(Platform_Admin_Structure$ReventlessCore.pluginId.split("@")[0], Platform_Admin_Structure$ReventlessCore.pluginId);
+    let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(adminName, Platform_Admin_Structure$ReventlessCore.structure);
+    let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+    ops.save(Platform_Admin_Structure$ReventlessCore.pluginId, entry, "Any", undefined);
   };
   let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
     let providerPlugin = ext.extensionPointName.split(".")[0];
@@ -1175,7 +1291,9 @@ function MakeWithConfig(Config) {
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
+    seedPlatformEventGraphQueryDb(plugins$1);
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
+    seedAdminPlatformEventGraphEntry();
     CommandGeneratorResolvers_GraphQL$ReventlessInMemory.setPluginStatusGate(field => {
       let parts = field.split("_");
       let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
@@ -1239,23 +1357,29 @@ function MakeWithConfig(Config) {
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    let buildEventGraphEntries = () => Object.entries(pluginStructuresStore.contents).map(param => {
-      let id = param[0];
-      let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-      let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
-      return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-    });
     queryResolvers[eventGraphQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let structure = pluginStructuresStore.contents[id];
-      if (structure === undefined) {
+      let ops = Bus.getQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name);
+      if (ops === undefined) {
         return null;
       }
-      let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-      let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, structure);
-      return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+      let item = items[0];
+      if (item === undefined) {
+        return null;
+      }
+      let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+      let copy = {};
+      Object.entries(obj).forEach(param => {
+        copy[param[0]] = param[1];
+      });
+      copy["id"] = id;
+      return copy;
     };
-    queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
+    queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
+      let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
+      return connectionResponse(scanAll !== undefined ? scanAll() : []);
+    };
     queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
       let dict = {};
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
@@ -2571,6 +2695,95 @@ function Make($star) {
     uiFragmentQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };
+  let platformEventGraphQueryDbOpsRef = {
+    contents: undefined
+  };
+  let ensurePlatformEventGraphQueryDbStore = () => {
+    let ops = platformEventGraphQueryDbOpsRef.contents;
+    if (ops !== undefined) {
+      return ops;
+    }
+    let store = {
+      contents: {}
+    };
+    let allItems = {
+      contents: []
+    };
+    let syncAll = () => {
+      allItems.contents = Object.entries(store.contents).flatMap(param => {
+        let id = param[0];
+        return param[1].map(item => {
+          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+          if (Stdlib_Option.isSome(obj["id"])) {
+            return item;
+          }
+          let copy = {};
+          Object.entries(obj).forEach(param => {
+            copy[param[0]] = param[1];
+          });
+          copy["id"] = id;
+          return copy;
+        });
+      });
+    };
+    let ops_load = async id => ({
+      TAG: "Ok",
+      _0: Stdlib_Option.getOr(store.contents[id], [])
+    });
+    let ops_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
+    let ops_save = async (id, state, param, param$1) => {
+      store.contents[id] = [state];
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops_saveBatch = async batch => {
+      batch.forEach(param => {
+        store.contents[param[0]] = [param[1]];
+      });
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops_count = async (param, param$1, inc) => ({
+      TAG: "Ok",
+      _0: inc
+    });
+    let ops_delete = async (id, param) => {
+      Stdlib_Dict.$$delete(store.contents, id);
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops_deleteBatch = async ids => {
+      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
+      syncAll();
+      return {
+        TAG: "Ok",
+        _0: undefined
+      };
+    };
+    let ops$1 = {
+      load: ops_load,
+      loadStream: ops_loadStream,
+      save: ops_save,
+      saveBatch: ops_saveBatch,
+      count: ops_count,
+      delete: ops_delete,
+      deleteBatch: ops_deleteBatch
+    };
+    Bus.registerQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name, ops$1);
+    Bus.registerQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => allItems.contents);
+    Bus.registerQueryDbStream(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
+    platformEventGraphQueryDbOpsRef.contents = ops$1;
+    return ops$1;
+  };
   let pluginStructuresStore = {
     contents: {}
   };
@@ -2682,6 +2895,33 @@ function Make($star) {
         uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
+  };
+  let seedPlatformEventGraphQueryDb = pluginComponents => {
+    let ops = ensurePlatformEventGraphQueryDbStore();
+    pluginComponents.forEach(plugin => {
+      let outputs = Component$ReventlessCore.outputs(plugin);
+      Pulumi.all([
+        outputs.id,
+        outputs.pluginStructure
+      ]).apply(param => {
+        let ps = param[1];
+        if (ps === undefined) {
+          return;
+        }
+        let id = param[0];
+        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
+        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, ps);
+        let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        ops.save(id, entry, "Any", undefined);
+      });
+    });
+  };
+  let seedAdminPlatformEventGraphEntry = () => {
+    let ops = ensurePlatformEventGraphQueryDbStore();
+    let adminName = Stdlib_Option.getOr(Platform_Admin_Structure$ReventlessCore.pluginId.split("@")[0], Platform_Admin_Structure$ReventlessCore.pluginId);
+    let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(adminName, Platform_Admin_Structure$ReventlessCore.structure);
+    let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+    ops.save(Platform_Admin_Structure$ReventlessCore.pluginId, entry, "Any", undefined);
   };
   let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
     let providerPlugin = ext.extensionPointName.split(".")[0];
@@ -2888,7 +3128,9 @@ function Make($star) {
     seedPluginQueryDb(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
+    seedPlatformEventGraphQueryDb(plugins$1);
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
+    seedAdminPlatformEventGraphEntry();
     CommandGeneratorResolvers_GraphQL$ReventlessInMemory.setPluginStatusGate(field => {
       let parts = field.split("_");
       let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
@@ -2952,23 +3194,29 @@ function Make($star) {
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    let buildEventGraphEntries = () => Object.entries(pluginStructuresStore.contents).map(param => {
-      let id = param[0];
-      let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-      let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
-      return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-    });
     queryResolvers[eventGraphQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let structure = pluginStructuresStore.contents[id];
-      if (structure === undefined) {
+      let ops = Bus.getQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name);
+      if (ops === undefined) {
         return null;
       }
-      let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-      let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, structure);
-      return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+      let item = items[0];
+      if (item === undefined) {
+        return null;
+      }
+      let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+      let copy = {};
+      Object.entries(obj).forEach(param => {
+        copy[param[0]] = param[1];
+      });
+      copy["id"] = id;
+      return copy;
     };
-    queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse(buildEventGraphEntries());
+    queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
+      let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
+      return connectionResponse(scanAll !== undefined ? scanAll() : []);
+    };
     queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
       let dict = {};
       let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
