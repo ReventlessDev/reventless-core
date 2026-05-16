@@ -50,6 +50,8 @@ let activateCommand_mutationField = Api_Naming$ReventlessCore.adminField("Plugin
 
 let activateCommand_references = [];
 
+let activateCommand_allowedStates = ["Inactive"];
+
 let activateCommand = {
   name: "Activate",
   schema: activateCommand_schema,
@@ -57,7 +59,7 @@ let activateCommand = {
   aggregateIdField: activateCommand_aggregateIdField,
   mutationField: activateCommand_mutationField,
   references: activateCommand_references,
-  allowedStates: undefined
+  allowedStates: activateCommand_allowedStates
 };
 
 let deactivateCommand_schema = encodeSchema(idArgsSchema);
@@ -68,6 +70,11 @@ let deactivateCommand_mutationField = Api_Naming$ReventlessCore.adminField("Plug
 
 let deactivateCommand_references = [];
 
+let deactivateCommand_allowedStates = [
+  "Connected",
+  "Disconnected"
+];
+
 let deactivateCommand = {
   name: "Deactivate",
   schema: deactivateCommand_schema,
@@ -75,7 +82,7 @@ let deactivateCommand = {
   aggregateIdField: deactivateCommand_aggregateIdField,
   mutationField: deactivateCommand_mutationField,
   references: deactivateCommand_references,
-  allowedStates: undefined
+  allowedStates: deactivateCommand_allowedStates
 };
 
 let pluginAggregate_commands = [
@@ -108,6 +115,8 @@ let pluginReadModel_linkedWriteSide = ["Plugin"];
 
 let pluginReadModel_searchableFields = ["name"];
 
+let pluginReadModel_statusField = "status";
+
 let pluginReadModel = {
   name: "Plugin",
   queryField: pluginReadModel_queryField,
@@ -116,7 +125,7 @@ let pluginReadModel = {
   linkedWriteSide: pluginReadModel_linkedWriteSide,
   labelField: "name",
   searchableFields: pluginReadModel_searchableFields,
-  statusField: undefined
+  statusField: pluginReadModel_statusField
 };
 
 let eventGraphReadModel_queryField = Api_Naming$ReventlessCore.adminField("PlatformEventGraphs");

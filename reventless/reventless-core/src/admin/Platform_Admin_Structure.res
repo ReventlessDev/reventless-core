@@ -62,6 +62,10 @@ type idArgs = {id: @s.matches(Reventless.DcbTag.string) string}
 // Instance-level command whose schema has a DCB-tagged id field; the
 // hand-rolled definitions below have to mirror that.
 
+// `allowedStates` mirrors the PluginBehavior accept/reject branches: Activate
+// is meaningful only on Inactive plugins; Deactivate is meaningful on
+// Connected or Disconnected ones. Strings here must match the variant
+// constructor names that PluginReadModelSpec.status serialises to.
 let activateCommand: commandDef = {
   name: "Activate",
   schema: idArgsSchema->S.castToUnknown->encodeSchema,
@@ -69,7 +73,7 @@ let activateCommand: commandDef = {
   aggregateIdField: Some("id"),
   mutationField: Api_Naming.adminField(~name="Plugin_Activate"),
   references: [],
-  allowedStates: None,
+  allowedStates: Some(["Inactive"]),
 }
 
 let deactivateCommand: commandDef = {
@@ -79,7 +83,7 @@ let deactivateCommand: commandDef = {
   aggregateIdField: Some("id"),
   mutationField: Api_Naming.adminField(~name="Plugin_Deactivate"),
   references: [],
-  allowedStates: None,
+  allowedStates: Some(["Connected", "Disconnected"]),
 }
 
 let pluginAggregate: writableDef = {
@@ -101,7 +105,7 @@ let pluginReadModel: queryableDef = {
   linkedWriteSide: ["Plugin"],
   labelField: "name",
   searchableFields: ["name"],
-  statusField: None,
+  statusField: Some("status"),
 }
 
 let eventGraphReadModel: queryableDef = {
