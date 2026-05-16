@@ -1,5 +1,22 @@
 # Command state guards: `allowedStates` + `statusField`
 
+**Status (2026-05-16):** Workstreams A–F implemented and committed in
+`reventless-core` on `alpha`. UI-side consumer (workstream D, tracked
+in the UI repo's own plan) reportedly shipped on `alpha` 2026-05-15.
+Pending: a follow-up `fix(deps)` in core to bump
+`@reventlessdev/reventless-host-shell` to the alpha that includes the
+consumer changes — at which point the filter activates end-to-end and
+this plan can move to `docs/plans/done/`.
+
+Commits in this plan's series:
+- `b5d138bb7` feat(spec) — A: type + SDL pipeline + plan
+- `2a7fe3439` fix(core) — C.3: Plugin admin allowedStates + statusField
+- `15f047820` feat(ppx) — B.1/B.2/B.3/B.4 + C.1/C.2
+- `cc0eed0e4` fix(ppx) — drop @allowedStates witness; spec.status as
+  `option<string>`
+- `b63a6c184` feat(examples) — E: annotate Order across online-shop
+- `383700ce8` docs — F: PPX guide entries + AutoUI section
+
 Scope: let AutoUI hide commands that the backend would reject due to the
 entity's current state. First production use case: Plugin `Activate`
 shouldn't appear next to a `Connected` plugin; `Deactivate` shouldn't
