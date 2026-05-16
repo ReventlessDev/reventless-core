@@ -16,8 +16,13 @@ lerna-debug.log
 # rescript build, never part of any package's publish surface. Tracking them
 # produces churn that's unstable across root vs standalone builds. Mirrored
 # in reventless-ui/.gitignore for cross-repo consistency.
+#
+# Exception: examples/codegen/**/*.res.mjs are golden-test fixtures consumed
+# by reventless-codegen/tests/ForwardGoldenTest.res — they must stay tracked
+# so the generator's output stays byte-comparable across changes.
 **/example/**/*.res.mjs
 **/examples/**/*.res.mjs
+!examples/codegen/**/*.res.mjs
 
 # Auto Claude data directory
 .auto-claude/
