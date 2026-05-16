@@ -1491,6 +1491,12 @@ module MakeWithConfig = (
         ~assetsDir=cfg.assetsDir,
         ~spaFallback=true,
         ~stableName=true,
+        // The explicit BucketObject below writes the production config.json
+        // with the resolved API endpoints + Cognito IDs. The host-shell
+        // bundle's public/config.json is the dev-mode fallback — exclude
+        // it from the bundle upload so both BucketObjects don't race on
+        // the same S3 key.
+        ~excludeFiles=["config.json"],
       )
 
       let regionStr =

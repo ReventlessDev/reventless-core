@@ -41,6 +41,7 @@ let makeUiBundleDistribution = (
   ~spaFallback: bool=false,
   ~indexDocument: string="index.html",
   ~stableName: bool=false,
+  ~excludeFiles: array<string>=[],
 ): bundleDistribution => {
   // When stableName=true, Pulumi resource names omit bundleVersion so every
   // deploy updates the same bucket + CloudFront distribution in place. The
@@ -186,12 +187,19 @@ let makeUiBundleDistribution = (
   switch assetsDir {
   | None => ()
   | Some(dir) =>
-    let entries = Util.StaticBundle.walk(dir)
-    if entries->Array.length == 0 {
+    let allEntries = Util.StaticBundle.walk(dir)
+    if allEntries->Array.length == 0 {
       JsError.throwWithMessage(
         `Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ${dir}`,
       )
     }
+    // Drop excluded relative paths before BucketObject creation. Used so the
+    // host-shell deploy can skip the dev-mode `public/config.json` it ships
+    // with — the explicit Platform.res BucketObject writes the production
+    // config to the same S3 key and would otherwise race with the bundle
+    // upload (whichever Pulumi applies last wins).
+    let entries =
+      allEntries->Array.filter(entry => !(excludeFiles->Array.includes(entry.relativePath)))
     entries->Array.forEach(entry => {
       let _ = PulumiAws.S3.BucketObject.make(
         ~name=name ++ "-asset-" ++ Util.StaticBundle.sanitizeName(entry.relativePath),

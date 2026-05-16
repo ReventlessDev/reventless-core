@@ -9,10 +9,11 @@ let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6";
 
 let cachingDisabledPolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad";
 
-function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt, stableNameOpt) {
+function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt, stableNameOpt, excludeFilesOpt) {
   let spaFallback = spaFallbackOpt !== undefined ? spaFallbackOpt : false;
   let indexDocument = indexDocumentOpt !== undefined ? indexDocumentOpt : "index.html";
   let stableName = stableNameOpt !== undefined ? stableNameOpt : false;
+  let excludeFiles = excludeFilesOpt !== undefined ? excludeFilesOpt : [];
   let name = stableName ? pluginId : pluginId + "-" + bundleVersion;
   let bucket = new (Aws.s3.Bucket)(name + "-bundle");
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {
@@ -120,10 +121,11 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
     }))
   });
   if (assetsDir !== undefined) {
-    let entries = Util_StaticBundle$ReventlessAws.walk(assetsDir);
-    if (entries.length === 0) {
+    let allEntries = Util_StaticBundle$ReventlessAws.walk(assetsDir);
+    if (allEntries.length === 0) {
       Stdlib_JsError.throwWithMessage(`Plugin_Stack.makeUiBundleDistribution: assetsDir is empty: ` + assetsDir);
     }
+    let entries = allEntries.filter(entry => !excludeFiles.includes(entry.relativePath));
     entries.forEach(entry => {
       new (Aws.s3.BucketObject)(name + "-asset-" + Util_StaticBundle$ReventlessAws.sanitizeName(entry.relativePath), {
         bucket: bucket.id,
