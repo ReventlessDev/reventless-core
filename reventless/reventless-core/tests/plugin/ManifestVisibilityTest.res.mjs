@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as Plugin_Structure$ReventlessCore from "../../src/components/Plugin/Plugin_Structure.res.mjs";
 
 let name = "PublicView";
 
@@ -160,6 +161,22 @@ Jest.describe("ReadModel visibility filter", () => {
     return Jest.Expect.toEqual(Jest.Expect.expect(first.Spec.name), "PublicView");
   });
   Jest.test("unfiltered list still contains both entries (no over-filtering)", () => Jest.Expect.toBe(Jest.Expect.expect(readModels.length), 2));
+});
+
+Jest.describe("Plugin_Structure.make — visibility filter", () => {
+  let structure = Plugin_Structure$ReventlessCore.make("VisibilityPlugin", undefined, readModels, undefined, undefined, undefined, undefined, undefined, undefined);
+  Jest.test("readModels excludes Internal entries", () => Jest.Expect.toBe(Jest.Expect.expect(structure.readModels.length), 1));
+  Jest.test("readModels retains the Public entry by name", () => {
+    let first = structure.readModels[0];
+    return Jest.Expect.toEqual(Jest.Expect.expect(first.name), "PublicView");
+  });
+  Jest.test("aggregates / stateViewSlices stay empty when none are passed (sanity)", () => Jest.Expect.toEqual(Jest.Expect.expect([
+    structure.aggregates.length,
+    structure.stateViewSlices.length
+  ]), [
+    0,
+    0
+  ]));
 });
 
 export {

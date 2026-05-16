@@ -104,3 +104,23 @@ describe("ReadModel visibility filter", () => {
     expect(readModels->Array.length)->toBe(2)
   })
 })
+
+describe("Plugin_Structure.make — visibility filter", () => {
+  let structure = Plugin_Structure.make(~name="VisibilityPlugin", ~readModels)
+
+  test("readModels excludes Internal entries", () => {
+    expect(structure.readModels->Array.length)->toBe(1)
+  })
+
+  test("readModels retains the Public entry by name", () => {
+    let first = structure.readModels->Array.getUnsafe(0)
+    expect(first.name)->toEqual("PublicView")
+  })
+
+  test("aggregates / stateViewSlices stay empty when none are passed (sanity)", () => {
+    expect((
+      structure.aggregates->Array.length,
+      structure.stateViewSlices->Array.length,
+    ))->toEqual((0, 0))
+  })
+})
