@@ -9,10 +9,11 @@ let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6";
 
 let cachingDisabledPolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad";
 
-function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt) {
+function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt, stableNameOpt) {
   let spaFallback = spaFallbackOpt !== undefined ? spaFallbackOpt : false;
   let indexDocument = indexDocumentOpt !== undefined ? indexDocumentOpt : "index.html";
-  let name = pluginId + "-" + bundleVersion;
+  let stableName = stableNameOpt !== undefined ? stableNameOpt : false;
+  let name = stableName ? pluginId : pluginId + "-" + bundleVersion;
   let bucket = new (Aws.s3.Bucket)(name + "-bundle");
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {
     bucket: bucket.id,

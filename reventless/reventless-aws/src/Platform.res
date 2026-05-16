@@ -1490,6 +1490,7 @@ module MakeWithConfig = (
         ~bundleVersion=cfg.bundleVersion,
         ~assetsDir=cfg.assetsDir,
         ~spaFallback=true,
+        ~stableName=true,
       )
 
       let regionStr =

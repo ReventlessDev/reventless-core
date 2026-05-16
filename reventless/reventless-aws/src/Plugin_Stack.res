@@ -40,8 +40,19 @@ let makeUiBundleDistribution = (
   ~assetsDir: option<string>=?,
   ~spaFallback: bool=false,
   ~indexDocument: string="index.html",
+  ~stableName: bool=false,
 ): bundleDistribution => {
-  let name = pluginId ++ "-" ++ bundleVersion
+  // When stableName=true, Pulumi resource names omit bundleVersion so every
+  // deploy updates the same bucket + CloudFront distribution in place. The
+  // public CloudFront domain stays the same across releases. Per-file etags
+  // still drive BucketObject diffs, and obsolete objects are removed when
+  // their Pulumi resource disappears from state.
+  //
+  // When false (the default), bundleVersion is baked into every resource name,
+  // so each release provisions a fresh bucket + distribution — useful for
+  // plugin UI bundles whose URLs are resolved at runtime through the host
+  // shell, where blue/green between versions is wanted.
+  let name = stableName ? pluginId : pluginId ++ "-" ++ bundleVersion
 
   let bucket = PulumiAws.S3.Bucket.make(~name=name ++ "-bundle")
 
