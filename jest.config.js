@@ -90,7 +90,7 @@ module.exports = {
     {
       displayName: "online-shop-dcb-catalog",
       rootDir: "./examples/online-shop-dcb/catalog",
-      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
@@ -107,7 +107,7 @@ module.exports = {
     {
       displayName: "online-shop-dcb-ordering",
       rootDir: "./examples/online-shop-dcb/ordering",
-      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
@@ -124,7 +124,7 @@ module.exports = {
     {
       displayName: "example-aggregate-catalog",
       rootDir: "./examples/online-shop-aggregates/catalog",
-      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
@@ -141,7 +141,7 @@ module.exports = {
     {
       displayName: "example-aggregate-ordering",
       rootDir: "./examples/online-shop-aggregates/ordering",
-      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
@@ -158,7 +158,7 @@ module.exports = {
     {
       displayName: "online-shop-hybrid-catalog",
       rootDir: "./examples/online-shop-hybrid/catalog",
-      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
@@ -175,7 +175,7 @@ module.exports = {
     {
       displayName: "online-shop-hybrid-ordering",
       rootDir: "./examples/online-shop-hybrid/ordering",
-      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      testMatch: ["<rootDir>/tests/**/*_GWT.res.mjs"],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {
