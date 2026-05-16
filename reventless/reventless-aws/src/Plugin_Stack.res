@@ -43,7 +43,7 @@ let makeUiBundleDistribution = (
 ): bundleDistribution => {
   let name = pluginId ++ "-" ++ bundleVersion
 
-  let bucket = PulumiAws.S3.BucketV2.make(~name=name ++ "-bundle")
+  let bucket = PulumiAws.S3.Bucket.make(~name=name ++ "-bundle")
 
   let _ = PulumiAws.S3.BucketPublicAccessBlock.make(
     ~name=name ++ "-bundle-pab",

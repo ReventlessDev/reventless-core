@@ -13,7 +13,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
   let spaFallback = spaFallbackOpt !== undefined ? spaFallbackOpt : false;
   let indexDocument = indexDocumentOpt !== undefined ? indexDocumentOpt : "index.html";
   let name = pluginId + "-" + bundleVersion;
-  let bucket = new (Aws.s3.BucketV2)(name + "-bundle");
+  let bucket = new (Aws.s3.Bucket)(name + "-bundle");
   new (Aws.s3.BucketPublicAccessBlock)(name + "-bundle-pab", {
     bucket: bucket.id,
     blockPublicAcls: true,
