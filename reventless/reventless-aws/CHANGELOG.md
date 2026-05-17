@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.90 (2026-05-17)
+
+### Bug Fixes
+
+* **aws:** stop bundle upload from clobbering host-shell config.json ([4efbe19](https://github.com/ReventlessDev/reventless-core/commit/4efbe196eb16218ebf349856043d5dfbf90df52e))
+### Features
+
+* **aws:** stable host-shell URL across deploys via ~stableName opt-in ([6c86ab1](https://github.com/ReventlessDev/reventless-core/commit/6c86ab1d8f4a82da1e91123105696ba92b8d6233))
+
+
 # 3.0.0-alpha.89 (2026-05-16)
 
 ### Bug Fixes
