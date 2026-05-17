@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.97 (2026-05-17)
+
+### Bug Fixes
+
+* **aws:** pass plain strings to scheduler runtime; drop Util_PulumiShim ([c4e027e](https://github.com/ReventlessDev/reventless-core/commit/c4e027ea8477fe0891e77bfc76b08429935c2259))
+
+
 # 3.0.0-alpha.96 (2026-05-17)
 
 ### Bug Fixes
