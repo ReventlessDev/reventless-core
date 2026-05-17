@@ -88,9 +88,11 @@ async function buildHandler() {
   const bucketCallback = callbackModule.callback;
   const handleEvents = handleBucketEvent(bucketCallback);
 
-  // Build publishCommands dict from env var queue URLs
+  // Build publishCommands dict from env var queue URLs. The deploy-side builder
+  // writes HANDLER_CONFIG.publishToAggregates as { aggregateName: envVarName }
+  // (see TaskRuntime_Builder_PerBucket.res), so iterate accordingly.
   const publishCommandsFns = {};
-  for (const [envVarName, aggName] of Object.entries(config.publishToAggregates || {})) {
+  for (const [aggName, envVarName] of Object.entries(config.publishToAggregates || {})) {
     const queueUrl = process.env[envVarName] || "";
     if (queueUrl !== "") {
       publishCommandsFns[aggName] = sqsPublishJsons(makeQueueRef(queueUrl), "SQS_FIFO");

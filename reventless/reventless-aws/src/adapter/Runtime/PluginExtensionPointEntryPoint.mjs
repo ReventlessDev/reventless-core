@@ -57,9 +57,11 @@ function buildHandler() {
   const pluginModule = pluginEPPluginMake({ runtimeOps, environment: lambdaFunctionName, updateApiSchema: undefined });
   const mappingsModule = { mappings: [pluginModule.Mapping] };
 
-  // Reconstruct publishToAggregates
+  // Reconstruct publishToAggregates. The deploy-side builder writes
+  // HANDLER_CONFIG.publishToAggregates as { aggregateName: envVarName }
+  // (see PluginExtensionPointRuntime_Builder.res), so iterate accordingly.
   const publishToAggregates = {};
-  for (const [envVarName, aggName] of Object.entries(config.publishToAggregates || {})) {
+  for (const [aggName, envVarName] of Object.entries(config.publishToAggregates || {})) {
     const queueUrl = process.env[envVarName] || "";
     publishToAggregates[aggName] = sqsPublishJsons(makeQueueRef(queueUrl), "SQS_FIFO");
   }

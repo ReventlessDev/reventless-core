@@ -44,9 +44,11 @@ async function buildHandler() {
 
   const patchedSpec = patchSpecId(specModule);
 
-  // Build publishToAggregates dict from env var queue URLs
+  // Build publishToAggregates dict from env var queue URLs. The deploy-side
+  // builder writes HANDLER_CONFIG.publishToAggregates as { aggregateName: envVarName }
+  // (see ExtensionPointRuntime_Builder_PerExtensionPoint.res), so iterate accordingly.
   const publishToAggregates = {};
-  for (const [envVarName, aggName] of Object.entries(config.publishToAggregates || {})) {
+  for (const [aggName, envVarName] of Object.entries(config.publishToAggregates || {})) {
     const queueUrl = process.env[envVarName] || "";
     publishToAggregates[aggName] = sqsPublishJsons(makeQueueRef(queueUrl), "SQS_FIFO");
   }
