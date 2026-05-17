@@ -179,14 +179,14 @@ module Make = (
               EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
                 _ => Error("conflict"),
               )
-            | Error(_) =>
+            | Error(msg) =>
               let perRef = reportFinalOutcomes(
                 outcomes,
                 ~entityId=idStr,
                 ~appendSucceeded=false,
                 ~appendedEventCount=0,
               )
-              EffectLogger.logError(~comp, `append failed: id=${idStr}`)->Effect.map(_ => Ok(perRef))
+              EffectLogger.logError(~comp, `append failed: id=${idStr}: ${msg}`)->Effect.map(_ => Ok(perRef))
             },
         )
       }

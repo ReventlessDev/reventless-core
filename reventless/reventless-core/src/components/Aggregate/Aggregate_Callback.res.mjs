@@ -137,14 +137,15 @@ function Make(Spec) {
                 _0: perRef
               }));
             }
-            if (appendResult._0.includes("conflict")) {
+            let msg = appendResult._0;
+            if (msg.includes("conflict")) {
               return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
                 TAG: "Error",
                 _0: "conflict"
               }));
             }
             let perRef$1 = reportFinalOutcomes(outcomes, idStr, false, 0);
-            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr), () => ({
+            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr + `: ` + msg), () => ({
               TAG: "Ok",
               _0: perRef$1
             }));
