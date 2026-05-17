@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.76 (2026-05-17)
+
+### Bug Fixes
+
+* **admin:** invoke resolversMaker for admin read models so Platform_Plugins gets an AppSync resolver ([3307e9b](https://github.com/ReventlessDev/reventless-core/commit/3307e9b59343e691e3930e235c266fb9056959b7))
+
+
 # 3.0.0-alpha.75 (2026-05-16)
 
 ### Bug Fixes
