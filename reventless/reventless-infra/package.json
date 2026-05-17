@@ -15,7 +15,7 @@
     "@reventlessdev/rescript-uuid": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "11.0.0-alpha.4",
-    "sury-ppx": "^11.0.0-alpha.2",
+    "sury-ppx": "11.0.0-alpha.2",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

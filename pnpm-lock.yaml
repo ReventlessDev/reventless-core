@@ -126,7 +126,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/codegen/dilger/user-management:
@@ -157,7 +157,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-aggregates/catalog:
@@ -197,7 +197,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-aggregates/catalog-spec:
@@ -216,7 +216,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-aggregates/ordering:
@@ -256,7 +256,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-aggregates/ordering-spec:
@@ -275,7 +275,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-aggregates/platform-in-memory:
@@ -312,7 +312,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-dcb/catalog:
@@ -352,7 +352,7 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-dcb/catalog-spec:
@@ -371,7 +371,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-dcb/ordering:
@@ -411,7 +411,7 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-dcb/ordering-spec:
@@ -430,7 +430,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-dcb/platform-in-memory:
@@ -470,7 +470,7 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/catalog:
@@ -510,7 +510,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/catalog-aws:
@@ -547,7 +547,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/catalog-spec:
@@ -566,7 +566,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/ordering:
@@ -606,7 +606,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/ordering-aws:
@@ -643,7 +643,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/ordering-spec:
@@ -662,7 +662,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/platform-aws:
@@ -693,7 +693,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   examples/online-shop-hybrid/platform-in-memory:
@@ -730,7 +730,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
@@ -979,7 +979,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   rescript/rescript-pulumi-pulumi:
@@ -1064,7 +1064,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   reventless/reventless-codegen:
@@ -1080,7 +1080,7 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   reventless/reventless-conventional-changelog: {}
@@ -1134,7 +1134,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   reventless/reventless-gwt:
@@ -1171,7 +1171,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   reventless/reventless-in-memory:
@@ -1226,7 +1226,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
 
   reventless/reventless-infra:
@@ -1247,7 +1247,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
       uuid:
         specifier: ^13.0.0
@@ -1266,7 +1266,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
     devDependencies:
       '@glennsl/rescript-jest':
@@ -1310,7 +1310,7 @@ importers:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.2.0)
       sury-ppx:
-        specifier: ^11.0.0-alpha.2
+        specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
     devDependencies:
       rescript:

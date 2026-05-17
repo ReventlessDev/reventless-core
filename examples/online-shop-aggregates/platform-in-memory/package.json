@@ -26,6 +26,6 @@
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "11.0.0-alpha.2"
   }
 }

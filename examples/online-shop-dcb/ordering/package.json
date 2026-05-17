@@ -42,7 +42,7 @@
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.2.0",
     "sury": "^11.0.0-alpha.4",
-    "sury-ppx": "^11.0.0-alpha.2"
+    "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {
     "rescript": "^12.2.0"
