@@ -976,11 +976,11 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
 
   rescript/rescript-pulumi-pulumi:
     dependencies:
@@ -1061,17 +1061,17 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
 
   reventless/reventless-codegen:
     dependencies:
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -1081,7 +1081,7 @@ importers:
         version: 12.2.0
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
 
   reventless/reventless-conventional-changelog: {}
 
@@ -1131,11 +1131,11 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
 
   reventless/reventless-gwt:
     dependencies:
@@ -1168,11 +1168,11 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
 
   reventless/reventless-in-memory:
     dependencies:
@@ -1223,11 +1223,11 @@ importers:
         specifier: ^12.2.0
         version: 12.2.0
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
 
   reventless/reventless-infra:
     dependencies:
@@ -1244,11 +1244,11 @@ importers:
         specifier: workspace:*
         version: link:../reventless-spec
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -1263,11 +1263,11 @@ importers:
         specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-pulumi
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -1307,11 +1307,11 @@ importers:
         specifier: 1.1.1
         version: 1.1.1
       sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        specifier: 11.0.0-alpha.5
+        version: 11.0.0-alpha.5(rescript@12.2.0)
       sury-ppx:
         specifier: ^11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0))
     devDependencies:
       rescript:
         specifier: ^12.2.0
@@ -11890,6 +11890,14 @@ packages:
 
   sury@11.0.0-alpha.4:
     resolution: {integrity: sha512-oeG/GJWZvQCKtGPpLbu0yCZudfr5LxycDo5kh7SJmKHDPCsEPJssIZL2Eb4Tl7g9aPEvIDuRrkS+L0pybsMEMA==}
+    peerDependencies:
+      rescript: 12.x
+    peerDependenciesMeta:
+      rescript:
+        optional: true
+
+  sury@11.0.0-alpha.5:
+    resolution: {integrity: sha512-7olnTkE87yljA+Ze5cw2lBfP+RtQBo32flIHrQXL2uOq5re+DQUJC4lH96lwIIiwioHS7/cGDWsb/DxGlP8nRw==}
     peerDependencies:
       rescript: 12.x
     peerDependenciesMeta:
@@ -28700,7 +28708,15 @@ snapshots:
     dependencies:
       sury: 11.0.0-alpha.4(rescript@12.2.0)
 
+  sury-ppx@11.0.0-alpha.2(sury@11.0.0-alpha.5(rescript@12.2.0)):
+    dependencies:
+      sury: 11.0.0-alpha.5(rescript@12.2.0)
+
   sury@11.0.0-alpha.4(rescript@12.2.0):
+    optionalDependencies:
+      rescript: 12.2.0
+
+  sury@11.0.0-alpha.5(rescript@12.2.0):
     optionalDependencies:
       rescript: 12.2.0
 

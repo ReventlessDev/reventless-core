@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "sury": "11.0.0-alpha.4",
+    "sury": "11.0.0-alpha.5",
     "sury-ppx": "^11.0.0-alpha.2"
   },
   "devDependencies": {
