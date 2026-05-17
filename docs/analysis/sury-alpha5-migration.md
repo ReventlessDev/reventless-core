@@ -34,18 +34,26 @@ to the new API so the pin is replaced with code that works on alpha.5+.
 Sury 11 split a single "convert" family into three distinct directions and a
 schema-reversal primitive. The mental model:
 
-| alpha.4 vocabulary             | alpha.5 vocabulary                                | Direction                       |
-| ------------------------------ | ------------------------------------------------- | ------------------------------- |
-| `parse*`                       | `parser` / `parseOrThrow`                         | `unknown → Output`              |
-| `convert*` (forward)           | `decoder` / `decodeOrThrow`                       | `Input → Output` (typed in)     |
-| `reverseConvert*` (backward)   | `encoder` (no inline `OrThrow`)                   | `Output → Input`                |
-| `parseJson*`                   | `parseOrThrow` (json IS unknown) **or** `decodeOrThrow(value, S.json, target)` | `JSON → Output`                 |
-| `parseJsonString*`             | `decodeOrThrow(str, S.jsonString, target)`        | `string → Output`               |
-| `reverseConvertToJsonString*`  | `decodeOrThrow(value, S.reverse(schema), S.jsonStringWithSpace(n))` | `Output → string`               |
-| `enableJson()` / `enableJsonString()` | (removed — JSON schema is always active in alpha.5) | n/a                          |
+| alpha.4 vocabulary             | alpha.5 vocabulary                                                                                            | Direction                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `parse*`                       | `parser(~to)` / `parseOrThrow(value, ~to)`                                                                    | `unknown → Output`          |
+| `convert*` (forward)           | `decoder(~from, ~to)` / `decodeOrThrow(value, ~from, ~to)`                                                    | `Input → Output` (typed in) |
+| `reverseConvert*` (backward)   | `decodeOrThrow(value, ~from=schema->S.reverse, ~to=…)` — there is no inline `encoderOrThrow`                  | `Output → Input`            |
+| `parseJson*`                   | `parseOrThrow(value, ~to=target)` (json IS unknown) **or** `decodeOrThrow(value, ~from=S.json, ~to=target)`   | `JSON → Output`             |
+| `parseJsonString*`             | `decodeOrThrow(str, ~from=S.jsonString, ~to=target)`                                                          | `string → Output`           |
+| `reverseConvertToJsonString*`  | `decodeOrThrow(value, ~from=S.reverse(schema), ~to=S.jsonStringWithSpace(n))`                                 | `Output → string`           |
+| `enableJson()` / `enableJsonString()` | (removed — JSON schema is always active in alpha.5)                                                    | n/a                         |
 
 `S.reverse(schema)` returns a new schema with `Input` and `Output` swapped, so
 the encoding direction is expressed as "decode through the reversed schema".
+
+> **Signature note** — `parseOrThrow`, `decodeOrThrow`, `parser`, and `decoder`
+> all take the destination schema as a **labeled** `~to` argument in alpha.5,
+> and `decodeOrThrow` / `decoder` take the source schema as **labeled**
+> `~from`. The earlier draft of this analysis (and the migration mapping
+> further down) showed positional arguments — that was wrong; corrected
+> during the Phase 1 investigation. See `Sury.resi:394–405` in
+> `node_modules/sury@11.0.0-alpha.5`.
 
 ## What was removed in alpha.5
 
@@ -59,6 +67,22 @@ against the bundled `sury@11.0.0-alpha.5` inside Layer 58:
 - `enableJson`, `enableJsonString`
 - `compile`, `unnest`, `datetime`
 - Type aliases: `$$Array`, `$$String`, `Float`, `Int`, `ErrorClass`
+
+**Structural changes to `S.t` introspection (discovered Phase 1):**
+- `S.t.Object` no longer has the `items: array<{name, location, schema}>`
+  record. Only `properties: dict<t<unknown>>` (plus `additionalItems`,
+  `required`, etc.) remains. The alpha.4 `items` array carried per-field
+  `location` metadata distinguishing the variant `"TAG"` discriminant from
+  payload fields; in alpha.5 the `TAG` discriminant simply appears in
+  `properties` under the literal key `"TAG"` with a `String({const: …})`
+  schema.
+- `S.t.Array` retains its own `items: array<t<unknown>>`. The two `items`
+  fields are not the same thing — the alpha.4 `Object.items` was metadata,
+  the alpha.5 `Array.items` is the element-schema list.
+- Affected callers in this repo: `reventless-spec/src/components/DcbDecode.res`
+  and `DcbTag.res` walk variant schemas using
+  `Object({items}).find(item => item.location == "TAG")`. That has to be
+  rewritten as `Object({properties}).Dict.get("TAG")`.
 
 **Added:**
 - `parser`, `asyncParser` — builders returning a parse function
@@ -119,17 +143,17 @@ cases, with manual review of the 5 remaining call shapes:
 # 1.   S.enableJson()                           (~41 calls)
        → delete the line
 # 2.   x->S.parseJsonOrThrow(schema)            (~36 calls)
-       → x->S.parseOrThrow(schema)
+       → x->S.parseOrThrow(~to=schema)
 # 3.   value->S.reverseConvertToJsonOrThrow(s)  (~95 calls)
-       → value->S.decodeOrThrow(s->S.reverse, S.json)
+       → value->S.decodeOrThrow(~from=s->S.reverse, ~to=S.json)
          OR (preferred for hot paths)
          S.encoder(s)(value)
 # 4.   v->S.reverseConvertToJsonStringOrThrow(s, ~space=2)
-       → v->S.decodeOrThrow(s->S.reverse, S.jsonStringWithSpace(2))
+       → v->S.decodeOrThrow(~from=s->S.reverse, ~to=S.jsonStringWithSpace(2))
 # 5.   str->S.parseJsonStringOrThrow(schema)
-       → str->S.decodeOrThrow(S.jsonString, schema)
+       → str->S.decodeOrThrow(~from=S.jsonString, ~to=schema)
 # 6.   json->S.convertOrThrow(schema)           (3 in-memory calls)
-       → json->S.parseOrThrow(schema)
+       → json->S.parseOrThrow(~to=schema)
 ```
 
 **Choice for #3** — `S.encoder` vs `decodeOrThrow(value, reverse(s), S.json)`:
@@ -144,19 +168,72 @@ cases, with manual review of the 5 remaining call shapes:
   alongside the schema.
 
 A pragmatic call: introduce a tiny helper to keep call sites uniform and
-isolate the alpha.5 vocabulary in one place:
+isolate the alpha.5 vocabulary in one place. The shim lives in
+`reventless-spec/src/util/Util_Sury.res` (not `reventless-core/src/util/` as
+the first draft suggested — `reventless-spec` itself has 4 sury-using files
+and is the lowest framework package using sury, so the shim has to sit
+there):
 
 ```rescript
-// reventless-core/src/util/Util_Sury.res
-let toJson = (value, schema) => value->S.decodeOrThrow(schema->S.reverse, S.json)
-let toJsonString = (value, schema, ~space) =>
-  value->S.decodeOrThrow(schema->S.reverse, S.jsonStringWithSpace(space))
-let fromJson = (json, schema) => json->S.parseOrThrow(schema)
-let fromJsonString = (str, schema) => str->S.decodeOrThrow(S.jsonString, schema)
+// reventless-spec/src/util/Util_Sury.res
+let toJson: ('a, S.t<'a>) => JSON.t = (value, schema) =>
+  value->S.decodeOrThrow(~from=schema->S.reverse, ~to=S.json)
+let toJsonString: ('a, S.t<'a>, ~space: int) => string = (value, schema, ~space) =>
+  value->S.decodeOrThrow(~from=schema->S.reverse, ~to=S.jsonStringWithSpace(space))
+let fromJson: (JSON.t, S.t<'a>) => 'a = (json, schema) =>
+  json->S.parseOrThrow(~to=schema)
+let fromJsonString: (string, S.t<'a>) => 'a = (str, schema) =>
+  str->S.decodeOrThrow(~from=S.jsonString, ~to=schema)
 ```
 
 That keeps the diff per call site to a near-mechanical s/old/new and makes a
-future sury-12 migration a one-file change.
+future sury-12 migration a one-file change. Inside `reventless-spec` the
+shim is `Util_Sury`; from other packages it is `Reventless.Util_Sury`
+(`reventless-spec` declares `namespace: "Reventless"`).
+
+## Phase 1 investigation findings (2026-05-17)
+
+Captured from the `sury-alpha5-phase1` branch experiment (snapshot commit
+`bb689a73e`). The branch bumped sury to alpha.5 across all 9 framework +
+adapter packages locally, dropped the `Util_Sury` shim into
+`reventless-spec/src/util/`, and ran `pnpm exec rescript build` from
+`reventless-spec`. Three things were learned **before any source-side port
+happened**:
+
+1. **Shim API signatures in the original analysis were wrong.** The plan and
+   the migration-mapping table both showed `decodeOrThrow(value, from, to)`
+   and `parseOrThrow(value, schema)` with positional arguments. The real
+   alpha.5 signatures (from `Sury.resi:394–405`) use labeled args:
+   `parseOrThrow: ('any, ~to: t<'value>) => 'value`,
+   `decodeOrThrow: ('from, ~from: t<'from>, ~to: t<'to>) => 'to`. The table
+   and code samples above have been corrected; the `Util_Sury` block now
+   reads `~from=…, ~to=…`. This is the only correction needed at the shim
+   level — call sites still match the alpha.4 pipe shape
+   (`value->Util_Sury.toJson(schema)`).
+
+2. **`S.t.Object` lost its introspection `items` field.** Already captured in
+   "Structural changes to `S.t` introspection" above. The two callers
+   (`DcbDecode.res`, `DcbTag.res`) need to switch from
+   `items.find(item => item.location == "TAG")` to `properties.get("TAG")`.
+   This is a real plan-relevant change: it adds a fifth call-site shape that
+   the bulk `sed` sweep can't handle by itself.
+
+3. **Phase-1 file scope was undercounted.** The plan said "port two pivotal
+   files (`Message.res` + `Projection.res`)" and run the test suites. With
+   sury bumped to alpha.5, `reventless-spec` won't build until its 4
+   sury-using files (`types/Message.res`, `types/Identity.res`,
+   `types/StoredEvent.res`, `components/DcbDecode.res` + the schema
+   introspection in `components/DcbTag.res`) are also ported. `reventless-core`
+   has ~29 affected files; `reventless-in-memory` has ~22. The "two pivot
+   files" framing is preserved in the revised plan as the **careful manual
+   port**, but the build forces ~55 files of collateral that get done in the
+   same phase. Phase 2's scope shrinks correspondingly (see plan revision).
+
+4. **Util_Sury location.** Plan said `reventless-core/src/util/`; correct
+   placement is `reventless-spec/src/util/` (lowest dep using sury). Above
+   in this doc the helper-block has been corrected.
+
+Open questions still outstanding after these findings:
 
 ## Open questions / risks
 
