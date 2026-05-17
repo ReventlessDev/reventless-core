@@ -38,14 +38,14 @@ function toScheduleExpression(x) {
   }
 }
 
-function createSchedule(role) {
+function createSchedule(roleArn) {
   return (queueResources, schedule) => {
     if (queueResources.length !== 0) {
       let resource = queueResources[0];
       return Effect.runPromise(Effect.map(Effect.flatMap(Effect.promise(() => CloudWatchEvents$AwsSdk.PutRuleCommand.send(new ClientCloudwatchEvents.PutRuleCommand({
         Name: schedule.name,
         ScheduleExpression: toScheduleExpression(schedule.rate),
-        RoleArn: role.arn.get(),
+        RoleArn: roleArn,
         State: "ENABLED"
       }))), param => Effect.promise(() => CloudWatchEvents$AwsSdk.PutTargetsCommand.send(new ClientCloudwatchEvents.PutTargetsCommand({
         Rule: schedule.name,

@@ -6,7 +6,6 @@
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import { patchSpecId, makeQueueRef, scanByTableName } from "./HandlerFactoryHelpers.mjs";
-import { val as shimVal, resource as shimResource } from "@reventlessdev/reventless-aws/src/util/Util_PulumiShim.res.mjs";
 import { sendMessage } from "@reventlessdev/reventless-aws/src/util/Util_PluginMessage_Runtime.res.mjs";
 import { publish as snsPublish } from "@reventlessdev/reventless-aws/src/util/Util_SNS_Runtime.res.mjs";
 import * as PluginExtensionPointSpec from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
@@ -114,14 +113,24 @@ function buildHandler() {
     query: async () => { throw new Error("QueryEngine.query not available in bundled Admin EventCollector"); },
   };
 
-  const fakeRole = shimVal(config.schedulerRoleArn);
   const scheduler = {
-    createSchedule: cwCreateSchedule({ arn: fakeRole }),
+    createSchedule: cwCreateSchedule(config.schedulerRoleArn),
     deleteSchedule: cwDeleteSchedule,
   };
 
   const commandTopicResources = config.schedulerQueueArn !== ""
-    ? [shimResource(config.schedulerQueueName, config.schedulerQueueArn)]
+    ? [{
+        name: config.schedulerQueueName,
+        id: config.schedulerQueueName,
+        urn: config.schedulerQueueArn,
+        service: "unknown",
+        resourceInfo: "NoInfo",
+        role: "",
+        region: "",
+        resourceType: "",
+        configuration: {},
+        tags: {},
+      }]
     : [];
 
   const invalidNameChars = /[^.\-_a-zA-Z0-9]/g;

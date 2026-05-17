@@ -22,7 +22,7 @@ let toScheduleExpression = x =>
     `cron(${minute->Int.toString} ${hour->Int.toString} ? * MON-SAT *)`
   }
 
-let createSchedule: PulumiAws.IAM.Role.t => ReventlessCore.Scheduler.createSchedule = role =>
+let createSchedule = (~roleArn: string): ReventlessCore.Scheduler.createSchedule =>
   (queueResources, schedule) =>
     switch queueResources {
     | [] =>
@@ -39,7 +39,7 @@ let createSchedule: PulumiAws.IAM.Role.t => ReventlessCore.Scheduler.createSched
           PutRuleCommand.make({
             name: schedule.name,
             scheduleExpression: schedule.rate->toScheduleExpression,
-            roleArn: role.arn->Pulumi.Output.get,
+            roleArn,
             state: "ENABLED",
           }),
         )
