@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-infra",
-  "version": "3.0.0-alpha.53",
+  "version": "3.0.0-alpha.54",
   "description": "Infrastructure types for Reventless framework",
   "license": "MIT",
   "scripts": {
