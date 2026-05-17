@@ -34,7 +34,7 @@
   "devDependencies": {
     "esbuild": "^0.25.12",
     "rescript": "^12.2.0",
-    "sury": "^11.0.0-alpha.4",
+    "sury": "11.0.0-alpha.4",
     "sury-ppx": "^11.0.0-alpha.2"
   },
   "peerDependencies": {
