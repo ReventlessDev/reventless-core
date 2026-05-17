@@ -6,8 +6,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as SchemaWalker$ReventlessCore from "../../src/components/Plugin/SchemaWalker.res.mjs";
 
-S.enableJson();
-
 let simpleRecordSchema = S.schema(s => ({
   label: s.m(S.string),
   count: s.m(S.int),
@@ -146,4 +144,4 @@ export {
   simpleRecordSchema,
   simpleVariantSchema,
 }
-/*  Not a pure module */
+/* simpleRecordSchema Not a pure module */

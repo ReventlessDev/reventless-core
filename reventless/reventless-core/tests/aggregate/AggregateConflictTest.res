@@ -4,7 +4,6 @@
 open AsyncTest
 open AsyncTest.Expect
 
-S.enableJson()
 
 module AggSpec = {
   module Id = Reventless.Id.StringPure

@@ -5,8 +5,6 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "../../src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
 
-S.enableJson();
-
 let name = "TestCmdGenAgg";
 
 let commandSchema = S.union([
@@ -194,4 +192,4 @@ export {
   makeOneParamPayload,
   reset,
 }
-/*  Not a pure module */
+/* commandSchema Not a pure module */

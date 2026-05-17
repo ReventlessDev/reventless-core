@@ -190,7 +190,6 @@ module Make = (M: Mapping): (T with module Source = M.Source and module Target =
     array<(string, array<Target.consumedEvent>)>,
   )
 
-  S.enableJson()
 
   let describe = JestBind.describe
   let sliceName = `${Source.name}→${Target.name}`

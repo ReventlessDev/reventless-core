@@ -8,6 +8,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 
 function toEventSchema$p(idSchema, eventSchema) {
   return S.object(s => ({
@@ -26,19 +27,19 @@ function toCommandSchema$p(idSchema, commandSchema) {
 }
 
 function decodeEvent$p(json, idSchema, eventSchema) {
-  return S.parseJsonOrThrow(json, toEventSchema$p(idSchema, eventSchema));
+  return Util_Sury$Reventless.fromJson(json, toEventSchema$p(idSchema, eventSchema));
 }
 
 function decodeCommand$p(json, idSchema, commandSchema) {
-  return S.parseJsonOrThrow(json, toCommandSchema$p(idSchema, commandSchema));
+  return Util_Sury$Reventless.fromJson(json, toCommandSchema$p(idSchema, commandSchema));
 }
 
 function encodeEvent$p(event$p, idSchema, eventSchema) {
-  return S.reverseConvertToJsonOrThrow(event$p, toEventSchema$p(idSchema, eventSchema));
+  return Util_Sury$Reventless.toJson(event$p, toEventSchema$p(idSchema, eventSchema));
 }
 
 function encodeCommand$p(command$p, idSchema, commandSchema) {
-  return S.reverseConvertToJsonOrThrow(command$p, toCommandSchema$p(idSchema, commandSchema));
+  return Util_Sury$Reventless.toJson(command$p, toCommandSchema$p(idSchema, commandSchema));
 }
 
 function uuid(prim) {
@@ -69,7 +70,7 @@ function toMessageBody(param) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(newrecord, Message$Reventless.metaSchema)
+      Util_Sury$Reventless.toJson(newrecord, Message$Reventless.metaSchema)
     ],
     [
       "command",
@@ -84,7 +85,7 @@ function serviceNameOfMsg(msgJson) {
     return Stdlib_Option.flatMap(msgObj["meta"], meta => {
       let msgMeta;
       try {
-        msgMeta = S.parseJsonOrThrow(meta, Message$Reventless.metaSchema);
+        msgMeta = Util_Sury$Reventless.fromJson(meta, Message$Reventless.metaSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         console.log("Message.serviceNameOfMsg: Couldn't parse meta:", err);
@@ -182,7 +183,7 @@ function deriveMeta(parent, service) {
 }
 
 function decomposeMeta(meta) {
-  return Object.entries(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)), undefined));
+  return Object.entries(Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema)), undefined));
 }
 
 function composeEventJson$p(id, meta, eventJson) {
@@ -193,7 +194,7 @@ function composeEventJson$p(id, meta, eventJson) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)
+      Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema)
     ],
     [
       "event",
@@ -253,7 +254,7 @@ function storedEventToFlatJson(stored, idSchema) {
   let fields = [
     [
       "id",
-      S.reverseConvertToJsonOrThrow(stored.id, idSchema)
+      Util_Sury$Reventless.toJson(stored.id, idSchema)
     ],
     [
       "position",
@@ -275,7 +276,7 @@ function storedEventToFlatJson(stored, idSchema) {
   let tags = stored.tags;
   let withTags;
   if (tags !== undefined) {
-    let tagsJson = S.reverseConvertToJsonOrThrow(tags, S.array(DcbTag$Reventless.tagSchema));
+    let tagsJson = Util_Sury$Reventless.toJson(tags, S.array(DcbTag$Reventless.tagSchema));
     withTags = fields.concat([[
         "tags",
         tagsJson
@@ -288,13 +289,13 @@ function storedEventToFlatJson(stored, idSchema) {
 
 function flatJsonToStoredEvent(json, idSchema) {
   let dict = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined);
-  let id = S.parseJsonOrThrow(Stdlib_Option.getOrThrow(dict["id"], undefined), idSchema);
+  let id = Util_Sury$Reventless.fromJson(Stdlib_Option.getOrThrow(dict["id"], undefined), idSchema);
   let position = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(dict["position"], undefined)), undefined);
   let event = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(dict["event"], undefined)), undefined);
   let data = Stdlib_Option.getOrThrow(dict["data"], undefined);
   let recordedAt = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.string(Stdlib_Option.getOrThrow(dict["recordedAt"], undefined)), undefined);
-  let meta = S.parseJsonOrThrow(composeMeta(dict), Message$Reventless.metaSchema);
-  let tags = Stdlib_Option.map(dict["tags"], t => S.parseJsonOrThrow(t, S.array(DcbTag$Reventless.tagSchema)));
+  let meta = Util_Sury$Reventless.fromJson(composeMeta(dict), Message$Reventless.metaSchema);
+  let tags = Stdlib_Option.map(dict["tags"], t => Util_Sury$Reventless.fromJson(t, S.array(DcbTag$Reventless.tagSchema)));
   return {
     id: id,
     position: position,

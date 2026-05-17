@@ -8,8 +8,6 @@ import * as Stream from "effect/Stream";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 
-S.enableJson();
-
 let moduleUrl = import.meta.url;
 
 let eventSchema = S.union([
@@ -487,4 +485,4 @@ export {
   mixedStrategyEventSchema,
   singleCompositeEventSchema,
 }
-/*  Not a pure module */
+/* moduleUrl Not a pure module */

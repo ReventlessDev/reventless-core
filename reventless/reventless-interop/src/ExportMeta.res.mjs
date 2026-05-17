@@ -10,7 +10,7 @@ let schema = S.schema(s => ({
 }));
 
 function fieldNamesOf(value, schema) {
-  return Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(S.reverseConvertToJsonOrThrow(value, schema)), [], prim => Object.keys(prim));
+  return Stdlib_Option.mapOr(Stdlib_JSON.Decode.object(S.decodeOrThrow(value, S.reverse(schema), S.json)), [], prim => Object.keys(prim));
 }
 
 let version = "0.1.0-alpha.0";

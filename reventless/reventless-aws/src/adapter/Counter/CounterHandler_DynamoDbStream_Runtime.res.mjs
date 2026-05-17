@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_DynamoDbStream_Runtime.res.mjs";
@@ -100,7 +101,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
         let exit = 0;
         let val;
         try {
-          val = S.parseJsonOrThrow(match._1, referencesViewSchema);
+          val = Util_Sury$Reventless.fromJson(match._1, referencesViewSchema);
           exit = 1;
         } catch (_err) {
           inc = 1;

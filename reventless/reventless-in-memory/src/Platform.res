@@ -956,7 +956,7 @@ module MakeWithConfig = (
             structure: pluginStructure,
           }
           let entry =
-            state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+            state->Reventless.Util_Sury.toJson(ReventlessCore.PluginReadModelSpec.stateSchema)
           let _ = pluginOps.save(id, entry, Any, None)
         })
     })
@@ -982,7 +982,7 @@ module MakeWithConfig = (
               updatedAt: Date.make()->Date.toISOString,
             }
             let entry =
-              state->S.reverseConvertToJsonOrThrow(
+              state->Reventless.Util_Sury.toJson(
                 ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
               )
             let _ = uiFragmentOps.save(id, entry, Any, None)
@@ -1013,7 +1013,7 @@ module MakeWithConfig = (
               structure,
             )
             let entry =
-              state->S.reverseConvertToJsonOrThrow(
+              state->Reventless.Util_Sury.toJson(
                 ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
               )
             let _ = ops.save(id, entry, Any, None)
@@ -1035,7 +1035,7 @@ module MakeWithConfig = (
       ReventlessCore.Platform_Admin_Structure.structure,
     )
     let entry =
-      state->S.reverseConvertToJsonOrThrow(
+      state->Reventless.Util_Sury.toJson(
         ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
       )
     let _ = ops.save(adminId, entry, Any, None)
@@ -1340,7 +1340,7 @@ module MakeWithConfig = (
         switch Bus.getQueryDbScan(pluginQueryDbName) {
         | Some(scanAll) =>
           scanAll()->Array.forEach(json =>
-            switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+            switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginReadModelSpec.stateSchema) {
             | state => statusByName->Dict.set(state.name, state.status)
             | exception _ => ()
             }
@@ -1467,7 +1467,7 @@ module MakeWithConfig = (
           switch Bus.getQueryDbScan(pluginQueryDbName) {
           | Some(scanAll) =>
             scanAll()->Array.forEach(json =>
-              switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+              switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginReadModelSpec.stateSchema) {
               | state =>
                 let id = state.name ++ "@" ++ state.version
                 dict->Dict.set(id, state.status)
@@ -1509,7 +1509,7 @@ module MakeWithConfig = (
         items
         ->Array.filterMap(item =>
           switch item->S.parseOrThrow(
-            ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
+            ~to=ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
           ) {
           | state => Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
           | exception _ => None
@@ -1561,7 +1561,7 @@ module MakeWithConfig = (
         ->Effect.runPromise
         switch items->Array.get(0) {
         | Some(json) =>
-          switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+          switch json->Reventless.Util_Sury.fromJson(ReventlessCore.PluginReadModelSpec.stateSchema) {
           | state =>
             let previousStatus = state.status->statusToString
             let updated = {
@@ -1570,7 +1570,7 @@ module MakeWithConfig = (
               statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
             }
             let entry =
-              updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+              updated->Reventless.Util_Sury.toJson(ReventlessCore.PluginReadModelSpec.stateSchema)
             let _ = await ops.save(id, entry, Any, None)
             log.info(~comp="Admin", `${field}(${id}): ${previousStatus} → ${newStatus->statusToString}`)
             // Source C: fan the new status out to live onPluginStatusChange subscribers.
@@ -2039,7 +2039,7 @@ module MakeWithConfig = (
           items
           ->Array.filterMap(item =>
             switch item->S.parseOrThrow(
-              ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
+              ~to=ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
             ) {
             | state =>
               Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
@@ -2069,7 +2069,7 @@ module MakeWithConfig = (
               ~pluginName,
               structure,
             )
-            state->S.reverseConvertToJsonOrThrow(
+            state->Reventless.Util_Sury.toJson(
               ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
             )
           | None => JSON.Encode.null
@@ -2088,7 +2088,7 @@ module MakeWithConfig = (
                 ~pluginName,
                 structure,
               )
-              state->S.reverseConvertToJsonOrThrow(
+              state->Reventless.Util_Sury.toJson(
                 ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
               )
             })

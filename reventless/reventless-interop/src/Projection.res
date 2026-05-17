@@ -15,7 +15,7 @@
 //
 //     let fromJson = json =>
 //       try {
-//         let r = json->S.parseOrThrow(ReventlessInterop.Task.resolvedOutputsSchema)
+//         let r = json->S.parseOrThrow(~to=ReventlessInterop.Task.resolvedOutputsSchema)
 //         Ok({ name: r.name, bucketNames: r.bucketNames->Option.getOr(Dict.make()) })
 //       } catch {
 //       | exn => Error(exn->Js.Exn.asJsExn->Option.flatMap(Js.Exn.message)->Option.getOr("parse error"))

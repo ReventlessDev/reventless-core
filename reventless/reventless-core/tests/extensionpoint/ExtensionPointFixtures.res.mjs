@@ -4,8 +4,6 @@ import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as ExtensionPoint_Callback$ReventlessCore from "../../src/components/ExtensionPoint/ExtensionPoint_Callback.res.mjs";
 
-S.enableJson();
-
 let name = "TestExtensionPoint";
 
 let commandSchema = S.union([
@@ -202,4 +200,4 @@ export {
   makeTopicItem,
   reset,
 }
-/*  Not a pure module */
+/* commandSchema Not a pure module */

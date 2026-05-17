@@ -475,7 +475,7 @@ module Make = (
               interstackAdminExtensionPoints
               ->Pulumi.StackReference.get(PluginExtensionPointSpec.name)
               ->Obj.magic: JSON.t
-            )->S.parseOrThrow(ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
+            )->S.parseOrThrow(~to=ReventlessInterop.ExtensionPoint.resolvedOutputsSchema)
             let pluginExtensionPointCommandTopicRemoteChannel = PluginExtensionPointRemoteChannel.make(
               pluginExtensionPointUnwrapped.commandTopic.resources->Array.map(
                 Adapter.fromInteropResolved,
@@ -742,7 +742,7 @@ module Make = (
       builderOutputs->Pulumi.Output.apply(outputs =>
         outputs
         ->toInteropMeta
-        ->S.reverseConvertToJsonOrThrow(ReventlessInterop.ExportMeta.schema)
+        ->Reventless.Util_Sury.toJson(ReventlessInterop.ExportMeta.schema)
       )
 
     Logger.currentPluginName := _prevPluginName

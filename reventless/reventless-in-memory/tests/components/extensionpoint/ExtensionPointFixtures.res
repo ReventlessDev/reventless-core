@@ -3,7 +3,6 @@
 
 open TestFixtures
 
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // Isolated bus + Pulumi mock mode

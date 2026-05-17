@@ -17,8 +17,13 @@ type t = {
 // keys present in the result.  Optional fields are omitted by sury when None,
 // so absent optional fields will NOT appear in the returned array — which is
 // exactly the behaviour needed for the field manifest.
+//
+// reventless-interop sits below reventless-spec so the `Util_Sury` shim is
+// out of reach; the sury alpha.5 reverse-decode shape is inlined here.
+external _toUnknown: 'a => unknown = "%identity"
+
 let fieldNamesOf = (value: 'a, schema: S.t<'a>): array<string> =>
-  value
-  ->S.reverseConvertToJsonOrThrow(schema)
+  _toUnknown(value)
+  ->S.decodeOrThrow(~from=schema->S.reverse, ~to=S.json)
   ->JSON.Decode.object
   ->Option.mapOr([], Dict.keysToArray)

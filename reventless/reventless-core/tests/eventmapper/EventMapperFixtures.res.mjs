@@ -8,8 +8,6 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as EventMapper_Callback$ReventlessCore from "../../src/components/EventMapper/EventMapper_Callback.res.mjs";
 
-S.enableJson();
-
 let name = "SourceAggregate";
 
 let eventSchema = S.union([
@@ -437,4 +435,4 @@ export {
   makeEventJson,
   resetMocks,
 }
-/*  Not a pure module */
+/* eventSchema Not a pure module */

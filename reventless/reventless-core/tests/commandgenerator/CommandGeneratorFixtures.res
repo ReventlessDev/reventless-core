@@ -1,4 +1,3 @@
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // Aggregate spec for CommandGenerator tests

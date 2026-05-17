@@ -49,8 +49,8 @@ function fromSury(parentName, fieldName, schema) {
       };
     case "array" :
       let additionalItems = schema.additionalItems;
-      let match = schema.items[0];
-      let itemType = match !== undefined ? fromSury(parentName, fieldName, match.schema) : (
+      let itemSchema = schema.items[0];
+      let itemType = itemSchema !== undefined ? fromSury(parentName, fieldName, itemSchema) : (
           additionalItems === "strip" || additionalItems === "strict" ? "ScalarString" : fromSury(parentName, fieldName, additionalItems)
         );
       let itemType$1 = (isIdsFieldName(fieldName) || isIdFieldName(fieldName)) && itemType === "ScalarString" ? "EntityId" : itemType;

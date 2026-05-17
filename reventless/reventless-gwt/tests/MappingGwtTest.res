@@ -7,7 +7,6 @@
 // target-decide pipeline end-to-end against the unified `GwtSource`/`GwtTarget`
 // module types.
 
-S.enableJson()
 
 // ---------------------------------------------------------------------------
 // Shared Aggregate specs + behaviours used by the Aggr→* cases below.

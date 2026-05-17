@@ -16,7 +16,7 @@
     "@reventlessdev/reventless-aws": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4"
+    "sury": "11.0.0-alpha.5"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",

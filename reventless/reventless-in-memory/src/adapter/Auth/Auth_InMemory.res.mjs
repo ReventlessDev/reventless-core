@@ -5,6 +5,7 @@ import * as Nodecrypto from "node:crypto";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 
 let defaultUser_groups = ["User"];
 
@@ -132,7 +133,7 @@ async function issue(username, password) {
       _0: "Invalid credentials"
     };
   }
-  let json = JSON.stringify(S.reverseConvertToJsonOrThrow(match.identity, Identity$Reventless.schema));
+  let json = JSON.stringify(Util_Sury$Reventless.toJson(match.identity, Identity$Reventless.schema));
   let payload = _b64urlEncode(json);
   let sig = _sign(payload);
   return {

@@ -8,8 +8,6 @@ import * as TestFixtures$ReventlessInMemory from "../../TestFixtures.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessInMemory from "../../../src/components/ExtensionPoint_Builder.res.mjs";
 
-S.enableJson();
-
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
 TestRunner$ReventlessInMemory.setup();
@@ -181,4 +179,4 @@ export {
   testMeta,
   resetMocks,
 }
-/*  Not a pure module */
+/* Bus Not a pure module */

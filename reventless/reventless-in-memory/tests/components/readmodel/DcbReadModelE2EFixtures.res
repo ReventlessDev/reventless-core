@@ -153,7 +153,7 @@ let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => 
     let fullBody = JSON.Encode.object(
       Dict.fromArray([
         ("id", JSON.Encode.string(cmdJson.id)),
-        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+        ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
         ("command", cmdJson.commandJson),
       ]),
     )
@@ -199,7 +199,7 @@ let dispatch = async (commandJson, id) =>
 
 let addProductCmd = (productId, name) =>
   AddProductSpec.AddProduct({productId, name})
-  ->S.reverseConvertToJsonOrThrow(AddProductSpec.commandSchema)
+  ->Reventless.Util_Sury.toJson(AddProductSpec.commandSchema)
 
 let loadState = async productId => {
   switch Bus.getQueryDb("TestProductsReadModel") {
@@ -210,6 +210,6 @@ let loadState = async productId => {
       ->Stream.runCollect
       ->Effect.catchAll(_ => Effect.succeed([]))
       ->Effect.runPromise
-    states->Array.map(json => json->S.parseJsonOrThrow(ProductsReadModelSpec.stateSchema))
+    states->Array.map(json => json->Reventless.Util_Sury.fromJson(ProductsReadModelSpec.stateSchema))
   }
 }

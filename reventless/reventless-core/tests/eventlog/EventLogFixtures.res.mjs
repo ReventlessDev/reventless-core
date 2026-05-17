@@ -6,8 +6,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 
-S.enableJson();
-
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemCreated",
@@ -163,4 +161,4 @@ export {
   makeEvent$p,
   reset,
 }
-/*  Not a pure module */
+/* eventSchema Not a pure module */

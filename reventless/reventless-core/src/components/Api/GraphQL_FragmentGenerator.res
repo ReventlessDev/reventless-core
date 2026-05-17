@@ -371,11 +371,13 @@ let generate = (
       // index 1, leaking a stale `_0: Platform_Plugin_Deactivate_0` arg.
       let variantNames = anyOf->Array.map(v =>
         switch v {
-        | Object({items}) =>
-          items
-          ->Array.find(item => item.location == "TAG")
-          ->Option.flatMap(item =>
-            switch item.schema {
+        | Object({properties}) =>
+          // sury alpha.5: TAG entry lives in `properties` (the `items` array
+          // was removed).
+          properties
+          ->Dict.get("TAG")
+          ->Option.flatMap(s =>
+            switch s {
             | String({const}) => Some(const)
             | _ => None
             }

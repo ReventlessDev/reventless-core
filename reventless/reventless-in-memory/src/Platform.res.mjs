@@ -14,6 +14,7 @@ import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
@@ -1019,7 +1020,7 @@ function MakeWithConfig(Config) {
           uiFragments: state_uiFragments,
           structure: state_structure
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
+        let entry = Util_Sury$Reventless.toJson(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
       });
     });
@@ -1050,7 +1051,7 @@ function MakeWithConfig(Config) {
           registeredAt: state_registeredAt,
           updatedAt: state_updatedAt
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+        let entry = Util_Sury$Reventless.toJson(state, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
         uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
@@ -1070,7 +1071,7 @@ function MakeWithConfig(Config) {
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, ps);
-        let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        let entry = Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
         ops.save(id, entry, "Any", undefined);
       });
     });
@@ -1079,7 +1080,7 @@ function MakeWithConfig(Config) {
     let ops = ensurePlatformEventGraphQueryDbStore();
     let adminName = Stdlib_Option.getOr(Platform_Admin_Structure$ReventlessCore.pluginId.split("@")[0], Platform_Admin_Structure$ReventlessCore.pluginId);
     let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(adminName, Platform_Admin_Structure$ReventlessCore.structure);
-    let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+    let entry = Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
     ops.save(Platform_Admin_Structure$ReventlessCore.pluginId, entry, "Any", undefined);
   };
   let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
@@ -1307,7 +1308,7 @@ function MakeWithConfig(Config) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -1388,7 +1389,7 @@ function MakeWithConfig(Config) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -1461,7 +1462,7 @@ function MakeWithConfig(Config) {
           let exit = 0;
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginReadModelSpec$ReventlessCore.stateSchema);
             exit = 1;
           } catch (raw_e) {
             let e = Primitive_exceptions.internalToException(raw_e);
@@ -1475,7 +1476,7 @@ function MakeWithConfig(Config) {
               by: "in-memory"
             };
             newrecord.status = newStatus;
-            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
+            let entry = Util_Sury$Reventless.toJson(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
             publishPluginStatusChange(id, statusToString(newStatus));
@@ -1796,13 +1797,13 @@ function MakeWithConfig(Config) {
         }
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, structure);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        return Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       };
       queryResolvers[eventGraphQueryEntry3.listFieldName] = async (_root, _args, _ctx) => connectionResponse(Object.entries(pluginStructuresStore.contents).map(param => {
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        return Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
       queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
@@ -2861,7 +2862,7 @@ function Make($star) {
           uiFragments: state_uiFragments,
           structure: state_structure
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
+        let entry = Util_Sury$Reventless.toJson(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
       });
     });
@@ -2892,7 +2893,7 @@ function Make($star) {
           registeredAt: state_registeredAt,
           updatedAt: state_updatedAt
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
+        let entry = Util_Sury$Reventless.toJson(state, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
         uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
@@ -2912,7 +2913,7 @@ function Make($star) {
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, ps);
-        let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        let entry = Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
         ops.save(id, entry, "Any", undefined);
       });
     });
@@ -2921,7 +2922,7 @@ function Make($star) {
     let ops = ensurePlatformEventGraphQueryDbStore();
     let adminName = Stdlib_Option.getOr(Platform_Admin_Structure$ReventlessCore.pluginId.split("@")[0], Platform_Admin_Structure$ReventlessCore.pluginId);
     let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(adminName, Platform_Admin_Structure$ReventlessCore.structure);
-    let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+    let entry = Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
     ops.save(Platform_Admin_Structure$ReventlessCore.pluginId, entry, "Any", undefined);
   };
   let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
@@ -3144,7 +3145,7 @@ function Make($star) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -3225,7 +3226,7 @@ function Make($star) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -3298,7 +3299,7 @@ function Make($star) {
           let exit = 0;
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = Util_Sury$Reventless.fromJson(json, PluginReadModelSpec$ReventlessCore.stateSchema);
             exit = 1;
           } catch (raw_e) {
             let e = Primitive_exceptions.internalToException(raw_e);
@@ -3312,7 +3313,7 @@ function Make($star) {
               by: "in-memory"
             };
             newrecord.status = newStatus;
-            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
+            let entry = Util_Sury$Reventless.toJson(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
             publishPluginStatusChange(id, statusToString(newStatus));
@@ -3624,13 +3625,13 @@ function Make($star) {
         }
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, structure);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        return Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       };
       queryResolvers[eventGraphQueryEntry3.listFieldName] = async (_root, _args, _ctx) => connectionResponse(Object.entries(pluginStructuresStore.contents).map(param => {
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
+        return Util_Sury$Reventless.toJson(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
       queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);

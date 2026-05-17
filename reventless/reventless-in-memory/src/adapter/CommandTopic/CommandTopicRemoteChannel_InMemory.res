@@ -14,7 +14,7 @@ module Make = (Bus: InMemory_Bus.T) => {
               ("id", JSON.Encode.string(cmdJson.id)),
               (
                 "meta",
-                cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema),
+                cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema),
               ),
               ("command", cmdJson.commandJson),
             ]),

@@ -6,8 +6,6 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Aggregate_Callback$ReventlessCore from "../../src/components/Aggregate/Aggregate_Callback.res.mjs";
 
-S.enableJson();
-
 let name = "ConflictTestAggregate";
 
 let commandSchema = S.schema(s => ({
@@ -360,4 +358,4 @@ export {
   testMeta,
   makeTopicItem,
 }
-/*  Not a pure module */
+/* commandSchema Not a pure module */

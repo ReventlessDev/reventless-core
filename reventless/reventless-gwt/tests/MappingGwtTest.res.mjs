@@ -5,8 +5,6 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Mapping_GWT$ReventlessGwt from "../src/Mapping_GWT.res.mjs";
 
-S.enableJson();
-
 let name = "Category";
 
 let commandSchema = S.schema(s => ({
@@ -587,4 +585,4 @@ export {
   DcbToDcbMapping,
   DcbToDcbGwt,
 }
-/*  Not a pure module */
+/* commandSchema Not a pure module */

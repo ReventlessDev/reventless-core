@@ -2,8 +2,6 @@
 
 import * as S from "sury/src/S.res.mjs";
 
-S.enableJson();
-
 let providerSchema = S.union([
   S.literal("Cognito"),
   S.literal("InMemory"),
@@ -48,4 +46,4 @@ export {
   hasGroup,
   getClaim,
 }
-/*  Not a pure module */
+/* providerSchema Not a pure module */

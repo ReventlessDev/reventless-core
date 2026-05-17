@@ -6,6 +6,7 @@ import * as Plugin$ReventlessInterop from "../src/components/Plugin.res.mjs";
 import * as QueryDb$ReventlessInterop from "../src/components/QueryDb.res.mjs";
 import * as EventLog$ReventlessInterop from "../src/components/EventLog.res.mjs";
 import * as Aggregate$ReventlessInterop from "../src/components/Aggregate.res.mjs";
+import * as Util_Sury$ReventlessInterop from "../src/Util_Sury.res.mjs";
 import * as DcbEventLog$ReventlessInterop from "../src/components/DcbEventLog.res.mjs";
 import * as StateViewSlice$ReventlessInterop from "../src/components/StateViewSlice.res.mjs";
 import * as AutomationSlice$ReventlessInterop from "../src/components/AutomationSlice.res.mjs";
@@ -56,7 +57,7 @@ Jest.describe("DCB interop types — round-trip serialization", () => {
       resources: original_resources,
       eventTopic: eventTopicOutputs
     };
-    let json = S.reverseConvertToJsonOrThrow(original, DcbEventLog$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, DcbEventLog$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, DcbEventLog$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -64,7 +65,7 @@ Jest.describe("DCB interop types — round-trip serialization", () => {
     let original = {
       resources: [resource]
     };
-    let json = S.reverseConvertToJsonOrThrow(original, StateChangeSlice$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, StateChangeSlice$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, StateChangeSlice$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -74,7 +75,7 @@ Jest.describe("DCB interop types — round-trip serialization", () => {
       resources: original_resources,
       queryDb: queryDb
     };
-    let json = S.reverseConvertToJsonOrThrow(original, StateViewSlice$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, StateViewSlice$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, StateViewSlice$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -84,7 +85,7 @@ Jest.describe("DCB interop types — round-trip serialization", () => {
       resources: original_resources,
       queryDb: queryDb
     };
-    let json = S.reverseConvertToJsonOrThrow(original, AutomationSlice$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, AutomationSlice$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, AutomationSlice$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -94,7 +95,7 @@ Jest.describe("DCB interop types — round-trip serialization", () => {
       resources: original_resources,
       queryDb: queryDb
     };
-    let json = S.reverseConvertToJsonOrThrow(original, OutboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, OutboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, OutboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -104,7 +105,7 @@ Jest.describe("DCB interop types — round-trip serialization", () => {
       resources: original_resources,
       queryDb: queryDb
     };
-    let json = S.reverseConvertToJsonOrThrow(original, InboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, InboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, InboundTranslationSlice$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -112,7 +113,7 @@ Jest.describe("DCB interop types — round-trip serialization", () => {
     let original = {
       resources: [resource]
     };
-    let json = S.reverseConvertToJsonOrThrow(original, QueryDb$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, QueryDb$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, QueryDb$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -141,7 +142,7 @@ Jest.describe("Aggregate interop types — round-trip serialization", () => {
       commandTopic: commandTopicOutputs,
       eventLog: eventLogOutputs
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Aggregate$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Aggregate$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Aggregate$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -162,17 +163,17 @@ Jest.describe("Aggregate interop types — round-trip serialization", () => {
       eventLog: eventLogOutputs,
       eventMapper: original_eventMapper
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Aggregate$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Aggregate$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Aggregate$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
   Jest.test("EventLog.resolvedOutputs round-trips", () => {
-    let json = S.reverseConvertToJsonOrThrow(eventLogOutputs, EventLog$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(eventLogOutputs, EventLog$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, EventLog$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), eventLogOutputs);
   });
   Jest.test("CommandGenerator.resolvedOutputs round-trips", () => {
-    let json = S.reverseConvertToJsonOrThrow(commandGeneratorOutputs, CommandGenerator$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(commandGeneratorOutputs, CommandGenerator$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, CommandGenerator$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), commandGeneratorOutputs);
   });
@@ -184,7 +185,7 @@ Jest.describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       id: "test@1.0",
       version: "1.0.0"
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Plugin$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -204,7 +205,7 @@ Jest.describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       version: "1.0.0",
       readModels: original_readModels
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Plugin$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -268,7 +269,7 @@ Jest.describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       outboundTranslationSlices: original_outboundTranslationSlices,
       inboundTranslationSlices: original_inboundTranslationSlices
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Plugin$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -288,7 +289,7 @@ Jest.describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       version: "1.0.0",
       aggregates: original_aggregates
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Plugin$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -387,7 +388,7 @@ Jest.describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       outboundTranslationSlices: original_outboundTranslationSlices,
       inboundTranslationSlices: original_inboundTranslationSlices
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Plugin$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });
@@ -396,7 +397,7 @@ Jest.describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       id: "empty@1.0",
       version: "1.0.0"
     };
-    let json = S.reverseConvertToJsonOrThrow(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
+    let json = Util_Sury$ReventlessInterop.toJson(original, Plugin$ReventlessInterop.resolvedOutputsSchema);
     let parsed = S.parseOrThrow(json, Plugin$ReventlessInterop.resolvedOutputsSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(parsed), original);
   });

@@ -149,7 +149,7 @@ module Login = {
   let issue = async (~username: string, ~password: string): result<string, string> =>
     switch store.contents->Dict.get(username) {
     | Some({password: stored, identity}) if stored === password =>
-      let json = identity->S.reverseConvertToJsonOrThrow(Identity.schema)->JSON.stringify
+      let json = identity->Reventless.Util_Sury.toJson(Identity.schema)->JSON.stringify
       let payload = _b64urlEncode(json)
       let sig = _sign(payload)
       Ok(`${payload}.${sig}`)
@@ -166,7 +166,7 @@ module Login = {
     | (Some(payload), Some(sig)) if _sign(payload) === sig =>
       _b64urlDecode(payload)->Option.flatMap(json =>
         try {
-          Some(json->JSON.parseOrThrow->S.parseOrThrow(Identity.schema))
+          Some(json->JSON.parseOrThrow->S.parseOrThrow(~to=Identity.schema))
         } catch {
         | _ => None
         }

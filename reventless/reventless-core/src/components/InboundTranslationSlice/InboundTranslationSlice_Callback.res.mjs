@@ -8,8 +8,6 @@ import * as Effect from "effect/Effect";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 
-S.enableJson();
-
 let auditStatusSchema = S.union([
   S.literal("Success"),
   S.literal("Failure")
@@ -171,4 +169,4 @@ export {
   auditRowSchema,
   Make,
 }
-/*  Not a pure module */
+/* auditStatusSchema Not a pure module */

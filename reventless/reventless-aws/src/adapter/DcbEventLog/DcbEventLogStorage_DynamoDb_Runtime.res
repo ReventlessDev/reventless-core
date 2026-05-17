@@ -145,7 +145,7 @@ let fromItem = (item: JSON.t): ReventlessCore.DcbEventLog_Adapter.rawSequencedEv
     let meta =
       obj
       ->ReventlessCore.Message.composeMeta
-      ->S.parseJsonOrThrow(Reventless.Message.metaSchema)
+      ->Reventless.Util_Sury.fromJson(Reventless.Message.metaSchema)
 
     {
       position,

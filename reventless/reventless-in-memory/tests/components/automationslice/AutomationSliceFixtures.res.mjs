@@ -5,6 +5,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as AutomationSlice$Reventless from "@reventlessdev/reventless-spec/src/components/AutomationSlice.res.mjs";
 
 let name = "ShipOrderDcbEventLog";
@@ -196,7 +197,7 @@ let SkipProcessAutomation = {
 };
 
 function encodeShipOrderEvent(event) {
-  let payloadJson = S.reverseConvertToJsonOrThrow(event, eventSchema);
+  let payloadJson = Util_Sury$Reventless.toJson(event, eventSchema);
   let d = Stdlib_JSON.Decode.object(payloadJson);
   let dict;
   if (d !== undefined) {
@@ -219,13 +220,13 @@ function encodeShipOrderEvent(event) {
     msgId: "msg-1",
     correlationId: ""
   };
-  dict["meta"] = S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema);
+  dict["meta"] = Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema);
   dict["id"] = "env-id";
   return dict;
 }
 
 function encodeSkipProcessEvent(event) {
-  let payloadJson = S.reverseConvertToJsonOrThrow(event, eventSchema$1);
+  let payloadJson = Util_Sury$Reventless.toJson(event, eventSchema$1);
   let d = Stdlib_JSON.Decode.object(payloadJson);
   let dict;
   if (d !== undefined) {
@@ -248,7 +249,7 @@ function encodeSkipProcessEvent(event) {
     msgId: "msg-1",
     correlationId: ""
   };
-  dict["meta"] = S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema);
+  dict["meta"] = Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema);
   dict["id"] = "env-id";
   return dict;
 }

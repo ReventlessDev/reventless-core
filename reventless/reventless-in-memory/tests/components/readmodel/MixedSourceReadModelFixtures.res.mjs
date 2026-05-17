@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
@@ -216,11 +217,11 @@ async function publishAggregateEvent(id, event) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)
+      Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema)
     ],
     [
       "event",
-      S.reverseConvertToJsonOrThrow(event, eventSchema)
+      Util_Sury$Reventless.toJson(event, eventSchema)
     ]
   ]);
   return await Bus.publishEvent(aggregateTopicName, "test", meta, eventJson);
@@ -235,11 +236,11 @@ async function publishDcbEvent(id, event) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)
+      Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema)
     ],
     [
       "event",
-      S.reverseConvertToJsonOrThrow(event, eventSchema$1)
+      Util_Sury$Reventless.toJson(event, eventSchema$1)
     ]
   ]);
   return await Bus.publishEvent(dcbTopicName, "test", meta, eventJson);
@@ -251,7 +252,7 @@ async function loadState(id) {
     return [];
   }
   let states = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-  return states.map(json => S.parseJsonOrThrow(json, stateSchema));
+  return states.map(json => Util_Sury$Reventless.fromJson(json, stateSchema));
 }
 
 export {

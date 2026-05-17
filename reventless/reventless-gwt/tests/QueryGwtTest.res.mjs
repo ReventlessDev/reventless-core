@@ -7,8 +7,6 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Outcome$ReventlessGwt from "../src/Outcome.res.mjs";
 import * as Query_GWT$ReventlessGwt from "../src/Query_GWT.res.mjs";
 
-S.enableJson();
-
 let name = "Categories";
 
 let moduleUrl = "";
@@ -311,4 +309,4 @@ export {
   OrdersView,
   OrdersQuery,
 }
-/*  Not a pure module */
+/* stateSchema Not a pure module */

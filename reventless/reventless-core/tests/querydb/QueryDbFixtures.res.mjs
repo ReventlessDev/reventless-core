@@ -6,8 +6,6 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 
-S.enableJson();
-
 let moduleUrl = import.meta.url;
 
 let stateSchema = S.schema(s => ({
@@ -132,4 +130,4 @@ export {
   mockJsonOps,
   reset,
 }
-/*  Not a pure module */
+/* moduleUrl Not a pure module */

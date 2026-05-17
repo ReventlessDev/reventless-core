@@ -4,7 +4,6 @@
 open AsyncTest
 open AsyncTest.Expect
 
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // EP Spec — minimal types for operations tests
@@ -190,7 +189,7 @@ let makeEventJsonForAgg = (aggregateName: string): JSON.t => {
   }
   JSON.Encode.object(
     Dict.fromArray([
-      ("meta", meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+      ("meta", meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
       ("event", JSON.Encode.string("SomeEvent")),
     ]),
   )

@@ -318,12 +318,11 @@ function generate(mutationEntries, queryEntries) {
                 return "";
               }
             case "object" :
-              return Stdlib_Option.getOr(Stdlib_Option.flatMap(v.items.find(item => item.location === "TAG"), item => {
-                let match = item.schema;
-                if (match.type !== "string") {
+              return Stdlib_Option.getOr(Stdlib_Option.flatMap(v.properties["TAG"], s => {
+                if (s.type !== "string") {
                   return;
                 }
-                let $$const = match.const;
+                let $$const = s.const;
                 if ($$const !== undefined) {
                   return $$const;
                 }

@@ -6,8 +6,6 @@ import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res
 import * as CommandGenerator_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Builder.res.mjs";
 import * as CommandGeneratorResolvers_InMemory$ReventlessInMemory from "../../../src/adapter/CommandGenerator/CommandGeneratorResolvers_InMemory.res.mjs";
 
-S.enableJson();
-
 TestRunner$ReventlessInMemory.setup();
 
 let name = "TestCGAggregate";

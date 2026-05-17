@@ -5,6 +5,7 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect from "effect/Effect";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
@@ -144,7 +145,7 @@ let sv = ItemsViewMaker.make(eventLog, undefined);
 let dcbEventTopicResource = Component$ReventlessCore.outputs(eventLog).eventTopic.resources[0];
 
 function encodeEvent(event) {
-  let json = S.reverseConvertToJsonOrThrow(event, eventSchema);
+  let json = Util_Sury$Reventless.toJson(event, eventSchema);
   let match = Message$ReventlessCore.splitMessage(json);
   let tags = DcbTag$Reventless.extractTags(eventSchema, event);
   let meta = Message$ReventlessCore.generateMeta("test", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
@@ -167,7 +168,7 @@ async function loadState(id) {
     return [];
   }
   let states = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-  return states.map(json => S.parseJsonOrThrow(json, stateSchema));
+  return states.map(json => Util_Sury$Reventless.fromJson(json, stateSchema));
 }
 
 export {

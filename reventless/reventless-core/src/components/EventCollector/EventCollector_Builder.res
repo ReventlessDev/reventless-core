@@ -11,7 +11,7 @@ let makeStreamHandler = (
   let jsonHandler: EventCollector.jsonEventsHandler = stream =>
     stream
     ->Stream.mapEffect(json =>
-      Effect.trySync(~catch=_exn => "decode error", () => json->S.parseOrThrow(schema))
+      Effect.trySync(~catch=_exn => "decode error", () => json->S.parseOrThrow(~to=schema))
     )
     ->jsonEventsHandler
 

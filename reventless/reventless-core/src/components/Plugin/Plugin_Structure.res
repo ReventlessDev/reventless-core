@@ -35,10 +35,10 @@ let statusFieldFromStateSchema = (
   | Some(_) as some => some
   | None =>
     switch stateSchema {
-    | Object({items}) =>
-      items
-      ->Array.find(item => item.location == "status")
-      ->Option.map(item => item.location)
+    | Object({properties}) =>
+      // sury alpha.5 carries the field set as a `properties` dict keyed by
+      // field name; the alpha.4 `items` array (with `.location`) is gone.
+      properties->Dict.get("status")->Option.map(_ => "status")
     | _ => None
     }
   }
@@ -51,12 +51,16 @@ let labelFieldsFromStateSchema = (
   switch Reventless.DisplayName.getSpec(stateSchema) {
   | Some(spec) => ("displayName", spec.fields)
   | None =>
+    // sury alpha.5: walk `properties` (dict keyed by field name) instead of
+    // the removed `items` array.
     let firstStringItem = switch stateSchema {
-    | Object({items}) =>
-      items->Array.find(item =>
-        item.location != "TAG" &&
-        !isIdLikeFieldName(item.location) &&
-        switch item.schema {
+    | Object({properties}) =>
+      properties
+      ->Dict.toArray
+      ->Array.find(((name, fieldSchema)) =>
+        name != "TAG" &&
+        !isIdLikeFieldName(name) &&
+        switch fieldSchema {
         | String(_) => true
         | _ => false
         }
@@ -64,7 +68,7 @@ let labelFieldsFromStateSchema = (
     | _ => None
     }
     switch firstStringItem {
-    | Some(item) => (item.location, [item.location])
+    | Some((name, _)) => (name, [name])
     | None =>
       log.warn(
         ~comp="Plugin_Structure",

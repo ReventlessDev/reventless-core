@@ -98,13 +98,15 @@ let hashConstructors = (ctors: array<constructorSchema>): string => {
 }
 
 // ---------------------------------------------------------------------------
-// TAG item helper — extracts the const string value from a TAG schema item.
+// TAG entry helper — extracts the const string value from the "TAG" entry of
+// a sury Object's `properties` dict (the alpha.5 location of the variant
+// discriminant; the alpha.4 `items` array no longer exists).
 // ---------------------------------------------------------------------------
-let tagConstOf = (items: array<S.item>): option<string> =>
-  items
-  ->Array.find(item => item.location == "TAG")
-  ->Option.flatMap(item =>
-    switch item.schema {
+let tagConstOf = (properties: dict<S.t<unknown>>): option<string> =>
+  properties
+  ->Dict.get("TAG")
+  ->Option.flatMap(s =>
+    switch s {
     | String({const: ?Some(v)}) => Some(v)
     | _ => None
     }
@@ -138,8 +140,8 @@ let walkSchema = (typeName: string, schema: S.t<unknown>): typeSchema =>
       let constructors =
         anyOf->Array.filterMap(variantSchema =>
           switch variantSchema {
-          | Object({items, properties}) =>
-            tagConstOf(items)->Option.map(name => {
+          | Object({properties}) =>
+            tagConstOf(properties)->Option.map(name => {
               name,
               fields: extractFields(properties),
             })

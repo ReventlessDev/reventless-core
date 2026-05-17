@@ -91,7 +91,7 @@ let dcbEventTopicResource =
 // ─────────────────────────────────────────────────────────────
 
 let encodeEvent = (event: ScoreEventLog.event): ReventlessInfra.DcbEventLog.rawEvent => {
-  let json = event->S.reverseConvertToJsonOrThrow(ScoreEventLog.eventSchema)
+  let json = event->Reventless.Util_Sury.toJson(ScoreEventLog.eventSchema)
   let (eventType, data) = json->ReventlessCore.Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(ScoreEventLog.eventSchema, event)
   let meta = ReventlessCore.Message.generateMeta(~service="test")
@@ -112,6 +112,6 @@ let loadScores = async id => {
       ->Stream.runCollect
       ->Effect.catchAll(_ => Effect.succeed([]))
       ->Effect.runPromise
-    states->Array.map(json => json->S.parseJsonOrThrow(ScoresViewSpec.stateSchema))
+    states->Array.map(json => json->Reventless.Util_Sury.fromJson(ScoresViewSpec.stateSchema))
   }
 }

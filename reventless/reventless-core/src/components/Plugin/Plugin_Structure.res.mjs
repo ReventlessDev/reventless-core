@@ -30,7 +30,7 @@ function statusFieldFromStateSchema(stateSchema) {
   if (annotated !== undefined) {
     return annotated;
   } else if (stateSchema.type === "object") {
-    return Stdlib_Option.map(stateSchema.items.find(item => item.location === "status"), item => item.location);
+    return Stdlib_Option.map(stateSchema.properties["status"], param => "status");
   } else {
     return;
   }
@@ -45,25 +45,26 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
     ];
   }
   let firstStringItem;
-  firstStringItem = stateSchema.type === "object" ? stateSchema.items.find(item => {
-      if (item.location === "TAG" || isIdLikeFieldName(item.location)) {
+  firstStringItem = stateSchema.type === "object" ? Object.entries(stateSchema.properties).find(param => {
+      let name = param[0];
+      if (name !== "TAG" && !isIdLikeFieldName(name)) {
+        return param[1].type === "string";
+      } else {
         return false;
       }
-      let match = item.schema;
-      return match.type === "string";
     }) : undefined;
   if (firstStringItem !== undefined) {
+    let name = firstStringItem[0];
     return [
-      firstStringItem.location,
-      [firstStringItem.location]
-    ];
-  } else {
-    log.warn("Plugin_Structure", undefined, entityName + `: no @displayName annotation and no suitable string field — labelField falls back to "id"`);
-    return [
-      "id",
-      []
+      name,
+      [name]
     ];
   }
+  log.warn("Plugin_Structure", undefined, entityName + `: no @displayName annotation and no suitable string field — labelField falls back to "id"`);
+  return [
+    "id",
+    []
+  ];
 }
 
 function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt) {

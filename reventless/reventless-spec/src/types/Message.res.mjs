@@ -2,8 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
-
-S.enableJson();
+import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 
 let metaSchema = S.schema(s => ({
   service: s.m(S.string),
@@ -35,9 +34,9 @@ let commandJsonSchema = S.schema(s => ({
   delay: s.m(S.option(S.int))
 }));
 
-let decode = S.parseJsonOrThrow;
+let decode = Util_Sury$Reventless.fromJson;
 
-let encode = S.reverseConvertToJsonOrThrow;
+let encode = Util_Sury$Reventless.toJson;
 
 let InvalidEvent = /* @__PURE__ */Primitive_exceptions.create("Message-Reventless.InvalidEvent");
 
@@ -50,7 +49,7 @@ function toEventSchema$p(idSchema, eventSchema) {
 }
 
 function decodeEvent$p(json, idSchema, eventSchema) {
-  return S.parseJsonOrThrow(json, toEventSchema$p(idSchema, eventSchema));
+  return Util_Sury$Reventless.fromJson(json, toEventSchema$p(idSchema, eventSchema));
 }
 
 function variantNameOfJson(json) {
@@ -80,7 +79,7 @@ function composeEventJson$p(id, meta, eventJson) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(meta, metaSchema)
+      Util_Sury$Reventless.toJson(meta, metaSchema)
     ],
     [
       "event",
@@ -105,4 +104,4 @@ export {
   variantNameOfJson,
   composeEventJson$p,
 }
-/*  Not a pure module */
+/* metaSchema Not a pure module */

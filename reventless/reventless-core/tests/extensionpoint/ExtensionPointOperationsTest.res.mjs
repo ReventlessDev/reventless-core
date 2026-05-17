@@ -2,9 +2,8 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as ExtensionPoint_Operations$ReventlessCore from "../../src/components/ExtensionPoint/ExtensionPoint_Operations.res.mjs";
-
-S.enableJson();
 
 let name = "OpsTestEP";
 
@@ -225,7 +224,7 @@ function makeEventJsonForAgg(aggregateName) {
   return Object.fromEntries([
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(meta, Message$Reventless.metaSchema)
+      Util_Sury$Reventless.toJson(meta, Message$Reventless.metaSchema)
     ],
     [
       "event",
@@ -301,4 +300,4 @@ export {
   makeEventJsonForAgg,
   reset,
 }
-/*  Not a pure module */
+/* commandSchema Not a pure module */

@@ -1,7 +1,6 @@
 open Jest
 open Expect
 
-S.enableJson()
 
 describe("Identity", () => {
   describe("anonymous", () => {
@@ -72,8 +71,8 @@ describe("Identity", () => {
         claims: Dict.fromArray([("tenant", "acme")]),
         provider: Cognito,
       }
-      let json = identity->S.reverseConvertToJsonOrThrow(Reventless.Identity.schema)
-      let decoded = json->S.parseJsonOrThrow(Reventless.Identity.schema)
+      let json = identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)
+      let decoded = json->Reventless.Util_Sury.fromJson(Reventless.Identity.schema)
       expect(decoded)->toEqual(identity)
     })
 
@@ -84,8 +83,8 @@ describe("Identity", () => {
         groups: [],
         provider: Custom("oauth2"),
       }
-      let json = identity->S.reverseConvertToJsonOrThrow(Reventless.Identity.schema)
-      let decoded = json->S.parseJsonOrThrow(Reventless.Identity.schema)
+      let json = identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)
+      let decoded = json->Reventless.Util_Sury.fromJson(Reventless.Identity.schema)
       expect(decoded)->toEqual(identity)
     })
 
@@ -96,8 +95,8 @@ describe("Identity", () => {
         groups: [],
         provider: InMemory,
       }
-      let json = identity->S.reverseConvertToJsonOrThrow(Reventless.Identity.schema)
-      let decoded = json->S.parseJsonOrThrow(Reventless.Identity.schema)
+      let json = identity->Reventless.Util_Sury.toJson(Reventless.Identity.schema)
+      let decoded = json->Reventless.Util_Sury.fromJson(Reventless.Identity.schema)
       expect(decoded.userId)->toBe("user-3")->ignore
       expect(decoded.provider)->toEqual(Reventless.Identity.InMemory)
     })

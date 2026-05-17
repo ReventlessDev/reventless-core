@@ -24,7 +24,7 @@ function parseString(yamlText) {
     let json = Yaml.parse(yamlText);
     return {
       TAG: "Ok",
-      _0: S.parseOrThrow(json, _entriesSchema)
+      _0: S.parseOrThrow(_entriesSchema, json)
     };
   } catch (raw_err) {
     let err = Primitive_exceptions.internalToException(raw_err);

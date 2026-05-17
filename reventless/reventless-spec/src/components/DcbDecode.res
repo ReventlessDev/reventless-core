@@ -11,25 +11,29 @@ type variantKind =
   | PayloadLess
   | WithFields
 
+// In sury alpha.5 the `items` array on `S.t.Object` is gone; the discriminant
+// "TAG" lives in `properties` alongside the payload fields. A variant is
+// payload-less when `properties` has only the TAG entry (length <= 1).
+let extractTagFromProperties = (properties: dict<S.t<unknown>>): option<string> =>
+  properties
+  ->Dict.get("TAG")
+  ->Option.flatMap(s =>
+    switch s {
+    | String({const}) => Some(const)
+    | _ => None
+    }
+  )
+
 let buildVariantLookup = (schema: S.t<unknown>): dict<variantKind> => {
   let lookup = Dict.make()
   switch schema {
   | Union({anyOf}) =>
     anyOf->Array.forEach(variantSchema =>
       switch variantSchema {
-      | Object({items, properties}) =>
-        let tagName =
-          items
-          ->Array.find(item => item.location == "TAG")
-          ->Option.flatMap(item =>
-            switch item.schema {
-            | String({const}) => Some(const)
-            | _ => None
-            }
-          )
-        switch tagName {
+      | Object({properties}) =>
+        switch extractTagFromProperties(properties) {
         | Some(name) =>
-          let kind = if properties->Dict.keysToArray->Array.length == 0 {
+          let kind = if properties->Dict.keysToArray->Array.length <= 1 {
             PayloadLess
           } else {
             WithFields
@@ -43,18 +47,9 @@ let buildVariantLookup = (schema: S.t<unknown>): dict<variantKind> => {
       | _ => ()
       }
     )
-  | Object({items}) =>
+  | Object({properties}) =>
     // Single-variant schema with fields
-    let tagName =
-      items
-      ->Array.find(item => item.location == "TAG")
-      ->Option.flatMap(item =>
-        switch item.schema {
-        | String({const}) => Some(const)
-        | _ => None
-        }
-      )
-    switch tagName {
+    switch extractTagFromProperties(properties) {
     | Some(name) => lookup->Dict.set(name, WithFields)
     | None => ()
     }
@@ -82,12 +77,12 @@ let buildPayloadLessConstructors = (schema: S.t<'event>, lookup: dict<variantKin
   // For payload-less variants, we need to figure out what ReScript value
   // corresponds to each TAG name. sury's schema for a union with payload-less
   // variants encodes them as bare strings. So `| ItemCreated` serializes to
-  // JSON string "ItemCreated". We can use S.parseJsonOrThrow with the string.
+  // JSON string "ItemCreated". We can use Util_Sury.fromJson with the string.
   lookup->Dict.toArray->Array.forEach(((tagName, kind)) =>
     switch kind {
     | PayloadLess =>
       try {
-        let value = JSON.String(tagName)->S.parseJsonOrThrow(schema)
+        let value = JSON.String(tagName)->Util_Sury.fromJson(schema)
         constructors->Dict.set(tagName, value)
       } catch {
       | _ => ()
@@ -118,7 +113,7 @@ let makeDecoder = (schema: S.t<'event>): makeDecoderResult<'event> => {
       let jsonDict = data->Dict.copy
       jsonDict->Dict.set("TAG", JSON.String(eventType))
       try {
-        Some(JSON.Object(jsonDict)->S.parseJsonOrThrow(schema))
+        Some(JSON.Object(jsonDict)->Util_Sury.fromJson(schema))
       } catch {
       | _ => None
       }

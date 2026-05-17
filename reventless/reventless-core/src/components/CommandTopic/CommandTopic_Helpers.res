@@ -49,7 +49,7 @@ let encodeCommandJson = (cmdJson: Reventless.Message.commandJson): JSON.t =>
   JSON.Encode.object(
     Dict.fromArray([
       ("id", JSON.Encode.string(cmdJson.id)),
-      ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+      ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
       ("command", cmdJson.commandJson),
     ]),
   )

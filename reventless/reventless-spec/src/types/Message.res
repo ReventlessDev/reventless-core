@@ -1,4 +1,3 @@
-S.enableJson()
 
 /** Identifies the service that produced or is addressed by a message. */
 @schema
@@ -148,7 +147,7 @@ Decode a JSON value into `'a` using a sury schema. Throws on parse failure.
 let event = json->Message.decode(Category.eventSchema)
 ```
 */
-let decode = (json, schema: S.t<'a>) => json->S.parseJsonOrThrow(schema)
+let decode = (json, schema: S.t<'a>) => json->Util_Sury.fromJson(schema)
 
 /**
 Encode a value to JSON using a sury schema.
@@ -158,7 +157,7 @@ Encode a value to JSON using a sury schema.
 let json = event->Message.encode(Category.eventSchema)
 ```
 */
-let encode = (value, schema: S.t<'a>) => value->S.reverseConvertToJsonOrThrow(schema)
+let encode = (value, schema: S.t<'a>) => value->Util_Sury.toJson(schema)
 
 /** Raised by adapters when an incoming event JSON cannot be matched to a known event variant. */
 exception InvalidEvent(JSON.t)
@@ -172,7 +171,7 @@ let toEventSchema' = (idSchema, eventSchema) =>
 
 /** Decode a raw event JSON envelope into a typed `event'<'id, 'event>`. */
 let decodeEvent' = (json, idSchema, eventSchema) =>
-  json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+  json->Util_Sury.fromJson(toEventSchema'(idSchema, eventSchema))
 
 /** Extract the variant constructor name from a sury-encoded variant JSON. */
 let variantNameOfJson = json =>
@@ -190,7 +189,7 @@ let variantNameOfJson = json =>
 let composeEventJson' = (id, meta, eventJson) =>
   [
     ("id", id->JSON.Encode.string),
-    ("meta", meta->S.reverseConvertToJsonOrThrow(metaSchema)),
+    ("meta", meta->Util_Sury.toJson(metaSchema)),
     ("event", eventJson),
   ]
   ->Dict.fromArray

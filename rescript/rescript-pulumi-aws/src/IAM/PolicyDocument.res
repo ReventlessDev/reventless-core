@@ -122,14 +122,19 @@ type policy = {
 }
 type t = policy
 
+// rescript-pulumi-aws is a sibling of reventless-spec (the `Util_Sury` shim
+// host) so it can't import it. The sury alpha.5 reverse-decode shape is
+// inlined here.
+external _toUnknown: 'a => unknown = "%identity"
+
 let toJsonString: t => string = t => {
-  t
-  ->S.reverseConvertToJsonOrThrow(policySchema)
+  _toUnknown(t)
+  ->S.decodeOrThrow(~from=policySchema->S.reverse, ~to=S.json)
   ->JSON.stringify(~space=1)
 }
 
 let fromJsonString: string => t = (policyString: string) =>
-  policyString->S.parseJsonStringOrThrow(policySchema)
+  policyString->S.decodeOrThrow(~from=S.jsonString, ~to=policySchema)
 
 let make = (~version=Version2012, ~id=?, ~statements) => {
   version,

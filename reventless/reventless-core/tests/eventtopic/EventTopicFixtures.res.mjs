@@ -2,8 +2,6 @@
 
 import * as S from "sury/src/S.res.mjs";
 
-S.enableJson();
-
 let eventSchema = S.union([
   S.schema(s => ({
     TAG: "ItemPublished",
@@ -62,4 +60,4 @@ export {
   makeEvent$p,
   reset,
 }
-/*  Not a pure module */
+/* eventSchema Not a pure module */

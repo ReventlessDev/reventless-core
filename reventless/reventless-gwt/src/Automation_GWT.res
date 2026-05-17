@@ -62,7 +62,6 @@ module type T = {
 module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  S.enableJson()
 
   let describe = JestBind.describe
   let test = (name, body) => JestBind.test(~slice=Spec.name, name, body)

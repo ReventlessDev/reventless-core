@@ -30,14 +30,14 @@ let toCommandSchema' = (idSchema, commandSchema) =>
   })
 
 let decodeEvent' = (json, idSchema, eventSchema) =>
-  json->S.parseJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+  json->Reventless.Util_Sury.fromJson(toEventSchema'(idSchema, eventSchema))
 let decodeCommand' = (json, idSchema, commandSchema) =>
-  json->S.parseJsonOrThrow(toCommandSchema'(idSchema, commandSchema))
+  json->Reventless.Util_Sury.fromJson(toCommandSchema'(idSchema, commandSchema))
 
 let encodeEvent' = (event', idSchema, eventSchema) =>
-  event'->S.reverseConvertToJsonOrThrow(toEventSchema'(idSchema, eventSchema))
+  event'->Reventless.Util_Sury.toJson(toEventSchema'(idSchema, eventSchema))
 let encodeCommand' = (command', idSchema, commandSchema) =>
-  command'->S.reverseConvertToJsonOrThrow(toCommandSchema'(idSchema, commandSchema))
+  command'->Reventless.Util_Sury.toJson(toCommandSchema'(idSchema, commandSchema))
 
 let uuid = Uuid.v4
 
@@ -54,7 +54,7 @@ let toMessageBody = ({id, meta, commandJson}) => {
   let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()}
   [
     ("id", id->JSON.Encode.string),
-    ("meta", commandMeta->S.reverseConvertToJsonOrThrow(metaSchema)),
+    ("meta", commandMeta->Reventless.Util_Sury.toJson(metaSchema)),
     ("command", commandJson),
   ]
   ->Dict.fromArray
@@ -74,7 +74,7 @@ let serviceNameOfMsg = msgJson =>
     msgObj
     ->Dict.get("meta")
     ->Option.flatMap(meta =>
-      switch meta->S.parseJsonOrThrow(metaSchema) {
+      switch meta->Reventless.Util_Sury.fromJson(metaSchema) {
       | msgMeta => Some(msgMeta.service)
       | exception err =>
         Console.log2("Message.serviceNameOfMsg: Couldn't parse meta:", err)
@@ -207,7 +207,7 @@ let deriveMeta = (~parent: meta, ~service=?) => {
 
 let decomposeMeta = meta =>
   meta
-  ->S.reverseConvertToJsonOrThrow(metaSchema)
+  ->Reventless.Util_Sury.toJson(metaSchema)
   ->JSON.Decode.object
   ->Option.getOrThrow
   ->Dict.toArray
@@ -215,7 +215,7 @@ let decomposeMeta = meta =>
 let composeEventJson' = (id, meta, eventJson) =>
   [
     ("id", id->JSON.Encode.string),
-    ("meta", meta->S.reverseConvertToJsonOrThrow(metaSchema)),
+    ("meta", meta->Reventless.Util_Sury.toJson(metaSchema)),
     ("event", eventJson),
   ]
   ->Dict.fromArray
@@ -270,7 +270,7 @@ let storedEventToFlatJson = (
   idSchema: S.t<'id>,
 ): JSON.t => {
   let fields = [
-    ("id", stored.id->S.reverseConvertToJsonOrThrow(idSchema)),
+    ("id", stored.id->Reventless.Util_Sury.toJson(idSchema)),
     ("position", JSON.String(stored.position)),
     ("event", JSON.String(stored.event)),
     ("data", stored.data),
@@ -278,7 +278,7 @@ let storedEventToFlatJson = (
   ]
   let withTags = switch stored.tags {
   | Some(tags) =>
-    let tagsJson = tags->S.reverseConvertToJsonOrThrow(S.array(Reventless.DcbTag.tagSchema))
+    let tagsJson = tags->Reventless.Util_Sury.toJson(S.array(Reventless.DcbTag.tagSchema))
     fields->Array.concat([("tags", tagsJson)])
   | None => fields
   }
@@ -291,17 +291,17 @@ let flatJsonToStoredEvent = (
   idSchema: S.t<'id>,
 ): Reventless.StoredEvent.storedEvent<'id> => {
   let dict = json->JSON.Decode.object->Option.getOrThrow
-  let id = dict->Dict.get("id")->Option.getOrThrow->S.parseJsonOrThrow(idSchema)
+  let id = dict->Dict.get("id")->Option.getOrThrow->Reventless.Util_Sury.fromJson(idSchema)
   let position = dict->Dict.get("position")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
   let event = dict->Dict.get("event")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
   let data = dict->Dict.get("data")->Option.getOrThrow
   let recordedAt =
     dict->Dict.get("recordedAt")->Option.getOrThrow->JSON.Decode.string->Option.getOrThrow
-  let meta = composeMeta(dict)->S.parseJsonOrThrow(metaSchema)
+  let meta = composeMeta(dict)->Reventless.Util_Sury.fromJson(metaSchema)
   let tags =
     dict
     ->Dict.get("tags")
-    ->Option.map(t => t->S.parseJsonOrThrow(S.array(Reventless.DcbTag.tagSchema)))
+    ->Option.map(t => t->Reventless.Util_Sury.fromJson(S.array(Reventless.DcbTag.tagSchema)))
   {id, position, event, data, recordedAt, meta, tags: ?tags}
 }
 

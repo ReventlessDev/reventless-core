@@ -10,25 +10,23 @@ function extractVariantInfo(variantSchema) {
     return;
   }
   let properties = variantSchema.properties;
-  let tagName = Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-    let match = item.schema;
-    if (match.type !== "string") {
-      return;
-    }
-    let $$const = match.const;
-    if ($$const !== undefined) {
-      return $$const;
-    }
-  });
-  return Stdlib_Option.map(tagName, tagName => {
-    let taggedFields = Stdlib_Array.filterMap(Object.entries(properties), param => {
+  return Stdlib_Option.map(DcbTag$Reventless.extractTagConst(properties), tagName => {
+    let payloadFields = {};
+    Object.entries(properties).forEach(param => {
+      let key = param[0];
+      if (key !== "TAG") {
+        payloadFields[key] = param[1];
+        return;
+      }
+    });
+    let taggedFields = Stdlib_Array.filterMap(Object.entries(payloadFields), param => {
       if (DcbTag$Reventless.isTagged(param[1])) {
         return param[0];
       }
     });
     return {
       tagName: tagName,
-      fields: properties,
+      fields: payloadFields,
       taggedFields: taggedFields
     };
   });

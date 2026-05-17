@@ -25,7 +25,7 @@ module Make = (Spec: Spec): T => {
     ->JSON.Decode.object
     ->Option.flatMap(eventObj' => {
       let metaJson = eventObj'->Dict.get("meta")
-      switch metaJson->Option.map(meta => meta->S.parseJsonOrThrow(Message.metaSchema)) {
+      switch metaJson->Option.map(meta => meta->Reventless.Util_Sury.fromJson(Message.metaSchema)) {
       | Some(eventMeta) =>
         let entry =
           sideEffectsWithTags->Array.find(((module(SideEffect: Reventless.SideEffect.T), _)) =>

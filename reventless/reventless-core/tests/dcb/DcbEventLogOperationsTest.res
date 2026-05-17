@@ -27,7 +27,7 @@ let _ = beforeEach(() => mock.reset())
 
 // Helper to encode a TestEventLogSpec event to a rawEvent for testing
 let encodeEvent = (event: DcbFixtures.TestEventLogSpec.event): ReventlessInfra.DcbEventLog.rawEvent => {
-  let json = event->S.reverseConvertToJsonOrThrow(DcbFixtures.TestEventLogSpec.eventSchema)
+  let json = event->Reventless.Util_Sury.toJson(DcbFixtures.TestEventLogSpec.eventSchema)
   let (eventType, data) = json->Message.splitMessage
   let tags = Reventless.DcbTag.extractTags(DcbFixtures.TestEventLogSpec.eventSchema, event)
   let meta = Message.generateMeta(~service="test")
@@ -40,7 +40,7 @@ let decodeEvent = (raw: ReventlessInfra.DcbEventLog.rawSequencedEvent): DcbFixtu
     raw.eventType,
     raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
   )
-  json->S.parseJsonOrThrow(DcbFixtures.TestEventLogSpec.eventSchema)
+  json->Reventless.Util_Sury.fromJson(DcbFixtures.TestEventLogSpec.eventSchema)
 }
 
 describe("DcbEventLog_Operations:", () => {

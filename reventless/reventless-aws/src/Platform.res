@@ -1210,7 +1210,7 @@ module MakeWithConfig = (
         )
         let fragments = plugins->Array.filterMap(json =>
           try {
-            let state = json->S.parseOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+            let state = json->S.parseOrThrow(~to=ReventlessCore.PluginReadModelSpec.stateSchema)
             // Exclude Platform-target plugins — their schema belongs on the PlatformApi,
             // not the DomainApi. Absent apiTarget defaults to "Domain".
             switch state.apiTarget {

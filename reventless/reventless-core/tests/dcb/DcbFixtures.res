@@ -1,4 +1,3 @@
-S.enableJson()
 
 // --- Test Event Log Spec (events with DCB tags) ---
 

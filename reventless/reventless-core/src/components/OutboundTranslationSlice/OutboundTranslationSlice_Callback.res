@@ -1,4 +1,3 @@
-S.enableJson()
 // OutboundTranslationSlice callback — implements the tracked external call pattern.
 //
 // Phase 1 (collect): updates the in-memory TODO list from events (no resolve)
@@ -62,7 +61,7 @@ module Make = (
         | Some(_) => () // Already exists -- skip (idempotent)
         | None =>
           let row: todoRow = {
-            item: item->S.reverseConvertToJsonOrThrow(Spec.outboundItemSchema),
+            item: item->Reventless.Util_Sury.toJson(Spec.outboundItemSchema),
             status: Pending,
             createdAt: now(),
             retryCount: 0,
@@ -85,7 +84,7 @@ module Make = (
     let _ = await pending->Array.reduce(Promise.resolve(), async (prev, (id, row)) => {
       let _ = await prev
 
-      let item = try row.item->S.parseJsonOrThrow(Spec.outboundItemSchema)->Some catch {
+      let item = try row.item->Reventless.Util_Sury.fromJson(Spec.outboundItemSchema)->Some catch {
       | exn =>
         let errMsg =
           exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
@@ -114,7 +113,7 @@ module Make = (
         | Ok(Some((targetId, cmd))) =>
           // Encode command and publish
           let commandJson = try cmd
-          ->S.reverseConvertToJsonOrThrow(Spec.inboundCommandSchema)
+          ->Reventless.Util_Sury.toJson(Spec.inboundCommandSchema)
           ->Some catch {
           | exn =>
             let errMsg =

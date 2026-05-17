@@ -35,13 +35,11 @@ let rec fromSury = (~parentName: string, ~fieldName: string, schema: S.t<unknown
     | Boolean(_) => ScalarBoolean
     | BigInt(_) => ScalarBigInt
     | Array({items, additionalItems}) =>
+      // In sury alpha.5 `items` is `array<t<unknown>>` (not the alpha.4
+      // record type with a `schema` field) — each entry is the item schema
+      // directly.
       let itemType = switch items->Array.get(0) {
-      | Some({schema: itemSchema}) =>
-        fromSury(
-          ~parentName,
-          ~fieldName,
-          itemSchema->(Obj.magic: S.t<unknown> => S.t<unknown>),
-        )
+      | Some(itemSchema) => fromSury(~parentName, ~fieldName, itemSchema)
       | None =>
         // sury stores the item schema in additionalItems (not items) for S.array().
         // additionalItems is @unboxed: Strip="strip", Strict="strict", Schema(t) = the schema object.

@@ -5,8 +5,6 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stream from "effect/Stream";
 import * as Aggregate_Callback$ReventlessCore from "../../src/components/Aggregate/Aggregate_Callback.res.mjs";
 
-S.enableJson();
-
 let name = "TestAggregate";
 
 let commandSchema = S.union([
@@ -282,4 +280,4 @@ export {
   testMeta,
   makeTopicItem,
 }
-/*  Not a pure module */
+/* commandSchema Not a pure module */

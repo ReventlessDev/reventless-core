@@ -4,6 +4,7 @@ import * as S from "sury/src/S.res.mjs";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Adapter$ReventlessInfra from "@reventlessdev/reventless-infra/src/adapter/Adapter.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
@@ -13,8 +14,6 @@ import * as SideEffectHandler_Builder$ReventlessCore from "@reventlessdev/revent
 import * as RuntimeEnvironment_InMemory$ReventlessInMemory from "../../../src/adapter/Runtime/RuntimeEnvironment_InMemory.res.mjs";
 import * as EventCollectorChannel_InMemory$ReventlessInMemory from "../../../src/adapter/EventCollector/EventCollectorChannel_InMemory.res.mjs";
 import * as EventCollectorRuntime_Builder_InMemory$ReventlessInMemory from "../../../src/adapter/Runtime/EventCollectorRuntime_Builder_InMemory.res.mjs";
-
-S.enableJson();
 
 let Bus = InMemory_Bus$ReventlessInMemory.Make({});
 
@@ -111,11 +110,11 @@ async function publishOrderPlaced(id, orderId) {
     ],
     [
       "meta",
-      S.reverseConvertToJsonOrThrow(testMeta, Message$Reventless.metaSchema)
+      Util_Sury$Reventless.toJson(testMeta, Message$Reventless.metaSchema)
     ],
     [
       "event",
-      S.reverseConvertToJsonOrThrow({
+      Util_Sury$Reventless.toJson({
         TAG: "OrderPlaced",
         orderId: orderId
       }, eventSchema)
@@ -146,4 +145,4 @@ export {
   publishOrderPlaced,
   resetMocks,
 }
-/*  Not a pure module */
+/* Bus Not a pure module */

@@ -8,6 +8,7 @@ import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Component$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Component.res.mjs";
 import * as AutomationSlice$Reventless from "@reventlessdev/reventless-spec/src/components/AutomationSlice.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
@@ -302,7 +303,7 @@ async function publishJsons(cmdJsons) {
       ],
       [
         "meta",
-        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$Reventless.metaSchema)
+        Util_Sury$Reventless.toJson(cmdJson.meta, Message$Reventless.metaSchema)
       ],
       [
         "command",
@@ -383,7 +384,7 @@ function placeCmdJson(orderId) {
   return {
     id: orderId,
     meta: TestFixtures$ReventlessInMemory.testMeta,
-    commandJson: S.reverseConvertToJsonOrThrow({
+    commandJson: Util_Sury$Reventless.toJson({
       TAG: "Place",
       orderId: orderId
     }, commandSchema)

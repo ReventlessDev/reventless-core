@@ -1,4 +1,3 @@
-S.enableJson()
 
 // Test event spec for EventTopic
 module ItemEventTopicSpec = {

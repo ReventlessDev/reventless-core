@@ -31,11 +31,11 @@ describe("ExtensionPoint (in-memory)", () => {
       // Build the full command body: {id, meta, command}
       let forwardCmdJson =
         TestEPSpec.Forward({targetId: "target-1"})
-        ->S.reverseConvertToJsonOrThrow(TestEPSpec.commandSchema)
+        ->Reventless.Util_Sury.toJson(TestEPSpec.commandSchema)
       let body = JSON.Encode.object(
         Dict.fromArray([
           ("id", JSON.Encode.string("ep-id-1")),
-          ("meta", testMeta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+          ("meta", testMeta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
           ("command", forwardCmdJson),
         ]),
       )
@@ -50,7 +50,7 @@ describe("ExtensionPoint (in-memory)", () => {
       expect(cmd.id)->toBe("target-1")
 
       // commandJson should decode to Execute({targetId: "target-1"})
-      let decoded = cmd.commandJson->S.parseJsonOrThrow(DelegateAggSpec.commandSchema)
+      let decoded = cmd.commandJson->Reventless.Util_Sury.fromJson(DelegateAggSpec.commandSchema)
       expect(decoded)->toEqual(DelegateAggSpec.Execute({targetId: "target-1"}))
     },
   )

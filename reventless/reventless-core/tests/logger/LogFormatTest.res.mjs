@@ -6,8 +6,6 @@ import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../src/util/LogFormat.res.mjs";
 import * as PluginSpec$ReventlessCore from "../../src/admin/PluginSpec.res.mjs";
 
-S.enableJson();
-
 Jest.describe("LogFormat", () => {
   Jest.describe("commandJsonsToLogMessages", () => {
     Jest.test("empty", () => {

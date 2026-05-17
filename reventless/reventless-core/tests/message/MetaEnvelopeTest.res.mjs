@@ -4,12 +4,13 @@ import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 
 Jest.describe("Message.meta optional fields:", () => {
   Jest.test("generateMeta() with no ~ip/~user omits those keys from JSON", () => {
     let meta = Message$ReventlessCore.generateMeta("svc", undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    let json = S.reverseConvertToJsonOrThrow(meta, Message$ReventlessCore.metaSchema);
+    let json = Util_Sury$Reventless.toJson(meta, Message$ReventlessCore.metaSchema);
     let obj = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined);
     Jest.Expect.toEqual(Jest.Expect.expect(obj["ip"]), undefined);
     Jest.Expect.toEqual(Jest.Expect.expect(obj["user"]), undefined);
@@ -28,8 +29,8 @@ Jest.describe("Message.meta optional fields:", () => {
   });
   Jest.test("generateMeta(~user=alice) round-trips Some(alice)", () => {
     let meta = Message$ReventlessCore.generateMeta("svc", undefined, "alice", undefined, undefined, undefined, undefined, undefined);
-    let json = S.reverseConvertToJsonOrThrow(meta, Message$ReventlessCore.metaSchema);
-    let decoded = S.parseJsonOrThrow(json, Message$ReventlessCore.metaSchema);
+    let json = Util_Sury$Reventless.toJson(meta, Message$ReventlessCore.metaSchema);
+    let decoded = Util_Sury$Reventless.fromJson(json, Message$ReventlessCore.metaSchema);
     return Jest.Expect.toEqual(Jest.Expect.expect(decoded.user), "alice");
   });
   Jest.test("all new optional fields round-trip when set", () => {
@@ -44,8 +45,8 @@ Jest.describe("Message.meta optional fields:", () => {
       ]
     ]);
     let meta = Message$ReventlessCore.generateMeta("svc", "10.0.0.1", "bob", "parent-msg-id", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01", "root-msg-id", "1.2.0", headers);
-    let json = S.reverseConvertToJsonOrThrow(meta, Message$ReventlessCore.metaSchema);
-    let decoded = S.parseJsonOrThrow(json, Message$ReventlessCore.metaSchema);
+    let json = Util_Sury$Reventless.toJson(meta, Message$ReventlessCore.metaSchema);
+    let decoded = Util_Sury$Reventless.fromJson(json, Message$ReventlessCore.metaSchema);
     Jest.Expect.toEqual(Jest.Expect.expect(decoded.ip), "10.0.0.1");
     Jest.Expect.toEqual(Jest.Expect.expect(decoded.user), "bob");
     Jest.Expect.toEqual(Jest.Expect.expect(decoded.causationId), "parent-msg-id");

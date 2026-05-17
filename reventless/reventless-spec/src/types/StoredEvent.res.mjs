@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "../components/DcbTag.res.mjs";
 import * as Message$Reventless from "./Message.res.mjs";
+import * as Util_Sury$Reventless from "../util/Util_Sury.res.mjs";
 
 function toStoredEventSchema(idSchema) {
   return S.object(s => ({
@@ -17,11 +18,11 @@ function toStoredEventSchema(idSchema) {
 }
 
 function decode(json, idSchema) {
-  return S.parseJsonOrThrow(json, toStoredEventSchema(idSchema));
+  return Util_Sury$Reventless.fromJson(json, toStoredEventSchema(idSchema));
 }
 
 function encode(stored, idSchema) {
-  return S.reverseConvertToJsonOrThrow(stored, toStoredEventSchema(idSchema));
+  return Util_Sury$Reventless.toJson(stored, toStoredEventSchema(idSchema));
 }
 
 export {

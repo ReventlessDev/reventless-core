@@ -1,4 +1,3 @@
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // Shared captures — reset in beforeEach

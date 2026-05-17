@@ -1,4 +1,3 @@
-S.enableJson()
 // InboundTranslationSlice callback — receives external input and translates to commands.
 //
 // Maintains an audit log QueryDb and delegates translation to Translation.translate.
@@ -57,7 +56,7 @@ module Make = (
     let requestId = Uuid.v4()
 
     // Parse the external input
-    let input = try inputJson->S.parseOrThrow(Spec.externalInputSchema)->Ok catch {
+    let input = try inputJson->S.parseOrThrow(~to=Spec.externalInputSchema)->Ok catch {
     | exn =>
       let msg =
         exn

@@ -148,8 +148,8 @@ let publishAggregateEvent = async (id, event: AggregateSource.event) => {
   let eventJson = JSON.Encode.object(
     Dict.fromArray([
       ("id", id->JSON.Encode.string),
-      ("meta", meta->S.reverseConvertToJsonOrThrow(Message.metaSchema)),
-      ("event", event->S.reverseConvertToJsonOrThrow(AggregateSource.eventSchema)),
+      ("meta", meta->Reventless.Util_Sury.toJson(Message.metaSchema)),
+      ("event", event->Reventless.Util_Sury.toJson(AggregateSource.eventSchema)),
     ]),
   )
   await Bus.publishEvent(aggregateTopicName, "test", meta, eventJson)
@@ -160,8 +160,8 @@ let publishDcbEvent = async (id, event: DcbSource.event) => {
   let eventJson = JSON.Encode.object(
     Dict.fromArray([
       ("id", id->JSON.Encode.string),
-      ("meta", meta->S.reverseConvertToJsonOrThrow(Message.metaSchema)),
-      ("event", event->S.reverseConvertToJsonOrThrow(DcbSource.eventSchema)),
+      ("meta", meta->Reventless.Util_Sury.toJson(Message.metaSchema)),
+      ("event", event->Reventless.Util_Sury.toJson(DcbSource.eventSchema)),
     ]),
   )
   await Bus.publishEvent(dcbTopicName, "test", meta, eventJson)
@@ -176,6 +176,6 @@ let loadState = async id => {
       ->Stream.runCollect
       ->Effect.catchAll(_ => Effect.succeed([]))
       ->Effect.runPromise
-    states->Array.map(json => json->S.parseJsonOrThrow(MixedReadModelSpec.stateSchema))
+    states->Array.map(json => json->Reventless.Util_Sury.fromJson(MixedReadModelSpec.stateSchema))
   }
 }

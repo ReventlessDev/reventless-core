@@ -1,5 +1,4 @@
 // Fixtures for ExtensionPoint callback unit tests.
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // ExtensionPoint spec (command + directive types)

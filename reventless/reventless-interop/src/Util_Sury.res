@@ -1,7 +1,9 @@
-// Sury alpha.5's `S.reverse` erases the type parameter (returns `S.t<unknown>`),
-// which forces the value side of `S.decodeOrThrow` to be `unknown` too. The
-// shim coerces the value to `unknown` explicitly so the outer `'a` parameter
-// stays generic and call sites keep alpha.4-compatible shapes.
+// reventless-interop sits below reventless-spec (where the canonical
+// `Util_Sury` shim lives) so it can't reach that copy. The shim is duplicated
+// here verbatim — small enough that a tiny package-local copy beats wiring
+// reventless-spec as a dependency just for four helpers.
+//
+// See reventless/reventless-spec/src/util/Util_Sury.res for the reference.
 external toUnknown: 'a => unknown = "%identity"
 
 let toJson: ('a, S.t<'a>) => JSON.t = (value, schema) =>

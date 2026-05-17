@@ -10,6 +10,7 @@ import * as Stream$1 from "effect/Stream";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 import * as Message$ReventlessCore from "./Message.res.mjs";
@@ -35,14 +36,14 @@ function logAction(str) {
 }
 
 function overlayDisplayName(state, stateSchema, spec) {
-  let json = S.reverseConvertToJsonOrThrow(state, stateSchema);
+  let json = Util_Sury$Reventless.toJson(state, stateSchema);
   let stateDict = Stdlib_JSON.Decode.object(json);
   if (stateDict === undefined) {
     return state;
   }
   let label = DisplayName$Reventless.computeLabel(spec, stateDict);
   stateDict["displayName"] = label;
-  return S.parseJsonOrThrow(stateDict, stateSchema);
+  return Util_Sury$Reventless.fromJson(stateDict, stateSchema);
 }
 
 function rewriteAction(action, stateSchema) {

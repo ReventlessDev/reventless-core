@@ -44,6 +44,18 @@ function isCompositePartitionMember(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbCompositePartitionMemberId));
 }
 
+function extractTagConst(properties) {
+  return Stdlib_Option.flatMap(properties["TAG"], s => {
+    if (s.type !== "string") {
+      return;
+    }
+    let $$const = s.const;
+    if ($$const !== undefined) {
+      return $$const;
+    }
+  });
+}
+
 function isTagged(fieldSchema) {
   return Stdlib_Option.isSome(S.Metadata.get(fieldSchema, dcbTagId));
 }
@@ -136,18 +148,18 @@ function extractTagsFromJson(schema, json) {
         if (variantSchema.type !== "object") {
           return [];
         }
-        let variantTag = Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-          let match = item.schema;
-          if (match.type !== "string") {
+        let properties = variantSchema.properties;
+        let variantTag = Stdlib_Option.flatMap(properties["TAG"], s => {
+          if (s.type !== "string") {
             return;
           }
-          let $$const = match.const;
+          let $$const = s.const;
           if ($$const !== undefined) {
             return $$const;
           }
         });
         if (Primitive_object.equal(variantTag, jsonTag)) {
-          return extractTagsFromProperties(variantSchema.properties, jsonDict$1);
+          return extractTagsFromProperties(properties, jsonDict$1);
         } else {
           return [];
         }
@@ -172,29 +184,11 @@ function extractVariantNames(schema) {
         return [];
       }
     case "object" :
-      return Stdlib_Option.getOr(Stdlib_Option.flatMap(schema.items.find(item => item.location === "TAG"), item => {
-        let match = item.schema;
-        if (match.type !== "string") {
-          return;
-        }
-        let $$const = match.const;
-        if ($$const !== undefined) {
-          return [$$const];
-        }
-      }), []);
+      return Stdlib_Option.getOr(Stdlib_Option.map(extractTagConst(schema.properties), name => [name]), []);
     case "union" :
       return Stdlib_Array.filterMap(schema.anyOf, variantSchema => {
         if (variantSchema.type === "object") {
-          return Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-            let match = item.schema;
-            if (match.type !== "string") {
-              return;
-            }
-            let $$const = match.const;
-            if ($$const !== undefined) {
-              return $$const;
-            }
-          });
+          return extractTagConst(variantSchema.properties);
         }
       });
     default:
@@ -212,16 +206,7 @@ function extractAllVariantNames(schema) {
         return [];
       }
     case "object" :
-      return Stdlib_Option.getOr(Stdlib_Option.flatMap(schema.items.find(item => item.location === "TAG"), item => {
-        let match = item.schema;
-        if (match.type !== "string") {
-          return;
-        }
-        let $$const = match.const;
-        if ($$const !== undefined) {
-          return [$$const];
-        }
-      }), []);
+      return Stdlib_Option.getOr(Stdlib_Option.map(extractTagConst(schema.properties), name => [name]), []);
     case "union" :
       return Stdlib_Array.filterMap(schema.anyOf, variantSchema => {
         switch (variantSchema.type) {
@@ -233,16 +218,7 @@ function extractAllVariantNames(schema) {
               return;
             }
           case "object" :
-            return Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-              let match = item.schema;
-              if (match.type !== "string") {
-                return;
-              }
-              let $$const = match.const;
-              if ($$const !== undefined) {
-                return $$const;
-              }
-            });
+            return extractTagConst(variantSchema.properties);
           default:
             return;
         }
@@ -259,29 +235,11 @@ function isVariantPayloadBearing(schema, name) {
   }
   switch (schema.type) {
     case "object" :
-      return Stdlib_Option.getOr(Stdlib_Option.flatMap(schema.items.find(item => item.location === "TAG"), item => {
-        let match = item.schema;
-        if (match.type !== "string") {
-          return;
-        }
-        let $$const = match.const;
-        if ($$const !== undefined) {
-          return $$const === name;
-        }
-      }), false);
+      return Stdlib_Option.getOr(Stdlib_Option.map(extractTagConst(schema.properties), t => t === name), false);
     case "union" :
       return schema.anyOf.some(variantSchema => {
         if (variantSchema.type === "object") {
-          return Stdlib_Option.getOr(Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-            let match = item.schema;
-            if (match.type !== "string") {
-              return;
-            }
-            let $$const = match.const;
-            if ($$const !== undefined) {
-              return $$const === name;
-            }
-          }), false);
+          return Stdlib_Option.getOr(Stdlib_Option.map(extractTagConst(variantSchema.properties), t => t === name), false);
         } else {
           return false;
         }
@@ -350,18 +308,10 @@ function extractTagsFromJsonExpanded(schema, json) {
         if (variantSchema.type !== "object") {
           return [];
         }
-        let variantTag = Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-          let match = item.schema;
-          if (match.type !== "string") {
-            return;
-          }
-          let $$const = match.const;
-          if ($$const !== undefined) {
-            return $$const;
-          }
-        });
+        let properties = variantSchema.properties;
+        let variantTag = extractTagConst(properties);
         if (Primitive_object.equal(variantTag, jsonTag)) {
-          return extractTagsFromPropertiesExpanded(variantSchema.properties, jsonDict$1);
+          return extractTagsFromPropertiesExpanded(properties, jsonDict$1);
         } else {
           return [];
         }
@@ -494,18 +444,10 @@ function findMultiTagVariantNames(schema) {
     if (variantSchema.type !== "object") {
       return;
     }
-    let tagCount = Object.entries(variantSchema.properties).filter(param => isTagged(param[1])).length;
+    let properties = variantSchema.properties;
+    let tagCount = Object.entries(properties).filter(param => isTagged(param[1])).length;
     if (tagCount > 1) {
-      return Stdlib_Option.getOr(Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
-        let match = item.schema;
-        if (match.type !== "string") {
-          return;
-        }
-        let $$const = match.const;
-        if ($$const !== undefined) {
-          return $$const;
-        }
-      }), "(unknown)");
+      return Stdlib_Option.getOr(extractTagConst(properties), "(unknown)");
     }
   };
   if (schema.type === "union") {
@@ -692,6 +634,7 @@ export {
   partition,
   compositePartitionMember,
   isCompositePartitionMember,
+  extractTagConst,
   isTagged,
   isTaggedArray,
   isPartitionTag,

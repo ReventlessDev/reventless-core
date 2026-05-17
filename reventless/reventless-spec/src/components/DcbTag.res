@@ -215,6 +215,19 @@ type derivedPartitionTag =
 
 external toUnknownSchema: S.t<'a> => S.t<unknown> = "%identity"
 
+// In sury alpha.5 the variant discriminant moved from the removed `items`
+// array onto the `properties` dict under the key "TAG". Looks it up and
+// extracts the const string from its `String({const})` schema.
+let extractTagConst = (properties: dict<S.t<unknown>>): option<string> =>
+  properties
+  ->Dict.get("TAG")
+  ->Option.flatMap(s =>
+    switch s {
+    | String({const}) => Some(const)
+    | _ => None
+    }
+  )
+
 /** Returns `true` if the schema was annotated with `DcbTag.string` or `DcbTag.int`. */
 let isTagged = (fieldSchema: S.t<unknown>) =>
   S.Metadata.get(fieldSchema, ~id=dcbTagId)->Option.isSome
@@ -302,11 +315,13 @@ let extractTagsFromJson = (schema: S.t<unknown>, json: JSON.t): array<tag> =>
           acc
         } else {
           switch variantSchema {
-          | Object({items, properties}) =>
-            let variantTag = items
-              ->Array.find(item => item.location == "TAG")
-              ->Option.flatMap(item =>
-                switch item.schema {
+          | Object({properties}) =>
+            // In sury alpha.5 the variant discriminant lives in `properties` under "TAG".
+            let variantTag =
+              properties
+              ->Dict.get("TAG")
+              ->Option.flatMap(s =>
+                switch s {
                 | String({const}) => Some(const)
                 | _ => None
                 }
@@ -366,27 +381,13 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
   | Union({anyOf}) =>
     anyOf->Array.filterMap(variantSchema =>
       switch variantSchema {
-      | Object({items}) =>
-        items
-        ->Array.find(item => item.location == "TAG")
-        ->Option.flatMap(item =>
-          switch item.schema {
-          | String({const}) => Some(const)
-          | _ => None
-          }
-        )
+      | Object({properties}) => extractTagConst(properties)
       | _ => None
       }
     )
-  | Object({items}) =>
-    items
-    ->Array.find(item => item.location == "TAG")
-    ->Option.flatMap(item =>
-      switch item.schema {
-      | String({const}) => Some([const])
-      | _ => None
-      }
-    )
+  | Object({properties}) =>
+    extractTagConst(properties)
+    ->Option.map(name => [name])
     ->Option.getOr([])
   | String({const: ?Some(name)}) => [name]
   | _ => []
@@ -408,28 +409,14 @@ let extractAllVariantNames = (schema: S.t<'a>): array<string> => {
   | Union({anyOf}) =>
     anyOf->Array.filterMap(variantSchema =>
       switch variantSchema {
-      | Object({items}) =>
-        items
-        ->Array.find(item => item.location == "TAG")
-        ->Option.flatMap(item =>
-          switch item.schema {
-          | String({const}) => Some(const)
-          | _ => None
-          }
-        )
+      | Object({properties}) => extractTagConst(properties)
       | String({const}) => Some(const)
       | _ => None
       }
     )
-  | Object({items}) =>
-    items
-    ->Array.find(item => item.location == "TAG")
-    ->Option.flatMap(item =>
-      switch item.schema {
-      | String({const}) => Some([const])
-      | _ => None
-      }
-    )
+  | Object({properties}) =>
+    extractTagConst(properties)
+    ->Option.map(name => [name])
     ->Option.getOr([])
   | String({const: ?Some(name)}) => [name]
   | _ => []
@@ -456,28 +443,16 @@ let isVariantPayloadBearing = (schema: S.t<'a>, name: string): bool => {
     | Union({anyOf}) =>
       anyOf->Array.some(variantSchema =>
         switch variantSchema {
-        | Object({items}) =>
-          items
-          ->Array.find(item => item.location == "TAG")
-          ->Option.flatMap(item =>
-            switch item.schema {
-            | String({const}) => Some(const == name)
-            | _ => None
-            }
-          )
+        | Object({properties}) =>
+          extractTagConst(properties)
+          ->Option.map(t => t == name)
           ->Option.getOr(false)
         | _ => false
         }
       )
-    | Object({items}) =>
-      items
-      ->Array.find(item => item.location == "TAG")
-      ->Option.flatMap(item =>
-        switch item.schema {
-        | String({const}) => Some(const == name)
-        | _ => None
-        }
-      )
+    | Object({properties}) =>
+      extractTagConst(properties)
+      ->Option.map(t => t == name)
       ->Option.getOr(false)
     | _ => false
     }
@@ -543,15 +518,8 @@ let extractTagsFromJsonExpanded = (schema: S.t<unknown>, json: JSON.t): array<ta
           acc
         } else {
           switch variantSchema {
-          | Object({items, properties}) =>
-            let variantTag = items
-              ->Array.find(item => item.location == "TAG")
-              ->Option.flatMap(item =>
-                switch item.schema {
-                | String({const}) => Some(const)
-                | _ => None
-                }
-              )
+          | Object({properties}) =>
+            let variantTag = extractTagConst(properties)
             if variantTag == jsonTag {
               extractTagsFromPropertiesExpanded(properties, jsonDict)
             } else {
@@ -780,24 +748,14 @@ let findMultiTagVariantNames = (schema: S.t<unknown>): array<string> => {
   // Extract the variant name from a single object-variant schema via its TAG item.
   let variantName = (variantSchema: S.t<unknown>): option<string> =>
     switch variantSchema {
-    | Object({items, properties}) => {
+    | Object({properties}) => {
         let tagCount =
           properties
           ->Dict.toArray
           ->Array.filter(((_, fieldSchema)) => isTagged(fieldSchema))
           ->Array.length
         if tagCount > 1 {
-          Some(
-            items
-            ->Array.find(item => item.location == "TAG")
-            ->Option.flatMap(item =>
-              switch item.schema {
-              | String({const}) => Some(const)
-              | _ => None
-              }
-            )
-            ->Option.getOr("(unknown)"),
-          )
+          Some(extractTagConst(properties)->Option.getOr("(unknown)"))
         } else {
           None
         }

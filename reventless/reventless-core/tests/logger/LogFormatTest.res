@@ -2,7 +2,6 @@ open Jest
 open Expect
 open LogFormat
 
-S.enableJson()
 
 describe("LogFormat", () => {
   describe("commandJsonsToLogMessages", () => {

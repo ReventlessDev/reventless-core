@@ -9,22 +9,24 @@ type variantInfo = {
   taggedFields: array<string>,
 }
 
-// Extract variant info (TAG name, fields, tagged fields) from a single variant schema
+// Extract variant info (TAG name, fields, tagged fields) from a single variant schema.
+//
+// In sury alpha.5 the "TAG" entry lives in `properties` alongside the payload
+// fields (the alpha.4 `items` array was removed). The `fields` returned here
+// is the payload-only view — TAG is filtered out so downstream rules treat
+// it like alpha.4 did.
 let extractVariantInfo = (variantSchema: S.t<unknown>): option<variantInfo> =>
   switch variantSchema {
-  | Object({items, properties}) =>
-    let tagName =
-      items
-      ->Array.find(item => item.location == "TAG")
-      ->Option.flatMap(item =>
-        switch item.schema {
-        | String({const}) => Some(const)
-        | _ => None
+  | Object({properties}) =>
+    DcbTag.extractTagConst(properties)->Option.map(tagName => {
+      let payloadFields = Dict.make()
+      properties->Dict.toArray->Array.forEach(((key, schema)) =>
+        if key != "TAG" {
+          payloadFields->Dict.set(key, schema)
         }
       )
-    tagName->Option.map(tagName => {
       let taggedFields =
-        properties
+        payloadFields
         ->Dict.toArray
         ->Array.filterMap(((fieldName, fieldSchema)) =>
           if DcbTag.isTagged(fieldSchema) {
@@ -33,7 +35,7 @@ let extractVariantInfo = (variantSchema: S.t<unknown>): option<variantInfo> =>
             None
           }
         )
-      {tagName, fields: properties, taggedFields}
+      {tagName, fields: payloadFields, taggedFields}
     })
   | _ => None
   }

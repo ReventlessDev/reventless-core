@@ -144,7 +144,7 @@ let extractIdentity = (req: McpSdk.incomingMessage): Reventless.Identity.t => {
     | Some(json) =>
       json
       ->JSON.parseOrThrow
-      ->S.parseOrThrow(Reventless.Identity.schema)
+      ->S.parseOrThrow(~to=Reventless.Identity.schema)
     | None => Reventless.Identity.anonymous
     }
   } catch {

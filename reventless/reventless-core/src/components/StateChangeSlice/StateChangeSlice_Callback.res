@@ -167,7 +167,7 @@ module Make = (
             }
           )
         | Error(error) =>
-          let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)
+          let errorJson = error->Reventless.Util_Sury.toJson(Spec.errorSchema)
           let errorCode = errorJson->Message.variantNameOfJson
           let (_, payloadDict) = errorJson->Message.splitMessage
           let errorDetail =

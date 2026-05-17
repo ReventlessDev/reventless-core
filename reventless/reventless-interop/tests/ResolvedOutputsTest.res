@@ -24,50 +24,50 @@ describe("DCB interop types — round-trip serialization", () => {
       resources: [resource],
       eventTopic: eventTopicOutputs,
     }
-    let json = original->S.reverseConvertToJsonOrThrow(DcbEventLog.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(DcbEventLog.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(DcbEventLog.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=DcbEventLog.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("StateChangeSlice.resolvedOutputs round-trips", () => {
     let original: StateChangeSlice.resolvedOutputs = {resources: [resource]}
-    let json = original->S.reverseConvertToJsonOrThrow(StateChangeSlice.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(StateChangeSlice.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(StateChangeSlice.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=StateChangeSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("StateViewSlice.resolvedOutputs round-trips", () => {
     let original: StateViewSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.reverseConvertToJsonOrThrow(StateViewSlice.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(StateViewSlice.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(StateViewSlice.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=StateViewSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("AutomationSlice.resolvedOutputs round-trips", () => {
     let original: AutomationSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.reverseConvertToJsonOrThrow(AutomationSlice.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(AutomationSlice.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(AutomationSlice.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=AutomationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("OutboundTranslationSlice.resolvedOutputs round-trips", () => {
     let original: OutboundTranslationSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.reverseConvertToJsonOrThrow(OutboundTranslationSlice.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(OutboundTranslationSlice.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(OutboundTranslationSlice.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=OutboundTranslationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("InboundTranslationSlice.resolvedOutputs round-trips", () => {
     let original: InboundTranslationSlice.resolvedOutputs = {resources: [resource], queryDb}
-    let json = original->S.reverseConvertToJsonOrThrow(InboundTranslationSlice.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(InboundTranslationSlice.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(InboundTranslationSlice.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=InboundTranslationSlice.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("QueryDb.resolvedOutputs round-trips", () => {
     let original: QueryDb.resolvedOutputs = {resources: [resource]}
-    let json = original->S.reverseConvertToJsonOrThrow(QueryDb.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(QueryDb.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(QueryDb.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=QueryDb.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 })
@@ -87,8 +87,8 @@ describe("Aggregate interop types — round-trip serialization", () => {
       commandTopic: commandTopicOutputs,
       eventLog: eventLogOutputs,
     }
-    let json = original->S.reverseConvertToJsonOrThrow(Aggregate.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Aggregate.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Aggregate.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Aggregate.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
@@ -104,23 +104,23 @@ describe("Aggregate interop types — round-trip serialization", () => {
       eventLog: eventLogOutputs,
       eventMapper: em,
     }
-    let json = original->S.reverseConvertToJsonOrThrow(Aggregate.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Aggregate.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Aggregate.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Aggregate.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("EventLog.resolvedOutputs round-trips", () => {
-    let json = eventLogOutputs->S.reverseConvertToJsonOrThrow(EventLog.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(EventLog.resolvedOutputsSchema)
+    let json = eventLogOutputs->Util_Sury.toJson(EventLog.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=EventLog.resolvedOutputsSchema)
     expect(parsed)->toEqual(eventLogOutputs)
   })
 
   test("CommandGenerator.resolvedOutputs round-trips", () => {
     let json =
-      commandGeneratorOutputs->S.reverseConvertToJsonOrThrow(
+      commandGeneratorOutputs->Util_Sury.toJson(
         CommandGenerator.resolvedOutputsSchema,
       )
-    let parsed = json->S.parseOrThrow(CommandGenerator.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=CommandGenerator.resolvedOutputsSchema)
     expect(parsed)->toEqual(commandGeneratorOutputs)
   })
 })
@@ -128,8 +128,8 @@ describe("Aggregate interop types — round-trip serialization", () => {
 describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
   test("minimal plugin (no optional fields) round-trips", () => {
     let original: Plugin.resolvedOutputs = {id: "test@1.0", version: "1.0.0"}
-    let json = original->S.reverseConvertToJsonOrThrow(Plugin.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Plugin.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Plugin.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
@@ -144,8 +144,8 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       version: "1.0.0",
       readModels: Dict.fromArray([("MyRM", rm)]),
     }
-    let json = original->S.reverseConvertToJsonOrThrow(Plugin.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Plugin.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Plugin.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
@@ -169,8 +169,8 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       outboundTranslationSlices: Dict.fromArray([("SendEmail", ots)]),
       inboundTranslationSlices: Dict.fromArray([("PaymentHook", its)]),
     }
-    let json = original->S.reverseConvertToJsonOrThrow(Plugin.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Plugin.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Plugin.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
@@ -186,8 +186,8 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       version: "1.0.0",
       aggregates: Dict.fromArray([("Customer", agg)]),
     }
-    let json = original->S.reverseConvertToJsonOrThrow(Plugin.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Plugin.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Plugin.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
@@ -230,15 +230,15 @@ describe("Plugin.resolvedOutputs — round-trip with DCB fields", () => {
       outboundTranslationSlices: Dict.fromArray([("OTS1", ots)]),
       inboundTranslationSlices: Dict.fromArray([("ITS1", its)]),
     }
-    let json = original->S.reverseConvertToJsonOrThrow(Plugin.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Plugin.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Plugin.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 
   test("minimal plugin without optional fields round-trips", () => {
     let original: Plugin.resolvedOutputs = {id: "empty@1.0", version: "1.0.0"}
-    let json = original->S.reverseConvertToJsonOrThrow(Plugin.resolvedOutputsSchema)
-    let parsed = json->S.parseOrThrow(Plugin.resolvedOutputsSchema)
+    let json = original->Util_Sury.toJson(Plugin.resolvedOutputsSchema)
+    let parsed = json->S.parseOrThrow(~to=Plugin.resolvedOutputsSchema)
     expect(parsed)->toEqual(original)
   })
 })

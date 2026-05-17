@@ -99,13 +99,12 @@ function hashConstructors(ctors) {
   });
 }
 
-function tagConstOf(items) {
-  return Stdlib_Option.flatMap(items.find(item => item.location === "TAG"), item => {
-    let match = item.schema;
-    if (match.type !== "string") {
+function tagConstOf(properties) {
+  return Stdlib_Option.flatMap(properties["TAG"], s => {
+    if (s.type !== "string") {
       return;
     }
-    let v = match.const;
+    let v = s.const;
     if (v !== undefined) {
       return v;
     }
@@ -146,7 +145,7 @@ function walkSchema(typeName, schema) {
           return;
         }
         let properties = variantSchema.properties;
-        return Stdlib_Option.map(tagConstOf(variantSchema.items), name => ({
+        return Stdlib_Option.map(tagConstOf(properties), name => ({
           name: name,
           fields: extractFields(properties)
         }));

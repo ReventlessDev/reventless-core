@@ -1,4 +1,3 @@
-S.enableJson()
 
 @schema
 type record = {

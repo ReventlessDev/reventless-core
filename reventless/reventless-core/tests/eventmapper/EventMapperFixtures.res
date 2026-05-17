@@ -1,6 +1,5 @@
 open Reventless.Projection
 
-S.enableJson()
 
 // ─────────────────────────────────────────────────────────────
 // Source event spec (aggregate events)

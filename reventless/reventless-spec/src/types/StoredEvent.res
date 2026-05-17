@@ -39,8 +39,8 @@ let toStoredEventSchema = (idSchema: S.t<'id>): S.t<storedEvent<'id>> =>
 
 /** Decode a `storedEvent<'id>` from JSON. */
 let decode = (json, idSchema) =>
-  json->S.parseJsonOrThrow(toStoredEventSchema(idSchema))
+  json->Util_Sury.fromJson(toStoredEventSchema(idSchema))
 
 /** Encode a `storedEvent<'id>` to JSON. */
 let encode = (stored, idSchema) =>
-  stored->S.reverseConvertToJsonOrThrow(toStoredEventSchema(idSchema))
+  stored->Util_Sury.toJson(toStoredEventSchema(idSchema))

@@ -1,7 +1,6 @@
 open Jest
 open Expect
 
-S.enableJson()
 
 @schema
 type simpleRecord = {

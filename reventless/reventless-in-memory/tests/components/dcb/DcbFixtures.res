@@ -106,7 +106,7 @@ let publishJsons: ReventlessInfra.CommandTopic.publishJsons = async cmdJsons => 
     let fullBody = JSON.Encode.object(
       Dict.fromArray([
         ("id", JSON.Encode.string(cmdJson.id)),
-        ("meta", cmdJson.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)),
+        ("meta", cmdJson.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)),
         ("command", cmdJson.commandJson),
       ]),
     )
@@ -142,4 +142,4 @@ let tagQuery = (id: string): Reventless.DcbTag.query => [
 let typeQuery = (eventType: string): Reventless.DcbTag.query => [{eventTypes: [eventType]}]
 
 let addItemJson = (id, name) =>
-  AddItemSpec.AddItem({id, name})->S.reverseConvertToJsonOrThrow(AddItemSpec.commandSchema)
+  AddItemSpec.AddItem({id, name})->Reventless.Util_Sury.toJson(AddItemSpec.commandSchema)

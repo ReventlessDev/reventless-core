@@ -8,8 +8,6 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as CommandTopic_Callback$ReventlessCore from "../../src/components/CommandTopic/CommandTopic_Callback.res.mjs";
 
-S.enableJson();
-
 let name = "TestCommandTopic";
 
 let commandSchema = S.union([
@@ -149,4 +147,4 @@ export {
   makeTopicItem,
   reset,
 }
-/*  Not a pure module */
+/* commandSchema Not a pure module */

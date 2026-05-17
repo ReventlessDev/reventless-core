@@ -120,11 +120,11 @@ let policySchema = S.schema(s => ({
 }));
 
 function toJsonString(t) {
-  return JSON.stringify(S.reverseConvertToJsonOrThrow(t, policySchema), undefined, 1);
+  return JSON.stringify(S.decodeOrThrow(t, S.reverse(policySchema), S.json), undefined, 1);
 }
 
 function fromJsonString(policyString) {
-  return S.parseJsonStringOrThrow(policyString, policySchema);
+  return S.decodeOrThrow(policyString, S.jsonString, policySchema);
 }
 
 function make(versionOpt, id, statements) {

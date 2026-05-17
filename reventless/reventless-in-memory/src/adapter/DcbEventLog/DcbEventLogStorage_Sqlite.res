@@ -210,7 +210,7 @@ let makeStorage = (
       let meta = switch row->Dict.get("meta") {
       | Some(JSON.String(s)) =>
         switch JSON.parseOrThrow(s) {
-        | metaJson => metaJson->S.parseJsonOrThrow(Reventless.Message.metaSchema)
+        | metaJson => metaJson->Reventless.Util_Sury.fromJson(Reventless.Message.metaSchema)
         | exception _ => JsError.throwWithMessage("invalid meta JSON in dcb_event row")
         }
       | _ => JsError.throwWithMessage("missing meta column in dcb_event row")
@@ -266,7 +266,7 @@ let makeStorage = (
         newEvents->Array.forEach(event => {
           mutable_ := mutable_.contents + 1
           let pos = mutable_.contents
-          let metaJson = event.meta->S.reverseConvertToJsonOrThrow(Reventless.Message.metaSchema)
+          let metaJson = event.meta->Reventless.Util_Sury.toJson(Reventless.Message.metaSchema)
           let recordedAt = ReventlessCore.Message.nowAsISOString()
           insertEventStmt->SqliteDriver.run([
             JSON.Encode.string(name),

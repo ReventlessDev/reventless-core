@@ -7,9 +7,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
-
-S.enableJson();
 
 let todoStatusSchema = S.union([
   S.literal("Pending"),
@@ -40,7 +39,7 @@ function Make(Spec) {
           if (match !== undefined) {
             return;
           }
-          let row_item = S.reverseConvertToJsonOrThrow(param[1], Spec.outboundItemSchema);
+          let row_item = Util_Sury$Reventless.toJson(param[1], Spec.outboundItemSchema);
           let row_createdAt = new Date().toISOString();
           let row = {
             item: row_item,
@@ -69,7 +68,7 @@ function Make(Spec) {
         await prev;
         let item;
         try {
-          item = Primitive_option.some(S.parseJsonOrThrow(row.item, Spec.outboundItemSchema));
+          item = Primitive_option.some(Util_Sury$Reventless.fromJson(row.item, Spec.outboundItemSchema));
         } catch (raw_exn) {
           let exn = Primitive_exceptions.internalToException(raw_exn);
           let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
@@ -99,7 +98,7 @@ function Make(Spec) {
           if (match !== undefined) {
             let commandJson;
             try {
-              commandJson = S.reverseConvertToJsonOrThrow(match[1], Spec.inboundCommandSchema);
+              commandJson = Util_Sury$Reventless.toJson(match[1], Spec.inboundCommandSchema);
             } catch (raw_exn$2) {
               let exn$2 = Primitive_exceptions.internalToException(raw_exn$2);
               let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn$2), Stdlib_JsExn.message), "unknown");
@@ -169,4 +168,4 @@ export {
   todoRowSchema,
   Make,
 }
-/*  Not a pure module */
+/* todoStatusSchema Not a pure module */

@@ -8,6 +8,7 @@ import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
+import * as Util_Sury$Reventless from "@reventlessdev/reventless-spec/src/util/Util_Sury.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as TestRunner$ReventlessInMemory from "../../../src/test/TestRunner.res.mjs";
 import * as InMemory_Bus$ReventlessInMemory from "../../../src/adapter/InMemory_Bus.res.mjs";
@@ -145,7 +146,7 @@ async function publishJsons(cmdJsons) {
       ],
       [
         "meta",
-        S.reverseConvertToJsonOrThrow(cmdJson.meta, Message$Reventless.metaSchema)
+        Util_Sury$Reventless.toJson(cmdJson.meta, Message$Reventless.metaSchema)
       ],
       [
         "command",
@@ -192,7 +193,7 @@ function typeQuery(eventType) {
 }
 
 function addItemJson(id, name) {
-  return S.reverseConvertToJsonOrThrow({
+  return Util_Sury$Reventless.toJson({
     TAG: "AddItem",
     id: id,
     name: name
