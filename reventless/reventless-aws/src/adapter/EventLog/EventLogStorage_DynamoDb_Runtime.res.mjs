@@ -9,11 +9,17 @@ import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.m
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 
+let positionAttrNames = Object.fromEntries([[
+    "#p",
+    "position"
+  ]]);
+
 function putItemConditional(tableName, json) {
   return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
     Item: json,
     TableName: tableName,
-    ConditionExpression: "attribute_not_exists(position)"
+    ConditionExpression: "attribute_not_exists(#p)",
+    ExpressionAttributeNames: positionAttrNames
   }));
 }
 
@@ -22,7 +28,8 @@ function buildTransactItems(tableName, jsons) {
     Put: {
       Item: json,
       TableName: tableName,
-      ConditionExpression: "attribute_not_exists(position)"
+      ConditionExpression: "attribute_not_exists(#p)",
+      ExpressionAttributeNames: positionAttrNames
     }
   }));
 }
@@ -116,6 +123,7 @@ function appendStream(table) {
 }
 
 export {
+  positionAttrNames,
   putItemConditional,
   buildTransactItems,
   transactWriteConditional,
@@ -125,4 +133,4 @@ export {
   replay,
   appendStream,
 }
-/* Effect Not a pure module */
+/* positionAttrNames Not a pure module */

@@ -1,11 +1,16 @@
 open Util_DynamoDb_Runtime
 open AwsSdk.DynamoDb.DocumentClient
 
+// `position` is a DynamoDB reserved keyword, so the ConditionExpression
+// references it via the `#p` placeholder declared in ExpressionAttributeNames.
+let positionAttrNames = [("#p", "position")]->Dict.fromArray
+
 let putItemConditional = (tableName, json) =>
   {
     PutCommand.tableName,
     item: json,
-    conditionExpression: "attribute_not_exists(position)",
+    conditionExpression: "attribute_not_exists(#p)",
+    expressionAttributeNames: positionAttrNames,
   }
   ->PutCommand.make
   ->PutCommand.send
@@ -15,7 +20,8 @@ let buildTransactItems = (tableName, jsons) =>
     TransactWriteCommand.put: {
       TransactWriteCommand.item: json,
       tableName,
-      conditionExpression: "attribute_not_exists(position)",
+      conditionExpression: "attribute_not_exists(#p)",
+      expressionAttributeNames: positionAttrNames,
     },
   })
 
