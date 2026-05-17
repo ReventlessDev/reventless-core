@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.92 (2026-05-17)
+
+### Features
+
+* **aws:** dedicated DynamoDB table for plugin schema-fragment persistence ([d8cc943](https://github.com/ReventlessDev/reventless-core/commit/d8cc9432e18fb3c65dd309d0eeabca1c73c1d05d))
+
+
 # 3.0.0-alpha.91 (2026-05-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
