@@ -6,6 +6,8 @@ import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 function extractExtensionPointNames(__x) {
   return __x.map(extensionPoint => extensionPoint.name);
 }
@@ -265,9 +267,10 @@ let Mappings = Projection$Reventless.Mappings.Make({
 let mappings = [PluginMapping];
 
 export {
+  moduleUrl,
   Util,
   PluginMapping,
   Mappings,
   mappings,
 }
-/* PluginMapping Not a pure module */
+/* moduleUrl Not a pure module */

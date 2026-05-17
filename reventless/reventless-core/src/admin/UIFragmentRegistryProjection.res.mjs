@@ -5,6 +5,8 @@ import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "./UIFragmentRegistryReadModelSpec.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 function project(param) {
   let event = param.event;
   let time = param.meta.time;
@@ -74,8 +76,9 @@ let Mappings = Projection$Reventless.Mappings.Make({
 let mappings = [UIFragmentRegistryMapping];
 
 export {
+  moduleUrl,
   UIFragmentRegistryMapping,
   Mappings,
   mappings,
 }
-/* UIFragmentRegistryMapping Not a pure module */
+/* moduleUrl Not a pure module */

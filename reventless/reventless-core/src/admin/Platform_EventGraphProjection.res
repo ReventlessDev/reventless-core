@@ -1,6 +1,8 @@
 open Reventless.Message
 open Reventless.Projection
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 module EventGraphMapping = Reventless.Projection.Mapping.Make(
   PluginSpec,
   Platform_EventGraphReadModelSpec,

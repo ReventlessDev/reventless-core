@@ -923,7 +923,10 @@ module MakeWithConfig = (
     // module type is the same nominal type — no coercion needed.
     module M = ReventlessCore.PluginProjection.Mappings
     module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
+    // moduleUrl points at PluginProjection.res.mjs (the file that exports `mappings`),
+    // NOT this Platform.res file — the bundled ReadModel Lambda dynamic-imports this URL
+    // at cold start, and Platform.res transitively imports @pulumi/aws (deploy-time only).
+    let moduleUrl: string = ReventlessCore.PluginProjection.moduleUrl
     let mappings: array<module(Mapping)> = ReventlessCore.PluginProjection.mappings
   }
 
@@ -943,7 +946,8 @@ module MakeWithConfig = (
     with module Target := ReventlessCore.Platform_EventGraphReadModelSpec = {
     module M = ReventlessCore.Platform_EventGraphProjection.Mappings
     module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
+    // See PluginReadModelMappings.moduleUrl note above.
+    let moduleUrl: string = ReventlessCore.Platform_EventGraphProjection.moduleUrl
     let mappings: array<module(Mapping)> = ReventlessCore.Platform_EventGraphProjection.mappings
   }
 
@@ -959,7 +963,8 @@ module MakeWithConfig = (
     with module Target := ReventlessCore.UIFragmentRegistryReadModelSpec = {
     module M = ReventlessCore.UIFragmentRegistryProjection.Mappings
     module type Mapping = M.Mapping
-    let moduleUrl: string = %raw(`import.meta.url`)
+    // See PluginReadModelMappings.moduleUrl note above.
+    let moduleUrl: string = ReventlessCore.UIFragmentRegistryProjection.moduleUrl
     let mappings: array<module(Mapping)> = ReventlessCore.UIFragmentRegistryProjection.mappings
   }
 

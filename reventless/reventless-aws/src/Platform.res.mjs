@@ -680,9 +680,8 @@ function MakeWithConfig(Config) {
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
-  let moduleUrl = import.meta.url;
   let PluginReadModelMappings = {
-    moduleUrl: moduleUrl,
+    moduleUrl: PluginProjection$ReventlessCore.moduleUrl,
     mappings: PluginProjection$ReventlessCore.mappings
   };
   let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
@@ -695,9 +694,8 @@ function MakeWithConfig(Config) {
     authorization: PluginReadModelSpec$ReventlessCore.authorization,
     visibility: PluginReadModelSpec$ReventlessCore.visibility
   })(PluginReadModelMappings);
-  let moduleUrl$1 = import.meta.url;
   let PlatformEventGraphMappings = {
-    moduleUrl: moduleUrl$1,
+    moduleUrl: Platform_EventGraphProjection$ReventlessCore.moduleUrl,
     mappings: Platform_EventGraphProjection$ReventlessCore.mappings
   };
   let PlatformEventGraphReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
@@ -710,9 +708,8 @@ function MakeWithConfig(Config) {
     authorization: Platform_EventGraphReadModelSpec$ReventlessCore.authorization,
     visibility: Platform_EventGraphReadModelSpec$ReventlessCore.visibility
   })(PlatformEventGraphMappings);
-  let moduleUrl$2 = import.meta.url;
   let UIFragmentRegistryReadModelMappings = {
-    moduleUrl: moduleUrl$2,
+    moduleUrl: UIFragmentRegistryProjection$ReventlessCore.moduleUrl,
     mappings: UIFragmentRegistryProjection$ReventlessCore.mappings
   };
   let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
@@ -1657,9 +1654,8 @@ function Make($star) {
     Id: Id$Reventless.$$String,
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
-  let moduleUrl = import.meta.url;
   let PluginReadModelMappings = {
-    moduleUrl: moduleUrl,
+    moduleUrl: PluginProjection$ReventlessCore.moduleUrl,
     mappings: PluginProjection$ReventlessCore.mappings
   };
   let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
@@ -1672,9 +1668,8 @@ function Make($star) {
     authorization: PluginReadModelSpec$ReventlessCore.authorization,
     visibility: PluginReadModelSpec$ReventlessCore.visibility
   })(PluginReadModelMappings);
-  let moduleUrl$1 = import.meta.url;
   let PlatformEventGraphMappings = {
-    moduleUrl: moduleUrl$1,
+    moduleUrl: Platform_EventGraphProjection$ReventlessCore.moduleUrl,
     mappings: Platform_EventGraphProjection$ReventlessCore.mappings
   };
   let PlatformEventGraphReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
@@ -1687,9 +1682,8 @@ function Make($star) {
     authorization: Platform_EventGraphReadModelSpec$ReventlessCore.authorization,
     visibility: Platform_EventGraphReadModelSpec$ReventlessCore.visibility
   })(PlatformEventGraphMappings);
-  let moduleUrl$2 = import.meta.url;
   let UIFragmentRegistryReadModelMappings = {
-    moduleUrl: moduleUrl$2,
+    moduleUrl: UIFragmentRegistryProjection$ReventlessCore.moduleUrl,
     mappings: UIFragmentRegistryProjection$ReventlessCore.mappings
   };
   let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({

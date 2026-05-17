@@ -5,6 +5,8 @@ import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 import * as Platform_EventGraphReadModelSpec$ReventlessCore from "./Platform_EventGraphReadModelSpec.res.mjs";
 
+let moduleUrl = import.meta.url;
+
 function project(param) {
   let event = param.event;
   let id = param.id;
@@ -107,8 +109,9 @@ let Mappings = Projection$Reventless.Mappings.Make({
 let mappings = [EventGraphMapping];
 
 export {
+  moduleUrl,
   EventGraphMapping,
   Mappings,
   mappings,
 }
-/* EventGraphMapping Not a pure module */
+/* moduleUrl Not a pure module */

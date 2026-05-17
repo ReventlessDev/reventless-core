@@ -1,5 +1,7 @@
 open Reventless.Message
 
+let moduleUrl: string = %raw(`import.meta.url`)
+
 module Util = {
   let extractExtensionPointNames = Array.map(_, (
     extensionPoint: Reventless.Plugin.extensionPointDefinition,
