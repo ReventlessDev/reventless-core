@@ -53,14 +53,19 @@ Encoded as JSON for transport; protocol identifies the schema format (e.g. "grap
 @schema
 type apiSchemaFragment = {encoded: string, protocol: string}
 
-// Sury's nullableAsOption creates T | undefined | null which fails jsonableValidation
-// inside union variant payloads. js_nullable creates T | null (no undefined) which is
-// JSON-safe and passes jsonableValidation in all contexts.
-@module("sury/src/Sury.res.mjs") external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
-let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
-// js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
-let stringOptionSchema = _jsNullable(S.string, ())
-let stringArrayOptionSchema = _jsNullable(S.array(S.string), ())
+// In sury alpha.5 the strict reverse-decode through `S.json` rejects
+// `undefined` against a `T | null` schema. ReScript's `None` compiles to JS
+// `undefined`, so the alpha.4 js_nullable workaround (and its alpha.5
+// `nullAsOption` equivalent — both encoding to `T | null`) no longer
+// round-trips for plugin definitions containing absent optional fields.
+//
+// `S.option` is the right shape here: `T | undefined`, matching the
+// ReScript runtime representation of `None` exactly. JSON.stringify drops
+// undefined fields entirely, so an absent field on the wire decodes back
+// to `None` symmetrically.
+let apiSchemaFragmentOptionSchema = S.option(apiSchemaFragmentSchema)
+let stringOptionSchema = S.option(S.string)
+let stringArrayOptionSchema = S.option(S.array(S.string))
 
 // ── UI fragment manifest types ────────────────────────────────────────────────
 
@@ -96,7 +101,7 @@ type uiFragmentManifest = {
   pages: array<pageManifestEntry>,
 }
 
-let uiFragmentManifestOptionSchema = _jsNullable(uiFragmentManifestSchema, ())
+let uiFragmentManifestOptionSchema = S.option(uiFragmentManifestSchema)
 
 // ── Plugin structure types (component metadata for Auto UI and event graph) ──
 
@@ -211,7 +216,7 @@ type pluginStructure = {
   extensions: array<extensionDef>,
 }
 
-let pluginStructureOptionSchema = _jsNullable(pluginStructureSchema, ())
+let pluginStructureOptionSchema = S.option(pluginStructureSchema)
 
 // ── Event graph types (cross-plugin component graph) ──────────────────────────
 
