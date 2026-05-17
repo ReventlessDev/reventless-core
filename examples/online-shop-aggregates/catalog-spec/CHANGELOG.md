@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.28 (2026-05-17)
+
+### Bug Fixes
+
+* **deps:** pin sury-ppx to 11.0.0-alpha.2 to prevent prerelease drift ([c9d05fe](https://github.com/ReventlessDev/reventless-core/commit/c9d05fe5118a9c0442ca3e071f2606b3a139fc81))
+
+
 # 3.0.0-alpha.27 (2026-05-17)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-spec
