@@ -121,7 +121,7 @@ function Make(Spec) {
       if (Exit$1.isSuccess(exit)) {
         return await publishToEventTopic(id, events$p, eventsJson);
       }
-      let failMsg = Exit.match(exit, cause => Stdlib_Option.getOr(Cause.failures(cause)[0], "storage error"), () => "storage error");
+      let failMsg = Exit.match(exit, cause => Cause.pretty(cause), () => "storage error");
       if (failMsg.includes("conflict")) {
         return {
           TAG: "Error",

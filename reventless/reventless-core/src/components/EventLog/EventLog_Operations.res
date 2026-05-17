@@ -135,9 +135,11 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
     if exit->Exit.isSuccess {
       await publishToEventTopic(id, events', eventsJson)
     } else {
-      // Retry exhausted — extract the final error message from the Cause
+      // Retry exhausted — extract the final error message from the Cause.
+      // Use Cause.pretty so defects (uncaught throws) are surfaced too, not
+      // just typed failures from Cause.failures.
       let failMsg = exit->Exit.match(
-        ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("storage error"),
+        ~onFailure=cause => cause->Cause.pretty,
         ~onSuccess=_ => "storage error", // unreachable: we are in the isFailure branch
       )
       // Propagate conflict errors without wrapping so callers can detect them
