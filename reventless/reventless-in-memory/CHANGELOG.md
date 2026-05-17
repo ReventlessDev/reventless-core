@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.53 (2026-05-17)
+
+### Features
+
+* **admin:** strip plugin version at GraphQL boundary for UI-facing pluginIds ([a03f028](https://github.com/ReventlessDev/reventless-core/commit/a03f0283c020b38fae26bbef1fb702fa928af95b))
+
+
 # 3.0.0-alpha.52 (2026-05-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-in-memory

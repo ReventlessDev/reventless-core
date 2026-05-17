@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.77 (2026-05-17)
+
+### Bug Fixes
+
+* **aws:** pass pluginId through onHeartbeatEpChannelAvailable so heartbeat Lambda has PLUGIN_ID ([cc983bf](https://github.com/ReventlessDev/reventless-core/commit/cc983bf5b737cf282f1bdeab7e2a3e95531d59ef))
+### Features
+
+* **admin:** strip plugin version at GraphQL boundary for UI-facing pluginIds ([a03f028](https://github.com/ReventlessDev/reventless-core/commit/a03f0283c020b38fae26bbef1fb702fa928af95b))
+
+
 # 3.0.0-alpha.76 (2026-05-17)
 
 ### Bug Fixes
