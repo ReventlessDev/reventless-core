@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-dcb-catalog",
-  "version": "1.0.0-alpha.48",
+  "version": "1.0.0-alpha.49",
   "description": "Online Shop example — Catalog bounded context (Product & Category) using the DCB pattern",
   "license": "MIT",
   "scripts": {

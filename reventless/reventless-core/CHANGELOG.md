@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.81 (2026-05-17)
+
+### Bug Fixes
+
+* **aggregate:** surface DynamoDB append-failure cause to logs ([4169748](https://github.com/ReventlessDev/reventless-core/commit/4169748d64c627ea5075ac7a5127273c74a8c177))
+
+
 # 3.0.0-alpha.80 (2026-05-17)
 
 ### Bug Fixes
