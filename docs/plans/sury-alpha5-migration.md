@@ -62,6 +62,24 @@ was working two days ago.
 
 ### Phase 1 — Sury-isolation shim + smoke test
 
+**Status (2026-05-17):** ⛔ **stopped on showstopper.** Branch
+`sury-alpha5-phase1` is at commits `344ca5907` + `acfaf3aad` — build
+green on alpha.5 across 921 modules + 3 example platforms, 97.9% of the
+reventless-core suite passes (374/382). Eight remaining failures share
+one root cause: sury alpha.5 raises `TypeError: val.p.a is not a
+function` inside `_notVarAtParent` while *compiling* the reverse-decoder
+for any sury-ppx-emitted record-payload variant union — including the
+minimal `type command = CreateItem({itemId: string}) |
+DeleteItem({itemId: string})` shape. This matches the plan's stop
+condition ("semantic divergence we can't shim") and is a sury internal
+bug, not an application-level one. **Production stays on Phase 0's
+alpha.4 pin (Layer 59) and Phases 2–4 are blocked until sury's reverse
+decoder is fixed upstream or until we adopt an encode path that doesn't
+route through `S.reverse`.** Detailed findings, including the corrected
+shim and the schema-introspection rewrites that were validated along
+the way, are captured in
+`docs/analysis/sury-alpha5-migration.md` (Phase 1 retrospective section).
+
 **Goal:** introduce a single `Util_Sury` module that wraps the alpha.5 vocab
 behind alpha.4-compatible names, then port two pivotal files
 (`Message.res`, `Projection.res`) onto it. Validates the most important

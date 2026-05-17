@@ -414,6 +414,145 @@ A, B, D, E, H land in the main migration plan (in-window cleanups). C, F, and
 G are follow-on projects in their own backlog plans — the alpha.5 migration
 makes them materially easier without being prerequisites.
 
+## Phase 1 retrospective (2026-05-17)
+
+Phase 1 of the migration plan ran on branch `sury-alpha5-phase1` (commits
+`bb689a73e` → `344ca5907` → `acfaf3aad`). Results:
+
+### Worked
+
+- **Util_Sury shim** (`reventless-spec/src/util/Util_Sury.res`) with the
+  alpha.5 labeled-arg signatures. The plan's draft missed that alpha.5's
+  `S.reverse: t<'value> => t<unknown>` erases the value type, forcing
+  `decodeOrThrow` to see `unknown` on the value side too. Fixed by
+  coercing `value → unknown` via `external toUnknown: 'a => unknown =
+  "%identity"` inside the shim — keeps the outer `('a, S.t<'a>) =>
+  JSON.t` type signature so call-sites stay alpha.4-compatible.
+- **Schema-introspection rewrite.** `S.t.Object` truly did drop the
+  `items: array<item>` field in alpha.5 (only `properties:
+  dict<S.t<unknown>>` remains). Sites in `DcbDecode`, `DcbTag` (7
+  sites), `DcbValidation`, `SchemaWalker`, `Plugin_Structure` (2 sites),
+  `GraphQL_FragmentGenerator`, and `SchemaType` (the Array form, which
+  now ships `array<t<unknown>>` instead of the alpha.4 record type with
+  a `schema` field) all rewrote cleanly to `properties->Dict.get("TAG")`
+  walks. **Caveat for downstream rules:** `properties` in alpha.5
+  *includes* the `"TAG"` entry alongside the payload fields, so
+  per-variant logic that counts or iterates "payload fields" needs to
+  filter `"TAG"` out — `DcbDecode.PayloadLess` heuristic flipped from
+  `length == 0` to `length <= 1`, and `DcbValidation` builds its
+  `payloadFields` view by stripping `"TAG"` from `properties`.
+- **`S.enableJson()` removal** (41 sites). The function is gone in
+  alpha.5 — there's no opt-in needed; the JSON encoder is always
+  available. Forced opportunity H to land as part of Phase 1, not
+  Phase 2.
+- **`_jsNullable` → `S.option`** for the optional fields on
+  `pluginDefinition` (`apiSchemaFragment`, `apiTarget`, `uiFragments`,
+  `pluginStructure`, plus the string / string-array option aliases).
+  The alpha.4 workaround encoded `option<T>` as `T | null` to dodge a
+  jsonableValidation regression in union-variant payloads. In alpha.5,
+  the strict reverse-decode through `S.json` rejects ReScript's `None`
+  (= JS `undefined`) against a `T | null` schema:
+  ```
+  SuryError: Failed at ["apiSchemaFragment"]:
+    Expected { encoded; protocol; } | null, received undefined
+  ```
+  `S.option` produces `T | undefined`, matching the ReScript runtime
+  representation of `None` directly. JSON.stringify drops undefined
+  fields, so an absent field round-trips cleanly. This is the alpha.5
+  resolution of opportunity A — js_nullable is no longer needed, and
+  the `external @module("sury/src/Sury.res.mjs")` was dropped.
+- **API signature changes.** `S.parseOrThrow(value, schema)` became
+  `S.parseOrThrow(value, ~to=schema)` (labeled `~to` now mandatory; 15
+  call-sites migrated). `S.Error(_)` exception constructor renamed to
+  `S.Exn(_)` (one site, `DilgerImport`).
+- **Inter-package shim placement.** The plan's claim that `Util_Sury`
+  could live in `reventless-spec` alone proved too optimistic. Three
+  packages sit *below* `reventless-spec` and can't reach it:
+  `rescript-pulumi-aws` (one `PolicyDocument` call-site → inlined),
+  `reventless-codegen` (7 sites → got a local `src/Util_Sury.res`
+  copy), and `reventless-interop` (18 sites incl. tests → also got a
+  local `src/Util_Sury.res` copy). Three copies in total. Phase 5's
+  "keep or inline" decision is unaffected — the canonical shim is still
+  in `reventless-spec`.
+- **Build green** across the framework + 3 example platforms (921 +
+  675 + 709 + 701 modules). 20 example `package.json` files were also
+  bumped from `^11.0.0-alpha.4` to `11.0.0-alpha.5` so the build
+  resolves a single sury version (the caret on alpha.4 would have
+  pulled the old version into the example trees).
+
+### Did not work — showstopper
+
+`TypeError: val.p.a is not a function`, raised inside sury alpha.5's
+`_notVarAtParent` while *compiling* the reverse-decoder for a
+sury-ppx-emitted union of record-payload variants. Stack:
+
+```
+TypeError: val.p.a is not a function
+  at Object._notVarAtParent (sury/src/Sury.res.mjs:462:9)
+  at Object.val.v (sury/src/Sury.res.mjs:871:15)
+  at Object._bondVar (sury/src/Sury.res.mjs:435:15)
+  at Object.val.v (sury/src/Sury.res.mjs:734:15)
+  at merge (sury/src/Sury.res.mjs:679:48)
+  at Schema.unionDecoder [as decoder] (sury/src/Sury.res.mjs:2633:31)
+```
+
+Reproduces on the simplest possible shape — `type command =
+CreateItem({itemId: string}) | DeleteItem({itemId: string})` —
+*and* fires before any data flows through, while sury is still
+constructing the compiled decoder. Every `Util_Sury.toJson`-style
+encode path through such a schema crashes here.
+
+Eight tests fail with this error (out of 382 in reventless-core), all on
+the same codepath:
+
+- `MessageTest` — `get event name of eventJson'`, `get id of eventJson'`
+- `LogFormatTest` — `commandJsonsToLogMessages › complex`,
+  `event'JsonToLogMessage › simple`
+- `CommandTopicCallbackTest` — `handleJsonCommands` (4 cases)
+- `EventTopicOperationsTest` — full suite fails to construct
+
+The plan's stop condition explicitly listed this case: *"If Phase 1
+surfaces showstoppers (PPX incompatibility, semantic divergence we
+can't shim, further `S.t` structural breaks), stop here and re-plan.
+Production is still on the Phase-0 pin during this entire phase."*
+
+### What this means for Phases 2–4
+
+Blocked. The reverse-decode is the only alpha.5 path for encoding a
+typed value to JSON (alpha.5 dropped `S.reverseConvertToJsonOrThrow`
+and the rest of the alpha.4 encode helpers), and that path is what
+crashes. Two ways forward:
+
+1. **Wait for an upstream sury fix.** Open an issue against
+   <https://github.com/DZakh/sury> with the minimal CreateItem /
+   DeleteItem repro and watch alpha.6.
+2. **Switch to an encode path that doesn't reverse the schema.**
+   E.g. teach `Util_Sury.toJson` to operate on the JSON-shaped value
+   directly, sidestepping the sury reverse-decoder. Requires changing
+   how `@schema`-annotated records become wire JSON — possibly back to
+   manual JSON.Encode plumbing for the message envelope, with sury
+   only doing parse-side validation.
+
+Production is unaffected: Phase 0 left sury 11.0.0-alpha.4 pinned on
+Layer 59 and the `alpha` branch was never touched.
+
+### Artifacts left on the branch
+
+- `Util_Sury.res` shim in `reventless-spec/src/util/` (correct for
+  alpha.5; ready to use once the encode-path issue is resolved).
+- Local `Util_Sury.res` copies in `reventless-codegen/src/` and
+  `reventless-interop/src/` (same shape, for below-spec packages).
+- Schema-introspection rewrites in `DcbDecode`, `DcbTag`,
+  `DcbValidation`, `SchemaWalker`, `Plugin_Structure`,
+  `GraphQL_FragmentGenerator`, `SchemaType`.
+- `_jsNullable` → `S.option` migration in `Plugin.res`.
+- `S.parseOrThrow` labeled-`~to` migration across 15 files.
+- 41 `S.enableJson()` deletions.
+- 20 example `package.json` files bumped to `11.0.0-alpha.5`.
+
+When this is reopened, none of this work needs to be redone — only the
+encode-side strategy needs to change.
+
 ## References
 
 - Sury repo: <https://github.com/DZakh/sury>
