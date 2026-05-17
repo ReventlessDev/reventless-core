@@ -652,7 +652,7 @@ type platformHooks = {
   onDcbEventLogCreated?: unknown => unit,
   onDcbCommandTopicCreated?: unknown => unit,
   onDcbSlicesCreated?: unknown => unit,
-  onHeartbeatEpChannelAvailable?: unknown => unit,
+  onHeartbeatEpChannelAvailable?: (unknown, ~pluginId: string) => unit,
   // ── Admin → Plugin coordination ────────────────────────────────────────
   // Set by makePlatform after Admin.construct(); read by Plugin_Builder to
   // wire the local admin connection path (in-memory).  Starts as an empty
