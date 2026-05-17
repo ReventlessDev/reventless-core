@@ -255,7 +255,7 @@ function Make(Platform) {
     RecordProductDemandSlice,
     RenameCategorySlice
   ], undefined, undefined, [ImportProductSlice], [Orders_Extension]);
-  let make = () => Platform.Plugin.make("Catalog", 60, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, undefined, [
+  let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, undefined, [
     AddCategorySlice,
     AddProductSlice,
     ArchiveCategorySlice,

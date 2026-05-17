@@ -35,7 +35,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~heartbeatInterval=60,
+      ~heartbeatInterval=5,
       ~extensionPoints=[module(Products_ExtensionPoint)],
       ~extensions=[module(Orders_Extension)],
       ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],

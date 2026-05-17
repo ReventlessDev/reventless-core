@@ -90,7 +90,7 @@ function create(scheduler, channelResources, resourceNaming) {
     if (Exit$1.isSuccess(exit)) {
       return;
     }
-    let errMsg = Exit.match(exit, cause => Stdlib_Option.getOr(Cause.failures(cause)[0], "unknown"), () => "unknown");
+    let errMsg = Exit.match(exit, cause => Cause.pretty(cause), () => "unknown");
     Effect$1.runSync(Effect$1.logError(`ScheduleOps.create: couldn't create ` + Stdlib_Option.getOr(JSON.stringify(schedule$1), "") + `: ` + errMsg));
     throw {
       RE_EXN_ID: ScheduleNotCreated,
@@ -108,7 +108,7 @@ function $$delete(scheduler, channelResources, resourceNaming) {
     if (Exit$1.isSuccess(exit)) {
       return;
     }
-    let errMsg = Exit.match(exit, cause => Stdlib_Option.getOr(Cause.failures(cause)[0], "unknown"), () => "unknown");
+    let errMsg = Exit.match(exit, cause => Cause.pretty(cause), () => "unknown");
     Effect$1.runSync(Effect$1.logError(`ScheduleOps.delete: couldn't delete ` + name$1 + `: ` + errMsg));
     throw {
       RE_EXN_ID: ScheduleNotDeleted,

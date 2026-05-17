@@ -170,7 +170,7 @@ function Make(Platform) {
     CustomersReadModel,
     OrdersReadModel
   ], undefined, undefined, undefined, undefined, undefined, [Products_Extension]);
-  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [Orders_ExtensionPoint], [Products_Extension], [
+  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [
     CatalogProductAggregate,
     CustomerAggregate,
     OrderAggregate

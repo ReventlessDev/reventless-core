@@ -61,7 +61,7 @@ function read(srcDir) {
   let pluginJson = Nodefs.existsSync(pluginJsonPath) ? readJson(pluginJsonPath) : undefined;
   return {
     name: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrField(j, "name")), derivedName),
-    heartbeatInterval: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getIntField(j, "heartbeatInterval")), 60),
+    heartbeatInterval: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getIntField(j, "heartbeatInterval")), 5),
     exclude: Stdlib_Option.getOr(Stdlib_Option.flatMap(pluginJson, j => getStrArrayField(j, "exclude")), []),
     variant: "Composition"
   };

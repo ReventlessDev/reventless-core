@@ -84,7 +84,7 @@ let create = (
       ->Effect.runPromiseExit
     if !(exit->Exit.isSuccess) {
       let errMsg = exit->Exit.match(
-        ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("unknown"),
+        ~onFailure=cause => cause->Cause.pretty,
         ~onSuccess=_ => "unknown",
       )
       Effect.logError(
@@ -113,7 +113,7 @@ let delete = (
       ->Effect.runPromiseExit
     if !(exit->Exit.isSuccess) {
       let errMsg = exit->Exit.match(
-        ~onFailure=cause => cause->Cause.failures->Array.get(0)->Option.getOr("unknown"),
+        ~onFailure=cause => cause->Cause.pretty,
         ~onSuccess=_ => "unknown",
       )
       Effect.logError(`ScheduleOps.delete: couldn't delete ${name}: ${errMsg}`)->Effect.runSync

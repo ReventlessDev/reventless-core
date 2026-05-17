@@ -888,8 +888,8 @@ function MakeWithConfig(Config) {
         name: "id",
         type: "S"
       }], undefined, undefined, undefined, undefined, {}, "PluginSchemaPersistence");
-    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, undefined, undefined);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, Config.cloner, undefined);
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
@@ -1848,8 +1848,8 @@ function Make($star) {
         name: "id",
         type: "S"
       }], undefined, undefined, undefined, undefined, {}, "PluginSchemaPersistence");
-    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, undefined, undefined);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, false, undefined);
+    PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});

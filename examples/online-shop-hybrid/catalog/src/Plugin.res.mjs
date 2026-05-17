@@ -246,7 +246,7 @@ function Make(Platform) {
     ChangeProductPriceSlice,
     RecordProductDemandSlice
   ], undefined, undefined, [ImportProductSlice], [Orders_Extension]);
-  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 60, [Products_ExtensionPoint], [Orders_Extension], [CategoryAggregate], [
+  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [CategoryAggregate], [
     CatalogActivityReadModel,
     CategoriesReadModel
   ], [ImportProductsTask], [

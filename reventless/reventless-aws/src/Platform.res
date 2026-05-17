@@ -1292,11 +1292,13 @@ module MakeWithConfig = (
 
     PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
       ~pluginReadModelTableName?,
+      ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
       (),
     )
     PluginRuntime_Builder.registerConfig(
       ~appSyncApiId=domainApiId,
       ~pluginReadModelTableName?,
+      ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
       ~clonerEnabled=Config.cloner,
       (),
     )

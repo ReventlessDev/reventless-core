@@ -47,7 +47,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let make = (~uiBundleUrl=?) =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~heartbeatInterval=60,
+      ~heartbeatInterval=5,
       ~extensionPoints=[module(Products_ExtensionPoint)],
       ~extensions=[module(Orders_Extension)],
       ~aggregates=[module(CategoryAggregate)],

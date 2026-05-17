@@ -78,7 +78,7 @@ let read = (~srcDir: string): config => {
     name: pluginJson->Option.flatMap(j => getStrField(j, "name"))->Option.getOr(derivedName),
     heartbeatInterval: pluginJson
     ->Option.flatMap(j => getIntField(j, "heartbeatInterval"))
-    ->Option.getOr(60),
+    ->Option.getOr(5),
     exclude: pluginJson->Option.flatMap(j => getStrArrayField(j, "exclude"))->Option.getOr([]),
     variant: Composition,
   }

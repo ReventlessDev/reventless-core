@@ -240,7 +240,7 @@ function Make(Platform) {
     ShipOrderSlice,
     SyncCatalogProductSlice
   ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [Products_Extension]);
-  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 60, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
+  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     PlaceOrderSlice,
     RefundOrderSlice,
