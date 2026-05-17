@@ -228,7 +228,23 @@ module Make = (
     let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
+    // Merge DCB StateViewSlice / InboundTranslation QueryDbs into allQueryDbs so the
+    // resolver-makers wired below also cover admin DCB slice fields (mirrors the
+    // plugin-side merge at Plugin_Builder.res).
+    dcbResult.stateViewSlicesOutputs
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
+    dcbResult.inboundTranslationSlicesOutputs
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
+
+    // Invoke each QueryDb's deferred resolversMaker so AppSync resolvers are
+    // actually attached to the admin-prefixed Connection fields (Platform_Plugins,
+    // Platform_PlatformEventGraphs, …). Without this, ReadModel_Builder_Single
+    // produces the resolverMaker closure but it is never called, and AppSync
+    // returns "Cannot return null for non-nullable type" for the Connection field.
+    let _resolvers = allQueryDbs->createResolvers
 
     let extensionPointsOutputs =
       (
