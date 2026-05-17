@@ -57,6 +57,7 @@ import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChang
 import * as AppSync_Resolver_Retrying$ReventlessAws from "./adapter/Api/AppSync_Resolver_Retrying.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
@@ -886,7 +887,22 @@ function MakeWithConfig(Config) {
         type: "S"
       }], undefined, undefined, undefined, undefined, {}, "PluginSchemaPersistence");
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
+    let pluginEpEventTopicArn = Output$Pulumi.flatMap(admin.extensionPointsOutputs, eps => {
+      let ep = eps.find(ep => ep.name === PluginExtensionPointSpec$ReventlessInfra.name);
+      if (ep !== undefined) {
+        return Output$Pulumi.flatMap(ep.eventTopic, et => {
+          let r = et.resources[0];
+          if (r !== undefined) {
+            return r.urn;
+          } else {
+            return Pulumi.output("NOT_AVAILABLE");
+          }
+        });
+      } else {
+        return Pulumi.output("NOT_AVAILABLE");
+      }
+    });
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
@@ -1843,7 +1859,22 @@ function Make($star) {
         type: "S"
       }], undefined, undefined, undefined, undefined, {}, "PluginSchemaPersistence");
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined);
-    PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
+    let pluginEpEventTopicArn = Output$Pulumi.flatMap(admin.extensionPointsOutputs, eps => {
+      let ep = eps.find(ep => ep.name === PluginExtensionPointSpec$ReventlessInfra.name);
+      if (ep !== undefined) {
+        return Output$Pulumi.flatMap(ep.eventTopic, et => {
+          let r = et.resources[0];
+          if (r !== undefined) {
+            return r.urn;
+          } else {
+            return Pulumi.output("NOT_AVAILABLE");
+          }
+        });
+      } else {
+        return Pulumi.output("NOT_AVAILABLE");
+      }
+    });
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});

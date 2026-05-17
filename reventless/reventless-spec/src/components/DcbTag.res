@@ -375,6 +375,12 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
           | _ => None
           }
         )
+      // Payload-less variants are encoded by sury as bare string literals
+      // (e.g. `S.literal("UnknownPluginDetected")` inside a union), not as
+      // objects carrying a TAG field. Include their literal value too,
+      // otherwise downstream consumers (e.g. ExtensionPointMapping's
+      // acceptedTags filter) silently drop every payload-less event.
+      | String({const: ?Some(name)}) => Some(name)
       | _ => None
       }
     )

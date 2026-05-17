@@ -1300,7 +1300,32 @@ module MakeWithConfig = (
       ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
       (),
     )
+
+    // Extract the Plugin ExtensionPoint's EventTopic (SNS) ARN so the
+    // AdminEventCollector runtime can publish outgoing EP events (e.g.
+    // UnknownPluginDetected). Without this, AdminEventColl's HANDLER_CONFIG
+    // carries eventTopicArn="NOT_AVAILABLE" and the SNS publish silently
+    // targets a non-existent ARN, breaking the
+    // admin → plugin EventCollector → ConnectPlugin round-trip and leaving
+    // the Plugin read model empty.
+    let pluginEpEventTopicArn =
+      admin.extensionPointsOutputs->Pulumi.Output.flatMap(eps =>
+        switch eps->Array.find(ep =>
+          ep.name == ReventlessInfra.PluginExtensionPointSpec.name
+        ) {
+        | Some(ep) =>
+          ep.eventTopic->Pulumi.Output.flatMap(et =>
+            switch et.resources->Array.get(0) {
+            | Some(r) => r.urn
+            | None => Pulumi.Output.make("NOT_AVAILABLE")
+            }
+          )
+        | None => Pulumi.Output.make("NOT_AVAILABLE")
+        }
+      )
+
     PluginRuntime_Builder.registerConfig(
+      ~eventTopicArn=pluginEpEventTopicArn,
       ~appSyncApiId=domainApiId,
       ~pluginReadModelTableName?,
       ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
