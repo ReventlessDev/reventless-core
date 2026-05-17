@@ -577,11 +577,13 @@ module MakeWithConfig = (
         (deploySchemaPlatformPrefix, api)
       }
 
-      // Read Plugin RM table name from platform StackReference.
-      let pluginRmTableNameOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
-      | Some(stackRef) =>
+      // Read a string output from the platform StackReference, falling back to
+      // the bundled "default" output object if the named export is not present
+      // (matches the layout Pulumi emits when a stack uses a single default
+      // export rather than per-key exports).
+      let readStackRefString = (stackRef, key) => {
         let direct: Pulumi.Output.t<option<JSON.t>> =
-          stackRef->Pulumi.StackReference.getOutput("pluginRmTableName")
+          stackRef->Pulumi.StackReference.getOutput(key)
         let defaultOutput: Pulumi.Output.t<option<JSON.t>> =
           stackRef->Pulumi.StackReference.getOutput("default")
         (direct, defaultOutput)
@@ -592,21 +594,42 @@ module MakeWithConfig = (
           | None =>
             default
             ->Option.flatMap(d => d->JSON.Decode.object)
-            ->Option.flatMap(d => d->Dict.get("pluginRmTableName"))
+            ->Option.flatMap(d => d->Dict.get(key))
             ->Option.flatMap(v => v->JSON.Decode.string)
+          }
+        )
+      }
+
+      // Prefer the dedicated PluginSchemaPersistence table (post-platform-fix);
+      // fall back to the Plugin RM table for backward compatibility with
+      // platforms deployed before the schema-persistence table existed. The
+      // Plugin RM table must not be reused for new schema-fragment writes —
+      // doing so leaks deploy-schema rows through the Platform_Plugins AppSync
+      // Connection resolver.
+      let schemaPersistenceTableNameOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
+      | Some(stackRef) =>
+        (
+          readStackRefString(stackRef, "pluginSchemaPersistenceTableName"),
+          readStackRefString(stackRef, "pluginRmTableName"),
+        )
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((dedicated, legacy)) =>
+          switch dedicated {
+          | Some(_) as s => s
+          | None => legacy
           }
         )
       | None => Pulumi.Output.make(None)
       }
 
-      pluginRmTableNameOutput->Pulumi.Output.flatMap(tableNameOpt => {
+      schemaPersistenceTableNameOutput->Pulumi.Output.flatMap(tableNameOpt => {
         // Write this plugin's fragment to DynamoDB, then scan all deploy-schema
         // entries to collect every deployed plugin's fragment.
         let writeAndScanFragments = () =>
           switch tableNameOpt {
           | None =>
             Console.log(
-              "[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence",
+              "[preResolversSchemaHook] No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence",
             )
             Promise.resolve([pluginFragment])
           | Some(tableName) =>
@@ -1251,6 +1274,20 @@ module MakeWithConfig = (
       }
     | None => None
     }
+
+    // Dedicated DynamoDB table for deploy-time schema-fragment persistence
+    // (deploy-schema:<name>, deploy-schema-platform:<name>, deploy-schema-hash:<apiId>).
+    // Previously these infrastructure rows shared the Plugin RM table, which
+    // caused them to leak through Platform_Plugins' auto-generated AppSync
+    // Connection resolver (an unfiltered Scan). Hosting them on their own
+    // table keeps Plugin RM = Plugin aggregate entities only and restores
+    // parity with the in-memory adapter (which has no preResolversSchemaHook).
+    let pluginSchemaPersistenceTable = Util.DynamoDb.makeTable(
+      "PluginSchemaPersistence",
+      ~attributes=[{name: "id", type_: "S"}],
+      ~opts={},
+    )
+
     PluginExtensionPointRuntime_Builder.registerPluginExtensionPoint(
       ~pluginReadModelTableName?,
       (),
@@ -1398,6 +1435,14 @@ module MakeWithConfig = (
     | Some(tableName) => Pulumi.Pulumi.export("pluginRmTableName", tableName)
     | None => ()
     }
+
+    // Export the dedicated schema-persistence table name. preResolversSchemaHook
+    // prefers this over pluginRmTableName so deploy-schema rows no longer share
+    // the Plugin RM table.
+    Pulumi.Pulumi.export(
+      "pluginSchemaPersistenceTableName",
+      pluginSchemaPersistenceTable.name,
+    )
 
     // Export admin component outputs (same pattern as deployPlugin).
     ReventlessCore.Plugin_Helpers.exportPlatformOutputs(

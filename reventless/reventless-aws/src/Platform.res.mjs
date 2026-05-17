@@ -24,6 +24,7 @@ import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/a
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as Plugin_Stack$ReventlessAws from "./Plugin_Stack.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
+import * as Util_DynamoDb$ReventlessAws from "./util/Util_DynamoDb.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
@@ -459,12 +460,10 @@ function MakeWithConfig(Config) {
     }
     let targetApi = match[1];
     let schemaPrefix = match[0];
-    let pluginRmTableNameOutput;
-    if (platformStackRef !== undefined) {
-      let stackRef = Primitive_option.valFromOption(platformStackRef);
-      let direct = stackRef.getOutput("pluginRmTableName");
+    let readStackRefString = (stackRef, key) => {
+      let direct = stackRef.getOutput(key);
       let defaultOutput = stackRef.getOutput("default");
-      pluginRmTableNameOutput = Pulumi.all([
+      return Pulumi.all([
         direct,
         defaultOutput
       ]).apply(param => {
@@ -472,13 +471,28 @@ function MakeWithConfig(Config) {
         if (name !== undefined) {
           return name;
         } else {
-          return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["pluginRmTableName"]), v => Stdlib_JSON.Decode.string(v));
+          return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
+        }
+      });
+    };
+    let schemaPersistenceTableNameOutput;
+    if (platformStackRef !== undefined) {
+      let stackRef = Primitive_option.valFromOption(platformStackRef);
+      schemaPersistenceTableNameOutput = Pulumi.all([
+        readStackRefString(stackRef, "pluginSchemaPersistenceTableName"),
+        readStackRefString(stackRef, "pluginRmTableName")
+      ]).apply(param => {
+        let dedicated = param[0];
+        if (dedicated !== undefined) {
+          return dedicated;
+        } else {
+          return param[1];
         }
       });
     } else {
-      pluginRmTableNameOutput = Pulumi.output(undefined);
+      schemaPersistenceTableNameOutput = Pulumi.output(undefined);
     }
-    return Output$Pulumi.flatMap(pluginRmTableNameOutput, tableNameOpt => {
+    return Output$Pulumi.flatMap(schemaPersistenceTableNameOutput, tableNameOpt => {
       let writeAndScanFragments = () => {
         if (tableNameOpt !== undefined) {
           let deployItem = Object.fromEntries([
@@ -539,7 +553,7 @@ function MakeWithConfig(Config) {
             return Promise.resolve([pluginFragment]);
           });
         }
-        console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
+        console.log("[preResolversSchemaHook] No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
@@ -870,6 +884,10 @@ function MakeWithConfig(Config) {
     } else {
       pluginReadModelTableName = undefined;
     }
+    let pluginSchemaPersistenceTable = Util_DynamoDb$ReventlessAws.makeTable([{
+        name: "id",
+        type: "S"
+      }], undefined, undefined, undefined, undefined, {}, "PluginSchemaPersistence");
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (pluginReadModelTableName !== undefined) {
@@ -926,6 +944,7 @@ function MakeWithConfig(Config) {
     if (pluginReadModelTableName !== undefined) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
+    Pulumi$Pulumi.$$export("pluginSchemaPersistenceTableName", pluginSchemaPersistenceTable.name);
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
     let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
@@ -1418,12 +1437,10 @@ function Make($star) {
     }
     let targetApi = match[1];
     let schemaPrefix = match[0];
-    let pluginRmTableNameOutput;
-    if (platformStackRef !== undefined) {
-      let stackRef = Primitive_option.valFromOption(platformStackRef);
-      let direct = stackRef.getOutput("pluginRmTableName");
+    let readStackRefString = (stackRef, key) => {
+      let direct = stackRef.getOutput(key);
       let defaultOutput = stackRef.getOutput("default");
-      pluginRmTableNameOutput = Pulumi.all([
+      return Pulumi.all([
         direct,
         defaultOutput
       ]).apply(param => {
@@ -1431,13 +1448,28 @@ function Make($star) {
         if (name !== undefined) {
           return name;
         } else {
-          return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d["pluginRmTableName"]), v => Stdlib_JSON.Decode.string(v));
+          return Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(param[1], d => Stdlib_JSON.Decode.object(d)), d => d[key]), v => Stdlib_JSON.Decode.string(v));
+        }
+      });
+    };
+    let schemaPersistenceTableNameOutput;
+    if (platformStackRef !== undefined) {
+      let stackRef = Primitive_option.valFromOption(platformStackRef);
+      schemaPersistenceTableNameOutput = Pulumi.all([
+        readStackRefString(stackRef, "pluginSchemaPersistenceTableName"),
+        readStackRefString(stackRef, "pluginRmTableName")
+      ]).apply(param => {
+        let dedicated = param[0];
+        if (dedicated !== undefined) {
+          return dedicated;
+        } else {
+          return param[1];
         }
       });
     } else {
-      pluginRmTableNameOutput = Pulumi.output(undefined);
+      schemaPersistenceTableNameOutput = Pulumi.output(undefined);
     }
-    return Output$Pulumi.flatMap(pluginRmTableNameOutput, tableNameOpt => {
+    return Output$Pulumi.flatMap(schemaPersistenceTableNameOutput, tableNameOpt => {
       let writeAndScanFragments = () => {
         if (tableNameOpt !== undefined) {
           let deployItem = Object.fromEntries([
@@ -1498,7 +1530,7 @@ function Make($star) {
             return Promise.resolve([pluginFragment]);
           });
         }
-        console.log("[preResolversSchemaHook] No pluginRmTableName — skipping fragment persistence");
+        console.log("[preResolversSchemaHook] No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
@@ -1812,6 +1844,10 @@ function Make($star) {
     } else {
       pluginReadModelTableName = undefined;
     }
+    let pluginSchemaPersistenceTable = Util_DynamoDb$ReventlessAws.makeTable([{
+        name: "id",
+        type: "S"
+      }], undefined, undefined, undefined, undefined, {}, "PluginSchemaPersistence");
     PluginExtensionPointRuntime_Builder$ReventlessAws.registerPluginExtensionPoint(pluginReadModelTableName, undefined, undefined);
     PluginRuntime_Builder$ReventlessAws.registerConfig(undefined, pluginReadModelTableName, undefined, undefined, undefined, domainApiId, false, undefined);
     if (pluginReadModelTableName !== undefined) {
@@ -1860,6 +1896,7 @@ function Make($star) {
     if (pluginReadModelTableName !== undefined) {
       Pulumi$Pulumi.$$export("pluginRmTableName", pluginReadModelTableName);
     }
+    Pulumi$Pulumi.$$export("pluginSchemaPersistenceTableName", pluginSchemaPersistenceTable.name);
     Plugin_Helpers$ReventlessCore.exportPlatformOutputs(admin.extensionPointsOutputs, admin.aggregatesOutputs, admin.readModelsOutputs, admin.dcbEventLogOutputs, admin.stateChangeSlicesOutputs, admin.stateViewSlicesOutputs, admin.automationSlicesOutputs, admin.outboundTranslationSlicesOutputs, admin.inboundTranslationSlicesOutputs);
     let resolvedDomainApiEndpoint = Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL));
     let resolvedDomainApiRoleArn = Output$Pulumi.flatMap(domainApiRole, role => role.arn);
