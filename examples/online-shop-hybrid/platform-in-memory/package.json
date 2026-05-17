@@ -13,7 +13,7 @@
     "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run serve' 'npx wait-on tcp:4001 && pnpm run dev:ui'"
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.13"
+    "@reventlessdev/reventless-host-shell": "3.0.0-alpha.14"
   },
   "dependencies": {
     "@reventlessdev/online-shop-hybrid-catalog": "workspace:*",
