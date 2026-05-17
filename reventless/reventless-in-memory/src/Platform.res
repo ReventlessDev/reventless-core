@@ -1534,7 +1534,7 @@ module MakeWithConfig = (
         pluginStatusSubTopic,
         JSON.Encode.object(
           Dict.fromArray([
-            ("pluginId", JSON.Encode.string(pluginId)),
+            ("pluginId", JSON.Encode.string(ReventlessCore.Plugin.name(pluginId))),
             ("status", JSON.Encode.string(status)),
           ]),
         ),
@@ -1626,7 +1626,7 @@ module MakeWithConfig = (
     let makeUIEvent = (~pluginId, ~changeKind, ~manifest) =>
       JSON.Encode.object(
         Dict.fromArray([
-          ("pluginId", JSON.Encode.string(pluginId)),
+          ("pluginId", JSON.Encode.string(ReventlessCore.Plugin.name(pluginId))),
           ("changeKind", JSON.Encode.string(changeKind)),
           ("manifest", manifest),
         ])
@@ -1874,7 +1874,7 @@ module MakeWithConfig = (
         let manifest = obj->Dict.get("manifest")->Option.getOr(JSON.Encode.null)
         let event = JSON.Encode.object(
           Dict.fromArray([
-            ("pluginId", JSON.Encode.string(pluginId)),
+            ("pluginId", JSON.Encode.string(ReventlessCore.Plugin.name(pluginId))),
             ("changeKind", JSON.Encode.string(changeKind)),
             ("manifest", manifest),
           ]),
@@ -2128,7 +2128,7 @@ module MakeWithConfig = (
           let manifest = obj->Dict.get("manifest")->Option.getOr(JSON.Encode.null)
           let event = JSON.Encode.object(
             Dict.fromArray([
-              ("pluginId", JSON.Encode.string(pluginId)),
+              ("pluginId", JSON.Encode.string(ReventlessCore.Plugin.name(pluginId))),
               ("changeKind", JSON.Encode.string(changeKind)),
               ("manifest", manifest),
             ]),

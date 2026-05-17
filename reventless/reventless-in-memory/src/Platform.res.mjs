@@ -15,6 +15,7 @@ import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
@@ -1441,7 +1442,7 @@ function MakeWithConfig(Config) {
     let publishPluginStatusChange = (pluginId, status) => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.publish(pluginStatusSubTopic, Object.fromEntries([
       [
         "pluginId",
-        pluginId
+        Plugin$ReventlessCore.name(pluginId)
       ],
       [
         "status",
@@ -1505,7 +1506,7 @@ function MakeWithConfig(Config) {
     let makeUIEvent = (pluginId, changeKind, manifest) => Object.fromEntries([
       [
         "pluginId",
-        pluginId
+        Plugin$ReventlessCore.name(pluginId)
       ],
       [
         "changeKind",
@@ -1682,7 +1683,7 @@ function MakeWithConfig(Config) {
         let event = Object.fromEntries([
           [
             "pluginId",
-            pluginId
+            Plugin$ReventlessCore.name(pluginId)
           ],
           [
             "changeKind",
@@ -1820,7 +1821,7 @@ function MakeWithConfig(Config) {
           let event = Object.fromEntries([
             [
               "pluginId",
-              pluginId
+              Plugin$ReventlessCore.name(pluginId)
             ],
             [
               "changeKind",
@@ -3278,7 +3279,7 @@ function Make($star) {
     let publishPluginStatusChange = (pluginId, status) => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.publish(pluginStatusSubTopic, Object.fromEntries([
       [
         "pluginId",
-        pluginId
+        Plugin$ReventlessCore.name(pluginId)
       ],
       [
         "status",
@@ -3342,7 +3343,7 @@ function Make($star) {
     let makeUIEvent = (pluginId, changeKind, manifest) => Object.fromEntries([
       [
         "pluginId",
-        pluginId
+        Plugin$ReventlessCore.name(pluginId)
       ],
       [
         "changeKind",
@@ -3512,7 +3513,7 @@ function Make($star) {
         let event = Object.fromEntries([
           [
             "pluginId",
-            pluginId
+            Plugin$ReventlessCore.name(pluginId)
           ],
           [
             "changeKind",
@@ -3648,7 +3649,7 @@ function Make($star) {
           let event = Object.fromEntries([
             [
               "pluginId",
-              pluginId
+              Plugin$ReventlessCore.name(pluginId)
             ],
             [
               "changeKind",

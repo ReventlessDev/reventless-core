@@ -47,7 +47,9 @@ export async function handler() {
 
   const userEntries = items.flatMap(item => {
     if (!item || !item.structure) return [];
-    return [{ pluginId: item.name, ...item.structure }];
+    // Platform invariant: one version per plugin at a time, so the UI sees
+    // just the bare plugin name (mirrors ReventlessCore.Plugin.name).
+    return [{ pluginId: String(item.name).split("@")[0], ...item.structure }];
   });
   return [ADMIN_ENTRY, ...userEntries];
 }

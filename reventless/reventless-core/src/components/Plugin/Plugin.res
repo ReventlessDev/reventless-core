@@ -49,3 +49,11 @@ module type T = {
 }
 
 let makeId = (name, version) => `${name}@${version}`
+
+// Inverse of `makeId` for the GraphQL boundary. Internally a plugin id is
+// `name@version` so the in-memory platform's plugin store can key by it, but
+// the platform invariant is one version per plugin at a time — so anything
+// crossing into the UI (routes, federation remote name, subscription
+// payloads) gets the bare name. If the input has no `@`, returns it as-is.
+let name = (id: string): string =>
+  id->String.split("@")->Array.get(0)->Option.getOr(id)

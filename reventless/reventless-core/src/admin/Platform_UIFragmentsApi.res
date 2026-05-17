@@ -46,7 +46,7 @@ let encodePage = (p: pageManifestEntry): JSON.t =>
 
 let encodeUIFragmentEntry = (entry: UIFragmentRegistryReadModelSpec.state): JSON.t =>
   Dict.fromArray([
-    ("pluginId", JSON.Encode.string(entry.pluginId)),
+    ("pluginId", JSON.Encode.string(Plugin.name(entry.pluginId))),
     ("remoteEntryUrl", JSON.Encode.string(entry.remoteEntryUrl)),
     ("panels", entry.panels->Array.map(encodePanel)->JSON.Encode.array),
     ("pages", entry.pages->Array.map(encodePage)->JSON.Encode.array),

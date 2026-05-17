@@ -110,7 +110,7 @@ let encodeExtensionDef = (e: extensionDef): JSON.t =>
 
 let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON.t =>
   Dict.fromArray([
-    ("pluginId", JSON.Encode.string(pluginId)),
+    ("pluginId", JSON.Encode.string(Plugin.name(pluginId))),
     ("readModels", def.readModels->Array.map(encodeQueryableDef)->JSON.Encode.array),
     ("stateViewSlices", def.stateViewSlices->Array.map(encodeQueryableDef)->JSON.Encode.array),
     ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWritableDef)->JSON.Encode.array),

@@ -36,7 +36,10 @@ export async function handler() {
   return items.flatMap(item => {
     if (!item || !item.pluginId || !item.remoteEntryUrl) return [];
     return [{
-      pluginId: item.pluginId,
+      // Platform invariant: one version per plugin at a time, so the UI sees
+      // just the bare plugin name. Mirrors ReventlessCore.Plugin.name on the
+      // ReScript side.
+      pluginId: String(item.pluginId).split("@")[0],
       remoteEntryUrl: item.remoteEntryUrl,
       panels: item.panels || [],
       pages: item.pages || [],
