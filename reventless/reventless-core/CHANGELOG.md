@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.82 (2026-05-18)
+
+### Bug Fixes
+
+* **admin:** give projection files their own moduleUrl so RM lambdas don't load Platform.res ([78ef5ec](https://github.com/ReventlessDev/reventless-core/commit/78ef5ece65575671d7fce877b0cf5adf578dfd05))
+* **eventlog:** surface defects in append-failure msg via Cause.pretty ([b237f2a](https://github.com/ReventlessDev/reventless-core/commit/b237f2aac4800c8ac8c8ddc3fa16d4484e2c9c78))
+* **plugin:** split Connect mapping out of _Builder so Lambda layer can load it ([937935a](https://github.com/ReventlessDev/reventless-core/commit/937935a2d65e3bc61b2b94623a2f9c5c1b7a46df))
+* **spec:** restore payload-less filter in extractVariantNames; route acceptedTags through extractAllVariantNames ([208f644](https://github.com/ReventlessDev/reventless-core/commit/208f644cc0e21cb7c2ad3cf7bf43b5e7a99732f7))
+### Features
+
+* **admin:** cross-plugin SNS subscription manager in AdminEventCollector (Phase 3 Step 1) ([8f8544c](https://github.com/ReventlessDev/reventless-core/commit/8f8544c176c065b3cccb42e6eee4cdfd03b40d48))
+* **plugin:** unblock admin → plugin Connect via Plugin_Callback at runtime ([4076ddf](https://github.com/ReventlessDev/reventless-core/commit/4076ddf8a5c8d6c323c9ea188774030ff535b8f9))
+* **plugin:** wire end-to-end user-extension dispatch through plugin EventCollectors ([f616abe](https://github.com/ReventlessDev/reventless-core/commit/f616abe169289f836f8e538b5419cb82cda886d7))
+
+
 # 3.0.0-alpha.81 (2026-05-17)
 
 ### Bug Fixes

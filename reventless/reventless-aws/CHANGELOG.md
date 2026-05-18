@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.99 (2026-05-18)
+
+### Bug Fixes
+
+* **admin:** give projection files their own moduleUrl so RM lambdas don't load Platform.res ([78ef5ec](https://github.com/ReventlessDev/reventless-core/commit/78ef5ece65575671d7fce877b0cf5adf578dfd05))
+* **admin:** unblock admin → plugin SNS publish chain (3 bugs) ([e3418bb](https://github.com/ReventlessDev/reventless-core/commit/e3418bbf2e08575f28e0a9cc193f373a30dbb036))
+* **eventlog:** alias position keyword in DynamoDB ConditionExpression ([b11b92d](https://github.com/ReventlessDev/reventless-core/commit/b11b92d207bb93f6c735ce3f09bf1e3ab4cbc578))
+### Features
+
+* **admin:** cross-plugin SNS subscription manager in AdminEventCollector (Phase 3 Step 1) ([8f8544c](https://github.com/ReventlessDev/reventless-core/commit/8f8544c176c065b3cccb42e6eee4cdfd03b40d48))
+* **admin:** IAM perms for cross-plugin SNS subscriptions (Phase 3 Step 2) ([51e56f0](https://github.com/ReventlessDev/reventless-core/commit/51e56f06b36f84e3e0f253e41f6ec13d5df9b577))
+* **plugin:** unblock admin → plugin Connect via Plugin_Callback at runtime ([4076ddf](https://github.com/ReventlessDev/reventless-core/commit/4076ddf8a5c8d6c323c9ea188774030ff535b8f9))
+* **plugin:** wire end-to-end user-extension dispatch through plugin EventCollectors ([f616abe](https://github.com/ReventlessDev/reventless-core/commit/f616abe169289f836f8e538b5419cb82cda886d7))
+
+
 # 3.0.0-alpha.98 (2026-05-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

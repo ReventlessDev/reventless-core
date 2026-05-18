@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.44 (2026-05-18)
+
+### Bug Fixes
+
+* **admin:** unblock admin → plugin SNS publish chain (3 bugs) ([e3418bb](https://github.com/ReventlessDev/reventless-core/commit/e3418bbf2e08575f28e0a9cc193f373a30dbb036))
+* **spec:** restore payload-less filter in extractVariantNames; route acceptedTags through extractAllVariantNames ([208f644](https://github.com/ReventlessDev/reventless-core/commit/208f644cc0e21cb7c2ad3cf7bf43b5e7a99732f7))
+
+
 # 3.0.0-alpha.43 (2026-05-17)
 
 ### Bug Fixes
