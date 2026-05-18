@@ -222,7 +222,10 @@ module Make = (MappingImpl: Mapping): (
   // schema at functor instantiation. Used to pre-filter incoming envelopes:
   // sibling variants on the source log (events the Delegate did not declare)
   // are silently skipped without any decode attempt.
-  let acceptedTags = Reventless.DcbTag.extractVariantNames(Delegate.eventSchema)
+  // extractAllVariantNames keeps payload-less variants (sury-compiled bare
+  // `S.literal("Name")` strings) — the JSON envelope's `event` TAG still
+  // carries the literal name, so the filter would otherwise drop them.
+  let acceptedTags = Reventless.DcbTag.extractAllVariantNames(Delegate.eventSchema)
 
   // Lazily-computed partition-tag derivation for `PublishStateChangeSliceCommand*`.
   // Derived from the Delegate's command schema; throws if no `@partitionTag` /

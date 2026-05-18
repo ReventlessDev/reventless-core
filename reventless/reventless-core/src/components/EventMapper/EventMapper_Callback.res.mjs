@@ -22,7 +22,7 @@ function MakeCounterHandler(Target) {
     let target = Target.name;
     let mappingsWithTags = Mappings.mappings.map(M => [
       M,
-      DcbTag$Reventless.extractVariantNames(M.Source.eventSchema)
+      DcbTag$Reventless.extractAllVariantNames(M.Source.eventSchema)
     ]);
     let findMapping = (mappingsWithTags, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
       let eventMeta;

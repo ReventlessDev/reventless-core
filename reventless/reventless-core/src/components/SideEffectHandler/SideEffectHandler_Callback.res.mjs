@@ -17,7 +17,7 @@ import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 function Make(Spec) {
   let sideEffectsWithTags = Spec.sideEffects.map(SideEffect => [
     SideEffect,
-    DcbTag$Reventless.extractVariantNames(SideEffect.Source.eventSchema)
+    DcbTag$Reventless.extractAllVariantNames(SideEffect.Source.eventSchema)
   ]);
   let findSideEffect = (sideEffectsWithTags, eventJson$p) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(eventJson$p), eventObj$p => {
     let metaJson = eventObj$p["meta"];

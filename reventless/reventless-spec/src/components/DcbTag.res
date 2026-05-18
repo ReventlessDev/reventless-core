@@ -375,12 +375,14 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
           | _ => None
           }
         )
-      // Payload-less variants are encoded by sury as bare string literals
-      // (e.g. `S.literal("UnknownPluginDetected")` inside a union), not as
-      // objects carrying a TAG field. Include their literal value too,
-      // otherwise downstream consumers (e.g. ExtensionPointMapping's
-      // acceptedTags filter) silently drop every payload-less event.
-      | String({const: ?Some(name)}) => Some(name)
+      // Payload-less variants (sury-compiled `S.literal("Name")` strings) are
+      // intentionally excluded here: DCB event-type lookups can't WHERE-clause
+      // on bare-string events, so Plugin_Structure.consumedEventTypes and
+      // related graph fields would otherwise claim cross-component edges the
+      // runtime can't honour. Callers that need every constructor (e.g.
+      // mapping-mode `acceptedTags` filters that match a JSON envelope's
+      // `event` TAG against the Delegate's full constructor set) should call
+      // [`extractAllVariantNames`] instead.
       | _ => None
       }
     )
@@ -394,7 +396,6 @@ let extractVariantNames = (schema: S.t<'a>): array<string> => {
       }
     )
     ->Option.getOr([])
-  | String({const: ?Some(name)}) => [name]
   | _ => []
   }
 }

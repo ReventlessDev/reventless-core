@@ -15,7 +15,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
-  let acceptedTags = DcbTag$Reventless.extractVariantNames(Delegate.eventSchema);
+  let acceptedTags = DcbTag$Reventless.extractAllVariantNames(Delegate.eventSchema);
   let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(LogPrefix$Reventless.fmtComp(comp, undefined) + msg));
   let mapIncomingCommands = (extra, extra$1, extra$2, extra$3) => {
     let mapIncomingEventImpl = MappingImpl.mapIncomingCommand;

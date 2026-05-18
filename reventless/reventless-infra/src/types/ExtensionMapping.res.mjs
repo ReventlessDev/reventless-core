@@ -40,7 +40,7 @@ function Make(MappingImpl) {
   let Delegate = MappingImpl.Delegate;
   let delegateName = Delegate.name;
   let extensionPointName = Spec.name;
-  let acceptedTags = DcbTag$Reventless.extractVariantNames(Delegate.eventSchema);
+  let acceptedTags = DcbTag$Reventless.extractAllVariantNames(Delegate.eventSchema);
   let derivedPartitionTagLazy = {
     contents: undefined
   };

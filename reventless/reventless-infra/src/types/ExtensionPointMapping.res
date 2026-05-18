@@ -168,7 +168,11 @@ module Make = (MappingImpl: Mapping): (
   // schema at functor instantiation. Used to pre-filter incoming envelopes:
   // sibling variants on the source log (events the Delegate did not declare)
   // are silently skipped without any decode attempt.
-  let acceptedTags = Reventless.DcbTag.extractVariantNames(Delegate.eventSchema)
+  // Pre-filter incoming envelopes against the Delegate's full constructor
+  // set — includes payload-less variants (e.g. UnknownPluginDetected
+  // compiled to `S.literal("…")`) since the JSON envelope's `event` TAG
+  // still carries the literal name even when the variant has no payload.
+  let acceptedTags = Reventless.DcbTag.extractAllVariantNames(Delegate.eventSchema)
 
   let compLog = (comp, msg) =>
     Effect.logInfo(`${Reventless.LogPrefix.fmtComp(~comp, ())}${msg}`)->Effect.runSync

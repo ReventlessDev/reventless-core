@@ -106,7 +106,7 @@ function callHandlerWithArray(handler, items) {
   return Effect.runPromise(handler(Stream.fromIterable(items)));
 }
 
-let extractTypeNamesFromSchema = DcbTag$Reventless.extractVariantNames;
+let extractTypeNamesFromSchema = DcbTag$Reventless.extractAllVariantNames;
 
 let globalRegistry = {};
 

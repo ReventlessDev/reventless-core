@@ -107,11 +107,13 @@ let callHandlerWithArray: (
 ) => promise<array<result<string, string>>> = (handler, items) =>
   handler(Stream.fromIterable(items))->Effect.runPromise
 
-// Helper to extract type names from a schema (for variant types)
-// For a variant type like `type command = CreateItem({...}) | UpdateItem({...})`,
-// this extracts ["CreateItem", "UpdateItem"]
+// Helper to extract type names from a schema (for variant types). Used to
+// register every command constructor so the StateChangeSlice command-topic
+// dispatcher can route incoming JSON payloads to the right handler — payload-
+// less variants must be addressable too, so this calls extractAllVariantNames
+// (the inclusive version) rather than extractVariantNames (DCB-event filter).
 let extractTypeNamesFromSchema = (schema: S.t<unknown>): array<string> =>
-  Reventless.DcbTag.extractVariantNames(schema)
+  Reventless.DcbTag.extractAllVariantNames(schema)
 
 // Global registry for schema-based filtering
 // Keyed by command type name (e.g., "CreateItem", "UpdateItem")

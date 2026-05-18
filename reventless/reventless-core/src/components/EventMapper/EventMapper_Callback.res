@@ -24,7 +24,7 @@ module MakeCounterHandler = (
   // declare are silently skipped instead of producing decode-failure noise.
   let mappingsWithTags = Mappings.mappings->Array.map((module(M: Mappings.Mapping)) => (
     module(M: Mappings.Mapping),
-    Reventless.DcbTag.extractVariantNames(M.Source.eventSchema),
+    Reventless.DcbTag.extractAllVariantNames(M.Source.eventSchema),
   ))
 
   // Looks up the event mapping for a given event JSON by matching the source service name

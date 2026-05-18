@@ -15,7 +15,7 @@ module Make = (Spec: Spec): T => {
   let sideEffectsWithTags =
     Spec.sideEffects->Array.map((module(SideEffect: Reventless.SideEffect.T)) => (
       module(SideEffect: Reventless.SideEffect.T),
-      Reventless.DcbTag.extractVariantNames(SideEffect.Source.eventSchema),
+      Reventless.DcbTag.extractAllVariantNames(SideEffect.Source.eventSchema),
     ))
 
   // Matches an incoming event JSON to a registered SideEffect module by comparing

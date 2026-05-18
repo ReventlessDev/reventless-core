@@ -26,7 +26,7 @@ function Make(Target) {
       encode: encode
     };
     let mappings = Mappings.mappings.map(M => {
-      let acceptedTags = DcbTag$Reventless.extractVariantNames(M.sourceEventSchema);
+      let acceptedTags = DcbTag$Reventless.extractAllVariantNames(M.sourceEventSchema);
       let Source = Projection$ReventlessCore.Mapping.MakeGenericSource(M);
       let project = MapperNto1$ReventlessCore.makeGenericMap(Source.decode$p, M.project);
       return {
