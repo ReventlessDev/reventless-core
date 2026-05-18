@@ -42,13 +42,11 @@ function buildHandler() {
 
   const patchedSpec = patchSpecId(PluginExtensionPointSpec);
 
-  // Reconstruct runtimeOps
+  // Reconstruct runtimeOps — only sendMessageToChannel is used by this
+  // Lambda's incoming-command path (ForwardCommand). Cross-plugin
+  // subscribe / unsubscribe directives were retired in Phase 3 Step 3.
   const runtimeOps = {
     messagePublish: { sendMessageToChannel: sendMessage },
-    topicSubscription: {
-      subscribeChannelToTopic: async () => {},
-      unsubscribeChannelFromTopic: async () => {},
-    },
   };
 
   // Instantiate Plugin EP mapping. updateApiSchema and manageSubscriptions are

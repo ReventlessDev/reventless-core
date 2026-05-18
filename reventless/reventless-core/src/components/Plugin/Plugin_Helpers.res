@@ -359,31 +359,17 @@ let extractExtensionDefinitions = (extensionsOutputs: array<Extension.outputs>) 
 
 let createConnectPluginExtension = (
   ~pluginDefinition,
-  ~extensionPointsOutputs,
-  ~extensionsOutputs,
   ~publishToPluginExtensionPoint,
   ~publishToAggregates,
   ~readModelNamesForSourceName,
   ~publishToReadModels,
   ~queryEngine,
-  ~runtimeOps,
-  ~resourceNaming,
   ~opts,
 ) =>
-  (
-    extensionPointsOutputs
-    ->Array.map(ExtensionPoint.toResolvedOutputs)
-    ->Pulumi.Output.all,
-    pluginDefinition,
-  )
-  ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((extensionPointsOutputs, pluginDefinition)) => {
+  pluginDefinition
+  ->Pulumi.Output.apply(pluginDefinition => {
     module ConnectPluginExtension = PluginConnectExtension_Builder.Make({
       let pluginDefinition = pluginDefinition
-      let extensionPointsOutputs = extensionPointsOutputs
-      let extensionsOutputs = extensionsOutputs
-      let runtimeOps = runtimeOps
-      let resourceNaming = resourceNaming
     })
     let connectPluginExtension = ConnectPluginExtension.make(
       ~publishToPluginExtensionPoint,

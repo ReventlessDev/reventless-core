@@ -270,11 +270,28 @@ The plugin-side Connect bootstrap doesn't need peer plugin awareness anymore —
 
 ```
 Step 3
-  [ ] 3.1  Trim PluginConnectExtension_Builder.Spec to just `pluginDefinition`
-  [ ] 3.2  Remove subscribe / unsubscribe helpers (or keep as deprecated for one release with a logWarn)
-  [ ] 3.3  Update mapIncomingEvent to only handle UnknownPluginDetected (drop the cross-plugin Call branches)
-  [ ] 3.4  Update Plugin_Helpers.createConnectPluginExtension call sites to pass only what's still needed
-  [ ]      Verify: a plugin's bundled Lambda has a smaller HANDLER_CONFIG (no extensionPointsOutputs / extensionsOutputs needed)
+  [x] 3.1  PluginConnectExtension_Mapping.Spec trimmed to a single field
+           (`pluginDefinition`). PluginConnectExtension_Builder.Spec inherits
+           via `module type Spec = PluginConnectExtension_Mapping.Spec`, so the
+           deploy-time builder picks up the trim automatically.
+  [x] 3.2  Subscribe / unsubscribe helpers deleted from the mapping. The
+           ReventlessCore.PluginRuntimeOperations.operations record lost
+           `topicSubscription`; AWS Util_TopicSubscription_Runtime.res removed
+           outright; in-memory adapter's runtimeOps trimmed to messagePublish
+           only.
+  [x] 3.3  mapIncomingEvent now matches only `UnknownPluginDetected if pluginId
+           == id` (self-bootstrap → emit ConnectPlugin). Cross-plugin
+           PluginConnected / PluginReconnected / PluginDeactivated cases drop
+           to no-ops since admin's manageSubscriptions owns that work now.
+  [x] 3.4  Plugin_Helpers.createConnectPluginExtension simplified — drops
+           extensionPointsOutputs / extensionsOutputs / runtimeOps /
+           resourceNaming labels; Plugin_Builder.res call site updated to match.
+           AdminEventCollectorEntryPoint.mjs reconstructs the Connect extension
+           with only `pluginDefinition` and drops the dead `topicSubscription`
+           stub from runtimeOps. PluginExtensionPointEntryPoint.mjs cleaned up
+           the same way.
+  [ ]      Verify (Step 4): a plugin's bundled Lambda has a smaller
+           HANDLER_CONFIG (no extensionPointsOutputs / extensionsOutputs).
 ```
 
 ---

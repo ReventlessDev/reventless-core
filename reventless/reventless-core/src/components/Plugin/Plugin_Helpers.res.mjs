@@ -221,17 +221,10 @@ function extractExtensionDefinitions(extensionsOutputs) {
   }));
 }
 
-function createConnectPluginExtension(pluginDefinition, extensionPointsOutputs, extensionsOutputs, publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, runtimeOps, resourceNaming, opts) {
-  return Output$Pulumi.unzip(Pulumi.all([
-    Pulumi.all(extensionPointsOutputs.map(ExtensionPoint$ReventlessCore.toResolvedOutputs)),
-    pluginDefinition
-  ]).apply(param => {
+function createConnectPluginExtension(pluginDefinition, publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
+  return Output$Pulumi.unzip(pluginDefinition.apply(pluginDefinition => {
     let ConnectPluginExtension = PluginConnectExtension_Builder$ReventlessCore.Make({
-      pluginDefinition: param[1],
-      extensionPointsOutputs: param[0],
-      extensionsOutputs: extensionsOutputs,
-      runtimeOps: runtimeOps,
-      resourceNaming: resourceNaming
+      pluginDefinition: pluginDefinition
     });
     let connectPluginExtension = ConnectPluginExtension.make(publishToPluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     let connectPluginExtensionOutputs = Component$ReventlessCore.outputs(connectPluginExtension);

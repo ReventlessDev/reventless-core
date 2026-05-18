@@ -633,15 +633,11 @@ module Make = (
               connectPluginExtensionIncomingEventHandler,
             ) = createConnectPluginExtension(
               ~pluginDefinition,
-              ~extensionPointsOutputs,
-              ~extensionsOutputs,
               ~publishToPluginExtensionPoint,
               ~publishToAggregates,
               ~readModelNamesForSourceName,
               ~publishToReadModels,
               ~queryEngine,
-              ~runtimeOps=Spec.runtimeOps,
-              ~resourceNaming=Spec.resourceNaming,
               ~opts,
             )
             let _ = EventCollectorHelper.connect(

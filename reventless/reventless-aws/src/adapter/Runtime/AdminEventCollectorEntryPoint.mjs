@@ -338,17 +338,13 @@ async function buildHandler() {
   const config = parseHandlerConfig(process.env["HANDLER_CONFIG"]);
   const lambdaFunctionName = process.env["AWS_LAMBDA_FUNCTION_NAME"] || "unknown";
 
+  // runtimeOps carries only what the admin EP mapping's callHandler actually
+  // needs: sendMessageToChannel for ForwardCommand. Cross-plugin SNS
+  // subscription wiring moved to manageSubscriptionsFn (Phase 3 Step 1 +
+  // Step 3) — the topicSubscription stubs that the plugin Connect extension
+  // used to call no longer exist on either side.
   const runtimeOps = {
     messagePublish: { sendMessageToChannel: sendMessage },
-    topicSubscription: {
-      // Cross-plugin subscribe/unsubscribe is deferred — see plan
-      // docs/plans/plugin-eventcollector-runtime-rewire.md (Step 5 deferral note).
-      // PluginConnectExtension.callHandler iterates extensionPointsOutputs/extensionsOutputs
-      // which are empty in the runtime-reconstructed Spec, so these no-ops are unreachable
-      // for the initial Connect flow.
-      subscribeChannelToTopic: async () => {},
-      unsubscribeChannelFromTopic: async () => {},
-    },
   };
 
   const queryEngine = {
@@ -428,14 +424,11 @@ async function buildHandler() {
     const ext = config.connectExtension;
     const specMod = patchSpecId(await import(ext.specModule));
     const mappingsMod = await import(ext.mappingsModule);
+    // After Phase 3 of plugin-eventcollector-runtime-rewire, the Connect
+    // extension Spec carries only pluginDefinition — cross-plugin subscribe /
+    // unsubscribe directives moved to admin's manageSubscriptions hook.
     const extBuilder = mappingsMod.Make({
       pluginDefinition: config.pluginDefinition,
-      // Cross-plugin extensionPoints/extensionsOutputs are deferred — see plan.
-      // ConnectPluginExtension.callHandler iterates these (empty → no-op).
-      extensionPointsOutputs: [],
-      extensionsOutputs: [],
-      runtimeOps,
-      resourceNaming,
     });
     // PluginConnectExtension_Builder.Make returns a module exposing:
     //   - ConnectPluginMapping  (single mapping)

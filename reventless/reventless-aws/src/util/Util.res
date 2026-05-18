@@ -26,5 +26,4 @@ module SNS_Runtime = Util_SNS_Runtime
 module SQS = Util_SQS
 module SQS_FIFO = Util_SQS_FIFO
 module SQS_Runtime = Util_SQS_Runtime
-module TopicSubscription_Runtime = Util_TopicSubscription_Runtime
 module Vpc = Util_Vpc

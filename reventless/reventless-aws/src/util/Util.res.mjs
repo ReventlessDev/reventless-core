@@ -57,8 +57,6 @@ let SQS_FIFO;
 
 let SQS_Runtime;
 
-let TopicSubscription_Runtime;
-
 let Vpc;
 
 export {
@@ -90,7 +88,6 @@ export {
   SQS,
   SQS_FIFO,
   SQS_Runtime,
-  TopicSubscription_Runtime,
   Vpc,
 }
 /* No side effect */

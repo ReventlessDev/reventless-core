@@ -19,10 +19,6 @@ function Make(Spec) {
     mappings: ConnectPluginMappings.mappings
   });
   return {
-    log: include.log,
-    subscribe: include.subscribe,
-    unsubscribe: include.unsubscribe,
-    callHandler: include.callHandler,
     ConnectPluginMapping: include.ConnectPluginMapping,
     ConnectPluginMappings: ConnectPluginMappings,
     make: include$1.make,
