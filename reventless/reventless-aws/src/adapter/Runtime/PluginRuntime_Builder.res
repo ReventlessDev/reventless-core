@@ -437,6 +437,38 @@ module Make = (
           role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
         },
       )
+
+      // manageSubscriptions / reconcileSubscriptionsOnce / forwardCommand all
+      // Scan the Plugin RM table to find connected peers + route forwarded
+      // commands. The Plugin RM is owned by a separate ReadModel EC, so the
+      // admin EC's default IAM policy does not include any DynamoDB perms on
+      // it. Grant Scan only — the admin EC never writes here, projections
+      // happen on the dedicated RM Lambda.
+      switch config.pluginReadModelTableName {
+      | Some(rmTableOutput) =>
+        let policyJson =
+          rmTableOutput->Pulumi.Output.apply(tableName =>
+            PulumiAws.PolicyDocument.make(
+              ~id=`${name}PluginRmScanPolicy`,
+              ~statements=[
+                {
+                  sid: "AllowAdminScanPluginRm",
+                  effect: Allow,
+                  actions: Actions(["dynamodb:Scan"]),
+                  resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
+                },
+              ],
+            )->PulumiAws.PolicyDocument.toJsonString
+          )
+        let _ = PulumiAws.IAM.RolePolicy.make(
+          ~name=`${name}-pluginRmScan`,
+          ~args={
+            policy: policyJson->Pulumi.Output.asInput,
+            role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+          },
+        )
+      | None => ()
+      }
     }
   }
 

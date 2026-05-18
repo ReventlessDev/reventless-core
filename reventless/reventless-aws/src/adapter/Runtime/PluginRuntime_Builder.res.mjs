@@ -260,23 +260,37 @@ function Make(EventCollectorChannel) {
         resources: resources
       }], runtime, opts);
     let isAdminEventCollector = Stdlib_Option.isNone(Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name]);
-    if (isAdminEventCollector) {
-      new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
-        policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SnsManageSubsPolicy`, [{
-            Sid: "AllowAdminManageCrossPluginSnsSubscriptions",
-            Effect: "Allow",
-            Action: [
-              "sns:Subscribe",
-              "sns:Unsubscribe",
-              "sns:ListSubscriptionsByTopic",
-              "sns:GetSubscriptionAttributes"
-            ],
-            Resource: "*"
-          }])),
-        role: runtime.parts.lambdaRole.id
-      });
+    if (!isAdminEventCollector) {
       return;
     }
+    new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SnsManageSubsPolicy`, [{
+          Sid: "AllowAdminManageCrossPluginSnsSubscriptions",
+          Effect: "Allow",
+          Action: [
+            "sns:Subscribe",
+            "sns:Unsubscribe",
+            "sns:ListSubscriptionsByTopic",
+            "sns:GetSubscriptionAttributes"
+          ],
+          Resource: "*"
+        }])),
+      role: runtime.parts.lambdaRole.id
+    });
+    let rmTableOutput = config.pluginReadModelTableName;
+    if (rmTableOutput === undefined) {
+      return;
+    }
+    let policyJson = rmTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginRmScanPolicy`, [{
+        Sid: "AllowAdminScanPluginRm",
+        Effect: "Allow",
+        Action: ["dynamodb:Scan"],
+        Resource: "arn:aws:dynamodb:*:*:table/" + tableName
+      }])));
+    new (Aws.iam.RolePolicy)(name + `-pluginRmScan`, {
+      policy: policyJson,
+      role: runtime.parts.lambdaRole.id
+    });
   };
   let forPluginHeartbeat = (param, connect, memorySizeOpt, timeoutOpt, heartbeat) => {
     let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
