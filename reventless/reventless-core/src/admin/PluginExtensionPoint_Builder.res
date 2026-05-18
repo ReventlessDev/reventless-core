@@ -4,6 +4,9 @@ module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
   let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>>
+  let manageSubscriptions: option<
+    (Reventless.Plugin.pluginDefinition, [#connect | #disconnect]) => promise<unit>,
+  >
 }
 
 module Make = (

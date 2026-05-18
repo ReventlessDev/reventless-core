@@ -7,6 +7,15 @@ module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let environment: string
   let updateApiSchema: option<Reventless.QueryEngine.operations => promise<unit>>
+  // Admin-mediated cross-plugin SNS subscription management. Invoked from the
+  // DoConnectPlugin / DoDisconnectPlugin directives — the connecting plugin's
+  // pluginDefinition is the only argument the admin needs because peer state
+  // is read from the Plugin RM at call time. None on the deploy-time EP
+  // Lambda (which only handles incoming commands like Heartbeat). Some only
+  // on the admin EventCollector entry point.
+  let manageSubscriptions: option<
+    (Reventless.Plugin.pluginDefinition, [#connect | #disconnect]) => promise<unit>,
+  >
 }
 
 module Make = (Spec: Spec) => {
@@ -91,7 +100,20 @@ module Make = (Spec: Spec) => {
     | DeleteDisconnectSchedule(id) => await deleteSchedule(id)
     | ForwardCommand({id, command, extensionPointName}) =>
       await forwardCommand(id, command, extensionPointName, queryEngine)
-    | DoConnectPlugin(_) | DoDisconnectPlugin(_) =>
+    | DoConnectPlugin(pluginDef) =>
+      switch Spec.manageSubscriptions {
+      | Some(fn) => await fn(pluginDef, #connect)
+      | None => ()
+      }
+      switch Spec.updateApiSchema {
+      | Some(fn) => await fn(queryEngine)
+      | None => ()
+      }
+    | DoDisconnectPlugin(pluginDef) =>
+      switch Spec.manageSubscriptions {
+      | Some(fn) => await fn(pluginDef, #disconnect)
+      | None => ()
+      }
       switch Spec.updateApiSchema {
       | Some(fn) => await fn(queryEngine)
       | None => ()

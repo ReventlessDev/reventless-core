@@ -867,7 +867,8 @@ function MakeWithConfig(Config) {
       });
     };
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
-      updateApiSchema: updateApiSchema
+      updateApiSchema: updateApiSchema,
+      manageSubscriptions: undefined
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,
@@ -1839,7 +1840,8 @@ function Make($star) {
       });
     };
     let PluginExtensionPoint = Plugin_ExtensionPoint_Builder$ReventlessAws.MakeWithConfig({
-      updateApiSchema: updateApiSchema
+      updateApiSchema: updateApiSchema,
+      manageSubscriptions: undefined
     });
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,

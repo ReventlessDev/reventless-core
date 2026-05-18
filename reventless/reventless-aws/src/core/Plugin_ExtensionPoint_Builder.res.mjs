@@ -13,7 +13,8 @@ function MakeWithConfig(Config) {
   return PluginExtensionPoint_Builder$ReventlessCore.Make({
     runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
     environment: environment,
-    updateApiSchema: Config.updateApiSchema
+    updateApiSchema: Config.updateApiSchema,
+    manageSubscriptions: Config.manageSubscriptions
   })({
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
@@ -34,7 +35,8 @@ let environment = Stdlib_Option.getOr(process.env.Environment, "unknown");
 let Make = PluginExtensionPoint_Builder$ReventlessCore.Make({
   runtimeOps: PluginRuntimeOperations$ReventlessAws.operations,
   environment: environment,
-  updateApiSchema: undefined
+  updateApiSchema: undefined,
+  manageSubscriptions: undefined
 })({
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,

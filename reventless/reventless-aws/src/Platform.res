@@ -1206,6 +1206,12 @@ module MakeWithConfig = (
     let domainApiId = domainApi->Pulumi.Output.flatMap(api => api.id)
 
     module PluginExtensionPoint = Plugin_ExtensionPoint_Builder.MakeWithConfig({
+      // Cross-plugin SNS subscription management runs in the bundled
+      // AdminEventCollector Lambda (AdminEventCollectorEntryPoint.mjs), not in
+      // this deploy-time EP Lambda — which only handles incoming commands
+      // (Heartbeat, ForwardCommand). None here keeps the deploy-time path
+      // unchanged; the .mjs entry point supplies a real implementation.
+      let manageSubscriptions = None
       let updateApiSchema = Some(async (queryEngine: Reventless.QueryEngine.operations) => {
         open Reventless.QueryEngine.Filter
         let apiId = domainApiId->Pulumi.Output.get

@@ -60,6 +60,7 @@
 
 import * as Effect from "effect/Effect";
 import { patchSpecId, makeQueueRef, scanByTableName } from "./HandlerFactoryHelpers.mjs";
+import { subscribeQueueToTopic, unsubscribeQueueFromTopic } from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
 import { sendMessage } from "@reventlessdev/reventless-aws/src/util/Util_PluginMessage_Runtime.res.mjs";
 import { publish as snsPublish } from "@reventlessdev/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res.mjs";
 import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
@@ -173,6 +174,112 @@ const resourceNaming = {
   },
 };
 
+// Admin-mediated cross-plugin SNS subscription manager (Plan Phase 3, Step 1).
+// When DoConnectPlugin / DoDisconnectPlugin fires on the admin EP mapping, we
+// scan the Plugin RM for currently-Connected peers and wire (or tear down) SNS
+// subscriptions between this plugin's EventCollector queue and peer plugins'
+// EP event topics — in both directions:
+//   - peer EP topic → this plugin's EC queue, for each of this plugin's
+//     extensions whose `extensionPointName` matches a peer EP
+//   - this plugin's EP topics → peer EC queues, for each peer extension whose
+//     `extensionPointName` matches one of this plugin's EPs
+// subscribeQueueToTopic is idempotent (lists existing subscriptions first);
+// unsubscribeQueueFromTopic is best-effort and swallows the "no subscription"
+// case. Failures are logged but do not throw — admin's RM projection still
+// proceeds and cold-start reconciliation will re-attempt missed work.
+function mkManageSubscriptions(tableName) {
+  if (!tableName || tableName === "NOT_AVAILABLE") return undefined;
+  const trySubscribe = async (queueArn, topicArn, label) => {
+    if (!queueArn || !topicArn) return;
+    try {
+      await subscribeQueueToTopic(queueArn, topicArn);
+      console.log(`[manageSubscriptions] subscribed ${label}: ${topicArn} -> ${queueArn}`);
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      console.error(`[manageSubscriptions] subscribe failed ${label}: ${topicArn} -> ${queueArn}: ${msg}`);
+    }
+  };
+  const tryUnsubscribe = async (queueArn, topicArn, label) => {
+    if (!queueArn || !topicArn) return;
+    try {
+      await unsubscribeQueueFromTopic(queueArn, topicArn);
+      console.log(`[manageSubscriptions] unsubscribed ${label}: ${topicArn} -> ${queueArn}`);
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      console.error(`[manageSubscriptions] unsubscribe failed ${label}: ${topicArn} -> ${queueArn}: ${msg}`);
+    }
+  };
+  const scanConnectedPeers = async (excludeId) => {
+    const rows = await scanByTableName(
+      tableName,
+      [["status", { TAG: "Contains" }, { TAG: "String", _0: "Connected" }]],
+      1000
+    );
+    const peers = [];
+    for (const row of rows) {
+      try {
+        const state = suryParseOrThrow(row, pluginReadModelStateSchema);
+        if (state && state.id !== excludeId) peers.push(state);
+      } catch (_) {}
+    }
+    return peers;
+  };
+  return async (pluginDef, action) => {
+    const isConnect = action === "connect";
+    const op = isConnect ? trySubscribe : tryUnsubscribe;
+    const peers = await scanConnectedPeers(pluginDef.id);
+    // Subscriptions for this plugin's extensions: peer EP topic → this EC queue
+    for (const ext of pluginDef.extensions || []) {
+      for (const peer of peers) {
+        const peerEp = (peer.extensionPoints || []).find(
+          (ep) => ep.name === ext.extensionPointName
+        );
+        if (peerEp) {
+          await op(pluginDef.eventCollector, peerEp.eventTopic, `${ext.extensionPointName} -> ${pluginDef.id}`);
+        }
+      }
+    }
+    // Subscriptions for this plugin's EPs: this EP topic → peer EC queues
+    for (const ep of pluginDef.extensionPoints || []) {
+      for (const peer of peers) {
+        const matchingExt = (peer.extensions || []).find(
+          (e) => e.extensionPointName === ep.name
+        );
+        if (matchingExt) {
+          await op(peer.eventCollector, ep.eventTopic, `${ep.name} -> ${peer.id}`);
+        }
+      }
+    }
+  };
+}
+
+// Cold-start reconciliation — scan the Plugin RM for every Connected plugin
+// and rerun manageSubscriptions(p, "connect") for each. Idempotent at the SNS
+// level (subscribeQueueToTopic dedupes), so this is safe to run repeatedly;
+// it catches subscriptions lost out-of-band (topic deleted+recreated, plugin
+// restarted with a new EC ARN, etc.). Fire-and-forget — admin still serves
+// incoming events while reconciliation completes.
+async function reconcileSubscriptionsOnce(tableName, manageSubscriptions) {
+  if (!tableName || tableName === "NOT_AVAILABLE" || !manageSubscriptions) return;
+  try {
+    const rows = await scanByTableName(
+      tableName,
+      [["status", { TAG: "Contains" }, { TAG: "String", _0: "Connected" }]],
+      1000
+    );
+    for (const row of rows) {
+      try {
+        const state = suryParseOrThrow(row, pluginReadModelStateSchema);
+        if (state) await manageSubscriptions(state, "connect");
+      } catch (e) {
+        console.warn("[reconcileSubscriptions] failed for one plugin row: " + ((e && e.message) || e));
+      }
+    }
+  } catch (e) {
+    console.warn("[reconcileSubscriptions] scan failed: " + ((e && e.message) || e));
+  }
+}
+
 function mkUpdateApiSchema(tableName, apiId, clonerEnabled) {
   if (!apiId || apiId === "NOT_AVAILABLE") return undefined;
   return async (queryEngine) => {
@@ -278,6 +385,8 @@ async function buildHandler() {
     config.clonerEnabled,
   );
 
+  const manageSubscriptionsFn = mkManageSubscriptions(config.pluginReadModelTableName);
+
   // EP operations — admin has 1 entry (Plugin EP), plugins have 0.
   const epHandlers = await Promise.all(config.extensionPoints.map(async (ep) => {
     const specMod = patchSpecId(await import(ep.specModule));
@@ -286,6 +395,7 @@ async function buildHandler() {
       runtimeOps,
       environment: lambdaFunctionName,
       updateApiSchema: updateApiSchemaFn,
+      manageSubscriptions: manageSubscriptionsFn,
     });
     const mappingsModule = { mappings: [epModule.Mapping] };
     const resolvedTopic = {
@@ -450,6 +560,11 @@ async function buildHandler() {
     outgoingExtensionEventHandlers,
     incomingExtensionEventHandlers,
   });
+
+  // Cold-start reconciliation — fire-and-forget so the SQS handler is ready
+  // immediately. Idempotent at the SNS level so this is safe to run on every
+  // cold start without coordination.
+  reconcileSubscriptionsOnce(config.pluginReadModelTableName, manageSubscriptionsFn);
 
   return handleDynamoDbOrSqsEvent(makeQueueRef(config.queueUrl), callback.handleJsonEvents);
 }

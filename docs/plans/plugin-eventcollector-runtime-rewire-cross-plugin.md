@@ -173,12 +173,24 @@ async function manageSubscriptions(pluginDef, action) {
 
 ```
 Step 1
-  [ ] 1.1  Implement scanPluginRm helper in HandlerFactoryHelpers.mjs (DDB Scan with status filter)
-  [ ] 1.2  Implement snsSubscribe / snsUnsubscribe / snsListSubscriptionsByTopic wrappers (thin around aws-sdk client-sns)
-  [ ] 1.3  Implement manageSubscriptions(pluginDef, action) per above
-  [ ] 1.4  Wire into the admin entry point's DoConnectPlugin / DoDisconnectPlugin callHandler dispatch (alongside mkUpdateApiSchema)
-  [ ] 1.5  Add cold-start reconciliation: on init, scan Plugin RM, manageSubscriptions per Connected plugin
-  [ ]      Verify: deploy two example plugins simultaneously; admin logs "subscribed <peerEP> → <pluginEventColl>" for each cross-plugin link
+  [x] 1.1  scanPluginRm — reused existing scanByTableName helper (same status-filter
+           shape as mkUpdateApiSchema).
+  [x] 1.2  snsSubscribe/snsUnsubscribe wrappers — reused existing
+           subscribeQueueToTopic / unsubscribeQueueFromTopic from
+           @reventlessdev/rescript-aws-sdk/src/SNS_Helpers (already idempotent —
+           lists existing subscriptions first, swallows 404 on unsubscribe).
+  [x] 1.3  mkManageSubscriptions(tableName) in AdminEventCollectorEntryPoint.mjs —
+           scans Plugin RM for Connected peers (excluding the connecting plugin),
+           subscribes/unsubscribes in both directions per the plan pseudocode.
+  [x] 1.4  Added manageSubscriptions field to PluginExtensionPoint_Plugin.Spec +
+           PluginExtensionPoint_Builder.Spec + Plugin_ExtensionPoint_Builder.Config
+           (deploy-time defaults to None). callHandler dispatches it alongside
+           updateApiSchema on DoConnectPlugin / DoDisconnectPlugin.
+  [x] 1.5  Cold-start reconciliation — reconcileSubscriptionsOnce fires as
+           fire-and-forget inside buildHandler so the SQS handler is ready
+           immediately; idempotent at the SNS level so safe to repeat.
+  [ ]      Verify (Step 4): deploy two example plugins; admin logs
+           "[manageSubscriptions] subscribed …" for each cross-plugin link.
 ```
 
 ---

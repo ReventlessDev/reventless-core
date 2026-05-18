@@ -51,9 +51,16 @@ function buildHandler() {
     },
   };
 
-  // Instantiate Plugin EP mapping
+  // Instantiate Plugin EP mapping. updateApiSchema and manageSubscriptions are
+  // admin-only hooks; this Lambda only handles incoming commands (Heartbeat,
+  // ForwardCommand) so they stay undefined here.
   const lambdaFunctionName = process.env["AWS_LAMBDA_FUNCTION_NAME"] || "unknown";
-  const pluginModule = pluginEPPluginMake({ runtimeOps, environment: lambdaFunctionName, updateApiSchema: undefined });
+  const pluginModule = pluginEPPluginMake({
+    runtimeOps,
+    environment: lambdaFunctionName,
+    updateApiSchema: undefined,
+    manageSubscriptions: undefined,
+  });
   const mappingsModule = { mappings: [pluginModule.Mapping] };
 
   // Reconstruct publishToAggregates. The deploy-side builder writes

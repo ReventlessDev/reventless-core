@@ -85,15 +85,30 @@ function Make(Spec) {
       case "DeleteDisconnectSchedule" :
         return await deleteSchedule(directive._0);
       case "DoConnectPlugin" :
+        let fn = Spec.manageSubscriptions;
+        if (fn !== undefined) {
+          await fn(directive._0, "connect");
+        }
+        let fn$1 = Spec.updateApiSchema;
+        if (fn$1 !== undefined) {
+          return await fn$1(queryEngine);
+        } else {
+          return;
+        }
       case "DoDisconnectPlugin" :
-        break;
+        let fn$2 = Spec.manageSubscriptions;
+        if (fn$2 !== undefined) {
+          await fn$2(directive._0, "disconnect");
+        }
+        let fn$3 = Spec.updateApiSchema;
+        if (fn$3 !== undefined) {
+          return await fn$3(queryEngine);
+        } else {
+          return;
+        }
       case "ForwardCommand" :
         let match = directive._0;
         return await forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
-    }
-    let fn = Spec.updateApiSchema;
-    if (fn !== undefined) {
-      return await fn(queryEngine);
     }
   };
   let mapIncomingCommand = (id, cmd, _meta) => {
