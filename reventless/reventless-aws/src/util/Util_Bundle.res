@@ -189,13 +189,30 @@ type codeArchive = {
  * Lambda layer at /opt/nodejs/node_modules. Bundling effect alongside ensures it
  * is found at /var/task/node_modules/effect.
  */
-let buildCodeArchive = (~entryPointModule: string, ~packageDirs: dict<string>): codeArchive => {
+let buildCodeArchive = (
+  ~entryPointModule: string,
+  ~packageDirs: dict<string>,
+  // Extra string-typed assets to drop at the root of the asset zip. Keys are
+  // filenames (e.g. "pluginDefinition.json"); values are the file contents.
+  // The Lambda runtime extracts the zip to /var/task, so entry-point code can
+  // read each file via `readFileSync("/var/task/<filename>", "utf-8")` or
+  // (preferred) `readFileSync(new URL("./<filename>", import.meta.url))`.
+  // Used to ship payloads that would otherwise blow the 5120-byte
+  // UpdateFunctionConfiguration limit when packed into HANDLER_CONFIG.
+  ~extraStringAssets: dict<string>=Dict.make(),
+): codeArchive => {
   let reExportCode = `export { handler } from "${entryPointModule}";`
   let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
   archiveContents->Dict.set(
     "index.mjs",
     Pulumi.Asset.stringAsset(reExportCode)->Pulumi.Archive.assetToAssetOrArchive,
   )
+  extraStringAssets->Dict.forEachWithKey((content, fileName) => {
+    archiveContents->Dict.set(
+      fileName,
+      Pulumi.Asset.stringAsset(content)->Pulumi.Archive.assetToAssetOrArchive,
+    )
+  })
   // Co-bundle effect whenever reventless-aws is bundled (see comment above).
   let allPackageDirs =
     if packageDirs->Dict.has("@reventlessdev/reventless-aws") &&
@@ -215,9 +232,24 @@ let buildCodeArchive = (~entryPointModule: string, ~packageDirs: dict<string>): 
     )
     packageContentHashes.contents->Array.push(`${pkgName}:${contentHash}`)
   })
+  // Extra-asset content participates in the source hash so a change to
+  // pluginDefinition.json triggers a Lambda code update.
+  let extraHashEntries: array<string> = []
+  let extraKeys = extraStringAssets->Dict.keysToArray
+  extraKeys->Array.sort(String.compare)
+  extraKeys->Array.forEach(k => {
+    let v = extraStringAssets->Dict.get(k)->Option.getOr("")
+    extraHashEntries->Array.push(`${k}:${v}`)
+  })
   let code = Pulumi.Archive.assetArchive(archiveContents)
   packageContentHashes.contents->Array.sort(String.compare)
   let sourceCodeHash =
-    hashString(reExportCode ++ packageContentHashes.contents->Array.join(","))
+    hashString(
+      reExportCode ++
+      "\n---\n" ++
+      packageContentHashes.contents->Array.join(",") ++
+      "\n---\n" ++
+      extraHashEntries->Array.join("\n"),
+    )
   {code, sourceCodeHash}
 }

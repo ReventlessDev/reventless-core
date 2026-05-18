@@ -145,7 +145,7 @@ function finish() {
         let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
         packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
         packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
-        let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs);
+        let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
         let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, spec.memorySize, spec.timeout, aggregateOpts);
         spec.connects.forEach(connect => connect(runtime));
         let channelSpecs = Stdlib_Option.mapOr(spec.eventCollectorChannelSpec, [], cs => [cs]);

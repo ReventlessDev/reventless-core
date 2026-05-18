@@ -55,7 +55,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
     packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
     packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs", packageDirs);
+    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs", packageDirs, undefined);
     let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts);
     EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(name, [{
         channel: channel,

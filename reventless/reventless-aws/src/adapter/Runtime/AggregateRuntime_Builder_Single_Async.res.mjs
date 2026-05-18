@@ -161,7 +161,7 @@ function finish() {
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs);
+      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesAsync", match$1.code, match$1.sourceCodeHash, envVars, match[1], match[2], opts);
       specs.forEach(param => {
         param.connects.forEach(connect => connect(runtime));

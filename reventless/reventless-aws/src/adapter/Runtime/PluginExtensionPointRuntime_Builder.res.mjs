@@ -67,7 +67,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, param$1, par
     return `{"queueUrl":"` + queueUrl + `","pluginReadModelTableName":"` + rmTable + `","schedulerRoleArn":"` + schedRoleArn + `","schedulerQueueArn":"` + schedQueueArn + `","schedulerQueueName":"` + schedQueueName + `","publishToAggregates":{` + publishToAggregatesJson + `}}`;
   });
   envVars["HANDLER_CONFIG"] = handlerConfigJson;
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs", {});
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/PluginExtensionPointEntryPoint.mjs", {}, undefined);
   return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts));
 }
 

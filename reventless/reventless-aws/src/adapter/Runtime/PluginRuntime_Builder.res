@@ -213,6 +213,12 @@ module Make = (
       ->Array.map(ep => ep.eventTopicArn)
       ->Pulumi.Output.all
 
+    // HANDLER_CONFIG no longer carries pluginDefinition — it grew past AWS
+    // Lambda's 5120-byte UpdateFunctionConfiguration limit once pluginStructure
+    // started landing inline. The full pluginDefinition is shipped as a
+    // separate `pluginDefinition.json` asset bundled alongside index.mjs (see
+    // the buildCodeArchive call below); the entry point reads it from disk at
+    // cold start. Slim HANDLER_CONFIG keeps just the orchestration fields.
     let handlerConfigJson =
       Pulumi.Output.all([
         queue.id,
@@ -223,7 +229,6 @@ module Make = (
         config.schedulerQueueArn->outputOrPlaceholder->Obj.magic,
         config.schedulerQueueName->outputOrPlaceholder->Obj.magic,
         config.appSyncApiId->outputOrPlaceholder->Obj.magic,
-        context.pluginDefinitionJson->Pulumi.Output.asInput->Obj.magic,
         epEventTopicArnsOutput->Pulumi.Output.asInput->Obj.magic,
       ])
       ->Pulumi.Output.apply(values => {
@@ -235,8 +240,7 @@ module Make = (
         let schedQueueArn = values->Array.getUnsafe(5)
         let schedQueueName = values->Array.getUnsafe(6)
         let appSyncApiId = values->Array.getUnsafe(7)
-        let pluginDefinitionJson = values->Array.getUnsafe(8)
-        let epEventTopicArns: array<string> = Obj.magic(values->Array.getUnsafe(9))
+        let epEventTopicArns: array<string> = Obj.magic(values->Array.getUnsafe(8))
 
         let dict = Dict.make()
         dict->Dict.set("queueUrl", JSON.Encode.string(queueUrl))
@@ -249,14 +253,8 @@ module Make = (
         dict->Dict.set("schedulerQueueArn", JSON.Encode.string(schedQueueArn))
         dict->Dict.set("schedulerQueueName", JSON.Encode.string(schedQueueName))
 
-        // pluginDefinition is pre-stringified JSON — parse-and-reencode so it
-        // lands as a proper JSON value (not a string-of-a-string) in the output.
-        let pluginDefinitionValue = try {
-          JSON.parseOrThrow(pluginDefinitionJson)
-        } catch {
-        | _ => JSON.Encode.null
-        }
-        dict->Dict.set("pluginDefinition", pluginDefinitionValue)
+        // pluginDefinition lives in pluginDefinition.json (see asset bundle
+        // below). The entry point reads it via fs.readFileSync at cold start.
 
         let extensionPointsArr = context.extensionPoints->Array.mapWithIndex((ep, i) => {
           let entryDict = Dict.make()
@@ -359,15 +357,30 @@ module Make = (
       })
     })
 
-    let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
-      ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs",
-      ~packageDirs,
-    )
+    // pluginDefinition.json must resolve before the asset zip is built;
+    // wrap the bundle in an Output.apply over the Output<string>. The
+    // resulting Output<codeArchive> threads through to makeFromCodeAsset's
+    // Archive.t / string args via Obj.magic — Pulumi's TS API accepts
+    // Output<Archive.t> wherever it accepts Archive.t, and Pulumi.Input.make
+    // is identity at runtime, so the Output unwraps correctly inside the
+    // Lambda Function args.
+    let bundleOutput =
+      context.pluginDefinitionJson->Pulumi.Output.apply(pluginDefinitionJson => {
+        let extraStringAssets = Dict.make()
+        extraStringAssets->Dict.set("pluginDefinition.json", pluginDefinitionJson)
+        Util_Bundle.buildCodeArchive(
+          ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs",
+          ~packageDirs,
+          ~extraStringAssets,
+        )
+      })
+    let codeOutput = bundleOutput->Pulumi.Output.apply(b => b.code)
+    let sourceCodeHashOutput = bundleOutput->Pulumi.Output.apply(b => b.sourceCodeHash)
 
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
       ~name,
-      ~code,
-      ~sourceCodeHash,
+      ~code=codeOutput->Obj.magic,
+      ~sourceCodeHash=sourceCodeHashOutput->Obj.magic,
       ~envVars,
       ~memorySize,
       ~timeout,

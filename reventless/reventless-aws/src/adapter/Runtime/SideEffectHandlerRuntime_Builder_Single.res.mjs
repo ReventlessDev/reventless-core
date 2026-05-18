@@ -97,7 +97,7 @@ function finish() {
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/SideEffectEntryPoint.mjs", packageDirs);
+      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/SideEffectEntryPoint.mjs", packageDirs, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllSideEffectHandlers", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], opts);
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllSideEffectHandlers", channelSpecs, runtime, opts);

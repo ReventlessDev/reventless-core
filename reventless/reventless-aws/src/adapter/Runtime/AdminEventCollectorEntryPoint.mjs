@@ -58,6 +58,7 @@
 // (plugin only). Plugin_Callback.Make routes incoming SQS events to the right
 // service-keyed handler dict; we reconstruct those dicts here from HANDLER_CONFIG.
 
+import { readFileSync } from "node:fs";
 import * as Effect from "effect/Effect";
 import { patchSpecId, makeQueueRef, scanByTableName } from "./HandlerFactoryHelpers.mjs";
 import { subscribeQueueToTopic, unsubscribeQueueFromTopic } from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
@@ -93,7 +94,6 @@ function parseHandlerConfig(rawJson) {
     "schedulerRoleArn",
     "schedulerQueueArn",
     "schedulerQueueName",
-    "pluginDefinition",
     "extensionPoints",
     "extensions",
     "publishToAggregates",
@@ -334,8 +334,26 @@ function mergeDicts(...dicts) {
   return out;
 }
 
+// pluginDefinition is shipped as a file in the asset zip rather than packed
+// into HANDLER_CONFIG (AWS Lambda's UpdateFunctionConfiguration request has a
+// 5120-byte limit; pluginStructure alone — schemas inline per component —
+// blew past that). The Lambda runtime extracts the zip to /var/task, and the
+// re-export index.mjs lives at /var/task/index.mjs alongside
+// pluginDefinition.json. process.cwd() is /var/task in Lambda, so a relative
+// path resolves correctly. The file is parsed once at cold start.
+function loadPluginDefinition() {
+  try {
+    const raw = readFileSync(new URL("./pluginDefinition.json", `file://${process.cwd()}/`), "utf-8");
+    return JSON.parse(raw);
+  } catch (e) {
+    const msg = (e && e.message) || String(e);
+    throw new Error("Failed to load pluginDefinition.json from asset zip: " + msg);
+  }
+}
+
 async function buildHandler() {
   const config = parseHandlerConfig(process.env["HANDLER_CONFIG"]);
+  const pluginDefinition = loadPluginDefinition();
   const lambdaFunctionName = process.env["AWS_LAMBDA_FUNCTION_NAME"] || "unknown";
 
   // runtimeOps carries only what the admin EP mapping's callHandler actually
@@ -428,7 +446,7 @@ async function buildHandler() {
     // extension Spec carries only pluginDefinition — cross-plugin subscribe /
     // unsubscribe directives moved to admin's manageSubscriptions hook.
     const extBuilder = mappingsMod.Make({
-      pluginDefinition: config.pluginDefinition,
+      pluginDefinition,
     });
     // PluginConnectExtension_Builder.Make returns a module exposing:
     //   - ConnectPluginMapping  (single mapping)

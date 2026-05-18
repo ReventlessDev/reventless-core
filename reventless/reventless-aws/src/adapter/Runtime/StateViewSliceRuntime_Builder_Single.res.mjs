@@ -71,7 +71,7 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, memorySi
   let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined);
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts);
   EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllStateViewSlices", channelSpecs, runtime, opts);
 }

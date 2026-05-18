@@ -124,10 +124,14 @@ function createFilteredPackageArchive(packageRoot) {
   ];
 }
 
-function buildCodeArchive(entryPointModule, packageDirs) {
+function buildCodeArchive(entryPointModule, packageDirs, extraStringAssetsOpt) {
+  let extraStringAssets = extraStringAssetsOpt !== undefined ? extraStringAssetsOpt : ({});
   let reExportCode = `export { handler } from "` + entryPointModule + `";`;
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(reExportCode);
+  Stdlib_Dict.forEachWithKey(extraStringAssets, (content, fileName) => {
+    archiveContents[fileName] = new (Pulumi.asset.StringAsset)(content);
+  });
   let allPackageDirs;
   if ("@reventlessdev/reventless-aws" in packageDirs && !("effect" in packageDirs)) {
     let dirs = Object.assign({}, packageDirs);
@@ -144,9 +148,16 @@ function buildCodeArchive(entryPointModule, packageDirs) {
     archiveContents[`node_modules/` + pkgName] = match[0];
     packageContentHashes.contents.push(pkgName + `:` + match[1]);
   });
+  let extraHashEntries = [];
+  let extraKeys = Object.keys(extraStringAssets);
+  extraKeys.sort(Primitive_string.compare);
+  extraKeys.forEach(k => {
+    let v = Stdlib_Option.getOr(extraStringAssets[k], "");
+    extraHashEntries.push(k + `:` + v);
+  });
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
   packageContentHashes.contents.sort(Primitive_string.compare);
-  let sourceCodeHash = hashString(reExportCode + packageContentHashes.contents.join(","));
+  let sourceCodeHash = hashString(reExportCode + "\n---\n" + packageContentHashes.contents.join(",") + "\n---\n" + extraHashEntries.join("\n"));
   return {
     code: code,
     sourceCodeHash: sourceCodeHash

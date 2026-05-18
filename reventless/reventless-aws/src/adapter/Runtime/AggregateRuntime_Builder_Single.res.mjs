@@ -175,7 +175,7 @@ function finish() {
       if (tableName !== undefined) {
         envVars["PLUGIN_RM_TABLE_NAME"] = tableName;
       }
-      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs);
+      let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
       let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregates", match$1.code, match$1.sourceCodeHash, envVars, match[1], match[2], opts);
       let tableName$1 = pluginRmTableName.contents;
       if (tableName$1 !== undefined) {

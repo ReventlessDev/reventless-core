@@ -40,7 +40,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, specModuleUr
   let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(mappingsModulePath);
   packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
   packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.mjs", packageDirs);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ExtensionPointEntryPoint.mjs", packageDirs, undefined);
   return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts));
 }
 
