@@ -232,9 +232,21 @@ Option (a) is simpler and safe with the SourceAccount condition. Recommended.
 
 ```
 Step 2
-  [ ] 2.1  Add cross-plugin SNS perms to admin Lambda role policy in Platform.res
-  [ ] 2.2  Widen plugin EventColl SQS queue policies to allow SendMessage from any SNS topic in the account (with SourceAccount condition)
-  [ ]      Verify: aws iam simulate-principal-policy confirms admin role can Subscribe to a sample peer EP topic
+  [x] 2.1  Cross-plugin SNS perms added to admin Lambda role in
+           PluginRuntime_Builder.forPluginEventCollector — only the admin EC
+           Lambda (detected via no registered eventCollectorContext) gets a
+           dedicated RolePolicy granting sns:Subscribe / sns:Unsubscribe /
+           sns:ListSubscriptionsByTopic / sns:GetSubscriptionAttributes. Plugin
+           ECs keep the narrow IAM perimeter from connectLambda.
+  [x] 2.2  EventCollectorChannel_Helpers.createQueuePolicy widened to a single
+           statement allowing SendMessage from any in-account SNS topic whose
+           name matches `*EventTopic-*` (arnLike +
+           stringEquals(aws:SourceAccount=<accountId>)). Account ID extracted
+           from the queue's own ARN (segment 4). Same policy applies to every
+           plugin EC queue + the admin EC queue, so runtime-created cross-
+           plugin subscriptions are accepted without a redeploy.
+  [ ]      Verify (Step 4): aws iam simulate-principal-policy confirms admin
+           role can Subscribe to a sample peer EP topic.
 ```
 
 ---

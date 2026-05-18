@@ -385,6 +385,46 @@ module Make = (
       ~runtime,
       ~opts,
     )
+
+    // Admin-only cross-plugin SNS subscription permissions. The admin EC
+    // Lambda's manageSubscriptions hook (Phase 3 Step 1) creates SNS
+    // subscriptions at runtime as plugins connect/disconnect; that needs
+    // sns:Subscribe / sns:Unsubscribe / sns:ListSubscriptionsByTopic on every
+    // plugin's EP event topic. Detected via the same context lookup used to
+    // synthesize the admin-flavoured handler config: no registered context
+    // for this EventCollector name => admin path. Per-plugin EC Lambdas have
+    // a registered context and stay on the narrow IAM perimeter from
+    // EventCollectorChannel_Helpers.connectLambda.
+    let isAdminEventCollector =
+      ReventlessCore.Plugin_Helpers.eventCollectorContextRef.contents
+      ->Dict.get(name)
+      ->Option.isNone
+    if isAdminEventCollector {
+      let _ = PulumiAws.IAM.RolePolicy.make(
+        ~name=`${name}-snsManageSubs`,
+        ~args={
+          policy: PulumiAws.PolicyDocument.make(
+            ~id=`${name}SnsManageSubsPolicy`,
+            ~statements=[
+              {
+                sid: "AllowAdminManageCrossPluginSnsSubscriptions",
+                effect: Allow,
+                actions: Actions([
+                  "sns:Subscribe",
+                  "sns:Unsubscribe",
+                  "sns:ListSubscriptionsByTopic",
+                  "sns:GetSubscriptionAttributes",
+                ]),
+                resources: AllResources,
+              },
+            ],
+          )
+          ->PulumiAws.PolicyDocument.toJsonString
+          ->Pulumi.Input.make,
+          role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
+    }
   }
 
   let forPluginHeartbeat: ReventlessCore.Runtime.forComponent<

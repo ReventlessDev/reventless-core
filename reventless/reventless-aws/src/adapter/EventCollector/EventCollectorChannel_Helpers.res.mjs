@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
@@ -19,11 +20,13 @@ function toResources(eventTopics) {
   return Adapter$ReventlessCore.resourcesToResolvedOutput(Object.values(eventTopics).flatMap(outputs => outputs.resources));
 }
 
-function createQueuePolicy(queue, name, resources, opts) {
+function createQueuePolicy(queue, name, _resources, opts) {
   Pulumi.all([
     queue.arn,
     queue.id
   ]).apply(param => {
+    let queueArn = param[0];
+    let accountId = Stdlib_Option.getOr(queueArn.split(":")[4], "");
     let queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
         Sid: "AllowReceiveSnsEvents",
         Principal: {
@@ -31,11 +34,15 @@ function createQueuePolicy(queue, name, resources, opts) {
         },
         Effect: "Allow",
         Action: ["sqs:SendMessage"],
-        Resource: param[0],
+        Resource: queueArn,
         Condition: {
-          ArnEquals: Object.fromEntries([[
+          StringEquals: Object.fromEntries([[
+              "aws:SourceAccount",
+              accountId
+            ]]),
+          ArnLike: Object.fromEntries([[
               "aws:SourceArn",
-              Adapter$ReventlessCore.urns(resources)
+              `arn:aws:sns:*:` + accountId + `:*EventTopic-*`
             ]])
         }
       }]));

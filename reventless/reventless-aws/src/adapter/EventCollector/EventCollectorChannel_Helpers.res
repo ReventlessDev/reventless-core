@@ -10,15 +10,29 @@ let toResources = (eventTopics: ReventlessCore.EventTopic.allOutputs) =>
   ->Array.flatMap(outputs => outputs.resources)
   ->ReventlessCore.Adapter.resourcesToResolvedOutput
 
-let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) => {
+let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, _resources, opts) => {
   let _ =
     (queue.arn, queue.id)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((queueArn, queueId)) => {
+      // SQS queue ARN is `arn:aws:sqs:<region>:<accountId>:<name>` — segment
+      // index 4 (0-based). Used to scope cross-plugin SNS sources to this
+      // account (aws:SourceAccount) and to topic names following the
+      // Reventless EventTopic naming convention (aws:SourceArn arnLike).
+      let accountId = queueArn->String.split(":")->Array.get(4)->Option.getOr("")
       let queuePolicyDocument =
         PulumiAws.PolicyDocument.make(
           ~id=name ++ "QueuePolicy",
           ~statements=[
+            // Single statement allows SendMessage from any SNS topic owned by
+            // this AWS account whose name matches the Reventless EventTopic
+            // naming convention. Replaces the previous per-topic arnEquals
+            // list so cross-plugin SNS subscriptions created at runtime by the
+            // admin's manageSubscriptions hook (Phase 3 Step 1) are accepted
+            // without requiring a redeploy of the receiving plugin. Security
+            // boundary: SourceAccount condition keeps third-party-account
+            // topics out; ArnLike + SNS service principal further narrows
+            // accepted senders to in-account EventTopic resources.
             {
               sid: "AllowReceiveSnsEvents",
               principal: Principals({
@@ -28,7 +42,12 @@ let createQueuePolicy = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) =>
               actions: Actions(["sqs:SendMessage"]),
               resources: Resource(queueArn),
               conditions: {
-                arnEquals: [("aws:SourceArn", ConditionValues(resources->urns))]->Dict.fromArray,
+                stringEquals: [
+                  ("aws:SourceAccount", ConditionValue(accountId)),
+                ]->Dict.fromArray,
+                arnLike: [
+                  ("aws:SourceArn", ConditionValue(`arn:aws:sns:*:${accountId}:*EventTopic-*`)),
+                ]->Dict.fromArray,
               },
             },
           ],

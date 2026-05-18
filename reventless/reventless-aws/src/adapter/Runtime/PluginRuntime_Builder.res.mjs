@@ -262,6 +262,24 @@ function Make(EventCollectorChannel) {
         eventTopics: eventTopics,
         resources: resources
       }], runtime, opts);
+    let isAdminEventCollector = Stdlib_Option.isNone(Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name]);
+    if (isAdminEventCollector) {
+      new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
+        policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SnsManageSubsPolicy`, [{
+            Sid: "AllowAdminManageCrossPluginSnsSubscriptions",
+            Effect: "Allow",
+            Action: [
+              "sns:Subscribe",
+              "sns:Unsubscribe",
+              "sns:ListSubscriptionsByTopic",
+              "sns:GetSubscriptionAttributes"
+            ],
+            Resource: "*"
+          }])),
+        role: runtime.parts.lambdaRole.id
+      });
+      return;
+    }
   };
   let forPluginHeartbeat = (param, connect, memorySizeOpt, timeoutOpt, heartbeat) => {
     let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
