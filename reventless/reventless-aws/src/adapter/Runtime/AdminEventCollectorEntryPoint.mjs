@@ -59,6 +59,8 @@
 // service-keyed handler dict; we reconstruct those dicts here from HANDLER_CONFIG.
 
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import * as Effect from "effect/Effect";
 import { patchSpecId, makeQueueRef, scanByTableName } from "./HandlerFactoryHelpers.mjs";
 import { subscribeQueueToTopic, unsubscribeQueueFromTopic } from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
@@ -351,6 +353,25 @@ function loadPluginDefinition() {
   }
 }
 
+// Cross-plugin spec packages (e.g. "@reventlessdev/online-shop-hybrid-catalog-spec")
+// are bundled into the function asset under /var/task/node_modules/ by
+// PluginRuntime_Builder.forPluginEventCollector. This entry-point file, however,
+// lives in the Lambda LAYER at /opt/nodejs/node_modules/.../AdminEventCollectorEntryPoint.mjs,
+// so a bare `await import("@reventlessdev/online-shop-hybrid-catalog-spec/...")`
+// from here resolves through /opt/nodejs/node_modules/ and never reaches the
+// function asset. Anchoring createRequire at file:///var/task/index.mjs makes
+// resolution walk /var/task/node_modules first (and NODE_PATH-listed dirs as
+// fallback, which Lambda sets to /opt/nodejs/node_modules — so static-import
+// targets like reventless-core still resolve too). We then turn the resolved
+// filesystem path into a file:// URL and dynamic-import it.
+const importFromAsset = (() => {
+  const requireFromAsset = createRequire(`file://${process.cwd()}/index.mjs`);
+  return async (specifier) => {
+    const resolved = requireFromAsset.resolve(specifier);
+    return import(pathToFileURL(resolved).href);
+  };
+})();
+
 async function buildHandler() {
   const config = parseHandlerConfig(process.env["HANDLER_CONFIG"]);
   const pluginDefinition = loadPluginDefinition();
@@ -403,8 +424,8 @@ async function buildHandler() {
 
   // EP operations — admin has 1 entry (Plugin EP), plugins have 0.
   const epHandlers = await Promise.all(config.extensionPoints.map(async (ep) => {
-    const specMod = patchSpecId(await import(ep.specModule));
-    const mappingsMod = await import(ep.mappingsModule);
+    const specMod = patchSpecId(await importFromAsset(ep.specModule));
+    const mappingsMod = await importFromAsset(ep.mappingsModule);
     const epModule = mappingsMod.Make({
       runtimeOps,
       environment: lambdaFunctionName,
@@ -440,8 +461,8 @@ async function buildHandler() {
   let connectExtensionHandler = null;
   if (config.connectExtension) {
     const ext = config.connectExtension;
-    const specMod = patchSpecId(await import(ext.specModule));
-    const mappingsMod = await import(ext.mappingsModule);
+    const specMod = patchSpecId(await importFromAsset(ext.specModule));
+    const mappingsMod = await importFromAsset(ext.mappingsModule);
     // After Phase 3 of plugin-eventcollector-runtime-rewire, the Connect
     // extension Spec carries only pluginDefinition — cross-plugin subscribe /
     // unsubscribe directives moved to admin's manageSubscriptions hook.
@@ -479,9 +500,9 @@ async function buildHandler() {
       );
       return null;
     }
-    const epSpec = patchSpecId(await import(ext.specModule));
-    const userMod = await import(ext.mappingsModule);
-    const delegateSpec = await import(ext.delegateModule);
+    const epSpec = patchSpecId(await importFromAsset(ext.specModule));
+    const userMod = await importFromAsset(ext.mappingsModule);
+    const delegateSpec = await importFromAsset(ext.delegateModule);
 
     // Reconstruct Mapping with the freshly imported specs re-attached. The
     // moduleUrl / delegateModuleUrl fields satisfy the ExtensionMapping.Mapping
