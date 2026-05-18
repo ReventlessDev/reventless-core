@@ -1445,6 +1445,7 @@ echo "=== Test: @@reventless.extension (Extension/<Name>_Extension.res — Deleg
 JS="$DCB/src/Extension/Demo_Extension.res.mjs"
 assert_js_contains "$JS" 'Extension/Demo_Extension.res.mjs' "extension: moduleUrl injected"
 assert_js_contains "$JS" 'DcbTag' "extension: inner Mapping.Delegate got dcbTags + module Id"
+assert_js_contains "$JS" 'delegateModuleUrl' "extension: Mapping.delegateModuleUrl injected (lets the runtime dynamic-import the Delegate spec)"
 
 echo ""
 echo "=== Test: @@reventless.task (Task/<Name>.res — name + open + moduleUrl) ==="

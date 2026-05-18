@@ -28,9 +28,26 @@
 //     "mappingsModule":     string,
 //     "extensionPointName": string             // service key for incomingConnectExtensionEventHandlers (e.g. "Core.Plugin")
 //   } | null,
-//   "extensions": [],                          // User-declared extensions — reserved for future; not yet wired
+//   "extensions": [                            // User-declared extensions — wired into incoming/outgoing dicts at cold start
+//     {
+//       "name":               string,          // extension component name (used for logs / dedupe)
+//       "specModule":         string,          // dynamic import for the ExtensionPoint spec module
+//       "mappingsModule":     string,          // dynamic import for the user extension file (`module Mapping`)
+//       "delegateModule":     string,          // dynamic import for the Delegate spec (aggregate / slice)
+//       "extensionPointName": string,          // service key for incomingExtensionEventHandlers (e.g. "Ordering.Orders")
+//       "aggregateNames":     string[],        // outgoing service keys + filter into top-level publishToAggregates
+//       "readModelNames":     string[]         // RMs this extension may enqueue events into (filter into readModelQueueUrls)
+//     }
+//   ],
 //   "publishToAggregates": {                   // aggregateName → env-var name holding the aggregate's cmd-topic SQS URL
-//     "Plugin": "PTA_Plugin_QUEUE_URL"
+//     "Plugin": "PTA_Plugin_QUEUE_URL",
+//     "RecordProductDemand": "PTA_RecordProductDemand_QUEUE_URL"
+//   },
+//   "readModelQueueUrls": {                    // rmName → env-var name holding the RM's EventCollector SQS URL
+//     "ProductDemands": "PRM_ProductDemands_QUEUE_URL"
+//   },
+//   "readModelNamesForSourceName": {           // deploy-side inversion of RM.sourceNames; sourceServiceName → [rmName]
+//     "Ordering.Orders": ["ProductDemands"]
 //   }
 // }
 //
@@ -48,6 +65,7 @@ import { publish as snsPublish } from "@reventlessdev/reventless-aws/src/adapter
 import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { Make as extensionPointOperationsMake } from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Operations.res.mjs";
 import { Make as extensionOperationsMake } from "@reventlessdev/reventless-core/src/components/Extension/Extension_Operations.res.mjs";
+import { Make as extensionMappingMake } from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import { Make as pluginCallbackMake } from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Callback.res.mjs";
 import { handleDynamoDbOrSqsEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res.mjs";
 import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule } from "@reventlessdev/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
@@ -88,6 +106,16 @@ function parseHandlerConfig(rawJson) {
   if (!Array.isArray(config.extensions)) throw new Error("HANDLER_CONFIG.extensions must be an array");
   // connectExtension is allowed to be null or absent (admin case)
   if (config.connectExtension === undefined) config.connectExtension = null;
+  // Optional fields with empty defaults — admin context omits them entirely.
+  if (config.readModelQueueUrls === undefined) config.readModelQueueUrls = {};
+  if (config.readModelNamesForSourceName === undefined) config.readModelNamesForSourceName = {};
+  // Per-extension defaults so older serialisers (or partial admin configs) keep working.
+  for (const ext of config.extensions) {
+    if (!Array.isArray(ext.aggregateNames)) ext.aggregateNames = [];
+    if (!Array.isArray(ext.readModelNames)) ext.readModelNames = [];
+    if (typeof ext.name !== "string") ext.name = ext.extensionPointName || "unknown";
+    if (typeof ext.delegateModule !== "string") ext.delegateModule = "";
+  }
   return config;
 }
 
@@ -317,12 +345,89 @@ async function buildHandler() {
     };
   }
 
-  // User-declared extensions — placeholder for future scope. Plan defers wiring;
-  // when added, populate outgoingExtensionEventHandlers (by aggregateNames) and
-  // incomingExtensionEventHandlers (by extensionPointName) here.
-  if (config.extensions.length > 0) {
-    console.warn("AdminEventCollectorEntryPoint: user extensions in HANDLER_CONFIG are not yet wired; ignoring " + config.extensions.length + " entry/entries");
-  }
+  // User-declared extensions — per-entry: three dynamic imports (EP spec,
+  // user mapping file, Delegate spec), reconstruct the full Mapping object
+  // (compiled .res.mjs erases Mapping.ExtensionPoint / Mapping.Delegate), run
+  // it through ExtensionMapping.Make, and build per-extension Extension_Operations.
+  const userExtensionHandlers = await Promise.all(config.extensions.map(async (ext) => {
+    if (!ext.specModule || !ext.mappingsModule || !ext.delegateModule) {
+      console.warn(
+        "AdminEventCollectorEntryPoint: extension '" + ext.name +
+        "' missing module specifier(s); skipping. specModule=" + ext.specModule +
+        ", mappingsModule=" + ext.mappingsModule + ", delegateModule=" + ext.delegateModule
+      );
+      return null;
+    }
+    const epSpec = patchSpecId(await import(ext.specModule));
+    const userMod = await import(ext.mappingsModule);
+    const delegateSpec = await import(ext.delegateModule);
+
+    // Reconstruct Mapping with the freshly imported specs re-attached. The
+    // moduleUrl / delegateModuleUrl fields satisfy the ExtensionMapping.Mapping
+    // module type — ExtensionMapping.Make doesn't currently consume them at
+    // runtime, but we set them for shape parity.
+    const fullMapping = {
+      ExtensionPoint: epSpec,
+      Delegate: delegateSpec,
+      moduleUrl: ext.mappingsModule,
+      delegateModuleUrl: ext.delegateModule,
+      mapIncomingEvent: userMod.Mapping.mapIncomingEvent,
+      mapOutgoingEvent: userMod.Mapping.mapOutgoingEvent,
+    };
+    const transformedMapping = extensionMappingMake(fullMapping);
+    const mappingsModule = {
+      name: ext.name,
+      moduleUrl: ext.mappingsModule,
+      mappings: [transformedMapping],
+    };
+
+    // Per-extension publishToAggregates filtered to ext.aggregateNames —
+    // each aggregate's cmd-topic SQS URL is looked up via the
+    // PTA_<aggName>_QUEUE_URL env var name carried in HANDLER_CONFIG.
+    const extPublishToAggregates = {};
+    for (const aggName of ext.aggregateNames) {
+      const envVarName = config.publishToAggregates[aggName];
+      if (!envVarName) continue;
+      const queueUrl = process.env[envVarName] || "";
+      if (!queueUrl) continue;
+      extPublishToAggregates[aggName] = sqsPublishJsons(makeQueueRef(queueUrl), "SQS_FIFO");
+    }
+
+    // Per-extension publishToReadModels — each RM's EventCollector SQS URL
+    // is looked up via the PRM_<rmName>_QUEUE_URL env var name carried in
+    // HANDLER_CONFIG.readModelQueueUrls.
+    const extPublishToReadModels = {};
+    for (const rmName of ext.readModelNames) {
+      const envVarName = config.readModelQueueUrls[rmName];
+      if (!envVarName) continue;
+      const queueUrl = process.env[envVarName] || "";
+      if (!queueUrl) continue;
+      extPublishToReadModels[rmName] = sqsPublishJsons(makeQueueRef(queueUrl), "SQS_FIFO");
+    }
+
+    // readModelNamesForSourceName scoped to this extension's EP — Extension_Operations
+    // uses this dict to decide which RMs receive each incoming event.
+    const extReadModelNamesForSourceName = {
+      [ext.extensionPointName]:
+        config.readModelNamesForSourceName[ext.extensionPointName] || [],
+    };
+
+    const ops = extensionOperationsMake(epSpec)(mappingsModule)({
+      publishToAggregates: extPublishToAggregates,
+      publishToPluginExtensionPoint,
+      readModelNamesForSourceName: extReadModelNamesForSourceName,
+      publishToReadModels: extPublishToReadModels,
+      queryEngine,
+    });
+
+    return {
+      extensionPointName: ext.extensionPointName,
+      aggregateNames: ext.aggregateNames,
+      incomingHandler: ops.incomingJsonEventsHandler,
+      outgoingHandler: ops.outgoingJsonEventsHandler,
+    };
+  }));
+  const extensionHandlers = userExtensionHandlers.filter(Boolean);
 
   // Build the four service-keyed dicts that Plugin_Callback.Make consumes.
   const outgoingExtensionPointEventHandlers = epHandlers
@@ -331,8 +436,12 @@ async function buildHandler() {
   const incomingConnectExtensionEventHandlers = connectExtensionHandler
     ? { [connectExtensionHandler.extensionPointName]: [connectExtensionHandler.incomingHandler] }
     : {};
-  const outgoingExtensionEventHandlers = {};
-  const incomingExtensionEventHandlers = {};
+  const outgoingExtensionEventHandlers = extensionHandlers
+    .map((eh) => dictByServiceKeys(eh.aggregateNames, eh.outgoingHandler))
+    .reduce(mergeDicts, {});
+  const incomingExtensionEventHandlers = extensionHandlers
+    .map((eh) => ({ [eh.extensionPointName]: [eh.incomingHandler] }))
+    .reduce(mergeDicts, {});
 
   const callback = pluginCallbackMake({
     pluginDefinition: config.pluginDefinition,

@@ -397,7 +397,8 @@ module MakeWithConfig = (
       module type Mapping = ReventlessInfra.ExtensionMapping.T
         with module ExtensionPoint := Spec
       let name = Mapping.Delegate.name
-      let moduleUrl = Mapping.Delegate.moduleUrl
+      let moduleUrl = Mapping.moduleUrl
+      let delegateModuleUrl = Mapping.delegateModuleUrl
       let mappings: array<module(Mapping)> = [module(CompiledMapping)]
     }
 

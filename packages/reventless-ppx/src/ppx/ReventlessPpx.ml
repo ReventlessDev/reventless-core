@@ -398,6 +398,13 @@ let gen_mappings_make_call ~loc ~domain spec_name =
 let gen_let_counter_none ~loc =
   [%stri let counter = None]
 
+(* Injected inside `module Mapping` in @@reventless.extension files so the
+   compiled .res.mjs exposes `Mapping.delegateModuleUrl` — the bundled Plugin
+   EventCollector entry point reads it to dynamic-import the Delegate spec
+   (Mapping.Delegate itself is erased in the JS export). *)
+let gen_let_delegate_module_url ~loc =
+  [%stri let delegateModuleUrl : string = Delegate.moduleUrl]
+
 (* DCB Source detection — a module qualifies if its body has
    both [let name = "..."] and [@schema type event].
    The new file-level kinds (@@reventless.mappings, @@reventless.automation)
@@ -589,7 +596,17 @@ let dispatch_extension_impl ~loc ~specifier body =
              { inner_item with pstr_desc = Pstr_module inner_mb' }
            | _ -> inner_item
          ) inner in
-         let mb' = { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure inner' } } in
+         let inner'' =
+           if Util.has_let_binding "delegateModuleUrl" inner'
+           then inner'
+           else inner' @ [gen_let_delegate_module_url ~loc:item.pstr_loc]
+         in
+         let inner''' =
+           if Util.has_let_binding "moduleUrl" inner''
+           then inner''
+           else inner'' @ [ModuleUrl.gen_module_url ~loc:item.pstr_loc specifier]
+         in
+         let mb' = { mb with pmb_expr = { mb.pmb_expr with pmod_desc = Pmod_structure inner''' } } in
          { item with pstr_desc = Pstr_module mb' }
        | _ -> item)
     | _ -> item

@@ -111,6 +111,20 @@ module type Mapping = {
   module ExtensionPoint: Spec
   module Delegate: Reventless.Aggregate.Spec
 
+  // npm-style specifier of the user extension file (the module exporting this
+  // Mapping). Used by Plugin_Helpers + the bundled Plugin EventCollector entry
+  // point to dynamic-import the user mapping for runtime reconstruction of
+  // mapIncomingEvent / mapOutgoingEvent. PPX-injected on @@reventless.extension
+  // files as the same specifier as the file-level moduleUrl.
+  let moduleUrl: string
+
+  // npm-style specifier of the Delegate's source module. Used by the bundled
+  // Plugin EventCollector entry point to dynamic-import the Delegate spec at
+  // cold start (Mapping.ExtensionPoint and Mapping.Delegate are erased in the
+  // compiled .res.mjs export). PPX-injected on @@reventless.extension files
+  // as `Delegate.moduleUrl`.
+  let delegateModuleUrl: string
+
   let mapIncomingEvent: mapIncomingEvent<
     ExtensionPoint.event,
     Delegate.command,

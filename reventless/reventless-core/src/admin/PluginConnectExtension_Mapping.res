@@ -168,6 +168,15 @@ module Make = (Spec: Spec) => {
       module ExtensionPoint = PluginExtensionPointSpec
       module Delegate = ReventlessInfra.ExtensionMapping.NoDelegate
 
+      // npm specifier matches Plugin_Helpers.pluginConnectExtensionMappingsModule;
+      // this is the URL the bundled Plugin EventCollector entry point would
+      // dynamic-import to reach this mapping (currently hand-wired in the entry
+      // point, but kept consistent with the type contract).
+      let moduleUrl =
+        "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs"
+
+      let delegateModuleUrl = Delegate.moduleUrl
+
       let mapIncomingEvent: ReventlessInfra.ExtensionMapping.mapIncomingEvent<
         PluginExtensionPointSpec.event,
         Delegate.command,

@@ -122,8 +122,11 @@ function Make(EventCollectorChannel) {
           aggregateNames: [PluginSpec$ReventlessCore.name]
         }],
       connectExtension: undefined,
+      extensions: [],
       pluginExtensionPointCmdTopicUrl: Pulumi.output(""),
-      publishToAggregates: {}
+      publishToAggregates: {},
+      readModelQueueUrls: {},
+      readModelNamesForSourceName: {}
     };
   };
   let forPluginEventCollector = (param, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) => {
@@ -144,6 +147,10 @@ function Make(EventCollectorChannel) {
     let envVars = {};
     Object.entries(context.publishToAggregates).forEach(param => {
       let envVarName = `PTA_` + param[0] + `_QUEUE_URL`;
+      envVars[envVarName] = param[1];
+    });
+    Object.entries(context.readModelQueueUrls).forEach(param => {
+      let envVarName = `PRM_` + param[0] + `_QUEUE_URL`;
       envVars[envVarName] = param[1];
     });
     let epEventTopicArnsOutput = Pulumi.all(context.extensionPoints.map(ep => ep.eventTopicArn));
@@ -207,16 +214,48 @@ function Make(EventCollectorChannel) {
         connectExtensionValue = null;
       }
       dict["connectExtension"] = connectExtensionValue;
-      dict["extensions"] = [];
+      let extensionsArr = context.extensions.map(ext => {
+        let entryDict = {};
+        entryDict["name"] = ext.name;
+        entryDict["specModule"] = ext.specModule;
+        entryDict["mappingsModule"] = ext.mappingsModule;
+        entryDict["delegateModule"] = ext.delegateModule;
+        entryDict["extensionPointName"] = ext.extensionPointName;
+        entryDict["aggregateNames"] = ext.aggregateNames.map(prim => prim);
+        entryDict["readModelNames"] = ext.readModelNames.map(prim => prim);
+        return entryDict;
+      });
+      dict["extensions"] = extensionsArr;
       let publishToAggregatesDict = {};
       Object.keys(context.publishToAggregates).forEach(aggName => {
         publishToAggregatesDict[aggName] = `PTA_` + aggName + `_QUEUE_URL`;
       });
       dict["publishToAggregates"] = publishToAggregatesDict;
+      let readModelQueueUrlsDict = {};
+      Object.keys(context.readModelQueueUrls).forEach(rmName => {
+        readModelQueueUrlsDict[rmName] = `PRM_` + rmName + `_QUEUE_URL`;
+      });
+      dict["readModelQueueUrls"] = readModelQueueUrlsDict;
+      let rmNamesForSourceDict = {};
+      Object.entries(context.readModelNamesForSourceName).forEach(param => {
+        rmNamesForSourceDict[param[0]] = param[1].map(prim => prim);
+      });
+      dict["readModelNamesForSourceName"] = rmNamesForSourceDict;
       return JSON.stringify(dict);
     });
     envVars["HANDLER_CONFIG"] = handlerConfigJson;
-    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs", {});
+    let packageDirs = {};
+    context.extensions.forEach(ext => {
+      [
+        ext.specModule,
+        ext.mappingsModule,
+        ext.delegateModule
+      ].forEach(spec => {
+        let pkgName = Util_Bundle$ReventlessAws.extractPackageName(spec);
+        packageDirs[pkgName] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkgName);
+      });
+    });
+    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs", packageDirs);
     let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts);
     EventCollectorChannel.connect(name, [{
         channel: eventCollector.channel,

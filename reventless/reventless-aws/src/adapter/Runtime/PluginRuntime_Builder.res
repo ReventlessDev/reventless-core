@@ -137,8 +137,11 @@ module Make = (
         },
       ],
       connectExtension: None,
+      extensions: [],
       pluginExtensionPointCmdTopicUrl: Pulumi.Output.make(""),
       publishToAggregates: Dict.make(),
+      readModelQueueUrls: Dict.make(),
+      readModelNamesForSourceName: Dict.make(),
     }
   }
 
@@ -188,6 +191,18 @@ module Make = (
     ->Array.forEach(((_aggName, queueUrlOutput)) => {
       // Env var name follows the existing convention: PTA_<aggregate>_QUEUE_URL.
       let envVarName = `PTA_${_aggName}_QUEUE_URL`
+      envVars->Dict.set(envVarName, queueUrlOutput->Pulumi.Output.asInput)
+    })
+
+    // Same indirection for ReadModel EventCollector SQS URLs — only populated
+    // when user extensions enqueue directly into RMs (Extension_Operations
+    // publishToReadModels path). Empty for the admin Lambda and for the
+    // current Orders_Extension fixture (its RM is fed via the slice EventLog →
+    // RM EventColl subscription chain instead).
+    context.readModelQueueUrls
+    ->Dict.toArray
+    ->Array.forEach(((_rmName, queueUrlOutput)) => {
+      let envVarName = `PRM_${_rmName}_QUEUE_URL`
       envVars->Dict.set(envVarName, queueUrlOutput->Pulumi.Output.asInput)
     })
 
@@ -267,8 +282,29 @@ module Make = (
         }
         dict->Dict.set("connectExtension", connectExtensionValue)
 
-        // User-declared extensions — currently empty; placeholder for follow-up.
-        dict->Dict.set("extensions", JSON.Encode.array([]))
+        // User-declared extensions — one entry per merged extension group.
+        // Each entry carries enough metadata for the bundled handler to
+        // dynamic-import the spec / mapping modules and filter the top-level
+        // publishToAggregates + readModelQueueUrls maps down to the subset
+        // this extension actually uses.
+        let extensionsArr = context.extensions->Array.map(ext => {
+          let entryDict = Dict.make()
+          entryDict->Dict.set("name", JSON.Encode.string(ext.name))
+          entryDict->Dict.set("specModule", JSON.Encode.string(ext.specModule))
+          entryDict->Dict.set("mappingsModule", JSON.Encode.string(ext.mappingsModule))
+          entryDict->Dict.set("delegateModule", JSON.Encode.string(ext.delegateModule))
+          entryDict->Dict.set("extensionPointName", JSON.Encode.string(ext.extensionPointName))
+          entryDict->Dict.set(
+            "aggregateNames",
+            ext.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+          )
+          entryDict->Dict.set(
+            "readModelNames",
+            ext.readModelNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+          )
+          JSON.Encode.object(entryDict)
+        })
+        dict->Dict.set("extensions", JSON.Encode.array(extensionsArr))
 
         let publishToAggregatesDict = Dict.make()
         context.publishToAggregates
@@ -281,14 +317,51 @@ module Make = (
         )
         dict->Dict.set("publishToAggregates", JSON.Encode.object(publishToAggregatesDict))
 
+        let readModelQueueUrlsDict = Dict.make()
+        context.readModelQueueUrls
+        ->Dict.keysToArray
+        ->Array.forEach(rmName =>
+          readModelQueueUrlsDict->Dict.set(
+            rmName,
+            JSON.Encode.string(`PRM_${rmName}_QUEUE_URL`),
+          )
+        )
+        dict->Dict.set("readModelQueueUrls", JSON.Encode.object(readModelQueueUrlsDict))
+
+        let rmNamesForSourceDict = Dict.make()
+        context.readModelNamesForSourceName
+        ->Dict.toArray
+        ->Array.forEach(((sourceName, rmNames)) =>
+          rmNamesForSourceDict->Dict.set(
+            sourceName,
+            rmNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+          )
+        )
+        dict->Dict.set("readModelNamesForSourceName", JSON.Encode.object(rmNamesForSourceDict))
+
         JSON.Encode.object(dict)->JSON.stringify
       })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 
-    // No user packages — all framework imports are in the Layer
+    // User-extension packages: each merged extension entry contributes three
+    // module specifiers (EP spec, user mapping file, delegate spec). Extract
+    // their npm package names and resolve to package roots so buildCodeArchive
+    // can include them in the asset zip — the bundled entry point then
+    // dynamic-imports each module at cold start. Admin path has no
+    // extensions, so packageDirs stays empty and the asset matches the
+    // pre-extension-wiring shape.
+    let packageDirs: dict<string> = Dict.make()
+    context.extensions->Array.forEach(ext => {
+      [ext.specModule, ext.mappingsModule, ext.delegateModule]
+      ->Array.forEach(spec => {
+        let pkgName = Util_Bundle.extractPackageName(spec)
+        packageDirs->Dict.set(pkgName, Util_Bundle.resolvePackageRoot(pkgName))
+      })
+    })
+
     let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
       ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs",
-      ~packageDirs=Dict.make(),
+      ~packageDirs,
     )
 
     let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(

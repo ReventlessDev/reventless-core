@@ -31,6 +31,10 @@ type dcbResult = {
   // Used by Plugin_Builder to register slice names in publishToAggregates so extensions
   // can dispatch commands to DCB slices via the same mechanism as regular aggregates.
   dcbPublishJsons: option<Pulumi.Output.t<CommandTopic.publishJsons>>,
+  // SQS URL of the DCB command topic — shared by all StateChangeSlices in this
+  // plugin. Surfaced so the bundled Plugin EventCollector Lambda can dispatch
+  // PublishStateChangeSliceCommand actions from user extensions to the right queue.
+  dcbCommandTopicQueueUrl: option<Pulumi.Output.t<string>>,
   mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry>,
   queryEntries: array<ReventlessInfra.Api.querySchemaEntry>,
   eventLogEntries: array<ReventlessInfra.Api.eventLogSchemaEntry>,
@@ -45,6 +49,7 @@ let emptyResult: dcbResult = {
   inboundTranslationSlicesOutputs: Dict.make(),
   dcbRuntimeSetup: None,
   dcbPublishJsons: None,
+  dcbCommandTopicQueueUrl: None,
   mutationEntries: [],
   queryEntries: [],
   eventLogEntries: [],
@@ -751,6 +756,12 @@ module Make = (
             Sc.Spec.eventSchema->S.castToUnknown
           )
 
+        let dcbCommandTopicQueueUrl = {
+          let outputs: CommandTopic.outputs = dcbCommandTopic->Component.outputs->Obj.magic
+          outputs.resources
+          ->Array.get(0)
+          ->Option.map(r => r.id)
+        }
         {
           dcbEventLogOutputs: Some(dcbEventLog->Component.outputs),
           stateChangeSlicesOutputs: Dict.fromArray(
@@ -765,6 +776,7 @@ module Make = (
           inboundTranslationSlicesOutputs,
           dcbRuntimeSetup: Some(dcbRuntimeSetup),
           dcbPublishJsons: Some(publishJsons),
+          dcbCommandTopicQueueUrl,
           mutationEntries: Array.concat(mutationEntriesFromSlices, mutationEntriesFromInboundSlices),
           queryEntries: stateViewEntries
             ->Array.concat(automationEntries)

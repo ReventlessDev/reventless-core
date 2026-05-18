@@ -256,6 +256,8 @@ function Make(Platform) {
       moduleUrl: SyncCatalogProduct$OrderingPlugin.moduleUrl,
       commandAuthorization: SyncCatalogProduct$OrderingPlugin.commandAuthorization
     },
+    moduleUrl: Products_Extension$OrderingPlugin.Mapping.moduleUrl,
+    delegateModuleUrl: Products_Extension$OrderingPlugin.Mapping.delegateModuleUrl,
     mapIncomingEvent: Products_Extension$OrderingPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Products_Extension$OrderingPlugin.Mapping.mapOutgoingEvent
   });

@@ -121,6 +121,27 @@ type connectExtensionEntry = {
   extensionPointName: string,
 }
 
+// User-declared extension entry — one per merged extension group (multiple
+// `*_Extension.res` files targeting the same EP combine into one component).
+type extensionEntry = {
+  name: string,
+  specModule: string,
+  mappingsModule: string,
+  // npm specifier of the Delegate spec (aggregate / slice). The bundled Plugin
+  // EventCollector entry point dynamic-imports this at cold start to
+  // reconstruct `Mapping.Delegate` before handing the full mapping to
+  // ExtensionMapping.Make.
+  delegateModule: string,
+  extensionPointName: string,
+  // Subset of top-level publishToAggregates this extension publishes to —
+  // derived from Extension.outputs.aggregateNames.
+  aggregateNames: array<string>,
+  // RMs this extension's mapping may enqueue events into directly. Derived
+  // from readModelNamesForSourceName by reverse lookup on the extension's
+  // EP name (the source carried on incoming events).
+  readModelNames: array<string>,
+}
+
 type eventCollectorContext = {
   // Pre-serialised JSON of the pluginDefinition (sury-encoded then JSON.stringify).
   // Output because it's assembled from resolved component outputs at deploy time.
@@ -132,14 +153,22 @@ type eventCollectorContext = {
   // The auto-included PluginConnectExtension entry. Some for plugins; None for
   // the admin Lambda (the admin IS the Plugin EP, doesn't consume it).
   connectExtension: option<connectExtensionEntry>,
+  // User-declared extensions on this plugin. Empty for the admin Lambda.
+  extensions: array<extensionEntry>,
   // SQS URL of the admin's Plugin EP command topic — where extensions publish
   // ConnectPlugin commands via `publishToPluginExtensionPoint`. Empty string
   // for admin (no extensions consume it).
   pluginExtensionPointCmdTopicUrl: Pulumi.Output.t<string>,
-  // aggregateName → Lambda env-var name carrying the aggregate's cmd-topic URL.
-  // Empty for the current scope (Connect publishes only to the Plugin EP cmd
-  // topic, not directly to aggregates).
+  // aggregateName → cmd-topic SQS URL. Includes every aggregate / DCB slice
+  // any user extension publishes to plus the admin's Plugin aggregate when
+  // ConnectExtension is wired.
   publishToAggregates: dict<Pulumi.Output.t<string>>,
+  // rmName → RM EventCollector SQS URL. Populated only for RMs that user
+  // extensions feed directly via Extension_Operations.publishToReadModels.
+  readModelQueueUrls: dict<Pulumi.Output.t<string>>,
+  // Inversion of RM.sourceNames — sourceServiceName → [rmName]. Same dict
+  // surface used by Builder_Helpers; serialised verbatim into HANDLER_CONFIG.
+  readModelNamesForSourceName: dict<array<string>>,
 }
 
 let eventCollectorContextRef: ref<dict<eventCollectorContext>> = ref(Dict.make())
@@ -201,6 +230,16 @@ let isNoApi = ApiNoApi.isNoApi
 let getExcludedVariants = ApiNoApi.getExcludedVariants
 let filterNoApiVariants = ApiNoApi.filterNoApiVariants
 
+// Side-output of `createExtensions`: per merged-group registry data the
+// adapter entry point reconstructs Extension_Operations from. Lives next to
+// the existing `extensionsOutputs` / `extensionsHandlers` arrays — same
+// indexing.
+type extensionRegistryInfo = {
+  specModule: string,
+  mappingsModule: string,
+  delegateModule: string,
+}
+
 let createExtensions = (
   extensions: array<module(ReventlessInfra.Extension.Blueprint)>,
   ~pluginName,
@@ -222,7 +261,7 @@ let createExtensions = (
   })
 
   // For each EP group: merge mappings, build Extension component.
-  groups
+  let triples = groups
   ->Dict.toArray
   ->Array.map(((_epName, blueprints)) => {
     // Use the first blueprint's Spec as the canonical type.
@@ -257,15 +296,33 @@ let createExtensions = (
     )
     let ops: Pulumi.Output.t<Extension.operations> =
       ExtensionMaker.operations(extension)->Obj.magic
+    let registryInfo: extensionRegistryInfo = {
+      // EP spec module URL (e.g. OrderingSpec/.../Orders_ExtensionPoint.res.mjs)
+      specModule: Spec.moduleUrl,
+      // User extension file URL — the .res.mjs declaring `module Mapping`.
+      // The bundled Plugin EventCollector entry point dynamic-imports this to
+      // pick up mapIncomingEvent / mapOutgoingEvent. Multi-blueprint merges
+      // still surface one path here so the runtime has one known module to
+      // import; the entry point regroups by extensionPointName.
+      mappingsModule: First.moduleUrl,
+      // Delegate spec URL (aggregate / slice the extension delegates to).
+      // The entry point dynamic-imports this to reconstruct
+      // `Mapping.Delegate` before handing the full mapping to ExtensionMapping.Make.
+      delegateModule: First.delegateModuleUrl,
+    }
     (
       ExtensionMaker.outputs(extension),
       ops->Pulumi.Output.apply(({outgoingJsonEventsHandler, incomingJsonEventsHandler}) => {
         incoming: incomingJsonEventsHandler,
         outgoing: outgoingJsonEventsHandler,
       }),
+      registryInfo,
     )
   })
-  ->Array.unzip
+  let outputs = triples->Array.map(((o, _, _)) => o)
+  let handlers = triples->Array.map(((_, h, _)) => h)
+  let registryInfos = triples->Array.map(((_, _, r)) => r)
+  (outputs, handlers, registryInfos)
 }
 
 let extractExtensionPointDefinitions = (extensionPointsOutputs: array<ExtensionPoint.outputs>) =>
@@ -413,6 +470,22 @@ module MakeEventCollectorHelper = (
     ~extensionsHandlers,
     ~extensionPointsHandlers,
     ~connectPluginExtensionOutputs: option<Pulumi.Output.t<Extension.outputs>>=?,
+    // Per-extension registry metadata (parallel to extensionsOutputs / extensionsHandlers).
+    // Empty when there are no user extensions or when the caller doesn't need
+    // bundled-handler reconstruction (e.g. Platform_Admin path).
+    ~extensionRegistryInfos: array<extensionRegistryInfo>=[],
+    // aggregateName → cmd-topic SQS URL. Includes every aggregate / DCB slice
+    // that a user extension may publish to. The full plugin dict is fine —
+    // the runtime filters to ext.aggregateNames when invoking each extension.
+    ~aggregateQueueUrls: dict<Pulumi.Output.t<string>>=Dict.make(),
+    // rmName → RM EventCollector SQS URL. Populated only for RMs that
+    // user extensions may enqueue events into directly. Plugin RMs fed
+    // through the normal EventTopic → EventColl subscription path don't
+    // need entries here.
+    ~readModelQueueUrls: dict<Pulumi.Output.t<string>>=Dict.make(),
+    // The global readModelNamesForSourceName inversion (sourceName → [rmName]).
+    // Plain dict — no Pulumi outputs because it's pure name metadata.
+    ~readModelNamesForSourceName: dict<array<string>>=Dict.make(),
   ) => {
     let resources =
       extensionPointsOutputs
@@ -522,14 +595,61 @@ module MakeEventCollectorHelper = (
         })
       | None => None
       }
+      // Build the user-extension registry entries. Each entry pairs
+      // Extension.outputs (name/EP name/aggregate names) with the matching
+      // moduleUrls captured by createExtensions. Skipped if the parallel
+      // arrays don't match length — defensive against future refactors.
+      let extensions: array<extensionEntry> = if (
+        extensionsOutputs->Array.length == extensionRegistryInfos->Array.length
+      ) {
+        extensionsOutputs->Array.mapWithIndex((output, i) => {
+          let info = extensionRegistryInfos->Array.getUnsafe(i)
+          let rmNames =
+            readModelNamesForSourceName
+            ->Dict.get(output.extensionPointName)
+            ->Option.getOr([])
+          {
+            name: output.name,
+            specModule: info.specModule,
+            mappingsModule: info.mappingsModule,
+            delegateModule: info.delegateModule,
+            extensionPointName: output.extensionPointName,
+            aggregateNames: output.aggregateNames,
+            readModelNames: rmNames,
+          }
+        })
+      } else {
+        []
+      }
+      // Connect always publishes to the admin's Plugin aggregate. When
+      // user extensions are wired, merge their aggregate URLs in as well —
+      // the runtime filters per extension.
+      let mergedAggregateUrls = Dict.make()
+      aggregateQueueUrls
+      ->Dict.toArray
+      ->Array.forEach(((k, v)) => mergedAggregateUrls->Dict.set(k, v))
+      switch connectExtData {
+      | Some(_) =>
+        // Plugin aggregate cmd-topic URL = the admin's Plugin EP cmd topic
+        // (Connect routes ConnectPlugin through the EP). Look it up if not
+        // already supplied by the caller.
+        switch mergedAggregateUrls->Dict.get(ReventlessCore.PluginSpec.name) {
+        | Some(_) => ()
+        | None => mergedAggregateUrls->Dict.set(ReventlessCore.PluginSpec.name, pluginExtensionPointCmdTopicUrl)
+        }
+      | None => ()
+      }
       registerEventCollectorContext(
         ~componentName=ecName,
         ~context={
           pluginDefinitionJson,
           extensionPoints: [],
           connectExtension,
+          extensions,
           pluginExtensionPointCmdTopicUrl,
-          publishToAggregates: Dict.make(),
+          publishToAggregates: mergedAggregateUrls,
+          readModelQueueUrls,
+          readModelNamesForSourceName,
         },
       )
 

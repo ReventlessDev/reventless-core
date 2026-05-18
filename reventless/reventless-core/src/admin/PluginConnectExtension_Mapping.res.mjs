@@ -90,6 +90,7 @@ function Make(Spec) {
         return;
     }
   };
+  let delegateModuleUrl = ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl;
   let mapIncomingEvent = (pluginId, event, _meta, _pluginDef, _queryEngine) => {
     let pluginDefinition = Spec.pluginDefinition;
     let id = pluginDefinition.id;
@@ -166,6 +167,8 @@ function Make(Spec) {
       moduleUrl: ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl,
       commandAuthorization: ExtensionMapping$ReventlessInfra.NoDelegate.commandAuthorization
     },
+    moduleUrl: "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs",
+    delegateModuleUrl: delegateModuleUrl,
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined
   });

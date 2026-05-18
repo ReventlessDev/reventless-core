@@ -500,7 +500,7 @@ module Make = (
         | None => async _ => ()
         }
 
-        let (extensionsOutputs, extensionsHandlers) =
+        let (extensionsOutputs, extensionsHandlers, extensionRegistryInfos) =
           extensions->createExtensions(
             ~pluginName=name,
             ~publishToPluginExtensionPoint,
@@ -587,6 +587,45 @@ module Make = (
             structure: pluginStructure,
           })
 
+        // Bundled Plugin EventCollector reconstructs Extension_Operations at
+        // cold start from HANDLER_CONFIG, which needs concrete cmd-topic SQS
+        // URLs for every aggregate/slice a user extension may publish to.
+        let aggregateQueueUrls: dict<Pulumi.Output.t<string>> = Dict.make()
+        aggregateResources
+        ->Dict.toArray
+        ->Array.forEach(((aggName, resources)) =>
+          switch resources->Array.get(0) {
+          | Some(r) => aggregateQueueUrls->Dict.set(aggName, r.id)
+          | None => ()
+          }
+        )
+        // All DCB StateChangeSlices share the same dcb command topic — map
+        // every slice name to that single URL so PublishStateChangeSliceCommand
+        // routes correctly regardless of which slice the extension targets.
+        switch dcbResult.dcbCommandTopicQueueUrl {
+        | Some(url) =>
+          stateChangeSlices->Array.forEach((module(Sc: StateChangeSlice.T)) =>
+            aggregateQueueUrls->Dict.set(Sc.Spec.name, url)
+          )
+        | None => ()
+        }
+
+        // Per-RM EventCollector SQS URL — populated only for plugins that
+        // expose RMs the bundled handler may enqueue events into directly.
+        let readModelQueueUrls: dict<Pulumi.Output.t<string>> = Dict.make()
+        readModelsOutputs
+        ->Dict.toArray
+        ->Array.forEach(((rmName, rmOut)) => {
+          let urlOutput =
+            rmOut.eventCollector->Pulumi.Output.flatMap(ecOutputs =>
+              switch ecOutputs.resources->Array.get(0) {
+              | Some(r) => r.id
+              | None => Pulumi.Output.make("")
+              }
+            )
+          readModelQueueUrls->Dict.set(rmName, urlOutput)
+        })
+
         switch coreSetup {
         | Some((pluginExtensionPointUnwrapped, _)) => {
             let (
@@ -616,6 +655,10 @@ module Make = (
               ~extensionsHandlers,
               ~extensionPointsHandlers,
               ~connectPluginExtensionOutputs,
+              ~extensionRegistryInfos,
+              ~aggregateQueueUrls,
+              ~readModelQueueUrls,
+              ~readModelNamesForSourceName,
             )
           }
         | None =>
@@ -628,6 +671,10 @@ module Make = (
             ~pluginDefinition,
             ~extensionsHandlers,
             ~extensionPointsHandlers,
+            ~extensionRegistryInfos,
+            ~aggregateQueueUrls,
+            ~readModelQueueUrls,
+            ~readModelNamesForSourceName,
           )
         }
 

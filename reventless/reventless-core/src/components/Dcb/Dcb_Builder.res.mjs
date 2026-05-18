@@ -65,6 +65,7 @@ let emptyResult = {
   inboundTranslationSlicesOutputs: emptyResult_inboundTranslationSlicesOutputs,
   dcbRuntimeSetup: undefined,
   dcbPublishJsons: undefined,
+  dcbCommandTopicQueueUrl: undefined,
   mutationEntries: emptyResult_mutationEntries,
   queryEntries: emptyResult_queryEntries,
   eventLogEntries: emptyResult_eventLogEntries
@@ -489,6 +490,8 @@ function Make(DcbEventLogStorage) {
         };
       });
       let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.eventSchema);
+      let outputs = Component$ReventlessCore.outputs(dcbCommandTopic);
+      let dcbCommandTopicQueueUrl = Stdlib_Option.map(outputs.resources[0], r => r.id);
       return {
         dcbEventLogOutputs: Component$ReventlessCore.outputs(dcbEventLog),
         stateChangeSlicesOutputs: Object.fromEntries(Object.entries(stateChangeSlicesOutputs).concat(Object.entries(asyncStateChangeSlicesOutputs))),
@@ -498,6 +501,7 @@ function Make(DcbEventLogStorage) {
         inboundTranslationSlicesOutputs: inboundTranslationSlicesOutputs,
         dcbRuntimeSetup: dcbRuntimeSetup,
         dcbPublishJsons: publishJsons,
+        dcbCommandTopicQueueUrl: dcbCommandTopicQueueUrl,
         mutationEntries: mutationEntriesFromSlices.concat(mutationEntriesFromInboundSlices),
         queryEntries: stateViewEntries.concat(automationEntries).concat(outboundEntries).concat(inboundEntries),
         eventLogEntries: allProducedSchemas.length !== 0 ? [{

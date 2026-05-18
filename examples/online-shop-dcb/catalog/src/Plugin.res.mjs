@@ -238,6 +238,8 @@ function Make(Platform) {
       moduleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,
       commandAuthorization: RecordProductDemand$CatalogPlugin.commandAuthorization
     },
+    moduleUrl: Orders_Extension$CatalogPlugin.Mapping.moduleUrl,
+    delegateModuleUrl: Orders_Extension$CatalogPlugin.Mapping.delegateModuleUrl,
     mapIncomingEvent: Orders_Extension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Orders_Extension$CatalogPlugin.Mapping.mapOutgoingEvent
   });

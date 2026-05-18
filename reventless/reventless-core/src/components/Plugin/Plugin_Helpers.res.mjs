@@ -22,6 +22,7 @@ import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../ReadModel/ReadModel.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
+import * as PluginSpec$ReventlessCore from "../../admin/PluginSpec.res.mjs";
 import * as DcbEventLog$ReventlessCore from "../DcbEventLog/DcbEventLog.res.mjs";
 import * as EventMapper$ReventlessCore from "../EventMapper/EventMapper.res.mjs";
 import * as Aggregate$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Aggregate.res.mjs";
@@ -148,7 +149,7 @@ function createExtensions(extensions, pluginName, publishToPluginExtensionPoint,
       groups[epName] = [bp];
     }
   });
-  return Stdlib_Array.unzip(Object.entries(groups).map(param => {
+  let triples = Object.entries(groups).map(param => {
     let blueprints = param[1];
     let First = blueprints[0];
     let allMappings = blueprints.flatMap(bp => bp.mappings);
@@ -161,14 +162,31 @@ function createExtensions(extensions, pluginName, publishToPluginExtensionPoint,
     let ExtensionMaker = Extension_Builder$ReventlessCore.Make(First.Spec)(Mappings);
     let extension = ExtensionMaker.make(publishToPluginExtensionPoint, publishToAggregates, Builder_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
     let ops = ExtensionMaker.operations(extension);
+    let registryInfo_specModule = First.Spec.moduleUrl;
+    let registryInfo_mappingsModule = First.moduleUrl;
+    let registryInfo_delegateModule = First.delegateModuleUrl;
+    let registryInfo = {
+      specModule: registryInfo_specModule,
+      mappingsModule: registryInfo_mappingsModule,
+      delegateModule: registryInfo_delegateModule
+    };
     return [
       ExtensionMaker.outputs(extension),
       ops.apply(param => ({
         outgoing: param.outgoingJsonEventsHandler,
         incoming: param.incomingJsonEventsHandler
-      }))
+      })),
+      registryInfo
     ];
-  }));
+  });
+  let outputs = triples.map(param => param[0]);
+  let handlers = triples.map(param => param[1]);
+  let registryInfos = triples.map(param => param[2]);
+  return [
+    outputs,
+    handlers,
+    registryInfos
+  ];
 }
 
 function extractExtensionPointDefinitions(extensionPointsOutputs) {
@@ -251,7 +269,11 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         eventCollectorUrn
       ];
     };
-    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs) => {
+    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs, extensionRegistryInfosOpt, aggregateQueueUrlsOpt, readModelQueueUrlsOpt, readModelNamesForSourceNameOpt) => {
+      let extensionRegistryInfos = extensionRegistryInfosOpt !== undefined ? extensionRegistryInfosOpt : [];
+      let aggregateQueueUrls = aggregateQueueUrlsOpt !== undefined ? aggregateQueueUrlsOpt : ({});
+      let readModelQueueUrls = readModelQueueUrlsOpt !== undefined ? readModelQueueUrlsOpt : ({});
+      let readModelNamesForSourceName = readModelNamesForSourceNameOpt !== undefined ? readModelNamesForSourceNameOpt : ({});
       let resources = Pulumi.all(extensionPointsOutputs.map(extensionPoint => extensionPoint.eventTopic)).apply(eventTopics => {
         let base = eventTopics.map(eventTopic => eventTopic.resources).flat();
         if (pluginExtensionPointUnwrapped !== undefined) {
@@ -308,12 +330,40 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
             mappingsModule: pluginConnectExtensionMappingsModule,
             extensionPointName: PluginExtensionPointSpec$ReventlessInfra.name
           }) : undefined;
+        let extensions = extensionsOutputs.length === extensionRegistryInfos.length ? extensionsOutputs.map((output, i) => {
+            let info = extensionRegistryInfos[i];
+            let rmNames = Stdlib_Option.getOr(readModelNamesForSourceName[output.extensionPointName], []);
+            return {
+              name: output.name,
+              specModule: info.specModule,
+              mappingsModule: info.mappingsModule,
+              delegateModule: info.delegateModule,
+              extensionPointName: output.extensionPointName,
+              aggregateNames: output.aggregateNames,
+              readModelNames: rmNames
+            };
+          }) : [];
+        let mergedAggregateUrls = {};
+        Object.entries(aggregateQueueUrls).forEach(param => {
+          mergedAggregateUrls[param[0]] = param[1];
+        });
+        if (connectExtData !== undefined) {
+          let match = mergedAggregateUrls[PluginSpec$ReventlessCore.name];
+          if (match !== undefined) {
+            
+          } else {
+            mergedAggregateUrls[PluginSpec$ReventlessCore.name] = pluginExtensionPointCmdTopicUrl;
+          }
+        }
         registerEventCollectorContext(ecName, {
           pluginDefinitionJson: pluginDefinitionJson,
           extensionPoints: [],
           connectExtension: connectExtension,
+          extensions: extensions,
           pluginExtensionPointCmdTopicUrl: pluginExtensionPointCmdTopicUrl,
-          publishToAggregates: {}
+          publishToAggregates: mergedAggregateUrls,
+          readModelQueueUrls: readModelQueueUrls,
+          readModelNamesForSourceName: readModelNamesForSourceName
         });
         PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[4], undefined, undefined, eventCollector);
         let r$1 = Component$ReventlessCore.outputs(eventCollector).resources[0];

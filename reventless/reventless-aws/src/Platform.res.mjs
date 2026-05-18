@@ -319,12 +319,12 @@ function MakeWithConfig(Config) {
   let Make$3 = Mapping => {
     let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
-    let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
     return {
       Spec: Mapping.ExtensionPoint,
       name: name,
-      moduleUrl: moduleUrl,
+      moduleUrl: Mapping.moduleUrl,
+      delegateModuleUrl: Mapping.delegateModuleUrl,
       mappings: mappings
     };
   };
@@ -1309,12 +1309,12 @@ function Make($star) {
   let Make$4 = Mapping => {
     let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
-    let moduleUrl = Mapping.Delegate.moduleUrl;
     let mappings = [CompiledMapping];
     return {
       Spec: Mapping.ExtensionPoint,
       name: name,
-      moduleUrl: moduleUrl,
+      moduleUrl: Mapping.moduleUrl,
+      delegateModuleUrl: Mapping.delegateModuleUrl,
       mappings: mappings
     };
   };

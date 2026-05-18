@@ -51,6 +51,14 @@ module type Blueprint = {
   module Spec: ExtensionMapping.Spec
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
   let name: string
+  // npm-style specifier of the user extension file (the one declaring the
+  // `module Mapping`). Threaded from the user-facing Mapping.moduleUrl by
+  // Platform.Extension.Make so deploy-side helpers can emit HANDLER_CONFIG
+  // entries that let the runtime dynamic-import the user mapping at cold
+  // start.
   let moduleUrl: string
+  // npm-style specifier of the Delegate (aggregate / slice) the extension
+  // delegates to. Threaded from Mapping.delegateModuleUrl by Platform.Extension.Make.
+  let delegateModuleUrl: string
   let mappings: array<module(Mapping)>
 }
