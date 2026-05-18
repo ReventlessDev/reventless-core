@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.103 (2026-05-18)
+
+### Bug Fixes
+
+* **aws:** resolve cross-plugin spec dynamic imports from /var/task asset ([003170e](https://github.com/ReventlessDev/reventless-core/commit/003170e8c2da784ceca061d606253a8212b15551))
+
+
 # 3.0.0-alpha.102 (2026-05-18)
 
 ### Bug Fixes
