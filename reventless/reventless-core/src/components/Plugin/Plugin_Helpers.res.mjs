@@ -109,7 +109,7 @@ function registerEventCollectorContext(componentName, context) {
 
 let adminPluginExtensionPointSpecModule = "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
-let pluginConnectExtensionMappingsModule = "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Builder.res.mjs";
+let pluginConnectExtensionMappingsModule = "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs";
 
 function getIncomingJsonEventsHandler(jsonEventsHandlers) {
   return jsonEventsHandlers.incoming;

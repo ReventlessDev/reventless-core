@@ -1,8 +1,31 @@
 # Plan: Plugin EventCollector runtime rewire (admin → plugin Connect flow)
 
-## Status (2026-05-18)
+## Status (2026-05-18) — COMPLETE
 
-Steps 1–5 implemented and verified at compile time. Step 6 (live alpha verification) deferred — alpha's existing AdminEventColl HANDLER_CONFIG is still in the old shape, so a `pulumi up` redeploy from the new code is required before the new entry point can parse it; a layer-only patch would crash on cold start at `parseHandlerConfig`. Nothing committed yet.
+All 6 steps done. End-to-end Connect round-trip verified on alpha: Plugin RM table `Plugin-b3e394e` contains the row `Catalog@1.0.0-alpha.44` with `status: "Connected"`, populated by `Heartbeat` at the time of the verification invocation.
+
+**Alpha state after verification:**
+
+| Lambda | Layer | HANDLER_CONFIG shape | Status |
+|---|---|---|---|
+| `AdminEventColl-52a6478` | `reventless-aws-alpha:67` | new (synthesised admin context) | working |
+| `CatalogPluginEventColl-689371d` | `reventless-aws-alpha:68` | new (connectExtension entry) | working |
+| `OrderingPluginEventColl-0805c61` | `:62` (untouched) | old | still broken (same bug; no regression) |
+| `CustomerPluginEventColl-defdfab` | (untouched) | old | still broken (same bug; no regression) |
+
+Rolling Ordering + Customer onto the new shape was deliberately deferred this round to minimise blast radius. The fix is the same recipe (build HANDLER_CONFIG with their own queue URLs + `EP_QUEUE_URL` from each heartbeat Lambda, repoint layer to `:68`).
+
+Layer `:67` is obsolete (missing `PluginConnectExtension_Mapping.res.mjs`); use `:68` for any future rolls.
+
+### Refactor surfaced by the AWS verification (extra commit)
+
+The dynamic-import design hit a structural problem at runtime: `PluginConnectExtension_Builder.res` does `include Extension_Builder.Make(...)` at the top, which pulls `@pulumi/pulumi` — a deploy-time dependency. The Lambda layer-builder strips every `**/*_Builder*.res.mjs` to keep the layer Pulumi-free (`reventless-layer-builder/src/DependencyBundler_PostProcess.res:19`), so the entry point's `import("…/PluginConnectExtension_Builder.res.mjs")` fails with `ERR_MODULE_NOT_FOUND` at cold start.
+
+**Fix**: split the file. The new [`PluginConnectExtension_Mapping.res`](../../reventless/reventless-core/src/admin/PluginConnectExtension_Mapping.res) carries the runtime-safe `Make` returning `ConnectPluginMapping` + `ConnectPluginMappings` — no Pulumi, no Extension_Builder include. [`PluginConnectExtension_Builder.res`](../../reventless/reventless-core/src/admin/PluginConnectExtension_Builder.res) shrinks to two `include`s (mapping + deploy-side Extension_Builder) and stays filtered out of the layer.
+
+The hardcoded constant in [`Plugin_Helpers.res`](../../reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res) (`pluginConnectExtensionMappingsModule`) now points at `PluginConnectExtension_Mapping.res.mjs`.
+
+This was the only design issue surfaced by Step 6. Everything else (entry-point rewrite, HANDLER_CONFIG shape, registry, admin-context synthesis) worked on first attempt.
 
 Build state: `pnpm run build` at repo root — clean across all four ReScript targets, zero warnings.
 
@@ -31,7 +54,7 @@ Build state: `pnpm run build` at repo root — clean across all four ReScript ta
 - [x] Step 3 — `PluginRuntime_Builder` reads context from `Plugin_Helpers.eventCollectorContextRef`; synthesises admin context when missing; emits new HANDLER_CONFIG via `JSON.Encode`.
 - [x] Step 4 — `Plugin_Helpers.connect` registers per-plugin context; moduleUrls hardcoded (rationale in code comment).
 - [x] Step 5 — Connect extension auto-included for plugins; admin path leaves `connectExtension: None`.
-- [ ] Step 6 — Live alpha verification (deferred). When picked up: `pulumi up` from the new code is the lowest-risk path; manual layer-patch alone won't work because the runtime now rejects the old HANDLER_CONFIG shape.
+- [x] Step 6 — Live alpha verification (done). Layer-patch + manual HANDLER_CONFIG path worked once Connect mapping was split out of `_Builder`. Catalog plugin Connect round-trip closes; `Plugin-b3e394e` populated. Ordering/Customer still on old code — same recipe applies when ready to roll them.
 
 ---
 

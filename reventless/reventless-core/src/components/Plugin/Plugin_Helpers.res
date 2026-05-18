@@ -154,8 +154,10 @@ let adminPluginExtensionPointSpecModule =
   "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs"
 let adminPluginExtensionPointMappingsModule =
   "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs"
+// Runtime-safe mapping module (not the `_Builder` variant, which the Lambda layer
+// strips because it pulls Pulumi via `include Extension_Builder.Make(...)`).
 let pluginConnectExtensionMappingsModule =
-  "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Builder.res.mjs"
+  "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs"
 
 type jsonEventsHandler = Plugin_Callback.jsonEventsHandler
 type jsonEventsHandlers = {
