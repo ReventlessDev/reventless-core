@@ -307,18 +307,62 @@ End-to-end fixture from Phase 2's Step 5, now with cross-plugin events actually 
 5. Catalog's EventCollector lambda fires, runs `Orders_Extension.mapIncomingEvent`, emits `PublishStateChangeSliceCommand(RecordDemand(…))`.
 6. `RecordProductDemand` slice processes the command → `ProductDemands` RM row appears.
 
-### Checklist
+### Local layer build is blocked
+
+The Lambda Layer builder at `reventless/reventless-layer-builder` fetches
+`@reventlessdev/reventless-aws` via `Arborist` / `Pacote` from the GitHub
+Packages npm registry — it does NOT use the local pnpm workspace. So Phase 3
+spec/runtime changes only reach the deployed layer after CI publishes new
+versions of `reventless-core` and `reventless-aws` and rebuilds the layer.
+
+Live verification therefore fires post-CI, after the next alpha-branch push
+lands and the standard pipeline executes:
+
+1. semantic-release publishes new versions of reventless-core / reventless-aws
+   to GitHub Packages.
+2. The layer-builder workflow picks them up and publishes a new
+   `reventless-aws-alpha:<N+1>` Lambda Layer version.
+3. `chore(ci): update Lambda Layer ARN to …:reventless-aws-alpha:<N+1>` commit
+   updates the per-stack config.
+4. CI `pulumi up`s `online-shop-hybrid` platform-aws + catalog-aws + ordering-aws
+   on the alpha account in eu-west-1.
+
+### Post-CI checklist
 
 ```
-Step 4
-  [ ] 4.1  Confirm Step 1's verification: admin logs subscription creation on Connect
-  [ ] 4.2  aws sns list-subscriptions-by-topic on Ordering.Orders EP shows CatalogPluginEventColl as a subscriber
-  [ ] 4.3  Place an order; CatalogPluginEventColl receives the ItemOrdered SNS message (CloudWatch metric)
-  [ ] 4.4  Orders_Extension handler dispatches; RecordProductDemand command published
-  [ ] 4.5  ProductDemands RM table has a row for the productId
-  [ ] 4.6  Deactivate Catalog plugin → admin's manageSubscriptions removes the subscription; aws sns list-subscriptions-by-topic confirms removal
-  [ ]      Verify: full cross-plugin event flow + clean teardown on disconnect
+Step 4 (run after CI lands the layer rebuild + stack updates)
+  [ ] 4.1  Tail admin EC CloudWatch Logs; on the first PluginConnected event
+           after the deploy, expect a
+           "[manageSubscriptions] subscribed Ordering.Orders -> Catalog@…"
+           line (and the reverse for Catalog.Products -> Ordering@…).
+  [ ] 4.2  aws sns list-subscriptions-by-topic --topic-arn
+           arn:aws:sns:eu-west-1:000000000000:OrderingOrdersEventTopic-…
+           shows the Catalog plugin EC SQS queue as a subscriber.
+  [ ] 4.3  PlaceOrder via AppSync mutation; CloudWatch on
+           CatalogPluginEventCollector-… shows the ItemOrdered SNS message
+           was received and processed.
+  [ ] 4.4  Orders_Extension handler dispatches; RecordProductDemand command
+           lands on the StateChangeSlice command-topic SQS.
+  [ ] 4.5  ProductDemands RM DynamoDB table has a row keyed by the productId
+           with orderId in the recorded list.
+  [ ] 4.6  Deactivate Catalog plugin (DeactivateMutation on AdminApi);
+           admin's manageSubscriptions logs "[manageSubscriptions]
+           unsubscribed Ordering.Orders -> Catalog@…". aws sns
+           list-subscriptions-by-topic confirms removal.
+  [ ]      Result: full cross-plugin event flow end-to-end + clean teardown
+           on disconnect.
 ```
+
+#### Local-pulumi alternative
+
+If a future session needs to bypass CI: extend `forPluginEventCollector` in
+`reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res` to add
+`@reventlessdev/reventless-aws` (and transitively `@reventlessdev/reventless-core`)
+to `packageDirs` — mirroring the DCB asset pattern at
+`forDcbCommandTopic`. The admin EC asset then bundles the framework code
+directly, so a local `pulumi up` picks up uncommitted changes without a
+layer rebuild. Tracked as a follow-up because it widens the function bundle
+for every deploy.
 
 ---
 
