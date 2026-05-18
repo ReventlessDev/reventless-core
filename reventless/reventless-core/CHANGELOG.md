@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.83 (2026-05-18)
+
+### Bug Fixes
+
+* **dcb:** Dcb_Builder.dcbCommandTopicQueueUrl — drop Option.map wrapper that emitted BS_PRIVATE_NESTED_SOME_NONE into Lambda env vars ([8f058f9](https://github.com/ReventlessDev/reventless-core/commit/8f058f918346e28618b97ce03c7177232d395a1e))
+
+
 # 3.0.0-alpha.82 (2026-05-18)
 
 ### Bug Fixes
