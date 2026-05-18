@@ -111,6 +111,37 @@ module Make = (
     | None => "NOT_AVAILABLE"->Pulumi.Output.make->Pulumi.Output.asInput
     }
 
+  // Synthesises an admin-flavoured eventCollectorContext when no plugin context
+  // is registered for this EventCollector. The admin Lambda processes outgoing
+  // events of its own Plugin ExtensionPoint and does not consume the auto-
+  // included Connect extension (it IS the Plugin EP). The fake pluginDefinition
+  // keeps the JSON shape consistent so the entry point can parse uniformly.
+  let synthesizeAdminContext = (): ReventlessCore.Plugin_Helpers.eventCollectorContext => {
+    let config = configRef.contents
+    // Stable JSON literal — matches Reventless.Plugin.pluginDefinitionSchema
+    // (optional fields encoded as null via js_nullable).
+    let fakePluginDefinitionJson =
+      `{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}`->Pulumi.Output.make
+    let adminEpEventTopicArn = switch config.eventTopicArn {
+    | Some(arn) => arn
+    | None => Pulumi.Output.make("NOT_AVAILABLE")
+    }
+    {
+      pluginDefinitionJson: fakePluginDefinitionJson,
+      extensionPoints: [
+        {
+          specModule: ReventlessCore.Plugin_Helpers.adminPluginExtensionPointSpecModule,
+          mappingsModule: ReventlessCore.Plugin_Helpers.adminPluginExtensionPointMappingsModule,
+          eventTopicArn: adminEpEventTopicArn,
+          aggregateNames: [ReventlessCore.PluginSpec.name],
+        },
+      ],
+      connectExtension: None,
+      pluginExtensionPointCmdTopicUrl: Pulumi.Output.make(""),
+      publishToAggregates: Dict.make(),
+    }
+  }
+
   let forPluginEventCollector: ReventlessCore.Runtime.forEventCollector<
     ReventlessCore.Runtime.effectHandler<
       EventCollectorChannel.callbackEvent,
@@ -139,29 +170,118 @@ module Make = (
     let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
     let queue = channelParts.queue
 
+    // Pull the per-EventCollector context registered by Plugin_Helpers.connect
+    // (plugins) or synthesise an admin one if none registered.
+    let context: ReventlessCore.Plugin_Helpers.eventCollectorContext =
+      switch ReventlessCore.Plugin_Helpers.eventCollectorContextRef.contents->Dict.get(name) {
+      | Some(ctx) => ctx
+      | None => synthesizeAdminContext()
+      }
+
     let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 
-    // Build HANDLER_CONFIG JSON with all admin config values
+    // Lambda env vars carry the actual cmd-topic URLs that publishToAggregates
+    // points at (HANDLER_CONFIG holds only the env-var names — same indirection
+    // PluginExtensionPointEntryPoint uses).
+    context.publishToAggregates
+    ->Dict.toArray
+    ->Array.forEach(((_aggName, queueUrlOutput)) => {
+      // Env var name follows the existing convention: PTA_<aggregate>_QUEUE_URL.
+      let envVarName = `PTA_${_aggName}_QUEUE_URL`
+      envVars->Dict.set(envVarName, queueUrlOutput->Pulumi.Output.asInput)
+    })
+
+    // Outgoing arrays first — resolve EP eventTopicArns, then bundle everything
+    // into one Output.apply that builds the JSON.
+    let epEventTopicArnsOutput =
+      context.extensionPoints
+      ->Array.map(ep => ep.eventTopicArn)
+      ->Pulumi.Output.all
+
     let handlerConfigJson =
       Pulumi.Output.all([
         queue.id,
+        context.pluginExtensionPointCmdTopicUrl->Pulumi.Output.asInput->Obj.magic,
         config.eventTopicArn->outputOrPlaceholder->Obj.magic,
         config.pluginReadModelTableName->outputOrPlaceholder->Obj.magic,
         config.schedulerRoleArn->outputOrPlaceholder->Obj.magic,
         config.schedulerQueueArn->outputOrPlaceholder->Obj.magic,
         config.schedulerQueueName->outputOrPlaceholder->Obj.magic,
         config.appSyncApiId->outputOrPlaceholder->Obj.magic,
+        context.pluginDefinitionJson->Pulumi.Output.asInput->Obj.magic,
+        epEventTopicArnsOutput->Pulumi.Output.asInput->Obj.magic,
       ])
       ->Pulumi.Output.apply(values => {
         let queueUrl = values->Array.getUnsafe(0)
-        let eventTopicArn = values->Array.getUnsafe(1)
-        let rmTable = values->Array.getUnsafe(2)
-        let schedRoleArn = values->Array.getUnsafe(3)
-        let schedQueueArn = values->Array.getUnsafe(4)
-        let schedQueueName = values->Array.getUnsafe(5)
-        let appSyncApiId = values->Array.getUnsafe(6)
-        let clonerEnabled = config.clonerEnabled ? "true" : "false"
-        `{"queueUrl":"${queueUrl}","eventTopicArn":"${eventTopicArn}","pluginReadModelTableName":"${rmTable}","schedulerRoleArn":"${schedRoleArn}","schedulerQueueArn":"${schedQueueArn}","schedulerQueueName":"${schedQueueName}","appSyncApiId":"${appSyncApiId}","clonerEnabled":${clonerEnabled}}`
+        let pluginEpCmdTopicUrl = values->Array.getUnsafe(1)
+        let topLevelEventTopicArn = values->Array.getUnsafe(2)
+        let rmTable = values->Array.getUnsafe(3)
+        let schedRoleArn = values->Array.getUnsafe(4)
+        let schedQueueArn = values->Array.getUnsafe(5)
+        let schedQueueName = values->Array.getUnsafe(6)
+        let appSyncApiId = values->Array.getUnsafe(7)
+        let pluginDefinitionJson = values->Array.getUnsafe(8)
+        let epEventTopicArns: array<string> = Obj.magic(values->Array.getUnsafe(9))
+
+        let dict = Dict.make()
+        dict->Dict.set("queueUrl", JSON.Encode.string(queueUrl))
+        dict->Dict.set("pluginExtensionPointCmdTopicUrl", JSON.Encode.string(pluginEpCmdTopicUrl))
+        dict->Dict.set("eventTopicArn", JSON.Encode.string(topLevelEventTopicArn))
+        dict->Dict.set("pluginReadModelTableName", JSON.Encode.string(rmTable))
+        dict->Dict.set("appSyncApiId", JSON.Encode.string(appSyncApiId))
+        dict->Dict.set("clonerEnabled", JSON.Encode.bool(config.clonerEnabled))
+        dict->Dict.set("schedulerRoleArn", JSON.Encode.string(schedRoleArn))
+        dict->Dict.set("schedulerQueueArn", JSON.Encode.string(schedQueueArn))
+        dict->Dict.set("schedulerQueueName", JSON.Encode.string(schedQueueName))
+
+        // pluginDefinition is pre-stringified JSON — parse-and-reencode so it
+        // lands as a proper JSON value (not a string-of-a-string) in the output.
+        let pluginDefinitionValue = try {
+          JSON.parseOrThrow(pluginDefinitionJson)
+        } catch {
+        | _ => JSON.Encode.null
+        }
+        dict->Dict.set("pluginDefinition", pluginDefinitionValue)
+
+        let extensionPointsArr = context.extensionPoints->Array.mapWithIndex((ep, i) => {
+          let entryDict = Dict.make()
+          entryDict->Dict.set("specModule", JSON.Encode.string(ep.specModule))
+          entryDict->Dict.set("mappingsModule", JSON.Encode.string(ep.mappingsModule))
+          entryDict->Dict.set("eventTopicArn", JSON.Encode.string(epEventTopicArns->Array.getUnsafe(i)))
+          entryDict->Dict.set(
+            "aggregateNames",
+            ep.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+          )
+          JSON.Encode.object(entryDict)
+        })
+        dict->Dict.set("extensionPoints", JSON.Encode.array(extensionPointsArr))
+
+        let connectExtensionValue = switch context.connectExtension {
+        | Some(ce) =>
+          let ceDict = Dict.make()
+          ceDict->Dict.set("specModule", JSON.Encode.string(ce.specModule))
+          ceDict->Dict.set("mappingsModule", JSON.Encode.string(ce.mappingsModule))
+          ceDict->Dict.set("extensionPointName", JSON.Encode.string(ce.extensionPointName))
+          JSON.Encode.object(ceDict)
+        | None => JSON.Encode.null
+        }
+        dict->Dict.set("connectExtension", connectExtensionValue)
+
+        // User-declared extensions — currently empty; placeholder for follow-up.
+        dict->Dict.set("extensions", JSON.Encode.array([]))
+
+        let publishToAggregatesDict = Dict.make()
+        context.publishToAggregates
+        ->Dict.keysToArray
+        ->Array.forEach(aggName =>
+          publishToAggregatesDict->Dict.set(
+            aggName,
+            JSON.Encode.string(`PTA_${aggName}_QUEUE_URL`),
+          )
+        )
+        dict->Dict.set("publishToAggregates", JSON.Encode.object(publishToAggregatesDict))
+
+        JSON.Encode.object(dict)->JSON.stringify
       })
     envVars->Dict.set("HANDLER_CONFIG", handlerConfigJson->Pulumi.Output.asInput)
 

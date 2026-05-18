@@ -1,5 +1,40 @@
 # Plan: Plugin EventCollector runtime rewire (admin → plugin Connect flow)
 
+## Status (2026-05-18)
+
+Steps 1–5 implemented and verified at compile time. Step 6 (live alpha verification) deferred — alpha's existing AdminEventColl HANDLER_CONFIG is still in the old shape, so a `pulumi up` redeploy from the new code is required before the new entry point can parse it; a layer-only patch would crash on cold start at `parseHandlerConfig`. Nothing committed yet.
+
+Build state: `pnpm run build` at repo root — clean across all four ReScript targets, zero warnings.
+
+### Files changed
+
+- [`reventless/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs`](../../reventless/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs) — full rewrite. Plugin-agnostic, async cold-start cached as a module-level Promise. Drives EP/extension wiring entirely from HANDLER_CONFIG via dynamic imports.
+- [`reventless/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res`](../../reventless/reventless-aws/src/adapter/Runtime/PluginRuntime_Builder.res) — new HANDLER_CONFIG serialiser via `JSON.Encode` (replaces the old string-template path). Reads per-EventCollector context from the new core registry; synthesises an admin context when none registered.
+- [`reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res`](../../reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res) — new `eventCollectorContext` type + `eventCollectorContextRef` registry + `registerEventCollectorContext`. `MakeEventCollectorHelper.connect` registers the per-plugin context (including the auto-included Connect entry) before invoking `forPluginEventCollector`.
+
+### Deviations from the original design
+
+1. **`connectExtension` is a top-level singleton field in HANDLER_CONFIG**, not an entry inside `extensions[]` (as originally sketched). The Connect extension is the only thing routed into `incomingConnectExtensionEventHandlers`; promoting it out of `extensions[]` makes the routing semantics explicit and avoids a runtime `isConnect` discriminator. The `extensions[]` array stays as a reserved placeholder for user-declared extensions — entry point warns if non-empty.
+
+2. **moduleUrl propagation: hardcoded framework constants** (the third option offered by Step 4.1). For the current scope (admin Plugin EP + auto-Connect), every moduleUrl is a framework-internal package path — no need for either outputs-field extension (option a) or spec-side `register*` (option b). When user-declared extensions land, the follow-up should extend `Plugin_Helpers.createExtensions` to capture each `Blueprint.moduleUrl` into its returned tuple (mirroring how `ExtensionPoint_Builder` already passes `Spec.moduleUrl`/`Mappings.moduleUrl` to `forCommandTopic`).
+
+3. **Admin context is synthesised inside `forPluginEventCollector`** when the registry has no entry for the EventCollector component name. Means `Platform_Admin.MakeEventCollectorHelper.connect` needs zero changes; the AWS adapter knows it's the AWS adapter and emits admin defaults (fake `pluginDefinition`, `extensionPoints: [Plugin EP]`, `connectExtension: null`). The synthesis uses `ReventlessCore.PluginSpec.name` to key `outgoingExtensionPointEventHandlers["Plugin"]`.
+
+4. **The shared context registry lives in `Plugin_Helpers.res` (core)**, not in `PluginRuntime_Builder.res` (AWS). Lets the AWS adapter consume via `ReventlessCore.Plugin_Helpers.eventCollectorContextRef` without extending the core `PluginRuntime_Builder.T` interface (which would force every adapter — in-memory, micro, single — to implement the registration). In-memory adapters silently ignore the registry.
+
+5. **Cross-plugin subscribe/unsubscribe is deferred at runtime** (matches the plan's Step 5 deferral). The Spec passed to `PluginConnectExtension_Builder.Make` at cold start carries empty `extensionPointsOutputs`/`extensionsOutputs`, so `callHandler`-driven cross-plugin loops iterate empty arrays. Initial Connect populates the Plugin RM; cross-plugin runtime wiring remains a follow-up.
+
+### Checklist roll-up
+
+- [x] Step 1 — HANDLER_CONFIG shape documented in entry-point header (ADR-style block) + `parseHandlerConfig` with field-presence asserts.
+- [x] Step 2 — Entry point rewritten against `Plugin_Callback.Make`; epHandlers + connectExtension loops drive the four service-keyed dicts.
+- [x] Step 3 — `PluginRuntime_Builder` reads context from `Plugin_Helpers.eventCollectorContextRef`; synthesises admin context when missing; emits new HANDLER_CONFIG via `JSON.Encode`.
+- [x] Step 4 — `Plugin_Helpers.connect` registers per-plugin context; moduleUrls hardcoded (rationale in code comment).
+- [x] Step 5 — Connect extension auto-included for plugins; admin path leaves `connectExtension: None`.
+- [ ] Step 6 — Live alpha verification (deferred). When picked up: `pulumi up` from the new code is the lowest-risk path; manual layer-patch alone won't work because the runtime now rejects the old HANDLER_CONFIG shape.
+
+---
+
 ## Problem
 
 After fixing the admin's SNS publish chain (commit `e3418bbf2`), the `CorePluginExtPointEventTopic` SNS topic now successfully delivers `UnknownPluginDetected` events to the per-plugin EventCollector queues (`CatalogPluginEventColl-08a6a08`, `OrderingPluginEventColl-503c1e6`, …). Plugin EventColl Lambdas now fire for the first time. But the `Plugin-b3e394e` RM table stays empty because the plugins never respond with a `ConnectPlugin` command — so the Plugin aggregate never sees a `Connect`, never emits `Connected`, and the `PluginProjection` has nothing to write.

@@ -85,6 +85,78 @@ let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
   | Some(pluginName) => getRemoteStorageResources(pluginName, queryDbName)
   }
 
+// ---------------------------------------------------------------------------
+// Plugin EventCollector context registry.
+//
+// Adapter runtime entry points (e.g. AdminEventCollectorEntryPoint.mjs) read
+// HANDLER_CONFIG to reconstruct Plugin_Callback at cold start. The JSON payload
+// is assembled at deploy time inside `forPluginEventCollector` (AWS), but the
+// plugin-specific data (pluginDefinition, the auto-included Connect extension
+// entry, the admin EP cmd-topic URL the extension publishes to) is only known
+// inside `Plugin_Helpers.connect` / `Platform_Admin.connect` where the relevant
+// Outputs have resolved.
+//
+// The registry bridges that gap: core's connect helpers register the per-plugin
+// context here keyed by EventCollector component name; the AWS adapter reads it
+// when building the Lambda's HANDLER_CONFIG. Adapters that don't need it (in-
+// memory) simply ignore the ref.
+//
+// moduleUrl strings are hardcoded framework-internal paths (Admin Plugin EP +
+// PluginConnectExtension only — both ship from reventless-core/-infra). When
+// user-declared extensions land, propagate Blueprint.moduleUrl through the
+// registry too — likely by extending `Plugin_Helpers.createExtensions` to
+// capture each blueprint's moduleUrl into its returned tuple.
+// ---------------------------------------------------------------------------
+
+type extensionPointEntry = {
+  specModule: string,
+  mappingsModule: string,
+  eventTopicArn: Pulumi.Output.t<string>,
+  aggregateNames: array<string>,
+}
+
+type connectExtensionEntry = {
+  specModule: string,
+  mappingsModule: string,
+  extensionPointName: string,
+}
+
+type eventCollectorContext = {
+  // Pre-serialised JSON of the pluginDefinition (sury-encoded then JSON.stringify).
+  // Output because it's assembled from resolved component outputs at deploy time.
+  pluginDefinitionJson: Pulumi.Output.t<string>,
+  // Outgoing EPs whose events this Lambda's mapping handles. Admin Lambda: 1
+  // entry (its own Plugin EP). Plugin Lambda: 0 (plugins don't process their own
+  // EP outgoing events here).
+  extensionPoints: array<extensionPointEntry>,
+  // The auto-included PluginConnectExtension entry. Some for plugins; None for
+  // the admin Lambda (the admin IS the Plugin EP, doesn't consume it).
+  connectExtension: option<connectExtensionEntry>,
+  // SQS URL of the admin's Plugin EP command topic — where extensions publish
+  // ConnectPlugin commands via `publishToPluginExtensionPoint`. Empty string
+  // for admin (no extensions consume it).
+  pluginExtensionPointCmdTopicUrl: Pulumi.Output.t<string>,
+  // aggregateName → Lambda env-var name carrying the aggregate's cmd-topic URL.
+  // Empty for the current scope (Connect publishes only to the Plugin EP cmd
+  // topic, not directly to aggregates).
+  publishToAggregates: dict<Pulumi.Output.t<string>>,
+}
+
+let eventCollectorContextRef: ref<dict<eventCollectorContext>> = ref(Dict.make())
+
+let registerEventCollectorContext = (~componentName: string, ~context: eventCollectorContext) =>
+  eventCollectorContextRef.contents->Dict.set(componentName, context)
+
+// Framework-internal module URLs — hardcoded for the auto-Connect path.
+// User-declared extensions will eventually need to propagate their own URLs
+// via createExtensions; this scope only covers the built-in Plugin EP + Connect.
+let adminPluginExtensionPointSpecModule =
+  "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs"
+let adminPluginExtensionPointMappingsModule =
+  "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs"
+let pluginConnectExtensionMappingsModule =
+  "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Builder.res.mjs"
+
 type jsonEventsHandler = Plugin_Callback.jsonEventsHandler
 type jsonEventsHandlers = {
   outgoing?: jsonEventsHandler,
@@ -419,6 +491,46 @@ module MakeEventCollectorHelper = (
         ~eventCollector,
         ~jsonEventsHandler=Callback.handleJsonEvents,
       )
+
+      // Register the runtime context the adapter entry point reconstructs from
+      // HANDLER_CONFIG. AWS reads this in forPluginEventCollector; in-memory
+      // adapters ignore it and stay on the Output-bound Callback above.
+      let ecResource = eventCollector->Component.toPulumiResource
+      let ecName =
+        ecResource.name->ComponentType.nameOpt(EventCollector.componentType)
+      let pluginDefinitionJson =
+        pluginDefinition
+        ->S.reverseConvertToJsonOrThrow(Reventless.Plugin.pluginDefinitionSchema)
+        ->JSON.stringify
+        ->Pulumi.Output.make
+      let pluginExtensionPointCmdTopicUrl = switch pluginExtensionPointUnwrapped {
+      | Some(unwrapped) =>
+        switch unwrapped.commandTopic.resources->Array.get(0) {
+        | Some(r) => Pulumi.Output.make(r.id)
+        | None => Pulumi.Output.make("")
+        }
+      | None => Pulumi.Output.make("")
+      }
+      let connectExtension = switch connectExtData {
+      | Some(_) =>
+        Some({
+          specModule: adminPluginExtensionPointSpecModule,
+          mappingsModule: pluginConnectExtensionMappingsModule,
+          extensionPointName: ReventlessInfra.PluginExtensionPointSpec.name,
+        })
+      | None => None
+      }
+      registerEventCollectorContext(
+        ~componentName=ecName,
+        ~context={
+          pluginDefinitionJson,
+          extensionPoints: [],
+          connectExtension,
+          pluginExtensionPointCmdTopicUrl,
+          publishToAggregates: Dict.make(),
+        },
+      )
+
       eventCollector->PluginRuntimeBuilder.forPluginEventCollector(
         ~handler,
         ~eventTopics,

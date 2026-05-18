@@ -6,10 +6,12 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
+import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
 let configRef = {
@@ -106,6 +108,24 @@ function Make(EventCollectorChannel) {
       return Pulumi.output("NOT_AVAILABLE");
     }
   };
+  let synthesizeAdminContext = () => {
+    let config = configRef.contents;
+    let fakePluginDefinitionJson = Pulumi.output(`{"id":"Admin@INTERNAL","name":"Admin","version":"INTERNAL","extensionPoints":[],"extensions":[],"eventCollector":"NOT-SET","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}`);
+    let arn = config.eventTopicArn;
+    let adminEpEventTopicArn = arn !== undefined ? arn : Pulumi.output("NOT_AVAILABLE");
+    return {
+      pluginDefinitionJson: fakePluginDefinitionJson,
+      extensionPoints: [{
+          specModule: Plugin_Helpers$ReventlessCore.adminPluginExtensionPointSpecModule,
+          mappingsModule: Plugin_Helpers$ReventlessCore.adminPluginExtensionPointMappingsModule,
+          eventTopicArn: adminEpEventTopicArn,
+          aggregateNames: [PluginSpec$ReventlessCore.name]
+        }],
+      connectExtension: undefined,
+      pluginExtensionPointCmdTopicUrl: Pulumi.output(""),
+      publishToAggregates: {}
+    };
+  };
   let forPluginEventCollector = (param, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) => {
     let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
@@ -119,25 +139,81 @@ function Make(EventCollectorChannel) {
     let channel = eventCollector.channel;
     let channelParts = channel.parts;
     let queue = channelParts.queue;
+    let ctx = Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name];
+    let context = ctx !== undefined ? ctx : synthesizeAdminContext();
     let envVars = {};
+    Object.entries(context.publishToAggregates).forEach(param => {
+      let envVarName = `PTA_` + param[0] + `_QUEUE_URL`;
+      envVars[envVarName] = param[1];
+    });
+    let epEventTopicArnsOutput = Pulumi.all(context.extensionPoints.map(ep => ep.eventTopicArn));
     let handlerConfigJson = Pulumi.all([
       queue.id,
+      context.pluginExtensionPointCmdTopicUrl,
       outputOrPlaceholder(config.eventTopicArn),
       outputOrPlaceholder(config.pluginReadModelTableName),
       outputOrPlaceholder(config.schedulerRoleArn),
       outputOrPlaceholder(config.schedulerQueueArn),
       outputOrPlaceholder(config.schedulerQueueName),
-      outputOrPlaceholder(config.appSyncApiId)
+      outputOrPlaceholder(config.appSyncApiId),
+      context.pluginDefinitionJson,
+      epEventTopicArnsOutput
     ]).apply(values => {
       let queueUrl = values[0];
-      let eventTopicArn = values[1];
-      let rmTable = values[2];
-      let schedRoleArn = values[3];
-      let schedQueueArn = values[4];
-      let schedQueueName = values[5];
-      let appSyncApiId = values[6];
-      let clonerEnabled = config.clonerEnabled ? "true" : "false";
-      return `{"queueUrl":"` + queueUrl + `","eventTopicArn":"` + eventTopicArn + `","pluginReadModelTableName":"` + rmTable + `","schedulerRoleArn":"` + schedRoleArn + `","schedulerQueueArn":"` + schedQueueArn + `","schedulerQueueName":"` + schedQueueName + `","appSyncApiId":"` + appSyncApiId + `","clonerEnabled":` + clonerEnabled + `}`;
+      let pluginEpCmdTopicUrl = values[1];
+      let topLevelEventTopicArn = values[2];
+      let rmTable = values[3];
+      let schedRoleArn = values[4];
+      let schedQueueArn = values[5];
+      let schedQueueName = values[6];
+      let appSyncApiId = values[7];
+      let pluginDefinitionJson = values[8];
+      let epEventTopicArns = values[9];
+      let dict = {};
+      dict["queueUrl"] = queueUrl;
+      dict["pluginExtensionPointCmdTopicUrl"] = pluginEpCmdTopicUrl;
+      dict["eventTopicArn"] = topLevelEventTopicArn;
+      dict["pluginReadModelTableName"] = rmTable;
+      dict["appSyncApiId"] = appSyncApiId;
+      dict["clonerEnabled"] = config.clonerEnabled;
+      dict["schedulerRoleArn"] = schedRoleArn;
+      dict["schedulerQueueArn"] = schedQueueArn;
+      dict["schedulerQueueName"] = schedQueueName;
+      let pluginDefinitionValue;
+      try {
+        pluginDefinitionValue = JSON.parse(pluginDefinitionJson);
+      } catch (exn) {
+        pluginDefinitionValue = null;
+      }
+      dict["pluginDefinition"] = pluginDefinitionValue;
+      let extensionPointsArr = context.extensionPoints.map((ep, i) => {
+        let entryDict = {};
+        entryDict["specModule"] = ep.specModule;
+        entryDict["mappingsModule"] = ep.mappingsModule;
+        entryDict["eventTopicArn"] = epEventTopicArns[i];
+        entryDict["aggregateNames"] = ep.aggregateNames.map(prim => prim);
+        return entryDict;
+      });
+      dict["extensionPoints"] = extensionPointsArr;
+      let ce = context.connectExtension;
+      let connectExtensionValue;
+      if (ce !== undefined) {
+        let ceDict = {};
+        ceDict["specModule"] = ce.specModule;
+        ceDict["mappingsModule"] = ce.mappingsModule;
+        ceDict["extensionPointName"] = ce.extensionPointName;
+        connectExtensionValue = ceDict;
+      } else {
+        connectExtensionValue = null;
+      }
+      dict["connectExtension"] = connectExtensionValue;
+      dict["extensions"] = [];
+      let publishToAggregatesDict = {};
+      Object.keys(context.publishToAggregates).forEach(aggName => {
+        publishToAggregatesDict[aggName] = `PTA_` + aggName + `_QUEUE_URL`;
+      });
+      dict["publishToAggregates"] = publishToAggregatesDict;
+      return JSON.stringify(dict);
     });
     envVars["HANDLER_CONFIG"] = handlerConfigJson;
     let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AdminEventCollectorEntryPoint.mjs", {});

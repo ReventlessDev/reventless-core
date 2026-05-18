@@ -12,6 +12,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Task$ReventlessCore from "../Task/Task.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
@@ -26,8 +27,10 @@ import * as EventMapper$ReventlessCore from "../EventMapper/EventMapper.res.mjs"
 import * as Aggregate$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/Aggregate.res.mjs";
 import * as ReadModel$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/ReadModel.res.mjs";
 import * as Util_QueryDb$ReventlessCore from "../../util/Util_QueryDb.res.mjs";
+import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as ExportMeta$ReventlessInterop from "@reventlessdev/reventless-interop/src/ExportMeta.res.mjs";
 import * as DcbEventLog$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/DcbEventLog.res.mjs";
+import * as EventCollector$ReventlessCore from "../EventCollector/EventCollector.res.mjs";
 import * as EventMapper$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/EventMapper.res.mjs";
 import * as ExtensionPoint$ReventlessCore from "../ExtensionPoint/ExtensionPoint.res.mjs";
 import * as StateViewSlice$ReventlessCore from "../StateViewSlice/StateViewSlice.res.mjs";
@@ -47,6 +50,7 @@ import * as ResourceQueryRuntime$ReventlessCore from "../../util/ResourceQueryRu
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
 import * as InboundTranslationSlice$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice.res.mjs";
 import * as OutboundTranslationSlice$ReventlessCore from "../OutboundTranslationSlice/OutboundTranslationSlice.res.mjs";
+import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as InboundTranslationSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/InboundTranslationSlice.res.mjs";
 import * as OutboundTranslationSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/OutboundTranslationSlice.res.mjs";
 import * as PluginConnectExtension_Builder$ReventlessCore from "../../admin/PluginConnectExtension_Builder.res.mjs";
@@ -94,6 +98,18 @@ function getStorageResources(allQueryDbs, pluginName, queryDbName) {
     return Pulumi.output(Util_QueryDb$ReventlessCore.getLocalStorageResources(allQueryDbs, queryDbName));
   }
 }
+
+let eventCollectorContextRef = {
+  contents: {}
+};
+
+function registerEventCollectorContext(componentName, context) {
+  eventCollectorContextRef.contents[componentName] = context;
+}
+
+let adminPluginExtensionPointSpecModule = "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
+
+let pluginConnectExtensionMappingsModule = "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Builder.res.mjs";
 
 function getIncomingJsonEventsHandler(jsonEventsHandlers) {
   return jsonEventsHandlers.incoming;
@@ -277,10 +293,32 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
           incomingExtensionEventHandlers: incomingExtensionEventHandlers
         });
         let handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
+        let ecResource = Component$ReventlessCore.toPulumiResource(eventCollector);
+        let ecName = ComponentType$ReventlessCore.nameOpt(ecResource.__name, EventCollector$ReventlessCore.componentType);
+        let pluginDefinitionJson = Pulumi.output(JSON.stringify(S.reverseConvertToJsonOrThrow(pluginDefinition, Plugin$Reventless.pluginDefinitionSchema)));
+        let pluginExtensionPointCmdTopicUrl;
+        if (pluginExtensionPointUnwrapped !== undefined) {
+          let r = pluginExtensionPointUnwrapped.commandTopic.resources[0];
+          pluginExtensionPointCmdTopicUrl = r !== undefined ? Pulumi.output(r.id) : Pulumi.output("");
+        } else {
+          pluginExtensionPointCmdTopicUrl = Pulumi.output("");
+        }
+        let connectExtension = connectExtData !== undefined ? ({
+            specModule: adminPluginExtensionPointSpecModule,
+            mappingsModule: pluginConnectExtensionMappingsModule,
+            extensionPointName: PluginExtensionPointSpec$ReventlessInfra.name
+          }) : undefined;
+        registerEventCollectorContext(ecName, {
+          pluginDefinitionJson: pluginDefinitionJson,
+          extensionPoints: [],
+          connectExtension: connectExtension,
+          pluginExtensionPointCmdTopicUrl: pluginExtensionPointCmdTopicUrl,
+          publishToAggregates: {}
+        });
         PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[4], undefined, undefined, eventCollector);
-        let r = Component$ReventlessCore.outputs(eventCollector).resources[0];
-        if (r !== undefined) {
-          r.urn.apply(urn => {
+        let r$1 = Component$ReventlessCore.outputs(eventCollector).resources[0];
+        if (r$1 !== undefined) {
+          r$1.urn.apply(urn => {
             pluginDefinition.eventCollector = urn;
           });
         } else {
@@ -781,6 +819,8 @@ function exportPluginOutputs(pluginOutputs) {
   Pulumi$Pulumi.$$export("_pluginDeployedSync", hookOutput);
 }
 
+let adminPluginExtensionPointMappingsModule = "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs";
+
 let addEventMapperFns = Builder_Helpers$ReventlessCore.addEventMapperFns;
 
 let aggregateResources = Builder_Helpers$ReventlessCore.aggregateResources;
@@ -835,6 +875,11 @@ export {
   log,
   getRemoteStorageResources,
   getStorageResources,
+  eventCollectorContextRef,
+  registerEventCollectorContext,
+  adminPluginExtensionPointSpecModule,
+  adminPluginExtensionPointMappingsModule,
+  pluginConnectExtensionMappingsModule,
   getIncomingJsonEventsHandler,
   getOutgoingJsonEventsHandler,
   serviceNameToJsonEventsHandlers,
