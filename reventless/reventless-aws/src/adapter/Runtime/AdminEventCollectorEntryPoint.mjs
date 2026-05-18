@@ -565,7 +565,7 @@ async function buildHandler() {
     .reduce(mergeDicts, {});
 
   const callback = pluginCallbackMake({
-    pluginDefinition: config.pluginDefinition,
+    pluginDefinition,
     incomingConnectExtensionEventHandlers,
     outgoingExtensionPointEventHandlers,
     outgoingExtensionEventHandlers,
