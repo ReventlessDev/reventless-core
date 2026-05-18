@@ -491,7 +491,8 @@ function Make(DcbEventLogStorage) {
       });
       let allProducedSchemas = stateChangeSlices.map(Sc => Sc.Spec.eventSchema);
       let outputs = Component$ReventlessCore.outputs(dcbCommandTopic);
-      let dcbCommandTopicQueueUrl = Stdlib_Option.map(outputs.resources[0], r => r.id);
+      let r = outputs.resources[0];
+      let dcbCommandTopicQueueUrl = r !== undefined ? r.id : undefined;
       return {
         dcbEventLogOutputs: Component$ReventlessCore.outputs(dcbEventLog),
         stateChangeSlicesOutputs: Object.fromEntries(Object.entries(stateChangeSlicesOutputs).concat(Object.entries(asyncStateChangeSlicesOutputs))),

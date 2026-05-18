@@ -756,11 +756,23 @@ module Make = (
             Sc.Spec.eventSchema->S.castToUnknown
           )
 
+        // NB: don't use `Option.map(r => r.id)` here — Stdlib_Option.map has a
+        // generic `'a => 'b` signature, so it wraps the lambda's return value
+        // via Caml_option.some(...). The static type of r.id is
+        // Pulumi.Output.t<string>, but a Pulumi Output is a JS object whose
+        // .id getter can resolve to undefined during early CustomResource
+        // construction; Caml_option.some(undefined) returns the nested-
+        // option sentinel `{BS_PRIVATE_NESTED_SOME_NONE: 0}`, which then
+        // flows through publishToAggregates into Lambda env vars and
+        // Pulumi's type checker rejects it (expected string, got object).
+        // The explicit switch keeps r.id's static type (non-option), so the
+        // `Some(r.id)` construction is identity-compiled — no wrapping.
         let dcbCommandTopicQueueUrl = {
           let outputs: CommandTopic.outputs = dcbCommandTopic->Component.outputs->Obj.magic
-          outputs.resources
-          ->Array.get(0)
-          ->Option.map(r => r.id)
+          switch outputs.resources->Array.get(0) {
+          | Some(r) => Some(r.id)
+          | None => None
+          }
         }
         {
           dcbEventLogOutputs: Some(dcbEventLog->Component.outputs),
