@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.101 (2026-05-18)
+
+### Bug Fixes
+
+* **aws:** ship pluginDefinition as bundle asset so plugin EC env vars stay under Lambda's 5120-byte limit ([f4007dc](https://github.com/ReventlessDev/reventless-core/commit/f4007dcc38bbfbb96a9228ee5880b9e347b1f9fa))
+
+
 # 3.0.0-alpha.100 (2026-05-18)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
