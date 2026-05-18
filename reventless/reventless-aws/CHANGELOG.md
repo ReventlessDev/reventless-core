@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.102 (2026-05-18)
+
+### Bug Fixes
+
+* **aws:** pluginCallbackMake must read pluginDefinition from asset, not HANDLER_CONFIG ([52e814e](https://github.com/ReventlessDev/reventless-core/commit/52e814e53ae903fcfe1cc3ecd0d3b047fc6434ac))
+
+
 # 3.0.0-alpha.101 (2026-05-18)
 
 ### Bug Fixes
