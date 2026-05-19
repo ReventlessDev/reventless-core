@@ -47,6 +47,49 @@ type queuedEvent = {
   done_: Effect.t<unit, unit, unit>,
 }
 
+// ── State-change descriptor helper ───────────────────────────────────────────
+// Mirrors the JSON shape produced by the AWS StateTopic Lambda (Phase 2):
+// `{ changeKind, id, sortKeyValue? }`. Storage adapters call this and pass
+// the result to `publishStateChange(~descriptor)` so dev and prod subscribers
+// see the same payload.
+
+let pickSortKeyValue = (state: JSON.t): option<string> =>
+  switch state->JSON.Decode.object {
+  | Some(obj) =>
+    switch obj->Dict.get("updatedAt") {
+    | Some(JSON.String(v)) => Some(v)
+    | _ =>
+      switch obj->Dict.get("createdAt") {
+      | Some(JSON.String(v)) => Some(v)
+      | _ => None
+      }
+    }
+  | None => None
+  }
+
+/** Build a state-change descriptor.
+    - `changeKind`: one of "Added" | "Updated" | "Removed". In-memory adapters
+      typically emit "Updated" for save() (no Added detection — see module-type
+      docstring) and "Removed" for delete().
+    - `id`: entity key. Single-key projections: the partition-key value.
+      Composite projections: `partition ++ "-" ++ subKey`.
+    - `state`: present for save() (for `sortKeyValue` extraction);
+      `None` for delete() — descriptor will omit `sortKeyValue`. */
+let makeStateChangeDescriptor = (
+  ~changeKind: string,
+  ~id: string,
+  ~state: option<JSON.t>,
+): JSON.t => {
+  let descriptor = Dict.make()
+  descriptor->Dict.set("changeKind", JSON.Encode.string(changeKind))
+  descriptor->Dict.set("id", JSON.Encode.string(id))
+  switch state->Option.flatMap(pickSortKeyValue) {
+  | Some(v) => descriptor->Dict.set("sortKeyValue", JSON.Encode.string(v))
+  | None => ()
+  }
+  descriptor->JSON.Encode.object
+}
+
 module type T = {
   // Event fan-out: aggregate EventTopic → read model EventCollector
   let publishEvent: (string, string, ReventlessCore.Message.meta, JSON.t) => promise<unit>
@@ -104,9 +147,16 @@ module type T = {
   // QueryDb writes and EventTopic publishes into a yoga PubSub for WebSocket delivery.
   //
   // Source B (state changes): QueryDbStorage_InMemory calls publishStateChange after
-  //   every save/delete so subscription listeners receive the updated state.
-  //   ~name is the QueryDb/ReadModel Spec.name; ~state is the saved JSON item.
-  let publishStateChange: (~name: string, ~state: JSON.t) => unit
+  //   every save/delete so subscription listeners receive a change descriptor matching
+  //   the AWS StateTopic Lambda output (Phase 2): {changeKind, id, sortKeyValue?}.
+  //   ~name is the QueryDb/ReadModel Spec.name; ~descriptor is built via
+  //   `makeStateChangeDescriptor` below.
+  //
+  //   In-memory degradation vs AWS: `changeKind` for save() is always "Updated"
+  //   (AWS distinguishes "Added" via DynamoDB streams' INSERT eventName; the
+  //   in-memory adapter doesn't cheaply track first-insert). `delete()` emits
+  //   "Removed". `position` is omitted (Phase 3 deferred).
+  let publishStateChange: (~name: string, ~descriptor: JSON.t) => unit
   let subscribeToStateChanges: (string, JSON.t => unit) => unit
 
   // Cross-plugin EP subscription registry.
@@ -317,11 +367,11 @@ module Impl = (C: BusConfig): T => {
     stateChangeListeners.contents->Dict.set(name, Array.concat(listeners, [callback]))
   }
 
-  let publishStateChange = (~name, ~state) =>
+  let publishStateChange = (~name, ~descriptor) =>
     stateChangeListeners.contents
     ->Dict.get(name)
     ->Option.getOr([])
-    ->Array.forEach(cb => cb(state))
+    ->Array.forEach(cb => cb(descriptor))
 
   let eventCollectorHandlers: ref<dict<(JSON.t, unit) => promise<unit>>> = ref(Dict.make())
   let eventCollectorPendingTopics: ref<dict<array<string>>> = ref(Dict.make())

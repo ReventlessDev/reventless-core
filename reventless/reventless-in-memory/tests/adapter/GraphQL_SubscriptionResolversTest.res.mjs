@@ -47,7 +47,7 @@ let testMeta = {
 describe("GraphQL_SubscriptionResolvers_InMemory", () => {
   beforeEach(() => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.reset());
   describe("Source B — state-change bridge", () => {
-    test("Bus.publishStateChange → yoga PubSub subscriber receives state", async () => {
+    test("Bus.publishStateChange → yoga PubSub subscriber receives descriptor", async () => {
       let TestBus = InMemory_Bus$ReventlessInMemory.Make({});
       GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceB(TestBus.subscribeToStateChanges, "Product", "CatalogProduct");
       let ps = GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.getPubSub();
@@ -62,12 +62,17 @@ describe("GraphQL_SubscriptionResolvers_InMemory", () => {
         [
           "name",
           "Widget"
+        ],
+        [
+          "updatedAt",
+          "2026-05-19T12:00:00Z"
         ]
       ]);
-      TestBus.publishStateChange("Product", state);
+      let descriptor = InMemory_Bus$ReventlessInMemory.makeStateChangeDescriptor("Updated", "prod-1", state);
+      TestBus.publishStateChange("Product", descriptor);
       let received = await consumerPromise;
       if (received !== null) {
-        expect(received).toEqual(state);
+        expect(received).toEqual(descriptor);
       } else {
         expect("onCatalogProduct_stateChanged: timed out").toBe("received");
       }
@@ -79,10 +84,11 @@ describe("GraphQL_SubscriptionResolvers_InMemory", () => {
       let iter = ps.subscribe("onCatalogProduct_stateChanged");
       let consumerPromise = startConsumer(iter, 300);
       await yieldTick();
-      TestBus.publishStateChange("Category", Object.fromEntries([[
+      let foreignDescriptor = InMemory_Bus$ReventlessInMemory.makeStateChangeDescriptor("Updated", "cat-1", Object.fromEntries([[
           "id",
           "cat-1"
         ]]));
+      TestBus.publishStateChange("Category", foreignDescriptor);
       let received = await consumerPromise;
       expect(received === null ? undefined : Primitive_option.some(received)).toEqual(undefined);
     });

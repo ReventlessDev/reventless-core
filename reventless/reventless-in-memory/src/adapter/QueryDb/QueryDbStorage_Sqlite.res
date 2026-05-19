@@ -135,7 +135,7 @@ let withId = (item: JSON.t, partitionKey: string): JSON.t =>
   }
 
 type busCallbacks = {
-  publishStateChange: (~name: string, ~state: JSON.t) => unit,
+  publishStateChange: (~name: string, ~descriptor: JSON.t) => unit,
   registerQueryDb: (string, QueryDb_Adapter.operations) => unit,
   registerQueryDbScan: (string, unit => array<JSON.t>) => unit,
   registerQueryDbStream: (string, unit => Stream.t<JSON.t, string, unit>) => unit,
@@ -208,9 +208,47 @@ let makeStorage = (
 
   let loadStream: QueryDb.loadStream<string, JSON.t> = id => rowsFor(id)->Stream.fromIterable
 
+  // Entity key matches the AWS StateTopic Lambda output (Phase 1):
+  // single-key tables → partition value; composite tables → `pk-sk`.
+  let entityKeyFor = (id: string, subKey: string): string =>
+    switch subIdField {
+    | Some(_) => id ++ "-" ++ subKey
+    | None => id
+    }
+
+  let publishUpdated = (id: string, state: JSON.t) => {
+    let subKey = computeSubKey(state, subIdField)
+    let descriptor = InMemory_Bus.makeStateChangeDescriptor(
+      ~changeKind="Updated",
+      ~id=entityKeyFor(id, subKey),
+      ~state=Some(state),
+    )
+    bus.publishStateChange(~name, ~descriptor)
+  }
+
+  let publishRemoved = (id: string, subKey: string) => {
+    let descriptor = InMemory_Bus.makeStateChangeDescriptor(
+      ~changeKind="Removed",
+      ~id=entityKeyFor(id, subKey),
+      ~state=None,
+    )
+    bus.publishStateChange(~name, ~descriptor)
+  }
+
+  // Read all (id, sub_key) tuples that a partition-level delete would remove.
+  let rowKeysForPartition = (id: string): array<string> =>
+    selectByPartitionStmt
+    ->SqliteDriver.all([JSON.Encode.string(id)])
+    ->Array.map(row =>
+      switch row->Dict.get("sub_key") {
+      | Some(JSON.String(s)) => s
+      | _ => ""
+      }
+    )
+
   let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, ttl) => {
     saveOne(id, state, ttl)
-    bus.publishStateChange(~name, ~state)
+    publishUpdated(id, state)
     Ok()
   }
 
@@ -218,7 +256,7 @@ let makeStorage = (
     db->SqliteDriver.transaction(() =>
       batch->Array.forEach(((id, state, ttl)) => saveOne(id, state, ttl))
     )
-    batch->Array.forEach(((_, state, _)) => bus.publishStateChange(~name, ~state))
+    batch->Array.forEach(((id, state, _)) => publishUpdated(id, state))
     Ok()
   }
 
@@ -235,12 +273,25 @@ let makeStorage = (
     }
 
   let delete: QueryDb.delete<string> = async (id, subIdOpt) => {
+    let removedSubKeys = switch subIdOpt {
+    | None => rowKeysForPartition(id)
+    | Some((_, subValue)) => [subValue]
+    }
     deleteOne(id, subIdOpt)
+    removedSubKeys->Array.forEach(sk => publishRemoved(id, sk))
     Ok()
   }
 
   let deleteBatch: QueryDb.deleteBatch<string> = async ids => {
+    let removed: array<(string, string)> = []
+    ids->Array.forEach(((id, subIdOpt)) => {
+      switch subIdOpt {
+      | None => rowKeysForPartition(id)->Array.forEach(sk => removed->Array.push((id, sk)))
+      | Some((_, subValue)) => removed->Array.push((id, subValue))
+      }
+    })
     db->SqliteDriver.transaction(() => ids->Array.forEach(((id, s)) => deleteOne(id, s)))
+    removed->Array.forEach(((id, sk)) => publishRemoved(id, sk))
     Ok()
   }
 

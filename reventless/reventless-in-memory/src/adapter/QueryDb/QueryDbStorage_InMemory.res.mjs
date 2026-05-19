@@ -8,6 +8,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as BackendState$ReventlessInMemory from "../BackendState.res.mjs";
+import * as InMemory_Bus$ReventlessInMemory from "../InMemory_Bus.res.mjs";
 import * as QueryDbStorage_Sqlite$ReventlessInMemory from "./QueryDbStorage_Sqlite.res.mjs";
 
 function getSubKey(item, subIdField) {
@@ -89,12 +90,28 @@ function Make(Bus) {
       _0: sortedItems(store.contents, id)
     });
     let loadStream = id => Stream.fromIterable(sortedItems(store.contents, id));
+    let entityKeyFor = (id, subKey) => {
+      if (subIdField !== undefined) {
+        return id + "-" + subKey;
+      } else {
+        return id;
+      }
+    };
+    let publishUpdated = (id, state) => {
+      let subKey = getSubKey(state, subIdField);
+      let descriptor = InMemory_Bus$ReventlessInMemory.makeStateChangeDescriptor("Updated", entityKeyFor(id, subKey), state);
+      Bus.publishStateChange(name, descriptor);
+    };
+    let publishRemoved = (id, subKey) => {
+      let descriptor = InMemory_Bus$ReventlessInMemory.makeStateChangeDescriptor("Removed", entityKeyFor(id, subKey), undefined);
+      Bus.publishStateChange(name, descriptor);
+    };
     let save = async (id, state, _saveMode, _ttl) => {
       let subKey = getSubKey(state, subIdField);
       let subMap = getOrCreateSubMap(id);
       subMap[subKey] = state;
       syncAll();
-      Bus.publishStateChange(name, state);
+      publishUpdated(id, state);
       return {
         TAG: "Ok",
         _0: undefined
@@ -108,7 +125,7 @@ function Make(Bus) {
         subMap[subKey] = state;
       });
       syncAll();
-      batch.forEach(param => Bus.publishStateChange(name, param[1]));
+      batch.forEach(param => publishUpdated(param[0], param[1]));
       return {
         TAG: "Ok",
         _0: undefined
@@ -120,32 +137,63 @@ function Make(Bus) {
     });
     let $$delete = async (id, subIdOpt) => {
       if (subIdOpt !== undefined) {
+        let subValue = subIdOpt[1];
         let subMap = store.contents[id];
         if (subMap !== undefined) {
-          Stdlib_Dict.$$delete(subMap, subIdOpt[1]);
+          let hadIt = Stdlib_Option.isSome(subMap[subValue]);
+          Stdlib_Dict.$$delete(subMap, subValue);
+          syncAll();
+          if (hadIt) {
+            publishRemoved(id, subValue);
+          }
+        } else {
+          syncAll();
         }
       } else {
+        let subMap$1 = store.contents[id];
+        let subKeys = subMap$1 !== undefined ? Object.keys(subMap$1) : [];
         Stdlib_Dict.$$delete(store.contents, id);
+        syncAll();
+        subKeys.forEach(subKey => publishRemoved(id, subKey));
       }
-      syncAll();
       return {
         TAG: "Ok",
         _0: undefined
       };
     };
     let deleteBatch = async ids => {
+      let removed = [];
       ids.forEach(param => {
         let subIdOpt = param[1];
         let id = param[0];
-        if (subIdOpt === undefined) {
-          return Stdlib_Dict.$$delete(store.contents, id);
+        if (subIdOpt !== undefined) {
+          let subValue = subIdOpt[1];
+          let subMap = store.contents[id];
+          if (subMap !== undefined) {
+            if (Stdlib_Option.isSome(subMap[subValue])) {
+              removed.push([
+                id,
+                subValue
+              ]);
+            }
+            return Stdlib_Dict.$$delete(subMap, subValue);
+          } else {
+            return;
+          }
         }
-        let subMap = store.contents[id];
-        if (subMap !== undefined) {
-          return Stdlib_Dict.$$delete(subMap, subIdOpt[1]);
+        let subMap$1 = store.contents[id];
+        if (subMap$1 !== undefined) {
+          Object.keys(subMap$1).forEach(sk => {
+            removed.push([
+              id,
+              sk
+            ]);
+          });
         }
+        Stdlib_Dict.$$delete(store.contents, id);
       });
       syncAll();
+      removed.forEach(param => publishRemoved(param[0], param[1]));
       return {
         TAG: "Ok",
         _0: undefined

@@ -4,6 +4,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stream from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
+import * as InMemory_Bus$ReventlessInMemory from "../InMemory_Bus.res.mjs";
 import * as SqliteDriver$ReventlessInMemory from "../SqliteDriver.res.mjs";
 
 function tableName(name) {
@@ -166,9 +167,33 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     _0: rowsFor(id)
   });
   let loadStream = id => Stream.fromIterable(rowsFor(id));
+  let entityKeyFor = (id, subKey) => {
+    if (subIdField !== undefined) {
+      return id + "-" + subKey;
+    } else {
+      return id;
+    }
+  };
+  let publishUpdated = (id, state) => {
+    let subKey = computeSubKey(state, subIdField);
+    let descriptor = InMemory_Bus$ReventlessInMemory.makeStateChangeDescriptor("Updated", entityKeyFor(id, subKey), state);
+    bus.publishStateChange(name, descriptor);
+  };
+  let publishRemoved = (id, subKey) => {
+    let descriptor = InMemory_Bus$ReventlessInMemory.makeStateChangeDescriptor("Removed", entityKeyFor(id, subKey), undefined);
+    bus.publishStateChange(name, descriptor);
+  };
+  let rowKeysForPartition = id => SqliteDriver$ReventlessInMemory.all(selectByPartitionStmt, [id]).map(row => {
+    let match = row["sub_key"];
+    if (typeof match === "string") {
+      return match;
+    } else {
+      return "";
+    }
+  });
   let save = async (id, state, _saveMode, ttl) => {
     saveOne(id, state, ttl);
-    bus.publishStateChange(name, state);
+    publishUpdated(id, state);
     return {
       TAG: "Ok",
       _0: undefined
@@ -178,7 +203,7 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     SqliteDriver$ReventlessInMemory.transaction(db, () => {
       batch.forEach(param => saveOne(param[0], param[1], param[2]));
     });
-    batch.forEach(param => bus.publishStateChange(name, param[1]));
+    batch.forEach(param => publishUpdated(param[0], param[1]));
     return {
       TAG: "Ok",
       _0: undefined
@@ -199,16 +224,37 @@ function makeStorage(db, bus, name, indexes, subIdField) {
     }
   };
   let $$delete = async (id, subIdOpt) => {
+    let removedSubKeys = subIdOpt !== undefined ? [subIdOpt[1]] : rowKeysForPartition(id);
     deleteOne(id, subIdOpt);
+    removedSubKeys.forEach(sk => publishRemoved(id, sk));
     return {
       TAG: "Ok",
       _0: undefined
     };
   };
   let deleteBatch = async ids => {
+    let removed = [];
+    ids.forEach(param => {
+      let subIdOpt = param[1];
+      let id = param[0];
+      if (subIdOpt !== undefined) {
+        removed.push([
+          id,
+          subIdOpt[1]
+        ]);
+      } else {
+        rowKeysForPartition(id).forEach(sk => {
+          removed.push([
+            id,
+            sk
+          ]);
+        });
+      }
+    });
     SqliteDriver$ReventlessInMemory.transaction(db, () => {
       ids.forEach(param => deleteOne(param[0], param[1]));
     });
+    removed.forEach(param => publishRemoved(param[0], param[1]));
     return {
       TAG: "Ok",
       _0: undefined

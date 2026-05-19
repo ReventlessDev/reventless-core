@@ -422,17 +422,30 @@ This phase also extended the `rescript-pulumi-aws` ReScript binding for `Channel
 - [x] `rescript-pulumi-aws` `ChannelNamespace` binding extended with the missing CloudFormation fields
 - [x] Build clean (1358 tests pass)
 
-### Phase 8: In-memory parity ⬜
+### Phase 8: In-memory parity ✅
 
-Match the channel + descriptor shape in `InMemory_Bus` so dev and prod behave identically for any client consuming the descriptor stream.
+`InMemory_Bus.publishStateChange` now carries the **change descriptor** rather than the full row state — dev clients consuming the bridge see the same JSON shape as AWS WebSocket subscribers.
+
+Concrete changes:
+
+- `InMemory_Bus.res` — `publishStateChange` parameter renamed `~state` → `~descriptor`; new module-level helper `makeStateChangeDescriptor(~changeKind, ~id, ~state)` produces the `{changeKind, id, sortKeyValue?}` payload (same `updatedAt → createdAt → omit` rule as the AWS Lambda).
+- `QueryDbStorage_InMemory.res` and `QueryDbStorage_Sqlite.res` — every `save`/`saveBatch`/`delete`/`deleteBatch` now builds a descriptor and publishes it. Entity key follows the AWS rule: single-key tables → partition value, composite tables → `pk-sk`. `delete`/`deleteBatch` now publish `"Removed"` descriptors (previously silent — fixed gap relative to AWS).
+- `GraphQL_SubscriptionResolversTest.res` — both Source B tests updated to assert the descriptor shape.
+
+**Documented dev/prod divergence:**
+- `changeKind` is `"Updated"` for save() in dev — the in-memory storage doesn't cheaply distinguish first-insert from update; AWS uses DDB streams' INSERT vs MODIFY for this. `"Removed"` is emitted on delete in both.
+- `position` is omitted in both dev and prod (Phase 3 deferred).
+- OnPublish coalescer omitted in dev (Phase 4 deferred; dev gets every change raw, which is fine at dev scale).
+- Channel-name parity is not implemented — the in-memory bus is keyed by read-model name and pubsub topic, not channel paths. Subscribers that need per-entity filtering must filter on `descriptor.id` themselves. Full channel parity would require a layered pubsub mirroring AppSync Events; out of scope.
 
 **Checklist:**
 
-- [ ] `InMemory_Bus` publishes descriptors (not full state) on `publishStateChange`
-- [ ] Channel name mirrors the AWS channel format
-- [ ] OnPublish coalescer optionally available (or omitted in dev for simplicity — dev gets every event raw)
-- [ ] `position: null` in dev (DCB positions not surfaced)
-- [ ] Existing tests in `tests/adapter/GraphQL_SubscriptionResolversTest.res` updated for new shape
+- [x] `InMemory_Bus` publishes descriptors (not full state) on `publishStateChange`
+- [ ] Channel name mirrors the AWS channel format — partial: payload mirrors AWS; topic/channel layering doesn't. Subscribers filter by `descriptor.id`.
+- [x] OnPublish coalescer omitted in dev (Phase 4 deferred)
+- [x] `position` omitted in dev (Phase 3 deferred; both AWS and dev consistent)
+- [x] Existing tests in `tests/adapter/GraphQL_SubscriptionResolversTest.res` updated for descriptor shape
+- [x] Build clean (1358 tests pass)
 
 ---
 

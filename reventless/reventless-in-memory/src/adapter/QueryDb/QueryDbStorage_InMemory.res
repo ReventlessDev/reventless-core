@@ -102,12 +102,39 @@ module Make = (Bus: InMemory_Bus.T) => {
     let loadStream: QueryDb.loadStream<string, JSON.t> = id =>
       sortedItems(store.contents, id)->Stream.fromIterable
 
+    // Entity key matches the AWS StateTopic Lambda output (Phase 1):
+    // single-key tables → partition value; composite tables → `pk-sk`.
+    let entityKeyFor = (id: string, subKey: string): string =>
+      switch subIdField {
+      | Some(_) => id ++ "-" ++ subKey
+      | None => id
+      }
+
+    let publishUpdated = (id: string, state: JSON.t) => {
+      let subKey = getSubKey(state, subIdField)
+      let descriptor = InMemory_Bus.makeStateChangeDescriptor(
+        ~changeKind="Updated",
+        ~id=entityKeyFor(id, subKey),
+        ~state=Some(state),
+      )
+      Bus.publishStateChange(~name, ~descriptor)
+    }
+
+    let publishRemoved = (id: string, subKey: string) => {
+      let descriptor = InMemory_Bus.makeStateChangeDescriptor(
+        ~changeKind="Removed",
+        ~id=entityKeyFor(id, subKey),
+        ~state=None,
+      )
+      Bus.publishStateChange(~name, ~descriptor)
+    }
+
     let save: QueryDb.save<string, JSON.t> = async (id, state, _saveMode, _ttl) => {
       let subKey = getSubKey(state, subIdField)
       let subMap = getOrCreateSubMap(id)
       subMap->Dict.set(subKey, state)
       syncAll()
-      Bus.publishStateChange(~name, ~state)
+      publishUpdated(id, state)
       Ok()
     }
 
@@ -119,7 +146,7 @@ module Make = (Bus: InMemory_Bus.T) => {
       })
       syncAll()
       // Notify subscribers for each saved item
-      batch->Array.forEach(((_, state, _)) => Bus.publishStateChange(~name, ~state))
+      batch->Array.forEach(((id, state, _)) => publishUpdated(id, state))
       Ok()
     }
 
@@ -127,29 +154,53 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     let delete: QueryDb.delete<string> = async (id, subIdOpt) => {
       switch subIdOpt {
-      | None => store.contents->Dict.delete(id)
+      | None =>
+        let subKeys = switch store.contents->Dict.get(id) {
+        | Some(subMap) => subMap->Dict.keysToArray
+        | None => []
+        }
+        store.contents->Dict.delete(id)
+        syncAll()
+        subKeys->Array.forEach(subKey => publishRemoved(id, subKey))
       | Some((_, subValue)) =>
         switch store.contents->Dict.get(id) {
-        | Some(subMap) => subMap->Dict.delete(subValue)
-        | None => ()
+        | Some(subMap) =>
+          let hadIt = subMap->Dict.get(subValue)->Option.isSome
+          subMap->Dict.delete(subValue)
+          syncAll()
+          if hadIt {
+            publishRemoved(id, subValue)
+          }
+        | None => syncAll()
         }
       }
-      syncAll()
       Ok()
     }
 
     let deleteBatch: QueryDb.deleteBatch<string> = async ids => {
+      let removed: array<(string, string)> = []
       ids->Array.forEach(((id, subIdOpt)) => {
         switch subIdOpt {
-        | None => store.contents->Dict.delete(id)
+        | None =>
+          switch store.contents->Dict.get(id) {
+          | Some(subMap) =>
+            subMap->Dict.keysToArray->Array.forEach(sk => removed->Array.push((id, sk)))
+          | None => ()
+          }
+          store.contents->Dict.delete(id)
         | Some((_, subValue)) =>
           switch store.contents->Dict.get(id) {
-          | Some(subMap) => subMap->Dict.delete(subValue)
+          | Some(subMap) =>
+            if subMap->Dict.get(subValue)->Option.isSome {
+              removed->Array.push((id, subValue))
+            }
+            subMap->Dict.delete(subValue)
           | None => ()
           }
         }
       })
       syncAll()
+      removed->Array.forEach(((id, subKey)) => publishRemoved(id, subKey))
       Ok()
     }
 

@@ -61,7 +61,7 @@ describe("GraphQL_SubscriptionResolvers_InMemory", () => {
   })
 
   describe("Source B — state-change bridge", () => {
-    testPromise("Bus.publishStateChange → yoga PubSub subscriber receives state", async () => {
+    testPromise("Bus.publishStateChange → yoga PubSub subscriber receives descriptor", async () => {
       module TestBus = InMemory_Bus.Make()
 
       // Wire the bridge before subscribing, so the bus callback publishes to the PubSub.
@@ -78,18 +78,25 @@ describe("GraphQL_SubscriptionResolvers_InMemory", () => {
       let consumerPromise = startConsumer(iter, 1000)
       await yieldTick() // ensure listener is registered before publish
 
-      // Trigger a state change on the bus.
+      // Bus payload is now the change descriptor (Phase 8) matching the
+      // AWS StateTopic Lambda output shape: {changeKind, id, sortKeyValue?}.
       let state = JSON.Encode.object(
         Dict.fromArray([
           ("id", JSON.Encode.string("prod-1")),
           ("name", JSON.Encode.string("Widget")),
+          ("updatedAt", JSON.Encode.string("2026-05-19T12:00:00Z")),
         ]),
       )
-      TestBus.publishStateChange(~name="Product", ~state)
+      let descriptor = InMemory_Bus.makeStateChangeDescriptor(
+        ~changeKind="Updated",
+        ~id="prod-1",
+        ~state=Some(state),
+      )
+      TestBus.publishStateChange(~name="Product", ~descriptor)
 
       let received = await consumerPromise
       switch received->Null.toOption {
-      | Some(msg) => expect(msg)->toEqual(state)
+      | Some(msg) => expect(msg)->toEqual(descriptor)
       | None => expect("onCatalogProduct_stateChanged: timed out")->toBe("received")
       }
     })
@@ -109,10 +116,12 @@ describe("GraphQL_SubscriptionResolvers_InMemory", () => {
       await yieldTick()
 
       // Publish for a DIFFERENT ReadModel — should NOT reach our topic.
-      TestBus.publishStateChange(
-        ~name="Category",
-        ~state=JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string("cat-1"))])),
+      let foreignDescriptor = InMemory_Bus.makeStateChangeDescriptor(
+        ~changeKind="Updated",
+        ~id="cat-1",
+        ~state=Some(JSON.Encode.object(Dict.fromArray([("id", JSON.Encode.string("cat-1"))]))),
       )
+      TestBus.publishStateChange(~name="Category", ~descriptor=foreignDescriptor)
 
       let received = await consumerPromise
       expect(received->Null.toOption)->toEqual(None)
