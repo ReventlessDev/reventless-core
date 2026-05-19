@@ -264,6 +264,8 @@ function Make(EventCollectorChannel) {
         packageDirs[pkgName] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkgName);
       });
     });
+    packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
+    packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
     let bundleOutput = context.pluginDefinitionJson.apply(pluginDefinitionJson => {
       let extraStringAssets = {};
       extraStringAssets["pluginDefinition.json"] = pluginDefinitionJson;
@@ -282,7 +284,8 @@ function Make(EventCollectorChannel) {
       return;
     }
     new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
-      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SnsManageSubsPolicy`, [{
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SnsManageSubsPolicy`, [
+        {
           Sid: "AllowAdminManageCrossPluginSnsSubscriptions",
           Effect: "Allow",
           Action: [
@@ -292,7 +295,17 @@ function Make(EventCollectorChannel) {
             "sns:GetSubscriptionAttributes"
           ],
           Resource: "*"
-        }])),
+        },
+        {
+          Sid: "AllowAdminStartSchemaCreation",
+          Effect: "Allow",
+          Action: [
+            "appsync:StartSchemaCreation",
+            "appsync:GetSchemaCreationStatus"
+          ],
+          Resource: "*"
+        }
+      ])),
       role: runtime.parts.lambdaRole.id
     });
     let rmTableOutput = config.pluginReadModelTableName;

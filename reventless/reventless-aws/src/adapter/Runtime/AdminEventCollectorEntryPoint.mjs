@@ -75,9 +75,44 @@ import { handleDynamoDbOrSqsEvent } from "@reventlessdev/reventless-aws/src/adap
 import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule } from "@reventlessdev/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
 import { stitch as graphqlStitch, decode as decodeFragment } from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import { baseFragment as adminBaseFragment } from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
-import { stateSchema as pluginReadModelStateSchema } from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
-import { parseOrThrow as suryParseOrThrow } from "sury/src/S.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
+
+// The Plugin RM state schema uses `@s.matches(_jsNullable …)` for many
+// optional fields — top-level AND nested. DDB writes drop undefined
+// attributes, so the unmarshalled row arrives with the relevant keys
+// *missing* (not set to null). Sury's strict parser then rejects them as
+// "received undefined". Tracking and patching every nullable path by hand is
+// whack-a-mole; instead, manageSubscriptions and reconcileSubscriptions only
+// need a tiny subset of the state (id / status / extensions / extensionPoints
+// / eventCollector), so they sidestep sury entirely and read the DDB row
+// directly via this small projection. mkUpdateApiSchema does the same for
+// apiSchemaFragment further below.
+function projectPluginRow(row) {
+  if (!row || typeof row !== "object") return null;
+  if (typeof row.id !== "string" || typeof row.status !== "string") return null;
+  return {
+    id: row.id,
+    status: row.status,
+    eventCollector: typeof row.eventCollector === "string" ? row.eventCollector : "",
+    extensions: Array.isArray(row.extensions)
+      ? row.extensions
+          .filter((e) => e && typeof e.extensionPointName === "string")
+          .map((e) => ({
+            name: typeof e.name === "string" ? e.name : "",
+            extensionPointName: e.extensionPointName,
+          }))
+      : [],
+    extensionPoints: Array.isArray(row.extensionPoints)
+      ? row.extensionPoints
+          .filter((ep) => ep && typeof ep.name === "string" && typeof ep.eventTopic === "string")
+          .map((ep) => ({
+            name: ep.name,
+            commandTopic: typeof ep.commandTopic === "string" ? ep.commandTopic : "",
+            eventTopic: ep.eventTopic,
+          }))
+      : [],
+  };
+}
 
 function parseHandlerConfig(rawJson) {
   if (!rawJson) throw new Error("HANDLER_CONFIG env var is empty");
@@ -219,10 +254,8 @@ function mkManageSubscriptions(tableName) {
     );
     const peers = [];
     for (const row of rows) {
-      try {
-        const state = suryParseOrThrow(row, pluginReadModelStateSchema);
-        if (state && state.id !== excludeId) peers.push(state);
-      } catch (_) {}
+      const state = projectPluginRow(row);
+      if (state && state.id !== excludeId) peers.push(state);
     }
     return peers;
   };
@@ -270,11 +303,13 @@ async function reconcileSubscriptionsOnce(tableName, manageSubscriptions) {
       1000
     );
     for (const row of rows) {
-      try {
-        const state = suryParseOrThrow(row, pluginReadModelStateSchema);
-        if (state) await manageSubscriptions(state, "connect");
-      } catch (e) {
-        console.warn("[reconcileSubscriptions] failed for one plugin row: " + ((e && e.message) || e));
+      const state = projectPluginRow(row);
+      if (state) {
+        try {
+          await manageSubscriptions(state, "connect");
+        } catch (e) {
+          console.warn("[reconcileSubscriptions] manageSubscriptions failed: " + ((e && e.message) || e));
+        }
       }
     }
   } catch (e) {
@@ -292,12 +327,7 @@ function mkUpdateApiSchema(tableName, apiId, clonerEnabled) {
     );
     const resolved = await plugins;
     const fragments = resolved
-      .map((json) => {
-        try {
-          const state = suryParseOrThrow(json, pluginReadModelStateSchema);
-          return state.apiSchemaFragment;
-        } catch (_) { return undefined; }
-      })
+      .map((json) => json && json.apiSchemaFragment)
       .filter(Boolean);
     const adminBase = injectAwsAuthAll(
       adminBaseFragment(clonerEnabled || false),
@@ -593,10 +623,12 @@ async function buildHandler() {
     incomingExtensionEventHandlers,
   });
 
-  // Cold-start reconciliation — fire-and-forget so the SQS handler is ready
-  // immediately. Idempotent at the SNS level so this is safe to run on every
-  // cold start without coordination.
-  reconcileSubscriptionsOnce(config.pluginReadModelTableName, manageSubscriptionsFn);
+  // Cold-start reconciliation — awaited so it finishes inside the same
+  // invocation that initialised the Lambda. Fire-and-forget doesn't work on
+  // Lambda: any unfinished promise pauses when the runtime freezes between
+  // invocations and rarely gets a chance to resume. Idempotent at the SNS
+  // level, so the modest extra init latency is paid only on true cold starts.
+  await reconcileSubscriptionsOnce(config.pluginReadModelTableName, manageSubscriptionsFn);
 
   return handleDynamoDbOrSqsEvent(makeQueueRef(config.queueUrl), callback.handleJsonEvents);
 }

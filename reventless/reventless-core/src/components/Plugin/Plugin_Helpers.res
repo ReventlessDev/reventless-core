@@ -432,7 +432,18 @@ module MakeEventCollectorHelper = (
   let make = (~name, ~eventTopics, ~opts) => {
     let eventCollector = PluginEventCollector.make(~name, ~eventTopics, ~opts)
     let eventCollectorOutputs = eventCollector->Component.outputs
-    let eventCollectorUrn = switch eventCollectorOutputs.resources->Array.get(0) {
+    // pluginDefinition.eventCollector must identify the EC's inbound queue
+    // ARN — admin's `manageSubscriptions` uses it as the subscription target
+    // (SNS topic → SQS endpoint). The AWS SQS EventCollectorChannel appends
+    // the queue resource AFTER the upstream event-topic resources in its
+    // `channel.resources` list, so the queue is always the last element.
+    // Earlier this picked `resources[0]`, which silently selected the first
+    // subscribed event topic (e.g. a DCB EventLog DynamoDB stream ARN) and
+    // produced "Invalid parameter: SQS endpoint ARN" errors at subscribe
+    // time. In-memory adapters don't use this field (no SNS), so the choice
+    // there is moot.
+    let resources = eventCollectorOutputs.resources
+    let eventCollectorUrn = switch resources->Array.get(resources->Array.length - 1) {
     | Some(r) => r.urn
     | None => Pulumi.Output.make("")
     }

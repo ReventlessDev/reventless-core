@@ -369,6 +369,20 @@ module Make = (
         packageDirs->Dict.set(pkgName, Util_Bundle.resolvePackageRoot(pkgName))
       })
     })
+    // Bundle the framework packages alongside the entry point so the deployed
+    // Lambda picks up uncommitted local changes without waiting for the Lambda
+    // Layer rebuild (the layer fetches @reventlessdev/reventless-* from GitHub
+    // Packages, not the local pnpm workspace). Mirrors the DCB asset pattern in
+    // forDcbCommandTopic below. Slightly larger function bundle in exchange
+    // for matching dev/CI source.
+    packageDirs->Dict.set(
+      "@reventlessdev/reventless-aws",
+      Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+    )
+    packageDirs->Dict.set(
+      "@reventlessdev/reventless-core",
+      Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-core"),
+    )
 
     // pluginDefinition.json must resolve before the asset zip is built;
     // wrap the bundle in an Output.apply over the Output<string>. The
@@ -440,6 +454,20 @@ module Make = (
                   "sns:Unsubscribe",
                   "sns:ListSubscriptionsByTopic",
                   "sns:GetSubscriptionAttributes",
+                ]),
+                resources: AllResources,
+              },
+              // mkUpdateApiSchema runs on each Connect/Disconnect alongside
+              // manageSubscriptions — pushes the stitched SDL to AppSync via
+              // StartSchemaCreation. AppSync requires both the API-level
+              // appsync:StartSchemaCreation and appsync:GetSchemaCreationStatus
+              // permissions on the deployed API.
+              {
+                sid: "AllowAdminStartSchemaCreation",
+                effect: Allow,
+                actions: Actions([
+                  "appsync:StartSchemaCreation",
+                  "appsync:GetSchemaCreationStatus",
                 ]),
                 resources: AllResources,
               },

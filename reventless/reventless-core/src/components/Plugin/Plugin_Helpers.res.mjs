@@ -254,7 +254,8 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
     let make = (name, eventTopics, opts) => {
       let eventCollector = PluginEventCollector.make(name, eventTopics, opts);
       let eventCollectorOutputs = Component$ReventlessCore.outputs(eventCollector);
-      let r = eventCollectorOutputs.resources[0];
+      let resources = eventCollectorOutputs.resources;
+      let r = resources[resources.length - 1 | 0];
       let eventCollectorUrn = r !== undefined ? r.urn : Pulumi.output("");
       return [
         eventCollector,

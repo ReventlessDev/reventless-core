@@ -186,11 +186,17 @@ Step 1
            PluginExtensionPoint_Builder.Spec + Plugin_ExtensionPoint_Builder.Config
            (deploy-time defaults to None). callHandler dispatches it alongside
            updateApiSchema on DoConnectPlugin / DoDisconnectPlugin.
-  [x] 1.5  Cold-start reconciliation — reconcileSubscriptionsOnce fires as
-           fire-and-forget inside buildHandler so the SQS handler is ready
-           immediately; idempotent at the SNS level so safe to repeat.
-  [ ]      Verify (Step 4): deploy two example plugins; admin logs
-           "[manageSubscriptions] subscribed …" for each cross-plugin link.
+  [x] 1.5  Cold-start reconciliation — `reconcileSubscriptionsOnce` is now
+           **awaited** in `buildHandler` (was fire-and-forget). On Lambda the
+           runtime freezes between invocations, so any unfinished promise the
+           handler doesn't await rarely gets a chance to resume — verified
+           live (no `[reconcileSubscriptions]` logs until the await landed).
+           Idempotent at the SNS level so the extra init latency is paid only
+           on true cold starts.
+  [x]      Verify (Step 4): admin EC logs
+           "[manageSubscriptions] subscribed Catalog.Products -> Ordering@…"
+           and the reverse for Ordering.Orders -> Catalog@… on the cold-start
+           after deploy.
 ```
 
 ---
@@ -245,8 +251,15 @@ Step 2
            from the queue's own ARN (segment 4). Same policy applies to every
            plugin EC queue + the admin EC queue, so runtime-created cross-
            plugin subscriptions are accepted without a redeploy.
-  [ ]      Verify (Step 4): aws iam simulate-principal-policy confirms admin
-           role can Subscribe to a sample peer EP topic.
+  [x] 2.3  Added `appsync:StartSchemaCreation` + `appsync:GetSchemaCreationStatus`
+           to the admin-only `snsManageSubs` RolePolicy. `mkUpdateApiSchema`
+           runs on every Connect/Disconnect alongside `manageSubscriptions`
+           and previously failed with "User is not authorized to perform:
+           appsync:StartSchemaCreation". Verified live by absence of the
+           IAM error in subsequent invocations.
+  [x]      Verify (Step 4): live subscribe succeeded
+           (sns:list-subscriptions-by-topic shows the cross-plugin entries)
+           — proves the IAM grant is sufficient.
 ```
 
 ---
@@ -331,16 +344,21 @@ lands and the standard pipeline executes:
 
 ```
 Step 4 (run after CI lands the layer rebuild + stack updates)
-  [ ] 4.1  Tail admin EC CloudWatch Logs; on the first PluginConnected event
-           after the deploy, expect a
-           "[manageSubscriptions] subscribed Ordering.Orders -> Catalog@…"
-           line (and the reverse for Catalog.Products -> Ordering@…).
-  [ ] 4.2  aws sns list-subscriptions-by-topic --topic-arn
-           arn:aws:sns:eu-west-1:000000000000:OrderingOrdersEventTopic-…
-           shows the Catalog plugin EC SQS queue as a subscriber.
+  [x] 4.1  Admin EC CloudWatch logs show, on cold-start reconciliation:
+           [manageSubscriptions] subscribed Catalog.Products -> Ordering@1.0.0-alpha.50:
+             arn:aws:sns:…:CatalogProductsExtPointEventTopic-… ->
+             arn:aws:sqs:…:OrderingPluginEventColl-…
+           [manageSubscriptions] subscribed Ordering.Orders -> Catalog@1.0.0-alpha.50:
+             arn:aws:sns:…:OrderingOrdersExtPointEventTopic-… ->
+             arn:aws:sqs:…:CatalogPluginEventColl-…
+           Plus "re-using existing subscription" idempotency on re-runs.
+  [x] 4.2  aws sns list-subscriptions-by-topic confirms both directions:
+             OrderingOrdersExtPointEventTopic-12f4078 → CatalogPluginEventColl-08a6a08
+             CatalogProductsExtPointEventTopic-28a7427 → OrderingPluginEventColl-503c1e6
   [ ] 4.3  PlaceOrder via AppSync mutation; CloudWatch on
            CatalogPluginEventCollector-… shows the ItemOrdered SNS message
-           was received and processed.
+           was received and processed. (requires Cognito-authenticated
+           GraphQL call — left for app-driven verification.)
   [ ] 4.4  Orders_Extension handler dispatches; RecordProductDemand command
            lands on the StateChangeSlice command-topic SQS.
   [ ] 4.5  ProductDemands RM DynamoDB table has a row keyed by the productId
@@ -349,9 +367,44 @@ Step 4 (run after CI lands the layer rebuild + stack updates)
            admin's manageSubscriptions logs "[manageSubscriptions]
            unsubscribed Ordering.Orders -> Catalog@…". aws sns
            list-subscriptions-by-topic confirms removal.
-  [ ]      Result: full cross-plugin event flow end-to-end + clean teardown
-           on disconnect.
+  [-]      Partial: wiring proven end-to-end (4.1, 4.2). Live event flow
+           (4.3–4.5) and Disconnect teardown (4.6) require an authenticated
+           AppSync session; deferred to an app-driven smoke test.
 ```
+
+### Fixes uncovered during Step 4 verification
+
+Verification surfaced four blockers not in the original plan; all are fixed:
+
+1. **`reconcileSubscriptionsOnce` was fire-and-forget** — never completed on
+   Lambda (the runtime freezes the unfinished promise between invocations).
+   `buildHandler` now awaits it. Step 1 checklist updated.
+
+2. **Plugin RM rows have missing nullable fields** — sury's strict parser
+   refused rows whose writer omitted optional attributes (`uiFragments`,
+   `structure.readModels[].statusField`, etc.). The recursion got deeper
+   the further we patched. `manageSubscriptions` / `reconcileSubscriptions`
+   now read raw rows via a small `projectPluginRow` projection (id /
+   status / extensions / extensionPoints / eventCollector — the only
+   fields they need); sury parsing is removed from those paths. The
+   schema itself is unchanged.
+
+3. **`pluginDefinition.eventCollector` carried the wrong ARN** —
+   `MakeEventCollectorHelper.eventCollectorUrn` picked
+   `eventCollectorOutputs.resources[0]`, which is the FIRST subscribed
+   event topic (e.g. a DCB EventLog DynamoDB stream), not the EC's SQS
+   queue. The AWS SQS EventCollectorChannel appends the queue LAST in
+   its resources array, so the fix is `resources[length - 1]`. SNS
+   Subscribe with an SQS endpoint now passes "Invalid parameter: SQS
+   endpoint ARN".
+
+4. **Local layer-build bypass** — `forPluginEventCollector` now bundles
+   `@reventlessdev/reventless-aws` + `@reventlessdev/reventless-core`
+   into the admin EC's Lambda asset (mirroring the DCB pattern from
+   `forDcbCommandTopic`). Lets `pulumi up` pick up uncommitted framework
+   changes without waiting for the Lambda Layer rebuild. The plan's
+   "Local-pulumi alternative" sidebar called this out as a follow-up;
+   this session moved it from sidebar to the main path.
 
 #### Local-pulumi alternative
 
