@@ -3,6 +3,19 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as AwsNative from "@pulumi/aws-native";
 import * as AwsNative_AppSync_Api$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AwsNative/AppSync/AwsNative_AppSync_Api.res.mjs";
+import * as AwsNative_AppSync_ChannelNamespace$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AwsNative/AppSync/AwsNative_AppSync_ChannelNamespace.res.mjs";
+
+let subscribeAuthRef = {
+  contents: undefined
+};
+
+function registerSubscribeAuth(config) {
+  subscribeAuthRef.contents = config;
+}
+
+function clearSubscribeAuth() {
+  subscribeAuthRef.contents = undefined;
+}
 
 function make(name, opts) {
   let iamMode = {
@@ -19,10 +32,22 @@ function make(name, opts) {
       defaultSubscribeAuthModes: [iamMode]
     }
   }, opts);
+  let subscribeAuth = subscribeAuthRef.contents;
+  let codeHandlersInput = Stdlib_Option.map(subscribeAuth, c => c.codeHandlers);
+  let handlerConfigsInput = Stdlib_Option.map(subscribeAuth, c => ({
+    onSubscribe: {
+      behavior: AwsNative_AppSync_ChannelNamespace$PulumiAws.handlerBehaviorCode,
+      integration: {
+        dataSourceName: c.dataSourceName
+      }
+    }
+  }));
   let newrecord = {...opts};
   let defaultNamespace = new (AwsNative.appsync.ChannelNamespace)(name + "DefaultNS", {
     apiId: api.apiId,
-    name: "default"
+    name: "default",
+    codeHandlers: codeHandlersInput,
+    handlerConfigs: handlerConfigsInput
   }, (newrecord.parent = api, newrecord));
   return {
     api: api,
@@ -41,6 +66,9 @@ let ChannelNamespace;
 export {
   Api,
   ChannelNamespace,
+  subscribeAuthRef,
+  registerSubscribeAuth,
+  clearSubscribeAuth,
   make,
   httpEndpoint,
 }

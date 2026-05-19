@@ -393,16 +393,34 @@ Investigation + verification, not a code change to core itself. Verified 2026-05
 - [x] Add documented format to this plan (§7)
 - [x] Smoke test: built-in `WebSocket` connects with the captured protocols and receives `connection_ack` — `smoke-test.mjs`
 
-### Phase 7: `OnSubscribe` hook in `Platform.res` ⬜
+### Phase 7: `OnSubscribe` hook ✅
 
-Pure hook surface; the multi-tenancy extension (downstream, not in core) provides the actual handler.
+Wired as a registry on `AppSync_EventsApi.res` rather than as a callback field on `Platform.res` — closer to the resource that consumes it, and matches the existing `onPluginDeployedHook` pattern in `Plugin_Helpers.res`. The hook surface is intentionally minimal: downstream extensions install JS code + a data source name, the framework wires the namespace's `handlerConfigs.onSubscribe` to call it.
+
+Concrete API ([`AppSync_EventsApi.res`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res)):
+
+```rescript
+type subscribeAuthConfig = {
+  codeHandlers: string,                          // exports onSubscribe(ctx)
+  dataSourceName: Pulumi.Input.t<string>,        // NONE-typed DS on the Events API
+}
+
+let registerSubscribeAuth: subscribeAuthConfig => unit
+let clearSubscribeAuth: unit => unit
+```
+
+The extension calls `registerSubscribeAuth` before platform construction. The framework reads the registry inside `AppSync_EventsApi.make` and forwards both fields to the underlying `ChannelNamespace`. No call ⇒ namespace falls back to API-level auth modes (single-tenant open-core default).
+
+This phase also extended the `rescript-pulumi-aws` ReScript binding for `ChannelNamespace` with the previously-missing `codeHandlers` / `handlerConfigs` fields plus the supporting types (`handlerConfigsArgs`, `handlerConfigArgs`, `integrationArgs`, `lambdaConfigArgs`) and `handlerBehavior` / `invokeType` string constants. The binding now matches AWS's CloudFormation surface for the resource.
 
 **Checklist:**
 
-- [ ] `subscribeAuthHook` hook type added to `Platform.res`
-- [ ] Wired into `AppSync_EventsApi` namespace provisioning so the hook (if registered) gets called per subscribe
-- [ ] Documented hook signature for downstream extensions
-- [ ] No default implementation (single-tenant deployments need no gating)
+- [x] `subscribeAuthConfig` type + `registerSubscribeAuth` / `clearSubscribeAuth` registry on `AppSync_EventsApi.res`
+- [x] Wired into `AppSync_EventsApi.make` namespace provisioning via the new `codeHandlers` / `handlerConfigs` fields
+- [x] Documented hook contract in the `AppSync_EventsApi.res` file header
+- [x] No default implementation (`subscribeAuthRef = ref(None)`; single-tenant deploys are unaffected)
+- [x] `rescript-pulumi-aws` `ChannelNamespace` binding extended with the missing CloudFormation fields
+- [x] Build clean (1358 tests pass)
 
 ### Phase 8: In-memory parity ⬜
 
