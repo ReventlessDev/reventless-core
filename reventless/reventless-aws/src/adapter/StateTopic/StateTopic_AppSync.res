@@ -4,21 +4,27 @@
 // Creates deploy-time resources for one ReadModel or StateViewSlice:
 //   QueryDb DynamoDB table (stream-enabled) → Lambda → AppSync Events channel
 //
-// Supersedes StateTopicPublisher_DynamoDbStream (stream resource discovery) and
-// StateTopicPublisher (re-export shim) — both deleted; the lookup now lives here.
+// Channel layout: /default/{topicName}/{entityKey}  (underscores → hyphens)
+//   topicName    = plugin-prefixed query return type (e.g. "catalog-Product")
+//   entityKey    = the table's primary-key value(s) extracted from record.Keys.
+//                  Single-key tables: just the `id` attribute value.
+//                  Composite-key tables: `{id}-{subIdValue}` where subId is the
+//                  table's sort-key attribute.
+//
+// Clients subscribe to one of:
+//   {topic}/{entityKey}   detail view (one row)
+//   {topic}/*             list view  (all rows in the read model)
 //
 // Prerequisites:
 //   - The QueryDb must use QueryDbStorage_DynamoDbStream so its resource has a
 //     streamArn (StreamSource resourceInfo).
-//   - Phase 1 makeSubscriptionResolver must be called with the appropriate
-//     subscriptionFilter for the matching Subscription.on{Type}_stateChanged field.
 //
 // Usage in the plugin builder (after allQueryDbs are assembled):
 //   StateTopic_AppSync.make(
 //     ~readModelName="Product",      // QueryDb key = ReadModel Spec.name
-//     ~topicName="catalog_Product",  // AppSync Events channel (underscores → hyphens)
+//     ~topicName="catalog_Product",  // AppSync Events channel root segment
 //     ~allQueryDbs,
-//     ~api,
+//     ~eventsApi,
 //     ~opts,
 //   )
 
@@ -26,21 +32,32 @@ open PulumiAws
 
 // ── Handler code ─────────────────────────────────────────────────────────────
 //
-// Processes DynamoDB Stream records → publishes full NewImage to AppSync Events channel.
-// Channel name: /default/{topicName} where topicName has underscores replaced with hyphens
-// (AppSync Events channels do not allow underscores in the channel path).
+// Processes DynamoDB Stream records → publishes one event per row-change to
+// AppSync Events. Channel path: /default/{topicRoot}/{entityKey}.
+//
+// AppSync Events channels disallow underscores in segments — `topicRoot` and
+// `entityKey` are both normalised with `_` → `-`.
+//
+// `entityKey` is derived from `record.dynamodb.Keys` (the row's primary-key
+// attributes, always present on INSERT / MODIFY / REMOVE). The framework
+// names the partition-key attribute "id" by convention
+// (QueryDbStorage_DynamoDb); composite-key tables also have a sort-key attr
+// whose name comes from the read model's subIdConfig.subIdField.
+//
+// Payload (for Phase 1) remains the full row state — `NewImage` for INSERT /
+// MODIFY, `OldImage` for REMOVE. The change-descriptor reshape is Phase 2.
 //
 // Uses native Node.js crypto + fetch with SigV4 — no extra SDK packages needed.
 // Credentials come from the Lambda execution role via the process.env AWS_* variables.
 
 let makeHandlerCode = (~topicName: string): string => {
   // AppSync Events channels cannot contain underscores — replace with hyphens.
-  let channelName = topicName->String.replaceAll("_", "-")
+  let topicRoot = topicName->String.replaceAll("_", "-")
   `
 import { createHmac, createHash } from "node:crypto";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
-const CHANNEL = "/default/${channelName}";
+const TOPIC_ROOT = "/default/${topicRoot}";
 const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT; // "https://{eventsApi.dns.http}"
 const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
 
@@ -70,12 +87,43 @@ async function signedHeaders(host, path, body) {
   return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
 }
 
+// AppSync Events channel segments allow [A-Za-z0-9-]; values may carry "_"
+// or other separators. Underscores are normalised to "-" so the URL-encoded
+// segment never breaks the channel grammar.
+function segment(value) {
+  return String(value).replaceAll("_", "-");
+}
+
+// Build entityKey from record.dynamodb.Keys. Framework convention:
+// partition-key attr is named "id"; composite tables have one extra attr (the
+// sort key) whose name comes from the projection's subIdConfig.subIdField.
+function entityKeyFromRecord(record) {
+  const keys = unmarshall(record.dynamodb.Keys ?? {});
+  const id = keys.id;
+  if (id === undefined) {
+    // Defensive: framework always names the partition key "id". If a future
+    // table breaks the convention, fall back to a stable sort-join.
+    const names = Object.keys(keys).sort();
+    return names.map((n) => segment(keys[n])).join("-");
+  }
+  const subIdName = Object.keys(keys).find((k) => k !== "id");
+  return subIdName === undefined
+    ? segment(id)
+    : segment(id) + "-" + segment(keys[subIdName]);
+}
+
 export async function handler(event) {
   const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
-    if (record.eventName === "REMOVE") continue;
-    const newImage = unmarshall(record.dynamodb.NewImage);
-    const body = JSON.stringify({ id: record.eventID, channel: CHANNEL, events: [JSON.stringify(newImage)] });
+    const image =
+      record.eventName === "REMOVE"
+        ? record.dynamodb.OldImage
+        : record.dynamodb.NewImage;
+    if (image === undefined) continue;
+    const entityKey = entityKeyFromRecord(record);
+    const channel = TOPIC_ROOT + "/" + entityKey;
+    const payload = unmarshall(image);
+    const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(payload)] });
     const auth = await signedHeaders(url.hostname, "/event", body);
     const res = await fetch(APPSYNC_ENDPOINT + "/event", {
       method: "POST",

@@ -817,9 +817,9 @@ module MakeWithConfig = (
         let {allQueryDbs, allEventTopics, eventLogEntries, opts} = params
         let customOpts =
           opts->ReventlessCore.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
-        let graphqlApi = resolveHookedApi()
-
-        // Phase 4: StateTopic per stream-enabled QueryDb
+        // StateTopic Lambda per stream-enabled QueryDb — publishes row changes
+        // to AppSync Events channels.  No GraphQL Subscription resolver is
+        // wired: Source B uses the Events WebSocket directly, not @aws_subscribe.
         allQueryDbs->Dict.forEachWithKey((_queryDbOutputs, readModelName) => {
           if QueryDbStorage_DynamoDbStream.streamRegistry->Set.has(readModelName) {
             let returnTypeName =
@@ -832,20 +832,6 @@ module MakeWithConfig = (
               ~topicName=returnTypeName,
               ~allQueryDbs,
               ~eventsApi,
-              ~opts=customOpts,
-            )
-            // Source B subscription resolver — NONE data source required by AppSync UNIT resolvers
-            let noneDs = PulumiAws.AppSync.DataSource.makeNoneDataSource(
-              ~name=returnTypeName ++ "StateTopicNone",
-              ~api=graphqlApi,
-              ~opts=customOpts,
-            )
-            let _ = AppSync_Resolver_Retrying.makeSubscriptionResolver(
-              ~name="on" ++ returnTypeName ++ "StateChanged",
-              ~api=graphqlApi,
-              ~field="on" ++ returnTypeName ++ "_stateChanged",
-              ~dataSourceName=noneDs.name->Pulumi.Output.asInput,
-              ~subscriptionFilter=`{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`,
               ~opts=customOpts,
             )
           }

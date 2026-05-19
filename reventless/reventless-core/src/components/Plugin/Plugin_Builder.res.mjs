@@ -201,7 +201,7 @@ function Make(Spec) {
           Plugin_Helpers$ReventlessCore.stateSchemaRegistry[R.Spec.name] = R.Spec.stateSchema;
         });
         let baseFragment = FragmentProvider.generateFragment(mutationEntries, queryEntries);
-        let subResult = Plugin_SubscriptionSchema$ReventlessCore.generate(mutationEntries, queryEntries, eventLogEntries);
+        let subResult = Plugin_SubscriptionSchema$ReventlessCore.generate(mutationEntries, eventLogEntries);
         let parts = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
         let apiSchemaFragment = GraphQL_Stitcher$ReventlessCore.encode({
           types: parts.types.concat(subResult.extraTypes),

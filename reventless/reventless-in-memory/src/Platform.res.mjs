@@ -155,7 +155,6 @@ function MakeWithConfig(Config) {
   let hooks_mcpSchemaRegistrationHook = param => {
     let subscriptionFields = param.subscriptionFields;
     let eventLogEntries = param.eventLogEntries;
-    let queryEntries = param.queryEntries;
     let pluginName = param.pluginName;
     let mcp = resolveTargetMCP();
     mcp.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
@@ -181,7 +180,7 @@ function MakeWithConfig(Config) {
       let outcome = await Effect.runPromise(generateCommand(payload));
       return JSON.stringify(CommandGeneratorResolvers_GraphQL$ReventlessInMemory.commandOutcomeToJson(outcome));
     });
-    mcp.registerResourcesFromEntries(pluginName, queryEntries, async (resourceName, uri) => {
+    mcp.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
       let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => {
@@ -340,10 +339,6 @@ function MakeWithConfig(Config) {
     }
     let server = resolveTargetGraphQL();
     eventLogEntries.forEach(entry => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceA(Bus.subscribeToEvents, entry.displayName, entry.busKey));
-    queryEntries.forEach(entry => {
-      let readModelName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => param[1].returnTypeName === entry.returnTypeName), param => param[0]), entry.returnTypeName);
-      GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceB(Bus.subscribeToStateChanges, readModelName, entry.returnTypeName);
-    });
     let sourceAEntries = eventLogEntries.map(e => {
       let topic = GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.sourceATopic(e.displayName);
       return {
@@ -351,14 +346,7 @@ function MakeWithConfig(Config) {
         topic: topic
       };
     });
-    let sourceBEntries = queryEntries.map(e => {
-      let topic = GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.sourceBTopic(e.returnTypeName);
-      return {
-        fieldName: topic,
-        topic: topic
-      };
-    });
-    GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.registerAll(server, subscriptionFields, sourceAEntries, sourceBEntries);
+    GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.registerAll(server, subscriptionFields, sourceAEntries, []);
   };
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})
@@ -1998,7 +1986,6 @@ function Make($star) {
   let hooks_mcpSchemaRegistrationHook = param => {
     let subscriptionFields = param.subscriptionFields;
     let eventLogEntries = param.eventLogEntries;
-    let queryEntries = param.queryEntries;
     let pluginName = param.pluginName;
     let mcp = resolveTargetMCP();
     mcp.registerToolsFromEntries(pluginName, param.mutationEntries, async (toolName, args, identity) => {
@@ -2024,7 +2011,7 @@ function Make($star) {
       let outcome = await Effect.runPromise(generateCommand(payload));
       return JSON.stringify(CommandGeneratorResolvers_GraphQL$ReventlessInMemory.commandOutcomeToJson(outcome));
     });
-    mcp.registerResourcesFromEntries(pluginName, queryEntries, async (resourceName, uri) => {
+    mcp.registerResourcesFromEntries(pluginName, param.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
       let queryDbName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => {
@@ -2183,10 +2170,6 @@ function Make($star) {
     }
     let server = resolveTargetGraphQL();
     eventLogEntries.forEach(entry => GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceA(Bus.subscribeToEvents, entry.displayName, entry.busKey));
-    queryEntries.forEach(entry => {
-      let readModelName = Stdlib_Option.getOr(Stdlib_Option.map(Object.entries(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry).find(param => param[1].returnTypeName === entry.returnTypeName), param => param[0]), entry.returnTypeName);
-      GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.bridgeSourceB(Bus.subscribeToStateChanges, readModelName, entry.returnTypeName);
-    });
     let sourceAEntries = eventLogEntries.map(e => {
       let topic = GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.sourceATopic(e.displayName);
       return {
@@ -2194,14 +2177,7 @@ function Make($star) {
         topic: topic
       };
     });
-    let sourceBEntries = queryEntries.map(e => {
-      let topic = GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.sourceBTopic(e.returnTypeName);
-      return {
-        fieldName: topic,
-        topic: topic
-      };
-    });
-    GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.registerAll(server, subscriptionFields, sourceAEntries, sourceBEntries);
+    GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory.registerAll(server, subscriptionFields, sourceAEntries, []);
   };
   let hooks_adminExtensionPoints = {
     contents: Pulumi.output({})

@@ -49,24 +49,12 @@ let sourceCFields = (
 }
 
 // ── Source B: state-change subscriptions ─────────────────────────────────────
-// One field per ReadModel / StateViewSlice. Fires after an event is fully
-// projected into the QueryDb (pushed via AppSync Events API — no @aws_subscribe).
-//
-// The optional `id` arg enables server-side AppSync subscription filters so
-// clients only receive updates for the specific entity they are watching.
-
-let sourceBFields = (~queryEntries: array<querySchemaEntry>): array<string> => {
-  let seen: Set.t<string> = Set.make()
-  queryEntries->Array.filterMap(entry => {
-    let typeName = entry.returnTypeName
-    if seen->Set.has(typeName) {
-      None
-    } else {
-      seen->Set.add(typeName)
-      Some(`  on${typeName}_stateChanged(id: ID): ${typeName}`)
-    }
-  })
-}
+// State changes are pushed directly via AppSync Events channels (one channel
+// per QueryDb row), not through a GraphQL Subscription field. Clients open a
+// WebSocket against the Events API endpoint and subscribe to a channel pattern
+// like `/default/{topicRoot}/{entityKey}` (or `/default/{topicRoot}/*` for a
+// list view). No SDL is generated here — see `StateTopic_AppSync.res` for the
+// publish path.
 
 // ── Source A: raw event stream subscriptions ──────────────────────────────────
 // One field per EventLog (aggregate or DCB). Fires when an event is appended.
@@ -104,14 +92,12 @@ type result = {
 
 let generate = (
   ~mutationEntries: array<mutationSchemaEntry>,
-  ~queryEntries: array<querySchemaEntry>,
   ~eventLogEntries: array<eventLogSchemaEntry>,
 ): result => {
   let cFields = sourceCFields(~mutationEntries)
-  let bFields = sourceBFields(~queryEntries)
   let (aFields, aTypes) = sourceAFieldsAndTypes(~eventLogEntries)
   {
-    subscriptionFields: Array.flat([cFields, bFields, aFields]),
+    subscriptionFields: Array.flat([cFields, aFields]),
     extraTypes: aTypes,
   }
 }

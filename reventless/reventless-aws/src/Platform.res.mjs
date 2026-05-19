@@ -25,7 +25,6 @@ import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/
 import * as Plugin_Stack$ReventlessAws from "./Plugin_Stack.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "./util/Util_DynamoDb.res.mjs";
-import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
 import * as Platform_Casts$ReventlessAws from "./Platform_Casts.res.mjs";
 import * as Platform_Stack$ReventlessAws from "./Platform_Stack.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "./components/Api/AppSync_Adapter.res.mjs";
@@ -54,7 +53,6 @@ import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventles
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
-import * as AppSync_Resolver_Retrying$ReventlessAws from "./adapter/Api/AppSync_Resolver_Retrying.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
@@ -432,15 +430,12 @@ function MakeWithConfig(Config) {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
     let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(params.opts);
-    let graphqlApi = resolveHookedApi();
     Stdlib_Dict.forEachWithKey(allQueryDbs, (_queryDbOutputs, readModelName) => {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
       let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
-      let noneDs = AppSync_DataSource$PulumiAws.makeNoneDataSource(returnTypeName + "StateTopicNone", graphqlApi, customOpts);
-      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", noneDs.name, `{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
       let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);
@@ -1428,15 +1423,12 @@ function Make($star) {
     let allEventTopics = params.allEventTopics;
     let allQueryDbs = params.allQueryDbs;
     let customOpts = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(params.opts);
-    let graphqlApi = resolveHookedApi();
     Stdlib_Dict.forEachWithKey(allQueryDbs, (_queryDbOutputs, readModelName) => {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
       let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.returnTypeName), readModelName);
       StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
-      let noneDs = AppSync_DataSource$PulumiAws.makeNoneDataSource(returnTypeName + "StateTopicNone", graphqlApi, customOpts);
-      AppSync_Resolver_Retrying$ReventlessAws.makeSubscriptionResolver("on" + returnTypeName + "StateChanged", graphqlApi, "on" + returnTypeName + "_stateChanged", noneDs.name, `{filterGroup:[{filters:[{fieldName:"id",operator:"eq",value:ctx.args.id}]}]}`, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
       let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);

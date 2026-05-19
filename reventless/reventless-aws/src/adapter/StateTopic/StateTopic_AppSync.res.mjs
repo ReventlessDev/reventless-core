@@ -15,12 +15,12 @@ import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.m
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
 function makeHandlerCode(topicName) {
-  let channelName = topicName.replaceAll("_", "-");
+  let topicRoot = topicName.replaceAll("_", "-");
   return `
 import { createHmac, createHash } from "node:crypto";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
-const CHANNEL = "/default/` + channelName + `";
+const TOPIC_ROOT = "/default/` + topicRoot + `";
 const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT; // "https://{eventsApi.dns.http}"
 const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
 
@@ -50,12 +50,43 @@ async function signedHeaders(host, path, body) {
   return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
 }
 
+// AppSync Events channel segments allow [A-Za-z0-9-]; values may carry "_"
+// or other separators. Underscores are normalised to "-" so the URL-encoded
+// segment never breaks the channel grammar.
+function segment(value) {
+  return String(value).replaceAll("_", "-");
+}
+
+// Build entityKey from record.dynamodb.Keys. Framework convention:
+// partition-key attr is named "id"; composite tables have one extra attr (the
+// sort key) whose name comes from the projection's subIdConfig.subIdField.
+function entityKeyFromRecord(record) {
+  const keys = unmarshall(record.dynamodb.Keys ?? {});
+  const id = keys.id;
+  if (id === undefined) {
+    // Defensive: framework always names the partition key "id". If a future
+    // table breaks the convention, fall back to a stable sort-join.
+    const names = Object.keys(keys).sort();
+    return names.map((n) => segment(keys[n])).join("-");
+  }
+  const subIdName = Object.keys(keys).find((k) => k !== "id");
+  return subIdName === undefined
+    ? segment(id)
+    : segment(id) + "-" + segment(keys[subIdName]);
+}
+
 export async function handler(event) {
   const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
-    if (record.eventName === "REMOVE") continue;
-    const newImage = unmarshall(record.dynamodb.NewImage);
-    const body = JSON.stringify({ id: record.eventID, channel: CHANNEL, events: [JSON.stringify(newImage)] });
+    const image =
+      record.eventName === "REMOVE"
+        ? record.dynamodb.OldImage
+        : record.dynamodb.NewImage;
+    if (image === undefined) continue;
+    const entityKey = entityKeyFromRecord(record);
+    const channel = TOPIC_ROOT + "/" + entityKey;
+    const payload = unmarshall(image);
+    const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(payload)] });
     const auth = await signedHeaders(url.hostname, "/event", body);
     const res = await fetch(APPSYNC_ENDPOINT + "/event", {
       method: "POST",

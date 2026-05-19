@@ -286,7 +286,6 @@ module Make = (
       let baseFragment = FragmentProvider.generateFragment(~mutationEntries, ~queryEntries)
       let subResult = Plugin_SubscriptionSchema.generate(
         ~mutationEntries,
-        ~queryEntries,
         ~eventLogEntries,
       )
       let parts = GraphQL_Stitcher.decode(baseFragment)

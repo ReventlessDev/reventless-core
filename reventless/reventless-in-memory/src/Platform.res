@@ -356,8 +356,11 @@ module MakeWithConfig = (
         },
       )
 
-      // Wire GraphQL WebSocket subscriptions (Sources A and B) into the yoga PubSub.
-      // Only registers when the plugin fragment has subscription fields.
+      // Wire GraphQL WebSocket subscriptions (Source A only; Source C is
+      // generated as SDL but its resolvers are currently future work).
+      // Source B no longer flows through GraphQL — clients consume Events
+      // channels directly. The in-memory equivalent is wired in Phase 8.
+      let _ = queryEntries
       if subscriptionFields->Array.length > 0 {
         open GraphQL_SubscriptionResolvers_InMemory
         let server = resolveTargetGraphQL()
@@ -371,27 +374,10 @@ module MakeWithConfig = (
           )
         )
 
-        // Source B: bridge each QueryDb state-change → yoga PubSub channel
-        // Recover the ReadModel Spec.name (Bus key) from the query field names registry.
-        queryEntries->Array.forEach(entry => {
-          let readModelName =
-            ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
-            ->Dict.toArray
-            ->Array.find(((_, qn)) => qn.returnTypeName == entry.returnTypeName)
-            ->Option.map(((specName, _)) => specName)
-            ->Option.getOr(entry.returnTypeName)
-          bridgeSourceB(
-            ~subscribeToStateChanges=Bus.subscribeToStateChanges,
-            ~readModelName,
-            ~returnTypeName=entry.returnTypeName,
-          )
-        })
-
         // Register subscription SDL fields and resolvers with the GraphQL server
         let makeEntry = topic => ({fieldName: topic, topic}: subscriptionEntry)
         let sourceAEntries = eventLogEntries->Array.map(e => makeEntry(sourceATopic(e.displayName)))
-        let sourceBEntries = queryEntries->Array.map(e => makeEntry(sourceBTopic(e.returnTypeName)))
-        registerAll(~server, ~sdlFields=subscriptionFields, ~sourceAEntries, ~sourceBEntries)
+        registerAll(~server, ~sdlFields=subscriptionFields, ~sourceAEntries, ~sourceBEntries=[])
       }
     },
   }
