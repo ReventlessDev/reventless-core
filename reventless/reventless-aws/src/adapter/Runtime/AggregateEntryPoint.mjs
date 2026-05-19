@@ -10,6 +10,7 @@ import { Make as eventLogOperationsMake } from "@reventlessdev/reventless-core/s
 import { Make as aggregateCallbackMake } from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Callback.res.mjs";
 import { Make as commandTopicCallbackMake } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Callback.res.mjs";
 import { makeGenerateCommand } from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
+import { commandOutcomeToJson } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import { append, replay, replayStream, appendStream } from "@reventlessdev/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
@@ -221,7 +222,7 @@ export async function handler(event, context) {
     const entries = Object.entries(cmdGenHandlers);
     const len = entries.length;
     let i = 0;
-    let result = "";
+    let result = null;
     let found = false;
     while (i < len && !found) {
       const [name, cmdGenHandler] = entries[i];
@@ -236,8 +237,12 @@ export async function handler(event, context) {
     }
     if (!found) {
       console.warn("commandGeneratorHandler: no handler matched command");
+      return null;
     }
-    return result;
+    // generateCommand returns a ReScript commandOutcome variant
+    // (Accepted/Rejected/Pending) compiled to a `{TAG, ...}` JS object. AppSync
+    // resolves the CommandResult union by `__typename` — convert to that shape.
+    return commandOutcomeToJson(result);
   }
 
   // Route 2: SQS CommandTopic events

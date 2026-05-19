@@ -23,6 +23,60 @@ function reportRejected(reference, result) {
   Stdlib_Option.forEach(rejectedResultChannel.contents, cb => cb(reference, result));
 }
 
+function commandOutcomeToJson(outcome) {
+  switch (outcome.TAG) {
+    case "Accepted" :
+      return Object.fromEntries([
+        [
+          "__typename",
+          "CommandAccepted"
+        ],
+        [
+          "msgId",
+          outcome.msgId
+        ],
+        [
+          "entityId",
+          Stdlib_Option.getOr(Stdlib_Option.map(outcome.entityId, id => (id)), null)
+        ],
+        [
+          "eventCount",
+          outcome.eventCount
+        ]
+      ]);
+    case "Rejected" :
+      return Object.fromEntries([
+        [
+          "__typename",
+          "CommandRejected"
+        ],
+        [
+          "msgId",
+          outcome.msgId
+        ],
+        [
+          "errorCode",
+          outcome.errorCode
+        ],
+        [
+          "errorDetail",
+          Stdlib_Option.getOr(Stdlib_Option.map(outcome.errorDetail, s => (s)), null)
+        ]
+      ]);
+    case "Pending" :
+      return Object.fromEntries([
+        [
+          "__typename",
+          "CommandPending"
+        ],
+        [
+          "msgId",
+          outcome.msgId
+        ]
+      ]);
+  }
+}
+
 function encodeCommandJson(cmdJson) {
   return Object.fromEntries([
     [
@@ -129,6 +183,7 @@ export {
   rejectedResultChannel,
   reportAccepted,
   reportRejected,
+  commandOutcomeToJson,
   encodeCommandJson,
   runInlineAndCollect,
   callHandlerWithArray,

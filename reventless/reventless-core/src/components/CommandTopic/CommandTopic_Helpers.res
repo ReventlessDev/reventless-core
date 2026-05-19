@@ -41,6 +41,40 @@ type commandOutcome =
   | Rejected({msgId: string, errorCode: string, errorDetail: option<string>})
   | Pending({msgId: string})
 
+// Serialise a commandOutcome to the JSON shape the CommandResult GraphQL union
+// expects — every variant carries an explicit `__typename` so AppSync (and any
+// other spec-compliant GraphQL server) can resolve the abstract type at
+// runtime. Shared between in-memory (graphql-yoga resolvers) and the AWS
+// Lambda direct-invocation entry point so both surfaces stay byte-compatible.
+let commandOutcomeToJson = (outcome: commandOutcome): JSON.t =>
+  switch outcome {
+  | Accepted({msgId, eventCount} as accepted) =>
+    JSON.Object(
+      Dict.fromArray([
+        ("__typename", JSON.String("CommandAccepted")),
+        ("msgId", JSON.String(msgId)),
+        ("entityId", accepted.entityId->Option.map(id => JSON.String(id))->Option.getOr(JSON.Null)),
+        ("eventCount", JSON.Number(eventCount->Int.toFloat)),
+      ]),
+    )
+  | Rejected({msgId, errorCode, errorDetail}) =>
+    JSON.Object(
+      Dict.fromArray([
+        ("__typename", JSON.String("CommandRejected")),
+        ("msgId", JSON.String(msgId)),
+        ("errorCode", JSON.String(errorCode)),
+        ("errorDetail", errorDetail->Option.map(s => JSON.String(s))->Option.getOr(JSON.Null)),
+      ]),
+    )
+  | Pending({msgId}) =>
+    JSON.Object(
+      Dict.fromArray([
+        ("__typename", JSON.String("CommandPending")),
+        ("msgId", JSON.String(msgId)),
+      ]),
+    )
+  }
+
 type publishJsonsAndWait = array<Reventless.Message.commandJson> => promise<array<commandOutcome>>
 
 // Encode the full message body expected by CommandTopic_Callback: {id, meta, command}.

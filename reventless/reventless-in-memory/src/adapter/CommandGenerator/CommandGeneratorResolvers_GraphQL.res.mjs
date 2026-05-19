@@ -8,6 +8,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
 
 function extractIdentity(ctx) {
@@ -110,60 +111,6 @@ function ensureCommandResultTypes(server) {
   }
 }
 
-function commandOutcomeToJson(outcome) {
-  switch (outcome.TAG) {
-    case "Accepted" :
-      return Object.fromEntries([
-        [
-          "__typename",
-          "CommandAccepted"
-        ],
-        [
-          "msgId",
-          outcome.msgId
-        ],
-        [
-          "entityId",
-          Stdlib_Option.getOr(Stdlib_Option.map(outcome.entityId, id => (id)), null)
-        ],
-        [
-          "eventCount",
-          outcome.eventCount
-        ]
-      ]);
-    case "Rejected" :
-      return Object.fromEntries([
-        [
-          "__typename",
-          "CommandRejected"
-        ],
-        [
-          "msgId",
-          outcome.msgId
-        ],
-        [
-          "errorCode",
-          outcome.errorCode
-        ],
-        [
-          "errorDetail",
-          Stdlib_Option.getOr(Stdlib_Option.map(outcome.errorDetail, s => (s)), null)
-        ]
-      ]);
-    case "Pending" :
-      return Object.fromEntries([
-        [
-          "__typename",
-          "CommandPending"
-        ],
-        [
-          "msgId",
-          outcome.msgId
-        ]
-      ]);
-  }
-}
-
 function extractCommandName(fieldName) {
   let parts = fieldName.split("_");
   return capitalize(Stdlib_Option.getOr(parts[parts.length - 1 | 0], fieldName));
@@ -242,7 +189,7 @@ function register(fields, commandSchema, commandAuthorization, server) {
         meta: payload_meta,
         identity: identity
       };
-      return commandOutcomeToJson(await Effect.runPromise(generateCommand(payload)));
+      return CommandTopic$ReventlessCore.commandOutcomeToJson(await Effect.runPromise(generateCommand(payload)));
     };
     resolvers[field] = resolver;
   });
@@ -285,7 +232,7 @@ function registerDcb(fieldName, commandSchema, commandAuthorization, server) {
       meta: payload_meta,
       identity: identity
     };
-    return commandOutcomeToJson(await Effect.runPromise(generateCommand(payload)));
+    return CommandTopic$ReventlessCore.commandOutcomeToJson(await Effect.runPromise(generateCommand(payload)));
   };
   let resolvers = {};
   resolvers[fieldName] = resolver;
@@ -323,6 +270,8 @@ function make(param, param$1, fields, param$2, param$3, param$4, param$5) {
     resources: []
   };
 }
+
+let commandOutcomeToJson = CommandTopic$ReventlessCore.commandOutcomeToJson;
 
 export {
   extractIdentity,

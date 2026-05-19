@@ -31,6 +31,8 @@ let reportAccepted = CommandTopic_Helpers$ReventlessCore.reportAccepted;
 
 let reportRejected = CommandTopic_Helpers$ReventlessCore.reportRejected;
 
+let commandOutcomeToJson = CommandTopic_Helpers$ReventlessCore.commandOutcomeToJson;
+
 let encodeCommandJson = CommandTopic_Helpers$ReventlessCore.encodeCommandJson;
 
 let runInlineAndCollect = CommandTopic_Helpers$ReventlessCore.runInlineAndCollect;
@@ -52,6 +54,7 @@ export {
   rejectedResultChannel,
   reportAccepted,
   reportRejected,
+  commandOutcomeToJson,
   encodeCommandJson,
   runInlineAndCollect,
   callHandlerWithArray,

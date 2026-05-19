@@ -110,34 +110,11 @@ let ensureCommandResultTypes = (server: GraphQL_ServerInstance.t) => {
   }
 }
 
-let commandOutcomeToJson = (outcome: ReventlessCore.CommandTopic.commandOutcome): JSON.t =>
-  switch outcome {
-  | Accepted({msgId, eventCount} as accepted) =>
-    JSON.Object(
-      Dict.fromArray([
-        ("__typename", JSON.String("CommandAccepted")),
-        ("msgId", JSON.String(msgId)),
-        ("entityId", accepted.entityId->Option.map(id => JSON.String(id))->Option.getOr(JSON.Null)),
-        ("eventCount", JSON.Number(eventCount->Int.toFloat)),
-      ]),
-    )
-  | Rejected({msgId, errorCode, errorDetail}) =>
-    JSON.Object(
-      Dict.fromArray([
-        ("__typename", JSON.String("CommandRejected")),
-        ("msgId", JSON.String(msgId)),
-        ("errorCode", JSON.String(errorCode)),
-        ("errorDetail", errorDetail->Option.map(s => JSON.String(s))->Option.getOr(JSON.Null)),
-      ]),
-    )
-  | Pending({msgId}) =>
-    JSON.Object(
-      Dict.fromArray([
-        ("__typename", JSON.String("CommandPending")),
-        ("msgId", JSON.String(msgId)),
-      ]),
-    )
-  }
+// Re-export the shared encoder. Source of truth is
+// CommandTopic_Helpers.commandOutcomeToJson — same encoder is also reused by
+// the AWS Lambda direct-invocation entry point so both surfaces produce
+// AppSync-compatible CommandResult payloads.
+let commandOutcomeToJson = CommandTopic.commandOutcomeToJson
 
 let extractCommandName = (fieldName: string) => {
   let parts = fieldName->String.split("_")
