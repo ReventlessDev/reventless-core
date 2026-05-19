@@ -474,7 +474,7 @@ let dcbEventLog = DcbEventLog.make(~name, ~indexes, ~partitionTag, ~opts)
 
 // 5. Sync CommandTopic (standard SQS) — always created
 module DcbCommandTopic = CommandTopic_Builder.Make(DcbCommandTopicSpec, DcbCommandTopicChannel)
-let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
+let dcbCommandTopic = DcbCommandTopic.make(~name=`${name}StateChanges`, ~opts)
 
 let publishJsons =
   dcbCommandTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
@@ -487,7 +487,7 @@ let asyncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)
 module DcbCommandTopicSpecAsync = { let name = childName ++ "Async"; @schema type command = JSON.t }
 module DcbAsyncCommandTopic = CommandTopic_Builder.Make(DcbCommandTopicSpecAsync, DcbCommandTopicChannelAsync)
 let asyncDcbCommandTopicOpt = if asyncSlices->Array.length > 0 {
-  Some(DcbAsyncCommandTopic.make(~name=`${childName}-dcb-async-command-topic`, ~opts))
+  Some(DcbAsyncCommandTopic.make(~name=`${name}StateChangesAsync`, ~opts))
 } else { None }
 
 // 7. Each sync StateChangeSlice.make registers its handler in the global registry

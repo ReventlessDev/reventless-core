@@ -175,7 +175,7 @@ module Make = (
           DcbCommandTopicSpec,
           DcbCommandTopicChannel,
         )
-        let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
+        let dcbCommandTopic = DcbCommandTopic.make(~name=`${name}StateChanges`, ~opts)
 
         // Notify platform hook that DCB CommandTopic was created (AWS extracts SQS queue URL)
         HooksConfig.hooks.onDcbCommandTopicCreated->Option.forEach(hook =>
@@ -199,7 +199,7 @@ module Make = (
           DcbCommandTopicChannelAsync,
         )
         let asyncDcbCommandTopicOpt = if asyncSlices->Array.length > 0 {
-          let t = DcbAsyncCommandTopic.make(~name=`${childName}-dcb-async-command-topic`, ~opts)
+          let t = DcbAsyncCommandTopic.make(~name=`${name}StateChangesAsync`, ~opts)
           HooksConfig.hooks.onDcbCommandTopicCreated->Option.forEach(hook => hook(t->Obj.magic))
           Some(t)
         } else {

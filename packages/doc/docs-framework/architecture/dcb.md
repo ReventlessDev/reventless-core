@@ -294,7 +294,7 @@ module DcbEventLog = DcbEventLog_Builder.Make(DcbEventLogSpec, DcbEventLogStorag
 let dcbEventLog = DcbEventLog.make(~name=name, ~opts)  // plugin name becomes the service identifier
 
 module DcbCommandTopic = CommandTopic_Builder.Make(DcbCommandTopicSpec, DcbCommandTopicChannel)
-let dcbCommandTopic = DcbCommandTopic.make(~name=`${childName}-dcb-command-topic`, ~opts)
+let dcbCommandTopic = DcbCommandTopic.make(~name=`${name}StateChanges`, ~opts)
 
 // Extract publishJsons from the command topic before passing to each slice
 // (avoids a type mismatch between DcbCommandTopic.operations and StateChangeSlice.operations)

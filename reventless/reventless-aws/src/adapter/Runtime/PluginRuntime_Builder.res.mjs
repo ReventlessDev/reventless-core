@@ -8,7 +8,6 @@ import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
-import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
@@ -323,7 +322,7 @@ function Make(EventCollectorChannel) {
       return;
     }
     let commandTopicResource = Component$ReventlessCore.toPulumiResource(dcbCommandTopic);
-    let name = ComponentType$ReventlessCore.nameOpt(commandTopicResource.__name, CommandTopic$ReventlessCore.componentType);
+    let name = Stdlib_Option.getOr(commandTopicResource.__name, "UnnamedDcb");
     let opts_parent = commandTopicResource;
     let opts = {
       parent: opts_parent
@@ -333,7 +332,7 @@ function Make(EventCollectorChannel) {
     let queue = channelParts.queue;
     let tableName = dcbConfig.dcbTableName;
     let dcbTableName = tableName !== undefined ? tableName : Pulumi.output("NOT_AVAILABLE");
-    let isAsync = Stdlib_Option.getOr(Stdlib_Option.map(commandTopicResource.__name, n => n.includes("-dcb-async-command-topic")), false);
+    let isAsync = name.endsWith("Async");
     let envVars = {};
     envVars["DCB_TABLE"] = dcbTableName;
     envVars["QUEUE_URL"] = queue.id;

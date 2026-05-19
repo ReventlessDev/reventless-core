@@ -230,7 +230,7 @@ Runtime builders consolidate multiple components into fewer Lambdas:
 | `AllAutomationSlices` | All automation + outbound translation handlers | `AutomationSliceRuntime_Builder_Single` |
 | `*CmdTopic` | Per-aggregate/EP command topic handler | `ExtensionPointRuntime_Builder_PerExtensionPoint` |
 | `*Heartbeat` | Plugin heartbeat handler | `PluginRuntime_Builder` |
-| `*-dcb-command-topicCmdTopic` | DCB command topic composite handler | `PluginRuntime_Builder` |
+| `<Plugin>StateChanges` / `<Plugin>StateChangesAsync` | DCB command topic composite handler (per plugin, async created only if any `@@reventless.async` slice exists) | `PluginRuntime_Builder` |
 
 Each consolidated Lambda receives events from multiple DynamoDB Streams and routes them to the correct handler based on the source ARN (passed via environment variables).
 

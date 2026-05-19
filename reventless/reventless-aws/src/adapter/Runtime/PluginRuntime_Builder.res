@@ -543,9 +543,10 @@ module Make = (
       Console.warn("PluginRuntime_Builder: forDcbCommandTopic skipped (no slice specs)")
     } else {
       let commandTopicResource = dcbCommandTopic->ReventlessCore.Component.toPulumiResource
-      let name = commandTopicResource.name->ReventlessCore.ComponentType.nameOpt(
-        ReventlessCore.CommandTopic.componentType,
-      )
+      // The CommandTopic resource is already named `<Plugin>StateChanges` or
+      // `<Plugin>StateChangesAsync` by Dcb_Builder — don't append the
+      // `CommandTopic` componentType suffix again on the Lambda.
+      let name = commandTopicResource.name->Option.getOr("UnnamedDcb")
       let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
 
       // Extract SQS queue from the DCB CommandTopic
@@ -559,14 +560,11 @@ module Make = (
       | None => Pulumi.Output.make("NOT_AVAILABLE")
       }
 
-      // Async DCB CommandTopic is created in Dcb_Builder with the resource
-      // name suffix `-dcb-async-command-topic` (vs `-dcb-command-topic` for
-      // sync). Detect from the name so the Lambda flips DcbCommandTopicEntryPoint
-      // into async dispatch — Route 1 returns CommandPending instead of running
-      // the slice handler inline.
-      let isAsync = commandTopicResource.name
-        ->Option.map(n => n->String.includes("-dcb-async-command-topic"))
-        ->Option.getOr(false)
+      // The async DCB CommandTopic is named `<Plugin>StateChangesAsync` by
+      // Dcb_Builder, so the canonical name's `Async` suffix is an unambiguous
+      // signal. Flip DcbCommandTopicEntryPoint into async dispatch — Route 1
+      // returns CommandPending instead of running the slice handler inline.
+      let isAsync = name->String.endsWith("Async")
 
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
       envVars->Dict.set("DCB_TABLE", dcbTableName->Pulumi.Output.asInput)
