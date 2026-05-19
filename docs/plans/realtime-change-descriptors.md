@@ -332,44 +332,55 @@ The Lambda now publishes a change descriptor instead of the full row:
 - [ ] Integration test verifies descriptor shape — deferred (needs deployed stack; Phase 1 deferred the same checklist item)
 - [x] Build clean
 
-### Phase 3: DCB position exposure ⬜
+### Phase 3: DCB position exposure 🟡 deferred
 
-Implement Option B from §3 — capture position in the projector runner, pass to publish hook.
+The plan's §3 Option B was based on a misread of the publish chain: the publish hook in this codebase is the `StateTopic_AppSync` Lambda, which is triggered by **DynamoDB Streams**, not invoked directly from the projector. The two Lambdas only exchange data via the DDB row itself. So "expose position to the publish hook" really means **persist position into the DDB row** so the stream carries it forward.
+
+Concrete plumbing required (not done):
+
+1. `ReadModel_Callback.res` — extract `position` from each decoded message (currently only `context` is decoded).
+2. `Projection.res` — thread `~position` through `handleAction`, `handleActions`, and the `save`/`saveBatch`/`delete`/`deleteBatch` calls.
+3. `QueryDb_Operations.res` (core) and every storage adapter (`QueryDbStorage_DynamoDb`, `QueryDbStorage_InMemory`, `QueryDbStorage_Sqlite`) — accept `~position` and persist a reserved attribute alongside the user state.
+4. `StateTopic_AppSync.res` Lambda — read the reserved attribute from `NewImage`/`OldImage` and add `position` to the descriptor.
+5. State-read paths — filter the reserved attribute out so downstream callers don't see it as a domain field.
+
+This is the largest single phase by file count and touches every storage adapter. Deferred until a concrete consumer needs position-based dedup. The Phase 2 descriptor simply omits `position` for now.
+
+**Checklist:** (deferred)
+
+### Phase 4: OnPublish handler with coalescing 🟡 deferred
+
+The plan's §4 coalescer requires **state that persists across published events** (the `partitionRate` / `buffered` / `quietTimers` maps). AppSync Events' pure `APPSYNC_JS` runtime is stateless per invocation, so persistent state means the OnPublish handler must be backed by a Lambda data source (`handlerConfigs.onPublish` with `lambdaConfig`) and rely on Lambda warm-instance reuse.
+
+That requires a new Lambda + AppSync Lambda data source + namespace `handlerConfigs` wiring + the coalescer state machine + unit tests. Substantial infrastructure work whose value materialises only once real WebSocket clients are observing burst traffic. Deferred until subscriber load actually demands it; the Phase 1+2 fanout cost is acceptable for current load.
+
+Also note: Phase 1 deferred partitioning, so the per-partition coalescing pieces (`BulkInvalidated`, partition rate) collapse to per-read-model when Phase 4 reopens.
+
+**Checklist:** (deferred)
+
+### Phase 5: Batched-by-id query ✅
+
+Each single-key projection now emits `${listFieldName}ByIds(ids: [String!]!): [${returnTypeName}!]!` alongside the existing single-byId / list / items / by-index fields.
+
+Naming: the plan's placeholder `Plugin_FooItemsByIds` translates to `${listFieldName}ByIds` in this codebase — e.g. `catalog_ProductsByIds`, `Platform_PluginsByIds`. The plural list-name root keeps the field discoverable next to the existing list query.
+
+Return-type semantics: `[returnTypeName!]!`. BatchGetItem does not preserve cardinality (missing ids drop out), so callers correlate by `id` on each returned item. Empty input short-circuits to `[]` without hitting DDB (`runtime.earlyReturn([])`).
+
+Composite-key projections (`subIdField=Some(...)`) are deliberately skipped — DynamoDB's BatchGetItem requires both partition + sort attributes per key entry, and the field would need a richer `ids: [SomeKeyInput!]!` shape (out of scope).
+
+Implementation:
+- `GraphQL_FragmentGenerator.res` — new `deriveByIdsQueryField` plus a guarded `queries->Array.push` inside the queryEntries loop (only when `includeIdParam && subIdField === None`).
+- `rescript-pulumi-aws/AppSync_Resolver_Functions.res` — new `batchGetItemsByIds(tableName)` JS resolver template (`BatchGetItem` with the table name interpolated at deploy time, since BatchGetItem's `tables` map keys on the literal name).
+- `QueryDbResolvers_AppSync.res` — wires the resolver via the existing `storageResource`/`generateCode` helpers and appends it to the main resolver array.
+- `QueryDbResolvers_GraphQL.res` (in-memory) — adds a matching SDL field (via `deriveByIdsQueryField` for SDL parity) and a resolver that loops over `ops.loadStream(id)`, dropping missing ids and injecting the `id` field for Relay Node compatibility.
 
 **Checklist:**
 
-- [ ] Projector runner threads `position` through to publish hook (or registered side-effect handler)
-- [ ] `StateTopic_AppSync.res` Lambda receives position via event payload (Lambda invocation already includes the StoredEvent; verify position is in there)
-- [ ] Descriptor includes `position` field
-- [ ] In-memory (yoga) sets `position: null` cleanly
-- [ ] Build clean
-
-### Phase 4: OnPublish handler with coalescing ⬜
-
-Implement the §4 OnPublish handler. Attached per AppSync Events namespace.
-
-**Checklist:**
-
-- [ ] OnPublish JS handler implementing the coalescer state machine
-- [ ] Per-entity dedup (200ms window)
-- [ ] Per-partition rate threshold detection (20/300ms)
-- [ ] Trailing-edge `BulkInvalidated` emission (300ms quiet)
-- [ ] Count cap for very large bursts (1000 buffered → flush immediately)
-- [ ] Wired into `AppSync_EventsApi` provisioning
-- [ ] Unit tests for the state machine (pure JS, no AWS dependency)
-- [ ] Integration test: burst of 50 writes → exactly one `BulkInvalidated` after quiet window
-
-### Phase 5: Batched-by-id query ⬜
-
-Generate `Plugin_FooItemsByIds(ids: [String!]!)` per read model.
-
-**Checklist:**
-
-- [ ] Schema generator emits the batch-by-ids field
-- [ ] AppSync BatchGetItem resolver template
-- [ ] In-memory adapter matches the resolver shape
-- [ ] Integration test for both prod and dev adapters
-- [ ] Build clean
+- [x] Schema generator emits the batch-by-ids field (single-key projections only)
+- [x] AppSync BatchGetItem resolver template
+- [x] In-memory adapter matches the resolver shape (uses the same SDL helper for parity)
+- [ ] Integration test for both prod and dev adapters — deferred (an in-memory unit test for the resolver would round out coverage; deployed integration test requires AWS access)
+- [x] Build clean (1358 tests pass; existing `GraphQL_SchemaInspectorTest` query count bumped 2 → 3 to account for the new field)
 
 ### Phase 6: Resolve `Sec-WebSocket-Protocol` ✅
 

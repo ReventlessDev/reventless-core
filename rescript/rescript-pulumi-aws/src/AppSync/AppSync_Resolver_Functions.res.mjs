@@ -632,6 +632,29 @@ export function response(ctx) {
 `;
 }
 
+function batchGetItemsByIds(tableName) {
+  return importUtil + `
+import { runtime } from '@aws-appsync/utils';
+export function request(ctx) {
+  const ids = ctx.args.ids ?? [];
+  if (ids.length === 0) return runtime.earlyReturn([]);
+  return {
+    operation: 'BatchGetItem',
+    tables: {
+      '` + tableName + `': {
+        keys: ids.map(id => ({ id: util.dynamodb.toDynamoDB(id) })),
+        consistentRead: true,
+      }
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result?.data?.['` + tableName + `'] ?? [];
+}
+`;
+}
+
 let putItem = importUtil + `
 export function request(ctx) {
   return {
@@ -862,6 +885,7 @@ export {
   resolveIdByIndexSort,
   resolveIdByIndexSortArgument,
   resolveIds,
+  batchGetItemsByIds,
   putItem,
   addItemToList,
   deleteItem,

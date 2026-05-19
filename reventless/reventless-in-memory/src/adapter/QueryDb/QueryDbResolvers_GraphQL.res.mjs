@@ -121,6 +121,39 @@ function Make(Bus) {
       obj["id"] = encodeId(returnTypeName, id);
       return obj;
     };
+    let byIdsSdl = includeIdParam && subIdField === undefined ? [GraphQL_FragmentGenerator$ReventlessCore.deriveByIdsQueryField(listQueryName, returnTypeName)] : [];
+    let byIdsResolverEntry;
+    if (includeIdParam && subIdField === undefined) {
+      let resolver = async (_root, args, ctx) => {
+        let match = await runInterceptor(ctx, args);
+        if (typeof match === "object") {
+          return [];
+        }
+        let ids = Stdlib_Array.filterMap(Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["ids"]), Stdlib_JSON.Decode.array), []), Stdlib_JSON.Decode.string);
+        let ops = Bus.getQueryDb(name);
+        if (ops === undefined) {
+          return [];
+        }
+        let loaded = await Promise.all(ids.map(id => Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([]))).then(items => [
+          id,
+          items[0]
+        ])));
+        return Stdlib_Array.filterMap(loaded, param => {
+          let id = param[0];
+          return Stdlib_Option.map(param[1], item => {
+            let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
+            obj["id"] = encodeId(returnTypeName, id);
+            return obj;
+          });
+        });
+      };
+      byIdsResolverEntry = [
+        listQueryName + "ByIds",
+        resolver
+      ];
+    } else {
+      byIdsResolverEntry = undefined;
+    }
     let labelField = registryEntry !== undefined ? Stdlib_Option.getOr(registryEntry.labelField, "id") : "id";
     let stateSchemaOpt = Plugin_Helpers$ReventlessCore.stateSchemaRegistry[name];
     let capability = stateSchemaOpt !== undefined ? GraphQL_FragmentGenerator$ReventlessCore.deriveServerCapability(stateSchemaOpt) : GraphQL_FragmentGenerator$ReventlessCore.emptyCapability;
@@ -132,7 +165,7 @@ function Make(Bus) {
       let typesToRegister = [GraphQL_FragmentGenerator$ReventlessCore.deriveConnectionFilterType(filterTypeName, capability)].concat(orderByTypes);
       server.registerTypes(typesToRegister);
       let sdl = [GraphQL_FragmentGenerator$ReventlessCore.deriveConnectionQueryField(listQueryName, returnTypeName, filterTypeName, hasOrderBy)];
-      let resolver = async (_root, args, ctx) => {
+      let resolver$1 = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
           return {
@@ -329,11 +362,11 @@ function Make(Bus) {
       };
       match = [
         sdl,
-        resolver
+        resolver$1
       ];
     } else {
       let sdl$1 = [`  ` + listQueryName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`];
-      let resolver$1 = async (_root, args, ctx) => {
+      let resolver$2 = async (_root, args, ctx) => {
         let match = await runInterceptor(ctx, args);
         if (typeof match === "object") {
           return {
@@ -358,7 +391,7 @@ function Make(Bus) {
       };
       match = [
         sdl$1,
-        resolver$1
+        resolver$2
       ];
     }
     let listResolvers = [[
@@ -376,7 +409,7 @@ function Make(Bus) {
     }
     let itemsResolvers;
     if (subIdField !== undefined) {
-      let resolver$2 = async (_root, args, ctx) => {
+      let resolver$3 = async (_root, args, ctx) => {
         let emptyConn = {
           edges: [],
           pageInfo: {
@@ -468,7 +501,7 @@ function Make(Bus) {
       };
       itemsResolvers = [[
           singleQueryName + "Items",
-          resolver$2
+          resolver$3
         ]];
     } else {
       itemsResolvers = [];
@@ -496,9 +529,12 @@ function Make(Bus) {
         resolver
       ];
     });
-    let allSdl = [byIdSdl].concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
+    let allSdl = [byIdSdl].concat(byIdsSdl).concat(match[0]).concat(itemsSdl).concat(indexSdlFields);
     let resolvers = {};
     resolvers[singleQueryName] = byIdResolver;
+    Stdlib_Option.forEach(byIdsResolverEntry, param => {
+      resolvers[param[0]] = param[1];
+    });
     listResolvers.forEach(param => {
       resolvers[param[0]] = param[1];
     });

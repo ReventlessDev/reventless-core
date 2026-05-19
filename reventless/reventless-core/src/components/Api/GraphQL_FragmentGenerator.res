@@ -325,6 +325,17 @@ let deriveListQueryField = (
 ): string =>
   `  ${listFieldName}(nextToken: String, limit: Int): ${pluralTypeName}!`
 
+// Batched-by-ids query: fetches multiple entities in a single BatchGetItem.
+// Cardinality is not preserved (missing ids drop out of the response), so the
+// caller correlates by `id` on each returned item. Single-key tables only —
+// composite-key BatchGetItem requires both pk + sk per key entry, which is
+// out of scope for this field.
+let deriveByIdsQueryField = (
+  ~listFieldName: string,
+  ~returnTypeName: string,
+): string =>
+  `  ${listFieldName}ByIds(ids: [String!]!): [${returnTypeName}!]!`
+
 let deriveConnectionQueryField = (
   ~listFieldName: string,
   ~singularTypeName: string,
@@ -475,6 +486,18 @@ let generate = (
       ~subIdField=?entry.subIdField,
     )
     queries->Array.push(singleField)
+
+    // Batched-by-ids field for single-key projections (subIdField=None).
+    // Skipped for composite-key projections — BatchGetItem requires both
+    // partition + sort attributes per key entry.
+    if includeIdParam && entry.subIdField === None {
+      queries->Array.push(
+        deriveByIdsQueryField(
+          ~listFieldName=entry.listFieldName,
+          ~returnTypeName=entry.returnTypeName,
+        ),
+      )
+    }
 
     let listFieldName = entry.listFieldName
     // Items query (sort key conditions, Relay connection) — generated when subIdField is set

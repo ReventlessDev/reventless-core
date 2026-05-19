@@ -743,6 +743,35 @@ export function response(ctx) {
 `
 }
 
+/** Batched-by-ids — top-level Query resolver reading `ctx.args.ids: [String!]!`
+    and returning the matching items via a single BatchGetItem. Missing ids drop
+    out (BatchGetItem does not preserve cardinality); empty input short-circuits
+    to an empty result without hitting DDB. Table name is interpolated at deploy
+    time, since BatchGetItem's `tables` map keys on the literal table name.
+    Single-key tables only — composite-key BatchGetItem needs both pk + sk per
+    key entry, which this template doesn't construct. */
+let batchGetItemsByIds = (tableName: string) =>
+  `${importUtil}
+import { runtime } from '@aws-appsync/utils';
+export function request(ctx) {
+  const ids = ctx.args.ids ?? [];
+  if (ids.length === 0) return runtime.earlyReturn([]);
+  return {
+    operation: 'BatchGetItem',
+    tables: {
+      '${tableName}': {
+        keys: ids.map(id => ({ id: util.dynamodb.toDynamoDB(id) })),
+        consistentRead: true,
+      }
+    }
+  };
+}
+export function response(ctx) {
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  return ctx.result?.data?.['${tableName}'] ?? [];
+}
+`
+
 // ---------------------------------------------------------------------------
 // DynamoDB write
 // ---------------------------------------------------------------------------

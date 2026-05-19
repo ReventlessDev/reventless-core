@@ -218,6 +218,59 @@ module Make = (Bus: InMemory_Bus.T) => {
       }
     }
 
+    // -- Batched-by-ids query: {listFieldName}ByIds ---------------------------
+    // Mirrors the AppSync BatchGetItem resolver. Single-key projections only
+    // (subIdField=None) — matches the SDL emitted by FragmentGenerator. Missing
+    // ids drop out of the response (no cardinality preservation), matching
+    // BatchGetItem semantics.
+    let byIdsSdl = if includeIdParam && subIdField === None {
+      [GraphQL_FragmentGenerator.deriveByIdsQueryField(~listFieldName=listQueryName, ~returnTypeName)]
+    } else {
+      []
+    }
+    let byIdsResolverEntry: option<(string, GraphQL_ServerInstance.resolverFn)> =
+      if includeIdParam && subIdField === None {
+        let resolver: GraphQL_ServerInstance.resolverFn = async (_root, args, ctx) => {
+          switch await runInterceptor(~ctx, ~args) {
+          | Deny(_) => []->JSON.Encode.array
+          | Allow =>
+            let ids =
+              args
+              ->JSON.Decode.object
+              ->Option.flatMap(d => d->Dict.get("ids"))
+              ->Option.flatMap(JSON.Decode.array)
+              ->Option.getOr([])
+              ->Array.filterMap(JSON.Decode.string)
+            switch Bus.getQueryDb(name) {
+            | Some(ops) =>
+              let loaded = await ids->Array.map(id =>
+                ops.loadStream(id)
+                ->Stream.runCollect
+                ->Effect.catchAll(_ => Effect.succeed([]))
+                ->Effect.runPromise
+                ->Promise.thenResolve(items => (id, items->Array.get(0)))
+              )->Promise.all
+              loaded
+              ->Array.filterMap(((id, opt)) =>
+                opt->Option.map(item => {
+                  let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
+                  obj->Dict.set(
+                    "id",
+                    encodeId(~typeName=returnTypeName, ~localId=id)->JSON.Encode.string,
+                  )
+                  JSON.Encode.object(obj)
+                })
+              )
+              ->JSON.Encode.array
+            | None => []->JSON.Encode.array
+            }
+          }
+        }
+        Some((listQueryName ++ "ByIds", resolver))
+      } else {
+        None
+      }
+
     // Look up labelField from registry (Phase 3). Used by list-query filter.search /
     // searchPrefix to target the entity's human-readable column without per-entity
     // resolver wiring. Falls back to "id" so filtering still works on entities
@@ -717,10 +770,15 @@ module Make = (Bus: InMemory_Bus.T) => {
 
     // -- Register all fields --------------------------------------------------
     let allSdl =
-      [byIdSdl]->Array.concat(listSdl)->Array.concat(itemsSdl)->Array.concat(indexSdlFields)
+      [byIdSdl]
+      ->Array.concat(byIdsSdl)
+      ->Array.concat(listSdl)
+      ->Array.concat(itemsSdl)
+      ->Array.concat(indexSdlFields)
 
     let resolvers = Dict.make()
     resolvers->Dict.set(singleQueryName, byIdResolver)
+    byIdsResolverEntry->Option.forEach(((k, v)) => resolvers->Dict.set(k, v))
     listResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     itemsResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))
     indexResolvers->Array.forEach(((k, v)) => resolvers->Dict.set(k, v))

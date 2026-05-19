@@ -493,7 +493,8 @@ describe("GraphQL_SchemaInspector", () => {
       // (auto-injected whenever the fragment emits any mutation field).
       expect(inspection.types->Array.length)->toBe(8)
       expect(inspection.mutations->Array.length)->toBe(1)
-      expect(inspection.queries->Array.length)->toBe(2)
+      // single Test_State(id), list Test_States(...), and Test_StatesByIds(ids: [String!]!)
+      expect(inspection.queries->Array.length)->toBe(3)
       expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("type TestStateEdge"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("type TestStateConnection"))->toBe(true)

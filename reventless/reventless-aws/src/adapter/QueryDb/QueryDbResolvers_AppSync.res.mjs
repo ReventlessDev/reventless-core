@@ -128,6 +128,14 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
     });
     let storageResource = (pluginName, tableName) => Adapter$ReventlessCore.outputToResource(Util_DynamoDb$ReventlessAws.findResourceInOutput(Plugin_Helpers$ReventlessCore.getStorageResources(allQueryDbs, pluginName, tableName)));
     let generateCode = (storageResource, template) => storageResource.name.apply(realTableName => template(realTableName));
+    let resolverByIds;
+    if (includeIdParam && subIdField === undefined) {
+      let storage = storageResource(undefined, name$1);
+      let byIdsField = fieldNameForAll + "ByIds";
+      resolverByIds = makeQueryResolver(Stdlib_String.capitalize(byIdsField), byIdsField, generateCode(storage, AppSync_Resolver_Functions$PulumiAws.batchGetItemsByIds));
+    } else {
+      resolverByIds = undefined;
+    }
     let idResolvers = idResolverConfigs.map(config => {
       let target = config.target;
       let targetId = target.idField;
@@ -189,14 +197,27 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
       let storageResource$1 = storageResource(target.pluginName, target.tableName);
       return AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(name$1 + Stdlib_String.capitalize(idsField), api, dataSourceName, name$1, match.resolvedField, generateCode(storageResource$1, none => AppSync_Resolver_Functions$PulumiAws.resolveIds(none, idsField, target.subIdField)), opts);
     });
-    let mainResolvers = resolverByIdMultiple !== undefined ? [
-        resolverByIdSingle,
-        resolverByIdMultiple,
-        resolverAll
-      ] : [
-        resolverByIdSingle,
-        resolverAll
-      ];
+    let mainResolvers = resolverByIdMultiple !== undefined ? (
+        resolverByIds !== undefined ? [
+            resolverByIdSingle,
+            resolverByIdMultiple,
+            resolverAll,
+            resolverByIds
+          ] : [
+            resolverByIdSingle,
+            resolverByIdMultiple,
+            resolverAll
+          ]
+      ) : (
+        resolverByIds !== undefined ? [
+            resolverByIdSingle,
+            resolverAll,
+            resolverByIds
+          ] : [
+            resolverByIdSingle,
+            resolverAll
+          ]
+      );
     return [
       mainResolvers,
       resolversByIndex,

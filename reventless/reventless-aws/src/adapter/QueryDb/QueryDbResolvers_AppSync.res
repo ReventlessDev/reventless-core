@@ -316,6 +316,29 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       ->Pulumi.Output.apply(realTableName => template(realTableName))
       ->Pulumi.Output.asInput
 
+    // Batched-by-ids field: BatchGetItem against the projection's own DDB
+    // table. Single-key tables only — matches the SDL emitted by
+    // GraphQL_FragmentGenerator (composite tables skip this field). Uses
+    // the storageResource/generateCode helpers above to interpolate the
+    // real DDB table name into the resolver code (BatchGetItem's `tables`
+    // map keys on the literal table name).
+    let resolverByIds = if includeIdParam && subIdField === None {
+      let storage = storageResource(~pluginName=None, ~tableName=name)
+      let byIdsField = fieldNameForAll ++ "ByIds"
+      Some(
+        makeQueryResolver(
+          ~resolverName=byIdsField->String.capitalize,
+          ~field=byIdsField->Pulumi.Input.make,
+          ~code=generateCode(
+            ~storageResource=storage,
+            ~template=Resolver.Functions.batchGetItemsByIds,
+          ),
+        ),
+      )
+    } else {
+      None
+    }
+
     let idResolvers = idResolverConfigs->Array.map(config => {
       let {
         source: {idField: sourceIdField, subId: sourceSubId, resolvedField},
@@ -397,9 +420,11 @@ let make: ReventlessCore.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     })
 
-    let mainResolvers = switch resolverByIdMultiple {
-    | Some(r) => [resolverByIdSingle, r, resolverAll]
-    | None => [resolverByIdSingle, resolverAll]
+    let mainResolvers = switch (resolverByIdMultiple, resolverByIds) {
+    | (Some(r), Some(byIds)) => [resolverByIdSingle, r, resolverAll, byIds]
+    | (Some(r), None) => [resolverByIdSingle, r, resolverAll]
+    | (None, Some(byIds)) => [resolverByIdSingle, resolverAll, byIds]
+    | (None, None) => [resolverByIdSingle, resolverAll]
     }
     Array.flat([mainResolvers, resolversByIndex, idResolvers, idsResolvers])
     ->Array.map(Util.AppSync.toResourceNative)

@@ -286,6 +286,10 @@ function deriveListQueryField(listFieldName, pluralTypeName) {
   return `  ` + listFieldName + `(nextToken: String, limit: Int): ` + pluralTypeName + `!`;
 }
 
+function deriveByIdsQueryField(listFieldName, returnTypeName) {
+  return `  ` + listFieldName + `ByIds(ids: [String!]!): [` + returnTypeName + `!]!`;
+}
+
 function deriveConnectionQueryField(listFieldName, singularTypeName, filterTypeName, hasOrderByOpt) {
   let hasOrderBy = hasOrderByOpt !== undefined ? hasOrderByOpt : false;
   let orderByArg = hasOrderBy ? `, orderBy: ` + singularTypeName + `OrderBy` : "";
@@ -380,6 +384,9 @@ function generate(mutationEntries, queryEntries) {
     }
     let singleField = deriveObjectQueryField(entry.singleFieldName, entry.returnTypeName, includeIdParam, entry.subIdField);
     queries.push(singleField);
+    if (includeIdParam && entry.subIdField === undefined) {
+      queries.push(deriveByIdsQueryField(entry.listFieldName, entry.returnTypeName));
+    }
     let listFieldName = entry.listFieldName;
     let _sf = entry.subIdField;
     if (_sf !== undefined) {
@@ -488,6 +495,7 @@ export {
   deriveItemsQueryField,
   deriveObjectQueryField,
   deriveListQueryField,
+  deriveByIdsQueryField,
   deriveConnectionQueryField,
   deriveMutationFieldFromObject,
   generate,

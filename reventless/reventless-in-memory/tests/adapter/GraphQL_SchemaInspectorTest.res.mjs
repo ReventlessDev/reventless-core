@@ -370,7 +370,7 @@ describe("GraphQL_SchemaInspector", () => {
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       expect(inspection.types.length).toBe(8);
       expect(inspection.mutations.length).toBe(1);
-      expect(inspection.queries.length).toBe(2);
+      expect(inspection.queries.length).toBe(3);
       expect(inspection.sdlPreview.includes("type TestState")).toBe(true);
       expect(inspection.sdlPreview.includes("type TestStateEdge")).toBe(true);
       expect(inspection.sdlPreview.includes("type TestStateConnection")).toBe(true);
