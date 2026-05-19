@@ -75,6 +75,25 @@ function entityKeyFromRecord(record) {
     : segment(id) + "-" + segment(keys[subIdName]);
 }
 
+// Map DDB stream eventName → descriptor changeKind.
+function changeKindFor(eventName) {
+  switch (eventName) {
+    case "INSERT": return "Added";
+    case "MODIFY": return "Updated";
+    case "REMOVE": return "Removed";
+    default:       return "Updated";  // defensive default — shouldn't fire
+  }
+}
+
+// Pick the "natural" sort timestamp from an unmarshalled image. Conventions
+// in this codebase prefer updatedAt; createdAt is the fallback for views that
+// never mutate after insert. Returns undefined if neither is present.
+function pickSortKeyValue(image) {
+  if (image && typeof image.updatedAt === "string") return image.updatedAt;
+  if (image && typeof image.createdAt === "string") return image.createdAt;
+  return undefined;
+}
+
 export async function handler(event) {
   const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
@@ -85,8 +104,14 @@ export async function handler(event) {
     if (image === undefined) continue;
     const entityKey = entityKeyFromRecord(record);
     const channel = TOPIC_ROOT + "/" + entityKey;
-    const payload = unmarshall(image);
-    const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(payload)] });
+    const unmarshalled = unmarshall(image);
+    const descriptor = {
+      changeKind: changeKindFor(record.eventName),
+      id: entityKey,
+    };
+    const sortKeyValue = pickSortKeyValue(unmarshalled);
+    if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
+    const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(descriptor)] });
     const auth = await signedHeaders(url.hostname, "/event", body);
     const res = await fetch(APPSYNC_ENDPOINT + "/event", {
       method: "POST",

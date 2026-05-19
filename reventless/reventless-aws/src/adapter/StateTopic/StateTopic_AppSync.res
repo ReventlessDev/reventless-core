@@ -44,8 +44,12 @@ open PulumiAws
 // (QueryDbStorage_DynamoDb); composite-key tables also have a sort-key attr
 // whose name comes from the read model's subIdConfig.subIdField.
 //
-// Payload (for Phase 1) remains the full row state — `NewImage` for INSERT /
-// MODIFY, `OldImage` for REMOVE. The change-descriptor reshape is Phase 2.
+// Payload is a change descriptor (NOT the full row):
+//   { changeKind: "Added" | "Updated" | "Removed",
+//     id:         <entityKey>,
+//     sortKeyValue?: <updatedAt | createdAt if present in the image> }
+// The `partitionKey` and `position` fields described in §2 of the plan are
+// deferred to later phases (partition concept §1, position §3, BulkInvalidated §4).
 //
 // Uses native Node.js crypto + fetch with SigV4 — no extra SDK packages needed.
 // Credentials come from the Lambda execution role via the process.env AWS_* variables.
@@ -112,6 +116,25 @@ function entityKeyFromRecord(record) {
     : segment(id) + "-" + segment(keys[subIdName]);
 }
 
+// Map DDB stream eventName → descriptor changeKind.
+function changeKindFor(eventName) {
+  switch (eventName) {
+    case "INSERT": return "Added";
+    case "MODIFY": return "Updated";
+    case "REMOVE": return "Removed";
+    default:       return "Updated";  // defensive default — shouldn't fire
+  }
+}
+
+// Pick the "natural" sort timestamp from an unmarshalled image. Conventions
+// in this codebase prefer updatedAt; createdAt is the fallback for views that
+// never mutate after insert. Returns undefined if neither is present.
+function pickSortKeyValue(image) {
+  if (image && typeof image.updatedAt === "string") return image.updatedAt;
+  if (image && typeof image.createdAt === "string") return image.createdAt;
+  return undefined;
+}
+
 export async function handler(event) {
   const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
@@ -122,8 +145,14 @@ export async function handler(event) {
     if (image === undefined) continue;
     const entityKey = entityKeyFromRecord(record);
     const channel = TOPIC_ROOT + "/" + entityKey;
-    const payload = unmarshall(image);
-    const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(payload)] });
+    const unmarshalled = unmarshall(image);
+    const descriptor = {
+      changeKind: changeKindFor(record.eventName),
+      id: entityKey,
+    };
+    const sortKeyValue = pickSortKeyValue(unmarshalled);
+    if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
+    const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(descriptor)] });
     const auth = await signedHeaders(url.hostname, "/event", body);
     const res = await fetch(APPSYNC_ENDPOINT + "/event", {
       method: "POST",

@@ -258,12 +258,7 @@ Notes:
 
 After the WebSocket opens, send `{"type":"connection_init"}` and wait for `{"type":"connection_ack","connectionTimeoutMs":<ms>}` before issuing `subscribe` messages.
 
-**Reproduction tooling** lives at `docs/plans/realtime-change-descriptors/`:
-
-- `capture-handshake.mjs` — monkey-patches `globalThis.WebSocket`, runs `aws-amplify/data`'s `events.connect()`, writes `captured-handshake.json`.
-- `smoke-test.mjs` — replays the captured handshake using the built-in `WebSocket` (no Amplify), confirms `connection_ack`.
-- `package.json` (deps: `aws-amplify`, `@aws-sdk/credential-providers`) — run `pnpm install --ignore-workspace`.
-- `captured-handshake.json` is gitignored (contains a live IAM signature, even if expired).
+To reproduce: monkey-patch Node 22's `globalThis.WebSocket` before importing `aws-amplify`, call `events.connect()`, log the constructor's `url` + `protocols` args. The captured `protocols` array can then be passed to a plain `new WebSocket(url, protocols)` to validate end-to-end without Amplify.
 
 ### 8. `OnSubscribe` handler hook (for tenant isolation)
 
@@ -314,17 +309,28 @@ In-memory `Platform.res`: `bridgeSourceB` and the `sourceBEntries` loop dropped 
 
 **Deviation from original design.** The plan's 3-segment `{rm}/{partition}/{id}` channel is not shipped in Phase 1; the partition concept is deferred until a projection's natural partition (`@compositeId` leading fields, multi-tenant scope, etc.) is plumbed through to the Lambda. List-view clients today get `{rm}/*`; partition-scoped subscriptions like `{rm}/{tenant}/*` are revisitable once the metadata story is decided.
 
-### Phase 2: Change-descriptor payload ⬜
+### Phase 2: Change-descriptor payload ✅
 
-Replace full-state payload with the descriptor schema in §2.
+The Lambda now publishes a change descriptor instead of the full row:
+
+```json
+{ "changeKind": "Added" | "Updated" | "Removed",
+  "id":         "<entityKey>",
+  "sortKeyValue"?: "<updatedAt | createdAt>" }
+```
+
+- `changeKind` maps from DDB stream `eventName`: `INSERT → Added`, `MODIFY → Updated`, `REMOVE → Removed`.
+- `id` reuses the Phase 1 `entityKey` (DDB primary-key value, joined for composite tables).
+- `sortKeyValue` is auto-discovered: `updatedAt` first, falling back to `createdAt`, omitted if neither field exists in the image. Hardcoded for now — making the field name configurable is a follow-up if a projection ever needs a different timestamp.
+- `partitionKey` and `position` are intentionally omitted (Phase 1 deferred partitioning; Phase 3 will add `position`).
 
 **Checklist:**
 
-- [ ] Lambda handler builds descriptor (changeKind, id, partitionKey, sortKeyValue)
-- [ ] `sortKeyValue` derived from natural sort field (configurable; default: `updatedAt` then `createdAt` then unset)
-- [ ] Existing `oncatalog_Product_stateChanged` clients (currently zero, but maybe Phase 6 tests) are updated or removed
-- [ ] Integration test verifies descriptor shape
-- [ ] Build clean
+- [x] Lambda handler builds descriptor (`changeKind`, `id`, `sortKeyValue`); `partitionKey` deferred per Phase 1
+- [x] `sortKeyValue` derived from natural sort field (default `updatedAt` → `createdAt` → unset)
+- [x] Existing `on{Type}_stateChanged` clients removed in Phase 1 (no remaining consumers in this repo)
+- [ ] Integration test verifies descriptor shape — deferred (needs deployed stack; Phase 1 deferred the same checklist item)
+- [x] Build clean
 
 ### Phase 3: DCB position exposure ⬜
 
