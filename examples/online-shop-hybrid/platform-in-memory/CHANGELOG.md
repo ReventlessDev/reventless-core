@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.54 (2026-05-19)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-in-memory
+
+
+
+
+
 # 1.0.0-alpha.53 (2026-05-19)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-in-memory

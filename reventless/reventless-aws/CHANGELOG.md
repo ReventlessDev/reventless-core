@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.106 (2026-05-19)
+
+### Bug Fixes
+
+* **admin:** gate admin createResolvers on schema push to eliminate API-lock race ([cfd282a](https://github.com/ReventlessDev/reventless-core/commit/cfd282a65cea981c67d27309808471a4d7bfb5a3))
+* **aws:** retry AppSync ConcurrentModification on resolver create/update ([1b6b7b0](https://github.com/ReventlessDev/reventless-core/commit/1b6b7b0cd341cbb01c03d5bb9269a55c4415bd9f))
+
+
 # 3.0.0-alpha.105 (2026-05-19)
 
 ### Bug Fixes

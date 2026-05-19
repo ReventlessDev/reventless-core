@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.86 (2026-05-19)
+
+### Bug Fixes
+
+* **admin:** gate admin createResolvers on schema push to eliminate API-lock race ([cfd282a](https://github.com/ReventlessDev/reventless-core/commit/cfd282a65cea981c67d27309808471a4d7bfb5a3))
+
+
 # 3.0.0-alpha.85 (2026-05-19)
 
 ### Bug Fixes
