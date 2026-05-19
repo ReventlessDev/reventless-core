@@ -30,7 +30,7 @@ function groupBySource(records) {
   return dict;
 }
 
-function buildJsonEventsHandler(specModule, queryDbTableName) {
+function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName) {
   const table = makeTableRef(queryDbTableName);
   const queryDbOps = {
     load: load(table),
@@ -41,8 +41,10 @@ function buildJsonEventsHandler(specModule, queryDbTableName) {
     delete: $$delete(table),
     deleteBatch: deleteBatch(table),
   };
+  // Spec module exports `consumedEventSchema`; the `project` function lives in
+  // the sibling projection module (`<Name>_Projection.res`).
   const eventSchema = specModule.consumedEventSchema;
-  const project = specModule.project;
+  const project = projectionModule.project;
 
   return stream => Stream.runForEach(
     Stream.flatMap(
@@ -69,8 +71,11 @@ async function buildAllHandlers() {
   const config = JSON.parse(configStr);
   const handlers = {};
   await Promise.all(config.handlers.map(async h => {
-    const specModule = await dynamicImport(h.specModule);
-    const jsonEventsHandler = buildJsonEventsHandler(specModule, h.queryDbTableName);
+    const [specModule, projectionModule] = await Promise.all([
+      dynamicImport(h.specModule),
+      dynamicImport(h.projectionModule),
+    ]);
+    const jsonEventsHandler = buildJsonEventsHandler(specModule, projectionModule, h.queryDbTableName);
     const streamHandler = (event, context) => handleStreamEvent(jsonEventsHandler, event, context);
     const existing = handlers[h.sourceUrn] || [];
     existing.push(streamHandler);

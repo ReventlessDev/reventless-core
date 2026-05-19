@@ -12,10 +12,11 @@ import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCol
 
 let sliceInfos = {};
 
-function registerStateViewSlice(name, specModulePath, queryDbTableName, queryDbResourcesOpt) {
+function registerStateViewSlice(name, specModulePath, projectionModulePath, queryDbTableName, queryDbResourcesOpt) {
   let queryDbResources = queryDbResourcesOpt !== undefined ? queryDbResourcesOpt : [];
   sliceInfos[name] = {
     specModulePath: specModulePath,
+    projectionModulePath: projectionModulePath,
     queryDbTableName: queryDbTableName,
     queryDbResources: queryDbResources
   };
@@ -71,6 +72,8 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, memorySi
   let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+  packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
+  packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined);
   let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, opts);
   EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllStateViewSlices", channelSpecs, runtime, opts);
@@ -100,16 +103,19 @@ function finishWithDcbEventLog(dcbEventLog) {
         info.queryDbResources.forEach(r => {
           allQueryDbResources.push(r);
         });
-        let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-        packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+        let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
+        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+        let projectionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.projectionModulePath);
+        packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
         let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+        let projectionModule = Stdlib_Option.getOr(JSON.stringify(info.projectionModulePath), `""`);
         let etResources = dcbOutputs.eventTopic.resources;
         let sourceUrn = etResources[0];
         let sourceUrn$1 = sourceUrn.urn;
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           sourceUrn$1
-        ]).apply(param => `{"specModule":` + specModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + param[1] + `"}`);
+        ]).apply(param => `{"specModule":` + specModule + `,"projectionModule":` + projectionModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + param[1] + `"}`);
         handlerOutputs.push(handlerJson);
       });
       buildLambda(parent, handlerOutputs, packageDirs, [{
@@ -144,15 +150,18 @@ function finish() {
       storedSpecs.forEach(spec => {
         let info = sliceInfos[spec.componentName];
         if (info !== undefined) {
-          let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-          packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+          let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
+          packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+          let projectionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.projectionModulePath);
+          packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
           let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+          let projectionModule = Stdlib_Option.getOr(JSON.stringify(info.projectionModulePath), `""`);
           let handlerJson = Pulumi.all([
             info.queryDbTableName,
             spec.sourceUrns
           ]).apply(param => {
             let sourceUrn = param[1][0];
-            return `{"specModule":` + specModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}`;
+            return `{"specModule":` + specModule + `,"projectionModule":` + projectionModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}`;
           });
           handlerOutputs.push(handlerJson);
           return;

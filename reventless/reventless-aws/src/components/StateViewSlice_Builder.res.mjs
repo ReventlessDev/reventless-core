@@ -37,7 +37,7 @@ function Make(Api) {
       let sv = InnerMake.make(dcbEventLog, opts);
       let queryDbOutputs = Component$ReventlessCore.outputs(sv).queryDb;
       let tableResource = queryDbOutputs.resources[0];
-      StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), tableResource.name, queryDbOutputs.resources);
+      StateViewSliceRuntime_Builder_Single$ReventlessAws.registerStateViewSlice(Spec.name, Util_Bundle$ReventlessAws.getModuleSpecifier(Spec.moduleUrl), Util_Bundle$ReventlessAws.getModuleSpecifier(Projection.moduleUrl), tableResource.name, queryDbOutputs.resources);
       return sv;
     };
     return {

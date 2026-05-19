@@ -6,6 +6,7 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 type sliceInfo = {
   specModulePath: string,
+  projectionModulePath: string,
   queryDbTableName: Pulumi.Output.t<string>,
   queryDbResources: array<ReventlessInfra.Adapter.resource>,
 }
@@ -15,10 +16,14 @@ let sliceInfos: dict<sliceInfo> = Dict.make()
 let registerStateViewSlice = (
   ~name,
   ~specModulePath,
+  ~projectionModulePath,
   ~queryDbTableName,
   ~queryDbResources=[],
 ) =>
-  sliceInfos->Dict.set(name, {specModulePath, queryDbTableName, queryDbResources})
+  sliceInfos->Dict.set(
+    name,
+    {specModulePath, projectionModulePath, queryDbTableName, queryDbResources},
+  )
 
 type storedSpec = {
   componentName: string,
@@ -102,6 +107,21 @@ let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs, ~memor
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
 
+  // Bundle the framework packages alongside the entry point so the deployed
+  // Lambda picks up local edits without waiting for a Lambda Layer rebuild
+  // (the layer fetches @reventlessdev/reventless-* from GitHub Packages, not
+  // the local pnpm workspace). Mirrors the DCB asset pattern in
+  // PluginRuntime_Builder.forDcbCommandTopic. Util_Bundle co-bundles `effect`
+  // automatically when reventless-aws is present.
+  packageDirs->Dict.set(
+    "@reventlessdev/reventless-aws",
+    Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+  )
+  packageDirs->Dict.set(
+    "@reventlessdev/reventless-core",
+    Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-core"),
+  )
+
   let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
     ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs",
     ~packageDirs,
@@ -148,10 +168,14 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
 
         sliceInfos->Dict.forEachWithKey((info, _name) => {
           info.queryDbResources->Array.forEach(r => allQueryDbResources->Array.push(r)->ignore)
-          let pkg = Util_Bundle.extractPackageName(info.specModulePath)
-          packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
+          let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+          packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+          let projectionPkg = Util_Bundle.extractPackageName(info.projectionModulePath)
+          packageDirs->Dict.set(projectionPkg, Util_Bundle.resolvePackageRoot(projectionPkg))
 
           let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+          let projectionModule =
+            info.projectionModulePath->JSON.stringifyAny->Option.getOr(`""`)
           let etResources: array<ReventlessInfra.Adapter.resource> = dcbOutputs.eventTopic.resources
           let sourceUrn = etResources->Array.getUnsafe(0)
           let sourceUrn = sourceUrn.urn
@@ -159,7 +183,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           let handlerJson =
             Pulumi.Output.all2((info.queryDbTableName, sourceUrn))
             ->Pulumi.Output.apply(((tableName, urn)) => {
-              `{"specModule":${specModule},"queryDbTableName":"${tableName}","sourceUrn":"${urn}"}`
+              `{"specModule":${specModule},"projectionModule":${projectionModule},"queryDbTableName":"${tableName}","sourceUrn":"${urn}"}`
             })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
@@ -196,17 +220,21 @@ let finish = () =>
         storedSpecs->Array.forEach(spec => {
           switch sliceInfos->Dict.get(spec.componentName) {
           | Some(info) =>
-            let pkg = Util_Bundle.extractPackageName(info.specModulePath)
-            packageDirs->Dict.set(pkg, Util_Bundle.resolvePackageRoot(pkg))
+            let specPkg = Util_Bundle.extractPackageName(info.specModulePath)
+            packageDirs->Dict.set(specPkg, Util_Bundle.resolvePackageRoot(specPkg))
+            let projectionPkg = Util_Bundle.extractPackageName(info.projectionModulePath)
+            packageDirs->Dict.set(projectionPkg, Util_Bundle.resolvePackageRoot(projectionPkg))
 
             let specModule =
               info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
+            let projectionModule =
+              info.projectionModulePath->JSON.stringifyAny->Option.getOr(`""`)
 
             let handlerJson =
               Pulumi.Output.all2((info.queryDbTableName, spec.sourceUrns))
               ->Pulumi.Output.apply(((tableName, urns)) => {
                 let sourceUrn = urns->Array.getUnsafe(0)
-                `{"specModule":${specModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}`
+                `{"specModule":${specModule},"projectionModule":${projectionModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}`
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>

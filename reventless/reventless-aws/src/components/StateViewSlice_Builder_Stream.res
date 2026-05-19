@@ -40,6 +40,7 @@ module Make = (Api: {
       EventCollectorRuntimeBuilder.registerStateViewSlice(
         ~name=Spec.name,
         ~specModulePath=Util_Bundle.getModuleSpecifier(Spec.moduleUrl),
+        ~projectionModulePath=Util_Bundle.getModuleSpecifier(Projection.moduleUrl),
         ~queryDbTableName=tableResource.name,
         ~queryDbResources=queryDbOutputs.resources,
       )
