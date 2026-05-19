@@ -26,7 +26,7 @@ describe("Runtime.append", () => {
 })
 
 describe("Runtime.buildTransactItems", () => {
-  test("builds one Put per event with attribute_not_exists(position) condition", () => {
+  test("builds one Put per event with attribute_not_exists(#p) condition", () => {
     let jsons = Array.fromInitializer(~length=2, mkJson)
     let items = Runtime.buildTransactItems(table.name, jsons)
     expect(items->Array.length)->toBe(2)
@@ -34,7 +34,12 @@ describe("Runtime.buildTransactItems", () => {
     switch first.put {
     | Some(p) =>
       expect(p.tableName)->toBe("TestTable")
-      expect(p.conditionExpression)->toEqual(Some("attribute_not_exists(position)"))
+      // `position` is a DynamoDB reserved keyword; the runtime references it
+      // via the `#p` placeholder declared in expressionAttributeNames.
+      expect(p.conditionExpression)->toEqual(Some("attribute_not_exists(#p)"))
+      expect(p.expressionAttributeNames->Option.flatMap(Dict.get(_, "#p")))->toEqual(
+        Some("position"),
+      )
     | None => expect("expected Put, got None")->toBe("")
     }
   })

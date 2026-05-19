@@ -40,6 +40,9 @@
     "rescript": "^12.2.0"
   },
   "jest": {
+    "setupFiles": [
+      "<rootDir>/jest.setup.cjs"
+    ],
     "testMatch": [
       "<rootDir>/tests/**/*Test.res.mjs"
     ],
