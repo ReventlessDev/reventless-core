@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.2.0-alpha.12 (2026-05-19)
+
+### Bug Fixes
+
+* **aws:** set removeUndefinedValues=true on DynamoDB DocumentClient ([12c1ded](https://github.com/ReventlessDev/reventless-core/commit/12c1dedb0ae7fbf1fba8f5b33d76040ad392af7c))
+
+
 # 2.2.0-alpha.11 (2026-05-16)
 
 ### Bug Fixes

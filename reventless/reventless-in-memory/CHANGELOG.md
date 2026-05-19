@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.60 (2026-05-19)
+
+### Bug Fixes
+
+* **aws:** emit __typename in CommandResult mutation response ([aa05fb5](https://github.com/ReventlessDev/reventless-core/commit/aa05fb54e25fd7232b46ec9150bdd3a0c93080a8))
+### Features
+
+* **api:** emit CommandResult! for aggregate-derived mutations ([5d0afb2](https://github.com/ReventlessDev/reventless-core/commit/5d0afb2e8c889a3ce20c37d66807f65b7196a6ff))
+* **platform:** commandHandlerConfig for per-flavor Lambda tuning ([4154061](https://github.com/ReventlessDev/reventless-core/commit/4154061d9343f90ce61955992d9119d0f7a251e1))
+
+
 # 3.0.0-alpha.59 (2026-05-18)
 
 **Note:** Version bump only for package @reventlessdev/reventless-in-memory

@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.84 (2026-05-19)
+
+### Bug Fixes
+
+* **api:** align Source C subscription type with CommandResult mutation ([723882d](https://github.com/ReventlessDev/reventless-core/commit/723882df25d8544cf61a9ddb8fd9d423134e5fa1))
+* **aws:** emit __typename in CommandResult mutation response ([aa05fb5](https://github.com/ReventlessDev/reventless-core/commit/aa05fb54e25fd7232b46ec9150bdd3a0c93080a8))
+* refactor(aws)!: rename DCB Lambdas to <Plugin>StateChanges[Async] ([f2b20ca](https://github.com/ReventlessDev/reventless-core/commit/f2b20ca86c66cfd88d87696d89b745d70c5f156b))
+### Features
+
+* **api:** emit CommandResult! for aggregate-derived mutations ([5d0afb2](https://github.com/ReventlessDev/reventless-core/commit/5d0afb2e8c889a3ce20c37d66807f65b7196a6ff))
+* **platform:** commandHandlerConfig for per-flavor Lambda tuning ([4154061](https://github.com/ReventlessDev/reventless-core/commit/4154061d9343f90ce61955992d9119d0f7a251e1))
+
+### BREAKING CHANGES
+
+* this is a Pulumi resource rename without `aliases`,
+so `pulumi up` will destroy and recreate the DCB Lambda, its SQS
+queue(s), the AppSync DataSource and resolvers, and associated IAM.
+In-flight FIFO messages on async StateChangeSlices are lost. Plan a
+maintenance window for stacks with sustained async DCB traffic.
+
+
+
 # 3.0.0-alpha.83 (2026-05-18)
 
 ### Bug Fixes
