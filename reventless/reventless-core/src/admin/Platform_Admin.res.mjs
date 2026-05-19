@@ -130,7 +130,10 @@ function Make(RuntimeEnvironment) {
         allQueryDbs[param[0]] = param[1].queryDb;
       });
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-      Builder_Helpers$ReventlessCore.createResolvers(allQueryDbs);
+      let adminBarrier = Pulumi.all(Object.values(readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name))).apply(param => {});
+      let push = Config.hooks.preAdminResolversSchemaHook;
+      let adminSchemaPushed = push !== undefined ? push(adminBarrier) : Pulumi.output();
+      adminSchemaPushed.apply(() => Builder_Helpers$ReventlessCore.createResolvers(allQueryDbs));
       let extensionPointsOutputs = Pulumi.all([
         Pulumi.all(Builder_Helpers$ReventlessCore.aggregateResources),
         Pulumi.all(Builder_Helpers$ReventlessCore.publishToAggregates),

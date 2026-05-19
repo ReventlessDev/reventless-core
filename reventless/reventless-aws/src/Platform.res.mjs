@@ -583,6 +583,27 @@ function MakeWithConfig(Config) {
       })));
     });
   };
+  let hooks_preAdminResolversSchemaHook = adminBarrier => {
+    let match = splitApiOutputsRef.contents;
+    let targetApi = match !== undefined ? match.platformApi : domainApi;
+    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
+    return Output$Pulumi.flatMap(Pulumi.all([
+      targetApi,
+      adminBarrier
+    ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
+      console.log(`[preAdminResolversSchemaHook] Pushing admin schema to ` + apiId);
+      let client = AppSync_Adapter$ReventlessAws.getClient();
+      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+        apiId: apiId,
+        definition: sdl
+      }).then(async () => {
+        console.log("[preAdminResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+        console.log("[preAdminResolversSchemaHook] schema is ACTIVE");
+      });
+    }));
+  };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
   let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
@@ -623,6 +644,7 @@ function MakeWithConfig(Config) {
   let hooks = {
     subscriptionInfraHook: hooks_subscriptionInfraHook,
     preResolversSchemaHook: hooks_preResolversSchemaHook,
+    preAdminResolversSchemaHook: hooks_preAdminResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
     dcbAppSyncResolverHook: hooks_dcbAppSyncResolverHook,
     onDcbEventLogCreated: hooks_onDcbEventLogCreated,
@@ -783,20 +805,6 @@ function MakeWithConfig(Config) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
     }
     if (Config.splitApi) {
-      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
-      Output$Pulumi.flatMap(platformApi, api => Output$Pulumi.flatMap(api.id, apiId => {
-        console.log(`[makePlatform] Pushing admin schema to core-api ` + apiId);
-        let client = AppSync_Adapter$ReventlessAws.getClient();
-        return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-          apiId: apiId,
-          definition: sdl
-        }).then(async () => {
-          console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE");
-          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-          console.log("[makePlatform] core-api schema is ACTIVE");
-        });
-      }));
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
@@ -917,34 +925,10 @@ function MakeWithConfig(Config) {
       }
     }
     if (Config.splitApi) {
-      let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-      let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
-      let adminReadModelResourceNames = Object.values(admin.readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name));
-      let adminBarrier = Pulumi.all([
-        admin.extensionPointsOutputs.apply(param => {}),
-        Pulumi.all(adminReadModelResourceNames).apply(param => {})
-      ]);
-      Output$Pulumi.flatMap(Pulumi.all([
-        platformApi,
-        adminBarrier
-      ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
-        console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
-        let client = AppSync_Adapter$ReventlessAws.getClient();
-        return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-          apiId: apiId,
-          definition: sdl
-        }).then(async () => {
-          console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE");
-          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-          console.log("[deployPlatform] core-api schema is ACTIVE");
-        });
-      }));
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
     } else {
-      let adminBaseFragment$1 = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-      AppSync_Adapter$ReventlessAws.updateSchema(domainApi, adminBaseFragment$1, []);
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(domainApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(domainApi, api => api.uris.apply(uris => uris.GRAPHQL)));
       Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
@@ -1576,6 +1560,27 @@ function Make($star) {
       })));
     });
   };
+  let hooks_preAdminResolversSchemaHook = adminBarrier => {
+    let match = splitApiOutputsRef.contents;
+    let targetApi = match !== undefined ? match.platformApi : domainApi;
+    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
+    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
+    return Output$Pulumi.flatMap(Pulumi.all([
+      targetApi,
+      adminBarrier
+    ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
+      console.log(`[preAdminResolversSchemaHook] Pushing admin schema to ` + apiId);
+      let client = AppSync_Adapter$ReventlessAws.getClient();
+      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+        apiId: apiId,
+        definition: sdl
+      }).then(async () => {
+        console.log("[preAdminResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+        console.log("[preAdminResolversSchemaHook] schema is ACTIVE");
+      });
+    }));
+  };
   let hooks_inboundAppSyncResolverHook = param => InboundTranslationResolvers_AppSync$ReventlessAws.make(resolveHookedApi(), param.runtime, param.fieldNames, param.opts);
   let hooks_dcbAppSyncResolverHook = param => CommandGeneratorResolvers_AppSync$ReventlessAws.makeDcb(resolveHookedApi(), param.runtime, param.fieldNames, param.tags, param.opts);
   let hooks_onDcbEventLogCreated = dcbEventLogUnknown => {
@@ -1616,6 +1621,7 @@ function Make($star) {
   let hooks = {
     subscriptionInfraHook: hooks_subscriptionInfraHook,
     preResolversSchemaHook: hooks_preResolversSchemaHook,
+    preAdminResolversSchemaHook: hooks_preAdminResolversSchemaHook,
     inboundAppSyncResolverHook: hooks_inboundAppSyncResolverHook,
     dcbAppSyncResolverHook: hooks_dcbAppSyncResolverHook,
     onDcbEventLogCreated: hooks_onDcbEventLogCreated,
@@ -1770,20 +1776,6 @@ function Make($star) {
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
     }
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
-    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
-    Output$Pulumi.flatMap(platformApi, api => Output$Pulumi.flatMap(api.id, apiId => {
-      console.log(`[makePlatform] Pushing admin schema to core-api ` + apiId);
-      let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-        apiId: apiId,
-        definition: sdl
-      }).then(async () => {
-        console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE");
-        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        console.log("[makePlatform] core-api schema is ACTIVE");
-      });
-    }));
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
@@ -1892,28 +1884,6 @@ function Make($star) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
-    let adminBaseFragment = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
-    let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBaseFragment, []);
-    let adminReadModelResourceNames = Object.values(admin.readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name));
-    let adminBarrier = Pulumi.all([
-      admin.extensionPointsOutputs.apply(param => {}),
-      Pulumi.all(adminReadModelResourceNames).apply(param => {})
-    ]);
-    Output$Pulumi.flatMap(Pulumi.all([
-      platformApi,
-      adminBarrier
-    ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
-      console.log(`[deployPlatform] Pushing admin schema to core-api ` + apiId);
-      let client = AppSync_Adapter$ReventlessAws.getClient();
-      return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-        apiId: apiId,
-        definition: sdl
-      }).then(async () => {
-        console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE");
-        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        console.log("[deployPlatform] core-api schema is ACTIVE");
-      });
-    }));
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));

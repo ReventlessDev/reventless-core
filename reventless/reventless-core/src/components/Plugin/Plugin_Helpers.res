@@ -866,6 +866,15 @@ type platformHooks = {
   mcpSchemaRegistrationHook?: mcpRegistrationParams => unit,
   // ── AppSync resolver creation (AWS) ───────────────────────────────────
   preResolversSchemaHook?: (~name: string, Reventless.Plugin.apiSchemaFragment) => Pulumi.Output.t<unit>,
+  // Admin equivalent of preResolversSchemaHook. Set by AWS platforms to push
+  // the admin SDL to the Platform (split mode) or Domain (unified mode) API.
+  // Platform_Admin.construct invokes this with a barrier that resolves once the
+  // admin AppSync DataSources are ready, and gates admin createResolvers on the
+  // returned Output so resolver CreateResolver calls don't race the API-level
+  // schema-creation lock. Mirrors Plugin_Builder's schemaPushed gating at
+  // Plugin_Builder.res:452-466. The hook owns SDL construction (no fragment
+  // arg — the admin SDL is platform-defined, not per-plugin).
+  preAdminResolversSchemaHook?: (~adminBarrier: Pulumi.Output.t<unit>) => Pulumi.Output.t<unit>,
   inboundAppSyncResolverHook?: inboundAppSyncResolverParams => unit,
   dcbAppSyncResolverHook?: dcbAppSyncResolverParams => unit,
   // ── Deployment lifecycle (AWS) ─────────────────────────────────────────

@@ -562,6 +562,50 @@ module MakeWithConfig = (
       )
     },
 
+    // Admin-side schema push, gated on admin DataSources via adminBarrier.
+    // Platform_Admin.construct invokes this and chains createResolvers behind
+    // the returned Output — so admin CreateResolver calls fire only after
+    // StartSchemaCreation completes and the AppSync API-level lock is
+    // released. This replaces the prior outer schema pushes that lived in
+    // makePlatform / deployPlatform and raced admin createResolvers.
+    //
+    // Target API selection (read late so splitApiOutputsRef, populated by
+    // makePlatform / deployPlatform before Admin.construct fires, is visible):
+    //   - split mode: platformApi from splitApiOutputsRef
+    //   - unified mode / not-yet-populated: domainApi
+    preAdminResolversSchemaHook: (~adminBarrier) => {
+      let targetApi = switch splitApiOutputsRef.contents {
+      | Some({platformApi}) => platformApi
+      | None => domainApi
+      }
+      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
+        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
+        ~group="Admin",
+      )
+      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
+        ~baseFragment=adminBaseFragment,
+        ~pluginFragments=[],
+      )
+      (targetApi, adminBarrier)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.flatMap(((api, _)) =>
+        api.id->Pulumi.Output.flatMap(apiId => {
+          Console.log(`[preAdminResolversSchemaHook] Pushing admin schema to ${apiId}`)
+          let client = AppSync_Adapter.getClient()
+          client
+          ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
+          ->Promise.then(async _ => {
+            Console.log(
+              "[preAdminResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE",
+            )
+            await AppSync_Adapter.waitForSchemaActive(client, apiId)
+            Console.log("[preAdminResolversSchemaHook] schema is ACTIVE")
+          })
+          ->Pulumi.Output.fromPromise
+        })
+      )
+    },
+
     // Accumulate fragments across independent plugin deployments: each plugin
     // writes its fragment to the Plugin RM table (keyed "deploy-schema:<name>")
     // at deploy time. The hook then scans for ALL deploy-schema entries and
@@ -1096,31 +1140,9 @@ module MakeWithConfig = (
     | None => ()
     }
 
+    // Admin schema push is fired by preAdminResolversSchemaHook from inside
+    // Admin.construct (with createResolvers gated on it). Only exports below.
     if Config.splitApi {
-      // Split mode: push admin schema to the Platform (core) API.
-      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-        ~group="Admin",
-      )
-      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
-        ~baseFragment=adminBaseFragment,
-        ~pluginFragments=[],
-      )
-      let _ = platformApi->Pulumi.Output.flatMap(api =>
-        api.id->Pulumi.Output.flatMap(apiId => {
-          Console.log(`[makePlatform] Pushing admin schema to core-api ${apiId}`)
-          let client = AppSync_Adapter.getClient()
-          client
-          ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
-          ->Promise.then(async _ => {
-            Console.log("[makePlatform] core-api startSchemaCreation called, waiting for ACTIVE")
-            await AppSync_Adapter.waitForSchemaActive(client, apiId)
-            Console.log("[makePlatform] core-api schema is ACTIVE")
-          })
-          ->Pulumi.Output.fromPromise
-        })
-      )
-
       // Platform API exports (split mode).
       Pulumi.Pulumi.export("platformApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
@@ -1370,50 +1392,10 @@ module MakeWithConfig = (
     | None => ()
     }
 
+    // Admin schema push is fired by preAdminResolversSchemaHook from inside
+    // Admin.construct (gated on a read-model-resources barrier, with admin
+    // createResolvers chained behind the resulting Output). Only exports below.
     if Config.splitApi {
-      // Split mode: push admin schema to the Platform (core) API.
-      // Plugin API (domainApi) only gets plugin schema — no admin fields.
-      // platformApi was created above before Admin.construct.
-      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-        ~group="Admin",
-      )
-      let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
-        ~baseFragment=adminBaseFragment,
-        ~pluginFragments=[],
-      )
-      // AWS AppSync holds an API-level lock during StartSchemaCreation and
-      // rejects concurrent CreateDataSource calls with
-      // ConcurrentModificationException. Chain the schema push on admin's
-      // Pulumi outputs so it fires after admin DataSources/Resolvers have
-      // been created.
-      let adminReadModelResourceNames =
-        admin.readModelsOutputs
-        ->Dict.valuesToArray
-        ->Array.flatMap(rm => rm.queryDb.resources->Array.map(r => r.name))
-      let adminBarrier =
-        (
-          admin.extensionPointsOutputs->Pulumi.Output.apply(_ => ()),
-          adminReadModelResourceNames->Pulumi.Output.all->Pulumi.Output.apply(_ => ()),
-        )->Pulumi.Output.all2
-      let _ =
-        (platformApi, adminBarrier)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.flatMap(((api, _)) =>
-          api.id->Pulumi.Output.flatMap(apiId => {
-            Console.log(`[deployPlatform] Pushing admin schema to core-api ${apiId}`)
-            let client = AppSync_Adapter.getClient()
-            client
-            ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
-            ->Promise.then(async _ => {
-              Console.log("[deployPlatform] core-api startSchemaCreation called, waiting for ACTIVE")
-              await AppSync_Adapter.waitForSchemaActive(client, apiId)
-              Console.log("[deployPlatform] core-api schema is ACTIVE")
-            })
-            ->Pulumi.Output.fromPromise
-          })
-        )
-
       // Platform API exports (split mode).
       Pulumi.Pulumi.export("platformApiId", platformApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(
@@ -1424,18 +1406,6 @@ module MakeWithConfig = (
       )
       Pulumi.Pulumi.export("platformApiRoleArn", platformApiRole->Pulumi.Output.flatMap(role => role.arn))
     } else {
-      // Unified mode: push admin schema to the shared API.
-      // Plugin schema fragments are pushed at runtime via PluginExtensionPoint.
-      let adminBaseFragment = AppSync_Adapter.injectAwsAuthAll(
-        ReventlessCore.AdminApi.baseFragment(~cloner=Config.cloner),
-        ~group="Admin",
-      )
-      let _ = AppSync_Adapter.updateSchema(
-        ~api=domainApi,
-        ~baseFragment=adminBaseFragment,
-        ~pluginFragments=[],
-      )
-
       // Platform API exports (unified mode — same resource as Domain API).
       Pulumi.Pulumi.export("platformApiId", domainApi->Pulumi.Output.flatMap(api => api.id))
       Pulumi.Pulumi.export(

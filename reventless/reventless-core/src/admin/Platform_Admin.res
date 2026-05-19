@@ -244,7 +244,29 @@ module Make = (
     // Platform_PlatformEventGraphs, …). Without this, ReadModel_Builder_Single
     // produces the resolverMaker closure but it is never called, and AppSync
     // returns "Cannot return null for non-nullable type" for the Connection field.
-    let _resolvers = allQueryDbs->createResolvers
+    //
+    // Gate the actual CreateResolver SDK calls on the admin schema push (when
+    // the platform supplies preAdminResolversSchemaHook). AppSync holds an
+    // API-level lock during StartSchemaCreation and rejects concurrent
+    // CreateResolver / UpdateResolver with ConcurrentModificationException —
+    // mirrors Plugin_Builder's schemaPushed pattern at Plugin_Builder.res:
+    // 452-466. The barrier collects the names of all admin read-model DDB
+    // resources so the schema push waits for the underlying DataSources to be
+    // ready before firing. Platforms with no hook (e.g. in-memory) return an
+    // already-resolved Output and createResolvers fires immediately, as before.
+    let adminBarrier =
+      readModelsOutputs
+      ->Dict.valuesToArray
+      ->Array.flatMap(rm => rm.queryDb.resources->Array.map(r => r.name))
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(_ => ())
+    let adminSchemaPushed = switch Config.hooks.preAdminResolversSchemaHook {
+    | Some(push) => push(~adminBarrier)
+    | None => Pulumi.Output.make()
+    }
+    let _resolvers = adminSchemaPushed->Pulumi.Output.apply(() =>
+      allQueryDbs->createResolvers
+    )
 
     let extensionPointsOutputs =
       (
