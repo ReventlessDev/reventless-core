@@ -16,6 +16,11 @@ open ReventlessInfra.Api
 // Source C subscriptions only use `id` for server-side filtering (ctx.args.id),
 // so all subscription fields are generated with a single optional `id: ID` arg
 // regardless of how many args the corresponding mutation carries.
+//
+// Every aggregate-derived mutation now returns CommandResult (a union of
+// CommandAccepted | CommandRejected | CommandPending). AppSync requires the
+// subscription return type to be a strict subset of the linked mutation's
+// return type, so the subscription field has to declare CommandResult as well.
 let sourceCFields = (
   ~mutationEntries: array<mutationSchemaEntry>,
 ): array<string> => {
@@ -27,14 +32,14 @@ let sourceCFields = (
       anyOf->Array.forEachWithIndex((_, i) => {
         let fieldName = entry.fieldNames->Array.get(i)->Option.getOr("")
         if fieldName->String.length > 0 {
-          let sub = `  on${fieldName}(id: ID): String!\n    @aws_subscribe(mutations: ["${fieldName}"])`
+          let sub = `  on${fieldName}(id: ID): CommandResult\n    @aws_subscribe(mutations: ["${fieldName}"])`
           fields->Array.push(sub)
         }
       })
     | Object(_) =>
       let fieldName = entry.fieldNames->Array.get(0)->Option.getOr("")
       if fieldName->String.length > 0 {
-        let sub = `  on${fieldName}(id: ID): String!\n    @aws_subscribe(mutations: ["${fieldName}"])`
+        let sub = `  on${fieldName}(id: ID): CommandResult\n    @aws_subscribe(mutations: ["${fieldName}"])`
         fields->Array.push(sub)
       }
     | _ => ()

@@ -13,7 +13,7 @@ function sourceCFields(mutationEntries) {
         if (fieldName.length <= 0) {
           return;
         }
-        let sub = `  on` + fieldName + `(id: ID): String!\n    @aws_subscribe(mutations: ["` + fieldName + `"])`;
+        let sub = `  on` + fieldName + `(id: ID): CommandResult\n    @aws_subscribe(mutations: ["` + fieldName + `"])`;
         fields.push(sub);
         return;
       case "union" :
@@ -22,7 +22,7 @@ function sourceCFields(mutationEntries) {
           if (fieldName.length <= 0) {
             return;
           }
-          let sub = `  on` + fieldName + `(id: ID): String!\n    @aws_subscribe(mutations: ["` + fieldName + `"])`;
+          let sub = `  on` + fieldName + `(id: ID): CommandResult\n    @aws_subscribe(mutations: ["` + fieldName + `"])`;
           fields.push(sub);
         });
         return;
