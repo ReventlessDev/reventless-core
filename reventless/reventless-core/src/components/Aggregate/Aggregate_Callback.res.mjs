@@ -63,35 +63,42 @@ function Make(Spec) {
           ]])
       ];
     };
-    let reportFinalOutcomes = (outcomes, entityId, appendSucceeded, appendedEventCount) => outcomes.map(param => {
-      let outcome = param[1];
-      let reference = param[0];
-      if (outcome.TAG === "CmdOk") {
-        if (appendSucceeded) {
-          CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
-            entityId: entityId,
-            eventCount: appendedEventCount
-          });
-          return {
-            TAG: "Ok",
-            _0: reference
-          };
-        } else {
-          return {
-            TAG: "Error",
-            _0: reference
-          };
+    let reportFinalOutcomes = (outcomes, entityId, appendSucceeded, appendedEventCount, appendErrorDetailOpt) => {
+      let appendErrorDetail = appendErrorDetailOpt !== undefined ? appendErrorDetailOpt : "";
+      return outcomes.map(param => {
+        let outcome = param[1];
+        let reference = param[0];
+        if (outcome.TAG === "CmdOk") {
+          if (appendSucceeded) {
+            CommandTopic_Helpers$ReventlessCore.reportAccepted(reference, {
+              entityId: entityId,
+              eventCount: appendedEventCount
+            });
+            return {
+              TAG: "Ok",
+              _0: reference
+            };
+          } else {
+            CommandTopic_Helpers$ReventlessCore.reportRejected(reference, {
+              errorCode: "AppendFailed",
+              errorDetail: appendErrorDetail
+            });
+            return {
+              TAG: "Error",
+              _0: reference
+            };
+          }
         }
-      }
-      CommandTopic_Helpers$ReventlessCore.reportRejected(reference, {
-        errorCode: outcome.errorCode,
-        errorDetail: outcome.errorDetail
+        CommandTopic_Helpers$ReventlessCore.reportRejected(reference, {
+          errorCode: outcome.errorCode,
+          errorDetail: outcome.errorDetail
+        });
+        return {
+          TAG: "Ok",
+          _0: reference
+        };
       });
-      return {
-        TAG: "Ok",
-        _0: reference
-      };
-    });
+    };
     let replayProcessAppend = (id, topicItemsForId) => {
       let idStr = Spec.Id.toString(id);
       return Effect.flatMap(Effect.tap(Stream.runFold(Ops.eventLog.replayStream(id), [
@@ -131,7 +138,7 @@ function Make(Spec) {
           let eventJsons = eventsToAppend.map(event$p => Message$ReventlessCore.encode(event$p.event, Spec.eventSchema));
           return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => Ops.eventLog.append(sequenceNr, id, eventsToAppend))), appendResult => {
             if (appendResult.TAG === "Ok") {
-              let perRef = reportFinalOutcomes(outcomes, idStr, true, eventsToAppend.length);
+              let perRef = reportFinalOutcomes(outcomes, idStr, true, eventsToAppend.length, undefined);
               return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: id=` + idStr), () => ({
                 TAG: "Ok",
                 _0: perRef
@@ -144,14 +151,14 @@ function Make(Spec) {
                 _0: msg
               }));
             }
-            let perRef$1 = reportFinalOutcomes(outcomes, idStr, false, 0);
+            let perRef$1 = reportFinalOutcomes(outcomes, idStr, false, 0, msg);
             return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed: id=` + idStr + `: ` + msg), () => ({
               TAG: "Ok",
               _0: perRef$1
             }));
           });
         }
-        let perRef = reportFinalOutcomes(outcomes, idStr, true, 0);
+        let perRef = reportFinalOutcomes(outcomes, idStr, true, 0, undefined);
         return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `no events produced: id=` + idStr), () => ({
           TAG: "Ok",
           _0: perRef

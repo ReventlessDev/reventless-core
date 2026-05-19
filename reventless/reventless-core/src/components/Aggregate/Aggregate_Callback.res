@@ -100,6 +100,7 @@ module Make = (
     ~entityId: string,
     ~appendSucceeded: bool,
     ~appendedEventCount: int,
+    ~appendErrorDetail: string="",
   ): array<result<string, string>> =>
     outcomes->Array.map(((reference, outcome, _meta)) =>
       switch outcome {
@@ -109,7 +110,12 @@ module Make = (
       | CmdOk(_) if appendSucceeded =>
         CommandTopic_Helpers.reportAccepted(reference, {entityId, eventCount: appendedEventCount})
         Ok(reference)
-      | CmdOk(_) => Error(reference)
+      | CmdOk(_) =>
+        CommandTopic_Helpers.reportRejected(
+          reference,
+          {errorCode: "AppendFailed", errorDetail: appendErrorDetail},
+        )
+        Error(reference)
       }
     )
 
@@ -185,6 +191,7 @@ module Make = (
                 ~entityId=idStr,
                 ~appendSucceeded=false,
                 ~appendedEventCount=0,
+                ~appendErrorDetail=msg,
               )
               EffectLogger.logError(~comp, `append failed: id=${idStr}: ${msg}`)->Effect.map(_ => Ok(perRef))
             },
