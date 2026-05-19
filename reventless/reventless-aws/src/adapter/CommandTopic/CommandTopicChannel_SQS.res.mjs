@@ -16,6 +16,18 @@ import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQ
 import * as CommandTopicChannel_Helpers$ReventlessAws from "./CommandTopicChannel_Helpers.res.mjs";
 import * as CommandTopicChannel_SQS_Runtime$ReventlessAws from "./CommandTopicChannel_SQS_Runtime.res.mjs";
 
+let batchSizeRef = {
+  contents: undefined
+};
+
+function setBatchSize(n) {
+  batchSizeRef.contents = n;
+}
+
+function clearBatchSize() {
+  batchSizeRef.contents = undefined;
+}
+
 function connect(name, channel, runtime, resources, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
   let queue = channel.parts.queue;
@@ -23,7 +35,7 @@ function connect(name, channel, runtime, resources, opts) {
   let lambdaRole = runtime.parts.lambdaRole;
   CommandTopicChannel_Helpers$ReventlessAws.createQueuePolicy(queue, name, lambda, opts$1);
   CommandTopicChannel_Helpers$ReventlessAws.createLambdaPolicy(lambdaRole, name, queue, resources, opts$1);
-  return [CommandTopicChannel_Helpers$ReventlessAws.subscribeLambda2SqsTopic(lambda, name, queue, opts$1)];
+  return [CommandTopicChannel_Helpers$ReventlessAws.subscribeLambda2SqsTopic(batchSizeRef.contents, lambda, name, queue, opts$1)];
 }
 
 function make(name, opts) {
@@ -53,6 +65,9 @@ function make(name, opts) {
 }
 
 export {
+  batchSizeRef,
+  setBatchSize,
+  clearBatchSize,
   connect,
   make,
 }

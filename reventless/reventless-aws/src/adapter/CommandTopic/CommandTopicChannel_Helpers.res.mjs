@@ -132,7 +132,9 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
   });
 }
 
-let subscribeLambda2SqsTopic = Util_EventSourceMapping$ReventlessAws.subscribeSqs;
+function subscribeLambda2SqsTopic(batchSize, lambda, name, queue, opts) {
+  return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, batchSize, opts);
+}
 
 export {
   createQueuePolicy,

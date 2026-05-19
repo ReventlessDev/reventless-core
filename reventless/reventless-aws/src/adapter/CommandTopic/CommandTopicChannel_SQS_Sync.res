@@ -11,6 +11,10 @@ type channelParts = Util.SQS.channelParts
 
 let connect = CommandTopicChannel_SQS.connect
 
+// See CommandTopicChannel_SQS_Async for the rationale behind these re-exports.
+let setBatchSize = CommandTopicChannel_SQS.setBatchSize
+let clearBatchSize = CommandTopicChannel_SQS.clearBatchSize
+
 let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   callbackEvent,
   'context,

@@ -168,7 +168,7 @@ function finish() {
         cmdTopicEnvVars["HANDLER_CONFIG"] = cmdTopicHandlerConfigOutput;
         let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
         let cmdTopicName = baseName + "CmdTopic";
-        let cmdTopicRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdTopicName, match.code, match.sourceCodeHash, cmdTopicEnvVars, Math.max(spec.commandTopicMemorySize, 1024), Math.max(spec.commandTopicTimeout, 30), aggregateOpts);
+        let cmdTopicRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdTopicName, match.code, match.sourceCodeHash, cmdTopicEnvVars, Math.max(spec.commandTopicMemorySize, 1024), Math.max(spec.commandTopicTimeout, 30), undefined, undefined, undefined, aggregateOpts);
         spec.commandTopicConnects.forEach(connect => connect(cmdTopicRuntime));
         if (spec.commandGeneratorConnects.length !== 0) {
           let cmdGenHandlerConfigOutput = Pulumi.all([
@@ -180,7 +180,7 @@ function finish() {
           cmdGenEnvVars["HANDLER_CONFIG"] = cmdGenHandlerConfigOutput;
           let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
           let cmdGenName = baseName + "CmdGen";
-          let cmdGenRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdGenName, match$1.code, match$1.sourceCodeHash, cmdGenEnvVars, Math.max(spec.commandGeneratorMemorySize, 1024), Math.max(spec.commandGeneratorTimeout, 30), aggregateOpts);
+          let cmdGenRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdGenName, match$1.code, match$1.sourceCodeHash, cmdGenEnvVars, Math.max(spec.commandGeneratorMemorySize, 1024), Math.max(spec.commandGeneratorTimeout, 30), undefined, undefined, undefined, aggregateOpts);
           spec.commandGeneratorConnects.forEach(connect => connect(cmdGenRuntime));
         }
         let match$2 = spec.eventCollectorChannelSpec;
@@ -201,7 +201,7 @@ function finish() {
           evtMapperPackageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
           let match$4 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/EventMapperEntryPoint.mjs", evtMapperPackageDirs, undefined);
           let evtMapperName = baseName + "EvtMapper";
-          let evtMapperRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(evtMapperName, match$4.code, match$4.sourceCodeHash, evtMapperEnvVars, Math.max(spec.eventCollectorMemorySize, 2048), Math.max(spec.eventCollectorTimeout, 180), aggregateOpts);
+          let evtMapperRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(evtMapperName, match$4.code, match$4.sourceCodeHash, evtMapperEnvVars, Math.max(spec.eventCollectorMemorySize, 2048), Math.max(spec.eventCollectorTimeout, 180), undefined, undefined, undefined, aggregateOpts);
           EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(evtMapperName, [match$2], evtMapperRuntime, aggregateOpts);
           return;
         }

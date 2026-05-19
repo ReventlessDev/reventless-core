@@ -81,6 +81,7 @@ import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/Eve
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginExtensionPointRuntime_Builder.res.mjs";
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
+import * as AggregateRuntime_Builder_Single_Async$ReventlessAws from "./adapter/Runtime/AggregateRuntime_Builder_Single_Async.res.mjs";
 import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
 
 let apiConfigRef = {
@@ -100,6 +101,11 @@ function getSplitApiOutputs() {
 }
 
 function MakeWithConfig(Config) {
+  Stdlib_Option.forEach(Config.commandHandlerConfig.aggregates, param => {
+    Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
+    Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
+  });
+  Stdlib_Option.forEach(Config.commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
   let currentDeployTarget = {
     contents: "Domain"
   };
@@ -1091,6 +1097,12 @@ function MakeWithConfig(Config) {
 }
 
 function Make($star) {
+  let commandHandlerConfig = {};
+  Stdlib_Option.forEach(commandHandlerConfig.aggregates, param => {
+    Stdlib_Option.forEach(param.sync, AggregateRuntime_Builder_Single$ReventlessAws.setConfig);
+    Stdlib_Option.forEach(param.async, AggregateRuntime_Builder_Single_Async$ReventlessAws.setConfig);
+  });
+  Stdlib_Option.forEach(commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
   let currentDeployTarget = {
     contents: "Domain"
   };

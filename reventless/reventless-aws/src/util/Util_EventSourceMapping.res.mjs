@@ -16,9 +16,10 @@ function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
   }, opts);
 }
 
-function subscribeSqs(lambda, name, queue, opts) {
+function subscribeSqs(lambda, name, queue, batchSize, opts) {
   let esm = new (Aws.lambda.EventSourceMapping)(name, {
     functionName: Output$Pulumi.flatMap(lambda, lambda => lambda.arn),
+    batchSize: batchSize,
     eventSourceArn: queue.arn
   }, opts);
   return Adapter$ReventlessInfra.make(esm.id, esm.id, esm.arn, esm.id.apply(param => AWS$ReventlessAws.SQS.service), undefined, undefined, undefined, Pulumi.output("aws:lambda:EventSourceMapping"), undefined, undefined);

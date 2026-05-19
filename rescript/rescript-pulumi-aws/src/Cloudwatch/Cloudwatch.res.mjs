@@ -5,8 +5,11 @@ let EventRule;
 
 let EventTarget;
 
+let LogGroup;
+
 export {
   EventRule,
   EventTarget,
+  LogGroup,
 }
 /* No side effect */

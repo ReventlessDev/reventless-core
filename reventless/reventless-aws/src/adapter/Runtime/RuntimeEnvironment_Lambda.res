@@ -71,14 +71,20 @@ let makeFromCodeAsset: (
   ~envVars: dict<Pulumi.Input.t<string>>=?,
   ~memorySize: int=?,
   ~timeout: int=?,
+  ~reservedConcurrency: int=?,
+  ~ephemeralStorageMb: int=?,
+  ~logRetentionDays: int=?,
   ~opts: Pulumi.ComponentResource.options=?,
 ) => ReventlessCore.Runtime.environment<parts> = (
   ~name,
   ~code,
   ~sourceCodeHash,
   ~envVars=Dict.make(),
-  ~memorySize: int=1024,
-  ~timeout: int=30,
+  ~memorySize: int=ReventlessCore.Runtime.CommandHandlerDefaults.memorySize,
+  ~timeout: int=ReventlessCore.Runtime.CommandHandlerDefaults.timeout,
+  ~reservedConcurrency=?,
+  ~ephemeralStorageMb=?,
+  ~logRetentionDays=?,
   ~opts=?,
 ) => {
   open PulumiAws
@@ -143,6 +149,10 @@ let makeFromCodeAsset: (
       role: lambdaRole.arn->Pulumi.Output.asInput,
       memorySize: memorySize->Pulumi.Input.make,
       timeout: timeout->Pulumi.Input.make,
+      reservedConcurrentExecutions: ?reservedConcurrency->Option.map(Pulumi.Input.make),
+      ephemeralStorage: ?ephemeralStorageMb->Option.map(mb =>
+        ({size: mb->Pulumi.Input.make}: Lambda.Function.ephemeralStorage)->Pulumi.Input.make
+      ),
       layers,
       tags,
       environment: ({Lambda.Function.variables: variables}: Lambda.Function.functionEnvironment)
@@ -150,6 +160,19 @@ let makeFromCodeAsset: (
     },
     ~opts?,
   )
+
+  // Optional CloudWatch log-group with explicit retention. When not set, Lambda
+  // auto-creates a log group with no retention (logs accumulate indefinitely).
+  logRetentionDays->Option.forEach(days => {
+    let _ = Cloudwatch.LogGroup.make(
+      ~name=`${name}LogGroup`,
+      ~args={
+        name: `/aws/lambda/${name}`->Pulumi.Input.make,
+        retentionInDays: days->Pulumi.Input.make,
+      },
+      ~opts?,
+    )
+  })
 
   {
     parts: {lambda: lambda->Pulumi.Output.make, lambdaRole},

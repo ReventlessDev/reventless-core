@@ -13,6 +13,14 @@ type aggregateInfo = {
 
 let aggregateInfos: dict<aggregateInfo> = Dict.make()
 
+// Per-flavor commandHandlerConfig override; populated by Platform.MakeWithConfig
+// from the user-supplied `commandHandlerConfig.aggregates.sync` record. Empty
+// record means every field is None and framework defaults apply.
+let configRef: ref<ReventlessCore.Runtime.commandHandlerConfig> = ref(
+  ({}: ReventlessCore.Runtime.commandHandlerConfig),
+)
+let setConfig = (c: ReventlessCore.Runtime.commandHandlerConfig) => configRef := c
+
 let registerAggregate = (
   ~aggregateName,
   ~specModulePath,
@@ -181,16 +189,12 @@ let finish = () =>
   if !finished.contents {
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
-      let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
-        (_, accMemorySize, accTimeout),
-        {aggregateResource, memorySize, timeout},
-      ) => {
-        (
-          aggregateResource.parent,
-          Math.Int.max(accMemorySize, memorySize),
-          Math.Int.max(accTimeout, timeout),
-        )
-      })
+      // The legacy reduce-max-across-specs over `memorySize` / `timeout` was always
+      // a max-of-zeros (the Aggregate_Builder call site never passed those args).
+      // We only need `parent` from the specs here; per-Lambda tuning now lives in
+      // `configRef`, populated by `Platform.MakeWithConfig`.
+      let parent = specs->Array.reduce(None, (_, {aggregateResource}) => aggregateResource.parent)
+      let cfg = configRef.contents
       switch parent {
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
@@ -242,6 +246,15 @@ let finish = () =>
           envVars->Dict.set("PLUGIN_RM_TABLE_NAME", tableName->Pulumi.Output.asInput)
         | None => ()
         }
+        // User-supplied env vars are layered in first; the framework-set keys above
+        // (HANDLER_CONFIG, PLUGIN_RM_TABLE_NAME) take precedence on key collision.
+        cfg.envVars->Option.forEach(extra =>
+          extra->Dict.forEachWithKey((value, key) => {
+            if envVars->Dict.get(key)->Option.isNone {
+              envVars->Dict.set(key, value->Pulumi.Output.make->Pulumi.Output.asInput)
+            }
+          })
+        )
 
         // Build AssetArchive: static re-export + user packages
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
@@ -249,13 +262,21 @@ let finish = () =>
           ~packageDirs,
         )
 
+        // Apply per-flavor sqsBatchSize for the SQS event-source mapping that
+        // connect() builds just below. `clearBatchSize` after invoking connects
+        // so the next flavor's `finish()` starts from a clean slate.
+        cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.setBatchSize)
+
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllAggregates",
           ~code,
           ~sourceCodeHash,
           ~envVars,
-          ~memorySize,
-          ~timeout,
+          ~memorySize=?cfg.memorySize,
+          ~timeout=?cfg.timeout,
+          ~reservedConcurrency=?cfg.reservedConcurrency,
+          ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
+          ~logRetentionDays=?cfg.logRetentionDays,
           ~opts,
         )
 
@@ -299,6 +320,11 @@ let finish = () =>
         specs->Array.forEach(({connects}) => {
           connects->Array.forEach(connect => connect(~runtime))
         })
+
+        // Reset the per-flavor batch-size override so the async builder's
+        // finish() starts from a clean state (both flavors alias the same
+        // `CommandTopicChannel_SQS.connect`).
+        CommandTopicChannel.clearBatchSize()
 
         // Connect EventCollector channels
         let channelSpecs =

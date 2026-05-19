@@ -9,6 +9,12 @@ type channelParts = Util.SQS.channelParts
 
 let connect = CommandTopicChannel_SQS.connect
 
+// Re-export per-flavor SQS event-source `batchSize` setters from the shared
+// SQS connect impl, so runtime builders can configure them via the aliased
+// module (`CommandTopicChannel.SQS_Async.setBatchSize`).
+let setBatchSize = CommandTopicChannel_SQS.setBatchSize
+let clearBatchSize = CommandTopicChannel_SQS.clearBatchSize
+
 let make: ReventlessCore.CommandTopic_Adapter.channelMaker<
   callbackEvent,
   'context,

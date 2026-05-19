@@ -151,7 +151,7 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
   });
   return queues.map((queue, idx) => {
     let esmName = queues.length > 1 ? name + `Sqs` + idx.toString() : name;
-    return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, esmName, queue, opts);
+    return Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, esmName, queue, undefined, opts);
   });
 }
 

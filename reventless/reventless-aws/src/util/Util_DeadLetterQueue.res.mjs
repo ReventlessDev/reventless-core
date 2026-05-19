@@ -70,9 +70,9 @@ let handler = new (Aws.lambda.Function)(name, {
 
 let lambda = Pulumi.output(handler);
 
-let _subscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, opts);
+let _subscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, name, queue, undefined, opts);
 
-let _fifoSubscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, nameFifo, fifoQueue, opts);
+let _fifoSubscription = Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambda, nameFifo, fifoQueue, undefined, opts);
 
 function createQueuePolicyDocument(name, queueArn, handlerArn) {
   return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{

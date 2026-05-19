@@ -67,3 +67,39 @@ type forEventCollector<'handler, 'component> = (
   ~timeout: int=?,
   'component,
 ) => unit
+
+// commandHandlerConfig — per-Lambda tuning for the four command-handler Lambdas:
+// AllAggregates (sync), AllAggregatesAsync, <Plugin>StateChanges (sync),
+// <Plugin>StateChangesAsync. Every field is optional; the framework fills
+// unset fields from CommandHandlerDefaults below. Transport-neutral: the
+// AWS platform maps fields to Lambda/SQS/CloudWatch primitives; the
+// in-memory platform honors envVars and ignores the rest.
+type commandHandlerConfig = {
+  memorySize?: int,
+  timeout?: int,
+  reservedConcurrency?: int,
+  sqsBatchSize?: int,
+  ephemeralStorageMb?: int,
+  logRetentionDays?: int,
+  envVars?: dict<string>,
+}
+
+type commandHandlerConfigFlavors = {
+  sync?: commandHandlerConfig,
+  async?: commandHandlerConfig,
+}
+
+type commandHandlerConfigs = {
+  aggregates?: commandHandlerConfigFlavors,
+  stateChanges?: commandHandlerConfigFlavors,
+}
+
+// Framework defaults applied when commandHandlerConfig fields are omitted.
+// Single source of truth — readable and composable by app developers.
+module CommandHandlerDefaults = {
+  let memorySize = 1024
+  let timeout = 30
+  let sqsBatchSize = 10
+  let ephemeralStorageMb = 512
+  let logRetentionDays = 7
+}

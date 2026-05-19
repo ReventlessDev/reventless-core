@@ -11,6 +11,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as Runtime$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/Runtime.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Lambda$ReventlessAws from "../../util/Util_Lambda.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
@@ -40,10 +41,10 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   };
 }
 
-function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, opts) {
+function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, opts) {
   let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
-  let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
-  let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
+  let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : Runtime$ReventlessCore.CommandHandlerDefaults.memorySize;
+  let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
   additionalIamPolicies.forEach(param => {
@@ -85,8 +86,18 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
     environment: {
       variables: variables
     },
-    sourceCodeHash: sourceCodeHash
+    sourceCodeHash: sourceCodeHash,
+    reservedConcurrentExecutions: Stdlib_Option.map(reservedConcurrency, prim => prim),
+    ephemeralStorage: Stdlib_Option.map(ephemeralStorageMb, mb => ({
+      size: mb
+    }))
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
+  Stdlib_Option.forEach(logRetentionDays, days => {
+    new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
+      name: `/aws/lambda/` + name,
+      retentionInDays: days
+    }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
+  });
   return {
     parts: {
       lambda: Pulumi.output(lambda),

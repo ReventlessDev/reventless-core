@@ -64,6 +64,19 @@ let heartbeatConfigRef: ref<heartbeatConfig> = ref({
 let registerHeartbeatConfig = (~pluginId, ~heartbeatTimeout=10, ~epQueueUrl=?, ()) =>
   heartbeatConfigRef := {pluginId, heartbeatTimeout, epQueueUrl}
 
+// Per-flavor commandHandlerConfig override for the two `<Plugin>StateChanges` Lambdas;
+// populated by Platform.MakeWithConfig from `commandHandlerConfig.stateChanges.{sync,async}`.
+let syncStateChangesConfigRef: ref<ReventlessCore.Runtime.commandHandlerConfig> = ref(
+  ({}: ReventlessCore.Runtime.commandHandlerConfig),
+)
+let asyncStateChangesConfigRef: ref<ReventlessCore.Runtime.commandHandlerConfig> = ref(
+  ({}: ReventlessCore.Runtime.commandHandlerConfig),
+)
+let setStateChangesConfig = (~sync=?, ~async=?, ()) => {
+  sync->Option.forEach(c => syncStateChangesConfigRef := c)
+  async->Option.forEach(c => asyncStateChangesConfigRef := c)
+}
+
 let registerConfig = (
   ~eventTopicArn=?,
   ~pluginReadModelTableName=?,
@@ -531,8 +544,10 @@ module Make = (
   > = (
     ~handler as _,
     ~connect,
-    ~memorySize=1024,
-    ~timeout=30,
+    // memorySize/timeout are part of the Runtime.forComponent signature for
+    // back-compat; per-Lambda tuning now flows through `commandHandlerConfig`.
+    ~memorySize as _=1024,
+    ~timeout as _=30,
     dcbCommandTopic,
   ) => {
     let dcbConfig = dcbConfigRef.contents
@@ -566,12 +581,21 @@ module Make = (
       // returns CommandPending instead of running the slice handler inline.
       let isAsync = name->String.endsWith("Async")
 
+      let cfg = isAsync ? asyncStateChangesConfigRef.contents : syncStateChangesConfigRef.contents
+
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
       envVars->Dict.set("DCB_TABLE", dcbTableName->Pulumi.Output.asInput)
       envVars->Dict.set("QUEUE_URL", queue.id->Pulumi.Output.asInput)
       if isAsync {
         envVars->Dict.set("DISPATCH_MODE", "async"->Pulumi.Input.make)
       }
+      cfg.envVars->Option.forEach(extra =>
+        extra->Dict.forEachWithKey((value, key) => {
+          if envVars->Dict.get(key)->Option.isNone {
+            envVars->Dict.set(key, value->Pulumi.Output.make->Pulumi.Output.asInput)
+          }
+        })
+      )
 
       // Build HANDLER_CONFIG JSON: array of {spec, behavior} objects so the entry point
       // can dynamically import both modules and apply the curried StateChangeSlice_Callback.Make
@@ -615,13 +639,18 @@ module Make = (
         ~packageDirs,
       )
 
+      cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.SQS.setBatchSize)
+
       let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
         ~name,
         ~code,
         ~sourceCodeHash,
         ~envVars,
-        ~memorySize,
-        ~timeout,
+        ~memorySize=?cfg.memorySize,
+        ~timeout=?cfg.timeout,
+        ~reservedConcurrency=?cfg.reservedConcurrency,
+        ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
+        ~logRetentionDays=?cfg.logRetentionDays,
         ~opts,
       )
 
@@ -651,6 +680,7 @@ module Make = (
       })
 
       connect(~runtime)
+      CommandTopicChannel.SQS.clearBatchSize()
     }
   }
 

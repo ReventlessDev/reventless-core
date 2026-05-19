@@ -450,3 +450,68 @@ The core builders (`Aggregate_Builder`, `ReadModel_Builder`, `StateViewSlice_Bui
 5. **`Plugin.res` in `-aws` packages is a thin wrapper.** It delegates to the standard plugin's `Make` functor and only differs in two ways: it constrains `Platform.api` / `Platform.role` to the AppSync types, and it provides an env-var-driven `make: unit => component` that satisfies `PluginMaker`. All component declarations live in the standard `Plugin.res`, which is the single source of truth for in-memory tests and AWS deployment alike.
 
 6. **`Platform.T` is the only entry point for component creation.** `Aggregate.Make`, `ReadModel.Make`, `ExtensionPoint.Make`, `StateChangeSlice.Make`, `StateViewSlice.Make`, `AutomationSlice.Make`, `OutboundTranslationSlice.Make`, and `InboundTranslationSlice.Make` are all platform-provided. The AWS Platform's implementations register Lambda handlers internally — eagerly for aggregates/readmodels/EPs/tasks, deferred via the `onDcbSlicesCreated` hook for DCB slices. Plugin code never names the underlying AWS builders.
+
+---
+
+## 10. Tuning the command-handler Lambdas
+
+`Platform.MakeWithConfig` accepts a `commandHandlerConfig` record that lets you
+tune the four command-handler Lambdas independently:
+
+- `AllAggregates` — sync aggregates, platform-wide
+- `AllAggregatesAsync` — async aggregates (opted in via `@@reventless.async`), platform-wide
+- `<Plugin>StateChanges` — sync DCB slices, per plugin
+- `<Plugin>StateChangesAsync` — async DCB slices, per plugin
+
+Every field on the inner `commandHandlerConfig` record is optional. Unset fields
+fall back to the framework defaults exposed as
+`Reventless.Runtime.CommandHandlerDefaults` (1024 MB memory, 30 s timeout,
+batch size 10, 512 MB `/tmp`, 7-day log retention).
+
+```rescript
+module Platform = ReventlessAws.Platform.MakeWithConfig({
+  let splitApi = true
+  let cloner = false
+  let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {
+    aggregates: {
+      async: {memorySize: 2048, timeout: 300, sqsBatchSize: 50},
+    },
+    stateChanges: {
+      async: {memorySize: 2048, reservedConcurrency: 50},
+    },
+  }
+})
+```
+
+In the example above, only `AllAggregatesAsync` and `<Plugin>StateChangesAsync`
+diverge from defaults — the sync Lambdas (and any branch you omit entirely)
+ship with the framework-default Lambda config.
+
+Compose against the defaults to derive scaled values without hard-coding them:
+
+```rescript
+open Reventless.Runtime
+
+let commandHandlerConfig: commandHandlerConfigs = {
+  aggregates: {
+    async: {memorySize: CommandHandlerDefaults.memorySize * 2},
+  },
+}
+```
+
+| Field | AWS Lambda mapping |
+|---|---|
+| `memorySize` | `MemorySize` (MB; 128–10240) |
+| `timeout` | `Timeout` (seconds; 1–900) |
+| `reservedConcurrency` | `ReservedConcurrentExecutions` |
+| `sqsBatchSize` | SQS event-source mapping `batchSize` |
+| `ephemeralStorageMb` | `EphemeralStorage.size` (`/tmp` size, MB) |
+| `logRetentionDays` | A dedicated `CloudWatch.LogGroup` with `retentionInDays` |
+| `envVars` | Extra `environment.variables`, layered under framework-set keys |
+
+The in-memory platform accepts the same record for type parity but ignores
+Lambda-specific knobs; only the call-path that creates AWS infrastructure
+honors them.
+
+`Platform.Make()` keeps the default behavior — an empty `commandHandlerConfig`
+that leaves every Lambda on framework defaults.

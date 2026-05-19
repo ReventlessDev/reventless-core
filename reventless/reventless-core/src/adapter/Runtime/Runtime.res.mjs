@@ -7,7 +7,16 @@ function runEffectHandler(handler) {
   return (event, ctx) => Effect.runPromise(Effect.provideService(handler(event, ctx), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(undefined, undefined, undefined)));
 }
 
+let CommandHandlerDefaults = {
+  memorySize: 1024,
+  timeout: 30,
+  sqsBatchSize: 10,
+  ephemeralStorageMb: 512,
+  logRetentionDays: 7
+};
+
 export {
   runEffectHandler,
+  CommandHandlerDefaults,
 }
 /* effect/Effect Not a pure module */

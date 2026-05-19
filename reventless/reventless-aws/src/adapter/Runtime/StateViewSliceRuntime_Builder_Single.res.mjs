@@ -72,7 +72,7 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, memorySi
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;
   let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/StateViewSliceEntryPoint.mjs", packageDirs, undefined);
-  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", match.code, match.sourceCodeHash, envVars, memorySize, timeout, opts);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllStateViewSlices", match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, opts);
   EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllStateViewSlices", channelSpecs, runtime, opts);
 }
 

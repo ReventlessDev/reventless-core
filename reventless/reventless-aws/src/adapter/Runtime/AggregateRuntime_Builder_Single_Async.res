@@ -17,6 +17,13 @@ type aggregateInfo = {
 
 let aggregateInfos: dict<aggregateInfo> = Dict.make()
 
+// Per-flavor commandHandlerConfig override; populated by Platform.MakeWithConfig
+// from the user-supplied `commandHandlerConfig.aggregates.async` record.
+let configRef: ref<ReventlessCore.Runtime.commandHandlerConfig> = ref(
+  ({}: ReventlessCore.Runtime.commandHandlerConfig),
+)
+let setConfig = (c: ReventlessCore.Runtime.commandHandlerConfig) => configRef := c
+
 let registerAggregate = (
   ~aggregateName,
   ~specModulePath,
@@ -171,16 +178,10 @@ let finish = () =>
   if !finished.contents {
     let specs = storedSpecs->Dict.valuesToArray
     if specs->Array.length > 0 {
-      let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
-        (_, accMemorySize, accTimeout),
-        {aggregateResource, memorySize, timeout},
-      ) => {
-        (
-          aggregateResource.parent,
-          Math.Int.max(accMemorySize, memorySize),
-          Math.Int.max(accTimeout, timeout),
-        )
-      })
+      // See AggregateRuntime_Builder_Single.finish for the rationale behind
+      // dropping the max-of-zeros reduce in favor of `configRef`.
+      let parent = specs->Array.reduce(None, (_, {aggregateResource}) => aggregateResource.parent)
+      let cfg = configRef.contents
       switch parent {
       | Some(parent) =>
         let opts = {Pulumi.ComponentResource.parent: parent}
@@ -229,6 +230,13 @@ let finish = () =>
         // invoke) becomes fire-and-forget → SQS, returning CommandPending.
         // The sync (default) builder leaves this unset.
         envVars->Dict.set("DISPATCH_MODE", "async"->Pulumi.Input.make)
+        cfg.envVars->Option.forEach(extra =>
+          extra->Dict.forEachWithKey((value, key) => {
+            if envVars->Dict.get(key)->Option.isNone {
+              envVars->Dict.set(key, value->Pulumi.Output.make->Pulumi.Output.asInput)
+            }
+          })
+        )
 
         // Build AssetArchive: static re-export + user packages
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(
@@ -236,19 +244,26 @@ let finish = () =>
           ~packageDirs,
         )
 
+        cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.setBatchSize)
+
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
           ~name="AllAggregatesAsync",
           ~code,
           ~sourceCodeHash,
           ~envVars,
-          ~memorySize,
-          ~timeout,
+          ~memorySize=?cfg.memorySize,
+          ~timeout=?cfg.timeout,
+          ~reservedConcurrency=?cfg.reservedConcurrency,
+          ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
+          ~logRetentionDays=?cfg.logRetentionDays,
           ~opts,
         )
 
         specs->Array.forEach(({connects}) => {
           connects->Array.forEach(connect => connect(~runtime))
         })
+
+        CommandTopicChannel.clearBatchSize()
 
         let channelSpecs =
           specs

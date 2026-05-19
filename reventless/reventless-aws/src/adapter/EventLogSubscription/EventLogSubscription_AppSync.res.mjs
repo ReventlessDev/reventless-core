@@ -175,7 +175,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
     sourceCodeHash: sourceCodeHash
   }, opts);
   let lambdaOutput = Pulumi.output(lambda);
-  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambdaOutput, name + "EventLogSubESM", queue, opts);
+  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambdaOutput, name + "EventLogSubESM", queue, undefined, opts);
 }
 
 export {

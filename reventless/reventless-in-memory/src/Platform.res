@@ -33,8 +33,14 @@ module MakeWithConfig = (
     let splitApi: bool
     let cloner: bool
     let backend: Backend.t
+    let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs
   },
 ): (ReventlessInfra.Platform.T with type api = unit and type role = unit) => {
+  // commandHandlerConfig is accepted for transport-neutral parity with the
+  // AWS platform. Lambda-specific knobs (memorySize, timeout, sqsBatchSize,
+  // …) are no-ops in-memory. envVars are not propagated here because the
+  // in-memory platform has no per-component process boundary.
+  let _ = Config.commandHandlerConfig
   // Activate Pulumi mock mode — must happen before any component creation.
   // Idempotent, so safe to call even if TestRunner.setup() was already called.
   let _ = TestRunner.setup()
@@ -2242,5 +2248,6 @@ module Make = (): (ReventlessInfra.Platform.T with type api = unit and type role
     let splitApi = true
     let cloner = false
     let backend = Backend.fromEnv()
+    let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {}
   })
 }

@@ -187,5 +187,5 @@ let createLambdaPolicy = (
     })
 }
 
-let subscribeLambda2SqsTopic = (lambda, name, queue, opts) =>
-  Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~opts)
+let subscribeLambda2SqsTopic = (~batchSize=?, lambda, name, queue, opts) =>
+  Util_EventSourceMapping.subscribeSqs(~lambda, ~name, ~queue, ~batchSize?, ~opts)

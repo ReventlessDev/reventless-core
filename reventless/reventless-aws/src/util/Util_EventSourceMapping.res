@@ -25,6 +25,7 @@ let subscribeSqs = (
   ~lambda: Pulumi.Output.t<PulumiAws.Lambda.Function.t>,
   ~name,
   ~queue: PulumiAws.SQS.Queue.t,
+  ~batchSize=?,
   ~opts,
 ) => {
   let esm = EventSourceMapping.make(
@@ -34,6 +35,7 @@ let subscribeSqs = (
       ->Pulumi.Output.flatMap(lambda => lambda.arn)
       ->Pulumi.Output.asInput,
       eventSourceArn: queue.arn->Pulumi.Output.asInput,
+      ?batchSize,
     },
     ~opts=Some(opts),
   )

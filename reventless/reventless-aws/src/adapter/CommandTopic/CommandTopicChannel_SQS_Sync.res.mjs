@@ -63,8 +63,14 @@ function make(name, opts) {
 
 let connect = CommandTopicChannel_SQS$ReventlessAws.connect;
 
+let setBatchSize = CommandTopicChannel_SQS$ReventlessAws.setBatchSize;
+
+let clearBatchSize = CommandTopicChannel_SQS$ReventlessAws.clearBatchSize;
+
 export {
   connect,
+  setBatchSize,
+  clearBatchSize,
   make,
 }
 /* Stream Not a pure module */

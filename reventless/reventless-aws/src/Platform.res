@@ -46,10 +46,22 @@ module MakeWithConfig = (
   Config: {
     let splitApi: bool
     let cloner: bool
+    let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs
   },
 ): (
   ReventlessInfra.Platform.T with type api = Types.AppSync.api and type role = Types.AppSync.role
 ) => {
+  // Dispatch per-flavor commandHandlerConfig records to the four runtime
+  // builders. Every sub-record is optional; only branches the caller actually
+  // supplied propagate, and within each sub-record every field is optional too
+  // — `setConfig` just installs the override, defaults remain in the builder.
+  Config.commandHandlerConfig.aggregates->Option.forEach(({?sync, ?async}) => {
+    sync->Option.forEach(AggregateRuntime_Builder_Single.setConfig)
+    async->Option.forEach(AggregateRuntime_Builder_Single_Async.setConfig)
+  })
+  Config.commandHandlerConfig.stateChanges->Option.forEach(({?sync, ?async}) =>
+    PluginRuntime_Builder.setStateChangesConfig(~sync?, ~async?, ())
+  )
   type api = Types.AppSync.api
   type role = Types.AppSync.role
   type apiTarget = Domain | Platform
@@ -1661,12 +1673,13 @@ module MakeWithConfig = (
   }
 }
 
-// Default platform — split API, no cloner.
+// Default platform — split API, no cloner, framework-default Lambda tuning.
 module Make = (): (
   ReventlessInfra.Platform.T with type api = Types.AppSync.api and type role = Types.AppSync.role
 ) => {
   include MakeWithConfig({
     let splitApi = true
     let cloner = false
+    let commandHandlerConfig: ReventlessCore.Runtime.commandHandlerConfigs = {}
   })
 }

@@ -2,6 +2,15 @@ type callbackEvent = PulumiAws.SQS.Queue.event
 type runtimeParts = Util.Lambda.runtimeParts
 type channelParts = Util.SQS.channelParts
 
+// Optional override for the SQS event-source mapping `batchSize`. Set from the
+// runtime builder's `finish()` (or `forDcbCommandTopic`) just before invoking
+// the connect callbacks, using the per-flavor `commandHandlerConfig.sqsBatchSize`.
+// `None` => AWS SQS default of 10 messages per batch (mirrored as
+// `CommandHandlerDefaults.sqsBatchSize`).
+let batchSizeRef: ref<option<int>> = ref(None)
+let setBatchSize = (n: int) => batchSizeRef := Some(n)
+let clearBatchSize = () => batchSizeRef := None
+
 let connect = (
   ~name,
   ~channel: ReventlessCore.CommandTopic_Adapter.channel<
@@ -24,7 +33,8 @@ let connect = (
 
   queue->createQueuePolicy(name, lambda, opts)
   lambdaRole->createLambdaPolicy(name, queue, resources, opts)
-  let subscribeResource = lambda->subscribeLambda2SqsTopic(name, queue, opts)
+  let subscribeResource =
+    lambda->subscribeLambda2SqsTopic(~batchSize=?batchSizeRef.contents, name, queue, opts)
 
   [subscribeResource]
 }

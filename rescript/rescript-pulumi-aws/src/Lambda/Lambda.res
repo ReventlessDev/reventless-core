@@ -188,6 +188,8 @@ module CallbackFunction = {
 module Function = {
   type functionEnvironment = {variables?: dict<Pulumi.Input.t<string>>}
 
+  type ephemeralStorage = {size: Pulumi.Input.t<int>}
+
   type args = {
     handler?: Pulumi.Input.t<string>,
     runtime?: Pulumi.Input.t<string>,
@@ -199,6 +201,8 @@ module Function = {
     tags?: Pulumi.Input.t<Aws.tags>,
     environment?: Pulumi.Input.t<functionEnvironment>,
     sourceCodeHash?: Pulumi.Input.t<string>,
+    reservedConcurrentExecutions?: Pulumi.Input.t<int>,
+    ephemeralStorage?: Pulumi.Input.t<ephemeralStorage>,
   }
 
   type t = {
