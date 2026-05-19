@@ -141,7 +141,13 @@ function buildCommandTopicHandler(specModule, behaviorModule, eventLogTableName,
 function buildCommandGeneratorHandler(specModule, _behaviorModule, queueUrl) {
   const resolvedQueue = makeQueueRef(queueUrl);
   const publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO");
-  const generateCommand = makeGenerateCommand(publishJsons, specModule.name, specModule.commandSchema, "Aggregate", undefined);
+  // Positional args after ReScript compiles labeled params:
+  //   (publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParams)
+  // The `undefined` for `publishJsonsAndWait` must be passed explicitly here —
+  // omitting it shifts everything left, sending the schema object through the
+  // serviceName slot (string-concat then throws "Cannot convert object to
+  // primitive value" once the log line tries to print "CommandGenerator(<schema>)").
+  const generateCommand = makeGenerateCommand(publishJsons, undefined, specModule.name, specModule.commandSchema, "Aggregate", undefined);
   return (event, _context) => {
     // Add identity fallback: use payload.identity if present, otherwise construct from meta.user.
     const identity = (event.identity != null && typeof event.identity === 'object')
@@ -152,7 +158,14 @@ function buildCommandGeneratorHandler(specModule, _behaviorModule, queueUrl) {
           groups: [],
           provider: { TAG: "Custom", _0: "aws" },
         };
-    return generateCommand({ ...event, identity });
+    // CommandGenerator.meta declares ip as array<string> (X-Forwarded-For chain).
+    // The AppSync resolver template sends a single string (or null) from
+    // identity.sourceIp — normalize to array so generateCommand's
+    // `payload.meta.ip->Array.shift` doesn't crash on null/non-array values.
+    const rawIp = event.meta?.ip;
+    const ip = rawIp == null ? [] : Array.isArray(rawIp) ? rawIp : [rawIp];
+    const meta = { ...event.meta, ip };
+    return generateCommand({ ...event, meta, identity });
   };
 }
 
@@ -231,7 +244,8 @@ export async function handler(event, context) {
         console.log("----- commandGeneratorHandler: processed command via " + name);
         result = r;
         found = true;
-      } catch (_) {
+      } catch (e) {
+        console.log("----- commandGeneratorHandler: handler '" + name + "' threw: " + (e && e.message ? e.message : String(e)));
         i = i + 1;
       }
     }
