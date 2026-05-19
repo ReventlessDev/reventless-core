@@ -151,6 +151,24 @@ let isAlreadyExistsError = (jsErr: JsExn.t): bool =>
   | _ => false
   }
 
+/** Returns `true` iff AppSync rejected the mutation because the API-level
+    schema-creation lock is held by an in-flight `StartSchemaCreation`:
+    `ConcurrentModificationException` with message
+    `"Schema is currently being altered"`.
+
+    AppSync holds a single per-API lock during schema creation and rejects any
+    concurrent `CreateResolver` / `UpdateResolver` (and `CreateDataSource`,
+    `CreateFunction`) until the schema reaches ACTIVE. Plugin_Builder gates
+    resolver creation on the plugin schema push, but admin-side resolvers in
+    `Platform_Admin.construct` are created synchronously and race the platform
+    schema push initiated from `Platform.res`. */
+let isSchemaAlteringError = (jsErr: JsExn.t): bool =>
+  switch (jsErr->exnName, JsExn.message(jsErr)) {
+  | (Some("ConcurrentModificationException"), Some(msg)) =>
+    msg->String.includes("Schema is currently being altered")
+  | _ => false
+  }
+
 // ── Retry helper ─────────────────────────────────────────────────────────────
 //
 // Pulumi serialises the dynamic provider object (and its entire closure of
@@ -166,29 +184,31 @@ let isAlreadyExistsError = (jsErr: JsExn.t): bool =>
 /** Throws a JavaScript exception directly (bypasses the ReScript exn wrapper). */
 let jsThrow: JsExn.t => 'a = %raw(`e => { throw e }`)
 
-/** Hand-rolled retry on `NotFoundException / No field named` with capped
-    exponential backoff:
+/** Hand-rolled retry on two transient AppSync races with capped exponential
+    backoff:
 
-    - Delay starts at 2 s, doubles each attempt, caps at 30 s.
-    - Up to 6 attempts → ~2 min total budget.
+    - `NotFoundException / No field named` — schema-propagation race after a
+      successful `StartSchemaCreation`. Backstop for the per-plugin dedup
+      flow (see `docs/plans/appsync-schema-push-dedup.md`).
+    - `ConcurrentModificationException / Schema is currently being altered` —
+      API-level lock contention with an in-flight `StartSchemaCreation` on
+      the same API (admin resolvers racing the platform schema push from
+      `Platform.res`).
 
-    This is a **backstop**. The primary fix for the schema-propagation race
-    is schema-push deduplication (see
-    `docs/plans/appsync-schema-push-dedup.md`) — skipping
-    `StartSchemaCreation` when the SDL is unchanged avoids restarting the
-    propagation clock on no-op deploys, which is what turns a normally
-    invisible race into a visible one.
+    Backoff: delay starts at 2 s, doubles each attempt, caps at 30 s. Up to
+    8 attempts → ~150 s total budget — generous enough to outlast a typical
+    admin schema push (`waitForSchemaActive` polls 30 × 500 ms = 15 s and
+    real propagation usually finishes well inside that). The cap doubles as
+    a coarse fairness bound: if a schema push is genuinely taking > 2 min,
+    failing loud is better than retrying forever.
 
-    With dedup in place, this retry loop rarely fires. It is kept as a
-    safety net for the genuine-schema-delta case (e.g. adding a new field
-    or plugin), where propagation briefly blocks `CreateResolver` after a
-    push. 2 minutes comfortably covers typical incremental deltas. If we
-    ever see large multi-plugin renames in a single `pulumi up` exceed
-    this budget, widening the cap is a tuning decision, not a
-    redesign. */
+    This is a **backstop**. The architectural fix for the
+    `ConcurrentModificationException` case is to gate
+    `Platform_Admin.construct`'s `createResolvers` on the admin schema push,
+    mirroring what Plugin_Builder does with `schemaPushed`. */
 let rec runWithRaceRetry = async (
   ~attempt: int=0,
-  ~maxAttempts: int=6,
+  ~maxAttempts: int=8,
   ~delayMs: int=2000,
   ~maxDelayMs: int=30000,
   makeCall: unit => promise<'a>,
@@ -201,7 +221,8 @@ let rec runWithRaceRetry = async (
     let name = jsExn->Option.flatMap(exnName)->Option.getOr("(no name)")
     let msg = jsExn->Option.flatMap(JsExn.message)->Option.getOr("(no message)")
     let isRetryable =
-      attempt < maxAttempts && jsExn->Option.mapOr(false, isFieldNotFoundError)
+      attempt < maxAttempts &&
+      jsExn->Option.mapOr(false, e => isFieldNotFoundError(e) || isSchemaAlteringError(e))
     if isRetryable {
       Console.log(
         `[AppSync_Resolver_Retrying] attempt ${(attempt + 1)->Int.toString}/${maxAttempts->Int.toString} failed, retrying in ${delayMs->Int.toString}ms: ${name}: ${msg}`,

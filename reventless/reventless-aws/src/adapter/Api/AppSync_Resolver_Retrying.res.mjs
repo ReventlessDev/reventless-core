@@ -81,11 +81,21 @@ function isAlreadyExistsError(jsErr) {
   }
 }
 
+function isSchemaAlteringError(jsErr) {
+  let match = jsErr.name;
+  let match$1 = Stdlib_JsExn.message(jsErr);
+  if ((match == null) || match !== "ConcurrentModificationException" || match$1 === undefined) {
+    return false;
+  } else {
+    return match$1.includes("Schema is currently being altered");
+  }
+}
+
 let jsThrow = (e => { throw e });
 
 async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelayMsOpt, makeCall) {
   let attempt = attemptOpt !== undefined ? attemptOpt : 0;
-  let maxAttempts = maxAttemptsOpt !== undefined ? maxAttemptsOpt : 6;
+  let maxAttempts = maxAttemptsOpt !== undefined ? maxAttemptsOpt : 8;
   let delayMs = delayMsOpt !== undefined ? delayMsOpt : 2000;
   let maxDelayMs = maxDelayMsOpt !== undefined ? maxDelayMsOpt : 30000;
   try {
@@ -95,7 +105,13 @@ async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelay
     let jsExn = Stdlib_JsExn.fromException(exn);
     let name = Stdlib_Option.getOr(Stdlib_Option.flatMap(jsExn, prim => Primitive_option.fromNullable(prim.name)), "(no name)");
     let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(jsExn, Stdlib_JsExn.message), "(no message)");
-    let isRetryable = attempt < maxAttempts && Stdlib_Option.mapOr(jsExn, false, isFieldNotFoundError);
+    let isRetryable = attempt < maxAttempts && Stdlib_Option.mapOr(jsExn, false, e => {
+      if (isFieldNotFoundError(e)) {
+        return true;
+      } else {
+        return isSchemaAlteringError(e);
+      }
+    });
     if (isRetryable) {
       console.log(`[AppSync_Resolver_Retrying] attempt ` + (attempt + 1 | 0).toString() + `/` + maxAttempts.toString() + ` failed, retrying in ` + delayMs.toString() + `ms: ` + name + `: ` + msg);
       await new Promise((resolve, param) => {
@@ -418,6 +434,7 @@ export {
   isFieldNotFoundError,
   isAlreadyDeletedError,
   isAlreadyExistsError,
+  isSchemaAlteringError,
   jsThrow,
   runWithRaceRetry,
   buildSdkInput,
