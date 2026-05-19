@@ -31,7 +31,7 @@ let transactWriteConditional = (tableName, jsons) => {
   }
   Effect.tryPromise(
     ~catch=DynamoDb_Error.classify,
-    () => input->TransactWriteCommand.send,
+    () => input->TransactWriteCommand.make->TransactWriteCommand.send,
   )->Effect.map(_ => Ok())
 }
 

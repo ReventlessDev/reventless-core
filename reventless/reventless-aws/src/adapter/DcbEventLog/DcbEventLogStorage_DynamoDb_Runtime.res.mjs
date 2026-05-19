@@ -476,7 +476,7 @@ function buildEventPuts(table, events, basePosition, partitionTag) {
 }
 
 async function runTransactWrite(input, basePosition, errorPrefix) {
-  return await Effect$1.runPromise(Effect$1.catchAll(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
+  return await Effect$1.runPromise(Effect$1.catchAll(Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(new LibDynamodb.TransactWriteCommand(input))), param => ({
     TAG: "Ok",
     _0: basePosition
   })), err => {

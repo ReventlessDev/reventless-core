@@ -630,7 +630,7 @@ let runTransactWrite = async (
   basePosition: string,
   ~errorPrefix: string,
 ) =>
-  await Effect.tryPromise(~catch=DynamoDb_Error.classify, () => input->TransactWriteCommand.send)
+  await Effect.tryPromise(~catch=DynamoDb_Error.classify, () => input->TransactWriteCommand.make->TransactWriteCommand.send)
   ->Effect.map(_ => Ok(basePosition))
   ->Effect.catchAll(err =>
     switch err {

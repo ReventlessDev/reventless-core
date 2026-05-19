@@ -39,7 +39,7 @@ function transactWriteConditional(tableName, jsons) {
   let input = {
     TransactItems: input_TransactItems
   };
-  return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(input)), param => ({
+  return Effect$1.map(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => DynamoDb_DocumentClient$AwsSdk.TransactWriteCommand.send(new LibDynamodb.TransactWriteCommand(input))), param => ({
     TAG: "Ok",
     _0: undefined
   }));

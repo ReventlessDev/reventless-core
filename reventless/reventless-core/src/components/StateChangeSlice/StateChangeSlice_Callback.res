@@ -152,17 +152,23 @@ module Make = (
               EffectLogger.logInfo(~comp, `append: ${eventCount} event(s)`)->Effect.map(
                 _ => Ok("ok"),
               )
-            | Error(_err) =>
+            | Error(err) =>
               if retries > 0 {
                 EffectLogger.logWarn(
                   ~comp,
-                  `conflict, retrying ${(maxRetries - retries + 1)
-                      ->Int.toString}/${maxRetries->Int.toString}`,
+                  `append failed (retrying ${(maxRetries - retries + 1)
+                      ->Int.toString}/${maxRetries->Int.toString}): ${err}`,
                 )->Effect.flatMap(_ => attempt(~retries=retries - 1))
               } else {
-                EffectLogger.logError(~comp, "conflict, retries exhausted")->Effect.map(
-                  _ => Error("conflict: retries exhausted"),
+                let errorCode = err->String.startsWith("Conflict") ? "Conflict" : "AppendFailed"
+                CommandTopic_Helpers.reportRejected(
+                  cmdJson.meta.msgId,
+                  {errorCode, errorDetail: err},
                 )
+                EffectLogger.logError(
+                  ~comp,
+                  `append failed, retries exhausted: ${err}`,
+                )->Effect.map(_ => Error(err))
               }
             }
           )

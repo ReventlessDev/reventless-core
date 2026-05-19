@@ -699,11 +699,9 @@ module TransactWriteCommand = {
 
   module Raw = {
     @send
-    external send: (client, input) => promise<output> = "send"
+    external send: (client, t) => promise<output> = "send"
   }
-  let send = command => {
-    Raw.send(client(), command)
-  }
+  let send: t => promise<output> = command => Raw.send(client(), command)
 }
 
 module QueryCommand = {

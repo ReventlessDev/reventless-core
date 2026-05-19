@@ -106,25 +106,30 @@ function Make(Spec) {
             after: condition_after
           };
           return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => dcbEventLog.append(rawEvents, condition))), appendResult => {
-            if (appendResult.TAG !== "Ok") {
-              if (retries > 0) {
-                return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict, retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retries - 1 | 0));
-              } else {
-                return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, "conflict, retries exhausted"), () => ({
-                  TAG: "Error",
-                  _0: "conflict: retries exhausted"
+            if (appendResult.TAG === "Ok") {
+              CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
+                  entityId: entityId,
+                  eventCount: rawEvents.length
+                }) : ({
+                  eventCount: rawEvents.length
                 }));
-              }
-            }
-            CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
-                entityId: entityId,
-                eventCount: rawEvents.length
-              }) : ({
-                eventCount: rawEvents.length
+              return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: ` + eventCount + ` event(s)`), () => ({
+                TAG: "Ok",
+                _0: "ok"
               }));
-            return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: ` + eventCount + ` event(s)`), () => ({
-              TAG: "Ok",
-              _0: "ok"
+            }
+            let err = appendResult._0;
+            if (retries > 0) {
+              return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + err), () => attempt(retries - 1 | 0));
+            }
+            let errorCode = err.startsWith("Conflict") ? "Conflict" : "AppendFailed";
+            CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
+              errorCode: errorCode,
+              errorDetail: err
+            });
+            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed, retries exhausted: ` + err), () => ({
+              TAG: "Error",
+              _0: err
             }));
           });
         }
