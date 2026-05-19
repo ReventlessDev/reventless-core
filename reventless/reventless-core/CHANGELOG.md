@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.87 (2026-05-19)
+
+### Bug Fixes
+
+* **aggregate:** preserve conflict detail in CommandRejected.errorDetail ([8ebf696](https://github.com/ReventlessDev/reventless-core/commit/8ebf69621f214c82bf38e91d2bfce2b4edd57ea7))
+* **aggregate:** report non-conflict append errors via reportRejected ([b977d67](https://github.com/ReventlessDev/reventless-core/commit/b977d678bc5d963a868b55c444a67a71450a040c))
+* **aws:** wrap TransactWriteCommand input via .make() before .send() ([a6d65b5](https://github.com/ReventlessDev/reventless-core/commit/a6d65b50986809fc06e8888b3374019bb28df281))
+
+
 # 3.0.0-alpha.86 (2026-05-19)
 
 ### Bug Fixes

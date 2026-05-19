@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.2.0-alpha.13 (2026-05-19)
+
+### Bug Fixes
+
+* **aws:** wrap TransactWriteCommand input via .make() before .send() ([a6d65b5](https://github.com/ReventlessDev/reventless-core/commit/a6d65b50986809fc06e8888b3374019bb28df281))
+
+
 # 2.2.0-alpha.12 (2026-05-19)
 
 ### Bug Fixes
