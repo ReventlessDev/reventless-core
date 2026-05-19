@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.105 (2026-05-19)
+
+### Bug Fixes
+
+* **aws:** close AppSync resolver gaps for drift, inbound subs, slice query DBs ([8d10126](https://github.com/ReventlessDev/reventless-core/commit/8d10126168eade99e6dad19c8bac3f0dfa2240fa))
+### Features
+
+* **api:** batched-by-ids query field for single-key projections ([d5d836d](https://github.com/ReventlessDev/reventless-core/commit/d5d836de52a478fb096965d7c83882d6ef302508))
+* **aws:** subscribeAuth registry on AppSync_EventsApi; extend ChannelNamespace binding ([47bbfb9](https://github.com/ReventlessDev/reventless-core/commit/47bbfb9122d9fa1221101ac77039f1a3aae55e87))
+* **subscriptions:** emit change descriptor payload from StateTopic Lambda ([049cac8](https://github.com/ReventlessDev/reventless-core/commit/049cac823f7c77f74956d21a09ae7732cbbedfe4))
+
+
 # 3.0.0-alpha.104 (2026-05-19)
 
 ### Bug Fixes

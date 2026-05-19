@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.61 (2026-05-19)
+
+### Features
+
+* **api:** batched-by-ids query field for single-key projections ([d5d836d](https://github.com/ReventlessDev/reventless-core/commit/d5d836de52a478fb096965d7c83882d6ef302508))
+* **in-memory:** publish change descriptors to match AWS StateTopic output ([d182986](https://github.com/ReventlessDev/reventless-core/commit/d182986d1452ca13fdcee7d3d53d6683065f9346))
+
+
 # 3.0.0-alpha.60 (2026-05-19)
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering",
-  "version": "1.0.0-alpha.47",
+  "version": "1.0.0-alpha.48",
   "description": "Online Shop Hybrid example — Ordering plugin (Customer aggregate + Order/CatalogProduct DCB)",
   "license": "MIT",
   "scripts": {

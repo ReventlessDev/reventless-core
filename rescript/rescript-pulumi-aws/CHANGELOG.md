@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.30 (2026-05-19)
+
+### Features
+
+* **api:** batched-by-ids query field for single-key projections ([d5d836d](https://github.com/ReventlessDev/reventless-core/commit/d5d836de52a478fb096965d7c83882d6ef302508))
+* **aws:** subscribeAuth registry on AppSync_EventsApi; extend ChannelNamespace binding ([47bbfb9](https://github.com/ReventlessDev/reventless-core/commit/47bbfb9122d9fa1221101ac77039f1a3aae55e87))
+
+
 # 2.4.0-alpha.29 (2026-05-19)
 
 ### Features

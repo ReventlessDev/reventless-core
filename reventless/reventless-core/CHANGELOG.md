@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.85 (2026-05-19)
+
+### Bug Fixes
+
+* **aws:** close AppSync resolver gaps for drift, inbound subs, slice query DBs ([8d10126](https://github.com/ReventlessDev/reventless-core/commit/8d10126168eade99e6dad19c8bac3f0dfa2240fa))
+### Features
+
+* **api:** batched-by-ids query field for single-key projections ([d5d836d](https://github.com/ReventlessDev/reventless-core/commit/d5d836de52a478fb096965d7c83882d6ef302508))
+
+
 # 3.0.0-alpha.84 (2026-05-19)
 
 ### Bug Fixes
