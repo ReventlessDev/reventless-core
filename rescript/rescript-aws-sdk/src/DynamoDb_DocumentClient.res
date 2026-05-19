@@ -38,6 +38,7 @@ let clientInstance = ref(None)
   - connectionTimeout: 1000ms
   - requestTimeout: 5000ms
   - convertEmptyValues: false
+  - removeUndefinedValues: true
 
   use `Raw.client` if you want to set alternative configuration
 */
@@ -46,8 +47,14 @@ let client = () =>
   | None =>
     let docClient = DynamoDb_DynamoDb.client()->Raw.client(
       {
+        // removeUndefinedValues: ReScript's `field?: T` syntax leaves
+        // unset optional record fields as JS `undefined`. Without this flag the
+        // marshaller rejects the whole item — see e.g. PluginReadModelSpec.state
+        // with its optional `apiTarget?: string`, where every put that omits
+        // the field would otherwise throw.
         marshallOptions: {
           convertEmptyValues: false,
+          removeUndefinedValues: true,
         },
       },
       (),
