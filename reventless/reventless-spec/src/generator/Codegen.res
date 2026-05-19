@@ -33,6 +33,29 @@ let renderSlices = (
     ++ ")"
   )
 
+// StateChangeSlices opt into async dispatch via `@@reventless.async` on the
+// spec file; the rendered factory becomes MakeAsync (CommandPending response).
+let renderStateChangeSlices = (
+  stems: array<string>,
+  asyncStems: Dict.t<bool>,
+): array<string> =>
+  stems->Array.map(stem => {
+    let factory = switch Dict.get(asyncStems, stem) {
+    | Some(true) => "MakeAsync"
+    | _ => "Make"
+    }
+    "  module "
+    ++ stem
+    ++ "Slice = Platform.StateChangeSlice."
+    ++ factory
+    ++ "("
+    ++ stem
+    ++ ", "
+    ++ stem
+    ++ Pairing.implSuffixForStateChange
+    ++ ")"
+  })
+
 // AutomationSlice — 2-arg form. The merged `_Automation.res` shape exposes
 // both `process` and the `mappings` array, so plugin assembly drops to
 // `Platform.AutomationSlice.Make(<Stem>, <Stem>_Automation)`. Legacy 3-file
@@ -50,10 +73,11 @@ let renderAutomationSlices = (stems: array<string>): array<string> =>
   )
 
 let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> =>
-  aggregates->Array.flatMap(({spec, behavior, eventMappings}) => {
+  aggregates->Array.flatMap(({spec, behavior, eventMappings, isAsync}) => {
     let em = eventMappings->Option.getOr("ReventlessInfra.NoEventMappings.Make(" ++ spec ++ ")")
+    let factory = isAsync ? "MakeAsync" : "Make"
     [
-      "  module " ++ spec ++ "Aggregate = Platform.Aggregate.Make(",
+      "  module " ++ spec ++ "Aggregate = Platform.Aggregate." ++ factory ++ "(",
       "    " ++ spec ++ ",",
       "    " ++ behavior ++ ",",
       "    " ++ em ++ ",",
@@ -490,14 +514,12 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
     lines->Array.push("")
   }
 
-  // StateChangeSlices
+  // StateChangeSlices — per-stem MakeAsync opt-in via @@reventless.async
   if resolved.stateChangeSlices->Array.length > 0 {
     lines->Array.push("  // StateChangeSlices")
-    renderSlices(
-      ~platformFactory="StateChangeSlice",
-      ~suffix="Slice",
-      ~implSuffix=Pairing.implSuffixForStateChange,
+    renderStateChangeSlices(
       resolved.stateChangeSlices,
+      resolved.asyncStateChangeSlices,
     )->push
   }
 

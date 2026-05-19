@@ -83,6 +83,11 @@ let strip_ppx_attrs (str : structure) : structure =
   let is_ppx_attr name =
     String.equal name "reventless.spec"
     || String.equal name "reventless.dcbTags"
+    (* [@@reventless.async] marks an Aggregate or StateChangeSlice spec for
+       async command dispatch (CommandPending response). The PPX consumes
+       the attribute so it doesn't reach the compiler; the plugin generator
+       reads the raw .res source to flip the emitted Make → MakeAsync. *)
+    || String.equal name "reventless.async"
     || List.exists (String.equal name) impl_attr_names
   in
   List.filter (fun (item : structure_item) ->

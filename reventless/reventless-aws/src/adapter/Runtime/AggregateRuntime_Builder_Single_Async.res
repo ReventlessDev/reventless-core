@@ -225,6 +225,10 @@ let finish = () =>
 
         let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
         envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+        // Flip AggregateEntryPoint into async mode — Route 1 (AppSync direct
+        // invoke) becomes fire-and-forget → SQS, returning CommandPending.
+        // The sync (default) builder leaves this unset.
+        envVars->Dict.set("DISPATCH_MODE", "async"->Pulumi.Input.make)
 
         // Build AssetArchive: static re-export + user packages
         let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(

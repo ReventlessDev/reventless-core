@@ -140,6 +140,7 @@ function finish() {
         ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}]}`);
         let envVars = {};
         envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+        envVars["DISPATCH_MODE"] = "async";
         let packageDirs = {};
         let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
         let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);

@@ -559,9 +559,21 @@ module Make = (
       | None => Pulumi.Output.make("NOT_AVAILABLE")
       }
 
+      // Async DCB CommandTopic is created in Dcb_Builder with the resource
+      // name suffix `-dcb-async-command-topic` (vs `-dcb-command-topic` for
+      // sync). Detect from the name so the Lambda flips DcbCommandTopicEntryPoint
+      // into async dispatch — Route 1 returns CommandPending instead of running
+      // the slice handler inline.
+      let isAsync = commandTopicResource.name
+        ->Option.map(n => n->String.includes("-dcb-async-command-topic"))
+        ->Option.getOr(false)
+
       let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
       envVars->Dict.set("DCB_TABLE", dcbTableName->Pulumi.Output.asInput)
       envVars->Dict.set("QUEUE_URL", queue.id->Pulumi.Output.asInput)
+      if isAsync {
+        envVars->Dict.set("DISPATCH_MODE", "async"->Pulumi.Input.make)
+      }
 
       // Build HANDLER_CONFIG JSON: array of {spec, behavior} objects so the entry point
       // can dynamically import both modules and apply the curried StateChangeSlice_Callback.Make

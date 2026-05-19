@@ -10,7 +10,7 @@ import { Make as eventLogOperationsMake } from "@reventlessdev/reventless-core/s
 import { Make as aggregateCallbackMake } from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Callback.res.mjs";
 import { Make as commandTopicCallbackMake } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Callback.res.mjs";
 import { makeGenerateCommand } from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
-import { commandOutcomeToJson } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
+import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 import { append, replay, replayStream, appendStream } from "@reventlessdev/reventless-aws/src/adapter/EventLog/EventLogStorage_DynamoDb_Runtime.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { DynamoDBClient, ScanCommand } from "@aws-sdk/client-dynamodb";
@@ -111,7 +111,11 @@ async function checkPluginStatus(event) {
   }
 }
 
-function buildCommandTopicHandler(specModule, behaviorModule, eventLogTableName, queueUrl) {
+// Build the per-aggregate parts shared by Route 1 (AppSync direct invoke) and
+// Route 2 (SQS event source): the in-process command handler (used both as the
+// inline dispatch target and as the SQS message handler) plus the resolved
+// queue ref for the fire-and-forget async path.
+function buildAggregateParts(specModule, behaviorModule, eventLogTableName, queueUrl) {
   const patchedSpec = patchSpecId(specModule);
   const resolvedTable = { name: eventLogTableName };
   const rawStorageOps = {
@@ -135,19 +139,31 @@ function buildCommandTopicHandler(specModule, behaviorModule, eventLogTableName,
     Spec: patchedSpec,
     commandsHandler: aggregateCallback.handleCommands,
   });
-  return handleQueueEvent(makeQueueRef(queueUrl), commandTopicCallback.handleJsonCommands);
+  const resolvedQueue = makeQueueRef(queueUrl);
+  return {
+    patchedSpec,
+    handleJsonCommands: commandTopicCallback.handleJsonCommands,
+    sqsHandler: handleQueueEvent(resolvedQueue, commandTopicCallback.handleJsonCommands),
+    resolvedQueue,
+  };
 }
 
-function buildCommandGeneratorHandler(specModule, _behaviorModule, queueUrl) {
-  const resolvedQueue = makeQueueRef(queueUrl);
+function buildCommandGeneratorHandler(parts, dispatchMode) {
+  const { patchedSpec, handleJsonCommands, resolvedQueue } = parts;
   const publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO");
+  // Sync (default): dispatch inline so the AppSync resolver gets a typed
+  // Accepted/Rejected outcome. Async: fire-and-forget to SQS, return Pending —
+  // the SQS event source (Route 2) processes the command later.
+  const publishJsonsAndWait = dispatchMode === "async"
+    ? undefined
+    : (jsons) => runInlineAndCollect(jsons, handleJsonCommands);
   // Positional args after ReScript compiles labeled params:
   //   (publishJsons, publishJsonsAndWait, serviceName, commandSchema, componentKind, stripIdFromParams)
-  // The `undefined` for `publishJsonsAndWait` must be passed explicitly here —
+  // The `undefined` for `stripIdFromParams` must be passed explicitly here —
   // omitting it shifts everything left, sending the schema object through the
   // serviceName slot (string-concat then throws "Cannot convert object to
   // primitive value" once the log line tries to print "CommandGenerator(<schema>)").
-  const generateCommand = makeGenerateCommand(publishJsons, undefined, specModule.name, specModule.commandSchema, "Aggregate", undefined);
+  const generateCommand = makeGenerateCommand(publishJsons, publishJsonsAndWait, patchedSpec.name, patchedSpec.commandSchema, "Aggregate", undefined);
   return (event, _context) => {
     // Add identity fallback: use payload.identity if present, otherwise construct from meta.user.
     const identity = (event.identity != null && typeof event.identity === 'object')
@@ -203,6 +219,12 @@ function extractCorrelationId(records) {
   return undefined;
 }
 
+// DISPATCH_MODE controls whether AppSync direct-invoke commands are run inline
+// (sync, default) or pushed to SQS for asynchronous processing (async).
+// Aggregate_Builder_Single bundles this entry point with sync; the async
+// variant (Aggregate_Builder_Single_Async) sets DISPATCH_MODE=async.
+const DISPATCH_MODE = process.env["DISPATCH_MODE"] === "async" ? "async" : "sync";
+
 async function buildAllHandlers() {
   const configStr = process.env["HANDLER_CONFIG"] || '{"handlers":[]}';
   const config = JSON.parse(configStr);
@@ -211,8 +233,9 @@ async function buildAllHandlers() {
   await Promise.all(config.handlers.map(async h => {
     const specModule = await dynamicImport(h.specModule);
     const behaviorModule = await dynamicImport(h.behaviorModule);
-    cmdTopicHandlers[h.queueArn] = buildCommandTopicHandler(specModule, behaviorModule, h.eventLogTable, h.queueUrl);
-    cmdGenHandlers[specModule.name] = buildCommandGeneratorHandler(specModule, behaviorModule, h.queueUrl);
+    const parts = buildAggregateParts(specModule, behaviorModule, h.eventLogTable, h.queueUrl);
+    cmdTopicHandlers[h.queueArn] = parts.sqsHandler;
+    cmdGenHandlers[specModule.name] = buildCommandGeneratorHandler(parts, DISPATCH_MODE);
   }));
   return [cmdTopicHandlers, cmdGenHandlers];
 }

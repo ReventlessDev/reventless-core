@@ -212,6 +212,26 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
+### Sync vs async command dispatch
+
+By default, slice mutations are dispatched **synchronously**: the AppSync resolver invokes the DCB Lambda, the slice handler runs inline, and the mutation resolves to `CommandAccepted` or `CommandRejected`. The plugin generator emits `Platform.StateChangeSlice.Make(...)`.
+
+For slices that should publish-and-forget (high contention, long-running handlers, callers polling `Subscription.onX` for the outcome), add the `@@reventless.async` attribute to the slice spec file:
+
+```rescript title="HighContentionSlice.res" showLineNumbers
+@@reventless.spec
+@@reventless.async
+
+module Id = Reventless.Id.String
+
+@schema
+type command = ...
+```
+
+The generator then emits `Platform.StateChangeSlice.MakeAsync(...)` instead. Async slices share a separate `<plugin>-dcb-async-command-topic*` Lambda (FIFO-backed); sync slices stay on the default `<plugin>-dcb-command-topic*` Lambda. The async Lambda is only provisioned when at least one slice opts in — sync-only setups pay no extra Lambda cost.
+
+See [CommandTopic](./components/commandtopic.md#sync-vs-async) for the channel-level details.
+
 ## Deploying the Plugin
 
 ```rescript

@@ -113,6 +113,25 @@ function extractTargetName(filePath) {
   }
 }
 
+function hasAsyncAttribute(filePath) {
+  try {
+    let content = Nodefs.readFileSync(filePath, "utf8");
+    let found = {
+      contents: false
+    };
+    content.split("\n").forEach(line => {
+      let trimmed = line.trimStart();
+      if (trimmed.startsWith("@@reventless.async ") || trimmed.startsWith("@@reventless.async(") || trimmed === "@@reventless.async" || trimmed.startsWith("@@reventless.async\n")) {
+        found.contents = true;
+        return;
+      }
+    });
+    return found.contents;
+  } catch (exn) {
+    return false;
+  }
+}
+
 function resolve(discovered, srcDir) {
   let eventMappings = findEventMappings(srcDir);
   let stateChangeSlices = [];
@@ -125,6 +144,8 @@ function resolve(discovered, srcDir) {
   let inboundTranslationSliceRelPaths = {};
   let outboundTranslationSliceRelPaths = {};
   let aggregateSpecs = [];
+  let aggregateSpecRelPaths = {};
+  let stateChangeSliceRelPaths = {};
   let aggregateBehaviors = [];
   let readModelStems = [];
   let projectionsByRelPath = {};
@@ -139,6 +160,7 @@ function resolve(discovered, srcDir) {
       case "StateChangeSlice" :
         if (!isImplStem(stem)) {
           stateChangeSlices.push(stem);
+          stateChangeSliceRelPaths[stem] = relPath;
           return;
         } else {
           return;
@@ -186,6 +208,7 @@ function resolve(discovered, srcDir) {
           aggregateBehaviors.push(stem);
         } else {
           aggregateSpecs.push(stem);
+          aggregateSpecRelPaths[stem] = relPath;
         }
         return;
       case "ReadModel" :
@@ -218,15 +241,16 @@ function resolve(discovered, srcDir) {
         aggregateBehaviors.includes(bare) ? bare : undefined
       );
     if (behaviorStem !== undefined) {
+      let relPath = aggregateSpecRelPaths[spec];
+      let isAsync = relPath !== undefined ? hasAsyncAttribute(Nodepath.join(srcDir, relPath)) : false;
       return {
         spec: spec,
         behavior: behaviorStem,
-        eventMappings: eventMappings[spec]
+        eventMappings: eventMappings[spec],
+        isAsync: isAsync
       };
-    } else {
-      console.warn("Generator: Aggregate spec `" + spec + "` has no matching `" + underscored + "` or `" + bare + "` — skipping");
-      return;
     }
+    console.warn("Generator: Aggregate spec `" + spec + "` has no matching `" + underscored + "` or `" + bare + "` — skipping");
   });
   let readModels = Stdlib_Array.filterMap(sortedStems(readModelStems), rm => {
     let baseName = rm.endsWith("ReadModel") ? rm.slice(0, rm.length - 9 | 0) : rm;
@@ -277,6 +301,7 @@ function resolve(discovered, srcDir) {
     });
     return dict;
   };
+  let d = {};
   return {
     stateChangeSlices: sortedStems(stateChangeSlices),
     stateViewSlices: sortedStems(stateViewSlices),
@@ -287,6 +312,13 @@ function resolve(discovered, srcDir) {
     automationSliceTargets: buildTargets(automationSlices, automationSliceRelPaths),
     inboundTranslationSliceTargets: buildTargets(inboundTranslationSlices, inboundTranslationSliceRelPaths),
     outboundTranslationSliceTargets: buildTargets(outboundTranslationSlices, outboundTranslationSliceRelPaths),
+    asyncStateChangeSlices: (stateChangeSlices.forEach(stem => {
+      let relPath = stateChangeSliceRelPaths[stem];
+      if (relPath !== undefined && hasAsyncAttribute(Nodepath.join(srcDir, relPath))) {
+        d[stem] = true;
+        return;
+      }
+    }), d),
     aggregates: aggregates,
     readModels: readModels,
     tasks: sortedStems(tasks),
@@ -305,6 +337,7 @@ export {
   findEventMappings,
   sortedStems,
   extractTargetName,
+  hasAsyncAttribute,
   resolve,
 }
 /* node:fs Not a pure module */

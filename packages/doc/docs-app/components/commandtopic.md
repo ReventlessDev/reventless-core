@@ -83,6 +83,15 @@ The channel adapter controls whether the mutation returns an immediate `CommandR
 | `CommandTopicChannel.SQS_Sync` | Standard SQS | `CommandAccepted` or `CommandRejected` | Default — user-facing CRUD |
 | `CommandTopicChannel.SQS_Async` | FIFO SQS | `CommandPending` | High-contention or internal automation |
 
+### Sync vs async
+
+App developers don't pick the channel by hand. The plugin generator selects sync (`Make`) or async (`MakeAsync`) per component based on the spec file:
+
+- **Default — sync.** Aggregate and StateChangeSlice spec files without any flag get `Platform.Aggregate.Make` / `Platform.StateChangeSlice.Make`, wired to `SQS_Sync`. The AppSync Lambda dispatches the command inline (via `publishJsonsAndWait` → `runInlineAndCollect`) and the mutation resolves to `CommandAccepted` / `CommandRejected`.
+- **Opt-in — async.** Add `@@reventless.async` at the top of the spec file. The generator emits `MakeAsync`, wires to `SQS_Async` (FIFO), and the AppSync Lambda fire-and-forgets to the queue and returns `CommandPending`. The actual command handler runs later via the SQS event source.
+
+The Lambda layout follows: async aggregates land in `AllAggregatesAsync` (separate from the default `AllAggregates`); async StateChangeSlices share a `<plugin>-dcb-async-command-topic*` Lambda (separate from the default `<plugin>-dcb-command-topic*`). Async Lambdas are only provisioned when at least one component opts in — sync-only setups pay no extra Lambda cost.
+
 ### CommandTopic Operations
 
 The CommandTopic provides operations for publishing and handling commands:

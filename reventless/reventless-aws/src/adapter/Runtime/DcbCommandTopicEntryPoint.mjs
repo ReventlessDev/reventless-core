@@ -7,16 +7,25 @@ import * as Chunk from "effect/Chunk";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import { patchSpecId, makeQueueRef } from "./HandlerFactoryHelpers.mjs";
-import { decodeCommand$p as decodeCommandPrime, uuid } from "@reventlessdev/reventless-core/src/Message.res.mjs";
+import { decodeCommand$p as decodeCommandPrime } from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { extractVariantNames } from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
 import { Make as stateChangeSliceCallbackMake } from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs";
+import { makeGenerateCommand } from "@reventlessdev/reventless-core/src/components/CommandGenerator/CommandGenerator_Callback.res.mjs";
+import { commandOutcomeToJson, runInlineAndCollect } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
+import { json as jsonSchema } from "sury/src/S.res.mjs";
 import { read, append, readStream } from "@reventlessdev/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 
 const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifier);
+
+// DISPATCH_MODE controls whether AppSync direct-invoke commands are run inline
+// (sync, default) or pushed to SQS for asynchronous processing (async).
+// Set by PluginRuntime_Builder.forDcbCommandTopic when wiring the async DCB
+// CommandTopic; sync is the default for the primary DCB topic.
+const DISPATCH_MODE = process.env["DISPATCH_MODE"] === "async" ? "async" : "sync";
 
 function extractTypeName(json) {
   if (typeof json === 'string') return json;
@@ -103,6 +112,9 @@ async function buildHandler() {
     });
   }));
 
+  // Composite handler used by Route 2 (SQS event source) AND inline dispatch
+  // for Route 1 sync mode. Routes each item to the slice handler matching its
+  // command TAG; unknown TAGs are dropped with a warning.
   const compositeJsonCommandsHandler = stream => Effect.map(
     Stream.runCollect(
       Stream.mapEffect(stream, topicItem => {
@@ -125,31 +137,48 @@ async function buildHandler() {
 
   const resolvedQueue = makeQueueRef(config.queueUrl);
   const sqsHandler = handleQueueEvent(resolvedQueue, compositeJsonCommandsHandler);
-
-  function mkCmdGenHandler(publishFn, pluginName) {
-    return function(payload) {
-      const msgId = crypto.randomUUID();
-      const args = payload.arguments;
-      let id = args.id;
-      if (!id) {
-        for (const key of Object.keys(args)) {
-          if (key.endsWith('Id') && typeof args[key] === 'string') { id = args[key]; break; }
-        }
-      }
-      if (!id) id = msgId;
-      const ip = payload.meta && payload.meta.ip && Array.isArray(payload.meta.ip) ? payload.meta.ip[0] || "" : "";
-      const user = payload.meta && payload.meta.user ? payload.meta.user : "";
-      const meta = { service: pluginName, time: new Date().toISOString(), ip, user, msgId, correlationId: msgId };
-      const obj = JSON.parse(JSON.stringify(args));
-      delete obj.id;
-      const params = Object.entries(obj);
-      const commandJson = params.length > 0 ? Object.fromEntries([["TAG", payload.command]].concat(params)) : payload.command;
-      return publishFn([{ id, meta, commandJson }]).then(function() { return msgId; });
-    };
-  }
-
   const publishJsons = sqsPublishJsons(resolvedQueue, "SQS_FIFO");
-  const cmdGenHandler = mkCmdGenHandler(publishJsons, config.pluginName);
+
+  // Sync (default): inline-dispatch the command via the same composite handler
+  // that Route 2 uses, so the AppSync resolver gets a typed Accepted/Rejected
+  // outcome. Async: undefined → makeGenerateCommand falls back to publishJsons
+  // and returns Pending. The schema is permissive (S.json) because AppSync has
+  // already validated input against the SDL — per-slice schemas reapply inside
+  // the slice handlers via decodeCommandPrime.
+  const publishJsonsAndWait = DISPATCH_MODE === "async"
+    ? undefined
+    : (jsons) => runInlineAndCollect(jsons, compositeJsonCommandsHandler);
+
+  // Positional args match CommandGenerator_Callback.makeGenerateCommand's
+  // ReScript-compiled signature: (publishJsons, publishJsonsAndWait,
+  // serviceName, commandSchema, componentKind, stripIdFromParams).
+  // stripIdFromParams=false: DCB slices may declare a literal `id` field as part
+  // of the command schema (composite partition keys etc.) — don't strip it.
+  const generateCommand = makeGenerateCommand(
+    publishJsons,
+    publishJsonsAndWait,
+    config.pluginName,
+    jsonSchema,
+    "StateChangeSlice",
+    false,
+  );
+
+  const cmdGenHandler = (event) => {
+    // CommandGenerator.meta declares ip as array<string> (X-Forwarded-For chain).
+    // AppSync sends a single string or null from identity.sourceIp.
+    const rawIp = event.meta && event.meta.ip;
+    const ip = rawIp == null ? [] : Array.isArray(rawIp) ? rawIp : [rawIp];
+    const meta = { ...event.meta, ip };
+    const identity = (event.identity != null && typeof event.identity === 'object')
+      ? event.identity
+      : {
+          userId: (event.meta && event.meta.user) ?? "anonymous",
+          username: (event.meta && event.meta.user) ?? "anonymous",
+          groups: [],
+          provider: { TAG: "Custom", _0: "aws" },
+        };
+    return generateCommand({ ...event, meta, identity });
+  };
 
   return [sqsHandler, cmdGenHandler];
 }
@@ -159,10 +188,12 @@ const initPromise = buildHandler();
 export async function handler(event, context) {
   const [sqsHandler, cmdGenHandler] = await initPromise;
 
-  // Route 1: AppSync direct invocation
+  // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload
+  // shape (`{command, arguments, meta, identity?}`).
   if (event.command != null && event.arguments != null) {
-    console.log("----- dcbCommandTopicHandler: AppSync direct invocation");
-    return await cmdGenHandler(event);
+    console.log("----- dcbCommandTopicHandler: AppSync direct invocation (" + DISPATCH_MODE + ")");
+    const outcome = await runEffect(undefined, cmdGenHandler(event));
+    return commandOutcomeToJson(outcome);
   }
 
   // Route 2: SQS CommandTopic events

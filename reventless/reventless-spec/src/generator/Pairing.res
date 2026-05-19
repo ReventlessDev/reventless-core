@@ -27,7 +27,7 @@ let isImplStem = (stem: string): bool =>
   || stem->String.endsWith(implSuffixForTranslation)
   || stem->String.endsWith(mappingsSuffixForAutomation)
 
-type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>}
+type aggregateDef = {spec: string, behavior: string, eventMappings: option<string>, isAsync: bool}
 // readModelDef pairs a ReadModel spec with its sibling `_Projections.res`
 // file. Codegen emits `Platform.ReadModel.Make(<spec>, <projections>)` and
 // expects the projections file to declare `let mappings` via
@@ -49,6 +49,9 @@ type resolved = {
   automationSliceTargets: Dict.t<option<string>>,
   inboundTranslationSliceTargets: Dict.t<option<string>>,
   outboundTranslationSliceTargets: Dict.t<option<string>>,
+  // StateChangeSlice stems carrying `@@reventless.async` — codegen emits
+  // `Platform.StateChangeSlice.MakeAsync` for these (CommandPending response).
+  asyncStateChangeSlices: Dict.t<bool>,
   aggregates: array<aggregateDef>,
   readModels: array<readModelDef>,
   tasks: array<string>,
@@ -131,6 +134,32 @@ let extractTargetName = (filePath: string): option<string> => {
   }
 }
 
+// Returns true if the spec file declares `@@reventless.async` at the file
+// level (Aggregate or StateChangeSlice opt-in to CommandPending response).
+// Falls back to false on read errors so a transient FS failure can't flip
+// component to async — the safe default is sync.
+let hasAsyncAttribute = (filePath: string): bool => {
+  try {
+    let content = Generator_Node.readFileSync(filePath)
+    let found = ref(false)
+    content->String.split("\n")->Array.forEach(line => {
+      let trimmed = line->String.trimStart
+      // Match `@@reventless.async` and tolerate a payload arg in the future.
+      if (
+        trimmed->String.startsWith("@@reventless.async ") ||
+        trimmed->String.startsWith("@@reventless.async(") ||
+        trimmed === "@@reventless.async" ||
+        trimmed->String.startsWith("@@reventless.async\n")
+      ) {
+        found := true
+      }
+    })
+    found.contents
+  } catch {
+  | _ => false
+  }
+}
+
 let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): resolved => {
   let eventMappings = findEventMappings(~srcDir)
 
@@ -145,6 +174,8 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let inboundTranslationSliceRelPaths: Dict.t<string> = Dict.make()
   let outboundTranslationSliceRelPaths: Dict.t<string> = Dict.make()
   let aggregateSpecs: array<string> = []
+  let aggregateSpecRelPaths: Dict.t<string> = Dict.make()
+  let stateChangeSliceRelPaths: Dict.t<string> = Dict.make()
   let aggregateBehaviors: array<string> = []
   let readModelStems: array<string> = []
   // projectionsByRelPath: stem → relPath mapping for projections files
@@ -160,7 +191,10 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   discovered->Array.forEach(({stem, componentType, epGroup, relPath}) => {
     switch componentType {
     | StateChangeSlice =>
-      if !isImplStem(stem) { stateChangeSlices->Array.push(stem) }
+      if !isImplStem(stem) {
+        stateChangeSlices->Array.push(stem)
+        stateChangeSliceRelPaths->Dict.set(stem, relPath)
+      }
     | StateViewSlice =>
       if !isImplStem(stem) { stateViewSlices->Array.push(stem) }
     | StateViewSliceStream =>
@@ -185,6 +219,7 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
         aggregateBehaviors->Array.push(stem)
       } else {
         aggregateSpecs->Array.push(stem)
+        aggregateSpecRelPaths->Dict.set(stem, relPath)
       }
     | ReadModel =>
       if stem->String.endsWith("Projections") {
@@ -216,10 +251,15 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
       }
       switch behaviorStem {
       | Some(behavior) =>
+        let isAsync = switch Dict.get(aggregateSpecRelPaths, spec) {
+        | None => false
+        | Some(relPath) => hasAsyncAttribute(Generator_Node.join([srcDir, relPath]))
+        }
         Some({
           spec,
           behavior,
           eventMappings: Dict.get(eventMappings, spec),
+          isAsync,
         })
       | None =>
         Console.warn("Generator: Aggregate spec `" ++ spec ++ "` has no matching `" ++ underscored ++ "` or `" ++ bare ++ "` — skipping")
@@ -309,6 +349,19 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
       outboundTranslationSlices,
       outboundTranslationSliceRelPaths,
     ),
+    asyncStateChangeSlices: {
+      let d = Dict.make()
+      stateChangeSlices->Array.forEach(stem => {
+        switch Dict.get(stateChangeSliceRelPaths, stem) {
+        | None => ()
+        | Some(relPath) =>
+          if hasAsyncAttribute(Generator_Node.join([srcDir, relPath])) {
+            d->Dict.set(stem, true)
+          }
+        }
+      })
+      d
+    },
     aggregates,
     readModels,
     tasks: tasks->sortedStems,

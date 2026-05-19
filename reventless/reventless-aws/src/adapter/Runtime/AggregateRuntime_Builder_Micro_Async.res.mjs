@@ -178,6 +178,7 @@ function finish() {
           ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}]}`);
           let cmdGenEnvVars = {};
           cmdGenEnvVars["HANDLER_CONFIG"] = cmdGenHandlerConfigOutput;
+          cmdGenEnvVars["DISPATCH_MODE"] = "async";
           let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
           let cmdGenName = baseName + "CmdGen";
           let cmdGenRuntime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(cmdGenName, match$1.code, match$1.sourceCodeHash, cmdGenEnvVars, Math.max(spec.commandGeneratorMemorySize, 1024), Math.max(spec.commandGeneratorTimeout, 30), aggregateOpts);

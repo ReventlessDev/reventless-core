@@ -43,9 +43,9 @@ DCB slices are passed directly as optional labeled arrays to `Plugin.make`. No s
 
 Empty arrays can simply be omitted (all args are optional).
 
-The channel choice (sync vs. async) is encoded in the slice builder, not in a separate array:
-- **`Platform.StateChangeSlice.Make(Spec)`** (default): backed by a standard SQS queue; mutation waits for `decide` inline and returns `CommandAccepted` or `CommandRejected` immediately.
-- **`Platform.StateChangeSlice.MakeAsync(Spec)`**: backed by a FIFO SQS queue; mutation returns `CommandPending` and the command is processed asynchronously. Use for slices where throughput requirements make synchronous per-request replay impractical.
+The channel choice (sync vs. async) is encoded in the slice spec via PPX, not in a separate array:
+- **Default — sync.** Spec files without any flag get `Platform.StateChangeSlice.Make(Spec, Spec_Behavior)` from the plugin generator, backed by a standard SQS queue; mutation waits for `decide` inline and returns `CommandAccepted` or `CommandRejected` immediately.
+- **Opt-in — async.** Add `@@reventless.async` at the top of the slice spec file. The generator emits `Platform.StateChangeSlice.MakeAsync(Spec, Spec_Behavior)`, backed by a FIFO SQS queue; mutation returns `CommandPending` and the command is processed asynchronously. Use for slices where throughput requirements make synchronous per-request replay impractical.
 
 Both variants go in the same `~stateChangeSlices` array. Commands are routed by type name to whichever handler registered for them, regardless of which queue they arrived on.
 
@@ -383,18 +383,29 @@ let make = () =>
   )
 ```
 
-If a slice has very high write contention (e.g. a global counter or a hot partition), build it with `MakeAsync`. Its mutations return `CommandPending` instead of `CommandAccepted`:
+If a slice has very high write contention (e.g. a global counter or a hot partition), tag its spec file with `@@reventless.async`. Its mutations return `CommandPending` instead of `CommandAccepted`:
+
+```rescript title="GlobalCounter.res"
+@@reventless.spec
+@@reventless.async
+
+@schema
+type command = ...
+```
+
+The plugin generator then emits `Platform.StateChangeSlice.MakeAsync(GlobalCounter, GlobalCounter_Behavior)` for that slice and the standard `Make(...)` for the rest — both share the same `~stateChangeSlices` array in the generated `Plugin.res`:
 
 ```rescript
-module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-module GlobalCounterSlice = Platform.StateChangeSlice.MakeAsync(GlobalCounter)  // FIFO queue, CommandPending
+// AUTO-GENERATED Plugin.res — for reference only
+module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+module GlobalCounterSlice = Platform.StateChangeSlice.MakeAsync(GlobalCounter, GlobalCounter_Behavior)  // FIFO queue, CommandPending
 
 Platform.Plugin.make(
   ~name="Catalog",
   ~heartbeatInterval=60,
   ~stateChangeSlices=[
     module(AddProductSlice),
-    module(GlobalCounterSlice),   // high contention — partitioned internally by MakeAsync
+    module(GlobalCounterSlice),   // high contention — async via @@reventless.async
   ],
   ...
 )

@@ -333,9 +333,13 @@ function Make(EventCollectorChannel) {
     let queue = channelParts.queue;
     let tableName = dcbConfig.dcbTableName;
     let dcbTableName = tableName !== undefined ? tableName : Pulumi.output("NOT_AVAILABLE");
+    let isAsync = Stdlib_Option.getOr(Stdlib_Option.map(commandTopicResource.__name, n => n.includes("-dcb-async-command-topic")), false);
     let envVars = {};
     envVars["DCB_TABLE"] = dcbTableName;
     envVars["QUEUE_URL"] = queue.id;
+    if (isAsync) {
+      envVars["DISPATCH_MODE"] = "async";
+    }
     let sliceModulesJson = allSlicePaths.map(param => {
       let s = Stdlib_Option.getOr(JSON.stringify(param.specPath), `""`);
       let b = Stdlib_Option.getOr(JSON.stringify(param.behaviorPath), `""`);

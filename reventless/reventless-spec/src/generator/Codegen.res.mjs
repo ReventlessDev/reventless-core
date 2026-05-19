@@ -21,6 +21,14 @@ function renderSlices(platformFactory, suffix, implSuffix, stems) {
   return stems.map(stem => "  module " + stem + suffix + " = Platform." + platformFactory + ".Make(" + stem + ", " + stem + implSuffix + ")");
 }
 
+function renderStateChangeSlices(stems, asyncStems) {
+  return stems.map(stem => {
+    let match = asyncStems[stem];
+    let factory = match !== undefined && match ? "MakeAsync" : "Make";
+    return "  module " + stem + "Slice = Platform.StateChangeSlice." + factory + "(" + stem + ", " + stem + Pairing$Reventless.implSuffixForStateChange + ")";
+  });
+}
+
 function renderAutomationSlices(stems) {
   return stems.map(stem => "  module " + stem + "Slice = Platform.AutomationSlice.Make(" + stem + ", " + stem + "_Automation)");
 }
@@ -29,8 +37,9 @@ function renderAggregates(aggregates) {
   return aggregates.flatMap(param => {
     let spec = param.spec;
     let em = Stdlib_Option.getOr(param.eventMappings, "ReventlessInfra.NoEventMappings.Make(" + spec + ")");
+    let factory = param.isAsync ? "MakeAsync" : "Make";
     return [
-      "  module " + spec + "Aggregate = Platform.Aggregate.Make(",
+      "  module " + spec + "Aggregate = Platform.Aggregate." + factory + "(",
       "    " + spec + ",",
       "    " + param.behavior + ",",
       "    " + em + ",",
@@ -349,7 +358,7 @@ function renderComposition(config, resolved) {
   };
   if (resolved.stateChangeSlices.length !== 0) {
     lines.push("  // StateChangeSlices");
-    push(renderSlices("StateChangeSlice", "Slice", Pairing$Reventless.implSuffixForStateChange, resolved.stateChangeSlices));
+    push(renderStateChangeSlices(resolved.stateChangeSlices, resolved.asyncStateChangeSlices));
   }
   if (resolved.stateViewSlices.length !== 0) {
     lines.push("  // StateViewSlices");
@@ -470,6 +479,7 @@ export {
   stripSuffix,
   epModuleName,
   renderSlices,
+  renderStateChangeSlices,
   renderAutomationSlices,
   renderAggregates,
   renderReadModels,

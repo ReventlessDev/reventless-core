@@ -197,6 +197,7 @@ let finish = () =>
 
           let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
           envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
+          envVars->Dict.set("DISPATCH_MODE", "async"->Pulumi.Input.make)
 
           let packageDirs: dict<string> = Dict.make()
           let specPkg = Util_Bundle.extractPackageName(info.specModulePath)

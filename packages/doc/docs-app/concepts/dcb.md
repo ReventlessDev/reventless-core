@@ -34,7 +34,7 @@ Reduce -> Decide
 Decide -> Append
 ```
 
-The DCB command topic is a standard SQS queue by default (sync slices built with `Platform.StateChangeSlice.Make` return `CommandAccepted` / `CommandRejected`). Slices built with `Platform.StateChangeSlice.MakeAsync` use a separate FIFO queue and return `CommandPending`; both types go in the same `~stateChangeSlices` array at the `Plugin.make` call site. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type; both queues share the same handler registry.
+The DCB command topic is a standard SQS queue by default — sync slices (the default) return `CommandAccepted` / `CommandRejected`. Slices tagged with `@@reventless.async` use a separate FIFO queue and return `CommandPending`; the plugin generator renders `Platform.StateChangeSlice.MakeAsync(...)` for those and `Make(...)` for the rest, and both types end up in the same `~stateChangeSlices` array at the `Plugin.make` call site. The `filteringHandler` in the Lambda routes each message by its `TAG` field to whichever state change slices handle that command type; both queues share the same handler registry.
 
 ## Module Types
 

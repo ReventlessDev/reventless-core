@@ -242,6 +242,7 @@ let finish = () =>
 
             let cmdGenEnvVars: dict<Pulumi.Input.t<string>> = Dict.make()
             cmdGenEnvVars->Dict.set("HANDLER_CONFIG", cmdGenHandlerConfigOutput->Pulumi.Output.asInput)
+            cmdGenEnvVars->Dict.set("DISPATCH_MODE", "async"->Pulumi.Input.make)
 
             let {code: cmdGenCode, sourceCodeHash: cmdGenSourceCodeHash} = Util_Bundle.buildCodeArchive(
               ~entryPointModule="@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs",
