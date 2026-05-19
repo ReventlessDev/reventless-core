@@ -489,7 +489,9 @@ describe("GraphQL_SchemaInspector", () => {
       )
       let inspection = ReventlessCore.GraphQL_SchemaInspector.inspectFragment(fragment)
       // TestState, TestStateEdge, TestStateConnection, TestStateFilter (Phase 4 connection filter)
-      expect(inspection.types->Array.length)->toBe(4)
+      // + CommandResult union + CommandAccepted + CommandRejected + CommandPending
+      // (auto-injected whenever the fragment emits any mutation field).
+      expect(inspection.types->Array.length)->toBe(8)
       expect(inspection.mutations->Array.length)->toBe(1)
       expect(inspection.queries->Array.length)->toBe(2)
       expect(inspection.sdlPreview->String.includes("type TestState"))->toBe(true)
@@ -500,6 +502,7 @@ describe("GraphQL_SchemaInspector", () => {
       expect(inspection.sdlPreview->String.includes("Test_Add"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("Test_State"))->toBe(true)
       expect(inspection.sdlPreview->String.includes("TestStateConnection!"))->toBe(true)
+      expect(inspection.sdlPreview->String.includes("union CommandResult"))->toBe(true)
     })
   })
 

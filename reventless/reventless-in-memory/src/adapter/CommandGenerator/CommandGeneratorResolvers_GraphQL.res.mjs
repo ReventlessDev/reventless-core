@@ -102,23 +102,7 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-let commandResultSdl = `union CommandResult = CommandAccepted | CommandRejected | CommandPending
-
-type CommandAccepted {
-  msgId: ID!
-  entityId: ID
-  eventCount: Int!
-}
-
-type CommandRejected {
-  msgId: ID!
-  errorCode: String!
-  errorDetail: String
-}
-
-type CommandPending {
-  msgId: ID!
-}`;
+let commandResultSdl = GraphQL_FragmentGenerator$ReventlessCore.commandResultSdlTypes.join("\n\n");
 
 function ensureCommandResultTypes(server) {
   if (!server.buildSdl().includes("CommandAccepted")) {
@@ -202,11 +186,11 @@ function variantIndexForField(commandSchema, field) {
 
 function deriveSdlField(fieldName, variantSchema) {
   let field = GraphQL_FragmentGenerator$ReventlessCore.deriveMutationFieldFromObject(fieldName, [], new Set(), variantSchema);
-  if (field === undefined) {
+  if (field !== undefined) {
+    return field;
+  } else {
     return `  ` + fieldName + `: CommandResult!`;
   }
-  let n = field.length - ": String!".length | 0;
-  return field.slice(0, n) + ": CommandResult!";
 }
 
 let handlerRefs = {};
@@ -365,4 +349,4 @@ export {
   handleResolversEvent,
   make,
 }
-/* effect/Effect Not a pure module */
+/* commandResultSdl Not a pure module */

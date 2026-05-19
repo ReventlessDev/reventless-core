@@ -4,6 +4,29 @@
 
 open ReventlessInfra.Api
 
+// Every aggregate-derived mutation returns the CommandResult union — the
+// shape carries the outcome from CommandTopic processing (Accepted / Rejected
+// for sync slices, Pending for async). Consumers select sub-fields via inline
+// fragments. These SDL declarations are injected into any fragment that emits
+// at least one mutation field; the stitcher dedupes by type name so
+// concatenating across plugin + admin fragments stays safe.
+let commandResultSdlTypes: array<string> = [
+  `union CommandResult = CommandAccepted | CommandRejected | CommandPending`,
+  `type CommandAccepted {
+  msgId: ID!
+  entityId: ID
+  eventCount: Int!
+}`,
+  `type CommandRejected {
+  msgId: ID!
+  errorCode: String!
+  errorDetail: String
+}`,
+  `type CommandPending {
+  msgId: ID!
+}`,
+]
+
 // ── SchemaType → GraphQL type reference ──────────────────────────────────────
 
 let rec fromSchemaType = (
@@ -337,7 +360,7 @@ let deriveMutationFieldFromObject = (
       })
       ->Array.join(", ")
     let argsPart = args->String.length > 0 ? `(${args})` : ""
-    Some(`  ${fieldName}${argsPart}: String!`)
+    Some(`  ${fieldName}${argsPart}: CommandResult!`)
   | None => None
   }
 
@@ -406,10 +429,8 @@ let generate = (
           mutations->Array.push(withId)
         | None =>
           // Payload-less variant (S.literal("Ctor")) — no Object fields to
-          // derive args from, but still a valid mutation. Emit a bare form;
-          // CommandGeneratorResolvers_GraphQL.deriveSdlField uses the same
-          // fallback for the in-memory path.
-          mutations->Array.push(`  ${fieldName}(id: ID!): String!`)
+          // derive args from, but still a valid mutation.
+          mutations->Array.push(`  ${fieldName}(id: ID!): CommandResult!`)
         }
       })
     | Object(_) =>
@@ -546,6 +567,13 @@ let generate = (
       queries->Array.push(listField)
     }
   })
+
+  // If any mutation fields were emitted, every one of them returns
+  // `CommandResult!` — inject the union + 3 outcome types so the fragment is
+  // self-contained. Stitcher dedupes by type name across fragments.
+  if mutations->Array.length > 0 {
+    commandResultSdlTypes->Array.forEach(t => types->Array.push(t))
+  }
 
   let encoded =
     JSON.Encode.object(

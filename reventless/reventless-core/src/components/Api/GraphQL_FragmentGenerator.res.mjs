@@ -6,6 +6,23 @@ import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as SchemaType$ReventlessCore from "./SchemaType.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
+let commandResultSdlTypes = [
+  `union CommandResult = CommandAccepted | CommandRejected | CommandPending`,
+  `type CommandAccepted {
+  msgId: ID!
+  entityId: ID
+  eventCount: Int!
+}`,
+  `type CommandRejected {
+  msgId: ID!
+  errorCode: String!
+  errorDetail: String
+}`,
+  `type CommandPending {
+  msgId: ID!
+}`
+];
+
 function fromSchemaType(_required, _asInputOpt, _st, collectedTypes, seenTypes) {
   while (true) {
     let asInputOpt = _asInputOpt;
@@ -285,7 +302,7 @@ function deriveMutationFieldFromObject(fieldName, collectedTypes, seenTypes, var
     return param[0] + `: ` + gqlType;
   }).join(", ");
   let argsPart = args.length > 0 ? `(` + args + `)` : "";
-  return `  ` + fieldName + argsPart + `: String!`;
+  return `  ` + fieldName + argsPart + `: CommandResult!`;
 }
 
 function generate(mutationEntries, queryEntries) {
@@ -342,7 +359,7 @@ function generate(mutationEntries, queryEntries) {
             mutations.push(withId);
             return;
           }
-          mutations.push(`  ` + fieldName + `(id: ID!): String!`);
+          mutations.push(`  ` + fieldName + `(id: ID!): CommandResult!`);
         });
         return;
       default:
@@ -424,6 +441,11 @@ function generate(mutationEntries, queryEntries) {
     let listField$1 = deriveListQueryField(listFieldName, listFieldName);
     queries.push(listField$1);
   });
+  if (mutations.length !== 0) {
+    commandResultSdlTypes.forEach(t => {
+      types.push(t);
+    });
+  }
   let encoded = JSON.stringify(Object.fromEntries([
     [
       "types",
@@ -449,6 +471,7 @@ function generate(mutationEntries, queryEntries) {
 }
 
 export {
+  commandResultSdlTypes,
   fromSchemaType,
   objectRefToGraphQL,
   deriveFieldType,

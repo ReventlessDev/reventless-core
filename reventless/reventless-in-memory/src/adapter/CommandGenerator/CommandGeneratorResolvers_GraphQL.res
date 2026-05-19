@@ -96,25 +96,13 @@ let capitalize = s =>
   s->String.charAt(0)->String.toUpperCase ++ s->String.slice(~start=1)
 
 // -- CommandResult SDL types --------------------------------------------------
+// Source of truth lives in GraphQL_FragmentGenerator.commandResultSdlTypes so
+// the AWS stitched schema and the in-memory graphql-yoga server agree on the
+// CommandResult shape. We join the 4 declarations into a single SDL block for
+// the in-memory server's registerTypes API.
 // Registered once per server (guards against duplicate registration after reset).
 
-let commandResultSdl = `union CommandResult = CommandAccepted | CommandRejected | CommandPending
-
-type CommandAccepted {
-  msgId: ID!
-  entityId: ID
-  eventCount: Int!
-}
-
-type CommandRejected {
-  msgId: ID!
-  errorCode: String!
-  errorDetail: String
-}
-
-type CommandPending {
-  msgId: ID!
-}`
+let commandResultSdl = GraphQL_FragmentGenerator.commandResultSdlTypes->Array.join("\n\n")
 
 let ensureCommandResultTypes = (server: GraphQL_ServerInstance.t) => {
   if !(server.buildSdl()->String.includes("CommandAccepted")) {
@@ -184,13 +172,7 @@ let deriveSdlField = (~fieldName, variantSchema: S.t<unknown>) =>
     ~seenTypes=Set.make(),
     variantSchema,
   ) {
-  | Some(field) =>
-    // deriveMutationFieldFromObject always ends with ": String!" as the return type.
-    // Replace only the trailing suffix — NOT the first occurrence, which would corrupt
-    // String argument types (e.g. `name: String!` → `name: CommandResult!`).
-    let returnTypeSuffix = ": String!"
-    let n = field->String.length - returnTypeSuffix->String.length
-    field->String.slice(~start=0, ~end=n) ++ ": CommandResult!"
+  | Some(field) => field
   | None => `  ${fieldName}: CommandResult!`
   }
 
