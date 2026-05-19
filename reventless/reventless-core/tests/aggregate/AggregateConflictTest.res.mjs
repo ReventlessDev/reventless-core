@@ -292,7 +292,7 @@ describe("Aggregate_Callback — conflict retry:", () => {
       }]);
     expect(mock.appendCallCount.contents).toBe(3);
   });
-  test("max retries exhausted returns Error(reference)", async () => {
+  test("max retries exhausted returns Error with detail message", async () => {
     mock.failNextAppendsWithConflict.contents = 4;
     let results = await Effect.runPromise(TestHandler.handleCommands(Stream.fromIterable([{
         command: {
@@ -307,7 +307,7 @@ describe("Aggregate_Callback — conflict retry:", () => {
       }])));
     expect(results).toEqual([{
         TAG: "Error",
-        _0: "ref-1"
+        _0: "concurrent modification (3 retries exhausted): conflict"
       }]);
     expect(mock.appendCallCount.contents).toBe(4);
   });

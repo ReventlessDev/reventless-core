@@ -184,13 +184,13 @@ describe("Aggregate_Callback — conflict retry:", () => {
     expect(mock.appendCallCount.contents)->toBe(3)
   })
 
-  testPromise("max retries exhausted returns Error(reference)", async () => {
+  testPromise("max retries exhausted returns Error with detail message", async () => {
     // 4 conflicts exhaust 3 retries (1 initial + 3 retries = 4 attempts)
     mock.failNextAppendsWithConflict := 4
     let results = await Stream.fromIterable([
       makeTopicItem("ref-1", AggSpec.Create({name: "Widget"})),
     ])->TestHandler.handleCommands->Effect.runPromise
-    expect(results)->toEqual([Error("ref-1")])
+    expect(results)->toEqual([Error("concurrent modification (3 retries exhausted): conflict")])
     expect(mock.appendCallCount.contents)->toBe(4)
   })
 

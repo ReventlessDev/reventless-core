@@ -177,7 +177,7 @@ module Make = (
               EffectLogger.logInfo(~comp, `append: id=${idStr}`)->Effect.map(_ => Ok(perRef))
             | Error(msg) if msg->String.includes("conflict") =>
               EffectLogger.logWarn(~comp, `conflict: id=${idStr}, will retry`)->Effect.map(
-                _ => Error("conflict"),
+                _ => Error(msg),
               )
             | Error(msg) =>
               let perRef = reportFinalOutcomes(
@@ -246,11 +246,12 @@ module Make = (
                     `conflict retry id=${idStr} ${(retryCount + 1)
                         ->Int.toString}/${maxConflictRetries->Int.toString}`,
                   )->Effect.flatMap(_ => attempt(retryCount + 1))
-                | Error(_) =>
+                | Error(msg) =>
+                  let detail = `concurrent modification (${maxConflictRetries->Int.toString} retries exhausted): ${msg}`
                   EffectLogger.logError(
                     ~comp,
-                    `max conflict retries exhausted id=${idStr}`,
-                  )->Effect.map(_ => references->Array.map(reference => Error(reference)))
+                    `max conflict retries exhausted id=${idStr}: ${msg}`,
+                  )->Effect.map(_ => references->Array.map(_ => Error(detail)))
                 },
             )
           attempt(0)

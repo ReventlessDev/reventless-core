@@ -141,7 +141,7 @@ function Make(Spec) {
             if (msg.includes("conflict")) {
               return Effect.map(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict: id=` + idStr + `, will retry`), () => ({
                 TAG: "Error",
-                _0: "conflict"
+                _0: msg
               }));
             }
             let perRef$1 = reportFinalOutcomes(outcomes, idStr, false, 0);
@@ -172,14 +172,16 @@ function Make(Spec) {
       let attempt = retryCount => Effect.flatMap(replayProcessAppend(id, topicItemsForId), result => {
         if (result.TAG === "Ok") {
           return Effect.succeed(result._0);
-        } else if (retryCount < 3) {
-          return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict retry id=` + idStr + ` ` + (retryCount + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retryCount + 1 | 0));
-        } else {
-          return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `max conflict retries exhausted id=` + idStr), () => references.map(reference => ({
-            TAG: "Error",
-            _0: reference
-          })));
         }
+        let msg = result._0;
+        if (retryCount < 3) {
+          return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `conflict retry id=` + idStr + ` ` + (retryCount + 1 | 0).toString() + `/` + (3).toString()), () => attempt(retryCount + 1 | 0));
+        }
+        let detail = `concurrent modification (` + (3).toString() + ` retries exhausted): ` + msg;
+        return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `max conflict retries exhausted id=` + idStr + `: ` + msg), () => references.map(param => ({
+          TAG: "Error",
+          _0: detail
+        })));
       });
       return attempt(0);
     }), {
