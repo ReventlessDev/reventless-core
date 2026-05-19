@@ -72,13 +72,19 @@ let queryFieldNamesForStateView = (~plugin: string, ~viewName: string, ~connecti
   }
 }
 
+// Slice query DBs (AutomationSlice todo, InboundTranslationSlice audit,
+// OutboundTranslationSlice todo) all use a string `id` partition key — keep
+// `includeIdParam: true` so the SDL single-id query (`Plugin_Foo(id: ID!)`),
+// the resolver path (`GetItem` instead of `Scan`), and the `*ByIds` batch
+// resolver all line up. StateViewSlice uses `queryFieldNamesForStateView`
+// instead and keeps its own (id-free) shape.
 let queryFieldNamesForSliceQueryDb = (~plugin: string, ~queryDbName: string, ~connectionSpec: bool=true): queryNames => {
   {
     singleFieldName: `${plugin}_${queryDbName}`,
     listFieldName: `${plugin}_${canonicalPlural(queryDbName)}`,
     returnTypeName: `${plugin}_${queryDbName}`,
     pluralTypeName: `${plugin}_${canonicalPlural(queryDbName)}`,
-    includeIdParam: false,
+    includeIdParam: true,
     connectionSpec,
   }
 }

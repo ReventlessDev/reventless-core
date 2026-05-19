@@ -79,4 +79,17 @@ let make = (
       ~opts,
     )
   })
+
+  // Source C: create the matching `onX` Subscription resolver for each
+  // mutation field so SDL fields like `onCatalog_ImportProduct` emitted by
+  // Plugin_SubscriptionSchema are actually attached. Mirrors what
+  // CommandGeneratorResolvers_AppSync.make / makeDcb do for aggregate / DCB
+  // mutations. Reuses the mutation's data source — UNIT subscription code
+  // never executes against it.
+  CommandSubscriptionResolvers_AppSync.make(
+    ~api,
+    ~mutationFields=fieldNames,
+    ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+    ~opts,
+  )
 }

@@ -236,7 +236,13 @@ function Make(Spec) {
           allQueryDbs[param[0]] = param[1].queryDb;
         });
         Object.entries(dcbResult.inboundTranslationSlicesOutputs).forEach(param => {
-          allQueryDbs[param[0]] = param[1].queryDb;
+          allQueryDbs[param[0] + "Audit"] = param[1].queryDb;
+        });
+        Object.entries(dcbResult.automationSlicesOutputs).forEach(param => {
+          allQueryDbs[param[0] + "Todo"] = param[1].queryDb;
+        });
+        Object.entries(dcbResult.outboundTranslationSlicesOutputs).forEach(param => {
+          allQueryDbs[param[0] + "Todo"] = param[1].queryDb;
         });
         let queryEngine = QueryEngineAdapter.make(allQueryDbs);
         let aggregateComponents = aggregates.map(M => {

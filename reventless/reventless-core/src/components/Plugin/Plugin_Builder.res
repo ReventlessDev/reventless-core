@@ -334,14 +334,30 @@ module Make = (
 
     let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
-    // Merge DCB StateViewSlice, InboundTranslation, and AutomationSlice QueryDbs into
-    // allQueryDbs so createResolvers builds AppSync resolvers for them too.
+    // Merge DCB StateViewSlice, InboundTranslation, AutomationSlice, and
+    // OutboundTranslation QueryDbs into allQueryDbs so createResolvers builds
+    // AppSync resolvers for them too.
+    //
+    // Key must match `name` passed to QueryDbResolvers_AppSync.make (the
+    // QueryDb's own queryDbName, used by storageResource lookups for ByIds
+    // and idResolver paths). Slice output dicts are keyed by Spec.name; the
+    // queryDb name appends a suffix per slice kind:
+    //   StateViewSlice           — no suffix
+    //   AutomationSlice          — "Todo"
+    //   OutboundTranslationSlice — "Todo"
+    //   InboundTranslationSlice  — "Audit"
     dcbResult.stateViewSlicesOutputs
     ->Dict.toArray
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
     dcbResult.inboundTranslationSlicesOutputs
     ->Dict.toArray
-    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
+    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Audit", v.queryDb))
+    dcbResult.automationSlicesOutputs
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Todo", v.queryDb))
+    dcbResult.outboundTranslationSlicesOutputs
+    ->Dict.toArray
+    ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k ++ "Todo", v.queryDb))
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     {

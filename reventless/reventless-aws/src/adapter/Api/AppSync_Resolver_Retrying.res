@@ -292,7 +292,10 @@ type createOuts = {
 type createResult = {id: string, outs: createOuts}
 type updateResult = {outs: createOuts}
 type diffResult = {changes: bool, replaces: array<string>, deleteBeforeReplace: bool}
-type readResult = {id: string, props: providerInputs}
+// Optional fields so `read_` can return `{}` when the resolver no longer exists
+// in AppSync — Pulumi treats an empty `ReadResult` as "resource gone", removes
+// it from state on `pulumi refresh`, and re-creates it on the next `pulumi up`.
+type readResult = {id?: string, props?: providerInputs}
 
 // ── Provider methods ──────────────────────────────────────────────────────────
 
@@ -435,13 +438,46 @@ let diff_ = (_id: string, olds: providerInputs, news: providerInputs): diffResul
 }
 
 /** Read live state for `pulumi refresh`.
-    Always reports the resolver as present so Pulumi keeps it in state.
-    Actual divergence (resolver deleted by a schema replacement) is handled
-    transparently by the `update` fallback that recreates the resolver on the
-    next `pulumi up`.  Returns `readResult` directly (not `option`) so that
-    deserialized `__provider` code in Pulumi state never produces `undefined`,
-    which would crash Pulumi ≤3.224.0 at `result.id` before the nil-check. */
-let read_ = async (id: string, _props: providerInputs): readResult => {id, props: _props}
+
+    Calls `GetResolver` against AppSync. If the resolver exists, returns the
+    stored inputs unchanged so Pulumi keeps the resource in state. If AppSync
+    reports the resolver as missing (`NotFoundException / No resolver found`
+    or `API not found.`), returns `{}` to signal drift — Pulumi removes the
+    resource from state on `pulumi refresh` and the next `pulumi up` recreates
+    it via `create`.
+
+    Healing flow: `pulumi refresh && pulumi up` after a schema replacement
+    that silently drops resolvers in AppSync. Without the live check the
+    `update` AlreadyDeleted→Create fallback only fires when an input field
+    changes; refresh alone could not detect the drift. */
+let read_ = async (id: string, props: providerInputs): readResult => {
+  let sdk = await getSdk()
+  let client = await getClient()
+  // Prefer parsing the ARN since Pulumi passes outputs (not inputs) to read
+  // handlers; fall back to props fields for older state.
+  let getInput: sdkDeleteInput = switch parseArn(id) {
+  | Some(parsed) => parsed
+  | None => {apiId: props.apiId, typeName: props.typeName, fieldName: props.fieldName}
+  }
+  try {
+    let _ = await client->sendGet(newOf1(sdk.getCtor, getInput))
+    {id, props}
+  } catch {
+  | exn if exn->JsExn.fromException->Option.mapOr(false, isAlreadyDeletedError) =>
+    Console.log(
+      `[AppSync_Resolver_Retrying] resolver ${getInput.typeName}.${getInput.fieldName} missing in AppSync; reporting drift`,
+    )
+    ({}: readResult)
+  | exn =>
+    // Propagate non-404 errors (network/auth) so refresh fails loudly rather
+    // than silently dropping the resource from state.
+    let jsExn = exn->JsExn.fromException
+    switch jsExn {
+    | Some(e) => jsThrow(e)
+    | None => throw(exn)
+    }
+  }
+}
 
 // Provider as a plain JS object (no Pulumi Output captures — all state via inputs/olds/news)
 let provider = {

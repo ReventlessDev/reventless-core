@@ -289,11 +289,33 @@ function diff_(_id, olds, news) {
   };
 }
 
-async function read_(id, _props) {
-  return {
-    id: id,
-    props: _props
-  };
+async function read_(id, props) {
+  let sdk = await getSdk();
+  let client = await getClient();
+  let parsed = parseArn(id);
+  let getInput = parsed !== undefined ? parsed : ({
+      apiId: props.apiId,
+      typeName: props.typeName,
+      fieldName: props.fieldName
+    });
+  try {
+    await client.send(newOf1(sdk.GetResolverCommand, getInput));
+    return {
+      id: id,
+      props: props
+    };
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    if (Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isAlreadyDeletedError)) {
+      console.log(`[AppSync_Resolver_Retrying] resolver ` + getInput.typeName + `.` + getInput.fieldName + ` missing in AppSync; reporting drift`);
+      return {};
+    }
+    let jsExn = Stdlib_JsExn.fromException(exn);
+    if (jsExn !== undefined) {
+      return jsThrow(Primitive_option.valFromOption(jsExn));
+    }
+    throw exn;
+  }
 }
 
 let provider = {

@@ -10,6 +10,7 @@ import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/sr
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
+import * as CommandSubscriptionResolvers_AppSync$ReventlessAws from "../Api/CommandSubscriptionResolvers_AppSync.res.mjs";
 
 function make(api, runtime, fieldNames, opts) {
   let opts$1 = Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions(opts);
@@ -40,6 +41,7 @@ function make(api, runtime, fieldNames, opts) {
   fieldNames.forEach(fieldName => {
     AppSync_Resolver_Retrying$ReventlessAws.makeUnitJsResolver(Stdlib_String.capitalize(fieldName), api, dataSource.name, "Mutation", fieldName, AppSync_Resolver_Functions$PulumiAws.invokeInboundTranslation(fieldName), opts$1);
   });
+  CommandSubscriptionResolvers_AppSync$ReventlessAws.make(api, fieldNames, dataSource.name, opts$1);
 }
 
 export {

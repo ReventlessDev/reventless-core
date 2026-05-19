@@ -79,7 +79,7 @@ function queryFieldNamesForSliceQueryDb(plugin, queryDbName, connectionSpecOpt) 
     listFieldName: plugin + `_` + pluralize(singularize(queryDbName)),
     returnTypeName: plugin + `_` + queryDbName,
     pluralTypeName: plugin + `_` + pluralize(singularize(queryDbName)),
-    includeIdParam: false,
+    includeIdParam: true,
     connectionSpec: connectionSpec
   };
 }
