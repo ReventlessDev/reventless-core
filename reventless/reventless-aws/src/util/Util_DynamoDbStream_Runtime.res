@@ -4,44 +4,49 @@ type result =
   | NewAndOldImage(string, JSON.t, JSON.t)
   | Invalid
 
+// Returns None for rows that aren't events — e.g. DCB FENCE rows (no `event`
+// column). The caller filters these out via `Invalid` rather than synthesising
+// a bogus event that sury would later reject.
 let buildJsonEvent' = dict => {
-  // DCB events lack meta fields (service, time, msgId) — synthesise a minimal meta
-  // so composeMeta doesn't crash on Option.getOrThrow.
-  let hasMeta = dict->Dict.get("service")->Option.isSome
-  let meta = if hasMeta {
-    dict->ReventlessCore.Message.composeMeta
-  } else {
-    let position = dict->Dict.get("position")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-    [
-      ("service", ""->JSON.Encode.string),
-      ("time", position->JSON.Encode.string),
-      ("ip", ""->JSON.Encode.string),
-      ("user", ""->JSON.Encode.string),
-      ("msgId", position->JSON.Encode.string),
-      ("correlationId", position->JSON.Encode.string),
-    ]
-    ->Dict.fromArray
-    ->JSON.Encode.object
+  switch (dict->Dict.get("event"), dict->Dict.get("data")) {
+  | (Some(JSON.String(eventType)), data) =>
+    let payload = switch data {
+    | Some(JSON.Object(d)) => d
+    | _ => Dict.make()
+    }
+    // DCB events lack meta fields (service, time, msgId) — synthesise a minimal
+    // meta so composeMeta doesn't crash on Option.getOrThrow.
+    let hasMeta = dict->Dict.get("service")->Option.isSome
+    let meta = if hasMeta {
+      dict->ReventlessCore.Message.composeMeta
+    } else {
+      let position =
+        dict->Dict.get("position")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+      [
+        ("service", ""->JSON.Encode.string),
+        ("time", position->JSON.Encode.string),
+        ("ip", ""->JSON.Encode.string),
+        ("user", ""->JSON.Encode.string),
+        ("msgId", position->JSON.Encode.string),
+        ("correlationId", position->JSON.Encode.string),
+      ]
+      ->Dict.fromArray
+      ->JSON.Encode.object
+    }
+    Some(
+      [
+        ("id", dict->Dict.get("id")->Option.getOrThrow),
+        ("meta", meta),
+        ("event", ReventlessCore.Message.combineMessage(eventType, payload)),
+      ]
+      ->Dict.fromArray
+      ->JSON.Encode.object,
+    )
+  | _ => None
   }
-  [
-    ("id", dict->Dict.get("id")->Option.getOrThrow),
-    ("meta", meta),
-    (
-      "event",
-      switch (dict->Dict.get("event"), dict->Dict.get("data")) {
-      | (Some(JSON.String(eventType)), Some(JSON.Object(data))) =>
-        ReventlessCore.Message.combineMessage(eventType, data)
-      | (Some(JSON.String(eventType)), None) =>
-        ReventlessCore.Message.combineMessage(eventType, Dict.make())
-      | _ => ReventlessCore.Message.combineMessage("Unknown", Dict.make())
-      },
-    ),
-  ]
-  ->Dict.fromArray
-  ->JSON.Encode.object
 }
 
-let buildJsonState = dict => dict->JSON.Encode.object
+let buildJsonState = dict => Some(dict->JSON.Encode.object)
 
 let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.record) => {
   let record = record.dynamodb
@@ -51,13 +56,13 @@ let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.re
     record
     ->Option.flatMap(dynamodb => dynamodb.newImage)
     ->Option.map(newImage => AwsSdk.DynamoDb_Util_Helpers.unmarshallDict(newImage))
-    ->Option.map(buildJson)
+    ->Option.flatMap(buildJson)
 
   let oldImageJson =
     record
     ->Option.flatMap(dynamodb => dynamodb.oldImage)
     ->Option.map(oldImage => AwsSdk.DynamoDb_Util_Helpers.unmarshallDict(oldImage))
-    ->Option.map(buildJson)
+    ->Option.flatMap(buildJson)
 
   switch (id, newImageJson, oldImageJson) {
   | (Some(id), Some(newImage), Some(oldImage)) => NewAndOldImage(id, newImage, oldImage)

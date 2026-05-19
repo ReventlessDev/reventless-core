@@ -9,6 +9,17 @@ import * as DynamoDb_Util_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/s
 import * as Util_AdapterRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_AdapterRuntime.res.mjs";
 
 function buildJsonEvent$p(dict) {
+  let match = dict["event"];
+  let match$1 = dict["data"];
+  if (match === undefined) {
+    return;
+  }
+  if (typeof match !== "string") {
+    return;
+  }
+  let payload = match$1 !== undefined ? (
+      typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1) ? match$1 : ({})
+    ) : ({});
   let hasMeta = Stdlib_Option.isSome(dict["service"]);
   let meta;
   if (hasMeta) {
@@ -42,16 +53,6 @@ function buildJsonEvent$p(dict) {
       ]
     ]);
   }
-  let match = dict["event"];
-  let match$1 = dict["data"];
-  let tmp;
-  tmp = match !== undefined ? (
-      typeof match === "string" ? (
-          match$1 !== undefined ? (
-              typeof match$1 === "object" && match$1 !== null && !Array.isArray(match$1) ? Message$ReventlessCore.combineMessage(match, match$1) : Message$ReventlessCore.combineMessage("Unknown", {})
-            ) : Message$ReventlessCore.combineMessage(match, {})
-        ) : Message$ReventlessCore.combineMessage("Unknown", {})
-    ) : Message$ReventlessCore.combineMessage("Unknown", {});
   return Object.fromEntries([
     [
       "id",
@@ -63,7 +64,7 @@ function buildJsonEvent$p(dict) {
     ],
     [
       "event",
-      tmp
+      Message$ReventlessCore.combineMessage(match, payload)
     ]
   ]);
 }
@@ -75,8 +76,8 @@ function buildJsonState(dict) {
 function parseDynamoDbStreamRecord(buildJson, record) {
   let record$1 = record.dynamodb;
   let id = Stdlib_Option.flatMap(record$1, record => DynamoDb_Util_Helpers$AwsSdk.unmarshall(undefined, record.Keys.id));
-  let newImageJson = Stdlib_Option.map(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.NewImage), newImage => DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, newImage)), buildJson);
-  let oldImageJson = Stdlib_Option.map(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.OldImage), oldImage => DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, oldImage)), buildJson);
+  let newImageJson = Stdlib_Option.flatMap(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.NewImage), newImage => DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, newImage)), buildJson);
+  let oldImageJson = Stdlib_Option.flatMap(Stdlib_Option.map(Stdlib_Option.flatMap(record$1, dynamodb => dynamodb.OldImage), oldImage => DynamoDb_Util_Helpers$AwsSdk.unmarshallDict(undefined, oldImage)), buildJson);
   if (id === undefined) {
     return "Invalid";
   }
