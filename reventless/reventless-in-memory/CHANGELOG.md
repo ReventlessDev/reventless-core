@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.66 (2026-05-20)
+
+### Bug Fixes
+
+* **admin:** name the platform Plugins read model in the plural ([afa11a8](https://github.com/ReventlessDev/reventless-core/commit/afa11a8b7314bad5681006c93aa44196eb7c122f))
+
+
 # 3.0.0-alpha.65 (2026-05-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-in-memory

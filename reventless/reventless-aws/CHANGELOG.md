@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.112 (2026-05-20)
+
+### Bug Fixes
+
+* **admin:** name the platform Plugins read model in the plural ([afa11a8](https://github.com/ReventlessDev/reventless-core/commit/afa11a8b7314bad5681006c93aa44196eb7c122f))
+* **aws:** auto-invalidate CloudFront + cache-control on host-UI bundle deploys ([35c5fe4](https://github.com/ReventlessDev/reventless-core/commit/35c5fe45539af990c3e2d101b3e527a8b044460b))
+
+
 # 3.0.0-alpha.111 (2026-05-20)
 
 ### Bug Fixes

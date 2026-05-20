@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.58 (2026-05-20)
+
+### Bug Fixes
+
+* **deps:** bump host-shell to 3.0.0-alpha.17 in hybrid platforms ([c5c3077](https://github.com/ReventlessDev/reventless-core/commit/c5c3077caf35d11194e52a804bdfcd653d31a2c3))
+* **deps:** bump host-shell to 3.0.0-alpha.18 in hybrid platforms ([5c1f031](https://github.com/ReventlessDev/reventless-core/commit/5c1f0319f033e857db7b3153060786a372f40c98))
+
+
 # 1.0.0-alpha.57 (2026-05-20)
 
 ### Bug Fixes

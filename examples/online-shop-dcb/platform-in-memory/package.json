@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-dcb-platform-in-memory",
-  "version": "1.0.0-alpha.47",
+  "version": "1.0.0-alpha.48",
   "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
   "license": "MIT",
   "scripts": {
