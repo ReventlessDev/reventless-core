@@ -674,8 +674,8 @@ importers:
         specifier: workspace:*
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.17
-        version: 3.0.0-alpha.17(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.18
+        version: 3.0.0-alpha.18(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -734,8 +734,8 @@ importers:
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
-        specifier: 3.0.0-alpha.17
-        version: 3.0.0-alpha.17(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        specifier: 3.0.0-alpha.18
+        version: 3.0.0-alpha.18(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   packages/doc:
     dependencies:
@@ -4931,8 +4931,8 @@ packages:
       moment: ^2.30.1
       rescript: ^12.2.0
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.17':
-    resolution: {integrity: sha512-8AATOdRV18SC6r/YalKvyXRf2GccKvWOdlpRgNjKdaB/avakTjweuq6vCzSrLR7D7/F4hr9UxHtB9hggp9ZLEg==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.17/7d61d55c0b396393ea70ac453b9b1b6f2211cea8}
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.18':
+    resolution: {integrity: sha512-7zmLQsl8I9RI30vC8a2Rg0tPngVScdM7vX+cKVyCXJUgAEOI6gPYMOd5Uv2pB+oagtYLQrvtEQ+jjp9se1IpLA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.18/b93a7bcc60876b14437b8da085db9fc3766979a7}
     hasBin: true
 
   '@reventlessdev/reventless-routes@3.0.0-alpha.5':
@@ -4943,8 +4943,8 @@ packages:
       react-dom: ^18.3.1
       rescript: ^12.2.0
 
-  '@reventlessdev/reventless-ui@3.0.0-alpha.15':
-    resolution: {integrity: sha512-jcRJfeVkOSuuDdfMSRbSjuVe9wYiBLg/D85T4X7cKKraDEbXJ4y+EbQw4JipgFzhHFzJczXPWHegPH9Ee4rHlQ==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ui/3.0.0-alpha.15/fa3bce922320e293a2a519603832b3ed17ddc63d}
+  '@reventlessdev/reventless-ui@3.0.0-alpha.16':
+    resolution: {integrity: sha512-8lKGWiZrOKm4OojOpEgexYRdbQzLWo533+Vrztf3q24vy/RYaPfGmwJePlO9+AwwI/l+RtLKbftEMaZ82iHgpA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ui/3.0.0-alpha.16/e09de610d10229fc0b4037b8543a43c29f89add1}
 
   '@rjsf/core@5.24.13':
     resolution: {integrity: sha512-ONTr14s7LFIjx2VRFLuOpagL76sM/HPy6/OhdBfq6UukINmTIs6+aFN0GgcR0aXQHFDXQ7f/fel0o/SO05Htdg==}
@@ -19730,13 +19730,13 @@ snapshots:
       moment: 2.30.1
       rescript: 12.2.0
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.17(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.18(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
     dependencies:
       '@aws-sdk/client-cognito-identity-provider': 3.1033.0
       '@module-federation/runtime': 0.18.4
       '@module-federation/vite': 1.15.4(node-fetch@2.7.0(encoding@0.1.13))(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
       '@reventlessdev/reventless-routes': 3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)
-      '@reventlessdev/reventless-ui': 3.0.0-alpha.15(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)
+      '@reventlessdev/reventless-ui': 3.0.0-alpha.16(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)
       graphql-ws: 5.16.2(graphql@16.13.2)
       jwt-decode: 4.0.0
       react: 18.3.1
@@ -19787,7 +19787,7 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       rescript: 12.2.0
 
-  '@reventlessdev/reventless-ui@3.0.0-alpha.15(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)':
+  '@reventlessdev/reventless-ui@3.0.0-alpha.16(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)':
     dependencies:
       '@date-io/moment': 2.17.0(moment@2.30.1)
       '@emotion/react': 11.14.0(@types/react@19.2.14)(react@18.3.1)
