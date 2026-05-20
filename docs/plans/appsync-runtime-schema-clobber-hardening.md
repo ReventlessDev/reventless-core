@@ -5,10 +5,10 @@ AppSync DomainApi schema with an incomplete SDL during plugin lifecycle churn,
 which orphans every field-attached resolver and surfaces as
 `NotFoundException: Type not found` on `pulumi refresh`.
 
-Status: implemented (A + D) on `alpha`. Local build clean; reventless-core (396)
-and reventless-aws (104) test suites green. **Alpha deploy verification still
-pending** — keep this plan here until the multi-stack redeploy check below
-passes, then move to `docs/plans/done/`.
+Status: implemented (A + D + **deploy-time repair**, see below) on `alpha`. Local
+build clean; reventless-core (396) and reventless-aws (104) test suites green.
+**Alpha deploy verification still pending** — keep this plan here until the
+multi-stack redeploy check below passes, then move to `docs/plans/done/`.
 
 ## Problem
 
@@ -134,6 +134,51 @@ the function injected as `updateApiSchema` in the `.mjs` entry point changed).
    re-push, `@aws_auth` directive-line handling, and counting edge cases.
 7. **Cleanup** — none deferred. The RM fallback is permanent defensive code, not
    a flag to remove.
+
+## Follow-up: deploy-time repair of an already-clobbered schema (2026-05-20)
+
+A + D stop *future* runtime clobbers but do **not repair** a schema that is
+already clobbered — and the alpha DomainApi was already in that state. The
+`pulumi up` after the layer bump still failed: every `Subscription.onOrdering_*`
+resolver errored `NotFoundException: Type not found` on `pulumi refresh`
+(`ResourceProviderService.read`), and `up` could not recover.
+
+Two layered reasons it could not self-heal:
+
+1. **Stale dynamic-provider serialization.** Pulumi's dynamic `read`
+   deserializes the provider from `props["__provider"]` in stack state
+   (`@pulumi/pulumi/cmd/dynamic-provider/index.js` `getProvider`/`read`), so
+   resolvers created before `5961503a1` run their *pre-fix* `read`/`delete` that
+   re-throw on "Type not found". This is tolerated — CI guards `pulumi refresh`
+   with `|| echo "::warning::…"` — but it means refresh alone never heals.
+2. **THE BLOCKER — deploy-time hash short-circuit never re-pushed.**
+   `preResolversSchemaHook` (`Platform.res`) skipped the schema push when
+   `storedHash == currentHash`. The stored `deploy-schema-hash:<apiId>` row
+   records what the *deploy* last pushed; the *runtime* clobber overwrote the
+   live schema without touching that row (the runtime path only reads
+   `deploy-schema:` rows). So the next deploy saw a matching hash and skipped the
+   repair, leaving the clobbered schema in place — and with the live schema still
+   missing the plugin types, even a fresh `CreateResolver` fails "Type not found".
+
+**Fix (drift-aware hash short-circuit).** When the stored hash matches, the hook
+now introspects the live schema (`AppSync_Adapter.getIntrospectionSdl`, a new
+`GetIntrospectionSchemaCommand` wrapper) and compares root-type
+(Mutation+Query+Subscription) field counts via
+`GraphQL_Stitcher.countRootTypeFields`. It skips only when the live schema is
+confirmed intact (`live >= expected`); if the live schema has shrunk — or cannot
+be introspected *despite* a stored hash (a real failure, not a first deploy) — it
+forces the push. Because plugin resolvers are registered *inside*
+`schemaPushed.apply(...)` (`Plugin_Builder.res:452`), the repair completes during
+program evaluation before any resolver CRUD runs, so delete-before-replace and
+create both hit the healed schema in the same `up`.
+
+Files: `AppSync_Adapter.res` (+`getIntrospectionSdl`), `Platform.res`
+(drift-aware skip). No layer rebuild needed — `preResolversSchemaHook` runs in
+the deploy-time Pulumi program, so the next CI deploy picks it up from source.
+
+*Operational note:* this self-heals on the next `pulumi up`. To unblock a stuck
+stack *before* merging, deleting the `deploy-schema-hash:<apiId>` DynamoDB row in
+the PluginSchemaPersistence table forces the existing code to re-push once.
 
 ## Out of scope
 

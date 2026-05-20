@@ -582,21 +582,40 @@ function MakeWithConfig(Config) {
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
         let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
         let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
-        if (storedHash !== undefined && storedHash === currentHash) {
-          console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…), skipping push`);
-          return;
-        }
-        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
-        await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-          apiId: apiId,
-          definition: sdl
-        });
-        console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
-        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        console.log("[preResolversSchemaHook] Schema is ACTIVE");
-        if (tableNameOpt !== undefined) {
-          return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+        let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
+        let skipPush;
+        if (storedHash !== undefined && storedHash === currentHash) {
+          let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
+          let expected = countRoots(sdl);
+          let live = countRoots(liveSdl);
+          if (liveSdl === "") {
+            console.log(`[preResolversSchemaHook] hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
+            skipPush = false;
+          } else if (live < expected) {
+            console.log(`[preResolversSchemaHook] hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
+            skipPush = false;
+          } else {
+            console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
+            skipPush = true;
+          }
+        } else {
+          skipPush = false;
+        }
+        if (!skipPush) {
+          console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
+          await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+            apiId: apiId,
+            definition: sdl
+          });
+          console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+          console.log("[preResolversSchemaHook] Schema is ACTIVE");
+          if (tableNameOpt !== undefined) {
+            return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+          } else {
+            return;
+          }
         }
       })));
     });
@@ -1577,21 +1596,40 @@ function Make($star) {
         let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
         let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
         let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
-        if (storedHash !== undefined && storedHash === currentHash) {
-          console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…), skipping push`);
-          return;
-        }
-        console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
         let client = AppSync_Adapter$ReventlessAws.getClient();
-        await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-          apiId: apiId,
-          definition: sdl
-        });
-        console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
-        await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        console.log("[preResolversSchemaHook] Schema is ACTIVE");
-        if (tableNameOpt !== undefined) {
-          return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+        let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
+        let skipPush;
+        if (storedHash !== undefined && storedHash === currentHash) {
+          let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
+          let expected = countRoots(sdl);
+          let live = countRoots(liveSdl);
+          if (liveSdl === "") {
+            console.log(`[preResolversSchemaHook] hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
+            skipPush = false;
+          } else if (live < expected) {
+            console.log(`[preResolversSchemaHook] hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
+            skipPush = false;
+          } else {
+            console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
+            skipPush = true;
+          }
+        } else {
+          skipPush = false;
+        }
+        if (!skipPush) {
+          console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
+          await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+            apiId: apiId,
+            definition: sdl
+          });
+          console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+          await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+          console.log("[preResolversSchemaHook] Schema is ACTIVE");
+          if (tableNameOpt !== undefined) {
+            return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+          } else {
+            return;
+          }
         }
       })));
     });

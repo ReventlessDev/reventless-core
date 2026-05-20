@@ -92,6 +92,48 @@ let rec waitForSchemaActive = async (client, apiId, ~maxAttempts=30, ~attempt=0)
   }
 }
 
+// GetIntrospectionSchema — fetch the live schema as an SDL string. Used by the
+// deploy-time drift check in preResolversSchemaHook to detect a live schema that
+// was clobbered out-of-band by a runtime re-stitch (the stored deploy hash does
+// not reflect such clobbers). Returns "" when the API has no schema or when
+// introspection fails — the caller decides how to treat an empty result.
+type getIntrospectionSchemaInput = {apiId: string, format: string}
+type getIntrospectionSchemaCommand
+type schemaBlob
+type getIntrospectionSchemaResult = {schema: option<schemaBlob>}
+
+@module("@aws-sdk/client-appsync") @new
+external makeGetIntrospectionSchemaCommand: getIntrospectionSchemaInput => getIntrospectionSchemaCommand =
+  "GetIntrospectionSchemaCommand"
+
+@send
+external sendGetIntrospection: (
+  appSyncClient,
+  getIntrospectionSchemaCommand,
+) => promise<getIntrospectionSchemaResult> = "send"
+
+// resp.schema is a Uint8Array of the SDL text; decode it to UTF-8.
+type nodeBuffer
+@val @scope("Buffer") external bufferFrom: schemaBlob => nodeBuffer = "from"
+@send external bufferToString: (nodeBuffer, string) => string = "toString"
+
+let getIntrospectionSdl = async (client: appSyncClient, apiId: string): string => {
+  try {
+    let resp = await client->sendGetIntrospection(
+      {apiId, format: "SDL"}->makeGetIntrospectionSchemaCommand,
+    )
+    switch resp.schema {
+    | Some(blob) => bufferFrom(blob)->bufferToString("utf-8")
+    | None => ""
+    }
+  } catch {
+  | exn =>
+    let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+    Console.warn(`[AppSync_Adapter] getIntrospectionSdl failed for ${apiId}: ${msg}`)
+    ""
+  }
+}
+
 let deploySchemaWithRetry = (
   client: appSyncClient,
   apiId: string,

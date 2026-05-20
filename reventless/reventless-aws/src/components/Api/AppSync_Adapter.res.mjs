@@ -4,11 +4,13 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Nodecrypto from "node:crypto";
+import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
 import * as AppSync_Error$ReventlessAws from "../../errors/AppSync_Error.res.mjs";
@@ -50,6 +52,26 @@ async function waitForSchemaActive(client, apiId, maxAttemptsOpt, attemptOpt) {
         });
         return await waitForSchemaActive(client, apiId, maxAttempts, attempt + 1 | 0);
       }
+  }
+}
+
+async function getIntrospectionSdl(client, apiId) {
+  try {
+    let resp = await client.send(new ClientAppsync.GetIntrospectionSchemaCommand({
+      apiId: apiId,
+      format: "SDL"
+    }));
+    let blob = resp.schema;
+    if (blob !== undefined) {
+      return Buffer.from(Primitive_option.valFromOption(blob)).toString("utf-8");
+    } else {
+      return "";
+    }
+  } catch (raw_exn) {
+    let exn = Primitive_exceptions.internalToException(raw_exn);
+    let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+    console.warn(`[AppSync_Adapter] getIntrospectionSdl failed for ` + apiId + `: ` + msg);
+    return "";
   }
 }
 
@@ -271,6 +293,7 @@ export {
   startSchemaCreation,
   startSchemaCreationRetrying,
   waitForSchemaActive,
+  getIntrospectionSdl,
   deploySchemaWithRetry,
   _client,
   getClient,

@@ -807,16 +807,52 @@ module MakeWithConfig = (
               | Some(tn) => await readSchemaHash(~tableName=tn, ~apiId)
               | None => None
               }
-              switch storedHash {
-              | Some(prev) if prev == currentHash =>
-                Console.log(
-                  `[preResolversSchemaHook] SDL unchanged (hash ${currentHash->String.slice(~start=0, ~end=12)}…), skipping push`,
+              let client = AppSync_Adapter.getClient()
+
+              // The stored hash records what the DEPLOY last pushed. A runtime
+              // re-stitch (mkUpdateApiSchema) can clobber the live schema
+              // out-of-band WITHOUT updating this hash, so a matching hash does
+              // not guarantee the live schema is intact. Before trusting the
+              // hash to skip the push, introspect the live schema and confirm it
+              // still carries at least as many root-type (Mutation + Query +
+              // Subscription) fields as the SDL we would push. If it has drifted
+              // (shrunk) — or cannot be introspected despite a stored hash, which
+              // means a real failure rather than a first deploy — force the
+              // repair push so a clobbered schema heals on the next deploy.
+              let countRoots = s =>
+                ReventlessCore.GraphQL_Stitcher.countRootTypeFields(~sdl=s, ~typeName="Mutation") +
+                ReventlessCore.GraphQL_Stitcher.countRootTypeFields(~sdl=s, ~typeName="Query") +
+                ReventlessCore.GraphQL_Stitcher.countRootTypeFields(
+                  ~sdl=s,
+                  ~typeName="Subscription",
                 )
-              | _ =>
+              let skipPush = switch storedHash {
+              | Some(prev) if prev == currentHash =>
+                let liveSdl = await AppSync_Adapter.getIntrospectionSdl(client, apiId)
+                let expected = countRoots(sdl)
+                let live = countRoots(liveSdl)
+                if liveSdl == "" {
+                  Console.log(
+                    `[preResolversSchemaHook] hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`,
+                  )
+                  false
+                } else if live < expected {
+                  Console.log(
+                    `[preResolversSchemaHook] hash matches but live schema drifted (${live->Int.toString} root field(s) live vs ${expected->Int.toString} expected) — forcing repair push`,
+                  )
+                  false
+                } else {
+                  Console.log(
+                    `[preResolversSchemaHook] SDL unchanged (hash ${currentHash->String.slice(~start=0, ~end=12)}…) and live schema intact (${live->Int.toString} root fields); skipping push`,
+                  )
+                  true
+                }
+              | _ => false
+              }
+              if !skipPush {
                 Console.log(
                   `[preResolversSchemaHook] Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
                 )
-                let client = AppSync_Adapter.getClient()
                 await client->AppSync_Adapter.startSchemaCreationRetrying({
                   apiId,
                   definition: sdl,
