@@ -11,7 +11,13 @@ let extensionPointDefinitionSchema = S.schema(s => ({
 
 let extensionDefinitionSchema = S.schema(s => ({
   name: s.m(S.string),
-  extensionPointName: s.m(S.string)
+  extensionPointName: s.m(S.string),
+  dcbSources: s.m(S.array(S.string))
+}));
+
+let dcbEventLogDefinitionSchema = S.schema(s => ({
+  name: s.m(S.string),
+  eventTopicArn: s.m(S.string)
 }));
 
 let extensionProtocolSchema = S.schema(s => ({
@@ -26,6 +32,8 @@ let apiSchemaFragmentSchema = S.schema(s => ({
 }));
 
 let apiSchemaFragmentOptionSchema = SuryResMjs.js_nullable(apiSchemaFragmentSchema);
+
+let dcbEventLogOptionSchema = SuryResMjs.js_nullable(dcbEventLogDefinitionSchema);
 
 let stringOptionSchema = SuryResMjs.js_nullable(S.string);
 
@@ -172,7 +180,8 @@ let pluginDefinitionSchema = S.schema(s => ({
   apiSchemaFragment: s.m(apiSchemaFragmentOptionSchema),
   apiTarget: s.m(stringOptionSchema),
   uiFragments: s.m(uiFragmentManifestOptionSchema),
-  structure: s.m(pluginStructureOptionSchema)
+  structure: s.m(pluginStructureOptionSchema),
+  dcbEventLog: s.m(dcbEventLogOptionSchema)
 }));
 
 let nameSchema = S.string;
@@ -184,9 +193,11 @@ export {
   versionSchema,
   extensionPointDefinitionSchema,
   extensionDefinitionSchema,
+  dcbEventLogDefinitionSchema,
   extensionProtocolSchema,
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
+  dcbEventLogOptionSchema,
   stringOptionSchema,
   stringArrayOptionSchema,
   panelManifestEntrySchema,

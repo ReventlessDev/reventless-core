@@ -385,9 +385,21 @@ function Make(Spec) {
           let match$3 = EventCollectorHelper.make(childName, eventTopics, opts);
           let eventCollector = match$3[0];
           let capturedDeployTarget = Spec.hooks.deployTarget.contents;
+          let dcbOutputs$1 = dcbResult.dcbEventLogOutputs;
+          let dcbEventLogDef;
+          if (dcbOutputs$1 !== undefined) {
+            let r = dcbOutputs$1.eventTopic.resources[0];
+            dcbEventLogDef = r !== undefined ? r.id.apply(arn => ({
+                name: extra$1 + "DcbEventLog",
+                eventTopicArn: arn
+              })) : Pulumi.output(undefined);
+          } else {
+            dcbEventLogDef = Pulumi.output(undefined);
+          }
           let pluginDefinition = Pulumi.all([
             extensionPointsDefinitions,
-            match$3[2]
+            match$3[2],
+            dcbEventLogDef
           ]).apply(param => ({
             id: id,
             name: extra$1,
@@ -399,7 +411,8 @@ function Make(Spec) {
             apiSchemaFragment: apiSchemaFragment,
             apiTarget: capturedDeployTarget,
             uiFragments: uiFragments,
-            structure: pluginStructure
+            structure: pluginStructure,
+            dcbEventLog: param[2]
           }));
           let aggregateQueueUrls = {};
           Object.entries(aggregateResources).forEach(param => {

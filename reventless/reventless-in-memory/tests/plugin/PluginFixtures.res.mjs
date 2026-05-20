@@ -10,14 +10,16 @@ let pluginDefinition = {
   extensionPoints: [],
   extensions: [{
       name: "Core.Plugin.Test",
-      extensionPointName: "Core.Plugin"
+      extensionPointName: "Core.Plugin",
+      dcbSources: []
     }],
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: undefined,
   apiTarget: undefined,
   uiFragments: undefined,
-  structure: undefined
+  structure: undefined,
+  dcbEventLog: undefined
 };
 
 let state_name = pluginDefinition.name;
@@ -46,7 +48,8 @@ let state = {
   statusChange: TestFixtures$ReventlessGwt.statusChange,
   apiSchemaFragment: undefined,
   uiFragments: undefined,
-  structure: undefined
+  structure: undefined,
+  dcbEventLog: undefined
 };
 
 let uiManifest_panels = [];
@@ -70,7 +73,8 @@ let pluginDefinitionWithUI = {
   apiSchemaFragment: pluginDefinition.apiSchemaFragment,
   apiTarget: pluginDefinition.apiTarget,
   uiFragments: uiManifest,
-  structure: pluginDefinition.structure
+  structure: pluginDefinition.structure,
+  dcbEventLog: pluginDefinition.dcbEventLog
 };
 
 let extensionPointNames2 = ["Test.Test"];
@@ -90,7 +94,8 @@ let pluginDefinition2 = {
   apiSchemaFragment: undefined,
   apiTarget: undefined,
   uiFragments: undefined,
-  structure: undefined
+  structure: undefined,
+  dcbEventLog: undefined
 };
 
 export {

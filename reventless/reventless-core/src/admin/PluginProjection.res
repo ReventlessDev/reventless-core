@@ -40,6 +40,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           apiSchemaFragment: None,
           uiFragments: None,
           structure: None,
+          dcbEventLog: pluginDef.dcbEventLog,
         }
         let withFrag = switch pluginDef.apiSchemaFragment {
         | Some(frag) => {...base, apiSchemaFragment: Some(frag)}
@@ -90,14 +91,27 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           apiSchemaFragment: None,
           uiFragments: None,
           structure: None,
+          dcbEventLog: pluginDef.dcbEventLog,
         })
+        // dcbEventLog is immutable per plugin version — preserve whatever the
+        // Connected event set and only refresh on Reconnected if the field
+        // changed (a redeploy with new ARN).
         UpdateWithDefault(
           id,
           defaultState,
-          state => applyFragAndTarget({...state, status: Connected, statusChange}),
+          state =>
+            applyFragAndTarget({
+              ...state,
+              status: Connected,
+              statusChange,
+              dcbEventLog: switch pluginDef.dcbEventLog {
+              | Some(_) as some => some
+              | None => state.dcbEventLog
+              },
+            }),
         )
-      | Disconnected({name, version, eventCollector, extensionPoints, extensions})
-      | Activated({name, version, eventCollector, extensionPoints, extensions}) =>
+      | Disconnected({name, version, eventCollector, extensionPoints, extensions} as pluginDef)
+      | Activated({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
         UpdateWithDefault(
           id,
           {
@@ -113,6 +127,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             apiSchemaFragment: None,
             uiFragments: None,
             structure: None,
+            dcbEventLog: pluginDef.dcbEventLog,
           },
           state => {
             ...state,
@@ -120,7 +135,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             statusChange,
           },
         )
-      | Deactivated({name, version, eventCollector, extensionPoints, extensions}) =>
+      | Deactivated({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
         UpdateWithDefault(
           id,
           {
@@ -136,6 +151,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             apiSchemaFragment: None,
             uiFragments: None,
             structure: None,
+            dcbEventLog: pluginDef.dcbEventLog,
           },
           state => {
             ...state,

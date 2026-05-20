@@ -217,7 +217,8 @@ function extractExtensionPointDefinitions(extensionPointsOutputs) {
 function extractExtensionDefinitions(extensionsOutputs) {
   return extensionsOutputs.map(extensionOutputs => ({
     name: extensionOutputs.name,
-    extensionPointName: extensionOutputs.extensionPointName
+    extensionPointName: extensionOutputs.extensionPointName,
+    dcbSources: []
   }));
 }
 

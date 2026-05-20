@@ -30,14 +30,16 @@ Jest.describe("Message should", () => {
           }],
         extensions: [{
             name: "testExtension",
-            extensionPointName: "testExtensionPoint"
+            extensionPointName: "testExtensionPoint",
+            dcbSources: []
           }],
         eventCollector: "testEventCollector",
         extensionProtocols: [],
         apiSchemaFragment: undefined,
         apiTarget: undefined,
         uiFragments: undefined,
-        structure: undefined
+        structure: undefined,
+        dcbEventLog: undefined
       }
     };
     let variantJson = Message$ReventlessCore.encode(variant, PluginSpec$ReventlessCore.commandSchema);

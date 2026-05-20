@@ -25,6 +25,11 @@ type state = {
   // Plugin structure (component metadata) — surfaced via Platform_UIDefinitions.
   // None for older plugins whose protocol version did not carry the field.
   structure: @s.matches(Reventless.Plugin.pluginStructureOptionSchema) option<Reventless.Plugin.pluginStructure>,
+  // DCB EventLog definition for plugins that bundle a DcbEventLog component.
+  // Admin's manageSubscriptions uses this to wire cross-plugin SNS subscriptions
+  // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None
+  // for pure-aggregate plugins or for plugins persisted before Phase 4.
+  dcbEventLog: @s.matches(Reventless.Plugin.dcbEventLogOptionSchema) option<Reventless.Plugin.dcbEventLogDefinition>,
 }
 
 type queryResult = {
@@ -41,6 +46,7 @@ type queryResult = {
   apiTarget?: string,
   uiFragments: option<Reventless.Plugin.uiFragmentManifest>,
   structure: option<Reventless.Plugin.pluginStructure>,
+  dcbEventLog: option<Reventless.Plugin.dcbEventLogDefinition>,
 }
 
 

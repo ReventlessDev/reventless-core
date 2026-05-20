@@ -36,19 +36,21 @@ function project(param) {
   let extensionPoints;
   let extensions;
   let eventCollector;
+  let pluginDef;
   if (typeof event !== "object") {
     return "Ignore";
   }
   switch (event.TAG) {
     case "Connected" :
-      let pluginDef = event._0;
-      let extensions$1 = pluginDef.extensions;
-      let extensionPoints$1 = pluginDef.extensionPoints;
-      let eventCollector$1 = pluginDef.eventCollector;
-      let base_name = pluginDef.name;
-      let base_version = pluginDef.version;
+      let pluginDef$1 = event._0;
+      let extensions$1 = pluginDef$1.extensions;
+      let extensionPoints$1 = pluginDef$1.extensionPoints;
+      let eventCollector$1 = pluginDef$1.eventCollector;
+      let base_name = pluginDef$1.name;
+      let base_version = pluginDef$1.version;
       let base_extensionPointNames = extensionPoints$1.map(extensionPoint => extensionPoint.name);
       let base_extensionNames = extensions$1.map(extension => extension.extensionPointName);
+      let base_dcbEventLog = pluginDef$1.dcbEventLog;
       let base = {
         name: base_name,
         version: base_version,
@@ -61,9 +63,10 @@ function project(param) {
         statusChange: statusChange,
         apiSchemaFragment: undefined,
         uiFragments: undefined,
-        structure: undefined
+        structure: undefined,
+        dcbEventLog: base_dcbEventLog
       };
-      let frag = pluginDef.apiSchemaFragment;
+      let frag = pluginDef$1.apiSchemaFragment;
       let withFrag;
       if (frag !== undefined) {
         let newrecord = {...base};
@@ -72,7 +75,7 @@ function project(param) {
       } else {
         withFrag = base;
       }
-      let ui = pluginDef.uiFragments;
+      let ui = pluginDef$1.uiFragments;
       let withUi;
       if (ui !== undefined) {
         let newrecord$1 = {...withFrag};
@@ -81,7 +84,7 @@ function project(param) {
       } else {
         withUi = withFrag;
       }
-      let s = pluginDef.structure;
+      let s = pluginDef$1.structure;
       let withStructure;
       if (s !== undefined) {
         let newrecord$2 = {...withUi};
@@ -90,7 +93,7 @@ function project(param) {
       } else {
         withStructure = withUi;
       }
-      let target = pluginDef.apiTarget;
+      let target = pluginDef$1.apiTarget;
       let state;
       if (target !== undefined) {
         let newrecord$3 = {...withStructure};
@@ -105,12 +108,12 @@ function project(param) {
         _1: state
       };
     case "Reconnected" :
-      let pluginDef$1 = event._0;
-      let extensions$2 = pluginDef$1.extensions;
-      let extensionPoints$2 = pluginDef$1.extensionPoints;
-      let eventCollector$2 = pluginDef$1.eventCollector;
+      let pluginDef$2 = event._0;
+      let extensions$2 = pluginDef$2.extensions;
+      let extensionPoints$2 = pluginDef$2.extensionPoints;
+      let eventCollector$2 = pluginDef$2.eventCollector;
       let applyFragAndTarget = s => {
-        let frag = pluginDef$1.apiSchemaFragment;
+        let frag = pluginDef$2.apiSchemaFragment;
         let withFrag;
         if (frag !== undefined) {
           let newrecord = {...s};
@@ -119,7 +122,7 @@ function project(param) {
         } else {
           withFrag = s;
         }
-        let ui = pluginDef$1.uiFragments;
+        let ui = pluginDef$2.uiFragments;
         let withUi;
         if (ui !== undefined) {
           let newrecord$1 = {...withFrag};
@@ -128,7 +131,7 @@ function project(param) {
         } else {
           withUi = withFrag;
         }
-        let struct = pluginDef$1.structure;
+        let struct = pluginDef$2.structure;
         let withStructure;
         if (struct !== undefined) {
           let newrecord$2 = {...withUi};
@@ -137,7 +140,7 @@ function project(param) {
         } else {
           withStructure = withUi;
         }
-        let target = pluginDef$1.apiTarget;
+        let target = pluginDef$2.apiTarget;
         if (target === undefined) {
           return withStructure;
         }
@@ -146,8 +149,8 @@ function project(param) {
         return newrecord$3;
       };
       let defaultState = applyFragAndTarget({
-        name: pluginDef$1.name,
-        version: pluginDef$1.version,
+        name: pluginDef$2.name,
+        version: pluginDef$2.version,
         eventCollector: eventCollector$2,
         extensionPoints: extensionPoints$2,
         extensionPointNames: extensionPoints$2.map(extensionPoint => extensionPoint.name),
@@ -157,7 +160,8 @@ function project(param) {
         statusChange: statusChange,
         apiSchemaFragment: undefined,
         uiFragments: undefined,
-        structure: undefined
+        structure: undefined,
+        dcbEventLog: pluginDef$2.dcbEventLog
       });
       return {
         TAG: "UpdateWithDefault",
@@ -165,38 +169,42 @@ function project(param) {
         _1: defaultState,
         _2: state => {
           let newrecord = {...state};
+          let some = pluginDef$2.dcbEventLog;
+          newrecord.dcbEventLog = some !== undefined ? some : state.dcbEventLog;
           return applyFragAndTarget((newrecord.statusChange = statusChange, newrecord.status = "Connected", newrecord));
         }
       };
     case "Disconnected" :
-      let match$1 = event._0;
-      let eventCollector$3 = match$1.eventCollector;
-      name = match$1.name;
-      version = match$1.version;
-      extensionPoints = match$1.extensionPoints;
-      extensions = match$1.extensions;
+      let pluginDef$3 = event._0;
+      let eventCollector$3 = pluginDef$3.eventCollector;
+      name = pluginDef$3.name;
+      version = pluginDef$3.version;
+      extensionPoints = pluginDef$3.extensionPoints;
+      extensions = pluginDef$3.extensions;
       eventCollector = eventCollector$3;
+      pluginDef = pluginDef$3;
       break;
     case "Activated" :
-      let match$2 = event._0;
-      let eventCollector$4 = match$2.eventCollector;
-      name = match$2.name;
-      version = match$2.version;
-      extensionPoints = match$2.extensionPoints;
-      extensions = match$2.extensions;
+      let pluginDef$4 = event._0;
+      let eventCollector$4 = pluginDef$4.eventCollector;
+      name = pluginDef$4.name;
+      version = pluginDef$4.version;
+      extensionPoints = pluginDef$4.extensionPoints;
+      extensions = pluginDef$4.extensions;
       eventCollector = eventCollector$4;
+      pluginDef = pluginDef$4;
       break;
     case "Deactivated" :
-      let match$3 = event._0;
-      let extensions$3 = match$3.extensions;
-      let extensionPoints$3 = match$3.extensionPoints;
-      let eventCollector$5 = match$3.eventCollector;
+      let pluginDef$5 = event._0;
+      let extensions$3 = pluginDef$5.extensions;
+      let extensionPoints$3 = pluginDef$5.extensionPoints;
+      let eventCollector$5 = pluginDef$5.eventCollector;
       return {
         TAG: "UpdateWithDefault",
         _0: id,
         _1: {
-          name: match$3.name,
-          version: match$3.version,
+          name: pluginDef$5.name,
+          version: pluginDef$5.version,
           eventCollector: eventCollector$5,
           extensionPoints: extensionPoints$3,
           extensionPointNames: extensionPoints$3.map(extensionPoint => extensionPoint.name),
@@ -206,7 +214,8 @@ function project(param) {
           statusChange: statusChange,
           apiSchemaFragment: undefined,
           uiFragments: undefined,
-          structure: undefined
+          structure: undefined,
+          dcbEventLog: pluginDef$5.dcbEventLog
         },
         _2: state => {
           let newrecord = {...state};
@@ -233,7 +242,8 @@ function project(param) {
       statusChange: statusChange,
       apiSchemaFragment: undefined,
       uiFragments: undefined,
-      structure: undefined
+      structure: undefined,
+      dcbEventLog: pluginDef.dcbEventLog
     },
     _2: state => {
       let newrecord = {...state};

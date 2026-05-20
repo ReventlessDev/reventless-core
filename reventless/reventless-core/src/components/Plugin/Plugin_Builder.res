@@ -585,10 +585,30 @@ module Make = (
         // so reading it inside the async callback would always yield "Domain".
         let capturedDeployTarget = Spec.hooks.deployTarget.contents
 
+        // DCB EventLog definition — Some when this plugin has a DcbEventLog
+        // component, None otherwise. Admin's manageSubscriptions reads this to
+        // provision cross-plugin SNS subscriptions from peer plugins' DCB
+        // topics → this plugin's EventCollector, and vice-versa. The eventTopic
+        // resource's `id` is the SNS topic ARN (same convention as
+        // extensionPointDefinition.eventTopic).
+        let dcbEventLogDef: Pulumi.Output.t<option<Reventless.Plugin.dcbEventLogDefinition>> =
+          switch dcbResult.dcbEventLogOutputs {
+          | None => Pulumi.Output.make(None)
+          | Some(dcbOutputs) =>
+            switch dcbOutputs.eventTopic.resources->Array.get(0) {
+            | Some(r) =>
+              r.id->Pulumi.Output.apply(arn => Some({
+                Reventless.Plugin.name: name ++ "DcbEventLog",
+                eventTopicArn: arn,
+              }))
+            | None => Pulumi.Output.make(None)
+            }
+          }
+
         let pluginDefinition =
-          (extensionPointsDefinitions, eventCollectorUrn)
-          ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((extensionPointsDefinitions, eventCollectorUrn)) => {
+          (extensionPointsDefinitions, eventCollectorUrn, dcbEventLogDef)
+          ->Pulumi.Output.all3
+          ->Pulumi.Output.apply(((extensionPointsDefinitions, eventCollectorUrn, dcbEventLogDef)) => {
             Reventless.Plugin.id,
             name,
             version,
@@ -600,6 +620,7 @@ module Make = (
             apiTarget: Some(capturedDeployTarget),
             uiFragments,
             structure: pluginStructure,
+            dcbEventLog: dcbEventLogDef,
           })
 
         // Bundled Plugin EventCollector reconstructs Extension_Operations at

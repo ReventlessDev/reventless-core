@@ -983,7 +983,8 @@ function MakeWithConfig(Config) {
           let ext = param[1];
           return {
             name: ext.name,
-            extensionPointName: ext.extensionPointName
+            extensionPointName: ext.extensionPointName,
+            dcbSources: []
           };
         });
         let state_statusChange = {
@@ -1005,7 +1006,8 @@ function MakeWithConfig(Config) {
           statusChange: state_statusChange,
           apiSchemaFragment: state_apiSchemaFragment,
           uiFragments: state_uiFragments,
-          structure: state_structure
+          structure: state_structure,
+          dcbEventLog: undefined
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
@@ -2813,7 +2815,8 @@ function Make($star) {
           let ext = param[1];
           return {
             name: ext.name,
-            extensionPointName: ext.extensionPointName
+            extensionPointName: ext.extensionPointName,
+            dcbSources: []
           };
         });
         let state_statusChange = {
@@ -2835,7 +2838,8 @@ function Make($star) {
           statusChange: state_statusChange,
           apiSchemaFragment: state_apiSchemaFragment,
           uiFragments: state_uiFragments,
-          structure: state_structure
+          structure: state_structure,
+          dcbEventLog: undefined
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);

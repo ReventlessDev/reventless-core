@@ -49,14 +49,16 @@ Jest.describe("LogFormat", () => {
               }],
             extensions: [{
                 name: "testExtension",
-                extensionPointName: "testExtensionPoint"
+                extensionPointName: "testExtensionPoint",
+                dcbSources: []
               }],
             eventCollector: "testEventCollector",
             extensionProtocols: [],
             apiSchemaFragment: undefined,
             apiTarget: undefined,
             uiFragments: undefined,
-            structure: undefined
+            structure: undefined,
+            dcbEventLog: undefined
           }
         }
       ];
@@ -75,7 +77,7 @@ Jest.describe("LogFormat", () => {
         commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
       let expected1 = `1/2: \x1b[1mHeartbeat\x1b[0m(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":"0"}`;
-      let expected2 = `2/2: \x1b[1mConnect\x1b[0m(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint"}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null}},"meta":` + metaStr + `,"id":"1"}`;
+      let expected2 = `2/2: \x1b[1mConnect\x1b[0m(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint","dcbSources":[]}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null,"dcbEventLog":null}},"meta":` + metaStr + `,"id":"1"}`;
       return Jest.Expect.toEqual(Jest.Expect.expect(LogFormat$ReventlessCore.commandJsonsToLogMessages(arr)), [
         expected1,
         expected2

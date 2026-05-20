@@ -351,10 +351,15 @@ let extractExtensionPointDefinitions = (extensionPointsOutputs: array<ExtensionP
   )
   ->Pulumi.Output.all
 
+// `dcbSources` lists cross-plugin DCB EventLog names this extension consumes.
+// Empty for now: the current Extension model is mono-source (single EP Spec).
+// Future work will populate this by walking extension blueprint mappings for
+// `Source { name = "<peer>DcbEventLog" }` declarations.
 let extractExtensionDefinitions = (extensionsOutputs: array<Extension.outputs>) =>
   extensionsOutputs->Array.map(extensionOutputs => {
     Reventless.Plugin.name: extensionOutputs.name,
     extensionPointName: extensionOutputs.extensionPointName,
+    dcbSources: [],
   })
 
 let createConnectPluginExtension = (

@@ -45,7 +45,8 @@ function Make(RuntimeEnvironment) {
             apiSchemaFragment: undefined,
             apiTarget: undefined,
             uiFragments: undefined,
-            structure: undefined
+            structure: undefined,
+            dcbEventLog: undefined
           };
           let Callback = Admin_Callback$ReventlessCore.Make({
             pluginDefinition: fakePluginDefinition,
@@ -170,7 +171,8 @@ function Make(RuntimeEnvironment) {
               apiSchemaFragment: undefined,
               apiTarget: undefined,
               uiFragments: undefined,
-              structure: undefined
+              structure: undefined,
+              dcbEventLog: undefined
             };
             let Callback = Admin_Callback$ReventlessCore.Make({
               pluginDefinition: fakePluginDefinition,

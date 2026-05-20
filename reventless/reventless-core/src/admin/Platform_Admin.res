@@ -79,6 +79,7 @@ module Make = (
           apiTarget: None,
           uiFragments: None,
           structure: None,
+          dcbEventLog: None,
         }
 
         module Callback = Admin_Callback.Make({

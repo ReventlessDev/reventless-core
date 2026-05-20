@@ -5,13 +5,16 @@ let pluginDefinition = {
   name: "name",
   version: "1",
   extensionPoints: [],
-  extensions: [{name: "Core.Plugin.Test", extensionPointName: "Core.Plugin"}],
+  extensions: [
+    {name: "Core.Plugin.Test", extensionPointName: "Core.Plugin", dcbSources: []},
+  ],
   eventCollector: "eventCollector",
   extensionProtocols: [],
   apiSchemaFragment: None,
   apiTarget: None,
   uiFragments: None,
   structure: None,
+  dcbEventLog: None,
 }
 
 let state: PluginReadModelSpec.state = {
@@ -27,6 +30,7 @@ let state: PluginReadModelSpec.state = {
   apiSchemaFragment: None,
   uiFragments: None,
   structure: None,
+  dcbEventLog: None,
 }
 
 let uiManifest: Reventless.Plugin.uiFragmentManifest = {
@@ -57,4 +61,5 @@ let pluginDefinition2 = {
   apiTarget: None,
   uiFragments: None,
   structure: None,
+  dcbEventLog: None,
 }

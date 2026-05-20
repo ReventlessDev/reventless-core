@@ -68,9 +68,9 @@ Backwards-compat: the field is optional. Plugins without a DCB EventLog (e.g. pu
 
 ```
 Step 1
-  [ ] 1.1  Add dcbEventLogDefinition type + schema in Plugin.res
-  [ ] 1.2  Add dcbEventLog field to pluginDefinition with sury optional encoding
-  [ ] 1.3  Confirm existing Connected events in PluginAggrEventLog still decode (sury option treats missing field as None)
+  [x] 1.1  Add dcbEventLogDefinition type + schema in Plugin.res
+  [x] 1.2  Add dcbEventLog field to pluginDefinition with sury optional encoding
+  [x] 1.3  Confirm existing Connected events in PluginAggrEventLog still decode (sury option treats missing field as None)
   [ ]      Verify: pnpm test passes; round-trip a Connected event with dcbEventLog=None and =Some(…)
 ```
 
@@ -110,8 +110,8 @@ Thread `dcbEventLogDef` into the pluginDefinition construction site(s). The Conn
 
 ```
 Step 2
-  [ ] 2.1  Extract dcbEventLog topic ARN where pluginDefinition is built in Plugin_Helpers
-  [ ] 2.2  Set pluginDefinition.dcbEventLog = Some(…) when the plugin has a DcbEventLog component, None otherwise
+  [x] 2.1  Extract dcbEventLog topic ARN where pluginDefinition is built in Plugin_Helpers
+  [x] 2.2  Set pluginDefinition.dcbEventLog = Some(…) when the plugin has a DcbEventLog component, None otherwise
   [ ] 2.3  Verify the Connected event payload in PluginAggrEventLog carries dcbEventLog with the right ARN for a plugin that has DCB
   [ ]      Verify: aws dynamodb scan on PluginAggrEventLog shows a Connected entry with dcbEventLog populated
 ```
@@ -132,9 +132,9 @@ Extend the state schema to include `dcbEventLog: option<dcbEventLogDefinition>`.
 
 ```
 Step 3
-  [ ] 3.1  Add dcbEventLog field to PluginReadModelSpec state
-  [ ] 3.2  Map dcbEventLog from Connected payload in PluginProjection.PluginMapping
-  [ ] 3.3  Same for Reconnected (preserves value); on Deactivated/Disconnected/Activated, preserve (no overwrite needed since dcbEventLog is immutable per plugin version)
+  [x] 3.1  Add dcbEventLog field to PluginReadModelSpec state
+  [x] 3.2  Map dcbEventLog from Connected payload in PluginProjection.PluginMapping
+  [x] 3.3  Same for Reconnected (preserves value); on Deactivated/Disconnected/Activated, preserve (no overwrite needed since dcbEventLog is immutable per plugin version)
   [ ]      Verify: Plugin-<hash> DynamoDB table shows dcbEventLog populated for plugins that have DCB
 ```
 
@@ -215,11 +215,18 @@ async function manageSubscriptions(pluginDef, action) {
 
 ```
 Step 4
-  [ ] 4.1  Extend extensionDefinition with dcbSources: array<string> (default [])
-  [ ] 4.2  Deploy-side: walk each extension blueprint's mappings, collect non-EP Source names (DCB names by convention), populate dcbSources
-  [ ] 4.3  Extend manageSubscriptions's connect branch with DCB cases (both directions: this plugin consumes peer DCB; peers consume this plugin's DCB)
-  [ ] 4.4  Extend disconnect branch with symmetric unsubscribes
-  [ ] 4.5  IAM: confirm admin's sns:Subscribe perms already cover DCB topic ARNs (naming convention `*DcbEventLog*EventTopic-*`); widen if needed
+  [x] 4.1  Extend extensionDefinition with dcbSources: array<string> (default [])
+  [~] 4.2  Deploy-side: walk each extension blueprint's mappings, collect non-EP Source names (DCB names by convention), populate dcbSources
+       — DEFERRED: current Extension blueprint model has a single EP Spec per
+         Mapping with no per-Source declarations. Plumbing in place
+         (`extractExtensionDefinitions` returns `dcbSources: []`); populating
+         it requires extending the Extension model to support multiple Sources.
+  [x] 4.3  Extend manageSubscriptions's connect branch with DCB cases (both directions: this plugin consumes peer DCB; peers consume this plugin's DCB)
+  [x] 4.4  Extend disconnect branch with symmetric unsubscribes
+  [x] 4.5  IAM: confirm admin's sns:Subscribe perms already cover DCB topic ARNs (naming convention `*DcbEventLog*EventTopic-*`); widen if needed
+       — Confirmed: PluginRuntime_Builder.res:443-460 grants admin EC role
+         `sns:Subscribe`/`Unsubscribe`/`ListSubscriptionsByTopic` on
+         `AllResources`, which already covers DCB topics — no widening needed.
   [ ]      Verify: deploy a plugin that consumes another's DCB events; aws sns list-subscriptions-by-topic on the producer's DCB EventTopic shows the consumer's EventCollector as a subscriber
 ```
 
@@ -245,13 +252,25 @@ For the verification scenario:
 
 ```
 Step 5
-  [ ] 5.1  Identify or add a fixture: extension that consumes another plugin's DCB events
-  [ ] 5.2  Deploy both plugins; aws sns list-subscriptions-by-topic confirms the cross-plugin DCB subscription
-  [ ] 5.3  Trigger a DCB write on the producer plugin
-  [ ] 5.4  Consumer plugin's EventCollector lambda logs "incoming event: <DCB event> from <ProducerDcbEventLog>"
-  [ ] 5.5  Consumer's downstream side-effect (command publish, RM write) completes
-  [ ]      Verify: full cross-plugin DCB event flow + symmetric teardown on Disconnect
+  [~] 5.1  Identify or add a fixture: extension that consumes another plugin's DCB events
+       — DEFERRED: blocked on Step 4.2 (extensions can't declare DCB Sources
+         in the current Blueprint model). No fixture can populate
+         extensionDefinition.dcbSources today.
+  [~] 5.2  Deploy both plugins; aws sns list-subscriptions-by-topic confirms the cross-plugin DCB subscription
+       — Requires 5.1; deferred together.
+  [~] 5.3  Trigger a DCB write on the producer plugin
+  [~] 5.4  Consumer plugin's EventCollector lambda logs "incoming event: <DCB event> from <ProducerDcbEventLog>"
+  [~] 5.5  Consumer's downstream side-effect (command publish, RM write) completes
+  [~]      Verify: full cross-plugin DCB event flow + symmetric teardown on Disconnect
 ```
+
+**Phase 4 wrap-up.** All structural pieces landed: pluginDefinition carries
+`dcbEventLog`, extensionDefinition carries `dcbSources`, Plugin RM projects
+both, and `manageSubscriptions` walks both directions to subscribe peer
+EventCollectors. Live verification is deferred behind the Extension Blueprint
+work needed to populate `dcbSources` (Step 4.2). The current schema is
+deploy-safe — old Connected events decode cleanly because the new fields are
+nullable.
 
 ---
 

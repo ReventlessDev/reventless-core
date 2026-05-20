@@ -89,11 +89,15 @@ let extensionPointDefinitionSchema = Plugin$Reventless.extensionPointDefinitionS
 
 let extensionDefinitionSchema = Plugin$Reventless.extensionDefinitionSchema;
 
+let dcbEventLogDefinitionSchema = Plugin$Reventless.dcbEventLogDefinitionSchema;
+
 let extensionProtocolSchema = Plugin$Reventless.extensionProtocolSchema;
 
 let apiSchemaFragmentSchema = Plugin$Reventless.apiSchemaFragmentSchema;
 
 let apiSchemaFragmentOptionSchema = Plugin$Reventless.apiSchemaFragmentOptionSchema;
+
+let dcbEventLogOptionSchema = Plugin$Reventless.dcbEventLogOptionSchema;
 
 let stringOptionSchema = Plugin$Reventless.stringOptionSchema;
 
@@ -147,9 +151,11 @@ export {
   versionSchema,
   extensionPointDefinitionSchema,
   extensionDefinitionSchema,
+  dcbEventLogDefinitionSchema,
   extensionProtocolSchema,
   apiSchemaFragmentSchema,
   apiSchemaFragmentOptionSchema,
+  dcbEventLogOptionSchema,
   stringOptionSchema,
   stringArrayOptionSchema,
   panelManifestEntrySchema,

@@ -31,13 +31,20 @@ describe("Message should", () => {
           eventTopic: "testEventTopic",
         },
       ],
-      extensions: [{name: "testExtension", extensionPointName: "testExtensionPoint"}],
+      extensions: [
+        {
+          name: "testExtension",
+          extensionPointName: "testExtensionPoint",
+          dcbSources: [],
+        },
+      ],
       eventCollector: "testEventCollector",
       extensionProtocols: [],
       apiSchemaFragment: None,
       apiTarget: None,
       uiFragments: None,
       structure: None,
+      dcbEventLog: None,
     })
     let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)

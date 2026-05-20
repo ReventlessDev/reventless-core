@@ -940,6 +940,7 @@ module MakeWithConfig = (
               ((_, ext: ReventlessInfra.Extension.outputs)) => {
                 Reventless.Plugin.name: ext.name,
                 extensionPointName: ext.extensionPointName,
+                dcbSources: [],
               },
             ),
             status: Connected,
@@ -947,6 +948,7 @@ module MakeWithConfig = (
             apiSchemaFragment,
             uiFragments,
             structure: pluginStructure,
+            dcbEventLog: None,
           }
           let entry =
             state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)

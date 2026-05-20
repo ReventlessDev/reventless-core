@@ -90,6 +90,13 @@ import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/Req
 function projectPluginRow(row) {
   if (!row || typeof row !== "object") return null;
   if (typeof row.id !== "string" || typeof row.status !== "string") return null;
+  const dcbEventLog =
+    row.dcbEventLog &&
+    typeof row.dcbEventLog === "object" &&
+    typeof row.dcbEventLog.name === "string" &&
+    typeof row.dcbEventLog.eventTopicArn === "string"
+      ? { name: row.dcbEventLog.name, eventTopicArn: row.dcbEventLog.eventTopicArn }
+      : null;
   return {
     id: row.id,
     status: row.status,
@@ -100,6 +107,9 @@ function projectPluginRow(row) {
           .map((e) => ({
             name: typeof e.name === "string" ? e.name : "",
             extensionPointName: e.extensionPointName,
+            dcbSources: Array.isArray(e.dcbSources)
+              ? e.dcbSources.filter((s) => typeof s === "string")
+              : [],
           }))
       : [],
     extensionPoints: Array.isArray(row.extensionPoints)
@@ -111,6 +121,7 @@ function projectPluginRow(row) {
             eventTopic: ep.eventTopic,
           }))
       : [],
+    dcbEventLog,
   };
 }
 
@@ -282,6 +293,40 @@ function mkManageSubscriptions(tableName) {
         );
         if (matchingExt) {
           await op(peer.eventCollector, ep.eventTopic, `${ep.name} -> ${peer.id}`);
+        }
+      }
+    }
+    // ── Phase 4: DCB topic subscriptions ──────────────────────────────────
+    // For each DCB source this plugin's extensions reference, subscribe this
+    // plugin's EventCollector to the owning peer plugin's DCB EventTopic.
+    for (const ext of pluginDef.extensions || []) {
+      for (const dcbSourceName of ext.dcbSources || []) {
+        const peer = peers.find(
+          (p) => p.dcbEventLog && p.dcbEventLog.name === dcbSourceName
+        );
+        if (peer) {
+          await op(
+            pluginDef.eventCollector,
+            peer.dcbEventLog.eventTopicArn,
+            `dcb ${dcbSourceName} -> ${pluginDef.id}`
+          );
+        }
+      }
+    }
+    // If THIS plugin has a DCB EventLog, subscribe each peer plugin's
+    // EventCollector that references it via dcbSources.
+    if (pluginDef.dcbEventLog) {
+      const myDcbName = pluginDef.dcbEventLog.name;
+      for (const peer of peers) {
+        const consuming = (peer.extensions || []).some((e) =>
+          (e.dcbSources || []).includes(myDcbName)
+        );
+        if (consuming) {
+          await op(
+            peer.eventCollector,
+            pluginDef.dcbEventLog.eventTopicArn,
+            `dcb ${myDcbName} -> ${peer.id}`
+          );
         }
       }
     }

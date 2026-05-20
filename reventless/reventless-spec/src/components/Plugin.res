@@ -26,6 +26,28 @@ Included in the plugin's `pluginDefinition` for use by the host.
 type extensionDefinition = {
   name: string,
   extensionPointName: string,
+  /**
+  DCB EventLog source names this extension consumes. Convention: each entry is
+  the `name` field of a peer plugin's `dcbEventLogDefinition` (i.e. `${peer}DcbEventLog`).
+  The admin uses these to provision cross-plugin SNS subscriptions from peer DCB
+  EventTopics → this plugin's EventCollector. `[]` for extensions that only consume
+  ExtensionPoint EventTopics.
+  */
+  dcbSources: array<string>,
+}
+
+/**
+Describes a DCB EventLog exposed by a plugin.
+Included in the plugin's `pluginDefinition` so the admin can provision SNS
+subscriptions from this plugin's DCB EventTopic to any peer plugin whose
+extension references the DCB log by name.
+*/
+@schema
+type dcbEventLogDefinition = {
+  /** Service name carried in event meta — convention: `${plugin.name}DcbEventLog`. */
+  name: string,
+  /** SNS topic ARN for the DCB EventLog's EventTopic. */
+  eventTopicArn: string,
 }
 
 /**
@@ -58,6 +80,7 @@ type apiSchemaFragment = {encoded: string, protocol: string}
 // JSON-safe and passes jsonableValidation in all contexts.
 @module("sury/src/Sury.res.mjs") external _jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "js_nullable"
 let apiSchemaFragmentOptionSchema = _jsNullable(apiSchemaFragmentSchema, ())
+let dcbEventLogOptionSchema = _jsNullable(dcbEventLogDefinitionSchema, ())
 // js_nullable creates T | null which passes sury's jsonableValidation inside union variant payloads.
 let stringOptionSchema = _jsNullable(S.string, ())
 let stringArrayOptionSchema = _jsNullable(S.array(S.string), ())
@@ -262,5 +285,10 @@ type pluginDefinition = {
   uiFragments: @s.matches(uiFragmentManifestOptionSchema) option<uiFragmentManifest>,
   // Component graph metadata — populated by makePluginDefinition; absent for older protocol versions.
   structure: @s.matches(pluginStructureOptionSchema) option<pluginStructure>,
+  // DCB EventLog definition for plugins that bundle a DcbEventLog component.
+  // Carries the EventTopic ARN so the admin can provision cross-plugin SNS
+  // subscriptions from this plugin's DCB topic → peer EventCollectors.
+  // None for plugins without a DCB EventLog.
+  dcbEventLog: @s.matches(dcbEventLogOptionSchema) option<dcbEventLogDefinition>,
 }
 
