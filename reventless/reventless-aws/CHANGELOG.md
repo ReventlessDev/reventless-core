@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.111 (2026-05-20)
+
+### Bug Fixes
+
+* **aws:** make AutoUI lists live-update by fixing Events API auth + channel root ([9ebe4b8](https://github.com/ReventlessDev/reventless-core/commit/9ebe4b80c606ef27cc014dac844c2c1acd65c29f))
+
+
 # 3.0.0-alpha.110 (2026-05-20)
 
 ### Bug Fixes

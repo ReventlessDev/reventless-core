@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.32 (2026-05-20)
+
+### Bug Fixes
+
+* **aws:** make AutoUI lists live-update by fixing Events API auth + channel root ([9ebe4b8](https://github.com/ReventlessDev/reventless-core/commit/9ebe4b80c606ef27cc014dac844c2c1acd65c29f))
+
+
 # 2.4.0-alpha.31 (2026-05-19)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
