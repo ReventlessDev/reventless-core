@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.110 (2026-05-20)
+
+### Bug Fixes
+
+* **aws:** harden runtime AppSync schema update against transient clobber ([4d768e4](https://github.com/ReventlessDev/reventless-core/commit/4d768e434c28042242463e0341e1c543ddc12c63))
+* **aws:** repair clobbered AppSync schema via drift-aware deploy push ([3ba690b](https://github.com/ReventlessDev/reventless-core/commit/3ba690b5f72ce80f7a8610bd534c845f4c83833d))
+### Features
+
+* **aws:** wire live-update Events config into host config.json + retire superseded plugin versions on deploy ([954cc47](https://github.com/ReventlessDev/reventless-core/commit/954cc47d93fc6f862a2045f73935560fbbd171ab))
+
+
 # 3.0.0-alpha.109 (2026-05-20)
 
 ### Bug Fixes
