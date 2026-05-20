@@ -199,9 +199,15 @@ The publisher sends a small descriptor — **not** the full row:
 `changeKind` is derived from the DynamoDB stream `eventName`
 (`INSERT→Added`, `MODIFY→Updated`, `REMOVE→Removed`). The UI decodes it in
 `AutoLive.decodeDescriptor` (in the `@reventlessdev/reventless-ui` package,
-`src/live/`); malformed frames are dropped. `AutoListView` turns `Added` into a **"new items"
-badge** (it does not auto-insert rows); an open detail refetches on `Updated` and
-shows an "entity gone" placeholder on `Removed`.
+`src/live/`); malformed frames are dropped. `AutoListView` handles `Added`
+**by origin**: an add this browser/tab just triggered via the command form is
+auto-fetched and **inserted into the list immediately**; an add by anyone else
+surfaces a **"N new items" pill** (click to refresh) so the user's scroll isn't
+disrupted. Self-detection is per-tab — the view records the entity id at command
+submit (expiring after 60s) and matches it against the descriptor id; there is no
+actor field on the wire. `Updated` / `Removed` apply in place for all origins
+(an open detail refetches on `Updated` and shows an "entity gone" placeholder on
+`Removed`).
 
 ---
 
@@ -381,7 +387,8 @@ work" until the last fell.
 ## Status & planned extensions
 
 Shipped today: 2-segment channels `/default/<root>/<entityKey>`, per-entity
-descriptors, list "new items" badge, detail refetch.
+descriptors, self-vs-others list adds (auto-insert own / "new items" pill for
+others), in-place edits & deletes, detail refetch.
 
 Planned (see `realtime-change-descriptors.md`): a 3-segment partition-aware layout
 `/default/<root>/<partitionKey>/<entityId>`, a namespace `OnPublish` coalescer
