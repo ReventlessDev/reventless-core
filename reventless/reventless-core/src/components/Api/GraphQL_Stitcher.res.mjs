@@ -3,6 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 
 function encode(parts) {
   let encoded = JSON.stringify(Object.fromEntries([
@@ -159,6 +160,52 @@ function stitch(baseFragment, pluginFragments) {
   return sdlParts.join("\n\n");
 }
 
+function isIdentStart(line) {
+  let c = line.codePointAt(0);
+  if (c !== undefined) {
+    if (c >= 65 && c <= 90 || c >= 97 && c <= 122) {
+      return true;
+    } else {
+      return c === 95;
+    }
+  } else {
+    return false;
+  }
+}
+
+function countRootTypeFields(sdl, typeName) {
+  let marker = `type ` + typeName;
+  let typeStart = Stdlib_String.indexOfOpt(sdl, marker);
+  if (typeStart === undefined) {
+    return 0;
+  }
+  let rest = sdl.slice(typeStart);
+  let match = Stdlib_String.indexOfOpt(rest, "{");
+  let match$1 = Stdlib_String.indexOfOpt(rest, "}");
+  if (match !== undefined && match$1 !== undefined && match$1 > match) {
+    return rest.slice(match + 1 | 0, match$1).split("\n").filter(line => {
+      let trimmed = line.trim();
+      if (trimmed.length > 0) {
+        return isIdentStart(trimmed);
+      } else {
+        return false;
+      }
+    }).length;
+  } else {
+    return 0;
+  }
+}
+
+function isCatastrophicSchemaShrink(currentSdl, newSdl, threshold) {
+  let current = countRootTypeFields(currentSdl, "Mutation") + countRootTypeFields(currentSdl, "Query") | 0;
+  let next = countRootTypeFields(newSdl, "Mutation") + countRootTypeFields(newSdl, "Query") | 0;
+  if (current > 0) {
+    return next < current * threshold;
+  } else {
+    return false;
+  }
+}
+
 export {
   encode,
   decode,
@@ -166,5 +213,8 @@ export {
   relayBaseTypes,
   relayBaseQueries,
   stitch,
+  isIdentStart,
+  countRootTypeFields,
+  isCatastrophicSchemaShrink,
 }
 /* No side effect */

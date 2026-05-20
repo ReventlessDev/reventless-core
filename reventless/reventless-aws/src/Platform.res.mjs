@@ -508,25 +508,43 @@ function MakeWithConfig(Config) {
             ]
           ]);
           console.log(`[preResolversSchemaHook] Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
+          let scanAllDeploySchemaItems = async () => {
+            let allItems = [];
+            let startKey;
+            let more = true;
+            while (more) {
+              let result = await DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
+                TableName: tableNameOpt,
+                ExclusiveStartKey: startKey,
+                ExpressionAttributeNames: Object.fromEntries([[
+                    "#id",
+                    "id"
+                  ]]),
+                ExpressionAttributeValues: Object.fromEntries([[
+                    ":prefix",
+                    schemaPrefix
+                  ]]),
+                FilterExpression: "begins_with(#id, :prefix)"
+              }));
+              Stdlib_Option.getOr(result.Items, []).forEach(item => {
+                allItems.push(item);
+              });
+              let k = result.LastEvaluatedKey;
+              if (k !== undefined) {
+                startKey = k;
+              } else {
+                more = false;
+              }
+            };
+            return allItems;
+          };
           return Stdlib_Promise.$$catch(DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
             Item: deployItem,
             TableName: tableNameOpt
           })).then(param => {
             console.log(`[preResolversSchemaHook] Scanning ` + tableNameOpt + ` for deploy-schema entries`);
-            return DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
-              TableName: tableNameOpt,
-              ExpressionAttributeNames: Object.fromEntries([[
-                  "#id",
-                  "id"
-                ]]),
-              ExpressionAttributeValues: Object.fromEntries([[
-                  ":prefix",
-                  schemaPrefix
-                ]]),
-              FilterExpression: "begins_with(#id, :prefix)"
-            }));
-          }).then(result => {
-            let items = Stdlib_Option.getOr(result.Items, []);
+            return scanAllDeploySchemaItems();
+          }).then(items => {
             let fragments = Stdlib_Array.filterMap(items, item => {
               try {
                 let obj = JSON.parse(JSON.stringify(item));
@@ -912,7 +930,7 @@ function MakeWithConfig(Config) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
@@ -1485,25 +1503,43 @@ function Make($star) {
             ]
           ]);
           console.log(`[preResolversSchemaHook] Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
+          let scanAllDeploySchemaItems = async () => {
+            let allItems = [];
+            let startKey;
+            let more = true;
+            while (more) {
+              let result = await DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
+                TableName: tableNameOpt,
+                ExclusiveStartKey: startKey,
+                ExpressionAttributeNames: Object.fromEntries([[
+                    "#id",
+                    "id"
+                  ]]),
+                ExpressionAttributeValues: Object.fromEntries([[
+                    ":prefix",
+                    schemaPrefix
+                  ]]),
+                FilterExpression: "begins_with(#id, :prefix)"
+              }));
+              Stdlib_Option.getOr(result.Items, []).forEach(item => {
+                allItems.push(item);
+              });
+              let k = result.LastEvaluatedKey;
+              if (k !== undefined) {
+                startKey = k;
+              } else {
+                more = false;
+              }
+            };
+            return allItems;
+          };
           return Stdlib_Promise.$$catch(DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
             Item: deployItem,
             TableName: tableNameOpt
           })).then(param => {
             console.log(`[preResolversSchemaHook] Scanning ` + tableNameOpt + ` for deploy-schema entries`);
-            return DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
-              TableName: tableNameOpt,
-              ExpressionAttributeNames: Object.fromEntries([[
-                  "#id",
-                  "id"
-                ]]),
-              ExpressionAttributeValues: Object.fromEntries([[
-                  ":prefix",
-                  schemaPrefix
-                ]]),
-              FilterExpression: "begins_with(#id, :prefix)"
-            }));
-          }).then(result => {
-            let items = Stdlib_Option.getOr(result.Items, []);
+            return scanAllDeploySchemaItems();
+          }).then(items => {
             let fragments = Stdlib_Array.filterMap(items, item => {
               try {
                 let obj = JSON.parse(JSON.stringify(item));
@@ -1872,7 +1908,7 @@ function Make($star) {
         return Pulumi.output("NOT_AVAILABLE");
       }
     });
-    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
+    PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
       Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});

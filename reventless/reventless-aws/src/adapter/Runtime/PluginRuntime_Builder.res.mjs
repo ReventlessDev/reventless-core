@@ -19,6 +19,7 @@ let configRef = {
   contents: {
     eventTopicArn: undefined,
     pluginReadModelTableName: undefined,
+    pluginSchemaPersistenceTableName: undefined,
     schedulerRoleArn: undefined,
     schedulerQueueArn: undefined,
     schedulerQueueName: undefined,
@@ -97,11 +98,12 @@ function setStateChangesConfig(sync, async, param) {
   });
 }
 
-function registerConfig(eventTopicArn, pluginReadModelTableName, schedulerRoleArn, schedulerQueueArn, schedulerQueueName, appSyncApiId, clonerEnabledOpt, param) {
+function registerConfig(eventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTableName, schedulerRoleArn, schedulerQueueArn, schedulerQueueName, appSyncApiId, clonerEnabledOpt, param) {
   let clonerEnabled = clonerEnabledOpt !== undefined ? clonerEnabledOpt : false;
   configRef.contents = {
     eventTopicArn: eventTopicArn,
     pluginReadModelTableName: pluginReadModelTableName,
+    pluginSchemaPersistenceTableName: pluginSchemaPersistenceTableName,
     schedulerRoleArn: schedulerRoleArn,
     schedulerQueueArn: schedulerQueueArn,
     schedulerQueueName: schedulerQueueName,
@@ -181,7 +183,8 @@ function Make(EventCollectorChannel) {
       outputOrPlaceholder(config.schedulerQueueArn),
       outputOrPlaceholder(config.schedulerQueueName),
       outputOrPlaceholder(config.appSyncApiId),
-      epEventTopicArnsOutput
+      epEventTopicArnsOutput,
+      outputOrPlaceholder(config.pluginSchemaPersistenceTableName)
     ]).apply(values => {
       let queueUrl = values[0];
       let pluginEpCmdTopicUrl = values[1];
@@ -192,11 +195,13 @@ function Make(EventCollectorChannel) {
       let schedQueueName = values[6];
       let appSyncApiId = values[7];
       let epEventTopicArns = values[8];
+      let schemaPersistenceTable = values[9];
       let dict = {};
       dict["queueUrl"] = queueUrl;
       dict["pluginExtensionPointCmdTopicUrl"] = pluginEpCmdTopicUrl;
       dict["eventTopicArn"] = topLevelEventTopicArn;
       dict["pluginReadModelTableName"] = rmTable;
+      dict["pluginSchemaPersistenceTableName"] = schemaPersistenceTable;
       dict["appSyncApiId"] = appSyncApiId;
       dict["clonerEnabled"] = config.clonerEnabled;
       dict["schedulerRoleArn"] = schedRoleArn;
@@ -301,7 +306,8 @@ function Make(EventCollectorChannel) {
           Effect: "Allow",
           Action: [
             "appsync:StartSchemaCreation",
-            "appsync:GetSchemaCreationStatus"
+            "appsync:GetSchemaCreationStatus",
+            "appsync:GetIntrospectionSchema"
           ],
           Resource: "*"
         }
@@ -309,17 +315,30 @@ function Make(EventCollectorChannel) {
       role: runtime.parts.lambdaRole.id
     });
     let rmTableOutput = config.pluginReadModelTableName;
-    if (rmTableOutput === undefined) {
+    if (rmTableOutput !== undefined) {
+      let policyJson = rmTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginRmScanPolicy`, [{
+          Sid: "AllowAdminScanPluginRm",
+          Effect: "Allow",
+          Action: ["dynamodb:Scan"],
+          Resource: "arn:aws:dynamodb:*:*:table/" + tableName
+        }])));
+      new (Aws.iam.RolePolicy)(name + `-pluginRmScan`, {
+        policy: policyJson,
+        role: runtime.parts.lambdaRole.id
+      });
+    }
+    let schemaTableOutput = config.pluginSchemaPersistenceTableName;
+    if (schemaTableOutput === undefined) {
       return;
     }
-    let policyJson = rmTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginRmScanPolicy`, [{
-        Sid: "AllowAdminScanPluginRm",
+    let policyJson$1 = schemaTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginSchemaScanPolicy`, [{
+        Sid: "AllowAdminScanPluginSchemaPersistence",
         Effect: "Allow",
         Action: ["dynamodb:Scan"],
         Resource: "arn:aws:dynamodb:*:*:table/" + tableName
       }])));
-    new (Aws.iam.RolePolicy)(name + `-pluginRmScan`, {
-      policy: policyJson,
+    new (Aws.iam.RolePolicy)(name + `-pluginSchemaScan`, {
+      policy: policyJson$1,
       role: runtime.parts.lambdaRole.id
     });
   };

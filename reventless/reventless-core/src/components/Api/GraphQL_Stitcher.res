@@ -207,3 +207,63 @@ let stitch = (
     )
   sdlParts->Array.join("\n\n")
 }
+
+let isIdentStart = (line: string): bool =>
+  switch line->String.codePointAt(0) {
+  // A-Z (65-90), a-z (97-122), or `_` (95)
+  | Some(c) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95
+  | None => false
+  }
+
+/**
+Count the field definitions inside a root object type (`Mutation` / `Query`) of a
+full SDL string.
+
+Used by the runtime schema-update circuit breaker (AdminEventCollectorEntryPoint)
+to detect a catastrophic shrink before pushing a new schema to AppSync. Heuristic
+but adequate for a shrink guard: root operation fields are flat single-line
+declarations (`name(args): T` or `name: T`), so we slice the `type <typeName> {
+… }` block at its first `{`/`}` and count indented lines that begin with an
+identifier character, ignoring directive-only lines (`@…`), comments (`#…`) and
+braces.
+*/
+let countRootTypeFields = (~sdl: string, ~typeName: string): int => {
+  let marker = `type ${typeName}`
+  switch sdl->String.indexOfOpt(marker) {
+  | None => 0
+  | Some(typeStart) =>
+    let rest = sdl->String.slice(~start=typeStart)
+    switch (rest->String.indexOfOpt("{"), rest->String.indexOfOpt("}")) {
+    | (Some(openIdx), Some(closeIdx)) if closeIdx > openIdx =>
+      rest
+      ->String.slice(~start=openIdx + 1, ~end=closeIdx)
+      ->String.split("\n")
+      ->Array.filter(line => {
+        let trimmed = line->String.trim
+        trimmed->String.length > 0 && isIdentStart(trimmed)
+      })
+      ->Array.length
+    | _ => 0
+    }
+  }
+}
+
+/**
+Decide whether replacing the live schema (`currentSdl`) with `newSdl` would drop
+so many root-type (`Mutation` + `Query`) fields that it is almost certainly a
+transient/incomplete stitch rather than an intentional removal.
+
+Returns `true` when the new root-field total is below `threshold` × the current
+total. When the current schema has no countable root fields (e.g. first deploy,
+or introspection was unavailable so `currentSdl` is empty) it returns `false` so
+the initial push always proceeds.
+*/
+let isCatastrophicSchemaShrink = (~currentSdl: string, ~newSdl: string, ~threshold: float): bool => {
+  let current =
+    countRootTypeFields(~sdl=currentSdl, ~typeName="Mutation") +
+    countRootTypeFields(~sdl=currentSdl, ~typeName="Query")
+  let next =
+    countRootTypeFields(~sdl=newSdl, ~typeName="Mutation") +
+    countRootTypeFields(~sdl=newSdl, ~typeName="Query")
+  current > 0 && next->Int.toFloat < current->Int.toFloat *. threshold
+}

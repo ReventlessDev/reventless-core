@@ -9,6 +9,10 @@
 //   "pluginExtensionPointCmdTopicUrl":string  // SQS URL of CorePluginExtPoint cmd topic (admin's Plugin EP)
 //   "eventTopicArn":                  string  // SNS ARN the EP's outgoing events publish to ("NOT_AVAILABLE" if none)
 //   "pluginReadModelTableName":       string  // DynamoDB table for Plugin RM (used by QueryEngine.scan)
+//   "pluginSchemaPersistenceTableName":string // DynamoDB table holding deploy-time SDL fragments
+//                                              // (rows keyed "deploy-schema:<name>"). Durable source
+//                                              // for the runtime schema stitch; "NOT_AVAILABLE" →
+//                                              // fall back to Plugin RM Connected-row scan.
 //   "appSyncApiId":                   string  // "NOT_AVAILABLE" disables schema stitching
 //   "clonerEnabled":                  boolean
 //   "schedulerRoleArn":               string  // IAM role for CloudWatch Events schedule targets
@@ -73,7 +77,12 @@ import { Make as extensionMappingMake } from "@reventlessdev/reventless-infra/sr
 import { Make as pluginCallbackMake } from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Callback.res.mjs";
 import { handleDynamoDbOrSqsEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res.mjs";
 import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule } from "@reventlessdev/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
-import { stitch as graphqlStitch, decode as decodeFragment } from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
+import {
+  stitch as graphqlStitch,
+  decode as decodeFragment,
+  countRootTypeFields,
+  isCatastrophicSchemaShrink,
+} from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import { baseFragment as adminBaseFragment } from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 
@@ -188,6 +197,85 @@ async function updateAppSyncSchema(apiId, sdl) {
   const { AppSyncClient, StartSchemaCreationCommand } = await import("@aws-sdk/client-appsync");
   const client = new AppSyncClient({});
   await client.send(new StartSchemaCreationCommand({ apiId, definition: sdl }));
+}
+
+// Fetch the current live AppSync schema as an SDL string for the shrink guard.
+// Returns "" (not an error) when the API has no schema yet (first deploy) or
+// introspection fails — the caller treats an empty current schema as "no
+// baseline to protect", so the push proceeds.
+async function getCurrentSchemaSdl(apiId) {
+  try {
+    const { AppSyncClient, GetIntrospectionSchemaCommand } = await import("@aws-sdk/client-appsync");
+    const client = new AppSyncClient({});
+    const resp = await client.send(new GetIntrospectionSchemaCommand({ apiId, format: "SDL" }));
+    if (!resp || !resp.schema) return "";
+    // resp.schema is a Uint8Array of the SDL text.
+    return Buffer.from(resp.schema).toString("utf-8");
+  } catch (e) {
+    console.warn(
+      `[updateApiSchema] could not introspect current schema (${(e && e.message) || e}) — skipping shrink guard`
+    );
+    return "";
+  }
+}
+
+// Shrink-guard threshold: abort the push if the new SDL has fewer than
+// (threshold × current) root fields. Configurable via env; default 0.5 (50%).
+// Anything outside (0, 1) falls back to the default.
+function parseShrinkThreshold(raw) {
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 && n < 1 ? n : 0.5;
+}
+
+// Emit a CloudWatch metric via Embedded Metric Format (EMF). Any Lambda log line
+// shaped like this is auto-parsed by CloudWatch into the metric
+// Reventless/Runtime SchemaShrinkRejected (dimension ApiId) — no PutMetricData
+// call, SDK dependency, or extra IAM permission required.
+function emitShrinkRejectionMetric(apiId, currentRootFields, newRootFields) {
+  try {
+    console.log(
+      JSON.stringify({
+        _aws: {
+          Timestamp: Date.now(),
+          CloudWatchMetrics: [
+            {
+              Namespace: "Reventless/Runtime",
+              Dimensions: [["ApiId"]],
+              Metrics: [{ Name: "SchemaShrinkRejected", Unit: "Count" }],
+            },
+          ],
+        },
+        ApiId: apiId,
+        SchemaShrinkRejected: 1,
+        currentRootFields,
+        newRootFields,
+      })
+    );
+  } catch (_) {}
+}
+
+const DEPLOY_SCHEMA_PREFIX = "deploy-schema:";
+
+// Read every plugin's deploy-time SDL fragment from the dedicated
+// PluginSchemaPersistence table (rows keyed "deploy-schema:<name>", written by
+// Platform.preResolversSchemaHook at deploy time). begins_with("deploy-schema:")
+// matches only Domain fragments — the platform ("deploy-schema-platform:") and
+// hash ("deploy-schema-hash:") rows have a hyphen at that position, so they are
+// excluded. Each row's `fragment` attribute is the encoded SDL string; wrap it
+// in the {encoded, protocol} shape the stitcher consumes.
+async function collectDeploySchemaFragments(tableName) {
+  const rows = await scanByTableName(
+    tableName,
+    [["id", { TAG: "BeginsWith" }, { TAG: "String", _0: DEPLOY_SCHEMA_PREFIX }]],
+    1000
+  );
+  return rows
+    .map((row) =>
+      row && typeof row.fragment === "string"
+        ? { encoded: row.fragment, protocol: "graphql" }
+        : null
+    )
+    .filter(Boolean);
 }
 
 function runEffect(correlationId, effect) {
@@ -362,23 +450,62 @@ async function reconcileSubscriptionsOnce(tableName, manageSubscriptions) {
   }
 }
 
-function mkUpdateApiSchema(tableName, apiId, clonerEnabled) {
+// Re-stitch and push the live AppSync schema on each plugin Connect/Disconnect.
+//
+// Source of plugin fragments (option A): the durable PluginSchemaPersistence
+// table (deploy-time "deploy-schema:<name>" rows), NOT the lifecycle-volatile
+// Plugin RM "Connected" rows. Reading the deploy-time source means lifecycle
+// churn (a redeploy window where every plugin is briefly Disconnected, an
+// eventually-consistent scan, etc.) can no longer shrink the stitched schema —
+// every push re-asserts the full deployed set rather than clobbering field
+// resolvers with whatever subset happened to be Connected at scan time. The
+// Plugin RM scan remains only as a fallback for older platform stacks deployed
+// before the dedicated table existed (schemaTableName === "NOT_AVAILABLE").
+//
+// Circuit breaker (option D, defense-in-depth): before pushing, introspect the
+// current live schema and compare root-type (Mutation + Query) field counts. If
+// the new SDL drops below the configured fraction of the live field count, abort
+// the push, log loudly, and emit a CloudWatch metric — catching any
+// catastrophic shrink the source switch alone misses.
+function mkUpdateApiSchema(schemaTableName, apiId, clonerEnabled) {
   if (!apiId || apiId === "NOT_AVAILABLE") return undefined;
+  const hasSchemaTable = !!schemaTableName && schemaTableName !== "NOT_AVAILABLE";
   return async (queryEngine) => {
-    const plugins = queryEngine.scan(
-      "Plugin",
-      [["status", { TAG: "Contains" }, { TAG: "String", _0: "Connected" }]],
-      1000
-    );
-    const resolved = await plugins;
-    const fragments = resolved
-      .map((json) => json && json.apiSchemaFragment)
-      .filter(Boolean);
-    const adminBase = injectAwsAuthAll(
-      adminBaseFragment(clonerEnabled || false),
-      "Admin"
-    );
+    let fragments;
+    if (hasSchemaTable) {
+      fragments = await collectDeploySchemaFragments(schemaTableName);
+      console.log(
+        `[updateApiSchema] stitching ${fragments.length} deploy-schema fragment(s) from ${schemaTableName}`
+      );
+    } else {
+      const resolved = await queryEngine.scan(
+        "Plugin",
+        [["status", { TAG: "Contains" }, { TAG: "String", _0: "Connected" }]],
+        1000
+      );
+      fragments = resolved.map((json) => json && json.apiSchemaFragment).filter(Boolean);
+      console.warn(
+        `[updateApiSchema] PluginSchemaPersistence table unavailable — falling back to ${fragments.length} Connected Plugin RM fragment(s)`
+      );
+    }
+    const adminBase = injectAwsAuthAll(adminBaseFragment(clonerEnabled || false), "Admin");
     const sdl = graphqlStitch(adminBase, fragments);
+
+    // Shrink guard — never let a transient/incomplete stitch clobber the live schema.
+    const threshold = parseShrinkThreshold(process.env["RUNTIME_SCHEMA_SHRINK_THRESHOLD"]);
+    const currentSdl = await getCurrentSchemaSdl(apiId);
+    if (isCatastrophicSchemaShrink(currentSdl, sdl, threshold)) {
+      const currentRootFields =
+        countRootTypeFields(currentSdl, "Mutation") + countRootTypeFields(currentSdl, "Query");
+      const newRootFields =
+        countRootTypeFields(sdl, "Mutation") + countRootTypeFields(sdl, "Query");
+      console.error(
+        `[updateApiSchema] ABORTED schema push for ${apiId}: new SDL has ${newRootFields} root field(s) ` +
+          `vs ${currentRootFields} live (threshold ${threshold}). Refusing to clobber resolvers.`
+      );
+      emitShrinkRejectionMetric(apiId, currentRootFields, newRootFields);
+      return;
+    }
     await updateAppSyncSchema(apiId, sdl);
   };
 }
@@ -490,7 +617,7 @@ async function buildHandler() {
     : [];
 
   const updateApiSchemaFn = mkUpdateApiSchema(
-    config.pluginReadModelTableName,
+    config.pluginSchemaPersistenceTableName,
     config.appSyncApiId,
     config.clonerEnabled,
   );

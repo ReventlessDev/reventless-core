@@ -1,6 +1,10 @@
 type adminConfig = {
   eventTopicArn: option<Pulumi.Output.t<string>>,
   pluginReadModelTableName: option<Pulumi.Output.t<string>>,
+  // Dedicated PluginSchemaPersistence table holding deploy-time SDL fragments
+  // (rows keyed "deploy-schema:<name>"). The runtime schema stitch reads this
+  // durable source instead of the lifecycle-volatile Plugin RM Connected rows.
+  pluginSchemaPersistenceTableName: option<Pulumi.Output.t<string>>,
   schedulerRoleArn: option<Pulumi.Output.t<string>>,
   schedulerQueueArn: option<Pulumi.Output.t<string>>,
   schedulerQueueName: option<Pulumi.Output.t<string>>,
@@ -11,6 +15,7 @@ type adminConfig = {
 let configRef: ref<adminConfig> = ref({
   eventTopicArn: None,
   pluginReadModelTableName: None,
+  pluginSchemaPersistenceTableName: None,
   schedulerRoleArn: None,
   schedulerQueueArn: None,
   schedulerQueueName: None,
@@ -80,6 +85,7 @@ let setStateChangesConfig = (~sync=?, ~async=?, ()) => {
 let registerConfig = (
   ~eventTopicArn=?,
   ~pluginReadModelTableName=?,
+  ~pluginSchemaPersistenceTableName=?,
   ~schedulerRoleArn=?,
   ~schedulerQueueArn=?,
   ~schedulerQueueName=?,
@@ -90,6 +96,7 @@ let registerConfig = (
   configRef := {
     eventTopicArn,
     pluginReadModelTableName,
+    pluginSchemaPersistenceTableName,
     schedulerRoleArn,
     schedulerQueueArn,
     schedulerQueueName,
@@ -243,6 +250,7 @@ module Make = (
         config.schedulerQueueName->outputOrPlaceholder->Obj.magic,
         config.appSyncApiId->outputOrPlaceholder->Obj.magic,
         epEventTopicArnsOutput->Pulumi.Output.asInput->Obj.magic,
+        config.pluginSchemaPersistenceTableName->outputOrPlaceholder->Obj.magic,
       ])
       ->Pulumi.Output.apply(values => {
         let queueUrl = values->Array.getUnsafe(0)
@@ -254,12 +262,17 @@ module Make = (
         let schedQueueName = values->Array.getUnsafe(6)
         let appSyncApiId = values->Array.getUnsafe(7)
         let epEventTopicArns: array<string> = Obj.magic(values->Array.getUnsafe(8))
+        let schemaPersistenceTable = values->Array.getUnsafe(9)
 
         let dict = Dict.make()
         dict->Dict.set("queueUrl", JSON.Encode.string(queueUrl))
         dict->Dict.set("pluginExtensionPointCmdTopicUrl", JSON.Encode.string(pluginEpCmdTopicUrl))
         dict->Dict.set("eventTopicArn", JSON.Encode.string(topLevelEventTopicArn))
         dict->Dict.set("pluginReadModelTableName", JSON.Encode.string(rmTable))
+        dict->Dict.set(
+          "pluginSchemaPersistenceTableName",
+          JSON.Encode.string(schemaPersistenceTable),
+        )
         dict->Dict.set("appSyncApiId", JSON.Encode.string(appSyncApiId))
         dict->Dict.set("clonerEnabled", JSON.Encode.bool(config.clonerEnabled))
         dict->Dict.set("schedulerRoleArn", JSON.Encode.string(schedRoleArn))
@@ -461,13 +474,16 @@ module Make = (
               // manageSubscriptions — pushes the stitched SDL to AppSync via
               // StartSchemaCreation. AppSync requires both the API-level
               // appsync:StartSchemaCreation and appsync:GetSchemaCreationStatus
-              // permissions on the deployed API.
+              // permissions on the deployed API. GetIntrospectionSchema backs the
+              // shrink-guard circuit breaker, which reads the live schema before
+              // pushing to detect (and refuse) a catastrophic field-count drop.
               {
                 sid: "AllowAdminStartSchemaCreation",
                 effect: Allow,
                 actions: Actions([
                   "appsync:StartSchemaCreation",
                   "appsync:GetSchemaCreationStatus",
+                  "appsync:GetIntrospectionSchema",
                 ]),
                 resources: AllResources,
               },
@@ -503,6 +519,36 @@ module Make = (
           )
         let _ = PulumiAws.IAM.RolePolicy.make(
           ~name=`${name}-pluginRmScan`,
+          ~args={
+            policy: policyJson->Pulumi.Output.asInput,
+            role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+          },
+        )
+      | None => ()
+      }
+
+      // mkUpdateApiSchema reads each plugin's deploy-time SDL fragment from the
+      // dedicated PluginSchemaPersistence table (deploy-schema:<name> rows) to
+      // re-stitch the live schema. Grant Scan on that table too — it is owned by
+      // Platform.res, so the admin EC's default policy includes no perms on it.
+      switch config.pluginSchemaPersistenceTableName {
+      | Some(schemaTableOutput) =>
+        let policyJson =
+          schemaTableOutput->Pulumi.Output.apply(tableName =>
+            PulumiAws.PolicyDocument.make(
+              ~id=`${name}PluginSchemaScanPolicy`,
+              ~statements=[
+                {
+                  sid: "AllowAdminScanPluginSchemaPersistence",
+                  effect: Allow,
+                  actions: Actions(["dynamodb:Scan"]),
+                  resources: Resource("arn:aws:dynamodb:*:*:table/" ++ tableName),
+                },
+              ],
+            )->PulumiAws.PolicyDocument.toJsonString
+          )
+        let _ = PulumiAws.IAM.RolePolicy.make(
+          ~name=`${name}-pluginSchemaScan`,
           ~args={
             policy: policyJson->Pulumi.Output.asInput,
             role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,

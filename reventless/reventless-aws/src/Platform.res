@@ -700,25 +700,44 @@ module MakeWithConfig = (
             Console.log(
               `[preResolversSchemaHook] Writing deploy-schema entry for ${name} to ${tableName}`,
             )
+            // Paginated scan — accumulate every deploy-schema entry across pages.
+            // A single ScanCommand returns at most 1 MB before yielding a
+            // LastEvaluatedKey; loop until the table is exhausted so a platform
+            // with many plugin fragments never stitches a partial schema.
+            let scanAllDeploySchemaItems = async () => {
+              let allItems = []
+              let startKey = ref(None)
+              let more = ref(true)
+              while more.contents {
+                let result = await ScanCommand.send(
+                  ScanCommand.make({
+                    ScanCommand.tableName: tableName,
+                    filterExpression: "begins_with(#id, :prefix)",
+                    expressionAttributeNames: Dict.fromArray([("#id", "id")]),
+                    expressionAttributeValues: Dict.fromArray([
+                      (":prefix", schemaPrefix->JSON.Encode.string),
+                    ]),
+                    exclusiveStartKey: ?startKey.contents,
+                  }),
+                )
+                result.items->Option.getOr([])->Array.forEach(item => allItems->Array.push(item))
+                switch result.lastEvaluatedKey {
+                | Some(_) as k => startKey := k
+                | None => more := false
+                }
+              }
+              allItems
+            }
+
             PutCommand.send(PutCommand.make({PutCommand.tableName: tableName, item: deployItem}))
             ->Promise.then(_ => {
               // Scan for all deploy-schema entries from previously deployed plugins.
               Console.log(
                 `[preResolversSchemaHook] Scanning ${tableName} for deploy-schema entries`,
               )
-              ScanCommand.send(
-                ScanCommand.make({
-                  ScanCommand.tableName: tableName,
-                  filterExpression: "begins_with(#id, :prefix)",
-                  expressionAttributeNames: Dict.fromArray([("#id", "id")]),
-                  expressionAttributeValues: Dict.fromArray([
-                    (":prefix", schemaPrefix->JSON.Encode.string),
-                  ]),
-                }),
-              )
+              scanAllDeploySchemaItems()
             })
-            ->Promise.then(result => {
-              let items = result.items->Option.getOr([])
+            ->Promise.then(items => {
               let fragments = items->Array.filterMap(item => {
                 try {
                   let obj = item->JSON.stringify->JSON.parseOrThrow
@@ -1355,6 +1374,9 @@ module MakeWithConfig = (
       ~eventTopicArn=pluginEpEventTopicArn,
       ~appSyncApiId=domainApiId,
       ~pluginReadModelTableName?,
+      // Runtime schema stitch reads deploy-time fragments from this durable table
+      // rather than the lifecycle-volatile Plugin RM Connected rows.
+      ~pluginSchemaPersistenceTableName=pluginSchemaPersistenceTable.name,
       ~schedulerRoleArn=hooks.schedulerRoleUrn.contents,
       ~clonerEnabled=Config.cloner,
       (),
