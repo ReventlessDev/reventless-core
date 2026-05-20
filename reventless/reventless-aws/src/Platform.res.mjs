@@ -14,6 +14,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
@@ -106,6 +107,9 @@ function MakeWithConfig(Config) {
   Stdlib_Option.forEach(Config.commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
   let currentDeployTarget = {
     contents: "Domain"
+  };
+  let currentDeployVersion = {
+    contents: ""
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
   let makePhantomApi = (apiId, apiEndpoint) => ({
@@ -412,6 +416,72 @@ function MakeWithConfig(Config) {
       TableName: tableName
     }));
   };
+  let retireOlderPluginVersions = async (rmTableName, name, version) => {
+    try {
+      let result = await DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
+        TableName: rmTableName,
+        ExpressionAttributeNames: Object.fromEntries([
+          [
+            "#n",
+            "name"
+          ],
+          [
+            "#s",
+            "status"
+          ]
+        ]),
+        ExpressionAttributeValues: Object.fromEntries([
+          [
+            ":n",
+            name
+          ],
+          [
+            ":connected",
+            "Connected"
+          ]
+        ]),
+        FilterExpression: "#n = :n AND contains(#s, :connected)"
+      }));
+      let staleIds = Stdlib_Array.filterMap(Stdlib_Option.getOr(result.Items, []), item => {
+        let obj = Stdlib_JSON.Decode.object(JSON.parse(JSON.stringify(item)));
+        if (obj === undefined) {
+          return;
+        }
+        let idOpt = Stdlib_Option.flatMap(obj["id"], Stdlib_JSON.Decode.string);
+        let verOpt = Stdlib_Option.flatMap(obj["version"], Stdlib_JSON.Decode.string);
+        if (idOpt !== undefined && verOpt !== undefined && verOpt !== version) {
+          return idOpt;
+        }
+      });
+      for (let i = 0, i_finish = staleIds.length; i < i_finish; ++i) {
+        let id = staleIds[i];
+        console.log(`[retireOlderPluginVersions] retiring ` + id + ` (superseded by ` + name + `@` + version + `)`);
+        await DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
+          Key: Object.fromEntries([[
+              "id",
+              id
+            ]]),
+          TableName: rmTableName,
+          ConditionExpression: "attribute_exists(id)",
+          ExpressionAttributeNames: Object.fromEntries([[
+              "#s",
+              "status"
+            ]]),
+          ExpressionAttributeValues: Object.fromEntries([[
+              ":inactive",
+              "Inactive"
+            ]]),
+          UpdateExpression: "SET #s = :inactive"
+        }));
+      }
+      return;
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+      console.log(`[retireOlderPluginVersions] skipped for ` + name + `@` + version + ` (` + msg + `)`);
+      return;
+    }
+  };
   let hooksApiRef = {
     contents: undefined
   };
@@ -446,6 +516,7 @@ function MakeWithConfig(Config) {
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let capturedDeployTarget = currentDeployTarget.contents;
+    let capturedDeployVersion = currentDeployVersion.contents;
     let match;
     if (capturedDeployTarget === "Domain") {
       match = [
@@ -494,7 +565,13 @@ function MakeWithConfig(Config) {
     } else {
       schemaPersistenceTableNameOutput = Pulumi.output(undefined);
     }
-    return Output$Pulumi.flatMap(schemaPersistenceTableNameOutput, tableNameOpt => {
+    let rmTableNameOutput = platformStackRef !== undefined ? readStackRefString(Primitive_option.valFromOption(platformStackRef), "pluginRmTableName") : Pulumi.output(undefined);
+    return Output$Pulumi.flatMap(Pulumi.all([
+      schemaPersistenceTableNameOutput,
+      rmTableNameOutput
+    ]), param => {
+      let rmTableNameOpt = param[1];
+      let tableNameOpt = param[0];
       let writeAndScanFragments = () => {
         if (tableNameOpt !== undefined) {
           let deployItem = Object.fromEntries([
@@ -612,10 +689,11 @@ function MakeWithConfig(Config) {
           await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
           console.log("[preResolversSchemaHook] Schema is ACTIVE");
           if (tableNameOpt !== undefined) {
-            return await writeSchemaHash(tableNameOpt, apiId, currentHash);
-          } else {
-            return;
+            await writeSchemaHash(tableNameOpt, apiId, currentHash);
           }
+        }
+        if (rmTableNameOpt !== undefined && capturedDeployVersion !== "") {
+          return await retireOlderPluginVersions(rmTableNameOpt, name, capturedDeployVersion);
         }
       })));
     });
@@ -1015,37 +1093,60 @@ function MakeWithConfig(Config) {
       let match$1 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"]);
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+      let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
-        resolvedDomainApiEndpoint,
-        resolvedPlatformApiEndpoint,
-        cognitoPool.poolId,
-        cognitoPool.clientId
-      ]).apply(param => JSON.stringify(Object.fromEntries([
-        [
-          "apiEndpoint",
-          param[0]
-        ],
-        [
-          "platformApiEndpoint",
-          param[1]
-        ],
-        [
-          "region",
-          regionStr
-        ],
-        [
-          "authMode",
-          "cognito"
-        ],
-        [
-          "cognitoUserPoolId",
-          param[2]
-        ],
-        [
-          "cognitoClientId",
-          param[3]
-        ]
-      ])));
+        Pulumi.all([
+          resolvedDomainApiEndpoint,
+          resolvedPlatformApiEndpoint,
+          cognitoPool.poolId,
+          cognitoPool.clientId
+        ]),
+        domainEventsEndpointOutput
+      ]).apply(param => {
+        let eventsEpOpt = param[1];
+        let match = param[0];
+        let fields = [
+          [
+            "apiEndpoint",
+            match[0]
+          ],
+          [
+            "platformApiEndpoint",
+            match[1]
+          ],
+          [
+            "region",
+            regionStr
+          ],
+          [
+            "authMode",
+            "cognito"
+          ],
+          [
+            "cognitoUserPoolId",
+            match[2]
+          ],
+          [
+            "cognitoClientId",
+            match[3]
+          ],
+          [
+            "liveUpdates",
+            true
+          ]
+        ];
+        let withEvents = eventsEpOpt !== undefined ? fields.concat([
+            [
+              "domainApiEventsEndpoint",
+              eventsEpOpt
+            ],
+            [
+              "platformApiEventsEndpoint",
+              eventsEpOpt
+            ]
+          ]) : fields;
+        return JSON.stringify(Object.fromEntries(withEvents));
+      });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: match$1.bucketName,
         key: "config.json",
@@ -1061,6 +1162,7 @@ function MakeWithConfig(Config) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
     currentDeployTarget.contents = apiTarget;
+    currentDeployVersion.contents = version;
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     hooks_deployTarget.contents = tmp;
@@ -1121,6 +1223,9 @@ function Make($star) {
   Stdlib_Option.forEach(commandHandlerConfig.stateChanges, param => PluginRuntime_Builder$ReventlessAws.setStateChangesConfig(param.sync, param.async, undefined));
   let currentDeployTarget = {
     contents: "Domain"
+  };
+  let currentDeployVersion = {
+    contents: ""
   };
   let platformStackRef = Stdlib_Option.map(new Pulumi.Config("platform").get("stack"), stack => new Pulumi.StackReference(stack));
   let makePhantomApi = (apiId, apiEndpoint) => ({
@@ -1426,6 +1531,72 @@ function Make($star) {
       TableName: tableName
     }));
   };
+  let retireOlderPluginVersions = async (rmTableName, name, version) => {
+    try {
+      let result = await DynamoDb_DocumentClient$AwsSdk.ScanCommand.send(new LibDynamodb.ScanCommand({
+        TableName: rmTableName,
+        ExpressionAttributeNames: Object.fromEntries([
+          [
+            "#n",
+            "name"
+          ],
+          [
+            "#s",
+            "status"
+          ]
+        ]),
+        ExpressionAttributeValues: Object.fromEntries([
+          [
+            ":n",
+            name
+          ],
+          [
+            ":connected",
+            "Connected"
+          ]
+        ]),
+        FilterExpression: "#n = :n AND contains(#s, :connected)"
+      }));
+      let staleIds = Stdlib_Array.filterMap(Stdlib_Option.getOr(result.Items, []), item => {
+        let obj = Stdlib_JSON.Decode.object(JSON.parse(JSON.stringify(item)));
+        if (obj === undefined) {
+          return;
+        }
+        let idOpt = Stdlib_Option.flatMap(obj["id"], Stdlib_JSON.Decode.string);
+        let verOpt = Stdlib_Option.flatMap(obj["version"], Stdlib_JSON.Decode.string);
+        if (idOpt !== undefined && verOpt !== undefined && verOpt !== version) {
+          return idOpt;
+        }
+      });
+      for (let i = 0, i_finish = staleIds.length; i < i_finish; ++i) {
+        let id = staleIds[i];
+        console.log(`[retireOlderPluginVersions] retiring ` + id + ` (superseded by ` + name + `@` + version + `)`);
+        await DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
+          Key: Object.fromEntries([[
+              "id",
+              id
+            ]]),
+          TableName: rmTableName,
+          ConditionExpression: "attribute_exists(id)",
+          ExpressionAttributeNames: Object.fromEntries([[
+              "#s",
+              "status"
+            ]]),
+          ExpressionAttributeValues: Object.fromEntries([[
+              ":inactive",
+              "Inactive"
+            ]]),
+          UpdateExpression: "SET #s = :inactive"
+        }));
+      }
+      return;
+    } catch (raw_exn) {
+      let exn = Primitive_exceptions.internalToException(raw_exn);
+      let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
+      console.log(`[retireOlderPluginVersions] skipped for ` + name + `@` + version + ` (` + msg + `)`);
+      return;
+    }
+  };
   let hooksApiRef = {
     contents: undefined
   };
@@ -1460,6 +1631,7 @@ function Make($star) {
   let hooks_preResolversSchemaHook = (name, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + ` to AppSync`);
     let capturedDeployTarget = currentDeployTarget.contents;
+    let capturedDeployVersion = currentDeployVersion.contents;
     let match;
     if (capturedDeployTarget === "Domain") {
       match = [
@@ -1508,7 +1680,13 @@ function Make($star) {
     } else {
       schemaPersistenceTableNameOutput = Pulumi.output(undefined);
     }
-    return Output$Pulumi.flatMap(schemaPersistenceTableNameOutput, tableNameOpt => {
+    let rmTableNameOutput = platformStackRef !== undefined ? readStackRefString(Primitive_option.valFromOption(platformStackRef), "pluginRmTableName") : Pulumi.output(undefined);
+    return Output$Pulumi.flatMap(Pulumi.all([
+      schemaPersistenceTableNameOutput,
+      rmTableNameOutput
+    ]), param => {
+      let rmTableNameOpt = param[1];
+      let tableNameOpt = param[0];
       let writeAndScanFragments = () => {
         if (tableNameOpt !== undefined) {
           let deployItem = Object.fromEntries([
@@ -1626,10 +1804,11 @@ function Make($star) {
           await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
           console.log("[preResolversSchemaHook] Schema is ACTIVE");
           if (tableNameOpt !== undefined) {
-            return await writeSchemaHash(tableNameOpt, apiId, currentHash);
-          } else {
-            return;
+            await writeSchemaHash(tableNameOpt, apiId, currentHash);
           }
+        }
+        if (rmTableNameOpt !== undefined && capturedDeployVersion !== "") {
+          return await retireOlderPluginVersions(rmTableNameOpt, name, capturedDeployVersion);
         }
       })));
     });
@@ -2006,37 +2185,60 @@ function Make($star) {
       let match$1 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"]);
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+      let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
       let configJsonContent = Pulumi.all([
-        resolvedDomainApiEndpoint,
-        resolvedPlatformApiEndpoint,
-        cognitoPool.poolId,
-        cognitoPool.clientId
-      ]).apply(param => JSON.stringify(Object.fromEntries([
-        [
-          "apiEndpoint",
-          param[0]
-        ],
-        [
-          "platformApiEndpoint",
-          param[1]
-        ],
-        [
-          "region",
-          regionStr
-        ],
-        [
-          "authMode",
-          "cognito"
-        ],
-        [
-          "cognitoUserPoolId",
-          param[2]
-        ],
-        [
-          "cognitoClientId",
-          param[3]
-        ]
-      ])));
+        Pulumi.all([
+          resolvedDomainApiEndpoint,
+          resolvedPlatformApiEndpoint,
+          cognitoPool.poolId,
+          cognitoPool.clientId
+        ]),
+        domainEventsEndpointOutput
+      ]).apply(param => {
+        let eventsEpOpt = param[1];
+        let match = param[0];
+        let fields = [
+          [
+            "apiEndpoint",
+            match[0]
+          ],
+          [
+            "platformApiEndpoint",
+            match[1]
+          ],
+          [
+            "region",
+            regionStr
+          ],
+          [
+            "authMode",
+            "cognito"
+          ],
+          [
+            "cognitoUserPoolId",
+            match[2]
+          ],
+          [
+            "cognitoClientId",
+            match[3]
+          ],
+          [
+            "liveUpdates",
+            true
+          ]
+        ];
+        let withEvents = eventsEpOpt !== undefined ? fields.concat([
+            [
+              "domainApiEventsEndpoint",
+              eventsEpOpt
+            ],
+            [
+              "platformApiEventsEndpoint",
+              eventsEpOpt
+            ]
+          ]) : fields;
+        return JSON.stringify(Object.fromEntries(withEvents));
+      });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
         bucket: match$1.bucketName,
         key: "config.json",
@@ -2052,6 +2254,7 @@ function Make($star) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     console.log(`[Platform:deployPlugin] v` + version);
     currentDeployTarget.contents = apiTarget;
+    currentDeployVersion.contents = version;
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
     hooks_deployTarget.contents = tmp;
