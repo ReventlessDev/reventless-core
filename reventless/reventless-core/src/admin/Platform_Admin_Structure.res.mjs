@@ -9,7 +9,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../components/Api/SuryToJsonSchema.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "./PluginBaseFragment.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
+import * as PluginsReadModelSpec$ReventlessCore from "./PluginsReadModelSpec.res.mjs";
 import * as Platform_EventGraphReadModelSpec$ReventlessCore from "./Platform_EventGraphReadModelSpec.res.mjs";
 
 let pluginId = "Platform";
@@ -94,7 +94,7 @@ let pluginAggregate_producedEventTypes = [];
 
 let pluginAggregate_consumedEventTypes = [];
 
-let pluginAggregate_linkedViews = ["Plugin"];
+let pluginAggregate_linkedViews = ["Plugins"];
 
 let pluginAggregate = {
   name: "Plugin",
@@ -107,7 +107,7 @@ let pluginAggregate = {
 
 let pluginReadModel_queryField = Api_Naming$ReventlessCore.adminField("Plugins");
 
-let pluginReadModel_schema = encodeSchemaExcluding(PluginReadModelSpec$ReventlessCore.stateSchema, PluginBaseFragment$ReventlessCore.pluginUIOnlyExcludeFields);
+let pluginReadModel_schema = encodeSchemaExcluding(PluginsReadModelSpec$ReventlessCore.stateSchema, PluginBaseFragment$ReventlessCore.pluginUIOnlyExcludeFields);
 
 let pluginReadModel_consumedEventTypes = [];
 
@@ -118,7 +118,7 @@ let pluginReadModel_searchableFields = ["name"];
 let pluginReadModel_statusField = "status";
 
 let pluginReadModel = {
-  name: "Plugin",
+  name: "Plugins",
   queryField: pluginReadModel_queryField,
   schema: pluginReadModel_schema,
   consumedEventTypes: pluginReadModel_consumedEventTypes,

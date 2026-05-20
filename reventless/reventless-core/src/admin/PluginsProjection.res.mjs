@@ -4,7 +4,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Projection$Reventless from "@reventlessdev/reventless-spec/src/types/Projection.res.mjs";
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
+import * as PluginsReadModelSpec$ReventlessCore from "./PluginsReadModelSpec.res.mjs";
 
 let moduleUrl = import.meta.url;
 
@@ -260,8 +260,8 @@ let PluginMapping = Projection$Reventless.Mapping.Make({
   eventSchema: PluginSpec$ReventlessCore.eventSchema
 })({
   Id: Id$Reventless.$$String,
-  name: PluginReadModelSpec$ReventlessCore.name,
-  stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
+  name: PluginsReadModelSpec$ReventlessCore.name,
+  stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
   subIdConfig: undefined
 })({
   project: project
@@ -269,8 +269,8 @@ let PluginMapping = Projection$Reventless.Mapping.Make({
 
 let Mappings = Projection$Reventless.Mappings.Make({
   Id: Id$Reventless.$$String,
-  name: PluginReadModelSpec$ReventlessCore.name,
-  stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
+  name: PluginsReadModelSpec$ReventlessCore.name,
+  stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
   subIdConfig: undefined
 });
 

@@ -49,7 +49,7 @@ let client = () =>
       {
         // removeUndefinedValues: ReScript's `field?: T` syntax leaves
         // unset optional record fields as JS `undefined`. Without this flag the
-        // marshaller rejects the whole item — see e.g. PluginReadModelSpec.state
+        // marshaller rejects the whole item — see e.g. PluginsReadModelSpec.state
         // with its optional `apiTarget?: string`, where every put that omits
         // the field would otherwise throw.
         marshallOptions: {

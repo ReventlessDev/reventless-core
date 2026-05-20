@@ -5,7 +5,7 @@ let adminAuth: Reventless.ReadModel.authorization = {
   group: "Admin",
 }
 
-// Fields present on `PluginReadModelSpec.state` for projection/storage purposes
+// Fields present on `PluginsReadModelSpec.state` for projection/storage purposes
 // but intentionally absent from the public GraphQL surface. Shared with
 // `Platform_Admin_Structure` so the schema announced via `Platform_UIDefinitions`
 // stays aligned with the SDL — otherwise AutoUI generates list-view queries
@@ -39,7 +39,7 @@ let queryEntries: array<querySchemaEntry> = [
     singleFieldName: Api_Naming.adminField(~name="Plugin"),
     listFieldName: Api_Naming.adminField(~name="Plugins"),
     returnTypeName: Api_Naming.adminField(~name="Plugin"),
-    stateSchema: PluginReadModelSpec.stateSchema->S.castToUnknown,
+    stateSchema: PluginsReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
     excludeFields: pluginExcludeFields,
   },

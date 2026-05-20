@@ -41,7 +41,7 @@ module Make = (Spec: Spec) => {
         )->Effect.runSync
       | plugins =>
         let plugin = plugins->Array.getUnsafe(0)
-        switch plugin->Message.decode(PluginReadModelSpec.stateSchema) {
+        switch plugin->Message.decode(PluginsReadModelSpec.stateSchema) {
         | plugin =>
           let extensionPoint =
             plugin.extensionPoints->Array.find(extensionPoint =>

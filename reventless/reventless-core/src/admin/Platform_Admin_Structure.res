@@ -65,7 +65,7 @@ type idArgs = {id: @s.matches(Reventless.DcbTag.string) string}
 // `allowedStates` mirrors the PluginBehavior accept/reject branches: Activate
 // is meaningful only on Inactive plugins; Deactivate is meaningful on
 // Connected or Disconnected ones. Strings here must match the variant
-// constructor names that PluginReadModelSpec.status serialises to.
+// constructor names that PluginsReadModelSpec.status serialises to.
 let activateCommand: commandDef = {
   name: "Activate",
   schema: idArgsSchema->S.castToUnknown->encodeSchema,
@@ -91,14 +91,14 @@ let pluginAggregate: writableDef = {
   commands: [activateCommand, deactivateCommand],
   producedEventTypes: [],
   consumedEventTypes: [],
-  linkedViews: ["Plugin"],
+  linkedViews: ["Plugins"],
   consistencyRead: None,
 }
 
 let pluginReadModel: queryableDef = {
-  name: "Plugin",
+  name: "Plugins",
   queryField: Api_Naming.adminField(~name="Plugins"),
-  schema: PluginReadModelSpec.stateSchema
+  schema: PluginsReadModelSpec.stateSchema
   ->S.castToUnknown
   ->encodeSchemaExcluding(~excludeFields=PluginBaseFragment.pluginUIOnlyExcludeFields),
   consumedEventTypes: [],

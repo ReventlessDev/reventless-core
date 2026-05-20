@@ -4,7 +4,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../components/Api/ApiNoApiHelpers.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
+import * as PluginsReadModelSpec$ReventlessCore from "./PluginsReadModelSpec.res.mjs";
 import * as Platform_EventGraphReadModelSpec$ReventlessCore from "./Platform_EventGraphReadModelSpec.res.mjs";
 
 let adminAuth = {
@@ -29,7 +29,7 @@ let queryEntries = [
     singleFieldName: Api_Naming$ReventlessCore.adminField("Plugin"),
     listFieldName: Api_Naming$ReventlessCore.adminField("Plugins"),
     returnTypeName: Api_Naming$ReventlessCore.adminField("Plugin"),
-    stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
+    stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
     authorization: adminAuth,
     excludeFields: pluginExcludeFields
   },

@@ -17,13 +17,13 @@ let pluginDefinition = {
   dcbEventLog: None,
 }
 
-let state: PluginReadModelSpec.state = {
+let state: PluginsReadModelSpec.state = {
   name: pluginDefinition.name,
   version: pluginDefinition.version,
   eventCollector: pluginDefinition.eventCollector,
   extensionPoints: pluginDefinition.extensionPoints,
-  extensionPointNames: pluginDefinition.extensionPoints->PluginProjection.Util.extractExtensionPointNames,
-  extensionNames: pluginDefinition.extensions->PluginProjection.Util.extractExtensionNames,
+  extensionPointNames: pluginDefinition.extensionPoints->PluginsProjection.Util.extractExtensionPointNames,
+  extensionNames: pluginDefinition.extensions->PluginsProjection.Util.extractExtensionNames,
   extensions: pluginDefinition.extensions,
   status: Connected,
   statusChange: ReventlessGwt.TestFixtures.statusChange,

@@ -13,7 +13,7 @@ module Util = {
 
 module PluginMapping = Reventless.Projection.Mapping.Make(
   PluginSpec,
-  PluginReadModelSpec,
+  PluginsReadModelSpec,
   {
     let project = ({event, id, meta: {time, user: ?user}}) => {
       let statusChange = {
@@ -27,7 +27,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
       | UIFragmentUpdated(_)
       | UIFragmentDeregistered(_) => Reventless.Projection.Ignore
       | Connected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        let base: PluginReadModelSpec.state = {
+        let base: PluginsReadModelSpec.state = {
           name,
           version,
           eventCollector,
@@ -60,7 +60,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
         }
         Set(id, state)
       | Reconnected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        let applyFragAndTarget = (s: PluginReadModelSpec.state) => {
+        let applyFragAndTarget = (s: PluginsReadModelSpec.state) => {
           let withFrag = switch pluginDef.apiSchemaFragment {
           | Some(frag) => {...s, apiSchemaFragment: Some(frag)}
           | None => s
@@ -115,7 +115,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
         UpdateWithDefault(
           id,
           {
-            PluginReadModelSpec.name,
+            PluginsReadModelSpec.name,
             version,
             eventCollector,
             extensionPoints,
@@ -139,7 +139,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
         UpdateWithDefault(
           id,
           {
-            PluginReadModelSpec.name,
+            PluginsReadModelSpec.name,
             version,
             eventCollector,
             extensionPoints,
@@ -164,8 +164,8 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
   },
 )
 
-module Mappings = Reventless.Projection.Mappings.Make(PluginReadModelSpec)
+module Mappings = Reventless.Projection.Mappings.Make(PluginsReadModelSpec)
 //module type Mapping = Reventless.Projection.Mapping
-//with type targetState := PluginReadModelSpec.state
+//with type targetState := PluginsReadModelSpec.state
 
 let mappings: array<module(Mappings.Mapping)> = [module(PluginMapping)]

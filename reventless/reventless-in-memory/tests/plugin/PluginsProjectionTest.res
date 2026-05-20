@@ -1,10 +1,10 @@
 open ReventlessCore
 open PluginSpec
 open PluginFixtures
-module PluginProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(PluginProjection.PluginMapping)
-open PluginProjectionTest
+module PluginsProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(PluginsProjection.PluginMapping)
+open PluginsProjectionTest
 
-describe("PluginProjection:", () => {
+describe("PluginsProjection:", () => {
   test("UnknownPluginDetected", () =>
     givenEvents([])->whenEvent(UnknownPluginDetected)->thenNoState
   )

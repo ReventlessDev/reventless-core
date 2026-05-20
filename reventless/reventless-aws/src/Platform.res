@@ -1129,18 +1129,18 @@ module MakeWithConfig = (
   )
 
   // Admin-internal Plugin read model — standalone component for the Plugin QueryDb
-  // (DynamoDB table) that backs queryEngine.scan(~readModelName="Plugin", ...).
+  // (DynamoDB table) that backs queryEngine.scan(~readModelName="Plugins", ...).
   module PluginReadModelMappings: Reventless.Projection.Mappings
-    with module Target := ReventlessCore.PluginReadModelSpec = {
-    // Reuse the already-instantiated Mappings from PluginProjection so the Mapping
+    with module Target := ReventlessCore.PluginsReadModelSpec = {
+    // Reuse the already-instantiated Mappings from PluginsProjection so the Mapping
     // module type is the same nominal type — no coercion needed.
-    module M = ReventlessCore.PluginProjection.Mappings
+    module M = ReventlessCore.PluginsProjection.Mappings
     module type Mapping = M.Mapping
-    // moduleUrl points at PluginProjection.res.mjs (the file that exports `mappings`),
+    // moduleUrl points at PluginsProjection.res.mjs (the file that exports `mappings`),
     // NOT this Platform.res file — the bundled ReadModel Lambda dynamic-imports this URL
     // at cold start, and Platform.res transitively imports @pulumi/aws (deploy-time only).
-    let moduleUrl: string = ReventlessCore.PluginProjection.moduleUrl
-    let mappings: array<module(Mapping)> = ReventlessCore.PluginProjection.mappings
+    let moduleUrl: string = ReventlessCore.PluginsProjection.moduleUrl
+    let mappings: array<module(Mapping)> = ReventlessCore.PluginsProjection.mappings
   }
 
   // Standard ReadModel builder — attaches AppSync DynamoDB resolvers to the
@@ -1149,7 +1149,7 @@ module MakeWithConfig = (
   // queryFieldNamesRegistry entries that Platform_Admin.construct populates
   // from AdminApi.queryEntries before this builder runs.
   module PluginReadModel = ReadModel_Builder_Single.Make(
-    ReventlessCore.PluginReadModelSpec,
+    ReventlessCore.PluginsReadModelSpec,
     PluginReadModelMappings,
   )
 
@@ -1265,7 +1265,7 @@ module MakeWithConfig = (
     // Also register the Plugin RM table with the AllAggregates Lambda runtime
     // so its in-Lambda plugin status gate can read plugin status at command
     // dispatch time (Part 2.3 of the resolver plan).
-    switch admin.readModelsOutputs->Dict.get("Plugin") {
+    switch admin.readModelsOutputs->Dict.get("Plugins") {
     | Some(pluginRm) =>
       switch pluginRm.queryDb.resources->Array.get(0) {
       | Some(r) =>
@@ -1406,13 +1406,13 @@ module MakeWithConfig = (
         open Reventless.QueryEngine.Filter
         let apiId = domainApiId->Pulumi.Output.get
         let plugins = await queryEngine.scan(
-          ~readModelName="Plugin",
+          ~readModelName="Plugins",
           ~filterConfigs=[("status", Contains, String("Connected"))],
           ~limit=1000,
         )
         let fragments = plugins->Array.filterMap(json =>
           try {
-            let state = json->S.parseOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+            let state = json->S.parseOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
             // Exclude Platform-target plugins — their schema belongs on the PlatformApi,
             // not the DomainApi. Absent apiTarget defaults to "Domain".
             switch state.apiTarget {
@@ -1470,7 +1470,7 @@ module MakeWithConfig = (
     // IMPORTANT: Do NOT use option<Pulumi.Output.t<…>> — Pulumi Outputs use property
     // lifting, which breaks ReScript's internal option encoding (BS_PRIVATE_NESTED_SOME_NONE).
     // Instead, use Output.t<string> with a placeholder for "not available".
-    let pluginReadModelTableName = switch admin.readModelsOutputs->Dict.get("Plugin") {
+    let pluginReadModelTableName = switch admin.readModelsOutputs->Dict.get("Plugins") {
     | Some(pluginRm) =>
       switch pluginRm.queryDb.resources->Array.get(0) {
       | Some(r) => Some(r.name)

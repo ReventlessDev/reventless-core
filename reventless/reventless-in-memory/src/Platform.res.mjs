@@ -40,8 +40,8 @@ import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-cor
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
 import * as Plugin_Builder$ReventlessInMemory from "./components/Plugin_Builder.res.mjs";
 import * as Counter_Builder$ReventlessInMemory from "./components/Counter_Builder.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
 import * as DomainMCP_Server$ReventlessInMemory from "./adapter/DomainMCP_Server.res.mjs";
+import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginsReadModelSpec.res.mjs";
 import * as Aggregate_Builder$ReventlessInMemory from "./components/Aggregate_Builder.res.mjs";
 import * as ReadModel_Builder$ReventlessInMemory from "./components/ReadModel_Builder.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
@@ -747,9 +747,9 @@ function MakeWithConfig(Config) {
       delete: pluginOps_delete,
       deleteBatch: pluginOps_deleteBatch
     };
-    Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
-    Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
+    Bus.registerQueryDb(PluginsReadModelSpec$ReventlessCore.name, pluginOps);
+    Bus.registerQueryDbScan(PluginsReadModelSpec$ReventlessCore.name, () => allItems.contents);
+    Bus.registerQueryDbStream(PluginsReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     pluginQueryDbOpsRef.contents = pluginOps;
     return pluginOps;
   };
@@ -1009,7 +1009,7 @@ function MakeWithConfig(Config) {
           structure: state_structure,
           dcbEventLog: undefined
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
+        let entry = S.reverseConvertToJsonOrThrow(state, PluginsReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
       });
     });
@@ -1292,12 +1292,12 @@ function MakeWithConfig(Config) {
         return;
       }
       let statusByName = {};
-      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -1336,7 +1336,7 @@ function MakeWithConfig(Config) {
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
+      let ops = Bus.getQueryDb(PluginsReadModelSpec$ReventlessCore.name);
       if (ops === undefined) {
         return null;
       }
@@ -1344,7 +1344,7 @@ function MakeWithConfig(Config) {
       return Stdlib_Option.getOr(items[0], null);
     };
     queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
@@ -1373,12 +1373,12 @@ function MakeWithConfig(Config) {
     };
     queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
       let dict = {};
-      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -1443,7 +1443,7 @@ function MakeWithConfig(Config) {
       let msgId = Message$ReventlessCore.uuid();
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       log.info("Admin", undefined, field + `(` + id + `): received command (msgId: ` + msgId + `)`);
-      let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
+      let ops = Bus.getQueryDb(PluginsReadModelSpec$ReventlessCore.name);
       if (ops !== undefined) {
         let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         let json = items[0];
@@ -1451,7 +1451,7 @@ function MakeWithConfig(Config) {
           let exit = 0;
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
             exit = 1;
           } catch (raw_e) {
             let e = Primitive_exceptions.internalToException(raw_e);
@@ -1465,7 +1465,7 @@ function MakeWithConfig(Config) {
               by: "in-memory"
             };
             newrecord.status = newStatus;
-            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
+            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginsReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
             publishPluginStatusChange(id, statusToString(newStatus));
@@ -1539,17 +1539,17 @@ function MakeWithConfig(Config) {
     let adminFieldToQueryDb = Object.fromEntries([
       [
         singleQueryField,
-        PluginReadModelSpec$ReventlessCore.name
+        PluginsReadModelSpec$ReventlessCore.name
       ],
       [
         listQueryField,
-        PluginReadModelSpec$ReventlessCore.name
+        PluginsReadModelSpec$ReventlessCore.name
       ]
     ]);
     platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
-      let queryDbName = Stdlib_Option.getOr(adminFieldToQueryDb[resourceName], PluginReadModelSpec$ReventlessCore.name);
+      let queryDbName = Stdlib_Option.getOr(adminFieldToQueryDb[resourceName], PluginsReadModelSpec$ReventlessCore.name);
       let ops = Bus.getQueryDb(queryDbName);
       if (ops === undefined) {
         return null;
@@ -2579,9 +2579,9 @@ function Make($star) {
       delete: pluginOps_delete,
       deleteBatch: pluginOps_deleteBatch
     };
-    Bus.registerQueryDb(PluginReadModelSpec$ReventlessCore.name, pluginOps);
-    Bus.registerQueryDbScan(PluginReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(PluginReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
+    Bus.registerQueryDb(PluginsReadModelSpec$ReventlessCore.name, pluginOps);
+    Bus.registerQueryDbScan(PluginsReadModelSpec$ReventlessCore.name, () => allItems.contents);
+    Bus.registerQueryDbStream(PluginsReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     pluginQueryDbOpsRef.contents = pluginOps;
     return pluginOps;
   };
@@ -2841,7 +2841,7 @@ function Make($star) {
           structure: state_structure,
           dcbEventLog: undefined
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, PluginReadModelSpec$ReventlessCore.stateSchema);
+        let entry = S.reverseConvertToJsonOrThrow(state, PluginsReadModelSpec$ReventlessCore.stateSchema);
         pluginOps.save(id, entry, "Any", undefined);
       });
     });
@@ -3119,12 +3119,12 @@ function Make($star) {
         return;
       }
       let statusByName = {};
-      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -3163,7 +3163,7 @@ function Make($star) {
     let queryResolvers = {};
     queryResolvers[singleQueryField] = async (_root, args, _ctx) => {
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
+      let ops = Bus.getQueryDb(PluginsReadModelSpec$ReventlessCore.name);
       if (ops === undefined) {
         return null;
       }
@@ -3171,7 +3171,7 @@ function Make($star) {
       return Stdlib_Option.getOr(items[0], null);
     };
     queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
@@ -3200,12 +3200,12 @@ function Make($star) {
     };
     queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
       let dict = {};
-      let scanAll = Bus.getQueryDbScan(PluginReadModelSpec$ReventlessCore.name);
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
         scanAll().forEach(json => {
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           } catch (exn) {
             return;
           }
@@ -3270,7 +3270,7 @@ function Make($star) {
       let msgId = Message$ReventlessCore.uuid();
       let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
       log.info("Admin", undefined, field + `(` + id + `): received command (msgId: ` + msgId + `)`);
-      let ops = Bus.getQueryDb(PluginReadModelSpec$ReventlessCore.name);
+      let ops = Bus.getQueryDb(PluginsReadModelSpec$ReventlessCore.name);
       if (ops !== undefined) {
         let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
         let json = items[0];
@@ -3278,7 +3278,7 @@ function Make($star) {
           let exit = 0;
           let state;
           try {
-            state = S.convertOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+            state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
             exit = 1;
           } catch (raw_e) {
             let e = Primitive_exceptions.internalToException(raw_e);
@@ -3292,7 +3292,7 @@ function Make($star) {
               by: "in-memory"
             };
             newrecord.status = newStatus;
-            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginReadModelSpec$ReventlessCore.stateSchema);
+            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginsReadModelSpec$ReventlessCore.stateSchema);
             await ops.save(id, entry, "Any", undefined);
             log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
             publishPluginStatusChange(id, statusToString(newStatus));
@@ -3366,17 +3366,17 @@ function Make($star) {
     let adminFieldToQueryDb = Object.fromEntries([
       [
         singleQueryField,
-        PluginReadModelSpec$ReventlessCore.name
+        PluginsReadModelSpec$ReventlessCore.name
       ],
       [
         listQueryField,
-        PluginReadModelSpec$ReventlessCore.name
+        PluginsReadModelSpec$ReventlessCore.name
       ]
     ]);
     platformMCP.registerResourcesFromEntries("Admin", PluginBaseFragment$ReventlessCore.queryEntries, async (resourceName, uri) => {
       let segments = uri.split("/");
       let id = Stdlib_Option.getOr(segments.at(-1), "");
-      let queryDbName = Stdlib_Option.getOr(adminFieldToQueryDb[resourceName], PluginReadModelSpec$ReventlessCore.name);
+      let queryDbName = Stdlib_Option.getOr(adminFieldToQueryDb[resourceName], PluginsReadModelSpec$ReventlessCore.name);
       let ops = Bus.getQueryDb(queryDbName);
       if (ops === undefined) {
         return null;

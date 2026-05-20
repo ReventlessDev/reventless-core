@@ -1,4 +1,4 @@
-@@reventless.spec("Plugin")
+@@reventless.spec("Plugins")
 
 @schema
 type status =

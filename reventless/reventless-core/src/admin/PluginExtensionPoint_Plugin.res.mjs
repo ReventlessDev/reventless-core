@@ -11,7 +11,7 @@ import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../util/ScheduleOps.res.mjs";
 import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-interop/src/protocol/CompatMatrix.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "./PluginReadModelSpec.res.mjs";
+import * as PluginsReadModelSpec$ReventlessCore from "./PluginsReadModelSpec.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 
@@ -42,7 +42,7 @@ function Make(Spec) {
     let exit = 0;
     let plugin$1;
     try {
-      plugin$1 = Message$ReventlessCore.decode(plugin, PluginReadModelSpec$ReventlessCore.stateSchema);
+      plugin$1 = Message$ReventlessCore.decode(plugin, PluginsReadModelSpec$ReventlessCore.stateSchema);
       exit = 1;
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);

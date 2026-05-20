@@ -37,14 +37,14 @@ import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk
 import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsApi.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as PluginProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginProjection.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
+import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "./util/Util_ResourceNaming.res.mjs";
 import * as ClonerRunner_Fargate$ReventlessAws from "./adapter/Cloner/ClonerRunner_Fargate.res.mjs";
-import * as PluginReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "./adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
 import * as PluginRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginRuntime_Builder.res.mjs";
+import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginsReadModelSpec.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessAws from "./components/ExtensionPoint_Builder.res.mjs";
 import * as StateViewSlice_Builder$ReventlessAws from "./components/StateViewSlice_Builder.res.mjs";
 import * as Task_Builder_PerBucket$ReventlessAws from "./components/Task_Builder_PerBucket.res.mjs";
@@ -822,18 +822,18 @@ function MakeWithConfig(Config) {
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
   let PluginReadModelMappings = {
-    moduleUrl: PluginProjection$ReventlessCore.moduleUrl,
-    mappings: PluginProjection$ReventlessCore.mappings
+    moduleUrl: PluginsProjection$ReventlessCore.moduleUrl,
+    mappings: PluginsProjection$ReventlessCore.mappings
   };
   let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
-    name: PluginReadModelSpec$ReventlessCore.name,
-    moduleUrl: PluginReadModelSpec$ReventlessCore.moduleUrl,
-    stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
-    config: PluginReadModelSpec$ReventlessCore.config,
+    name: PluginsReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginsReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginsReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: PluginReadModelSpec$ReventlessCore.authorization,
-    visibility: PluginReadModelSpec$ReventlessCore.visibility
+    authorization: PluginsReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginReadModelMappings);
   let PlatformEventGraphMappings = {
     moduleUrl: Platform_EventGraphProjection$ReventlessCore.moduleUrl,
@@ -901,7 +901,7 @@ function MakeWithConfig(Config) {
       PlatformEventGraphReadModel,
       UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
-    let pluginRm = admin.readModelsOutputs["Plugin"];
+    let pluginRm = admin.readModelsOutputs["Plugins"];
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
       if (r !== undefined) {
@@ -964,7 +964,7 @@ function MakeWithConfig(Config) {
     let domainApiId = Output$Pulumi.flatMap(domainApi, api => api.id);
     let updateApiSchema = async queryEngine => {
       let apiId = domainApiId.get();
-      let plugins = await queryEngine.scan("Plugin", [[
+      let plugins = await queryEngine.scan("Plugins", [[
           "status",
           "Contains",
           {
@@ -974,7 +974,7 @@ function MakeWithConfig(Config) {
         ]], 1000);
       let fragments = Stdlib_Array.filterMap(plugins, json => {
         try {
-          let state = S.parseOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          let state = S.parseOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           let match = state.apiTarget;
           if (match === "Platform") {
             return;
@@ -1001,7 +1001,7 @@ function MakeWithConfig(Config) {
       PlatformEventGraphReadModel,
       UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
-    let pluginRm = admin.readModelsOutputs["Plugin"];
+    let pluginRm = admin.readModelsOutputs["Plugins"];
     let pluginReadModelTableName;
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
@@ -1939,18 +1939,18 @@ function Make($star) {
     commandSchema: PluginSpec$ReventlessCore.commandSchema
   }));
   let PluginReadModelMappings = {
-    moduleUrl: PluginProjection$ReventlessCore.moduleUrl,
-    mappings: PluginProjection$ReventlessCore.mappings
+    moduleUrl: PluginsProjection$ReventlessCore.moduleUrl,
+    mappings: PluginsProjection$ReventlessCore.mappings
   };
   let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
-    name: PluginReadModelSpec$ReventlessCore.name,
-    moduleUrl: PluginReadModelSpec$ReventlessCore.moduleUrl,
-    stateSchema: PluginReadModelSpec$ReventlessCore.stateSchema,
-    config: PluginReadModelSpec$ReventlessCore.config,
+    name: PluginsReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginsReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginsReadModelSpec$ReventlessCore.config,
     subIdConfig: undefined,
-    authorization: PluginReadModelSpec$ReventlessCore.authorization,
-    visibility: PluginReadModelSpec$ReventlessCore.visibility
+    authorization: PluginsReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginReadModelMappings);
   let PlatformEventGraphMappings = {
     moduleUrl: Platform_EventGraphProjection$ReventlessCore.moduleUrl,
@@ -2013,7 +2013,7 @@ function Make($star) {
       PlatformEventGraphReadModel,
       UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
-    let pluginRm = admin.readModelsOutputs["Plugin"];
+    let pluginRm = admin.readModelsOutputs["Plugins"];
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
       if (r !== undefined) {
@@ -2065,7 +2065,7 @@ function Make($star) {
     let domainApiId = Output$Pulumi.flatMap(domainApi, api => api.id);
     let updateApiSchema = async queryEngine => {
       let apiId = domainApiId.get();
-      let plugins = await queryEngine.scan("Plugin", [[
+      let plugins = await queryEngine.scan("Plugins", [[
           "status",
           "Contains",
           {
@@ -2075,7 +2075,7 @@ function Make($star) {
         ]], 1000);
       let fragments = Stdlib_Array.filterMap(plugins, json => {
         try {
-          let state = S.parseOrThrow(json, PluginReadModelSpec$ReventlessCore.stateSchema);
+          let state = S.parseOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
           let match = state.apiTarget;
           if (match === "Platform") {
             return;
@@ -2101,7 +2101,7 @@ function Make($star) {
       PlatformEventGraphReadModel,
       UIFragmentRegistryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
-    let pluginRm = admin.readModelsOutputs["Plugin"];
+    let pluginRm = admin.readModelsOutputs["Plugins"];
     let pluginReadModelTableName;
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];

@@ -689,7 +689,7 @@ module MakeWithConfig = (
     switch pluginQueryDbOpsRef.contents {
     | Some(ops) => ops
     | None =>
-      let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
+      let pluginQueryDbName = ReventlessCore.PluginsReadModelSpec.name
       let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
       let allItems: ref<array<JSON.t>> = ref([])
       let syncAll = () => {
@@ -892,7 +892,7 @@ module MakeWithConfig = (
   }
 
   // Seed the Plugin QueryDb from constructed plugin component outputs.
-  // Uses real output values serialized via PluginReadModelSpec.stateSchema.
+  // Uses real output values serialized via PluginsReadModelSpec.stateSchema.
   let seedPluginQueryDb = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
     let pluginOps = ensurePluginQueryDbStore()
     pluginComponents->Array.forEach(plugin => {
@@ -919,7 +919,7 @@ module MakeWithConfig = (
           uiFragments,
           pluginStructure,
         )) => {
-          let state: ReventlessCore.PluginReadModelSpec.state = {
+          let state: ReventlessCore.PluginsReadModelSpec.state = {
             name: id->String.split("@")->Array.get(0)->Option.getOr(id),
             version,
             eventCollector: eventCollector.name,
@@ -951,7 +951,7 @@ module MakeWithConfig = (
             dcbEventLog: None,
           }
           let entry =
-            state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+            state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
           let _ = pluginOps.save(id, entry, Any, None)
         })
     })
@@ -1296,7 +1296,7 @@ module MakeWithConfig = (
     })
 
     // Seed the Plugin QueryDb from constructed plugin component outputs.
-    // Initializes the store on first call and serializes via PluginReadModelSpec.stateSchema.
+    // Initializes the store on first call and serializes via PluginsReadModelSpec.stateSchema.
     seedPluginQueryDb(~pluginComponents=plugins)
     seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
     seedPluginStructuresStore(~pluginComponents=plugins)
@@ -1312,7 +1312,7 @@ module MakeWithConfig = (
     )
     seedAdminPlatformEventGraphEntry()
 
-    let pluginQueryDbName = ReventlessCore.PluginReadModelSpec.name
+    let pluginQueryDbName = ReventlessCore.PluginsReadModelSpec.name
     let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
 
     // Wire the per-mutation plugin-status gate (Part 2.3 of the resolver plan).
@@ -1335,7 +1335,7 @@ module MakeWithConfig = (
         switch Bus.getQueryDbScan(pluginQueryDbName) {
         | Some(scanAll) =>
           scanAll()->Array.forEach(json =>
-            switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+            switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
             | state => statusByName->Dict.set(state.name, state.status)
             | exception _ => ()
             }
@@ -1462,7 +1462,7 @@ module MakeWithConfig = (
           switch Bus.getQueryDbScan(pluginQueryDbName) {
           | Some(scanAll) =>
             scanAll()->Array.forEach(json =>
-              switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+              switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
               | state =>
                 let id = state.name ++ "@" ++ state.version
                 dict->Dict.set(id, state.status)
@@ -1517,7 +1517,7 @@ module MakeWithConfig = (
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Helper: extract plugin id from mutation args, load state, apply status change, save.
-    let statusToString = (s: ReventlessCore.PluginReadModelSpec.status) =>
+    let statusToString = (s: ReventlessCore.PluginsReadModelSpec.status) =>
       switch s {
       | Connected => "Connected"
       | Disconnected => "Disconnected"
@@ -1538,7 +1538,7 @@ module MakeWithConfig = (
     let updatePluginStatus = async (
       ~field: string,
       args: JSON.t,
-      newStatus: ReventlessCore.PluginReadModelSpec.status,
+      newStatus: ReventlessCore.PluginsReadModelSpec.status,
     ) => {
       let msgId = ReventlessCore.Message.uuid()
       let id =
@@ -1556,7 +1556,7 @@ module MakeWithConfig = (
         ->Effect.runPromise
         switch items->Array.get(0) {
         | Some(json) =>
-          switch json->S.convertOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema) {
+          switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
           | state =>
             let previousStatus = state.status->statusToString
             let updated = {
@@ -1565,7 +1565,7 @@ module MakeWithConfig = (
               statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
             }
             let entry =
-              updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginReadModelSpec.stateSchema)
+              updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
             let _ = await ops.save(id, entry, Any, None)
             log.info(~comp="Admin", `${field}(${id}): ${previousStatus} → ${newStatus->statusToString}`)
             // Source C: fan the new status out to live onPluginStatusChange subscribers.
@@ -1589,7 +1589,7 @@ module MakeWithConfig = (
     // Real resolvers for admin mutations — update plugin state in QueryDb.
     //
     // Activate replays the AWS event flow as two sequential writes, mirroring
-    // `PluginProjection.res`:
+    // `PluginsProjection.res`:
     //   1. `Activated` event → status Disconnected
     //   2. Plugin reconnects → `Reconnected` event → status Connected
     // In Lambda the second step is driven by the plugin process noticing the

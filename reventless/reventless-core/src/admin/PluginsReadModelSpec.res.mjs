@@ -30,13 +30,13 @@ let stateSchema = S.schema(s => ({
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
-let name = "Plugin";
+let name = "Plugins";
 
 let Id;
 
 let subIdConfig;
 
-let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginReadModelSpec.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginsReadModelSpec.res.mjs";
 
 let authorization = "AllowAuthenticated";
 

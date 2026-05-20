@@ -47,7 +47,7 @@ let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n
 // platform invokes `Platform_PluginStatusChanged` after writing the new status
 // to the Plugin read model; AppSync routes that mutation via `@aws_subscribe`
 // to live `onPluginStatusChange` subscribers (host shell). The status enum
-// matches `PluginReadModelSpec.status` so consumers can mirror tier 1 / tier 2
+// matches `PluginsReadModelSpec.status` so consumers can mirror tier 1 / tier 2
 // transitions exactly.
 let pluginStatusSubscriptionTypes = [
   `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n}`,
