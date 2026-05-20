@@ -12,6 +12,68 @@ type bundleDistribution = {
   bucketName: Pulumi.Output.t<string>,
 }
 
+// ── Cache-Control ───────────────────────────────────────────────────────────
+
+// Cache-Control for a bundle file. Vite emits content-hashed chunks under
+// `assets/` whose URL changes whenever their content does, so they are safe to
+// cache forever. Everything else is a STABLE-named entry point — `index.html`,
+// the module-federation `mf-entry-bootstrap-*.js`, import maps, JSON — whose
+// content changes IN PLACE across deploys, so it must always revalidate. Without
+// `no-cache` here a redeploy uploads the new entry file to S3 while CloudFront
+// (and browsers) keep serving the previous build: the "deployed but stale" trap.
+let cacheControlFor = (relativePath: string): string =>
+  relativePath->String.startsWith("assets/")
+    ? "public, max-age=31536000, immutable"
+    : "no-cache"
+
+// ── Inline CloudFront SDK binding (deploy-time cache invalidation) ───────────
+// Mirrors AppSync_Adapter's inline `@aws-sdk` binding pattern. Runs in the
+// Pulumi deploy process (not a Lambda) with the deploy's ambient credentials.
+
+type cloudFrontClient
+type cfPaths = {
+  @as("Quantity") quantity: int,
+  @as("Items") items: array<string>,
+}
+type cfInvalidationBatch = {
+  @as("CallerReference") callerReference: string,
+  @as("Paths") paths: cfPaths,
+}
+type createInvalidationInput = {
+  @as("DistributionId") distributionId: string,
+  @as("InvalidationBatch") invalidationBatch: cfInvalidationBatch,
+}
+type createInvalidationCommand
+
+@module("@aws-sdk/client-cloudfront") @new
+external makeCloudFrontClient: unit => cloudFrontClient = "CloudFrontClient"
+@module("@aws-sdk/client-cloudfront") @new
+external makeCreateInvalidationCommand: createInvalidationInput => createInvalidationCommand =
+  "CreateInvalidationCommand"
+@send external cfSend: (cloudFrontClient, createInvalidationCommand) => promise<unknown> = "send"
+
+// Best-effort CloudFront invalidation. Submits the batch (resolves once AWS
+// accepts it — we do not wait for it to reach Completed) and never throws: a
+// failed invalidation must not fail the deploy.
+let invalidateDistribution = async (~distributionId: string, ~paths: array<string>): unit => {
+  try {
+    let client = makeCloudFrontClient()
+    let input = {
+      distributionId,
+      invalidationBatch: {
+        callerReference: "reventless-" ++ Date.now()->Float.toString,
+        paths: {quantity: paths->Array.length, items: paths},
+      },
+    }
+    let _ = await client->cfSend(input->makeCreateInvalidationCommand)
+    Console.log(`[makeUiBundleDistribution] CloudFront invalidation submitted for ${distributionId}`)
+  } catch {
+  | exn =>
+    let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
+    Console.log(`[makeUiBundleDistribution] CloudFront invalidation skipped (${msg})`)
+  }
+}
+
 /**
  * Provision an S3 bucket + CloudFront distribution for a UI bundle. When
  * `~assetsDir` is supplied, every file under it is uploaded as a `BucketObject`
@@ -200,18 +262,35 @@ let makeUiBundleDistribution = (
     // upload (whichever Pulumi applies last wins).
     let entries =
       allEntries->Array.filter(entry => !(excludeFiles->Array.includes(entry.relativePath)))
-    entries->Array.forEach(entry => {
-      let _ = PulumiAws.S3.BucketObject.make(
-        ~name=name ++ "-asset-" ++ Util.StaticBundle.sanitizeName(entry.relativePath),
-        ~args={
-          bucket: bucket.id->Pulumi.Output.asInput,
-          key: Pulumi.Input.make(entry.relativePath),
-          source: Pulumi.Input.make(entry.fileAsset),
-          contentType: Pulumi.Input.make(Util.StaticBundle.contentTypeFor(entry.relativePath)),
-          etag: Pulumi.Input.make(entry.contentHash),
-        },
+    let objectEtags =
+      entries->Array.map(entry => {
+        let obj = PulumiAws.S3.BucketObject.make(
+          ~name=name ++ "-asset-" ++ Util.StaticBundle.sanitizeName(entry.relativePath),
+          ~args={
+            bucket: bucket.id->Pulumi.Output.asInput,
+            key: Pulumi.Input.make(entry.relativePath),
+            source: Pulumi.Input.make(entry.fileAsset),
+            contentType: Pulumi.Input.make(Util.StaticBundle.contentTypeFor(entry.relativePath)),
+            cacheControl: Pulumi.Input.make(cacheControlFor(entry.relativePath)),
+            etag: Pulumi.Input.make(entry.contentHash),
+          },
+        )
+        obj.etag
+      })
+
+    // Auto-invalidate CloudFront once every object is (re)uploaded. Stable-named
+    // entry files (index.html, the module-federation mf-entry-bootstrap-*.js)
+    // are served by the long-TTL default cache behaviour, so without this a
+    // `pulumi up` lands the new bundle in S3 while CloudFront keeps serving the
+    // prior build until its TTL expires. Chained on the upload etags so it runs
+    // AFTER the new content is in S3; `/*` is a single invalidation path (well
+    // within CloudFront's free-tier monthly allowance even on frequent deploys).
+    let _ =
+      (distribution.id, Pulumi.Output.all(objectEtags))
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.flatMap(((distId, _etags)) =>
+        invalidateDistribution(~distributionId=distId, ~paths=["/*"])->Pulumi.Output.fromPromise
       )
-    })
   }
 
   {

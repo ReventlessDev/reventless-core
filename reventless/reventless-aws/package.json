@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-appsync": "3.970.0",
+    "@aws-sdk/client-cloudfront": "3.970.0",
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-pulumi-aws": "workspace:*",
