@@ -126,20 +126,27 @@ let isFieldNotFoundError = (jsErr: JsExn.t): bool =>
   }
 
 /** Returns `true` iff a delete should be treated as a no-op because the
-    target resource no longer exists in AWS.  Covers two cases:
+    target resource no longer exists in AWS.  Covers three cases:
 
     - `"API not found."` — the AppSync API itself was already deleted (e.g.
       manually in the console or by a prior teardown); the resolver cannot
       exist without its parent API.
     - `"No resolver found"` — the API exists but the resolver was already
       removed (diverged Pulumi state).
+    - `"Type not found"` — the parent GraphQL type was dropped from the schema
+      (e.g. a plugin's schema fragment was lost during a runtime re-stitch),
+      taking every field-attached resolver with it; resolver absent is the
+      desired end-state, so `refresh` should report drift and a subsequent
+      `up` will recreate against the restored schema.
 
-    In both cases the desired end-state (resolver absent) is already reached,
+    In all cases the desired end-state (resolver absent) is already reached,
     so the Pulumi delete should succeed. */
 let isAlreadyDeletedError = (jsErr: JsExn.t): bool =>
   switch (jsErr->exnName, JsExn.message(jsErr)) {
   | (Some("NotFoundException"), Some(msg)) =>
-    msg->String.includes("API not found") || msg->String.includes("No resolver found")
+    msg->String.includes("API not found") ||
+    msg->String.includes("No resolver found") ||
+    msg->String.includes("Type not found")
   | _ => false
   }
 

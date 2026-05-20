@@ -64,10 +64,10 @@ function isAlreadyDeletedError(jsErr) {
   let match$1 = Stdlib_JsExn.message(jsErr);
   if ((match == null) || match !== "NotFoundException" || match$1 === undefined) {
     return false;
-  } else if (match$1.includes("API not found")) {
+  } else if (match$1.includes("API not found") || match$1.includes("No resolver found")) {
     return true;
   } else {
-    return match$1.includes("No resolver found");
+    return match$1.includes("Type not found");
   }
 }
 
