@@ -303,6 +303,7 @@ disposes after an idle window. It is armed only when `config.json` has
 | Per-read-model StateTopic Lambda | `subscriptionInfraHook` in `Platform.res` | Created for each stream-enabled QueryDb (`QueryDbStorage_DynamoDbStream`). Channel root = `listFieldName`. |
 | Stack exports for plugin stacks | `Platform.res` | `eventsApiArn`, `eventsApiDns` — plugin stacks' StateTopic Lambdas publish to the shared API. |
 | `config.json` for the browser | `Platform.res` host-UI-bundle block | Emits `domainApiEventsEndpoint` / `platformApiEventsEndpoint` (`https://<eventsApiDns>/event`) and `liveUpdates: true`. **Gated behind `~hostUiBundle`** — a platform that doesn't deploy a host UI bundle never writes config.json. |
+| Bundle cache freshness | `Plugin_Stack.makeUiBundleDistribution` | Sets `Cache-Control` per object (`assets/…` immutable 1y; stable entry files — `index.html`, `mf-entry-bootstrap-*.js` — `no-cache`) **and** fires a CloudFront `/*` invalidation on deploy (best-effort; needs `cloudfront:CreateInvalidation`). Without this the new bundle lands in S3 but CloudFront serves the prior build until its TTL expires. |
 
 The browser-deliverable surface is published in the **host-shell** SPA, which
 bundles `reventless-ui` at build time. A subscribe-side fix (e.g. channel
