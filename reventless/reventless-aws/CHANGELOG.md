@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.108 (2026-05-20)
+
+### Bug Fixes
+
+* **admin:** make cross-plugin SNS subscriptions actually wire (Phase 3 Step 4) ([8f727df](https://github.com/ReventlessDev/reventless-core/commit/8f727dfb20d137fc7fcc307c80c1007eab802a26))
+* **aws:** filter DCB FENCE rows from event stream parser ([a48436e](https://github.com/ReventlessDev/reventless-core/commit/a48436ef333b9d5e92b982281526045019fe791d))
+* **aws:** load StateViewSlice projection module in entry point ([e8abf64](https://github.com/ReventlessDev/reventless-core/commit/e8abf64b6f1dccee7654c89d9233c62a5bf453bd))
+### Features
+
+* **plugin:** wire dcbEventLog into pluginDefinition for cross-plugin DCB routing (Phase 4) ([07b78f3](https://github.com/ReventlessDev/reventless-core/commit/07b78f359f8f039992ec0ce7922085b165695537))
+
+
 # 3.0.0-alpha.107 (2026-05-19)
 
 ### Bug Fixes

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.58 (2026-05-20)
+
+### Features
+
+* **plugin:** wire dcbEventLog into pluginDefinition for cross-plugin DCB routing (Phase 4) ([07b78f3](https://github.com/ReventlessDev/reventless-core/commit/07b78f359f8f039992ec0ce7922085b165695537))
+
+
 # 3.0.0-alpha.57 (2026-05-19)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra
