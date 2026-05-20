@@ -12,13 +12,29 @@ type authMode = {
   authType?: Pulumi.Input.t<string>,
 }
 
+/** Optional Cognito User Pool authorization config for an auth provider.
+    Required when the provider's `authType` is `AMAZON_COGNITO_USER_POOLS`. */
+type cognitoConfig = {
+  /** Region the user pool lives in (e.g. "eu-west-1"). */
+  awsRegion: Pulumi.Input.t<string>,
+  /** Cognito User Pool ID. */
+  userPoolId: Pulumi.Input.t<string>,
+  /** Optional regex restricting which app client IDs are accepted. */
+  appIdClientRegex?: Pulumi.Input.t<string>,
+}
+
 /** Auth provider entry for the Events API. */
 type authProvider = {
   authType: Pulumi.Input.t<string>,
+  /** Required when `authType` is `AMAZON_COGNITO_USER_POOLS`. */
+  cognitoConfig?: Pulumi.Input.t<cognitoConfig>,
 }
 
 /** IAM authentication type string. */
 let awsIam: string = "AWS_IAM"
+
+/** Amazon Cognito User Pools authentication type string. */
+let amazonCognitoUserPools: string = "AMAZON_COGNITO_USER_POOLS"
 
 // ── Event config ──────────────────────────────────────────────────────────────
 

@@ -238,7 +238,21 @@ module MakeWithConfig = (
   // In plugin mode: reconstructed as a phantom from platform stack exports (eventsApiArn, eventsApiDns).
   let domainEventsApiOpt: option<AppSync_EventsApi.t> =
     switch platformStackRef {
-    | None => Some(AppSync_EventsApi.make(~name="DomainEventsApi", ~opts={}))
+    | None =>
+      // Browser host-shell subscribes over WebSocket with a Cognito IdToken,
+      // so the Events API must carry a Cognito auth provider. The pool is the
+      // same process-cached one the GraphQL API + config.json use.
+      let cognitoPool = Platform_Stack.resolveCognitoUserPool()
+      let awsRegion =
+        Pulumi.Config.make(Some("aws"))->Pulumi.Config.get("region")->Option.getOr("unknown")
+      Some(
+        AppSync_EventsApi.make(
+          ~name="DomainEventsApi",
+          ~cognitoUserPoolId=cognitoPool.poolId->Pulumi.Output.asInput,
+          ~awsRegion,
+          ~opts={},
+        ),
+      )
     | Some(stackRef) =>
       let eventsApiArnOutput: Pulumi.Output.t<option<string>> =
         stackRef->Pulumi.StackReference.getOutput("eventsApiArn")
@@ -1017,14 +1031,19 @@ module MakeWithConfig = (
         // wired: Source B uses the Events WebSocket directly, not @aws_subscribe.
         allQueryDbs->Dict.forEachWithKey((_queryDbOutputs, readModelName) => {
           if QueryDbStorage_DynamoDbStream.streamRegistry->Set.has(readModelName) {
-            let returnTypeName =
+            // Channel root MUST equal what the host-shell subscribes to. The
+            // AutoUI manifest sets queryableDef.queryField = listFieldName
+            // (plural, e.g. "Catalog_Products") and AutoLive subscribes on that.
+            // Publishing on the singular returnTypeName ("Catalog_Product")
+            // would land descriptors on a channel no client listens to.
+            let topicName =
               ReventlessCore.Plugin_Helpers.queryFieldNamesRegistry
               ->Dict.get(readModelName)
-              ->Option.map(qn => qn.returnTypeName)
+              ->Option.map(qn => qn.listFieldName)
               ->Option.getOr(readModelName)
             StateTopic_AppSync.make(
               ~readModelName,
-              ~topicName=returnTypeName,
+              ~topicName,
               ~allQueryDbs,
               ~eventsApi,
               ~opts=customOpts,

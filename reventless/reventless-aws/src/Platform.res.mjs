@@ -234,7 +234,9 @@ function MakeWithConfig(Config) {
       defaultNamespace: undefined
     };
   } else {
-    domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", {});
+    let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+    let awsRegion = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+    domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", cognitoPool.poolId, awsRegion, {});
   }
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;
@@ -504,8 +506,8 @@ function MakeWithConfig(Config) {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
-      let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.returnTypeName), readModelName);
-      StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
+      let topicName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.listFieldName), readModelName);
+      StateTopic_AppSync$ReventlessAws.make(readModelName, topicName, allQueryDbs, eventsApi, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
       let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);
@@ -1350,7 +1352,9 @@ function Make($star) {
       defaultNamespace: undefined
     };
   } else {
-    domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", {});
+    let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
+    let awsRegion = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
+    domainEventsApiOpt = AppSync_EventsApi$ReventlessAws.make("DomainEventsApi", cognitoPool.poolId, awsRegion, {});
   }
   let resolveTargetApi = () => {
     let match = currentDeployTarget.contents;
@@ -1619,8 +1623,8 @@ function Make($star) {
       if (!QueryDbStorage_DynamoDbStream$ReventlessAws.streamRegistry.has(readModelName)) {
         return;
       }
-      let returnTypeName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.returnTypeName), readModelName);
-      StateTopic_AppSync$ReventlessAws.make(readModelName, returnTypeName, allQueryDbs, eventsApi, customOpts);
+      let topicName = Stdlib_Option.getOr(Stdlib_Option.map(Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[readModelName], qn => qn.listFieldName), readModelName);
+      StateTopic_AppSync$ReventlessAws.make(readModelName, topicName, allQueryDbs, eventsApi, customOpts);
     });
     params.eventLogEntries.forEach(entry => {
       let isSns = EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.displayName) || EventTopicPublisher_SNS$ReventlessAws.snsRegistry.has(entry.busKey);

@@ -5,7 +5,10 @@
 //   QueryDb DynamoDB table (stream-enabled) → Lambda → AppSync Events channel
 //
 // Channel layout: /default/{topicName}/{entityKey}  (underscores → hyphens)
-//   topicName    = plugin-prefixed query return type (e.g. "catalog-Product")
+//   topicName    = plugin-prefixed query LIST field name (e.g. "Catalog-Products").
+//                  MUST match the AutoUI manifest's queryableDef.queryField,
+//                  which the host-shell's AutoLive subscribes on. Using the
+//                  singular return type here would orphan the channel.
 //   entityKey    = the table's primary-key value(s) extracted from record.Keys.
 //                  Single-key tables: just the `id` attribute value.
 //                  Composite-key tables: `{id}-{subIdValue}` where subId is the
@@ -21,8 +24,8 @@
 //
 // Usage in the plugin builder (after allQueryDbs are assembled):
 //   StateTopic_AppSync.make(
-//     ~readModelName="Product",      // QueryDb key = ReadModel Spec.name
-//     ~topicName="catalog_Product",  // AppSync Events channel root segment
+//     ~readModelName="Products",     // QueryDb key = ReadModel Spec.name
+//     ~topicName="Catalog_Products", // AppSync Events channel root = list field name
 //     ~allQueryDbs,
 //     ~eventsApi,
 //     ~opts,

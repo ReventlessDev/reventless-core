@@ -17,19 +17,39 @@ function clearSubscribeAuth() {
   subscribeAuthRef.contents = undefined;
 }
 
-function make(name, opts) {
+function make(name, cognitoUserPoolId, awsRegion, opts) {
   let iamMode = {
     authType: AwsNative_AppSync_Api$PulumiAws.awsIam
   };
   let iamProvider = {
     authType: AwsNative_AppSync_Api$PulumiAws.awsIam
   };
+  let cognitoMode = {
+    authType: AwsNative_AppSync_Api$PulumiAws.amazonCognitoUserPools
+  };
+  let cognitoProvider_cognitoConfig = {
+    awsRegion: awsRegion,
+    userPoolId: cognitoUserPoolId
+  };
+  let cognitoProvider = {
+    authType: AwsNative_AppSync_Api$PulumiAws.amazonCognitoUserPools,
+    cognitoConfig: cognitoProvider_cognitoConfig
+  };
   let api = new (AwsNative.appsync.Api)(name, {
     eventConfig: {
-      authProviders: [iamProvider],
-      connectionAuthModes: [iamMode],
+      authProviders: [
+        iamProvider,
+        cognitoProvider
+      ],
+      connectionAuthModes: [
+        cognitoMode,
+        iamMode
+      ],
       defaultPublishAuthModes: [iamMode],
-      defaultSubscribeAuthModes: [iamMode]
+      defaultSubscribeAuthModes: [
+        cognitoMode,
+        iamMode
+      ]
     }
   }, opts);
   let subscribeAuth = subscribeAuthRef.contents;

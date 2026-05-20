@@ -3,7 +3,10 @@
 
 let awsIam = "AWS_IAM";
 
+let amazonCognitoUserPools = "AMAZON_COGNITO_USER_POOLS";
+
 export {
   awsIam,
+  amazonCognitoUserPools,
 }
 /* No side effect */

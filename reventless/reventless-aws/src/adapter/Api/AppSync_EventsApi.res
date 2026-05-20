@@ -7,7 +7,12 @@
     channel layout.
 
     Usage (in platform/plugin builder after the GraphQL API is created):
-      let eventsApi = AppSync_EventsApi.make(~name="DomainEventsApi", ~opts)
+      let eventsApi = AppSync_EventsApi.make(
+        ~name="DomainEventsApi",
+        ~cognitoUserPoolId,
+        ~awsRegion,
+        ~opts,
+      )
 
     Then pass `eventsApi` to:
       StateTopic_AppSync.make(~eventsApi, ...)
@@ -66,23 +71,59 @@ type t = {
   defaultNamespace: option<ChannelNamespace.t>,
 }
 
-/** Create an AppSync Events API with AWS_IAM auth + a `default` channel namespace.
+/** Create an AppSync Events API with dual auth (Cognito + AWS_IAM) and a
+    `default` channel namespace.
 
     `name` is the Pulumi resource name prefix (e.g. `"DomainEventsApi"`).
+    `cognitoUserPoolId` / `awsRegion` configure the Cognito User Pools auth
+    provider the browser host-shell connects/subscribes with.
     `opts` should set `parent` to the platform component resource. */
-let make = (~name: string, ~opts: Pulumi.CustomResourceOptions.t): t => {
+let make = (
+  ~name: string,
+  ~cognitoUserPoolId: Pulumi.Input.t<string>,
+  ~awsRegion: string,
+  ~opts: Pulumi.CustomResourceOptions.t,
+): t => {
   let iamMode: Api.authMode = {authType: Api.awsIam->Pulumi.Input.make}
   let iamProvider: Api.authProvider = {authType: Api.awsIam->Pulumi.Input.make}
+
+  // Cognito User Pools auth — the browser host-shell (LiveConnection /
+  // EventsClient) connects and subscribes over WebSocket with a Cognito
+  // IdToken bearer. Without a Cognito provider plus matching connection +
+  // subscribe auth modes, AppSync rejects the connection_init and the UI
+  // never receives live descriptors. Lambda publishers keep AWS_IAM (SigV4)
+  // on the publish path.
+  let cognitoMode: Api.authMode = {authType: Api.amazonCognitoUserPools->Pulumi.Input.make}
+  let cognitoProvider: Api.authProvider = {
+    authType: Api.amazonCognitoUserPools->Pulumi.Input.make,
+    cognitoConfig: (
+      {
+        awsRegion: awsRegion->Pulumi.Input.make,
+        userPoolId: cognitoUserPoolId,
+      }: Api.cognitoConfig
+    )->Pulumi.Input.make,
+  }
 
   let api = Api.make(
     ~name,
     ~args={
       eventConfig: (
         {
-          authProviders: [iamProvider->Pulumi.Input.make]->Pulumi.Input.make,
-          connectionAuthModes: [iamMode->Pulumi.Input.make]->Pulumi.Input.make,
+          authProviders: [
+            iamProvider->Pulumi.Input.make,
+            cognitoProvider->Pulumi.Input.make,
+          ]->Pulumi.Input.make,
+          connectionAuthModes: [
+            cognitoMode->Pulumi.Input.make,
+            iamMode->Pulumi.Input.make,
+          ]->Pulumi.Input.make,
+          // Publish stays IAM-only — only the SigV4-signed Lambda publishers
+          // push to channels; the browser never publishes.
           defaultPublishAuthModes: [iamMode->Pulumi.Input.make]->Pulumi.Input.make,
-          defaultSubscribeAuthModes: [iamMode->Pulumi.Input.make]->Pulumi.Input.make,
+          defaultSubscribeAuthModes: [
+            cognitoMode->Pulumi.Input.make,
+            iamMode->Pulumi.Input.make,
+          ]->Pulumi.Input.make,
         }: Api.eventConfigArgs
       )->Pulumi.Input.make,
     },
