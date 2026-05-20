@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.109 (2026-05-20)
+
+### Bug Fixes
+
+* **aws:** treat "Type not found" as drift in AppSync resolver refresh ([5961503](https://github.com/ReventlessDev/reventless-core/commit/5961503a1cb42582d3bc2bc74843c753ee40252a))
+
+
 # 3.0.0-alpha.108 (2026-05-20)
 
 ### Bug Fixes
