@@ -61,6 +61,7 @@ module Make = (
     let outputs: QueryDb.outputs = {
       resources: storage.resources->Array.concat(resolvers.resources),
       resolversMaker: resolvers.resourcesMaker,
+      dataSourceName: storage.dataSourceName,
     }
     self->Component.setOutputs(outputs)
   }

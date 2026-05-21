@@ -32,9 +32,11 @@ function Make(Spec) {
       let resolvers = Resolvers.make(none$1, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, Spec.authorization, opts);
       let outputs_resources = storage.resources.concat(resolvers.resources);
       let outputs_resolversMaker = resolvers.resourcesMaker;
+      let outputs_dataSourceName = storage.dataSourceName;
       let outputs = {
         resources: outputs_resources,
-        resolversMaker: outputs_resolversMaker
+        resolversMaker: outputs_resolversMaker,
+        dataSourceName: outputs_dataSourceName
       };
       return Component$ReventlessCore.setOutputs(none, outputs);
     }, opts);

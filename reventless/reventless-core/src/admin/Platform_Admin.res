@@ -249,18 +249,33 @@ module Make = (
     // Gate the actual CreateResolver SDK calls on the admin schema push (when
     // the platform supplies preAdminResolversSchemaHook). AppSync holds an
     // API-level lock during StartSchemaCreation and rejects concurrent
-    // CreateResolver / UpdateResolver with ConcurrentModificationException —
-    // mirrors Plugin_Builder's schemaPushed pattern at Plugin_Builder.res:
-    // 452-466. The barrier collects the names of all admin read-model DDB
-    // resources so the schema push waits for the underlying DataSources to be
-    // ready before firing. Platforms with no hook (e.g. in-memory) return an
-    // already-resolved Output and createResolvers fires immediately, as before.
-    let adminBarrier =
-      readModelsOutputs
-      ->Dict.valuesToArray
-      ->Array.flatMap(rm => rm.queryDb.resources->Array.map(r => r.name))
+    // CreateResolver / UpdateResolver / CreateDataSource with
+    // ConcurrentModificationException — mirrors Plugin_Builder's schemaPushed
+    // pattern at Plugin_Builder.res:452-466. The barrier collects:
+    //   • the names of all admin read-model DDB resources, AND
+    //   • each read model's AppSync DataSource name
+    // so the schema push waits for the underlying DDB tables *and* their
+    // DataSources to be fully created. Including DataSource names is what
+    // prevents the schema push from racing CreateDataSource on a freshly
+    // renamed read model (e.g. the Plugin → Plugins rename), where the new
+    // DataSource is still being created when StartSchemaCreation reports
+    // ACTIVE and the next CreateDataSource then hits a busy API with a 409.
+    // Platforms with no hook (e.g. in-memory) return an already-resolved
+    // Output and createResolvers fires immediately, as before.
+    let adminBarrier = {
+      let resourceNames =
+        readModelsOutputs
+        ->Dict.valuesToArray
+        ->Array.flatMap(rm => rm.queryDb.resources->Array.map(r => r.name))
+      let dataSourceNames =
+        readModelsOutputs
+        ->Dict.valuesToArray
+        ->Array.map(rm => rm.queryDb.dataSourceName)
+      resourceNames
+      ->Array.concat(dataSourceNames)
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(_ => ())
+    }
     let adminSchemaPushed = switch Config.hooks.preAdminResolversSchemaHook {
     | Some(push) => push(~adminBarrier)
     | None => Pulumi.Output.make()

@@ -32,10 +32,16 @@ Deploy-time outputs produced when a `QueryDb` is provisioned.
 
 - `resources` — the underlying database infrastructure resources
 - `resolversMaker` — callback used by the plugin to assemble resolver resources
+- `dataSourceName` — name of the AppSync DataSource that fronts this query DB.
+  Surfaced separately from `resources` so admin-side schema-push barriers can
+  wait for the DataSource to settle before invoking StartSchemaCreation —
+  AppSync rejects concurrent CreateDataSource / StartSchemaCreation calls
+  with `ConcurrentModificationException`.
 */
 and outputs = {
   resources: array<Adapter.resource>,
   resolversMaker: resolversResourcesMaker,
+  dataSourceName: Pulumi.Output.t<string>,
 }
 
 /** A dictionary of query database outputs keyed by read model name. */

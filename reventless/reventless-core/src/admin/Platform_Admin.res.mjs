@@ -131,7 +131,9 @@ function Make(RuntimeEnvironment) {
         allQueryDbs[param[0]] = param[1].queryDb;
       });
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-      let adminBarrier = Pulumi.all(Object.values(readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name))).apply(param => {});
+      let resourceNames = Object.values(readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name));
+      let dataSourceNames = Object.values(readModelsOutputs).map(rm => rm.queryDb.dataSourceName);
+      let adminBarrier = Pulumi.all(resourceNames.concat(dataSourceNames)).apply(param => {});
       let push = Config.hooks.preAdminResolversSchemaHook;
       let adminSchemaPushed = push !== undefined ? push(adminBarrier) : Pulumi.output();
       adminSchemaPushed.apply(() => Builder_Helpers$ReventlessCore.createResolvers(allQueryDbs));
