@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.1.0-alpha.14 (2026-05-21)
+
+### Bug Fixes
+
+* **deps:** pin effect to 3.21.2 to dedupe with Lambda layer ([ce55b04](https://github.com/ReventlessDev/reventless-core/commit/ce55b04fbaacebd34bcfec06a27858390d589eb1))
+
+
 # 0.1.0-alpha.13 (2026-05-14)
 
 **Note:** Version bump only for package @reventlessdev/rescript-effect

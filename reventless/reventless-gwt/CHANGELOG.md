@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.32 (2026-05-21)
+
+### Features
+
+* **gwt:** add Delegate_GWT + Flow_GWT cross-slice/cross-plugin test kinds ([19f89a6](https://github.com/ReventlessDev/reventless-core/commit/19f89a6baba3acddb683c81952692fb1a695681d))
+
+
 # 1.0.0-alpha.31 (2026-05-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt
