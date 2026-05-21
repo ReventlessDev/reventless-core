@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.66 (2026-05-21)
+
+* feat(admin)!: replace direct DynamoDB retire write with Retire/Retired event flow ([7f5f018](https://github.com/ReventlessDev/reventless-core/commit/7f5f018e714e247331d143c304c0d671c2ac7c84))
+
+### BREAKING CHANGES
+
+* Platform.deployPlugin no longer accepts ~version. Generated
+Main.res files are regenerated; any direct caller must drop the arg.
+
+
+
 # 1.0.0-alpha.65 (2026-05-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-aws
