@@ -24,7 +24,7 @@
     ]
   },
   "dependencies": {
-    "effect": "^3.21.1"
+    "effect": "3.21.2"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
