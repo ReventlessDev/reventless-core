@@ -2,13 +2,12 @@
 
 import * as Plugin from "./Plugin.res.mjs";
 import * as Platform$ReventlessAws from "@reventlessdev/reventless-aws/src/Platform.res.mjs";
-import * as PackageVersion$Reventless from "@reventlessdev/reventless-spec/src/PackageVersion.res.mjs";
 
 let Platform = Platform$ReventlessAws.Make({});
 
 let Catalog = Plugin.Make(Platform);
 
-let $$default = Platform.deployPlugin(PackageVersion$Reventless.fromCaller(), {
+let $$default = Platform.deployPlugin({
   make: Catalog.make
 }, undefined);
 
