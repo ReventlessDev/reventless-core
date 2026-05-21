@@ -293,6 +293,47 @@ model names), reference-counts channels, lazily opens on first subscribe, and
 disposes after an idle window. It is armed only when `config.json` has
 `liveUpdates: true` **and** the matching `*EventsEndpoint` is present.
 
+### Reconnect behaviour (Tier 1 refetch)
+
+AppSync Events is fire-and-forget pub/sub — a subscriber connected at time T
+sees publishes from T onward and nothing earlier. When the WebSocket drops
+(laptop sleep, network blip, idle timeout) and re-opens, the descriptors
+published during the gap are gone. Without compensation the UI silently
+diverges from the QueryDb.
+
+Tier 1 closes this gap by **refetching the current view's existing query on
+qualifying reconnects** — the URL already carries enough state (filters,
+sort, keyset cursor, open detail) to land on the same page after either a
+reconnect or a manual reload.
+
+How it works:
+
+- `EventsClient` records the timestamp of every `Open → Closed` transition.
+  On `Closed/Connecting → Open` it fires `onReconnect(gapMs)`.
+- `LiveConnection` debounces with `reconnectDebounceMs = 2000`. Brief blips
+  (< 2s) and the initial socket open never trigger refetch.
+- `LiveConnection.registerReconnect(~api, listener)` is the fan-out point.
+  `AutoLive.useSubscription(~onReconnect)` registers per subscription and
+  unregisters on unmount.
+- `AutoListView` registers `setRetryCount(c => c + 1)` — bumps the existing
+  fetch effect's dependency, which re-runs with the current URL params.
+  Self-change markers and the "new items" pill count are intentionally
+  preserved across the refetch.
+- `AutoDrillDetail` (always rendered inside `AutoListView`) registers a
+  detail-refetch that latches the entity-gone placeholder if the row is now
+  missing — same UX as a live `Removed` descriptor.
+
+Configuration: `config.json` field `liveReconnectRefetch` (default `true`).
+Set to `false` on bandwidth-constrained networks that prefer staleness over
+an extra round of QueryDb reads on reconnect. The flag is independent of
+`liveUpdates` — disabling reconnect refetch leaves the live descriptor
+stream itself intact.
+
+Out of scope for Tier 1 (deferred — see
+[`docs/analysis/reconnect-replay-missed-changes.md`](../analysis/reconnect-replay-missed-changes.md)):
+server-side change journal, descriptor-level catch-up
+(`catchUpChanges(channel, since)`), and cross-tab cursor coordination.
+
 ---
 
 ## Deploy-time wiring
