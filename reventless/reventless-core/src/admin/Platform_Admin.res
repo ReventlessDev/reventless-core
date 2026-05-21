@@ -208,6 +208,19 @@ module Make = (
       } else {
         entry.returnTypeName
       }
+      // Registry key MUST match the read-model `Spec.name` because
+      // `QueryDbResolvers_{AppSync,GraphQL}.make` looks up the registry by
+      // `Spec.name` (which is also what `QueryDb_Builder.Make` passes as the
+      // `~name` argument). Prefer `entry.specName` when provided; fall back
+      // to the singular form derived from `returnTypeName` for backward
+      // compatibility with entries whose Spec.name equals the singular
+      // entity name (e.g. `PlatformEventGraph`). Without this alignment,
+      // plural-named read models (e.g. `Plugins`) miss the registry and
+      // fall through to `name->uncapitalize` / `name ++ "s"` field names
+      // (`plugins`, `Pluginss`, `PluginssByIds`) that don't exist in the
+      // pushed SDL — CreateResolver then loops on
+      // `NotFoundException: No field named ...`.
+      let registryKey = entry.specName->Option.getOr(entityName)
       let (labelField, _searchableFields) = Plugin_Structure.labelFieldsFromStateSchema(
         ~entityName,
         entry.stateSchema,
@@ -222,8 +235,8 @@ module Make = (
         labelField,
         connectionFilterTypeName: entry.returnTypeName ++ "Filter",
       }
-      Plugin_Helpers.queryFieldNamesRegistry->Dict.set(entityName, qn)
-      Plugin_Helpers.stateSchemaRegistry->Dict.set(entityName, entry.stateSchema)
+      Plugin_Helpers.queryFieldNamesRegistry->Dict.set(registryKey, qn)
+      Plugin_Helpers.stateSchemaRegistry->Dict.set(registryKey, entry.stateSchema)
     })
 
     let readModelsOutputs = readModels->createReadModels(~api, ~apiRole, allEventTopics, opts)

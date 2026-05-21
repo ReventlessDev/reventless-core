@@ -100,6 +100,7 @@ function Make(RuntimeEnvironment) {
       AdminApi$ReventlessCore.queryEntries.forEach(entry => {
         let prefix = "Platform_";
         let entityName = entry.returnTypeName.startsWith(prefix) ? entry.returnTypeName.slice(prefix.length, entry.returnTypeName.length) : entry.returnTypeName;
+        let registryKey = Stdlib_Option.getOr(entry.specName, entityName);
         let match = Plugin_Structure$ReventlessCore.labelFieldsFromStateSchema(entityName, entry.stateSchema);
         let qn_singleFieldName = entry.singleFieldName;
         let qn_listFieldName = entry.listFieldName;
@@ -119,8 +120,8 @@ function Make(RuntimeEnvironment) {
           includeIdParam: qn_includeIdParam,
           connectionSpec: qn_connectionSpec
         };
-        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[entityName] = qn;
-        Plugin_Helpers$ReventlessCore.stateSchemaRegistry[entityName] = entry.stateSchema;
+        Plugin_Helpers$ReventlessCore.queryFieldNamesRegistry[registryKey] = qn;
+        Plugin_Helpers$ReventlessCore.stateSchemaRegistry[registryKey] = entry.stateSchema;
       });
       let readModelsOutputs = Builder_Helpers$ReventlessCore.createReadModels(readModels, api, apiRole, aggregateEventTopics, opts);
       let allQueryDbs = ReadModel$ReventlessCore.allQueryDbs(readModelsOutputs);

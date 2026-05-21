@@ -30,6 +30,7 @@ let queryEntries = [
     listFieldName: Api_Naming$ReventlessCore.adminField("Plugins"),
     returnTypeName: Api_Naming$ReventlessCore.adminField("Plugin"),
     stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
+    specName: PluginsReadModelSpec$ReventlessCore.name,
     authorization: adminAuth,
     excludeFields: pluginExcludeFields
   },
@@ -38,6 +39,7 @@ let queryEntries = [
     listFieldName: Api_Naming$ReventlessCore.adminField("PlatformEventGraphs"),
     returnTypeName: Api_Naming$ReventlessCore.adminField("PlatformEventGraph"),
     stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
+    specName: Platform_EventGraphReadModelSpec$ReventlessCore.name,
     authorization: adminAuth,
     excludeFields: []
   }

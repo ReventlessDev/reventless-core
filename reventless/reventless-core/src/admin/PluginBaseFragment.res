@@ -36,6 +36,13 @@ let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat
 // connection field here collides with that name on SDL composition.
 let queryEntries: array<querySchemaEntry> = [
   {
+    // The read-model `Spec.name` is "Plugins" (plural — the read-model cluster
+    // is named after the list, see `PluginsReadModelSpec`), while the GraphQL
+    // return type stays singular as `Platform_Plugin`. `specName` is what
+    // `QueryDbResolvers_{AppSync,GraphQL}.make` looks up in
+    // `queryFieldNamesRegistry`, so it must match `Spec.name`, not the
+    // singular form derived from `returnTypeName`.
+    specName: PluginsReadModelSpec.name,
     singleFieldName: Api_Naming.adminField(~name="Plugin"),
     listFieldName: Api_Naming.adminField(~name="Plugins"),
     returnTypeName: Api_Naming.adminField(~name="Plugin"),
@@ -44,6 +51,7 @@ let queryEntries: array<querySchemaEntry> = [
     excludeFields: pluginExcludeFields,
   },
   {
+    specName: Platform_EventGraphReadModelSpec.name,
     singleFieldName: Api_Naming.adminField(~name="PlatformEventGraph"),
     listFieldName: Api_Naming.adminField(~name="PlatformEventGraphs"),
     returnTypeName: Api_Naming.adminField(~name="PlatformEventGraph"),
