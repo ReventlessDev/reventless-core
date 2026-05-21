@@ -96,4 +96,3 @@ Plan 05 ships only the **Dilger** adapter (`--adapter dilger`). The `Adapter.T` 
 - [`docs/plans/forward-codegen-pipeline.md`](../plans/forward-codegen-pipeline.md) — full plan with all decisions, scope, and phase breakdown
 - [`docs/analysis/spec-implementation-split.md`](../analysis/spec-implementation-split.md) — Spec-First file boundaries that this pipeline emits into
 - [`docs/analysis/given-when-then-specifications.md`](../analysis/given-when-then-specifications.md) — GWT methodology that the emitter targets
-- [`docs/analysis/chapters-in-event-modeling.md`](../analysis/chapters-in-event-modeling.md) — structural chapter convention for `slice.context`
