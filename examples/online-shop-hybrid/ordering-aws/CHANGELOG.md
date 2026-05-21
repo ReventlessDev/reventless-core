@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.68 (2026-05-21)
+
+### Bug Fixes
+
+* **examples:** regenerate stale hybrid -aws Main.res.mjs after deployPlugin ~version drop ([ea375d8](https://github.com/ReventlessDev/reventless-core/commit/ea375d884d9b369b3e433dc1e9f3d48bca7209b3))
+
+
 # 1.0.0-alpha.67 (2026-05-21)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-aws
