@@ -135,7 +135,8 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             statusChange,
           },
         )
-      | Deactivated({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
+      | Deactivated({name, version, eventCollector, extensionPoints, extensions} as pluginDef)
+      | Retired({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
         UpdateWithDefault(
           id,
           {

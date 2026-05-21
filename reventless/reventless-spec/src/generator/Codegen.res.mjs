@@ -293,7 +293,6 @@ function renderMain(config) {
     "module " + name + " = Plugin.Make(Platform)",
     "",
     "let default = Platform.deployPlugin(",
-    "  ~version=Reventless.PackageVersion.fromCaller(),",
     "  ~plugin=module(" + name + "),",
     ")",
     ""

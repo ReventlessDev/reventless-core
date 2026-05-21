@@ -30,6 +30,7 @@ type event =
   | PluginDisconnected(pluginDefinition)
   | PluginDeactivated(pluginDefinition)
   | PluginActivated(pluginDefinition)
+  | PluginRetired(pluginDefinition)
 
 @schema
 type directive =

@@ -11,6 +11,10 @@ type command =
   | Deactivate
   // Records a protocol-version incompatibility without changing plugin connection state.
   | @noApi ReportIncompatibility(pluginDefinition)
+  // Emitted by the platform deploy hook when a newer plugin version
+  // supersedes this one. Distinguishes deploy-driven retirement from
+  // user-driven Deactivate in the EventLog and projection branches.
+  | @noApi Retire
 
 @schema
 type uiFragmentRegisteredData = {pluginId: string, manifest: uiFragmentManifest}
@@ -33,6 +37,8 @@ type event =
   | Disconnected(pluginDefinition)
   | Activated(pluginDefinition)
   | Deactivated(pluginDefinition)
+  // Emitted on Retire — deploy-driven retirement of a superseded plugin version.
+  | Retired(pluginDefinition)
   // Emitted when ReportIncompatibility is processed; carries the connecting plugin definition.
   | IncompatiblePluginDetected(pluginDefinition)
   // UI fragment lifecycle events — emitted alongside Connected/Reconnected/Disconnected/Deactivated

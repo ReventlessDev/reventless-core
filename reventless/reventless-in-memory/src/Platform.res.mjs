@@ -1725,14 +1725,16 @@ function MakeWithConfig(Config) {
     });
     return {};
   };
-  let deployPlugin = (version, plugin, apiTargetOpt) => {
+  let deployPlugin = (plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
-    log.info("Platform", undefined, `deployPlugin v` + version);
+    let tmp;
+    tmp = apiTarget === "Domain" ? "Domain" : "Platform";
+    log.info("Platform", undefined, `deployPlugin target=` + tmp);
     currentDeployTarget.contents = apiTarget;
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
-    let tmp;
-    tmp = apiTarget === "Domain" ? domainRelaySupport : undefined;
-    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = tmp;
+    let tmp$1;
+    tmp$1 = apiTarget === "Domain" ? domainRelaySupport : undefined;
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = tmp$1;
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -1741,7 +1743,7 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct("", [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -3543,14 +3545,16 @@ function Make($star) {
     });
     return {};
   };
-  let deployPlugin = (version, plugin, apiTargetOpt) => {
+  let deployPlugin = (plugin, apiTargetOpt) => {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
-    log.info("Platform", undefined, `deployPlugin v` + version);
+    let tmp;
+    tmp = apiTarget === "Domain" ? "Domain" : "Platform";
+    log.info("Platform", undefined, `deployPlugin target=` + tmp);
     currentDeployTarget.contents = apiTarget;
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = resolveTargetGraphQL();
-    let tmp;
-    tmp = apiTarget === "Domain" ? domainRelaySupport : undefined;
-    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = tmp;
+    let tmp$1;
+    tmp$1 = apiTarget === "Domain" ? domainRelaySupport : undefined;
+    StateViewSliceMaker.QueryDbResolvers.relayRef.contents = tmp$1;
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooks_api.contents = {
@@ -3559,7 +3563,7 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct("", [], [InMemoryPluginAggregate], [], scheduler, InMemory_PluginSpec$ReventlessInMemory.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep

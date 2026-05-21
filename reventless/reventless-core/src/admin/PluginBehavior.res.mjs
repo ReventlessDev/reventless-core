@@ -141,6 +141,14 @@ function decide(state, command) {
                   _0: pluginDefinition$1
                 }].concat(uiDeregisterEvents(pluginDefinition$1.id, pluginDefinition$1.uiFragments))
             };
+          case "Retire" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Retired",
+                  _0: pluginDefinition$1
+                }].concat(uiDeregisterEvents(pluginDefinition$1.id, pluginDefinition$1.uiFragments))
+            };
         }
       case "Disconnected" :
         let pluginDefinition$2 = state._0;
@@ -177,6 +185,14 @@ function decide(state, command) {
                   _0: pluginDefinition$2
                 }]
             };
+          case "Retire" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Retired",
+                  _0: pluginDefinition$2
+                }]
+            };
           default:
             return {
               TAG: "Error",
@@ -202,11 +218,6 @@ function decide(state, command) {
           }
         }
         switch (command) {
-          case "Heartbeat" :
-            return {
-              TAG: "Ok",
-              _0: []
-            };
           case "Activate" :
             return {
               TAG: "Ok",
@@ -214,6 +225,12 @@ function decide(state, command) {
                   TAG: "Activated",
                   _0: pluginDefinition$3
                 }].concat(uiRegisterEvents(pluginDefinition$3.id, pluginDefinition$3.uiFragments))
+            };
+          case "Heartbeat" :
+          case "Retire" :
+            return {
+              TAG: "Ok",
+              _0: []
             };
           default:
             return {
@@ -290,6 +307,7 @@ function evolve(state, event) {
               _0: pluginDefinition
             };
           case "Deactivated" :
+          case "Retired" :
             return {
               TAG: "Inactive",
               _0: pluginDefinition
@@ -322,6 +340,7 @@ function evolve(state, event) {
               _0: pluginDefinition$1
             };
           case "Deactivated" :
+          case "Retired" :
             return {
               TAG: "Inactive",
               _0: pluginDefinition$1

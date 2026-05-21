@@ -1,6 +1,6 @@
 open ReventlessCore
 open PluginSpec
-open PluginFixtures
+open Plugin_Fixtures
 module PluginsProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(PluginsProjection.PluginMapping)
 open PluginsProjectionTest
 
@@ -90,5 +90,48 @@ describe("PluginsProjection:", () => {
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
     ->whenEvent(UIFragmentDeregistered({pluginId: pluginDefinition.id}))
     ->thenState({...state, status: Connected})
+  )
+
+  // ── Retired — deploy-driven retirement of a superseded plugin version ────
+  //
+  // Replaces the previous direct DynamoDB write that
+  // publishRetireForOlderPluginVersions used to perform. The projection
+  // collapses Retired into status: Inactive (same outcome as user-driven
+  // Deactivated), while the EventLog keeps the source of retirement distinct.
+
+  test("Retired on a Connected row yields status: Inactive", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    ->whenEvent(Retired(pluginDefinition))
+    ->thenState({...state, status: Inactive})
+  )
+
+  test("Retired on a Disconnected row also yields status: Inactive", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Disconnected(pluginDefinition),
+    ])
+    ->whenEvent(Retired(pluginDefinition))
+    ->thenState({...state, status: Inactive})
+  )
+
+  test("Retired with no prior row creates one at status: Inactive", () =>
+    givenEvents([])
+    ->whenEvent(Retired(pluginDefinition))
+    ->thenState({...state, status: Inactive})
+  )
+
+  // ── IncompatiblePluginDetected — observation only, no status change ──────
+
+  test("IncompatiblePluginDetected leaves a Connected row unchanged", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    ->whenEvent(IncompatiblePluginDetected(pluginDefinition))
+    ->thenState({...state, status: Connected})
+  )
+
+  test("IncompatiblePluginDetected on a never-seen plugin does not create a row", () =>
+    givenEvents([])
+    ->whenEvent(IncompatiblePluginDetected(pluginDefinition))
+    ->thenNoState
   )
 })

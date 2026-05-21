@@ -318,7 +318,7 @@ function Make(Spec) {
           }
         });
         let pushSchema = Spec.hooks.preResolversSchemaHook;
-        let schemaPushed = pushSchema !== undefined ? pushSchema(extra$1, apiSchemaFragment) : Pulumi.output();
+        let schemaPushed = pushSchema !== undefined ? pushSchema(extra$1, version, apiSchemaFragment) : Pulumi.output();
         let builderOutputs = Pulumi.all([
           Pulumi.all([
             interstackAdminExtensionPoints,

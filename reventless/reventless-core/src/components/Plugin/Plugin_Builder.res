@@ -450,7 +450,7 @@ module Make = (
       // The returned Output chains into the dependency tuple so Pulumi waits
       // for the schema update to complete before creating resolver resources.
       let schemaPushed = switch Spec.hooks.preResolversSchemaHook {
-      | Some(pushSchema) => pushSchema(~name, apiSchemaFragment)
+      | Some(pushSchema) => pushSchema(~name, ~version, apiSchemaFragment)
       | None => Pulumi.Output.make()
       }
 

@@ -16,7 +16,8 @@ let commandSchema = S.union([
   S.schema(s => ({
     TAG: "ReportIncompatibility",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
-  }))
+  })),
+  S.literal("Retire")
 ]);
 
 let uiFragmentRegisteredDataSchema = S.schema(s => ({
@@ -57,6 +58,10 @@ let eventSchema = S.union([
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   S.schema(s => ({
+    TAG: "Retired",
+    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
+  })),
+  S.schema(s => ({
     TAG: "IncompatiblePluginDetected",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
@@ -85,7 +90,8 @@ let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "Heartbeat",
   "Connect",
   "Disconnect",
-  "ReportIncompatibility"
+  "ReportIncompatibility",
+  "Retire"
 ]);
 
 function commandAuthorization(param) {

@@ -35,6 +35,7 @@ let decide = (state, command) =>
     | Disconnect
     | Activate
     | Deactivate
+    | Retire
     | ReportIncompatibility(_) =>
       Error(NotExisting)
     }
@@ -51,7 +52,8 @@ let decide = (state, command) =>
     | ReportIncompatibility(pluginDefinition) => Ok([IncompatiblePluginDetected(pluginDefinition)])
     | Disconnect
     | Activate
-    | Deactivate => Ok([])
+    | Deactivate
+    | Retire => Ok([])
     }
   | Connected(pluginDefinition) =>
     switch command {
@@ -66,6 +68,13 @@ let decide = (state, command) =>
       Ok(
         Array.concat(
           [(Deactivated(pluginDefinition): event)],
+          uiDeregisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
+        ),
+      )
+    | Retire =>
+      Ok(
+        Array.concat(
+          [(Retired(pluginDefinition): event)],
           uiDeregisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
         ),
       )
@@ -85,6 +94,7 @@ let decide = (state, command) =>
         ),
       )
     | Deactivate => Ok([Deactivated(pluginDefinition)]) // already deregistered when disconnected
+    | Retire => Ok([Retired(pluginDefinition)]) // already deregistered when disconnected
     | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)
     | Disconnect
@@ -100,6 +110,7 @@ let decide = (state, command) =>
           uiRegisterEvents(pluginDefinition.id, pluginDefinition.uiFragments),
         ),
       )
+    | Retire => Ok([]) // idempotent — already inactive
     | Heartbeat => Ok([]) // ignore
     | ReportIncompatibility(incompatibleDef) => Ok([IncompatiblePluginDetected(incompatibleDef)])
     | Connect(_)
@@ -122,7 +133,8 @@ let evolve = (state: state, event) =>
     | Reconnected(_)
     | Disconnected(_)
     | Activated(_)
-    | Deactivated(_) =>
+    | Deactivated(_)
+    | Retired(_) =>
       throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Detected =>
@@ -136,13 +148,15 @@ let evolve = (state: state, event) =>
     | Reconnected(_)
     | Disconnected(_)
     | Activated(_)
-    | Deactivated(_) =>
+    | Deactivated(_)
+    | Retired(_) =>
       throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   | Connected(pluginDefinition) =>
     switch event {
     | Disconnected(_) => Disconnected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
+    | Retired(_) => Inactive(pluginDefinition)
     | IncompatiblePluginDetected(_)
     | UIFragmentRegistered(_)
     | UIFragmentUpdated(_)
@@ -157,6 +171,7 @@ let evolve = (state: state, event) =>
     switch event {
     | Reconnected(_) => Connected(pluginDefinition)
     | Deactivated(_) => Inactive(pluginDefinition)
+    | Retired(_) => Inactive(pluginDefinition)
     | IncompatiblePluginDetected(_)
     | UIFragmentRegistered(_)
     | UIFragmentUpdated(_)
@@ -178,7 +193,8 @@ let evolve = (state: state, event) =>
     | Connected(_)
     | Reconnected(_)
     | Disconnected(_)
-    | Deactivated(_) =>
+    | Deactivated(_)
+    | Retired(_) =>
       throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
     }
   }

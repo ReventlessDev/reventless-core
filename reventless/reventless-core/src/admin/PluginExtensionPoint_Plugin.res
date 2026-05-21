@@ -187,6 +187,10 @@ module Make = (Spec: Spec) => {
             Call(callHandler, DoDisconnectPlugin(pluginDefinition)),
           ]
         | Activated(pluginDefinition) => [PublishEvent(id, PluginActivated(pluginDefinition))]
+        | Retired(pluginDefinition) => [
+            PublishEvent(id, PluginRetired(pluginDefinition)),
+            Call(callHandler, DoDisconnectPlugin(pluginDefinition)),
+          ]
         | IncompatiblePluginDetected(pluginDefinition) => [
             PublishEvent(id, IncompatiblePlugin(pluginDefinition)),
           ]

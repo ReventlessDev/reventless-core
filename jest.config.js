@@ -59,7 +59,10 @@ module.exports = {
     {
       displayName: "reventless-in-memory",
       rootDir: "./reventless/reventless-in-memory",
-      testMatch: ["<rootDir>/tests/**/*Test.res.mjs"],
+      testMatch: [
+        "<rootDir>/tests/**/*Test.res.mjs",
+        "<rootDir>/tests/**/*_GWT.res.mjs",
+      ],
       moduleFileExtensions: ["js", "mjs", "cjs"],
       setupFiles: [setupFile, sqliteGlobalSetup],
       moduleNameMapper: {

@@ -17,7 +17,7 @@ module EventGraphMapping = Reventless.Projection.Mapping.Make(
       | Reconnected({name, structure: None})
       | Activated({name, structure: None}) =>
         Set(id, {Platform_EventGraphReadModelSpec.pluginName: name, nodes: [], edges: []})
-      | Disconnected(_) | Deactivated(_) => Delete(id)
+      | Disconnected(_) | Deactivated(_) | Retired(_) => Delete(id)
       | UnknownPluginDetected
       | IncompatiblePluginDetected(_)
       | UIFragmentRegistered(_)

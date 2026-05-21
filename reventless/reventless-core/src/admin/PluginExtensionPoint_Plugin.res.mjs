@@ -275,6 +275,26 @@ function Make(Spec) {
             }
           }
         ];
+      case "Retired" :
+        let pluginDefinition$4 = event._0;
+        return [
+          {
+            TAG: "PublishEvent",
+            _0: id,
+            _1: {
+              TAG: "PluginRetired",
+              _0: pluginDefinition$4
+            }
+          },
+          {
+            TAG: "Call",
+            _0: callHandler,
+            _1: {
+              TAG: "DoDisconnectPlugin",
+              _0: pluginDefinition$4
+            }
+          }
+        ];
       case "IncompatiblePluginDetected" :
         return [{
             TAG: "PublishEvent",

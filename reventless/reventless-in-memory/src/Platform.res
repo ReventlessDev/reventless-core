@@ -1947,8 +1947,8 @@ module MakeWithConfig = (
     Dict.make()
   }
 
-  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~apiTarget=Domain) => {
-    log.info(~comp="Platform", `deployPlugin v${version}`)
+  let deployPlugin = (~plugin: module(PluginMaker), ~apiTarget=Domain) => {
+    log.info(~comp="Platform", `deployPlugin target=${switch apiTarget { | Domain => "Domain" | Platform => "Platform" }}`)
 
     // Set the active deploy target so resolveTargetGraphQL/MCP() and QueryDb serverRef/relayRef
     // route registrations to the correct server. Mirrors AWS resolveTargetApi() pattern.
@@ -1969,8 +1969,10 @@ module MakeWithConfig = (
     hooks.apiRole := Some({val: ()->Obj.magic})
 
     // Admin components are needed in-memory even for single-plugin deploy.
+    // Admin.construct ignores ~version (it's `~version as _` in Platform_Admin)
+    // so the empty placeholder doesn't affect behavior.
     let admin = Admin.construct(
-      ~version,
+      ~version="",
       ~extensionPoints=[],
       ~aggregates=[module(InMemoryPluginAggregate)],
       ~readModels=[],

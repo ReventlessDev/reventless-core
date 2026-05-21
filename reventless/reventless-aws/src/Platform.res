@@ -71,15 +71,6 @@ module MakeWithConfig = (
   // Platform: resolvers/schema go to the admin/Platform_Sync* Core API.
   let currentDeployTarget: ref<apiTarget> = ref(Domain)
 
-  // Version of the plugin currently being built by deployPlugin. Captured
-  // synchronously by preResolversSchemaHook so the deploy can retire older
-  // Connected versions of the same plugin from the Plugin RM. The version
-  // handoff is otherwise heartbeat-timeout based (the old version stops
-  // heartbeating and its disconnect schedule eventually fires); retiring at
-  // deploy time makes a plain `pulumi up` (local or CI) drop the prior version
-  // immediately, so AutoUI menus / manifests don't double on the new version.
-  let currentDeployVersion: ref<string> = ref("")
-
   // Determine API source based on platform:stack config.
   // - Platform/monolithic mode (no config): create a real AppSync API resource.
   // - Plugin mode (config set): reference the platform's shared API via StackReference.
@@ -539,16 +530,21 @@ module MakeWithConfig = (
     let _ = await PutCommand.send(PutCommand.make({PutCommand.tableName, item}))
   }
 
-  // Retire older Connected versions of a plugin from the Plugin RM at deploy
-  // time. Scans for rows with the same plugin `name` whose status still contains
-  // "Connected" and whose `version` differs from the version being deployed, and
-  // marks them `Inactive` (status the manifest scan excludes). Runs with the
-  // broad deploy credentials, so it works on a local `pulumi up` without waiting
-  // for the runtime heartbeat-timeout handoff. Idempotent: the deploying version
-  // skips its own row via the `version` check, so a same-version redeploy is a
-  // no-op. Best-effort — failures are logged and never block the deploy.
-  let retireOlderPluginVersions = async (
+  // Retire older Connected versions of a plugin at deploy time. Scans the
+  // Plugin RM with an EXACT status match on "Connected" (not `contains` — that
+  // would also match "Disconnected" by substring), then publishes a Retire
+  // command to the Plugin aggregate's CommandTopic for each row whose version
+  // differs from the version being deployed. The aggregate evolves to Inactive
+  // and the projection writes status: Inactive through the normal event path.
+  //
+  // Runs with the broad deploy credentials, so it works on a local `pulumi up`
+  // without waiting for the runtime heartbeat-timeout handoff. Idempotent:
+  // - same-version row is filtered out via the `ver != version` check;
+  // - Retire on an Inactive aggregate state is a no-op (returns Ok([])).
+  // Best-effort — failures are logged and never block the deploy.
+  let publishRetireForOlderPluginVersions = async (
     ~rmTableName: string,
+    ~cmdTopicQueueUrl: string,
     ~name: string,
     ~version: string,
   ): unit => {
@@ -557,7 +553,7 @@ module MakeWithConfig = (
       let result = await ScanCommand.send(
         ScanCommand.make({
           ScanCommand.tableName: rmTableName,
-          filterExpression: "#n = :n AND contains(#s, :connected)",
+          filterExpression: "#n = :n AND #s = :connected",
           expressionAttributeNames: Dict.fromArray([("#n", "name"), ("#s", "status")]),
           expressionAttributeValues: Dict.fromArray([
             (":n", name->JSON.Encode.string),
@@ -577,28 +573,45 @@ module MakeWithConfig = (
         | None => None
         }
       )
+      let user = `deploy:${name}@${version}`
       for i in 0 to staleIds->Array.length - 1 {
         let id = staleIds->Array.getUnsafe(i)
         Console.log(
-          `[retireOlderPluginVersions] retiring ${id} (superseded by ${name}@${version})`,
+          `[publishRetireForOlderPluginVersions] retiring ${id} (superseded by ${name}@${version})`,
         )
-        let _ = await UpdateCommand.send(
-          UpdateCommand.make({
-            UpdateCommand.tableName: rmTableName,
-            key: Dict.fromArray([("id", id->JSON.Encode.string)]),
-            updateExpression: "SET #s = :inactive",
-            conditionExpression: "attribute_exists(id)",
-            expressionAttributeNames: Dict.fromArray([("#s", "status")]),
-            expressionAttributeValues: Dict.fromArray([
-              (":inactive", "Inactive"->JSON.Encode.string),
-            ]),
+        let msgId = ReventlessCore.Message.uuid()
+        // Build the {id, meta, command} envelope manually — the deploy-time
+        // hook can't reach Util_SQS_Runtime's Effect pipeline. Retire is a
+        // payload-less variant so command JSON is just the bare string "Retire".
+        let metaDict = Dict.fromArray([
+          ("service", "Platform"->JSON.Encode.string),
+          ("time", ReventlessCore.Message.nowAsISOString()->JSON.Encode.string),
+          ("msgId", msgId->JSON.Encode.string),
+          ("correlationId", msgId->JSON.Encode.string),
+          ("ip", ""->JSON.Encode.string),
+          ("user", user->JSON.Encode.string),
+        ])
+        let envelopeDict = Dict.fromArray([
+          ("id", id->JSON.Encode.string),
+          ("meta", JSON.Encode.object(metaDict)),
+          ("command", "Retire"->JSON.Encode.string),
+        ])
+        let messageBody = envelopeDict->JSON.Encode.object->JSON.stringify
+        let _ = await AwsSdk.SQS.SendMessageCommand.send(
+          AwsSdk.SQS.SendMessageCommand.make({
+            AwsSdk.SQS.SendMessageCommand.queueUrl: cmdTopicQueueUrl,
+            messageBody,
+            messageGroupId: Util_SQS_Runtime.safeGroupId(id),
+            messageDeduplicationId: msgId,
           }),
         )
       }
     } catch {
     | exn =>
       let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Console.log(`[retireOlderPluginVersions] skipped for ${name}@${version} (${msg})`)
+      Console.log(
+        `[publishRetireForOlderPluginVersions] skipped for ${name}@${version} (${msg})`,
+      )
     }
   }
 
@@ -697,15 +710,12 @@ module MakeWithConfig = (
     // at deploy time. The hook then scans for ALL deploy-schema entries and
     // stitches them together — ensuring the schema is cumulative rather than
     // overwritten by each plugin deployment.
-    preResolversSchemaHook: (~name, pluginFragment) => {
-      Console.log(`[preResolversSchemaHook] Pushing schema for plugin ${name} to AppSync`)
+    preResolversSchemaHook: (~name, ~version, pluginFragment) => {
+      Console.log(`[preResolversSchemaHook] Pushing schema for plugin ${name}@${version} to AppSync`)
 
       // Capture deploy target synchronously — deployPlugin resets currentDeployTarget to
       // Domain after P.make() returns, before any Pulumi.Output async callbacks run.
-      // All three values (capturedDeployTarget, schemaPrefix, targetApi) must be captured
-      // here so the async Promise.then callback below uses the correct target.
       let capturedDeployTarget = currentDeployTarget.contents
-      let capturedDeployVersion = currentDeployVersion.contents
 
       // Select DynamoDB key prefix and target AppSync API based on the current deploy target.
       // Domain plugins use "deploy-schema:" and the Domain API (default behaviour).
@@ -766,17 +776,24 @@ module MakeWithConfig = (
       | None => Pulumi.Output.make(None)
       }
 
-      // Plugin RM table (admin read model) — target for retiring older versions.
-      // Read separately from the schema-persistence table above, which prefers
-      // the dedicated PluginSchemaPersistence table on current platform stacks.
+      // Plugin RM table (admin read model) — scanned for older versions of this
+      // plugin so a Retire command can be published per superseded row.
       let rmTableNameOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
       | Some(stackRef) => readStackRefString(stackRef, "pluginRmTableName")
       | None => Pulumi.Output.make(None)
       }
 
-      (schemaPersistenceTableNameOutput, rmTableNameOutput)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.flatMap(((tableNameOpt, rmTableNameOpt)) => {
+      // Plugin aggregate's CommandTopic SQS queue URL — the target the retire
+      // hook publishes Retire commands to. Resolved from the platform stack
+      // export so plugin deploys can reach the admin Plugin aggregate.
+      let pluginAggrCmdTopicUrlOutput: Pulumi.Output.t<option<string>> = switch platformStackRef {
+      | Some(stackRef) => readStackRefString(stackRef, "pluginAggrCmdTopicUrl")
+      | None => Pulumi.Output.make(None)
+      }
+
+      (schemaPersistenceTableNameOutput, rmTableNameOutput, pluginAggrCmdTopicUrlOutput)
+      ->Pulumi.Output.all3
+      ->Pulumi.Output.flatMap(((tableNameOpt, rmTableNameOpt, pluginAggrCmdTopicUrlOpt)) => {
         // Write this plugin's fragment to DynamoDB, then scan all deploy-schema
         // entries to collect every deployed plugin's fragment.
         let writeAndScanFragments = () =>
@@ -965,14 +982,17 @@ module MakeWithConfig = (
               }
 
               // Retire older Connected versions of this plugin so the manifest
-              // (and AutoUI menus) carry only the version just deployed. Runs
-              // unconditionally — independent of the schema-push hash skip above.
-              switch rmTableNameOpt {
-              | Some(rm) if capturedDeployVersion != "" =>
-                await retireOlderPluginVersions(
+              // (and AutoUI menus) carry only the version just deployed. Publishes
+              // a Retire command to the Plugin aggregate's CommandTopic for each
+              // superseded row; the aggregate emits Retired, projection writes
+              // status: Inactive (proper event flow — no direct RM mutation).
+              switch (rmTableNameOpt, pluginAggrCmdTopicUrlOpt) {
+              | (Some(rm), Some(cmdTopicUrl)) if version != "" =>
+                await publishRetireForOlderPluginVersions(
                   ~rmTableName=rm,
+                  ~cmdTopicQueueUrl=cmdTopicUrl,
                   ~name,
-                  ~version=capturedDeployVersion,
+                  ~version,
                 )
               | _ => ()
               }
@@ -1626,6 +1646,22 @@ module MakeWithConfig = (
       pluginSchemaPersistenceTable.name,
     )
 
+    // Export the Plugin aggregate's CommandTopic SQS URL — plugin deploys
+    // publish Retire commands to this queue to retire older versions of
+    // themselves through the proper event flow.
+    switch admin.aggregatesOutputs->Dict.get("Plugin") {
+    | Some(pluginAgg) =>
+      let urlOutput =
+        pluginAgg.commandTopic->Pulumi.Output.flatMap((ct: ReventlessInfra.CommandTopic.outputs) =>
+          switch ct.resources->Array.get(0) {
+          | Some(res) => res.id
+          | None => Pulumi.Output.make("")
+          }
+        )
+      Pulumi.Pulumi.export("pluginAggrCmdTopicUrl", urlOutput)
+    | None => ()
+    }
+
     // Export admin component outputs (same pattern as deployPlugin).
     ReventlessCore.Plugin_Helpers.exportPlatformOutputs(
       ~extensionPointsOutputs=admin.extensionPointsOutputs,
@@ -1799,10 +1835,9 @@ module MakeWithConfig = (
 
   let startServers = () => ()
 
-  let deployPlugin = (~version, ~plugin: module(PluginMaker), ~apiTarget=Domain) => {
-    Console.log(`[Platform:deployPlugin] v${version}`)
+  let deployPlugin = (~plugin: module(PluginMaker), ~apiTarget=Domain) => {
+    Console.log(`[Platform:deployPlugin] target=${switch apiTarget { | Domain => "Domain" | Platform => "Platform" }}`)
     currentDeployTarget := apiTarget
-    currentDeployVersion := version
     // Expose deploy target via hooks so Plugin_Builder can stamp pluginDefinition.apiTarget.
     // This must be set before P.make() and is captured synchronously by Plugin_Builder
     // (same timing requirement as hooks.api/apiRole).

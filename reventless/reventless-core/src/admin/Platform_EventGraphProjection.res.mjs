@@ -59,6 +59,7 @@ function project(param) {
       break;
     case "Disconnected" :
     case "Deactivated" :
+    case "Retired" :
       return {
         TAG: "Delete",
         _0: id

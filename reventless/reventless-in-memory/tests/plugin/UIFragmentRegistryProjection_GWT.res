@@ -1,6 +1,6 @@
 open ReventlessCore
 open PluginSpec
-open PluginFixtures
+open Plugin_Fixtures
 module UIFragmentRegistryProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(
   UIFragmentRegistryProjection.UIFragmentRegistryMapping,
 )

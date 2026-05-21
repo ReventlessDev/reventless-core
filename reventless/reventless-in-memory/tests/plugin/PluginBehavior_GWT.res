@@ -1,6 +1,6 @@
 open ReventlessCore
 open PluginSpec
-open PluginFixtures
+open Plugin_Fixtures
 module PluginTest = ReventlessGwt.Behavior_GWT.MakeFromAggregate(PluginSpec, PluginBehavior)
 open PluginTest
 
@@ -178,5 +178,142 @@ describe("PluginBehavior:", () => {
     ])
     ->whenCmd(Deactivate)
     ->thenEvents([Deactivated(pluginDefinitionWithUI)])
+  )
+
+  // ── Retire — deploy-driven retirement of a superseded plugin version ─────
+  //
+  // Issued by the platform deploy hook (publishRetireForOlderPluginVersions)
+  // instead of the previous direct DynamoDB write. Distinct from Deactivate so
+  // the EventLog records the source of retirement.
+
+  test("Retire (connected)", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    ->whenCmd(Retire)
+    ->thenEvents([Retired(pluginDefinition)])
+  )
+
+  test("Retire (connected, with UI fragments) emits UIFragmentDeregistered", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinitionWithUI)])
+    ->whenCmd(Retire)
+    ->thenEvents([
+      Retired(pluginDefinitionWithUI),
+      UIFragmentDeregistered({pluginId: pluginDefinitionWithUI.id}),
+    ])
+  )
+
+  test("Retire (disconnected) emits Retired without UI fragment events", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinitionWithUI),
+      Disconnected(pluginDefinitionWithUI),
+    ])
+    ->whenCmd(Retire)
+    ->thenEvents([Retired(pluginDefinitionWithUI)])
+  )
+
+  test("Retire (inactive) is idempotent", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Deactivated(pluginDefinition),
+    ])
+    ->whenCmd(Retire)
+    ->thenNoEvent
+  )
+
+  test("Retire (retired) is idempotent", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Retired(pluginDefinition),
+    ])
+    ->whenCmd(Retire)
+    ->thenNoEvent
+  )
+
+  test("Retire (detected) is a no-op (no events to register yet)", () =>
+    givenEvents([UnknownPluginDetected])
+    ->whenCmd(Retire)
+    ->thenNoEvent
+  )
+
+  test("Retire on a never-detected plugin returns NotExisting", () =>
+    givenEvents([])
+    ->whenCmd(Retire)
+    ->thenError(NotExisting)
+  )
+
+  test("Activate (retired) brings the plugin back via Activated", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Retired(pluginDefinition),
+    ])
+    ->whenCmd(Activate)
+    ->thenEvents([Activated(pluginDefinition)])
+  )
+
+  // ── NotConnected / Detected exhaustive negative-case coverage ────────────
+  //
+  // Surfaces the NotExisting error path so accidental relaxations show up
+  // immediately rather than failing at runtime.
+
+  test("Connect on never-detected plugin returns NotExisting", () =>
+    givenEvents([])->whenCmd(Connect(pluginDefinition))->thenError(NotExisting)
+  )
+
+  test("Disconnect on never-detected plugin returns NotExisting", () =>
+    givenEvents([])->whenCmd(Disconnect)->thenError(NotExisting)
+  )
+
+  test("Activate on never-detected plugin returns NotExisting", () =>
+    givenEvents([])->whenCmd(Activate)->thenError(NotExisting)
+  )
+
+  test("Deactivate on never-detected plugin returns NotExisting", () =>
+    givenEvents([])->whenCmd(Deactivate)->thenError(NotExisting)
+  )
+
+  test("ReportIncompatibility on never-detected plugin returns NotExisting", () =>
+    givenEvents([])
+    ->whenCmd(ReportIncompatibility(pluginDefinition))
+    ->thenError(NotExisting)
+  )
+
+  // ── ReportIncompatibility — protocol-version drift observability ─────────
+  //
+  // ReportIncompatibility never changes connection state — it only records an
+  // IncompatiblePluginDetected event for operator visibility.
+
+  test("ReportIncompatibility (detected) records IncompatiblePluginDetected", () =>
+    givenEvents([UnknownPluginDetected])
+    ->whenCmd(ReportIncompatibility(pluginDefinition))
+    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
+  )
+
+  test("ReportIncompatibility (connected) records IncompatiblePluginDetected", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    ->whenCmd(ReportIncompatibility(pluginDefinition))
+    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
+  )
+
+  test("ReportIncompatibility (disconnected) records IncompatiblePluginDetected", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Disconnected(pluginDefinition),
+    ])
+    ->whenCmd(ReportIncompatibility(pluginDefinition))
+    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
+  )
+
+  test("ReportIncompatibility (inactive) records IncompatiblePluginDetected", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Deactivated(pluginDefinition),
+    ])
+    ->whenCmd(ReportIncompatibility(pluginDefinition))
+    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
   )
 })

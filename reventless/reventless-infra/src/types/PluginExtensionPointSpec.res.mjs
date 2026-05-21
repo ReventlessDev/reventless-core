@@ -50,6 +50,10 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "PluginActivated",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
+  })),
+  S.schema(s => ({
+    TAG: "PluginRetired",
+    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   }))
 ]);
 

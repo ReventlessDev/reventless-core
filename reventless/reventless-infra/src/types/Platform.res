@@ -251,7 +251,7 @@ module type T = {
       Pass `~apiTarget=Platform` to route the plugin's resolvers and schema to the Platform API.
       Defaults to `Domain`.
       Returns the Pulumi stack outputs dict for use as the ESM `default` export. */
-  let deployPlugin: (~version: string, ~plugin: module(PluginMaker), ~apiTarget: apiTarget=?) => dict<Pulumi.Output.t<JSON.t>>
+  let deployPlugin: (~plugin: module(PluginMaker), ~apiTarget: apiTarget=?) => dict<Pulumi.Output.t<JSON.t>>
 
   /** Start all servers after all makePlatform/deployPlugin calls are complete.
       In split in-memory mode, servers are deferred until this is called so all
