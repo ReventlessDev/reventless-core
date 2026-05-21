@@ -453,6 +453,54 @@ When the target read model type is ambiguous in the `Update` callback, annotate 
 
 ---
 
+### ReadModelStream
+
+`ReadModelStream` is a variant of `ReadModel` whose query view also pushes
+**live updates** to subscribed browsers (AppSync Events "Source B" — the AutoUI
+list/detail refresh-without-reload behavior). Use it for read models backing a
+UI list or detail that users keep open and expect to stay fresh.
+
+**Spec and projection files are identical to `ReadModel`** — same `@@reventless.spec`
+state, same `@@reventless.mappings` projection, same DSL. The only difference is
+the folder name and the platform factory the generator picks.
+
+**Folder convention:**
+
+| Folder | Generator emits | Builder used (AWS) |
+|--------|------------------|--------------------|
+| `ReadModel/` | `Platform.ReadModel.Make(Spec, Projections)` | `ReadModel_Builder_Single` (plain DynamoDB QueryDb) |
+| `ReadModelStream/` | `Platform.ReadModelStream.Make(Spec, Projections)` | `ReadModel_Builder_Single_Stream` (DynamoDB QueryDb **with stream enabled**) |
+
+**What the stream variant adds (AWS):**
+
+- The QueryDb table is provisioned with a **DynamoDB Stream**.
+- The read model registers itself in `QueryDbStorage_DynamoDbStream.streamRegistry` on `make`.
+- The platform's `subscriptionInfraHook` wires a `StateTopic_AppSync` Lambda per
+  registered read model that forwards stream changes into the AppSync **Events
+  API**, so any browser viewing the list/detail receives change descriptors.
+
+**What it does not change:**
+
+- In the in-memory platform, `ReadModelStream` is an alias for `ReadModel` (no DynamoDB streams to enable).
+- The shape of `Spec` / `Projections` files, the GraphQL query field, resolvers,
+  authorization, or the AutoUI manifest — only the live-update wiring differs.
+
+**Choosing between the two:**
+
+- Plain `ReadModel/` — query-only / on-demand views (reports, admin lookups,
+  detail pages opened fresh). Cheaper: no DynamoDB Stream, no extra Lambda.
+- `ReadModelStream/` — lists/details users watch live, or that change from other
+  actors / automations / background tasks. Costs one DynamoDB Stream + one
+  StateTopic Lambda per read model.
+
+Switching is a folder rename — the spec/projection code stays the same. The same
+choice for DCB read-side views is `StateViewSlice/` vs `StateViewSliceStream/`
+(see [StateViewSliceStream](#stateviewslicestream)). See
+[AppSync Events & Live Updates](./appsync-events-live-updates.md) for the full
+publisher/subscriber contract.
+
+---
+
 ### Extension Points
 
 An extension point maps **internal aggregate events** to the **stable public API** defined in the spec package.

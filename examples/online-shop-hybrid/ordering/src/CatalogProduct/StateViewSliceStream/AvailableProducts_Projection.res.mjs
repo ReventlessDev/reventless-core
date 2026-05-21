@@ -28,7 +28,7 @@ function project(event) {
 
 let Spec;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateViewSlice/AvailableProducts_Projection.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/CatalogProduct/StateViewSliceStream/AvailableProducts_Projection.res.mjs";
 
 export {
   Spec,

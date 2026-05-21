@@ -7,9 +7,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ShipOrderSlice = Platform.StateChangeSlice.Make(ShipOrder, ShipOrder_Behavior)
   module SyncCatalogProductSlice = Platform.StateChangeSlice.Make(SyncCatalogProduct, SyncCatalogProduct_Behavior)
 
-  // StateViewSlices
-  module AvailableProductsSlice = Platform.StateViewSlice.Make(AvailableProducts, AvailableProducts_Projection)
-  module OrdersSlice = Platform.StateViewSlice.Make(Orders, Orders_Projection)
+  // StateViewSliceStreams
+  module AvailableProductsStreamSlice = Platform.StateViewSliceStream.Make(AvailableProducts, AvailableProducts_Projection)
+  module OrdersStreamSlice = Platform.StateViewSliceStream.Make(Orders, Orders_Projection)
 
   // AutomationSlices
   module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
@@ -25,7 +25,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   )
 
   // ReadModels
-  module CustomersReadModel = Platform.ReadModel.Make(Customers, Customers_Projections)
+  module CustomersReadModel = Platform.ReadModelStream.Make(Customers, Customers_Projections)
 
   // ExtensionPoints
   module Orders_ExtensionPoint = Platform.ExtensionPoint.Make(Orders_ExtensionPointMapping)
@@ -37,7 +37,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~name="Ordering",
     ~aggregates=[module(CustomerAggregate)],
     ~readModels=[module(CustomersReadModel)],
-    ~stateViewSlices=[module(AvailableProductsSlice), module(OrdersSlice)],
+    ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
     ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
     ~automationSlices=[module(AutoShipOrderSlice)],
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
@@ -53,7 +53,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~aggregates=[module(CustomerAggregate)],
       ~readModels=[module(CustomersReadModel)],
       ~stateChangeSlices=[module(CancelOrderSlice), module(PlaceOrderSlice), module(RefundOrderSlice), module(ShipOrderSlice), module(SyncCatalogProductSlice)],
-      ~stateViewSlices=[module(AvailableProductsSlice), module(OrdersSlice)],
+      ~stateViewSlices=[module(AvailableProductsStreamSlice), module(OrdersStreamSlice)],
       ~automationSlices=[module(AutoShipOrderSlice)],
       ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
       ~pluginStructure=pluginStructure,

@@ -79,7 +79,7 @@ let mappings = [CustomerMapping];
 
 let Target;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModel/Customers_Projections.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModelStream/Customers_Projections.res.mjs";
 
 export {
   Target,

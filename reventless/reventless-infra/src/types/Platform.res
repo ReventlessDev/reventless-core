@@ -56,6 +56,11 @@ type pluginOutputs = Plugin.outputs
 // without being confused by the `module StateViewSlice` declaration inside T.
 module type StateViewSliceComponentT = StateViewSlice.T
 
+// Same trick for ReadModelStream: the nested `module ReadModel` declaration
+// inside T shadows the package-level ReadModel for later declarations, so
+// reference its component T through this file-scope alias.
+module type ReadModelComponentT = ReadModel.T
+
 module type T = {
   /** Platform-specific API type (e.g. `Types.AppSync.api` for AWS, `unit` for in-memory). */
   type api
@@ -91,6 +96,18 @@ module type T = {
       Spec: Reventless.ReadModel.Spec,
       Mappings: Reventless.Projection.Mappings with module Target := Spec,
     ) => ReadModel.T with module Spec = Spec and type api = api and type role = role
+  }
+
+  /** Factory for stream-enabled read model components — identical to `ReadModel`
+      but the QueryDb table has a DynamoDB Stream so the platform wires a
+      `StateTopic` Lambda that pushes row changes to the AppSync Events API
+      (Source B subscriptions / AutoUI live updates). In-memory: same as
+      `ReadModel` (no streams). */
+  module ReadModelStream: {
+    module Make: (
+      Spec: Reventless.ReadModel.Spec,
+      Mappings: Reventless.Projection.Mappings with module Target := Spec,
+    ) => ReadModelComponentT with module Spec = Spec and type api = api and type role = role
   }
 
   /** Factory for extension point components (single mapping). */

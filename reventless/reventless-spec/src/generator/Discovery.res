@@ -9,6 +9,7 @@ type componentType =
   | OutboundTranslationSlice
   | Aggregate
   | ReadModel
+  | ReadModelStream
   | Task
   | ExtensionPoint
   | Extension
@@ -35,6 +36,7 @@ let folderToComponentType = (folder: string): option<componentType> =>
     Some(OutboundTranslationSlice)
   | "Aggregate" | "Aggregates" => Some(Aggregate)
   | "ReadModel" | "ReadModels" => Some(ReadModel)
+  | "ReadModelStream" | "ReadModelStreams" => Some(ReadModelStream)
   | "Task" | "Tasks" => Some(Task)
   | "ExtensionPoint" | "ExtensionPoints" => Some(ExtensionPoint)
   | "Extension" | "Extensions" => Some(Extension)

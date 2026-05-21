@@ -52,7 +52,8 @@ function renderReadModels(readModels) {
   return readModels.flatMap(param => {
     let readModel = param.readModel;
     let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
-    return ["  module " + wrapperName + " = Platform.ReadModel.Make(" + readModel + ", " + param.projections + ")"];
+    let factory = param.stream ? "Platform.ReadModelStream.Make" : "Platform.ReadModel.Make";
+    return ["  module " + wrapperName + " = " + factory + "(" + readModel + ", " + param.projections + ")"];
   });
 }
 

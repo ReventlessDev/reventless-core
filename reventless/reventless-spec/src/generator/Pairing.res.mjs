@@ -148,6 +148,7 @@ function resolve(discovered, srcDir) {
   let stateChangeSliceRelPaths = {};
   let aggregateBehaviors = [];
   let readModelStems = [];
+  let readModelStreamStems = [];
   let projectionsByRelPath = {};
   let tasks = [];
   let epFiles = [];
@@ -218,6 +219,13 @@ function resolve(discovered, srcDir) {
           readModelStems.push(stem);
         }
         return;
+      case "ReadModelStream" :
+        if (stem.endsWith("Projections")) {
+          projectionsByRelPath[stem] = relPath;
+        } else {
+          readModelStreamStems.push(stem);
+        }
+        return;
       case "Task" :
         tasks.push(stem);
         return;
@@ -252,20 +260,22 @@ function resolve(discovered, srcDir) {
     }
     console.warn("Generator: Aggregate spec `" + spec + "` has no matching `" + underscored + "` or `" + bare + "` — skipping");
   });
-  let readModels = Stdlib_Array.filterMap(sortedStems(readModelStems), rm => {
+  let pairReadModel = (stream, rm) => {
     let baseName = rm.endsWith("ReadModel") ? rm.slice(0, rm.length - 9 | 0) : rm;
     let underscoredProj = baseName + "_Projections";
     let match = projectionsByRelPath[underscoredProj];
     if (match !== undefined) {
       return {
         readModel: rm,
-        projections: underscoredProj
+        projections: underscoredProj,
+        stream: stream
       };
     } else {
       console.warn("Generator: ReadModel `" + rm + "` has no matching `" + underscoredProj + ".res` — skipping");
       return;
     }
-  });
+  };
+  let readModels = Stdlib_Array.filterMap(sortedStems(readModelStems), rm => pairReadModel(false, rm)).concat(Stdlib_Array.filterMap(sortedStems(readModelStreamStems), rm => pairReadModel(true, rm)));
   let epByGroup = {};
   let flatEpMappings = [];
   epFiles.forEach(param => {

@@ -24,7 +24,7 @@ let Id;
 
 let subIdConfig;
 
-let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModel/Customers.res.mjs";
+let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering/src/Customer/ReadModelStream/Customers.res.mjs";
 
 let authorization = "AllowAuthenticated";
 

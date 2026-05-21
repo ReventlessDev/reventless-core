@@ -29,6 +29,9 @@ function folderToComponentType(folder) {
     case "OutboundTranslationSlices" :
     case "OutboundTranslations" :
       return "OutboundTranslationSlice";
+    case "ReadModelStream" :
+    case "ReadModelStreams" :
+      return "ReadModelStream";
     case "ReadModel" :
     case "ReadModels" :
       return "ReadModel";

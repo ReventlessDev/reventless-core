@@ -344,6 +344,21 @@ module MakeWithConfig = (
       ReadModel_Builder_Single.Make(Spec, Mappings)
   }
 
+  /** Stream-enabled read model — DynamoDB Stream + StateTopic Lambda for
+      AppSync Events (Source B) live updates. */
+  module ReadModelStream = {
+    module Make = (
+      Spec: Reventless.ReadModel.Spec,
+      Mappings: Reventless.Projection.Mappings with module Target := Spec,
+    ): (
+      ReventlessInfra.ReadModel.T
+        with module Spec = Spec
+        and type api = Types.AppSync.api
+        and type role = Types.AppSync.role
+    ) =>
+      ReadModel_Builder_Single_Stream.Make(Spec, Mappings)
+  }
+
   module ExtensionPoint = {
     module Make = (
       Mapping: ReventlessInfra.ExtensionPointMapping.Mapping,

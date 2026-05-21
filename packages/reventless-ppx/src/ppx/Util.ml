@@ -198,7 +198,9 @@ let kind_for_base base =
    Plan 02 Phase 3b. *)
 let dsl_kind_of_segment part : string option =
   if part = "Aggregate" || part = "Aggregates" then Some "Behavior"
-  else if part = "ReadModel" || part = "ReadModels" then Some "MultiSourceProjection"
+  else if part = "ReadModel" || part = "ReadModels"
+          || part = "ReadModelStream" || part = "ReadModelStreams"
+  then Some "MultiSourceProjection"
   (* ExtensionPoint mappings and Extension delegates both map to the Delegate
      GWT kind. Handled here (not via [slice_base_to_kind]) so they stay out of
      [known_slice_bases] — adding them there would flip [is_in_slice_folder]
@@ -306,8 +308,19 @@ let is_in_folder fname segment =
   let dir_parts = String.split_on_char '/' (Filename.dirname fname) in
   List.exists (String.equal segment) dir_parts
 
+(* "Is the file inside a folder whose name starts with [prefix]?" Used for
+   read-model folders so a [ReadModelStream/] folder (the live-update variant)
+   counts the same as [ReadModel/] — mirrors the [StateView] prefix approach in
+   [is_stateview_filename] that lets [StateViewSliceStream/] match too. *)
+let is_in_folder_prefix fname prefix =
+  let plen = String.length prefix in
+  let dir_parts = String.split_on_char '/' (Filename.dirname fname) in
+  List.exists
+    (fun part -> String.length part >= plen && String.sub part 0 plen = prefix)
+    dir_parts
+
 let is_in_aggregate_folder fname = is_in_folder fname "Aggregate"
-let is_in_readmodel_folder fname = is_in_folder fname "ReadModel"
+let is_in_readmodel_folder fname = is_in_folder_prefix fname "ReadModel"
 let is_in_extension_folder fname = is_in_folder fname "Extension"
 let is_in_task_folder fname = is_in_folder fname "Task"
 let is_in_automationslice_folder fname =
@@ -369,7 +382,7 @@ let is_readmodel_filename fname =
     else check (i + 1)
   in
   let in_filename = slen >= sublen && check 0 in
-  let in_folder = is_in_folder fname "ReadModel" in
+  let in_folder = is_in_folder_prefix fname "ReadModel" in
   in_filename || in_folder
 
 let is_stateview_filename fname =

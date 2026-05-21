@@ -86,7 +86,7 @@ let renderAggregates = (aggregates: array<Pairing.aggregateDef>): array<string> 
   })
 
 let renderReadModels = (readModels: array<Pairing.readModelDef>): array<string> =>
-  readModels->Array.flatMap(({readModel, projections}) => {
+  readModels->Array.flatMap(({readModel, projections, stream}) => {
     // The projections file declares `let mappings` via `@@reventless.mappings`,
     // so we reference it directly. The wrapping module name appends `ReadModel`
     // so the LHS doesn't shadow the bare-named spec module (e.g., `Categories`).
@@ -95,8 +95,11 @@ let renderReadModels = (readModels: array<Pairing.readModelDef>): array<string> 
     } else {
       readModel ++ "ReadModel"
     }
+    // `ReadModelStream/` read models get a DynamoDB-Stream-backed QueryDb so the
+    // platform wires a StateTopic Lambda for AppSync Events (Source B) live updates.
+    let factory = stream ? "Platform.ReadModelStream.Make" : "Platform.ReadModel.Make"
     [
-      "  module " ++ wrapperName ++ " = Platform.ReadModel.Make(" ++ readModel ++ ", " ++ projections ++ ")",
+      "  module " ++ wrapperName ++ " = " ++ factory ++ "(" ++ readModel ++ ", " ++ projections ++ ")",
     ]
   })
 

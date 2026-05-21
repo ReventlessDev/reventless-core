@@ -301,6 +301,20 @@ disposes after an idle window. It is armed only when `config.json` has
 |---------|-------|-------|
 | Create the Events API + `default` namespace | `AppSync_EventsApi.make` in [`Platform.res`](../../reventless/reventless-aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports. |
 | Per-read-model StateTopic Lambda | `subscriptionInfraHook` in `Platform.res` | Created for each stream-enabled QueryDb (`QueryDbStorage_DynamoDbStream`). Channel root = `listFieldName`. |
+
+> **Which read models get a stream (and therefore live updates)?** Streaming is
+> **opt-in**, because each streamed read model costs one DynamoDB Stream + one
+> StateTopic Lambda. A component opts in via its folder:
+> | Component | Query-only (no live updates) | Live updates |
+> |---|---|---|
+> | Classic aggregate-projection read model | `ReadModel/` | `ReadModelStream/` |
+> | DCB read-side view | `StateViewSlice/` | `StateViewSliceStream/` |
+> | Counter | — | always streamed |
+>
+> A read model in a plain `ReadModel/` / `StateViewSlice/` folder writes its rows
+> to DynamoDB but no StateTopic Lambda exists for it, so the AutoUI list refreshes
+> only on a full page reload. Move it to the `*Stream` folder (a folder rename;
+> the spec/projection files are unchanged) to get live updates.
 | Stack exports for plugin stacks | `Platform.res` | `eventsApiArn`, `eventsApiDns` — plugin stacks' StateTopic Lambdas publish to the shared API. |
 | `config.json` for the browser | `Platform.res` host-UI-bundle block | Emits `domainApiEventsEndpoint` / `platformApiEventsEndpoint` (`https://<eventsApiDns>/event`) and `liveUpdates: true`. **Gated behind `~hostUiBundle`** — a platform that doesn't deploy a host UI bundle never writes config.json. |
 | Bundle cache freshness | `Plugin_Stack.makeUiBundleDistribution` | Sets `Cache-Control` per object (`assets/…` immutable 1y; stable entry files — `index.html`, `mf-entry-bootstrap-*.js` — `no-cache`) **and** fires a CloudFront `/*` invalidation on deploy (best-effort; needs `cloudfront:CreateInvalidation`). Without this the new bundle lands in S3 but CloudFront serves the prior build until its TTL expires. |

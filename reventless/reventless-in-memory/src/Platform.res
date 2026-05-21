@@ -427,6 +427,16 @@ module MakeWithConfig = (
     ) => ReadModelMaker.Make(Spec, Mappings)
   }
 
+  // In-memory has no DynamoDB streams — stream variant is identical to plain ReadModel.
+  module ReadModelStream = {
+    module Make = (
+      Spec: Reventless.ReadModel.Spec,
+      Mappings: Reventless.Projection.Mappings with module Target := Spec,
+    ): (
+      ReventlessInfra.ReadModel.T with module Spec = Spec and type api = unit and type role = unit
+    ) => ReadModelMaker.Make(Spec, Mappings)
+  }
+
   module ExtensionPoint = {
     module Make = (
       Mapping: ReventlessInfra.ExtensionPointMapping.Mapping,

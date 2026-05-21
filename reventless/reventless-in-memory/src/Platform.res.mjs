@@ -428,7 +428,21 @@ function MakeWithConfig(Config) {
   let ReadModel = {
     Make: Make$1
   };
-  let Make$2 = Mapping => {
+  let Make$2 = Spec => (Mappings => {
+    let $$let = ReadModelMaker.Make(Spec)(Mappings);
+    return {
+      Spec: $$let.Spec,
+      sourceNames: $$let.sourceNames,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  });
+  let ReadModelStream = {
+    Make: Make$2
+  };
+  let Make$3 = Mapping => {
     let Spec = Mapping.ExtensionPoint;
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
@@ -473,12 +487,12 @@ function MakeWithConfig(Config) {
   }));
   let MakeMulti = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
   let ExtensionPoint = {
-    Make: Make$2,
+    Make: Make$3,
     Make2: Make2,
     Make3: Make3,
     MakeMulti: MakeMulti
   };
-  let Make$3 = Mapping => {
+  let Make$4 = Mapping => {
     let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
@@ -491,14 +505,14 @@ function MakeWithConfig(Config) {
     };
   };
   let Extension = {
-    Make: Make$3
-  };
-  let Make$4 = Spec => TaskMaker.Make(Spec);
-  let Task = {
     Make: Make$4
   };
+  let Make$5 = Spec => TaskMaker.Make(Spec);
+  let Task = {
+    Make: Make$5
+  };
   let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$5 = Spec => (Behavior => {
+  let Make$6 = Spec => (Behavior => {
     let $$let = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec)(Behavior);
     return {
       Spec: $$let.Spec,
@@ -517,19 +531,8 @@ function MakeWithConfig(Config) {
     };
   });
   let StateChangeSlice = {
-    Make: Make$5,
+    Make: Make$6,
     MakeAsync: MakeAsync$1
-  };
-  let Make$6 = Spec => (Projection => {
-    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
-    return {
-      Spec: $$let.Spec,
-      Projection: $$let.Projection,
-      make: $$let.make
-    };
-  });
-  let StateViewSlice = {
-    Make: Make$6
   };
   let Make$7 = Spec => (Projection => {
     let $$let = StateViewSliceMaker.Make(Spec)(Projection);
@@ -539,14 +542,25 @@ function MakeWithConfig(Config) {
       make: $$let.make
     };
   });
-  let StateViewSliceStream = {
+  let StateViewSlice = {
     Make: Make$7
   };
-  let Make$8 = Spec => (Automation => AutomationSliceMaker.Make(Spec)(Automation));
-  let AutomationSlice = {
+  let Make$8 = Spec => (Projection => {
+    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
+    return {
+      Spec: $$let.Spec,
+      Projection: $$let.Projection,
+      make: $$let.make
+    };
+  });
+  let StateViewSliceStream = {
     Make: Make$8
   };
-  let Make$9 = Spec => (Translation => {
+  let Make$9 = Spec => (Automation => AutomationSliceMaker.Make(Spec)(Automation));
+  let AutomationSlice = {
+    Make: Make$9
+  };
+  let Make$10 = Spec => (Translation => {
     let $$let = OutboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
@@ -556,9 +570,9 @@ function MakeWithConfig(Config) {
     };
   });
   let OutboundTranslationSlice = {
-    Make: Make$9
+    Make: Make$10
   };
-  let Make$10 = Spec => (Translation => {
+  let Make$11 = Spec => (Translation => {
     let $$let = InboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
@@ -568,7 +582,7 @@ function MakeWithConfig(Config) {
     };
   });
   let InboundTranslationSlice = {
-    Make: Make$10
+    Make: Make$11
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -576,7 +590,7 @@ function MakeWithConfig(Config) {
     queries: [],
     subscriptions: []
   });
-  let Make$11 = FragmentConfig => {
+  let Make$12 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let effectiveBaseFragment = Config.splitApi ? emptyBaseFragment : FragmentConfig.baseFragment;
     let make = (name, opts) => Builder.make(name, effectiveBaseFragment, opts);
@@ -585,7 +599,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$11
+    Make: Make$12
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
@@ -1907,6 +1921,7 @@ function MakeWithConfig(Config) {
     apiRole: undefined,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
+    ReadModelStream: ReadModelStream,
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,
@@ -2263,7 +2278,21 @@ function Make($star) {
   let ReadModel = {
     Make: Make$2
   };
-  let Make$3 = Mapping => {
+  let Make$3 = Spec => (Mappings => {
+    let $$let = ReadModelMaker.Make(Spec)(Mappings);
+    return {
+      Spec: $$let.Spec,
+      sourceNames: $$let.sourceNames,
+      make: $$let.make,
+      outputs: $$let.outputs,
+      operations: $$let.operations,
+      finish: $$let.finish
+    };
+  });
+  let ReadModelStream = {
+    Make: Make$3
+  };
+  let Make$4 = Mapping => {
     let Spec = Mapping.ExtensionPoint;
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
@@ -2308,12 +2337,12 @@ function Make($star) {
   }));
   let MakeMulti = Spec => (Mappings => ExtensionPointMaker.Make(Spec)(Mappings));
   let ExtensionPoint = {
-    Make: Make$3,
+    Make: Make$4,
     Make2: Make2,
     Make3: Make3,
     MakeMulti: MakeMulti
   };
-  let Make$4 = Mapping => {
+  let Make$5 = Mapping => {
     let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
@@ -2326,14 +2355,14 @@ function Make($star) {
     };
   };
   let Extension = {
-    Make: Make$4
-  };
-  let Make$5 = Spec => TaskMaker.Make(Spec);
-  let Task = {
     Make: Make$5
   };
+  let Make$6 = Spec => TaskMaker.Make(Spec);
+  let Task = {
+    Make: Make$6
+  };
   let Counter = Counter_Builder$ReventlessInMemory.Make(Bus);
-  let Make$6 = Spec => (Behavior => {
+  let Make$7 = Spec => (Behavior => {
     let $$let = StateChangeSlice_Builder$ReventlessInMemory.Make(Spec)(Behavior);
     return {
       Spec: $$let.Spec,
@@ -2352,19 +2381,8 @@ function Make($star) {
     };
   });
   let StateChangeSlice = {
-    Make: Make$6,
+    Make: Make$7,
     MakeAsync: MakeAsync$1
-  };
-  let Make$7 = Spec => (Projection => {
-    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
-    return {
-      Spec: $$let.Spec,
-      Projection: $$let.Projection,
-      make: $$let.make
-    };
-  });
-  let StateViewSlice = {
-    Make: Make$7
   };
   let Make$8 = Spec => (Projection => {
     let $$let = StateViewSliceMaker.Make(Spec)(Projection);
@@ -2374,14 +2392,25 @@ function Make($star) {
       make: $$let.make
     };
   });
-  let StateViewSliceStream = {
+  let StateViewSlice = {
     Make: Make$8
   };
-  let Make$9 = Spec => (Automation => AutomationSliceMaker.Make(Spec)(Automation));
-  let AutomationSlice = {
+  let Make$9 = Spec => (Projection => {
+    let $$let = StateViewSliceMaker.Make(Spec)(Projection);
+    return {
+      Spec: $$let.Spec,
+      Projection: $$let.Projection,
+      make: $$let.make
+    };
+  });
+  let StateViewSliceStream = {
     Make: Make$9
   };
-  let Make$10 = Spec => (Translation => {
+  let Make$10 = Spec => (Automation => AutomationSliceMaker.Make(Spec)(Automation));
+  let AutomationSlice = {
+    Make: Make$10
+  };
+  let Make$11 = Spec => (Translation => {
     let $$let = OutboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
@@ -2391,9 +2420,9 @@ function Make($star) {
     };
   });
   let OutboundTranslationSlice = {
-    Make: Make$10
+    Make: Make$11
   };
-  let Make$11 = Spec => (Translation => {
+  let Make$12 = Spec => (Translation => {
     let $$let = InboundTranslationSliceMaker.Make(Spec)(Translation);
     return {
       Spec: $$let.Spec,
@@ -2403,7 +2432,7 @@ function Make($star) {
     };
   });
   let InboundTranslationSlice = {
-    Make: Make$11
+    Make: Make$12
   };
   let emptyBaseFragment = GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
@@ -2411,7 +2440,7 @@ function Make($star) {
     queries: [],
     subscriptions: []
   });
-  let Make$12 = FragmentConfig => {
+  let Make$13 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make(GraphQL_InMemory_Adapter$ReventlessInMemory);
     let make = (name, opts) => Builder.make(name, emptyBaseFragment, opts);
     return {
@@ -2419,7 +2448,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$12
+    Make: Make$13
   };
   let PluginMaker = Plugin_Builder$ReventlessInMemory.Make(Bus)({
     hooks: hooks
@@ -3726,6 +3755,7 @@ function Make($star) {
     apiRole: undefined,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
+    ReadModelStream: ReadModelStream,
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,

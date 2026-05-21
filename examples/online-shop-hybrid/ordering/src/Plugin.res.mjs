@@ -2,18 +2,18 @@
 
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Orders$OrderingPlugin from "./Order/StateViewSlice/Orders.res.mjs";
+import * as Orders$OrderingPlugin from "./Order/StateViewSliceStream/Orders.res.mjs";
 import * as Customer$OrderingPlugin from "./Customer/Aggregate/Customer.res.mjs";
-import * as Customers$OrderingPlugin from "./Customer/ReadModel/Customers.res.mjs";
+import * as Customers$OrderingPlugin from "./Customer/ReadModelStream/Customers.res.mjs";
 import * as ShipOrder$OrderingPlugin from "./Order/StateChangeSlice/ShipOrder.res.mjs";
 import * as PlaceOrder$OrderingPlugin from "./Order/StateChangeSlice/PlaceOrder.res.mjs";
 import * as CancelOrder$OrderingPlugin from "./Order/StateChangeSlice/CancelOrder.res.mjs";
 import * as RefundOrder$OrderingPlugin from "./Order/StateChangeSlice/RefundOrder.res.mjs";
 import * as AutoShipOrder$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
-import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateViewSlice/AvailableProducts.res.mjs";
+import * as AvailableProducts$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts.res.mjs";
 import * as Customer_Behavior$OrderingPlugin from "./Customer/Aggregate/Customer_Behavior.res.mjs";
-import * as Orders_Projection$OrderingPlugin from "./Order/StateViewSlice/Orders_Projection.res.mjs";
+import * as Orders_Projection$OrderingPlugin from "./Order/StateViewSliceStream/Orders_Projection.res.mjs";
 import * as Products_Extension$OrderingPlugin from "./Extension/Products_Extension.res.mjs";
 import * as ShipOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/ShipOrder_Behavior.res.mjs";
 import * as SyncCatalogProduct$OrderingPlugin from "./CatalogProduct/StateChangeSlice/SyncCatalogProduct.res.mjs";
@@ -22,11 +22,11 @@ import * as PlaceOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/Pl
 import * as CancelOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/CancelOrder_Behavior.res.mjs";
 import * as Products_ExtensionPoint$CatalogSpec from "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 import * as RefundOrder_Behavior$OrderingPlugin from "./Order/StateChangeSlice/RefundOrder_Behavior.res.mjs";
-import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModel/Customers_Projections.res.mjs";
+import * as Customers_Projections$OrderingPlugin from "./Customer/ReadModelStream/Customers_Projections.res.mjs";
 import * as SendOrderConfirmation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation.res.mjs";
 import * as AutoShipOrder_Automation$OrderingPlugin from "./Order/AutomationSlice/AutoShipOrder_Automation.res.mjs";
 import * as SyncCatalogProduct_Behavior$OrderingPlugin from "./CatalogProduct/StateChangeSlice/SyncCatalogProduct_Behavior.res.mjs";
-import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateViewSlice/AvailableProducts_Projection.res.mjs";
+import * as AvailableProducts_Projection$OrderingPlugin from "./CatalogProduct/StateViewSliceStream/AvailableProducts_Projection.res.mjs";
 import * as Orders_ExtensionPointMapping$OrderingPlugin from "./ExtensionPoint/Orders_ExtensionPointMapping.res.mjs";
 import * as SendOrderConfirmation_Translation$OrderingPlugin from "./Order/OutboundTranslationSlice/SendOrderConfirmation_Translation.res.mjs";
 
@@ -106,7 +106,7 @@ function Make(Platform) {
     decide: SyncCatalogProduct_Behavior$OrderingPlugin.decide,
     moduleUrl: SyncCatalogProduct_Behavior$OrderingPlugin.moduleUrl
   });
-  let AvailableProductsSlice = Platform.StateViewSlice.Make({
+  let AvailableProductsStreamSlice = Platform.StateViewSliceStream.Make({
     name: AvailableProducts$OrderingPlugin.name,
     moduleUrl: AvailableProducts$OrderingPlugin.moduleUrl,
     stateSchema: AvailableProducts$OrderingPlugin.stateSchema,
@@ -119,7 +119,7 @@ function Make(Platform) {
     project: AvailableProducts_Projection$OrderingPlugin.project,
     moduleUrl: AvailableProducts_Projection$OrderingPlugin.moduleUrl
   });
-  let OrdersSlice = Platform.StateViewSlice.Make({
+  let OrdersStreamSlice = Platform.StateViewSliceStream.Make({
     name: Orders$OrderingPlugin.name,
     moduleUrl: Orders$OrderingPlugin.moduleUrl,
     stateSchema: Orders$OrderingPlugin.stateSchema,
@@ -177,7 +177,7 @@ function Make(Platform) {
     Id: Id$Reventless.$$String,
     commandSchema: Customer$OrderingPlugin.commandSchema
   }));
-  let CustomersReadModel = Platform.ReadModel.Make({
+  let CustomersReadModel = Platform.ReadModelStream.Make({
     Id: Id$Reventless.$$String,
     name: Customers$OrderingPlugin.name,
     moduleUrl: Customers$OrderingPlugin.moduleUrl,
@@ -233,8 +233,8 @@ function Make(Platform) {
     mapOutgoingEvent: Products_Extension$OrderingPlugin.Mapping.mapOutgoingEvent
   });
   let pluginStructure = Platform.Plugin.makePluginDefinition("Ordering", [CustomerAggregate], [CustomersReadModel], [
-    AvailableProductsSlice,
-    OrdersSlice
+    AvailableProductsStreamSlice,
+    OrdersStreamSlice
   ], [
     CancelOrderSlice,
     PlaceOrderSlice,
@@ -249,8 +249,8 @@ function Make(Platform) {
     ShipOrderSlice,
     SyncCatalogProductSlice
   ], [
-    AvailableProductsSlice,
-    OrdersSlice
+    AvailableProductsStreamSlice,
+    OrdersStreamSlice
   ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", [CustomerAggregate], [CustomersReadModel], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
@@ -258,8 +258,8 @@ function Make(Platform) {
     RefundOrderSlice: RefundOrderSlice,
     ShipOrderSlice: ShipOrderSlice,
     SyncCatalogProductSlice: SyncCatalogProductSlice,
-    AvailableProductsSlice: AvailableProductsSlice,
-    OrdersSlice: OrdersSlice,
+    AvailableProductsStreamSlice: AvailableProductsStreamSlice,
+    OrdersStreamSlice: OrdersStreamSlice,
     AutoShipOrderSlice: AutoShipOrderSlice,
     SendOrderConfirmationSlice: SendOrderConfirmationSlice,
     CustomerAggregate: CustomerAggregate,

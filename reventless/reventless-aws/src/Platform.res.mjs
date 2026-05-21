@@ -76,6 +76,7 @@ import * as Aggregate_Builder_Single_Async$ReventlessAws from "./components/Aggr
 import * as Platform_EventGraphProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_EventGraphProjection.res.mjs";
 import * as AggregateRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/AggregateRuntime_Builder_Single.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessAws from "./components/InboundTranslationSlice_Builder.res.mjs";
+import * as ReadModel_Builder_Single_Stream$ReventlessAws from "./components/ReadModel_Builder_Single_Stream.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessAws from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryReadModelSpec.res.mjs";
 import * as CommandGeneratorResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.mjs";
@@ -277,7 +278,11 @@ function MakeWithConfig(Config) {
   let ReadModel = {
     Make: Make$1
   };
-  let Make$2 = Mapping => {
+  let Make$2 = Spec => (Mappings => ReadModel_Builder_Single_Stream$ReventlessAws.Make(Spec)(Mappings));
+  let ReadModelStream = {
+    Make: Make$2
+  };
+  let Make$3 = Mapping => {
     let Spec = Mapping.ExtensionPoint;
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
@@ -322,12 +327,12 @@ function MakeWithConfig(Config) {
   }));
   let MakeMulti = Spec => (Mappings => ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings));
   let ExtensionPoint = {
-    Make: Make$2,
+    Make: Make$3,
     Make2: Make2,
     Make3: Make3,
     MakeMulti: MakeMulti
   };
-  let Make$3 = Mapping => {
+  let Make$4 = Mapping => {
     let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
@@ -340,14 +345,14 @@ function MakeWithConfig(Config) {
     };
   };
   let Extension = {
-    Make: Make$3
-  };
-  let Make$4 = Task_Builder_PerBucket$ReventlessAws.Make;
-  let Task = {
     Make: Make$4
   };
+  let Make$5 = Task_Builder_PerBucket$ReventlessAws.Make;
+  let Task = {
+    Make: Make$5
+  };
   let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$5 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
+  let Make$6 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
   let MakeAsync$1 = Spec => (Behavior => {
     let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
     return {
@@ -358,7 +363,7 @@ function MakeWithConfig(Config) {
     };
   });
   let StateChangeSlice = {
-    Make: Make$5,
+    Make: Make$6,
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
@@ -372,7 +377,7 @@ function MakeWithConfig(Config) {
     queries: [],
     subscriptions: []
   });
-  let Make$6 = FragmentConfig => {
+  let Make$7 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -385,7 +390,7 @@ function MakeWithConfig(Config) {
     };
   };
   let Api = {
-    Make: Make$6
+    Make: Make$7
   };
   let deploySchemaHashPrefix = "deploy-schema-hash:";
   let readSchemaHash = async (tableName, apiId) => {
@@ -1234,6 +1239,7 @@ function MakeWithConfig(Config) {
     apiRole: domainApiRole,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
+    ReadModelStream: ReadModelStream,
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,
@@ -1439,7 +1445,11 @@ function Make($star) {
   let ReadModel = {
     Make: Make$2
   };
-  let Make$3 = Mapping => {
+  let Make$3 = Spec => (Mappings => ReadModel_Builder_Single_Stream$ReventlessAws.Make(Spec)(Mappings));
+  let ReadModelStream = {
+    Make: Make$3
+  };
+  let Make$4 = Mapping => {
     let Spec = Mapping.ExtensionPoint;
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
@@ -1484,12 +1494,12 @@ function Make($star) {
   }));
   let MakeMulti = Spec => (Mappings => ExtensionPoint_Builder$ReventlessAws.Make(Spec)(Mappings));
   let ExtensionPoint = {
-    Make: Make$3,
+    Make: Make$4,
     Make2: Make2,
     Make3: Make3,
     MakeMulti: MakeMulti
   };
-  let Make$4 = Mapping => {
+  let Make$5 = Mapping => {
     let CompiledMapping = ExtensionMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
@@ -1502,14 +1512,14 @@ function Make($star) {
     };
   };
   let Extension = {
-    Make: Make$4
-  };
-  let Make$5 = Task_Builder_PerBucket$ReventlessAws.Make;
-  let Task = {
     Make: Make$5
   };
+  let Make$6 = Task_Builder_PerBucket$ReventlessAws.Make;
+  let Task = {
+    Make: Make$6
+  };
   let Counter = Counter_Builder$ReventlessAws.Make(ApiConfig);
-  let Make$6 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
+  let Make$7 = Spec => (Behavior => StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior));
   let MakeAsync$1 = Spec => (Behavior => {
     let include = StateChangeSlice_Builder$ReventlessAws.Make(Spec)(Behavior);
     return {
@@ -1520,7 +1530,7 @@ function Make($star) {
     };
   });
   let StateChangeSlice = {
-    Make: Make$6,
+    Make: Make$7,
     MakeAsync: MakeAsync$1
   };
   let include = StateViewSlice_Builder$ReventlessAws.Make(ApiConfig);
@@ -1534,7 +1544,7 @@ function Make($star) {
     queries: [],
     subscriptions: []
   });
-  let Make$7 = FragmentConfig => {
+  let Make$8 = FragmentConfig => {
     let Builder = Api_Builder$ReventlessCore.Make({
       makeApiResource: AppSync_Adapter$ReventlessAws.makeApiResource,
       generateFragment: AppSync_Adapter$ReventlessAws.generateFragment,
@@ -1546,7 +1556,7 @@ function Make($star) {
     };
   };
   let Api = {
-    Make: Make$7
+    Make: Make$8
   };
   let deploySchemaHashPrefix = "deploy-schema-hash:";
   let readSchemaHash = async (tableName, apiId) => {
@@ -2387,6 +2397,7 @@ function Make($star) {
     apiRole: domainApiRole,
     Aggregate: Aggregate,
     ReadModel: ReadModel,
+    ReadModelStream: ReadModelStream,
     ExtensionPoint: ExtensionPoint,
     Extension: Extension,
     Task: Task,

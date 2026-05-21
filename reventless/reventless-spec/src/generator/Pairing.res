@@ -31,10 +31,15 @@ type aggregateDef = {spec: string, behavior: string, eventMappings: option<strin
 // readModelDef pairs a ReadModel spec with its sibling `_Projections.res`
 // file. Codegen emits `Platform.ReadModel.Make(<spec>, <projections>)` and
 // expects the projections file to declare `let mappings` via
-// `@@reventless.mappings`.
+// `@@reventless.mappings`. `stream: true` (the `ReadModelStream/` folder) flips
+// the emitted factory to `Platform.ReadModelStream.Make` — a DynamoDB-Stream-
+// backed QueryDb that drives AppSync Events (Source B) live updates. Stream and
+// non-stream read models are otherwise identical downstream (resolvers, AutoUI
+// manifest, pluginStructure, query field).
 type readModelDef = {
   readModel: string,
   projections: string,
+  stream: bool,
 }
 type extensionPointDef = {group: option<string>, mappings: array<string>}
 
@@ -178,7 +183,10 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   let stateChangeSliceRelPaths: Dict.t<string> = Dict.make()
   let aggregateBehaviors: array<string> = []
   let readModelStems: array<string> = []
-  // projectionsByRelPath: stem → relPath mapping for projections files
+  // Stream-enabled read model spec stems (the `ReadModelStream/` folder).
+  let readModelStreamStems: array<string> = []
+  // projectionsByRelPath: stem → relPath mapping for projections files (shared
+  // by ReadModel and ReadModelStream — the projection file shape is identical).
   let projectionsByRelPath: Dict.t<string> = Dict.make()
   let tasks = []
   let epFiles: array<Discovery.discoveredFile> = []
@@ -227,6 +235,12 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
       } else {
         readModelStems->Array.push(stem)
       }
+    | ReadModelStream =>
+      if stem->String.endsWith("Projections") {
+        Dict.set(projectionsByRelPath, stem, relPath)
+      } else {
+        readModelStreamStems->Array.push(stem)
+      }
     | Task => tasks->Array.push(stem)
     | ExtensionPoint => epFiles->Array.push({stem, componentType, epGroup, relPath})
     | Extension => extensions->Array.push(stem)
@@ -273,25 +287,26 @@ let resolve = (discovered: array<Discovery.discoveredFile>, ~srcDir: string): re
   // no longer recognised — see PR3-5 of the close-ppx-gaps-and-unify-naming
   // plan for the migration; downstream codebases should rename to the
   // underscored form.
-  let readModels =
-    readModelStems
-    ->sortedStems
-    ->Array.filterMap(rm => {
-      // Strip optional ReadModel suffix to get the base plural name.
-      let baseName = if rm->String.endsWith("ReadModel") {
-        rm->String.slice(~start=0, ~end=rm->String.length - 9)
-      } else {
-        rm
-      }
-      let underscoredProj = baseName ++ "_Projections"
-      switch Dict.get(projectionsByRelPath, underscoredProj) {
-      | None =>
-        Console.warn("Generator: ReadModel `" ++ rm ++ "` has no matching `" ++ underscoredProj ++ ".res` — skipping")
-        None
-      | Some(_) =>
-        Some({readModel: rm, projections: underscoredProj})
-      }
-    })
+  let pairReadModel = (~stream: bool, rm: string): option<readModelDef> => {
+    // Strip optional ReadModel suffix to get the base plural name.
+    let baseName = if rm->String.endsWith("ReadModel") {
+      rm->String.slice(~start=0, ~end=rm->String.length - 9)
+    } else {
+      rm
+    }
+    let underscoredProj = baseName ++ "_Projections"
+    switch Dict.get(projectionsByRelPath, underscoredProj) {
+    | None =>
+      Console.warn("Generator: ReadModel `" ++ rm ++ "` has no matching `" ++ underscoredProj ++ ".res` — skipping")
+      None
+    | Some(_) =>
+      Some({readModel: rm, projections: underscoredProj, stream})
+    }
+  }
+  let readModels = Array.concat(
+    readModelStems->sortedStems->Array.filterMap(rm => pairReadModel(~stream=false, rm)),
+    readModelStreamStems->sortedStems->Array.filterMap(rm => pairReadModel(~stream=true, rm)),
+  )
 
   // ── ExtensionPoint grouping ────────────────────────────────────────────────
   let epByGroup: Dict.t<array<string>> = Dict.make()
