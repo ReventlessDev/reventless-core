@@ -61,6 +61,12 @@ function forMismatch(sliceOpt, m) {
         branch: undefined,
         message: "The read-model query returned wrong rows — likely a missing index, sub-id, or resolver."
       };
+    case "PublishedActionsMismatch" :
+      return {
+        locus: slice + `.mapOutgoingEvent / ` + slice + `.mapIncomingEvent`,
+        branch: undefined,
+        message: "The ExtensionPoint mapping / Extension delegate published a different set of events or commands than expected. Check the variant match arms and the one-to-many fan-out."
+      };
     case "Throw" :
       return {
         locus: slice,

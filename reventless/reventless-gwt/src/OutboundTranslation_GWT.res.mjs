@@ -38,7 +38,30 @@ function Make(Spec) {
     return {
       id: id,
       item: item,
-      result: result
+      result: result,
+      retries: 0
+    };
+  };
+  let whenTranslateRetrying = async (param, maxRetries, mock) => {
+    let item = param[1];
+    let id = param[0];
+    let result = {
+      contents: await mock(id, item)
+    };
+    let retries = 0;
+    let failed = () => {
+      let match = result.contents;
+      return match.TAG !== "Ok";
+    };
+    while (failed() && retries < maxRetries) {
+      retries = retries + 1 | 0;
+      result.contents = await mock(id, item);
+    };
+    return {
+      id: id,
+      item: item,
+      result: result.contents,
+      retries: retries
     };
   };
   let commandPairJson = (id, cmd) => {
@@ -97,16 +120,18 @@ function Make(Spec) {
       return Outcome$ReventlessGwt.pass;
     }
   };
-  let thenRetryRecorded = async (pending, _expectedRetries) => {
+  let thenRetryRecorded = async (pending, expectedRetries) => {
     let match = await pending;
-    if (match.result.TAG === "Ok") {
-      return Outcome$ReventlessGwt.fail({
-        TAG: "TranslateError",
-        expected: "(error — retry recorded)",
-        actual: undefined
-      });
-    } else {
+    let retries = match.retries;
+    if (retries === expectedRetries) {
       return Outcome$ReventlessGwt.pass;
+    } else {
+      return Outcome$ReventlessGwt.fail({
+        TAG: "StateMismatch",
+        key: "retries",
+        expected: expectedRetries,
+        actual: retries
+      });
     }
   };
   let statusToString = s => {
@@ -147,6 +172,7 @@ function Make(Spec) {
     thenTodos: thenTodos,
     givenTodo: givenTodo,
     whenTranslateMocked: whenTranslateMocked,
+    whenTranslateRetrying: whenTranslateRetrying,
     thenCommand: thenCommand,
     thenNoCommand: thenNoCommand,
     thenRetryRecorded: thenRetryRecorded,

@@ -7,7 +7,7 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
 import * as RenderRescript$ReventlessGwt from "./RenderRescript.res.mjs";
 
-let schemaVersion = "1.0.0";
+let schemaVersion = "1.1.0";
 
 function write(s) {
   process.stdout.write(s);
@@ -149,6 +149,13 @@ function mismatchJson(m, slice) {
       obj["expected"] = expected$2.map(renderValue);
       obj["actual"] = actual$2.map(renderValue);
       obj["fieldDiff"] = Diff$ReventlessGwt.toJsonArray(Diff$ReventlessGwt.diffArrays(expected$2, actual$2));
+      break;
+    case "PublishedActionsMismatch" :
+      let actual$3 = m.actual;
+      let expected$3 = m.expected;
+      obj["expected"] = expected$3.map(renderValue);
+      obj["actual"] = actual$3.map(renderValue);
+      obj["fieldDiff"] = Diff$ReventlessGwt.toJsonArray(Diff$ReventlessGwt.diffArrays(expected$3, actual$3));
       break;
     case "Throw" :
       obj["error"] = m.error;

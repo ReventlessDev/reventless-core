@@ -199,6 +199,18 @@ let kind_for_base base =
 let dsl_kind_of_segment part : string option =
   if part = "Aggregate" || part = "Aggregates" then Some "Behavior"
   else if part = "ReadModel" || part = "ReadModels" then Some "MultiSourceProjection"
+  (* ExtensionPoint mappings and Extension delegates both map to the Delegate
+     GWT kind. Handled here (not via [slice_base_to_kind]) so they stay out of
+     [known_slice_bases] — adding them there would flip [is_in_slice_folder]
+     for [Extension/] / [ExtensionPoint/] folders and break the suffix-stripping
+     in [filename_to_name]. ExtensionPoint is checked before Extension because
+     the latter is a substring of the former. *)
+  else if part = "ExtensionPoint" || part = "ExtensionPoints" then Some "Delegate"
+  else if part = "Extension" || part = "Extensions" then Some "Delegate"
+  else if part = "Delegate" || part = "Delegates" then Some "Delegate"
+  (* Cross-slice / cross-plugin flow tests. The Flow kind is functor-less —
+     GwtInference injects only `open Flow_GWT`. *)
+  else if part = "Flow" || part = "Flows" then Some "Flow"
   else
   let try_base base =
     if part = base
@@ -228,6 +240,11 @@ let dsl_kind_of_segment part : string option =
     else if contains_substring part "StateViewSlice" then Some "Projection"
     else if contains_substring part "Projection" then Some "Projection"
     else if contains_substring part "Behavior" then Some "Behavior"
+    (* ExtensionPoint before Extension — the former contains the latter. Catches
+       filename stems like "Products_ExtensionPointMapping" / "Orders_Extension". *)
+    else if contains_substring part "ExtensionPoint" then Some "Delegate"
+    else if contains_substring part "Extension" then Some "Delegate"
+    else if contains_substring part "Flow" then Some "Flow"
     else None
 
 (* Derive the DSL Kind for a @@reventless.gwt file from its path.

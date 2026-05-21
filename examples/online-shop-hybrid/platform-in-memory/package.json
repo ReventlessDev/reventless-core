@@ -7,10 +7,27 @@
     "start": "rescript build -w",
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
     "serve": "npx tsx src/Main.res.mjs",
     "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
     "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
     "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run serve' 'npx wait-on tcp:4001 && pnpm run dev:ui'"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/**/*Test.res.mjs",
+      "<rootDir>/tests/**/*_GWT.res.mjs"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "mjs"
+    ],
+    "moduleNameMapper": {
+      "^@npmcli/arborist$": "<rootDir>/__mocks__/emptyModule.js",
+      "^spdx-license-ids$": "<rootDir>/../../../node_modules/spdx-license-ids/index.json",
+      "^spdx-license-ids/deprecated$": "<rootDir>/../../../node_modules/spdx-license-ids/deprecated.json",
+      "^spdx-exceptions$": "<rootDir>/../../../node_modules/spdx-exceptions/index.json"
+    }
   },
   "optionalDependencies": {
     "@reventlessdev/reventless-host-shell": "3.0.0-alpha.18"
@@ -30,6 +47,8 @@
     "registry": "https://npm.pkg.github.com"
   },
   "devDependencies": {
+    "@glennsl/rescript-jest": "^0.13.1",
+    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "sury-ppx": "11.0.0-alpha.2"
   }

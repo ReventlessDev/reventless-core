@@ -37,7 +37,20 @@ open Ppxlib
                                        [@@reventless.gwt(Foo_Projections.BarMapping)]
                                        — because the bare filename stem
                                        resolves to the ReadModel spec, not
-                                       the mapping module the DSL needs.)}}
+                                       the mapping module the DSL needs.)}
+      {- [Flow]                       (cross-slice / cross-plugin flow. The
+                                       [Flow/] folder or a [*Flow] stem injects
+                                       only [open ReventlessGwt.Flow_GWT] — no
+                                       [include], no Spec: the author builds the
+                                       chain from the per-step functors.)}
+      {- [Delegate]                   (ExtensionPoint / Extension boundary.
+                                       [ExtensionPoint/] folder or a
+                                       [*ExtensionPointMapping] stem →
+                                       [Delegate_GWT.FromExtensionPoint(<Stem>)];
+                                       [Extension/] folder or a [*_Extension]
+                                       stem → [Delegate_GWT.FromExtension(
+                                       <Stem>.Mapping)], applied to the
+                                       extension file's inner [Mapping].)}}
 
     Folder segments match on the short base form ("StateChange"), the long
     form ("StateChangeSlice"), or the plural form ("StateChangeSlices"), as
@@ -248,14 +261,23 @@ let is_two_arg_kind = function
   | "Behavior" | "Projection" -> true
   | _ -> false
 
+(** Is this GWT file testing an ExtensionPoint mapping (rather than an
+    Extension delegate)? True for files inside an [ExtensionPoint/] folder or
+    whose stem contains [ExtensionPointMapping]. *)
+let is_extensionpoint_file fname =
+  Util.is_in_folder fname "ExtensionPoint" || Util.is_extensionpointmapping_filename fname
+
 (** Pick the GWT functor entry-point name for a given (kind, file-context).
-    Default is [Make]. The Aggregate folder is the only place we need to
-    swap to a different functor today: it carries [Aggregate.Spec] /
-    [Behavior.T] modules whose surface differs from the slice form, and so
-    needs [Behavior_GWT.MakeFromAggregate]. *)
+    Default is [Make]. Two kinds need a context-dependent functor:
+    - [Behavior] in an Aggregate folder → [Behavior_GWT.MakeFromAggregate]
+      (the Aggregate.Spec / Behavior.T surface differs from the slice form).
+    - [Delegate] → [Delegate_GWT.FromExtensionPoint] for an ExtensionPoint
+      mapping, else [Delegate_GWT.FromExtension] for an Extension delegate. *)
 let functor_name_for ~kind ~fname =
   if kind = "Behavior" && Util.is_in_aggregate_folder fname then
     "MakeFromAggregate"
+  else if kind = "Delegate" then
+    (if is_extensionpoint_file fname then "FromExtensionPoint" else "FromExtension")
   else
     "Make"
 
@@ -285,8 +307,10 @@ let kinds_list_for_error () =
    InboundTranslation / OutboundTranslation (short, plural, or with \
    `Slice` / `Slices` suffix — e.g. Automation, Automations, \
    AutomationSlice, AutomationSlices); the Aggregate-pattern folders \
-   Aggregate / ReadModel (plural also accepted); or a filename / folder \
-   containing `Projection` or `Behavior`"
+   Aggregate / ReadModel (plural also accepted); the cross-plugin boundary \
+   folders ExtensionPoint / Extension (Delegate kind); the cross-slice Flow \
+   folder (Flow kind); or a filename / folder containing `Projection`, \
+   `Behavior`, `ExtensionPoint`, `Extension`, or `Flow`"
 
 (** Detect a companion [<Stem>_Fixtures.res] next to the GWT file.
     Returns the module name if the sibling file exists, else [None].
@@ -321,6 +345,32 @@ let transform (str : structure) : structure =
     in
     let payload = parse_payload attr in
     let body = strip_gwt_attr str in
+    if String.equal kind "Flow" then begin
+      (* The Flow kind is functor-less: a flow references several slice modules
+         and has no single Spec, so there is nothing to apply a `Make` to. The
+         author instantiates the per-step functors (CommandStep / AutomationStep
+         / ViewStep / OutboundStep) themselves, so the PPX only needs to bring
+         the Flow_GWT module into scope. No `include`, no Spec resolution. *)
+      let loc = attr_loc in
+      let flow_lid =
+        if is_in_gwt_package loc then Lident "Flow_GWT"
+        else Ldot (Lident "ReventlessGwt", "Flow_GWT")
+      in
+      let open_item =
+        { pstr_desc = Pstr_open {
+            popen_expr = { pmod_desc = Pmod_ident { txt = flow_lid; loc };
+                           pmod_loc = loc; pmod_attributes = [] };
+            popen_override = Fresh; popen_loc = loc; popen_attributes = [] };
+          pstr_loc = loc }
+      in
+      let fixtures_open =
+        match companion_fixtures_module fname with
+        | Some name when not (Util.has_open name body) -> [gen_open ~loc name]
+        | _ -> []
+      in
+      (open_item :: fixtures_open) @ body
+    end
+    else
     let functor_name = functor_name_for ~kind ~fname in
     (* Resolution order:
        1. Two-arg payload: Behavior / Projection DSL only, two-module form.
@@ -387,6 +437,19 @@ let transform (str : structure) : structure =
                  @@reventless.gwt(SpecModule)."))
     in
     let spec_is_qualified = is_qualified_name spec_name in
+    (* The Delegate kind's Extension flavour applies the functor to the inner
+       [Mapping] module of the extension file (the convention is
+       [Extension/<Name>_Extension.res] with a [module Mapping]), so the functor
+       argument is [<Stem>.Mapping]. The [open <Stem>] injection still uses the
+       bare file module so [Mapping] (and its [ExtensionPoint] / [Delegate]) read
+       unqualified in the test body. Every other kind applies the functor to the
+       spec module directly. *)
+    let functor_arg =
+      if kind = "Delegate" && String.equal functor_name "FromExtension" then
+        spec_name ^ ".Mapping"
+      else
+        spec_name
+    in
     let include_item =
       match impl_name_opt with
       | Some impl_name ->
@@ -394,7 +457,7 @@ let transform (str : structure) : structure =
           ~spec_module:spec_name ~impl_module:impl_name
       | None ->
         gen_include_one ~loc:attr_loc ~kind ~functor_name
-          ~spec_module:spec_name
+          ~spec_module:functor_arg
     in
     let fixtures_open =
       match companion_fixtures_module fname with

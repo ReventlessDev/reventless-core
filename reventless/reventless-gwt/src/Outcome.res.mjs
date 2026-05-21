@@ -27,6 +27,8 @@ function kindName(m) {
       return "TranslateError";
     case "QueryRowsMismatch" :
       return "QueryRowsMismatch";
+    case "PublishedActionsMismatch" :
+      return "PublishedActionsMismatch";
     case "Throw" :
       return "Throw";
   }
@@ -67,6 +69,8 @@ function format(m) {
       return `TranslateError:\n  expected: ` + m.expected + `\n  actual:   ` + Stdlib_Option.getOr(m.actual, "(none)");
     case "QueryRowsMismatch" :
       return `QueryRowsMismatch:\n  expected: ` + stringifyJsonArray(m.expected) + `\n  actual:   ` + stringifyJsonArray(m.actual);
+    case "PublishedActionsMismatch" :
+      return `PublishedActionsMismatch:\n  expected: ` + stringifyJsonArray(m.expected) + `\n  actual:   ` + stringifyJsonArray(m.actual);
     case "Throw" :
       return `Throw: ` + m.error + `\n` + m.stack;
   }
@@ -106,6 +110,7 @@ function toJson(m) {
     case "EventsMismatch" :
     case "AppendConditionMismatch" :
     case "QueryRowsMismatch" :
+    case "PublishedActionsMismatch" :
       obj["expected"] = m.expected;
       obj["actual"] = m.actual;
       break;

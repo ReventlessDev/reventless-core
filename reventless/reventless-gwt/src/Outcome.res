@@ -21,6 +21,11 @@ type mismatch =
   | AppendConditionMismatch({expected: JSON.t, actual: JSON.t})
   | TranslateError({expected: string, actual: option<string>})
   | QueryRowsMismatch({expected: array<JSON.t>, actual: array<JSON.t>})
+  // The set of published actions (events/commands) emitted by an ExtensionPoint
+  // mapping or an Extension delegate diverged from the expectation. Supports
+  // one-to-many fan-out (one inbound message → N published actions). Used by
+  // `Delegate_GWT` and the cross-plugin `Flow_GWT` boundary steps.
+  | PublishedActionsMismatch({expected: array<JSON.t>, actual: array<JSON.t>})
   | Throw({error: string, stack: string})
 
 type outcome = result<unit, mismatch>
@@ -38,6 +43,7 @@ let kindName = (m: mismatch) =>
   | AppendConditionMismatch(_) => "AppendConditionMismatch"
   | TranslateError(_) => "TranslateError"
   | QueryRowsMismatch(_) => "QueryRowsMismatch"
+  | PublishedActionsMismatch(_) => "PublishedActionsMismatch"
   | Throw(_) => "Throw"
   }
 
@@ -81,6 +87,10 @@ let format = (m: mismatch) =>
     `TranslateError:\n  expected: ${expected}\n  actual:   ${actual->Option.getOr("(none)")}`
   | QueryRowsMismatch({expected, actual}) =>
     `QueryRowsMismatch:\n  expected: ${stringifyJsonArray(expected)}\n  actual:   ${stringifyJsonArray(
+        actual,
+      )}`
+  | PublishedActionsMismatch({expected, actual}) =>
+    `PublishedActionsMismatch:\n  expected: ${stringifyJsonArray(expected)}\n  actual:   ${stringifyJsonArray(
         actual,
       )}`
   | Throw({error, stack}) => `Throw: ${error}\n${stack}`
@@ -135,6 +145,10 @@ let toJson = (m: mismatch): JSON.t => {
       )
     }
   | QueryRowsMismatch({expected, actual}) => {
+      obj->Dict.set("expected", jsonArr(expected))
+      obj->Dict.set("actual", jsonArr(actual))
+    }
+  | PublishedActionsMismatch({expected, actual}) => {
       obj->Dict.set("expected", jsonArr(expected))
       obj->Dict.set("actual", jsonArr(actual))
     }

@@ -37,11 +37,13 @@ module type T = {
   type translateResult =
     result<option<(string, Spec.inboundCommand)>, string>
 
-  // The state the pipeline carries after `whenTranslateMocked`.
+  // The state the pipeline carries after a translate attempt. `retries` counts
+  // the number of failed re-attempts (0 for a single `whenTranslateMocked`).
   type attempt = {
     id: string,
     item: Spec.outboundItem,
     result: translateResult,
+    retries: int,
   }
 
   // Unit — collect
@@ -56,6 +58,14 @@ module type T = {
   let givenTodo: (string, Spec.outboundItem) => (string, Spec.outboundItem)
   let whenTranslateMocked: (
     (string, Spec.outboundItem),
+    (string, Spec.outboundItem) => promise<translateResult>,
+  ) => promise<attempt>
+  // Re-invokes the mock on each `Error` up to `maxRetries` times (or until it
+  // returns `Ok`), tracking how many retries were spent — the real counter
+  // `thenRetryRecorded` asserts against.
+  let whenTranslateRetrying: (
+    (string, Spec.outboundItem),
+    ~maxRetries: int,
     (string, Spec.outboundItem) => promise<translateResult>,
   ) => promise<attempt>
   let thenCommand: (
@@ -85,6 +95,7 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     id: string,
     item: Spec.outboundItem,
     result: translateResult,
+    retries: int,
   }
 
   let encItem = (i: Spec.outboundItem) => i->Message.encode(Spec.outboundItemSchema)
@@ -112,7 +123,22 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
   let givenTodo = (id, item) => (id, item)
   let whenTranslateMocked = async ((id, item), mock) => {
     let result = await mock(id, item)
-    {id, item, result}
+    {id, item, result, retries: 0}
+  }
+
+  let whenTranslateRetrying = async ((id, item), ~maxRetries, mock) => {
+    let result = ref(await mock(id, item))
+    let retries = ref(0)
+    let failed = () =>
+      switch result.contents {
+      | Error(_) => true
+      | Ok(_) => false
+      }
+    while failed() && retries.contents < maxRetries {
+      retries := retries.contents + 1
+      result := await mock(id, item)
+    }
+    {id, item, result: result.contents, retries: retries.contents}
   }
 
   let commandPairJson = (id, cmd) => {
@@ -160,19 +186,19 @@ module Make = (Spec: SliceSpec): (T with module Spec = Spec) => {
     }
   }
 
-  // `thenRetryRecorded(n)` — after one failed translate, we assert the result
-  // is an Error (a retry *is* recorded); the slice runtime tracks retry counts
-  // externally, so the DSL merely verifies the failure was observable. The
-  // `n` argument documents intent and is echoed back on mismatch.
-  let thenRetryRecorded = async (pending, _expectedRetries) => {
-    let {result, _} = await pending
-    switch result {
-    | Error(_) => Outcome.pass
-    | Ok(_) =>
+  // `thenRetryRecorded(n)` — asserts the harness spent exactly `n` retries.
+  // Pair with `whenTranslateRetrying(~maxRetries)`, which re-invokes the mock on
+  // each failure and tracks the count; a single `whenTranslateMocked` records 0.
+  let thenRetryRecorded = async (pending, expectedRetries) => {
+    let {retries, _} = await pending
+    if retries == expectedRetries {
+      Outcome.pass
+    } else {
       Outcome.fail(
-        TranslateError({
-          expected: "(error — retry recorded)",
-          actual: None,
+        StateMismatch({
+          key: "retries",
+          expected: Some(JSON.Encode.int(expectedRetries)),
+          actual: Some(JSON.Encode.int(retries)),
         }),
       )
     }

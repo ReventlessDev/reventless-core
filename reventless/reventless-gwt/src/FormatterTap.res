@@ -62,6 +62,10 @@ let renderMismatchYaml = (m: Outcome.mismatch) => {
       lines->Array.push(yamlLine("expected", yamlString(RenderRescript.renderMany(expected))))
       lines->Array.push(yamlLine("actual", yamlString(RenderRescript.renderMany(actual))))
     }
+  | PublishedActionsMismatch({expected, actual}) => {
+      lines->Array.push(yamlLine("expected", yamlString(RenderRescript.renderMany(expected))))
+      lines->Array.push(yamlLine("actual", yamlString(RenderRescript.renderMany(actual))))
+    }
   | Throw({error, stack}) => {
       lines->Array.push(yamlLine("error", yamlString(error)))
       lines->Array.push(yamlLine("stack", yamlString(stack)))

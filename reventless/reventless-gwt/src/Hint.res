@@ -66,6 +66,11 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
       branch: None,
       message: "The read-model query returned wrong rows — likely a missing index, sub-id, or resolver.",
     }
+  | PublishedActionsMismatch(_) => {
+      locus: `${slice}.mapOutgoingEvent / ${slice}.mapIncomingEvent`,
+      branch: None,
+      message: "The ExtensionPoint mapping / Extension delegate published a different set of events or commands than expected. Check the variant match arms and the one-to-many fan-out.",
+    }
   | Throw({error}) => {
       locus: `${slice}`,
       branch: None,

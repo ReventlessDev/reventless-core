@@ -254,3 +254,126 @@ module Make = (Spec: QueryableSpec): (T with module Spec = Spec) => {
     | Ok(actual) => thenRow(actual, expected)
     }
 }
+
+// -- Cross-spec resolvers ----------------------------------------------------
+//
+// `@resolves` / `@resolvesMany` declare GraphQL resolvers that join a row in one
+// read model to row(s) in a foreign table by a `*Id` / `*Ids` field. The
+// single-spec `Make` above can't exercise these — the join target lives in a
+// different spec. `MakeResolver(Primary, Target)` lifts both into one scenario:
+// a primary store with the foreign-key field, a target store keyed by id, and
+// `whenResolve` / `whenResolveMany` that follow the key across the boundary.
+//
+// The DSL validates that `Primary.config` actually declares the resolver for the
+// field — so a test fails if the `@resolves` annotation is missing, exactly as
+// `whenQuery` validates a named index.
+module MakeResolver = (Primary: QueryableSpec, Target: QueryableSpec) => {
+  S.enableJson()
+
+  let describe = JestBind.describe
+  let sliceName = `${Primary.name}→${Target.name}`
+  let test = (name, body) => JestBind.test(~slice=sliceName, name, body)
+
+  type scenario = {
+    primary: array<(string, Primary.state)>,
+    target: array<(string, Target.state)>,
+  }
+
+  let givenStores = (primary, target): scenario => {primary, target}
+
+  let encTarget = (s: Target.state): JSON.t => s->S.reverseConvertToJsonOrThrow(Target.stateSchema)
+  let encTargets = arr => arr->Array.map(encTarget)
+
+  let resolverFor = field =>
+    Primary.config.idResolvers->Array.find(r => r.source.idField == field)
+  let resolverManyFor = field =>
+    Primary.config.idsResolvers->Array.find(r => r.source.idsField == field)
+
+  let missing = msg =>
+    Outcome.QueryRowsMismatch({expected: [JSON.Encode.string(msg)], actual: []})
+
+  // Read a JSON field off the primary row's encoded state.
+  let readField = (state: Primary.state, field): option<JSON.t> =>
+    state
+    ->S.reverseConvertToJsonOrThrow(Primary.stateSchema)
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get(field))
+
+  let jsonToStr = v =>
+    switch v {
+    | JSON.String(s) => s
+    | JSON.Number(n) => n->Float.toString
+    | _ => v->JSON.stringify
+    }
+
+  let lookupTarget = (target, fkId) =>
+    target->Array.findMap(((id, st)) => id == fkId ? Some(st) : None)
+
+  let whenResolve = (scenario: scenario, ~field, primaryId): result<
+    option<Target.state>,
+    Outcome.mismatch,
+  > =>
+    switch resolverFor(field) {
+    | None =>
+      Error(missing(`@resolves on field "${field}" is missing from ${Primary.name}.config.idResolvers`))
+    | Some(_) =>
+      switch scenario.primary->Array.findMap(((id, st)) => id == primaryId ? Some(st) : None) {
+      | None => Ok(None)
+      | Some(pstate) =>
+        switch readField(pstate, field) {
+        | None => Ok(None)
+        | Some(fk) => Ok(lookupTarget(scenario.target, jsonToStr(fk)))
+        }
+      }
+    }
+
+  let whenResolveMany = (scenario: scenario, ~field, primaryId): result<
+    array<Target.state>,
+    Outcome.mismatch,
+  > =>
+    switch resolverManyFor(field) {
+    | None =>
+      Error(
+        missing(`@resolvesMany on field "${field}" is missing from ${Primary.name}.config.idsResolvers`),
+      )
+    | Some(_) =>
+      switch scenario.primary->Array.findMap(((id, st)) => id == primaryId ? Some(st) : None) {
+      | None => Ok([])
+      | Some(pstate) =>
+        switch readField(pstate, field) {
+        | Some(JSON.Array(arr)) =>
+          Ok(arr->Array.map(jsonToStr)->Array.filterMap(fkId => lookupTarget(scenario.target, fkId)))
+        | _ => Ok([])
+        }
+      }
+    }
+
+  let thenResolved = (
+    result: result<option<Target.state>, Outcome.mismatch>,
+    expected: option<Target.state>,
+  ): Outcome.outcome =>
+    switch result {
+    | Error(m) => Outcome.fail(m)
+    | Ok(actual) =>
+      actual == expected
+        ? Outcome.pass
+        : Outcome.fail(
+            QueryRowsMismatch({
+              expected: expected->Option.mapOr([], s => [encTarget(s)]),
+              actual: actual->Option.mapOr([], s => [encTarget(s)]),
+            }),
+          )
+    }
+
+  let thenResolvedMany = (
+    result: result<array<Target.state>, Outcome.mismatch>,
+    expected: array<Target.state>,
+  ): Outcome.outcome =>
+    switch result {
+    | Error(m) => Outcome.fail(m)
+    | Ok(actual) =>
+      actual == expected
+        ? Outcome.pass
+        : Outcome.fail(QueryRowsMismatch({expected: encTargets(expected), actual: encTargets(actual)}))
+    }
+}

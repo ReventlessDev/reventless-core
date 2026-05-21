@@ -16,10 +16,15 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true
     }
   ],
   "dependencies": [
     "sury",
+    "@glennsl/rescript-jest",
     "@reventlessdev/online-shop-hybrid-catalog-spec",
     "@reventlessdev/online-shop-hybrid-ordering-spec",
     "@reventlessdev/online-shop-hybrid-catalog",
@@ -27,6 +32,7 @@
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/reventless-gwt",
     "@reventlessdev/rescript-pulumi-pulumi"
   ],
   "compiler-flags": [],

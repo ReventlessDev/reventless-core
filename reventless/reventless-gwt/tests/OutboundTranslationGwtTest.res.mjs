@@ -51,6 +51,10 @@ let givenTodo = include.givenTodo;
 
 let whenTranslateMocked = include.whenTranslateMocked;
 
+let whenTranslateRetrying = include.whenTranslateRetrying;
+
+let thenRetryRecorded = include.thenRetryRecorded;
+
 let thenTodoStatus = include.thenTodoStatus;
 
 describe("SendTrackingEmail OutboundTranslationSlice", () => {
@@ -79,6 +83,31 @@ describe("SendTrackingEmail OutboundTranslationSlice", () => {
     TAG: "Error",
     _0: "smtp down"
   })), "o1", "Pending"));
+  test("retrying translate succeeds on the third attempt → 2 retries recorded", undefined, () => {
+    let calls = {
+      contents: 0
+    };
+    return thenRetryRecorded(whenTranslateRetrying(givenTodo("o1", {
+      orderId: "o1",
+      email: "x@y"
+    }), 3, (_id, _item) => {
+      calls.contents = calls.contents + 1 | 0;
+      return Promise.resolve(calls.contents < 3 ? ({
+          TAG: "Error",
+          _0: "smtp down"
+        }) : ({
+          TAG: "Ok",
+          _0: undefined
+        }));
+    }), 2);
+  });
+  test("translate that keeps failing exhausts maxRetries", undefined, () => thenRetryRecorded(whenTranslateRetrying(givenTodo("o1", {
+    orderId: "o1",
+    email: "x@y"
+  }), 3, (_id, _item) => Promise.resolve({
+    TAG: "Error",
+    _0: "smtp down"
+  })), 3));
 });
 
 let Spec = include.Spec;
@@ -88,8 +117,6 @@ let testSync = include.testSync;
 let thenCommand = include.thenCommand;
 
 let thenNoCommand = include.thenNoCommand;
-
-let thenRetryRecorded = include.thenRetryRecorded;
 
 export {
   SendTrackingEmailSlice,
@@ -102,6 +129,7 @@ export {
   thenTodos,
   givenTodo,
   whenTranslateMocked,
+  whenTranslateRetrying,
   thenCommand,
   thenNoCommand,
   thenRetryRecorded,

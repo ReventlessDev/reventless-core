@@ -79,6 +79,10 @@ let renderMismatch = (m: Outcome.mismatch) =>
     `  expected: ${RenderRescript.renderMany(expected)}\n  actual:   ${RenderRescript.renderMany(
         actual,
       )}`
+  | PublishedActionsMismatch({expected, actual}) =>
+    `  expected: ${RenderRescript.renderMany(expected)}\n  actual:   ${RenderRescript.renderMany(
+        actual,
+      )}`
   | Throw({error, stack}) => `  error: ${error}\n${stack}`
   }
 

@@ -52,6 +52,7 @@ function renderMismatch(m) {
     case "TranslateError" :
       return `  expected: ` + m.expected + `\n  actual:   ` + Stdlib_Option.getOr(m.actual, "(none)");
     case "QueryRowsMismatch" :
+    case "PublishedActionsMismatch" :
       return `  expected: ` + RenderRescript$ReventlessGwt.renderMany(m.expected) + `\n  actual:   ` + RenderRescript$ReventlessGwt.renderMany(m.actual);
     case "Throw" :
       return `  error: ` + m.error + `\n` + m.stack;

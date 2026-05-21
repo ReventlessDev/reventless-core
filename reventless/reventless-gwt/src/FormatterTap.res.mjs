@@ -59,6 +59,7 @@ function renderMismatchYaml(m) {
       break;
     case "EventsMismatch" :
     case "QueryRowsMismatch" :
+    case "PublishedActionsMismatch" :
       lines.push(yamlLine(undefined, "expected", yamlString(RenderRescript$ReventlessGwt.renderMany(m.expected))));
       lines.push(yamlLine(undefined, "actual", yamlString(RenderRescript$ReventlessGwt.renderMany(m.actual))));
       break;

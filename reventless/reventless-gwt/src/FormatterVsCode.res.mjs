@@ -290,6 +290,7 @@ function messagePayload(t) {
         break;
       case "EventsMismatch" :
       case "QueryRowsMismatch" :
+      case "PublishedActionsMismatch" :
         d["expected"] = RenderRescript$ReventlessGwt.renderMany(m.expected);
         d["actual"] = RenderRescript$ReventlessGwt.renderMany(m.actual);
         break;

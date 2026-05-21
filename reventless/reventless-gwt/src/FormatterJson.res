@@ -3,7 +3,9 @@
 // NDJSON streaming mode (`--stream`). Shape matches §3.3 of
 // `docs/analysis/given-when-then-specifications.md`.
 
-let schemaVersion = "1.0.0"
+// 1.1.0 — additive: `PublishedActionsMismatch` mismatch kind for the
+// Delegate_GWT / cross-plugin Flow_GWT boundary steps.
+let schemaVersion = "1.1.0"
 
 @val external processStdout: {"write": string => unit} = "process.stdout"
 let write = (s: string) => processStdout["write"](s)
@@ -112,6 +114,11 @@ let mismatchJson = (m: Outcome.mismatch, slice: option<string>): JSON.t => {
       )
     }
   | QueryRowsMismatch({expected, actual}) => {
+      obj->Dict.set("expected", renderValues(expected))
+      obj->Dict.set("actual", renderValues(actual))
+      obj->Dict.set("fieldDiff", Diff.toJsonArray(Diff.diffArrays(expected, actual)))
+    }
+  | PublishedActionsMismatch({expected, actual}) => {
       obj->Dict.set("expected", renderValues(expected))
       obj->Dict.set("actual", renderValues(actual))
       obj->Dict.set("fieldDiff", Diff.toJsonArray(Diff.diffArrays(expected, actual)))

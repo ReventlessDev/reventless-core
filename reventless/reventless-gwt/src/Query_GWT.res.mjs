@@ -194,9 +194,174 @@ function Make(Spec) {
   };
 }
 
+function MakeResolver(Primary) {
+  return Target => {
+    S.enableJson();
+    let sliceName = Primary.name + `→` + Target.name;
+    let test = (name, body) => JestBind$ReventlessGwt.test(sliceName, name, body);
+    let givenStores = (primary, target) => ({
+      primary: primary,
+      target: target
+    });
+    let encTarget = s => S.reverseConvertToJsonOrThrow(s, Target.stateSchema);
+    let encTargets = arr => arr.map(encTarget);
+    let resolverFor = field => Primary.config.idResolvers.find(r => r.source.idField === field);
+    let resolverManyFor = field => Primary.config.idsResolvers.find(r => r.source.idsField === field);
+    let missing = msg => ({
+      TAG: "QueryRowsMismatch",
+      expected: [msg],
+      actual: []
+    });
+    let readField = (state, field) => Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(S.reverseConvertToJsonOrThrow(state, Primary.stateSchema)), d => d[field]);
+    let jsonToStr = v => {
+      switch (typeof v) {
+        case "string" :
+          return v;
+        case "number" :
+          return v.toString();
+        default:
+          return JSON.stringify(v);
+      }
+    };
+    let lookupTarget = (target, fkId) => Stdlib_Array.findMap(target, param => {
+      if (Primitive_object.equal(param[0], fkId)) {
+        return Primitive_option.some(param[1]);
+      }
+    });
+    let whenResolve = (scenario, field, primaryId) => {
+      let match = resolverFor(field);
+      if (match === undefined) {
+        return {
+          TAG: "Error",
+          _0: {
+            TAG: "QueryRowsMismatch",
+            expected: [`@resolves on field "` + field + `" is missing from ` + Primary.name + `.config.idResolvers`],
+            actual: []
+          }
+        };
+      }
+      let pstate = Stdlib_Array.findMap(scenario.primary, param => {
+        if (param[0] === primaryId) {
+          return Primitive_option.some(param[1]);
+        }
+      });
+      if (pstate === undefined) {
+        return {
+          TAG: "Ok",
+          _0: undefined
+        };
+      }
+      let fk = readField(Primitive_option.valFromOption(pstate), field);
+      if (fk !== undefined) {
+        return {
+          TAG: "Ok",
+          _0: lookupTarget(scenario.target, jsonToStr(fk))
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: undefined
+        };
+      }
+    };
+    let whenResolveMany = (scenario, field, primaryId) => {
+      let match = resolverManyFor(field);
+      if (match === undefined) {
+        return {
+          TAG: "Error",
+          _0: {
+            TAG: "QueryRowsMismatch",
+            expected: [`@resolvesMany on field "` + field + `" is missing from ` + Primary.name + `.config.idsResolvers`],
+            actual: []
+          }
+        };
+      }
+      let pstate = Stdlib_Array.findMap(scenario.primary, param => {
+        if (param[0] === primaryId) {
+          return Primitive_option.some(param[1]);
+        }
+      });
+      if (pstate === undefined) {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      }
+      let match$1 = readField(Primitive_option.valFromOption(pstate), field);
+      if (match$1 !== undefined) {
+        if (Array.isArray(match$1)) {
+          return {
+            TAG: "Ok",
+            _0: Stdlib_Array.filterMap(match$1.map(jsonToStr), fkId => lookupTarget(scenario.target, fkId))
+          };
+        } else {
+          return {
+            TAG: "Ok",
+            _0: []
+          };
+        }
+      } else {
+        return {
+          TAG: "Ok",
+          _0: []
+        };
+      }
+    };
+    let thenResolved = (result, expected) => {
+      if (result.TAG !== "Ok") {
+        return Outcome$ReventlessGwt.fail(result._0);
+      }
+      let actual = result._0;
+      if (Primitive_object.equal(actual, expected)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "QueryRowsMismatch",
+          expected: Stdlib_Option.mapOr(expected, [], s => [S.reverseConvertToJsonOrThrow(s, Target.stateSchema)]),
+          actual: Stdlib_Option.mapOr(actual, [], s => [S.reverseConvertToJsonOrThrow(s, Target.stateSchema)])
+        });
+      }
+    };
+    let thenResolvedMany = (result, expected) => {
+      if (result.TAG !== "Ok") {
+        return Outcome$ReventlessGwt.fail(result._0);
+      }
+      let actual = result._0;
+      if (Primitive_object.equal(actual, expected)) {
+        return Outcome$ReventlessGwt.pass;
+      } else {
+        return Outcome$ReventlessGwt.fail({
+          TAG: "QueryRowsMismatch",
+          expected: expected.map(encTarget),
+          actual: actual.map(encTarget)
+        });
+      }
+    };
+    return {
+      describe: JestBind$ReventlessGwt.describe,
+      sliceName: sliceName,
+      test: test,
+      givenStores: givenStores,
+      encTarget: encTarget,
+      encTargets: encTargets,
+      resolverFor: resolverFor,
+      resolverManyFor: resolverManyFor,
+      missing: missing,
+      readField: readField,
+      jsonToStr: jsonToStr,
+      lookupTarget: lookupTarget,
+      whenResolve: whenResolve,
+      whenResolveMany: whenResolveMany,
+      thenResolved: thenResolved,
+      thenResolvedMany: thenResolvedMany
+    };
+  };
+}
+
 export {
   FromReadModel,
   FromStateViewSlice,
   Make,
+  MakeResolver,
 }
 /* S Not a pure module */

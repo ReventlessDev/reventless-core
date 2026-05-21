@@ -294,6 +294,10 @@ let messagePayload = (t: RunnerTypes.testResult): JSON.t => {
           d->Dict.set("expected", JSON.Encode.string(RenderRescript.renderMany(expected)))
           d->Dict.set("actual", JSON.Encode.string(RenderRescript.renderMany(actual)))
         }
+      | PublishedActionsMismatch({expected, actual}) => {
+          d->Dict.set("expected", JSON.Encode.string(RenderRescript.renderMany(expected)))
+          d->Dict.set("actual", JSON.Encode.string(RenderRescript.renderMany(actual)))
+        }
       | AppendConditionMismatch({expected, actual}) => {
           d->Dict.set("expected", JSON.Encode.string(RenderRescript.render(expected)))
           d->Dict.set("actual", JSON.Encode.string(RenderRescript.render(actual)))
