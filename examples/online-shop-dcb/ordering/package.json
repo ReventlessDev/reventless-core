@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-dcb-ordering",
-  "version": "1.0.0-alpha.58",
+  "version": "1.0.0-alpha.59",
   "description": "Online Shop example — Ordering bounded context (Customer & Order) using the DCB pattern",
   "license": "MIT",
   "scripts": {

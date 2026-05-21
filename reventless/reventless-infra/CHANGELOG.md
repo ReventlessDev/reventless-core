@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.60 (2026-05-21)
+
+### Bug Fixes
+
+* **admin:** register admin queryFieldNames under read-model Spec.name ([f5c10f8](https://github.com/ReventlessDev/reventless-core/commit/f5c10f80068e45329533547203f5417029ea48b7))
+
+
 # 3.0.0-alpha.59 (2026-05-21)
 
 ### Bug Fixes
