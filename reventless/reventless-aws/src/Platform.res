@@ -276,7 +276,12 @@ module MakeWithConfig = (
         }: PulumiAws.AwsNative.AppSync.Api.dns)),
         name: Pulumi.Output.make(""),
       }
-      Some({AppSync_EventsApi.api, defaultNamespace: None})
+      let eventsApi: AppSync_EventsApi.t = {
+        name: "DomainEventsApi",
+        api,
+        defaultNamespace: None,
+      }
+      Some(eventsApi)
     }
 
   // Returns the AppSync API/role to attach resolvers to for the current deploy target.
@@ -1183,7 +1188,7 @@ module MakeWithConfig = (
   // PluginBaseFragment.queryEntries. Field-name alignment is handled by the
   // queryFieldNamesRegistry entries that Platform_Admin.construct populates
   // from AdminApi.queryEntries before this builder runs.
-  module PluginReadModel = ReadModel_Builder_Single.Make(
+  module PluginReadModel = ReadModel_Builder_Single_Stream.Make(
     ReventlessCore.PluginsReadModelSpec,
     PluginReadModelMappings,
   )
@@ -1199,7 +1204,7 @@ module MakeWithConfig = (
     let mappings: array<module(Mapping)> = ReventlessCore.Platform_EventGraphProjection.mappings
   }
 
-  module PlatformEventGraphReadModel = ReadModel_Builder_Single.Make(
+  module PlatformEventGraphReadModel = ReadModel_Builder_Single_Stream.Make(
     ReventlessCore.Platform_EventGraphReadModelSpec,
     PlatformEventGraphMappings,
   )
@@ -1216,7 +1221,7 @@ module MakeWithConfig = (
     let mappings: array<module(Mapping)> = ReventlessCore.UIFragmentRegistryProjection.mappings
   }
 
-  module UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver.Make(
+  module UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver_Stream.Make(
     ReventlessCore.UIFragmentRegistryReadModelSpec,
     UIFragmentRegistryReadModelMappings,
   )
@@ -1336,6 +1341,14 @@ module MakeWithConfig = (
       module P = unpack(plugin)
       P.make()
     })
+
+    // Finalize the shared StateTopic Lambda(s) — one per events API. `make`
+    // (called from subscriptionInfraHook during Admin.construct + plugin builds
+    // above) only registered entries; `finish` now builds the shared Lambda +
+    // IAM + per-stream EventSourceMappings from the accumulated registry.
+    domainEventsApiOpt->Option.forEach(eventsApi =>
+      StateTopic_AppSync.finish(~eventsApi, ~opts={})
+    )
 
     // Export first plugin's outputs (monolithic mode = typically single plugin).
     switch pluginComponents->Array.get(0) {
@@ -1599,6 +1612,13 @@ module MakeWithConfig = (
       }
     | None => ()
     }
+
+    // Finalize the shared StateTopic Lambda for the admin RMs in this platform
+    // stack — `make` (called from subscriptionInfraHook during Admin.construct)
+    // only registered entries; `finish` builds the shared Lambda + IAM + ESMs.
+    domainEventsApiOpt->Option.forEach(eventsApi =>
+      StateTopic_AppSync.finish(~eventsApi, ~opts={})
+    )
 
     // Admin schema push is fired by preAdminResolversSchemaHook from inside
     // Admin.construct (gated on a read-model-resources barrier, with admin
@@ -1868,6 +1888,13 @@ module MakeWithConfig = (
     module P = unpack(plugin)
     let pluginComponent = P.make()
     currentDeployTarget := Domain // reset after build
+
+    // Finalize the shared StateTopic Lambda for this plugin stack — `make`
+    // (called from subscriptionInfraHook during P.make() above) only registered
+    // entries; `finish` builds the shared Lambda + IAM + per-stream ESMs.
+    domainEventsApiOpt->Option.forEach(eventsApi =>
+      StateTopic_AppSync.finish(~eventsApi, ~opts={})
+    )
 
     // Export interop metadata for cross-stack consumption.
     Pulumi.Pulumi.export("_interopMeta", ReventlessCore.Plugin_Helpers.getInteropMeta())

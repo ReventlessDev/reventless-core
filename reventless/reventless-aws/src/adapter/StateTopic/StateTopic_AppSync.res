@@ -1,8 +1,12 @@
 // StateTopic_AppSync.res
 // Source B: state-change subscriptions (QueryDb DynamoDB Stream → AppSync Events API).
 //
-// Creates deploy-time resources for one ReadModel or StateViewSlice:
-//   QueryDb DynamoDB table (stream-enabled) → Lambda → AppSync Events channel
+// One shared Lambda per events API handles every stream-enabled QueryDb in the
+// platform (admin RMs, user-plugin `ReadModelStream`s, and `StateViewSliceStream`s
+// alike). `make` registers an entry in a per-events-API registry; `finish` is
+// called once at the end of platform construction and builds the shared
+// Lambda + IAM role/policy + per-stream EventSourceMappings from the
+// accumulated registry entries.
 //
 // Channel layout: /default/{topicName}/{entityKey}  (underscores → hyphens)
 //   topicName    = plugin-prefixed query LIST field name (e.g. "Catalog-Products").
@@ -22,7 +26,7 @@
 //   - The QueryDb must use QueryDbStorage_DynamoDbStream so its resource has a
 //     streamArn (StreamSource resourceInfo).
 //
-// Usage in the plugin builder (after allQueryDbs are assembled):
+// Usage in the plugin / admin builder (after allQueryDbs are assembled):
 //   StateTopic_AppSync.make(
 //     ~readModelName="Products",     // QueryDb key = ReadModel Spec.name
 //     ~topicName="Catalog_Products", // AppSync Events channel root = list field name
@@ -30,41 +34,51 @@
 //     ~eventsApi,
 //     ~opts,
 //   )
+//
+// Usage in Platform.res (once, after admin + plugins have wired):
+//   StateTopic_AppSync.finish(~eventsApi, ~opts)
 
 open PulumiAws
+
+// ── Registry ──────────────────────────────────────────────────────────────────
+
+type streamEntry = {
+  tableName: Pulumi.Output.t<string>,
+  streamArn: Pulumi.Output.t<string>,
+  topicName: string,
+}
+
+// One registry per events API, keyed by `eventsApi.name` (the static Pulumi
+// resource name, e.g. "DomainEventsApi"). `make` appends; `finish` drains.
+let registry: dict<array<streamEntry>> = Dict.make()
 
 // ── Handler code ─────────────────────────────────────────────────────────────
 //
 // Processes DynamoDB Stream records → publishes one event per row-change to
 // AppSync Events. Channel path: /default/{topicRoot}/{entityKey}.
 //
+// Topic routing is per-record: `STATE_TOPIC_MAP` is `{ "<ddbTableName>":
+// "<topicName>" }`; the handler extracts the table name from
+// `record.eventSourceARN` (`…:table/<TableName>/stream/…`) and looks up the
+// matching topic. This is what lets a single shared Lambda fan out to every
+// stream-enabled RM in the platform.
+//
 // AppSync Events channels disallow underscores in segments — `topicRoot` and
 // `entityKey` are both normalised with `_` → `-`.
-//
-// `entityKey` is derived from `record.dynamodb.Keys` (the row's primary-key
-// attributes, always present on INSERT / MODIFY / REMOVE). The framework
-// names the partition-key attribute "id" by convention
-// (QueryDbStorage_DynamoDb); composite-key tables also have a sort-key attr
-// whose name comes from the read model's subIdConfig.subIdField.
 //
 // Payload is a change descriptor (NOT the full row):
 //   { changeKind: "Added" | "Updated" | "Removed",
 //     id:         <entityKey>,
 //     sortKeyValue?: <updatedAt | createdAt if present in the image> }
-// The `partitionKey` and `position` fields described in §2 of the plan are
-// deferred to later phases (partition concept §1, position §3, BulkInvalidated §4).
 //
 // Uses native Node.js crypto + fetch with SigV4 — no extra SDK packages needed.
 // Credentials come from the Lambda execution role via the process.env AWS_* variables.
 
-let makeHandlerCode = (~topicName: string): string => {
-  // AppSync Events channels cannot contain underscores — replace with hyphens.
-  let topicRoot = topicName->String.replaceAll("_", "-")
-  `
+let handlerCode: string = `
 import { createHmac, createHash } from "node:crypto";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
-const TOPIC_ROOT = "/default/${topicRoot}";
+const TOPIC_MAP = JSON.parse(process.env.STATE_TOPIC_MAP || "{}");
 const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT; // "https://{eventsApi.dns.http}"
 const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
 
@@ -99,6 +113,16 @@ async function signedHeaders(host, path, body) {
 // segment never breaks the channel grammar.
 function segment(value) {
   return String(value).replaceAll("_", "-");
+}
+
+// Map record.eventSourceARN → topicRoot via STATE_TOPIC_MAP.
+// Stream ARNs look like: arn:aws:dynamodb:<region>:<acct>:table/<TableName>/stream/<ts>
+function topicRootFromEventSourceArn(arn) {
+  const m = arn && arn.match(/:table\\/([^/]+)\\/stream\\//);
+  if (!m) return undefined;
+  const topicName = TOPIC_MAP[m[1]];
+  if (topicName === undefined) return undefined;
+  return topicName.replaceAll("_", "-");
 }
 
 // Build entityKey from record.dynamodb.Keys. Framework convention:
@@ -141,13 +165,19 @@ function pickSortKeyValue(image) {
 export async function handler(event) {
   const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
+    const topicRoot = topicRootFromEventSourceArn(record.eventSourceARN);
+    if (topicRoot === undefined) {
+      console.warn("StateTopic: unknown table for ARN", record.eventSourceARN);
+      continue;
+    }
+    const channelRoot = "/default/" + topicRoot;
     const image =
       record.eventName === "REMOVE"
         ? record.dynamodb.OldImage
         : record.dynamodb.NewImage;
     if (image === undefined) continue;
     const entityKey = entityKeyFromRecord(record);
-    const channel = TOPIC_ROOT + "/" + entityKey;
+    const channel = channelRoot + "/" + entityKey;
     const unmarshalled = unmarshall(image);
     const descriptor = {
       changeKind: changeKindFor(record.eventName),
@@ -169,134 +199,172 @@ export async function handler(event) {
   }
 }
 `
-}
 
-// ── Deploy-time resource builder ──────────────────────────────────────────────
+// ── Registration ──────────────────────────────────────────────────────────────
 
 let make = (
   ~readModelName: string,
   ~topicName: string,
   ~allQueryDbs: ReventlessCore.QueryDb.allOutputs,
   ~eventsApi: AppSync_EventsApi.t,
-  ~opts: Pulumi.CustomResourceOptions.t,
+  ~opts as _: Pulumi.CustomResourceOptions.t,
 ) => {
   // Look up the QueryDb resources by ReadModel Spec.name, then find the
   // DynamoDB stream resource within them. Requires QueryDbStorage_DynamoDbStream.
-  let name = readModelName
   let streamResource =
     allQueryDbs
     ->ReventlessCore.Util.ReadModel.queryDbStorageResources(readModelName)
     ->Util_DynamoDbStream.findResource
 
-  // Extract the stream ARN from resourceInfo (urn holds the table ARN; stream ARN is in StreamSource).
   let streamArn = Util_DynamoDbStream.streamArnFromDynamoDbTableResource(streamResource)
+  let tableName = streamResource.name
 
-  // IAM role for the Lambda (Lambda service principal)
-  let lambdaRole = IAM.Role.makeWithDefaultPolicy(
-    ~name=name ++ "StateTopicRole",
-    ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
-    ~opts,
-  )
+  let key = eventsApi.name
+  let entries = registry->Dict.get(key)->Option.getOr([])
+  registry->Dict.set(key, entries->Array.concat([{tableName, streamArn, topicName}]))
+}
 
-  // IAM policy: read DynamoDB stream + publish to AppSync Events API
-  let _ =
-    (
-      streamArn,
-      eventsApi.api.apiArn,
+// ── Finalize: build the shared Lambda + IAM + ESMs ────────────────────────────
+
+let finish = (
+  ~eventsApi: AppSync_EventsApi.t,
+  ~opts: Pulumi.CustomResourceOptions.t,
+) => {
+  let key = eventsApi.name
+  switch registry->Dict.get(key) {
+  | None => ()
+  | Some([]) => ()
+  | Some(entries) =>
+    let name = eventsApi.name
+
+    // IAM role for the shared Lambda (Lambda service principal).
+    let lambdaRole = IAM.Role.makeWithDefaultPolicy(
+      ~name=name ++ "StateTopicRole",
+      ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+      ~opts,
     )
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((streamArn, apiArn)) => {
-      open PolicyDocument
-      let _rolePolicy = IAM.RolePolicy.make(
-        ~name=name ++ "StateTopicPolicy",
+
+    // IAM policy: read from every stream + publish to the events API.
+    let streamArnsOutput =
+      entries->Array.map(e => e.streamArn)->Pulumi.Output.all
+    let _ =
+      (streamArnsOutput, eventsApi.api.apiArn)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((streamArns, apiArn)) => {
+        open PolicyDocument
+        let _rolePolicy = IAM.RolePolicy.make(
+          ~name=name ++ "StateTopicPolicy",
+          ~args={
+            IAM.RolePolicy.policy: PolicyDocument.make(
+              ~id=name ++ "StateTopicPolicy",
+              ~statements=[
+                {
+                  sid: "AllowLambdaLogging",
+                  effect: Allow,
+                  actions: Action("logs:*"),
+                  resources: Resource("arn:aws:logs:*:*:*"),
+                },
+                {
+                  sid: "AllowReadDynamoDbStream",
+                  effect: Allow,
+                  actions: Actions([
+                    "dynamodb:DescribeStream",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:ListStreams",
+                  ]),
+                  resources: Resources(streamArns),
+                },
+                {
+                  sid: "AllowPublishAppSyncEvents",
+                  effect: Allow,
+                  actions: Action("appsync:EventPublish"),
+                  resources: Resource(apiArn ++ "/*"),
+                },
+              ],
+            )
+            ->PolicyDocument.toJsonString
+            ->Pulumi.Input.make,
+            role: lambdaRole.id->Pulumi.Output.asInput,
+          },
+          ~opts,
+        )
+      })
+
+    // STATE_TOPIC_MAP env var — `{ <tableName>: <topicName> }` JSON object.
+    // `topicName` is already a resolved string at deploy time; `tableName`
+    // is an Output, so we await all of them and build the JSON inside apply.
+    let topicMapJson =
+      entries
+      ->Array.map(e => e.tableName)
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(tableNames => {
+        let dict = Dict.make()
+        tableNames->Array.forEachWithIndex((tableName, i) => {
+          let topicName = (entries->Array.getUnsafe(i)).topicName
+          dict->Dict.set(tableName, topicName->JSON.Encode.string)
+        })
+        dict->JSON.Encode.object->JSON.stringify
+      })
+
+    // Shared Lambda — handler code is identical for every stream-enabled RM;
+    // routing is per-record via STATE_TOPIC_MAP env var.
+    let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
+    archiveContents->Dict.set(
+      "index.mjs",
+      Pulumi.Asset.stringAsset(handlerCode)->Pulumi.Archive.assetToAssetOrArchive,
+    )
+    let code = Pulumi.Archive.assetArchive(archiveContents)
+    let sourceCodeHash = Util_Bundle.hashString(handlerCode)
+
+    let layers =
+      Lambda.reventlessLayerArn
+      ->Option.map(arn => [arn->Pulumi.Input.make])
+      ->Option.getOr([])
+      ->Pulumi.Input.make
+
+    let appsyncEndpoint = AppSync_EventsApi.httpEndpoint(eventsApi)
+
+    let lambda = Lambda.Function.make(
+      ~name=name ++ "StateTopicLambda",
+      ~args={
+        handler: "index.handler"->Pulumi.Input.make,
+        runtime: "nodejs22.x"->Pulumi.Input.make,
+        code: code->Pulumi.Input.make,
+        sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
+        role: lambdaRole.arn->Pulumi.Output.asInput,
+        memorySize: 256->Pulumi.Input.make,
+        timeout: 30->Pulumi.Input.make,
+        layers,
+        tags: AWS.Tags.make(~name=name ++ "StateTopic", ReventlessCore.QueryDb.componentType),
+        environment: (
+          {
+            Lambda.Function.variables: Dict.fromArray([
+              ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
+              ("APPSYNC_ENDPOINT", appsyncEndpoint->Pulumi.Output.asInput),
+              ("STATE_TOPIC_MAP", topicMapJson->Pulumi.Output.asInput),
+            ]),
+          }: Lambda.Function.functionEnvironment
+        )->Pulumi.Input.make,
+      },
+      ~opts,
+    )
+
+    // One EventSourceMapping per stream, all targeting the shared Lambda.
+    entries->Array.forEach(entry => {
+      let _esm = EventSourceMapping.make(
+        ~name=entry.topicName ++ "Stream2" ++ name ++ "StateTopic",
         ~args={
-          IAM.RolePolicy.policy: PolicyDocument.make(
-            ~id=name ++ "StateTopicPolicy",
-            ~statements=[
-              {
-                sid: "AllowLambdaLogging",
-                effect: Allow,
-                actions: Action("logs:*"),
-                resources: Resource("arn:aws:logs:*:*:*"),
-              },
-              {
-                sid: "AllowReadDynamoDbStream",
-                effect: Allow,
-                actions: Actions([
-                  "dynamodb:DescribeStream",
-                  "dynamodb:GetRecords",
-                  "dynamodb:GetShardIterator",
-                  "dynamodb:ListStreams",
-                ]),
-                resources: Resource(streamArn),
-              },
-              {
-                sid: "AllowPublishAppSyncEvents",
-                effect: Allow,
-                actions: Action("appsync:EventPublish"),
-                resources: Resource(apiArn ++ "/*"),
-              },
-            ],
-          )
-          ->PolicyDocument.toJsonString
-          ->Pulumi.Input.make,
-          role: lambdaRole.id->Pulumi.Output.asInput,
+          EventSourceMapping.functionName: lambda.arn->Pulumi.Output.asInput,
+          eventSourceArn: entry.streamArn->Pulumi.Output.asInput,
+          startingPosition: LATEST,
         },
-        ~opts,
+        ~opts=Some(opts),
       )
     })
 
-  // Lambda function — processes DynamoDB Stream records and publishes to AppSync Events
-  let handlerCode = makeHandlerCode(~topicName)
-  let archiveContents: dict<Pulumi.Archive.assetOrArchive> = Dict.make()
-  archiveContents->Dict.set(
-    "index.mjs",
-    Pulumi.Asset.stringAsset(handlerCode)->Pulumi.Archive.assetToAssetOrArchive,
-  )
-  let code = Pulumi.Archive.assetArchive(archiveContents)
-  let sourceCodeHash = Util_Bundle.hashString(handlerCode)
-
-  let layers =
-    Lambda.reventlessLayerArn
-    ->Option.map(arn => [arn->Pulumi.Input.make])
-    ->Option.getOr([])
-    ->Pulumi.Input.make
-
-  let appsyncEndpoint = AppSync_EventsApi.httpEndpoint(eventsApi)
-
-  let lambda = Lambda.Function.make(
-    ~name=name ++ "StateTopicLambda",
-    ~args={
-      handler: "index.handler"->Pulumi.Input.make,
-      runtime: "nodejs22.x"->Pulumi.Input.make,
-      code: code->Pulumi.Input.make,
-      sourceCodeHash: sourceCodeHash->Pulumi.Input.make,
-      role: lambdaRole.arn->Pulumi.Output.asInput,
-      memorySize: 128->Pulumi.Input.make,
-      timeout: 30->Pulumi.Input.make,
-      layers,
-      tags: AWS.Tags.make(~name=name ++ "StateTopic", ReventlessCore.QueryDb.componentType),
-      environment: (
-        {
-          Lambda.Function.variables: Dict.fromArray([
-            ("Environment", Pulumi.Pulumi.getStackName()->Pulumi.Input.make),
-            ("APPSYNC_ENDPOINT", appsyncEndpoint->Pulumi.Output.asInput),
-          ]),
-        }: Lambda.Function.functionEnvironment
-      )->Pulumi.Input.make,
-    },
-    ~opts,
-  )
-
-  // EventSourceMapping: DynamoDB Stream → StateTopic Lambda
-  // Uses streamArn (not streamResource.urn which holds the table ARN).
-  let _esm = EventSourceMapping.make(
-    ~name=name ++ "Stream2" ++ name ++ "StateTopic",
-    ~args={
-      EventSourceMapping.functionName: lambda.arn->Pulumi.Output.asInput,
-      eventSourceArn: streamArn->Pulumi.Output.asInput,
-      startingPosition: LATEST,
-    },
-    ~opts=Some(opts),
-  )
+    // Clear the registry so a second platform construction in the same process
+    // (tests, dev hot reload) starts fresh.
+    registry->Dict.set(key, [])
+  }
 }

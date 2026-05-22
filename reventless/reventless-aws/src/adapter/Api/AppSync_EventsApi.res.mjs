@@ -70,6 +70,7 @@ function make(name, cognitoUserPoolId, awsRegion, opts) {
     handlerConfigs: handlerConfigsInput
   }, (newrecord.parent = api, newrecord));
   return {
+    name: name,
     api: api,
     defaultNamespace: defaultNamespace
   };

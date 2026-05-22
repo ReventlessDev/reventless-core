@@ -131,6 +131,18 @@ function Make(RuntimeEnvironment) {
       Object.entries(dcbResult.inboundTranslationSlicesOutputs).forEach(param => {
         allQueryDbs[param[0]] = param[1].queryDb;
       });
+      let eventLogEntriesFromAggregates = aggregates.map(M => ({
+        busKey: M.Spec.name + "AggrEventLog",
+        displayName: M.Spec.name,
+        eventSchema: M.Spec.eventSchema
+      }));
+      let eventLogEntries = eventLogEntriesFromAggregates.concat(dcbResult.eventLogEntries);
+      Stdlib_Option.forEach(Config.hooks.subscriptionInfraHook, hook => hook({
+        allQueryDbs: allQueryDbs,
+        allEventTopics: aggregateEventTopics,
+        eventLogEntries: eventLogEntries,
+        opts: opts
+      }));
       let queryEngine = QueryEngineAdapter.make(allQueryDbs);
       let resourceNames = Object.values(readModelsOutputs).flatMap(rm => rm.queryDb.resources.map(r => r.name));
       let dataSourceNames = Object.values(readModelsOutputs).map(rm => rm.queryDb.dataSourceName);

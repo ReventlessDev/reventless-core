@@ -251,6 +251,22 @@ module Make = (
     dcbResult.inboundTranslationSlicesOutputs
     ->Dict.toArray
     ->Array.forEach(((k, v)) => allQueryDbs->Dict.set(k, v.queryDb))
+
+    // Wire subscription infrastructure (StateTopic) for admin RMs + DCB slices.
+    // Mirrors Plugin_Builder's hook fire at Plugin_Builder.res:729 — gives the
+    // AWS platform access to admin's allQueryDbs / allEventTopics so the
+    // shared StateTopic Lambda's registry sees admin stream-enabled tables.
+    let eventLogEntriesFromAggregates =
+      aggregates->Array.map((module(M: ReventlessInfra.Aggregate.T with type api = api)) => {
+        ReventlessInfra.Api.busKey: M.Spec.name ++ "Aggr" ++ "EventLog",
+        displayName: M.Spec.name,
+        eventSchema: M.Spec.eventSchema->S.castToUnknown,
+      })
+    let eventLogEntries = Array.concat(eventLogEntriesFromAggregates, dcbResult.eventLogEntries)
+    Config.hooks.subscriptionInfraHook->Option.forEach(hook =>
+      hook({allQueryDbs, allEventTopics, eventLogEntries, opts})
+    )
+
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     // Invoke each QueryDb's deferred resolversMaker so AppSync resolvers are

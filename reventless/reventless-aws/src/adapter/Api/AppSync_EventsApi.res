@@ -65,6 +65,10 @@ let clearSubscribeAuth = () => {
 }
 
 type t = {
+  /** Static Pulumi resource name (e.g. `"DomainEventsApi"`). Stable string for
+      keying per-API registries (see `StateTopic_AppSync.registry`). The
+      underlying `api.name` is `Pulumi.Output.t<string>` and unusable as a key. */
+  name: string,
   /** Full AppSync Events API output — carry this through the stack. */
   api: Api.t,
   /** The `default` channel namespace created on the API. */
@@ -157,7 +161,7 @@ let make = (
     ~opts=Some({...opts, parent: api->Pulumi.Resource.makeFromJs}),
   )
 
-  {api, defaultNamespace: Some(defaultNamespace)}
+  {name, api, defaultNamespace: Some(defaultNamespace)}
 }
 
 /** HTTP endpoint URL for use as Lambda `APPSYNC_ENDPOINT` env var.

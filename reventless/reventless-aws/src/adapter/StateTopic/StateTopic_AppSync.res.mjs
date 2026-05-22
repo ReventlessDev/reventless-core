@@ -14,13 +14,13 @@ import * as Util_ReadModel$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as AppSync_EventsApi$ReventlessAws from "../Api/AppSync_EventsApi.res.mjs";
 import * as Util_DynamoDbStream$ReventlessAws from "../../util/Util_DynamoDbStream.res.mjs";
 
-function makeHandlerCode(topicName) {
-  let topicRoot = topicName.replaceAll("_", "-");
-  return `
+let registry = {};
+
+let handlerCode = `
 import { createHmac, createHash } from "node:crypto";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 
-const TOPIC_ROOT = "/default/` + topicRoot + `";
+const TOPIC_MAP = JSON.parse(process.env.STATE_TOPIC_MAP || "{}");
 const APPSYNC_ENDPOINT = process.env.APPSYNC_ENDPOINT; // "https://{eventsApi.dns.http}"
 const AWS_REGION = process.env.AWS_REGION ?? "eu-west-1";
 
@@ -55,6 +55,16 @@ async function signedHeaders(host, path, body) {
 // segment never breaks the channel grammar.
 function segment(value) {
   return String(value).replaceAll("_", "-");
+}
+
+// Map record.eventSourceARN → topicRoot via STATE_TOPIC_MAP.
+// Stream ARNs look like: arn:aws:dynamodb:<region>:<acct>:table/<TableName>/stream/<ts>
+function topicRootFromEventSourceArn(arn) {
+  const m = arn && arn.match(/:table\\/([^/]+)\\/stream\\//);
+  if (!m) return undefined;
+  const topicName = TOPIC_MAP[m[1]];
+  if (topicName === undefined) return undefined;
+  return topicName.replaceAll("_", "-");
 }
 
 // Build entityKey from record.dynamodb.Keys. Framework convention:
@@ -97,13 +107,19 @@ function pickSortKeyValue(image) {
 export async function handler(event) {
   const url = new URL(APPSYNC_ENDPOINT);
   for (const record of event.Records) {
+    const topicRoot = topicRootFromEventSourceArn(record.eventSourceARN);
+    if (topicRoot === undefined) {
+      console.warn("StateTopic: unknown table for ARN", record.eventSourceARN);
+      continue;
+    }
+    const channelRoot = "/default/" + topicRoot;
     const image =
       record.eventName === "REMOVE"
         ? record.dynamodb.OldImage
         : record.dynamodb.NewImage;
     if (image === undefined) continue;
     const entityKey = entityKeyFromRecord(record);
-    const channel = TOPIC_ROOT + "/" + entityKey;
+    const channel = channelRoot + "/" + entityKey;
     const unmarshalled = unmarshall(image);
     const descriptor = {
       changeKind: changeKindFor(record.eventName),
@@ -125,18 +141,38 @@ export async function handler(event) {
   }
 }
 `;
-}
 
-function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
+function make(readModelName, topicName, allQueryDbs, eventsApi, param) {
   let streamResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$ReventlessCore.queryDbStorageResources(allQueryDbs, readModelName));
   let streamArn = Util_DynamoDbStream$ReventlessAws.streamArnFromDynamoDbTableResource(streamResource);
-  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(readModelName + "StateTopicRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
+  let tableName = streamResource.name;
+  let key = eventsApi.name;
+  let entries = Stdlib_Option.getOr(registry[key], []);
+  registry[key] = entries.concat([{
+      tableName: tableName,
+      streamArn: streamArn,
+      topicName: topicName
+    }]);
+}
+
+function finish(eventsApi, opts) {
+  let key = eventsApi.name;
+  let entries = registry[key];
+  if (entries === undefined) {
+    return;
+  }
+  if (entries.length === 0) {
+    return;
+  }
+  let name = eventsApi.name;
+  let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "StateTopicRole", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts);
+  let streamArnsOutput = Pulumi.all(entries.map(e => e.streamArn));
   Pulumi.all([
-    streamArn,
+    streamArnsOutput,
     eventsApi.api.apiArn
   ]).apply(param => {
-    new (Aws.iam.RolePolicy)(readModelName + "StateTopicPolicy", {
-      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, readModelName + "StateTopicPolicy", [
+    new (Aws.iam.RolePolicy)(name + "StateTopicPolicy", {
+      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "StateTopicPolicy", [
         {
           Sid: "AllowLambdaLogging",
           Effect: "Allow",
@@ -164,22 +200,29 @@ function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
       role: lambdaRole.id
     }, opts);
   });
-  let handlerCode = makeHandlerCode(topicName);
+  let topicMapJson = Pulumi.all(entries.map(e => e.tableName)).apply(tableNames => {
+    let dict = {};
+    tableNames.forEach((tableName, i) => {
+      let topicName = entries[i].topicName;
+      dict[tableName] = topicName;
+    });
+    return JSON.stringify(dict);
+  });
   let archiveContents = {};
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCode);
   let code = new (Pulumi.asset.AssetArchive)(archiveContents);
   let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCode);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
-  let lambda = new (Aws.lambda.Function)(readModelName + "StateTopicLambda", {
+  let lambda = new (Aws.lambda.Function)(name + "StateTopicLambda", {
     handler: "index.handler",
     runtime: "nodejs22.x",
     code: code,
     role: lambdaRole.arn,
-    memorySize: 128,
+    memorySize: 256,
     timeout: 30,
     layers: layers,
-    tags: AWS_Tags$ReventlessAws.make(readModelName + "StateTopic", QueryDb$ReventlessCore.componentType),
+    tags: AWS_Tags$ReventlessAws.make(name + "StateTopic", QueryDb$ReventlessCore.componentType),
     environment: {
       variables: Object.fromEntries([
         [
@@ -189,20 +232,29 @@ function make(readModelName, topicName, allQueryDbs, eventsApi, opts) {
         [
           "APPSYNC_ENDPOINT",
           appsyncEndpoint
+        ],
+        [
+          "STATE_TOPIC_MAP",
+          topicMapJson
         ]
       ])
     },
     sourceCodeHash: sourceCodeHash
   }, opts);
-  new (Aws.lambda.EventSourceMapping)(readModelName + "Stream2" + readModelName + "StateTopic", {
-    functionName: lambda.arn,
-    eventSourceArn: streamArn,
-    startingPosition: "LATEST"
-  }, opts);
+  entries.forEach(entry => {
+    new (Aws.lambda.EventSourceMapping)(entry.topicName + "Stream2" + name + "StateTopic", {
+      functionName: lambda.arn,
+      eventSourceArn: entry.streamArn,
+      startingPosition: "LATEST"
+    }, opts);
+  });
+  registry[key] = [];
 }
 
 export {
-  makeHandlerCode,
+  registry,
+  handlerCode,
   make,
+  finish,
 }
 /* @pulumi/aws Not a pure module */

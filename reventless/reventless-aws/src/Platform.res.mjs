@@ -65,7 +65,6 @@ import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLo
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
-import * as ReadModel_Builder_NoResolver$ReventlessAws from "./components/ReadModel_Builder_NoResolver.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as Platform_UIDefinitions_Lambda$ReventlessAws from "./adapter/Api/Platform_UIDefinitions_Lambda.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
@@ -84,6 +83,7 @@ import * as Platform_EventGraphReadModelSpec$ReventlessCore from "@reventlessdev
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginExtensionPointRuntime_Builder.res.mjs";
+import * as ReadModel_Builder_NoResolver_Stream$ReventlessAws from "./components/ReadModel_Builder_NoResolver_Stream.res.mjs";
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
 import * as AggregateRuntime_Builder_Single_Async$ReventlessAws from "./adapter/Runtime/AggregateRuntime_Builder_Single_Async.res.mjs";
 import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
@@ -232,6 +232,7 @@ function MakeWithConfig(Config) {
       name: api_name
     };
     domainEventsApiOpt = {
+      name: "DomainEventsApi",
       api: api$1,
       defaultNamespace: undefined
     };
@@ -865,7 +866,7 @@ function MakeWithConfig(Config) {
     moduleUrl: PluginsProjection$ReventlessCore.moduleUrl,
     mappings: PluginsProjection$ReventlessCore.mappings
   };
-  let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
+  let PluginReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginsReadModelSpec$ReventlessCore.name,
     moduleUrl: PluginsReadModelSpec$ReventlessCore.moduleUrl,
@@ -879,7 +880,7 @@ function MakeWithConfig(Config) {
     moduleUrl: Platform_EventGraphProjection$ReventlessCore.moduleUrl,
     mappings: Platform_EventGraphProjection$ReventlessCore.mappings
   };
-  let PlatformEventGraphReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
+  let PlatformEventGraphReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: Platform_EventGraphReadModelSpec$ReventlessCore.name,
     moduleUrl: Platform_EventGraphReadModelSpec$ReventlessCore.moduleUrl,
@@ -893,7 +894,7 @@ function MakeWithConfig(Config) {
     moduleUrl: UIFragmentRegistryProjection$ReventlessCore.moduleUrl,
     mappings: UIFragmentRegistryProjection$ReventlessCore.mappings
   };
-  let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+  let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: UIFragmentRegistryReadModelSpec$ReventlessCore.name,
     moduleUrl: UIFragmentRegistryReadModelSpec$ReventlessCore.moduleUrl,
@@ -957,6 +958,7 @@ function MakeWithConfig(Config) {
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
+    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
@@ -1081,6 +1083,7 @@ function MakeWithConfig(Config) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
+    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     if (Config.splitApi) {
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
@@ -1229,6 +1232,7 @@ function MakeWithConfig(Config) {
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
+    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
@@ -1399,6 +1403,7 @@ function Make($star) {
       name: api_name
     };
     domainEventsApiOpt = {
+      name: "DomainEventsApi",
       api: api$1,
       defaultNamespace: undefined
     };
@@ -2031,7 +2036,7 @@ function Make($star) {
     moduleUrl: PluginsProjection$ReventlessCore.moduleUrl,
     mappings: PluginsProjection$ReventlessCore.mappings
   };
-  let PluginReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
+  let PluginReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginsReadModelSpec$ReventlessCore.name,
     moduleUrl: PluginsReadModelSpec$ReventlessCore.moduleUrl,
@@ -2045,7 +2050,7 @@ function Make($star) {
     moduleUrl: Platform_EventGraphProjection$ReventlessCore.moduleUrl,
     mappings: Platform_EventGraphProjection$ReventlessCore.mappings
   };
-  let PlatformEventGraphReadModel = ReadModel_Builder_Single$ReventlessAws.Make({
+  let PlatformEventGraphReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: Platform_EventGraphReadModelSpec$ReventlessCore.name,
     moduleUrl: Platform_EventGraphReadModelSpec$ReventlessCore.moduleUrl,
@@ -2059,7 +2064,7 @@ function Make($star) {
     moduleUrl: UIFragmentRegistryProjection$ReventlessCore.moduleUrl,
     mappings: UIFragmentRegistryProjection$ReventlessCore.mappings
   };
-  let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver$ReventlessAws.Make({
+  let UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: UIFragmentRegistryReadModelSpec$ReventlessCore.name,
     moduleUrl: UIFragmentRegistryReadModelSpec$ReventlessCore.moduleUrl,
@@ -2118,6 +2123,7 @@ function Make($star) {
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
+    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
@@ -2230,6 +2236,7 @@ function Make($star) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
+    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
@@ -2372,6 +2379,7 @@ function Make($star) {
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
+    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
