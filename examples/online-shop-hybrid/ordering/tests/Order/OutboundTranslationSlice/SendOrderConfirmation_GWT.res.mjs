@@ -73,6 +73,8 @@ describe("SendOrderConfirmation OutboundTranslationSlice", () => {
 
 let Spec = include.Spec;
 
+let whenTranslateRetrying = include.whenTranslateRetrying;
+
 let thenCommand = include.thenCommand;
 
 let thenNoCommand = include.thenNoCommand;
@@ -90,6 +92,7 @@ export {
   thenTodos,
   givenTodo,
   whenTranslateMocked,
+  whenTranslateRetrying,
   thenCommand,
   thenNoCommand,
   thenRetryRecorded,
