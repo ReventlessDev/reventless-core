@@ -287,7 +287,21 @@ Some values vary per deploy target (existing AWS resource IDs to reuse, personal
 | 2 | `Pulumi.local.yaml` sidecar (gitignored) | Dev-local override |
 | 3 | `platform:<key>` in `Pulumi.<stack>.yaml` (checked in) | Shared default |
 
-Currently consumed by: `cognitoUserPoolId` (BYO Cognito pool — see `Platform_Stack.res`). Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates.
+Currently consumed by:
+
+| Config key | Env var | Used by | Behavior when unset |
+|---|---|---|---|
+| `cognitoUserPoolId` | `REVENTLESS_COGNITO_USER_POOL_ID` | `Platform_Stack.resolveCognitoUserPool` | Auto-provisions a fresh UserPool |
+| `hostUiBaseDomain` | `REVENTLESS_HOST_UI_BASE_DOMAIN` | `Platform.deployPlatform` (host UI custom domain) | Keeps `*.cloudfront.net` default URL |
+| `hostUiHostedZoneId` | `REVENTLESS_HOST_UI_HOSTED_ZONE_ID` | same | Keeps `*.cloudfront.net` default URL |
+| `hostUiBaseName` | `REVENTLESS_HOST_UI_BASE_NAME` | same | Defaults to `Pulumi.getProjectName()` |
+| `hostUiProdStacks` | `REVENTLESS_HOST_UI_PROD_STACKS` (CSV) | same | Defaults to `["prod", "main"]` |
+
+Any future deploy-time helper reading via `Util_LocalConfig.get("…")` automatically participates in the same precedence ladder.
+
+**Host UI custom domain.** Both `hostUiBaseDomain` and `hostUiHostedZoneId` must be set together — if either is missing the framework keeps the default `*.cloudfront.net` URL. When both are set, the framework provisions an ACM cert (us-east-1) + Route53 alias and serves the shell at `${baseName}-${stack}.${baseDomain}` (or `${baseName}.${baseDomain}` when `stack ∈ hostUiProdStacks`). See [`ui-fragments-deployment.md`](./ui-fragments-deployment.md) → "Conditional: custom domain" for the full provisioning detail and [`docs/analysis/host-ui-custom-domain.md`](../analysis/host-ui-custom-domain.md) for the design rationale and multi-tenancy notes.
+
+> **Sample-config discipline.** Example stack configs in this repo must not ship with `hostUiBaseDomain` set — the Reventless team's `app.reventless.dev` belongs in CI repo variables only. A fork that hardcodes it into a checked-in `Pulumi.<stack>.yaml` would silently try to provision in someone else's Route53 zone (the cert request would just fail, but the intent is wrong).
 
 **Env var (CI deploys):**
 

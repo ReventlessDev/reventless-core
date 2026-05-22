@@ -37,10 +37,12 @@ import * as Platform_Admin$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as PluginBehavior$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBehavior.res.mjs";
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
+import * as Util_LocalConfig$ReventlessAws from "./util/Util_LocalConfig.res.mjs";
 import * as Util_SQS_Runtime$ReventlessAws from "./util/Util_SQS_Runtime.res.mjs";
 import * as AppSync_EventsApi$ReventlessAws from "./adapter/Api/AppSync_EventsApi.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/NoEventMappings.res.mjs";
+import * as Util_HostUiDomain$ReventlessAws from "./util/Util_HostUiDomain.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginsProjection.res.mjs";
 import * as StateTopic_AppSync$ReventlessAws from "./adapter/StateTopic/StateTopic_AppSync.res.mjs";
@@ -1147,7 +1149,22 @@ function MakeWithConfig(Config) {
       });
     });
     if (hostUiBundle !== undefined) {
-      let match$1 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"]);
+      let match$1 = Util_LocalConfig$ReventlessAws.get("hostUiBaseDomain");
+      let match$2 = Util_LocalConfig$ReventlessAws.get("hostUiHostedZoneId");
+      let customDomain;
+      if (match$1 !== undefined && match$2 !== undefined) {
+        let stack = Pulumi.getStack();
+        let baseName = Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("hostUiBaseName"), Pulumi.getProject());
+        let prodStacks = Stdlib_Option.getOr(Stdlib_Option.map(Util_LocalConfig$ReventlessAws.get("hostUiProdStacks"), Util_HostUiDomain$ReventlessAws.parseProdStacks), Util_HostUiDomain$ReventlessAws.defaultProdStacks);
+        let fqdn = Util_HostUiDomain$ReventlessAws.deriveFqdn(baseName, stack, match$1, prodStacks);
+        customDomain = {
+          fqdn: fqdn,
+          hostedZoneId: match$2
+        };
+      } else {
+        customDomain = undefined;
+      }
+      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"], customDomain);
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -1205,12 +1222,12 @@ function MakeWithConfig(Config) {
         return JSON.stringify(Object.fromEntries(withEvents));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
-        bucket: match$1.bucketName,
+        bucket: match$3.bucketName,
         key: "config.json",
         content: configJsonContent,
         contentType: "application/json"
       });
-      Pulumi$Pulumi.$$export("hostShellUrl", match$1.distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellUrl", match$3.distributionUrl);
     }
     return Pulumi$Pulumi.getOutputs();
   };
@@ -2294,7 +2311,22 @@ function Make($star) {
       });
     });
     if (hostUiBundle !== undefined) {
-      let match$1 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"]);
+      let match$1 = Util_LocalConfig$ReventlessAws.get("hostUiBaseDomain");
+      let match$2 = Util_LocalConfig$ReventlessAws.get("hostUiHostedZoneId");
+      let customDomain;
+      if (match$1 !== undefined && match$2 !== undefined) {
+        let stack = Pulumi.getStack();
+        let baseName = Stdlib_Option.getOr(Util_LocalConfig$ReventlessAws.get("hostUiBaseName"), Pulumi.getProject());
+        let prodStacks = Stdlib_Option.getOr(Stdlib_Option.map(Util_LocalConfig$ReventlessAws.get("hostUiProdStacks"), Util_HostUiDomain$ReventlessAws.parseProdStacks), Util_HostUiDomain$ReventlessAws.defaultProdStacks);
+        let fqdn = Util_HostUiDomain$ReventlessAws.deriveFqdn(baseName, stack, match$1, prodStacks);
+        customDomain = {
+          fqdn: fqdn,
+          hostedZoneId: match$2
+        };
+      } else {
+        customDomain = undefined;
+      }
+      let match$3 = Plugin_Stack$ReventlessAws.makeUiBundleDistribution("host-ui", hostUiBundle.bundleVersion, hostUiBundle.assetsDir, true, undefined, true, ["config.json"], customDomain);
       let regionStr = Stdlib_Option.getOr(new Pulumi.Config("aws").get("region"), "unknown");
       let cognitoPool = Platform_Stack$ReventlessAws.resolveCognitoUserPool();
       let domainEventsEndpointOutput = domainEventsApiOpt !== undefined ? AppSync_EventsApi$ReventlessAws.httpEndpoint(domainEventsApiOpt).apply(ep => ep + "/event") : Pulumi.output(undefined);
@@ -2352,12 +2384,12 @@ function Make($star) {
         return JSON.stringify(Object.fromEntries(withEvents));
       });
       new (Aws.s3.BucketObject)("host-ui-config-json", {
-        bucket: match$1.bucketName,
+        bucket: match$3.bucketName,
         key: "config.json",
         content: configJsonContent,
         contentType: "application/json"
       });
-      Pulumi$Pulumi.$$export("hostShellUrl", match$1.distributionUrl);
+      Pulumi$Pulumi.$$export("hostShellUrl", match$3.distributionUrl);
     }
     return Pulumi$Pulumi.getOutputs();
   };

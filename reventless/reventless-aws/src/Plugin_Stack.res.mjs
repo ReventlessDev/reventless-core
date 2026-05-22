@@ -6,6 +6,7 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as ClientCloudfront from "@aws-sdk/client-cloudfront";
 import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
@@ -13,6 +14,24 @@ import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.m
 let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6";
 
 let cachingDisabledPolicyId = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad";
+
+let cloudFrontAliasZoneId = "Z2FDTNDATAQYW2";
+
+let _usEast1Provider = {
+  contents: undefined
+};
+
+function _getUsEast1Provider() {
+  let p = _usEast1Provider.contents;
+  if (p !== undefined) {
+    return Primitive_option.valFromOption(p);
+  }
+  let p$1 = new Aws.Provider("us-east-1", {
+    region: "us-east-1"
+  });
+  _usEast1Provider.contents = Primitive_option.some(p$1);
+  return p$1;
+}
 
 function cacheControlFor(relativePath) {
   if (relativePath.startsWith("assets/")) {
@@ -47,7 +66,7 @@ async function invalidateDistribution(distributionId, paths) {
   }
 }
 
-function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt, stableNameOpt, excludeFilesOpt) {
+function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbackOpt, indexDocumentOpt, stableNameOpt, excludeFilesOpt, customDomain) {
   let spaFallback = spaFallbackOpt !== undefined ? spaFallbackOpt : false;
   let indexDocument = indexDocumentOpt !== undefined ? indexDocumentOpt : "index.html";
   let stableName = stableNameOpt !== undefined ? stableNameOpt : false;
@@ -99,8 +118,43 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
       noCacheBehavior("/" + indexDocument),
       noCacheBehavior("/config.json")
     ] : []);
+  let viewerCertificate;
+  if (customDomain !== undefined) {
+    let usEast1 = _getUsEast1Provider();
+    let cert = new (Aws.acm.Certificate)(pluginId + "-domain-cert", {
+      domainName: customDomain.fqdn,
+      validationMethod: "DNS"
+    }, {
+      provider: Primitive_option.some(usEast1)
+    });
+    let firstValidationOption = cert.domainValidationOptions.apply(opts => opts[0]);
+    let validationRecord = new (Aws.route53.Record)(pluginId + "-domain-validation-record", {
+      zoneId: customDomain.hostedZoneId,
+      name: firstValidationOption.apply(o => o.resourceRecordName),
+      type: firstValidationOption.apply(o => o.resourceRecordType),
+      ttl: 60,
+      records: firstValidationOption.apply(o => [o.resourceRecordValue]),
+      allowOverwrite: true
+    });
+    let validated = new (Aws.acm.CertificateValidation)(pluginId + "-domain-cert-validation", {
+      certificateArn: cert.arn,
+      validationRecordFqdns: Pulumi.all([validationRecord.fqdn])
+    }, {
+      provider: Primitive_option.some(usEast1)
+    });
+    viewerCertificate = {
+      acmCertificateArn: validated.certificateArn,
+      sslSupportMethod: "sni-only",
+      minimumProtocolVersion: "TLSv1.2_2021"
+    };
+  } else {
+    viewerCertificate = {
+      cloudfrontDefaultCertificate: true
+    };
+  }
   let distribution = new (Aws.cloudfront.Distribution)(name + "-cdn", {
     enabled: true,
+    aliases: customDomain !== undefined ? [customDomain.fqdn] : undefined,
     origins: Pulumi.all([
       bucket.bucketRegionalDomainName,
       oac.id
@@ -128,13 +182,23 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
         restrictionType: "none"
       }
     },
-    viewerCertificate: {
-      cloudfrontDefaultCertificate: true
-    },
+    viewerCertificate: viewerCertificate,
     comment: pluginId + " UI bundle CDN",
     customErrorResponses: customErrorResponses,
     defaultRootObject: indexDocument
   });
+  if (customDomain !== undefined) {
+    new (Aws.route53.Record)(pluginId + "-domain-alias", {
+      zoneId: customDomain.hostedZoneId,
+      name: customDomain.fqdn,
+      type: "A",
+      aliases: [{
+          name: distribution.domainName,
+          zoneId: cloudFrontAliasZoneId,
+          evaluateTargetHealth: false
+        }]
+    });
+  }
   new (Aws.s3.BucketPolicy)(name + "-bundle-policy", {
     bucket: bucket.id,
     policy: Pulumi.all([
@@ -177,8 +241,9 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
       Pulumi.all(objectEtags)
     ]), param => invalidateDistribution(param[0], ["/*"]));
   }
+  let distributionUrl = customDomain !== undefined ? Pulumi.output("https://" + customDomain.fqdn) : distribution.domainName.apply(d => "https://" + d);
   return {
-    distributionUrl: distribution.domainName.apply(d => "https://" + d),
+    distributionUrl: distributionUrl,
     bucketName: bucket.bucket
   };
 }
@@ -186,6 +251,9 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
 export {
   cachingOptimizedPolicyId,
   cachingDisabledPolicyId,
+  cloudFrontAliasZoneId,
+  _usEast1Provider,
+  _getUsEast1Provider,
   cacheControlFor,
   invalidateDistribution,
   makeUiBundleDistribution,

@@ -6,8 +6,11 @@ let getRegionSync = Aws_Aws$PulumiAws.getRegionSync;
 
 let AvailabilityZone;
 
+let Provider;
+
 export {
   getRegionSync,
   AvailabilityZone,
+  Provider,
 }
 /* Aws_Aws-PulumiAws Not a pure module */

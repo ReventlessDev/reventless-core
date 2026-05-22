@@ -94,6 +94,34 @@ No CDN, no S3, no bundle distributions. The host shell rebuilds itself on save l
 - A `config.json` `BucketObject` whose **content** is derived from Pulumi `Output`s at deploy time — `apiEndpoint`, `platformApiEndpoint`, `region`, `authMode`, `cognitoUserPoolId`, `cognitoClientId`. No rebuild of the host shell SPA is needed when these change.
 - Stack output `hostShellUrl`.
 
+#### Conditional: custom domain
+
+When both `hostUiBaseDomain` and `hostUiHostedZoneId` are configured (env var → `Pulumi.local.yaml` → `Pulumi.<stack>.yaml`), three extra resources are provisioned and the `hostShellUrl` output becomes `https://<derived-fqdn>` instead of the default `*.cloudfront.net`:
+
+- **`aws.acm.Certificate`** in **us-east-1** (CloudFront only consumes us-east-1 certs) covering the derived FQDN, with `validationMethod: "DNS"`. Lives in the same AWS account as the rest of the stack via a module-level us-east-1 `Provider` singleton.
+- **`aws.route53.Record`** in the caller's hosted zone for the ACM DNS-01 validation challenge (CNAME, 60s TTL, `allowOverwrite: true`).
+- **`aws.acm.CertificateValidation`** — synthetic resource that blocks until ACM marks the cert ISSUED. First deploy typically takes 1-5 minutes; up to ~30 in pathological cases.
+- **`aws.route53.Record`** A-alias from the FQDN to the CloudFront distribution, with target zone ID `Z2FDTNDATAQYW2` (CloudFront's fixed global value).
+- The CloudFront distribution itself gains `aliases: [fqdn]` and `viewerCertificate: { acmCertificateArn, sslSupportMethod: "sni-only", minimumProtocolVersion: "TLSv1.2_2021" }`.
+
+The FQDN is auto-derived per stack:
+
+```
+stack ∈ prodStacks → "${baseName}.${baseDomain}"
+otherwise         → "${baseName}-${stack}.${baseDomain}"
+```
+
+Defaults: `baseName = Pulumi.getProjectName()`, `prodStacks = ["prod", "main"]`. Both are overridable via `hostUiBaseName` (per-stack vanity) and `hostUiProdStacks` (CSV, e.g. `production,live`).
+
+With `hostUiBaseDomain=app.example.com`:
+- `myapp/alpha` → `myapp-alpha.app.example.com`
+- `myapp/main` → `myapp.app.example.com` (prod stack — stack segment dropped)
+- `myapp/alpha` + `hostUiBaseName=myapp-short` → `myapp-short-alpha.app.example.com`
+
+When either `hostUiBaseDomain` or `hostUiHostedZoneId` is absent the framework keeps today's `*.cloudfront.net` default — no surprise opt-in for forks.
+
+**Important.** The default `*.cloudfront.net` hostname stops accepting requests once `aliases` is set (returns 403). Anything caching or linking to the old URL breaks on the first deploy with a custom domain — fine in practice since `hostShellUrl` is the only known consumer and it flips in the same deploy.
+
 The host shell SPA itself is built upstream by `reventless-ui`'s `host-shell` package. `assetsDir` points at its `dist/` directory.
 
 `platform-aws` takes a versioned npm dependency on `@reventlessdev/reventless-host-shell`. The published tarball already contains pre-built `dist/` output (the package's `prepublishOnly` hook runs `vite build` before publish, and `dist/` is in its `files` allowlist). With the repo's `node-linker=hoisted` (`.npmrc`), `pnpm install` places it under the repo-root `node_modules/`, so deploy paths work in CI without checking out the sibling `reventless-ui` repo. To upgrade the shell, bump the dependency version in `platform-aws/package.json` and re-run `pulumi up`.

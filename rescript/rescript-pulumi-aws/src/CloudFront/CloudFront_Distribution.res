@@ -53,6 +53,7 @@ type customErrorResponse = {
 
 type args = {
   enabled: Pulumi.Input.t<bool>,
+  aliases?: Pulumi.Input.t<array<string>>,
   origins: Pulumi.Input.t<array<origin>>,
   defaultCacheBehavior: Pulumi.Input.t<defaultCacheBehavior>,
   orderedCacheBehaviors?: Pulumi.Input.t<array<orderedCacheBehavior>>,

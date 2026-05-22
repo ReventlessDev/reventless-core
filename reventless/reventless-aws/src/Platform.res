@@ -1783,6 +1783,33 @@ module MakeWithConfig = (
     switch hostUiBundle {
     | None => ()
     | Some(cfg) =>
+      // Auto-derive the host-shell FQDN when both `hostUiBaseDomain` and
+      // `hostUiHostedZoneId` are configured (env var → `Pulumi.local.yaml` →
+      // `Pulumi.<stack>.yaml`). When either is missing the framework keeps the
+      // default *.cloudfront.net URL — no surprise opt-in. See
+      // [docs/plans/done/host-ui-custom-domain.md].
+      let customDomain = switch (
+        Util_LocalConfig.get("hostUiBaseDomain"),
+        Util_LocalConfig.get("hostUiHostedZoneId"),
+      ) {
+      | (Some(bd), Some(hz)) =>
+        let stack = Pulumi.Pulumi.getStackName()
+        let baseName =
+          Util_LocalConfig.get("hostUiBaseName")->Option.getOr(Pulumi.Pulumi.getProjectName())
+        let prodStacks =
+          Util_LocalConfig.get("hostUiProdStacks")
+          ->Option.map(Util_HostUiDomain.parseProdStacks)
+          ->Option.getOr(Util_HostUiDomain.defaultProdStacks)
+        let fqdn = Util_HostUiDomain.deriveFqdn(
+          ~baseName,
+          ~stack,
+          ~baseDomain=bd,
+          ~prodStacks,
+        )
+        Some({Plugin_Stack.fqdn, hostedZoneId: hz})
+      | _ => None
+      }
+
       let {distributionUrl, bucketName} = Plugin_Stack.makeUiBundleDistribution(
         ~pluginId="host-ui",
         ~bundleVersion=cfg.bundleVersion,
@@ -1795,6 +1822,7 @@ module MakeWithConfig = (
         // it from the bundle upload so both BucketObjects don't race on
         // the same S3 key.
         ~excludeFiles=["config.json"],
+        ~customDomain?,
       )
 
       let regionStr =

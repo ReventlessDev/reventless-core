@@ -12,6 +12,41 @@ type bundleDistribution = {
   bucketName: Pulumi.Output.t<string>,
 }
 
+// Custom-domain config for a UI bundle's CloudFront distribution. When
+// supplied, the bundle is served at `https://${fqdn}` instead of the default
+// `*.cloudfront.net`. The framework provisions an ACM cert (us-east-1, as
+// CloudFront requires), the DNS-01 validation records, and a Route53 A-alias
+// pointing the FQDN at the distribution. The caller owns the Route53 zone.
+type customDomain = {
+  fqdn: string,
+  hostedZoneId: string,
+}
+
+// CloudFront's global hosted zone ID for A/AAAA alias records — a fixed
+// constant published by AWS. Used as the target zone when pointing a Route53
+// record at any CloudFront distribution; not the distribution's own
+// `hostedZoneId` output (which is meant for other Pulumi consumers).
+let cloudFrontAliasZoneId = "Z2FDTNDATAQYW2"
+
+// Lazy module-level us-east-1 Provider singleton. ACM certs consumed by
+// CloudFront must live in us-east-1 regardless of the stack's primary
+// region; sharing one provider across every UI bundle in the stack keeps the
+// resource graph tidy. The singleton survives the whole Pulumi run because
+// makeUiBundleDistribution may be invoked several times (host shell + future
+// per-plugin SPAs) in a single deploy.
+let _usEast1Provider: ref<option<PulumiAws.Aws.Provider.t>> = ref(None)
+let _getUsEast1Provider = (): PulumiAws.Aws.Provider.t =>
+  switch _usEast1Provider.contents {
+  | Some(p) => p
+  | None =>
+    let p = PulumiAws.Aws.Provider.make(
+      ~name="us-east-1",
+      ~args={region: Pulumi.Input.make("us-east-1")},
+    )
+    _usEast1Provider := Some(p)
+    p
+  }
+
 // ── Cache-Control ───────────────────────────────────────────────────────────
 
 // Cache-Control for a bundle file. Vite emits content-hashed chunks under
@@ -104,6 +139,7 @@ let makeUiBundleDistribution = (
   ~indexDocument: string="index.html",
   ~stableName: bool=false,
   ~excludeFiles: array<string>=[],
+  ~customDomain: option<customDomain>=?,
 ): bundleDistribution => {
   // When stableName=true, Pulumi resource names omit bundleVersion so every
   // deploy updates the same bucket + CloudFront distribution in place. The
@@ -175,10 +211,77 @@ let makeUiBundleDistribution = (
     spaFallback ? [noCacheBehavior("/" ++ indexDocument), noCacheBehavior("/config.json")] : [],
   )
 
+  // Custom-domain provisioning. When `customDomain` is supplied the bundle is
+  // served at `https://${fqdn}`: the framework creates an ACM cert in us-east-1
+  // (CloudFront only consumes us-east-1 certs), the DNS-01 validation record in
+  // the caller's hosted zone, a CertificateValidation that blocks until ACM
+  // issues the cert, and a Route53 A-alias from the FQDN to the distribution.
+  // When `None`, the cloudfront.net default URL is retained — no extra resources.
+  //
+  // Resource names below intentionally omit `bundleVersion`: the cert + alias
+  // outlive a single deploy, so they must be stable across releases (unlike the
+  // bucket / objects which already carry `bundleVersion` for cache-busting).
+  let viewerCertificate: PulumiAws.CloudFront.Distribution.viewerCertificate = switch customDomain {
+  | None => {
+      cloudfrontDefaultCertificate: Pulumi.Input.make(true),
+    }
+  | Some({fqdn, hostedZoneId}) =>
+    let usEast1 = _getUsEast1Provider()
+    let cert = PulumiAws.Acm.Certificate.make(
+      ~name=pluginId ++ "-domain-cert",
+      ~args={
+        domainName: Pulumi.Input.make(fqdn),
+        validationMethod: Pulumi.Input.make("DNS"),
+      },
+      ~opts={provider: usEast1},
+    )
+    let firstValidationOption =
+      cert.domainValidationOptions->Pulumi.Output.apply(opts => opts->Array.getUnsafe(0))
+    let validationRecord = PulumiAws.Route53.Record.make(
+      ~name=pluginId ++ "-domain-validation-record",
+      ~args={
+        zoneId: Pulumi.Input.make(hostedZoneId),
+        name: firstValidationOption
+        ->Pulumi.Output.apply(o => o.resourceRecordName)
+        ->Pulumi.Output.asInput,
+        type_: firstValidationOption
+        ->Pulumi.Output.apply(o => o.resourceRecordType)
+        ->Pulumi.Output.asInput,
+        ttl: Pulumi.Input.make(60),
+        records: firstValidationOption
+        ->Pulumi.Output.apply(o => [o.resourceRecordValue])
+        ->Pulumi.Output.asInput,
+        // ACM renewals reuse the same validation token, so the record is
+        // stable. allowOverwrite avoids spurious "record already exists"
+        // errors on redeploys where the in-state record was wiped manually.
+        allowOverwrite: Pulumi.Input.make(true),
+      },
+    )
+    let validated = PulumiAws.Acm.CertificateValidation.make(
+      ~name=pluginId ++ "-domain-cert-validation",
+      ~args={
+        certificateArn: cert.arn->Pulumi.Output.asInput,
+        validationRecordFqdns: [validationRecord.fqdn]
+        ->Pulumi.Output.all
+        ->Pulumi.Output.asInput,
+      },
+      ~opts={provider: usEast1},
+    )
+    {
+      acmCertificateArn: validated.certificateArn->Pulumi.Output.asInput,
+      sslSupportMethod: Pulumi.Input.make("sni-only"),
+      minimumProtocolVersion: Pulumi.Input.make("TLSv1.2_2021"),
+    }
+  }
+
   let distribution = PulumiAws.CloudFront.Distribution.make(
     ~name=name ++ "-cdn",
     ~args={
       enabled: Pulumi.Input.make(true),
+      aliases: ?switch customDomain {
+      | None => None
+      | Some({fqdn}) => Some(Pulumi.Input.make([fqdn]))
+      },
       origins: (bucket.bucketRegionalDomainName, oac.id)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((domainName, oacId)) =>
@@ -208,14 +311,38 @@ let makeUiBundleDistribution = (
           PulumiAws.CloudFront.Distribution.restrictionType: Pulumi.Input.make("none"),
         }),
       }),
-      viewerCertificate: Pulumi.Input.make({
-        PulumiAws.CloudFront.Distribution.cloudfrontDefaultCertificate: Pulumi.Input.make(true),
-      }),
+      viewerCertificate: Pulumi.Input.make(viewerCertificate),
       comment: Pulumi.Input.make(pluginId ++ " UI bundle CDN"),
       defaultRootObject: Pulumi.Input.make(indexDocument),
       customErrorResponses: Pulumi.Input.make(customErrorResponses),
     },
   )
+
+  // Route53 A-alias from the FQDN to the freshly-created distribution. Lives
+  // in the caller's hosted zone (NOT the us-east-1 cert provider's zone — the
+  // zone is wherever the caller put it). CloudFront's global alias zone ID is
+  // a fixed constant; see `cloudFrontAliasZoneId`.
+  switch customDomain {
+  | None => ()
+  | Some({fqdn, hostedZoneId}) =>
+    let _ = PulumiAws.Route53.Record.make(
+      ~name=pluginId ++ "-domain-alias",
+      ~args={
+        zoneId: Pulumi.Input.make(hostedZoneId),
+        name: Pulumi.Input.make(fqdn),
+        type_: Pulumi.Input.make("A"),
+        aliases: [
+          (
+            {
+              name: distribution.domainName->Pulumi.Output.asInput,
+              zoneId: Pulumi.Input.make(cloudFrontAliasZoneId),
+              evaluateTargetHealth: Pulumi.Input.make(false),
+            }: PulumiAws.Route53.Record.alias
+          ),
+        ]->Pulumi.Input.make,
+      },
+    )
+  }
 
   let _ = PulumiAws.S3.BucketPolicy.make(
     ~name=name ++ "-bundle-policy",
@@ -293,8 +420,18 @@ let makeUiBundleDistribution = (
       )
   }
 
+  // When a custom domain is provisioned, return the pretty FQDN URL — the
+  // *.cloudfront.net hostname stops accepting requests once `aliases` is set,
+  // so the only viable public URL is the FQDN. Downstream consumers
+  // (`hostShellUrl` export, host-shell `config.json`) see the pretty URL
+  // transparently; no per-call-site change required.
+  let distributionUrl = switch customDomain {
+  | Some({fqdn}) => Pulumi.Output.make("https://" ++ fqdn)
+  | None => distribution.domainName->Pulumi.Output.apply(d => "https://" ++ d)
+  }
+
   {
-    distributionUrl: distribution.domainName->Pulumi.Output.apply(d => "https://" ++ d),
+    distributionUrl,
     bucketName: bucket.bucket,
   }
 }

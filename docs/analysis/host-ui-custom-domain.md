@@ -12,6 +12,7 @@
 - A custom domain on CloudFront requires four things: a Route53 hosted zone you own, an ACM certificate **in us-east-1** (CloudFront only consumes certs from us-east-1), the distribution configured with `aliases` + `viewerCertificate`, and a Route53 A-alias record pointing the FQDN at the distribution. CloudFront's global hosted zone ID for alias records is the fixed constant `Z2FDTNDATAQYW2`.
 - Most of the Pulumi resources needed are **not yet bound in `rescript-pulumi-aws`** — `Acm.Certificate`, `Acm.CertificateValidation`, `Route53.Record`, and `Provider.make` (for the alt-region us-east-1 provider) all need ReScript bindings before any of this compiles.
 - Three configuration shapes are viable: (A) hard-code FQDN per stack, (B) auto-derive FQDN from `${projectName}-${stackName}.${baseDomain}` with only the base domain + zone ID configured once globally, (C) hybrid (auto by default, explicit override). **Recommendation: C** — auto-derived covers 95% of deploys with zero ceremony, explicit override stays for the occasional vanity URL.
+- **Production stacks drop the stack suffix.** When the Pulumi stack name is `prod` or `main`, the FQDN is `${baseName}.${baseDomain}` (no stack segment); every other stack keeps the `-${stack}` suffix. So `online-shop-hybrid-platform/main` → `online-shop-hybrid-platform.app.reventless.dev`, while `online-shop-hybrid-platform/alpha` → `online-shop-hybrid-platform-alpha.app.reventless.dev`. The set of "prod" stack names is configurable (default `["prod", "main"]`) so teams using `production` or similar can opt in.
 - The mechanism is generic — once `Plugin_Stack.makeUiBundleDistribution` takes a custom-domain parameter, every UI bundle it provisions (host shell, per-plugin SPAs) gets the same treatment automatically. No per-app code change in Main.res once the framework default is set.
 - Effort estimate: **3-5 hours** including bindings, framework wiring, docs, and verification on one stack. Linear scaling for additional UI bundles is zero because the framework handles them all.
 
@@ -89,13 +90,15 @@ Each stack's Main.res passes `~hostUiDomain={fqdn, hostedZoneId}` to `Platform.d
 Framework reads two values once: `baseDomain` (e.g. `app.reventless.dev`) and `hostedZoneId`. Then derives the FQDN for every UI bundle:
 
 ```
-fqdn = "${projectName}-${stackName}.${baseDomain}"
+fqdn = stackName ∈ prodStacks
+  ? "${projectName}.${baseDomain}"
+  : "${projectName}-${stackName}.${baseDomain}"
 ```
 
-For `online-shop-hybrid-platform/alpha` → `online-shop-hybrid-platform-alpha.app.reventless.dev`.
+`prodStacks` defaults to `["prod", "main"]` and is configurable (see §3.1). For `online-shop-hybrid-platform/alpha` → `online-shop-hybrid-platform-alpha.app.reventless.dev`; for `online-shop-hybrid-platform/main` → `online-shop-hybrid-platform.app.reventless.dev`.
 
-- **Pro:** Zero configuration per app. Adding a new app, branch, or environment immediately produces a working pretty URL. Predictable from project + stack alone — no lookups needed to find where an env lives.
-- **Con:** FQDN includes Pulumi project naming choices, so `online-shop-hybrid-platform-alpha…` rather than the user's preferred `online-shop-hybrid-alpha…`. Renaming a Pulumi project changes the URL (cert + Route53 record get re-created). Long names get long URLs.
+- **Pro:** Zero configuration per app. Adding a new app, branch, or environment immediately produces a working pretty URL. Prod stacks land on a clean apex-style URL with no stack noise. Predictable from project + stack alone — no lookups needed to find where an env lives.
+- **Con:** FQDN includes Pulumi project naming choices, so `online-shop-hybrid-platform-alpha…` rather than the user's preferred `online-shop-hybrid-alpha…`. Renaming a Pulumi project changes the URL (cert + Route53 record get re-created). Long names get long URLs. Renaming a stack from `alpha` to `main` (promotion) also rewrites the cert + Route53 record under the shorter FQDN — by design, but it is a destroy/replace.
 
 ### Option C — Auto-derive by default, explicit override per stack (recommended)
 
@@ -113,20 +116,28 @@ type hostUiDomain =
 
 **Recommendation: C, defaulting to `Auto`.** Existing stacks that don't want the change can pass `Disabled` once to keep their cloudfront.net URL.
 
+### 3.1 Prod-stack handling
+
+Auto-derivation special-cases stack names that represent production. When `stackName ∈ prodStacks`, the FQDN drops the `-${stackName}` segment so the URL reads as a clean apex-style hostname (e.g. `online-shop-hybrid-platform.app.reventless.dev`). For every other stack the FQDN keeps `-${stackName}` (`online-shop-hybrid-platform-alpha.app.reventless.dev`).
+
+Default `prodStacks = ["prod", "main"]`. Override via `Util_LocalConfig` key `hostUiProdStacks` (CSV: `REVENTLESS_HOST_UI_PROD_STACKS=production,live`) for teams using different conventions. Same precedence ladder as the other host-UI keys.
+
+`Custom({fqdn})` short-circuits this logic entirely — explicit override always wins.
+
 ---
 
 ## 4. URL pattern choices (within Option B/C auto-derivation)
 
-The default convention `${projectName}-${stackName}` is one of several reasonable shapes. Each trade-off:
+The default convention `${projectName}-${stackName}` (with the stack segment dropped for prod stacks) is one of several reasonable shapes. Each trade-off:
 
-| Pattern | Example | Trade-off |
-|---|---|---|
-| `${projectName}-${stack}` | `online-shop-hybrid-platform-alpha` | Mechanical; includes "-platform" suffix from Pulumi project name |
-| `${stack}.${projectName}` | `alpha.online-shop-hybrid-platform` | Two-segment; reads as a sub-path; nested zones get awkward fast |
-| Manifest-derived (`name` in deploy-manifest.yaml) | `online-shop-hybrid-alpha` (where manifest `name: online-shop-hybrid`) | Cleanest URLs; requires the framework to read the manifest at deploy time, which it doesn't today (the manifest is consumed by the GitHub Actions workflow, not by Main.res) |
-| Caller-provided prefix override | `${prefix}-${stack}` with prefix set in stack config | Combines auto + per-app control; small extra wiring |
+| Pattern | Non-prod example | Prod example (`main`/`prod`) | Trade-off |
+|---|---|---|---|
+| `${projectName}[-${stack}]` | `online-shop-hybrid-platform-alpha` | `online-shop-hybrid-platform` | Mechanical; includes "-platform" suffix from Pulumi project name; prod gets a clean apex-style URL |
+| `${stack}.${projectName}` | `alpha.online-shop-hybrid-platform` | `online-shop-hybrid-platform` (stack segment omitted) | Two-segment; reads as a sub-path; nested zones get awkward fast |
+| Manifest-derived (`name` in deploy-manifest.yaml) | `online-shop-hybrid-alpha` (where manifest `name: online-shop-hybrid`) | `online-shop-hybrid` | Cleanest URLs; requires the framework to read the manifest at deploy time, which it doesn't today (the manifest is consumed by the GitHub Actions workflow, not by Main.res) |
+| Caller-provided prefix override | `${prefix}-${stack}` with prefix set in stack config | `${prefix}` (stack segment omitted) | Combines auto + per-app control; small extra wiring |
 
-A pragmatic middle path: **auto-derive from project + stack by default, allow a `baseName` override in stack config**. So `online-shop-hybrid-platform/alpha` becomes `online-shop-hybrid-platform-alpha.app.reventless.dev` unless `platform:hostUiBaseName: online-shop-hybrid` is set, in which case it becomes `online-shop-hybrid-alpha.app.reventless.dev`. Same precedence ladder as `cognitoUserPoolId`: env → sidecar → stack config → derived default.
+A pragmatic middle path: **auto-derive from project + stack by default with the prod-stack stripping rule, allow a `baseName` override in stack config**. So `online-shop-hybrid-platform/alpha` becomes `online-shop-hybrid-platform-alpha.app.reventless.dev` unless `platform:hostUiBaseName: online-shop-hybrid` is set, in which case it becomes `online-shop-hybrid-alpha.app.reventless.dev`. For the same project on stack `main`, the FQDN is `online-shop-hybrid.app.reventless.dev`. Same precedence ladder as `cognitoUserPoolId`: env → sidecar → stack config → derived default.
 
 ---
 
@@ -134,11 +145,11 @@ A pragmatic middle path: **auto-derive from project + stack by default, allow a 
 
 Both values are essentially per-AWS-account / per-team constants. They almost never change. Three places they could live:
 
-1. **`Util_LocalConfig` keys**: same precedence ladder as `cognitoUserPoolId`. Env var (`REVENTLESS_HOST_UI_BASE_DOMAIN`, `REVENTLESS_HOST_UI_HOSTED_ZONE_ID`) → `Pulumi.local.yaml` → `Pulumi.<stack>.yaml`. Composes with what's already built.
+1. **`Util_LocalConfig` keys**: same precedence ladder as `cognitoUserPoolId`. Env var (`REVENTLESS_HOST_UI_BASE_DOMAIN`, `REVENTLESS_HOST_UI_HOSTED_ZONE_ID`, optional `REVENTLESS_HOST_UI_PROD_STACKS`) → `Pulumi.local.yaml` → `Pulumi.<stack>.yaml`. Composes with what's already built.
 2. **Dedicated framework config file** at repo root (e.g. `reventless.yaml`). Cleaner for "everyone in this repo deploys to the same base domain"; redundant given the sidecar.
 3. **Hardcoded fallback to `null`** = "feature off." If neither is set, framework keeps the cloudfront.net default. No automatic provisioning until the user opts in by setting the base domain.
 
-**Recommendation:** (1) + (3). The sidecar pattern is already used and tested; if the values are absent, the framework silently keeps the old behavior. No surprise opt-in.
+**Recommendation:** (1) + (3). The sidecar pattern is already used and tested; if the values are absent, the framework silently keeps the old behavior. No surprise opt-in. `hostUiProdStacks` defaults to `"prod,main"` and only needs to be set when a team uses a different convention (`"production,live"` etc.).
 
 ---
 
@@ -229,24 +240,30 @@ let baseDomain   = Util_LocalConfig.get("hostUiBaseDomain")
 let hostedZoneId = Util_LocalConfig.get("hostUiHostedZoneId")
 let baseName     = Util_LocalConfig.get("hostUiBaseName")
                     ->Option.getOr(Pulumi.Pulumi.getProjectName())
+let prodStacks   = Util_LocalConfig.get("hostUiProdStacks")
+                    ->Option.map(s => s->String.split(","))
+                    ->Option.getOr(["prod", "main"])
 
 let customDomain = switch (baseDomain, hostedZoneId) {
   | (Some(bd), Some(hz)) =>
-    let fqdn = `${baseName}-${Pulumi.Pulumi.getStackName()}.${bd}`
+    let stack = Pulumi.Pulumi.getStackName()
+    let fqdn = prodStacks->Array.includes(stack)
+      ? `${baseName}.${bd}`
+      : `${baseName}-${stack}.${bd}`
     Some({fqdn, hostedZoneId: hz})
   | _ => None
 }
 ```
 
-Pass `customDomain` into `Plugin_Stack.makeUiBundleDistribution`. Same pattern for `Platform.deployPlugin`, so per-plugin UI bundles automatically get their own subdomain too (`${pluginId}-${stack}.${baseDomain}` or similar).
+Pass `customDomain` into `Plugin_Stack.makeUiBundleDistribution`. Same pattern for `Platform.deployPlugin`, so per-plugin UI bundles automatically get their own subdomain too (`${pluginId}-${stack}.${baseDomain}` non-prod, `${pluginId}.${baseDomain}` on prod stacks — or whatever per-plugin convention is chosen in §7.3).
 
 ### 7.3 Generalization: every UI bundle gets the same treatment
 
 Because `Plugin_Stack.makeUiBundleDistribution` is the single funnel for all UI bundles (host-shell today, per-plugin SPAs tomorrow), wiring `customDomain` once at that function means every caller — including future ones — picks up the auto-domain behavior automatically. No per-call-site duplication.
 
-The exact URL convention can differ per bundle type:
-- **Host shell**: `${baseName}-${stack}.${baseDomain}` (no plugin component)
-- **Per-plugin UIs**: `${pluginId}-${baseName}-${stack}.${baseDomain}` or `${pluginId}.${baseName}-${stack}.${baseDomain}` (multi-level zones)
+The exact URL convention can differ per bundle type (in all cases the `-${stack}` segment is dropped when `stack ∈ prodStacks`):
+- **Host shell**: `${baseName}-${stack}.${baseDomain}` (non-prod) / `${baseName}.${baseDomain}` (prod) — no plugin component
+- **Per-plugin UIs**: `${pluginId}-${baseName}-${stack}.${baseDomain}` (non-prod) / `${pluginId}-${baseName}.${baseDomain}` (prod), or `${pluginId}.${baseName}-${stack}.${baseDomain}` / `${pluginId}.${baseName}.${baseDomain}` for multi-level zones
 
 The two-level zone form (`catalog.online-shop-hybrid-alpha.app.reventless.dev`) is nicer but requires a wildcard cert (`*.online-shop-hybrid-alpha.app.reventless.dev`), one of:
 - A SAN cert with all plugin subdomains listed (need to know plugin names at deploy time — works since deploy-manifest already enumerates them)
@@ -261,11 +278,11 @@ Single-level (`catalog-online-shop-hybrid-alpha.app.reventless.dev`) is simpler 
 
 The CI workflow (`deploy-online-shop-hybrid.yml` → `deploy-reventless-aws.yml`) needs **no changes** beyond what's already in place after the recent env-var work:
 
-- `REVENTLESS_HOST_UI_BASE_DOMAIN` and `REVENTLESS_HOST_UI_HOSTED_ZONE_ID` flow through `Util_LocalConfig` automatically as long as they're exported in the deploy job's `env:` block.
-- Add them next to `REVENTLESS_COGNITO_USER_POOL_ID` in [`deploy-reventless-aws.yml`](../../.github/workflows/deploy-reventless-aws.yml) (deploy-platform + deploy-plugins jobs), sourced from `secrets.HOST_UI_BASE_DOMAIN` and `secrets.HOST_UI_HOSTED_ZONE_ID` (or actually `vars.` — these aren't secret).
-- The caller workflow forwards them via `secrets:` (or `inputs:` since neither value is sensitive — `vars.` would be more semantically correct than `secrets.`).
+- `REVENTLESS_HOST_UI_BASE_DOMAIN`, `REVENTLESS_HOST_UI_HOSTED_ZONE_ID`, and optional `REVENTLESS_HOST_UI_PROD_STACKS` flow through `Util_LocalConfig` automatically as long as they're exported in the deploy job's `env:` block.
+- Add them next to `REVENTLESS_COGNITO_USER_POOL_ID` in [`deploy-reventless-aws.yml`](../../.github/workflows/deploy-reventless-aws.yml) (deploy-platform + deploy-plugins jobs), sourced from `vars.HOST_UI_BASE_DOMAIN` / `vars.HOST_UI_HOSTED_ZONE_ID` / `vars.HOST_UI_PROD_STACKS` (none are secret).
+- The caller workflow forwards them via `inputs:` (or `vars.` directly) since none of the values are sensitive.
 
-Two new repo-level GitHub Actions **variables** (not secrets) cover it: `HOST_UI_BASE_DOMAIN`, `HOST_UI_HOSTED_ZONE_ID`. Set once; every workflow deploy picks them up.
+Two-to-three repo-level GitHub Actions **variables** (not secrets) cover it: `HOST_UI_BASE_DOMAIN`, `HOST_UI_HOSTED_ZONE_ID`, and `HOST_UI_PROD_STACKS` (optional — only set when the default `"prod,main"` doesn't match the team's naming). Set once; every workflow deploy picks them up.
 
 ---
 
@@ -291,7 +308,7 @@ For a project at this stage (alpha, frequent stack churn), **InStackCert is easi
 
 1. **First-deploy propagation delay.** CloudFront takes ~15 minutes to globally propagate `aliases` and `viewerCertificate` changes after the first `pulumi up`. Browsers caching the old cert may see TLS errors during the transition.
 2. **ACM validation can race.** `aws_acm_certificate_validation` is a synthetic resource that *waits* for ACM to issue the cert. Most validations succeed in 1-5 minutes but can take up to ~30. Pulumi will sit on the resource until it completes; long deploys are normal on first run.
-3. **Renaming the Pulumi project breaks the URL.** Because the FQDN is derived from `projectName`, changing the project (e.g. renaming `online-shop-hybrid-platform` to something else) destroys and recreates the cert + Route53 records under the new FQDN. The old FQDN is orphaned with a 404 until the next deploy or manual cleanup.
+3. **Renaming the Pulumi project or promoting a stack to prod breaks the URL.** Because the FQDN is derived from `projectName` + `stackName`, changing the project (e.g. renaming `online-shop-hybrid-platform`) destroys and recreates the cert + Route53 records under the new FQDN. The same destroy/replace happens when a stack name crosses the prod boundary — e.g. renaming `alpha` to `main` drops the `-alpha` segment and rewrites the cert under the shorter FQDN. The old FQDN is orphaned with a 404 until the next deploy or manual cleanup. Mitigation if seamless promotion matters: keep a stable stack name across environments and switch DNS at the apex level instead of renaming.
 4. **CloudFront's hosted zone ID is fixed.** Pulumi docs sometimes show `${cloudfront_zone_id}` references; in alias records, hardcode `Z2FDTNDATAQYW2` (or `Z2FDTNDATAQYW2` for IPv6 too — same value). This is a global CloudFront constant.
 5. **Multi-region certs are not interchangeable.** A cert provisioned in eu-west-1 will not work for CloudFront, even if the rest of the stack is eu-west-1. The alternate-region provider is the only way to get an us-east-1 cert.
 6. **DNS-01 validation records are stable across cert renewals.** ACM uses the same validation token name + value for all renewals on the same cert, so the validation Route53 records can stay forever — no rotation needed.
@@ -321,6 +338,7 @@ Linear scaling for additional UI bundles is zero — the framework handles them 
 - **Subdomain naming for plugin UIs**: single-segment (`catalog-online-shop-hybrid-alpha.app.reventless.dev`) or nested (`catalog.online-shop-hybrid-alpha.app.reventless.dev`)? Nested is nicer but needs a wildcard cert.
 - **Per-plugin UIs in scope yet?** Currently only the host-shell is deployed; plugin UIs use Auto UI generated from the GraphQL schema. The framework should support per-plugin custom URLs *when* per-plugin UIs land, but the work doesn't have to happen now.
 - **HSTS preload**: if the apex `reventless.dev` is on the HSTS preload list, every subdomain inherits forced HTTPS. Fine for production, mildly annoying for local debugging if you ever need an HTTP fallback. Document but don't gate the work on it.
+- **Prod-stack vocabulary**: default `prodStacks = ["prod", "main"]` covers Reventless's own conventions. Should the framework recognise additional canonical names out of the box (`production`, `live`, `release`) so downstream users rarely need to set the override, or is the override hatch enough? Bias toward "small default, easy override" — adding aliases later is non-breaking, removing them is.
 
 ---
 
