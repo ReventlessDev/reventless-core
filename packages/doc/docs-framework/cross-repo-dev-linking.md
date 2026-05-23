@@ -99,8 +99,9 @@ Do **not** commit this override — it would break release builds.
 
 The sibling repo must be a valid pnpm workspace target, which means a
 `pnpm-workspace.yaml` at its root. The sibling can continue to use npm for
-its own development; see the compat shim pattern documented in
-[pnpm-migration.md Phase 3](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/done/pnpm-migration.md).
+its own development via the compat-shim pattern (npm-based sibling + a
+minimal `pnpm-workspace.yaml`), described under
+[Sibling migration posture](#sibling-migration-posture) below.
 
 ## Sibling migration posture
 
@@ -119,9 +120,9 @@ forces it:
 - Two or more siblings need to link to each other — the compat shim only
   covers "this repo consumes sibling", not sibling-to-sibling.
 
-When a trigger lands, rerun Phase 1 of the migration plan on the sibling.
-Budget is shorter than this repo's (half-day to a day) because sibling
-package counts are smaller and the learnings (hoisted node-linker,
+When a trigger lands, migrate the sibling the same way this repo was
+migrated. Budget is shorter than this repo's (half-day to a day) because
+sibling package counts are smaller and the learnings (hoisted node-linker,
 `link-workspace-packages`, overrides migration, Lerna v8 quirks) transfer
 directly. File a separate per-repo plan; don't preemptively migrate.
 

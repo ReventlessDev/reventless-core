@@ -4,8 +4,6 @@ This repo uses **pnpm 10** as its package manager. This guide covers the
 practical differences from npm — command translations, repo-specific
 settings, and the gotchas most likely to trip up someone used to npm.
 
-The migration rationale and step-by-step record lives in
-[docs/plans/done/pnpm-migration.md](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/done/pnpm-migration.md).
 Cross-repo dev linking is documented separately in
 [cross-repo-dev-linking.md](./cross-repo-dev-linking.md).
 
@@ -89,8 +87,7 @@ enable-pre-post-scripts=true
 
 A side effect of hoisted mode is that pnpm may still nest some workspace
 deps under `<pkg>/node_modules/…`. This surfaces as `Duplicated package`
-warnings from ReScript. Three such warnings are currently accepted
-(documented in the migration plan, §1.7a).
+warnings from ReScript. Three such warnings are currently accepted.
 
 ## Postinstall build-script approval
 
@@ -218,9 +215,8 @@ mode — toggling never dirties a tracked file.
 - **`pnpm rebuild` doesn't always re-run postinstall scripts.** For a
   clean slate, remove the affected `node_modules/<pkg>` and reinstall.
 - **Duplicated-package warnings** from ReScript are hoisting artifacts,
-  not errors. The migration plan §1.7a tracks the accepted set; if a new
-  one appears, check whether the offending dep range should be
-  `workspace:*`.
+  not errors. If a new one appears, check whether the offending dep range
+  should be `workspace:*`.
 - **`pnpm-workspace.yaml` missing after clone.** It's gitignored; run
   `node scripts/workspace-setup.mjs` once to create the symlink to
   `pnpm-workspace.base.yaml`. See the cross-repo guide for details.

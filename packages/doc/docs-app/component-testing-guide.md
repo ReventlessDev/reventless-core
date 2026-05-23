@@ -1052,7 +1052,6 @@ To add tests for a new component:
 
 ## References
 
-- **DCB Test Plan**: `/plans/dcb-test-plan.md` — Detailed findings and patterns from DCB tests
 - **Component Structure**: `packages/doc/docs/inner-workings/component-structure-pattern.md`
 - **Existing Tests**: `packages/reventless/tests/` — MessageTest, PluginBehaviorTest, ProjectionTest
 - **Jest Bindings**: `node_modules/@glennsl/rescript-jest/src/jest.resi`

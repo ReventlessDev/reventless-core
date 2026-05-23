@@ -113,6 +113,5 @@ Otherwise default to `@pulumi/aws`.
 
 ## References
 
-- Migration plan: [`docs/plans/appsync-resolver-aws-native.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/appsync-resolver-aws-native.md)
 - [Pulumi: aws-native overview](https://www.pulumi.com/registry/packages/aws-native/)
 - [`AWS::AppSync::Resolver` CloudFormation resource](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-appsync-resolver.html)

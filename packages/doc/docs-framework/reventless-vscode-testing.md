@@ -101,7 +101,7 @@ If the panel is empty, check **Output → Log (Extension Host)** for the `revent
 - **Run one** — hover a single test → click the play icon. Only that test runs (VS Code passes the test's id to the extension, which forwards it as `--filter`).
 - **Run a subtree** — click the play icon on a file or suite row. Only descendants run.
 
-All three paths use the CLI's substring-match `--filter`, so the ids emitted at discovery time MUST match the ids emitted at run time. (This was a real bug fixed in Stage 8 — both sides now prefix with the absolute file path.)
+All three paths use the CLI's substring-match `--filter`, so the ids emitted at discovery time MUST match the ids emitted at run time. (This was a real bug — both sides now prefix with the absolute file path.)
 
 ---
 
@@ -117,7 +117,7 @@ The file watcher should trigger re-discovery within ~250 ms. Click run on the br
 
 - A red X on the failed test.
 - Clicking the failure opens a **diff view** whose `expected` and `actual` panes are rendered in **ReScript syntax** (e.g. `CategoryAdded({categoryId: "c1", name: "Electronics"})`) — not `{TAG: "CategoryAdded", _0: {...}}`.
-- **Cmd+Click** on the failure location jumps to the *slice implementation* (`hint.locus`), not the test file. This is the whole point of Stage 2's `Hint` module threading through to `FormatterVsCode.messagePayload`.
+- **Cmd+Click** on the failure location jumps to the *slice implementation* (`hint.locus`), not the test file. This is the whole point of the `Hint` module threading through to `FormatterVsCode.messagePayload`.
 
 Revert the break after verifying.
 
@@ -175,7 +175,7 @@ pnpm dlx vsce package --no-dependencies -o reventless-vscode.vsix
 
 Then in your main VS Code: **Extensions: Install from VSIX…** → pick the generated `.vsix`. Uninstall via **Extensions** panel → right-click → **Uninstall** when you're done.
 
-Marketplace publishing (icon, publisher registration, `vsce publish`) is deferred — see Stage 8 deviations in [`docs/plans/reventless-gwt.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/reventless-gwt.md).
+Marketplace publishing (icon, publisher registration, `vsce publish`) is deferred.
 
 ---
 
@@ -263,7 +263,7 @@ No dependency-graph awareness: editing one slice re-runs every selected test, no
 
 ### How cancellation works
 
-Each iteration starts with `killInFlight()` — if a previous iteration is still mid-flight when a new `.res.mjs` change arrives, the extension sends `SIGINT` to the child CLI. The CLI's `Cancellation` module (§7 of the plan, Stage 7) traps the signal, marks in-flight tests as `Skip{reason:"cancelled"}`, and exits cleanly. The new iteration then spawns a fresh process.
+Each iteration starts with `killInFlight()` — if a previous iteration is still mid-flight when a new `.res.mjs` change arrives, the extension sends `SIGINT` to the child CLI. The CLI's `Cancellation` module traps the signal, marks in-flight tests as `Skip{reason:"cancelled"}`, and exits cleanly. The new iteration then spawns a fresh process.
 
 Toggling the flask-eye icon off fires `token.onCancellationRequested`, which disposes the `FileSystemWatcher` subscription and kills any live process. Subsequent file edits are ignored until continuous run is re-enabled.
 
@@ -281,7 +281,6 @@ File-change events are debounced at 250 ms. A burst of saves (e.g. `:wa` across 
 
 ## References
 
-- [`docs/plans/reventless-gwt.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/reventless-gwt.md) — Stage 8 action log and deferred items.
-- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) §3.3 — `--format=vscode` event table and the thin-extension example.
+- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) — `--format=vscode` event table and the thin-extension example.
 - [VS Code Testing API](https://code.visualstudio.com/api/extension-guides/testing) — `TestController`, `TestItem`, `TestMessage`, `TestRun`.
 - [`packages/reventless-vscode/src/extension.ts`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/src/extension.ts) — the extension source (~260 lines).

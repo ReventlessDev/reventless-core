@@ -2,7 +2,7 @@
 
 This guide covers the **forward leg** of the Event Model ↔ code roundtrip — turning an upstream Event Modeling artifact (Dilger JSON today; prooph-board / YAML / Reventless-native later) into the Spec + GWT files that compose a Reventless plugin.
 
-The pipeline is owned by the `@reventlessdev/reventless-codegen` package. The reverse pass (code → model) is Plan 06 and is not described here; the AI synthesis of skeleton bodies is Plan 07.
+The pipeline is owned by the `@reventlessdev/reventless-codegen` package. The reverse pass (code → model) and the AI synthesis of skeleton bodies are separate, planned capabilities and are not described here.
 
 ---
 
@@ -22,7 +22,7 @@ The output directory ends up with:
 
 ```
 plugin/
-├── .reventless/sync-base/<slice-id>.json   # one per slice — the merge base for Plan 06
+├── .reventless/sync-base/<slice-id>.json   # one per slice — the merge base for the reverse pass
 ├── src/<Chapter>/<SliceKindFolder>/<Stem>.res            # Spec  (always overwritten)
 ├── src/<Chapter>/<SliceKindFolder>/<Stem>_<Kind>.res     # Skeleton (only on first emission)
 └── tests/<Chapter>/<SliceKindFolder>/<Stem>_GWT.res      # GWT   (always overwritten)
@@ -46,13 +46,13 @@ Every file the pipeline emits starts with one comment line:
 // ROUNDTRIP from event-model://<adapter>/<entityKind>/<id>
 ```
 
-The reverse pass (Plan 06) keys off this header to locate the upstream entity. If the header is removed, the file becomes hand-authored from the codegen's perspective — not a corruption, just an exit from the roundtrip.
+The reverse pass keys off this header to locate the upstream entity. If the header is removed, the file becomes hand-authored from the codegen's perspective — not a corruption, just an exit from the roundtrip.
 
 ---
 
 ## Skeletons are emitted once
 
-`X_<Kind>.res` (the Implementation skeleton) is written **only when no implementation file exists**. Re-running `forward` against a model change preserves the file with a "this skeleton was preserved" line in the report. The intent: once a developer or Plan 07 has filled in the body, model changes should never silently overwrite that work.
+`X_<Kind>.res` (the Implementation skeleton) is written **only when no implementation file exists**. Re-running `forward` against a model change preserves the file with a "this skeleton was preserved" line in the report. The intent: once a developer (or a future AI synthesis step) has filled in the body, model changes should never silently overwrite that work.
 
 If you want to re-generate a skeleton, delete the file and re-run.
 
@@ -60,7 +60,7 @@ If you want to re-generate a skeleton, delete the file and re-run.
 
 ## Sync base
 
-After every successful forward pass the pipeline writes a per-slice JSON snapshot at `<plugin>/.reventless/sync-base/<id>.json`. This is the merge base for Plan 06's reverse pass — it captures the canonical shape exactly, with no Reventless-specific data lost. Snapshots are pretty-printed with 2-space indentation and a trailing newline so PR diffs stay reviewable.
+After every successful forward pass the pipeline writes a per-slice JSON snapshot at `<plugin>/.reventless/sync-base/<id>.json`. This is the merge base for the reverse pass — it captures the canonical shape exactly, with no Reventless-specific data lost. Snapshots are pretty-printed with 2-space indentation and a trailing newline so PR diffs stay reviewable.
 
 Check `.reventless/` into the plugin repo. Nothing under it should be `.gitignore`d.
 
@@ -73,7 +73,7 @@ The pipeline never emits, parses, or modifies files matching these patterns:
 - **`<Stem>_Fixtures.res`** — hand-authored shared test data (auto-opened by the `@@reventless.gwt` PPX into the companion GWT file)
 - **`<Stem>_ExtraGWT.res`** — hand-authored scenarios that should *not* round-trip back to the upstream model
 
-Use `_ExtraGWT.res` for any scenario that uses fixture references, helper calls, or computed values — the reverse pass (Plan 06) only round-trips inline-literal scenarios.
+Use `_ExtraGWT.res` for any scenario that uses fixture references, helper calls, or computed values — the reverse pass only round-trips inline-literal scenarios.
 
 ---
 
@@ -87,12 +87,11 @@ The `forward` subcommand surfaces the same warnings before writing files; if any
 
 ## Adapters
 
-Plan 05 ships only the **Dilger** adapter (`--adapter dilger`). The `Adapter.T` interface is in place for future adapters (prooph-board, YAML DSL, Reventless-native canonical JSON), each of which is a self-contained follow-up.
+Currently only the **Dilger** adapter (`--adapter dilger`) ships. The `Adapter.T` interface is in place for future adapters (prooph-board, YAML DSL, Reventless-native canonical JSON), each of which is a self-contained follow-up.
 
 ---
 
 ## References
 
-- [`docs/plans/forward-codegen-pipeline.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/forward-codegen-pipeline.md) — full plan with all decisions, scope, and phase breakdown
 - [`docs/analysis/spec-implementation-split.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/spec-implementation-split.md) — Spec-First file boundaries that this pipeline emits into
 - [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) — GWT methodology that the emitter targets

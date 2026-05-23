@@ -1,6 +1,6 @@
-# Mixed-source AutomationSlice (Plan 04)
+# Mixed-source AutomationSlice
 
-An `AutomationSlice` can consume events from multiple sources — Aggregate `EventTopic`s alongside its own (or another) `DcbEventLog` `EventTopic` — react via the same TODO list pattern, and emit commands targeting a downstream slice. After Plan 04, an Aggregate event can directly trigger a DCB command without an intermediate ReadModel + polling/trigger orchestration.
+An `AutomationSlice` can consume events from multiple sources — Aggregate `EventTopic`s alongside its own (or another) `DcbEventLog` `EventTopic` — react via the same TODO list pattern, and emit commands targeting a downstream slice. This lets an Aggregate event directly trigger a DCB command without an intermediate ReadModel + polling/trigger orchestration.
 
 ## When to use
 
@@ -181,5 +181,4 @@ A single-source slice is a special case where the `Mappings` array has exactly o
 - Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res)
 - Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res)
 - Integration test (canonical demo): [`reventless-in-memory/tests/components/automationslice/MixedSourceAutomationSlice*.res`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-in-memory/tests/components/automationslice/)
-- Single-source example slice (post-Plan-04 shape): [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)
-- Plan: [`docs/plans/done/mixed-source-automationslice.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/done/mixed-source-automationslice.md) (after merge)
+- Single-source example slice: [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)

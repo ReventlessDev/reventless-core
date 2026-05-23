@@ -4,8 +4,7 @@ A ReadModel can subscribe to events from any combination of Aggregate `EventTopi
 and a plugin's DCB `EventLog`. The runtime registers all of them in the same
 `allEventTopics` dict; `Mapping.Make` picks sources by **name**.
 
-This guide is the application-developer reference for that pattern. For the
-why/architecture, see Plan 03 (`docs/plans/mixed-source-readmodel.md`).
+This guide is the application-developer reference for that pattern.
 
 ## When to use it
 
@@ -34,7 +33,7 @@ read in the `Catalog/src/plugin.json` (or that defaults to your folder name).
 
 > **Pro tip — fail-fast.** If a `Mapping.sourceName` doesn't match any key in
 > `allEventTopics`, ReadModel construction throws with a clear error pointing to
-> the typo. Without this check (Plan 03 / Phase 2), the projection would silently
+> the typo. Without this check, the projection would silently
 > see zero events.
 
 ## Authoring a mixed-source ReadModel
@@ -141,7 +140,7 @@ the hand-rolled form above is usually shorter. Use whichever you prefer.
 
 | Symptom | Diagnosis |
 |---------|-----------|
-| `ReadModel "X" has a Mapping with sourceName "Y", but no EventTopic with that key exists` at startup | Phase 2 fail-fast caught a typo. The error message lists all available source names — pick the right one. |
+| `ReadModel "X" has a Mapping with sourceName "Y", but no EventTopic with that key exists` at startup | The startup fail-fast caught a typo. The error message lists all available source names — pick the right one. |
 | Projection runs but state never updates | If the typo fail-fast passed, a different mapping is firing instead. Check the logs — `ReadModel(...)  handling event N/M from <sourceName>` tells you which source the event came from and which mapping matched. |
 | Adding a new event variant to a DCB slice quietly loses events | Expected. Extend the consumer's `Source.event` type to include the new variant and add a `switch` arm. |
 
@@ -152,7 +151,5 @@ the hand-rolled form above is usually shorter. Use whichever you prefer.
 - `reventless/reventless-in-memory/tests/components/readmodel/DcbReadModelE2ETest.res`
   — focused integration test that exercises the DCB → ReadModel path
   end-to-end.
-- `docs/guides/aggregate-vs-dcb-decision-guide.md` — when to use Aggregate vs
-  DCB in the first place.
-- Plan 03 (`docs/plans/mixed-source-readmodel.md`) — the design decisions and
-  the Option A vs Option B trade-off behind the chosen approach.
+- [Aggregate vs DCB decision guide](aggregate-vs-dcb-decision-guide) — when to
+  use Aggregate vs DCB in the first place.

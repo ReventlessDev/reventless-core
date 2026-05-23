@@ -139,7 +139,7 @@ The host shell SPA itself is built upstream by `reventless-ui`'s `host-shell` pa
 }
 ```
 
-`authMode: "cognito"` matches the AppSync auth wiring set up by Stage D of `docs/plans/done/host-ui-login-core.md` — every AWS AppSync GraphQL API uses `AMAZON_COGNITO_USER_POOLS` as its primary authenticationType with `AWS_IAM` as the single additional provider for server-to-server lambdas.
+`authMode: "cognito"` matches the AppSync auth wiring used for host-UI login — every AWS AppSync GraphQL API uses `AMAZON_COGNITO_USER_POOLS` as its primary authenticationType with `AWS_IAM` as the single additional provider for server-to-server lambdas.
 
 `apiEndpoint` and `platformApiEndpoint` are written separately so the host shell can target the platform admin schema independently of plugin-domain queries; in unified-API mode (the default — `Config.splitApi=false`) both keys resolve to the same URL and the SPA treats them interchangeably. `cognitoUserPoolId` / `cognitoClientId` come from `Platform_Stack.resolveCognitoUserPool` (auto-provisioned or BYO via `REVENTLESS_COGNITO_USER_POOL_ID` env var / `Pulumi.local.yaml` / `Pulumi.<stack>.yaml`).
 

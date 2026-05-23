@@ -436,9 +436,6 @@ work" until the last fell.
 - `src/live/LiveConnection.res` — client lifecycle, refcounting, Domain/Platform routing.
 - `reventless-host-shell/src/App.res` — mounts `LiveConnection.Provider` from `config.json`.
 
-**Background:** `docs/plans/realtime-change-descriptors.md`,
-`docs/plans/graphql-subscriptions-appsync.md` (Source C / GraphQL subscriptions).
-
 ---
 
 ## Status & planned extensions

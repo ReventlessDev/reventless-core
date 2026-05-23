@@ -79,11 +79,11 @@ All five storage surfaces are now SQLite-backed:
 
 | Surface | Status |
 |---|---|
-| `EventLog` | persistent (Phase 2) |
-| `QueryDb` (basic load/save/delete) | persistent (Phase 2) |
-| `DcbEventLog` (events + tags + conditional append) | persistent (Phase 4) |
-| `TaskBucket` (`put` / `get` helpers; bucket maker still returns dummy resource) | persistent (Phase 4) |
-| `QueryDb` GSI indexes (`json_extract`-based SQLite indexes) | persistent (Phase 5) |
-| `QueryDb` TTL (`expires_at` column + lazy filter) | persistent (Phase 5) |
+| `EventLog` | persistent |
+| `QueryDb` (basic load/save/delete) | persistent |
+| `DcbEventLog` (events + tags + conditional append) | persistent |
+| `TaskBucket` (`put` / `get` helpers; bucket maker still returns dummy resource) | persistent |
+| `QueryDb` GSI indexes (`json_extract`-based SQLite indexes) | persistent |
+| `QueryDb` TTL (`expires_at` column + lazy filter) | persistent |
 
 A restart with `Backend.Sqlite({path, resetOnStart: false})` keeps all of the above intact. Use `resetOnStart: true` (or just delete the file) to start fresh.

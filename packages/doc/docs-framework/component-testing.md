@@ -250,4 +250,4 @@ When adding a new component, write Layer 1 tests first (faster feedback, no bus 
    - `beforeAllAsync`: resolve Output chain(s) before any test runs
    - Use `jestTest` (native `test` binding), not `testPromise`
 
-See `docs/plans/component-testing-guide.md` for the full pattern guide including mock adapter templates, type annotation gotchas, and test naming conventions.
+See the [component testing guide](/app/component-testing-guide) for the full pattern guide including mock adapter templates, type annotation gotchas, and test naming conventions.
