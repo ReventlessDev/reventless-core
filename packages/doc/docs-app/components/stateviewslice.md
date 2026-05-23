@@ -78,47 +78,61 @@ DCBArchitecture: DCB Architecture {
 
 ## Component Spec
 
-The StateViewSlice component requires a spec that defines its name, state type, and projection logic. The spec type is defined in `StateViewSlice.res` as `StateViewSlice.Spec`:
+A StateViewSlice is **split into two files**:
 
-```rescript
-module MySpec: StateViewSlice.Spec = {
-  let name = "MyStateViewSlice"
+- `<Name>.res` — the **spec** (`@@reventless.spec`): the local `consumedEvent` and
+  `state` `@schema` types.
+- `<Name>_Projection.res` — the **projection** (`@@reventless.projection`): a single
+  `let project = event => [...]` function (ONE argument).
 
-  module DcbEventLogSpec = MyDcbEventLogSpec
+The spec file. `@@reventless.spec` injects `name`, `module Id`, `moduleUrl`,
+`let config = config()`, and `let subIdConfig = None`:
 
-  @schema
-  type event = 
-    | Created({id: string, name: string})
-    | Updated({id: string, name: string})
-    | Deleted({id: string})
+```rescript title="Item/StateViewSliceStream/Items.res" showLineNumbers
+@@reventless.spec
 
-  @schema
-  type state = {
-    items: dict<item>,
-  }
+@schema
+type consumedEvent =
+  | Created({id: string, name: string})
+  | Updated({id: string, name: string})
+  | Deleted({id: string})
 
-  let project = event =>
-    switch event {
-    | Created({id, name}) => [Projection.Action.Set(id, {name})]
-    | Updated({id, name}) => [Projection.Action.Set(id, {name})]
-    | Deleted({id}) => [Projection.Action.Delete(id)]
-    }
-}
+@schema
+type state = {name: string}
 ```
 
-Or import the spec from the file:
-```rescript
-module MySpec = MyStateViewSliceSpec  // defines module matching StateViewSlice.Spec
+The projection file. `@@reventless.projection` injects `open Reventless.Projection`
+(so `Set`, `Update`, `UpdateWithDefault`, `Delete` are in scope unqualified) and
+brings the spec module into scope. `project` takes ONE argument — the event:
+
+```rescript title="Item/StateViewSliceStream/Items_Projection.res" showLineNumbers
+@@reventless.projection
+
+let project = event =>
+  switch event {
+  | Created({id, name}) => [Set(id, {name: name})]
+  | Updated({id, name}) => [Update(id, state => {...state, name})]
+  | Deleted({id}) => [Delete(id)]
+  }
+```
+
+There is no `DcbEventLogSpec` reference — the slice declares its own local
+`consumedEvent` union.
 
 ### Spec Fields Explained
 
+In the spec file (`@@reventless.spec` injects `name`, `module Id`, `moduleUrl`):
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Unique identifier for this view slice |
-| `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
-| `event` | `@schema` [type](./rescript-syntax.md#ppx) | Event type using `@schema` [ppx](./rescript-syntax.md#ppx) for auto-generated schema |
-| `state` | `@schema` [type](./rescript-syntax.md#ppx) | State type for the read model (schema auto-generated) |
-| `project` | `event => array<Projection.action<state>>` | Function to transform event into state actions |
+| `consumedEvent` | `@schema` [type](../rescript-syntax.md#ppx) | The local subset of event variants this slice projects |
+| `state` | `@schema` [type](../rescript-syntax.md#ppx) | State type for the read model (schema auto-generated) |
+
+In the `_Projection.res` file:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `project` | `consumedEvent => array<Projection.action<state>>` | Function to transform an event into state actions |
 
 ## Runtime Behavior
 
@@ -147,34 +161,29 @@ StateViewSlice --> EventCollector: completion
 
 ### Projection Actions
 
-StateViewSlice uses Projection actions to update state:
+In the `_Projection.res` file, `@@reventless.projection` injects
+`open Reventless.Projection`, so the action constructors (`Set`, `Update`,
+`UpdateWithDefault`, `Delete`) are in scope unqualified:
 
-```rescript
-// Example projection actions
+```rescript title="Item/StateViewSliceStream/Items_Projection.res"
+@@reventless.projection
+
 let project = event =>
   switch event {
-  | ItemCreated({itemId, name}) =>
-    [Projection.Create(itemId, {name, createdAt: Js.Date.now()})]
-    
-  | ItemRenamed({itemId, newName}) =>
-    [Projection.Update(itemId, state => {...state, name: newName})]
-    
-  | ItemDeleted({itemId}) =>
-    [Projection.Delete(itemId)]
-    
+  | ItemCreated({itemId, name}) => [Set(itemId, {name, createdAt: Date.now()})]
+  | ItemRenamed({itemId, newName}) => [Update(itemId, state => {...state, name: newName})]
+  | ItemDeleted({itemId}) => [Delete(itemId)]
   | StockAdjusted({itemId, delta}) =>
     // UpdateWithDefault handles case where item doesn't exist yet
-    [Projection.UpdateWithDefault(itemId, {count: 0}, state => 
-      {...state, count: state.count + delta}
-    )]
+    [UpdateWithDefault(itemId, {count: 0}, state => {...state, count: state.count + delta})]
   }
 ```
 
 ## Key Design Annotations
 
-StateViewSlice supports the same PPX annotations on `@schema type state` as ReadModel. Annotations on state fields automatically generate `let makeId`, `let subIdConfig`, and `let config`. The PPX also auto-injects `open Reventless.Projection`, so `Set`, `Update`, `UpdateWithDefault`, and `Delete` are available without qualification:
+StateViewSlice supports the same PPX annotations on `@schema type state` as ReadModel. Annotations on state fields automatically generate `let makeId`, `let subIdConfig`, and `let config`. These annotations go on the spec file's `@schema type state`:
 
-```rescript title="OrderLineItemsView.res"
+```rescript title="OrderLineItems/StateViewSliceStream/OrderLineItems.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -190,6 +199,14 @@ type state = {
 type consumedEvent =
   | LineItemAdded({orderId: string, lineItemId: string, productId: string, categoryId: string, quantity: int})
   | LineItemRemoved({orderId: string, lineItemId: string})
+```
+
+The `project` function lives in the sibling `_Projection.res` file, where
+`@@reventless.projection` injects `open Reventless.Projection` (so `Set`,
+`Update`, `UpdateWithDefault`, and `Delete` are in scope unqualified):
+
+```rescript title="OrderLineItems/StateViewSliceStream/OrderLineItems_Projection.res" showLineNumbers
+@@reventless.projection
 
 let project = event =>
   switch event {

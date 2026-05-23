@@ -26,14 +26,19 @@ These are not mutually exclusive. A single plugin can have aggregates for self-c
 The `Platform.T` module type is a factory interface that decouples your application code from infrastructure. Your plugin modules import only `reventless-spec`; the actual AWS wiring lives in `reventless-aws` and is applied at the **composition root**.
 
 ```
-packages/
-  my-plugin/
-    ProductSpec.res           ← only imports reventless-spec
-    ProductBehavior.res       ← only imports reventless-spec
-    ProductsProjections.res   ← only imports reventless (for Projection.Mapping.Make)
-    CatalogPlugin.res         ← only imports reventless-spec, wraps in Make(Platform)
-  infra/
-    index.res                 ← imports reventless-aws, the only file that does
+catalog/                          ← the plugin package
+  src/
+    Category/
+      Aggregate/
+        Category.res              ← spec   (@@reventless.spec)
+        Category_Behavior.res     ← behavior (@@reventless.behavior)
+      ReadModel/
+        Categories.res            ← spec
+        Categories_Projections.res ← mappings (@@reventless.mappings)
+    Plugin.res                    ← GENERATED composition root, wraps everything in Make(Platform)
+platform-aws/                     ← the composition root package
+  src/
+    Main.res                      ← imports reventless-aws, the only file that does
 ```
 
 ### Creating the AWS Platform
@@ -41,7 +46,7 @@ packages/
 `ReventlessAws.Platform.Make` produces a `Platform.T` wired to DynamoDB, Lambda, SQS, SNS, and DynamoDB Streams:
 
 ```rescript
-// index.res — composition root
+// Main.res — composition root
 module Platform = ReventlessAws.Platform.Make(Config)
 ```
 
@@ -52,28 +57,30 @@ module Platform = ReventlessAws.Platform.Make(Config)
 | Builder | Purpose |
 |---------|---------|
 | `Platform.Aggregate.Make(Spec, Behavior, EventMappings)` | Builds an aggregate component |
-| `Platform.ReadModel.Make(Spec, Mappings)` | Builds a read model component |
-| `Platform.StateChangeSlice.Make(Spec)` | Builds a DCB write-side slice |
-| `Platform.StateViewSlice.Make(Spec)` | Builds a DCB read-side view slice |
-| `Platform.DcbEventLog.Make(Spec)` | Builds a DCB event log (used internally) |
-| `Platform.ExtensionPoint.Make(Mappings, Env)` | Builds an extension point |
-| `Platform.Extension.Make(Mapping)` | Builds an extension |
+| `Platform.ReadModel.Make(Spec, Projections)` | Builds a read model component |
+| `Platform.ReadModelStream.Make(Spec, Projections)` | Builds a stream-fed read model component |
+| `Platform.StateChangeSlice.Make(Spec, Behavior)` | Builds a DCB write-side slice |
+| `Platform.StateViewSliceStream.Make(Spec, Projection)` | Builds a DCB read-side view slice |
+| `Platform.AutomationSlice.Make(Spec, Automation)` | Builds a DCB automation slice |
+| `Platform.InboundTranslationSlice.Make(Spec, Translation)` | Builds a DCB inbound translation slice |
+| `Platform.OutboundTranslationSlice.Make(Spec, Translation)` | Builds a DCB outbound translation slice |
+| `Platform.ExtensionPoint.Make(Mapping)` | Builds an extension point |
+| `Platform.Extension.Make(X.Mapping)` | Builds an extension |
 | `Platform.Task.Make(Spec)` | Builds a task component |
-| `Platform.Counter` | Pre-built counter component |
 
 ## Plugin Assembly
 
-All plugins follow the same pattern: a **module function** over `Platform.T` that builds components and calls `Plugin.make`:
+All plugins follow the same pattern: a **module function** over `Platform.T` that builds components and calls `Plugin.make`. This file — `src/Plugin.res` — is **generated** by `generate-plugin` before each build by scanning the `src/` folders; you don't write it by hand:
 
 ```rescript
-// CatalogPlugin.res
+// Plugin.res — AUTO-GENERATED
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  // ... build components using Platform builders ...
+  // ... the generator pairs each spec with its body file via Platform builders ...
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~heartbeatInterval=60,
+      ~heartbeatInterval=5,
       ~aggregates=[...],
       ~readModels=[...],
       ~extensionPoints=[...],
@@ -89,13 +96,13 @@ See [Aggregates](./aggregates.md) and [DCB Slices](./dcb-slices.md) for step-by-
 The composition root is the only file that imports `reventless-aws`. It instantiates the platform and passes it to every plugin:
 
 ```rescript
-// index.res
+// Main.res
 module Platform = ReventlessAws.Platform.Make(Config)
-module App = CatalogPlugin.Make(Platform)
+module Catalog = CatalogPlugin.Plugin.Make(Platform)
 
 Platform.makePlatform(
   ~version=Reventless.PackageVersion.fromCwd(),
-  ~plugins=[module(App)],
+  ~plugins=[module(Catalog)],
 )
 ```
 
@@ -138,73 +145,91 @@ An **ExtensionPoint** is the public outbound interface of a plugin. It:
 - **Publishes events** translated from internal aggregate/slice events
 - **Receives commands** from other plugins and routes them to internal aggregates
 
-An Extension Point Mapping file defines the translation:
+The EP's public contract (its `command`/`event`/`directive` types) lives in a spec package, declared with `@@reventless.spec`:
 
 ```rescript
-// ProductsExtensionPointMapping.res
+// catalog-spec/src/Products_ExtensionPoint.res
 @@reventless.spec
 
-// The spec (ProductsExtensionPoint) defines command/event/callCommand types
-// The mapping translates between internal and external representations
+@schema
+type command = unit // read-only: no inbound commands
 
-module Delegate = ProductDemand  // internal aggregate to delegate commands to
+@schema
+type event =
+  | ProductBecameAvailable({productId: string, name: string, price: float})
+  | ProductPriceChanged({productId: string, price: float})
 
-let map = event =>
-  switch event {
-  | Product.Added({productId, name, price}) =>
-    PublishEvent(ProductsExtensionPoint.ProductAdded({productId, name, price}))
-  | _ => PublishEvent(ProductsExtensionPoint.Unchanged)
-  }
+@schema
+type directive = unit
 ```
 
-Register it in the plugin:
+An Extension Point Mapping file (in the plugin) translates internal events to that public contract. `PublishEvent`/`PublishCommand` are in scope via the PPX. Note `mapOutgoingEvent` is an **option**, and `PublishEvent` takes the entity **id** as its first argument:
 
 ```rescript
-module ProductsEP = Platform.ExtensionPoint.Make(
-  ProductsExtensionPointMapping,
-  {let moduleUrl: string = %raw(`import.meta.url`)},
+// ExtensionPoint/Products_ExtensionPointMapping.res
+@@reventless.spec
+
+module ExtensionPoint = CatalogSpec.Products_ExtensionPoint
+
+// DCB adapter: the internal event subset this EP maps from.
+// `name` MUST equal `<pluginName>DcbEventLog`.
+module Delegate = {
+  let name = "CatalogDcbEventLog"
+  @schema
+  type event =
+    | ProductAdded({productId: string, name: string, description: string, price: float})
+    | ProductPriceChanged({productId: string, price: float})
+}
+
+let mapIncomingCommand = (_id, _command, _meta) => []
+
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+  switch event {
+  | Delegate.ProductAdded({productId, name, price}) => [
+      PublishEvent(
+        productId,
+        CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId, name, price}),
+      ),
+    ]
+  | Delegate.ProductPriceChanged({productId, price}) => [
+      PublishEvent(productId, CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId, price})),
+    ]
+  }
 )
-// ...
-Platform.Plugin.make(~extensionPoints=[module(ProductsEP)], ...)
 ```
 
-See [ExtensionPoint component](./components/extensionpoint.md) for full documentation.
+The plugin generator registers it as `Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)` and passes it via `~extensionPoints`. See [ExtensionPoint component](./components/extensionpoint.md) for full documentation.
 
 ### Extension
 
-An **Extension** connects a plugin to another plugin's Extension Point. It subscribes to the EP's events and can send commands back.
+An **Extension** connects a plugin to another plugin's Extension Point. It subscribes to the EP's events and can send commands back. The extension file declares a `module Mapping` with an `ExtensionPoint` (the EP spec), a `Delegate` (the local component to command), `mapIncomingEvent`, and `mapOutgoingEvent`. Actions are `PublishStateChangeSliceCommand` / `PublishAggregateCommand`:
 
 ```rescript
-// OrdersExtension.res — inside the Catalog plugin
-// Subscribes to Ordering plugin's OrdersExtensionPoint
+// Extension/Products_Extension.res — inside the Ordering plugin
+// Subscribes to Catalog plugin's Products_ExtensionPoint
+@@reventless.extension
 
-module DemandMapping = {
-  module Source = OrdersExtensionPoint  // the EP's spec package
-  module Target = ProductDemand         // internal aggregate to command
+module Mapping = {
+  module ExtensionPoint = CatalogSpec.Products_ExtensionPoint
+  module Delegate = SyncCatalogProduct // local StateChangeSlice to command
 
-  let map = (orderId, event, _queryEngine) =>
+  open ExtensionPoint
+  open SyncCatalogProduct
+  let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
-    | OrdersExtensionPoint.OrderPlaced({items}) =>
-      items->Array.map(item =>
-        Reventless.EventMapping.Publish(
-          item.productId->ProductDemand.Id.fromString,
-          ProductDemand.RecordSale({orderId, quantity: item.quantity}),
-        )
-      )
-    | _ => []
+    | ProductBecameAvailable({productId, name, price}) => [
+        PublishStateChangeSliceCommand(SyncNewProduct({productId, name, price})),
+      ]
+    | ProductPriceChanged({productId, price}) => [
+        PublishStateChangeSliceCommand(ChangeSyncedPrice({productId, price})),
+      ]
     }
+
+  let mapOutgoingEvent = None
 }
 ```
 
-Register it in the plugin:
-
-```rescript
-module OrdersExt = Platform.Extension.Make(OrdersExtension.DemandMapping)
-// ...
-Platform.Plugin.make(~extensions=[module(OrdersExt)], ...)
-```
-
-See [Extension component](./components/extension.md) for full documentation.
+The plugin generator registers it as `Platform.Extension.Make(Products_Extension.Mapping)` and passes it via `~extensions`. See [Extension component](./components/extension.md) for full documentation.
 
 ## Plugin.make Parameters
 

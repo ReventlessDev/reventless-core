@@ -150,7 +150,7 @@ type event = ProductAdded({
 
 ---
 
-### `@partitionTag`, `@noTag`, `@dcbTag` — field-level DCB tag control
+### `@partitionTag`, `@noDcbTag`, `@dcbTag` — field-level DCB tag control
 
 These field attributes give fine-grained control over DCB tag injection. They work in any `@@reventless.spec` or `@@reventless.behavior` file, regardless of whether dcbTags auto-inference is active.
 

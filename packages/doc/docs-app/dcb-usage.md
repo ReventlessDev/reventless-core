@@ -223,46 +223,40 @@ module type T = {
 
 ### 1. Define state change slice specs
 
-Each spec is a standalone module with its own `consumedEvent` and `producedEvent` types. No shared event log spec module is needed.
+Each slice is a pair of files in a `StateChangeSlice/` folder. The spec file declares the slice's own `consumedEvent` (what it reads) and `event` (what it writes) — no shared event log spec module is needed. The PPX auto-injects `let name`, `module Id`, `let moduleUrl`, and applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field.
 
 ```rescript
 // AddProduct.res
-open Reventless
-
-let name = "AddProduct"
-let moduleUrl: string = %raw(`import.meta.url`)
-
-type state = {exists: bool}
-let initialState = {exists: false}
+@@reventless.spec
 
 @schema
 type consumedEvent = ProductAdded
 
-let evolve = (_state, event) =>
-  switch event {
-  | ProductAdded => {exists: true}
-  }
-
 @schema
 type command =
-  | AddProduct({
-      productId: @s.matches(DcbTag.string) string,
-      name: string,
-      description: string,
-      price: float,
-    })
+  | AddProduct({productId: string, name: string, description: string, price: float})
 
 @schema
 type error = ProductAlreadyExists
 
 @schema
-type producedEvent =
-  | ProductAdded({
-      productId: @s.matches(DcbTag.string) string,
-      name: string,
-      description: string,
-      price: float,
-    })
+type event =
+  | ProductAdded({productId: string, name: string, description: string, price: float})
+```
+
+The behavior file (`@@reventless.behavior`) holds `state`, `initialState`, `evolve`, and `decide`. It auto-injects `open Spec` and `module Spec`:
+
+```rescript
+// AddProduct_Behavior.res
+@@reventless.behavior
+
+type state = {exists: bool}
+let initialState = {exists: false}
+
+let evolve = (_state, event) =>
+  switch event {
+  | ProductAdded => {exists: true}
+  }
 
 let decide = (state, command) =>
   switch command {
@@ -275,9 +269,9 @@ let decide = (state, command) =>
   }
 ```
 
-Note: `consumedEvent` is a payload-less `| ProductAdded` — it only needs the TAG to know the event happened. `producedEvent` carries the full payload. The framework validates at build time that every `consumedEvent` TAG has a matching producer.
+Note: `consumedEvent` here is a payload-less `| ProductAdded` — it only needs the TAG to know the event happened. The `event` type carries the full payload. The framework validates at build time that every `consumedEvent` TAG has a matching producer.
 
-Fields marked `@s.matches(DcbTag.string)` become DCB tags — the event log is queried by these values to build the decision model. Each event's first tag is also used as the DynamoDB partition key (see [Event Log Partitioning](#event-log-partitioning) below).
+Auto-tagged `*Id` fields become DCB tags — the event log is queried by these values to rebuild state. Each event's first tag is also used as the DynamoDB partition key (see [Event Log Partitioning](#event-log-partitioning) below).
 
 ### Hiding Commands from the API (`@noApi`)
 
@@ -307,15 +301,11 @@ The command still executes normally when called programmatically or by internal 
 
 ### 2. Define state view slice specs
 
+A view slice is two files in a `StateViewSliceStream/` folder. The spec file declares `consumedEvent` and the read-model `state`:
+
 ```rescript
-// CategoriesView.res
-open Reventless.Projection
-
-let name = "CategoriesView"
-let moduleUrl: string = %raw(`import.meta.url`)
-
-@schema
-type state = {categoryId: string, name: string, archived: bool}
+// Categories.res
+@@reventless.spec
 
 @schema
 type consumedEvent =
@@ -323,38 +313,44 @@ type consumedEvent =
   | CategoryRenamed({categoryId: string, name: string})
   | CategoryArchived({categoryId: string})
 
+@schema
+type state = {categoryId: string, name: string, archived: bool}
+```
+
+The projection file (`@@reventless.projection`) declares a one-argument `project`; `Set`/`Update`/`Delete` are in scope without a prefix:
+
+```rescript
+// Categories_Projection.res
+@@reventless.projection
+
 let project = event =>
   switch event {
-  | CategoryAdded({categoryId, name}) => [
-      Set(categoryId, {categoryId, name, archived: false}),
-    ]
+  | CategoryAdded({categoryId, name}) => [Set(categoryId, {categoryId, name, archived: false})]
   | CategoryRenamed({categoryId, name}) => [Update(categoryId, state => {...state, name})]
   | CategoryArchived({categoryId}) => [Update(categoryId, state => {...state, archived: true})]
   }
 ```
 
-### 3. Build slices via the Platform
+### 3. Wire slices via the Platform
 
-Slices are built through the platform's builder functors. The shared CommandTopic and DcbEventLog are injected by the plugin at deploy time.
-
-`src/Plugin.res` is **auto-generated** by `generate-plugin` (from `reventless-spec`) before each build — no hand-authored composition root needed. The generator discovers all slice specs from their parent folder names and produces:
+`src/Plugin.res` is **auto-generated** by `generate-plugin` (from `reventless-spec`) before each build — no hand-authored composition root needed. The generator discovers all slice specs from their parent folder names and pairs each spec with its body file via a two-argument functor call:
 
 ```rescript
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
-  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory)
-  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory)
-  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
+  module AddCategorySlice = Platform.StateChangeSlice.Make(AddCategory, AddCategory_Behavior)
+  module RenameCategorySlice = Platform.StateChangeSlice.Make(RenameCategory, RenameCategory_Behavior)
+  module ArchiveCategorySlice = Platform.StateChangeSlice.Make(ArchiveCategory, ArchiveCategory_Behavior)
 
-  // StateViewSlices
-  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
-  module CategoriesViewSlice = Platform.StateViewSlice.Make(CategoriesView)
+  // StateViewSliceStreams
+  module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
+  module CategoriesStreamSlice = Platform.StateViewSliceStream.Make(Categories, Categories_Projection)
 
   // InboundTranslationSlices
-  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct)
+  module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
 
   // ...
 ```
@@ -367,7 +363,7 @@ Pass slice arrays directly to `Plugin.make`. Empty arrays can be omitted.
 let make = () =>
   Platform.Plugin.make(
     ~name="Catalog",
-    ~heartbeatInterval=60,
+    ~heartbeatInterval=5,
     ~stateChangeSlices=[
       module(AddProductSlice),
       module(ChangeProductNameSlice),
@@ -376,8 +372,8 @@ let make = () =>
       module(ArchiveCategorySlice),
     ],
     ~stateViewSlices=[
-      module(ProductsViewSlice),
-      module(CategoriesViewSlice),
+      module(ProductsStreamSlice),
+      module(CategoriesStreamSlice),
     ],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
   )
@@ -390,7 +386,16 @@ If a slice has very high write contention (e.g. a global counter or a hot partit
 @@reventless.async
 
 @schema
+type consumedEvent = ...
+
+@schema
 type command = ...
+
+@schema
+type error = ...
+
+@schema
+type event = ...
 ```
 
 The plugin generator then emits `Platform.StateChangeSlice.MakeAsync(GlobalCounter, GlobalCounter_Behavior)` for that slice and the standard `Make(...)` for the rest — both share the same `~stateChangeSlices` array in the generated `Plugin.res`:
@@ -402,13 +407,14 @@ module GlobalCounterSlice = Platform.StateChangeSlice.MakeAsync(GlobalCounter, G
 
 Platform.Plugin.make(
   ~name="Catalog",
-  ~heartbeatInterval=60,
+  ~heartbeatInterval=5,
   ~stateChangeSlices=[
     module(AddProductSlice),
     module(GlobalCounterSlice),   // high contention — async via @@reventless.async
   ],
   ...
 )
+```
 
 ## Plugin Outputs
 

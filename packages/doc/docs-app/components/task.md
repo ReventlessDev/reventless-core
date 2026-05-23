@@ -39,28 +39,27 @@ Tasks are defined using a module specification that includes the task name and s
 
 ### Basic Task Structure
 
-```rescript
-module ProfilePictureTask = {
-  let name = "ProfilePictureTask"
-  
-  let setup = (queryEngine, queryBucketName, opts) => {
-    // Task configuration
-    {
-      buckets: Some([
-        {
-          bucketName: Some("profile-pictures"),
-          bucketMode: ReadWrite,
-          callback: Some(profilePictureCallback),
-        }
-      ]),
-      sideEffects: None,
-    }
-  }
-}
+A Task is a single file `Task/<Name>.res` annotated with `@@reventless.task`. The
+PPX injects `let name` (from the filename stem), `let moduleUrl`, and
+`open Reventless` — you only write `let setup`, returning a `Task.config`:
 
-// Create the task component
-module Task = Reventless.Task.Make(ProfilePictureTask, /* other modules */)
+```rescript title="Task/ProfilePictures.res" showLineNumbers
+@@reventless.task
+
+let setup = (_queryEngine, _queryBucketName, _opts): Task.config => {
+  Task.buckets: [
+    {
+      bucketName: "profile-pictures",
+      bucketMode: Task.ReadWrite,
+      callback: profilePictureCallback,
+    },
+  ],
+}
 ```
+
+The plugin generator wires the Task into the generated `Plugin.res` as
+`Platform.Task.Make(ProfilePictures)` — a single argument. You never write the
+composition root by hand.
 
 ### Task Configuration
 
@@ -146,93 +145,89 @@ let customBucket = queryBucketName(
 
 ### File Processing Task
 
-```rescript
-module ProfilePictureTask = {
-  let name = "ProfilePictureTask"
-  
-  let profilePictureCallback = (~eventName, ~key) => {
-    let customerId = key->Js.String2.split(".")->Array.getUnsafe(0)
-    let isCreation = eventName->Js.String2.includes("ObjectCreated")
-    let isDeletion = eventName->Js.String2.includes("ObjectRemoved")
-    
-    let actions = []
-    
-    if isCreation {
-      actions->Array.push(
-        PublishCommands("Customer", [
+```rescript title="Task/ProfilePictures.res" showLineNumbers
+@@reventless.task
+
+let profilePictureCallback = (~eventName, ~key) => {
+  let customerId = key->String.split(".")->Array.getUnsafe(0)
+  let isCreation = eventName->String.includes("ObjectCreated")
+  let isDeletion = eventName->String.includes("ObjectRemoved")
+
+  let actions = []
+
+  if isCreation {
+    actions->Array.push(
+      Task.PublishCommands(
+        "Customer",
+        [
           {
             Message.id: customerId,
-            meta: Message.generateMeta(~service="ProfilePictureTask", ~user="system"),
+            meta: Message.generateMeta(~service="ProfilePictures", ~user="system"),
             commandJson: Customer.ChangeProfilePicture(Some(key))->Customer.command_encode,
-          }
-        ])
-      )
-    } else if isDeletion {
-      actions->Array.push(
-        PublishCommands("Customer", [
+          },
+        ],
+      ),
+    )
+  } else if isDeletion {
+    actions->Array.push(
+      Task.PublishCommands(
+        "Customer",
+        [
           {
             Message.id: customerId,
-            meta: Message.generateMeta(~service="ProfilePictureTask", ~user="system"),
+            meta: Message.generateMeta(~service="ProfilePictures", ~user="system"),
             commandJson: Customer.ChangeProfilePicture(None)->Customer.command_encode,
-          }
-        ])
-      )
-    }
-    
-    Promise.resolve(actions)
+          },
+        ],
+      ),
+    )
   }
-  
-  let setup = (queryEngine, queryBucketName, opts) => {
+
+  Promise.resolve(actions)
+}
+
+let setup = (_queryEngine, _queryBucketName, _opts): Task.config => {
+  Task.buckets: [
     {
-      buckets: Some([
-        {
-          bucketName: Some("profile-pictures"),
-          bucketMode: ReadWrite,
-          callback: Some(profilePictureCallback),
-        }
-      ]),
-      sideEffects: None,
-    }
-  }
+      bucketName: "profile-pictures",
+      bucketMode: Task.ReadWrite,
+      callback: profilePictureCallback,
+    },
+  ],
 }
 ```
 
 ### Task with Side Effects
 
-```rescript
-module DocumentProcessingTask = {
-  let name = "DocumentProcessingTask"
-  
-  let documentCallback = (~eventName, ~key) => {
-    if eventName->Js.String2.includes("ObjectCreated") {
-      // Schedule document processing
-      [
-        CreateSchedule({
-          name: `process-document-${key}`,
-          rate: Minutes(5), // Process in 5 minutes
-          payload: `{"documentKey": "${key}", "action": "process"}`,
-        })
-      ]->Promise.resolve
-    } else {
-      []->Promise.resolve
-    }
+```rescript title="Task/DocumentProcessing.res" showLineNumbers
+@@reventless.task
+
+let documentCallback = (~eventName, ~key) =>
+  if eventName->String.includes("ObjectCreated") {
+    // Schedule document processing
+    [
+      Task.CreateSchedule({
+        name: `process-document-${key}`,
+        rate: Minutes(5), // Process in 5 minutes
+        payload: `{"documentKey": "${key}", "action": "process"}`,
+      }),
+    ]->Promise.resolve
+  } else {
+    []->Promise.resolve
   }
-  
-  let setup = (queryEngine, queryBucketName, opts) => {
+
+let setup = (_queryEngine, _queryBucketName, _opts): Task.config => {
+  Task.buckets: [
     {
-      buckets: Some([
-        {
-          bucketName: Some("documents"),
-          bucketMode: Read,
-          callback: Some(documentCallback),
-        }
-      ]),
-      sideEffects: Some([
-        // Side effect to handle document processing events
-        (module DocumentProcessingSideEffect: SideEffect.T)
-      ]),
-    }
-  }
+      bucketName: "documents",
+      bucketMode: Task.Read,
+      callback: documentCallback,
+    },
+  ],
+  sideEffects: [
+    // Side effect to handle document processing events
+    module(DocumentProcessingSideEffect),
+  ],
 }
 ```
 
@@ -296,33 +291,29 @@ Aggregate -> EventTopic: events { class: event-flow }
 
 ```rescript
 // Task can create dynamic schedules
-let scheduleCleanup = CreateSchedule({
+let scheduleCleanup = Task.CreateSchedule({
   name: "cleanup-temp-files",
   rate: Daily(2, 0), // 2:00 AM daily
   payload: `{"action": "cleanup", "target": "temp-files"}`,
 })
 
 // Task can also delete schedules
-let removeSchedule = DeleteSchedule("cleanup-temp-files")
+let removeSchedule = Task.DeleteSchedule("cleanup-temp-files")
 ```
 
 ### Integration with Side Effect Handler
 
 Tasks can include side effect handlers to react to events from other components:
 
-```rescript
-module TaskWithSideEffects = {
-  let name = "DocumentTask"
-  
-  let setup = (queryEngine, queryBucketName, opts) => {
-    {
-      buckets: Some([/* bucket configuration */]),
-      sideEffects: Some([
-        (module DocumentProcessingSideEffect: SideEffect.T),
-        (module NotificationSideEffect: SideEffect.T),
-      ]),
-    }
-  }
+```rescript title="Task/DocumentProcessing.res" showLineNumbers
+@@reventless.task
+
+let setup = (_queryEngine, _queryBucketName, _opts): Task.config => {
+  Task.buckets: [/* bucket configuration */],
+  sideEffects: [
+    module(DocumentProcessingSideEffect),
+    module(NotificationSideEffect),
+  ],
 }
 ```
 
@@ -334,16 +325,19 @@ module TaskWithSideEffects = {
 // Handle profile picture uploads
 let profilePictureCallback = (~eventName, ~key) => {
   let userId = extractUserIdFromKey(key)
-  
-  if eventName->Js.String2.includes("ObjectCreated") {
+
+  if eventName->String.includes("ObjectCreated") {
     [
-      PublishCommands("User", [
-        {
-          Message.id: userId,
-          meta: Message.generateMeta(~service="ProfilePictureTask"),
-          commandJson: User.UpdateProfilePicture(key)->User.command_encode,
-        }
-      ])
+      Task.PublishCommands(
+        "User",
+        [
+          {
+            Message.id: userId,
+            meta: Message.generateMeta(~service="ProfilePictures"),
+            commandJson: User.UpdateProfilePicture(key)->User.command_encode,
+          },
+        ],
+      ),
     ]->Promise.resolve
   } else {
     []->Promise.resolve
@@ -355,82 +349,81 @@ let profilePictureCallback = (~eventName, ~key) => {
 
 ```rescript
 // Multi-stage document processing
-let documentCallback = (~eventName, ~key) => {
-  if eventName->Js.String2.includes("ObjectCreated") {
+let documentCallback = (~eventName, ~key) =>
+  if eventName->String.includes("ObjectCreated") {
     [
       // Immediate processing
-      PublishCommands("Document", [
-        {
-          Message.id: extractDocumentId(key),
-          meta: Message.generateMeta(~service="DocumentTask"),
-          commandJson: Document.StartProcessing(key)->Document.command_encode,
-        }
-      ]),
+      Task.PublishCommands(
+        "Document",
+        [
+          {
+            Message.id: extractDocumentId(key),
+            meta: Message.generateMeta(~service="DocumentProcessing"),
+            commandJson: Document.StartProcessing(key)->Document.command_encode,
+          },
+        ],
+      ),
       // Scheduled follow-up
-      CreateSchedule({
+      Task.CreateSchedule({
         name: `document-followup-${key}`,
         rate: Hours(24), // Check status after 24 hours
         payload: `{"documentKey": "${key}", "action": "checkStatus"}`,
-      })
+      }),
     ]->Promise.resolve
   } else {
     []->Promise.resolve
   }
-}
 ```
 
 ### Batch Processing
 
 ```rescript
 // Process files in batches
-let batchCallback = (~eventName, ~key) => {
-  if eventName->Js.String2.includes("ObjectCreated") {
+let batchCallback = (~eventName, ~key) =>
+  if eventName->String.includes("ObjectCreated") {
     [
       // Add to batch queue
-      PublishCommands("BatchProcessor", [
-        {
-          Message.id: "batch-queue",
-          meta: Message.generateMeta(~service="BatchTask"),
-          commandJson: BatchProcessor.AddToBatch(key)->BatchProcessor.command_encode,
-        }
-      ]),
+      Task.PublishCommands(
+        "BatchProcessor",
+        [
+          {
+            Message.id: "batch-queue",
+            meta: Message.generateMeta(~service="BatchProcessing"),
+            commandJson: BatchProcessor.AddToBatch(key)->BatchProcessor.command_encode,
+          },
+        ],
+      ),
       // Schedule batch processing if queue is full
-      CreateSchedule({
+      Task.CreateSchedule({
         name: "process-batch",
         rate: Minutes(5), // Process batch every 5 minutes
         payload: `{"action": "processBatch"}`,
-      })
+      }),
     ]->Promise.resolve
   } else {
     []->Promise.resolve
   }
-}
 ```
 
 ## Pulumi
 
 The Task component is deployed as infrastructure that creates S3 buckets, Lambda functions, and event subscriptions. The actual file processing happens automatically when files are uploaded or modified.
 
-```rescript
-// Deployment creates all necessary infrastructure
-module Task = Reventless.Task.Make(
-  ProfilePictureTask,
-  RuntimeEnvironment,
-  EventCollectorChannel,
-  EventCollectorRuntimeBuilder,
-  TaskRuntimeBuilder,
-  TaskBucket,
-  SideEffectHandler,
-)
+You don't wire the Task by hand. The plugin generator scans the `Task/` folder
+and emits the wiring into the **generated** `Plugin.res`:
 
-let task = Task.make(
-  ~queryBucketName,
-  ~scheduler,
-  ~publishToAggregates,
-  ~queryEngine,
-  ~allAggregates,
-  ~opts=pulumiOpts,
-)
+```rescript title="src/Plugin.res (generated — do not edit)"
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // Tasks
+  module ProfilePicturesTask = Platform.Task.Make(ProfilePictures)
+
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Catalog",
+      ~tasks=[module(ProfilePicturesTask)],
+      // ... other components
+    )
+}
 ```
 
 ## AWS Implementation

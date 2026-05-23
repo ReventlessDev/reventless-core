@@ -10,69 +10,88 @@ When you ask the AI to create a Reventless application, it generates a complete 
 ## DCB Architecture (Example: Catalog Plugin)
 
 ```
-catalog-spec/                       # Extension point types
+catalog-spec/                          # Extension point types
 ├── package.json
 ├── rescript.json
 └── src/
-    └── ProductsExtensionPoint.res  # Public event API
+    └── Products_ExtensionPoint.res    # Public event API
 
-catalog/                            # Plugin implementation
+catalog/                               # Plugin implementation
 ├── package.json
 ├── rescript.json
 ├── __mocks__/emptyModule.js
 └── src/
     ├── Product/
     │   ├── StateChangeSlice/
-    │   │   ├── AddProduct.res       # Command: add a product
-    │   │   ├── ChangeProductName.res # Command: rename
-    │   │   └── ChangeProductPrice.res # Command: reprice
+    │   │   ├── AddProduct.res             # Command spec: add a product
+    │   │   ├── AddProduct_Behavior.res    # state / evolve / decide
+    │   │   ├── ChangeProductName.res      # Command spec: rename
+    │   │   ├── ChangeProductName_Behavior.res
+    │   │   ├── ChangeProductPrice.res     # Command spec: reprice
+    │   │   └── ChangeProductPrice_Behavior.res
     │   └── StateViewSlice/
-    │       └── ProductsView.res     # Query: product listings
+    │       ├── Products.res               # Query spec: product listings
+    │       └── Products_Projection.res    # project function
     ├── ExtensionPoint/
-    │   └── ProductsExtensionPointMapping.res  # Internal → public events
+    │   └── Products_ExtensionPointMapping.res  # Internal → public events
     ├── Extension/
-    │   └── OrdersExtension.res      # Subscribe to Ordering events
-    └── Plugin/
-        └── CatalogPlugin.res        # Wires everything together
+    │   └── Orders_Extension.res           # Subscribe to Ordering events
+    └── Plugin.res                         # GENERATED — wires everything
 
-online-shop/                        # Platform root
+platform-in-memory/                    # Platform assembly
 ├── package.json
 ├── rescript.json
 └── src/
-    └── Main.res                    # Starts the platform
+    └── Main.res                       # Starts the platform
 ```
+
+Each component is **split** into a spec file (`@@reventless.spec` — types only)
+and a body file (`_Behavior.res`, `_Projection.res`, `_Translation.res`, or
+`_Automation.res` — logic only). `Plugin.res` is **generated** by
+`generate-plugin` from the folder layout and carries an "AUTO-GENERATED — do
+not edit" banner.
 
 ## Key Files Explained
 
-### StateChangeSlice (e.g., `AddProduct.res`)
+### StateChangeSlice (e.g., `AddProduct.res` + `AddProduct_Behavior.res`)
 
-Handles one command type. Contains:
-- **state** — minimal decision state (what's needed to accept/reject)
-- **consumedEvent** — events this slice reads from the shared log
-- **evolve** — builds decision state from events
+Handles one command type, split across two files.
+
+The **spec** (`AddProduct.res`, `@@reventless.spec`) declares:
+- **consumedEvent** — events this slice reads from the shared log to build decision state
 - **command** — the command this slice handles
-- **producedEvent** — events produced on success
+- **error** — the business errors it can return
+- **event** — the events it produces on success
+
+The **behavior** (`AddProduct_Behavior.res`, `@@reventless.behavior`) declares:
+- **state** — minimal decision state (what's needed to accept/reject)
+- **initialState** — the starting value before any event is replayed
+- **evolve** — builds decision state from consumed events
 - **decide** — business rule: accept or reject the command
 
-### StateViewSlice (e.g., `ProductsView.res`)
+### StateViewSlice (e.g., `Products.res` + `Products_Projection.res`)
 
-Projects events into a queryable read model. Contains:
+Projects events into a queryable read model, split across two files.
+
+The **spec** (`Products.res`, `@@reventless.spec`) declares:
 - **state** — the shape of the view record
 - **consumedEvent** — events this view cares about
-- **project** — maps each event to Set/Update/Delete/Ignore operations
 
-### Plugin Composition (e.g., `CatalogPlugin.res`)
+The **projection** (`Products_Projection.res`, `@@reventless.projection`) declares:
+- **project** — maps each event to Set/Update/UpdateWithDefault/Delete operations
 
-The wiring file that connects all components:
-1. Builds each slice/view via `Platform.StateChangeSlice.Make(...)` / `Platform.StateViewSlice.Make(...)`
+### Plugin Composition (`Plugin.res` — generated)
+
+The wiring file is **generated** from the folder layout — do not hand-edit it:
+1. Builds each slice/view via `Platform.StateChangeSlice.Make(Spec, Behavior)` / `Platform.StateViewSlice.Make(Spec, Projection)` (two args: spec + body)
 2. Wires extension point mappings and extensions
 3. Assembles everything into `Platform.Plugin.make(...)` with named arrays
 
 ### Platform Main (e.g., `Main.res`)
 
-Three lines that start everything:
+A few lines that start everything:
 1. Create the platform: `module Platform = ReventlessInMemory.Platform.Make()`
-2. Build each plugin: `module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)`
+2. Build each plugin: `module Catalog = CatalogPlugin.Plugin.Make(Platform)` (note the `.Plugin.` segment)
 3. Start: `Platform.makePlatform(~version=..., ~plugins=[...])`
 
 ## Configuration Files
@@ -83,15 +102,18 @@ Dependencies on Reventless framework packages, spec packages from other plugins,
 
 ### `rescript.json`
 
-ReScript compiler config with namespace, PPX flags, and dependency ordering. The namespace determines the module path: `CatalogPlugin.CatalogPlugin.Make(Platform)`.
+ReScript compiler config with namespace, PPX flags, and dependency ordering. The namespace (`CatalogPlugin`) combines with the generated `Plugin` module to give the path `CatalogPlugin.Plugin.Make(Platform)`.
 
 ## What You Can Modify
 
-All generated code is regular ReScript — modify freely:
+All component code is regular ReScript — modify freely:
 - Add fields to commands/events
 - Add new guard conditions in `decide`
 - Change projection logic in `project`
-- Add new slices or read models
-- Adjust wiring in the plugin composition root
+- Add new slices or read models (drop a new spec + body into the right folder)
 
-After modifications, run `npm run build` to verify everything compiles, then `npm test` to run tests.
+The one exception is `Plugin.res` — it is generated from the folder layout, so
+re-run `generate-plugin` (or `pnpm run build`, whose `prebuild` step does it for
+you) after adding or renaming components rather than editing the wiring by hand.
+
+After modifications, run `pnpm run build` to verify everything compiles, then `pnpm test` to run tests.

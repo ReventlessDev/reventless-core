@@ -61,7 +61,7 @@ Two cross-cutting DSLs round out the surface:
    | Source                                | Test                                        |
    |---------------------------------------|---------------------------------------------|
    | `src/StateChange/AddCategory.res`       | `tests/StateChange/AddCategory_GWT.res`     |
-   | `src/StateViewSlices/CategoriesView.res` | `tests/StateViewSlices/CategoriesView_GWT.res` |
+   | `src/StateViewSlice/Categories.res`     | `tests/StateViewSlice/Categories_GWT.res`   |
    | `src/Projections/CategoriesProjection.res` | `tests/Projections/CategoriesProjection_GWT.res` |
 
    Kind inference accepts the short folder form (`StateChange`,
@@ -137,13 +137,14 @@ template. All nine are also shipped as runnable worked-example tests in
 
 ### 4.1 `Behavior_GWT` — Aggregate command slice
 
-Pure synchronous DSL. Spec module + Behavior module (two-arg functor).
+Pure synchronous DSL. Spec module + Behavior module (two-arg functor). In a
+consumer repo the canonical form is a bare `@@reventless.gwt` in an
+`Aggregate/` folder — the PPX infers the `Behavior` DSL and resolves both
+`Category` and `Category_Behavior`, and opens `Category` for you:
 
 ```rescript
-// Category aggregate command slice
-open Category
-
-include ReventlessGwt.Behavior_GWT.Make(Category, CategoryBehavior)
+// tests/Category/Aggregate/Category_GWT.res
+@@reventless.gwt
 
 describe("Category Behavior", () => {
   test("Add on new aggregate produces Added", () =>
@@ -164,7 +165,7 @@ describe("Category Behavior", () => {
 ```
 
 Real example:
-[`examples/online-shop-aggregates/catalog/tests/Aggregate/CategoryBehaviorTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/examples/online-shop-aggregates/catalog/tests/Aggregate/CategoryBehaviorTest.res).
+[`examples/online-shop-aggregates/catalog/tests/Category/Aggregate/Category_GWT.res`](https://github.com/ReventlessDev/reventless-core/blob/main/examples/online-shop-aggregates/catalog/tests/Category/Aggregate/Category_GWT.res).
 
 ### 4.2 `StateChangeSlice_GWT` — DCB command slice
 
@@ -241,26 +242,29 @@ empty-tags clause; the next `then*` surfaces this as
 
 ### 4.3 `Projection_GWT` — ReadModel projection
 
-Async DSL with a synthetic in-memory store.
+Async DSL with a synthetic in-memory store. In a consumer repo a bare
+`@@reventless.gwt` in a `ReadModel/` folder infers the multi-source projection
+DSL; the explicit form names the `Mapping.Make` module from the projections file:
 
 ```rescript
-include ReventlessGwt.Projection_GWT.Make(CategoriesProjections.CategoryMapping)
+// tests/Category/ReadModel/Categories_GWT.res
+@@reventless.gwt(Categories_Projections.CategoryMapping)
 
-describe("Category → Categories projection", () => {
+describe("Categories ReadModel ← Category", () => {
   test("Added sets the initial read model state", () =>
     givenEvents([])
     ->whenEvent(Category.Added({name: "Electronics"}))
-    ->thenState({CategoriesReadModel.name: "Electronics", archived: false}))
+    ->thenState({Categories.name: "Electronics", archived: false}))
 
   test("Renamed updates the name", () =>
     givenEvents([Category.Added({name: "Electronics"})])
     ->whenEvent(Category.Renamed({name: "Consumer Electronics"}))
-    ->thenState({CategoriesReadModel.name: "Consumer Electronics", archived: false}))
+    ->thenState({Categories.name: "Consumer Electronics", archived: false}))
 })
 ```
 
 Real example:
-[`examples/online-shop-aggregates/catalog/tests/ReadModel/CategoryProjectionTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/examples/online-shop-aggregates/catalog/tests/ReadModel/CategoryProjectionTest.res).
+[`examples/online-shop-aggregates/catalog/tests/Category/ReadModel/Categories_GWT.res`](https://github.com/ReventlessDev/reventless-core/blob/main/examples/online-shop-aggregates/catalog/tests/Category/ReadModel/Categories_GWT.res).
 
 ### 4.4 `StateViewSlice_GWT` — DCB state-view slice
 

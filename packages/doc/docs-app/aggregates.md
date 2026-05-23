@@ -122,10 +122,10 @@ let decide = (state, command) =>
 
 ### Step 3: Define the ReadModel Spec
 
-The ReadModel Spec defines the **shape of the read-side state** stored in the query database.
+The ReadModel Spec defines the **shape of the read-side state** stored in the query database. It is named after the plural read model (`Products`) and lives in a `ReadModel/` folder.
 
 ```rescript
-// ProductsReadModel.res
+// Product/ReadModel/Products.res
 @@reventless.spec
 
 @schema
@@ -136,12 +136,12 @@ type state = {
 }
 ```
 
-The `@@reventless.spec` annotation auto-injects `let name`, `let config`, and `let subIdConfig = None`.
+Inside a `ReadModel/` folder, `@@reventless.spec` auto-injects `let name`, `let config`, and `let subIdConfig = None`.
 
 **Custom indexes** — to query a read model by a field other than the primary id, declare `let config` explicitly:
 
 ```rescript
-// ProductsReadModel.res
+// Product/ReadModel/Products.res
 @@reventless.spec
 
 @schema
@@ -166,7 +166,7 @@ let config = Reventless.ReadModel.config(
 **Sub-id (composite key)** — if a read model stores multiple rows per id (e.g. order line items), add `let subIdConfig`:
 
 ```rescript
-// OrderItemsReadModel.res
+// Order/ReadModel/OrderItems.res
 @@reventless.spec
 
 @schema
@@ -187,77 +187,75 @@ With `subIdConfig`, `load(orderId)` returns an array of items sorted by the sub-
 
 ### Step 4: Implement the Projection
 
-The Projection maps aggregate events to actions on the read model. Use `Mapping.Make` with three arguments: the **source spec**, the **target read model spec**, and an anonymous module with a `project` function.
+The Projection maps aggregate events to actions on the read model. It lives in a `<Plural>_Projections.res` sibling of the read-model spec and is annotated `@@reventless.mappings`, which (inside a `ReadModel/` folder) infers the `Reventless.Projection` domain, brings `Mapping`, `Set`, `Update`, etc. into scope, and emits the `module type Mapping` wrapper. You write one `Mapping.Make` per source — passing the **source spec**, the **target read model spec**, and an anonymous module with a `project` function — plus the `let mappings` array.
 
 ```rescript
-// ProductsProjections.res
-module ProductMapping = Reventless.Projection.Mapping.Make(
-  Product,          // Source: name, Id, @schema type event
-  ProductsReadModel, // Target: name, Id, @schema type state
+// Product/ReadModel/Products_Projections.res
+@@reventless.mappings
+
+module ProductMapping = Mapping.Make(
+  Product,    // Source: name, Id, @schema type event
+  Products,   // Target: name, Id, @schema type state
   {
-    // project receives {id, meta, event} and returns a single Projection action
+    open Product
+    // project receives {id, meta, event} and returns a list of Projection actions
     let project = ({event, id, _}) =>
       switch event {
-      | Product.Added({name, description, price}) =>
-        Reventless.Projection.Set(id, {ProductsReadModel.name, description, price})
-      | Product.NameUpdated({name}) => Reventless.Projection.Update(id, state => {...state, name})
-      | Product.DescriptionUpdated({description}) => Reventless.Projection.Update(id, state => {...state, description})
-      | Product.PriceUpdated({price}) => Reventless.Projection.Update(id, state => {...state, price})
+      | Added({name, description, price}) =>
+        Set(id, {Products.name: name, description, price})
+      | NameUpdated({name}) => Update(id, state => {...state, name})
+      | DescriptionUpdated({description}) => Update(id, state => {...state, description})
+      | PriceUpdated({price}) => Update(id, state => {...state, price})
       }
   },
 )
+
+let mappings: array<module(Mapping)> = [module(ProductMapping)]
 ```
 
-The available `action` variants are: `Create`, `Set`, `Update`, `UpdateWithDefault`, `Delete`, `DeleteIf`, `Ignore`, and others. See `Reventless.Projection` for the full list.
+The available `action` variants are: `Set`, `Update`, `UpdateWithDefault`, `Delete`, `Ignore`, and others. See `Reventless.Projection` for the full list.
 
 ### Step 5: Define Event Mappings (Optional)
 
-Event Mappings let one aggregate's events trigger commands in the same or another aggregate. Use the `@@reventless.spec` annotation and define a `mappings` array.
+Event Mappings let one aggregate's events trigger commands in the same or another aggregate. They live in a `<Entity>_Mappings.res` sibling of the aggregate spec, annotated `@@reventless.mappings` — which (inside an `Aggregate/` folder) infers the `Reventless.EventMapping` domain, brings `Publish` and the `Mapping` module type into scope, and lets you write just the per-source mapping module and the `mappings` array.
 
 The example below is from the `Order` aggregate in the Ordering plugin: when an order is placed, the framework automatically issues a `Ship` command.
 
 ```rescript
-// Order_EventMappings.res
-@@reventless.spec
-
-module Target = Order
+// Order/Aggregate/Order_Mappings.res
+@@reventless.mappings
 
 module AutoShipMapping = {
   module Source = Order
-  module Target = Order
 
   let map = (orderId, event, _queryEngine) =>
     switch event {
-    | Order.Placed(_) => [Reventless.EventMapping.Publish(orderId, Order.Ship)]
+    | Order.Placed(_) => [Publish(orderId, Order.Ship)]
     | _ => []
     }
 }
 
-module type Mapping = Reventless.EventMapping.T with module Target := Target
-
 let mappings: array<module(Mapping)> = [module(AutoShipMapping)]
-
-let counter = None
 ```
 
-If an aggregate has no event mappings, use `ReventlessInfra.NoEventMappings.Make(Product)`.
+If an aggregate has no event mappings, the generator wires `ReventlessInfra.NoEventMappings.Make(Product)` for it.
 
 ### Step 6: Assemble the Plugin
 
 The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) over `Platform.T`**. This keeps your application code decoupled from the AWS infrastructure—only the composition root imports `reventless-aws`.
 
 ```rescript
-// CatalogPlugin.res — auto-generated; the user just runs `pnpm run generate`.
+// src/Plugin.res — AUTO-GENERATED — do not edit. Run `pnpm run generate` to update.
 module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // Aggregate: spec + behavior + event mappings (NoEventMappings when none exist)
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
     Product_Behavior,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
 
-  // Wrapper LHS appends `ReadModel` so it doesn't shadow the bare-named
-  // `Products` spec module. The projections file declares `let mappings`
-  // via `@@reventless.mappings`, so the generator references it directly.
+  // ReadModel: spec + projections. The wrapper module name appends `ReadModel`
+  // so it doesn't shadow the bare-named `Products` spec module.
   module ProductsReadModel = Platform.ReadModel.Make(Products, Products_Projections)
 
   let make = () =>
@@ -281,7 +279,7 @@ The composition root is the only file that imports `reventless-aws`. It instanti
 module Platform = ReventlessAws.Platform.Make(Config)
 
 // Instantiate the plugin module function with the AWS platform
-module App = CatalogPlugin.Make(Platform)
+module App = CatalogPlugin.Plugin.Make(Platform)
 
 // Deploy the plugin as a Pulumi component resource
 Platform.makePlatform(
@@ -301,14 +299,14 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Standard aggregate — mutation returns CommandAccepted | CommandRejected
   module ProductAggregate = Platform.Aggregate.Make(
     Product,
-    ProductBehavior,
+    Product_Behavior,
     ReventlessInfra.NoEventMappings.Make(Product),
   )
 
   // High-contention aggregate — mutation returns CommandPending immediately
   module InventoryAggregate = Platform.Aggregate.MakeAsync(
     Inventory,
-    InventoryBehavior,
+    Inventory_Behavior,
     ReventlessInfra.NoEventMappings.Make(Inventory),
   )
 

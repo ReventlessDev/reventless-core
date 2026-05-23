@@ -38,39 +38,43 @@ For each entity, the AI evaluates against the decision guide:
 
 The AI generates 30+ files across 5 packages:
 
-**catalog-spec/** — 1 file: `ProductsExtensionPoint.res`
+**catalog-spec/** — 1 file: `Products_ExtensionPoint.res`
 
-**ordering-spec/** — 1 file: `OrdersExtensionPoint.res`
+**ordering-spec/** — 1 file: `Orders_ExtensionPoint.res`
 
-**catalog/** — 12+ files:
-- StateChangeSlices: AddProduct, ChangeProductName, ChangeProductPrice, AddCategory, RenameCategory, ArchiveCategory
-- StateViewSlices: ProductsView, CategoriesView
-- ExtensionPoint: ProductsExtensionPointMapping
-- Extension: OrdersExtension (subscribes to Ordering's EP)
-- Plugin: CatalogPlugin
+**catalog/** — each component is split into a spec file (`@@reventless.spec`) and a body file (`_Behavior.res` / `_Projection.res`):
+- StateChangeSlices: AddProduct, ChangeProductName, ChangeProductDescription, ChangeProductPrice, AddCategory, RenameCategory, ArchiveCategory (each `+ _Behavior.res`)
+- StateViewSlices: Products, Categories (each `+ _Projection.res`)
+- ExtensionPoint: ExtensionPoint/Products_ExtensionPointMapping.res
+- Extension: Extension/Orders_Extension.res (subscribes to Ordering's EP)
+- `Plugin.res` (generated — "AUTO-GENERATED — do not edit")
 
-**ordering/** — 15+ files:
-- StateChangeSlices: RegisterCustomer, PlaceOrder, ShipOrder, CancelOrder, SyncCatalogProduct
-- StateViewSlices: CustomersView, OrdersView, AvailableProductsView
-- AutomationSlice: AutoShipOrder
-- OutboundTranslationSlice: SendOrderConfirmation
-- Extension: ProductsExtension (subscribes to Catalog's EP)
-- ExtensionPoint: OrdersExtensionPointMapping
-- Plugin: OrderingPlugin
+**ordering/** — same spec + body split:
+- StateChangeSlices: RegisterCustomer, ChangeEmail, ChangeAddress, DeactivateCustomer, PlaceOrder, ShipOrder, CancelOrder, SyncCatalogProduct (each `+ _Behavior.res`)
+- StateViewSlices: Customers, Orders, AvailableProducts (each `+ _Projection.res`)
+- AutomationSlice: AutoShipOrder (`+ _Automation.res`)
+- OutboundTranslationSlice: SendOrderConfirmation (`+ _Translation.res`)
+- Extension: Extension/Products_Extension.res (subscribes to Catalog's EP)
+- ExtensionPoint: ExtensionPoint/Orders_ExtensionPointMapping.res
+- `Plugin.res` (generated)
 
-**online-shop/** — 1 file: `Main.res`
+**platform-in-memory/** — 1 file: `src/Main.res`
 
 ### Phase 4: Build and Verify
 
 ```bash
-npm install
-npm run build    # zero warnings
-npm test         # all tests pass
+pnpm install
+pnpm run build   # zero warnings
+pnpm test        # all tests pass
 ```
+
+The build runs `generate-plugin src/` (via each plugin's `prebuild` script) to
+produce the `Plugin.res` composition root from the discovered components, then
+compiles with ReScript.
 
 ## The Result
 
-Running `node src/Main.res.mjs` starts:
+Running `node src/Main.res.mjs` from the `platform-in-memory` package starts:
 
 - **GraphQL API** on port 4000 — all commands and queries available
 - **MCP server** on port 3001 — AI agents can discover and use all tools/resources

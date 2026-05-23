@@ -44,7 +44,7 @@ DcbEventLog -> ViewSlice1: { class: projection-flow }
 
 ### DCB Tags
 
-Fields ending in `Id` with type `string` are automatically annotated as DCB tags by the `@@reventless.dcbTags` PPX annotation — no manual work needed. Under the hood, each tagged field gets `@s.matches(DcbTag.string)`. This also applies to `*Id: array<string>` and `*Ids: array<string>` fields (element types are tagged). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its state (e.g., all events for a specific `itemId`).
+Fields ending in `Id` with type `string` are automatically annotated as DCB tags — no manual work needed. Inside any `*Slice/` folder this happens automatically via `@@reventless.spec`; for files outside such folders, opt in with the `@@reventless.dcbTags` annotation. Under the hood, each tagged field gets `@s.matches(Reventless.DcbTag.string)`. This also applies to `*Id: array<string>` and `*Ids: array<string>` fields (element types are tagged). Tags are indexed in the shared event log, allowing each slice to efficiently query only the events relevant to its state (e.g., all events for a specific `itemId`).
 
 When a variant has multiple `*Id` fields, use `@partitionTag` on the field that should be the partition key. For a composite key built from multiple fields joined in declaration order, use `@compositePartitionTag` on each contributing field — see [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations).
 
@@ -61,12 +61,17 @@ When appending events, the DCB event log checks that no conflicting events were 
 The following example builds the **Catalog plugin** step by step using DCB, focusing on products. Products can be added and renamed.
 
 :::info Shared Event Log
-There is no separate event log spec file. The framework creates one shared event log per plugin (named after the plugin, e.g. `"CatalogEventLog"`). Each slice declares the subset of events it needs via `consumedEvent` — the DCB infrastructure uses these to efficiently filter the log.
+There is no separate event log spec file. The framework creates one shared event log per plugin (named after the plugin, e.g. `"CatalogDcbEventLog"`). Each slice declares the subset of events it needs via `consumedEvent` — the DCB infrastructure uses these to efficiently filter the log.
 :::
 
 ### Step 1: Implement StateChangeSlice Specs
 
-Each `StateChangeSlice` handles one command type (or a related group). The spec implements `Reventless.StateChangeSlice.Spec`:
+Each `StateChangeSlice` lives in two files inside a `StateChangeSlice/` folder:
+
+- **`<Name>.res`** (`@@reventless.spec`) — declares `consumedEvent`, `command`, `error`, and `event`
+- **`<Name>_Behavior.res`** (`@@reventless.behavior`) — declares `state`, `initialState`, `evolve`, and `decide`
+
+What each type means:
 
 - **`consumedEvent`** — the subset of shared log events this slice reads (can be a strict subset of the full event payload)
 - **`state`** / **`initialState`** — the minimal state built by folding `consumedEvent`s
@@ -74,23 +79,15 @@ Each `StateChangeSlice` handles one command type (or a related group). The spec 
 - **`event`** — the event type this slice can emit
 - **`decide`** — accepts or rejects the command, returning events or an error
 
-The `@schema` annotation on `type command` automatically generates `commandSchema`, which the framework uses to route commands to the correct slice.
+The `@schema` annotation on `type command` automatically generates the command schema, which the framework uses to route commands to the correct slice. Inside a `StateChangeSlice/` folder, `@s.matches(Reventless.DcbTag.string)` is auto-applied to every `*Id` field.
 
 ```rescript
 // AddProduct.res
 @@reventless.spec
 
-type state = {exists: bool}
-let initialState = {exists: false}
-
 @schema
 type consumedEvent =
   | ProductAdded
-
-let evolve = (_state, event) =>
-  switch event {
-  | ProductAdded => {exists: true}
-  }
 
 @schema
 type command =
@@ -102,6 +99,20 @@ type error = ProductAlreadyExists
 @schema
 type event =
   | ProductAdded({productId: string, name: string, description: string, price: float})
+```
+
+```rescript
+// AddProduct_Behavior.res
+@@reventless.behavior
+
+type state = {exists: bool}
+
+let initialState = {exists: false}
+
+let evolve = (_state, event) =>
+  switch event {
+  | ProductAdded => {exists: true}
+  }
 
 let decide = (state, command) =>
   switch command {
@@ -120,19 +131,10 @@ A slice can subscribe to multiple events and use a richer `consumedEvent` payloa
 // ChangeProductName.res
 @@reventless.spec
 
-type state = {exists: bool, currentName: string}
-let initialState = {exists: false, currentName: ""}
-
 @schema
 type consumedEvent =
   | ProductAdded({name: string})
   | ProductNameChanged({name: string})
-
-let evolve = (state, event) =>
-  switch event {
-  | ProductAdded({name}) => {exists: true, currentName: name}
-  | ProductNameChanged({name}) => {...state, currentName: name}
-  }
 
 @schema
 type command = ChangeProductName({productId: string, name: string})
@@ -142,6 +144,21 @@ type error = ProductNotFound
 
 @schema
 type event = ProductNameChanged({productId: string, name: string})
+```
+
+```rescript
+// ChangeProductName_Behavior.res
+@@reventless.behavior
+
+type state = {exists: bool, currentName: string}
+
+let initialState = {exists: false, currentName: ""}
+
+let evolve = (state, event) =>
+  switch event {
+  | ProductAdded({name}) => {exists: true, currentName: name}
+  | ProductNameChanged({name}) => {...state, currentName: name}
+  }
 
 let decide = (state, command) =>
   switch command {
@@ -156,18 +173,18 @@ let decide = (state, command) =>
   }
 ```
 
-### Step 2: Implement a StateViewSlice Spec
+### Step 2: Implement a StateViewSlice
 
-A `StateViewSlice` projects events from the shared log into a queryable read model state. The spec implements `Reventless.StateViewSlice.Spec`.
+A `StateViewSlice` projects events from the shared log into a queryable read model. Like a StateChangeSlice it is two files, inside a `StateViewSliceStream/` folder:
 
-The `project` function takes a `consumedEvent` and returns an **array** of `Reventless.Projection.action` values. State-dependent updates use `Update(id, state => ...)` rather than receiving the existing state directly.
+- **`<Name>.res`** (`@@reventless.spec`) — declares `consumedEvent` and the read-model `state`
+- **`<Name>_Projection.res`** (`@@reventless.projection`) — declares `project`
+
+The `project` function takes a `consumedEvent` and returns an **array** of projection actions. `Set`/`Update`/`UpdateWithDefault`/`Delete` are in scope without a `Projection.` prefix (the PPX opens `Reventless.Projection`). State-dependent updates use `Update(id, state => ...)` rather than receiving the existing state directly.
 
 ```rescript
-// ProductsView.res
+// Products.res
 @@reventless.spec
-
-@schema
-type state = {productId: string, name: string, description: string, price: float}
 
 @schema
 type consumedEvent =
@@ -176,38 +193,46 @@ type consumedEvent =
   | ProductDescriptionChanged({productId: string, description: string})
   | ProductPriceChanged({productId: string, price: float})
 
+@schema
+type state = {productId: string, name: string, description: string, price: float}
+```
+
+```rescript
+// Products_Projection.res
+@@reventless.projection
+
 let project = event =>
   switch event {
   | ProductAdded({productId, name, description, price}) => [
-      Reventless.Projection.Set(productId, {productId, name, description, price}),
+      Set(productId, {productId, name, description, price}),
     ]
-  | ProductNameChanged({productId, name}) => [Reventless.Projection.Update(productId, state => {...state, name})]
+  | ProductNameChanged({productId, name}) => [Update(productId, state => {...state, name})]
   | ProductDescriptionChanged({productId, description}) => [
-      Reventless.Projection.Update(productId, state => {...state, description}),
+      Update(productId, state => {...state, description}),
     ]
-  | ProductPriceChanged({productId, price}) => [Reventless.Projection.Update(productId, state => {...state, price})]
+  | ProductPriceChanged({productId, price}) => [Update(productId, state => {...state, price})]
   }
 ```
 
 ### Step 3: Assemble the Plugin
 
-The Plugin is assembled as a **[module function](./rescript-syntax.md#functors) over `Platform.T`**. Slices are built using `Platform.StateChangeSlice.Make` and `Platform.StateViewSlice.Make`, then passed directly to `Plugin.make`.
+The plugin's composition root, `src/Plugin.res`, is **generated** by `generate-plugin` before each build — you do not write it by hand. It is a [module function](./rescript-syntax.md#functors) over `Platform.T`. The generator pairs each spec with its body file via two-argument functor calls (`Make(Spec, Behavior)` for state-change slices, `Make(Spec, Projection)` for view slices) and passes the resulting modules to `Plugin.make`.
 
 ```rescript
-// CatalogPlugin.res
+// Plugin.res — AUTO-GENERATED
 
 module Make = (Platform: ReventlessInfra.Platform.T) => {
-  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct)
-  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName)
+  module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
+  module ChangeProductNameSlice = Platform.StateChangeSlice.Make(ChangeProductName, ChangeProductName_Behavior)
 
-  module ProductsViewSlice = Platform.StateViewSlice.Make(ProductsView)
+  module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
 
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~heartbeatInterval=60,
+      ~heartbeatInterval=5,
       ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductNameSlice)],
-      ~stateViewSlices=[module(ProductsViewSlice)],
+      ~stateViewSlices=[module(ProductsStreamSlice)],
     )
 }
 ```
@@ -222,10 +247,17 @@ For slices that should publish-and-forget (high contention, long-running handler
 @@reventless.spec
 @@reventless.async
 
-module Id = Reventless.Id.String
+@schema
+type consumedEvent = ...
 
 @schema
 type command = ...
+
+@schema
+type error = ...
+
+@schema
+type event = ...
 ```
 
 The generator then emits `Platform.StateChangeSlice.MakeAsync(...)` instead. Async slices share a per-plugin `<Plugin>StateChangesAsync` Lambda (FIFO-backed); sync slices stay on the default `<Plugin>StateChanges` Lambda. The async Lambda is only provisioned when at least one slice opts in — sync-only setups pay no extra Lambda cost.
@@ -234,15 +266,17 @@ See [CommandTopic](./components/commandtopic.md#sync-vs-async) for the channel-l
 
 ## Deploying the Plugin
 
+The platform package's `Main.res` instantiates the generated plugin functor as `<Namespace>.Plugin.Make(Platform)` and registers it:
+
 ```rescript
-// index.res — composition root
+// Main.res — composition root
 
 module Platform = ReventlessAws.Platform.Make(Config)
-module App = CatalogPlugin.Make(Platform)
+module Catalog = CatalogPlugin.Plugin.Make(Platform)
 
 Platform.makePlatform(
   ~version=Reventless.PackageVersion.fromCwd(),
-  ~plugins=[module(App)],
+  ~plugins=[module(Catalog)],
 )
 ```
 

@@ -17,24 +17,24 @@ Manages the product catalogue — what is available for sale and how it is organ
 
 ### Aggregate: `Product`
 
-A product listing with name, description, and price.
+A product listing with name, description, and price. Commands and events use short names scoped to the aggregate (`Product.Add`, `Product.Added`).
 
 | Commands | Events |
 |---|---|
-| `AddProduct` | `ProductAdded` |
-| `UpdateProductName` | `ProductNameUpdated` |
-| `UpdateProductDescription` | `ProductDescriptionUpdated` |
-| `UpdateProductPrice` | `ProductPriceUpdated` |
+| `Add` | `Added` |
+| `UpdateName` | `NameUpdated` |
+| `UpdateDescription` | `DescriptionUpdated` |
+| `UpdatePrice` | `PriceUpdated` |
 
 ### Aggregate: `Category`
 
-A named grouping of products (e.g. "Books", "Electronics"). `Product` aggregates reference a `CategoryId`.
+A named grouping of products (e.g. "Books", "Electronics"). `Product` aggregates reference a `categoryId`.
 
 | Commands | Events |
 |---|---|
-| `AddCategory` | `CategoryAdded` |
-| `RenameCategory` | `CategoryRenamed` |
-| `ArchiveCategory` | `CategoryArchived` |
+| `Add` | `Added` |
+| `Rename` | `Renamed` |
+| `Archive` | `Archived` |
 
 ### Aggregate: `ProductDemand`
 
@@ -42,8 +42,8 @@ Tracks per-product order demand. Driven entirely by events arriving from Orderin
 
 | Commands | Events |
 |---|---|
-| `RecordDemand` | `ProductDemandRecorded` |
-| `RevokeDemand` | `ProductDemandRevoked` |
+| `Record` | `Recorded` |
+| `Revoke` | `Revoked` |
 
 ### Task: Import Products from CSV
 
@@ -59,25 +59,25 @@ A file-triggered Task that watches an S3 bucket for CSV uploads and publishes `P
 |---|---|---|
 | `Products` | `Product` | All product listings with current name, description, and price |
 | `Categories` | `Category` | All category names |
-| `ProductDemand` | `Product` + `ProductDemand` | Per-product order count, initialized from `ProductAdded` |
+| `ProductDemands` | `Product` + `ProductDemand` | Per-product order count, initialized from `Product.Added` |
 
-### Extension Point: `ProductsExtensionPoint`
+### Extension Point: `Products_ExtensionPoint`
 
 Outbound API from Catalog to Ordering. Translates internal `Product` events into a stable public vocabulary.
 
 | EP Event | Triggered By |
 |---|---|
-| `ProductBecameAvailable` | `Product.ProductAdded` |
-| `ProductPriceChanged` | `Product.ProductPriceUpdated` |
+| `ProductBecameAvailable` | `Product.Added` |
+| `ProductPriceChanged` | `Product.PriceUpdated` |
 
-### Extension: `OrdersExtension`
+### Extension: `Orders_Extension`
 
-Inbound subscription to Ordering's `OrdersExtensionPoint`. Routes demand events to `ProductDemand` aggregate commands.
+Inbound subscription to Ordering's `Orders_ExtensionPoint`. Routes demand events to `ProductDemand` aggregate commands.
 
 | EP Event Received | Command Dispatched |
 |---|---|
-| `ItemOrdered` | `ProductDemand.RecordDemand` |
-| `ItemOrderCancelled` | `ProductDemand.RevokeDemand` |
+| `ItemOrdered` | `ProductDemand.Record` |
+| `ItemOrderCancelled` | `ProductDemand.Revoke` |
 
 ---
 
@@ -91,30 +91,30 @@ A registered buyer with contact details and account status.
 
 | Commands | Events |
 |---|---|
-| `RegisterCustomer` | `CustomerRegistered` |
+| `Register` | `Registered` |
 | `UpdateEmail` | `EmailUpdated` |
 | `UpdateAddress` | `AddressUpdated` |
-| `DeactivateCustomer` | `CustomerDeactivated` |
+| `Deactivate` | `Deactivated` |
 
 ### Aggregate: `Order`
 
-A confirmed purchase referencing `Product` IDs and a `CustomerId`. Clear, linear lifecycle.
+A confirmed purchase referencing product IDs and a `customerId`. Clear, linear lifecycle.
 
 | Commands | Events |
 |---|---|
-| `PlaceOrder` | `OrderPlaced` |
-| `ShipOrder` | `OrderShipped` |
-| `CancelOrder` | `OrderCancelled` |
+| `Place` | `Placed` |
+| `Ship` | `Shipped` |
+| `Cancel` | `Cancelled` |
 
-### EventMapper: Auto-Ship Order
+### Event Mappings: Auto-Ship Order
 
-When an `Order.Placed` event is emitted, the EventMapper automatically issues an `Order.Ship` command for the same aggregate. Stateless fire-and-forget — no TODO list, no resolution tracking.
+When an `Order.Placed` event is emitted, an event mapping automatically issues an `Order.Ship` command for the same aggregate. Stateless fire-and-forget — no TODO list, no resolution tracking. The mappings live in `Order_Mappings.res` alongside the aggregate.
 
 | Source Event | Target Command |
 |---|---|
 | `Order.Placed` | `Order.Ship` (same aggregate ID) |
 
-### SideEffectHandler: Send Order Confirmation Email
+### Side Effect: Send Order Confirmation Email
 
 When an `Order.Placed` event is emitted, a side effect calls a (stubbed) email service. Fire-and-forget — no retry tracking, no TODO list. Hosted on the `OrderNotifications` Task.
 
@@ -128,25 +128,26 @@ A shadow replica of Catalog product data, kept in sync via Catalog's Extension P
 
 | Commands | Events |
 |---|---|
-| `SyncCatalogProduct` | `CatalogProductSynced` |
+| `Sync` | `Synced` |
+| `UpdatePrice` | `PriceUpdated` |
 
-### Extension Point: `OrdersExtensionPoint`
+### Extension Point: `Orders_ExtensionPoint`
 
-Outbound API from Ordering to Catalog. Publishes order lifecycle events that Catalog's demand tracking subscribes to.
+Outbound API from Ordering to Catalog. Publishes order lifecycle events that Catalog's demand tracking subscribes to. A batch `Order.Placed` (multiple product IDs) is decomposed into one `ItemOrdered` per product.
 
 | EP Event | Triggered By |
 |---|---|
-| `ItemOrdered` | `Order.OrderPlaced` |
-| `ItemOrderCancelled` | `Order.OrderCancelled` |
+| `ItemOrdered` | `Order.Placed` (one per product) |
+| `ItemOrderCancelled` | `Order.Cancelled` (one per product) |
 
-### Extension: `ProductsExtension`
+### Extension: `Products_Extension`
 
-Inbound subscription to Catalog's `ProductsExtensionPoint`. Routes product availability events to `CatalogProduct` aggregate commands.
+Inbound subscription to Catalog's `Products_ExtensionPoint`. Routes product availability events to `CatalogProduct` aggregate commands.
 
 | EP Event Received | Command Dispatched |
 |---|---|
-| `ProductBecameAvailable` | `CatalogProduct.SyncCatalogProduct` |
-| `ProductPriceChanged` | `CatalogProduct.SyncCatalogProduct` |
+| `ProductBecameAvailable` | `CatalogProduct.Sync` |
+| `ProductPriceChanged` | `CatalogProduct.UpdatePrice` |
 
 ---
 
@@ -155,12 +156,12 @@ Inbound subscription to Catalog's `ProductsExtensionPoint`. Routes product avail
 The two plugins communicate exclusively through Extension Points. Neither plugin imports the other's internal modules — only the shared EP specs are referenced.
 
 ```
-Catalog                          Ordering
+Catalog                            Ordering
 ───────────────────────────────────────────────────────
-ProductsExtensionPoint  ──────►  ProductsExtension
-                                 (syncs CatalogProduct)
+Products_ExtensionPoint  ──────►  Products_Extension
+                                  (syncs CatalogProduct)
 
-OrdersExtension  ◄──────────────  OrdersExtensionPoint
+Orders_Extension  ◄─────────────  Orders_ExtensionPoint
 (updates ProductDemand)
 ```
 
@@ -168,33 +169,31 @@ OrdersExtension  ◄──────────────  OrdersExtensionP
 
 ## Implementation
 
-The following walkthrough uses the **Catalog** Plugin from `examples/aggregate/catalog/` — the `Product` aggregate with its read model, the `ProductDemand` aggregate for demand tracking, the `ProductsExtensionPoint`, the `OrdersExtension`, and the `CatalogPlugin` that wires everything together.
+The following walkthrough uses the **Catalog** Plugin from `examples/online-shop-aggregates/catalog/` — the `Product` aggregate with its read model, the `ProductDemand` aggregate for demand tracking, the `Products_ExtensionPoint`, the `Orders_Extension`, and the generated `Plugin` that wires everything together.
+
+Each component is **split** into a spec file (`<Name>.res`, annotated `@@reventless.spec`) and a body file (e.g. `<Name>_Behavior.res`, `<Name>_Projections.res`). The PPX auto-injects boilerplate — `let name`, `module Id`, `let moduleUrl`, the `open`/`module Spec` lines, projection mapping wrappers, read-model `config`, default authorization, and visibility — so the source you write contains only domain logic. The folder a file lives in (`Aggregate/`, `ReadModel/`, `Task/`, …) tells the PPX and the plugin generator what kind of component it is.
 
 ### 1. Aggregate Spec
 
-The spec module defines the vocabulary for the aggregate: its commands, the events it can emit, and the errors it can return.
+The spec module defines the vocabulary for the aggregate: its commands, the events it can emit, and the errors it can return. It lives in `Product/Aggregate/Product.res`. The `@@reventless.spec` annotation derives `let name = "Product"` from the filename and injects `module Id` and `let moduleUrl` — you write only the types.
 
 ```rescript
-// Product.res
-
-open Reventless
-module Id = Id.String
-
-let name = "Product"
+// Product/Aggregate/Product.res
+@@reventless.spec
 
 @schema
 type command =
-  | AddProduct({productId: string, name: string, description: string, price: float})
-  | UpdateProductName({productId: string, name: string})
-  | UpdateProductDescription({productId: string, description: string})
-  | UpdateProductPrice({productId: string, price: float})
+  | Add({name: string, description: string, price: float})
+  | UpdateName({name: string})
+  | UpdateDescription({description: string})
+  | UpdatePrice({price: float})
 
 @schema
 type event =
-  | ProductAdded({productId: string, name: string, description: string, price: float})
-  | ProductNameUpdated({productId: string, name: string})
-  | ProductDescriptionUpdated({productId: string, description: string})
-  | ProductPriceUpdated({productId: string, price: float})
+  | Added({name: string, description: string, price: float})
+  | NameUpdated({name: string})
+  | DescriptionUpdated({description: string})
+  | PriceUpdated({price: float})
 
 @schema
 type error =
@@ -202,151 +201,116 @@ type error =
   | ProductNotFound
 ```
 
-The `@schema` attribute generates JSON serialization automatically via the Sury PPX — no hand-written encoders or decoders needed.
+The `@schema` attribute generates JSON serialization automatically via the Sury PPX — no hand-written encoders or decoders needed. The aggregate ID is supplied by the framework at command time, so it is not part of the command or event payloads.
 
 ### 2. Behavior
 
-The behavior module implements the aggregate's state machine. It defines the in-memory state type and provides four functions that the framework calls at runtime:
+The behavior module implements the aggregate's state machine. It lives next to the spec at `Product/Aggregate/Product_Behavior.res` and is annotated `@@reventless.behavior`, which auto-injects `open Spec` / `module Spec = Product` (derived from the filename) and `let moduleUrl`. It defines the state type and three functions that the framework calls at runtime:
 
-| Function | Called when |
+| Value | Role |
 |---|---|
-| `init` | The first event is replayed (aggregate does not yet exist) |
-| `apply` | Subsequent events are replayed to rebuild state |
-| `create` | A command arrives for an aggregate that does not yet exist |
-| `execute` | A command arrives for an aggregate that already exists |
+| `initialState` | The starting state before any event is replayed (a "not yet created" instance) |
+| `evolve` | Folds the current state and an event into the next state; called once per historic event during replay |
+| `decide` | Takes the current state and a command, returns `result<array<event>, error>` — `Ok([...])` accepts, `Error(err)` rejects |
 
 ```rescript
-// ProductBehavior.res
-
-open Reventless
-open Product
-
-module Spec = Product
+// Product/Aggregate/Product_Behavior.res
+@@reventless.behavior
 
 @schema
-type state = {name: string, description: string, price: float}
+type state =
+  | NotCreated
+  | Created({name: string, description: string, price: float})
 
-let init = event =>
-  switch event {
-  | ProductAdded({name, description, price}) => {name, description, price}
-  | ProductNameUpdated(_)
-  | ProductDescriptionUpdated(_)
-  | ProductPriceUpdated(_) =>
-    throw(Message.InvalidEvent(event->Message.encode(eventSchema)))
+let initialState = NotCreated
+
+let evolve = (state, event) =>
+  switch (state, event) {
+  | (NotCreated, Added({name, description, price})) => Created({name, description, price})
+  | (Created(_), Added({name, description, price})) => Created({name, description, price})
+  | (Created(s), NameUpdated({name})) => Created({...s, name})
+  | (Created(s), DescriptionUpdated({description})) => Created({...s, description})
+  | (Created(s), PriceUpdated({price})) => Created({...s, price})
+  | (NotCreated, _) => state
   }
 
-let apply = (state, event) =>
-  switch event {
-  | ProductAdded({name, description, price}) => {name, description, price}
-  | ProductNameUpdated({name})               => {...state, name}
-  | ProductDescriptionUpdated({description}) => {...state, description}
-  | ProductPriceUpdated({price})             => {...state, price}
-  }
-
-let create = (command, _context, errorHandler) =>
-  switch command {
-  | AddProduct({productId, name, description, price}) => [
-      ProductAdded({productId, name, description, price}),
-    ]
-  | UpdateProductName(_)
-  | UpdateProductDescription(_)
-  | UpdateProductPrice(_) =>
-    errorHandler(ProductNotFound, command, _context)
-  }
-
-let execute = (state, command, context, errorHandler) =>
-  switch command {
-  | AddProduct(_) =>
-    errorHandler(ProductAlreadyExists, command, context)
-  | UpdateProductName({name}) if name == state.name => []
-  | UpdateProductName({productId, name}) =>
-    [ProductNameUpdated({productId, name})]
-  | UpdateProductDescription({description})
-    if description == state.description => []
-  | UpdateProductDescription({productId, description}) => [
-      ProductDescriptionUpdated({productId, description}),
-    ]
-  | UpdateProductPrice({price}) if price == state.price => []
-  | UpdateProductPrice({productId, price}) =>
-    [ProductPriceUpdated({productId, price})]
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, Add({name, description, price})) =>
+    Ok([Added({name, description, price})])
+  | (NotCreated, UpdateName(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdateDescription(_)) => Error(ProductNotFound)
+  | (NotCreated, UpdatePrice(_)) => Error(ProductNotFound)
+  | (Created(_), Add(_)) => Error(ProductAlreadyExists)
+  | (Created(s), UpdateName({name})) if name == s.name => Ok([])
+  | (Created(_), UpdateName({name})) => Ok([NameUpdated({name: name})])
+  | (Created(s), UpdateDescription({description})) if description == s.description => Ok([])
+  | (Created(_), UpdateDescription({description})) =>
+    Ok([DescriptionUpdated({description: description})])
+  | (Created(s), UpdatePrice({price})) if price == s.price => Ok([])
+  | (Created(_), UpdatePrice({price})) => Ok([PriceUpdated({price: price})])
   }
 ```
 
-Update commands are idempotent: if the incoming value matches the current state the handler returns an empty event list, producing no write.
+Update commands are idempotent: if the incoming value matches the current state `decide` returns `Ok([])`, producing no write.
 
 ### 3. Read Model
 
-The read model defines the query-side view and how aggregate events are projected into it.
+The read model is also split: a spec file `Product/ReadModel/Products.res` (the shape of the stored view) and a projections file `Product/ReadModel/Products_Projections.res` (how events maintain it). Inside a `ReadModel/` folder, `@@reventless.spec` auto-injects `let config` and `let subIdConfig = None` for you.
 
 ```rescript
-// ProductsReadModel.res
-
-open Reventless
-module Id = Id.String
+// Product/ReadModel/Products.res
+@@reventless.spec
 
 @schema
 type state = {
-  productId: string,
   name: string,
   description: string,
   price: float,
 }
-
-let name = "Products"
 ```
 
-Projection mappings subscribe to aggregate events and translate them to `Set` or `Update` instructions on the read model store:
+The projections file is annotated `@@reventless.mappings`, which infers the domain from the `ReadModel/` folder, brings `Mapping`, `Set`, `Update`, etc. into scope, and emits the `module type Mapping` wrapper. You write the per-source `Mapping.Make` modules and the `let mappings` array. Each mapping's `project` function returns a `Set` or `Update` action on the read model store:
 
 ```rescript
-// ProductsProjections.res
-
-open Reventless
-open Reventless.Projection
+// Product/ReadModel/Products_Projections.res
+@@reventless.mappings
 
 module ProductMapping = Mapping.Make(
   Product,
-  ProductsReadModel,
+  Products,
   {
-    let map = ({Message.event: event, id, _}) =>
+    open Product
+    let project = ({event, id, _}) =>
       switch event {
-      | Product.ProductAdded({productId, name, description, price}) =>
-        Projection.Set(id, {
-          ProductsReadModel.productId,
-          name,
-          description,
-          price,
-        })
-      | Product.ProductNameUpdated({name}) =>
-        Update(id, state => {...state, name})
-      | Product.ProductDescriptionUpdated({description}) =>
+      | Added({name, description, price}) =>
+        Set(id, {Products.name: name, description, price})
+      | NameUpdated({name}) => Update(id, state => {...state, name})
+      | DescriptionUpdated({description}) =>
         Update(id, state => {...state, description})
-      | Product.ProductPriceUpdated({price}) =>
-        Update(id, state => {...state, price})
+      | PriceUpdated({price}) => Update(id, state => {...state, price})
       }
   },
 )
 
-module Mappings = Mappings.Make(ProductsReadModel)
-
-let mappings: array<module(Mappings.Mapping)> = [module(ProductMapping)]
+let mappings: array<module(Mapping)> = [module(ProductMapping)]
 ```
 
-A read model can consume events from **multiple aggregates**. The `ProductDemand` read model combines events from both `Product` (to initialise the entry) and `ProductDemand` (to track the order count):
+A read model can consume events from **multiple aggregates**. The `ProductDemands` read model (`ProductDemand/ReadModel/ProductDemands.res`) combines events from both `Product` (to initialise the entry) and `ProductDemand` (to track the order count). Its projections file declares one `Mapping.Make` per source:
 
 ```rescript
-// ProductDemandProjections.res
-
-open Reventless
-open Reventless.Projection
+// ProductDemand/ReadModel/ProductDemands_Projections.res
+@@reventless.mappings
 
 module ProductMapping = Mapping.Make(
   Product,
-  ProductDemandReadModel,
+  ProductDemands,
   {
-    let map = ({Message.event: event, id, _}) =>
+    open Product
+    let project = ({event, id, _}) =>
       switch event {
-      | Product.ProductAdded({productId, name}) =>
-        Set(id, {ProductDemandReadModel.productId, name, orderCount: 0})
+      | Added({name}) =>
+        Set(id, {ProductDemands.name: name, orderCount: 0})
       | _ => Ignore
       }
   },
@@ -354,33 +318,31 @@ module ProductMapping = Mapping.Make(
 
 module ProductDemandMapping = Mapping.Make(
   ProductDemand,
-  ProductDemandReadModel,
+  ProductDemands,
   {
-    let map = ({Message.event: event, id, _}) =>
+    open ProductDemand
+    let project = ({event, id, _}) =>
       switch event {
-      | ProductDemand.ProductDemandRecorded(_) =>
-        Update(id, (state: ProductDemandReadModel.state) => {...state, orderCount: state.orderCount + 1})
-      | ProductDemand.ProductDemandRevoked(_) =>
-        Update(id, (state: ProductDemandReadModel.state) => {...state, orderCount: max(0, state.orderCount - 1)})
+      | Recorded(_) =>
+        Update(id, (state: ProductDemands.state) => {...state, orderCount: state.orderCount + 1})
+      | Revoked(_) =>
+        Update(id, (state: ProductDemands.state) => {...state, orderCount: max(0, state.orderCount - 1)})
       }
   },
 )
 
-module Mappings = Mappings.Make(ProductDemandReadModel)
-
-let mappings: array<module(Mappings.Mapping)> = [module(ProductMapping), module(ProductDemandMapping)]
+let mappings: array<module(Mapping)> = [module(ProductMapping), module(ProductDemandMapping)]
 ```
 
 ### 4. Extension Point
 
-An **Extension Point** is the outbound API that Catalog publishes for other Plugins to subscribe to. It has two parts: a **spec** (the stable public contract) and a **mapping** (the translation from internal events to EP events).
+An **Extension Point** is the outbound API that Catalog publishes for other Plugins to subscribe to. It has two parts: a **spec** (the stable public contract, living in the `catalog-spec` package) and a **mapping** (the translation from internal events to EP events, in the `catalog` package).
 
-The spec defines the stable public vocabulary — the events that Ordering will depend on. This is intentionally different from the internal `Product` event types so that internal refactoring does not break the cross-plugin contract:
+The spec defines the stable public vocabulary — the events that Ordering will depend on. This is intentionally different from the internal `Product` event types so that internal refactoring does not break the cross-plugin contract. It lives in `catalog-spec/src/Products_ExtensionPoint.res`; in a `*Spec` namespace `@@reventless.spec` derives the dotted name `"Catalog.Products"` automatically:
 
 ```rescript
-// ProductsExtensionPointSpec.res
-
-let name = "Catalog.Products"
+// catalog-spec/src/Products_ExtensionPoint.res
+@@reventless.spec
 
 @schema
 type command = unit // read-only: no inbound commands
@@ -394,28 +356,24 @@ type event =
 type directive = unit
 ```
 
-The mapping translates internal `Product` aggregate events to the stable EP vocabulary. Only events that Ordering needs to observe are mapped — everything else is ignored:
+The mapping (`ExtensionPoint/Products_ExtensionPointMapping.res`) translates internal `Product` aggregate events to the stable EP vocabulary. It is annotated `@@reventless.spec`, which brings `PublishEvent` into scope. The internal aggregate is referenced as `module Delegate = Product`. Only events that Ordering needs to observe are mapped — everything else is ignored:
 
 ```rescript
-// ProductsExtensionPointMapping.res
+// ExtensionPoint/Products_ExtensionPointMapping.res
+@@reventless.spec
 
-open Reventless.ExtensionPointMapping
-
-module ExtensionPoint = ProductsExtensionPointSpec
-module Aggregate = Product
+module ExtensionPoint = CatalogSpec.Products_ExtensionPoint
+module Delegate = Product
 
 let mapIncomingCommand = (_id, _command, _meta) => []
 
-let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
+let mapOutgoingEvent = Some((id, event, _meta, _queryEngine) =>
   switch event {
-  | Product.ProductAdded({productId, name, price}) => [
-      PublishEvent(
-        productId,
-        ProductsExtensionPointSpec.ProductBecameAvailable({productId, name, price}),
-      ),
+  | Product.Added({name, price}) => [
+      PublishEvent(id, CatalogSpec.Products_ExtensionPoint.ProductBecameAvailable({productId: id, name, price})),
     ]
-  | Product.ProductPriceUpdated({productId, price}) => [
-      PublishEvent(productId, ProductsExtensionPointSpec.ProductPriceChanged({productId, price})),
+  | Product.PriceUpdated({price}) => [
+      PublishEvent(id, CatalogSpec.Products_ExtensionPoint.ProductPriceChanged({productId: id, price})),
     ]
   | _ => []
   }
@@ -426,66 +384,31 @@ let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
 
 ### 5. Extension
 
-An **Extension** is the inbound subscription that Catalog registers to receive events from Ordering's Extension Point. It has two parts: a **spec** (a local copy of Ordering's EP contract) and a **mapping** (the translation from EP events to internal commands).
+An **Extension** is the inbound subscription that Catalog registers to receive events from Ordering's Extension Point. Catalog decodes the incoming events through Ordering's spec package (`ordering-spec`) — it never depends on Ordering's implementation.
 
-The local spec copy allows Catalog to decode incoming events without depending on any Ordering module:
-
-```rescript
-// OrdersExtensionPointSpec.res
-
-let name = "Ordering.Orders"
-
-@schema
-type command = unit
-
-@schema
-type event =
-  | ItemOrdered({productId: string, orderId: string, customerId: string})
-  | ItemOrderCancelled({productId: string, orderId: string})
-
-@schema
-type directive = unit
-```
-
-The mapping routes each incoming EP event to an aggregate command. Here, `ItemOrdered` triggers a `RecordDemand` command on the `ProductDemand` aggregate for the referenced product:
+The extension file (`Extension/Orders_Extension.res`) is annotated `@@reventless.extension`, which brings `PublishAggregateCommand` into scope. It exposes a `module Mapping` that names the source Extension Point and the internal `Delegate` aggregate, then routes each incoming EP event to a command. Here, `ItemOrdered` triggers a `Record` command on the `ProductDemand` aggregate for the referenced product:
 
 ```rescript
-// OrdersExtension.res
+// Extension/Orders_Extension.res
+@@reventless.extension
 
-open Reventless.ExtensionMapping
+module Mapping = {
+  module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint
+  module Delegate = ProductDemand
 
-module Spec = OrdersExtensionPointSpec
-
-module DemandMappingImpl = {
-  module ExtensionPoint = Spec
-  module Aggregate = ProductDemand
-
+  open ExtensionPoint
+  open Delegate
   let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
-    | Spec.ItemOrdered({productId, orderId}) => [
-        PublishAggregateCommand(
-          productId,
-          ProductDemand.RecordDemand({productId, orderId}),
-        ),
+    | ItemOrdered({productId, orderId}) => [
+        PublishAggregateCommand(productId, Record({orderId: orderId})),
       ]
-    | Spec.ItemOrderCancelled({productId, orderId}) => [
-        PublishAggregateCommand(
-          productId,
-          ProductDemand.RevokeDemand({productId, orderId}),
-        ),
+    | ItemOrderCancelled({productId, orderId}) => [
+        PublishAggregateCommand(productId, Revoke({orderId: orderId})),
       ]
     }
 
   let mapOutgoingEvent = None
-}
-
-module DemandMappingT = ReventlessCore.ExtensionMapping.Make(DemandMappingImpl)
-
-module Mappings = {
-  module Spec = Spec
-  module type Mapping = ReventlessCore.ExtensionMapping.T with module ExtensionPoint := Spec
-  let name = "CatalogDemand"
-  let mappings: array<module(Mapping)> = [module(DemandMappingT)]
 }
 ```
 
@@ -493,132 +416,128 @@ module Mappings = {
 
 ### 6. Plugin
 
-The plugin wires all aggregates, read models, the Extension Point, and the Extension together using any `Platform` implementation. It is a pure composition root — no business logic lives here:
+The plugin wires all aggregates, read models, the Extension Point, the Extension, and the Task together using any `Platform` implementation. **You do not write this file** — it is generated at `src/Plugin.res` by `generate-plugin`, which scans `src/` by folder name and emits the composition root before each build. It carries an "AUTO-GENERATED — do not edit" banner. Each component is wired with a two-argument `Make` (spec + body); aggregates take a third argument for their event mappings (`NoEventMappings.Make(<Spec>)` when there are none):
 
 ```rescript
-// CatalogPlugin.res
-
-open Reventless
-open Reventless.Projection
-
-module Make = (Platform: Platform.T) => {
-  module ProductAggregate = Platform.Aggregate.Make(
-    Product,
-    ProductBehavior,
-    NoEventMappings.Make(Product),
-  )
-
+// src/Plugin.res — AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // Aggregates
   module CategoryAggregate = Platform.Aggregate.Make(
     Category,
-    CategoryBehavior,
-    NoEventMappings.Make(Category),
+    Category_Behavior,
+    ReventlessInfra.NoEventMappings.Make(Category),
   )
-
-  module ProductMappings: Mappings with module Target := ProductsReadModel = {
-    module ProductMappings = Mappings.Make(ProductsReadModel)
-    module type Mapping = ProductMappings.Mapping
-    let mappings = ProductsProjections.mappings
-  }
-
-  module ProductReadModel = Platform.ReadModel.Make(ProductsReadModel, ProductMappings)
-
-  module CategoryMappings: Mappings with module Target := CategoriesReadModel = {
-    module CategoryMappings = Mappings.Make(CategoriesReadModel)
-    module type Mapping = CategoryMappings.Mapping
-    let mappings = CategoriesProjections.mappings
-  }
-
-  module CategoryReadModel = Platform.ReadModel.Make(CategoriesReadModel, CategoryMappings)
-
-  // Demand tracking — driven by Ordering's OrdersExtensionPoint
+  module ProductAggregate = Platform.Aggregate.Make(
+    Product,
+    Product_Behavior,
+    ReventlessInfra.NoEventMappings.Make(Product),
+  )
   module ProductDemandAggregate = Platform.Aggregate.Make(
     ProductDemand,
-    ProductDemandBehavior,
-    NoEventMappings.Make(ProductDemand),
+    ProductDemand_Behavior,
+    ReventlessInfra.NoEventMappings.Make(ProductDemand),
   )
 
-  module ProductDemandMappings: Mappings with module Target := ProductDemandReadModel = {
-    module ProductDemandMappings = Mappings.Make(ProductDemandReadModel)
-    module type Mapping = ProductDemandMappings.Mapping
-    let mappings = ProductDemandProjections.mappings
-  }
+  // ReadModels
+  module CategoriesReadModel = Platform.ReadModel.Make(Categories, Categories_Projections)
+  module ProductDemandsReadModel = Platform.ReadModel.Make(ProductDemands, ProductDemands_Projections)
+  module ProductsReadModel = Platform.ReadModel.Make(Products, Products_Projections)
 
-  module ProductDemandReadModelMaker = Platform.ReadModel.Make(
-    ProductDemandReadModel,
-    ProductDemandMappings,
-  )
+  // Tasks
+  module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
-  // Compile the Products extension point mapping, then build the EP component
-  module ProductsEPMappingT = ReventlessCore.ExtensionPointMapping.Make(
-    ProductsExtensionPointMapping,
-  )
-  module ProductsEPMappings = {
-    module Spec = ProductsExtensionPointSpec
-    module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
-    let mappings: array<module(Mapping)> = [module(ProductsEPMappingT)]
-  }
-  module ProductsExtensionPointMaker = Platform.ExtensionPoint.Make(
-    ProductsEPMappings,
-  )
+  // ExtensionPoints
+  module Products_ExtensionPoint = Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)
 
-  // Build the Orders extension (subscribing to Ordering's EP)
-  module OrdersExtensionMaker = ReventlessCore.Extension_Builder.Make(
-    OrdersExtension.Mappings,
-  )
+  // Extensions
+  module Orders_Extension = Platform.Extension.Make(Orders_Extension.Mapping)
+
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Catalog",
+      ~heartbeatInterval=5,
+      ~extensionPoints=[module(Products_ExtensionPoint)],
+      ~extensions=[module(Orders_Extension)],
+      ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
+      ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), module(ProductsReadModel)],
+      ~tasks=[module(ImportProductsTask)],
+      // ...pluginStructure and AutoUI manifest omitted for brevity
+    )
 }
 ```
 
-Swapping `Platform` is the only change needed to move from an in-memory test environment to a full AWS deployment.
+The plugin is referenced from the platform assembly as `CatalogPlugin.Plugin.Make(Platform)` — note the `.Plugin.` segment (the namespace is `CatalogPlugin`, the generated module is `Plugin`). Swapping `Platform` is the only change needed to move from an in-memory test environment to a full AWS deployment:
 
-### 7. EventMapper
+```rescript
+// platform-in-memory/src/Main.res
+module Platform = ReventlessInMemory.Platform.Make()
 
-An **EventMapper** routes events from one aggregate to commands on the same or a different aggregate. It replaces `NoEventMappings` as the third argument to `Platform.Aggregate.Make`.
+module Catalog = CatalogPlugin.Plugin.Make(Platform)
+module Ordering = OrderingPlugin.Plugin.Make(Platform)
+
+@val external processEnv: dict<string> = "process.env"
+
+// Each plugin's `make` accepts an optional UI bundle URL; wrap it in a Maker
+// module so the platform can call `make()` uniformly.
+module CatalogMaker = {
+  let make = () => Catalog.make(~uiBundleUrl=?processEnv->Dict.get("CATALOG_UI_BUNDLE_URL"))
+}
+module OrderingMaker = {
+  let make = () => Ordering.make(~uiBundleUrl=?processEnv->Dict.get("ORDERING_UI_BUNDLE_URL"))
+}
+
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(CatalogMaker), module(OrderingMaker)],
+)
+
+Platform.startServers()
+```
+
+### 7. Event Mappings
+
+**Event mappings** route events from one aggregate to commands on the same or a different aggregate. They live in a `<Entity>_Mappings.res` sibling of the aggregate spec and replace `NoEventMappings.Make(<Spec>)` as the third argument to `Platform.Aggregate.Make`.
+
+The file is annotated `@@reventless.mappings`, which (inside an `Aggregate/` folder) infers the `Reventless.EventMapping` domain, brings `Publish` and the `Mapping` module type into scope, and wires the source/target. You write the per-source `Mapping` module — with a `module Source` and a `map` function — and the `let mappings` array.
 
 Here, `Order.Placed` triggers an automatic `Order.Ship` command on the same aggregate:
 
 ```rescript
-// Order_EventMappings.res
-
-open Reventless
-
-module Target = Order
+// Order/Aggregate/Order_Mappings.res
+@@reventless.mappings
 
 module AutoShipMapping = {
   module Source = Order
-  module Target = Order
 
   let map = (orderId, event, _queryEngine) =>
     switch event {
-    | Order.Placed(_) => [EventMapping.Publish(orderId, Order.Ship)]
+    | Order.Placed(_) => [Publish(orderId, Order.Ship)]
     | _ => []
     }
 }
 
-module type Mapping = EventMapping.T with module Target := Target
-
 let mappings: array<module(Mapping)> = [module(AutoShipMapping)]
-
-let counter = None
 ```
 
-The EventMapper module satisfies the `EventMapper.Mappings` module type. Wire it into the plugin by replacing `NoEventMappings.Make(Order)`:
+The plugin generator detects the `Order_Mappings.res` sibling and wires it as the third argument automatically:
 
 ```rescript
 module OrderAggregate = Platform.Aggregate.Make(
   Order,
-  OrderBehavior,
-  Order_EventMappings,  // was: NoEventMappings.Make(Order)
+  Order_Behavior,
+  Order_Mappings,  // generated; replaces NoEventMappings.Make(Order)
 )
 ```
 
-### 8. SideEffectHandler
+### 8. Side Effect
 
-A **SideEffectHandler** executes imperative side effects (e.g. sending emails, calling APIs) when aggregate events are emitted. Side effects are fire-and-forget — they do not produce new events or commands.
+A **side effect** executes imperative work (e.g. sending emails, calling APIs) when aggregate events are emitted. Side effects are fire-and-forget — they do not produce new events or commands.
 
-A side effect module defines the `Source` it subscribes to and an `execute` function:
+A side effect module lives at `<Entity>/SideEffect/<Entity>_<Name>.res`, is annotated `@@reventless.spec`, and defines the `Source` it subscribes to plus an `execute` function:
 
 ```rescript
-// Order_EmailNotification.res
+// Order/SideEffect/Order_EmailNotification.res
+@@reventless.spec
 
 module Source = {
   let name = Order.name
@@ -637,44 +556,39 @@ let execute = async (orderId, _meta, event, _queryEngine) =>
   }
 ```
 
-Side effects are hosted on a **Task**. The Task's `setup` function lists them in its `sideEffects` field:
+Side effects are hosted on a **Task**. The Task file (`Task/OrderNotifications.res`) is annotated `@@reventless.task` — which injects `let name` from the filename — and lists its side effects in the `setup` function:
 
 ```rescript
-// OrderNotifications.res
-
-open Reventless
-
-let name = "OrderNotifications"
+// Task/OrderNotifications.res
+@@reventless.task
 
 let setup = (_queryEngine, _queryBucketName, _opts) => {
   Task.sideEffects: [module(Order_EmailNotification): module(SideEffect.T)],
 }
 ```
 
-Wire the Task into the plugin:
+The plugin generator discovers the Task and wires it into `~tasks` in the generated `Plugin.res`:
 
 ```rescript
 module OrderNotificationsTask = Platform.Task.Make(OrderNotifications)
-
-// In Plugin.make:
+// ...
 ~tasks=[module(OrderNotificationsTask)],
 ```
 
 ### 9. Task
 
-A **Task** is a serverless handler triggered by S3 events. It can publish commands, manage schedules, and execute side effects.
+A **Task** is a serverless handler triggered by S3 events. It can publish commands, manage schedules, and execute side effects. Like the side-effect host above, a Task file lives in `Task/` and is annotated `@@reventless.task` (which injects `let name` from the filename).
 
 Here, the `ImportProducts` Task watches an S3 bucket for CSV uploads and publishes `Product.Add` commands:
 
 ```rescript
-// ImportProducts.res
-
-open Reventless
-
-let name = "ImportProducts"
+// Task/ImportProducts.res
+@@reventless.task
 
 let importCallback = (~eventName, ~key) => {
   if eventName->String.includes("ObjectCreated") {
+    Console.log("[ImportProducts] Processing file: " ++ key)
+
     let meta: Message.meta = {
       service: "ImportProducts",
       time: Date.now()->Float.toString,
@@ -687,11 +601,17 @@ let importCallback = (~eventName, ~key) => {
     [
       Task.PublishCommands(
         "Product",
-        [{id: key, meta, commandJson: Product.Add({
-            name: "Imported Product",
-            description: "Imported from " ++ key,
-            price: 9.99,
-          })->Message.encode(Product.commandSchema)}],
+        [
+          {
+            id: key,
+            meta,
+            commandJson: Product.Add({
+              name: "Imported Product",
+              description: "Imported from " ++ key,
+              price: 9.99,
+            })->Message.encode(Product.commandSchema),
+          },
+        ],
       ),
     ]->Promise.resolve
   } else {
@@ -710,11 +630,4 @@ let setup = (_queryEngine, _queryBucketName, _opts) => {
 }
 ```
 
-Wire the Task into the plugin:
-
-```rescript
-module ImportProductsTask = Platform.Task.Make(ImportProducts)
-
-// In Plugin.make:
-~tasks=[module(ImportProductsTask)],
-```
+The plugin generator discovers Tasks under `Task/` and wires them into `~tasks` in the generated `Plugin.res` automatically.

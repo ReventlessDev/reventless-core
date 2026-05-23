@@ -101,71 +101,54 @@ await addToCounterTarget({
 
 ### Counter in EventMappings
 
-The Counter is typically used within EventMapper configurations:
+The Counter is used within an Aggregate's `<Entity>_Mappings.res` file
+(`@@reventless.mappings`). The PPX injects `module Target`, `module type Mapping`,
+`let counter = None`, and `open Reventless.EventMapping` (so `Count`,
+`CountMulti`, `AddToCounterTarget`, `Publish` are in scope unqualified). Override
+`let counter` to enable the Counter:
 
-```rescript title="Invoice_EventMappings.res"
-module Target = Invoice
+```rescript title="Invoice/Aggregate/Invoice_Mappings.res" showLineNumbers
+@@reventless.mappings
 
 // Map Order events to Invoice commands
 module OrderMapping = {
   module Source = Order
-  
-  let map = (. orderId, event, _queryEngine) =>
+
+  let map = (orderId, event, _queryEngine) =>
     switch event {
     | Order.Created({expectedItems}) => [
         // Set the expected count (negative number)
-        Reventless.EventMapping.CountMulti(
-          orderId->Order.Id.toString,
-          -expectedItems  // Expect this many items
-        ),
+        CountMulti(orderId->Order.Id.toString, -expectedItems), // Expect this many items
       ]
     | Order.ItemAdded({itemId, quantity, price}) => [
         // Add item data to counter targets
-        Reventless.EventMapping.AddToCounterTarget({
-          counterId: orderId->Order.Id.toString,
-          target: {itemId, quantity, price}
-        }),
+        AddToCounterTarget({counterId: orderId->Order.Id.toString, target: {itemId, quantity, price}}),
         // Increment counter by 1
-        Reventless.EventMapping.Count(orderId->Order.Id.toString),
+        Count(orderId->Order.Id.toString),
       ]
     | Order.ItemRemoved(_) => [
         // Decrement counter when item removed
-        Reventless.EventMapping.CountMulti(
-          orderId->Order.Id.toString,
-          -1
-        ),
+        CountMulti(orderId->Order.Id.toString, -1),
       ]
     | _ => []
     }
 }
 
-// Handle Counter.Triggered events
+// Handle Counter.CountFinished events
 module CounterMapping = {
   module Source = Counter.Source
-  
-  let map = (. counterId, event, _queryEngine) =>
+
+  let map = (counterId, event, _queryEngine) =>
     switch event {
-    | Counter.Source.CountFinished => {
-        // Counter reached zero - all items collected
-        // Targets contain all the collected item data
-        [
-          Reventless.EventMapping.Publish(
-            counterId->Invoice.Id.fromString,
-            Invoice.Generate
-          ),
-        ]
-      }
+    | Counter.Source.CountFinished =>
+      // Counter reached zero — all items collected; targets hold the data
+      [Publish(counterId->Invoice.Id.fromString, Invoice.Generate)]
     }
 }
 
-module type Mapping = Reventless.EventMapping.T with module Target := Target
+let mappings: array<module(Mapping)> = [module(OrderMapping), module(CounterMapping)]
 
-let mappings: array<module(Mapping)> = [
-  module(OrderMapping),
-  module(CounterMapping),
-]
-
-// Enable counter for this EventMapper
+// Enable counter for this EventMapper (overrides the default `let counter = None`)
 let counter = Some(module(Invoice_Counter: Counter.T))
 ```
 
@@ -255,39 +238,31 @@ These events can be mapped like any other aggregate events.
 
 ## Common Patterns
 
+These per-source modules live inside an `@@reventless.mappings` file, so the
+action constructors (`Count`, `CountMulti`, `AddToCounterTarget`, `Publish`) are
+in scope unqualified.
+
 ### Wait for Multiple Events
 
 ```rescript
 // Wait for 3 confirmations before proceeding
 module ConfirmationMapping = {
   module Source = Confirmation
-  
-  let map = (. requestId, event, _queryEngine) =>
+
+  let map = (requestId, event, _queryEngine) =>
     switch event {
-    | Confirmation.RequestCreated => [
-        // Set expected count to 3
-        EventMapping.CountMulti(requestId, -3),
-      ]
-    | Confirmation.Approved(_) => [
-        // Each approval increments counter
-        EventMapping.Count(requestId),
-      ]
+    | Confirmation.RequestCreated => [CountMulti(requestId, -3)] // Set expected count to 3
+    | Confirmation.Approved(_) => [Count(requestId)] // Each approval increments counter
     | _ => []
     }
 }
 
 module CounterMapping = {
   module Source = Counter.Source
-  
-  let map = (. requestId, event, _queryEngine) =>
+
+  let map = (requestId, event, _queryEngine) =>
     switch event {
-    | Counter.Source.CountFinished => [
-        // All 3 approvals received
-        EventMapping.Publish(
-          requestId,
-          Request.Execute
-        ),
-      ]
+    | Counter.Source.CountFinished => [Publish(requestId, Request.Execute)] // All 3 approvals received
     }
 }
 ```
@@ -298,41 +273,28 @@ module CounterMapping = {
 // Collect order items before generating invoice
 module OrderItemMapping = {
   module Source = OrderItem
-  
-  let map = (. itemId, event, _queryEngine) =>
+
+  let map = (itemId, event, _queryEngine) =>
     switch event {
     | OrderItem.Added({orderId, quantity, price}) => [
         // Store item data
-        EventMapping.AddToCounterTarget({
-          counterId: orderId,
-          target: {itemId, quantity, price}
-        }),
+        AddToCounterTarget({counterId: orderId, target: {itemId, quantity, price}}),
         // Increment counter
-        EventMapping.Count(orderId),
+        Count(orderId),
       ]
-    | OrderItem.Removed({orderId}) => [
-        // Decrement counter if item removed
-        EventMapping.CountMulti(orderId, -1),
-      ]
+    | OrderItem.Removed({orderId}) => [CountMulti(orderId, -1)] // Decrement counter if item removed
     | _ => []
     }
 }
 
 module CounterMapping = {
   module Source = Counter.Source
-  
-  let map = (. orderId, event, _queryEngine) =>
+
+  let map = (orderId, event, _queryEngine) =>
     switch event {
-    | Counter.Source.CountFinished => {
-        // Counter provides collected targets
-        // Generate invoice with all collected items
-        [
-          EventMapping.Publish(
-            orderId->Invoice.Id.fromString,
-            Invoice.GenerateFromItems
-          ),
-        ]
-      }
+    | Counter.Source.CountFinished =>
+      // Counter provides collected targets; generate invoice with all collected items
+      [Publish(orderId->Invoice.Id.fromString, Invoice.GenerateFromItems)]
     }
 }
 ```
@@ -343,38 +305,22 @@ module CounterMapping = {
 // Coordinate multi-step process
 module SagaMapping = {
   module Source = Process
-  
-  let map = (. processId, event, _queryEngine) =>
+
+  let map = (processId, event, _queryEngine) =>
     switch event {
-    | Process.Started({steps}) => [
-        // Set expected count to number of steps
-        EventMapping.CountMulti(processId, -steps),
-      ]
-    | Process.StepCompleted(_) => [
-        // Each step completion increments
-        EventMapping.Count(processId),
-      ]
-    | Process.StepFailed(_) => [
-        // On failure, reset counter (set to 0)
-        // This prevents completion
-        EventMapping.CountMulti(processId, 1000),
-      ]
+    | Process.Started({steps}) => [CountMulti(processId, -steps)] // Set expected count to number of steps
+    | Process.StepCompleted(_) => [Count(processId)] // Each step completion increments
+    | Process.StepFailed(_) => [CountMulti(processId, 1000)] // On failure, push count away from 0 to prevent completion
     | _ => []
     }
 }
 
 module CounterMapping = {
   module Source = Counter.Source
-  
-  let map = (. processId, event, _queryEngine) =>
+
+  let map = (processId, event, _queryEngine) =>
     switch event {
-    | Counter.Source.CountFinished => [
-        // All steps completed successfully
-        EventMapping.Publish(
-          processId,
-          Process.Complete
-        ),
-      ]
+    | Counter.Source.CountFinished => [Publish(processId, Process.Complete)] // All steps completed successfully
     }
 }
 ```
@@ -385,22 +331,16 @@ module CounterMapping = {
 // Handle variable number of items
 module OrderMapping = {
   module Source = Order
-  
-  let map = (. orderId, event, _queryEngine) =>
+
+  let map = (orderId, event, _queryEngine) =>
     switch event {
     | Order.Created({items}) => [
         // Set count based on number of items
-        EventMapping.CountMulti(
-          orderId->Order.Id.toString,
-          -(items->Array.length)
-        ),
+        CountMulti(orderId->Order.Id.toString, -(items->Array.length)),
       ]
     | Order.ItemShipped({itemId}) => [
-        EventMapping.AddToCounterTarget({
-          counterId: orderId->Order.Id.toString,
-          target: {itemId, shippedAt: Date.now()}
-        }),
-        EventMapping.Count(orderId->Order.Id.toString),
+        AddToCounterTarget({counterId: orderId->Order.Id.toString, target: {itemId, shippedAt: Date.now()}}),
+        Count(orderId->Order.Id.toString),
       ]
     | _ => []
     }
@@ -488,10 +428,10 @@ type countsState = {
 
 ```rescript
 // ✅ Good: Set expected count as negative
-EventMapping.CountMulti(orderId, -5)  // Expect 5 items
+CountMulti(orderId, -5) // Expect 5 items
 
 // Then increment with positive numbers
-EventMapping.Count(orderId)  // +1 each time
+Count(orderId) // +1 each time
 
 // Counter triggers when: -5 + 1 + 1 + 1 + 1 + 1 = 0
 ```
@@ -500,7 +440,7 @@ EventMapping.Count(orderId)  // +1 each time
 
 ```rescript
 // ✅ Good: Use event correlation ID
-EventMapping.Count(orderId)  
+Count(orderId)
 // Internally uses event.meta.correlationId as reference
 
 // This ensures each event is counted exactly once
@@ -525,18 +465,15 @@ let counter = Counter.make(
 // ✅ Good: Always handle Counter.Source events
 module CounterMapping = {
   module Source = Counter.Source
-  
-  let map = (. counterId, event, _queryEngine) =>
+
+  let map = (counterId, event, _queryEngine) =>
     switch event {
-    | Counter.Source.CountFinished => [
-        // Take action when counter completes
-        EventMapping.Publish(id, SomeCommand)
-      ]
+    | Counter.Source.CountFinished => [Publish(counterId, SomeCommand)] // Take action when counter completes
     }
 }
 
-// Include in mappings
-let mappings = [
+// Include in the mappings array
+let mappings: array<module(Mapping)> = [
   module(CounterMapping),
   // ... other mappings
 ]

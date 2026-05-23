@@ -38,14 +38,21 @@ The **EventMapper** enables event-driven command generation by mapping events fr
 
 ## Event Mapping Spec
 
-The EventMapper requires a mappings specification that defines how events are transformed into commands:
+EventMappings live in an Aggregate sibling file `<Entity>_Mappings.res` annotated
+with `@@reventless.mappings`. The PPX infers the domain from the `Aggregate/`
+folder (`Reventless.EventMapping`) and injects `open Reventless.EventMapping`,
+`module Target = <Entity>`, `module M = Reventless.EventMapping.Mappings.Make(Target)`,
+`module type Mapping = M.Mapping`, `let moduleUrl`, and `let counter = None`. You
+only write the per-source mapping modules and the `mappings` array.
+
+The structure the PPX constructs (you do not write this by hand):
 
 ```rescript
 module type Mappings = {
-  module Target: Reventless.Aggregate.Spec  // Target aggregate
+  module Target: Reventless.Aggregate.Spec  // Target aggregate (injected)
   module type Mapping = Reventless.EventMapping.T with module Target := Target
-  let mappings: array<module(Mapping)>          // Array of event mappings
-  let counter: option<module(Counter.T)>        // Optional counter for coordination
+  let mappings: array<module(Mapping)>          // Array of event mappings (you write this)
+  let counter: option<module(Counter.T)>        // Optional counter for coordination (defaults to None)
 }
 ```
 
@@ -84,100 +91,81 @@ type action<'id, 'command> =
 
 ### Basic Event Mapping Example
 
-Here's a complete example of mapping Customer events to Order commands:
+Here's a complete example of mapping Customer events to Order commands. The file is
+the `<Entity>_Mappings.res` sibling of the target Aggregate. `@@reventless.mappings`
+injects `module Target`, `module type Mapping`, `let counter = None`, and
+`open Reventless.EventMapping` (so action constructors like `Publish` are in scope —
+never qualify them with `Reventless.EventMapping.`):
 
-```rescript title="Order_EventMappings.res"
-// Define the target aggregate
-module Target = Order
+```rescript title="Order/Aggregate/Order_Mappings.res" showLineNumbers
+@@reventless.mappings
 
-// Mapping from Customer events to Order commands
+// Mapping from Customer events to Order commands.
 module CustomerMapping = {
   module Source = Customer
-  
+
   let map = (customerId, event, queryEngine) =>
     switch event {
     | Customer.Created({name, address}) => [
         // When customer is created, create a welcome order
-        Reventless.EventMapping.Publish(
+        Publish(
           Order.Id.make(),
-          Order.CreateWelcomeOrder({
-            customerId: customerId,
-            customerName: name,
-            deliveryAddress: address,
-          })
+          Order.CreateWelcomeOrder({customerId, customerName: name, deliveryAddress: address}),
         ),
       ]
-    | Customer.AddressChanged(newAddress) => {
-        // When address changes, update pending orders
-        // Use async pattern to query for orders first
-        let ordersPromise = queryEngine.query(
-          ~table="PendingOrders",
-          ~key="customerId",
-          ~value=customerId->Customer.Id.toString,
-        )
-        [
-          Reventless.EventMapping.PublishAsync(
-            ordersPromise->Promise.then(orders =>
-              orders->Array.map(order => (
-                order.orderId,
-                Order.UpdateDeliveryAddress(newAddress)
-              ))
-            )
+    | Customer.AddressChanged(newAddress) =>
+      // When address changes, update pending orders via an async query first
+      let ordersPromise = queryEngine.query(
+        ~table="PendingOrders",
+        ~key="customerId",
+        ~value=customerId->Customer.Id.toString,
+      )
+      [
+        PublishAsync(
+          ordersPromise->Promise.thenResolve(orders =>
+            orders->Array.map(order => (order.orderId, Order.UpdateDeliveryAddress(newAddress)))
           ),
-        ]
-      }
-    | Customer.Deleted => [
-        // When customer is deleted, cancel their orders
-        Reventless.EventMapping.Publish(
-          customerId->Customer.Id.toString->Order.Id.fromString,
-          Order.CancelAllForCustomer
         ),
       ]
-    | _ => []  // Other events don't trigger order commands
+    | Customer.Deleted => [
+        Publish(
+          customerId->Customer.Id.toString->Order.Id.fromString,
+          Order.CancelAllForCustomer,
+        ),
+      ]
+    | _ => [] // Other events don't trigger order commands
     }
 }
 
-// Define the module type constraint
-module type Mapping = Reventless.EventMapping.T with module Target := Target
-
-// Register all mappings for this target
-let mappings: array<module(Mapping)> = [
-  module(CustomerMapping),
-]
-
-// No counter needed for this simple case
-let counter = None
+let mappings: array<module(Mapping)> = [module(CustomerMapping)]
 ```
 
 ### Event Mapping with Counter
 
-For more complex scenarios requiring deduplication or coordination across multiple events:
+For more complex scenarios requiring deduplication or coordination across multiple
+events, set `let counter = Some(...)` (this overrides the PPX-injected default of
+`None`):
 
-```rescript title="Invoice_EventMappings.res"
-module Target = Invoice
+```rescript title="Invoice/Aggregate/Invoice_Mappings.res" showLineNumbers
+@@reventless.mappings
 
 module OrderMapping = {
   module Source = Order
-  
-  let map = (orderId, event, queryEngine) =>
+
+  let map = (orderId, event, _queryEngine) =>
     switch event {
     | Order.ItemAdded({itemId, quantity, price}) => [
         // Add this item to the invoice counter
-        Reventless.EventMapping.AddToCounterTarget({
+        AddToCounterTarget({
           counterId: orderId->Order.Id.toString,
-          target: {
-            itemId: itemId,
-            quantity: quantity,
-            price: price,
-          }
+          target: {itemId, quantity, price},
         }),
         // Increment the counter
-        Reventless.EventMapping.Count(orderId->Order.Id.toString),
+        Count(orderId->Order.Id.toString),
       ]
-    | Order.Completed({expectedItems}) => [
-        // When order is complete, we expect counter to reach expectedItems
-        // Counter will trigger invoice generation when count matches
-        Reventless.EventMapping.Count(orderId->Order.Id.toString),
+    | Order.Completed(_) => [
+        // Counter triggers invoice generation when the count matches
+        Count(orderId->Order.Id.toString),
       ]
     | _ => []
     }
@@ -185,35 +173,21 @@ module OrderMapping = {
 
 module CounterMapping = {
   module Source = Counter.Source
-  
+
   let map = (counterId, event, _queryEngine) =>
     switch event {
-    | Counter.Source.Triggered({targets}) => {
-        // Counter triggered - all items collected, generate invoice
-        let items = targets->Array.map(target => {
-          itemId: target.itemId,
-          quantity: target.quantity,
-          price: target.price,
-        })
-        [
-          Reventless.EventMapping.Publish(
-            counterId->Invoice.Id.fromString,
-            Invoice.Generate({items: items})
-          ),
-        ]
-      }
+    | Counter.Source.Triggered({targets}) =>
+      // Counter triggered — all items collected, generate invoice
+      let items =
+        targets->Array.map(target => {itemId: target.itemId, quantity: target.quantity, price: target.price})
+      [Publish(counterId->Invoice.Id.fromString, Invoice.Generate({items: items}))]
     | _ => []
     }
 }
 
-module type Mapping = Reventless.EventMapping.T with module Target := Target
+let mappings: array<module(Mapping)> = [module(OrderMapping), module(CounterMapping)]
 
-let mappings: array<module(Mapping)> = [
-  module(OrderMapping),
-  module(CounterMapping),
-]
-
-// Enable counter for coordination
+// Enable counter for coordination (overrides the default `let counter = None`)
 let counter = Some(module(Invoice_Counter: Counter.T))
 ```
 
@@ -274,21 +248,29 @@ EventMapperComponent.MappingLogic -> CommandTopic: { class: command-flow }
 
 ### With Aggregate
 
-EventMappers are typically defined as part of an Aggregate's EventMappings:
+EventMappers are defined as the `<Entity>_Mappings.res` sibling of an Aggregate.
+You never wire them by hand — the plugin generator passes the mappings module as
+the third argument to the Aggregate factory in the **generated** `Plugin.res`:
 
-```rescript title="Order.res"
-// In the aggregate module, include EventMappings
-include ReventlessAws.Aggregate.Make(
-  Config,
-  Order,
-  Order_Behavior,
-  Order_EventMappings,  // EventMapper configuration
-)
+```rescript title="src/Plugin.res (generated — do not edit)"
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // Aggregates
+  module OrderAggregate = Platform.Aggregate.Make(Order, Order_Behavior, Order_Mappings)
+
+  // ... other components
+}
 ```
+
+(An Aggregate with no event mappings is wired with
+`ReventlessInfra.NoEventMappings.Make(Order)` in that third slot instead.)
 
 The framework automatically creates and wires the EventMapper as part of the Aggregate deployment.
 
 ## Common Patterns
+
+These per-source modules live inside an `@@reventless.mappings` file, so the
+action constructors (`Publish`, `PublishAsync`, `PublishDelayed`, …) are in scope
+unqualified.
 
 ### Saga Pattern - Order Fulfillment
 
@@ -296,22 +278,12 @@ The framework automatically creates and wires the EventMapper as part of the Agg
 // Order aggregate triggers fulfillment saga
 module InventoryMapping = {
   module Source = Order
-  
+
   let map = (orderId, event, _queryEngine) =>
     switch event {
-    | Order.Created({items}) => 
-        items->Array.map(item =>
-          EventMapping.Publish(
-            item.inventoryId,
-            Inventory.Reserve({orderId, quantity: item.quantity})
-          )
-        )
-    | Order.Cancelled => [
-        EventMapping.Publish(
-          orderId->getInventoryId,
-          Inventory.Release({orderId})
-        ),
-      ]
+    | Order.Created({items}) =>
+      items->Array.map(item => Publish(item.inventoryId, Inventory.Reserve({orderId, quantity: item.quantity})))
+    | Order.Cancelled => [Publish(orderId->getInventoryId, Inventory.Release({orderId: orderId}))]
     | _ => []
     }
 }
@@ -323,26 +295,21 @@ module InventoryMapping = {
 // Coordinate payment after inventory reservation
 module PaymentMapping = {
   module Source = Inventory
-  
+
   let map = (_inventoryId, event, queryEngine) =>
     switch event {
-    | Inventory.Reserved({orderId}) => {
-        // Check if all inventory is reserved
-        let checkPromise = queryEngine.query(
-          ~table="OrderInventory",
-          ~key="orderId", 
-          ~value=orderId,
-        )->Promise.then(items => {
+    | Inventory.Reserved({orderId}) =>
+      // Check if all inventory is reserved
+      let checkPromise =
+        queryEngine.query(~table="OrderInventory", ~key="orderId", ~value=orderId)
+        ->Promise.thenResolve(items =>
           if items->allReserved {
-            // All reserved, proceed with payment
-            [(orderId, Payment.Process({orderId}))]
+            [(orderId, Payment.Process({orderId: orderId}))] // All reserved, proceed with payment
           } else {
-            // Still waiting for more reservations
-            []
+            [] // Still waiting for more reservations
           }
-        })
-        [EventMapping.PublishAsync(checkPromise)]
-      }
+        )
+      [PublishAsync(checkPromise)]
     | _ => []
     }
 }
@@ -354,16 +321,10 @@ module PaymentMapping = {
 // Send reminder email after 24 hours
 module ReminderMapping = {
   module Source = Order
-  
+
   let map = (orderId, event, _queryEngine) =>
     switch event {
-    | Order.Created(_) => [
-        EventMapping.PublishDelayed(
-          orderId,
-          Order.SendReminder,
-          24 * 60 * 60  // 24 hours in seconds
-        ),
-      ]
+    | Order.Created(_) => [PublishDelayed(orderId, Order.SendReminder, 24 * 60 * 60)] // 24 hours in seconds
     | _ => []
     }
 }
@@ -375,15 +336,10 @@ module ReminderMapping = {
 // Keep customer aggregate in sync with orders
 module CustomerSyncMapping = {
   module Source = Order
-  
+
   let map = (_orderId, event, _queryEngine) =>
     switch event {
-    | Order.Completed({customerId, totalAmount}) => [
-        EventMapping.Publish(
-          customerId,
-          Customer.UpdateOrderTotal(totalAmount)
-        ),
-      ]
+    | Order.Completed({customerId, totalAmount}) => [Publish(customerId, Customer.UpdateOrderTotal(totalAmount))]
     | _ => []
     }
 }
@@ -438,21 +394,18 @@ type outputs = {
 ### Keep Mappings Pure and Focused
 
 ```rescript
-// ❌ Bad: Complex logic in mapping
+// ❌ Bad: blocking/complex logic in a (pure) mapping
 let map = (id, event, queryEngine) => {
-  // Don't do complex calculations here
-  let result = await someComplexCalculation()
-  // Don't make unnecessary queries
-  let data = await queryEngine.query(...)
-  [EventMapping.Publish(id, SomeCommand(result))]
+  // Don't do complex calculations or block on awaits here
+  let result = expensiveSyncCalc()
+  let data = queryEngine.query(...) // returns a promise — don't try to await it inline
+  [Publish(id, SomeCommand(result))]
 }
 
 // ✅ Good: Simple, focused transformation
 let map = (id, event, _queryEngine) =>
   switch event {
-  | SourceEvent(data) => [
-      EventMapping.Publish(id, TargetCommand(data))
-    ]
+  | SourceEvent(data) => [Publish(id, TargetCommand(data))]
   | _ => []
   }
 ```
@@ -460,27 +413,22 @@ let map = (id, event, _queryEngine) =>
 ### Use QueryEngine for Read-Side Queries Only
 
 ```rescript
-// ✅ Good: Query read models for decision-making
+// ✅ Good: Query read models for decision-making via PublishAsync
 let map = (id, event, queryEngine) =>
   switch event {
-  | OrderCreated({customerId}) => {
-      let customerPromise = queryEngine.query(
-        ~table="CustomerReadModel",
-        ~key="id",
-        ~value=customerId,
-      )
-      [
-        EventMapping.PublishAsync(
-          customerPromise->Promise.then(customer =>
-            if customer.vipStatus {
-              [(id, ApplyVipDiscount)]
-            } else {
-              []
-            }
-          )
+  | OrderCreated({customerId}) =>
+    let customerPromise = queryEngine.query(~table="CustomerReadModel", ~key="id", ~value=customerId)
+    [
+      PublishAsync(
+        customerPromise->Promise.thenResolve(customer =>
+          if customer.vipStatus {
+            [(id, ApplyVipDiscount)]
+          } else {
+            []
+          }
         ),
-      ]
-    }
+      ),
+    ]
   | _ => []
   }
 ```
@@ -491,8 +439,8 @@ let map = (id, event, queryEngine) =>
 // Always include a default case
 let map = (id, event, _queryEngine) =>
   switch event {
-  | EventWeCarAbout(data) => [/* commands */]
-  | _ => []  // Explicitly ignore other events
+  | EventWeCareAbout(data) => [/* commands */]
+  | _ => [] // Explicitly ignore other events
   }
 ```
 

@@ -38,10 +38,13 @@ read in the `Catalog/src/plugin.json` (or that defaults to your folder name).
 
 ## Authoring a mixed-source ReadModel
 
-### 1. The ReadModel spec — unchanged
+### 1. The ReadModel spec
+
+The spec file lives in a `ReadModel/` folder, so its filename carries no kind
+suffix — the folder supplies the kind:
 
 ```rescript
-// Catalog/src/CatalogActivity/ReadModel/CatalogActivityReadModel.res
+// catalog/src/CatalogActivity/ReadModel/CatalogActivity.res
 @@reventless.spec
 
 @schema
@@ -50,35 +53,40 @@ type state = {kind: string, lastChange: string}
 
 ### 2. The Projections file — define each `Mapping`
 
-The Aggregate-source mapping is the existing pattern — pass the aggregate spec
-module as the first argument:
+The sibling body file is `CatalogActivity_Projections.res` (underscore + plural
+`_Projections`). Its `@@reventless.mappings` annotation auto-injects the domain
+opens, `module Target` / `module M` / `module type Mapping`, `let moduleUrl`, and
+— for any inline DCB `Source` module — `module Id` + dcbTags on `*Id` fields.
+
+The Aggregate-source mapping passes the aggregate spec module as the first
+argument:
 
 ```rescript
-// CatalogActivityProjections.res
-open Reventless.Message
-open Reventless.Projection
+// CatalogActivity_Projections.res
+@@reventless.mappings
 
 module CategoryActivityMapping = Mapping.Make(
   Category,                             // Aggregate spec module — name = "Category"
-  CatalogActivityReadModel,
+  CatalogActivity,
   {
     open Category
-    let project = ({event, id, _}) => switch event {
-      | Added(_)    => Set(id, {CatalogActivityReadModel.kind: "category", lastChange: "Added"})
-      | Renamed(_)  => Update(id, s => {...s, lastChange: "Renamed"})
-      | Archived    => Update(id, s => {...s, lastChange: "Archived"})
-    }
+    let project = ({event, id, _}) =>
+      switch event {
+      | Added(_) => Set(id, {CatalogActivity.kind: "category", lastChange: "Added"})
+      | Renamed(_) => Update(id, s => {...s, lastChange: "Renamed"})
+      | Archived => Update(id, s => {...s, lastChange: "Archived"})
+      }
   },
 )
 ```
 
-For the DCB-source mapping, declare a small `Source`-shaped module **inline**
-(or in a sibling file). The `name` MUST match the dict key:
+For the DCB-source mapping, declare a small `Source`-shaped module **inline**.
+The `name` MUST match the dict key (`module Id` is auto-injected by
+`@@reventless.mappings`):
 
 ```rescript
 // Same file, just above the DCB mapping.
 module CatalogDcbSource = {
-  module Id = Reventless.Id.String
   let name = "CatalogDcbEventLog"        // <pluginName>DcbEventLog
 
   @schema
@@ -89,21 +97,24 @@ module CatalogDcbSource = {
 
 module ProductActivityMapping = Mapping.Make(
   CatalogDcbSource,
-  CatalogActivityReadModel,
+  CatalogActivity,
   {
     open CatalogDcbSource
-    let project = ({event, _}) => switch event {
-      | ProductAdded({productId})   =>
-        Set(productId, {CatalogActivityReadModel.kind: "product", lastChange: "Added"})
-      | ProductRenamed({productId}) =>
-        Update(productId, s => {...s, lastChange: "Renamed"})
-    }
+    let project = ({event, _}) =>
+      switch event {
+      | ProductAdded({productId}) =>
+        Set(productId, {CatalogActivity.kind: "product", lastChange: "Added"})
+      | ProductRenamed({productId}) => Update(productId, s => {...s, lastChange: "Renamed"})
+      }
   },
 )
+
+let mappings: array<module(Mapping)> = [module(CategoryActivityMapping), module(ProductActivityMapping)]
 ```
 
-Both mappings target `CatalogActivityReadModel`. The auto-generated `Plugin.res`
-collects them under one `Mappings` wrapper — no manual wiring is needed.
+Both mappings target `CatalogActivity`. The auto-generated `Plugin.res` wires the
+pair as `Platform.ReadModel.Make(CatalogActivity, CatalogActivity_Projections)` —
+no manual wiring is needed.
 
 ### 3. Typed event subsetting
 

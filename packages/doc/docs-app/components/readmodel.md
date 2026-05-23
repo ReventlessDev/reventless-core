@@ -39,7 +39,7 @@ Events may trigger updates to the state of a Read Model. A Read Model may act on
 
 ### Example
 
-```rescript title="ProductsReadModel.res" showLineNumbers
+```rescript title="Product/ReadModel/Products.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -56,7 +56,7 @@ The `@@reventless.spec` annotation auto-injects `let name`, `let config = config
 
 PPX annotations on `@schema type state` fields replace manual `let config`, `let subIdConfig`, and `let makeId` declarations:
 
-```rescript title="OrderLineItemsReadModel.res" showLineNumbers
+```rescript title="Order/ReadModel/OrderLineItems.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -76,7 +76,7 @@ For the full annotation reference see [PPX annotations](../rescript-syntax.md#re
 
 Custom indexes can also be added by explicitly declaring `let config`:
 
-```rescript title="CustomersReadModel.res" showLineNumbers
+```rescript title="Customer/ReadModel/Customers.res" showLineNumbers
 @@reventless.spec
 
 @schema
@@ -129,7 +129,7 @@ the generated host shell. Helper views — used only as join targets, automation
 decision state, or cross-plugin lookups — can opt out by adding a file-level
 attribute:
 
-```rescript title="CustomerLookup_ReadModelSpec.res" showLineNumbers
+```rescript title="CustomerLookups/ReadModel/CustomerLookups.res" showLineNumbers
 @@reventless.spec
 @@reventless.visibility(Internal)
 
@@ -174,7 +174,7 @@ Aggregate / `*Slice` (command-carrying) files with a clear compile error.
 
 ### Example
 
-```rescript title="Customer_ReadModelSpec.res" showLineNumbers
+```rescript title="Customer/ReadModel/Customers.res" showLineNumbers
 let subIdConfig = Some({
   Reventless.ReadModel.Spec.subIdField: "subId",
   getSubId: state => state.subId,
@@ -254,10 +254,10 @@ Example result of `customer("1234")` API query:
 ```json
 {
   "customer": {
-    "id": "customer-1234"",
+    "id": "customer-1234",
     "orderId" : "order-5678",
     "order": {
-      "id: "order-5678",
+      "id": "order-5678",
       "items" :[]
     }
   }
@@ -266,30 +266,41 @@ Example result of `customer("1234")` API query:
 
 ## Projections
 
+Projections live in a sibling file `<Plural>_Projections.res` annotated with
+`@@reventless.mappings`. The PPX infers the `Reventless.Projection` domain from
+the `ReadModel/` folder and injects `open Reventless.Projection` (so action
+constructors `Set`, `Update`, `UpdateWithDefault`, `Delete` are in scope
+unqualified), `module Target`, `module M = Mapping.Make`, `module type Mapping`,
+and `let moduleUrl`. You write the per-source `Mapping.Make` modules and the
+`mappings` array.
+
 ### Example
 
-```rescript title="Customer_Projection.res" showLineNumbers
-module Mapping = Reventless.Projection.Mapping.Make(
+```rescript title="Customer/ReadModel/Customers_Projections.res" showLineNumbers
+@@reventless.mappings
+
+module CustomerMapping = Mapping.Make(
   Customer,
-  Customer_ReadModelSpec,
+  Customers,
   {
-    let project = ({event, id}) =>
+    open Customer
+    let project = ({event, id, _}) =>
       switch event {
-      | Customer.Created({Customer.name: name, address}) => Reventless.Projection.Create(id, {name, address})
-      | Customer.AddressChanged(address) => Reventless.Projection.Update(id, state => {...state, address})
-      | Customer.NameChanged(name) => Reventless.Projection.Update(id, state => {...state, name})
-      | Customer.Deleted => Reventless.Projection.Delete(id)
-      | Customer.Unchanged => Reventless.Projection.Ignore
+      | Registered({email, address}) => Set(id, {Customers.email: email, address, deactivated: false})
+      | EmailUpdated({email}) => Update(id, state => {...state, email})
+      | AddressUpdated({address}) => Update(id, state => {...state, address})
+      | Deactivated => Update(id, state => {...state, deactivated: true})
       }
   },
 )
 
-include Mapping
+let mappings: array<module(Mapping)> = [module(CustomerMapping)]
 ```
 
-In order to update a Read Model by Events from an Aggregate, a Projection from that Aggregate to the Read Model must be provided.
+In order to update a Read Model by Events from an Aggregate (or a DCB source), a
+Projection from that source to the Read Model must be provided.
 
-You do so by calling the Reventless.Projection.Mapping.Make [module function](../rescript-syntax.md#functors) with the [Aggregate Spec](aggregate.md#aggregate-spec), the [Read Model Spec](#read-model-spec) and a `project` function to create a `Mapping` module. The `project` function receives the event, the id and the event meta data and returns an `action` that is applied to the Query DB. These actions are supported:
+You do so by calling the `Mapping.Make` [module function](../rescript-syntax.md#functors) (in scope via the PPX) with the [Aggregate Spec](aggregate.md#aggregate-spec), the [Read Model Spec](#read-model-spec) and a `project` function. The `project` function receives a record with the event, the id and the event meta data and returns an `action` that is applied to the Query DB. These actions are supported:
 
 - **Single state**
   - Create:
@@ -320,21 +331,37 @@ You do so by calling the Reventless.Projection.Mapping.Make [module function](..
     - `UpdateMultiState(<id>, [<old state>] => [<new state>])`: Update multiState (Create/Update/Delete multiple sub states with same id)
 - `Ignore`: Ignore event
 
-## Generate Read Model (AWS Defaults)
+## Multiple sources
 
-```rescript title="Customer_ReadModel.res" showLineNumbers
-module MappingTypes = Reventless.Projection.Mappings.Make(Customer_ReadModelSpec)
-module Mappings = {
-  module type Mapping = MappingTypes.Mapping
-  let mappings: array<module(Mapping)> = [module(Customer_Projection)]
+The `mappings` array can hold one `Mapping.Make` module per source — an Aggregate
+and a DCB source can both feed the same ReadModel:
+
+```rescript title="CatalogActivity/ReadModel/CatalogActivity_Projections.res" showLineNumbers
+@@reventless.mappings
+
+// A DCB source: `name` MUST equal `<pluginName>DcbEventLog`.
+module CatalogDcbSource = {
+  let name = "CatalogDcbEventLog"
+  @schema
+  type event = ProductAdded({productId: string, name: string})
 }
 
-include ReventlessAws.ReadModel.Make(Config, Customer_ReadModelSpec, Mappings)
+module CategoryActivityMapping = Mapping.Make(Category, CatalogActivity, { /* project ... */ })
+module ProductActivityMapping = Mapping.Make(CatalogDcbSource, CatalogActivity, { /* project ... */ })
+
+let mappings: array<module(Mapping)> = [module(CategoryActivityMapping), module(ProductActivityMapping)]
 ```
 
-In the Mappings module you have to specify an array of all Projections for the ReadModel.
+## Wiring (generated)
 
-Finally the Read Model has to be generated by using the ReventlessAws.ReadModel.Make [module function](../rescript-syntax.md#functors) by providing the [Config](../common-modules/config.md), the [Read Model Spec](#read-model-spec) and the Mappings module.
+You never wire the Read Model by hand. The plugin generator scans the `ReadModel/`
+(or `ReadModelStream/`) folder and emits the wiring into the **generated**
+`src/Plugin.res` using the two-arg factory `Platform.ReadModel.Make(Spec, Projections)`
+(`Platform.ReadModelStream.Make(...)` for the stream variant):
+
+```rescript title="src/Plugin.res (generated — do not edit)"
+module CustomersReadModel = Platform.ReadModel.Make(Customers, Customers_Projections)
+```
 
 ## Pulumi
 

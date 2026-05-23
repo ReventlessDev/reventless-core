@@ -8,71 +8,82 @@ This guide covers how to use StateChangeSlice in your Reventless application. Fo
 
 ## Usage Pattern
 
-### Defining a StateChangeSlice Spec
+A StateChangeSlice is **two files** living in a `StateChangeSlice/` folder: a spec file (`<Name>.res`) declaring the types, and a behavior file (`<Name>_Behavior.res`) holding the decision logic. The plugin generator wires them together — you never call a builder by hand.
 
-```rescript title="CreateItem_Slice.res"
-module CreateItemSpec = {
-  let name = "CreateItem"
+### Defining the Spec
 
-  module DcbEventLogSpec = MyDcbEventLogSpec
+The spec file carries `@@reventless.spec`, which auto-injects `let name`, `module Id`, and `let moduleUrl` from the filename. A slice declares its own `consumedEvent` (the events it reads to rebuild state) and `event` (the events it produces) — there is no shared `DcbEventLogSpec` module.
 
-  @schema
-  type command = CreateItem({
-    itemId: @s.matches(DcbTag.string) string,
-    name: string,
-  })
+```rescript title="CreateItem.res"
+@@reventless.spec
 
-  @schema
-  type error = 
-    | ItemAlreadyExists
-    | InvalidName
+@schema
+type consumedEvent =
+  | ItemCreated
 
-  type state = {exists: bool}
-  let initialState = {exists: false}
+@schema
+type command =
+  | CreateItem({itemId: string, name: string})
 
-  let evolve = (state, event) =>
-    switch event {
-    | DcbEventLogSpec.ItemCreated(_) => {exists: true}
-    | _ => model
-    }
+@schema
+type error =
+  | ItemAlreadyExists
+  | InvalidName
 
-  let decide = (model, command) =>
-    switch command {
-    | CreateItem({itemId, name}) =>
-      if name->String.length < 1 {
-        Error(InvalidName)
-      } else if model.exists {
-        Error(ItemAlreadyExists)
-      } else {
-        Ok([DcbEventLogSpec.ItemCreated({itemId, name})])
-      }
-    }
-}
+@schema
+type event =
+  | ItemCreated({itemId: string, name: string})
 ```
 
-### Building the Slice
+Because this file lives inside a `StateChangeSlice/` folder, the PPX auto-applies `@s.matches(Reventless.DcbTag.string)` to every `*Id` field — never write it by hand.
 
-```rescript title="Creating the slice component"
-module CreateItemSlice = StateChangeSlice_Builder.Make(CreateItemSpec)
+### Defining the Behavior
 
-let sliceComponent = CreateItemSlice.make(
-  ~dcbEventLog,
-  ~publishJsons,
-  ~opts=pulumiOptions,
-)
+The behavior file carries `@@reventless.behavior`, which auto-injects `open Spec` and `module Spec` (resolved from the `_Behavior` filename). You provide `state`, `initialState`, `evolve`, and `decide`.
+
+```rescript title="CreateItem_Behavior.res"
+@@reventless.behavior
+
+type state = {exists: bool}
+
+let initialState = {exists: false}
+
+let evolve = (_state, event) =>
+  switch event {
+  | ItemCreated => {exists: true}
+  }
+
+let decide = (state, command) =>
+  switch command {
+  | CreateItem({itemId, name}) =>
+    if name->String.length < 1 {
+      Error(InvalidName)
+    } else if state.exists {
+      Error(ItemAlreadyExists)
+    } else {
+      Ok([ItemCreated({itemId, name})])
+    }
+  }
 ```
 
-The [`StateChangeSlice_Builder.Make`](../rescript-syntax.md#functors) [module function](../rescript-syntax.md#functors):
-1. Creates a callback module with decision logic
-2. Sets up JSON command decoding
-3. Registers the handler in the global CommandTopic registry
+### Wiring the Slice
+
+Wiring is generated into `Plugin.res` as a two-argument functor call — spec first, behavior second:
+
+```rescript title="Plugin.res (generated)"
+module CreateItemSlice = Platform.StateChangeSlice.Make(CreateItem, CreateItem_Behavior)
+```
+
+The generator:
+1. Pairs the spec with its behavior via `Platform.StateChangeSlice.Make`
+2. Sets up JSON command decoding from the slice's `command` type
+3. Registers the handler in the plugin's CommandTopic registry
 
 ## Decision Model Pattern
 
-The decision model is the key abstraction that makes StateChangeSlice powerful:
+`evolve`/`decide` are the key abstraction that makes StateChangeSlice powerful. `evolve` folds the slice's `consumedEvent` stream into `state`; `decide` validates a command against that state and returns the `event`s to append.
 
-```rescript
-// Example: Inventory management
+```rescript title="ReserveItem_Behavior.res — inventory management"
 type state = {
   quantity: int,
   reserved: int,
@@ -84,64 +95,53 @@ let initialState = {quantity: 0, reserved: 0, available: 0}
 let evolve = (state, event) =>
   switch event {
   | StockReceived({qty}) => {
-      ...model,
-      quantity: model.quantity + qty,
-      available: model.available + qty,
+      ...state,
+      quantity: state.quantity + qty,
+      available: state.available + qty,
     }
   | ItemReserved({qty}) => {
-      ...model,
-      reserved: model.reserved + qty,
-      available: model.available - qty,
+      ...state,
+      reserved: state.reserved + qty,
+      available: state.available - qty,
     }
   | ReservationReleased({qty}) => {
-      ...model,
-      reserved: model.reserved - qty,
-      available: model.available + qty,
+      ...state,
+      reserved: state.reserved - qty,
+      available: state.available + qty,
     }
-  | _ => model  // Catch-all for unrelated events
   }
 
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | ReserveItem({itemId, qty}) =>
-    if qty > model.available {
-      Error(InsufficientStock(model.available))
+    if qty > state.available {
+      Error(InsufficientStock(state.available))
     } else {
       Ok([ItemReserved({itemId, qty})])
     }
   }
 ```
 
+The `consumedEvent` type lists exactly the variants this slice reads, so `evolve` matches them exhaustively — no catch-all is needed. Events from sibling slices that aren't in `consumedEvent` simply never reach this `evolve`.
+
 ## Integration with Plugin
 
-Slices are passed directly to `Plugin.make` — no `DcbSpec` wrapper needed:
+Slices are wired into the generated `Plugin.res` and passed to `Platform.Plugin.make` via the `~stateChangeSlices` array — no `DcbSpec` wrapper needed:
 
-```rescript
+```rescript title="Plugin.res (generated)"
 // Inside the plugin's Make functor:
 let make = () =>
   Platform.Plugin.make(
     ~name="MyPlugin",
-    ~heartbeatInterval=300,
+    ~heartbeatInterval=5,
     ~stateChangeSlices=[
       module(CreateItemSlice),
       module(RenameItemSlice),
       module(DeleteItemSlice),
     ],
+    // ...other component arrays...
   )
 ```
-
-### Plugin Outputs
-
-```rescript
-type outputs = {
-  // ...existing outputs...
-  dcbEventLog: Pulumi.Output.t<option<DcbEventLog.outputs>>,
-  stateChangeSlices: Pulumi.Output.t<dict<StateChangeSlice.outputs>>,
-}
-```
-
-- `dcbEventLog`: Contains the shared event log outputs (DynamoDB table, SNS topic)
-- `stateChangeSlices`: Dictionary keyed by slice name, containing resources for each slice
 
 ## DCB Tags
 
@@ -193,16 +193,18 @@ Use `@compositePartitionTag(":")` to set a different separator after a field. Ca
 
 ### Cross-Entity Queries with Tagged Arrays
 
-When a command references multiple entities, use a `*Id: array<string>` field (singular name). The PPX auto-injects `@s.matches(DcbTag.string)` on the element type:
+When a command references multiple entities, use a `*Id: array<string>` field (singular name). Inside a `StateChangeSlice/` folder the PPX auto-applies `@s.matches(Reventless.DcbTag.string)` to the element type:
 
 ```rescript
 @schema
 type command =
   | PlaceOrder({
-      orderId: string,                  // tagged: DcbTag.string
-      productId: array<string>,         // elements tagged: DcbTag.string
+      orderId: string,                  // tagged automatically
+      productId: array<string>,         // elements tagged automatically
     })
 ```
+
+For a plural-named field (`productIds: array<string>`) the PPX strips the trailing `s` and tags the elements under key `productId`, so a multi-value field shares a tag key with the singular-named producers.
 
 The runtime automatically detects tagged array fields and builds multi-clause OR queries — one clause per scalar tag, one per array element. This fetches events for all referenced entities into the same state, enabling cross-entity validation at command time.
 
@@ -225,38 +227,44 @@ type state = {
 }
 ```
 
-### 2. Use Catch-All in Reduce
+### 2. Match `consumedEvent` Exhaustively in `evolve`
 
 ```rescript
-// Always include catch-all for future event types
+// consumedEvent lists exactly the variants this slice reads,
+// so evolve matches them all — no catch-all needed.
 let evolve = (state, event) =>
   switch event {
-  | KnownEvent1 => // handle
-  | KnownEvent2 => // handle
-  | _ => model  // Pass through unknown events
+  | KnownEvent1 => state // handle
+  | KnownEvent2 => state // handle
   }
 ```
 
 ### 3. Idempotent Commands
 
-Design commands to be idempotent when possible:
+Design commands to be idempotent when possible. A command that produces no state change should return `Ok([])`, not an error — commands may be retried under at-least-once delivery:
 
 ```rescript
-let decide = (model, command) =>
+let decide = (state, command) =>
   switch command {
   | SetName({id, name}) =>
-    // Idempotent: setting same name twice is fine
-    Ok([NameSet({id, name})])
+    if name == state.name {
+      Ok([]) // idempotent — name unchanged, emit nothing
+    } else {
+      Ok([NameSet({id, name})])
+    }
   }
 ```
 
 ### 4. Tag Only What's Needed
 
+DCB tags are auto-applied to `*Id` fields inside `StateChangeSlice/` folders. For a payload field that happens to end in `Id` but is **not** a query key, suppress tagging with `@noDcbTag`:
+
 ```rescript
-// Good: Tag by entity ID for entity-scoped queries
+// Good: *Id fields are tagged automatically; suppress the ones that are payload only
+@schema
 type command = CreateItem({
-  itemId: @s.matches(DcbTag.string) string,  // Tag for entity lookup
-  metadata: string,  // Not tagged - not needed for queries
+  itemId: string,            // auto-tagged for entity lookup
+  @noDcbTag externalId: string,  // payload data, not a DCB query key
 })
 ```
 

@@ -264,7 +264,7 @@ owner) can query this index.
 @schema
 type state = {
   @id orderId: string,
-  @resolves(~to="Customers", ~as="customer") customerId: string,
+  @resolves({table: "Customers", field: "customer"}) customerId: string,
   total: float,
 }
 ```
@@ -272,9 +272,9 @@ type state = {
 Creates a virtual `customer` field on the `Order` GraphQL type that resolves to the
 `Customers` table by primary key lookup.
 
-**Parameters:**
-- `~via="indexName"` — resolve via a secondary index instead of primary key
-- `~plugin="OtherPlugin"` — cross-plugin table reference
+**Optional record keys:**
+- `via: "indexName"` — resolve via a secondary index instead of primary key
+- `plugin: "OtherPlugin"` — cross-plugin table reference
 
 ### `@resolvesMany` — batch join
 
@@ -282,7 +282,7 @@ Creates a virtual `customer` field on the `Order` GraphQL type that resolves to 
 @schema
 type state = {
   @id orderId: string,
-  @resolvesMany(~to="Products", ~as="products") productIds: array<string>,
+  @resolvesMany({table: "Products", field: "products"}) productIds: array<string>,
   total: float,
 }
 ```
@@ -431,7 +431,7 @@ type consumedEvent =
 type state = {
   @id orderId: string,
   @subId @indexSubId("byStatus") changedAt: string,
-  @index @resolves(~to="Customers", ~as="customer") customerId: string,
+  @index @resolves({table: "Customers", field: "customer"}) customerId: string,
   @index("byStatus") status: string,
   total: float,
 }
@@ -449,7 +449,7 @@ let project = event => switch event {
 `@id orderId` — main table partition key.
 `@subId @indexSubId("byStatus") changedAt` — main table sort key AND sort key for the
 "byStatus" secondary index. Two annotations on one field.
-`@index @resolves(~to="Customers", ~as="customer") customerId` — standalone secondary index AND
+`@index @resolves({table: "Customers", field: "customer"}) customerId` — standalone secondary index AND
 cross-table resolver. Two annotations on one field.
 `@index("byStatus") status` — partition key for the "byStatus" secondary index.
 
@@ -468,7 +468,7 @@ Each annotation produces a distinct, named GraphQL query:
 | `@subId changedAt` | `Plugin_OrderTrackingById(id: ID!, ...)` — all items for a pk, with sort key conditions |
 | `@index customerId` | `Plugin_OrderTrackingByCustomerId(customerId: String!, ...)` — secondary index query |
 | `@index("byStatus") status` | `Plugin_OrderTrackingByStatus(status: String!, ...)` — named secondary index query |
-| `@resolves(~as="customer")` | `customer` field on `OrderTracking` type — virtual field |
+| `@resolves({table: "Customers", field: "customer"})` | `customer` field on `OrderTracking` type — virtual field |
 
 ```graphql
 # Full timeline for one order — all entries sorted by changedAt ascending

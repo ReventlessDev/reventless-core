@@ -58,115 +58,148 @@ The key insight is that the automation maintains a **stateful TODO list** of pen
 
 ## Component Spec
 
-The AutomationSlice spec defines three core functions -- **collect**, **resolve**, and **process** -- that together implement the TODO list lifecycle:
+An AutomationSlice is **split into two files**:
+
+- `<Name>.res` — the **spec** (`@@reventless.spec`): the `todoItem` and `command`
+  `@schema` types, the sweep config (`maxRetries`, `heartbeatInterval`), and
+  `targetName` (the aggregate or StateChangeSlice that receives the produced
+  command).
+- `<Name>_Automation.res` — the **automation** (`@@reventless.automation`): one or
+  more per-source `Mapping.Make` modules (each carrying `collect` + `resolve` for
+  that source), the `let mappings` array, and the source-agnostic `let process`.
+
+The spec module type the framework expects:
 
 ```rescript
 module type Spec = {
   let name: string
-  module DcbEventLogSpec: DcbEventLog.Spec
+  let moduleUrl: string
 
   @schema type todoItem
   @schema type command
 
-  let collect: DcbEventLogSpec.event => array<(string, todoItem)>
-  let resolve: DcbEventLogSpec.event => option<string>
-  let process: (string, todoItem) => option<(string, command)>
-
   let maxRetries: int
   let heartbeatInterval: int
+  let targetName: string
 }
 ```
 
+`collect` and `resolve` no longer live on the Spec — they move to the per-source
+`Mapping`. The framework derives the consumed-event set from each mapping's
+`sourceEventSchema`, so there is no manually-declared `consumedEvent` union and
+no `DcbEventLogSpec` reference.
+
 ### Spec Fields Explained
+
+In the spec file (`@@reventless.spec` injects `name` and `moduleUrl` from the
+filename — you don't write them):
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Unique identifier for this automation slice |
-| `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
 | `todoItem` | `@schema type` | Data accumulated for each pending work item |
 | `command` | `@schema type` | Command type produced by the processor |
-| `collect` | `event => array<(string, todoItem)>` | Map an event to zero or more TODO items (id + payload) |
-| `resolve` | `event => option<string>` | Check if an event completes a TODO item (returns item id) |
-| `process` | `(string, todoItem) => option<(string, command)>` | Produce a command for a pending item (target id + command) |
 | `maxRetries` | `int` | Maximum retry attempts for failed items |
 | `heartbeatInterval` | `int` | Seconds between heartbeat sweeps for pending/failed items |
+| `targetName` | `string` | Name of the aggregate or StateChangeSlice that receives the produced command |
 
 ### The Three Functions
 
-**`collect`** -- When an event arrives, `collect` decides whether it creates new TODO items. Each item has a string `id` (used as a deduplication key) and a `todoItem` payload. Returns an empty array for irrelevant events. If an item with the same id already exists, it is skipped (idempotent).
+`collect` and `resolve` live on each per-source `Mapping` in the
+`_Automation.res` file; `process` is source-agnostic and lives at the top level
+of that same file.
 
-**`resolve`** -- When an event arrives, `resolve` checks if it marks an existing TODO item as completed. Returns `Some(itemId)` to mark that item done, or `None` to skip. This closes the automation loop -- the command produced by `process` eventually causes events that `resolve` recognizes.
+**`collect`** -- `(sourceEvent, ctx) => array<(string, todoItem)>`. When an event arrives, `collect` decides whether it creates new TODO items. Each item has a string `id` (used as a deduplication key) and a `todoItem` payload. Returns an empty array for irrelevant events. If an item with the same id already exists, it is skipped (idempotent).
 
-**`process`** -- For each pending item, `process` decides what command to issue. Returns `Some((targetId, command))` to publish a command, or `None` to skip processing (e.g., waiting for more data). Skipped items remain pending for the next heartbeat sweep.
+**`resolve`** -- `sourceEvent => option<string>`. When an event arrives, `resolve` checks if it marks an existing TODO item as completed. Returns `Some(itemId)` to mark that item done, or `None` to skip. This closes the automation loop -- the command produced by `process` eventually causes events that `resolve` recognizes.
+
+**`process`** -- `(string, todoItem) => option<(string, command)>`. For each pending item, `process` decides what command to issue. Returns `Some((targetId, command))` to publish a command, or `None` to skip processing (e.g., waiting for more data). Skipped items remain pending for the next heartbeat sweep.
 
 ## Usage Pattern
 
 ### Complete Example: Ship Order Automation
 
-This example automates order shipping. When an `OrderPlaced` event arrives, a TODO item is created. The processor issues a `CreateShipment` command. When the `ShipmentCreated` event arrives, the TODO item is resolved.
+This example automates order shipping. When an `OrderPlaced` event arrives, a TODO item is created. The processor issues a `ShipOrder` command. When the `OrderShipped` event arrives, the TODO item is resolved.
 
-```rescript title="ShipOrder.res"
-// Shared DCB event log spec
-module DcbEventLogSpec = OrderingEventLog
+The **spec file** declares the `todoItem`, `command`, sweep config, and
+`targetName`. `@@reventless.spec` injects `name`, `module Id`, and `moduleUrl`
+from the filename; inside a `*Slice/` folder it also auto-applies DCB tags to
+`*Id` fields — never write `@s.matches(...)` by hand:
 
-let name = "ShipOrder"
+```rescript title="Order/AutomationSlice/AutoShipOrder.res" showLineNumbers
+@@reventless.spec
 
 @schema
-type todoItem = {orderId: string, shippingAddress: string}
+type todoItem = {orderId: string}
 
 @schema
-type command = CreateShipment({
-  orderId: @s.matches(DcbTag.string) string,
-  address: string,
-})
-
-let collect = event =>
-  switch event {
-  | OrderingEventLog.OrderPlaced({orderId, shippingAddress}) =>
-    [(orderId, {orderId, shippingAddress})]
-  | _ => []
-  }
-
-let resolve = event =>
-  switch event {
-  | OrderingEventLog.ShipmentCreated({orderId}) => Some(orderId)
-  | _ => None
-  }
-
-let process = (id, item) =>
-  Some((id, CreateShipment({orderId: item.orderId, address: item.shippingAddress})))
+type command = ShipOrder({orderId: string})
 
 let maxRetries = 3
 let heartbeatInterval = 60
+let targetName = "ShipOrder"
 ```
 
-### Registering in a DcbSpec
+The **automation file** declares the per-source `Mapping.Make` (with `collect`
+and `resolve`), the `mappings` array, and the source-agnostic `process`.
+`@@reventless.automation` injects the `Mappings.Make` wrapper (`module type Mapping`)
+and DCB tags on the Source module's `*Id` fields:
 
-AutomationSlices are registered alongside StateChangeSlices and StateViewSlices in the Plugin's DcbSpec:
+```rescript title="Order/AutomationSlice/AutoShipOrder_Automation.res" showLineNumbers
+@@reventless.automation
 
-```rescript title="OrderingPlugin.res"
-module DcbSpec = {
-  @schema type event = OrderingEventLog.event
-
-  let stateChangeSlices = [
-    module(CreateOrderSlice),
-    module(FulfillOrderSlice),
-  ]
-
-  let stateViewSlices = [
-    module(OrderViewSlice),
-  ]
-
-  let automationSlices = [
-    module(ShipOrderSlice),
-  ]
+// Single DCB source. `name` MUST equal `<pluginName>DcbEventLog` so the dispatch
+// resolves it to the topic key the plugin registers under.
+module OrderingDcbSource = {
+  let name = "OrderingDcbEventLog"
+  @schema
+  type event =
+    | OrderPlaced({orderId: string})
+    | OrderShipped({orderId: string})
 }
+
+module FromOrderingDcb = Mapping.Make(
+  OrderingDcbSource,
+  AutoShipOrder,
+  {
+    open OrderingDcbSource
+
+    let collect = (event, _ctx) =>
+      switch event {
+      | OrderPlaced({orderId}) => [(orderId, ({orderId: orderId}: AutoShipOrder.todoItem))]
+      | OrderShipped(_) => []
+      }
+
+    let resolve = event =>
+      switch event {
+      | OrderShipped({orderId}) => Some(orderId)
+      | OrderPlaced(_) => None
+      }
+  },
+)
+
+let mappings: array<module(Mapping)> = [module(FromOrderingDcb)]
+
+let process = (id, _item) => Some((id, ShipOrder({orderId: id})))
 ```
 
-### Creating with Platform
+### Plugin Wiring
 
-```rescript title="ShipOrderSlice.res"
-module ShipOrderSlice = Platform.AutomationSlice.Make(ShipOrder)
+You never register or wire AutomationSlices by hand. The plugin generator scans
+the `AutomationSlice/` folder and emits the wiring into the **generated**
+`Plugin.res` using the two-arg factory `Platform.AutomationSlice.Make(Spec, Automation)`:
+
+```rescript title="src/Plugin.res (generated — do not edit)"
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // AutomationSlices
+  module AutoShipOrderSlice = Platform.AutomationSlice.Make(AutoShipOrder, AutoShipOrder_Automation)
+
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Ordering",
+      ~automationSlices=[module(AutoShipOrderSlice)],
+      // ... other components
+    )
+}
 ```
 
 The framework automatically wires the slice to the shared DcbEventLog and CommandTopic.

@@ -62,33 +62,49 @@ The anti-corruption layer protects the domain from external data formats and val
 
 ## Component Spec
 
+An InboundTranslationSlice is **split into two files**:
+
+- `<Name>.res` — the **spec** (`@@reventless.spec`): the `externalInput` and
+  `command` `@schema` types, plus `targetName` (the aggregate or StateChangeSlice
+  that receives the produced command).
+- `<Name>_Translation.res` — the **translation** (`@@reventless.translation`): the
+  synchronous `translate` function (the anti-corruption layer).
+
+The spec module type the framework expects:
+
 ```rescript
 module type Spec = {
   let name: string
-  module DcbEventLogSpec: DcbEventLog.Spec
+  let moduleUrl: string
 
   @schema type externalInput
   @schema type command
 
-  let translate: externalInput => result<(string, command), string>
+  let targetName: string
+  let commandAuthorization: command => Authorization.permission
 }
 ```
+
+`translate` no longer lives on the Spec — it moves to the `Translation` module.
+There is no `DcbEventLogSpec` reference. `@@reventless.spec` injects `name`,
+`moduleUrl`, and a default `commandAuthorization` (`AllowAuthenticated`).
 
 ### Spec Fields Explained
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Unique identifier for this inbound translation slice |
-| `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec this slice publishes commands to |
 | `externalInput` | `@schema type` | The external data format received from the outside world |
 | `command` | `@schema type` | The domain command produced by the anti-corruption layer |
-| `translate` | `externalInput => result<(string, command), string>` | Validate and transform external input to a domain command |
+| `targetName` | `string` | Name of the aggregate or StateChangeSlice that receives the produced command |
 
 ### The translate Function
 
-The `translate` function is the **anti-corruption layer** -- it protects the domain from external data formats:
+The `translate` function lives in the `_Translation.res` file and is the
+**anti-corruption layer** -- it protects the domain from external data formats. It
+returns `result<array<(string, command)>, string>`:
 
-- **`Ok((targetId, command))`** -- Input is valid; publish the command to the target entity
+- **`Ok([(targetId, command), ...])`** -- Input is valid; publish one or more commands to the target entities
+- **`Ok([])`** -- Idempotent no-op; nothing to publish
 - **`Error(msg)`** -- Input is invalid or cannot be translated; return error to caller
 
 The function is **synchronous** (no external calls needed) since all the external interaction already happened when the input was received.
@@ -97,10 +113,12 @@ The function is **synchronous** (no external calls needed) since all the externa
 
 ### Example 1: Payment Webhook
 
-```rescript title="PaymentWebhook.res"
-module DcbEventLogSpec = OrderingEventLog
+The **spec file**. `@@reventless.spec` injects `name`, `module Id`, and
+`moduleUrl` from the filename; inside a `*Slice/` folder it auto-applies DCB tags
+to `*Id` fields — never write `@s.matches(...)` by hand:
 
-let name = "PaymentWebhook"
+```rescript title="Payment/InboundTranslationSlice/PaymentWebhook.res" showLineNumbers
+@@reventless.spec
 
 @schema
 type externalInput = {
@@ -112,36 +130,44 @@ type externalInput = {
 
 @schema
 type command = ConfirmPayment({
-  orderId: @s.matches(DcbTag.string) string,
+  orderId: string,
   paymentId: string,
   amount: float,
 })
 
+let targetName = "ConfirmPayment"
+```
+
+The **translation file** (`@@reventless.translation`) holds the synchronous
+`translate`, returning an array of `(targetId, command)` pairs:
+
+```rescript title="Payment/InboundTranslationSlice/PaymentWebhook_Translation.res" showLineNumbers
+@@reventless.translation
+
 let translate = (input: externalInput) =>
   switch input.status {
   | "completed" =>
-    Ok((
-      input.orderId,
-      ConfirmPayment({
-        orderId: input.orderId,
-        paymentId: input.paymentId,
-        amount: input.amount,
-      }),
-    ))
+    Ok([
+      (
+        input.orderId,
+        ConfirmPayment({
+          orderId: input.orderId,
+          paymentId: input.paymentId,
+          amount: input.amount,
+        }),
+      ),
+    ])
   | "refunded" =>
     // Could map to a different command variant
     Error("Refund handling not yet implemented")
-  | status =>
-    Error("Unknown payment status: " ++ status)
+  | status => Error("Unknown payment status: " ++ status)
   }
 ```
 
 ### Example 2: Shipping Update Webhook
 
-```rescript title="ShippingUpdate.res"
-module DcbEventLogSpec = OrderingEventLog
-
-let name = "ShippingUpdate"
+```rescript title="Shipping/InboundTranslationSlice/ShippingUpdate.res" showLineNumbers
+@@reventless.spec
 
 @schema
 type externalInput = {
@@ -153,50 +179,54 @@ type externalInput = {
 
 @schema
 type command = UpdateShipmentStatus({
-  orderId: @s.matches(DcbTag.string) string,
+  orderId: string,
   trackingId: string,
   status: string,
 })
 
+let targetName = "UpdateShipmentStatus"
+```
+
+```rescript title="Shipping/InboundTranslationSlice/ShippingUpdate_Translation.res" showLineNumbers
+@@reventless.translation
+
 let translate = (input: externalInput) =>
   switch input.event {
   | "picked_up" | "in_transit" | "delivered" =>
-    Ok((
-      input.orderId,
-      UpdateShipmentStatus({
-        orderId: input.orderId,
-        trackingId: input.trackingId,
-        status: input.event,
-      }),
-    ))
-  | event =>
-    Error("Unrecognized shipping event: " ++ event)
+    Ok([
+      (
+        input.orderId,
+        UpdateShipmentStatus({
+          orderId: input.orderId,
+          trackingId: input.trackingId,
+          status: input.event,
+        }),
+      ),
+    ])
+  | event => Error("Unrecognized shipping event: " ++ event)
   }
 ```
 
-### Registering in a DcbSpec
+### Plugin Wiring
 
-InboundTranslationSlices are registered alongside other slice types in the Plugin's DcbSpec:
+You never register or wire InboundTranslationSlices by hand. The plugin generator
+scans the `InboundTranslationSlice/` folder and emits the wiring into the
+**generated** `Plugin.res` using the two-arg factory
+`Platform.InboundTranslationSlice.Make(Spec, Translation)`:
 
-```rescript title="OrderingPlugin.res"
-module DcbSpec = {
-  @schema type event = OrderingEventLog.event
+```rescript title="src/Plugin.res (generated — do not edit)"
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // InboundTranslationSlices
+  module PaymentWebhookSlice = Platform.InboundTranslationSlice.Make(PaymentWebhook, PaymentWebhook_Translation)
+  module ShippingUpdateSlice = Platform.InboundTranslationSlice.Make(ShippingUpdate, ShippingUpdate_Translation)
 
-  let stateChangeSlices = [module(PlaceOrderSlice), module(ShipOrderSlice)]
-  let stateViewSlices = [module(OrdersViewSlice)]
-  let automationSlices = []
-  let outboundTranslationSlices = []
-  let inboundTranslationSlices = [
-    module(PaymentWebhookSlice),
-    module(ShippingUpdateSlice),
-  ]
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Ordering",
+      ~inboundTranslationSlices=[module(PaymentWebhookSlice), module(ShippingUpdateSlice)],
+      // ... other components
+    )
 }
-```
-
-### Creating with Platform
-
-```rescript title="PaymentWebhookSlice.res"
-module PaymentWebhookSlice = Platform.InboundTranslationSlice.Make(PaymentWebhook)
 ```
 
 ## Runtime Behavior

@@ -227,7 +227,7 @@ In slice files (or files with `@@reventless.dcbTags`), the PPX auto-tags `*Id: s
 |---|---|
 | `@partitionTag` | Marks the field as the DCB partition key (`DcbTag.partition`). Required when a variant has multiple `*Id` fields and only one is the partition key. |
 | `@compositePartitionTag` | Marks a `string` field as one segment of a multi-field composite partition key. Fields are joined in **declaration order** with a configurable separator (default `"/"`). Use `@compositePartitionTag(":")` to set a different separator after that field. Requires ≥ 2 annotated fields; cannot be combined with `@partitionTag`. |
-| `@noTag` | Suppresses auto-tagging on a `*Id` field that is payload data, not a DCB key. |
+| `@noDcbTag` | Suppresses auto-tagging on a `*Id` field that is payload data, not a DCB key. |
 | `@dcbTag` | Explicitly opts in a field that doesn't follow `*Id` naming (e.g. `sku`, `slug`). |
 
 ```rescript
@@ -236,7 +236,7 @@ In slice files (or files with `@@reventless.dcbTags`), the PPX auto-tags `*Id: s
 type event =
   | DemandRecorded({
       @partitionTag productId: string,  // partition key
-      @noTag orderId: string,           // payload only, not a DCB tag
+      @noDcbTag orderId: string,           // payload only, not a DCB tag
     })
 
 // Composite partition key from multiple fields (joined in declaration order)

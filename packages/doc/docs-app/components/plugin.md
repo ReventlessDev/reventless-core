@@ -256,39 +256,54 @@ This definition enables:
 
 ## Example Plugin Setup
 
-```rescript title="MyPlugin.res" showLineNumbers
-// Include the AWS-specific Plugin builder
-include ReventlessAws.Plugin.Make(
-  Config,
-  {
-    let name = "MyDomain"
-    let version = "1.0.0"
-    let heartbeatInterval = 30000  // 30 seconds
-    
-    let extensionPoints = [
-      module(MyDomain_ExtensionPoint),
-    ]
-    
-    let extensions = [
-      module(OtherDomain_Extension),
-    ]
-    
-    let aggregates = [
-      module(Customer_Aggregate),
-      module(Order_Aggregate),
-    ]
-    
-    let readModels = [
-      module(CustomerList_ReadModel),
-      module(OrderHistory_ReadModel),
-    ]
-    
-    let tasks = [
-      module(ImportCustomers_Task),
-    ]
-  }
-)
+You never hand-write a Plugin composition root. The plugin generator
+(`generate-plugin`, run by the `prebuild` script) scans your plugin's `src/`
+folder by component-folder name (`Aggregate/`, `ReadModel/`, `StateChangeSlice/`,
+`ExtensionPoint/`, `Extension/`, `Task/`, …) and emits `src/Plugin.res`. That file
+is committed to git and compiled directly by CI. An optional `src/plugin.json`
+sets the plugin name and heartbeat interval.
+
+The generated file exposes a `Make(Platform)` functor that wires every discovered
+component with the platform's per-component factories:
+
+```rescript title="src/Plugin.res (generated — do not edit)" showLineNumbers
+// AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // Aggregates
+  module CustomerAggregate = Platform.Aggregate.Make(
+    Customer,
+    Customer_Behavior,
+    ReventlessInfra.NoEventMappings.Make(Customer),
+  )
+
+  // ReadModels
+  module CustomersReadModel = Platform.ReadModel.Make(Customers, Customers_Projections)
+
+  // ExtensionPoints
+  module MyDomain_ExtensionPoint = Platform.ExtensionPoint.Make(MyDomain_ExtensionPointMapping)
+
+  // Extensions
+  module OtherDomain_Extension = Platform.Extension.Make(OtherDomain_Extension.Mapping)
+
+  // Tasks
+  module ImportCustomersTask = Platform.Task.Make(ImportCustomers)
+
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="MyDomain",
+      ~heartbeatInterval=5,
+      ~extensionPoints=[module(MyDomain_ExtensionPoint)],
+      ~extensions=[module(OtherDomain_Extension)],
+      ~aggregates=[module(CustomerAggregate)],
+      ~readModels=[module(CustomersReadModel)],
+      ~tasks=[module(ImportCustomersTask)],
+      // ... any slices, with pluginStructure and uiFragments
+    )
+}
 ```
+
+The plugin module is then referenced from the platform as
+`MyDomainPlugin.Plugin.Make(Platform)`.
 
 ## Runtime Behavior
 

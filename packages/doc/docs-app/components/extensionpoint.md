@@ -80,34 +80,38 @@ module type Spec = {
 
 ### Example Spec
 
-```rescript title="CustomerExtensionPointSpec.res" showLineNumbers
-let name = "CustomerPlugin.Customer"
+The spec file lives in the provider plugin's spec package and is annotated with
+`@@reventless.spec`. The PPX auto-injects `let name`, `module Id`, and
+`let moduleUrl` — derived from the filename and (in a `*Spec` namespace)
+prefixed with the plugin name to form the dotted EP name. You only declare the
+`@schema` types:
+
+```rescript title="Customer_ExtensionPoint.res" showLineNumbers
+// In CustomerSpec — @@reventless.spec derives the name "Customer.Customer".
+@@reventless.spec
 
 // Commands that Extensions can send to this ExtensionPoint
 @schema
 type command =
-  | RequestCustomerInfo(string)           // Request customer details by ID
-  | UpdateCustomerPreferences(string, preferences)
+  | RequestCustomerInfo({customerId: string})
+  | UpdateCustomerPreferences({customerId: string, preferences: preferences})
 
 // Events that this ExtensionPoint publishes to Extensions
 @schema
 type event =
-  | CustomerCreated(string, customerInfo)
-  | CustomerUpdated(string, customerInfo)
-  | CustomerDeleted(string)
+  | CustomerCreated({customerId: string, name: string, email: string})
+  | CustomerUpdated({customerId: string, name: string, email: string})
+  | CustomerDeleted({customerId: string})
 
-// Side-effect commands for async operations
 @schema
-type callCommand =
-  | NotifyExternalSystem(string)
-  | SendWelcomeEmail(string, string)
+type directive = unit
 ```
 
 ### Naming Convention
 
-The `name` field follows the pattern `"PluginName.ExtensionPointName"`:
-- `PluginName`: The name of the Plugin containing this ExtensionPoint
-- `ExtensionPointName`: A descriptive name for this specific interface
+The dotted EP name follows the pattern `"PluginName.ExtensionPointName"`. You do
+not write `let name` by hand — `@@reventless.spec` derives it from the filename
+and, in a `*Spec` namespace, prefixes the plugin name automatically.
 
 ## ExtensionPoint Mappings
 
@@ -184,36 +188,39 @@ type eventAction<'event, 'msg> =
 
 ### Example Mapping
 
-```rescript title="Customer_ExtensionPointMapping.res" showLineNumbers
-module ExtensionPoint = CustomerExtensionPointSpec
-module Aggregate = Customer
+The mapping file is `<Name>_ExtensionPointMapping.res`, annotated with
+`@@reventless.spec`. It references the EP spec via `module ExtensionPoint` and
+declares a `module Delegate` — the local source (an Aggregate spec, or a DCB
+adapter whose `name` is `<pluginName>DcbEventLog`). The action constructors
+(`PublishEvent`, `PublishCommand`, `PublishEventAsync`, `Call`) are injected by
+the PPX — never `open` them manually:
 
-let mapIncomingCommand = (. id, command, meta) =>
+```rescript title="Customer_ExtensionPointMapping.res" showLineNumbers
+@@reventless.spec
+
+module ExtensionPoint = CustomerSpec.Customer_ExtensionPoint
+
+// Delegate: the local Customer Aggregate whose events feed the EP.
+module Delegate = Customer
+
+let mapIncomingCommand = (_id, command, _meta) =>
   switch command {
-  | CustomerExtensionPointSpec.RequestCustomerInfo(customerId) =>
+  | RequestCustomerInfo(_) =>
     // This might trigger a query or event, not a command
     []
-    
-  | CustomerExtensionPointSpec.UpdateCustomerPreferences(customerId, prefs) =>
-    [PublishCommand(customerId, Customer.UpdatePreferences(prefs))]
+  | UpdateCustomerPreferences({customerId, preferences}) => [
+      PublishCommand(customerId, Customer.UpdatePreferences({preferences: preferences})),
+    ]
   }
 
-let mapOutgoingEvent = Some((. id, event, meta, queryEngine) =>
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
-  | Customer.Created(customer) =>
-    [PublishEvent(id, CustomerExtensionPointSpec.CustomerCreated(id, {
-      name: customer.name,
-      email: customer.email,
-    }))]
-    
-  | Customer.AddressChanged(address) =>
-    [PublishEvent(id, CustomerExtensionPointSpec.CustomerUpdated(id, {
-      address: address,
-    }))]
-    
-  | Customer.Deleted =>
-    [PublishEvent(id, CustomerExtensionPointSpec.CustomerDeleted(id))]
-    
+  | Delegate.Created({customerId, name, email}) => [
+      PublishEvent(customerId, CustomerSpec.Customer_ExtensionPoint.CustomerCreated({customerId, name, email})),
+    ]
+  | Delegate.Deleted({customerId}) => [
+      PublishEvent(customerId, CustomerSpec.Customer_ExtensionPoint.CustomerDeleted({customerId})),
+    ]
   | _ => []
   }
 )
@@ -221,50 +228,35 @@ let mapOutgoingEvent = Some((. id, event, meta, queryEngine) =>
 
 ## Defining an ExtensionPoint
 
-To create an ExtensionPoint, you need:
+To create an ExtensionPoint, you write two files:
 
-1. **Spec:** Define the command, event, and callCommand types
-2. **Mappings:** Create mappings for each Aggregate that interacts with this ExtensionPoint
-3. **Module:** Combine spec and mappings into an ExtensionPoint module
+1. **Spec** (`<Name>_ExtensionPoint.res`, in the plugin's spec package) — declares
+   the `command`, `event`, and `directive` `@schema` types.
+2. **Mapping** (`<Name>_ExtensionPointMapping.res`, in the plugin) — references
+   the EP spec and a `Delegate`, and implements `mapIncomingCommand` /
+   `mapOutgoingEvent`.
+
+The plugin generator wires the EP automatically into the generated `Plugin.res`
+as `Platform.ExtensionPoint.Make(<Name>_ExtensionPointMapping)` — a single
+argument. You never write the composition root by hand.
 
 ### Complete Example
 
-```rescript title="Customer_ExtensionPoint.res" showLineNumbers
-// 1. Define the Spec
-module Spec = CustomerExtensionPointSpec
+The spec (see [Example Spec](#example-spec)) plus the mapping (see
+[Example Mapping](#example-mapping)) are all you write. The generated wiring is:
 
-// 2. Define Mappings for each Aggregate
-module CustomerMapping = {
-  module ExtensionPoint = Spec
-  module Aggregate = Customer
-  
-  let mapIncomingCommand = (. id, command, meta) =>
-    switch command {
-    | Spec.UpdateCustomerPreferences(_, prefs) =>
-      [PublishCommand(id, Customer.UpdatePreferences(prefs))]
-    | _ => []
-    }
-  
-  let mapOutgoingEvent = Some((. id, event, meta, queryEngine) =>
-    switch event {
-    | Customer.Created(customer) =>
-      [PublishEvent(id, Spec.CustomerCreated(id, customer))]
-    | Customer.Deleted =>
-      [PublishEvent(id, Spec.CustomerDeleted(id))]
-    | _ => []
-    }
-  )
+```rescript title="src/Plugin.res (generated — do not edit)"
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // ExtensionPoints
+  module Customer_ExtensionPoint = Platform.ExtensionPoint.Make(Customer_ExtensionPointMapping)
+
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Customer",
+      ~extensionPoints=[module(Customer_ExtensionPoint)],
+      // ... other components
+    )
 }
-
-// 3. Combine into Mappings module
-module Mappings = {
-  module Spec = Spec
-  module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
-  let mappings: array<module(Mapping)> = [module(CustomerMapping)]
-}
-
-// 4. Generate the ExtensionPoint (AWS)
-include ReventlessAws.ExtensionPoint.Make(Spec, Mappings)
 ```
 
 ## Runtime Behavior
@@ -327,15 +319,14 @@ type callCommand =
   | CallExternalAPI(string)
 
 // In the Mapping
-let mapOutgoingEvent = Some((. id, event, meta, queryEngine) =>
+let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
-  | Customer.Created(customer) =>
-    [
-      PublishEvent(id, Spec.CustomerCreated(id, customer)),
-      Call(async (create, delete, queryEngine, msg) => {
+  | Delegate.Created({customerId, name, email}) => [
+      PublishEvent(customerId, ExtensionPoint.CustomerCreated({customerId, name, email})),
+      Call(async (_create, _delete, _queryEngine, msg) => {
         // Send notification to external system
         let _ = await ExternalAPI.notify(msg)
-      }, SendNotification(customer.email, "Welcome!")),
+      }, SendNotification(email, "Welcome!")),
     ]
   | _ => []
   }
@@ -368,24 +359,23 @@ type outputs = {
 
 ## Integration with Plugin
 
-ExtensionPoints are registered with their parent Plugin:
+ExtensionPoints are wired automatically into the **generated** `Plugin.res` —
+the plugin generator scans the `ExtensionPoint/` folder and emits the wiring. You
+never hand-write the composition root:
 
-```rescript title="MyPlugin.res"
-include ReventlessAws.Plugin.Make(
-  Config,
-  {
-    let name = "CustomerPlugin"
-    let version = "1.0.0"
-    let heartbeatInterval = 30000
-    
-    let extensionPoints = [
-      module(Customer_ExtensionPoint),
-      module(Order_ExtensionPoint),
-    ]
-    
-    // ... other components
-  }
-)
+```rescript title="src/Plugin.res (generated — do not edit)"
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // ExtensionPoints
+  module Customer_ExtensionPoint = Platform.ExtensionPoint.Make(Customer_ExtensionPointMapping)
+  module Order_ExtensionPoint = Platform.ExtensionPoint.Make(Order_ExtensionPointMapping)
+
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Customer",
+      ~extensionPoints=[module(Customer_ExtensionPoint), module(Order_ExtensionPoint)],
+      // ... other components
+    )
+}
 ```
 
 ## Best Practices

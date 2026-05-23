@@ -14,36 +14,35 @@ The motivating commercial use case is a **platform-inspector** automation: the f
 
 ## Anatomy
 
-A mixed-source automation slice is split across three files:
+A mixed-source automation slice is **two files** in an `AutomationSlice/` folder:
 
 ```
-slices/AutoFulfill/
+AutomationSlice/
   AutoFulfill.res             // Spec — types and config
-  AutoFulfill_Automation.res  // process() only
-  AutoFulfill_Mappings.res    // per-source Mapping.Make + mappings collection
+  AutoFulfill_Automation.res  // Source modules + per-source Mapping.Make + mappings + process
 ```
 
-- **Spec** (`AutoFulfill.res`) — `todoItem`, `command`, `maxRetries`, `heartbeatInterval`, `targetName`. **No `consumedEvent`** — the framework derives the consumed-event set from each mapping's `sourceEventSchema`.
-- **Automation** (`AutoFulfill_Automation.res`) — only `process: (string, todoItem) => option<(string, command)>`. `process` is source-agnostic: it operates on `todoItem` regardless of which mapping created it.
-- **Mappings** (`AutoFulfill_Mappings.res`) — one `Mapping.Make` instance per source plus a `mappings` array. Each mapping carries its own `collect` and `resolve` functions, scoped to that source's `event` type.
+- **Spec** (`AutoFulfill.res`, `@@reventless.spec`) — `todoItem`, `command`, `maxRetries`, `heartbeatInterval`, `targetName`. **No `consumedEvent`** — the framework derives the consumed-event set from each mapping's `sourceEventSchema`.
+- **Automation** (`AutoFulfill_Automation.res`, `@@reventless.automation`) — holds everything else inline: any DCB `Source` modules, one `Mapping.Make` instance per source, the `mappings` array, and `process: (string, todoItem) => option<(string, command)>`. The `@@reventless.automation` PPX auto-injects `open Reventless.AutomationSlice`, `module Spec`, the `Mappings.Make` wrapper (`module M` / `module type Mapping`), `let moduleUrl`, and `module Id = Reventless.Id.String` + dcbTags on each Source module — you don't write those by hand. `process` is source-agnostic: it operates on `todoItem` regardless of which mapping created it.
 
 ## Per-source mapping
 
-Each source contributes one `Reventless.AutomationSlice.Mapping.Make` instance:
+Each source contributes one `Mapping.Make` instance, declared inline in `_Automation.res`:
 
 ```rescript
-// AutoFulfill_Mappings.res
-open Reventless.AutomationSlice
+// AutoFulfill_Automation.res
+@@reventless.automation
 
 // Source 1 — events from an Aggregate.
 module FromOrderShipped = Mapping.Make(
-  OrderSpec,                   // Aggregate spec module (provides .name and .event)
-  AutoFulfillSpec,             // this slice's spec
+  Order,                       // Aggregate spec module (provides .name and .event)
+  AutoFulfill,                 // this slice's spec
   {
+    open Order
     let collect = (event, _ctx) =>
       switch event {
-      | OrderSpec.OrderShipped({orderId, productId}) => [
-          (orderId ++ ":" ++ productId, ({orderId, productId}: AutoFulfillSpec.todoItem)),
+      | OrderShipped({orderId, productId}) => [
+          (orderId ++ ":" ++ productId, ({orderId, productId}: AutoFulfill.todoItem)),
         ]
       | _ => []
       }
@@ -52,8 +51,8 @@ module FromOrderShipped = Mapping.Make(
 )
 
 // Source 2 — events from this plugin's own DcbEventLog.
+// `module Id` and dcbTags on `*Id` fields are auto-injected by @@reventless.automation.
 module InventoryDcbSource = {
-  module Id = Reventless.Id.String
   let name = "InventoryDcbEventLog"   // MUST match Plugin_Builder's topic key
   @schema
   type event =
@@ -63,12 +62,13 @@ module InventoryDcbSource = {
 
 module FromStockReserved = Mapping.Make(
   InventoryDcbSource,
-  AutoFulfillSpec,
+  AutoFulfill,
   {
+    open InventoryDcbSource
     let collect = (event, _ctx) =>
       switch event {
       | StockReserved({orderId, productId}) => [
-          (orderId ++ ":" ++ productId, ({orderId, productId}: AutoFulfillSpec.todoItem)),
+          (orderId ++ ":" ++ productId, ({orderId, productId}: AutoFulfill.todoItem)),
         ]
       | StockReleased(_) => []
       }
@@ -80,10 +80,9 @@ module FromStockReserved = Mapping.Make(
   },
 )
 
-module M = Mappings.Make(AutoFulfillSpec)
-module type Mapping = M.Mapping
-let moduleUrl: string = %raw(`import.meta.url`)
 let mappings: array<module(Mapping)> = [module(FromOrderShipped), module(FromStockReserved)]
+
+let process = (id, _item) => Some((id, FulfillOrder({orderId: id})))
 ```
 
 ### Source-name conventions
@@ -119,19 +118,15 @@ The `context` record is intentionally narrow. Extending it requires an explicit 
 There's no per-mapping validation hook. Push validation to the layer that owns the data:
 
 - **`collect` returns `[]`** for events that shouldn't enter the TODO list. This is the cheapest gate — invalid items never get persisted.
-- **`@s.matches(DcbTag.string)` and `@compositePartitionTag` on the command schema** enforce DCB-tag invariants at encode time. Sury-encode failures mark the item `Failed` (counts toward `maxRetries`) — the same retry path as publish failures. Use this for partition-key validation.
+- **DCB tags on the command schema** enforce DCB-tag invariants at encode time. Inside an `AutomationSlice/` folder `@s.matches(Reventless.DcbTag.string)` is auto-applied to `*Id` fields; add `@compositePartitionTag` to disambiguate a composite partition key. Sury-encode failures mark the item `Failed` (counts toward `maxRetries`) — the same retry path as publish failures. Use this for partition-key validation.
 - **Deployment-time checks** for `context` invariants (e.g., "platformName is non-empty") belong in `Plugin_Builder.Spec` validation, not per-item — a misconfigured deployment fails every item, so fail it once at startup.
 
 ## Plugin assembly
 
-The Plugin generator emits the new 3-arg form automatically. After authoring `AutoFulfill.res`, `AutoFulfill_Automation.res`, and `AutoFulfill_Mappings.res`, run `pnpm run generate` (or rely on the `prebuild` hook). The generated `Plugin.res` contains:
+The Plugin generator emits the two-argument form automatically. After authoring `AutoFulfill.res` and `AutoFulfill_Automation.res`, run `pnpm run generate` (or rely on the `prebuild` hook). The generated `Plugin.res` contains:
 
 ```rescript
-module AutoFulfillSlice = Platform.AutomationSlice.Make(
-  AutoFulfill,
-  AutoFulfill_Automation,
-  AutoFulfill_Mappings,
-)
+module AutoFulfillSlice = Platform.AutomationSlice.Make(AutoFulfill, AutoFulfill_Automation)
 ```
 
 …and registers `AutoFulfillSlice` under `~automationSlices`.
@@ -173,7 +168,7 @@ Mixed-source slices start from current — same convention as Aggregates. There 
 
 ## Backward compatibility
 
-A single-source slice is a special case where the `Mappings` array has exactly one mapping. The existing `AutoShipOrder` example slice (in both `online-shop-dcb` and `online-shop-hybrid`) is migrated to this shape: its `_Automation` file now only carries `process`, and a sibling `_Mappings` file declares the one mapping that consumes its own DcbEventLog. The pattern composes cleanly with multi-source slices.
+A single-source slice is a special case where the `mappings` array has exactly one mapping. The `AutoShipOrder` example slice (in `online-shop-hybrid`) follows this shape: its `_Automation` file declares one `Mapping.Make` consuming its own DcbEventLog plus the `process` function, all inline. The pattern composes cleanly with multi-source slices — adding a source is just another `Mapping.Make` in the same file.
 
 ## Reference
 

@@ -482,45 +482,46 @@ Reventless uses its own PPX (`@reventlessdev/reventless-ppx`) to auto-generate b
 
 #### `@@reventless.spec`
 
-Place at the top of any spec file (aggregates, read models, extension points, DCB slices). Automatically injects:
-- `let name` (derived from filename, strips component suffixes)
+Place at the top of any spec file (aggregates, read models, extension points, DCB slices). Automatically injects boilerplate such as `let name` (derived from the filename, stripping component suffixes), `module Id`, and `let moduleUrl`. A component is **split** into a spec file (types) and a body file (logic) — the spec carries only the type declarations:
 
 ```rescript
-// ItemSpec.res
+// Item.res — the spec
 @@reventless.spec
 
-@schema type command = | CreateItem({name: string}) | DeleteItem
-@schema type event = | ItemCreated({name: string}) | ItemDeleted
+@schema type command = | Create({name: string}) | Delete
+@schema type event = | Created({name: string}) | Deleted
 @schema type error = | AlreadyExists | NotFound
-@schema type state = option<{name: string}>
 ```
 
 For files in a `*Spec` namespace, the PPX also auto-prefixes extension point names with the plugin name.
 
 #### `@@reventless.behavior`
 
-Place at the top of behavior files. Automatically injects:
-- `open Spec` (brings spec types into scope)
-- `module Spec = Spec`
+Place at the top of a behavior file (`Item_Behavior.res`). The PPX derives the spec module from the filename and automatically injects `open Item`, `module Spec = Item`, and `let moduleUrl`. The behavior implements the state machine with three values — `initialState`, `evolve` (folds an event into the next state during replay), and `decide` (turns a command into `Ok([...events])` or `Error(err)`):
 
 ```rescript
-// ItemBehavior.res  (PPX derives Spec from "Item" in filename)
+// Item_Behavior.res  (PPX derives Spec from "Item" in filename)
 @@reventless.behavior
 
-let initialState = None
+@schema
+type state =
+  | NotCreated
+  | Created({name: string})
 
-let handle = (state, command) =>
-  switch (state, command) {
-  | (None, CreateItem({name})) => Ok([ItemCreated({name: name})])
-  | (Some(_), CreateItem(_)) => Error(AlreadyExists)
-  | (None, DeleteItem) => Ok([])
-  | (Some(_), DeleteItem) => Ok([ItemDeleted])
+let initialState = NotCreated
+
+let evolve = (state, event) =>
+  switch (state, event) {
+  | (_, Created({name})) => Created({name: name})
+  | (_, Deleted) => NotCreated
   }
 
-let apply = (state, event) =>
-  switch event {
-  | ItemCreated({name}) => Some({name: name})
-  | ItemDeleted => None
+let decide = (state, command) =>
+  switch (state, command) {
+  | (NotCreated, Create({name})) => Ok([Created({name: name})])
+  | (Created(_), Create(_)) => Error(AlreadyExists)
+  | (NotCreated, Delete) => Ok([])
+  | (Created(_), Delete) => Ok([Deleted])
   }
 ```
 
@@ -593,6 +594,6 @@ type event =
   | ItemCreated({@s.matches(DcbTag.string) itemId: string, name: string})
 ```
 
-Fine-grained control is available via field-level annotations: `@partitionTag` (marks the partition key when multiple `*Id` fields exist), `@compositePartitionTag` (builds a partition key from multiple fields joined in declaration order), `@noTag` (suppresses auto-tagging), `@dcbTag` (tags a field that doesn't follow `*Id` naming).
+Fine-grained control is available via field-level annotations: `@partitionTag` (marks the partition key when multiple `*Id` fields exist), `@compositePartitionTag` (builds a partition key from multiple fields joined in declaration order), `@noDcbTag` (suppresses auto-tagging), `@dcbTag` (tags a field that doesn't follow `*Id` naming).
 
 See [DCB Slices](./dcb-slices.md) for how DCB tags are used in practice.

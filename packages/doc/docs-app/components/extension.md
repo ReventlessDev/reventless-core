@@ -211,140 +211,93 @@ OrderPlugin: Order Plugin {
 CustomerPlugin.CustomerEP -> OrderPlugin.CustomerExt: CustomerCreated { class: cross-plugin }
 ```
 
-### Extension Spec (reuse ExtensionPoint Spec)
+### ExtensionPoint Spec (in the provider plugin's spec package)
 
-```rescript title="CustomerExtensionPointSpec.res" showLineNumbers
-// This is the same spec used by the ExtensionPoint
-let name = "CustomerPlugin.Customer"
+The Extension references the provider's `*_ExtensionPoint` spec. It lives in the
+provider plugin's spec package and is annotated with `@@reventless.spec`:
+
+```rescript title="CustomerExtensionPoint.res" showLineNumbers
+// In CustomerSpec — the stable public API from Customer to Order.
+@@reventless.spec
 
 @schema
-type command =
-  | RequestCustomerInfo(string)
-  | UpdateCustomerPreferences(string, preferences)
+type command = unit // read-only: no inbound commands
 
 @schema
 type event =
-  | CustomerCreated(string, customerInfo)
-  | CustomerUpdated(string, customerInfo)
-  | CustomerDeleted(string)
+  | CustomerCreated({customerId: string, name: string, email: string})
+  | CustomerUpdated({customerId: string, name: string, email: string})
+  | CustomerDeleted({customerId: string})
 
 @schema
-type callCommand =
-  | NotifyExternalSystem(string)
+type directive = unit
 ```
 
 ### Extension Mapping
 
-```rescript title="Customer_ExtensionMapping.res" showLineNumbers
-module ExtensionPoint = CustomerExtensionPointSpec
-module Aggregate = Order
-
-let aggregateName = Order.name
-
-// Map incoming events from Customer ExtensionPoint to Order commands
-let mapIncomingEvent = (. id, event, meta, pluginDef, queryEngine) =>
-  switch event {
-  | CustomerExtensionPointSpec.CustomerCreated(customerId, customerInfo) =>
-    // When a customer is created, create a customer profile in the Order system
-    [PublishAggregateCommand(
-      customerId,
-      Order.CreateCustomerProfile({
-        customerId: customerId,
-        name: customerInfo.name,
-        email: customerInfo.email,
-      })
-    )]
-    
-  | CustomerExtensionPointSpec.CustomerUpdated(customerId, customerInfo) =>
-    // Update the customer profile when customer info changes
-    [PublishAggregateCommand(
-      customerId,
-      Order.UpdateCustomerProfile({
-        name: customerInfo.name,
-        email: customerInfo.email,
-      })
-    )]
-    
-  | CustomerExtensionPointSpec.CustomerDeleted(customerId) =>
-    // Mark customer as inactive in the Order system
-    [PublishAggregateCommand(customerId, Order.DeactivateCustomer)]
-  }
-
-// Optionally map outgoing Order events back to Customer ExtensionPoint
-let mapOutgoingEvent = Some((. id, event, meta, pluginDef) =>
-  switch event {
-  | Order.CustomerPreferencesUpdated(customerId, prefs) =>
-    // Notify Customer Plugin about preference changes
-    [PublishExtensionPointCommand(
-      customerId,
-      CustomerExtensionPointSpec.UpdateCustomerPreferences(customerId, prefs)
-    )]
-    
-  | _ => []
-  }
-)
-```
-
-### Complete Extension Module
+An Extension is a single file `<Name>_Extension.res` annotated with
+`@@reventless.extension`. It exposes a `module Mapping` that references the
+remote `ExtensionPoint` spec and the local `Delegate` (an Aggregate or
+StateChangeSlice). The PPX injects the action constructors (`PublishAggregateCommand`,
+`PublishStateChangeSliceCommand`, etc.) — never `open` them manually.
 
 ```rescript title="Customer_Extension.res" showLineNumbers
-// Reference the ExtensionPoint Spec
-module Spec = CustomerExtensionPointSpec
+// Order's extension subscribing to Customer's CustomerExtensionPoint.
+@@reventless.extension
 
-// Define the mapping
-module OrderMapping = {
-  module ExtensionPoint = Spec
-  module Aggregate = Order
-  
-  let aggregateName = Order.name
-  
-  let mapIncomingEvent = (. id, event, meta, pluginDef, queryEngine) =>
+module Mapping = {
+  module ExtensionPoint = CustomerSpec.CustomerExtensionPoint
+  module Delegate = Order
+
+  open ExtensionPoint
+  open Order
+  // Map incoming events from the Customer ExtensionPoint to Order commands
+  let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
     switch event {
-    | Spec.CustomerCreated(customerId, info) =>
-      [PublishAggregateCommand(customerId, Order.CreateCustomerProfile(info))]
-    | Spec.CustomerUpdated(customerId, info) =>
-      [PublishAggregateCommand(customerId, Order.UpdateCustomerProfile(info))]
-    | Spec.CustomerDeleted(customerId) =>
-      [PublishAggregateCommand(customerId, Order.DeactivateCustomer)]
+    | CustomerCreated({customerId, name, email}) => [
+        PublishAggregateCommand(customerId, Order.CreateCustomerProfile({customerId, name, email})),
+      ]
+    | CustomerUpdated({customerId, name, email}) => [
+        PublishAggregateCommand(customerId, Order.UpdateCustomerProfile({name, email})),
+      ]
+    | CustomerDeleted({customerId}) => [
+        PublishAggregateCommand(customerId, Order.DeactivateCustomer),
+      ]
     }
-  
+
+  // Optionally map outgoing Order events back to the Customer ExtensionPoint
   let mapOutgoingEvent = None
 }
-
-// Combine mappings
-module Mappings = {
-  module Spec = Spec
-  module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
-  let name = "Order"  // Extension name suffix
-  let mappings: array<module(Mapping)> = [module(OrderMapping)]
-}
-
-// Generate the Extension (AWS)
-include ReventlessAws.Extension.Make(Spec, Mappings)
 ```
 
-## NoAggregate Mapping
+## Targeting a StateChangeSlice instead of an Aggregate
 
-For Extensions that don't map to a specific Aggregate (e.g., only trigger side effects):
+When the local `Delegate` is a `StateChangeSlice` (the DCB write side) rather than
+an Aggregate, use `PublishStateChangeSliceCommand(command)` — no id is needed
+because the framework derives the FIFO grouping id from the command's
+`@partitionTag` (or `@compositePartitionTag`) field:
 
-```rescript title="Notification_ExtensionMapping.res" showLineNumbers
-module ExtensionPoint = CustomerExtensionPointSpec
-module Aggregate = Reventless.ExtensionMapping.NoAggregate
+```rescript title="Orders_Extension.res" showLineNumbers
+@@reventless.extension
 
-let aggregateName = Reventless.ExtensionMapping.NoAggregate.name
+module Mapping = {
+  module ExtensionPoint = OrderingSpec.Orders_ExtensionPoint
+  module Delegate = RecordProductDemand // a StateChangeSlice
 
-let mapIncomingEvent = (. id, event, meta, pluginDef, queryEngine) =>
-  switch event {
-  | CustomerExtensionPointSpec.CustomerCreated(customerId, info) =>
-    // Only trigger side effect, no Aggregate command
-    [Call(async msg => {
-      let _ = await NotificationService.sendWelcomeEmail(msg)
-    }, info.email)]
-    
-  | _ => []
-  }
+  open ExtensionPoint
+  open RecordProductDemand
+  let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
+    switch event {
+    | ItemOrdered({productId, orderId}) => [
+        PublishStateChangeSliceCommand(RecordDemand({productId, orderId})),
+      ]
+    | ItemOrderCancelled({productId, orderId}) => [
+        PublishStateChangeSliceCommand(RevokeDemand({productId, orderId})),
+      ]
+    }
 
-let mapOutgoingEvent = None
+  let mapOutgoingEvent = None
+}
 ```
 
 ## Runtime Behavior
@@ -409,106 +362,48 @@ type outputs = {
 
 ## Integration with Plugin
 
-Extensions are registered with their parent Plugin:
+Extensions are wired automatically by the **generated** `Plugin.res`. You never
+hand-write the plugin composition root — the plugin generator scans the
+`Extension/` folder and emits the wiring. For reference, the generated form is:
 
-```rescript title="OrderPlugin.res" showLineNumbers
-include ReventlessAws.Plugin.Make(
-  Config,
-  {
-    let name = "OrderPlugin"
-    let version = "1.0.0"
-    let heartbeatInterval = 30000
-    
-    let extensionPoints = []  // This Plugin doesn't expose ExtensionPoints
-    
-    let extensions = [
-      module(Customer_Extension),      // Consumes CustomerPlugin.Customer
-      module(Inventory_Extension),     // Consumes InventoryPlugin.Stock
-    ]
-    
-    let aggregates = [
-      module(Order_Aggregate),
-    ]
-    
-    // ... other components
-  }
-)
+```rescript title="src/Plugin.res (generated — do not edit)" showLineNumbers
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // Extensions
+  module Customer_Extension = Platform.Extension.Make(Customer_Extension.Mapping)
+
+  // ... aggregates, read models, slices, etc.
+
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Ordering",
+      ~extensions=[module(Customer_Extension)],
+      ~aggregates=[module(OrderAggregate)],
+      // ... other components
+    )
+}
 ```
 
-## Multiple Mappings per Extension
-
-An Extension can have multiple mappings for different Aggregates:
-
-```rescript title="Customer_Extension.res" showLineNumbers
-module Spec = CustomerExtensionPointSpec
-
-// Mapping for Order Aggregate
-module OrderMapping = {
-  module ExtensionPoint = Spec
-  module Aggregate = Order
-  let aggregateName = Order.name
-  
-  let mapIncomingEvent = (. id, event, meta, pluginDef, queryEngine) =>
-    switch event {
-    | Spec.CustomerCreated(customerId, info) =>
-      [PublishAggregateCommand(customerId, Order.CreateCustomerProfile(info))]
-    | _ => []
-    }
-  
-  let mapOutgoingEvent = None
-}
-
-// Mapping for Shipping Aggregate
-module ShippingMapping = {
-  module ExtensionPoint = Spec
-  module Aggregate = Shipping
-  let aggregateName = Shipping.name
-  
-  let mapIncomingEvent = (. id, event, meta, pluginDef, queryEngine) =>
-    switch event {
-    | Spec.CustomerUpdated(customerId, info) =>
-      [PublishAggregateCommand(customerId, Shipping.UpdateAddress(info.address))]
-    | _ => []
-    }
-  
-  let mapOutgoingEvent = None
-}
-
-module Mappings = {
-  module Spec = Spec
-  module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec
-  let name = "OrderPlugin"
-  let mappings: array<module(Mapping)> = [
-    module(OrderMapping),
-    module(ShippingMapping),
-  ]
-}
-
-include ReventlessAws.Extension.Make(Spec, Mappings)
-```
+`Platform.Extension.Make` takes a single argument: the `Mapping` module from your
+`<Name>_Extension.res` file.
 
 ## Async Command Generation
 
-For complex scenarios requiring async operations:
+For complex scenarios requiring async operations, return an async action
+constructor from `mapIncomingEvent`:
 
 ```rescript
-let mapIncomingEvent = (. id, event, meta, pluginDef, queryEngine) =>
+let mapIncomingEvent = (_id, event, _meta, _pluginDef, queryEngine) =>
   switch event {
-  | Spec.CustomerCreated(customerId, info) =>
+  | CustomerCreated({customerId, name, email}) =>
     // Async command generation with query
-    [PublishAggregateCommandAsync(
-      queryEngine.query("CustomerDefaults", customerId)
-      ->Js.Promise.then_(defaults => {
-        Js.Promise.resolve((
+    [
+      PublishAggregateCommandAsync(
+        queryEngine.query("CustomerDefaults", customerId)->Promise.thenResolve(defaults => (
           customerId,
-          Order.CreateCustomerProfile({
-            ...info,
-            defaultShipping: defaults.shippingMethod,
-          })
-        ))
-      }, _)
-    )]
-    
+          Order.CreateCustomerProfile({customerId, name, email, defaultShipping: defaults.shippingMethod}),
+        )),
+      ),
+    ]
   | _ => []
   }
 ```

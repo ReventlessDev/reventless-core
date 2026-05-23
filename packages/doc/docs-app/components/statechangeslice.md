@@ -82,7 +82,10 @@ The StateChangeSlice component requires a spec that defines its name, command ty
 module type Spec = {
   let name: string
 
-  module DcbEventLogSpec: DcbEventLog.Spec
+  // Local subset of events this slice reads to rebuild its decision state.
+  // Declared locally — there is no shared DcbEventLogSpec module.
+  @schema
+  type consumedEvent
 
   @schema
   type command
@@ -90,12 +93,14 @@ module type Spec = {
   @schema
   type error
 
+  // Events this slice emits from `decide`.
+  @schema
+  type event
+
   type state
   let initialState: state
-
-  type consumedEvent
   let evolve: (state, consumedEvent) => state
-  let decide: (state, command) => result<array<DcbEventLogSpec.event>, error>
+  let decide: (state, command) => result<array<event>, error>
 }
 ```
 
@@ -104,9 +109,10 @@ module type Spec = {
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | `string` | Unique identifier for this slice |
-| `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
+| `consumedEvent` | `@schema type` | Local subset of events this slice reads to build its decision state |
 | `command` | `@schema` [type](../rescript-syntax.md#ppx) | Command type using `@schema` [ppx](../rescript-syntax.md#ppx) for auto-generated schema |
 | `error` | `@schema type` | Error type for command processing failures |
+| `event` | `@schema type` | Events this slice emits from `decide` |
 | `state` | `type` | The state type built from accumulated events |
 | `initialState` | `state` | Starting state for new aggregates/entities |
 | `evolve` | `(state, event) => state` | Fold function to accumulate events into state |

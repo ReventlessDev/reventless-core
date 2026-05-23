@@ -102,7 +102,7 @@ Beyond the core write-side and read-side patterns, the Online Shop includes thre
 
 ### Auto-Ship Order (Ordering)
 
-When an order is placed, an automation automatically issues a `ShipOrder` command — closing the order lifecycle without manual intervention. In the aggregate-based approach this is a stateless **EventMapper** (fire-and-forget). In the DCB approach this is a stateful **AutomationSlice** with a TODO list that tracks pending shipments and marks them resolved when `OrderShipped` arrives.
+When an order is placed, an automation automatically issues a `Ship` command — closing the order lifecycle without manual intervention. In the aggregate-based approach this is stateless **Event Mappings** (fire-and-forget, declared in `Order_Mappings.res`). In the DCB approach this is a stateful **AutomationSlice** with a TODO list that tracks pending shipments and marks them resolved when `OrderShipped` arrives.
 
 ```
 OrderPlaced  ──►  [automation]  ──►  ShipOrder command  ──►  OrderShipped
@@ -122,7 +122,7 @@ This feature reuses the existing `AddProduct` command — no domain model change
 
 ### Send Order Confirmation Email (Ordering)
 
-When an order is placed, a notification is sent to the customer via an external email service. In the aggregate-based approach this is a fire-and-forget **SideEffectHandler**. In the DCB approach this is an **OutboundTranslationSlice** with a TODO list providing per-item retry and status tracking.
+When an order is placed, a notification is sent to the customer via an external email service. In the aggregate-based approach this is a fire-and-forget **Side Effect** (hosted on a Task). In the DCB approach this is an **OutboundTranslationSlice** with a TODO list providing per-item retry and status tracking.
 
 ```
 OrderPlaced  ──►  [outbound handler]  ──►  EmailService.send(...)
@@ -284,7 +284,7 @@ The Extension Point name is the only runtime coupling. At deploy time, both Plug
 |---|---|---|---|
 | Event storage | One log per aggregate instance | Single shared log per Plugin | Both: per-aggregate logs + shared DCB log |
 | Consistency boundary | Per aggregate instance (sequential) | Per command (optimistic concurrency) | Per entity type — aggregate or optimistic |
-| State for decisions | Full aggregate state | Minimal `decisionModel` per slice | Both patterns coexist |
+| State for decisions | Full aggregate state | Minimal decision `state` per slice | Both patterns coexist |
 | Cross-entity consistency | Not directly supported | Supported — slices can read across items | Supported for DCB entities only |
 | Read model wiring | Separate projection mapping modules | `project` function inline in the slice | Both patterns coexist |
 | Infrastructure footprint | More event log tables | Fewer tables, more events per table | Middle ground |
@@ -308,9 +308,9 @@ The three additional features are implemented with different component types in 
 
 | Feature | Aggregate-Based | DCB-Based | Hybrid |
 |---|---|---|---|
-| Auto-Ship Order | **EventMapper** | **AutomationSlice** | **AutomationSlice** (DCB) |
+| Auto-Ship Order | **Event Mappings** | **AutomationSlice** | **AutomationSlice** (DCB) |
 | Import Product from Supplier | **Task** (S3 file upload) | **InboundTranslationSlice** (webhook) | **InboundTranslationSlice** (DCB) |
-| Send Order Confirmation Email | **SideEffectHandler** | **OutboundTranslationSlice** | **OutboundTranslationSlice** (DCB) |
+| Send Order Confirmation Email | **Side Effect** | **OutboundTranslationSlice** | **OutboundTranslationSlice** (DCB) |
 
 Aggregate-based components are simpler but offer less built-in reliability. DCB-based slices provide more operational guarantees (retry, audit, status tracking) at the cost of additional infrastructure.
 

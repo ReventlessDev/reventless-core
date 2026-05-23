@@ -67,34 +67,54 @@ The key difference from AutomationSlice is that the "process" step involves an *
 
 ## Component Spec
 
+An OutboundTranslationSlice is **split into two files**:
+
+- `<Name>.res` — the **spec** (`@@reventless.spec`): the `consumedEvent`,
+  `outboundItem`, and `inboundCommand` `@schema` types, the sweep config
+  (`maxRetries`, `heartbeatInterval`), and `targetName` (`None` for fire-and-forget,
+  or `Some("<TargetSlice>")` to publish a command back).
+- `<Name>_Translation.res` — the **translation** (`@@reventless.translation`): the
+  `collect` function (event → outbound items) and the async `translate` function
+  (the external call).
+
+The spec module type the framework expects:
+
 ```rescript
 module type Spec = {
   let name: string
-  module DcbEventLogSpec: DcbEventLog.Spec
+  let moduleUrl: string
 
+  @schema type consumedEvent
   @schema type outboundItem
   @schema type inboundCommand
 
-  let collect: DcbEventLogSpec.event => array<(string, outboundItem)>
-  let translate: (string, outboundItem) => promise<result<option<(string, inboundCommand)>, string>>
-
   let maxRetries: int
   let heartbeatInterval: int
+  let targetName: option<string>
 }
 ```
+
+`collect` and `translate` no longer live on the Spec — they move to the
+`Translation` module. There is no `DcbEventLogSpec` reference; the slice declares
+a local `consumedEvent` union instead.
 
 ### Spec Fields Explained
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Unique identifier for this outbound translation slice |
-| `DcbEventLogSpec` | `module(DcbEventLog.Spec)` | Reference to the shared event log spec |
+| `consumedEvent` | `@schema type` | The local subset of event variants this slice reacts to |
 | `outboundItem` | `@schema type` | Data accumulated for each pending external call |
 | `inboundCommand` | `@schema type` | Command type optionally published back after translate. Use `unit` for fire-and-forget |
-| `collect` | `event => array<(string, outboundItem)>` | Map an event to zero or more outbound items (id + payload) |
-| `translate` | `(string, outboundItem) => promise<result<...>>` | Call external service; returns success with optional command, or error |
 | `maxRetries` | `int` | Maximum retry attempts for failed items |
 | `heartbeatInterval` | `int` | Seconds between heartbeat sweeps for pending/failed items |
+| `targetName` | `option<string>` | `None` for fire-and-forget; `Some("<TargetSlice>")` to route the optional command back |
+
+In the `_Translation.res` file:
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `collect` | `consumedEvent => array<(string, outboundItem)>` | Map an event to zero or more outbound items (id + payload) |
+| `translate` | `(string, outboundItem) => promise<result<...>>` | Call external service; returns success with optional command, or error |
 
 ### The translate Return Values
 
@@ -108,10 +128,17 @@ The `translate` function is the anti-corruption layer -- where user code calls e
 
 ### Example 1: Fire-and-Forget (Send Tracking Email)
 
-```rescript title="SendTrackingEmail.res"
-module DcbEventLogSpec = OrderingEventLog
+The **spec file**. `@@reventless.spec` injects `name`, `module Id`, and
+`moduleUrl` from the filename, and inside a `*Slice/` folder auto-applies DCB tags
+to `*Id` fields — never write `@s.matches(...)` by hand. `targetName = None`
+signals fire-and-forget:
 
-let name = "SendTrackingEmail"
+```rescript title="Order/OutboundTranslationSlice/SendTrackingEmail.res" showLineNumbers
+@@reventless.spec
+
+@schema
+type consumedEvent =
+  | OrderShipped({orderId: string, email: string})
 
 @schema
 type outboundItem = {orderId: string, email: string}
@@ -119,86 +146,95 @@ type outboundItem = {orderId: string, email: string}
 @schema
 type inboundCommand = unit
 
+let maxRetries = 3
+let heartbeatInterval = 60
+let targetName = None
+```
+
+The **translation file** (`@@reventless.translation`) holds `collect` and the
+async `translate`:
+
+```rescript title="Order/OutboundTranslationSlice/SendTrackingEmail_Translation.res" showLineNumbers
+@@reventless.translation
+
 let collect = event =>
   switch event {
-  | OrderingEventLog.OrderShipped({orderId, email}) =>
-    [(orderId, {orderId, email})]
-  | _ => []
+  | OrderShipped({orderId, email}) => [(orderId, {orderId, email})]
   }
 
 let translate = async (_id, item) => {
   await EmailService.sendTrackingEmail(item.email, ~orderId=item.orderId)
-  Ok(None)  // fire-and-forget: no command back
+  Ok(None) // fire-and-forget: no command back
 }
-
-let maxRetries = 3
-let heartbeatInterval = 60
 ```
 
 ### Example 2: Command-Back (Process Payment)
 
-```rescript title="ProcessPayment.res"
-module DcbEventLogSpec = OrderingEventLog
+Here `targetName = Some("ConfirmPayment")` routes the optional command back into
+the domain:
 
-let name = "ProcessPayment"
+```rescript title="Payment/OutboundTranslationSlice/ProcessPayment.res" showLineNumbers
+@@reventless.spec
+
+@schema
+type consumedEvent =
+  | PaymentRequested({orderId: string, amount: float})
 
 @schema
 type outboundItem = {orderId: string, amount: float}
 
 @schema
 type inboundCommand = ConfirmPayment({
-  orderId: @s.matches(DcbTag.string) string,
+  orderId: string,
   transactionId: string,
 })
 
+let maxRetries = 5
+let heartbeatInterval = 30
+let targetName = Some("ConfirmPayment")
+```
+
+```rescript title="Payment/OutboundTranslationSlice/ProcessPayment_Translation.res" showLineNumbers
+@@reventless.translation
+
 let collect = event =>
   switch event {
-  | OrderingEventLog.PaymentRequested({orderId, amount}) =>
-    [(orderId, {orderId, amount})]
-  | _ => []
+  | PaymentRequested({orderId, amount}) => [(orderId, {orderId, amount})]
   }
 
 let translate = async (id, item) => {
   try {
     let result = await PaymentGateway.charge(item.amount, ~orderId=item.orderId)
-    Ok(Some((id, ConfirmPayment({
-      orderId: item.orderId,
-      transactionId: result.transactionId,
-    }))))
+    Ok(Some((id, ConfirmPayment({orderId: item.orderId, transactionId: result.transactionId}))))
   } catch {
   | exn =>
-    let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("payment failed")
+    let msg =
+      exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("payment failed")
     Error(msg)
   }
 }
-
-let maxRetries = 5
-let heartbeatInterval = 30
 ```
 
-### Registering in a DcbSpec
+### Plugin Wiring
 
-OutboundTranslationSlices are registered alongside other slice types in the Plugin's DcbSpec:
+You never register or wire OutboundTranslationSlices by hand. The plugin generator
+scans the `OutboundTranslationSlice/` folder and emits the wiring into the
+**generated** `Plugin.res` using the two-arg factory
+`Platform.OutboundTranslationSlice.Make(Spec, Translation)`:
 
-```rescript title="OrderingPlugin.res"
-module DcbSpec = {
-  @schema type event = OrderingEventLog.event
+```rescript title="src/Plugin.res (generated — do not edit)"
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // OutboundTranslationSlices
+  module SendTrackingEmailSlice = Platform.OutboundTranslationSlice.Make(SendTrackingEmail, SendTrackingEmail_Translation)
+  module ProcessPaymentSlice = Platform.OutboundTranslationSlice.Make(ProcessPayment, ProcessPayment_Translation)
 
-  let stateChangeSlices = [module(PlaceOrderSlice), module(ShipOrderSlice)]
-  let stateViewSlices = [module(OrdersViewSlice)]
-  let automationSlices = []
-  let outboundTranslationSlices = [
-    module(SendTrackingEmailSlice),
-    module(ProcessPaymentSlice),
-  ]
-  let inboundTranslationSlices = []
+  let make = (~uiBundleUrl=?) =>
+    Platform.Plugin.make(
+      ~name="Ordering",
+      ~outboundTranslationSlices=[module(SendTrackingEmailSlice), module(ProcessPaymentSlice)],
+      // ... other components
+    )
 }
-```
-
-### Creating with Platform
-
-```rescript title="ProcessPaymentSlice.res"
-module ProcessPaymentSlice = Platform.OutboundTranslationSlice.Make(ProcessPayment)
 ```
 
 The framework automatically wires the slice to the shared DcbEventLog and CommandTopic.
