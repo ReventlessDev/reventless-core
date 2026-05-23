@@ -7,6 +7,7 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { execSync } from "child_process";
 
 // Tracks which D2 diagram indices (per file) are sequence diagrams.
 // Populated by d2PrependStyles, consumed by rehypeSequenceDiagramClass.
@@ -76,6 +77,31 @@ function rehypeSequenceDiagramClass() {
 // remark-d2 is ESM-only, so we load it via dynamic import in an async config.
 async function createConfig() {
 const d2 = (await import("remark-d2")).default;
+
+// Which version this build represents ("latest" | "beta" | "alpha").
+// `version-config.js` is written per-build by .github/workflows/deploy-docs.yml
+// and is absent in local dev, where we treat the build as "local". Exposed via
+// customFields so VersionSwitcher/VersionBanner can pre-select reliably instead
+// of guessing from baseUrl.
+let docsVersion = "local";
+try {
+  // @ts-ignore — version-config.js is generated at build time, absent locally.
+  docsVersion = require("./version-config.js").version;
+} catch (_) {
+  // Local dev: no version-config.js. Derive from the current git branch so the
+  // switcher reflects the branch you're previewing (main → latest, beta, alpha).
+  // Any other branch (or no git) stays "local".
+  try {
+    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (branch === "main") docsVersion = "latest";
+    else if (branch === "beta" || branch === "alpha") docsVersion = branch;
+  } catch (_) {
+    /* not a git checkout — leave as "local" */
+  }
+}
 const d2StylesPath = join(process.cwd(), "d2", "reventless.d2");
 const d2Opts = {
   linkPath: "/reventless-core/d2",
@@ -98,6 +124,11 @@ const config = {
   organizationName: "ReventlessDev", // Usually your GitHub org/user name.
   projectName: "reventless-core", // Usually your repo name.
 
+  customFields: {
+    // Consumed by VersionSwitcher/VersionBanner for current-version detection.
+    docsVersion,
+  },
+
   onBrokenLinks: "warn",
   onBrokenMarkdownLinks: "warn",
 
@@ -116,10 +147,15 @@ const config = {
         language: ["en"],
         indexDocs: true,
         indexBlog: true,
-        docsRouteBasePath: ["/app", "/framework", "/infrastructure", "/tutorials"],
-        // Enable search in dev mode by using the production index
+        // Parallel arrays: each docsDir (the plugin instance's `path`) maps to
+        // the matching docsRouteBasePath (its `routeBasePath`). docsDir must be
+        // set explicitly here because this site has no default `docs/` folder —
+        // otherwise the build warns "docsDir doesn't exist".
+        docsDir: ["docs-app", "docs-framework", "docs-infrastructure", "docs-tutorials"],
+        docsRouteBasePath: ["app", "framework", "infrastructure", "tutorials"],
+        // The index is generated in Docusaurus's postBuild hook, so search only
+        // works after `docusaurus build` + `docusaurus serve`, never in `start`.
         removeDefaultStopWordFilter: true,
-        // Highlight search terms
         highlightSearchTermsOnTargetPage: true,
       },
     ],

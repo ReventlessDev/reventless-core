@@ -247,86 +247,113 @@ jobs:
           mkdir -p build-output/alpha
           cp -r packages/doc/build/* build-output/alpha/
 
-      - name: Create version selector landing page
+      - name: Generate version manifest, placeholders, and apex
         run: |
-          cat > build-output/versions.html << 'EOF'
+          set -euo pipefail
+          BASE="/reventless-core"
+
+          # A version counts as published only when REAL (non-placeholder) docs
+          # are present in build-output — either freshly built this run or
+          # preserved by the wget mirror. Generated placeholders/redirects carry
+          # a sentinel meta tag so they are never mistaken for real docs next run.
+          is_real() {
+            [ -f "$1" ] && ! grep -q 'name="reventless-placeholder"' "$1"
+          }
+
+          LATEST_PUB=false; BETA_PUB=false; ALPHA_PUB=false
+          [ "${{ steps.branches.outputs.build_main }}" = "true" ] && LATEST_PUB=true
+          [ "${{ steps.branches.outputs.build_beta }}" = "true" ] && BETA_PUB=true
+          [ "${{ steps.branches.outputs.build_alpha }}" = "true" ] && ALPHA_PUB=true
+          is_real build-output/index.html       && LATEST_PUB=true
+          is_real build-output/beta/index.html  && BETA_PUB=true
+          is_real build-output/alpha/index.html && ALPHA_PUB=true
+          echo "Published: latest=$LATEST_PUB beta=$BETA_PUB alpha=$ALPHA_PUB"
+
+          # default = highest published in latest -> beta -> alpha precedence.
+          if   [ "$LATEST_PUB" = true ]; then DEFAULT=latest; DEFAULT_PATH="$BASE/";       DEFAULT_LABEL="Latest"
+          elif [ "$BETA_PUB"   = true ]; then DEFAULT=beta;   DEFAULT_PATH="$BASE/beta/";  DEFAULT_LABEL="Beta"
+          elif [ "$ALPHA_PUB"  = true ]; then DEFAULT=alpha;  DEFAULT_PATH="$BASE/alpha/"; DEFAULT_LABEL="Alpha"
+          else DEFAULT=latest; DEFAULT_PATH="$BASE/"; DEFAULT_LABEL="Latest"; fi
+          echo "Default version: $DEFAULT ($DEFAULT_PATH)"
+
+          # --- Manifest: single source of truth, fetched at runtime -----------
+          cat > build-output/versions.json <<EOF
+          {
+            "default": "$DEFAULT",
+            "versions": [
+              { "id": "latest", "label": "Latest", "badge": "STABLE",      "path": "$BASE/",       "published": $LATEST_PUB },
+              { "id": "beta",   "label": "Beta",   "badge": "PRE-RELEASE", "path": "$BASE/beta/",  "published": $BETA_PUB },
+              { "id": "alpha",  "label": "Alpha",  "badge": "EXPERIMENTAL","path": "$BASE/alpha/", "published": $ALPHA_PUB }
+            ]
+          }
+          EOF
+
+          # --- "Not yet released" placeholders for unpublished sub-paths ------
+          write_placeholder() {
+          local dir="$1" label="$2"
+          mkdir -p "$dir"
+          cat > "$dir/index.html" <<EOF
           <!DOCTYPE html>
-          <html>
+          <html lang="en">
           <head>
-            <meta charset="UTF-8">
-            <title>Reventless Documentation Versions</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                max-width: 800px;
-                margin: 50px auto;
-                padding: 20px;
-                line-height: 1.6;
-              }
-              h1 { color: #333; }
-              .version-card {
-                border: 1px solid #ddd;
-                border-radius: 8px;
-                padding: 20px;
-                margin: 20px 0;
-                transition: box-shadow 0.2s;
-              }
-              .version-card:hover {
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-              }
-              .version-card h2 {
-                margin-top: 0;
-                color: #1a73e8;
-              }
-              .version-card a {
-                display: inline-block;
-                background: #1a73e8;
-                color: white;
-                padding: 10px 20px;
-                text-decoration: none;
-                border-radius: 4px;
-                margin-top: 10px;
-              }
-              .version-card a:hover {
-                background: #1557b0;
-              }
-              .badge {
-                display: inline-block;
-                padding: 3px 8px;
-                border-radius: 3px;
-                font-size: 12px;
-                font-weight: bold;
-                margin-left: 10px;
-              }
-              .stable { background: #0f9d58; color: white; }
-              .beta { background: #f4b400; color: white; }
-              .alpha { background: #db4437; color: white; }
-            </style>
+          <meta charset="UTF-8">
+          <meta name="reventless-placeholder" content="true">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>$label — not yet released | Reventless</title>
+          <style>
+          :root { color-scheme: light dark; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; min-height: 100vh; margin: 0; align-items: center; justify-content: center; background: #f6f8fa; }
+          .card { max-width: 520px; padding: 40px; text-align: center; background: #fff; border: 1px solid #e1e4e8; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+          .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: #6a737d; }
+          h1 { margin: 20px 0 12px; font-size: 22px; color: #24292e; }
+          p { color: #586069; line-height: 1.6; }
+          .cta { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #1a73e8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; }
+          .cta:hover { background: #1557b0; }
+          </style>
           </head>
           <body>
-            <h1>Reventless Documentation</h1>
-            <p>Choose your version:</p>
-
-            <div class="version-card">
-              <h2>Latest (Main) <span class="badge stable">STABLE</span></h2>
-              <p>Production-ready stable release. Recommended for most users.</p>
-              <a href="./">View Documentation →</a>
-            </div>
-
-            <div class="version-card">
-              <h2>Beta <span class="badge beta">PRE-RELEASE</span></h2>
-              <p>Beta release with upcoming features. Stable but not yet in production.</p>
-              <a href="./beta/">View Documentation →</a>
-            </div>
-
-            <div class="version-card">
-              <h2>Alpha <span class="badge alpha">EXPERIMENTAL</span></h2>
-              <p>Early access to new features. May contain breaking changes.</p>
-              <a href="./alpha/">View Documentation →</a>
-            </div>
+          <main class="card">
+          <span class="badge">$label</span>
+          <h1>This version isn't released yet</h1>
+          <p>The <strong>$label</strong> documentation hasn't been published yet. It will appear here automatically once it's released.</p>
+          <a class="cta" href="$DEFAULT_PATH">View the $DEFAULT_LABEL docs →</a>
+          </main>
           </body>
           </html>
           EOF
+          }
+
+          [ "$BETA_PUB"  = true ] || write_placeholder build-output/beta  "Beta"
+          [ "$ALPHA_PUB" = true ] || write_placeholder build-output/alpha "Alpha"
+
+          # --- Apex/root ------------------------------------------------------
+          # When the stable (latest) version is published, its real build already
+          # sits at the root. Otherwise redirect the apex to the default version
+          # so it is never an empty 404.
+          if [ "$LATEST_PUB" != true ]; then
+          cat > build-output/index.html <<EOF
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+          <meta charset="UTF-8">
+          <meta name="reventless-placeholder" content="true">
+          <meta http-equiv="refresh" content="0; url=$DEFAULT_PATH">
+          <link rel="canonical" href="$DEFAULT_PATH">
+          <title>Reventless Documentation</title>
+          </head>
+          <body>
+          <p>Redirecting to the <a href="$DEFAULT_PATH">$DEFAULT_LABEL documentation</a>…</p>
+          </body>
+          </html>
+          EOF
+          fi
+
+          # The static versions.html chooser is retired in favour of the in-site
+          # version switcher; drop any copy preserved by the wget mirror.
+          rm -f build-output/versions.html
+
+          echo "✅ versions.json, placeholders, and apex generated"
+          ls -la build-output
 
       - name: Setup Pages
         id: setup-pages
