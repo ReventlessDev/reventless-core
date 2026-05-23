@@ -81,7 +81,11 @@ const sidebars = {
       type: 'category',
       label: 'Guides',
       items: [
-        'platform-and-plugin-guide',
+        {
+          type: 'doc',
+          id: 'platform-and-plugin-guide',
+          label: 'Build your own app',
+        },
         'aggregate-vs-dcb-decision-guide',
         'graphql-api-guide',
         'dcb-usage',

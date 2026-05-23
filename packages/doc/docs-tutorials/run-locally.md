@@ -71,7 +71,9 @@ Useful environment variables for the backend:
 
 By default the in-memory platform starts empty every run. If you want events to
 survive a restart while developing, the platform supports a file-backed store —
-see [local persistence](/infrastructure) in the Infrastructure section.
+see [local persistence](/infrastructure/local-persistence). For how the local
+runtime is wired, see the [InMemory adapters](/infrastructure/in-memory/) in the
+Infrastructure section.
 
 ---
 

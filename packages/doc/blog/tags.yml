@@ -1,16 +1,20 @@
-facebook:
-  label: Facebook
-  permalink: /facebook
-  description: Facebook tag description
-hello:
-  label: Hello
-  permalink: /hello
-  description: Hello tag description
-docusaurus:
-  label: Docusaurus
-  permalink: /docusaurus
-  description: Docusaurus tag description
-hola:
-  label: Hola
-  permalink: /hola
-  description: Hola tag description
+release:
+  label: Release
+  permalink: /release
+  description: Release notes and version announcements
+event-sourcing:
+  label: Event Sourcing
+  permalink: /event-sourcing
+  description: Event sourcing and CQRS topics
+dcb:
+  label: DCB
+  permalink: /dcb
+  description: Dynamic Consistency Boundary patterns
+case-study:
+  label: Case Study
+  permalink: /case-study
+  description: Worked examples and adoption stories
+internals:
+  label: Internals
+  permalink: /internals
+  description: Framework internals and design deep-dives

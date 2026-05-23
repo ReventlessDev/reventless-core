@@ -26,13 +26,14 @@ const sidebars = {
       label: 'Inner Workings',
       items: [
         'inner-workings/framework-inner-workings',
-        'inner-workings/component-structure-pattern',
         'inner-workings/messages',
+        'inner-workings/serialization',
+        'inner-workings/resources',
         'inner-workings/runtime',
         'inner-workings/pulumi',
-        'inner-workings/resources',
-        'inner-workings/serialization',
+        'inner-workings/component-structure-pattern',
         'inner-workings/mcp',
+        'inner-workings/extending-the-framework',
       ],
     },
     {

@@ -6,9 +6,13 @@ experience for `reventless.dev` when this repo goes open source. Adds a
 learning-journey information architecture, an end-to-end "online-shop" spine,
 a real blog, and an integrated Slidev "Talks" section.
 
-**Status:** In progress. **Phases 0–3 complete** (2026-05-23) — front door,
-hybrid spine, and all canonical guides published; docs build green with **zero
-broken links**. Phases 4–8 remain.
+**Status:** In progress. **Phases 0–6 complete** (2026-05-23) — front door,
+hybrid spine, all canonical guides, app-dev depth + custom-domain page,
+contributor track + "Extending the framework" capstone, and a real blog; docs
+build green with **zero broken links**. **Phases 7 (Talks) and 8 (domain cutover)
+deferred** by maintainer decision — Talks is a large net-new Slidev subsystem
+best done standalone; the reventless.dev cutover waits until DNS/Pages
+custom-domain is confirmed ready (it changes the live deploy URL).
 
 **Prior work in this repo:**
 - [`docs/analysis/docusaurus-docs-audit.md`](../analysis/docusaurus-docs-audit.md) (2026-04-04) — per-file audit; its structural renames (`providers→infrastructure`, `online-shop→tutorials`, `architecture→concepts`, glossary, Releases link) are already done. This plan supersedes it at the structural level and folds the remaining open items into Phase 0.
@@ -276,10 +280,10 @@ Acceptance: `reventless.dev` serves `main` at root and pre-release at sub-paths;
 | 1 | Front door / Introduction | High | ✅ Done (2026-05-23) |
 | 2 | The spine (run-local → deploy-AWS → test) + example README | High | ✅ Done (2026-05-23) |
 | 3 | Publish canonical guides | High | ✅ Done (2026-05-23) |
-| 4 | App-dev depth & your own domain | Medium | ⬜ Not started |
-| 5 | Contributor track | Medium | ⬜ Not started |
-| 6 | Blog | Medium | ⬜ Not started |
-| 7 | Talks | Medium | ⬜ Not started |
-| 8 | Domain cutover & link hardening | Medium | ⬜ Not started |
+| 4 | App-dev depth & your own domain | Medium | ✅ Done (2026-05-23) |
+| 5 | Contributor track | Medium | ✅ Done (2026-05-23) |
+| 6 | Blog | Medium | ✅ Done (2026-05-23) — one canonical blog on main |
+| 7 | Talks | Medium | ⏸️ Deferred (large net-new Slidev workspace) |
+| 8 | Domain cutover & link hardening | Medium | ⏸️ Deferred (waits on reventless.dev DNS readiness) |
 
 Phases 0–3 are the minimum for a credible open-source launch; 4–8 are follow-on polish. Phases 6 and 7 are independent and can run in parallel with 4–5.

@@ -115,7 +115,7 @@ const config = {
         hashed: true,
         language: ["en"],
         indexDocs: true,
-        indexBlog: false,
+        indexBlog: true,
         docsRouteBasePath: ["/app", "/framework", "/infrastructure", "/tutorials"],
         // Enable search in dev mode by using the production index
         removeDefaultStopWordFilter: true,
@@ -195,19 +195,23 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: false,
-        /*
         blog: {
           showReadingTime: true,
+          blogTitle: "Reventless Blog",
+          blogDescription:
+            "Release notes, design deep-dives, and case studies for the Reventless event-sourced CQRS framework",
+          postsPerPage: 10,
           feedOptions: {
             type: ["rss", "atom"],
             xslt: true,
+            title: "Reventless Blog",
+            description:
+              "Release notes, design deep-dives, and case studies for Reventless",
+            copyright: `Copyright © ${new Date().getFullYear()} Reventless.`,
           },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
           editUrl:
-            "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
+            "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
         },
-        */
         theme: {
           customCss: "./src/css/custom.css",
         },
@@ -259,6 +263,11 @@ const config = {
             docsPluginId: "framework",
             position: "left",
             label: "Contributing",
+          },
+          {
+            to: "/blog",
+            label: "Blog",
+            position: "left",
           },
           {
             href: "https://github.com/ReventlessDev/reventless-core",

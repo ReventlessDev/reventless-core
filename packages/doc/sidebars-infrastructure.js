@@ -100,6 +100,7 @@ const sidebars = {
         'callback-hooks-and-adapter-wrapping',
         'dual-aws-provider',
         'ui-fragments-deployment',
+        'custom-domain',
         'appsync-events-live-updates',
         'local-persistence',
       ],

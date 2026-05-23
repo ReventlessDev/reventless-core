@@ -83,6 +83,6 @@ clients.
 **Where to next?**
 
 - Build your own application → [App Guide](/app/get-started).
-- Point the deployed shell at your own domain and go deeper on infrastructure →
-  [Infrastructure](/infrastructure).
+- Point the deployed shell at your own domain →
+  [Custom domain for the host UI](/infrastructure/custom-domain).
 - Contribute to the framework → [Contributing](/framework/get-started).
