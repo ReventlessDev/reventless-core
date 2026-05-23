@@ -2,40 +2,54 @@
 
 
 function evolve(state, event) {
-  if (event === "CategoryAdded") {
+  if (typeof event !== "object") {
+    return {
+      exists: state.exists,
+      archived: true,
+      name: state.name
+    };
+  } else if (event.TAG === "CategoryAdded") {
     return {
       exists: true,
-      archived: false
+      archived: false,
+      name: event.name
     };
   } else {
     return {
       exists: state.exists,
-      archived: true
+      archived: state.archived,
+      name: event.name
     };
   }
 }
 
 function decide(state, command) {
-  if (state.exists) {
-    if (state.archived) {
-      return {
-        TAG: "Error",
-        _0: "CategoryAlreadyArchived"
-      };
-    } else {
-      return {
-        TAG: "Ok",
-        _0: [{
-            TAG: "CategoryRenamed",
-            categoryId: command.categoryId,
-            name: command.name
-          }]
-      };
-    }
-  } else {
+  if (!state.exists) {
     return {
       TAG: "Error",
       _0: "CategoryNotFound"
+    };
+  }
+  if (state.archived) {
+    return {
+      TAG: "Error",
+      _0: "CategoryAlreadyArchived"
+    };
+  }
+  let name = command.name;
+  if (name === state.name) {
+    return {
+      TAG: "Ok",
+      _0: []
+    };
+  } else {
+    return {
+      TAG: "Ok",
+      _0: [{
+          TAG: "CategoryRenamed",
+          categoryId: command.categoryId,
+          name: name
+        }]
     };
   }
 }
@@ -44,7 +58,8 @@ let Spec;
 
 let initialState = {
   exists: false,
-  archived: false
+  archived: false,
+  name: ""
 };
 
 let moduleUrl = "@reventlessdev/online-shop-dcb-catalog/src/Category/StateChangeSlice/RenameCategory_Behavior.res.mjs";

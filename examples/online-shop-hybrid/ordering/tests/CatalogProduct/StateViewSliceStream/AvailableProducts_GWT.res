@@ -1,6 +1,6 @@
 @@reventless.gwt
 
-describe("AvailableProducts StateViewSlice", () => {
+describe("AvailableProducts StateViewSliceStream", () => {
   test("CatalogProductSynced creates a row", () =>
     givenEvents([])
     ->whenEvent(CatalogProductSynced({productId: "p1", name: "Laptop", price: 999.99}))

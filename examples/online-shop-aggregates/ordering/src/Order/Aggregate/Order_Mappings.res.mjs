@@ -26,7 +26,6 @@ function map(orderId, event, _queryEngine) {
 
 let AutoShipMapping = {
   Source: undefined,
-  Target: undefined,
   map: map
 };
 

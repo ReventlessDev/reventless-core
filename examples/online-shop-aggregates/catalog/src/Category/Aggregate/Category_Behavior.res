@@ -27,7 +27,7 @@ let decide = (state, command) =>
   | (NotCreated, Rename(_)) => Error(CategoryNotFound)
   | (NotCreated, Archive) => Error(CategoryNotFound)
   | (Active(_), Add(_)) => Error(CategoryAlreadyExists)
-  | (Active(s), Rename({name})) when name == s.name => Ok([])
+  | (Active(s), Rename({name})) if name == s.name => Ok([])
   | (Active(_), Rename({name})) => Ok([Renamed({name: name})])
   | (Active(_), Archive) => Ok([Category.Archived])
   | (Archived, Add(_)) => Error(CategoryAlreadyArchived)

@@ -3,16 +3,31 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
-let consumedEventSchema = S.literal("OrderPlaced");
+let consumedEventSchema = S.union([
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    orderId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductSynced",
+    productId: s.m(DcbTag$Reventless.string)
+  }))
+]);
 
 let commandSchema = S.schema(s => ({
   TAG: "PlaceOrder",
-  orderId: s.m(DcbTag$Reventless.string),
+  orderId: s.m(DcbTag$Reventless.partition),
   customerId: s.m(DcbTag$Reventless.string),
   productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
 }));
 
-let errorSchema = S.literal("OrderAlreadyPlaced");
+let errorSchema = S.union([
+  S.literal("OrderAlreadyPlaced"),
+  S.schema(s => ({
+    TAG: "ProductsNotAvailable",
+    missing: s.m(S.array(S.string))
+  }))
+]);
 
 let eventSchema = S.schema(s => ({
   TAG: "OrderPlaced",

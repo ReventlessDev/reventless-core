@@ -4,7 +4,6 @@
 
 module AutoShipMapping = {
   module Source = Order
-  module Target = Order
 
   let map = (orderId, event, _queryEngine) =>
     switch event {

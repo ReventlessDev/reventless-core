@@ -26,6 +26,8 @@ let whenCmd = include.whenCmd;
 
 let thenEvent = include.thenEvent;
 
+let thenNoEvent = include.thenNoEvent;
+
 describe("SyncCatalogProduct StateChangeSlice", () => {
   test("SyncNewProduct produces CatalogProductSynced", () => thenEvent(whenCmd(givenEvents([]), {
     TAG: "SyncNewProduct",
@@ -51,13 +53,30 @@ describe("SyncCatalogProduct StateChangeSlice", () => {
     productId: "p1",
     price: 899.99
   }));
+  test("re-syncing identical product data produces no events (idempotent)", () => thenNoEvent(whenCmd(givenEvents([{
+      TAG: "CatalogProductSynced",
+      name: "Laptop",
+      price: 999.99
+    }]), {
+    TAG: "SyncNewProduct",
+    productId: "p1",
+    name: "Laptop",
+    price: 999.99
+  })));
+  test("re-applying the current price produces no events (idempotent)", () => thenNoEvent(whenCmd(givenEvents([{
+      TAG: "CatalogProductSynced",
+      name: "Laptop",
+      price: 999.99
+    }]), {
+    TAG: "ChangeSyncedPrice",
+    productId: "p1",
+    price: 999.99
+  })));
 });
 
 let Spec = include.Spec;
 
 let thenEvents = include.thenEvents;
-
-let thenNoEvent = include.thenNoEvent;
 
 let thenEventWithError = include.thenEventWithError;
 

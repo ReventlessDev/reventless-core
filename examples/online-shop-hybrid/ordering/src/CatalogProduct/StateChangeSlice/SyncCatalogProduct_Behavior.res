@@ -9,8 +9,19 @@ let evolve = (state, event) =>
   | CatalogProductPriceChanged({price}) => {...state, price}
   }
 
-let decide = (_state, command) =>
+let decide = (state, command) =>
   switch command {
-  | SyncNewProduct({productId, name, price}) => Ok([CatalogProductSynced({productId, name, price})])
-  | ChangeSyncedPrice({productId, price}) => Ok([CatalogProductPriceChanged({productId, price})])
+  | SyncNewProduct({productId, name, price}) =>
+    // Idempotent: re-syncing identical data emits nothing (at-least-once delivery).
+    if state.name == name && state.price == price {
+      Ok([])
+    } else {
+      Ok([CatalogProductSynced({productId, name, price})])
+    }
+  | ChangeSyncedPrice({productId, price}) =>
+    if state.price == price {
+      Ok([])
+    } else {
+      Ok([CatalogProductPriceChanged({productId, price})])
+    }
   }

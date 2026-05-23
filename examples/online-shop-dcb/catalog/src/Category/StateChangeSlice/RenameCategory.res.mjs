@@ -4,7 +4,14 @@ import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 
 let consumedEventSchema = S.union([
-  S.literal("CategoryAdded"),
+  S.schema(s => ({
+    TAG: "CategoryAdded",
+    name: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "CategoryRenamed",
+    name: s.m(S.string)
+  })),
   S.literal("CategoryArchived")
 ]);
 

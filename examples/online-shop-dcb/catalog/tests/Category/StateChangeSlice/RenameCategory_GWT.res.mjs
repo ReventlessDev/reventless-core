@@ -26,6 +26,8 @@ let whenCmd = include.whenCmd;
 
 let thenEvent = include.thenEvent;
 
+let thenNoEvent = include.thenNoEvent;
+
 let thenError = include.thenError;
 
 describe("RenameCategory StateChangeSlice", () => {
@@ -34,7 +36,10 @@ describe("RenameCategory StateChangeSlice", () => {
     categoryId: "c1",
     name: "Consumer Electronics"
   }), "CategoryNotFound"));
-  test("existing active category produces CategoryRenamed", () => thenEvent(whenCmd(givenEvents(["CategoryAdded"]), {
+  test("existing active category produces CategoryRenamed", () => thenEvent(whenCmd(givenEvents([{
+      TAG: "CategoryAdded",
+      name: "Electronics"
+    }]), {
     TAG: "RenameCategory",
     categoryId: "c1",
     name: "Consumer Electronics"
@@ -43,8 +48,19 @@ describe("RenameCategory StateChangeSlice", () => {
     categoryId: "c1",
     name: "Consumer Electronics"
   }));
+  test("renaming to the current name produces no events (idempotent)", () => thenNoEvent(whenCmd(givenEvents([{
+      TAG: "CategoryAdded",
+      name: "Electronics"
+    }]), {
+    TAG: "RenameCategory",
+    categoryId: "c1",
+    name: "Electronics"
+  })));
   test("archived category returns CategoryAlreadyArchived", () => thenError(whenCmd(givenEvents([
-    "CategoryAdded",
+    {
+      TAG: "CategoryAdded",
+      name: "Electronics"
+    },
     "CategoryArchived"
   ]), {
     TAG: "RenameCategory",
@@ -56,8 +72,6 @@ describe("RenameCategory StateChangeSlice", () => {
 let Spec = include.Spec;
 
 let thenEvents = include.thenEvents;
-
-let thenNoEvent = include.thenNoEvent;
 
 let thenEventWithError = include.thenEventWithError;
 

@@ -29,7 +29,33 @@ let thenEvent = include.thenEvent;
 let thenError = include.thenError;
 
 describe("PlaceOrder StateChangeSlice", () => {
-  test("empty event log produces OrderPlaced", () => thenEvent(whenCmd(givenEvents([]), {
+  test("requires referenced products to be synced first", () => thenError(whenCmd(givenEvents([]), {
+    TAG: "PlaceOrder",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"]
+  }), {
+    TAG: "ProductsNotAvailable",
+    missing: ["p1"]
+  }));
+  test("placement succeeds when products are available", () => thenEvent(whenCmd(givenEvents([{
+      TAG: "CatalogProductSynced",
+      productId: "p1"
+    }]), {
+    TAG: "PlaceOrder",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"]
+  }), {
+    TAG: "OrderPlaced",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"]
+  }));
+  test("partial product availability returns ProductsNotAvailable with missing list", () => thenError(whenCmd(givenEvents([{
+      TAG: "CatalogProductSynced",
+      productId: "p1"
+    }]), {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
@@ -38,20 +64,44 @@ describe("PlaceOrder StateChangeSlice", () => {
       "p2"
     ]
   }), {
-    TAG: "OrderPlaced",
-    orderId: "o1",
-    customerId: "c1",
-    productIds: [
-      "p1",
-      "p2"
-    ]
+    TAG: "ProductsNotAvailable",
+    missing: ["p2"]
   }));
-  test("existing order returns OrderAlreadyPlaced", () => thenError(whenCmd(givenEvents(["OrderPlaced"]), {
+  test("re-placing the same orderId returns OrderAlreadyPlaced", () => thenError(whenCmd(givenEvents([
+    {
+      TAG: "CatalogProductSynced",
+      productId: "p1"
+    },
+    {
+      TAG: "OrderPlaced",
+      orderId: "o1"
+    }
+  ]), {
     TAG: "PlaceOrder",
     orderId: "o1",
     customerId: "c1",
     productIds: ["p1"]
   }), "OrderAlreadyPlaced"));
+  test("a sibling OrderPlaced for a different orderId does not block placement", () => thenEvent(whenCmd(givenEvents([
+    {
+      TAG: "CatalogProductSynced",
+      productId: "p1"
+    },
+    {
+      TAG: "OrderPlaced",
+      orderId: "o2"
+    }
+  ]), {
+    TAG: "PlaceOrder",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"]
+  }), {
+    TAG: "OrderPlaced",
+    orderId: "o1",
+    customerId: "c1",
+    productIds: ["p1"]
+  }));
 });
 
 let Spec = include.Spec;

@@ -23,7 +23,7 @@ let whenEvent = include.whenEvent;
 
 let thenStateWithId = include.thenStateWithId;
 
-describe("AvailableProducts StateViewSlice", () => {
+describe("AvailableProducts StateViewSliceStream", () => {
   test("CatalogProductSynced creates a row", undefined, () => thenStateWithId(whenEvent(givenEvents([]), {
     TAG: "CatalogProductSynced",
     productId: "p1",

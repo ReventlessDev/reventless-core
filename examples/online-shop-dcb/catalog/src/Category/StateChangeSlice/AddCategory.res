@@ -2,7 +2,6 @@
 // Handles the AddCategory command; rejects duplicate creation via DCB optimistic concurrency.
 @@reventless.spec
 
-
 @schema
 type consumedEvent =
   | CategoryAdded

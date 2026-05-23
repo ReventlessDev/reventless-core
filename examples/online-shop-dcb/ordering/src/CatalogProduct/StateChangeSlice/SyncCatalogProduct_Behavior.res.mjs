@@ -15,16 +15,32 @@ function evolve(state, event) {
   }
 }
 
-function decide(_state, command) {
+function decide(state, command) {
   if (command.TAG === "SyncNewProduct") {
+    let price = command.price;
+    let name = command.name;
+    if (state.name === name && state.price === price) {
+      return {
+        TAG: "Ok",
+        _0: []
+      };
+    } else {
+      return {
+        TAG: "Ok",
+        _0: [{
+            TAG: "CatalogProductSynced",
+            productId: command.productId,
+            name: name,
+            price: price
+          }]
+      };
+    }
+  }
+  let price$1 = command.price;
+  if (state.price === price$1) {
     return {
       TAG: "Ok",
-      _0: [{
-          TAG: "CatalogProductSynced",
-          productId: command.productId,
-          name: command.name,
-          price: command.price
-        }]
+      _0: []
     };
   } else {
     return {
@@ -32,7 +48,7 @@ function decide(_state, command) {
       _0: [{
           TAG: "CatalogProductPriceChanged",
           productId: command.productId,
-          price: command.price
+          price: price$1
         }]
     };
   }
