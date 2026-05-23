@@ -629,7 +629,7 @@ All four DCB adapters are always required as functor parameters even if a specif
 3. **Field subset**: Consumed event fields must exist in the produced event shape (consumers can consume a subset)
 4. **Type compatibility**: Consumed field types must be compatible with produced field types
 
-This replaces the compile-time `with type dcbEvent = event` constraint from the previous shared-union approach with a more flexible schema-level validation.
+This build-time, schema-level validation is what allows the decoupled event types described below: each slice declares its own `consumedEvent` / `producedEvent` rather than sharing a single compile-time `dcbEvent` union.
 
 ## Design Decisions
 

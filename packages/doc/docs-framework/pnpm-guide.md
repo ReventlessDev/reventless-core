@@ -63,8 +63,8 @@ script still calling `npm run …`, that's a bug — file it.
   [cross-repo-dev-linking.md](./cross-repo-dev-linking.md).
   The base file lists workspace globs (`packages/*`, `rescript/*`,
   `reventless/*`, `examples/**`) and `onlyBuiltDependencies`.
-- The root `package.json` no longer has a `"workspaces"` key — that moved
-  to the workspace file.
+- Workspace membership is declared in the workspace file, not via a
+  `"workspaces"` key in the root `package.json`.
 - Internal cross-workspace deps are declared as `"workspace:*"` in
   individual `package.json` files. When publishing, pnpm rewrites these to
   the resolved semver version in the tarball.

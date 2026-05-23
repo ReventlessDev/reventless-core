@@ -94,9 +94,8 @@ module type Spec = {
 }
 ```
 
-`collect` and `translate` no longer live on the Spec — they move to the
-`Translation` module. There is no `DcbEventLogSpec` reference; the slice declares
-a local `consumedEvent` union instead.
+`collect` and `translate` live on the `Translation` module. There is no
+`DcbEventLogSpec` reference; the slice declares a local `consumedEvent` union.
 
 ### Spec Fields Explained
 

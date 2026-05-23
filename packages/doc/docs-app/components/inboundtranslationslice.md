@@ -85,7 +85,7 @@ module type Spec = {
 }
 ```
 
-`translate` no longer lives on the Spec — it moves to the `Translation` module.
+`translate` lives on the `Translation` module.
 There is no `DcbEventLogSpec` reference. `@@reventless.spec` injects `name`,
 `moduleUrl`, and a default `commandAuthorization` (`AllowAuthenticated`).
 

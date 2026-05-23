@@ -712,7 +712,7 @@ For these cases, use the manual declarations.
 
 ## `@@reventless.mappings`
 
-File-level attribute on `<Plural>_Projections.res` (multi-source ReadModel projections in `ReadModel/`) and `<Entity>_Mappings.res` (Aggregate event-mapping siblings in `Aggregate/`). Replaces the retired `@reventless.projections` module-level attribute.
+File-level attribute on `<Plural>_Projections.res` (multi-source ReadModel projections in `ReadModel/`) and `<Entity>_Mappings.res` (Aggregate event-mapping siblings in `Aggregate/`).
 
 **What it injects** (at the top of the file):
 | Binding | Condition | Value |

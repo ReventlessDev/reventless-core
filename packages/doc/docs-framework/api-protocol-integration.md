@@ -65,7 +65,7 @@ type rec schemaType =
   | Unknown
 ```
 
-Use `SchemaType.fromSury(~parentName, ~fieldName, schema)` to convert any sury schema into this representation. Then map `schemaType` to your protocol's type system. This avoids duplicating the sury pattern matching that GraphQL and MCP generators previously did independently.
+Use `SchemaType.fromSury(~parentName, ~fieldName, schema)` to convert any sury schema into this representation. Then map `schemaType` to your protocol's type system. This lets the GraphQL and MCP generators share one sury pattern-matching implementation instead of each duplicating it.
 
 ### Api_Naming (`reventless-core/src/components/Api/Api_Naming.res`)
 

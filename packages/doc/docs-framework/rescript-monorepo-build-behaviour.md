@@ -44,16 +44,6 @@ Do **not** list examples as a separate top-level source entry alongside `src`:
 ]
 ```
 
-## What we changed
-
-All `rescript/*` packages that had a separate `example` or `examples` source directory had those directories moved into `src/` and the separate source entry removed:
-
-- `rescript-aws-sdk`: `example/` → `src/example/`
-- `rescript-fast-csv`: `examples/` → `src/examples/`
-- `rescript-hash-object`: `examples/` → `src/examples/`
-- `rescript-node-zlib`: `example/` → `src/example/` (also removed `"public"` constraint)
-- `rescript-uuid`: `examples/` → `src/examples/` (also removed `"public"` constraint)
-
 ## Dev sources are excluded — and deleted — in dependency builds
 
 When a package declares a source directory with `"type": "dev"`, that directory is only compiled when the package is the **root** of the build. When compiled as a dependency (e.g. from the monorepo root), dev sources are excluded.

@@ -75,7 +75,7 @@ Delete the file to reset everything. Committing a sample `local.db` into a fixtu
 
 ## What is persisted
 
-All five storage surfaces are now SQLite-backed:
+All five storage surfaces are SQLite-backed:
 
 | Surface | Status |
 |---|---|

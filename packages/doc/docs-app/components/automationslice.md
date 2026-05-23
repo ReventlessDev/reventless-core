@@ -84,8 +84,8 @@ module type Spec = {
 }
 ```
 
-`collect` and `resolve` no longer live on the Spec — they move to the per-source
-`Mapping`. The framework derives the consumed-event set from each mapping's
+`collect` and `resolve` live on the per-source `Mapping`. The framework derives
+the consumed-event set from each mapping's
 `sourceEventSchema`, so there is no manually-declared `consumedEvent` union and
 no `DcbEventLogSpec` reference.
 

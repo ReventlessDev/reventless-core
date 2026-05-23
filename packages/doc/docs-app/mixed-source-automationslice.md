@@ -10,7 +10,7 @@ Choose mixed-source automation when:
 - You need the standard automation guarantees — exactly-once command emission, retries, heartbeat sweeps, TODO-list correlation — but the events you observe come from heterogeneous sources.
 - The alternative would be a ReadModel + an external poller/trigger; mixed-source automation collapses both into one runtime component.
 
-The motivating commercial use case is a **platform-inspector** automation: the framework's `Plugin` Aggregate runs a runtime state machine (`NotConnected → Detected → Connected → Disconnected`), and a downstream DCB slice tracks the inspector's `(environment, platformName, pluginName)`-partitioned state. A mixed-source automation reacts to the Aggregate events and emits DCB commands to keep the inspector's state in sync — replacing the deploy-time hooks that previously wired this orchestration.
+The motivating commercial use case is a **platform-inspector** automation: the framework's `Plugin` Aggregate runs a runtime state machine (`NotConnected → Detected → Connected → Disconnected`), and a downstream DCB slice tracks the inspector's `(environment, platformName, pluginName)`-partitioned state. A mixed-source automation reacts to the Aggregate events and emits DCB commands to keep the inspector's state in sync.
 
 ## Anatomy
 

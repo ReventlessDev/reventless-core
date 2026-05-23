@@ -24,8 +24,8 @@ control plane and failed with:
 NotFoundException: No field named X found on type Query
 ```
 
-Resolvers are now created via `@pulumi/aws-native` (Cloud Control API)
-instead. Cloud Control hands the request to the `AWS::AppSync::Resolver`
+Resolvers are created via `@pulumi/aws-native` (Cloud Control API).
+Cloud Control hands the request to the `AWS::AppSync::Resolver`
 CloudFormation handler, which waits server-side for the field to be
 visible before reporting success.
 
@@ -55,20 +55,6 @@ sleep** between schema push and resolver creation.
   Pipeline resolvers extract `functionId` outputs from classic Functions
   and pass them into the native `pipelineConfig.functions` array — Pulumi
   supports crossing provider boundaries this way.
-
-## State migration on first deploy after the switch
-
-The first `pulumi up` after the migration **forces a replace** of every
-existing resolver — Pulumi sees the resource type change from
-`aws:appsync/resolver:Resolver` to `aws-native:appsync:Resolver` and has
-no adoption alias to bridge them. Resolvers are stateless configuration;
-the brief gap (a few seconds while the old resolver is deleted before
-the new one is created) means in-flight queries against affected fields
-fail until the new resolver lands. No data loss.
-
-If you ever need a zero-downtime migration in a future move, add a
-`Pulumi.Alias` referencing the old resource type to the new resource's
-options.
 
 ## What to do if the race resurfaces
 

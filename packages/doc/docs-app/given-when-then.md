@@ -28,8 +28,7 @@ an Aggregate implementation and a DCB implementation of each:
 Two cross-cutting DSLs round out the surface:
 
 - `Mapping_GWT` — cross-pattern automation with any combination of Aggregate or
-  StateChangeSlice source/target (replaces the legacy `EventMapping_GWT` which
-  ships as a backward-compat alias).
+  StateChangeSlice source/target.
 - `Query_GWT` — read-model query patterns (indexes, composite keys, resolvers)
   for both ReadModel and StateViewSlice consumers. This is the only DSL that
   asserts against `config` rather than `decide` / `evolve` / `project`.
@@ -397,10 +396,6 @@ available for the error combinations. Swap one or both adapters to
 `FromStateChangeSlice` for the DCB combinations. Runnable copies of all four
 Aggregate/DCB combinations live in
 [`reventless/reventless-gwt/tests/MappingGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/MappingGwtTest.res).
-
-The legacy `EventMapping_GWT.Make(Source, SourceBehavior, Target, TargetBehavior, EventMapping)`
-remains callable with its old argument list — it simply composes two
-`FromBehavior` adapters internally.
 
 ### 4.7 `Automation_GWT` — DCB automation
 
@@ -786,48 +781,28 @@ Full field reference lives in
 
 ---
 
-## 10. Migration tips for existing tests
+## 10. Test conventions
 
-- **Aggregate Behavior / ReadModel Projection** — mechanical rename:
-  `ReventlessInMemory.BehaviorTest` → `ReventlessGwt.Behavior_GWT`,
-  `ReventlessInMemory.ProjectionTest` → `ReventlessGwt.Projection_GWT`,
-  `ReventlessInMemory.AsyncTest` → `ReventlessGwt.AsyncTest`. No logic
-  changes needed.
-- **DCB `*DecisionTest.res`** — structural rewrite from raw
-  `expect(decide(...))->toEqual(...)` into `givenEvents`/`whenCmd`/`thenEvent`
-  form. For small surfaces do it by hand; for hundreds of files the analysis
-  doc §5.4 sketches an LLM-assisted rewrite where you verify the new GWTs
-  against unchanged production code.
-- **`EventMappingTest`** — rename to `EventMapping_GWT` (backward-compat
-  alias) or, for new work, adopt `Mapping_GWT` directly and drop down to
-  explicit `FromBehavior` / `FromStateChangeSlice` adapters.
-- **Cross-plugin E2E tests** — stay as-is in framework or app code that
-  genuinely needs them. They dispatch real commands through the in-memory
-  bus and assert on emitted events; they're integration tests, not GWTs.
-  The runner doesn't try to consume them.
-
-  In the **example plugins** (`examples/online-shop-aggregates/`,
-  `online-shop-dcb/`, `online-shop-hybrid/`) the convention is stricter: the
-  `tests/` tree contains **only `*_GWT.res` files** — no `E2E`, no ad-hoc
-  `*BehaviorTest.res` / `*DecisionTest.res` / `*ProjectionTest.res`. Tests
-  mirror `src/` 1:1 (so the PPX folder-segment heuristic resolves the kind).
-  When adding new components to the examples, ship one `*_GWT.res` per
-  Aggregate / StateChangeSlice / StateViewSlice / StateViewSliceStream /
-  ReadModel / AutomationSlice / InboundTranslationSlice /
-  OutboundTranslationSlice. AWS adapter packages and `*-spec` packages keep
-  zero tests.
-- **Stage dependency** — tests continue to work under Jest during migration
-  because `JestBind` routes to either runner based on `Collector.isActive()`.
-  You can move one package at a time.
-- **PPX annotation** — once a file's `include <Kind>_GWT.Make(<Spec>)` is
-  stable, replace it with `@@reventless.gwt` at the top and let the PPX
-  infer the kind. See
+- **Example plugins ship only `*_GWT.res` files.** In the example plugins
+  (`examples/online-shop-aggregates/`, `online-shop-dcb/`, `online-shop-hybrid/`)
+  the `tests/` tree contains **only `*_GWT.res` files** — no `E2E`, no ad-hoc
+  `*BehaviorTest.res` / `*DecisionTest.res` / `*ProjectionTest.res`. Tests mirror
+  `src/` 1:1 (so the PPX folder-segment heuristic resolves the kind). Ship one
+  `*_GWT.res` per Aggregate / StateChangeSlice / StateViewSlice /
+  StateViewSliceStream / ReadModel / AutomationSlice / InboundTranslationSlice /
+  OutboundTranslationSlice. AWS adapter packages and `*-spec` packages keep zero
+  tests.
+- **Cross-plugin E2E tests** live in framework or app code that genuinely needs
+  them. They dispatch real commands through the in-memory bus and assert on
+  emitted events; they're integration tests, not GWTs, and the runner doesn't
+  consume them.
+- **Prefer `@@reventless.gwt`** at the top of a test file and let the PPX infer
+  the kind; the explicit `include <Kind>_GWT.Make(<Spec>)` form also works. See
   [`.claude/rules/app-developer.md`](https://github.com/ReventlessDev/reventless-core/blob/main/.claude/rules/app-developer.md)
   for the full attribute form.
-- **Inline copy of an existing production slice** — delete the inline copy
-  and switch to `@@reventless.gwt(ProductionModule)` (see § 4.10). The
-  inline style is reserved for tests that document a DSL pattern itself;
-  production-slice tests should reference the real module.
+- **Production-slice tests reference the real module** via
+  `@@reventless.gwt(ProductionModule)` (see § 4.10) rather than an inline copy.
+  The inline style is reserved for tests that document a DSL pattern itself.
 
 ---
 
