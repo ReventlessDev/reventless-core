@@ -401,7 +401,7 @@ module Make = (Spec: Component.Spec, /* other deps */): Component.T => {
 
 ## Related Documentation
 
-- [Framework Inner Workings](./framework-inner-workings.md) - Overall architecture
+- [Framework Internals](./framework-internals.md) - Overall architecture
 - [Messages](./messages.md) - Message flow patterns
 - [Pulumi Integration](./pulumi.md) - Infrastructure as code
 - [ReScript Syntax](/app/rescript-syntax) - Language features (functors, first-class modules)

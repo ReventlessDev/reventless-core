@@ -42,7 +42,7 @@ packages/reventless/tests/dcb/
 
 ## Component Architecture Pattern Recap
 
-Reventless components follow a consistent structure (see `packages/doc/docs/inner-workings/component-structure-pattern.md`):
+Reventless components follow a consistent structure (see `packages/doc/docs/internals/component-structure-pattern.md`):
 
 | File | Purpose | Tests Needed |
 |------|---------|--------------|
@@ -1052,7 +1052,7 @@ To add tests for a new component:
 
 ## References
 
-- **Component Structure**: `packages/doc/docs/inner-workings/component-structure-pattern.md`
+- **Component Structure**: `packages/doc/docs/internals/component-structure-pattern.md`
 - **Existing Tests**: `packages/reventless/tests/` — MessageTest, PluginBehaviorTest, ProjectionTest
 - **Jest Bindings**: `node_modules/@glennsl/rescript-jest/src/jest.resi`
 - **Sury Docs**: `node_modules/sury-ppx/README.md`

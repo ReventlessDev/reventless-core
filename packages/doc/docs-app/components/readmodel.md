@@ -7,7 +7,7 @@ draft: false
 For a short summary of a ReadModel, see [Reventless Components Overview.](../component-overview.md#readmodel)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions, builder logic, and runtime callbacks.
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions, builder logic, and runtime callbacks.
 :::
 
 ```d2
@@ -98,7 +98,7 @@ let config = Reventless.ReadModel.config(
 )
 ```
 
-For information about `@schema` see [Schema annotation](/framework/inner-workings/serialization#schema-annotation).
+For information about `@schema` see [Schema annotation](/framework/internals/serialization#schema-annotation).
 
 ### Id
 

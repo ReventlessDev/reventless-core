@@ -48,7 +48,7 @@ Each component follows a consistent file structure:
 - `Component_Operations.res` — runtime business logic
 - `Component_Callback.res` — runtime event/command handlers
 
-See [Component Structure Pattern](./inner-workings/component-structure-pattern.md) for a full walkthrough using EventLog as an example.
+See [Component Structure Pattern](./internals/component-structure-pattern.md) for a full walkthrough using EventLog as an example.
 
 ### Pulumi.Output.t Wrapping
 
@@ -70,6 +70,6 @@ module Make = (Spec: Spec, Storage: Storage, Channel: Channel): T => { ... }
 ## Where to Start
 
 1. [Get started](./get-started.md) — clone, build, and run tests
-2. [Inner workings](./inner-workings/framework-inner-workings.md) — how the framework fits together
-3. [Component structure](./inner-workings/component-structure-pattern.md) — the file pattern used across all components
-4. [Messages](./inner-workings/messages.md) — how commands and events are serialized and routed
+2. [Internals](./internals/framework-internals.md) — how the framework fits together
+3. [Component structure](./internals/component-structure-pattern.md) — the file pattern used across all components
+4. [Messages](./internals/messages.md) — how commands and events are serialized and routed

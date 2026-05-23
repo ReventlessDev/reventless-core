@@ -57,4 +57,4 @@ Skills in `.claude/skills/` are cross-discovered by Cursor and GitHub Copilot au
 
 Reventless includes a built-in MCP server that gives Claude Code native access to your application's commands and read models while it is running.
 
-See [MCP Server](/framework/inner-workings/mcp) for details on what the server exposes and how to configure it.
+See [MCP Server](/framework/internals/mcp) for details on what the server exposes and how to configure it.

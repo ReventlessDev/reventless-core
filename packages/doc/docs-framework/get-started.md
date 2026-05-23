@@ -94,7 +94,7 @@ Each package in `packages/` has its own `rescript.json` and `package.json`. The 
 6. Add `MyComponent_Callback.res` — event/command handlers (if needed)
 7. Expose the component from the package barrel file
 
-See [Component Structure Pattern](./inner-workings/component-structure-pattern.md) for detailed guidance.
+See [Component Structure Pattern](./internals/component-structure-pattern.md) for detailed guidance.
 
 ## Running the Docs
 

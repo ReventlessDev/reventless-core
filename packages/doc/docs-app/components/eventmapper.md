@@ -7,7 +7,7 @@ draft: false
 For a short summary of EventMapper, see [Reventless Components Overview.](../component-overview.md#eventmapper)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`EventMapper.res`), builder logic (`EventMapper_Builder.res`), and runtime callbacks (`EventMapper_Callback.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`EventMapper.res`), builder logic (`EventMapper_Builder.res`), and runtime callbacks (`EventMapper_Callback.res`).
 :::
 
 ## Overview

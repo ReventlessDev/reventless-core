@@ -1,26 +1,8 @@
-.packages {
-  padding: 2rem 0;
-  background-color: var(--ifm-background-color);
-}
-
-.sectionTitle {
-  text-align: center;
-  margin-bottom: 0.5rem;
-  font-size: 2rem;
-  font-weight: 600;
-}
-
-.sectionDescription {
-  text-align: center;
-  margin-bottom: 3rem;
-  color: var(--ifm-color-content-secondary);
-  font-size: 1.1rem;
-}
-
 .categoriesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
+  margin: 2rem 0;
 }
 
 .category {
@@ -57,12 +39,30 @@
   border: 1px solid var(--ifm-color-emphasis-100);
 }
 
+.packageHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .packageName {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--ifm-color-primary-dark);
   background: var(--ifm-color-primary-contrast-background);
   padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.privateBadge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ifm-color-content-secondary);
+  background: var(--ifm-color-emphasis-200);
+  padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
 
@@ -74,10 +74,6 @@
 }
 
 @media screen and (max-width: 996px) {
-  .packages {
-    padding: 2rem 1rem;
-  }
-
   .categoriesGrid {
     grid-template-columns: 1fr;
   }

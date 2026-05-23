@@ -7,7 +7,7 @@ draft: false
 For a short summary of InboundTranslationSlice, see [Reventless Components Overview.](../component-overview.md#inboundtranslationslice)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`InboundTranslationSlice.res`), builder logic (`InboundTranslationSlice_Builder.res`), and callback/handler logic (`InboundTranslationSlice_Callback.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`InboundTranslationSlice.res`), builder logic (`InboundTranslationSlice_Builder.res`), and callback/handler logic (`InboundTranslationSlice_Callback.res`).
 :::
 
 ## Overview

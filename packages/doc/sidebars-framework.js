@@ -5,6 +5,7 @@ const sidebars = {
   frameworkSidebar: [
     'index',
     'get-started',
+    'packages',
     'development-process',
     'ppx-binary-management',
     {
@@ -23,17 +24,17 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Inner Workings',
+      label: 'Internals',
       items: [
-        'inner-workings/framework-inner-workings',
-        'inner-workings/messages',
-        'inner-workings/serialization',
-        'inner-workings/resources',
-        'inner-workings/runtime',
-        'inner-workings/pulumi',
-        'inner-workings/component-structure-pattern',
-        'inner-workings/mcp',
-        'inner-workings/extending-the-framework',
+        'internals/framework-internals',
+        'internals/messages',
+        'internals/serialization',
+        'internals/resources',
+        'internals/runtime',
+        'internals/pulumi',
+        'internals/component-structure-pattern',
+        'internals/mcp',
+        'internals/extending-the-framework',
       ],
     },
     {

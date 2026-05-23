@@ -5,7 +5,7 @@ title: Heartbeat
 For a short summary of a Heartbeat, see [Reventless Components Overview.](../component-overview.md#heartbeat)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`Heartbeat.res`), builder logic (`Heartbeat_Builder.res`), adapter interface (`Heartbeat_Adapter.res`), and callback handlers (`Heartbeat_Callback.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`Heartbeat.res`), builder logic (`Heartbeat_Builder.res`), adapter interface (`Heartbeat_Adapter.res`), and callback handlers (`Heartbeat_Callback.res`).
 :::
 
 ## Overview

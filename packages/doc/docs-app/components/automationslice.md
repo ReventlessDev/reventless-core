@@ -7,7 +7,7 @@ draft: false
 For a short summary of AutomationSlice, see [Reventless Components Overview.](../component-overview.md#automationslice)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`AutomationSlice.res`), builder logic (`AutomationSlice_Builder.res`), and callback/handler logic (`AutomationSlice_Callback.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`AutomationSlice.res`), builder logic (`AutomationSlice_Builder.res`), and callback/handler logic (`AutomationSlice_Callback.res`).
 :::
 
 :::tip Mixed-source automation

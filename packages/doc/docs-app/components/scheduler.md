@@ -5,7 +5,7 @@ title: Scheduler
 For a short summary of a Scheduler, see [Reventless Components Overview.](../component-overview.md#scheduler)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`Scheduler.res`), builder logic (`Scheduler_Builder.res`), and adapter interface (`Scheduler_Adapter.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`Scheduler.res`), builder logic (`Scheduler_Builder.res`), and adapter interface (`Scheduler_Adapter.res`).
 :::
 
 ## Overview

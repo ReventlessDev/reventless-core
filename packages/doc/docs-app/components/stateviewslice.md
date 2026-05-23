@@ -7,7 +7,7 @@ draft: false
 For a short summary of StateViewSlice, see [Reventless Components Overview.](../component-overview.md#stateviewslice)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`StateViewSlice.res`), builder logic (`StateViewSlice_Builder.res`), and callback/handler logic (`StateViewSlice_Callback.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`StateViewSlice.res`), builder logic (`StateViewSlice_Builder.res`), and callback/handler logic (`StateViewSlice_Callback.res`).
 :::
 
 ## Overview

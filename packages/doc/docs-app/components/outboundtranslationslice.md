@@ -7,7 +7,7 @@ draft: false
 For a short summary of OutboundTranslationSlice, see [Reventless Components Overview.](../component-overview.md#outboundtranslationslice)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`OutboundTranslationSlice.res`), builder logic (`OutboundTranslationSlice_Builder.res`), and callback/handler logic (`OutboundTranslationSlice_Callback.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`OutboundTranslationSlice.res`), builder logic (`OutboundTranslationSlice_Builder.res`), and callback/handler logic (`OutboundTranslationSlice_Callback.res`).
 :::
 
 ## Overview

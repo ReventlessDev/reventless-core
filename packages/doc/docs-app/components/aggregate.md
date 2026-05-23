@@ -7,7 +7,7 @@ draft: false
 For a short summary of an Aggregate, see [Reventless Components Overview.](../component-overview.md#aggregate)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`Aggregate.res`), builder logic (`Aggregate_Builder.res`), and runtime callbacks (`Aggregate_Callback.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`Aggregate.res`), builder logic (`Aggregate_Builder.res`), and runtime callbacks (`Aggregate_Callback.res`).
 :::
 
 ```d2
@@ -73,7 +73,7 @@ type error =
   | CustomerAlreadyDeactivated
 ```
 
-The `@@reventless.spec` annotation auto-injects `let name` (derived from filename) and other boilerplate. For information about `@schema` see [Schema annotation](/framework/inner-workings/serialization#schema-annotation).
+The `@@reventless.spec` annotation auto-injects `let name` (derived from filename) and other boilerplate. For information about `@schema` see [Schema annotation](/framework/internals/serialization#schema-annotation).
 
 ### Id
 

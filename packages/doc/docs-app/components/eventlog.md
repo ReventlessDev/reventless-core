@@ -7,7 +7,7 @@ draft: false
 For a short summary of EventLog, see [Reventless Components Overview.](../component-overview.md#eventlog)
 
 :::info Framework Implementation
-This component follows the Reventless [Component Structure Pattern](/framework/inner-workings/component-structure-pattern), using separate files for interface definitions (`EventLog.res`), builder logic (`EventLog_Builder.res`), adapter interface (`EventLog_Adapter.res`), and runtime operations (`EventLog_Operations.res`).
+This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`EventLog.res`), builder logic (`EventLog_Builder.res`), adapter interface (`EventLog_Adapter.res`), and runtime operations (`EventLog_Operations.res`).
 :::
 
 ## Overview

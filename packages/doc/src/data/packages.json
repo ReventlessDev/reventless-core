@@ -1,0 +1,147 @@
+{
+  "categories": [
+    {
+      "title": "Framework",
+      "description": "The Reventless framework and its extension packages.",
+      "packages": [
+        {
+          "name": "@reventlessdev/reventless-aws",
+          "description": "AWS adapters for Reventless",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-codegen",
+          "description": "Forward codegen pipeline: canonical Event Model → Reventless Spec/GWT/Skeleton files",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-conventional-changelog",
+          "description": "Reventless custom conventional-changelog preset with reduced blank lines",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-core",
+          "description": "Core package for Reventless framework",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-gwt",
+          "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-in-memory",
+          "description": "In-memory platform for Reventless (for testing without AWS)",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-infra",
+          "description": "Infrastructure types for Reventless framework",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-interop",
+          "description": "Versioned cross-plugin contract types and compatibility validation for Reventless",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-layer-builder",
+          "description": "aws lambda layer to be used in reventless based projects",
+          "private": true
+        },
+        {
+          "name": "@reventlessdev/reventless-spec",
+          "description": "Specifications for Reventless",
+          "private": false
+        }
+      ]
+    },
+    {
+      "title": "ReScript Bindings",
+      "description": "ReScript bindings for the JS/npm libraries used across the framework.",
+      "packages": [
+        {
+          "name": "@reventlessdev/rescript-aws-sdk",
+          "description": "ReScript bindings for aws-sdk",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-effect",
+          "description": "ReScript bindings for the Effect TypeScript library",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-fast-csv",
+          "description": "ReScript bindings for fast-csv",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-graphql-yoga",
+          "description": "ReScript bindings for graphql-yoga",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-hash-object",
+          "description": "ReScript bindings for hash-object",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-mcp-sdk",
+          "description": "ReScript bindings for @modelcontextprotocol/sdk",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-moment",
+          "description": "ReScript bindings for Moment.js",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-node-streams",
+          "description": "ReScript bindings for node streams",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-node-zlib",
+          "description": "ReScript bindings for node zlib",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-pulumi-aws",
+          "description": "ReScript bindings for @pulumi/aws",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-pulumi-pulumi",
+          "description": "ReScript bindings for @pulumi/pulumi",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-ssh2",
+          "description": "ReScript bindings for ssh2",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/rescript-uuid",
+          "description": "ReScript bindings for node streams",
+          "private": false
+        }
+      ]
+    },
+    {
+      "title": "Tooling",
+      "description": "Build tooling, the PPX, and editor integration.",
+      "packages": [
+        {
+          "name": "@reventlessdev/reventless-ppx",
+          "description": "ReScript PPX to eliminate boilerplate from Reventless application code",
+          "private": false
+        },
+        {
+          "name": "@reventlessdev/reventless-vscode",
+          "description": "VS Code Test Explorer integration for Reventless Given-When-Then slices",
+          "private": true
+        }
+      ]
+    }
+  ]
+}

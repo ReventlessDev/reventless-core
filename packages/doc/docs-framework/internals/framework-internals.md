@@ -1,5 +1,5 @@
 ---
-title: Framework Inner Workings
+title: Framework Internals
 date: 2021-11-22
 draft: false
 ---
@@ -31,7 +31,7 @@ This pattern ensures clear separation of concerns, type safety through module ty
 - [MCP (Model Context Protocol)](./mcp.md) - AI-native access via tools and resources
 - [AWS Adapters](/infrastructure/aws) - Provider-specific implementations
 
-# Framework Inner Workings
+# Framework Internals
 
 This section provides in-depth documentation about how the Reventless framework is structured and operates internally.
 

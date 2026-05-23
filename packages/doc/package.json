@@ -9,8 +9,9 @@
   "files": [],
   "scripts": {
     "docusaurus": "docusaurus",
-    "start": "docusaurus start",
-    "build": "docusaurus build",
+    "generate-packages": "node scripts/generate-packages.mjs",
+    "start": "node scripts/generate-packages.mjs && docusaurus start",
+    "build": "node scripts/generate-packages.mjs && docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",

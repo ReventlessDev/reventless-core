@@ -3,7 +3,6 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
-import HomepagePackages from '@site/src/components/HomepagePackages';
 
 import Heading from '@theme/Heading';
 import styles from './index.module.css';
@@ -54,7 +53,7 @@ const ReadingPaths = [
     steps: [
       <><Link to="/app/">Introduction</Link> — what, why, who</>,
       <><Link to="/tutorials/get-started">Tutorial overview</Link></>,
-      <><Link to="/tutorials/hybrid-based">Hybrid walkthrough</Link></>,
+      <><Link to="/tutorials/hybrid-based">Example walkthrough</Link></>,
     ],
   },
   {
@@ -71,8 +70,8 @@ const ReadingPaths = [
     question: '“I want to contribute to the framework.”',
     steps: [
       <><Link to="/framework/get-started">Contributing get-started</Link></>,
-      <>Framework internals (ordered)</>,
-      <>Component-structure pattern → extending the framework</>,
+      <><Link to="/framework/internals/framework-internals">Framework internals</Link> (ordered)</>,
+      <><Link to="/framework/internals/component-structure-pattern">Component-structure pattern</Link> → <Link to="/framework/internals/extending-the-framework">extending the framework</Link></>,
     ],
   },
 ];
@@ -111,9 +110,8 @@ export default function Home() {
       description="Reventless is an event-sourced CQRS framework for building serverless business applications with ReScript and Pulumi">
       <HomepageHeader />
       <main>
-        <ReadingPathsSection />
         <HomepageFeatures />
-        <HomepagePackages />
+        <ReadingPathsSection />
       </main>
     </Layout>
   );
