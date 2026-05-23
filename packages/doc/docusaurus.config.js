@@ -235,7 +235,7 @@ const config = {
             type: "doc",
             docId: "index",
             position: "left",
-            label: "Introduction",
+            label: "Intro",
           },
           {
             type: "docSidebar",
@@ -270,14 +270,14 @@ const config = {
             position: "left",
           },
           {
-            href: "https://github.com/ReventlessDev/reventless-core",
-            label: "GitHub",
+            type: "custom-versionSwitcher",
             position: "right",
           },
           {
-            href: "https://github.com/ReventlessDev/reventless-core/releases",
-            label: "Releases",
+            href: "https://github.com/ReventlessDev/reventless-core",
             position: "right",
+            className: "header-github-link",
+            "aria-label": "GitHub repository",
           },
         ],
       },
