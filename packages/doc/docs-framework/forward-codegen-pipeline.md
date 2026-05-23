@@ -32,7 +32,7 @@ plugin/
 
 ## Canonical model
 
-Every adapter targets one in-memory shape: [`Model.t`](../../reventless/reventless-codegen/src/Model.res). It carries slices, aggregates, read models, and structural chapters; each entity has a stable `id` for rename-survival across roundtrips. The same `@schema`-derived JSON codec writes the sync-base snapshots, so the on-disk format is human-diffable in PRs.
+Every adapter targets one in-memory shape: [`Model.t`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-codegen/src/Model.res). It carries slices, aggregates, read models, and structural chapters; each entity has a stable `id` for rename-survival across roundtrips. The same `@schema`-derived JSON codec writes the sync-base snapshots, so the on-disk format is human-diffable in PRs.
 
 Structural chapters in `slice.context` (e.g. `"Catalog.Product"`) become subfolder names — the first segment is the plugin, the rest is the chapter folder under `src/` and `tests/`.
 
@@ -93,6 +93,6 @@ Plan 05 ships only the **Dilger** adapter (`--adapter dilger`). The `Adapter.T` 
 
 ## References
 
-- [`docs/plans/forward-codegen-pipeline.md`](../plans/forward-codegen-pipeline.md) — full plan with all decisions, scope, and phase breakdown
-- [`docs/analysis/spec-implementation-split.md`](../analysis/spec-implementation-split.md) — Spec-First file boundaries that this pipeline emits into
-- [`docs/analysis/given-when-then-specifications.md`](../analysis/given-when-then-specifications.md) — GWT methodology that the emitter targets
+- [`docs/plans/forward-codegen-pipeline.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/forward-codegen-pipeline.md) — full plan with all decisions, scope, and phase breakdown
+- [`docs/analysis/spec-implementation-split.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/spec-implementation-split.md) — Spec-First file boundaries that this pipeline emits into
+- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) — GWT methodology that the emitter targets

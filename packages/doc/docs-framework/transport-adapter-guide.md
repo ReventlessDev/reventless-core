@@ -146,7 +146,7 @@ type queryInterceptor = (
 let queryInterceptorHook: ref<option<queryInterceptor>> = ref(None)
 ```
 
-**Note:** `QueryDb_Callback` and its hook are planned but not yet implemented. See [`docs/plans/query-interceptor-hook.md`](../plans/query-interceptor-hook.md) for the implementation plan.
+**Note:** `QueryDb_Callback` and its hook are planned but not yet implemented. See [`docs/plans/query-interceptor-hook.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/query-interceptor-hook.md) for the implementation plan.
 
 ### When to call it
 

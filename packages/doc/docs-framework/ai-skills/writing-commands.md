@@ -1,5 +1,5 @@
 ---
-title: Writing Commands
+title: Writing Slash Commands
 sidebar_position: 3
 ---
 

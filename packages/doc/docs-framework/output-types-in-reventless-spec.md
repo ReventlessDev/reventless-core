@@ -6,12 +6,12 @@ Why do we need all the output types for the components defined in `reventless-sp
 
 ## What the Output Types Are
 
-Every component module in [`packages/reventless-spec/src/components/`](../packages/reventless-spec/src/components/) defines a `type outputs` (and sometimes `type allOutputs`, `type operations`). Examples:
+Every component module in [`packages/reventless-spec/src/components/`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-spec/src/components/) defines a `type outputs` (and sometimes `type allOutputs`, `type operations`). Examples:
 
-- [`Aggregate.outputs`](../packages/reventless-spec/src/components/Aggregate.res) — `{name, commandGenerator, commandTopic, eventLog, eventMapper?, addEventMapper}`
-- [`Plugin.outputs`](../packages/reventless-spec/src/components/Plugin.res) — `{id, version, heartbeatInterval, eventCollector, extensionPoints, …}`
-- [`ReadModel.outputs`](../packages/reventless-spec/src/components/ReadModel.res) — `{name, queryDb, eventCollector, sourceNames}`
-- [`EventTopic.outputs`](../packages/reventless-spec/src/components/EventTopic.res) — `{resources}`
+- [`Aggregate.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/Aggregate.res) — `{name, commandGenerator, commandTopic, eventLog, eventMapper?, addEventMapper}`
+- [`Plugin.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/Plugin.res) — `{id, version, heartbeatInterval, eventCollector, extensionPoints, …}`
+- [`ReadModel.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/ReadModel.res) — `{name, queryDb, eventCollector, sourceNames}`
+- [`EventTopic.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/EventTopic.res) — `{resources}`
 - etc.
 
 ## Who Actually Uses These Types?
@@ -25,13 +25,13 @@ Every component builder in `packages/reventless/src/components/` re-exports the 
 type outputs = Reventless.Aggregate.outputs
 ```
 
-The builders construct values of these types (e.g. [`Aggregate_Builder.res`](../packages/reventless/src/components/Aggregate/Aggregate_Builder.res)), pass them between components (e.g. [`Plugin_Helpers.res`](../packages/reventless/src/components/Plugin/Plugin_Helpers.res)), and use them in cross-component wiring (e.g. `Plugin_Helpers.extractExtensionPointDefinitions` takes `array<ExtensionPoint.outputs>`).
+The builders construct values of these types (e.g. [`Aggregate_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Aggregate/Aggregate_Builder.res)), pass them between components (e.g. [`Plugin_Helpers.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res)), and use them in cross-component wiring (e.g. `Plugin_Helpers.extractExtensionPointDefinitions` takes `array<ExtensionPoint.outputs>`).
 
 ### 2. The `reventless` Package — Cross-Stack Interop via `Interstack`
 
 #### What `Interstack` Does
 
-[`Interstack.res`](../packages/reventless/src/util/Interstack.res) is a **cross-stack dependency resolver** for Pulumi multi-stack deployments. In a Pulumi architecture, a large application is split into multiple independently-deployed stacks (e.g. a "core" infrastructure stack and several "plugin" stacks). `Interstack` is the mechanism by which one stack reads the **exported outputs** of another stack at deploy time.
+[`Interstack.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/util/Interstack.res) is a **cross-stack dependency resolver** for Pulumi multi-stack deployments. In a Pulumi architecture, a large application is split into multiple independently-deployed stacks (e.g. a "core" infrastructure stack and several "plugin" stacks). `Interstack` is the mechanism by which one stack reads the **exported outputs** of another stack at deploy time.
 
 It works in three steps:
 
@@ -53,7 +53,7 @@ Pulumi stack outputs are **serialized JSON** at rest. When `getOutputs` fetches 
 #### Who Uses `Interstack`
 
 - **Application developers** — directly, when they call `Interstack.mergeTasks(localTasks)` or `ResourceQueryRuntime.bucketNameOfAllTasks(...)`. These are the primary user-facing APIs for cross-stack resource sharing. At that point they work with `Task.outputs` values.
-- **[`Plugin_Helpers.getRemoteStorageResources`](../packages/reventless/src/components/Plugin/Plugin_Helpers.res)** — fetches the `"plugin"` output from a remote stack and casts it to `pureOutputs`, which is structurally identical to `Plugin.outputs` but with all `Pulumi.Output.t<_>` wrappers stripped (because stack outputs are already resolved JSON). Used when one plugin stack needs to read the `QueryDb` resources of another plugin stack.
+- **[`Plugin_Helpers.getRemoteStorageResources`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res)** — fetches the `"plugin"` output from a remote stack and casts it to `pureOutputs`, which is structurally identical to `Plugin.outputs` but with all `Pulumi.Output.t<_>` wrappers stripped (because stack outputs are already resolved JSON). Used when one plugin stack needs to read the `QueryDb` resources of another plugin stack.
 
 #### The Serialization Chain
 
@@ -72,21 +72,21 @@ The JSON that crosses the stack boundary looks like:
 
 There is **no runtime type checking** here. The cast is purely a compile-time assertion. The actual deserialization is structural — the JSON field names must match the record field names exactly. This makes the output types a **public, versioned, cross-stack serialization contract**.
 
-[`Plugin_Helpers.getRemoteStorageResources`](../packages/reventless/src/components/Plugin/Plugin_Helpers.res) deserializes a remote stack's `"plugin"` output as `pureOutputs` (structurally identical to `Plugin.outputs` but unwrapped). These types must be stable and shared because they **cross Pulumi stack boundaries as serialized JSON**.
+[`Plugin_Helpers.getRemoteStorageResources`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res) deserializes a remote stack's `"plugin"` output as `pureOutputs` (structurally identical to `Plugin.outputs` but unwrapped). These types must be stable and shared because they **cross Pulumi stack boundaries as serialized JSON**.
 
 ### 3. The `reventless-spec` Itself — Cross-Component References
 
 The output types reference each other within the spec. For example:
 
-- [`Aggregate.outputs`](../packages/reventless-spec/src/components/Aggregate.res) references `CommandGenerator.outputs`, `CommandTopic.outputs`, `EventLog.outputs`, `EventMapper.outputs`
-- [`ReadModel.outputs`](../packages/reventless-spec/src/components/ReadModel.res) references `QueryDb.outputs`, `EventCollector.outputs`
-- [`Plugin.outputs`](../packages/reventless-spec/src/components/Plugin.res) references nearly all other component output types
+- [`Aggregate.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/Aggregate.res) references `CommandGenerator.outputs`, `CommandTopic.outputs`, `EventLog.outputs`, `EventMapper.outputs`
+- [`ReadModel.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/ReadModel.res) references `QueryDb.outputs`, `EventCollector.outputs`
+- [`Plugin.outputs`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/Plugin.res) references nearly all other component output types
 
 This creates a dependency graph entirely within `reventless-spec`.
 
 ### 4. Application Developers — Indirectly, But Not Directly
 
-Application developers use `reventless-aws` (e.g. [`Plugin.res`](../packages/reventless-aws/src/components/Plugin.res)) which wraps everything. They call `Plugin.make(...)` and get back a `component`. They never need to name `Plugin.outputs` or `Aggregate.outputs` explicitly in their own code — the types flow through type inference.
+Application developers use `reventless-aws` (e.g. [`Plugin.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/components/Plugin.res)) which wraps everything. They call `Plugin.make(...)` and get back a `component`. They never need to name `Plugin.outputs` or `Aggregate.outputs` explicitly in their own code — the types flow through type inference.
 
 The **one exception** is cross-stack interop: if an app developer uses `Interstack.mergeTasks` or `ResourceQueryRuntime.bucketNameOfAllTasks`, they work with `Task.outputs` values. But even then, they *consume* the type, not define it.
 
@@ -112,11 +112,11 @@ The spec package defines the *interface* between application developers and the 
 
 ### Problem 4: The `Adapter.resource` Dependency
 
-Output types depend on [`Adapter.resource`](../packages/reventless-spec/src/adapter/Adapter.res) which is also in `reventless-spec`. This is intentional — it's a spec-level abstraction over cloud resources. If outputs moved to `reventless`, they'd still need to reference `Adapter.resource` from `reventless-spec`, creating a cross-package dependency in the wrong direction.
+Output types depend on [`Adapter.resource`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/adapter/Adapter.res) which is also in `reventless-spec`. This is intentional — it's a spec-level abstraction over cloud resources. If outputs moved to `reventless`, they'd still need to reference `Adapter.resource` from `reventless-spec`, creating a cross-package dependency in the wrong direction.
 
 ### Problem 5: The `pureOutputs` Unwrapping Pattern
 
-[`Plugin_Helpers`](../packages/reventless/src/components/Plugin/Plugin_Helpers.res) defines a `pureOutputs` type that is structurally identical to `Plugin.outputs` but with every `Pulumi.Output.t<X>` replaced by plain `X`. This is necessary because when a remote stack's `"plugin"` export is fetched via `Interstack`, Pulumi has already resolved all the `Output` wrappers — the result is plain JSON, not `Pulumi.Output.t<_>` values.
+[`Plugin_Helpers`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res) defines a `pureOutputs` type that is structurally identical to `Plugin.outputs` but with every `Pulumi.Output.t<X>` replaced by plain `X`. This is necessary because when a remote stack's `"plugin"` export is fetched via `Interstack`, Pulumi has already resolved all the `Output` wrappers — the result is plain JSON, not `Pulumi.Output.t<_>` values.
 
 This `pureOutputs` type must stay in sync with `Plugin.outputs` manually. If the output types lived in `reventless`, this mirroring relationship would be between two types in the same package, making it easy to change one without updating the other and breaking cross-stack deserialization silently. Keeping `Plugin.outputs` in `reventless-spec` makes the canonical definition clearly separate from the implementation-internal `pureOutputs` mirror.
 

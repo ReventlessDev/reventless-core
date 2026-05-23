@@ -47,14 +47,14 @@ POSTs a small "something changed" descriptor to a channel, and any browser viewi
 that read model is subscribed to it.
 
 A single AppSync Events API per platform serves **both** domain and platform
-read-model channels (see [`AppSync_EventsApi.res`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res)).
+read-model channels (see [`AppSync_EventsApi.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res)).
 
 ### The two server-side sources
 
 | Source | Trigger | Adapter | Channel root | Payload |
 |--------|---------|---------|--------------|---------|
-| **B — state changes** | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?}` |
-| **A — raw events** | SNS EventTopic → SQS | [`EventLogSubscription_AppSync.res`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) | event log **displayName** | `{position, eventType, payload, originatorSlice}` |
+| **B — state changes** | QueryDb DynamoDB **Stream** | [`StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) | read model **list field name** | change descriptor `{changeKind, id, sortKeyValue?}` |
+| **A — raw events** | SNS EventTopic → SQS | [`EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) | event log **displayName** | `{position, eventType, payload, originatorSlice}` |
 
 AutoUI list/detail views consume **Source B**. The rest of this guide focuses on
 Source B; Source A follows the same namespace/auth rules with a different channel
@@ -88,7 +88,7 @@ name `default` is just a namespace Reventless chooses to create.
 ### Why Reventless uses a single namespace named `default`
 
 Reventless creates exactly one namespace, named `default`, in
-[`AppSync_EventsApi.make`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res):
+[`AppSync_EventsApi.make`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res):
 
 ```rescript
 let defaultNamespace = ChannelNamespace.make(
@@ -149,7 +149,7 @@ So `Catalog_Products` becomes `Catalog-Products` on the wire on both sides.
 
 ### The channel root **is the list field name** (invariant #2)
 
-This is the part that bit us. The registry [`Api_Naming.queryNames`](../../reventless/reventless-core/src/components/Api/Api_Naming.res)
+This is the part that bit us. The registry [`Api_Naming.queryNames`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Api/Api_Naming.res)
 holds several names for one read model:
 
 | Field | Value for read model `Products` in plugin `Catalog` | Used for |
@@ -158,10 +158,10 @@ holds several names for one read model:
 | `listFieldName` | `Catalog_Products` (**plural**) | GraphQL list query field |
 
 The AutoUI manifest sets `queryableDef.queryField = listFieldName`
-([`Plugin_Structure.res`](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res)),
+([`Plugin_Structure.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Plugin/Plugin_Structure.res)),
 and the browser subscribes on `readModel.queryField`. Therefore the **publisher
 must also use `listFieldName`** as the channel root
-([`Platform.res` `subscriptionInfraHook`](../../reventless/reventless-aws/src/Platform.res)):
+([`Platform.res` `subscriptionInfraHook`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/Platform.res)):
 
 ```rescript
 let topicName =
@@ -330,7 +330,7 @@ an extra round of QueryDb reads on reconnect. The flag is independent of
 stream itself intact.
 
 Out of scope for Tier 1 (deferred — see
-[`docs/analysis/reconnect-replay-missed-changes.md`](../analysis/reconnect-replay-missed-changes.md)):
+[`docs/analysis/reconnect-replay-missed-changes.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/reconnect-replay-missed-changes.md)):
 server-side change journal, descriptor-level catch-up
 (`catchUpChanges(channel, since)`), and cross-tab cursor coordination.
 
@@ -340,7 +340,7 @@ server-side change journal, descriptor-level catch-up
 
 | Concern | Where | Notes |
 |---------|-------|-------|
-| Create the Events API + `default` namespace | `AppSync_EventsApi.make` in [`Platform.res`](../../reventless/reventless-aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports. |
+| Create the Events API + `default` namespace | `AppSync_EventsApi.make` in [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/Platform.res) | **Only on the platform/monolithic stack.** Plugin stacks reconstruct a phantom from the `eventsApiArn` / `eventsApiDns` stack exports. |
 | Shared StateTopic Lambda (one per events API per stack) | `StateTopic_AppSync.make` (registers) + `StateTopic_AppSync.finish` (builds) in `Platform.res` | `subscriptionInfraHook` calls `make` for every stream-enabled QueryDb in the stack — admin RMs, user-plugin `ReadModelStream`s, and `StateViewSliceStream`s alike. `finish` runs once at the end of `makePlatform` / `deployPlatform` / `deployPlugin` and builds a single Lambda + IAM role/policy + one `EventSourceMapping` per stream, all targeting that shared Lambda. Routing is per-record via the `STATE_TOPIC_MAP` env var (`{ "<ddbTableName>": "<listFieldName>" }`) — the handler reads `record.eventSourceARN`, extracts the table name, and looks up the matching channel root. Replaces the prior per-RM Lambda fleet. |
 | Admin RM live updates | `PluginReadModel`, `PlatformEventGraphReadModel`, `UIFragmentRegistryReadModel` in `Platform.res` | The framework's built-in admin read models (`Platform_Plugins`, `Platform_PlatformEventGraphs`, `Platform_UIFragments`) are stream-enabled and participate in Source B — admin lists in the host-shell now live-update. UIFragmentRegistry uses `ReadModel_Builder_NoResolver_Stream` because its GraphQL field is served by a dedicated `Platform_UIFragments_Lambda`, not an auto-generated resolver. |
 
@@ -424,11 +424,11 @@ work" until the last fell.
 ## File reference map
 
 **Server (publish) — `reventless-core`:**
-- [`adapter/Api/AppSync_EventsApi.res`](../../reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res) — Events API + `default` namespace + auth modes.
-- [`adapter/StateTopic/StateTopic_AppSync.res`](../../reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) — Source B Lambda (stream → channel).
-- [`adapter/EventLogSubscription/EventLogSubscription_AppSync.res`](../../reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) — Source A Lambda (SNS → channel).
-- [`Platform.res`](../../reventless/reventless-aws/src/Platform.res) — `subscriptionInfraHook`, Events API creation, `config.json`, stack exports.
-- [`components/Api/Api_Naming.res`](../../reventless/reventless-core/src/components/Api/Api_Naming.res) — `listFieldName` vs `returnTypeName`.
+- [`adapter/Api/AppSync_EventsApi.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/Api/AppSync_EventsApi.res) — Events API + `default` namespace + auth modes.
+- [`adapter/StateTopic/StateTopic_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/StateTopic/StateTopic_AppSync.res) — Source B Lambda (stream → channel).
+- [`adapter/EventLogSubscription/EventLogSubscription_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res) — Source A Lambda (SNS → channel).
+- [`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/Platform.res) — `subscriptionInfraHook`, Events API creation, `config.json`, stack exports.
+- [`components/Api/Api_Naming.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Api/Api_Naming.res) — `listFieldName` vs `returnTypeName`.
 
 **Browser (subscribe) — `reventless-ui` / `reventless-host-shell`:**
 - `src/live/EventsClient.res` — WebSocket protocol + auth subprotocol.

@@ -228,6 +228,19 @@ const config = {
         },
         items: [
           {
+            type: "doc",
+            docId: "index",
+            position: "left",
+            label: "Introduction",
+          },
+          {
+            type: "docSidebar",
+            sidebarId: "tutorialsSidebar",
+            docsPluginId: "tutorials",
+            position: "left",
+            label: "Tutorial",
+          },
+          {
             type: "docSidebar",
             sidebarId: "appSidebar",
             position: "left",
@@ -235,10 +248,10 @@ const config = {
           },
           {
             type: "docSidebar",
-            sidebarId: "tutorialsSidebar",
-            docsPluginId: "tutorials",
+            sidebarId: "infrastructureSidebar",
+            docsPluginId: "infrastructure",
             position: "left",
-            label: "Tutorials",
+            label: "Infrastructure",
           },
           {
             type: "docSidebar",
@@ -246,13 +259,6 @@ const config = {
             docsPluginId: "framework",
             position: "left",
             label: "Contributing",
-          },
-          {
-            type: "docSidebar",
-            sidebarId: "infrastructureSidebar",
-            docsPluginId: "infrastructure",
-            position: "left",
-            label: "Infrastructure",
           },
           {
             href: "https://github.com/ReventlessDev/reventless-core",

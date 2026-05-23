@@ -90,6 +90,20 @@ const sidebars = {
         },
       ],
     },
+    {
+      type: 'category',
+      label: 'Guides',
+      items: [
+        'deployment-guide',
+        'lambda-deployment',
+        'aws-lambda-layer',
+        'callback-hooks-and-adapter-wrapping',
+        'dual-aws-provider',
+        'ui-fragments-deployment',
+        'appsync-events-live-updates',
+        'local-persistence',
+      ],
+    },
   ],
 };
 

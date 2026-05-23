@@ -313,3 +313,8 @@ The three additional features are implemented with different component types in 
 | Send Order Confirmation Email | **SideEffectHandler** | **OutboundTranslationSlice** | **OutboundTranslationSlice** (DCB) |
 
 Aggregate-based components are simpler but offer less built-in reliability. DCB-based slices provide more operational guarantees (retry, audit, status tracking) at the cost of additional infrastructure.
+
+---
+
+**Next:** [Choosing an approach →](./choosing-an-approach) — decide between
+Aggregate, DCB, and Hybrid, then follow the recommended walkthrough.

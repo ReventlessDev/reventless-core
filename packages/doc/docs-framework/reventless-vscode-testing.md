@@ -107,7 +107,7 @@ All three paths use the CLI's substring-match `--filter`, so the ids emitted at 
 
 ## 7. Verify failure rendering
 
-Temporarily break a test. For example in [`reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res), change an expected event's field. Rebuild:
+Temporarily break a test. For example in [`reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res), change an expected event's field. Rebuild:
 
 ```bash
 pnpm --filter @reventlessdev/reventless-gwt run build
@@ -175,7 +175,7 @@ pnpm dlx vsce package --no-dependencies -o reventless-vscode.vsix
 
 Then in your main VS Code: **Extensions: Install from VSIX…** → pick the generated `.vsix`. Uninstall via **Extensions** panel → right-click → **Uninstall** when you're done.
 
-Marketplace publishing (icon, publisher registration, `vsce publish`) is deferred — see Stage 8 deviations in [`docs/plans/reventless-gwt.md`](../plans/reventless-gwt.md).
+Marketplace publishing (icon, publisher registration, `vsce publish`) is deferred — see Stage 8 deviations in [`docs/plans/reventless-gwt.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/reventless-gwt.md).
 
 ---
 
@@ -281,7 +281,7 @@ File-change events are debounced at 250 ms. A burst of saves (e.g. `:wa` across 
 
 ## References
 
-- [`docs/plans/reventless-gwt.md`](../plans/reventless-gwt.md) — Stage 8 action log and deferred items.
-- [`docs/analysis/given-when-then-specifications.md`](../analysis/given-when-then-specifications.md) §3.3 — `--format=vscode` event table and the thin-extension example.
+- [`docs/plans/reventless-gwt.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/reventless-gwt.md) — Stage 8 action log and deferred items.
+- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) §3.3 — `--format=vscode` event table and the thin-extension example.
 - [VS Code Testing API](https://code.visualstudio.com/api/extension-guides/testing) — `TestController`, `TestItem`, `TestMessage`, `TestRun`.
-- [`packages/reventless-vscode/src/extension.ts`](../../packages/reventless-vscode/src/extension.ts) — the extension source (~260 lines).
+- [`packages/reventless-vscode/src/extension.ts`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/src/extension.ts) — the extension source (~260 lines).

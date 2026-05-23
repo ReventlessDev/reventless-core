@@ -342,7 +342,7 @@ Use on `@schema type state` fields in ReadModel and StateViewSlice spec files. T
 | Annotation | Usage | Generated code |
 |---|---|---|
 | `@id` | One `string` field | `let makeId = (state: state) => state.fieldName` |
-| `@compositeId` | Multiple `string` fields | `let makeId = (state: state) => \`${state.f1}/${state.f2}/...\`` |
+| `@compositeId` | Multiple `string` fields | `` let makeId = (state: state) => `${state.f1}/${state.f2}/...` `` |
 | `@compositeId(~sep=":")` | Multiple `string` fields, custom separator | Same with `:` between segments |
 
 **`@id` — simple entity key:**
@@ -382,7 +382,7 @@ Use on `@schema type state` fields in ReadModel and StateViewSlice spec files. T
 | Annotation | Usage | Generated code |
 |---|---|---|
 | `@subId` | One `string` field | `let subIdConfig = Some({ subIdField: "fieldName", getSubId: state => state.fieldName })` |
-| `@compositeSubId` | Multiple `string` fields | Synthetic `_subId` attribute: `let subIdConfig = Some({ subIdField: "_subId", getSubId: state => \`${state.f1}/${state.f2}/...\` })` |
+| `@compositeSubId` | Multiple `string` fields | Synthetic `_subId` attribute: `` let subIdConfig = Some({ subIdField: "_subId", getSubId: state => `${state.f1}/${state.f2}/...` }) `` |
 | `@compositeSubId(~sep=":")` | Multiple `string` fields, custom separator | Same with `:` |
 
 **`@subId` — version as sort key:**

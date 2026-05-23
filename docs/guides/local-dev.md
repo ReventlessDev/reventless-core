@@ -31,7 +31,7 @@ pnpm run build
 pnpm run dev:full
 ```
 
-`dev:full` uses `concurrently` to run the backend (`:4000`/`:4001`) and the Vite dev app (`:5173`) side by side, with colour-coded output prefixed `[backend]` / `[ui]`.
+`dev:full` uses `concurrently` to run the backend (`:4000`/`:4001`) and the UI dev server (`:5173`) side by side, with colour-coded output prefixed `[backend]` / `[ui]`. Concretely it runs `pnpm run serve` and, once the admin server is up (`wait-on tcp:4001`), `pnpm run dev:ui`.
 
 ### How the UI dev server is resolved
 
@@ -39,10 +39,10 @@ pnpm run dev:full
 
 | Priority | Condition | UI dev server | Hot reload |
 |----------|-----------|---------------|------------|
-| 1 | `reventless-ui` symlink resolves (source repo checked out) | Vite from source repo | Yes — UI source changes reflected immediately |
-| 2 | Symlink dangling / absent | `reventless-playground` binary from installed `@reventlessdev/reventless-playground` | No — published snapshot |
+| 1 | a local `reventless-ui` directory is present (UI source checked out beside this package) | Vite from the UI source | Yes — UI source changes reflected immediately |
+| 2 | no local `reventless-ui` directory (the normal case) | `reventless-host-shell` binary from the installed `@reventlessdev/reventless-host-shell` package | No — published snapshot |
 
-`@reventlessdev/reventless-playground` is a `devDependency` of this package. It is always available without checking out the UI source repo.
+A fresh checkout has **no** `reventless-ui` directory (it is not part of this repo), so `dev:ui` resolves to `reventless-host-shell` by default — no symlink or UI source needed. The local-source path (priority 1) is only for contributors actively developing the UI alongside the backend.
 
 ---
 
@@ -59,12 +59,12 @@ pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run build
 pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run dev
 ```
 
-**Terminal 2 — reventless-ui**
+**Terminal 2 — UI dev server** (from the same `platform-in-memory/` package)
 ```bash
 pnpm run dev:ui
 ```
 
-Vite starts at `http://localhost:5173` and proxies `/graphql` to `http://localhost:4000`.
+This launches `reventless-host-shell` (or the local UI source if present). It starts at `http://localhost:5173` and talks to the backend on `http://localhost:4000`.
 
 ---
 
@@ -87,22 +87,20 @@ Platform.makePlatform(
 Platform.startServers()
 ```
 
-Add run scripts to the plugin's `package.json`, add `@reventlessdev/reventless-playground` as a `devDependency`, and create a `reventless-ui` symlink the same way:
-
-```bash
-ln -s ../../../../reventless-ui reventless-ui
-```
+Add run scripts to the plugin's `package.json` and add `@reventlessdev/reventless-host-shell` as a `devDependency`. No symlink is needed — the host-shell binary is the default UI:
 
 ```json
 "devDependencies": {
-  "@reventlessdev/reventless-playground": "*"
+  "@reventlessdev/reventless-host-shell": "*"
 },
 "scripts": {
   "dev:local": "tsx src/LocalDev.res.mjs",
-  "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-playground",
+  "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
   "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run dev:local' 'pnpm run dev:ui'"
 }
 ```
+
+The `[ -d reventless-ui ]` branch only matters if you are also developing the UI source locally; otherwise `reventless-host-shell` runs.
 
 Then from the **plugin package** in reventless-core:
 

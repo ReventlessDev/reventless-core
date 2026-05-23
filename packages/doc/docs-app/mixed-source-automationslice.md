@@ -177,9 +177,9 @@ A single-source slice is a special case where the `Mappings` array has exactly o
 
 ## Reference
 
-- Spec module types: [`reventless-spec/src/components/AutomationSlice.res`](../../reventless/reventless-spec/src/components/AutomationSlice.res)
-- Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](../../reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res)
-- Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](../../reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res)
-- Integration test (canonical demo): [`reventless-in-memory/tests/components/automationslice/MixedSourceAutomationSlice*.res`](../../reventless/reventless-in-memory/tests/components/automationslice/)
-- Single-source example slice (post-Plan-04 shape): [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](../../examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)
-- Plan: [`docs/plans/done/mixed-source-automationslice.md`](../plans/done/mixed-source-automationslice.md) (after merge)
+- Spec module types: [`reventless-spec/src/components/AutomationSlice.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-spec/src/components/AutomationSlice.res)
+- Builder: [`reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Builder.res)
+- Callback (per-source dispatch + retry): [`reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/AutomationSlice/AutomationSlice_Callback.res)
+- Integration test (canonical demo): [`reventless-in-memory/tests/components/automationslice/MixedSourceAutomationSlice*.res`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-in-memory/tests/components/automationslice/)
+- Single-source example slice (post-Plan-04 shape): [`examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/ordering/src/Order/AutomationSlice/)
+- Plan: [`docs/plans/done/mixed-source-automationslice.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/done/mixed-source-automationslice.md) (after merge)

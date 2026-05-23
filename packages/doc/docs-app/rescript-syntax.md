@@ -478,7 +478,7 @@ PPX (PreProcessor eXtensions) are compile-time code generators that transform yo
 
 ### Reventless PPX Annotations
 
-Reventless uses its own PPX (`@reventlessdev/reventless-ppx`) to auto-generate boilerplate. These annotations appear in spec and behavior files.
+Reventless uses its own PPX (`@reventlessdev/reventless-ppx`) to auto-generate boilerplate. These annotations appear in spec and behavior files. This section is a primer; for the complete annotation reference, see the [Reventless PPX guide](./reventless-ppx).
 
 #### `@@reventless.spec`
 

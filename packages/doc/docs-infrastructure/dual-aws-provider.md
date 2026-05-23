@@ -36,15 +36,15 @@ sleep** between schema push and resolver creation.
 ## Where the line is drawn
 
 - **Bindings** — both providers have ReScript bindings in
-  [`rescript-pulumi-aws`](../../rescript/rescript-pulumi-aws/). Classic
+  [`rescript-pulumi-aws`](https://github.com/ReventlessDev/reventless-core/tree/main/rescript/rescript-pulumi-aws/). Classic
   bindings live in `src/AppSync/`, `src/DynamoDb/`, etc. The native
   binding sits under `src/AwsNative/AppSync/` and is exposed as
   `PulumiAws.AwsNative.AppSync.Resolver`.
-- **Adapter** — [`AppSync_Resolver_Native.res`](../../reventless/reventless-aws/src/adapter/Api/AppSync_Resolver_Native.res)
+- **Adapter** — [`AppSync_Resolver_Native.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/Api/AppSync_Resolver_Native.res)
   preserves the call shape of the classic `Resolver` module
   (`makeUnitJsResolver`, `makePipelineJsResolver`) so call sites are
   agnostic to the underlying provider.
-- **Wiring** — [`QueryDbResolvers_AppSync.res`](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)
+- **Wiring** — [`QueryDbResolvers_AppSync.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res)
   shadows `Resolver` with the native adapter:
   ```rescript
   open PulumiAws.AppSync           // Function, DataSource, GraphQLApi
@@ -81,7 +81,7 @@ options.
 
 3. **Short-term workaround — reinstate a sleep.** Add a fixed wait after
    `StartSchemaCreation` reaches `ACTIVE` in
-   [`AppSync_Adapter.res`](../../reventless/reventless-aws/src/components/Api/AppSync_Adapter.res)
+   [`AppSync_Adapter.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/components/Api/AppSync_Adapter.res)
    inside `waitForSchemaActive` (e.g. 15 s `setTimeout` in the
    `ACTIVE` / `SUCCESS` branch). Redeploy.
 
@@ -113,6 +113,6 @@ Otherwise default to `@pulumi/aws`.
 
 ## References
 
-- Migration plan: [`docs/plans/appsync-resolver-aws-native.md`](../plans/appsync-resolver-aws-native.md)
+- Migration plan: [`docs/plans/appsync-resolver-aws-native.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/appsync-resolver-aws-native.md)
 - [Pulumi: aws-native overview](https://www.pulumi.com/registry/packages/aws-native/)
 - [`AWS::AppSync::Resolver` CloudFormation resource](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-appsync-resolver.html)

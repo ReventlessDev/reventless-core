@@ -10,7 +10,7 @@ cross-repo linking for developers who also work in a sibling UI repo.
 
 | Tool | Version | Notes |
 |---|---|---|
-| Node | 22.17.1 | Pinned in [.node-version](../../.node-version) |
+| Node | 22.17.1 | Pinned in [.node-version](https://github.com/ReventlessDev/reventless-core/blob/main/.node-version) |
 | pnpm | 10 | Installed via corepack |
 | Git | Any modern | |
 
@@ -89,7 +89,7 @@ pnpm run build 2>&1 | grep -E "Warning|warning|error|Error"
 
 ## Repo layout
 
-See [CLAUDE.md](../../CLAUDE.md) for the full package map. At a glance:
+See [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/main/CLAUDE.md) for the full package map. At a glance:
 
 | Folder | Purpose |
 |---|---|
@@ -100,7 +100,7 @@ See [CLAUDE.md](../../CLAUDE.md) for the full package map. At a glance:
 
 Always place new packages under the correct root folder. Per-folder
 conventions are documented in
-[.claude/rules/conventions.md](../../.claude/rules/conventions.md).
+[.claude/rules/conventions.md](https://github.com/ReventlessDev/reventless-core/blob/main/.claude/rules/conventions.md).
 
 ---
 
@@ -116,7 +116,7 @@ conventions are documented in
 
 Framework-specific conventions (component structure, PPX annotations,
 aggregate vs. DCB choice, idempotency) live in
-[.claude/rules/](../../.claude/rules/) and the guides under `docs/guides/`.
+[.claude/rules/](https://github.com/ReventlessDev/reventless-core/tree/main/.claude/rules/) and the guides under `docs/guides/`.
 
 ---
 
@@ -149,7 +149,7 @@ everything installs from the registry as usual.
 ## Running a local dev server
 
 The in-memory platform exposes a GraphQL backend a UI dev server can
-connect to. See [local-dev.md](local-dev.md) for the full setup,
+connect to. See [local-dev.md](/tutorials/run-locally) for the full setup,
 including the one-command `pnpm run dev:full` variant that runs backend
 and UI side by side.
 
@@ -170,10 +170,10 @@ and UI side by side.
 
 ## Further reading
 
-- [CLAUDE.md](../../CLAUDE.md) — top-level project context and conventions
+- [CLAUDE.md](https://github.com/ReventlessDev/reventless-core/blob/main/CLAUDE.md) — top-level project context and conventions
 - [pnpm-guide.md](pnpm-guide.md) — npm → pnpm command reference
 - [registry-and-tokens.md](registry-and-tokens.md) — auth setup
 - [cross-repo-dev-linking.md](cross-repo-dev-linking.md) — link-mode workflow
-- [local-dev.md](local-dev.md) — running a local GraphQL backend
-- [platform-and-plugin-guide.md](platform-and-plugin-guide.md) — how to
+- [local-dev.md](/tutorials/run-locally) — running a local GraphQL backend
+- [platform-and-plugin-guide.md](/app/platform-and-plugin-guide) — how to
   build a new platform or plugin

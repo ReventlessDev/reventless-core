@@ -1,7 +1,7 @@
 # Given-When-Then Testing in Reventless
 
 Reventless ships a dedicated Given-When-Then (GWT) test framework,
-[`@reventlessdev/reventless-gwt`](../../reventless/reventless-gwt/), with a DSL
+[`@reventlessdev/reventless-gwt`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-gwt/), with a DSL
 for every Event Modeling slice type, a runner-agnostic `Outcome` algebra, and a
 standalone CLI runner (`reventless-gwt`) with five output formats (human, JSON,
 TAP, JUnit, VS Code Testing API).
@@ -9,7 +9,7 @@ TAP, JUnit, VS Code Testing API).
 This guide is the canonical reference for writing slice-level tests. For the
 design rationale, alternatives considered, and detailed format specifications
 see
-[`docs/analysis/given-when-then-specifications.md`](../analysis/given-when-then-specifications.md).
+[`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md).
 
 ---
 
@@ -89,7 +89,7 @@ Two cross-cutting DSLs round out the surface:
    compiler, so the modules do not need to be defined locally in the test
    file — the PPX will prepend the generated `open` + `include` at the
    top of the structure.
-   See [`.claude/rules/app-developer.md`](../../.claude/rules/app-developer.md)
+   See [`.claude/rules/app-developer.md`](https://github.com/ReventlessDev/reventless-core/blob/main/.claude/rules/app-developer.md)
    for the full PPX annotation table.
 
 4. Run your tests:
@@ -133,7 +133,7 @@ Deviations from the shared vocabulary are called out per-DSL below.
 
 Each example is a minimal but complete `_GWT` file that you can copy as a
 template. All nine are also shipped as runnable worked-example tests in
-[`reventless/reventless-gwt/tests/`](../../reventless/reventless-gwt/tests/).
+[`reventless/reventless-gwt/tests/`](https://github.com/ReventlessDev/reventless-core/tree/main/reventless/reventless-gwt/tests/).
 
 ### 4.1 `Behavior_GWT` — Aggregate command slice
 
@@ -164,7 +164,7 @@ describe("Category Behavior", () => {
 ```
 
 Real example:
-[`examples/online-shop-aggregates/catalog/tests/Aggregate/CategoryBehaviorTest.res`](../../examples/online-shop-aggregates/catalog/tests/Aggregate/CategoryBehaviorTest.res).
+[`examples/online-shop-aggregates/catalog/tests/Aggregate/CategoryBehaviorTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/examples/online-shop-aggregates/catalog/tests/Aggregate/CategoryBehaviorTest.res).
 
 ### 4.2 `StateChangeSlice_GWT` — DCB command slice
 
@@ -230,7 +230,7 @@ describe("AddCategory StateChangeSlice", () => {
 ```
 
 Runnable copy:
-[`reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res).
+[`reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/StateChangeSliceGwtTest.res).
 
 **Important:** every `@s.matches(Reventless.DcbTag.string)` annotation on the
 command's ID fields is what enables the implicit `AppendConditionMismatch`
@@ -260,7 +260,7 @@ describe("Category → Categories projection", () => {
 ```
 
 Real example:
-[`examples/online-shop-aggregates/catalog/tests/ReadModel/CategoryProjectionTest.res`](../../examples/online-shop-aggregates/catalog/tests/ReadModel/CategoryProjectionTest.res).
+[`examples/online-shop-aggregates/catalog/tests/ReadModel/CategoryProjectionTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/examples/online-shop-aggregates/catalog/tests/ReadModel/CategoryProjectionTest.res).
 
 ### 4.4 `StateViewSlice_GWT` — DCB state-view slice
 
@@ -311,7 +311,7 @@ describe("CategoriesView StateViewSlice", () => {
 ```
 
 Runnable copy:
-[`reventless/reventless-gwt/tests/StateViewSliceGwtTest.res`](../../reventless/reventless-gwt/tests/StateViewSliceGwtTest.res).
+[`reventless/reventless-gwt/tests/StateViewSliceGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/StateViewSliceGwtTest.res).
 
 ### 4.5 `Query_GWT` — ReadModel + StateViewSlice queries
 
@@ -344,7 +344,7 @@ CategoriesQuery.describe("Categories ReadModel queries", () => {
 
 `whenQuery` fails with `QueryRowsMismatch` when `index` is named but the
 referenced entry is missing from `Spec.config.indexes`. Runnable copy:
-[`reventless/reventless-gwt/tests/QueryGwtTest.res`](../../reventless/reventless-gwt/tests/QueryGwtTest.res).
+[`reventless/reventless-gwt/tests/QueryGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/QueryGwtTest.res).
 
 ### 4.6 `Mapping_GWT` — cross-pattern automation
 
@@ -392,7 +392,7 @@ CatalogGwt.describe("Category → Product (Aggr → Aggr)", () =>
 available for the error combinations. Swap one or both adapters to
 `FromStateChangeSlice` for the DCB combinations. Runnable copies of all four
 Aggregate/DCB combinations live in
-[`reventless/reventless-gwt/tests/MappingGwtTest.res`](../../reventless/reventless-gwt/tests/MappingGwtTest.res).
+[`reventless/reventless-gwt/tests/MappingGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/MappingGwtTest.res).
 
 The legacy `EventMapping_GWT.Make(Source, SourceBehavior, Target, TargetBehavior, EventMapping)`
 remains callable with its old argument list — it simply composes two
@@ -453,7 +453,7 @@ describe("ShipOrder AutomationSlice", () => {
 ```
 
 Runnable copy:
-[`reventless/reventless-gwt/tests/AutomationGwtTest.res`](../../reventless/reventless-gwt/tests/AutomationGwtTest.res).
+[`reventless/reventless-gwt/tests/AutomationGwtTest.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/tests/AutomationGwtTest.res).
 
 ### 4.8 `InboundTranslation_GWT` — external → internal translation
 
@@ -668,7 +668,7 @@ value — they only differ in how they render it.
 Every failure is paired with a `Hint` record `{locus, branch, message}`. Hints
 ship inside the JSON/VS Code output so downstream tools can route a fix without
 re-deriving the mapping. The canonical table lives in
-[`reventless-gwt/src/Hint.res`](../../reventless/reventless-gwt/src/Hint.res).
+[`reventless-gwt/src/Hint.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-gwt/src/Hint.res).
 
 ---
 
@@ -728,7 +728,7 @@ Cmd+Click on a test node jumps to the combinator's line in the original
 and re-executes the selection whenever a `.res.mjs` under the watched roots
 changes.
 
-See [`docs/guides/reventless-vscode-testing.md`](./reventless-vscode-testing.md)
+See [`docs/guides/reventless-vscode-testing.md`](/framework/reventless-vscode-testing)
 for setup, CLI path discovery, the flask-with-eye toggle, and the full manual
 test checklist.
 
@@ -777,7 +777,7 @@ Example failure for an `AppendConditionMismatch` (most common DCB pitfall):
 ```
 
 Full field reference lives in
-[`docs/analysis/given-when-then-specifications.md`](../analysis/given-when-then-specifications.md)
+[`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md)
 §3.3.
 
 ---
@@ -818,7 +818,7 @@ Full field reference lives in
 - **PPX annotation** — once a file's `include <Kind>_GWT.Make(<Spec>)` is
   stable, replace it with `@@reventless.gwt` at the top and let the PPX
   infer the kind. See
-  [`.claude/rules/app-developer.md`](../../.claude/rules/app-developer.md)
+  [`.claude/rules/app-developer.md`](https://github.com/ReventlessDev/reventless-core/blob/main/.claude/rules/app-developer.md)
   for the full attribute form.
 - **Inline copy of an existing production slice** — delete the inline copy
   and switch to `@@reventless.gwt(ProductionModule)` (see § 4.10). The
@@ -829,14 +829,14 @@ Full field reference lives in
 
 ## 11. Related documentation
 
-- [`docs/analysis/given-when-then-specifications.md`](../analysis/given-when-then-specifications.md) —
+- [`docs/analysis/given-when-then-specifications.md`](https://github.com/ReventlessDev/reventless-core/blob/main/docs/analysis/given-when-then-specifications.md) —
   design rationale, alternatives, and the canonical format / hint-table
   specifications.
 - [`docs/guides/component-testing-guide.md`](./component-testing-guide.md) —
   where Jest-based component / integration tests live (not the slice level).
-- [`docs/guides/reventless-vscode-testing.md`](./reventless-vscode-testing.md) —
+- [`docs/guides/reventless-vscode-testing.md`](/framework/reventless-vscode-testing) —
   VS Code extension setup, continuous run, troubleshooting.
 - [`docs/guides/aggregate-vs-dcb-decision-guide.md`](./aggregate-vs-dcb-decision-guide.md) —
   when to reach for an Aggregate and when a StateChangeSlice.
-- [`.claude/rules/app-developer.md`](../../.claude/rules/app-developer.md) —
+- [`.claude/rules/app-developer.md`](https://github.com/ReventlessDev/reventless-core/blob/main/.claude/rules/app-developer.md) —
   full PPX annotation reference (including `@@reventless.gwt` payload forms).

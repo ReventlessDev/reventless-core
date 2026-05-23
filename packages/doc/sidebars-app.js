@@ -15,6 +15,8 @@ const sidebars = {
       items: [
         'running-tests',
         'writing-unit-tests',
+        'given-when-then',
+        'component-testing-guide',
       ],
     },
     {
@@ -75,6 +77,20 @@ const sidebars = {
       ],
     },
     'rescript-syntax',
+    {
+      type: 'category',
+      label: 'Guides',
+      items: [
+        'platform-and-plugin-guide',
+        'aggregate-vs-dcb-decision-guide',
+        'graphql-api-guide',
+        'dcb-usage',
+        'reventless-ppx',
+        'querydb-key-design-guide',
+        'mixed-source-readmodel',
+        'mixed-source-automationslice',
+      ],
+    },
     {
       type: 'category',
       label: 'AI-Assisted Development',

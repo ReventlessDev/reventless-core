@@ -148,6 +148,6 @@ if isSet.contents { Some(myOutput.contents) } else { None }
 - ReScript runtime: [`Primitive_option.some`](https://github.com/rescript-lang/rescript/blob/main/runtime/Primitive_option.res) — the `BS_PRIVATE_NESTED_SOME_NONE` check
 - Pulumi SDK: [Output as Proxy](https://github.com/pulumi/pulumi/blob/afac93f70cde7c89eb8c5820b490c917f540ef2e/sdk/nodejs/output.ts#L264)
 - Pulumi issue: [pulumi-terraform-bridge#62](https://github.com/pulumi/pulumi-terraform-bridge/issues/62) — Pulumi panic on the sentinel
-- This repo: [`rescript-pulumi-pulumi/src/Rescript11Problem.res`](../rescript/rescript-pulumi-pulumi/src/Rescript11Problem.res) — original problem documentation with reproduction code
-- This repo: [`rescript-pulumi-pulumi/src/Output.res`](../rescript/rescript-pulumi-pulumi/src/Output.res) lines 83-87 — earlier workaround attempt
-- Fix applied: [`Plugin_Helpers.res`](../reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res) — `interopMetaOutput` ref uses raw null instead of `option`
+- This repo: [`rescript-pulumi-pulumi/src/Rescript11Problem.res`](https://github.com/ReventlessDev/reventless-core/blob/main/rescript/rescript-pulumi-pulumi/src/Rescript11Problem.res) — original problem documentation with reproduction code
+- This repo: [`rescript-pulumi-pulumi/src/Output.res`](https://github.com/ReventlessDev/reventless-core/blob/main/rescript/rescript-pulumi-pulumi/src/Output.res) lines 83-87 — earlier workaround attempt
+- Fix applied: [`Plugin_Helpers.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-core/src/components/Plugin/Plugin_Helpers.res) — `interopMetaOutput` ref uses raw null instead of `option`

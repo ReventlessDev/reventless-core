@@ -3,9 +3,9 @@
 How Reventless serves a browser UI for any deployed platform — locally and on AWS — without each plugin shipping its own React bundle.
 
 For related guides, see:
-- [Platform and Plugin Guide](platform-and-plugin-guide.md) — creating platforms and plugins
+- [Platform and Plugin Guide](/app/platform-and-plugin-guide) — creating platforms and plugins
 - [Lambda Deployment](lambda-deployment.md) — AWS Lambda code-asset packaging
-- [GraphQL API Guide](graphql-api-guide.md) — how the admin and domain APIs are stitched
+- [GraphQL API Guide](/app/graphql-api-guide) — how the admin and domain APIs are stitched
 
 ---
 

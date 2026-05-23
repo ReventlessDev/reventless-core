@@ -47,6 +47,40 @@ const sidebars = {
         'ai-skills/updating-skills',
       ],
     },
+    {
+      type: 'category',
+      label: 'Dev environment',
+      items: [
+        'contributing',
+        'pnpm-guide',
+        'cross-repo-dev-linking',
+        'registry-and-tokens',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Guides',
+      items: [
+        'application-development-layers',
+        'api-protocol-integration',
+        'transport-adapter-guide',
+        'component-testing',
+        'd2-diagrams',
+        'forward-codegen-pipeline',
+        'graphql-schema-debugging',
+        'output-types-in-reventless-spec',
+        'reventless-vscode-testing',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'ReScript internals',
+      items: [
+        'rescript-namespaces-and-shadowing',
+        'rescript-monorepo-build-behaviour',
+        'rescript-option-proxy-pitfall',
+      ],
+    },
   ],
 };
 

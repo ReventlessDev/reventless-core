@@ -2,6 +2,11 @@
 
 The Plugin component supports an optional DCB (Dynamic Consistency Boundary) event log shared across multiple state change slices. All slices in a plugin read from and write to the same event log, with optimistic concurrency control enforced per command.
 
+:::tip Full usage guide
+This page explains the concept. For the hands-on patterns — tags, decision
+models, multi-entity commands — see the [DCB usage guide](../dcb-usage).
+:::
+
 ## Command Flow
 
 ```d2
