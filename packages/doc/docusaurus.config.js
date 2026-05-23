@@ -112,7 +112,26 @@ const d2Opts = {
 const config = {
   title: "Reventless",
   tagline: "Ship Value Fast",
-  favicon: "img/logo.png",
+  favicon: "img/logo-icon-v2a-sticky.svg",
+
+  // Geist is the brand wordmark font (rendered as real text in src/theme/Logo).
+  headTags: [
+    {
+      tagName: "link",
+      attributes: {rel: "preconnect", href: "https://fonts.googleapis.com"},
+    },
+    {
+      tagName: "link",
+      attributes: {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossorigin: "anonymous",
+      },
+    },
+  ],
+  stylesheets: [
+    "https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&display=swap",
+  ],
 
   // Set the production url of your site here
   url: "https://reventlessdev.github.io",
@@ -261,10 +280,12 @@ const config = {
       // Replace with your project's social card
       //image: 'img/docusaurus-social-card.jpg',
       navbar: {
-        title: "Reventless",
+        title: "",
+        // Logo (icon + wordmark) is rendered by the swizzled src/theme/Logo;
+        // src is required by the navbar schema but unused by that component.
         logo: {
-          alt: 'Reventless Logo',
-          src: 'img/logo.png',
+          alt: 'Reventless',
+          src: 'img/logo-icon-v2a-sticky.svg',
         },
         items: [
           {

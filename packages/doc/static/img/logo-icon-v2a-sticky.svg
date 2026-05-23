@@ -1,0 +1,37 @@
+<svg viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reventless">
+  <!--
+    Variation 2a — Sticky-note segments.
+
+    Same layout as V2, but each segment is a square with near-sharp
+    corners — reading as an event-storming sticky note rather than a
+    pill-shaped log entry. Orange sticky = domain event in event
+    storming / event modeling workshops, the most direct visual link
+    between the brand and the technique.
+  -->
+  <defs>
+    <linearGradient id="rv-v2a" x1="1" y1="0" x2="22.5" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f97316"/>
+      <stop offset="1" stop-color="#f97316" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#rv-v2a)">
+    <!-- Top row: 7 event stickies -->
+    <rect x="1"  y="1.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="4"  y="1.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="7"  y="1.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="10" y="1.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="13" y="1.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="16" y="1.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="19" y="1.5" width="2.5" height="2.5" rx="0.3"/>
+    <!-- Middle row: 5 -->
+    <rect x="1"  y="6.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="4"  y="6.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="7"  y="6.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="10" y="6.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="13" y="6.5" width="2.5" height="2.5" rx="0.3"/>
+    <!-- Bottom row: 3 -->
+    <rect x="1"  y="11.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="4"  y="11.5" width="2.5" height="2.5" rx="0.3"/>
+    <rect x="7"  y="11.5" width="2.5" height="2.5" rx="0.3"/>
+  </g>
+</svg>

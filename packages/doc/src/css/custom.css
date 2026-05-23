@@ -84,13 +84,11 @@ a:hover {
 
 /* ── Navbar responsiveness ─────────────────────────────────────────────── */
 
-/* Keep nav items on a single line and a little tighter so more fit */
+/* Keep nav items on a single line and tighter (both sides) so more fit before
+   the navbar collapses to the mobile menu at 996px. */
 .navbar__item,
 .navbar__link {
   white-space: nowrap;
-}
-.navbar__items--right > .navbar__item,
-.navbar__items--right > .navbar__link {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
 }
