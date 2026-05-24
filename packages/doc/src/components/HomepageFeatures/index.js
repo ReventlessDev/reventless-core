@@ -4,68 +4,73 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Event-Sourced Architecture',
-    icon: '📦',
+    title: 'Spec-Driven',
+    icon: '📐',
     description: (
       <>
-        Built on Domain-Driven Design principles with Event Sourcing and CQRS.
-        Every state change is captured as an immutable event, providing full
-        auditability and the ability to rebuild state at any point in time.
+        Your types are the spec. A single annotation turns events, commands, and
+        read models into database schemas, GraphQL and MCP APIs, and AWS
+        infrastructure — generated and wired for you. Change the spec, regenerate
+        the system: no glue code, no drift between layers.
       </>
     ),
   },
   {
-    title: 'Serverless First',
+    title: 'AI-Native',
+    icon: '🤖',
+    description: (
+      <>
+        Spec-driven and AI-assisted development are a natural pairing. Strict type
+        contracts make Reventless an excellent target for LLM code generation —
+        the compiler validates every slice, decider, and projection on the spot.
+        And event-sourced histories are an ideal structured dataset for analytics
+        and AI/ML.
+      </>
+    ),
+  },
+  {
+    title: 'Slice-Based Architecture',
+    icon: '🧩',
+    description: (
+      <>
+        Event modeling with Dynamic Consistency Boundary (DCB) patterns. Compose
+        systems from independent, vertical slices that own their commands, events,
+        and read models and communicate only through events — so teams develop,
+        test, and deploy them independently.
+      </>
+    ),
+  },
+  {
+    title: 'Zero Boilerplate',
+    icon: '⚡',
+    description: (
+      <>
+        Built in ReScript. Algebraic data types and pattern matching model your
+        domain directly, and the compiler enforces exhaustive handling. Concise,
+        type-safe code with no manual schema files and nothing to keep in sync.
+      </>
+    ),
+  },
+  {
+    title: 'Serverless, Self-Hosted',
     icon: '☁️',
     description: (
       <>
-        Designed for serverless infrastructure from the ground up. Pay only for
-        what you use with automatic scaling. Deploy to AWS Lambda with DynamoDB,
-        SQS, SNS, and S3 out of the box.
+        Open-source software you deploy into your own AWS account — not a hosted
+        SaaS. Ships with AWS and in-memory providers today, with more cloud
+        targets planned. Serverless means you pay only for what you use, with no
+        idle infrastructure.
       </>
     ),
   },
   {
-    title: 'Type-Safe ReScript',
-    icon: '🔒',
-    description: (
-      <>
-        Written in ReScript for end-to-end type safety across your entire stack.
-        Catch errors at compile time, enjoy great refactoring support, and
-        benefit from a functional programming paradigm.
-      </>
-    ),
-  },
-  {
-    title: 'Infrastructure as Code',
-    icon: '🏗️',
-    description: (
-      <>
-        Powered by Pulumi for declarative infrastructure. Define your entire
-        cloud architecture in code alongside your application logic. No manual
-        cloud configuration required.
-      </>
-    ),
-  },
-  {
-    title: 'Focus on Business Logic',
-    icon: '💼',
-    description: (
-      <>
-        The framework handles the complex infrastructure concerns so you can
-        focus on what matters: your domain logic. Define aggregates, commands,
-        and events with minimal boilerplate.
-      </>
-    ),
-  },
-  {
-    title: 'Production Ready',
+    title: 'Production-Ready',
     icon: '🚀',
     description: (
       <>
-        Battle-tested in production for financial industry applications since
-        2019. Proven patterns for reliability, scalability, and maintainability
-        in enterprise environments.
+        In production in the financial industry since 2019. Built on Effect: typed
+        error handling, automatic retries with backoff, and streaming throughout —
+        for efficient projection rebuilds and event replay at scale.
       </>
     ),
   },

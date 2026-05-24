@@ -16,13 +16,14 @@ function HomepageHeader() {
           {siteConfig.title}
         </Heading>
         <p className={styles.heroSubtitle}>
-          Event-Sourced CQRS Framework for Serverless
+          The spec-driven event platform — focus on your business, not technology
         </p>
         <p className={styles.heroDescription}>
-          Describe your domain as commands, events, and projections in type-safe
-          ReScript. Reventless provisions and wires the serverless infrastructure —
-          queues, tables, functions, event routing, and a GraphQL API — so you
-          focus on business logic, not plumbing.
+          Your domain definition is the spec. Define events, commands, and read
+          models in type-safe ReScript, and Reventless derives the rest — database
+          schemas, GraphQL and MCP APIs, and AWS infrastructure. One source of
+          truth: no glue code, no drift between layers. A type-safe, event-sourced
+          CQRS platform that's production-ready and AI-native.
         </p>
         <div className={styles.buttons}>
           <Link
@@ -106,8 +107,8 @@ function ReadingPathsSection() {
 export default function Home() {
   return (
     <Layout
-      title="Event-Sourced CQRS for Serverless"
-      description="Reventless is an event-sourced CQRS framework for building serverless business applications with ReScript and Pulumi">
+      title="The spec-driven event platform"
+      description="Reventless is a type-safe, event-sourced CQRS platform for serverless applications. Define your domain as a spec in ReScript and derive database schemas, GraphQL and MCP APIs, and AWS infrastructure — production-ready and AI-native.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
