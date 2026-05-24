@@ -2,7 +2,7 @@
   "name": "@reventlessdev/reventless-in-memory",
   "version": "3.0.0-alpha.69",
   "description": "In-memory platform for Reventless (for testing without AWS)",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",

@@ -2,7 +2,7 @@
   "name": "@reventlessdev/reventless-gwt",
   "version": "1.0.0-alpha.32",
   "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bin": {
     "reventless-gwt": "./bin/reventless-gwt.mjs"
   },

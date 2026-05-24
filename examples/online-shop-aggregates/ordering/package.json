@@ -2,7 +2,7 @@
   "name": "@reventlessdev/online-shop-aggregates-ordering",
   "version": "3.0.0-alpha.58",
   "description": "Online Shop example — Ordering plugin (Customer & Order aggregates)",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "generate": "generate-plugin src/",
     "prebuild": "pnpm run generate",

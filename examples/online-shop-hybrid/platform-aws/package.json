@@ -2,7 +2,7 @@
   "name": "@reventlessdev/online-shop-hybrid-platform-aws",
   "version": "1.0.0-alpha.61",
   "description": "Online Shop Hybrid — AWS platform deployment",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build"
   },

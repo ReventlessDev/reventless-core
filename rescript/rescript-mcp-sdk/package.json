@@ -2,7 +2,7 @@
   "name": "@reventlessdev/rescript-mcp-sdk",
   "version": "1.0.0-alpha.9",
   "description": "ReScript bindings for @modelcontextprotocol/sdk",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

@@ -2,7 +2,7 @@
   "name": "@reventlessdev/reventless-infra",
   "version": "3.0.0-alpha.61",
   "description": "Infrastructure types for Reventless framework",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",

@@ -2,6 +2,7 @@
   "name": "reventless-monorepo",
   "private": true,
   "description": "Reventless Core - Event-sourced CQRS framework for serverless infrastructure",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/ReventlessDev/reventless-core.git"

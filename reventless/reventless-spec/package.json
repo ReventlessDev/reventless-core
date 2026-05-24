@@ -2,7 +2,7 @@
   "name": "@reventlessdev/reventless-spec",
   "version": "3.0.0-alpha.47",
   "description": "Specifications for Reventless",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bin": {
     "generate-plugin": "./run-generator.mjs"
   },

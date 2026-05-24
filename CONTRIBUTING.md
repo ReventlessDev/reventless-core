@@ -135,6 +135,28 @@ BREAKING CHANGE: API endpoint structure has changed
 
 - Use `no-release` scope to prevent a release: `feat(no-release): add internal tooling`
 
+## Developer Certificate of Origin (DCO)
+
+All contributions must be signed off under the
+[Developer Certificate of Origin 1.1](https://developercertificate.org/). The
+sign-off certifies that you wrote the contribution, or otherwise have the right to
+submit it under the project's [Apache License 2.0](LICENSE).
+
+Sign off every commit with the `-s` flag:
+
+```bash
+git commit -s -m "feat(eventlog): add support for event filtering"
+```
+
+This appends a trailer to the commit message using your Git author identity:
+
+```
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+Use your real name and a reachable email. Pull requests whose commits are not
+signed off cannot be merged.
+
 ## Submitting Changes
 
 ### Push Your Branch

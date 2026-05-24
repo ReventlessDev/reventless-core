@@ -2,6 +2,7 @@
   "name": "@reventlessdev/online-shop-hybrid-platform-in-memory",
   "version": "1.0.0-alpha.61",
   "description": "Online Shop Hybrid example — full platform with Catalog + Ordering plugins (in-memory)",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",

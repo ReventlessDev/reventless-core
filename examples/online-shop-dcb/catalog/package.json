@@ -2,7 +2,7 @@
   "name": "@reventlessdev/online-shop-dcb-catalog",
   "version": "1.0.0-alpha.61",
   "description": "Online Shop example — Catalog bounded context (Product & Category) using the DCB pattern",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "generate": "generate-plugin src/",
     "prebuild": "pnpm run generate",

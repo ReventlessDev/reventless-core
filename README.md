@@ -140,7 +140,15 @@ AWS adapters implement:
 
 ## 📄 License
 
-MIT
+Reventless is licensed under the [Apache License 2.0](LICENSE).
+
+## 📜 Provenance
+
+Reventless was originally developed (2019–2025) by Atos Austria GmbH /
+Eviden Austria GmbH and used in production before its open-source release.
+The intellectual-property rights were subsequently transferred to Martin
+Lorenz, who released it under the Apache License 2.0 in 2026.
+See [NOTICE](NOTICE) for original-author attribution.
 
 ## Contributing
 

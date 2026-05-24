@@ -1,0 +1,15 @@
+# Consolidates the scattered author identities so each human appears once in
+# `git shortlog -sne` and `git log`. Format: canonical "Name <email>" first,
+# then the historical identities it absorbs. Bots are intentionally not mapped.
+
+Martin Lorenz <malo@reventless.dev> <martin.lorenz@atos.net>
+Martin Lorenz <malo@reventless.dev> <martin.lorenz66@gmail.com>
+Martin Lorenz <malo@reventless.dev> <malo@users.noreply.github.com>
+
+Christoph Wanasek <christoph.wanasek@hotmail.com> <christoph.wanasek@atos.net>
+Christoph Wanasek <christoph.wanasek@hotmail.com> <christoph.wanasek@hotmail.com>
+
+Christoph Pader <chrispad2k@gmail.com> <christoph.pader@atos.net>
+Christoph Pader <chrispad2k@gmail.com> <chrispad2k@gmail.com>
+
+Mario Krizic <mario.krizic@eviden.com> <mario.krizic@eviden.com>

@@ -2,7 +2,7 @@
   "name": "@reventlessdev/rescript-effect",
   "version": "0.1.0-alpha.14",
   "description": "ReScript bindings for the Effect TypeScript library",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",

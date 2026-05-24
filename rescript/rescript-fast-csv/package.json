@@ -2,7 +2,7 @@
   "name": "@reventlessdev/rescript-fast-csv",
   "version": "1.2.0-alpha.5",
   "description": "ReScript bindings for fast-csv",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
     "start": "rescript watch",

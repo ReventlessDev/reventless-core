@@ -1,0 +1,9 @@
+Reventless authors
+
+The people who have contributed to Reventless, consolidated via .mailmap.
+See the Git history (`git shortlog -sne`) for full contribution detail.
+
+Martin Lorenz <malo@reventless.dev>
+Christoph Wanasek <christoph.wanasek@hotmail.com>
+Mario Krizic <mario.krizic@eviden.com>
+Christoph Pader <chrispad2k@gmail.com>
