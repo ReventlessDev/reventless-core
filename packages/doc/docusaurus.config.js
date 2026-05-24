@@ -108,6 +108,14 @@ const d2Opts = {
   defaultD2Opts: ["-t=100", "--dark-theme=200", "--pad=10", "--scale=0.8"],
 };
 
+// Copyright span: just the start year now, becoming a range (2026–YYYY) once the
+// current year moves past it.
+const COPYRIGHT_START_YEAR = 2026;
+const copyrightYears = (() => {
+  const now = new Date().getFullYear();
+  return now > COPYRIGHT_START_YEAR ? `${COPYRIGHT_START_YEAR}–${now}` : `${COPYRIGHT_START_YEAR}`;
+})();
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "Reventless",
@@ -262,7 +270,7 @@ const config = {
             title: "Reventless Blog",
             description:
               "Release notes, design deep-dives, and case studies for Reventless",
-            copyright: `Copyright © ${new Date().getFullYear()} Reventless.`,
+            copyright: `Copyright © ${copyrightYears} Reventless`,
           },
           editUrl:
             "https://github.com/ReventlessDev/reventless-core/tree/main/packages/doc/",
@@ -394,7 +402,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Reventless. Built for serverless.`,
+        copyright: `Copyright © ${copyrightYears} Reventless`,
       },
       prism: {
         theme: prismThemes.github,
