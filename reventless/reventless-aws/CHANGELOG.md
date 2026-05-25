@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.116 (2026-05-25)
+
+### Features
+
+* **host-ui:** auto-provision custom domain when baseDomain + zoneId are set ([3491f86](https://github.com/ReventlessDev/reventless-core/commit/3491f8666b6965d2ace48bf1e86d64f263f42aab))
+* **live-updates:** consolidate StateTopic Lambda + admin RMs live-update ([7b158c7](https://github.com/ReventlessDev/reventless-core/commit/7b158c71c97eb114d2453b81a1e8cf46e4f0bdb2))
+* **readmodel:** add ReadModelStream variant for live-updating read models ([3d816fb](https://github.com/ReventlessDev/reventless-core/commit/3d816fb50e0e66693ae4a0a626f4d5b4e496c3b1))
+
+
 # 3.0.0-alpha.115 (2026-05-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

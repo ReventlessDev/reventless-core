@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.35 (2026-05-25)
+
+### Bug Fixes
+
+* **docs:** make the navbar responsive ([c2c7215](https://github.com/ReventlessDev/reventless-core/commit/c2c7215c0390a5a39da1a13a96ac3be828fbf645))
+* **docs:** published-version-aware version selector + working search ([547cae7](https://github.com/ReventlessDev/reventless-core/commit/547cae7a9acd9fb06b23d950c386b74e7afbd0b9))
+### Features
+
+* **site:** brand logo (Variant 2a icon + wordmark) with responsive navbar ([720262e](https://github.com/ReventlessDev/reventless-core/commit/720262e02a47a4bf7a30c96046624fa704579add)), closes [#1a1a2](https://github.com/ReventlessDev/reventless-core/issues/1a1a2) [#e8e8f0](https://github.com/ReventlessDev/reventless-core/issues/e8e8f0)
+
+
 # 1.0.0-alpha.34 (2026-05-19)
 
 * refactor(aws)!: rename DCB Lambdas to <Plugin>StateChanges[Async] ([f2b20ca](https://github.com/ReventlessDev/reventless-core/commit/f2b20ca86c66cfd88d87696d89b745d70c5f156b))

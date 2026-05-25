@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.2.0-alpha.6 (2026-05-25)
+
+**Note:** Version bump only for package @reventlessdev/rescript-fast-csv
+
+
+
+
+
 # 1.2.0-alpha.5 (2026-04-22)
 
 **Note:** Version bump only for package @reventlessdev/rescript-fast-csv

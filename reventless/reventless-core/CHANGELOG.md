@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.94 (2026-05-25)
+
+### Features
+
+* **live-updates:** consolidate StateTopic Lambda + admin RMs live-update ([7b158c7](https://github.com/ReventlessDev/reventless-core/commit/7b158c71c97eb114d2453b81a1e8cf46e4f0bdb2))
+
+
 # 3.0.0-alpha.93 (2026-05-21)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

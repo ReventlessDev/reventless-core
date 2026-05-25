@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.34 (2026-05-25)
+
+### Features
+
+* **host-ui:** auto-provision custom domain when baseDomain + zoneId are set ([3491f86](https://github.com/ReventlessDev/reventless-core/commit/3491f8666b6965d2ace48bf1e86d64f263f42aab))
+
+
 # 2.4.0-alpha.33 (2026-05-20)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
