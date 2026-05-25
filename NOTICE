@@ -7,3 +7,17 @@ Mario Krizic and Christoph Pader. See the Git history for the full list of
 contributors.
 
 Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+Third-party build tooling
+-------------------------
+This software is compiled with the ReScript toolchain.
+
+ * rescript (the ReScript compiler) is licensed LGPL-3.0-or-later and is used
+   only as a build tool. The compiled JavaScript output is not a derivative
+   work of the compiler, so the LGPL imposes no obligations on it.
+
+ * @rescript/std (portions of which are emitted into the output) is
+   LGPL-3.0-or-later WITH a linking exception that permits combining it with
+   application code and distributing the result under any license.
+
+All other bundled dependencies are MIT, Apache-2.0, ISC, or BlueOak-1.0.0.
