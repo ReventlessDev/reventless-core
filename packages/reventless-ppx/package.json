@@ -5,11 +5,6 @@
   "license": "Apache-2.0",
   "files": [
     "install.cjs",
-    "ppx-windows.exe",
-    "ppx-linux.exe",
-    "ppx-linux-arm.exe",
-    "ppx-osx.exe",
-    "ppx-osx-x64.exe",
     "bin.cmd",
     "bin"
   ],

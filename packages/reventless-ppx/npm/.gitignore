@@ -1,0 +1,2 @@
+# Native binaries are injected by CI at publish time, never committed.
+*/ppx.exe

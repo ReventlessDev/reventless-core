@@ -1,9 +1,35 @@
 #!/bin/sh
+# Resolve and exec the reventless-ppx native binary for the current platform.
+#
+# Resolution order:
+#   1. The matching per-platform package @reventlessdev/reventless-ppx-<platform>
+#      (declared as an optionalDependency; npm/pnpm install only the one whose
+#      os/cpu match). Checked both as a sibling in node_modules (npm flat / pnpm
+#      store layout) and nested under this package's node_modules (pnpm workspace
+#      layout).
+#   2. A locally-built or committed fallback binary in this directory — covers PPX
+#      development (`pnpm build:ppx`) and the pre-publish transition window.
+#
+# Windows is served via WSL2 (which presents as Linux-x86_64); there is no native
+# Windows binary.
 DIR="$(cd "$(dirname "$0")" && pwd)"
+
 case "$(uname -s)-$(uname -m)" in
-  Linux-x86_64)  exec "$DIR/ppx-linux.exe" "$@" ;;
-  Linux-aarch64) exec "$DIR/ppx-linux-arm.exe" "$@" ;;
-  Darwin-x86_64) exec "$DIR/ppx-osx-x64.exe" "$@" ;;
-  Darwin-arm64)  echo "ppx-osx.exe (Apple Silicon) not built — run: cd packages/reventless-ppx/src && opam exec -- dune build && cp _build/default/bin/bin.exe ../ppx-osx.exe" >&2; exit 1 ;;
-  *) echo "Unsupported platform: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+  Linux-x86_64)   PKG="linux-x64";    LOCAL="ppx-linux.exe" ;;
+  Linux-aarch64)  PKG="linux-arm64";  LOCAL="ppx-linux-arm.exe" ;;
+  Darwin-x86_64)  PKG="darwin-x64";   LOCAL="ppx-osx-x64.exe" ;;
+  Darwin-arm64)   PKG="darwin-arm64"; LOCAL="ppx-osx.exe" ;;
+  *) echo "reventless-ppx: unsupported platform $(uname -s)-$(uname -m)" >&2; exit 1 ;;
 esac
+
+for CAND in \
+  "$DIR/../reventless-ppx-$PKG/ppx.exe" \
+  "$DIR/node_modules/@reventlessdev/reventless-ppx-$PKG/ppx.exe" \
+  "$DIR/$LOCAL"; do
+  if [ -x "$CAND" ]; then exec "$CAND" "$@"; fi
+done
+
+echo "reventless-ppx: no binary found for $(uname -s)-$(uname -m)." >&2
+echo "  Expected package @reventlessdev/reventless-ppx-$PKG, or a local build at $DIR/$LOCAL." >&2
+echo "  For PPX development: (cd \"$DIR/src\" && opam exec -- dune build) && cp \"$DIR/src/_build/default/bin/bin.exe\" \"$DIR/$LOCAL\"" >&2
+exit 1

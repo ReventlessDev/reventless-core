@@ -1,84 +1,95 @@
 name: Build Reventless PPX
 
+# Build-once-per-version workflow for the native reventless-ppx binaries.
+#
+# Triggered ONLY by changes to the PPX *source* (or manual dispatch) — never by a
+# normal framework build. Every other CI job and every developer consumes the
+# published, version-pinned package from the registry cache and never compiles
+# the PPX.
+#
+# Publishing model (esbuild/swc style): each platform binary ships as its own
+# package @reventlessdev/reventless-ppx-<platform> with os/cpu fields; the thin
+# main @reventlessdev/reventless-ppx declares them as optionalDependencies, so a
+# consumer installs only the matching one.
+#
+# PREREQUISITE before a publish run: the per-platform package.json files AND the
+# main package.json must already carry the SAME (lockstep) version, and the main
+# package.json must declare the optionalDependencies (see the cutover runbook in
+# docs/plans/prebuilt-binaries-out-of-repo.md). Publishing an existing version is
+# a no-op (the registry rejects it), so bump deliberately.
+
 on:
-  # Disabled — PPX is built locally (see packages/doc/docs-framework/ppx-binary-management.md)
-  # push:
-  #   branches: [main, beta, alpha]
-  #   paths:
-  #     - 'packages/reventless-ppx/**'
-  # pull_request:
-  #   branches: [main, beta, alpha]
-  #   paths:
-  #     - 'packages/reventless-ppx/**'
+  push:
+    branches: [main, beta, alpha]
+    paths:
+      - "packages/reventless-ppx/src/**"
+  pull_request:
+    branches: [main, beta, alpha]
+    paths:
+      - "packages/reventless-ppx/src/**"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the per-platform + main packages to GitHub Packages"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
+  packages: write
 
 jobs:
-  # macOS build disabled — GitHub deprecated free macos-13 (x64) runners and
-  # macos-14 (arm64) was not re-enabled. Build macOS binaries locally instead.
-  # See packages/doc/docs-framework/ppx-binary-management.md for instructions.
-  # To re-enable: uncomment this job, set contents: write above, and uncomment
-  # the assemble job below.
-  #
-  # build:
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       include:
-  #         - os: macos-14          # arm64 (Apple Silicon)
-  #           artifact: ppx-osx.exe
-  #
-  #   runs-on: ${{ matrix.os }}
-  #   name: Build (${{ matrix.artifact }})
-  #
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup OCaml
-  #       uses: ocaml/setup-ocaml@v3
-  #       with:
-  #         ocaml-compiler: 5.2.x
-  #         dune-cache: true
-  #
-  #     - name: Install dependencies
-  #       run: |
-  #         opam install . --deps-only --with-test --yes
-  #       working-directory: packages/reventless-ppx/src
-  #
-  #     - name: Build binary
-  #       run: |
-  #         opam exec -- dune build
-  #       working-directory: packages/reventless-ppx/src
-  #
-  #     - name: Copy binary (Unix)
-  #       if: runner.os != 'Windows'
-  #       run: |
-  #         cp packages/reventless-ppx/src/_build/default/bin/bin.exe ${{ matrix.artifact }}
-  #         chmod +x ${{ matrix.artifact }}
-  #
-  #     - name: Copy binary (Windows)
-  #       if: runner.os == 'Windows'
-  #       run: |
-  #         copy packages\reventless-ppx\src\_build\default\bin\bin.exe ${{ matrix.artifact }}
-  #
-  #     - name: Upload artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: ${{ matrix.artifact }}
-  #         path: ${{ matrix.artifact }}
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest # linux x64
+            target: linux-x64
+          - os: macos-14 # arm64 (Apple Silicon)
+            target: darwin-arm64
+          - os: macos-13 # x64 (Intel) — sunsetting GitHub runner
+            target: darwin-x64
+    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.target }})
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.x
+          dune-cache: true
+
+      - name: Install OCaml dependencies
+        run: opam install . --deps-only --yes
+        working-directory: packages/reventless-ppx/src
+
+      - name: Build binary
+        run: opam exec -- dune build
+        working-directory: packages/reventless-ppx/src
+
+      - name: Stage binary into platform package
+        run: |
+          cp packages/reventless-ppx/src/_build/default/bin/bin.exe \
+             packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
+          chmod +x packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppx-${{ matrix.target }}
+          path: packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
+          if-no-files-found: error
 
   test:
-    # needs: build  # uncomment when build job is re-enabled
     runs-on: ubuntu-latest
     name: Test PPX
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -115,51 +126,55 @@ jobs:
         run: npm test
         working-directory: packages/reventless-ppx
 
-  # Disabled together with the build job above.
-  # To re-enable: uncomment this job and the build job.
-  #
-  # assemble:
-  #   needs: [build, test]
-  #   runs-on: ubuntu-latest
-  #   if: github.event_name == 'push'
-  #   name: Assemble binaries
-  #
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Download all artifacts
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         path: packages/reventless-ppx/
-  #
-  #     - name: Move binaries into package
-  #       run: |
-  #         cd packages/reventless-ppx
-  #         for dir in ppx-*.exe; do
-  #           if [ -d "$dir" ]; then
-  #             mv "$dir/$dir" .
-  #             rmdir "$dir"
-  #             echo "Assembled: $dir"
-  #           fi
-  #         done
-  #         ls -la ppx-*.exe
-  #
-  #     - name: Upload assembled package
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: reventless-ppx-binaries
-  #         path: |
-  #           packages/reventless-ppx/ppx-osx.exe
-  #
-  #     - name: Commit binaries to repo
-  #       run: |
-  #         git config user.name "github-actions[bot]"
-  #         git config user.email "github-actions[bot]@users.noreply.github.com"
-  #         git add packages/reventless-ppx/ppx-osx.exe
-  #         if git diff --cached --quiet; then
-  #           echo "No binary changes to commit"
-  #         else
-  #           git commit -m "chore(ppx): update prebuilt binaries [skip ci]"
-  #           git push origin HEAD:${{ github.ref_name }}
-  #         fi
+  # Publish the per-platform binary packages + the thin main package. Runs on a
+  # src/** push to a release branch, or a manual dispatch with publish=true.
+  # PRs build + test but never publish.
+  publish:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    name: Publish packages
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.1"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Download platform binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/ppx-bins
+
+      - name: Place binaries into platform packages
+        run: |
+          set -euo pipefail
+          for target in linux-x64 darwin-arm64 darwin-x64; do
+            src="/tmp/ppx-bins/ppx-${target}/ppx.exe"
+            dest="packages/reventless-ppx/npm/${target}/ppx.exe"
+            if [ ! -f "$src" ]; then
+              echo "::error::missing built binary for ${target}"; exit 1
+            fi
+            cp "$src" "$dest"
+            chmod +x "$dest"
+            echo "Staged ${dest}"
+          done
+
+      - name: Publish per-platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for target in linux-x64 darwin-arm64 darwin-x64; do
+            ( cd "packages/reventless-ppx/npm/${target}" && npm publish ) \
+              || echo "::warning::publish of ${target} skipped (version may already exist)"
+          done
+
+      - name: Publish main (thin) package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ( cd packages/reventless-ppx && npm publish ) \
+            || echo "::warning::publish of main skipped (version may already exist)"
