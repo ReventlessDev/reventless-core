@@ -5,12 +5,39 @@ Scope: stop committing native build artifacts to git — primarily the per-platf
 they live instead so CI and developers fetch only the binary they need, built
 **once per version** rather than rebuilt on every framework build.
 
-Status: **local prep landed; CI/registry pivot pending.** The safe, non-breaking
-groundwork (Option B restructure draft + the independent lockfile cleanup) is
-implemented and committed; the publish-then-delete pivot is CI/registry-driven and
-tracked in the **Cutover runbook** below. The committed binaries deliberately
-remain until the per-platform packages are published and verified — see the
-safety invariant in "Implementation sketch". Options + recommendation below.
+Status: **prep landed; main packaging kept FAT after the alpha.22 incident; CI
+pivot pending.** The independent lockfile cleanup + the forward-compatible
+launcher / per-platform scaffolds / `build-ppx.yml` draft are committed, but the
+main package's `files` list was **reverted to fat** (binaries bundled) after a
+premature thinning shipped a broken publish — see "Incident" below. The
+publish-then-delete pivot is CI/registry-driven and tracked in the **Cutover
+runbook**, now gated on a new prerequisite (exclude `reventless-ppx` from lerna).
+
+## Incident — alpha.22 (2026-05-25)
+
+Thinning the main `files` list **before** the per-platform packages existed, while
+`reventless-ppx` was still in the lerna release scope, caused the normal release
+to publish `@reventlessdev/reventless-ppx@1.0.0-alpha.22` with **no binary and no
+`optionalDependencies`** (the dedicated `build-ppx.yml` only triggers on `src/**`,
+which didn't change, so no per-platform package was published). Core itself was
+unaffected (examples use `workspace:*`), but registry consumers resolving the new
+version broke.
+
+Compounding fact learned: **GitHub Packages does not honor manual `dist-tag`
+moves** — `npm dist-tag add … latest` reports success but `latest` stays on the
+most-recently-published version. So a broken publish can only be superseded by
+publishing a newer good version (not by re-tagging), and broken versions are best
+removed via the GitHub Packages UI/API.
+
+**Resolution:** reverted `files` to fat → the next lerna release publishes a
+working fat `alpha.23` (binaries bundled), which becomes `latest`. The
+per-platform cutover is deferred until the ordering below is in place.
+
+**Rule:** do **not** thin `files` (or add `optionalDependencies`) until
+`reventless-ppx` is first removed from the lerna release — otherwise the thinning
+rides the normal release train and ships binary-less.
+
+## Progress
 
 ## Progress
 
@@ -23,10 +50,12 @@ safety invariant in "Implementation sketch". Options + recommendation below.
   `node_modules`, covering npm-flat / pnpm-store / pnpm-workspace layouts), else
   falls back to the local committed/built binary. **Validated locally** on Intel
   Mac (execs `ppx-osx-x64.exe`, prints the ppx's own `<infile> <outfile>` help).
-- **Thin main `package.json`**: `files` reduced to `bin`, `bin.cmd`, `install.cjs`
-  (no binaries). Version unchanged; `optionalDependencies` **intentionally not
-  added yet** (they'd break `pnpm install --frozen-lockfile` against unpublished
-  versions — added at the pivot).
+- **Main `package.json` `files`: kept FAT** (binaries bundled). It was briefly
+  thinned, which caused the alpha.22 incident above, and has been reverted. It
+  stays fat — and `reventless-ppx` stays in the lerna release — until the cutover
+  removes it from lerna (runbook step 0). `optionalDependencies` are **not** added
+  for the same reason. The launcher already supports the per-platform packages, so
+  no further main-package change is needed before the pivot.
 - **Per-platform publish scaffolds**: `packages/reventless-ppx/npm/{linux-x64,
   darwin-arm64,darwin-x64}/package.json` with `os`/`cpu`, a README, and a
   `.gitignore` for the CI-injected `ppx.exe`. Not pnpm workspace members
@@ -46,8 +75,16 @@ it can be dropped at the cutover.
 Run in order; **never** remove the committed binaries before step 5 verifies the
 registry serves them.
 
-1. **Bump versions in lockstep.** Set the same new version (e.g. `1.0.0-alpha.21`)
-   in `packages/reventless-ppx/package.json` and all `npm/*/package.json`.
+0. **Remove `reventless-ppx` from the lerna release (prerequisite — do this
+   first).** Add `--ignore-changes reventless-ppx` to the `lerna version` calls in
+   `release.yml` (alongside the existing `doc` / `reventless-layer-builder`), so
+   `reventless-ppx` is published **only** by `build-ppx.yml`. Without this, any
+   later thinning or version bump rides the normal release train and ships a
+   binary-less package (see Incident). Only after this is the main package safe to
+   thin.
+1. **Thin the main `files`** (drop the binaries) and **bump versions in lockstep**
+   — same new version in `packages/reventless-ppx/package.json` and all
+   `npm/*/package.json`.
 2. **Add `optionalDependencies` to the main `package.json`** at that version:
    ```json
    "optionalDependencies": {
