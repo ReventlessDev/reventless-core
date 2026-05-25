@@ -84,7 +84,7 @@ Document the contract before either side changes. Target shape (JSON, base64-or-
 {
   "queueUrl": "https://sqs.../<EventColl>-<hash>",
   "pluginExtensionPointCmdTopicUrl": "https://sqs.../CorePluginExtPointCmdTopic-<hash>",
-  "eventTopicArn": "arn:aws:sns:eu-west-1:000000000000:CorePluginExtPointEventTopic-<hash>",
+  "eventTopicArn": "arn:aws:sns:eu-west-1:<account-id>:CorePluginExtPointEventTopic-<hash>",
   "pluginReadModelTableName": "Plugin-<hash>",
   "appSyncApiId": "wbbmwqjun…",
   "clonerEnabled": false,

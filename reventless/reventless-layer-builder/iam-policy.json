@@ -8,6 +8,11 @@
         "lambda:GetLayerVersion"
       ],
       "Resource": "arn:aws:lambda:*:*:layer:reventless-aws*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "ssm:PutParameter",
+      "Resource": "arn:aws:ssm:*:*:parameter/reventless/layer-arn/*"
     }
   ]
 }

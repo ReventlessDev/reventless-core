@@ -10,7 +10,7 @@
 
 The Lambda layer is published to AWS Lambda under a single name: **`reventless-aws`**.
 
-- Current ARN: `arn:aws:lambda:eu-west-1:000000000000:layer:reventless-aws:72`
+- Current ARN: `arn:aws:lambda:eu-west-1:<account-id>:layer:reventless-aws:72`
 - Layer name is hardcoded in `.github/workflows/build-lambda-layer.yml`
 - The ARN of the latest publish is stored in `.github/layer-arn.txt` and committed to the repo
 - All three branches (`alpha`, `beta`, `main`) push to this same name — each push creates a new version number (`:72`, `:73`, etc.)
@@ -213,7 +213,7 @@ Sequence:
 
 ### Note on `.github/layer-arn.txt`
 
-After deletion, update `.github/layer-arn.txt` to be empty or remove it — it currently holds `arn:aws:lambda:eu-west-1:000000000000:layer:reventless-aws:72` which will be invalid after cleanup. The production ARN file will be repopulated when the first `main` layer build runs.
+After deletion, update `.github/layer-arn.txt` to be empty or remove it — it currently holds `arn:aws:lambda:eu-west-1:<account-id>:layer:reventless-aws:72` which will be invalid after cleanup. The production ARN file will be repopulated when the first `main` layer build runs.
 
 ---
 

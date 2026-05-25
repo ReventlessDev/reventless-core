@@ -21,7 +21,7 @@ QueryDb table. That Lambda is only created in `Platform.res`'s
 DCB slices can opt into streaming via the `StateViewSliceStream/` folder, but
 classic aggregate-projection **ReadModels have no streaming variant at all**.
 
-Verified against deployed alpha (000000000000 / eu-west-1): the only StateTopic
+Verified against deployed alpha (<account-id> / eu-west-1): the only StateTopic
 Lambdas are `ProductsStateTopicLambda` and `ProductDemandStateTopicLambda` (the
 two catalog `StateViewSliceStream` components). No Customers/Orders/etc.
 

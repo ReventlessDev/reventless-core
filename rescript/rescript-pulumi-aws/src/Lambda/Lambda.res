@@ -47,36 +47,22 @@ type eventHandlerNoResult<'event> = eventHandler<'event, unit>
 external getRemainingTimeInMillis: context => int = "getRemainingTimeInMillis"
 
 @val @scope(("process", "env")) external _layerArnEnv: option<string> = "REVENTLESS_LAYER_ARN"
-@val @scope("process") external _cwd: unit => string = "cwd"
-@module("path") external _pathJoin: (string, string) => string = "join"
-@module("path") external _pathDirname: string => string = "dirname"
-@module("fs") external _fsExistsSync: string => bool = "existsSync"
-@module("fs") external _fsReadFileSync: (string, string) => string = "readFileSync"
 
 /**
- * Returns the Reventless Lambda layer ARN.
- * Priority: REVENTLESS_LAYER_ARN env var → .github/layer-arn[-{stack}].txt walked up from cwd.
- * File name: layer-arn.txt for main, layer-arn-{stack}.txt for all other stacks.
+ * Returns the Reventless Lambda layer ARN from the `REVENTLESS_LAYER_ARN`
+ * environment variable, or `None` when it is unset or empty.
+ *
+ * CI resolves the ARN from SSM Parameter Store (`/reventless/layer-arn/{stack}`)
+ * and exports it as `REVENTLESS_LAYER_ARN` before `pulumi up`. For local deploys,
+ * set the env var yourself (e.g. from the same SSM parameter, or from
+ * `aws lambda list-layer-versions`). When unset, Lambda functions deploy without
+ * the Reventless layer.
  */
-let reventlessLayerArn: option<string> = {
+let reventlessLayerArn: option<string> =
   switch _layerArnEnv {
-  | Some(_) as arn => arn
-  | None =>
-    let stack = Pulumi.Pulumi.getStackName()
-    let fileName = stack == "main" ? "layer-arn.txt" : `layer-arn-${stack}.txt`
-    let rec find = dir => {
-      let candidate = _pathJoin(dir, `.github/${fileName}`)
-      if _fsExistsSync(candidate) {
-        let content = _fsReadFileSync(candidate, "utf-8")->String.trim
-        content->String.length > 0 ? Some(content) : None
-      } else {
-        let parent = _pathDirname(dir)
-        parent == dir ? None : find(parent)
-      }
-    }
-    find(_cwd())
+  | Some(arn) if arn->String.trim->String.length > 0 => Some(arn->String.trim)
+  | _ => None
   }
-}
 
 @val
 external environment: option<string> = "process.env.Environment"

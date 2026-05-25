@@ -182,7 +182,11 @@ let layers =
   ->Pulumi.Input.make
 ```
 
-The current layer ARN is stored in `.github/layer-arn.txt` and committed by CI after each layer publish.
+The current layer ARN is stored in AWS SSM Parameter Store at
+`/reventless/layer-arn/{stack}` (e.g. `/reventless/layer-arn/alpha`), written by
+CI after each layer publish. The deploy workflow reads it back into
+`REVENTLESS_LAYER_ARN`. Parameters are regional — CI writes and reads them in the
+same region as the deploy. It is no longer committed to the repository.
 
 ### ESM Module Resolution
 
@@ -327,7 +331,7 @@ Final size: ~30–40 MB uncompressed. Lambda limit is 50 MB per layer (uncompres
 3. Build layer: `cd reventless/reventless-layer-builder && npm run build`
 4. Verify artifact size (warn >40 MB)
 5. Publish to AWS Lambda: `aws lambda publish-layer-version --layer-name reventless-aws`
-6. Commit new layer ARN to `.github/layer-arn.txt`
+6. Store new layer ARN in SSM: `aws ssm put-parameter --name /reventless/layer-arn/{stack}`
 7. Upload zip as GitHub release asset
 8. Append layer ARN to release notes
 
@@ -335,7 +339,7 @@ Final size: ~30–40 MB uncompressed. Lambda limit is 50 MB per layer (uncompres
 - `AWS_LAYER_ACCESS_KEY_ID` / `AWS_LAYER_SECRET_ACCESS_KEY` — IAM user `reventless-ci-layer-publisher`
 - `GITHUB_TOKEN` — for npm registry and release asset upload
 
-**IAM policy** (`iam-policy.json`): scoped to `arn:aws:lambda:*:*:layer:reventless-aws*` with `PublishLayerVersion` and `GetLayerVersion` permissions.
+**IAM policy** (`iam-policy.json`): scoped to `arn:aws:lambda:*:*:layer:reventless-aws*` with `PublishLayerVersion` and `GetLayerVersion` permissions, plus `ssm:PutParameter` on `arn:aws:ssm:*:*:parameter/reventless/layer-arn/*` so the publish job can store the ARN. The deploy credentials need the matching `ssm:GetParameter` on the same path to read it back.
 
 ### When to Rebuild
 
@@ -387,8 +391,8 @@ Something is importing from the `effect` barrel instead of using deep imports. C
 
 If a deploy uses an old layer ARN:
 - Check `REVENTLESS_LAYER_ARN` environment variable during `pulumi up`
-- Verify `.github/layer-arn.txt` has the latest ARN
-- Manual override: set `REVENTLESS_LAYER_ARN=arn:aws:lambda:...` before deploying
+- Verify the SSM parameter has the latest ARN: `aws ssm get-parameter --name /reventless/layer-arn/{stack} --query Parameter.Value --output text` (in the deploy region)
+- Manual override: set `REVENTLESS_LAYER_ARN=arn:aws:lambda:...` before deploying, or pass the `layer-arn` workflow input
 
 ### Layer size exceeds 40 MB
 
@@ -420,4 +424,4 @@ The layer is extracted once per Lambda container init. Larger layers increase co
 | `reventless/reventless-aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res` | Lambda deployment (layer attachment) |
 | `rescript/rescript-pulumi-aws/src/Lambda/Lambda.res` | `REVENTLESS_LAYER_ARN` binding |
 | `.github/workflows/build-lambda-layer.yml` | CI/CD layer build + publish |
-| `.github/layer-arn.txt` | Current layer ARN (committed by CI) |
+| SSM `/reventless/layer-arn/{stack}` | Current layer ARN (written by CI, per stack/region) |

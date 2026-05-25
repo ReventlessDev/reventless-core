@@ -33,7 +33,7 @@ on:
         type: string
         default: "22"
       layer-arn:
-        description: "Lambda Layer ARN (overrides .github/layer-arn.txt)"
+        description: "Lambda Layer ARN (overrides the SSM /reventless/layer-arn/{stack} lookup)"
         required: false
         type: string
         default: ""
@@ -115,6 +115,8 @@ jobs:
 
       - name: Parse manifest and detect changes
         id: changes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -138,20 +140,26 @@ jobs:
 
           # Determine the base commit for diffing.
           # For PRs: diff against the PR base.
-          # For everything else (push, workflow_run, workflow_dispatch):
-          # diff against the last successful deploy SHA stored in .github/last-deploy-sha.txt.
+          # For everything else (push, workflow_dispatch): diff against the SHA
+          # of the last successful run of the *caller* workflow on this branch.
+          # GitHub already records which SHA each run deployed, so no repo state
+          # (and no commit-back) is needed. Requires `actions: read` permission
+          # from the calling workflow.
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          elif [[ -f .github/last-deploy-sha.txt ]]; then
-            BASE_SHA=$(tr -d '[:space:]' < .github/last-deploy-sha.txt)
+          else
+            # github.workflow_ref → owner/repo/.github/workflows/FILE.yml@refs/heads/BRANCH
+            WORKFLOW_REF="${{ github.workflow_ref }}"
+            WORKFLOW_FILE="${WORKFLOW_REF%@*}"   # strip @ref
+            WORKFLOW_FILE="${WORKFLOW_FILE##*/}" # basename → FILE.yml
+            BASE_SHA=$(gh run list --repo "${{ github.repository }}" \
+              --workflow "$WORKFLOW_FILE" --branch "${{ steps.branch.outputs.name }}" \
+              --status success --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || echo "")
             # Verify the commit exists in history (it may have been force-pushed away)
-            if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
-              echo "::warning::Last deploy SHA $BASE_SHA not found in history — deploying everything"
+            if [[ -z "$BASE_SHA" ]] || ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
+              echo "::warning::No prior successful run of $WORKFLOW_FILE on ${{ steps.branch.outputs.name }} — deploying everything"
               BASE_SHA=$(git rev-list --max-parents=0 HEAD)
             fi
-          else
-            echo "::warning::No last-deploy-sha.txt found — deploying everything"
-            BASE_SHA=$(git rev-list --max-parents=0 HEAD)
           fi
 
           echo "Base SHA: $BASE_SHA"
@@ -264,17 +272,20 @@ jobs:
 
       - name: Resolve Lambda Layer ARN
         run: |
-          # Input takes precedence, then branch-specific ARN file, then empty (no layer)
+          # Input takes precedence, then the per-stack SSM parameter, then empty
+          # (no layer). SSM parameters are regional — read using AWS_REGION (the
+          # manifest region), matching where build-lambda-layer.yml wrote it.
           ARN="${{ inputs.layer-arn }}"
           if [[ -z "$ARN" ]]; then
             BRANCH="${{ needs.detect-changes.outputs.branch }}"
             case "$BRANCH" in
-              main)  ARN_FILE=".github/layer-arn.txt" ;;
-              beta)  ARN_FILE=".github/layer-arn-beta.txt" ;;
-              alpha) ARN_FILE=".github/layer-arn-alpha.txt" ;;
-              *)     ARN_FILE=".github/layer-arn-alpha.txt" ;;
+              main)  STACK="main"  ;;
+              beta)  STACK="beta"  ;;
+              alpha) STACK="alpha" ;;
+              *)     STACK="alpha" ;;
             esac
-            [[ -f "$ARN_FILE" ]] && ARN=$(cat "$ARN_FILE" | tr -d '[:space:]')
+            ARN=$(aws ssm get-parameter --name "/reventless/layer-arn/${STACK}" \
+              --query Parameter.Value --output text 2>/dev/null || echo "")
           fi
           echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
           echo "Layer ARN: ${ARN:-(none)}"
@@ -393,17 +404,20 @@ jobs:
 
       - name: Resolve Lambda Layer ARN
         run: |
-          # Input takes precedence, then branch-specific ARN file, then empty (no layer)
+          # Input takes precedence, then the per-stack SSM parameter, then empty
+          # (no layer). SSM parameters are regional — read using AWS_REGION (the
+          # manifest region), matching where build-lambda-layer.yml wrote it.
           ARN="${{ inputs.layer-arn }}"
           if [[ -z "$ARN" ]]; then
             BRANCH="${{ needs.detect-changes.outputs.branch }}"
             case "$BRANCH" in
-              main)  ARN_FILE=".github/layer-arn.txt" ;;
-              beta)  ARN_FILE=".github/layer-arn-beta.txt" ;;
-              alpha) ARN_FILE=".github/layer-arn-alpha.txt" ;;
-              *)     ARN_FILE=".github/layer-arn-alpha.txt" ;;
+              main)  STACK="main"  ;;
+              beta)  STACK="beta"  ;;
+              alpha) STACK="alpha" ;;
+              *)     STACK="alpha" ;;
             esac
-            [[ -f "$ARN_FILE" ]] && ARN=$(cat "$ARN_FILE" | tr -d '[:space:]')
+            ARN=$(aws ssm get-parameter --name "/reventless/layer-arn/${STACK}" \
+              --query Parameter.Value --output text 2>/dev/null || echo "")
           fi
           echo "REVENTLESS_LAYER_ARN=${ARN}" >> "$GITHUB_ENV"
           echo "Layer ARN: ${ARN:-(none)}"
@@ -534,39 +548,6 @@ jobs:
             echo "::warning::pulumi refresh had errors — proceeding with pulumi up to self-heal stale resources"
           pulumi up --stack "$BRANCH" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
-  # ---------------------------------------------------------------------------
-  # Job 4: Record successful deploy SHA for next run's change detection
-  # ---------------------------------------------------------------------------
-  record-deploy-sha:
-    name: Record Deploy SHA
-    runs-on: ubuntu-latest
-    needs: [detect-changes, deploy-platform, deploy-plugins]
-    if: |
-      always() &&
-      github.event_name != 'pull_request' &&
-      needs.detect-changes.result == 'success' &&
-      (needs.deploy-platform.result == 'success' || needs.deploy-plugins.result == 'success') &&
-      needs.deploy-platform.result != 'failure' &&
-      needs.deploy-plugins.result != 'failure'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Update last deploy SHA
-        run: |
-          echo "${{ github.sha }}" > .github/last-deploy-sha.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/last-deploy-sha.txt
-          git diff --cached --quiet && echo "SHA unchanged" && exit 0
-          git commit -m "chore(ci): record successful deploy at ${{ github.sha }} [skip ci]"
-          BRANCH="${GITHUB_REF#refs/heads/}"
-          for i in 1 2 3; do
-            git pull --rebase -X theirs origin "$BRANCH" && \
-            git push && exit 0
-            git rebase --abort 2>/dev/null || true
-            echo "Push attempt $i failed, retrying..."
-            sleep 5
-          done
-          echo "All push attempts failed"
-          exit 1
+  # The change-detection base SHA is derived from the last successful run of the
+  # caller workflow (see the "Parse manifest and detect changes" step), so no
+  # deploy state is committed back to the repo.

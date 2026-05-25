@@ -93,19 +93,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_LAYER_SECRET_ACCESS_KEY }}
           aws-region: ${{ matrix.region }}
 
-      - name: Determine layer name and ARN file
+      - name: Determine layer name and SSM parameter
         id: layer
         run: |
           BRANCH="${GITHUB_REF#refs/heads/}"
           case "$BRANCH" in
-            main)  LAYER_NAME="reventless-aws";       ARN_FILE=".github/layer-arn.txt" ;;
-            beta)  LAYER_NAME="reventless-aws-beta";  ARN_FILE=".github/layer-arn-beta.txt" ;;
-            alpha) LAYER_NAME="reventless-aws-alpha"; ARN_FILE=".github/layer-arn-alpha.txt" ;;
-            *)     LAYER_NAME="reventless-aws-alpha"; ARN_FILE=".github/layer-arn-alpha.txt" ;;
+            main)  LAYER_NAME="reventless-aws";       STACK="main"  ;;
+            beta)  LAYER_NAME="reventless-aws-beta";  STACK="beta"  ;;
+            alpha) LAYER_NAME="reventless-aws-alpha"; STACK="alpha" ;;
+            *)     LAYER_NAME="reventless-aws-alpha"; STACK="alpha" ;;
           esac
           echo "name=$LAYER_NAME" >> $GITHUB_OUTPUT
-          echo "arn_file=$ARN_FILE" >> $GITHUB_OUTPUT
-          echo "Branch: $BRANCH → layer: $LAYER_NAME → ARN file: $ARN_FILE"
+          echo "stack=$STACK" >> $GITHUB_OUTPUT
+          echo "Branch: $BRANCH → layer: $LAYER_NAME → SSM: /reventless/layer-arn/$STACK"
 
       - name: Publish Lambda layer
         id: publish
@@ -120,24 +120,17 @@ jobs:
           echo "layer_arn=$LAYER_VERSION" >> $GITHUB_OUTPUT
           echo "Published layer: $LAYER_VERSION"
 
-      - name: Commit layer ARN to repository
+      - name: Store layer ARN in SSM Parameter Store
         run: |
-          LAYER_ARN="${{ steps.publish.outputs.layer_arn }}"
-          ARN_FILE="${{ steps.layer.outputs.arn_file }}"
-          echo "$LAYER_ARN" > "$ARN_FILE"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$ARN_FILE"
-          git commit -m "chore(ci): update Lambda Layer ARN to $LAYER_ARN [skip ci]" || { echo "No change to layer ARN"; exit 0; }
-          BRANCH="${GITHUB_REF#refs/heads/}"
-          for i in 1 2 3; do
-            git pull --rebase --autostash origin "$BRANCH" && \
-            git push && exit 0
-            echo "Push attempt $i failed, retrying..."
-            sleep 5
-          done
-          echo "All push attempts failed"
-          exit 1
+          # Per-account deploy state lives in AWS, not the repo. The deploy
+          # workflow reads this parameter back into REVENTLESS_LAYER_ARN.
+          # Parameters are regional — written here in ${{ matrix.region }},
+          # read by the deploy job using the manifest's region.
+          aws ssm put-parameter \
+            --name "/reventless/layer-arn/${{ steps.layer.outputs.stack }}" \
+            --type String --overwrite \
+            --value "${{ steps.publish.outputs.layer_arn }}"
+          echo "Stored /reventless/layer-arn/${{ steps.layer.outputs.stack }} = ${{ steps.publish.outputs.layer_arn }}"
 
       - name: Dispatch deploy
         env:

@@ -5,9 +5,10 @@
 #   - workflow_dispatch from build-lambda-layer.yml after a new layer is published
 #   - Manual dispatch
 #
-# The Lambda Layer ARN is read from .github/layer-arn[-branch].txt at deploy time.
-# build-lambda-layer.yml commits the fresh ARN before dispatching this workflow,
-# so the ARN file is always up-to-date when the deploy reads it.
+# The Lambda Layer ARN is resolved from SSM Parameter Store
+# (/reventless/layer-arn/{stack}) at deploy time. build-lambda-layer.yml writes
+# the fresh ARN there before dispatching this workflow, so the parameter is
+# always up-to-date when the deploy reads it.
 
 name: Deploy Online Shop Hybrid
 
@@ -19,7 +20,10 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  # Read-only: the deploy no longer commits state back to the repo.
+  contents: read
+  # Required so detect-changes can derive the base SHA from the last successful
+  # run of this workflow via `gh run list` (the GitHub Actions API).
   actions: read
   # Required so the auto-issued GITHUB_TOKEN can read from
   # npm.pkg.github.com during `pnpm install` (e.g. the

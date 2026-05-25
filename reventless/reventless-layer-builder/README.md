@@ -95,12 +95,21 @@ The workflow builds the layer, publishes to AWS Lambda, uploads the zip as a Git
 
 ### IAM Setup
 
-The CI user `reventless-ci-layer-publisher` has minimal permissions defined in `iam-policy.json`:
+The CI user `reventless-ci-layer-publisher` has minimal permissions. `iam-policy.json`
+is the tracked source-of-truth document; it is applied as the customer-managed
+policy `reventless-ci-lambda-layer-publish` attached to that user (update the live
+policy by creating a new version from this file). It grants:
 - `lambda:PublishLayerVersion`
 - `lambda:GetLayerVersion`
 - Scoped to `arn:aws:lambda:*:*:layer:reventless-aws*`
+- `ssm:PutParameter` on `arn:aws:ssm:*:*:parameter/reventless/layer-arn/*` — the
+  build job stores the published ARN there for the deploy workflow to read.
 
 GitHub secrets: `AWS_LAYER_ACCESS_KEY_ID`, `AWS_LAYER_SECRET_ACCESS_KEY`
+
+> The **deploy** CI users (core and business `AWS_ACCESS_KEY_ID`) need the
+> matching `ssm:GetParameter` on the same path to read the ARN at deploy time.
+> Those users' policies are managed in AWS, not tracked here.
 
 ## Lambda Layer Structure
 
