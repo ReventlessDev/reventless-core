@@ -45,6 +45,11 @@ packages/reventless-ppx/src/_build/
 # ast-grep tree-sitter grammar (compiled binary, rebuild with gcc)
 rescript.dylib
 
+# This is a pnpm workspace — the root pnpm-lock.yaml is the only authoritative
+# lock. Per-package npm package-lock.json files are stale npm-era leftovers that
+# nothing consumes (a dependency's lockfile is never honored by consumers).
+package-lock.json
+
 # Per-dev Pulumi config overrides — gitignored sidecar layered on top of the
 # checked-in `Pulumi.<stack>.yaml` files. Read by `Util_LocalConfig` at
 # deploy time. Keep dev-local values (e.g. existing AWS resource IDs)
