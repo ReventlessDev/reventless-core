@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog-aws",
-  "version": "1.0.0-alpha.72",
+  "version": "1.0.0-alpha.73",
   "description": "Online Shop Hybrid — Catalog plugin AWS deployment",
   "license": "Apache-2.0",
   "scripts": {

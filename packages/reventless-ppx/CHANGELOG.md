@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.23 (2026-05-25)
+
+### Bug Fixes
+
+* **ppx:** restore bundled binaries to the published package ([93b4e17](https://github.com/ReventlessDev/reventless-core/commit/93b4e174b34598c4294a869f41c8237dcbbe26f5))
+
+
 # 1.0.0-alpha.22 (2026-05-25)
 
 **Note:** Version bump only for package @reventlessdev/reventless-ppx
