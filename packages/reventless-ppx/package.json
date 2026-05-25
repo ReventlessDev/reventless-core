@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-ppx",
-  "version": "1.0.0-alpha.21",
+  "version": "1.0.0-alpha.22",
   "description": "ReScript PPX to eliminate boilerplate from Reventless application code",
   "license": "Apache-2.0",
   "files": [
