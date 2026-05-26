@@ -82,9 +82,23 @@ registry serves them.
    later thinning or version bump rides the normal release train and ships a
    binary-less package (see Incident). Only after this is the main package safe to
    thin.
-1. **Thin the main `files`** (drop the binaries) and **bump versions in lockstep**
-   — same new version in `packages/reventless-ppx/package.json` and all
-   `npm/*/package.json`.
+1. **Publish per-platform packages FIRST (chicken-and-egg).** Bump only the
+   `npm/*/package.json` versions to the target (e.g. `1.0.0-alpha.24`), leave
+   main untouched. Commit + push + `workflow_dispatch` `build-ppx.yml` with
+   `publish=true`. The workflow's per-platform publish succeeds; its attempt to
+   republish main at its current (existing) version fails with a harmless
+   warning. Result: `@…-linux-x64` / `-darwin-arm64` / `-darwin-x64` exist in
+   the registry at the target version.
+   *Why split this from step 1a:* `pnpm install` won't add lockfile entries for
+   `optionalDependencies` whose versions don't exist in the registry — and any
+   resulting `package.json`/`pnpm-lock.yaml` mismatch makes CI's
+   `--frozen-lockfile` fail across **every** workflow.
+1a. **Thin main + add `optionalDependencies`.** Now bump
+   `packages/reventless-ppx/package.json` to the same target version, thin its
+   `files` (drop the binaries), and add `optionalDependencies` for the three
+   platform packages at that version. Run `pnpm install` — it now resolves the
+   optional deps from the registry and updates `pnpm-lock.yaml`. Commit
+   package.json + lockfile.
 2. **Add `optionalDependencies` to the main `package.json`** at that version:
    ```json
    "optionalDependencies": {
@@ -97,10 +111,11 @@ registry serves them.
    optional deps 404 → skipped; the launcher's local fallback still builds.)
 3. **Confirm GitHub Packages headroom** (org spending limit / budget set — the
    overage block was resolved 2026-05-25).
-4. **Publish:** push the version bump under `packages/reventless-ppx/src/**`, or
-   `workflow_dispatch` `build-ppx.yml` with `publish=true`. Confirm
-   `@reventlessdev/reventless-ppx@<ver>` (thin) + `-linux-x64` / `-darwin-arm64`
-   / `-darwin-x64` @ the same version exist in the registry.
+4. **Publish thin main:** push step 1a, then `workflow_dispatch` `build-ppx.yml`
+   again. The per-platform republish attempts at the same version fail
+   harmlessly (version exists); the thin main publishes at the target version.
+   Confirm `@reventlessdev/reventless-ppx@<ver>` (thin) + the three platform
+   packages all exist in the registry.
 5. **Verify installable.** Scratch `npm i @reventlessdev/reventless-ppx@<ver>`:
    Linux pulls only `-linux-x64`, macOS only the matching darwin package; run the
    binary. Then in this repo confirm a clean `pnpm install` + an `examples/**`

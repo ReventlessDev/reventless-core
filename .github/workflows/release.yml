@@ -143,10 +143,10 @@ jobs:
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             echo "Creating prerelease versions with identifier: $PREID"
-            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
+            npx lerna version --conventional-commits --conventional-prerelease --preid "$PREID" --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --ignore-changes reventless-ppx --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
           else
             echo "Creating regular release versions"
-            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
+            npx lerna version --conventional-commits --conventional-graduate --allow-branch "$BRANCH_NAME" --ignore-changes doc --ignore-changes reventless-layer-builder --ignore-changes reventless-ppx --force-git-tag --yes --no-push --message "chore(release): version packages [skip ci]"
           fi
 
           echo "Lerna version completed successfully"
