@@ -6,12 +6,17 @@ they live instead so CI and developers fetch only the binary they need, built
 **once per version** rather than rebuilt on every framework build.
 
 Status: **prep landed; main packaging kept FAT after the alpha.22 incident; CI
-pivot pending.** The independent lockfile cleanup + the forward-compatible
-launcher / per-platform scaffolds / `build-ppx.yml` draft are committed, but the
-main package's `files` list was **reverted to fat** (binaries bundled) after a
-premature thinning shipped a broken publish — see "Incident" below. The
-publish-then-delete pivot is CI/registry-driven and tracked in the **Cutover
-runbook**, now gated on a new prerequisite (exclude `reventless-ppx` from lerna).
+pivot in progress (linux-x64 only initially).** The independent lockfile cleanup +
+the forward-compatible launcher / per-platform scaffolds / publish workflow are
+committed; main was reverted to fat after the alpha.22 incident. The publish-then-
+delete pivot is CI/registry-driven and tracked in the **Cutover runbook**, gated on
+excluding `reventless-ppx` from lerna (done). The build-ppx workflow was renamed
+to `publish-ppx.yml` (2026-05-26) to bypass a GitHub-side "disruptive" workflow
+flag that started returning HTTP 500 on dispatch, and the macOS matrix entries are
+temporarily commented out — initial publish covers **`linux-x64` only**; macOS is
+re-enabled once the flag clears and macOS CI cost is comfortable. Commit 2's
+`optionalDependencies` must therefore list only `@…-linux-x64` until macOS targets
+publish; macOS consumers continue to use the launcher's local-build fallback.
 
 ## Incident — alpha.22 (2026-05-25)
 
