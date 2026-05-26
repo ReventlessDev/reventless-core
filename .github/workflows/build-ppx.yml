@@ -12,6 +12,11 @@ name: Build Reventless PPX
 # main @reventlessdev/reventless-ppx declares them as optionalDependencies, so a
 # consumer installs only the matching one.
 #
+# Each platform's runner publishes its own per-platform package directly — no
+# upload/download-artifact round-trip — so the workflow doesn't depend on the
+# org's Actions artifact storage. The main (thin) package is published in a
+# small follow-up job after all platforms succeed.
+#
 # PREREQUISITE before a publish run: the per-platform package.json files AND the
 # main package.json must already carry the SAME (lockstep) version, and the main
 # package.json must declare the optionalDependencies (see the cutover runbook in
@@ -55,7 +60,7 @@ jobs:
           - os: macos-13 # x64 (Intel) — sunsetting GitHub runner
             target: darwin-x64
     runs-on: ${{ matrix.os }}
-    name: Build (${{ matrix.target }})
+    name: Build & publish (${{ matrix.target }})
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -80,12 +85,20 @@ jobs:
              packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
           chmod +x packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
 
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+      - name: Setup Node.js (for publish)
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        uses: actions/setup-node@v4
         with:
-          name: ppx-${{ matrix.target }}
-          path: packages/reventless-ppx/npm/${{ matrix.target }}/ppx.exe
-          if-no-files-found: error
+          node-version: "22.17.1"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: Publish per-platform package
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ( cd "packages/reventless-ppx/npm/${{ matrix.target }}" && npm publish ) \
+            || echo "::warning::publish of ${{ matrix.target }} skipped (version may already exist)"
 
   test:
     runs-on: ubuntu-latest
@@ -123,16 +136,18 @@ jobs:
         working-directory: packages/reventless-ppx/src
 
       - name: Run PPX tests
-        run: npm test
+        # `opam exec --` puts the switch (incl. dune) on PATH for the shell
+        # script invoked by `npm test` (./test/run.sh calls `dune` directly).
+        run: opam exec -- npm test
         working-directory: packages/reventless-ppx
 
-  # Publish the per-platform binary packages + the thin main package. Runs on a
-  # src/** push to a release branch, or a manual dispatch with publish=true.
-  # PRs build + test but never publish.
-  publish:
-    needs: [build, test]
+  # Publish the thin main package after all per-platform builds succeed.
+  # Independent of the `test` job so a flaky test doesn't strand a successful
+  # per-platform publish without a matching main release.
+  publish-main:
+    needs: build
     runs-on: ubuntu-latest
-    name: Publish packages
+    name: Publish main package
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
     steps:
       - name: Checkout code
@@ -143,34 +158,6 @@ jobs:
         with:
           node-version: "22.17.1"
           registry-url: "https://npm.pkg.github.com"
-
-      - name: Download platform binaries
-        uses: actions/download-artifact@v4
-        with:
-          path: /tmp/ppx-bins
-
-      - name: Place binaries into platform packages
-        run: |
-          set -euo pipefail
-          for target in linux-x64 darwin-arm64 darwin-x64; do
-            src="/tmp/ppx-bins/ppx-${target}/ppx.exe"
-            dest="packages/reventless-ppx/npm/${target}/ppx.exe"
-            if [ ! -f "$src" ]; then
-              echo "::error::missing built binary for ${target}"; exit 1
-            fi
-            cp "$src" "$dest"
-            chmod +x "$dest"
-            echo "Staged ${dest}"
-          done
-
-      - name: Publish per-platform packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          for target in linux-x64 darwin-arm64 darwin-x64; do
-            ( cd "packages/reventless-ppx/npm/${target}" && npm publish ) \
-              || echo "::warning::publish of ${target} skipped (version may already exist)"
-          done
 
       - name: Publish main (thin) package
         env:
