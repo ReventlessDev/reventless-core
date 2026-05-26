@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.25 (2026-05-26)
+
+### Bug Fixes
+
+* **ppx:** make main thin; reference linux-x64 via optionalDependencies ([9704bc7](https://github.com/ReventlessDev/reventless-core/commit/9704bc76a935803a25d85fb00ab7c640ade58663))
+
+
 # 1.0.0-alpha.24 (2026-05-26)
 
 **Note:** Version bump only for package @reventlessdev/reventless-ppx
