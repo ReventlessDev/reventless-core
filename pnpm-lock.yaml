@@ -795,7 +795,11 @@ importers:
         specifier: 3.9.2
         version: 3.9.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
-  packages/reventless-ppx: {}
+  packages/reventless-ppx:
+    optionalDependencies:
+      '@reventlessdev/reventless-ppx-linux-x64':
+        specifier: 1.0.0-alpha.24
+        version: 1.0.0-alpha.24
 
   packages/reventless-vscode:
     devDependencies:
@@ -4940,6 +4944,11 @@ packages:
   '@reventlessdev/reventless-host-shell@3.0.0-alpha.18':
     resolution: {integrity: sha512-7zmLQsl8I9RI30vC8a2Rg0tPngVScdM7vX+cKVyCXJUgAEOI6gPYMOd5Uv2pB+oagtYLQrvtEQ+jjp9se1IpLA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.18/b93a7bcc60876b14437b8da085db9fc3766979a7}
     hasBin: true
+
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.24':
+    resolution: {integrity: sha512-6gz1hojjtuR9A2RFm0zYrdUSCvir+Lactw7ywj/rCeaqJzG/MPF+ShZ5n82oNcCanimJyOonieRHrGGzx/oRag==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-linux-x64/1.0.0-alpha.24/c65c532386195282f6278ec5bd6caade303fe0db}
+    cpu: [x64]
+    os: [linux]
 
   '@reventlessdev/reventless-routes@3.0.0-alpha.5':
     resolution: {integrity: sha512-esZaMLcfmiMcsY3ECeuFJSEqJ4aj5522AQFDnig1F6Aze7RRFk8wBuGJ7l61oxugefHzZtH27XeC0ZU8SFDCjw==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-routes/3.0.0-alpha.5/5190cbbdedeb83a7e7e49cb8c09fa0d2d38d199c}
@@ -19785,6 +19794,9 @@ snapshots:
       - utf-8-validate
       - vue-tsc
       - yaml
+
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.24':
+    optional: true
 
   '@reventlessdev/reventless-routes@3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)':
     dependencies:
