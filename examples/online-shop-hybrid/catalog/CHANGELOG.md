@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.65 (2026-05-27)
+
+### Bug Fixes
+
+* **framework:** wire plugin ExtensionPoints into EventCollector runtime context ([2ce8dff](https://github.com/ReventlessDev/reventless-core/commit/2ce8dff426b576811a28c012934d77ecba8a33c0))
+
+
 # 1.0.0-alpha.64 (2026-05-27)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

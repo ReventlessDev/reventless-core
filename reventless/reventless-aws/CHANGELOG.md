@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.124 (2026-05-27)
+
+### Bug Fixes
+
+* **framework:** wire plugin ExtensionPoints into EventCollector runtime context ([2ce8dff](https://github.com/ReventlessDev/reventless-core/commit/2ce8dff426b576811a28c012934d77ecba8a33c0))
+
+
 # 3.0.0-alpha.123 (2026-05-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-in-memory",
-  "version": "3.0.0-alpha.77",
+  "version": "3.0.0-alpha.78",
   "description": "In-memory platform for Reventless (for testing without AWS)",
   "license": "Apache-2.0",
   "scripts": {
