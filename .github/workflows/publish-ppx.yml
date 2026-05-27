@@ -62,7 +62,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest # linux x64
+          # Pinned to ubuntu-22.04 (glibc 2.35) so the published binary runs on
+          # older glibc consumers (Debian Bookworm 2.36, Ubuntu 22.04, Amazon Linux
+          # 2/2023, …). `ubuntu-latest` (24.04, glibc 2.39) floors users at GLIBC
+          # 2.38 and excludes most non-bleeding-edge distros.
+          - os: ubuntu-22.04 # linux x64
             target: linux-x64
           # macOS targets temporarily disabled (2026-05-26) — see header. Re-enable
           # by uncommenting after the disruptive flag clears and macOS CI cost is OK.
