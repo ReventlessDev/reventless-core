@@ -4,9 +4,12 @@
 # Resolution order:
 #   1. The matching per-platform package @reventlessdev/reventless-ppx-<platform>
 #      (declared as an optionalDependency; npm/pnpm install only the one whose
-#      os/cpu match). Checked both as a sibling in node_modules (npm flat / pnpm
-#      store layout) and nested under this package's node_modules (pnpm workspace
-#      layout).
+#      os/cpu match). Three layouts covered:
+#        a. sibling in node_modules (npm flat / pnpm hoisted, same package dir)
+#        b. nested under this package's own node_modules (pnpm strict / per-pkg)
+#        c. hoisted to an ancestor node_modules (pnpm hoisted in a workspace —
+#           the per-platform pkg lands at the *workspace root* node_modules,
+#           not at the consumer's or this package's level)
 #   2. A locally-built or committed fallback binary in this directory — covers PPX
 #      development (`pnpm build:ppx`) and the pre-publish transition window.
 #
@@ -22,10 +25,21 @@ case "$(uname -s)-$(uname -m)" in
   *) echo "reventless-ppx: unsupported platform $(uname -s)-$(uname -m)" >&2; exit 1 ;;
 esac
 
+# (1a) sibling in node_modules; (1b) nested under this package; (2) local fallback.
 for CAND in \
   "$DIR/../reventless-ppx-$PKG/ppx.exe" \
   "$DIR/node_modules/@reventlessdev/reventless-ppx-$PKG/ppx.exe" \
   "$DIR/$LOCAL"; do
+  if [ -x "$CAND" ]; then exec "$CAND" "$@"; fi
+done
+
+# (1c) Walk up ancestor directories looking for a node_modules with the matching
+# per-platform package — covers pnpm's hoisted workspace layout, where the
+# optionalDep lands at the workspace root rather than at this package's level.
+ANCESTOR="$DIR"
+while [ "$ANCESTOR" != "/" ] && [ -n "$ANCESTOR" ]; do
+  ANCESTOR="$(dirname "$ANCESTOR")"
+  CAND="$ANCESTOR/node_modules/@reventlessdev/reventless-ppx-$PKG/ppx.exe"
   if [ -x "$CAND" ]; then exec "$CAND" "$@"; fi
 done
 
