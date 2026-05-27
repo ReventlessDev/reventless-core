@@ -47,21 +47,51 @@ type eventHandlerNoResult<'event> = eventHandler<'event, unit>
 external getRemainingTimeInMillis: context => int = "getRemainingTimeInMillis"
 
 @val @scope(("process", "env")) external _layerArnEnv: option<string> = "REVENTLESS_LAYER_ARN"
+@val @scope(("process", "env")) external _pulumiNodejsStack: option<string> = "PULUMI_NODEJS_STACK"
+@module("child_process") external _execSync: (string, {..}) => string = "execSync"
+
+// SSM fallback for local `pulumi up`. CI exports `REVENTLESS_LAYER_ARN`
+// directly (deploy-reventless-aws.yml reads `/reventless/layer-arn/{stack}`
+// via the AWS CLI and injects it as an env var); local devs typically don't.
+// When the env var is unset, shell out to the same SSM parameter from the
+// dev's `aws` CLI so local deploys attach the freshest layer automatically.
+//
+// Failures are swallowed (no `aws` on PATH, missing IAM `ssm:GetParameter`,
+// parameter absent, etc.) — Lambdas then deploy without the layer, which is
+// the same outcome as before this fallback existed.
+let _resolveLayerArnFromSsm = (): option<string> =>
+  switch _pulumiNodejsStack {
+  | None | Some("") => None
+  | Some(stack) =>
+    try {
+      let cmd = `aws ssm get-parameter --name /reventless/layer-arn/${stack} --query Parameter.Value --output text 2>/dev/null`
+      let raw = _execSync(cmd, {"encoding": "utf8"})
+      let trimmed = raw->String.trim
+      if trimmed === "" || trimmed === "None" {
+        None
+      } else {
+        Some(trimmed)
+      }
+    } catch {
+    | _ => None
+    }
+  }
 
 /**
- * Returns the Reventless Lambda layer ARN from the `REVENTLESS_LAYER_ARN`
- * environment variable, or `None` when it is unset or empty.
+ * Reventless Lambda layer ARN for the current Pulumi stack.
  *
- * CI resolves the ARN from SSM Parameter Store (`/reventless/layer-arn/{stack}`)
- * and exports it as `REVENTLESS_LAYER_ARN` before `pulumi up`. For local deploys,
- * set the env var yourself (e.g. from the same SSM parameter, or from
- * `aws lambda list-layer-versions`). When unset, Lambda functions deploy without
- * the Reventless layer.
+ * Resolution order:
+ *   1. `REVENTLESS_LAYER_ARN` env var — fast path, used by CI
+ *      (deploy-reventless-aws.yml reads SSM and exports it).
+ *   2. AWS CLI SSM lookup at `/reventless/layer-arn/${PULUMI_NODEJS_STACK}` —
+ *      local-deploy convenience so devs don't need to export the env var
+ *      manually.
+ *   3. `None` when both fail — Lambdas deploy without the layer.
  */
 let reventlessLayerArn: option<string> =
   switch _layerArnEnv {
   | Some(arn) if arn->String.trim->String.length > 0 => Some(arn->String.trim)
-  | _ => None
+  | _ => _resolveLayerArnFromSsm()
   }
 
 @val
