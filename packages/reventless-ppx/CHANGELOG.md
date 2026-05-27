@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.30 (2026-05-27)
+
+### Bug Fixes
+
+* **ppx:** launcher resolves binary hoisted to workspace-root node_modules ([554c080](https://github.com/ReventlessDev/reventless-core/commit/554c080dfab3c211fa4dca33fe0b6e5b5d014131))
+
+
 # 1.0.0-alpha.29 (2026-05-27)
 
 **Note:** Version bump only for package @reventlessdev/reventless-ppx

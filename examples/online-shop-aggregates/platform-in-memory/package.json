@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-platform-in-memory",
-  "version": "1.0.0-alpha.59",
+  "version": "1.0.0-alpha.60",
   "description": "Online Shop example — full aggregate platform with Catalog + Ordering plugins (in-memory)",
   "license": "Apache-2.0",
   "scripts": {
