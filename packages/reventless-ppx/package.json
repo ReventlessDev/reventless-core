@@ -4,12 +4,9 @@
   "description": "ReScript PPX to eliminate boilerplate from Reventless application code",
   "license": "Apache-2.0",
   "files": [
-    "install.cjs",
-    "bin.cmd",
     "bin"
   ],
   "scripts": {
-    "postinstall": "node ./install.cjs",
     "build:ppx": "cd src && opam exec -- dune build",
     "clean:ppx": "cd src && opam exec -- dune clean",
     "test": "./test/run.sh"
