@@ -13,8 +13,7 @@
   },
   "optionalDependencies": {
     "@reventlessdev/reventless-ppx-linux-x64": "1.0.0-alpha.28",
-    "@reventlessdev/reventless-ppx-darwin-arm64": "1.0.0-alpha.28",
-    "@reventlessdev/reventless-ppx-darwin-x64": "1.0.0-alpha.28"
+    "@reventlessdev/reventless-ppx-darwin-arm64": "1.0.0-alpha.28"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

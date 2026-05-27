@@ -70,8 +70,17 @@ jobs:
             target: linux-x64
           - os: macos-14 # arm64 (Apple Silicon)
             target: darwin-arm64
-          - os: macos-13 # x64 (Intel) — sunsetting GitHub runner
-            target: darwin-x64
+          # darwin-x64 (macos-13, Intel) — temporarily disabled (2026-05-27): the
+          # macos-13 runner queue starved out our 2026-05-27 dispatch for over an
+          # hour, so the run was cancelled. Re-enable after one of:
+          #   - macos-13 runner capacity improves;
+          #   - we wire a Rosetta `arch -x86_64` build on macos-14;
+          #   - we drop the target entirely (the plan calls it "sunsetting").
+          # Intel Mac devs continue to use the launcher's local-built fallback
+          # at packages/reventless-ppx/ppx-osx-x64.exe (untracked; rebuild via
+          # `pnpm build:ppx`).
+          # - os: macos-13 # x64 (Intel) — sunsetting GitHub runner
+          #   target: darwin-x64
     runs-on: ${{ matrix.os }}
     name: Build & publish (${{ matrix.target }})
     steps:
