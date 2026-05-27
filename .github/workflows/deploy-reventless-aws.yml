@@ -358,7 +358,15 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.platform.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
-          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive || \
+          # --clear-pending-creates drops any pending CREATE operations left
+          # behind when a prior deploy was interrupted (e.g. the host-UI ACM
+          # CertificateValidation timing out at 1h15m). Without it, every
+          # subsequent run aborts on "3 pending operations from previous
+          # deployment" and the only recovery is an interactive refresh.
+          # Safe to always pass: it's a no-op when no pending creates exist,
+          # and CertificateValidation is a synthetic gate (no AWS resource
+          # backing it) so clearing leaves no orphans.
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --clear-pending-creates --non-interactive || \
             echo "::warning::pulumi refresh had errors — proceeding with pulumi up to self-heal stale resources"
           pulumi up --stack "$BRANCH" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
@@ -542,9 +550,13 @@ jobs:
           BRANCH="${{ needs.detect-changes.outputs.branch }}"
           DEPLOY_DIR="${{ steps.plugin.outputs.path }}"
           pulumi stack select --create "$BRANCH" --cwd "$DEPLOY_DIR" --non-interactive
-          # Refresh may fail for individual resources with stale __provider serializations.
-          # Treat failures as warnings so pulumi up can still run and update those resources.
-          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --non-interactive || \
+          # Refresh may fail for individual resources with stale __provider
+          # serializations. Treat failures as warnings so pulumi up can still
+          # run and update those resources.
+          # --clear-pending-creates drops any pending CREATE operations left
+          # behind when a prior deploy was interrupted. See deploy-platform
+          # for the full rationale.
+          pulumi refresh --stack "$BRANCH" --cwd "$DEPLOY_DIR" --yes --skip-preview --clear-pending-creates --non-interactive || \
             echo "::warning::pulumi refresh had errors — proceeding with pulumi up to self-heal stale resources"
           pulumi up --stack "$BRANCH" --yes --skip-preview --cwd "$DEPLOY_DIR" --non-interactive
 
