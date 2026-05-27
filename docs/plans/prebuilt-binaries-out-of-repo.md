@@ -5,18 +5,31 @@ Scope: stop committing native build artifacts to git — primarily the per-platf
 they live instead so CI and developers fetch only the binary they need, built
 **once per version** rather than rebuilt on every framework build.
 
-Status: **prep landed; main packaging kept FAT after the alpha.22 incident; CI
-pivot in progress (linux-x64 only initially).** The independent lockfile cleanup +
-the forward-compatible launcher / per-platform scaffolds / publish workflow are
-committed; main was reverted to fat after the alpha.22 incident. The publish-then-
-delete pivot is CI/registry-driven and tracked in the **Cutover runbook**, gated on
-excluding `reventless-ppx` from lerna (done). The build-ppx workflow was renamed
-to `publish-ppx.yml` (2026-05-26) to bypass a GitHub-side "disruptive" workflow
-flag that started returning HTTP 500 on dispatch, and the macOS matrix entries are
-temporarily commented out — initial publish covers **`linux-x64` only**; macOS is
-re-enabled once the flag clears and macOS CI cost is comfortable. Commit 2's
-`optionalDependencies` must therefore list only `@…-linux-x64` until macOS targets
-publish; macOS consumers continue to use the launcher's local-build fallback.
+Status: **linux-x64 cutover COMPLETE (2026-05-27); macOS deferred.** Thin main +
+per-platform `@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.26` published
+to the registry, committed `ppx-linux.exe` removed from the tree, repo-wide
+`*.exe` gitignore added, vestigial `install.cjs` + `bin.cmd` dropped. Bookworm
++ workspace-consumer verification on Linux confirms the registry serves the
+binary; the launcher resolves it via `optionalDependencies`. The macOS matrix
+entries in `publish-ppx.yml` remain commented out — `darwin-arm64` / `darwin-x64`
+are deferred until the GitHub-side "disruptive" workflow flag clears and macOS
+CI cost is acceptable. `ppx-osx-x64.exe` therefore stays tracked as the macOS
+local-fallback (gitignore patterns don't affect already-tracked files); once
+macOS targets publish, that binary gets removed and the cutover finishes.
+
+**Earlier sub-milestones (already landed before 2026-05-27):** the launcher /
+per-platform scaffolds / publish workflow rewrite / lerna exclusion of
+`reventless-ppx` / GitHub Packages overage unblock / redundant per-package
+lockfile cleanup. Renaming `build-ppx.yml` → `publish-ppx.yml` (2026-05-26)
+bypassed a GitHub-side flag that returned HTTP 500 on dispatch.
+
+**Regression caught by Step 5 verification (2026-05-27):** the first published
+`reventless-ppx-linux-x64@1.0.0-alpha.24` binary was built on `ubuntu-latest`
+(Ubuntu 24.04, glibc 2.39) and floored consumers at GLIBC 2.38, excluding
+Debian Bookworm, Ubuntu 22.04, Amazon Linux 2/2023, etc. Fixed by pinning the
+matrix to `ubuntu-22.04` (glibc 2.35) and republishing as `alpha.26`. Lesson
+codified in the workflow file's matrix comment — future readers should not
+revert to `ubuntu-latest` without a deliberate portability re-assessment.
 
 ## Incident — alpha.22 (2026-05-25)
 
@@ -44,96 +57,116 @@ rides the normal release train and ships binary-less.
 
 ## Progress
 
-## Progress
-
-**Landed (local prep — non-breaking, no publish, no deletion):**
-- **Step 8 (independent cleanup):** removed the 15 redundant per-package
-  `package-lock.json`; gitignored `package-lock.json`. Gate verified — the only
-  `npm ci` (in `deploy-docs.yml`) is dead fallback guarded by `[ -f pnpm-lock.yaml ]`.
+**Landed — linux-x64 cutover complete:**
+- **Step 0 (lerna exclusion, earlier).** `--ignore-changes reventless-ppx` in
+  the `lerna version` calls (release.yml); pattern matches by package name even
+  though the glob is loose — verified empirically by post-pivot lerna releases.
 - **Launcher** (`packages/reventless-ppx/bin`): pure-shell resolver — finds
   `@reventlessdev/reventless-ppx-<platform>/ppx.exe` (sibling + nested
   `node_modules`, covering npm-flat / pnpm-store / pnpm-workspace layouts), else
-  falls back to the local committed/built binary. **Validated locally** on Intel
-  Mac (execs `ppx-osx-x64.exe`, prints the ppx's own `<infile> <outfile>` help).
-- **Main `package.json` `files`: kept FAT** (binaries bundled). It was briefly
-  thinned, which caused the alpha.22 incident above, and has been reverted. It
-  stays fat — and `reventless-ppx` stays in the lerna release — until the cutover
-  removes it from lerna (runbook step 0). `optionalDependencies` are **not** added
-  for the same reason. The launcher already supports the per-platform packages, so
-  no further main-package change is needed before the pivot.
+  falls back to a local built binary. Validated on Intel Mac (committed
+  `ppx-osx-x64.exe` fallback) and Debian Bookworm (registry-served binary).
 - **Per-platform publish scaffolds**: `packages/reventless-ppx/npm/{linux-x64,
-  darwin-arm64,darwin-x64}/package.json` with `os`/`cpu`, a README, and a
-  `.gitignore` for the CI-injected `ppx.exe`. Not pnpm workspace members
-  (`packages/*` is single-level).
-- **`build-ppx.yml` rewritten**: per-OS matrix build (`ubuntu-latest` /
-  `macos-14` / `macos-13`) → upload artifacts → publish per-platform + main; the
-  binary **git commit-back is removed**; `contents: write` → `contents: read` +
-  `packages: write`; triggers only on `packages/reventless-ppx/src/**` (+ dispatch).
-- **Committed binaries kept** (`ppx-linux.exe`, `ppx-osx-x64.exe`) — not deleted,
-  not yet gitignored (that is the post-publish step in the runbook).
+  darwin-arm64,darwin-x64}/package.json` with `os`/`cpu`. Not pnpm workspace
+  members (`packages/*` is single-level).
+- **`publish-ppx.yml`** (renamed from `build-ppx.yml`): per-OS matrix → publish
+  per-platform + main. Binary `git commit-back` removed. Triggers only on
+  `packages/reventless-ppx/src/**` (+ dispatch). **`ubuntu-22.04` pin** on the
+  linux-x64 row (glibc 2.35) — see Status header for the regression that forced
+  this.
+- **Step 1, 1a/2, 3, 4** (publish pipeline): per-platform
+  `reventless-ppx-linux-x64@1.0.0-alpha.26` and thin main
+  `reventless-ppx@1.0.0-alpha.27` (lerna-bumped from `alpha.26` published by
+  `publish-ppx.yml`) live on the registry. Lockfile updated to match.
+- **Step 5** (verify installable): scratch `npm i @reventlessdev/reventless-ppx@latest`
+  on Bookworm pulls thin main + linux-x64@alpha.26 via `optionalDependencies`,
+  the launcher exec's the registry binary, and the binary prints its own help.
+  Linux consumer-style install (`npm i hybrid-platform-in-memory@latest +
+  reventless-ppx@latest`) on Bookworm passes the same way; no committed `.exe`
+  exists in the tarball.
+- **Step 6** (delete committed Linux binary): `packages/reventless-ppx/ppx-linux.exe`
+  removed; `packages/reventless-ppx/.gitignore` added for `*.exe`. `ppx-osx-x64.exe`
+  stays tracked — it is still the macOS local fallback (gitignore patterns do
+  not affect already-tracked files).
+- **Step 7** (repo-wide gitignore policy): root `.gitignore` now ignores `*.exe`
+  and `**/reventless-layer*.zip`. The `rescript-node-zlib` test fixture `.gz` is
+  intentionally unaffected.
+- **Step 8 (independent cleanup, earlier):** removed the 15 redundant per-package
+  `package-lock.json`; gitignored `package-lock.json`.
+- **Vestigial `install.cjs` + `bin.cmd` dropped.** Both only acted on a
+  `ppx-windows.exe` that is no longer built, shipped, or referenced. Windows
+  consumers go via WSL2 → linux-x64, which uses the shell `bin` launcher.
 
-**Note:** `install.cjs` is now vestigial (Windows is served via WSL2 → `linux-x64`);
-it can be dropped at the cutover.
+**Deferred — macOS re-enablement (Cutover runbook continues):**
+- Un-comment `darwin-arm64` / `darwin-x64` rows in `publish-ppx.yml`.
+- Bump per-platform + main, add darwin entries to main's `optionalDependencies`.
+- After they publish and verify, `git rm packages/reventless-ppx/ppx-osx-x64.exe`.
+- Gate: GitHub-side "disruptive" workflow flag clears and macOS CI cost is
+  acceptable.
 
-## Cutover runbook (CI/registry-driven — pending)
+**Out of scope:** git history rewrite to purge already-committed binaries (Step 9).
 
-Run in order; **never** remove the committed binaries before step 5 verifies the
-registry serves them.
+## Cutover runbook
 
-0. **Remove `reventless-ppx` from the lerna release (prerequisite — do this
-   first).** Add `--ignore-changes reventless-ppx` to the `lerna version` calls in
-   `release.yml` (alongside the existing `doc` / `reventless-layer-builder`), so
-   `reventless-ppx` is published **only** by `build-ppx.yml`. Without this, any
-   later thinning or version bump rides the normal release train and ships a
-   binary-less package (see Incident). Only after this is the main package safe to
-   thin.
-1. **Publish per-platform packages FIRST (chicken-and-egg).** Bump only the
-   `npm/*/package.json` versions to the target (e.g. `1.0.0-alpha.24`), leave
-   main untouched. Commit + push + `workflow_dispatch` `build-ppx.yml` with
-   `publish=true`. The workflow's per-platform publish succeeds; its attempt to
-   republish main at its current (existing) version fails with a harmless
-   warning. Result: `@…-linux-x64` / `-darwin-arm64` / `-darwin-x64` exist in
-   the registry at the target version.
-   *Why split this from step 1a:* `pnpm install` won't add lockfile entries for
-   `optionalDependencies` whose versions don't exist in the registry — and any
-   resulting `package.json`/`pnpm-lock.yaml` mismatch makes CI's
-   `--frozen-lockfile` fail across **every** workflow.
-1a. **Thin main + add `optionalDependencies`.** Now bump
-   `packages/reventless-ppx/package.json` to the same target version, thin its
-   `files` (drop the binaries), and add `optionalDependencies` for the three
-   platform packages at that version. Run `pnpm install` — it now resolves the
-   optional deps from the registry and updates `pnpm-lock.yaml`. Commit
-   package.json + lockfile.
-2. **Add `optionalDependencies` to the main `package.json`** at that version:
-   ```json
-   "optionalDependencies": {
-     "@reventlessdev/reventless-ppx-linux-x64": "1.0.0-alpha.21",
-     "@reventlessdev/reventless-ppx-darwin-arm64": "1.0.0-alpha.21",
-     "@reventlessdev/reventless-ppx-darwin-x64": "1.0.0-alpha.21"
-   }
-   ```
-   Run `pnpm install` to refresh `pnpm-lock.yaml`; commit both. (Pre-publish the
-   optional deps 404 → skipped; the launcher's local fallback still builds.)
-3. **Confirm GitHub Packages headroom** (org spending limit / budget set — the
-   overage block was resolved 2026-05-25).
-4. **Publish thin main:** push step 1a, then `workflow_dispatch` `build-ppx.yml`
-   again. The per-platform republish attempts at the same version fail
-   harmlessly (version exists); the thin main publishes at the target version.
-   Confirm `@reventlessdev/reventless-ppx@<ver>` (thin) + the three platform
-   packages all exist in the registry.
-5. **Verify installable.** Scratch `npm i @reventlessdev/reventless-ppx@<ver>`:
-   Linux pulls only `-linux-x64`, macOS only the matching darwin package; run the
-   binary. Then in this repo confirm a clean `pnpm install` + an `examples/**`
-   `rescript build` resolves the PPX **with the local `.exe` moved aside** (prove
-   registry is the source of truth).
-6. **Only now remove the committed binaries.** `git rm
-   packages/reventless-ppx/ppx-linux.exe packages/reventless-ppx/ppx-osx-x64.exe`;
-   add `packages/reventless-ppx/*.exe` to `.gitignore`. No-op for consumers (the
-   registry serves them).
-7. **General artifact `.gitignore` policy** (`*.exe`, layer `*.zip`) — keep the
-   test fixture `rescript/rescript-node-zlib/src/example/test.txt.gz`.
+Steps 0–7 below are now **done** for `linux-x64`. The runbook remains as the
+template for the macOS re-enablement: re-execute steps 1–7 with the macOS
+matrix rows un-commented and `optionalDependencies` extended.
+
+0. ✅ **Lerna exclusion.** `--ignore-changes reventless-ppx` in `lerna version`
+   calls in `release.yml`. Note: the glob is loose but lerna treats it as a
+   package-name filter — empirically confirmed by post-pivot releases where
+   reventless-ppx only republishes when its own files change (and only the thin
+   main, never per-platform).
+1. ✅ **Publish per-platform packages first.** `reventless-ppx-linux-x64@1.0.0-alpha.24`
+   published 2026-05-26; superseded by `@1.0.0-alpha.26` (glibc-portable) on
+   2026-05-27.
+1a. ✅ **Thin main + add `optionalDependencies`.** Thinned in commit
+    `9704bc76a` (2026-05-26); lockstep alpha.26 bump in `291fa9f6c` (2026-05-27)
+    after pinning the matrix to ubuntu-22.04.
+2. ✅ **`optionalDependencies` on main.** Currently only `-linux-x64@alpha.26`;
+   macOS entries pending matrix re-enablement.
+3. ✅ **GitHub Packages headroom.** Resolved 2026-05-25 by setting the org
+   Packages spending limit.
+4. ✅ **Thin main published.** `reventless-ppx@1.0.0-alpha.27` (lerna-bumped
+   from alpha.26) is `latest` in the registry.
+5. ✅ **Verify installable.** Bookworm (glibc 2.36) and Ubuntu 24.04 both pull
+   `-linux-x64@alpha.26` via `optionalDependencies`; launcher exec's the
+   registry binary. Alpine fails (musl) — expected, out of scope. (The in-repo
+   `pnpm install + examples build with .exe moved aside` check is covered by
+   the Linux consumer-style install, which already excludes any committed
+   `.exe` because the published tarball contains no binary.)
+6. ✅ **Committed Linux binary removed.** `packages/reventless-ppx/ppx-linux.exe`
+   git-rm'd; `packages/reventless-ppx/.gitignore` adds `*.exe`. `ppx-osx-x64.exe`
+   stays tracked until macOS targets publish.
+7. ✅ **Repo-wide `.gitignore` policy.** Root `.gitignore` adds `*.exe` and
+   `**/reventless-layer*.zip`. Test fixture
+   `rescript/rescript-node-zlib/src/example/test.txt.gz` intentionally
+   unaffected (no `.zip`/`.gz` glob at the root level).
 8. **(Separate / out of scope)** history rewrite to purge the already-committed
    binaries.
+
+### macOS re-enablement (pending)
+
+When the GitHub-side "disruptive" workflow flag is lifted and macOS CI cost is
+acceptable:
+
+1. Un-comment the `macos-14` (darwin-arm64) and `macos-13` (darwin-x64) rows in
+   `publish-ppx.yml`'s matrix.
+2. Bump `packages/reventless-ppx/npm/{darwin-arm64,darwin-x64}/package.json` to
+   the next target version.
+3. Bump `packages/reventless-ppx/package.json` to the same version and extend
+   `optionalDependencies`:
+   ```json
+   "optionalDependencies": {
+     "@reventlessdev/reventless-ppx-linux-x64":    "1.0.0-alpha.NN",
+     "@reventlessdev/reventless-ppx-darwin-arm64": "1.0.0-alpha.NN",
+     "@reventlessdev/reventless-ppx-darwin-x64":   "1.0.0-alpha.NN"
+   }
+   ```
+4. Refresh `pnpm-lock.yaml`, commit, push.
+5. `workflow_dispatch publish-ppx.yml` with `publish=true`.
+6. Verify on macOS arm64 + Intel Mac (or a `macos-13`/`macos-14` runner).
+7. `git rm packages/reventless-ppx/ppx-osx-x64.exe`.
 
 ## Problem
 
