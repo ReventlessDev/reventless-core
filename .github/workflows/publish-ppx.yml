@@ -68,12 +68,10 @@ jobs:
           # 2.38 and excludes most non-bleeding-edge distros.
           - os: ubuntu-22.04 # linux x64
             target: linux-x64
-          # macOS targets temporarily disabled (2026-05-26) — see header. Re-enable
-          # by uncommenting after the disruptive flag clears and macOS CI cost is OK.
-          # - os: macos-14 # arm64 (Apple Silicon)
-          #   target: darwin-arm64
-          # - os: macos-13 # x64 (Intel) — sunsetting GitHub runner
-          #   target: darwin-x64
+          - os: macos-14 # arm64 (Apple Silicon)
+            target: darwin-arm64
+          - os: macos-13 # x64 (Intel) — sunsetting GitHub runner
+            target: darwin-x64
     runs-on: ${{ matrix.os }}
     name: Build & publish (${{ matrix.target }})
     steps:
