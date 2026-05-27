@@ -22,6 +22,7 @@ let include = Delegate_GWT$ReventlessGwt.FromExtensionPoint({
     moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.Delegate.moduleUrl,
     commandAuthorization: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandAuthorization
   },
+  moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
   mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
   mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
 });

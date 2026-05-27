@@ -140,6 +140,14 @@ let createReadModels = (
   readModels->extractReadModelsOutputs
 }
 
+// Per-extension-point registry data the EventCollector entry point needs at
+// runtime to publish outgoing events. Lives next to the existing
+// `extensionPointsOutputs` / `extensionPointsHandlers` arrays — same indexing.
+type extensionPointRegistryInfo = {
+  specModule: string,
+  mappingsModule: string,
+}
+
 let createExtensionPoints = (
   extensionPoints,
   ~aggregateResources,
@@ -148,27 +156,38 @@ let createExtensionPoints = (
   ~queryEngine,
   ~resourceNaming,
   ~opts,
-) =>
-  extensionPoints
-  ->Array.map((module(SpecificExtensionPoint: ReventlessInfra.ExtensionPoint.T)) => {
-    let extensionPoint = SpecificExtensionPoint.make(
-      ~aggregateResources,
-      ~publishToAggregates,
-      ~scheduler,
-      ~queryEngine,
-      ~resourceNaming,
-      ~opts=Some(opts),
-    )
-    // operations() returns abstract type from ReventlessInfra.ExtensionPoint.T;
-    // coerce to the concrete ExtensionPoint.operations (always identical at runtime).
-    let ops: Pulumi.Output.t<ExtensionPoint.operations> =
-      SpecificExtensionPoint.operations(extensionPoint)->Obj.magic
-    (
-      SpecificExtensionPoint.outputs(extensionPoint),
-      ops->Pulumi.Output.apply(({outgoingJsonEventsHandler}) => outgoingJsonEventsHandler),
-    )
-  })
-  ->Array.unzip
+) => {
+  let triples =
+    extensionPoints
+    ->Array.map((module(SpecificExtensionPoint: ReventlessInfra.ExtensionPoint.T)) => {
+      let extensionPoint = SpecificExtensionPoint.make(
+        ~aggregateResources,
+        ~publishToAggregates,
+        ~scheduler,
+        ~queryEngine,
+        ~resourceNaming,
+        ~opts=Some(opts),
+      )
+      // operations() returns abstract type from ReventlessInfra.ExtensionPoint.T;
+      // coerce to the concrete ExtensionPoint.operations (always identical at runtime).
+      let ops: Pulumi.Output.t<ExtensionPoint.operations> =
+        SpecificExtensionPoint.operations(extensionPoint)->Obj.magic
+      let outputs = SpecificExtensionPoint.outputs(extensionPoint)
+      let registryInfo: extensionPointRegistryInfo = {
+        specModule: outputs.specModule,
+        mappingsModule: outputs.mappingsModule,
+      }
+      (
+        outputs,
+        ops->Pulumi.Output.apply(({outgoingJsonEventsHandler}) => outgoingJsonEventsHandler),
+        registryInfo,
+      )
+    })
+  let outputs = triples->Array.map(((o, _, _)) => o)
+  let handlers = triples->Array.map(((_, h, _)) => h)
+  let registryInfos = triples->Array.map(((_, _, r)) => r)
+  (outputs, handlers, registryInfos)
+}
 
 let createResolvers = allQueryDbs =>
   allQueryDbs

@@ -70,6 +70,8 @@ let DelegateAggSpec = {
   commandAuthorization: commandAuthorization$1
 };
 
+let moduleUrl$2 = "test:InMemoryExtensionPointFixtures:ForwardMapping";
+
 function mapIncomingCommand(_id, cmd, _meta) {
   let targetId = cmd.targetId;
   let execCmd = {
@@ -86,6 +88,7 @@ function mapIncomingCommand(_id, cmd, _meta) {
 let ForwardMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
+  moduleUrl: moduleUrl$2,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: undefined
 };
@@ -113,20 +116,21 @@ let TestEPMapping1 = ExtensionPointMapping$ReventlessInfra.Make({
     moduleUrl: moduleUrl$1,
     commandAuthorization: commandAuthorization$1
   },
+  moduleUrl: moduleUrl$2,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: undefined
 });
 
 let name$2 = "TestEPMappings";
 
-let moduleUrl$2 = import.meta.url;
+let moduleUrl$3 = import.meta.url;
 
 let mappings = [TestEPMapping1];
 
 let TestEPMappings = {
   Spec: undefined,
   name: name$2,
-  moduleUrl: moduleUrl$2,
+  moduleUrl: moduleUrl$3,
   mappings: mappings
 };
 
@@ -140,7 +144,7 @@ let TestEP = EPBuilderWithBus.Make({
   directiveSchema: directiveSchema
 })({
   name: name$2,
-  moduleUrl: moduleUrl$2,
+  moduleUrl: moduleUrl$3,
   mappings: mappings
 });
 

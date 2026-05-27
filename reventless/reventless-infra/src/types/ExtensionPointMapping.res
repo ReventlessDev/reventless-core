@@ -90,6 +90,13 @@ module type Mapping = {
   module ExtensionPoint: Spec
   module Delegate: Reventless.Aggregate.Spec
 
+  // Module URL of the mapping file (e.g. catalog/src/ExtensionPoint/
+  // Products_ExtensionPointMapping.res.mjs). Distinct from ExtensionPoint.moduleUrl
+  // (the spec, in catalog-spec). Auto-injected by `@@reventless.spec` on
+  // ExtensionPointMapping files. The EventCollector runtime needs THIS url
+  // (not the spec's) to dynamic-import the mapping file's mapOutgoingEvent.
+  let moduleUrl: string
+
   let mapIncomingCommand: mapIncomingCommand<
     ExtensionPoint.command,
     Delegate.command,

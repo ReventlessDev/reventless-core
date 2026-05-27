@@ -11,6 +11,13 @@ type outputs = {
   aggregateNames: array<string>,
   commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
   eventTopic: Pulumi.Output.t<EventTopic.outputs>,
+  // Module URLs preserved from the Spec and Mappings packed into Make. The
+  // EventCollector runtime needs them at HANDLER_CONFIG-build time to wire
+  // outgoing event publication for this extension point — see
+  // `Plugin_Helpers.registerEventCollectorContext` and the `extensionPointEntry`
+  // type that's serialised into the Lambda's HANDLER_CONFIG.
+  specModule: string,
+  mappingsModule: string,
 }
 
 // eventHandler type is defined in reventless (references Plugin.pluginDefinition which

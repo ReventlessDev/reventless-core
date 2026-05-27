@@ -73,6 +73,8 @@ let ProductDelegate = {
   commandAuthorization: commandAuthorization$1
 };
 
+let moduleUrl$1 = "test:DelegateGwtTest:ProductsEpMapping";
+
 function mapIncomingCommand(_id, _command, _meta) {
   return [];
 }
@@ -106,6 +108,7 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
 let ProductsEpMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
+  moduleUrl: moduleUrl$1,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent
 };
@@ -127,6 +130,7 @@ let ProductsEpGwt = Delegate_GWT$ReventlessGwt.FromExtensionPoint({
     moduleUrl: moduleUrl,
     commandAuthorization: commandAuthorization$1
   },
+  moduleUrl: moduleUrl$1,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent
 });
@@ -205,7 +209,7 @@ let eventSchema$3 = S.union([
 
 let errorSchema$1 = S.literal("NoError");
 
-let moduleUrl$1 = "";
+let moduleUrl$2 = "";
 
 function commandAuthorization$3(param) {
   return "AllowAuthenticated";
@@ -217,9 +221,11 @@ let OrderDelegate = {
   commandSchema: commandSchema$3,
   eventSchema: eventSchema$3,
   errorSchema: errorSchema$1,
-  moduleUrl: moduleUrl$1,
+  moduleUrl: moduleUrl$2,
   commandAuthorization: commandAuthorization$3
 };
+
+let moduleUrl$3 = "test:DelegateGwtTest:OrdersEpMapping";
 
 function mapIncomingCommand$1(_id, _command, _meta) {
   return [];
@@ -255,6 +261,7 @@ let mapOutgoingEvent$1 = (_id, event, _meta, _queryEngine) => {
 let OrdersEpMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
+  moduleUrl: moduleUrl$3,
   mapIncomingCommand: mapIncomingCommand$1,
   mapOutgoingEvent: mapOutgoingEvent$1
 };
@@ -273,9 +280,10 @@ let OrdersEpGwt = Delegate_GWT$ReventlessGwt.FromExtensionPoint({
     eventSchema: eventSchema$3,
     errorSchema: errorSchema$1,
     commandSchema: commandSchema$3,
-    moduleUrl: moduleUrl$1,
+    moduleUrl: moduleUrl$2,
     commandAuthorization: commandAuthorization$3
   },
+  moduleUrl: moduleUrl$3,
   mapIncomingCommand: mapIncomingCommand$1,
   mapOutgoingEvent: mapOutgoingEvent$1
 });
@@ -337,7 +345,7 @@ let eventSchema$4 = S.literal("NoEvent");
 
 let errorSchema$2 = S.literal("NoError");
 
-let moduleUrl$2 = "";
+let moduleUrl$4 = "";
 
 function commandAuthorization$4(param) {
   return "AllowAuthenticated";
@@ -349,11 +357,11 @@ let SyncDelegate = {
   commandSchema: commandSchema$4,
   eventSchema: eventSchema$4,
   errorSchema: errorSchema$2,
-  moduleUrl: moduleUrl$2,
+  moduleUrl: moduleUrl$4,
   commandAuthorization: commandAuthorization$4
 };
 
-let moduleUrl$3 = "";
+let moduleUrl$5 = "";
 
 let delegateModuleUrl = "";
 
@@ -383,7 +391,7 @@ function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
 let ProductsExtMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
-  moduleUrl: moduleUrl$3,
+  moduleUrl: moduleUrl$5,
   delegateModuleUrl: delegateModuleUrl,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined
@@ -403,10 +411,10 @@ let ProductsExtGwt = Delegate_GWT$ReventlessGwt.FromExtension({
     eventSchema: eventSchema$4,
     errorSchema: errorSchema$2,
     commandSchema: commandSchema$4,
-    moduleUrl: moduleUrl$2,
+    moduleUrl: moduleUrl$4,
     commandAuthorization: commandAuthorization$4
   },
-  moduleUrl: moduleUrl$3,
+  moduleUrl: moduleUrl$5,
   delegateModuleUrl: delegateModuleUrl,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined

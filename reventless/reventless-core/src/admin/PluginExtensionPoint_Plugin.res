@@ -124,6 +124,11 @@ module Make = (Spec: Spec) => {
     module ExtensionPoint = PluginExtensionPointSpec
     module Delegate = PluginSpec
 
+    // Framework-internal mapping — moduleUrl points at the file shipping
+    // this `PluginMapping`. The EventCollector runtime dynamic-imports it
+    // when wiring the admin Plugin extension point.
+    let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs"
+
     let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
       switch cmd {
       | PluginExtensionPointSpec.Heartbeat(interval) => [

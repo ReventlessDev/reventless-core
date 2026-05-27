@@ -137,6 +137,7 @@ function Make(Platform) {
       moduleUrl: Product$CatalogPlugin.moduleUrl,
       commandAuthorization: Product$CatalogPlugin.commandAuthorization
     },
+    moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
     mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
     mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
   });

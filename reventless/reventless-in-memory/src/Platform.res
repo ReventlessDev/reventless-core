@@ -447,7 +447,9 @@ module MakeWithConfig = (
         module type Mapping = ReventlessInfra.ExtensionPointMapping.T
           with module ExtensionPoint := Spec
         let name = Mapping.Delegate.name
-        let moduleUrl = Spec.moduleUrl
+        // The mapping FILE's moduleUrl, not the spec's — the EventCollector
+        // runtime dynamic-imports this URL to find mapOutgoingEvent.
+        let moduleUrl = Mapping.moduleUrl
         let mappings: array<module(Mapping)> = [module(CompiledMapping)]
       }
       module Inner = ExtensionPointMaker.Make(Spec, Mappings)
@@ -467,7 +469,8 @@ module MakeWithConfig = (
           with module ExtensionPoint := Spec
         let name =
           Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
-        let moduleUrl = Spec.moduleUrl
+        // First mapping's URL — matches the user-extension merge convention.
+        let moduleUrl = Mapping1.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2)]
       }
       module Inner = ExtensionPointMaker.Make(Spec, Mappings)
@@ -494,7 +497,8 @@ module MakeWithConfig = (
           Mapping2.Delegate.name ++
           "+" ++
           Mapping3.Delegate.name
-        let moduleUrl = Spec.moduleUrl
+        // First mapping's URL — matches the user-extension merge convention.
+        let moduleUrl = Mapping1.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2), module(CM3)]
       }
       module Inner = ExtensionPointMaker.Make(Spec, Mappings)

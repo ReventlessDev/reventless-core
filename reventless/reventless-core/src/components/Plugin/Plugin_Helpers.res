@@ -476,6 +476,11 @@ module MakeEventCollectorHelper = (
     // Empty when there are no user extensions or when the caller doesn't need
     // bundled-handler reconstruction (e.g. Platform_Admin path).
     ~extensionRegistryInfos: array<extensionRegistryInfo>=[],
+    // Per-extension-point registry metadata (parallel to extensionPointsOutputs /
+    // extensionPointsHandlers). Carries spec + mapping module URLs the
+    // EventCollector entry point dynamic-imports to publish outgoing events.
+    // Empty when there are no user extension points (e.g. Platform_Admin path).
+    ~extensionPointRegistryInfos: array<Builder_Helpers.extensionPointRegistryInfo>=[],
     // aggregateName → cmd-topic SQS URL. Includes every aggregate / DCB slice
     // that a user extension may publish to. The full plugin dict is fine —
     // the runtime filters to ext.aggregateNames when invoking each extension.
@@ -641,11 +646,37 @@ module MakeEventCollectorHelper = (
         }
       | None => ()
       }
+      // Build the extension-point registry entries (mirrors the user-extension
+      // pattern above). Pairs Pulumi outputs (name / eventTopic / aggregateNames)
+      // with the moduleUrls captured by createExtensionPoints. Skipped if the
+      // parallel arrays don't match length — defensive against future refactors.
+      let extensionPointEntries: array<extensionPointEntry> = if (
+        extensionPointsOutputs->Array.length == extensionPointRegistryInfos->Array.length
+      ) {
+        extensionPointsOutputs->Array.mapWithIndex((output, i) => {
+          let info = extensionPointRegistryInfos->Array.getUnsafe(i)
+          let eventTopicArn =
+            output.eventTopic->Pulumi.Output.flatMap(({resources}) =>
+              switch resources->Array.get(0) {
+              | Some(r) => r.id
+              | None => Pulumi.Output.make("")
+              }
+            )
+          {
+            specModule: info.specModule,
+            mappingsModule: info.mappingsModule,
+            eventTopicArn,
+            aggregateNames: output.aggregateNames,
+          }
+        })
+      } else {
+        []
+      }
       registerEventCollectorContext(
         ~componentName=ecName,
         ~context={
           pluginDefinitionJson,
-          extensionPoints: [],
+          extensionPoints: extensionPointEntries,
           connectExtension,
           extensions,
           pluginExtensionPointCmdTopicUrl,

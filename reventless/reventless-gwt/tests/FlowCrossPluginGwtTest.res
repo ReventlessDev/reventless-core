@@ -84,6 +84,7 @@ module ProductDelegate = {
 module ProductsEpMapping = {
   module ExtensionPoint = ProductsEpSpec
   module Delegate = ProductDelegate
+  let moduleUrl = "test:FlowCrossPluginGwtTest:ProductsEpMapping"
   let mapIncomingCommand = (_id, _command, _meta) => []
   let mapOutgoingEvent = Some(
     (_id, event: ProductDelegate.event, _meta, _q) =>
@@ -117,6 +118,7 @@ module OrderDelegate = {
 module OrdersEpMapping = {
   module ExtensionPoint = OrdersEpSpec
   module Delegate = OrderDelegate
+  let moduleUrl = "test:FlowCrossPluginGwtTest:OrdersEpMapping"
   let mapIncomingCommand = (_id, _command, _meta) => []
   let mapOutgoingEvent = Some(
     (_id, event: OrderDelegate.event, _meta, _q) =>

@@ -111,6 +111,7 @@ function Make(Spec) {
         return await forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
     }
   };
+  let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs";
   let mapIncomingCommand = (id, cmd, _meta) => {
     if (typeof cmd !== "object") {
       return [
@@ -311,6 +312,7 @@ function Make(Spec) {
   let PluginMapping = {
     ExtensionPoint: undefined,
     Delegate: undefined,
+    moduleUrl: moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent
   };
@@ -331,6 +333,7 @@ function Make(Spec) {
       moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
       commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
     },
+    moduleUrl: moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent
   });

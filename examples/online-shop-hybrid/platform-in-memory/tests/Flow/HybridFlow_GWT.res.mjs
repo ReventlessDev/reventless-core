@@ -46,6 +46,7 @@ let ProductsEp = Flow_GWT$ReventlessGwt.ExtensionPointStep({
     moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.Delegate.moduleUrl,
     commandAuthorization: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandAuthorization
   },
+  moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
   mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
   mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
 });
@@ -114,6 +115,7 @@ let OrdersEp = Flow_GWT$ReventlessGwt.ExtensionPointStep({
     moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl,
     commandAuthorization: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandAuthorization
   },
+  moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
   mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
   mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
 });

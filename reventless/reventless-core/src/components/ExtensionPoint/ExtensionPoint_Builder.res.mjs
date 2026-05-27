@@ -87,11 +87,15 @@ function Make(Spec) {
       })));
       let epOutputs_commandTopic = match[0].apply(Component$ReventlessCore.outputs);
       let epOutputs_eventTopic = match[1].apply(Component$ReventlessCore.outputs);
+      let epOutputs_specModule = Spec.moduleUrl;
+      let epOutputs_mappingsModule = Mappings.moduleUrl;
       let epOutputs = {
         name: extra$1,
         aggregateNames: aggregateNames,
         commandTopic: epOutputs_commandTopic,
-        eventTopic: epOutputs_eventTopic
+        eventTopic: epOutputs_eventTopic,
+        specModule: epOutputs_specModule,
+        mappingsModule: epOutputs_mappingsModule
       };
       return Component$ReventlessCore.setOutputs(extra, epOutputs);
     }, opts);

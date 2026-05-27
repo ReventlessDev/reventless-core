@@ -443,18 +443,16 @@ function MakeWithConfig(Config) {
     Make: Make$2
   };
   let Make$3 = Mapping => {
-    let Spec = Mapping.ExtensionPoint;
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
-    return ExtensionPointMaker.Make(Spec)({
+    return ExtensionPointMaker.Make(Mapping.ExtensionPoint)({
       name: name,
-      moduleUrl: Spec.moduleUrl,
+      moduleUrl: Mapping.moduleUrl,
       mappings: mappings
     });
   };
   let Make2 = Mapping1 => (Mapping2 => {
-    let Spec = Mapping1.ExtensionPoint;
     let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
     let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
     let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
@@ -462,14 +460,13 @@ function MakeWithConfig(Config) {
       CM1,
       CM2
     ];
-    return ExtensionPointMaker.Make(Spec)({
+    return ExtensionPointMaker.Make(Mapping1.ExtensionPoint)({
       name: name,
-      moduleUrl: Spec.moduleUrl,
+      moduleUrl: Mapping1.moduleUrl,
       mappings: mappings
     });
   });
   let Make3 = Mapping1 => (Mapping2 => (Mapping3 => {
-    let Spec = Mapping1.ExtensionPoint;
     let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
     let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
     let CM3 = ExtensionPointMapping$ReventlessInfra.Make(Mapping3);
@@ -479,9 +476,9 @@ function MakeWithConfig(Config) {
       CM2,
       CM3
     ];
-    return ExtensionPointMaker.Make(Spec)({
+    return ExtensionPointMaker.Make(Mapping1.ExtensionPoint)({
       name: name,
-      moduleUrl: Spec.moduleUrl,
+      moduleUrl: Mapping1.moduleUrl,
       mappings: mappings
     });
   }));
@@ -2293,18 +2290,16 @@ function Make($star) {
     Make: Make$3
   };
   let Make$4 = Mapping => {
-    let Spec = Mapping.ExtensionPoint;
     let CompiledMapping = ExtensionPointMapping$ReventlessInfra.Make(Mapping);
     let name = Mapping.Delegate.name;
     let mappings = [CompiledMapping];
-    return ExtensionPointMaker.Make(Spec)({
+    return ExtensionPointMaker.Make(Mapping.ExtensionPoint)({
       name: name,
-      moduleUrl: Spec.moduleUrl,
+      moduleUrl: Mapping.moduleUrl,
       mappings: mappings
     });
   };
   let Make2 = Mapping1 => (Mapping2 => {
-    let Spec = Mapping1.ExtensionPoint;
     let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
     let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
     let name = Mapping1.Delegate.name + "+" + Mapping2.Delegate.name;
@@ -2312,14 +2307,13 @@ function Make($star) {
       CM1,
       CM2
     ];
-    return ExtensionPointMaker.Make(Spec)({
+    return ExtensionPointMaker.Make(Mapping1.ExtensionPoint)({
       name: name,
-      moduleUrl: Spec.moduleUrl,
+      moduleUrl: Mapping1.moduleUrl,
       mappings: mappings
     });
   });
   let Make3 = Mapping1 => (Mapping2 => (Mapping3 => {
-    let Spec = Mapping1.ExtensionPoint;
     let CM1 = ExtensionPointMapping$ReventlessInfra.Make(Mapping1);
     let CM2 = ExtensionPointMapping$ReventlessInfra.Make(Mapping2);
     let CM3 = ExtensionPointMapping$ReventlessInfra.Make(Mapping3);
@@ -2329,9 +2323,9 @@ function Make($star) {
       CM2,
       CM3
     ];
-    return ExtensionPointMaker.Make(Spec)({
+    return ExtensionPointMaker.Make(Mapping1.ExtensionPoint)({
       name: name,
-      moduleUrl: Spec.moduleUrl,
+      moduleUrl: Mapping1.moduleUrl,
       mappings: mappings
     });
   }));

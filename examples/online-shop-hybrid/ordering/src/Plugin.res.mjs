@@ -207,6 +207,7 @@ function Make(Platform) {
       moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl,
       commandAuthorization: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandAuthorization
     },
+    moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
     mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
     mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
   });

@@ -264,8 +264,9 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         eventCollectorUrn
       ];
     };
-    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs, extensionRegistryInfosOpt, aggregateQueueUrlsOpt, readModelQueueUrlsOpt, readModelNamesForSourceNameOpt) => {
+    let connect = (eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, pluginExtensionPointUnwrapped, pluginDefinition, connectPluginExtensionIncomingEventHandler, extensionsHandlers, extensionPointsHandlers, connectPluginExtensionOutputs, extensionRegistryInfosOpt, extensionPointRegistryInfosOpt, aggregateQueueUrlsOpt, readModelQueueUrlsOpt, readModelNamesForSourceNameOpt) => {
       let extensionRegistryInfos = extensionRegistryInfosOpt !== undefined ? extensionRegistryInfosOpt : [];
+      let extensionPointRegistryInfos = extensionPointRegistryInfosOpt !== undefined ? extensionPointRegistryInfosOpt : [];
       let aggregateQueueUrls = aggregateQueueUrlsOpt !== undefined ? aggregateQueueUrlsOpt : ({});
       let readModelQueueUrls = readModelQueueUrlsOpt !== undefined ? readModelQueueUrlsOpt : ({});
       let readModelNamesForSourceName = readModelNamesForSourceNameOpt !== undefined ? readModelNamesForSourceNameOpt : ({});
@@ -350,9 +351,26 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
             mergedAggregateUrls[PluginSpec$ReventlessCore.name] = pluginExtensionPointCmdTopicUrl;
           }
         }
+        let extensionPointEntries = extensionPointsOutputs.length === extensionPointRegistryInfos.length ? extensionPointsOutputs.map((output, i) => {
+            let info = extensionPointRegistryInfos[i];
+            let eventTopicArn = Output$Pulumi.flatMap(output.eventTopic, param => {
+              let r = param.resources[0];
+              if (r !== undefined) {
+                return r.id;
+              } else {
+                return Pulumi.output("");
+              }
+            });
+            return {
+              specModule: info.specModule,
+              mappingsModule: info.mappingsModule,
+              eventTopicArn: eventTopicArn,
+              aggregateNames: output.aggregateNames
+            };
+          }) : [];
         registerEventCollectorContext(ecName, {
           pluginDefinitionJson: pluginDefinitionJson,
-          extensionPoints: [],
+          extensionPoints: extensionPointEntries,
           connectExtension: connectExtension,
           extensions: extensions,
           pluginExtensionPointCmdTopicUrl: pluginExtensionPointCmdTopicUrl,

@@ -54,6 +54,8 @@ module ProductsEpMapping = {
   module ExtensionPoint = ProductsEpSpec
   module Delegate = ProductDelegate
 
+  let moduleUrl = "test:DelegateGwtTest:ProductsEpMapping"
+
   let mapIncomingCommand = (_id, _command, _meta) => []
 
   let mapOutgoingEvent = Some(
@@ -136,6 +138,8 @@ module OrderDelegate = {
 module OrdersEpMapping = {
   module ExtensionPoint = OrdersEpSpec
   module Delegate = OrderDelegate
+
+  let moduleUrl = "test:DelegateGwtTest:OrdersEpMapping"
 
   let mapIncomingCommand = (_id, _command, _meta) => []
 

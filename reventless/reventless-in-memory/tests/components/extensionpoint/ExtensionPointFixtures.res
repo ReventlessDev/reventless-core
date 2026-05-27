@@ -60,6 +60,8 @@ module ForwardMapping = {
   module ExtensionPoint = TestEPSpec
   module Delegate = DelegateAggSpec
 
+  let moduleUrl = "test:InMemoryExtensionPointFixtures:ForwardMapping"
+
   let mapIncomingCommand = (
     _id: string,
     cmd: TestEPSpec.command,

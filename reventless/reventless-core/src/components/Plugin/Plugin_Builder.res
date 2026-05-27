@@ -473,7 +473,7 @@ module Make = (
       )) => {
         let aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
 
-        let (extensionPointsOutputs, extensionPointsHandlers) =
+        let (extensionPointsOutputs, extensionPointsHandlers, extensionPointRegistryInfos) =
           extensionPoints->createExtensionPoints(
             ~aggregateResources,
             ~publishToAggregates,
@@ -688,6 +688,7 @@ module Make = (
               ~extensionPointsHandlers,
               ~connectPluginExtensionOutputs,
               ~extensionRegistryInfos,
+              ~extensionPointRegistryInfos,
               ~aggregateQueueUrls,
               ~readModelQueueUrls,
               ~readModelNamesForSourceName,

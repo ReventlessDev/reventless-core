@@ -130,6 +130,8 @@ let ProductDelegate = {
   commandAuthorization: commandAuthorization$2
 };
 
+let moduleUrl$1 = "test:FlowCrossPluginGwtTest:ProductsEpMapping";
+
 function mapIncomingCommand(_id, _command, _meta) {
   return [];
 }
@@ -151,6 +153,7 @@ let mapOutgoingEvent = (_id, event, _meta, _q) => {
 let ProductsEpMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
+  moduleUrl: moduleUrl$1,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent
 };
@@ -190,7 +193,7 @@ let eventSchema$4 = S.schema(s => ({
 
 let errorSchema$2 = S.literal("NoError");
 
-let moduleUrl$1 = "";
+let moduleUrl$2 = "";
 
 function commandAuthorization$4(param) {
   return "AllowAuthenticated";
@@ -202,9 +205,11 @@ let OrderDelegate = {
   commandSchema: commandSchema$4,
   eventSchema: eventSchema$4,
   errorSchema: errorSchema$2,
-  moduleUrl: moduleUrl$1,
+  moduleUrl: moduleUrl$2,
   commandAuthorization: commandAuthorization$4
 };
+
+let moduleUrl$3 = "test:FlowCrossPluginGwtTest:OrdersEpMapping";
 
 function mapIncomingCommand$1(_id, _command, _meta) {
   return [];
@@ -226,6 +231,7 @@ let mapOutgoingEvent$1 = (_id, event, _meta, _q) => {
 let OrdersEpMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
+  moduleUrl: moduleUrl$3,
   mapIncomingCommand: mapIncomingCommand$1,
   mapOutgoingEvent: mapOutgoingEvent$1
 };
@@ -252,7 +258,7 @@ let eventSchema$5 = S.schema(s => ({
   orderId: s.m(S.string)
 }));
 
-let moduleUrl$2 = "";
+let moduleUrl$4 = "";
 
 function commandAuthorization$5(param) {
   return "AllowAuthenticated";
@@ -265,7 +271,7 @@ let RecordDemandSlice = {
   commandSchema: commandSchema$5,
   errorSchema: errorSchema$3,
   eventSchema: eventSchema$5,
-  moduleUrl: moduleUrl$2,
+  moduleUrl: moduleUrl$4,
   commandAuthorization: commandAuthorization$5
 };
 
@@ -297,7 +303,7 @@ let RecordDemandBehavior = {
   decide: decide$1
 };
 
-let moduleUrl$3 = "";
+let moduleUrl$5 = "";
 
 let delegateModuleUrl = "";
 
@@ -315,7 +321,7 @@ function mapIncomingEvent(_id, event, _meta, _pd, _q) {
 let OrdersExtMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
-  moduleUrl: moduleUrl$3,
+  moduleUrl: moduleUrl$5,
   delegateModuleUrl: delegateModuleUrl,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined
@@ -344,7 +350,7 @@ let eventSchema$6 = S.schema(s => ({
   price: s.m(S.float)
 }));
 
-let moduleUrl$4 = "";
+let moduleUrl$6 = "";
 
 function commandAuthorization$6(param) {
   return "AllowAuthenticated";
@@ -357,7 +363,7 @@ let SyncProductSlice = {
   commandSchema: commandSchema$6,
   errorSchema: errorSchema$4,
   eventSchema: eventSchema$6,
-  moduleUrl: moduleUrl$4,
+  moduleUrl: moduleUrl$6,
   commandAuthorization: commandAuthorization$6
 };
 
@@ -390,7 +396,7 @@ let SyncProductBehavior = {
   decide: decide$2
 };
 
-let moduleUrl$5 = "";
+let moduleUrl$7 = "";
 
 let delegateModuleUrl$1 = "";
 
@@ -409,7 +415,7 @@ function mapIncomingEvent$1(_id, event, _meta, _pd, _q) {
 let ProductsExtMapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
-  moduleUrl: moduleUrl$5,
+  moduleUrl: moduleUrl$7,
   delegateModuleUrl: delegateModuleUrl$1,
   mapIncomingEvent: mapIncomingEvent$1,
   mapOutgoingEvent: undefined
@@ -542,6 +548,7 @@ let ProductsEp = Flow_GWT$ReventlessGwt.ExtensionPointStep({
     moduleUrl: moduleUrl,
     commandAuthorization: commandAuthorization$2
   },
+  moduleUrl: moduleUrl$1,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent
 });
@@ -560,10 +567,10 @@ let ProductsExt = Flow_GWT$ReventlessGwt.ExtensionStep({
     eventSchema: eventSchema$6,
     errorSchema: errorSchema$4,
     commandSchema: commandSchema$6,
-    moduleUrl: moduleUrl$4,
+    moduleUrl: moduleUrl$6,
     commandAuthorization: commandAuthorization$6
   },
-  moduleUrl: moduleUrl$5,
+  moduleUrl: moduleUrl$7,
   delegateModuleUrl: delegateModuleUrl$1,
   mapIncomingEvent: mapIncomingEvent$1,
   mapOutgoingEvent: undefined
@@ -601,9 +608,10 @@ let OrdersEp = Flow_GWT$ReventlessGwt.ExtensionPointStep({
     eventSchema: eventSchema$4,
     errorSchema: errorSchema$2,
     commandSchema: commandSchema$4,
-    moduleUrl: moduleUrl$1,
+    moduleUrl: moduleUrl$2,
     commandAuthorization: commandAuthorization$4
   },
+  moduleUrl: moduleUrl$3,
   mapIncomingCommand: mapIncomingCommand$1,
   mapOutgoingEvent: mapOutgoingEvent$1
 });
@@ -622,10 +630,10 @@ let OrdersExt = Flow_GWT$ReventlessGwt.ExtensionStep({
     eventSchema: eventSchema$5,
     errorSchema: errorSchema$3,
     commandSchema: commandSchema$5,
-    moduleUrl: moduleUrl$2,
+    moduleUrl: moduleUrl$4,
     commandAuthorization: commandAuthorization$5
   },
-  moduleUrl: moduleUrl$3,
+  moduleUrl: moduleUrl$5,
   delegateModuleUrl: delegateModuleUrl,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined

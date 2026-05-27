@@ -130,6 +130,8 @@ module Make = (
         commandTopic->Component.outputs
       ),
       eventTopic: eventTopic->Pulumi.Output.apply(eventTopic => eventTopic->Component.outputs),
+      specModule: Spec.moduleUrl,
+      mappingsModule: Mappings.moduleUrl,
     }
     self->Component.setOutputs(epOutputs)
   }

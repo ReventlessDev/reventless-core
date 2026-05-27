@@ -93,14 +93,30 @@ function createReadModels(readModels, api, apiRole, allEventTopics, opts) {
 }
 
 function createExtensionPoints(extensionPoints, aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts) {
-  return Stdlib_Array.unzip(extensionPoints.map(SpecificExtensionPoint => {
+  let triples = extensionPoints.map(SpecificExtensionPoint => {
     let extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, resourceNaming, opts);
     let ops = SpecificExtensionPoint.operations(extensionPoint);
+    let outputs = SpecificExtensionPoint.outputs(extensionPoint);
+    let registryInfo_specModule = outputs.specModule;
+    let registryInfo_mappingsModule = outputs.mappingsModule;
+    let registryInfo = {
+      specModule: registryInfo_specModule,
+      mappingsModule: registryInfo_mappingsModule
+    };
     return [
-      SpecificExtensionPoint.outputs(extensionPoint),
-      ops.apply(param => param.outgoingJsonEventsHandler)
+      outputs,
+      ops.apply(param => param.outgoingJsonEventsHandler),
+      registryInfo
     ];
-  }));
+  });
+  let outputs = triples.map(param => param[0]);
+  let handlers = triples.map(param => param[1]);
+  let registryInfos = triples.map(param => param[2]);
+  return [
+    outputs,
+    handlers,
+    registryInfos
+  ];
 }
 
 function createResolvers(allQueryDbs) {

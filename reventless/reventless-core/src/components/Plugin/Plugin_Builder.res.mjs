@@ -442,9 +442,9 @@ function Make(Spec) {
           });
           if (coreSetup !== undefined) {
             let match$4 = Plugin_Helpers$ReventlessCore.createConnectPluginExtension(pluginDefinition, publishToPluginExtensionPoint, publishToAggregates, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, coreSetup[0], pluginDefinition, match$4[1], extensionsHandlers, extensionPointsHandlers, match$4[0], extensionRegistryInfos, aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
+            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, coreSetup[0], pluginDefinition, match$4[1], extensionsHandlers, extensionPointsHandlers, match$4[0], extensionRegistryInfos, match$1[2], aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
           } else {
-            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, undefined, extensionsHandlers, extensionPointsHandlers, undefined, extensionRegistryInfos, aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
+            EventCollectorHelper.connect(eventCollector, eventTopics, extensionPointsOutputs, extensionsOutputs, undefined, pluginDefinition, undefined, extensionsHandlers, extensionPointsHandlers, undefined, extensionRegistryInfos, undefined, aggregateQueueUrls, readModelQueueUrls, Plugin_Helpers$ReventlessCore.readModelNamesForSourceName);
           }
           let tasksOutputs = Plugin_Helpers$ReventlessCore.createTasks(tasks, aggregatesOutputs, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, Spec.resourceNaming, opts);
           let resolvers = Plugin_Helpers$ReventlessCore.createResolvers(allQueryDbs);

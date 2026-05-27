@@ -374,7 +374,13 @@ module MakeWithConfig = (
         module type Mapping = ReventlessInfra.ExtensionPointMapping.T
           with module ExtensionPoint := Spec
         let name = Mapping.Delegate.name
-        let moduleUrl = Spec.moduleUrl
+        // The mapping FILE's moduleUrl, not the spec's — the EventCollector
+        // runtime dynamic-imports this URL to find mapOutgoingEvent. Read
+        // through %raw because moduleUrl isn't part of the Mapping signature
+        // (would force every test/internal mapping to declare it); user
+        // mapping files reliably expose it via the @@reventless.spec PPX.
+        // Spec.moduleUrl is the fallback when the JS-level property is absent.
+        let moduleUrl = Mapping.moduleUrl
         let mappings: array<module(Mapping)> = [module(CompiledMapping)]
       }
       module Inner = ExtensionPoint_Builder.Make(Spec, Mappings)
@@ -394,7 +400,9 @@ module MakeWithConfig = (
           with module ExtensionPoint := Spec
         let name =
           Mapping1.Delegate.name ++ "+" ++ Mapping2.Delegate.name
-        let moduleUrl = Spec.moduleUrl
+        // First mapping's URL — matches the user-extension merge convention.
+        // See Make's moduleUrl comment for the %raw rationale.
+        let moduleUrl = Mapping1.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2)]
       }
       module Inner = ExtensionPoint_Builder.Make(Spec, Mappings)
@@ -421,7 +429,9 @@ module MakeWithConfig = (
           Mapping2.Delegate.name ++
           "+" ++
           Mapping3.Delegate.name
-        let moduleUrl = Spec.moduleUrl
+        // First mapping's URL — matches the user-extension merge convention.
+        // See Make's moduleUrl comment for the %raw rationale.
+        let moduleUrl = Mapping1.moduleUrl
         let mappings: array<module(Mapping)> = [module(CM1), module(CM2), module(CM3)]
       }
       module Inner = ExtensionPoint_Builder.Make(Spec, Mappings)

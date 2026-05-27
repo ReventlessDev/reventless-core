@@ -324,7 +324,11 @@ module Make = (
       ->Pulumi.Output.apply(((aggregateResources, publishToAggregates, queryEngine, scheduler)) => {
         let _aggregatesOutputs = addEventMappers(allEventTopics, queryEngine)
 
-        let (extensionPointsOutputs, extensionPointsOutgoingJsonEventsHandlers) =
+        let (
+          extensionPointsOutputs,
+          extensionPointsOutgoingJsonEventsHandlers,
+          _extensionPointRegistryInfos,
+        ) =
           extensionPoints->createExtensionPoints(
             ~aggregateResources,
             ~publishToAggregates,
