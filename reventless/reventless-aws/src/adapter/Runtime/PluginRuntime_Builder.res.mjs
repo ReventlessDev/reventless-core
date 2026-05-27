@@ -259,16 +259,30 @@ function Make(EventCollectorChannel) {
     });
     envVars["HANDLER_CONFIG"] = handlerConfigJson;
     let packageDirs = {};
+    let addPackageFor = spec => {
+      let pkgName = Util_Bundle$ReventlessAws.extractPackageName(spec);
+      packageDirs[pkgName] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkgName);
+    };
     context.extensions.forEach(ext => {
       [
         ext.specModule,
         ext.mappingsModule,
         ext.delegateModule
-      ].forEach(spec => {
-        let pkgName = Util_Bundle$ReventlessAws.extractPackageName(spec);
-        packageDirs[pkgName] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkgName);
-      });
+      ].forEach(addPackageFor);
     });
+    context.extensionPoints.forEach(ep => {
+      [
+        ep.specModule,
+        ep.mappingsModule
+      ].forEach(addPackageFor);
+    });
+    let ce = context.connectExtension;
+    if (ce !== undefined) {
+      [
+        ce.specModule,
+        ce.mappingsModule
+      ].forEach(addPackageFor);
+    }
     packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
     packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
     let bundleOutput = context.pluginDefinitionJson.apply(pluginDefinitionJson => {

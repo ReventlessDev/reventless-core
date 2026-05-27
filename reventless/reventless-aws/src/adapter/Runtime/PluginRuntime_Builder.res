@@ -375,13 +375,29 @@ module Make = (
     // extensions, so packageDirs stays empty and the asset matches the
     // pre-extension-wiring shape.
     let packageDirs: dict<string> = Dict.make()
+    let addPackageFor = spec => {
+      let pkgName = Util_Bundle.extractPackageName(spec)
+      packageDirs->Dict.set(pkgName, Util_Bundle.resolvePackageRoot(pkgName))
+    }
     context.extensions->Array.forEach(ext => {
-      [ext.specModule, ext.mappingsModule, ext.delegateModule]
-      ->Array.forEach(spec => {
-        let pkgName = Util_Bundle.extractPackageName(spec)
-        packageDirs->Dict.set(pkgName, Util_Bundle.resolvePackageRoot(pkgName))
-      })
+      [ext.specModule, ext.mappingsModule, ext.delegateModule]->Array.forEach(addPackageFor)
     })
+    // Outgoing EPs: the entry point dynamic-imports ep.specModule and
+    // ep.mappingsModule at cold start (AdminEventCollectorEntryPoint.mjs).
+    // Without this walk the EP spec package (e.g. <plugin>-spec) is missing
+    // from the asset zip even though HANDLER_CONFIG references it, and the
+    // Lambda crashes with MODULE_NOT_FOUND before any event is processed.
+    context.extensionPoints->Array.forEach(ep => {
+      [ep.specModule, ep.mappingsModule]->Array.forEach(addPackageFor)
+    })
+    // The auto-included PluginConnectExtension entry is also dynamic-imported
+    // at cold start. Its modules live in reventless-infra / reventless-core,
+    // which are explicitly bundled below — walking it here is defensive but
+    // costs nothing once those entries dedupe in packageDirs.
+    switch context.connectExtension {
+    | Some(ce) => [ce.specModule, ce.mappingsModule]->Array.forEach(addPackageFor)
+    | None => ()
+    }
     // Bundle the framework packages alongside the entry point so the deployed
     // Lambda picks up uncommitted local changes without waiting for the Lambda
     // Layer rebuild (the layer fetches @reventlessdev/reventless-* from GitHub
