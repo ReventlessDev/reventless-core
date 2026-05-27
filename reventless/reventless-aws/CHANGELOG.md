@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.125 (2026-05-27)
+
+### Bug Fixes
+
+* **framework:** bundle ExtensionPoint spec/mapping packages into plugin EC Lambda ([cce9580](https://github.com/ReventlessDev/reventless-core/commit/cce95800ffeac95d54be7d2f72e3223689d24158))
+
+
 # 3.0.0-alpha.124 (2026-05-27)
 
 ### Bug Fixes

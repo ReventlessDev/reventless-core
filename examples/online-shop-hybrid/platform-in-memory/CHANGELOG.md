@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.71 (2026-05-27)
+
+### Bug Fixes
+
+* **deps:** bump reventless-host-shell to 3.0.0-alpha.20 ([b462a64](https://github.com/ReventlessDev/reventless-core/commit/b462a64e56e8d702926d7df1f339bf6ca46c435a))
+
+
 # 1.0.0-alpha.70 (2026-05-27)
 
 ### Bug Fixes
