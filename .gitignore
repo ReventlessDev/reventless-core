@@ -38,6 +38,22 @@ logs/security/
 # Reventless PPX dune build output
 packages/reventless-ppx/src/_build/
 
+# Native build artifacts (e.g. reventless-ppx per-platform binaries) are
+# distributed via the npm registry as @reventlessdev/reventless-ppx-<target>
+# packages, never committed. Local builds via `pnpm build:ppx` land alongside
+# the launcher and serve only as a fallback for PPX hackers.
+#
+# Exception: packages/reventless-ppx/ppx-osx-x64.exe remains tracked as the
+# macOS local-fallback until darwin-* per-platform packages publish. Tracked
+# files are unaffected by this pattern (gitignore is for untracked files).
+*.exe
+
+# Lambda layer zip artifacts are built by reventless-layer-builder and
+# uploaded directly by CI — never committed. The package-local gitignore at
+# reventless/reventless-layer-builder/.gitignore covers the build output;
+# this repo-wide rule catches strays from any future layer builders.
+**/reventless-layer*.zip
+
 # Local SQLite databases written by the in-memory platform's persistence mode
 # (default path documented in docs/guides/local-persistence.md).
 .reventless/
