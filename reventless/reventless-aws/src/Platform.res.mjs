@@ -552,6 +552,7 @@ function MakeWithConfig(Config) {
       let eventTopicOutputs = isSns ? Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]) : undefined;
       Stdlib_Option.forEach(eventTopicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
     });
+    StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
@@ -957,7 +958,6 @@ function MakeWithConfig(Config) {
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
-    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
@@ -1082,7 +1082,6 @@ function MakeWithConfig(Config) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
-    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     if (Config.splitApi) {
       Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
       Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
@@ -1246,7 +1245,6 @@ function MakeWithConfig(Config) {
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
-    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);
@@ -1734,6 +1732,7 @@ function Make($star) {
       let eventTopicOutputs = isSns ? Stdlib_Option.orElse(allEventTopics[entry.displayName], allEventTopics[entry.busKey]) : undefined;
       Stdlib_Option.forEach(eventTopicOutputs, outputs => EventLogSubscription_AppSync$ReventlessAws.make(entry.displayName, entry.displayName, outputs, eventsApi, customOpts));
     });
+    StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
     console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
@@ -2134,7 +2133,6 @@ function Make($star) {
       }
     }
     let pluginComponents = plugins.map(plugin => plugin.make());
-    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     let pluginComponent = pluginComponents[0];
     if (pluginComponent !== undefined) {
       Plugin_Helpers$ReventlessCore.exportPluginOutputs(Component$ReventlessCore.outputs(Primitive_option.valFromOption(pluginComponent)));
@@ -2247,7 +2245,6 @@ function Make($star) {
         Platform_UIFragments_Lambda$ReventlessAws.make(platformApi, r$1.name, {});
       }
     }
-    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     Pulumi$Pulumi.$$export("platformApiId", Output$Pulumi.flatMap(platformApi, api => api.id));
     Pulumi$Pulumi.$$export("platformApiEndpoint", Output$Pulumi.flatMap(platformApi, api => api.uris.apply(uris => uris.GRAPHQL)));
     Pulumi$Pulumi.$$export("platformApiRoleArn", Output$Pulumi.flatMap(platformApiRole, role => role.arn));
@@ -2405,7 +2402,6 @@ function Make($star) {
     hooksApiRoleRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(targetApiRole);
     let pluginComponent = plugin.make();
     currentDeployTarget.contents = "Domain";
-    Stdlib_Option.forEach(domainEventsApiOpt, eventsApi => StateTopic_AppSync$ReventlessAws.finish(eventsApi, {}));
     Pulumi$Pulumi.$$export("_interopMeta", Plugin_Helpers$ReventlessCore.getInteropMeta());
     let pluginOutputs = Component$ReventlessCore.outputs(pluginComponent);
     Plugin_Helpers$ReventlessCore.exportPluginOutputs(pluginOutputs);

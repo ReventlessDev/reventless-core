@@ -1125,6 +1125,13 @@ module MakeWithConfig = (
             )
           )
         })
+        // Finalize the shared StateTopic Lambda + IAM + per-stream ESMs from the
+        // entries the loop above just registered. Must run INSIDE this hook because
+        // Plugin_Builder fires it from inside a Pulumi.Output.apply chain — calling
+        // `finish` from deployPlugin (after P.make returns) would see the registry
+        // empty because the hook hasn't run yet. Admin's hook fires synchronously,
+        // but the call site is unified here so admin and plugins share one path.
+        StateTopic_AppSync.finish(~eventsApi, ~opts={})
       }
     ),
   }
@@ -1352,13 +1359,10 @@ module MakeWithConfig = (
       P.make()
     })
 
-    // Finalize the shared StateTopic Lambda(s) — one per events API. `make`
-    // (called from subscriptionInfraHook during Admin.construct + plugin builds
-    // above) only registered entries; `finish` now builds the shared Lambda +
-    // IAM + per-stream EventSourceMappings from the accumulated registry.
-    domainEventsApiOpt->Option.forEach(eventsApi =>
-      StateTopic_AppSync.finish(~eventsApi, ~opts={})
-    )
+    // Note: StateTopic_AppSync.finish runs from inside subscriptionInfraHook
+    // (Phase 4 wiring above), not here — Plugin_Builder fires the hook from
+    // within a Pulumi.Output.apply chain, so finishing synchronously here would
+    // see an empty registry.
 
     // Export first plugin's outputs (monolithic mode = typically single plugin).
     switch pluginComponents->Array.get(0) {
@@ -1623,12 +1627,8 @@ module MakeWithConfig = (
     | None => ()
     }
 
-    // Finalize the shared StateTopic Lambda for the admin RMs in this platform
-    // stack — `make` (called from subscriptionInfraHook during Admin.construct)
-    // only registered entries; `finish` builds the shared Lambda + IAM + ESMs.
-    domainEventsApiOpt->Option.forEach(eventsApi =>
-      StateTopic_AppSync.finish(~eventsApi, ~opts={})
-    )
+    // Note: StateTopic_AppSync.finish runs from inside subscriptionInfraHook
+    // (Phase 4 wiring above), not here — see the note in deployPlatform.
 
     // Admin schema push is fired by preAdminResolversSchemaHook from inside
     // Admin.construct (gated on a read-model-resources barrier, with admin
@@ -1927,12 +1927,10 @@ module MakeWithConfig = (
     let pluginComponent = P.make()
     currentDeployTarget := Domain // reset after build
 
-    // Finalize the shared StateTopic Lambda for this plugin stack — `make`
-    // (called from subscriptionInfraHook during P.make() above) only registered
-    // entries; `finish` builds the shared Lambda + IAM + per-stream ESMs.
-    domainEventsApiOpt->Option.forEach(eventsApi =>
-      StateTopic_AppSync.finish(~eventsApi, ~opts={})
-    )
+    // Note: StateTopic_AppSync.finish runs from inside subscriptionInfraHook —
+    // Plugin_Builder fires the hook from within a Pulumi.Output.apply chain, so
+    // finishing here would see the registry empty (the hook hasn't fired yet
+    // when P.make() returns).
 
     // Export interop metadata for cross-stack consumption.
     Pulumi.Pulumi.export("_interopMeta", ReventlessCore.Plugin_Helpers.getInteropMeta())
