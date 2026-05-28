@@ -80,6 +80,10 @@ async function buildHandler() {
   const handlersByType = {};
   const sharedDcbEventLogOps = dcbEventLogOperationsMake({
     name: config.pluginName,
+    // Mirrors DcbEventLog_Builder.res's `name ++ "DcbEventLog"` — the
+    // canonical service identity used by Plugin_Callback dispatch and the
+    // DcbEventLog_Operations meta.service normalisation in append.
+    serviceName: config.pluginName + "DcbEventLog",
     storage: rawStorageOps,
     publishJson: async (_name, _meta, _json) => {},
   });
