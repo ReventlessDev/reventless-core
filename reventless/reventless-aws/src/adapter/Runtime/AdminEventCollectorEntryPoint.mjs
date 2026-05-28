@@ -74,6 +74,7 @@ import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/s
 import { Make as extensionPointOperationsMake } from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Operations.res.mjs";
 import { Make as extensionOperationsMake } from "@reventlessdev/reventless-core/src/components/Extension/Extension_Operations.res.mjs";
 import { Make as extensionMappingMake } from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
+import { Make as extensionPointMappingMake } from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import { Make as pluginCallbackMake } from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Callback.res.mjs";
 import { handleDynamoDbOrSqsEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res.mjs";
 import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule } from "@reventlessdev/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
@@ -624,17 +625,50 @@ async function buildHandler() {
 
   const manageSubscriptionsFn = mkManageSubscriptions(config.pluginReadModelTableName);
 
-  // EP operations — admin has 1 entry (Plugin EP), plugins have 0.
+  // EP operations — admin has 1 entry (Plugin EP), plugins have N user EPs.
+  //
+  // Two mapping shapes flow through `config.extensionPoints`:
+  //
+  //   1. Admin-internal (PluginExtensionPoint_Plugin.res.mjs) — exports a
+  //      `Make(Spec)` functor consuming runtime ops. Used only by the admin
+  //      Lambda's Plugin EP. Returns `{Mapping}`.
+  //
+  //   2. User-authored (e.g. Products_ExtensionPointMapping.res.mjs) — exports
+  //      the Mapping fields at top level (mapIncomingCommand, mapOutgoingEvent,
+  //      Delegate, ...) with NO `Make` functor. Used by every plugin EC Lambda
+  //      that declares an ExtensionPoint. The ExtensionPoint spec module is
+  //      erased at compile time and must be re-attached at runtime.
+  //
+  // Dispatch on `typeof Make === function` to handle both. Mirrors the
+  // user-extensions branch below which already does this for ExtensionMappings.
   const epHandlers = await Promise.all(config.extensionPoints.map(async (ep) => {
     const specMod = patchSpecId(await importFromAsset(ep.specModule));
     const mappingsMod = await importFromAsset(ep.mappingsModule);
-    const epModule = mappingsMod.Make({
-      runtimeOps,
-      environment: lambdaFunctionName,
-      updateApiSchema: updateApiSchemaFn,
-      manageSubscriptions: manageSubscriptionsFn,
-    });
-    const mappingsModule = { mappings: [epModule.Mapping] };
+
+    let mappingsModule;
+    if (typeof mappingsMod.Make === "function") {
+      // Admin's Plugin EP: invoke the Make functor with runtime ops.
+      const epModule = mappingsMod.Make({
+        runtimeOps,
+        environment: lambdaFunctionName,
+        updateApiSchema: updateApiSchemaFn,
+        manageSubscriptions: manageSubscriptionsFn,
+      });
+      mappingsModule = { mappings: [epModule.Mapping] };
+    } else {
+      // User EP: reconstruct MappingImpl from top-level exports, re-attach
+      // the erased ExtensionPoint spec module, then transform input shape
+      // (mapIncomingCommand/mapOutgoingEvent) into the runtime T shape via
+      // ExtensionPointMapping.Make.
+      const mappingImpl = {
+        ...mappingsMod,
+        ExtensionPoint: specMod,
+        moduleUrl: ep.mappingsModule,
+      };
+      const transformedMapping = extensionPointMappingMake(mappingImpl);
+      mappingsModule = { mappings: [transformedMapping] };
+    }
+
     const resolvedTopic = {
       name: ep.eventTopicArn,
       id: ep.eventTopicArn,
