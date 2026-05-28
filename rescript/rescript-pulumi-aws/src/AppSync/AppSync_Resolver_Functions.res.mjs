@@ -650,7 +650,13 @@ export function request(ctx) {
 }
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type);
-  return ctx.result?.data?.['` + tableName + `'] ?? [];
+  // BatchGetItem returns null in the result array for keys that don't exist
+  // in the table, preserving index correspondence with the input. The SDL
+  // returns this field as \`[T!]!\` (non-null element list), so any single
+  // missing id makes the entire field fail with "Cannot return null for
+  // non-nullable type" and the caller sees data=null. Filter the nulls so
+  // the field returns just the items that were found.
+  return (ctx.result?.data?.['` + tableName + `'] ?? []).filter(item => item !== null);
 }
 `;
 }
