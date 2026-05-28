@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.131 (2026-05-28)
+
+### Bug Fixes
+
+* **aws:** keep SNS subs alive when a superseded plugin version disconnects ([e78a3ab](https://github.com/ReventlessDev/reventless-core/commit/e78a3ab0888e01968747920dc2095ce96467edbf))
+
+
 # 3.0.0-alpha.130 (2026-05-28)
 
 ### Bug Fixes
