@@ -825,12 +825,21 @@ module Make = (
         let behaviorPkg = Util_Bundle.extractPackageName(behaviorPath)
         packageDirs->Dict.set(behaviorPkg, Util_Bundle.resolvePackageRoot(behaviorPkg))
       })
-      // Include reventless-aws itself so hand-written entry point (.mjs) files
-      // in the zip take precedence over the Lambda layer, ensuring the latest
-      // local version is used.
+      // Include the framework packages alongside the entry point so the deployed
+      // Lambda picks up uncommitted local changes without waiting for the Lambda
+      // Layer rebuild (the layer fetches @reventlessdev/reventless-* from GitHub
+      // Packages, not the local pnpm workspace). reventless-core is critical
+      // here because StateChangeSlice_Callback (the actual command handler) lives
+      // in core — without it, a source fix to e.g. event tag extraction would
+      // never reach this Lambda. Mirrors the EC asset pattern in
+      // forPluginEventCollector above.
       packageDirs->Dict.set(
         "@reventlessdev/reventless-aws",
         Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-aws"),
+      )
+      packageDirs->Dict.set(
+        "@reventlessdev/reventless-core",
+        Util_Bundle.resolvePackageRoot("@reventlessdev/reventless-core"),
       )
 
       let {code, sourceCodeHash} = Util_Bundle.buildCodeArchive(

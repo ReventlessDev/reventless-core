@@ -477,6 +477,7 @@ function Make(EventCollectorChannel) {
       packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
     });
     packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
+    packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
     let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, undefined);
     Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS$ReventlessAws.setBatchSize);
     let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, opts);
