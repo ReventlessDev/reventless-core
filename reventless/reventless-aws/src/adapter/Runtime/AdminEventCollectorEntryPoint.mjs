@@ -659,10 +659,15 @@ async function buildHandler() {
       // User EP: reconstruct MappingImpl from top-level exports, re-attach
       // the erased ExtensionPoint spec module, then transform input shape
       // (mapIncomingCommand/mapOutgoingEvent) into the runtime T shape via
-      // ExtensionPointMapping.Make.
+      // ExtensionPointMapping.Make. `Delegate.Id` is also patched via
+      // patchSpecId — the inner `module Delegate = { module Id = Id.String; … }`
+      // is erased at compile time the same way the top-level `module Id` is,
+      // and ExtensionPointMapping.Make reads `Delegate.Id.schema` at runtime to
+      // decode incoming events.
       const mappingImpl = {
         ...mappingsMod,
         ExtensionPoint: specMod,
+        Delegate: patchSpecId(mappingsMod.Delegate),
         moduleUrl: ep.mappingsModule,
       };
       const transformedMapping = extensionPointMappingMake(mappingImpl);
@@ -738,7 +743,7 @@ async function buildHandler() {
     }
     const epSpec = patchSpecId(await importFromAsset(ext.specModule));
     const userMod = await importFromAsset(ext.mappingsModule);
-    const delegateSpec = await importFromAsset(ext.delegateModule);
+    const delegateSpec = patchSpecId(await importFromAsset(ext.delegateModule));
 
     // Reconstruct Mapping with the freshly imported specs re-attached. The
     // moduleUrl / delegateModuleUrl fields satisfy the ExtensionMapping.Mapping
