@@ -71,13 +71,8 @@ module Make = (Ops: Ops): T => {
     ->Array.map(async ((rawEvent, eventJson)) => {
       let entityId =
         rawEvent.tags->Array.get(0)->Option.map(t => t.value)->Option.getOr(name)
-      // Override `meta.service` to the DcbEventLog's name for the publish envelope —
-      // EventCollector subscriptions filter by service name, so all events published
-      // by this DcbEventLog must share that identity. The per-event causation,
-      // correlation, tracing and headers carry through unchanged.
-      let publishMeta: Message.meta = {...rawEvent.meta, service: serviceName}
-      let eventJson' = Message.composeEventJson'(entityId, publishMeta, eventJson)
-      try await Ops.publishJson(serviceName, publishMeta, eventJson') catch {
+      let eventJson' = Message.composeEventJson'(entityId, rawEvent.meta, eventJson)
+      try await Ops.publishJson(serviceName, rawEvent.meta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
         Effect.logError(`DcbEventLog(${name}): EventTopic.publish Error: ${errMsg}`)->Effect.runSync
@@ -113,12 +108,23 @@ module Make = (Ops: Ops): T => {
     rawEvents,
     ~condition=?,
   ) => {
+    // Normalise `meta.service` to the DcbEventLog's serviceName on every event
+    // before BOTH storage append and SNS publish. EventCollector dispatch (via
+    // Plugin_Callback.handleJsonEvents) keys on `meta.service`, and the catalog
+    // plugin's own EC consumes its own DcbEventLog's DDB stream for outgoing EP
+    // routing — so the stored row's service must match the same identity SNS
+    // consumers see (`<plugin>DcbEventLog`), not the original caller's plugin
+    // name. Causation / correlation / tracing / headers carry through unchanged.
+    let normalisedEvents = rawEvents->Array.map(re => {
+      ...re,
+      meta: {...re.meta, service: serviceName},
+    })
     // Adapter rawStoredEvent is structurally identical to infra rawEvent
-    let adapterEvents: array<DcbEventLog_Adapter.rawStoredEvent> = rawEvents->Obj.magic
+    let adapterEvents: array<DcbEventLog_Adapter.rawStoredEvent> = normalisedEvents->Obj.magic
     let result = await Ops.storage.append(adapterEvents, ~condition?)
     switch result {
     | Ok(position) =>
-      await publishToEventTopic(rawEvents)
+      await publishToEventTopic(normalisedEvents)
       Ok(position)
     | Error(_) as err => err
     }

@@ -43,11 +43,9 @@ function Make(Ops) {
     await Promise.all(Stdlib_Array.zip(rawEvents, finalRawEventsJson).map(async param => {
       let rawEvent = param[0];
       let entityId = Stdlib_Option.getOr(Stdlib_Option.map(rawEvent.tags[0], t => t.value), name);
-      let newrecord = {...rawEvent.meta};
-      newrecord.service = serviceName;
-      let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, newrecord, param[1]);
+      let eventJson$p = Message$ReventlessCore.composeEventJson$p(entityId, rawEvent.meta, param[1]);
       try {
-        return await Ops.publishJson(serviceName, newrecord, eventJson$p);
+        return await Ops.publishJson(serviceName, rawEvent.meta, eventJson$p);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {
@@ -79,11 +77,20 @@ function Make(Ops) {
     }
   };
   let append = async (rawEvents, condition) => {
-    let result = await Ops.storage.append(rawEvents, condition);
+    let normalisedEvents = rawEvents.map(re => {
+      let newrecord = {...re.meta};
+      return {
+        eventType: re.eventType,
+        data: re.data,
+        tags: re.tags,
+        meta: (newrecord.service = serviceName, newrecord)
+      };
+    });
+    let result = await Ops.storage.append(normalisedEvents, condition);
     if (result.TAG !== "Ok") {
       return result;
     }
-    await publishToEventTopic(rawEvents);
+    await publishToEventTopic(normalisedEvents);
     return {
       TAG: "Ok",
       _0: result._0
