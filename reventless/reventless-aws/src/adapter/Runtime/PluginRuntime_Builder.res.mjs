@@ -4,6 +4,7 @@ import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
@@ -207,11 +208,15 @@ function Make(EventCollectorChannel) {
       dict["schedulerRoleArn"] = schedRoleArn;
       dict["schedulerQueueArn"] = schedQueueArn;
       dict["schedulerQueueName"] = schedQueueName;
-      let extensionPointsArr = context.extensionPoints.map((ep, i) => {
+      let extensionPointsArr = context.extensionPoints.map((ep, i) => [
+        ep,
+        epEventTopicArns[i]
+      ]).toSorted((param, param$1) => Primitive_string.compare(param[0].specModule, param$1[0].specModule)).map(param => {
+        let ep = param[0];
         let entryDict = {};
         entryDict["specModule"] = ep.specModule;
         entryDict["mappingsModule"] = ep.mappingsModule;
-        entryDict["eventTopicArn"] = epEventTopicArns[i];
+        entryDict["eventTopicArn"] = param[1];
         entryDict["aggregateNames"] = ep.aggregateNames.map(prim => prim);
         return entryDict;
       });
@@ -228,7 +233,7 @@ function Make(EventCollectorChannel) {
         connectExtensionValue = null;
       }
       dict["connectExtension"] = connectExtensionValue;
-      let extensionsArr = context.extensions.map(ext => {
+      let extensionsArr = context.extensions.toSorted((a, b) => Primitive_string.compare(a.name, b.name)).map(ext => {
         let entryDict = {};
         entryDict["name"] = ext.name;
         entryDict["specModule"] = ext.specModule;

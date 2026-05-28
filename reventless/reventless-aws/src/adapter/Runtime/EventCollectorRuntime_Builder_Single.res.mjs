@@ -4,6 +4,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
@@ -79,7 +80,8 @@ function finish() {
       };
       let handlerOutputs = [];
       let packageDirs = {};
-      storedSpecs.forEach(spec => {
+      let sortedSpecs = storedSpecs.toSorted((a, b) => Primitive_string.compare(a.componentName, b.componentName));
+      sortedSpecs.forEach(spec => {
         let info = readModelInfos[spec.componentName];
         if (info !== undefined) {
           let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);

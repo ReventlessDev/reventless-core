@@ -111,7 +111,15 @@ let finish = () =>
         let handlerOutputs: array<Pulumi.Output.t<string>> = []
         let packageDirs: dict<string> = Dict.make()
 
-        storedSpecs->Array.forEach(spec => {
+        // Sort by componentName before serializing so the resulting
+        // HANDLER_CONFIG.handlers array is stable across deploys. Without
+        // this, the push order depends on platform-init order which can vary
+        // between Node.js runs, producing pointless Lambda env-var "updates"
+        // on every `pulumi up` even when nothing meaningful changed.
+        let sortedSpecs =
+          storedSpecs->Array.toSorted((a, b) => String.compare(a.componentName, b.componentName))
+
+        sortedSpecs->Array.forEach(spec => {
           switch readModelInfos->Dict.get(spec.componentName) {
           | Some(info) =>
             // Collect unique user packages for the code asset

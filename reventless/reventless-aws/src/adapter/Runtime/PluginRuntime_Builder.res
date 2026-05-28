@@ -282,17 +282,26 @@ module Make = (
         // pluginDefinition lives in pluginDefinition.json (see asset bundle
         // below). The entry point reads it via fs.readFileSync at cold start.
 
-        let extensionPointsArr = context.extensionPoints->Array.mapWithIndex((ep, i) => {
-          let entryDict = Dict.make()
-          entryDict->Dict.set("specModule", JSON.Encode.string(ep.specModule))
-          entryDict->Dict.set("mappingsModule", JSON.Encode.string(ep.mappingsModule))
-          entryDict->Dict.set("eventTopicArn", JSON.Encode.string(epEventTopicArns->Array.getUnsafe(i)))
-          entryDict->Dict.set(
-            "aggregateNames",
-            ep.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-          )
-          JSON.Encode.object(entryDict)
-        })
+        // Pair each EP with its already-resolved eventTopicArn (parallel arrays)
+        // BEFORE sorting, so the (ep, arn) pairing survives the reorder. Then
+        // sort by ep.specModule for stable JSON output across deploys — without
+        // this, push-order drift in upstream Dict iteration produces pointless
+        // Lambda env-var "updates" on every `pulumi up`.
+        let extensionPointsArr =
+          context.extensionPoints
+          ->Array.mapWithIndex((ep, i) => (ep, epEventTopicArns->Array.getUnsafe(i)))
+          ->Array.toSorted(((a, _), (b, _)) => String.compare(a.specModule, b.specModule))
+          ->Array.map(((ep, eventTopicArn)) => {
+            let entryDict = Dict.make()
+            entryDict->Dict.set("specModule", JSON.Encode.string(ep.specModule))
+            entryDict->Dict.set("mappingsModule", JSON.Encode.string(ep.mappingsModule))
+            entryDict->Dict.set("eventTopicArn", JSON.Encode.string(eventTopicArn))
+            entryDict->Dict.set(
+              "aggregateNames",
+              ep.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+            )
+            JSON.Encode.object(entryDict)
+          })
         dict->Dict.set("extensionPoints", JSON.Encode.array(extensionPointsArr))
 
         let connectExtensionValue = switch context.connectExtension {
@@ -311,23 +320,27 @@ module Make = (
         // dynamic-import the spec / mapping modules and filter the top-level
         // publishToAggregates + readModelQueueUrls maps down to the subset
         // this extension actually uses.
-        let extensionsArr = context.extensions->Array.map(ext => {
-          let entryDict = Dict.make()
-          entryDict->Dict.set("name", JSON.Encode.string(ext.name))
-          entryDict->Dict.set("specModule", JSON.Encode.string(ext.specModule))
-          entryDict->Dict.set("mappingsModule", JSON.Encode.string(ext.mappingsModule))
-          entryDict->Dict.set("delegateModule", JSON.Encode.string(ext.delegateModule))
-          entryDict->Dict.set("extensionPointName", JSON.Encode.string(ext.extensionPointName))
-          entryDict->Dict.set(
-            "aggregateNames",
-            ext.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-          )
-          entryDict->Dict.set(
-            "readModelNames",
-            ext.readModelNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
-          )
-          JSON.Encode.object(entryDict)
-        })
+        // Sort by extension name so the serialized JSON is stable across deploys.
+        let extensionsArr =
+          context.extensions
+          ->Array.toSorted((a, b) => String.compare(a.name, b.name))
+          ->Array.map(ext => {
+            let entryDict = Dict.make()
+            entryDict->Dict.set("name", JSON.Encode.string(ext.name))
+            entryDict->Dict.set("specModule", JSON.Encode.string(ext.specModule))
+            entryDict->Dict.set("mappingsModule", JSON.Encode.string(ext.mappingsModule))
+            entryDict->Dict.set("delegateModule", JSON.Encode.string(ext.delegateModule))
+            entryDict->Dict.set("extensionPointName", JSON.Encode.string(ext.extensionPointName))
+            entryDict->Dict.set(
+              "aggregateNames",
+              ext.aggregateNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+            )
+            entryDict->Dict.set(
+              "readModelNames",
+              ext.readModelNames->Array.map(JSON.Encode.string)->JSON.Encode.array,
+            )
+            JSON.Encode.object(entryDict)
+          })
         dict->Dict.set("extensions", JSON.Encode.array(extensionsArr))
 
         let publishToAggregatesDict = Dict.make()
