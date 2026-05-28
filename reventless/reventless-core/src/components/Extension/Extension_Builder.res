@@ -34,9 +34,20 @@ module Make = (
     let extOutputs: Extension.outputs = {
       name,
       extensionPointName: Spec.name,
+      // `aggregateNames` lists the Delegate command-topic targets this
+      // extension publishes to — used by PluginRuntime_Builder to compile
+      // the per-extension publishToAggregates dict in HANDLER_CONFIG. An
+      // extension publishes commands from EITHER mapIncomingEvent (incoming
+      // EP event → PublishAggregateCommand / PublishStateChangeSliceCommand)
+      // OR mapOutgoingEvent (outgoing local event → cross-plugin command),
+      // so include Delegate.name whenever a real Delegate exists. Filtering
+      // on mapOutgoingEvent alone leaves incoming-only extensions (like
+      // ordering's Products_Extension that turns ProductBecameAvailable
+      // into SyncCatalogProduct.SyncNewProduct) with `aggregateNames: []`,
+      // which crashes the runtime with "Option.getOrThrow called for None"
+      // at the publishToAggregates lookup.
       aggregateNames: Mappings.mappings->Array.filterMap((module(Mapping)) =>
-        Mapping.delegateName == ReventlessInfra.ExtensionMapping.NoDelegate.name ||
-          Mapping.mapOutgoingEvent->Option.isNone
+        Mapping.delegateName == ReventlessInfra.ExtensionMapping.NoDelegate.name
           ? None
           : Some(Mapping.delegateName)
       ),

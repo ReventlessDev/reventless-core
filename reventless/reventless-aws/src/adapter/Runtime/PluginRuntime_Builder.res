@@ -586,6 +586,102 @@ module Make = (
       | None => ()
       }
     }
+
+    // Plugin EC sqs:SendMessage grants on the aggregate / StateChangeSlice
+    // command-topic queues that user extensions publish to. The default
+    // AllowLambdaSendSQS only covers CorePluginExtPointCmdTopic (added because
+    // the auto-included Connect extension publishes there), so without this
+    // grant every cross-plugin extension's first command publish fails with
+    // IAM AccessDenied (e.g. Catalog's Orders_Extension → RecordProductDemand).
+    //
+    // We deliberately walk context.extensions[].aggregateNames rather than
+    // Dict.valuesToArray over context.publishToAggregates: the dict is
+    // declared as dict<Output<string>> but Plugin_Builder.res:322 also writes
+    // Output<publishJsons> (function values) under DCB slice names — the type
+    // is a polite lie, and the function-valued entries make a blanket .apply
+    // over the values blow up at preview with "queueUrlOutput.apply is not a
+    // function". Iterating extensions limits us to the names extensions
+    // actually target, which are always backed by real URL Outputs in the
+    // dict (mergedAggregateUrls / aggregateQueueUrls — Plugin_Builder.res:629).
+    let aggregateNameSet = Dict.make()
+    context.extensions->Array.forEach(ext =>
+      ext.aggregateNames->Array.forEach(aggName =>
+        aggregateNameSet->Dict.set(aggName, ())
+      )
+    )
+    let queueUrlOutputs =
+      aggregateNameSet
+      ->Dict.keysToArray
+      ->Array.filterMap(aggName => context.publishToAggregates->Dict.get(aggName))
+    let _ = if queueUrlOutputs->Array.length > 0 {
+      // The dict is declared as `dict<Pulumi.Output.t<string>>` but the
+      // DCB slice path (Dcb_Builder.dcbCommandTopicQueueUrl) can leak the
+      // `{BS_PRIVATE_NESTED_SOME_NONE: 0}` nested-option sentinel as a
+      // value when the SQS Queue's .id is still unresolved during early
+      // CustomResource construction. Pulumi.all happily wraps & resolves
+      // it as Output<sentinel>, so .apply hands us a non-string. Drop
+      // anything that isn't actually a string — an extension targeting
+      // the affected slice will need a separate grant out-of-band until
+      // the resource is fully provisioned and a subsequent preview/up
+      // produces a real ARN. We build the policy document inline so an
+      // empty filtered ARN array skips RolePolicy creation entirely
+      // (PutRolePolicy rejects empty Resource arrays with
+      // MalformedPolicyDocument).
+      let policyJsonOutput =
+        queueUrlOutputs
+        ->Pulumi.Output.all
+        ->Pulumi.Output.apply(urls => {
+          let queueArns =
+            urls
+            ->Array.filter(url => typeof(url) === #string)
+            ->Array.map(url =>
+              // queue URL → ARN: https://sqs.<region>.amazonaws.com/<acct>/<name>
+              //                → arn:aws:sqs:<region>:<acct>:<name>
+              switch url->String.split("/") {
+              | [_, _, host, acct, name] =>
+                let region =
+                  host->String.split(".")->Array.get(1)->Option.getOr("eu-west-1")
+                `arn:aws:sqs:${region}:${acct}:${name}`
+              | _ => url
+              }
+            )
+          if queueArns->Array.length == 0 {
+            None
+          } else {
+            Some(
+              PulumiAws.PolicyDocument.make(
+                ~id=`${name}PublishToAggregatesPolicy`,
+                ~statements=[
+                  {
+                    sid: "AllowEcPublishToAggregateCmdTopics",
+                    effect: Allow,
+                    actions: Action("sqs:SendMessage"),
+                    resources: Resources(queueArns),
+                  },
+                ],
+              )->PulumiAws.PolicyDocument.toJsonString,
+            )
+          }
+        })
+      // Pulumi.all wraps a Some(string)/None and resolves to either the
+      // policy JSON or undefined — the latter makes PutRolePolicy a no-op
+      // by failing fast in the provider, so guard RolePolicy creation on
+      // the resolved value being Some.
+      let _ =
+        policyJsonOutput->Pulumi.Output.apply(policyOpt =>
+          switch policyOpt {
+          | Some(policyJson) =>
+            let _ = PulumiAws.IAM.RolePolicy.make(
+              ~name=`${name}-publishToAggregates`,
+              ~args={
+                policy: policyJson->Pulumi.Input.make,
+                role: runtime.parts.lambdaRole.id->Pulumi.Output.asInput,
+              },
+            )
+          | None => ()
+          }
+        )
+    }
   }
 
   let forPluginHeartbeat: ReventlessCore.Runtime.forComponent<

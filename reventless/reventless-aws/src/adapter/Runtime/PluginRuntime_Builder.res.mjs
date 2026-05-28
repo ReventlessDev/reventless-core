@@ -2,6 +2,7 @@
 
 import * as Aws from "@pulumi/aws";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
@@ -304,62 +305,101 @@ function Make(EventCollectorChannel) {
         resources: resources
       }], runtime, opts);
     let isAdminEventCollector = Stdlib_Option.isNone(Plugin_Helpers$ReventlessCore.eventCollectorContextRef.contents[name]);
-    if (!isAdminEventCollector) {
-      return;
-    }
-    new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
-      policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SnsManageSubsPolicy`, [
-        {
-          Sid: "AllowAdminManageCrossPluginSnsSubscriptions",
-          Effect: "Allow",
-          Action: [
-            "sns:Subscribe",
-            "sns:Unsubscribe",
-            "sns:ListSubscriptionsByTopic",
-            "sns:GetSubscriptionAttributes"
-          ],
-          Resource: "*"
-        },
-        {
-          Sid: "AllowAdminStartSchemaCreation",
-          Effect: "Allow",
-          Action: [
-            "appsync:StartSchemaCreation",
-            "appsync:GetSchemaCreationStatus",
-            "appsync:GetIntrospectionSchema"
-          ],
-          Resource: "*"
-        }
-      ])),
-      role: runtime.parts.lambdaRole.id
-    });
-    let rmTableOutput = config.pluginReadModelTableName;
-    if (rmTableOutput !== undefined) {
-      let policyJson = rmTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginRmScanPolicy`, [{
-          Sid: "AllowAdminScanPluginRm",
-          Effect: "Allow",
-          Action: ["dynamodb:Scan"],
-          Resource: "arn:aws:dynamodb:*:*:table/" + tableName
-        }])));
-      new (Aws.iam.RolePolicy)(name + `-pluginRmScan`, {
-        policy: policyJson,
+    if (isAdminEventCollector) {
+      new (Aws.iam.RolePolicy)(name + `-snsManageSubs`, {
+        policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `SnsManageSubsPolicy`, [
+          {
+            Sid: "AllowAdminManageCrossPluginSnsSubscriptions",
+            Effect: "Allow",
+            Action: [
+              "sns:Subscribe",
+              "sns:Unsubscribe",
+              "sns:ListSubscriptionsByTopic",
+              "sns:GetSubscriptionAttributes"
+            ],
+            Resource: "*"
+          },
+          {
+            Sid: "AllowAdminStartSchemaCreation",
+            Effect: "Allow",
+            Action: [
+              "appsync:StartSchemaCreation",
+              "appsync:GetSchemaCreationStatus",
+              "appsync:GetIntrospectionSchema"
+            ],
+            Resource: "*"
+          }
+        ])),
         role: runtime.parts.lambdaRole.id
       });
+      let rmTableOutput = config.pluginReadModelTableName;
+      if (rmTableOutput !== undefined) {
+        let policyJson = rmTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginRmScanPolicy`, [{
+            Sid: "AllowAdminScanPluginRm",
+            Effect: "Allow",
+            Action: ["dynamodb:Scan"],
+            Resource: "arn:aws:dynamodb:*:*:table/" + tableName
+          }])));
+        new (Aws.iam.RolePolicy)(name + `-pluginRmScan`, {
+          policy: policyJson,
+          role: runtime.parts.lambdaRole.id
+        });
+      }
+      let schemaTableOutput = config.pluginSchemaPersistenceTableName;
+      if (schemaTableOutput !== undefined) {
+        let policyJson$1 = schemaTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginSchemaScanPolicy`, [{
+            Sid: "AllowAdminScanPluginSchemaPersistence",
+            Effect: "Allow",
+            Action: ["dynamodb:Scan"],
+            Resource: "arn:aws:dynamodb:*:*:table/" + tableName
+          }])));
+        new (Aws.iam.RolePolicy)(name + `-pluginSchemaScan`, {
+          policy: policyJson$1,
+          role: runtime.parts.lambdaRole.id
+        });
+      }
     }
-    let schemaTableOutput = config.pluginSchemaPersistenceTableName;
-    if (schemaTableOutput === undefined) {
-      return;
-    }
-    let policyJson$1 = schemaTableOutput.apply(tableName => PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PluginSchemaScanPolicy`, [{
-        Sid: "AllowAdminScanPluginSchemaPersistence",
-        Effect: "Allow",
-        Action: ["dynamodb:Scan"],
-        Resource: "arn:aws:dynamodb:*:*:table/" + tableName
-      }])));
-    new (Aws.iam.RolePolicy)(name + `-pluginSchemaScan`, {
-      policy: policyJson$1,
-      role: runtime.parts.lambdaRole.id
+    let aggregateNameSet = {};
+    context.extensions.forEach(ext => {
+      ext.aggregateNames.forEach(aggName => {
+        aggregateNameSet[aggName] = undefined;
+      });
     });
+    let queueUrlOutputs = Stdlib_Array.filterMap(Object.keys(aggregateNameSet), aggName => context.publishToAggregates[aggName]);
+    if (queueUrlOutputs.length !== 0) {
+      let policyJsonOutput = Pulumi.all(queueUrlOutputs).apply(urls => {
+        let queueArns = urls.filter(url => typeof url === "string").map(url => {
+          let match = url.split("/");
+          if (match.length !== 5) {
+            return url;
+          }
+          let host = match[2];
+          let acct = match[3];
+          let name = match[4];
+          let region = Stdlib_Option.getOr(host.split(".")[1], "eu-west-1");
+          return `arn:aws:sqs:` + region + `:` + acct + `:` + name;
+        });
+        if (queueArns.length === 0) {
+          return;
+        } else {
+          return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `PublishToAggregatesPolicy`, [{
+              Sid: "AllowEcPublishToAggregateCmdTopics",
+              Effect: "Allow",
+              Action: "sqs:SendMessage",
+              Resource: queueArns
+            }]));
+        }
+      });
+      policyJsonOutput.apply(policyOpt => {
+        if (policyOpt !== undefined) {
+          new (Aws.iam.RolePolicy)(name + `-publishToAggregates`, {
+            policy: policyOpt,
+            role: runtime.parts.lambdaRole.id
+          });
+          return;
+        }
+      });
+    }
   };
   let forPluginHeartbeat = (param, connect, memorySizeOpt, timeoutOpt, heartbeat) => {
     let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
