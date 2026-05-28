@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.126 (2026-05-28)
+
+### Bug Fixes
+
+* **pulumi-aws:** sort handler arrays for deterministic HANDLER_CONFIG ([057e55f](https://github.com/ReventlessDev/reventless-core/commit/057e55f7e1b535619f6bc8d4a03522677f9ee8a0))
+
+
 # 3.0.0-alpha.125 (2026-05-27)
 
 ### Bug Fixes
