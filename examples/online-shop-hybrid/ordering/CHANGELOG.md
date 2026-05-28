@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.67 (2026-05-28)
+
+### Bug Fixes
+
+* **example:** suppress customerId auto-tag on PlaceOrder command ([a4d8191](https://github.com/ReventlessDev/reventless-core/commit/a4d819197fef619a7e15f305bcdbe4341046ee4c))
+
+
 # 1.0.0-alpha.66 (2026-05-28)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

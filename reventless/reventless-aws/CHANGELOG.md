@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.132 (2026-05-28)
+
+### Bug Fixes
+
+* **aws:** bundle reventless-core into DcbCommandTopic Lambda asset ([1c4fd08](https://github.com/ReventlessDev/reventless-core/commit/1c4fd089e9d4e8cc2189b1ae474ca019224ab532))
+* **framework:** align DCB event tags with query tags and relax fence check when slice observed nothing ([de21635](https://github.com/ReventlessDev/reventless-core/commit/de21635bcb026d73cad0eef5561b6779df81fdc2))
+* **framework:** wire user extensions with mapIncomingEvent-only to publish to their Delegate cmd-topic ([fb4644b](https://github.com/ReventlessDev/reventless-core/commit/fb4644be789b6271bebeaa1f5984f0278b45ec14))
+
+
 # 3.0.0-alpha.131 (2026-05-28)
 
 ### Bug Fixes

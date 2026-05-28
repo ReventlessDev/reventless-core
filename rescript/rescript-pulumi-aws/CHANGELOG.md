@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.37 (2026-05-28)
+
+### Bug Fixes
+
+* **pulumi-aws:** filter nulls from batchGetItemsByIds response ([ece55de](https://github.com/ReventlessDev/reventless-core/commit/ece55dec5d85e899ec919602414e15adb54262db))
+
+
 # 2.4.0-alpha.36 (2026-05-27)
 
 ### Features
