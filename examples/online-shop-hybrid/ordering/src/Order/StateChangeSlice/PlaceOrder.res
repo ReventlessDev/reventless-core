@@ -19,9 +19,21 @@ type consumedEvent =
   | OrderPlaced({orderId: string})
   | CatalogProductSynced({productId: string})
 
+// `customerId` is payload data, not a DCB consistency key: PlaceOrder reads
+// no events filtered by customerId, so adding it to the DCB query produces
+// false-positive ConditionalCheckFailed conflicts. The previous PlaceOrder's
+// customerId fence position is newer than this slice's `after`, so a
+// conditional `lastPosition <= :after` on the customerId fence rejects
+// every subsequent placement by the same customer. `@noDcbTag` keeps customerId
+// out of the query; the event still tags it (downstream consumers can index
+// by customer), but the slice no longer fences on it.
 @schema
 type command =
-  PlaceOrder({@partitionTag orderId: string, customerId: string, productIds: array<string>})
+  PlaceOrder({
+    @partitionTag orderId: string,
+    @noDcbTag customerId: string,
+    productIds: array<string>,
+  })
 
 @schema
 type error =
