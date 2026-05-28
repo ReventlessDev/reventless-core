@@ -29,8 +29,18 @@ module Make = (
   ): ReventlessInfra.DcbEventLog.rawEvent => {
     let json = event->JSON.stringifyAny->Option.getOrThrow->JSON.parseOrThrow
     let (eventType, data) = json->Message.splitMessage
+    // Use `extractTagsExpanded` (not `extractTags`) so per-element tags on
+    // `array<string>` fields are emitted — e.g. OrderPlaced's
+    // `productIds: array<string>` produces one tag per productId rather than
+    // dropping the field entirely. Without expansion the stored event has no
+    // productId tag, so the next slice reading by productId can't see this
+    // event, while the query path (`buildQueryFromCommand`, which DOES use
+    // the expanded variant) still bumps `fence#productId:<x>`. Result:
+    // subsequent PlaceOrder for the same productId reads stale events,
+    // computes after < current fence, and conflicts. Expanding here keeps
+    // the two paths in sync.
     let tags =
-      Reventless.DcbTag.extractTags(Spec.eventSchema, event)
+      Reventless.DcbTag.extractTagsExpanded(Spec.eventSchema, event)
       ->Array.concat([{Reventless.DcbTag.key: "originatorSlice", value: Spec.name}])
     // Inherit service from the triggering command — the DcbEventLog publish path
     // overrides service to `<name>DcbEventLog` for routing so EventCollector

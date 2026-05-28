@@ -708,7 +708,23 @@ let appendConditional = async (
   } else {
     let basePosition = generatePosition()
 
-    let conditionalUpdates =
+    // When `cond.after` is None the slice observed zero events of its query
+    // event-types on these tag streams. Earlier this turned into a strict
+    // `attribute_not_exists(lastPosition)` check — which rejects whenever a
+    // *different* slice has touched any of the same tags (different event
+    // type, same shared `*Id` tag like productId). For example: PlaceOrder
+    // appends OrderPlaced tagged productId, bumping `fence#productId:X`. The
+    // first RecordProductDemand for the same productId then reads 0 prior
+    // ProductDemandRecorded events, after=None, and fails the conditional
+    // because the productId fence already exists. DCB's per-tag fences are
+    // not per-(tag, event-type), so cross-slice writes on shared tags
+    // produce false-positive conflicts. Fall back to unconditional bumps
+    // when after=None — idempotent slices (which this overwhelmingly is when
+    // read returns nothing) rely on their own decide-time dedup; non-
+    // idempotent slices already pass `after=Some(pos)` because their read
+    // returned events.
+    let conditionalUpdates = switch cond.after {
+    | Some(_) =>
       queryTags->Array.map(tag =>
         buildConditionalFenceUpdate(
           table.name,
@@ -717,8 +733,22 @@ let appendConditional = async (
           ~after=cond.after,
         )
       )
+    | None => []
+    }
+    let bumpedTags = switch cond.after {
+    | Some(_) => extraEventTags
+    | None =>
+      // No conditional updates fired — bump every event tag AND every query
+      // tag unconditionally so future readers querying any of them still see
+      // the new position.
+      let queryUnique =
+        queryTags->Array.filter(qt =>
+          !(eventTags->Array.some(et => et.key == qt.key && et.value == qt.value))
+        )
+      Array.concat(eventTags, queryUnique)
+    }
     let unconditionalUpdates =
-      extraEventTags->Array.map(tag =>
+      bumpedTags->Array.map(tag =>
         buildUnconditionalFenceUpdate(table.name, tag, ~newPosition=basePosition)
       )
 

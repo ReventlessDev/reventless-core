@@ -546,8 +546,23 @@ async function appendConditional(table, events, cond, partitionTag) {
     };
   }
   let basePosition = generatePosition();
-  let conditionalUpdates = queryTags.map(tag => buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after));
-  let unconditionalUpdates = extraEventTags.map(tag => buildUnconditionalFenceUpdate(table.name, tag, basePosition));
+  let match = cond.after;
+  let conditionalUpdates = match !== undefined ? queryTags.map(tag => buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after)) : [];
+  let match$1 = cond.after;
+  let bumpedTags;
+  if (match$1 !== undefined) {
+    bumpedTags = extraEventTags;
+  } else {
+    let queryUnique = queryTags.filter(qt => !eventTags.some(et => {
+      if (et.key === qt.key) {
+        return et.value === qt.value;
+      } else {
+        return false;
+      }
+    }));
+    bumpedTags = eventTags.concat(queryUnique);
+  }
+  let unconditionalUpdates = bumpedTags.map(tag => buildUnconditionalFenceUpdate(table.name, tag, basePosition));
   let putItems = buildEventPuts(table, events, basePosition, partitionTag);
   let updateItems = conditionalUpdates.concat(unconditionalUpdates).map(update => ({
     Update: update

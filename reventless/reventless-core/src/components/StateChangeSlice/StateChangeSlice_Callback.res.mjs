@@ -75,7 +75,7 @@ function Make(Spec) {
             let parentMeta = command$p.meta;
             let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(e), undefined));
             let match = Message$ReventlessCore.splitMessage(json);
-            let tags = DcbTag$Reventless.extractTags(Spec.eventSchema, e).concat([{
+            let tags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e).concat([{
                 key: "originatorSlice",
                 value: Spec.name
               }]);
