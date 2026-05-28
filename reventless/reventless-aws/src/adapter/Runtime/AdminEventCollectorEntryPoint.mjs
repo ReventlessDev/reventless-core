@@ -359,10 +359,33 @@ function mkManageSubscriptions(tableName) {
     }
     return peers;
   };
+  // Extract the plugin display name from a versioned id like "Catalog@1.0.0-alpha.65".
+  const pluginNameOfId = (id) => (typeof id === "string" ? id.split("@")[0] : "");
   return async (pluginDef, action) => {
     const isConnect = action === "connect";
     const op = isConnect ? trySubscribe : tryUnsubscribe;
     const peers = await scanConnectedPeers(pluginDef.id);
+    // Subscriptions are wired between SNS topics and SQS queues that are owned
+    // per PLUGIN NAME, not per version (the EC queue, EP event topics, and DCB
+    // event topic ARNs all live in the plugin's stack and are stable across
+    // version-to-version upgrades). When a superseded version is Retired and
+    // its row transitions to Disconnected, this hook fires with action="disconnect"
+    // — but if a newer version of the same plugin is still Connected, the
+    // subscriptions are still in use. Tearing them down here would silently
+    // break cross-plugin event flow for the live version (and only cold-start
+    // reconciliation on the surviving plugin would heal it — which happens on
+    // its next Lambda init, not immediately). Skip the tear-down in that case.
+    if (!isConnect) {
+      const myName = pluginNameOfId(pluginDef.id);
+      const liveSibling = peers.find((p) => pluginNameOfId(p.id) === myName);
+      if (liveSibling) {
+        console.log(
+          `[manageSubscriptions] disconnect skipped for ${pluginDef.id}: ` +
+            `sibling version ${liveSibling.id} still Connected and shares the same EC queue / EP topics`
+        );
+        return;
+      }
+    }
     // Subscriptions for this plugin's extensions: peer EP topic → this EC queue
     for (const ext of pluginDef.extensions || []) {
       for (const peer of peers) {
