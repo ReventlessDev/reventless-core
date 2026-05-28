@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.129 (2026-05-28)
+
+### Bug Fixes
+
+* **aws:** pass serviceName to runtime DcbEventLog ops in CmdTopic entry ([2881744](https://github.com/ReventlessDev/reventless-core/commit/28817440c2b61ed9adffda6e2281a01c10515c57))
+* **aws:** wire plugin RM streams to StateTopic Lambda ([c874ef4](https://github.com/ReventlessDev/reventless-core/commit/c874ef4e1ef35511b650ba483bd4ac1523f50024))
+
+
 # 3.0.0-alpha.128 (2026-05-28)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
