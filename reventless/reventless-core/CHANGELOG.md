@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.103 (2026-05-28)
+
+### Bug Fixes
+
+* **framework:** normalise DcbEventLog meta.service before storage append ([4f6ec77](https://github.com/ReventlessDev/reventless-core/commit/4f6ec77ed0c943cfe83f8707fd926c19e57df3eb))
+
+
 # 3.0.0-alpha.102 (2026-05-27)
 
 ### Bug Fixes
