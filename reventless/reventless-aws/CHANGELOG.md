@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.130 (2026-05-28)
+
+### Bug Fixes
+
+* **aws:** patch Delegate.Id at runtime in EP/Extension EC Lambda wiring ([609eb83](https://github.com/ReventlessDev/reventless-core/commit/609eb8317f11c27399228feae5da962cbf7a7eec))
+
+
 # 3.0.0-alpha.129 (2026-05-28)
 
 ### Bug Fixes
