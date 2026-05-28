@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.127 (2026-05-28)
+
+### Bug Fixes
+
+* **aws:** handle flat-shape user-authored EP mappings in plugin EC Lambda ([fe34b36](https://github.com/ReventlessDev/reventless-core/commit/fe34b369c33589e9794729e75e3e56a871df4d97))
+
+
 # 3.0.0-alpha.126 (2026-05-28)
 
 ### Bug Fixes
