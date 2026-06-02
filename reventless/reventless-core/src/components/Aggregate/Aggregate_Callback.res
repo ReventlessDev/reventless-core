@@ -67,6 +67,10 @@ module Make = (
   ) => {
     let {reference, command: command'} = topicItem
     let meta = command'->updateMeta
+    EffectLogger.logDebug(
+      ~comp,
+      `deciding on state: ${state->JSON.stringifyAny->Option.getOr("<unserializable>")}`,
+    )->Effect.runSync
     switch Behavior.decide(state, command'.command) {
     | Ok(generatedEvents) =>
       let newState = generatedEvents->Array.reduce(state, Behavior.evolve)

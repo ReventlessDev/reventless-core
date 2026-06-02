@@ -42,6 +42,16 @@ function cmdDetails(msgs) {
   return `[` + msgs.map(cmdDetail).join(", ") + `]`;
 }
 
+function cmdLabelOfJson(json) {
+  let fields = variantFields(json);
+  let body = fields.startsWith(", ") ? fields.slice(2, fields.length) : fields;
+  return AnsiStyle$Reventless.bold(Message$ReventlessCore.variantNameOfJson(json)) + `(` + body + `)`;
+}
+
+function cmdDetailNoId(msg) {
+  return cmdLabelOfJson(msg.commandJson);
+}
+
 function cmdFull(msg) {
   let commandStr = JSON.stringify(msg.commandJson);
   let metaStr = JSON.stringify(Message$ReventlessCore.encode(msg.meta, Message$ReventlessCore.metaSchema));
@@ -217,6 +227,8 @@ export {
   variantFields,
   cmdDetail,
   cmdDetails,
+  cmdLabelOfJson,
+  cmdDetailNoId,
   cmdFull,
   cmdFulls,
   eventName,

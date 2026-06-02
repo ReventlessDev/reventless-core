@@ -39,6 +39,44 @@ type effectLogger = {mutable log: loggerOptions => unit}
 @module("effect/Logger")
 external _defaultLogger: effectLogger = "defaultLogger"
 
+// Effect's runtime gates log effects by a minimum LogLevel BEFORE they reach the
+// installed logger above — so `Effect.logDebug` is dropped unless the threshold is
+// lowered. We set that threshold per log effect from a configurable minimum.
+type effectLogLevel
+@module("effect/LogLevel") external _llDebug: effectLogLevel = "Debug"
+@module("effect/LogLevel") external _llInfo: effectLogLevel = "Info"
+@module("effect/LogLevel") external _llWarning: effectLogLevel = "Warning"
+@module("effect/LogLevel") external _llError: effectLogLevel = "Error"
+@module("effect/LogLevel") external _llNone: effectLogLevel = "None"
+
+@module("effect/Logger")
+external _withMinimumLogLevel: (Effect.t<'a, 'e, 'r>, effectLogLevel) => Effect.t<'a, 'e, 'r> =
+  "withMinimumLogLevel"
+
+@val external _envLogLevel: option<string> = "process.env.LOG_LEVEL"
+
+// Minimum level used when LOG_LEVEL is unset. Framework default is Info; a platform
+// may lower it (e.g. the in-memory dev platform sets Debug) via setDefaultMinLevel.
+let _defaultMin = ref(Logger.Info)
+let setDefaultMinLevel = (l: Logger.level) => _defaultMin := l
+
+// Resolve the active minimum: explicit LOG_LEVEL wins, else the platform default.
+let _effectMin = (): effectLogLevel =>
+  switch _envLogLevel {
+  | Some("silent") => _llNone
+  | Some("debug") => _llDebug
+  | Some("info") => _llInfo
+  | Some("warn") => _llWarning
+  | Some("error") => _llError
+  | _ =>
+    switch _defaultMin.contents {
+    | Logger.Debug => _llDebug
+    | Logger.Info => _llInfo
+    | Logger.Warn => _llWarning
+    | Logger.Error => _llError
+    }
+  }
+
 let ordinalToLevel = ordinal =>
   if ordinal >= 40000 {
     Logger.Error
@@ -90,7 +128,11 @@ let encode = (~comp=?, ~detail=?, msg) => {
   }
 }
 
-let logInfo = (~comp=?, ~detail=?, msg) => Effect.logInfo(encode(~comp?, ~detail?, msg))
-let logWarn = (~comp=?, ~detail=?, msg) => Effect.logWarning(encode(~comp?, ~detail?, msg))
-let logError = (~comp=?, ~detail=?, msg) => Effect.logError(encode(~comp?, ~detail?, msg))
-let logDebug = (~comp=?, ~detail=?, msg) => Effect.logDebug(encode(~comp?, ~detail?, msg))
+let logInfo = (~comp=?, ~detail=?, msg) =>
+  Effect.logInfo(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())
+let logWarn = (~comp=?, ~detail=?, msg) =>
+  Effect.logWarning(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())
+let logError = (~comp=?, ~detail=?, msg) =>
+  Effect.logError(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())
+let logDebug = (~comp=?, ~detail=?, msg) =>
+  Effect.logDebug(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())

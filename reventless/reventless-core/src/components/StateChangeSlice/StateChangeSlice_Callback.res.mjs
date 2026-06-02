@@ -57,10 +57,7 @@ function Make(Spec) {
     };
     let handleSingleCommand = (dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
-      let fields = LogFormat$ReventlessCore.variantFields(cmdJson.commandJson);
-      let body = fields.startsWith(", ") ? fields.slice(2, fields.length) : fields;
-      let cmdLabel = LogFormat$ReventlessCore.cmdName(cmdJson) + `(` + body + `)`;
-      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + cmdLabel));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
       let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
       let queryDetail = query.map(qi => {
         let ts = qi.eventTypes;
@@ -105,7 +102,7 @@ function Make(Spec) {
         return [
           Behavior.evolve(param[0], param$1[0]),
           param$1[1],
-          param[2].concat([eventId !== undefined ? eventType + `(` + eventId + `)` : eventType])
+          param[2].concat([eventId !== undefined ? LogFormat$ReventlessCore.bold(eventType) + `(` + eventId + `)` : LogFormat$ReventlessCore.bold(eventType)])
         ];
       }), param => {
         let reads = param[2];
@@ -113,96 +110,99 @@ function Make(Spec) {
           reads.length === 0 ? "" : ` [` + reads.join(", ") + `]`
         ));
       }), param => {
-        let newEvents = Behavior.decide(param[0], command$p.command);
-        if (newEvents.TAG === "Ok") {
-          let newEvents$1 = newEvents._0;
-          if (newEvents$1.length === 0) {
-            CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
-                entityId: entityId,
-                eventCount: 0
-              }) : ({
-                eventCount: 0
-              }));
-            return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, "no events produced"), () => ({
-              TAG: "Ok",
-              _0: "ok"
-            }));
-          }
-          let rawEvents = newEvents$1.map(e => {
-            let parentMeta = command$p.meta;
-            let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(e), undefined));
-            let match = Message$ReventlessCore.splitMessage(json);
-            let tags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e).concat([{
-                key: "originatorSlice",
-                value: Spec.name
-              }]);
-            let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
-            return {
-              eventType: match[0],
-              data: match[1],
-              tags: tags,
-              meta: meta
-            };
-          });
-          let eventCount = rawEvents.length.toString();
-          let eventDetails = rawEvents.map(e => {
-            let dict = e.data;
-            let fields;
-            if (typeof dict === "object" && dict !== null && !Array.isArray(dict)) {
-              let f = Object.entries(dict).map(param => param[0] + `:` + JSON.stringify(param[1])).join(",");
-              fields = f === "" ? "" : `({` + f + `})`;
-            } else {
-              fields = "";
-            }
-            return LogFormat$ReventlessCore.bold(e.eventType) + fields;
-          }).join(", ");
-          let eventJsons = rawEvents.map(e => e.data);
-          let condition_after = param[1];
-          let condition = {
-            query: query,
-            after: condition_after
-          };
-          return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => dcbEventLog.append(rawEvents, condition))), appendResult => {
-            if (appendResult.TAG === "Ok") {
+        let headPosition = param[1];
+        let state = param[0];
+        return Effect.flatMap(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding on state: ` + Stdlib_Option.getOr(JSON.stringify(state), "<unserializable>")), () => {
+          let newEvents = Behavior.decide(state, command$p.command);
+          if (newEvents.TAG === "Ok") {
+            let newEvents$1 = newEvents._0;
+            if (newEvents$1.length === 0) {
               CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
                   entityId: entityId,
-                  eventCount: rawEvents.length
+                  eventCount: 0
                 }) : ({
-                  eventCount: rawEvents.length
+                  eventCount: 0
                 }));
-              return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: ` + eventCount + ` event(s)`), () => ({
+              return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, "no events produced"), () => ({
                 TAG: "Ok",
                 _0: "ok"
               }));
             }
-            let err = appendResult._0;
-            if (retries > 0) {
-              return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + err), () => attempt(retries - 1 | 0));
-            }
-            let errorCode = err.startsWith("Conflict") ? "Conflict" : "AppendFailed";
-            CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
-              errorCode: errorCode,
-              errorDetail: err
+            let rawEvents = newEvents$1.map(e => {
+              let parentMeta = command$p.meta;
+              let json = JSON.parse(Stdlib_Option.getOrThrow(JSON.stringify(e), undefined));
+              let match = Message$ReventlessCore.splitMessage(json);
+              let tags = DcbTag$Reventless.extractTagsExpanded(Spec.eventSchema, e).concat([{
+                  key: "originatorSlice",
+                  value: Spec.name
+                }]);
+              let meta = Message$ReventlessCore.deriveMeta(parentMeta, undefined);
+              return {
+                eventType: match[0],
+                data: match[1],
+                tags: tags,
+                meta: meta
+              };
             });
-            return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed, retries exhausted: ` + err), () => ({
-              TAG: "Error",
-              _0: err
-            }));
+            let eventCount = rawEvents.length.toString();
+            let eventDetails = rawEvents.map(e => {
+              let dict = e.data;
+              let fields;
+              if (typeof dict === "object" && dict !== null && !Array.isArray(dict)) {
+                let f = Object.entries(dict).map(param => param[0] + `:` + JSON.stringify(param[1])).join(",");
+                fields = f === "" ? "" : `({` + f + `})`;
+              } else {
+                fields = "";
+              }
+              return LogFormat$ReventlessCore.bold(e.eventType) + fields;
+            }).join(", ");
+            let eventJsons = rawEvents.map(e => e.data);
+            let condition = {
+              query: query,
+              after: headPosition
+            };
+            return Effect.flatMap(Effect.flatMap(EffectLogger$ReventlessCore.logInfo(comp, eventJsons, `produced ` + eventCount + ` event(s): [` + eventDetails + `]`), () => Effect.promise(() => dcbEventLog.append(rawEvents, condition))), appendResult => {
+              if (appendResult.TAG === "Ok") {
+                CommandTopic_Helpers$ReventlessCore.reportAccepted(cmdJson.meta.msgId, entityId !== undefined ? ({
+                    entityId: entityId,
+                    eventCount: rawEvents.length
+                  }) : ({
+                    eventCount: rawEvents.length
+                  }));
+                return Effect.map(EffectLogger$ReventlessCore.logInfo(comp, undefined, `append: ` + eventCount + ` event(s)`), () => ({
+                  TAG: "Ok",
+                  _0: "ok"
+                }));
+              }
+              let err = appendResult._0;
+              if (retries > 0) {
+                return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + err), () => attempt(retries - 1 | 0));
+              }
+              let errorCode = err.startsWith("Conflict") ? "Conflict" : "AppendFailed";
+              CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
+                errorCode: errorCode,
+                errorDetail: err
+              });
+              return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `append failed, retries exhausted: ` + err), () => ({
+                TAG: "Error",
+                _0: err
+              }));
+            });
+          }
+          let errorJson = S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema);
+          let errorCode = Message$ReventlessCore.variantNameOfJson(errorJson);
+          let match = Message$ReventlessCore.splitMessage(errorJson);
+          let payloadDict = match[1];
+          let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
+          CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
+            errorCode: errorCode,
+            errorDetail: errorDetail
           });
-        }
-        let errorJson = S.reverseConvertToJsonOrThrow(newEvents._0, Spec.errorSchema);
-        let errorCode = Message$ReventlessCore.variantNameOfJson(errorJson);
-        let match = Message$ReventlessCore.splitMessage(errorJson);
-        let payloadDict = match[1];
-        let errorDetail = Object.entries(payloadDict).length === 0 ? "" : JSON.stringify(payloadDict);
-        CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
-          errorCode: errorCode,
-          errorDetail: errorDetail
+          return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `decide rejected: ` + errorCode + ` ` + errorDetail), () => ({
+            TAG: "Ok",
+            _0: "rejected"
+          }));
         });
-        return Effect.map(EffectLogger$ReventlessCore.logError(comp, undefined, `decide rejected: ` + errorCode + ` ` + errorDetail), () => ({
-          TAG: "Ok",
-          _0: "rejected"
-        }));
       });
       return attempt(3);
     };

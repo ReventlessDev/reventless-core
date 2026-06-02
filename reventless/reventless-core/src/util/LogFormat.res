@@ -70,6 +70,21 @@ let cmdDetail = (msg: Message.commandJson): string =>
 let cmdDetails = (msgs: array<Message.commandJson>): string =>
   `[${msgs->Array.map(cmdDetail)->Array.join(", ")}]`
 
+// "Add({name:"Cat 1"})"  — like cmdDetail but WITHOUT the leading id. Used by DCB
+// command logs where the id is a partition-tag value already shown among the
+// fields, so a `(id)` prefix would just duplicate it.
+let cmdLabelOfJson = (json: JSON.t): string => {
+  let fields = json->variantFields
+  let body =
+    fields->String.startsWith(", ")
+      ? fields->String.slice(~start=2, ~end=fields->String.length)
+      : fields
+  `${json->Message.variantNameOfJson->bold}(${body})`
+}
+
+// "Add({name:"Cat 1"})"  — cmdLabelOfJson for a full command envelope.
+let cmdDetailNoId = (msg: Message.commandJson): string => msg.commandJson->cmdLabelOfJson
+
 // "{\"command\":{...},\"meta\":{...},\"id\":\"1\"}"  (full envelope with meta, no summary prefix)
 let cmdFull = (msg: Message.commandJson): string => {
   let commandStr = msg.commandJson->JSON.stringify

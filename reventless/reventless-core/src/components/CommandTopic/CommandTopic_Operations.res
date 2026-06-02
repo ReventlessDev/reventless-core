@@ -12,7 +12,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops) => {
       EffectLogger.logInfo(
         ~comp,
         ~detail=cmdJson.Message.commandJson,
-        `publishing command ${idxStr}/${count}: ${LogFormat.cmdDetail(cmdJson)}`,
+        `publishing command ${idxStr}/${count}: ${LogFormat.cmdDetailNoId(cmdJson)}`,
       )->Effect.runSync
     })
     try {await Ops.publishJsons(cmdJsons)} catch {
@@ -22,7 +22,7 @@ module Make = (Spec: ReventlessInfra.CommandTopic.T, Ops: Ops) => {
         EffectLogger.logError(
           ~comp,
           ~detail=cmdJson.Message.commandJson,
-          `publish failed ${idxStr}/${count}: ${LogFormat.cmdDetail(cmdJson)}`,
+          `publish failed ${idxStr}/${count}: ${LogFormat.cmdDetailNoId(cmdJson)}`,
         )->Effect.runSync
       })
       throw(exn)

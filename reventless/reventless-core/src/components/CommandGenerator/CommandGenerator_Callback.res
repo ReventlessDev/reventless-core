@@ -108,14 +108,16 @@ let makeGenerateCommand = (
       }
       (meta, commandJson, id)
     })
-    ->Effect.tap(((_, commandJson, id)) => {
-      let name = commandJson->Message.variantNameOfJson->LogFormat.bold
+    ->Effect.tap(((_, commandJson, _id)) =>
+      // Render `Name({fields})` without the standalone id: it's the command's
+      // partition-tag value, already shown among the fields, so a leading
+      // `(id)` would just duplicate it.
       EffectLogger.logInfo(
         ~comp=`CommandGenerator(${serviceName})`,
         ~detail=commandJson,
-        `generated command: ${name}(${id}${LogFormat.variantFields(commandJson)})`,
+        `generated command: ${commandJson->LogFormat.cmdLabelOfJson}`,
       )
-    })
+    )
     ->Effect.flatMap(((meta, commandJson, id)) => {
       switch commandJson->Message.decode(commandSchema) {
       | _ =>

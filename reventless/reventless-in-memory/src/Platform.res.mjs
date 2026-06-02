@@ -76,6 +76,8 @@ import * as CommandGeneratorResolvers_GraphQL$ReventlessInMemory from "./adapter
 import * as InboundTranslationResolvers_GraphQL$ReventlessInMemory from "./adapter/CommandGenerator/InboundTranslationResolvers_GraphQL.res.mjs";
 import * as GraphQL_SubscriptionResolvers_InMemory$ReventlessInMemory from "./adapter/Api/GraphQL_SubscriptionResolvers_InMemory.res.mjs";
 
+EffectLogger$ReventlessCore.setDefaultMinLevel("Debug");
+
 let log = Logger$ReventlessCore.fromEnv();
 
 let platformGraphQLRef = {
@@ -3778,4 +3780,4 @@ export {
   MakeWithConfig,
   Make,
 }
-/* log Not a pure module */
+/*  Not a pure module */
