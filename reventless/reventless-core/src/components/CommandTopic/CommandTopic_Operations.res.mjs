@@ -12,14 +12,14 @@ function Make(Spec) {
       let count = cmdJsons.length.toString();
       cmdJsons.forEach((cmdJson, idx) => {
         let idxStr = (idx + 1 | 0).toString();
-        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `publishing command ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
+        Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `publishing command ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
       });
       try {
         return await Ops.publishJsons(cmdJsons);
       } catch (exn) {
         cmdJsons.forEach((cmdJson, idx) => {
           let idxStr = (idx + 1 | 0).toString();
-          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, cmdJson.commandJson, `publish failed ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(comp, cmdJson.commandJson, `publish failed ` + idxStr + `/` + count + `: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
         });
         throw exn;
       }

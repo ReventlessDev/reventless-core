@@ -12,6 +12,11 @@
 // Self-installing at module import time — must be imported before any Effect.runPromise call.
 let _ = ReventlessCore.EffectLogger.install
 
+// The in-memory platform is a local-dev tool, so default to Debug-level logging
+// (surfaces e.g. the slice/aggregate `deciding on state:` lines). An explicit
+// LOG_LEVEL env var still overrides this (e.g. LOG_LEVEL=info or =silent).
+ReventlessCore.EffectLogger.setDefaultMinLevel(ReventlessCore.Logger.Debug)
+
 let log = ReventlessCore.Logger.fromEnv()
 
 // Module-level ref to hold the platform GraphQL server instance in split mode.

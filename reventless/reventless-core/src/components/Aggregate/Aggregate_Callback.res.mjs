@@ -27,6 +27,7 @@ function Make(Spec) {
       let outcomes = param[1];
       let state = param[0];
       let meta = Message$ReventlessCore.deriveMeta(command$p.meta, undefined);
+      Effect.runSync(EffectLogger$ReventlessCore.logDebug(comp, undefined, `deciding on state: ` + Stdlib_Option.getOr(JSON.stringify(state), "<unserializable>")));
       let generatedEvents = Behavior.decide(state, command$p.command);
       if (generatedEvents.TAG === "Ok") {
         let generatedEvents$1 = generatedEvents._0;

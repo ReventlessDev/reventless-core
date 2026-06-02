@@ -40,8 +40,9 @@ module Make = (
     // computes after < current fence, and conflicts. Expanding here keeps
     // the two paths in sync.
     let tags =
-      Reventless.DcbTag.extractTagsExpanded(Spec.eventSchema, event)
-      ->Array.concat([{Reventless.DcbTag.key: "originatorSlice", value: Spec.name}])
+      Reventless.DcbTag.extractTagsExpanded(Spec.eventSchema, event)->Array.concat([
+        {Reventless.DcbTag.key: "originatorSlice", value: Spec.name},
+      ])
     // Inherit service from the triggering command — the DcbEventLog publish path
     // overrides service to `<name>DcbEventLog` for routing so EventCollector
     // subscriptions still match.
@@ -74,7 +75,9 @@ module Make = (
     }
     switch derivedPartitionTag {
     | Simple(pt) =>
-      switch tags->Array.findMap((t: Reventless.DcbTag.tag) => t.key == pt.key ? Some(t.value) : None) {
+      switch tags->Array.findMap((t: Reventless.DcbTag.tag) =>
+        t.key == pt.key ? Some(t.value) : None
+      ) {
       | Some(v) => Some(v)
       | None => ownTagValues()
       }
@@ -102,18 +105,10 @@ module Make = (
     // Render `Name({fields})` without the standalone command id: for DCB slice
     // commands the id is the entity/partition id, which is already shown among
     // the fields, so a leading `(id)` would just duplicate it.
-    let cmdLabel = {
-      let fields = cmdJson.commandJson->LogFormat.variantFields
-      let body =
-        fields->String.startsWith(", ")
-          ? fields->String.slice(~start=2, ~end=fields->String.length)
-          : fields
-      `${cmdJson->LogFormat.cmdName}(${body})`
-    }
     EffectLogger.logInfo(
       ~comp,
       ~detail=cmdJson.commandJson,
-      `handling command: ${cmdLabel}`,
+      `handling command: ${cmdJson->LogFormat.cmdDetailNoId}`,
     )->Effect.runSync
 
     let query = Reventless.DcbTag.buildQueryFromCommand(
@@ -164,19 +159,19 @@ module Make = (
         | None => Stream.empty
         }
       )
-      ->Stream.runFold(
-        (Behavior.initialState, None, []),
-        ((dm, _pos, reads), (event, position, eventType, eventId)) => (
-          Behavior.evolve(dm, event),
-          Some(position),
-          reads->Array.concat([
-            switch eventId {
-            | Some(id) => `${eventType}(${id})`
-            | None => eventType
-            },
-          ]),
-        ),
-      )
+      ->Stream.runFold((Behavior.initialState, None, []), (
+        (dm, _pos, reads),
+        (event, position, eventType, eventId),
+      ) => (
+        Behavior.evolve(dm, event),
+        Some(position),
+        reads->Array.concat([
+          switch eventId {
+          | Some(id) => `${eventType->LogFormat.bold}(${id})`
+          | None => eventType->LogFormat.bold
+          },
+        ]),
+      ))
       ->Effect.tap(((_, _, reads)) =>
         EffectLogger.logInfo(
           ~comp,
@@ -186,89 +181,101 @@ module Make = (
         )
       )
       ->Effect.flatMap(((state, headPosition, _)) =>
-        switch Behavior.decide(state, command'.command) {
-        | Ok(newEvents) if newEvents->Array.length == 0 =>
-          CommandTopic_Helpers.reportAccepted(
-            cmdJson.meta.msgId,
-            switch entityId {
-            | Some(eid) => {entityId: eid, eventCount: 0}
-            | None => {eventCount: 0}
-            },
-          )
-          EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
-        | Ok(newEvents) =>
-          let rawEvents = newEvents->Array.map(e => encodeEvent(~parentMeta=command'.meta, e))
-          let eventCount = rawEvents->Array.length->Int.toString
-          let eventDetails =
-            rawEvents
-            ->Array.map(e => {
-              let fields = switch e.data {
-              | Object(dict) =>
-                let f =
-                  dict
-                  ->Dict.toArray
-                  ->Array.map(((k, v)) => `${k}:${v->JSON.stringify}`)
-                  ->Array.join(",")
-                f == "" ? "" : `({${f}})`
-              | _ => ""
-              }
-              `${LogFormat.bold(e.eventType)}${fields}`
-            })
-            ->Array.join(", ")
-          let eventJsons = rawEvents->Array.map(e => e.data)->JSON.Encode.array
-          let condition: Reventless.DcbTag.appendCondition = {
-            query,
-            after: ?headPosition,
-          }
-          EffectLogger.logInfo(~comp, ~detail=eventJsons, `produced ${eventCount} event(s): [${eventDetails}]`)
-          ->Effect.flatMap(_ => Effect.promise(() => dcbEventLog.append(rawEvents, ~condition)))
-          ->Effect.flatMap(appendResult =>
-            switch appendResult {
-            | Ok(_position) =>
-              CommandTopic_Helpers.reportAccepted(
-                cmdJson.meta.msgId,
-                switch entityId {
-                | Some(eid) => {entityId: eid, eventCount: rawEvents->Array.length}
-                | None => {eventCount: rawEvents->Array.length}
+        EffectLogger.logDebug(
+          ~comp,
+          `deciding on state: ${state->JSON.stringifyAny->Option.getOr("<unserializable>")}`,
+        )->Effect.flatMap(_ =>
+          switch Behavior.decide(state, command'.command) {
+          | Ok(newEvents) if newEvents->Array.length == 0 =>
+            CommandTopic_Helpers.reportAccepted(
+              cmdJson.meta.msgId,
+              switch entityId {
+              | Some(eid) => {entityId: eid, eventCount: 0}
+              | None => {eventCount: 0}
+              },
+            )
+            EffectLogger.logInfo(~comp, "no events produced")->Effect.map(_ => Ok("ok"))
+          | Ok(newEvents) =>
+            let rawEvents = newEvents->Array.map(e => encodeEvent(~parentMeta=command'.meta, e))
+            let eventCount = rawEvents->Array.length->Int.toString
+            let eventDetails =
+              rawEvents
+              ->Array.map(
+                e => {
+                  let fields = switch e.data {
+                  | Object(dict) =>
+                    let f =
+                      dict
+                      ->Dict.toArray
+                      ->Array.map(((k, v)) => `${k}:${v->JSON.stringify}`)
+                      ->Array.join(",")
+                    f == "" ? "" : `({${f}})`
+                  | _ => ""
+                  }
+                  `${LogFormat.bold(e.eventType)}${fields}`
                 },
               )
-              EffectLogger.logInfo(~comp, `append: ${eventCount} event(s)`)->Effect.map(
-                _ => Ok("ok"),
-              )
-            | Error(err) =>
-              if retries > 0 {
-                EffectLogger.logWarn(
-                  ~comp,
-                  `append failed (retrying ${(maxRetries - retries + 1)
-                      ->Int.toString}/${maxRetries->Int.toString}): ${err}`,
-                )->Effect.flatMap(_ => attempt(~retries=retries - 1))
-              } else {
-                let errorCode = err->String.startsWith("Conflict") ? "Conflict" : "AppendFailed"
-                CommandTopic_Helpers.reportRejected(
-                  cmdJson.meta.msgId,
-                  {errorCode, errorDetail: err},
-                )
-                EffectLogger.logError(
-                  ~comp,
-                  `append failed, retries exhausted: ${err}`,
-                )->Effect.map(_ => Error(err))
-              }
+              ->Array.join(", ")
+            let eventJsons = rawEvents->Array.map(e => e.data)->JSON.Encode.array
+            let condition: Reventless.DcbTag.appendCondition = {
+              query,
+              after: ?headPosition,
             }
-          )
-        | Error(error) =>
-          let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)
-          let errorCode = errorJson->Message.variantNameOfJson
-          let (_, payloadDict) = errorJson->Message.splitMessage
-          let errorDetail =
-            payloadDict->Dict.toArray->Array.length == 0
-              ? ""
-              : payloadDict->JSON.Encode.object->JSON.stringify
-          CommandTopic_Helpers.reportRejected(cmdJson.meta.msgId, {errorCode, errorDetail})
-          EffectLogger.logError(
-            ~comp,
-            `decide rejected: ${errorCode} ${errorDetail}`,
-          )->Effect.map(_ => Ok("rejected"))
-        }
+            EffectLogger.logInfo(
+              ~comp,
+              ~detail=eventJsons,
+              `produced ${eventCount} event(s): [${eventDetails}]`,
+            )
+            ->Effect.flatMap(_ => Effect.promise(() => dcbEventLog.append(rawEvents, ~condition)))
+            ->Effect.flatMap(
+              appendResult =>
+                switch appendResult {
+                | Ok(_position) =>
+                  CommandTopic_Helpers.reportAccepted(
+                    cmdJson.meta.msgId,
+                    switch entityId {
+                    | Some(eid) => {entityId: eid, eventCount: rawEvents->Array.length}
+                    | None => {eventCount: rawEvents->Array.length}
+                    },
+                  )
+                  EffectLogger.logInfo(~comp, `append: ${eventCount} event(s)`)->Effect.map(
+                    _ => Ok("ok"),
+                  )
+                | Error(err) =>
+                  if retries > 0 {
+                    EffectLogger.logWarn(
+                      ~comp,
+                      `append failed (retrying ${(maxRetries - retries + 1)
+                          ->Int.toString}/${maxRetries->Int.toString}): ${err}`,
+                    )->Effect.flatMap(_ => attempt(~retries=retries - 1))
+                  } else {
+                    let errorCode = err->String.startsWith("Conflict") ? "Conflict" : "AppendFailed"
+                    CommandTopic_Helpers.reportRejected(
+                      cmdJson.meta.msgId,
+                      {errorCode, errorDetail: err},
+                    )
+                    EffectLogger.logError(
+                      ~comp,
+                      `append failed, retries exhausted: ${err}`,
+                    )->Effect.map(_ => Error(err))
+                  }
+                },
+            )
+          | Error(error) =>
+            let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)
+            let errorCode = errorJson->Message.variantNameOfJson
+            let (_, payloadDict) = errorJson->Message.splitMessage
+            let errorDetail =
+              payloadDict->Dict.toArray->Array.length == 0
+                ? ""
+                : payloadDict->JSON.Encode.object->JSON.stringify
+            CommandTopic_Helpers.reportRejected(cmdJson.meta.msgId, {errorCode, errorDetail})
+            EffectLogger.logError(
+              ~comp,
+              `decide rejected: ${errorCode} ${errorDetail}`,
+            )->Effect.map(_ => Ok("rejected"))
+          }
+        )
       )
 
     attempt(~retries=maxRetries)

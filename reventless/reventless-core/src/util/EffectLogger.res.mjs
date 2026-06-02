@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Logger from "effect/Logger";
+import * as LogLevel from "effect/LogLevel";
 import * as Logger$ReventlessCore from "./Logger.res.mjs";
 
 function _messageToString(msg) {
@@ -20,6 +21,43 @@ function _messageToString(msg) {
       return msg;
     default:
       return Stdlib_Option.getOr(JSON.stringify(msg), "");
+  }
+}
+
+let _defaultMin = {
+  contents: "Info"
+};
+
+function setDefaultMinLevel(l) {
+  _defaultMin.contents = l;
+}
+
+function _effectMin() {
+  let match = process.env.LOG_LEVEL;
+  if (match !== undefined) {
+    switch (match) {
+      case "debug" :
+        return LogLevel.Debug;
+      case "error" :
+        return LogLevel.Error;
+      case "info" :
+        return LogLevel.Info;
+      case "silent" :
+        return LogLevel.None;
+      case "warn" :
+        return LogLevel.Warning;
+    }
+  }
+  let match$1 = _defaultMin.contents;
+  switch (match$1) {
+    case "Debug" :
+      return LogLevel.Debug;
+    case "Info" :
+      return LogLevel.Info;
+    case "Warn" :
+      return LogLevel.Warning;
+    case "Error" :
+      return LogLevel.Error;
   }
 }
 
@@ -76,23 +114,26 @@ function encode(comp, detail, msg) {
 }
 
 function logInfo(comp, detail, msg) {
-  return Effect.logInfo(encode(comp, detail, msg));
+  return Logger.withMinimumLogLevel(Effect.logInfo(encode(comp, detail, msg)), _effectMin());
 }
 
 function logWarn(comp, detail, msg) {
-  return Effect.logWarning(encode(comp, detail, msg));
+  return Logger.withMinimumLogLevel(Effect.logWarning(encode(comp, detail, msg)), _effectMin());
 }
 
 function logError(comp, detail, msg) {
-  return Effect.logError(encode(comp, detail, msg));
+  return Logger.withMinimumLogLevel(Effect.logError(encode(comp, detail, msg)), _effectMin());
 }
 
 function logDebug(comp, detail, msg) {
-  return Effect.logDebug(encode(comp, detail, msg));
+  return Logger.withMinimumLogLevel(Effect.logDebug(encode(comp, detail, msg)), _effectMin());
 }
 
 export {
   _messageToString,
+  _defaultMin,
+  setDefaultMinLevel,
+  _effectMin,
   ordinalToLevel,
   install,
   withComp,
