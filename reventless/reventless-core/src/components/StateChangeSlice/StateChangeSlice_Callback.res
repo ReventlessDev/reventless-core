@@ -54,6 +54,34 @@ module Make = (
     (Spec.name, Behavior.moduleUrl, Spec.eventSchema->S.castToUnknown),
   ])
 
+  // Extracts the entity id of a read event from its own tags, for logging
+  // which events the decision model was built from. Prefers this slice's
+  // partition key (derived from the produced event), but consumed events from
+  // other sources are tagged by their own key (e.g. CatalogProductSynced →
+  // productId, not this slice's orderId), so fall back to the read event's own
+  // tag value(s) instead of logging no id.
+  let readEventId = (tags: array<Reventless.DcbTag.tag>): option<string> => {
+    let ownTagValues = () => {
+      // Skip the `originatorSlice` metadata tag that `encodeEvent` appends to
+      // every stored event — it's the producing slice's name, not an entity id.
+      let vals =
+        tags
+        ->Array.filter((t: Reventless.DcbTag.tag) => t.key != "originatorSlice")
+        ->Array.reduce([], (acc, t: Reventless.DcbTag.tag) =>
+          acc->Array.includes(t.value) ? acc : acc->Array.concat([t.value])
+        )
+      vals->Array.length == 0 ? None : Some(vals->Array.join(","))
+    }
+    switch derivedPartitionTag {
+    | Simple(pt) =>
+      switch tags->Array.findMap((t: Reventless.DcbTag.tag) => t.key == pt.key ? Some(t.value) : None) {
+      | Some(v) => Some(v)
+      | None => ownTagValues()
+      }
+    | Composite(spec) => Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
+    }
+  }
+
   let maxRetries = 3
 
   // Processes one command against the DCB event log with optimistic concurrency:
@@ -71,10 +99,21 @@ module Make = (
         ~idToString=Reventless.Id.String.toString,
         ~commandSchema=Spec.commandSchema,
       )
+    // Render `Name({fields})` without the standalone command id: for DCB slice
+    // commands the id is the entity/partition id, which is already shown among
+    // the fields, so a leading `(id)` would just duplicate it.
+    let cmdLabel = {
+      let fields = cmdJson.commandJson->LogFormat.variantFields
+      let body =
+        fields->String.startsWith(", ")
+          ? fields->String.slice(~start=2, ~end=fields->String.length)
+          : fields
+      `${cmdJson->LogFormat.cmdName}(${body})`
+    }
     EffectLogger.logInfo(
       ~comp,
       ~detail=cmdJson.commandJson,
-      `handling command: ${LogFormat.cmdDetail(cmdJson)}`,
+      `handling command: ${cmdLabel}`,
     )->Effect.runSync
 
     let query = Reventless.DcbTag.buildQueryFromCommand(
@@ -82,6 +121,25 @@ module Make = (
       ~schema=Spec.commandSchema,
       ~value=command'.command,
     )
+
+    // Log the DCB query parameters — the OR clauses (event types + tags) the
+    // read below filters on. Constant across retries, so logged once per command.
+    let queryDetail =
+      query
+      ->Array.map((qi: Reventless.DcbTag.queryItem) => {
+        let types = switch qi.eventTypes {
+        | Some(ts) => ts->Array.map(LogFormat.bold)->Array.join("|")
+        | None => "*"
+        }
+        let tags = switch qi.tags {
+        | Some(ts) =>
+          ts->Array.map((t: Reventless.DcbTag.tag) => `${t.key}=${t.value}`)->Array.join(",")
+        | None => ""
+        }
+        tags == "" ? types : `${types}{${tags}}`
+      })
+      ->Array.join(" OR ")
+    EffectLogger.logInfo(~comp, `query: ${queryDetail}`)->Effect.runSync
 
     // Extract the entity ID from the command for use in Accepted outcomes.
     let entityId = switch derivedPartitionTag {
@@ -98,7 +156,7 @@ module Make = (
           ~eventType=raw.eventType,
           ~data=raw.data->JSON.Decode.object->Option.getOr(Dict.make()),
         )
-        decoded->Option.map(event => (event, raw.position))
+        decoded->Option.map(event => (event, raw.position, raw.eventType, readEventId(raw.tags)))
       })
       ->Stream.flatMap(opt =>
         switch opt {
@@ -106,12 +164,27 @@ module Make = (
         | None => Stream.empty
         }
       )
-      ->Stream.runFold((Behavior.initialState, None, 0), ((dm, _pos, n), (event, position)) => (
-        Behavior.evolve(dm, event),
-        Some(position),
-        n + 1,
-      ))
-      ->Effect.tap(((_, _, n)) => EffectLogger.logInfo(~comp, `read: ${n->Int.toString} event(s)`))
+      ->Stream.runFold(
+        (Behavior.initialState, None, []),
+        ((dm, _pos, reads), (event, position, eventType, eventId)) => (
+          Behavior.evolve(dm, event),
+          Some(position),
+          reads->Array.concat([
+            switch eventId {
+            | Some(id) => `${eventType}(${id})`
+            | None => eventType
+            },
+          ]),
+        ),
+      )
+      ->Effect.tap(((_, _, reads)) =>
+        EffectLogger.logInfo(
+          ~comp,
+          `read: ${reads->Array.length->Int.toString} event(s)${reads->Array.length == 0
+              ? ""
+              : ` [${reads->Array.join(", ")}]`}`,
+        )
+      )
       ->Effect.flatMap(((state, headPosition, _)) =>
         switch Behavior.decide(state, command'.command) {
         | Ok(newEvents) if newEvents->Array.length == 0 =>

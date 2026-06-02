@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -24,10 +25,55 @@ function Make(Spec) {
         Behavior.moduleUrl,
         Spec.eventSchema
       ]]);
+    let readEventId = tags => {
+      let ownTagValues = () => {
+        let vals = Stdlib_Array.reduce(tags.filter(t => t.key !== "originatorSlice"), [], (acc, t) => {
+          if (acc.includes(t.value)) {
+            return acc;
+          } else {
+            return acc.concat([t.value]);
+          }
+        });
+        if (vals.length === 0) {
+          return;
+        } else {
+          return vals.join(",");
+        }
+      };
+      if (derivedPartitionTag.TAG !== "Simple") {
+        return DcbTag$Reventless.getCompositePartitionKeyValue(tags, derivedPartitionTag._0);
+      }
+      let pt = derivedPartitionTag._0;
+      let v = Stdlib_Array.findMap(tags, t => {
+        if (t.key === pt.key) {
+          return t.value;
+        }
+      });
+      if (v !== undefined) {
+        return v;
+      } else {
+        return ownTagValues();
+      }
+    };
     let handleSingleCommand = (dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
-      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetail(cmdJson)));
+      let fields = LogFormat$ReventlessCore.variantFields(cmdJson.commandJson);
+      let body = fields.startsWith(", ") ? fields.slice(2, fields.length) : fields;
+      let cmdLabel = LogFormat$ReventlessCore.cmdName(cmdJson) + `(` + body + `)`;
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + cmdLabel));
       let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
+      let queryDetail = query.map(qi => {
+        let ts = qi.eventTypes;
+        let types = ts !== undefined ? ts.map(LogFormat$ReventlessCore.bold).join("|") : "*";
+        let ts$1 = qi.tags;
+        let tags = ts$1 !== undefined ? ts$1.map(t => t.key + `=` + t.value).join(",") : "";
+        if (tags === "") {
+          return types;
+        } else {
+          return types + `{` + tags + `}`;
+        }
+      }).join(" OR ");
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, undefined, `query: ` + queryDetail));
       let entityId;
       if (derivedPartitionTag.TAG === "Simple") {
         entityId = DcbTag$Reventless.getPartitionTagValue(query, derivedPartitionTag._0);
@@ -39,7 +85,9 @@ function Make(Spec) {
         let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
         return Stdlib_Option.map(decoded, event => [
           event,
-          raw.position
+          raw.position,
+          raw.eventType,
+          readEventId(raw.tags)
         ]);
       }), opt => {
         if (opt !== undefined) {
@@ -50,12 +98,21 @@ function Make(Spec) {
       }), [
         Behavior.initialState,
         undefined,
-        0
-      ], (param, param$1) => [
-        Behavior.evolve(param[0], param$1[0]),
-        param$1[1],
-        param[2] + 1 | 0
-      ]), param => EffectLogger$ReventlessCore.logInfo(comp, undefined, `read: ` + param[2].toString() + ` event(s)`)), param => {
+        []
+      ], (param, param$1) => {
+        let eventId = param$1[3];
+        let eventType = param$1[2];
+        return [
+          Behavior.evolve(param[0], param$1[0]),
+          param$1[1],
+          param[2].concat([eventId !== undefined ? eventType + `(` + eventId + `)` : eventType])
+        ];
+      }), param => {
+        let reads = param[2];
+        return EffectLogger$ReventlessCore.logInfo(comp, undefined, `read: ` + reads.length.toString() + ` event(s)` + (
+          reads.length === 0 ? "" : ` [` + reads.join(", ") + `]`
+        ));
+      }), param => {
         let newEvents = Behavior.decide(param[0], command$p.command);
         if (newEvents.TAG === "Ok") {
           let newEvents$1 = newEvents._0;
