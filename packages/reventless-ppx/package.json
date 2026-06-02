@@ -9,10 +9,12 @@
   "scripts": {
     "build:ppx": "cd src && opam exec -- dune build",
     "clean:ppx": "cd src && opam exec -- dune clean",
+    "publish:platform": "node ../../scripts/publish-ppx-local.mjs",
     "test": "./test/run.sh"
   },
   "optionalDependencies": {
     "@reventlessdev/reventless-ppx-darwin-arm64": "1.0.0-alpha.28",
+    "@reventlessdev/reventless-ppx-darwin-x64": "1.0.0-alpha.28",
     "@reventlessdev/reventless-ppx-linux-x64": "1.0.0-alpha.28"
   },
   "publishConfig": {

@@ -800,6 +800,9 @@ importers:
       '@reventlessdev/reventless-ppx-darwin-arm64':
         specifier: 1.0.0-alpha.28
         version: 1.0.0-alpha.28
+      '@reventlessdev/reventless-ppx-darwin-x64':
+        specifier: 1.0.0-alpha.28
+        version: 1.0.0-alpha.28
       '@reventlessdev/reventless-ppx-linux-x64':
         specifier: 1.0.0-alpha.28
         version: 1.0.0-alpha.28
@@ -4951,6 +4954,11 @@ packages:
   '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.28':
     resolution: {integrity: sha512-g861Q4ITjKdcOoCwFOt4P4guDR9T8jmUtAUhl3aEUuUNAs/gdXpsaa/opRBCZU6uj3vGIlsH1WJDq8nFkRzdZg==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-darwin-arm64/1.0.0-alpha.28/ee9f1b4f58d9db4f191241e0b9985b5a238b6066}
     cpu: [arm64]
+    os: [darwin]
+
+  '@reventlessdev/reventless-ppx-darwin-x64@1.0.0-alpha.28':
+    resolution: {integrity: sha512-O+GsNCv+Xvlv+KB7cxuopoLEtAzL71iyzvn/bLcvnzLx4Pm5J5vf46kLPH4OcJo1LXkJbW61tViYH4YI0zE1GA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-darwin-x64/1.0.0-alpha.28/aec04e0e7af05dd69195a7c17671ece4ad0c6d4d}
+    cpu: [x64]
     os: [darwin]
 
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.28':
@@ -19804,6 +19812,9 @@ snapshots:
       - yaml
 
   '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.28':
+    optional: true
+
+  '@reventlessdev/reventless-ppx-darwin-x64@1.0.0-alpha.28':
     optional: true
 
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.28':

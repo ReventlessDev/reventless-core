@@ -39,8 +39,16 @@ Before you begin, ensure you have:
    ```
 
 3. **Set Up Development Environment**
-   
-   Follow the [Setup instructions in README.md](README.md#setup).
+
+   This repo uses **pnpm** (not npm) and a one-command bootstrap:
+
+   ```bash
+   corepack enable      # pins the pnpm version from package.json
+   pnpm run setup       # workspace symlink + install + PPX binary + example users + build
+   ```
+
+   See [Getting Started in README.md](README.md#-getting-started) for what each
+   step does and platform-specific notes (e.g. the ReScript PPX binary).
 
 4. **Create a Feature Branch**
    
@@ -65,19 +73,19 @@ Before you begin, ensure you have:
 ###  Commands (All Packages)
 
 ```bash
-npm run build        # Build all packages
-npm run watch        # Watch mode
-npm run clean        # Clean all packages
-npm run test         # Run tests
+pnpm run build       # Build all packages
+pnpm run watch       # Watch mode
+pnpm run clean       # Clean all packages
+pnpm test            # Run tests
 ```
 
 ### Per-Package Commands
 
 ```bash
-cd packages/<name>
-npm run build        # rescript build
-npm run start        # rescript build -w (watch mode)
-npm run test         # jest
+cd reventless/<name>   # or rescript/<name>, examples/<app>/<pkg>, packages/<name>
+pnpm run build         # rescript build
+pnpm run start         # rescript build -w (watch mode)
+pnpm test              # jest
 ```
 
 ## Commit Guidelines
@@ -184,10 +192,11 @@ git push origin feature/your-feature-name
 
 | Command | Description |
 |---------|-------------|
-| `npm run watch` | Automatic rebuilds during development |
-| `npm run clean` | Remove build artifacts |
-| `npm run format` | Format code using ReScript formatter |
-| `npm install` | Install dependencies (uses npm workspaces, `lerna bootstrap` not needed) |
+| `pnpm run setup` | One-command bootstrap for a fresh clone |
+| `pnpm run watch` | Automatic rebuilds during development |
+| `pnpm run clean` | Remove build artifacts |
+| `pnpm run format` | Format code using ReScript formatter |
+| `pnpm install` | Install dependencies (pnpm workspaces; needs `pnpm-workspace.yaml` — run `pnpm run setup` or `node scripts/workspace-setup.mjs` first on a fresh clone) |
 
 ## Package Management with Lerna
 
