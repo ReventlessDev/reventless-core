@@ -23,43 +23,31 @@ Reventless leverages modern architectural patterns and technologies:
 
 ## 📦 Packages
 
-This monorepo contains the following packages (located in `./packages/*`):
+This is a [pnpm](https://pnpm.io) + [Lerna](https://lerna.js.org) monorepo. Packages are grouped by type into four workspace folders:
 
-### Framework Core
+| Folder | Purpose |
+|--------|---------|
+| [`reventless/`](reventless/) | Reventless framework + extension packages |
+| [`rescript/`](rescript/) | ReScript bindings for JS/npm libraries |
+| [`examples/`](examples/) | Example applications |
+| [`packages/`](packages/) | Build tooling and documentation only |
 
-- [reventless-spec](packages/reventless-spec/README.md) - Type specifications and interfaces
-- [reventless](packages/reventless/README.md) - Core framework (provider-agnostic)
-- [reventless-aws](packages/reventless-aws/README.md) - AWS-specific implementations (DynamoDB, Lambda, SQS, SNS, S3 adapters)
+### Framework (`reventless/`)
 
-### ReScript Bindings - AWS
-- [rescript-aws-sdk](packages/rescript-aws-sdk/README.md) - Bindings for AWS SDK v3
-- [rescript-pulumi-aws](packages/rescript-pulumi-aws/README.md) - Bindings for `@pulumi/aws`
-- [rescript-pulumi-pulumi](packages/rescript-pulumi-pulumi/README.md) - Bindings for `@pulumi/pulumi`
+- [reventless-spec](reventless/reventless-spec/) — type specifications and interfaces
+- [reventless-core](reventless/reventless-core/) — core framework (provider-agnostic)
+- [reventless-aws](reventless/reventless-aws/) — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
+- [reventless-in-memory](reventless/reventless-in-memory/) — in-memory platform for local dev and testing
+- [reventless-infra](reventless/reventless-infra/), [reventless-interop](reventless/reventless-interop/), [reventless-gwt](reventless/reventless-gwt/), [reventless-codegen](reventless/reventless-codegen/)
 
-### ReScript Bindings - Utilities
-- [rescript-uuid](packages/rescript-uuid/README.md) - Bindings for `uuid`
-- [rescript-fast-csv](packages/rescript-fast-csv/README.md) - Bindings for `fast-csv`
-- [rescript-hash-obj](packages/rescript-hash-obj/README.md) - Bindings for `hash-obj`
-- [rescript-moment](packages/rescript-moment/README.md) - Bindings for `moment` (shared with UI repo)
+### ReScript bindings (`rescript/`)
 
-### ReScript Bindings - Node.js
-- [rescript-node-streams](packages/rescript-node-streams/README.md) - Bindings for Node.js streams
-- [rescript-node-zlib](packages/rescript-node-zlib/README.md) - Bindings for Node.js zlib
-- [rescript-ssh2](packages/rescript-ssh2/README.md) - Bindings for `ssh2`
+`rescript-aws-sdk`, `rescript-pulumi-aws`, `rescript-pulumi-pulumi`, `rescript-uuid`, `rescript-fast-csv`, `rescript-hash-object`, `rescript-node-streams`, `rescript-node-zlib`, `rescript-ssh2`, `rescript-graphql-yoga`, `rescript-moment` (shared with the UI repo).
 
-### Build & Tools
-- [aws-lambda-layer](packages/aws-lambda-layer/README.md) - Lambda layer builder
-- [doc](packages/doc/README.md) - Documentation site (Docusaurus)
+### Examples (`examples/`)
 
-### Outdated Packages
-
-The following packages are outdated (located in `./packages_to_migrate/*`) and need to be updated:
-
-- [rescript-k6](packages_to_migrate/rescript-k6/README.md) - ReScript bindings for k6 load testing tool
-- [rescript-react-test-renderer](packages_to_migrate/rescript-react-test-renderer/README.md) - ReScript bindings for react-test-renderer
-- [reventless-ci](packages_to_migrate/reventless-ci/README.md) - CI tooling for Reventless projects
-- [reventless-ui](packages_to_migrate/reventless-ui/README.md) - React component library for Reventless applications
-- [routes](packages_to_migrate/routes/README.md) - Typed routing with bi-directional usage
+- [online-shop-hybrid](examples/online-shop-hybrid/) — the canonical end-to-end example (aggregates **and** DCB slices); runs locally in-memory and deploys to AWS
+- [online-shop-aggregates](examples/online-shop-aggregates/), [online-shop-dcb](examples/online-shop-dcb/) — single-style variants
 
 ---
 
@@ -67,43 +55,85 @@ The following packages are outdated (located in `./packages_to_migrate/*`) and n
 
 ### Prerequisites
 
-- **Node.js**: v22.17.1 (specified in [`.node-version`](.node-version))
-- **ReScript**: 12.1.0
-- **Lerna**: 9.0.3
-- **Git**: For version control
+- **Node.js** v22.17.1 — see [`.node-version`](.node-version). [`fnm`](https://github.com/Schniz/fnm) / `nvm` will pick it up automatically.
+- **pnpm** 10 — this repo enforces pnpm via `packageManager` + corepack. Enable with `corepack enable`. **Do not use `npm`.**
+- **Git**.
+- **OCaml toolchain (opam + dune)** — *only* if there is no prebuilt ReScript PPX binary for your platform (see [PPX binary](#ppx-binary) below). Prebuilt binaries cover Linux x64 and macOS arm64; other platforms build the PPX from source during setup.
 
-### Quick Setup
+### Quick start (clone → running example)
 
 ```bash
-# Install dependencies
-npm install
+git clone <repo-url> reventless-core
+cd reventless-core
+corepack enable          # ensures the pinned pnpm version
 
-# Build all packages
-npm run build
+pnpm run setup           # one-command bootstrap (see below)
 
-# Run tests
-npm run test
+# Run the hybrid example backend (GraphQL + MCP, in-memory stores):
+cd examples/online-shop-hybrid/platform-in-memory
+pnpm run serve
 ```
 
-For detailed setup instructions, development workflow, and contributing guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Then log in to the **Domain GraphQL** server as `admin` / `admin`:
+
+```bash
+curl -s -X POST http://localhost:4000/__inmemory/login \
+  -H 'content-type: application/json' \
+  -d '{"username":"admin","password":"admin"}'
+```
+
+Endpoints once `serve` is running:
+
+| Service | URL |
+|---------|-----|
+| Domain GraphQL (+ `/__inmemory/login`, `/sdl`) | http://localhost:4000/graphql |
+| Platform GraphQL (+ graphql-ws subscriptions) | http://localhost:4001/graphql |
+| Domain MCP | http://localhost:3001/mcp |
+| Platform MCP | http://localhost:3002/mcp |
+
+See [examples/online-shop-hybrid/README.md](examples/online-shop-hybrid/README.md) for the full example (including the host-shell UI via `pnpm run dev:full`) and AWS deployment.
+
+### What `pnpm run setup` does
+
+[`scripts/setup.mjs`](scripts/setup.mjs) is idempotent and runs, in order:
+
+1. **Creates `pnpm-workspace.yaml`** — it is gitignored (a symlink to [`pnpm-workspace.base.yaml`](pnpm-workspace.base.yaml), so the cross-repo dev overlay used by `pnpm link:on` / `link:off` can swap it). A fresh clone has none, so plain `pnpm install` would fail with `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`. (Manual equivalent: `node scripts/workspace-setup.mjs`.)
+2. **`pnpm install`** — from the repo root.
+3. **Ensures the ReScript PPX binary** for your platform (prebuilt, or built from source — see below).
+4. **Seeds `examples/.../platform-in-memory/.reventless/users.yaml`** from the committed `users.example.yaml` so local login works (`admin`/`admin`, `user`/`user`).
+5. **Builds** the hybrid in-memory example (skip with `pnpm run setup --no-build`).
+
+To build everything instead of just the example: `pnpm run build`. To run the full test suite: `pnpm test`.
+
+### PPX binary
+
+Reventless uses a native ReScript PPX (`@reventlessdev/reventless-ppx`). Prebuilt per-platform binaries exist for **Linux x64**, **macOS arm64**, and **macOS x64** — but they live on a **private GitHub Packages registry**, so installing them needs a GitHub token with `read:packages` (set `GITHUB_TOKEN` in your environment; see [.npmrc](.npmrc)).
+
+**Without a token, or on a platform with no prebuilt (e.g. Linux arm64), `pnpm run setup` automatically builds the PPX from source** via `opam exec -- dune build` — this is the zero-config path and just needs the OCaml toolchain installed. Manual build:
+
+```bash
+(cd packages/reventless-ppx/src && opam exec -- dune build)
+cp packages/reventless-ppx/src/_build/default/bin/bin.exe \
+   packages/reventless-ppx/ppx-osx-x64.exe   # name depends on platform; see packages/reventless-ppx/bin
+```
+
+> **Windows:** build and run inside **WSL2** (it presents as Linux x64); there is no native Windows binary.
+
+For detailed development workflow and contributing guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📚 Documentation
 
-Full documentation is available in the `packages/doc/` directory. To run the documentation site locally:
+Full documentation is a [Docusaurus](https://docusaurus.io) site under [`packages/doc/`](packages/doc/). To run it locally:
 
 ```bash
-cd packages/doc
-npm install
-npm start
+pnpm --filter ./packages/doc run start   # dev server with hot reload
 ```
 
-See [CLAUDE.md](CLAUDE.md) for detailed build commands and architecture overview.
+See [CLAUDE.md](CLAUDE.md) for build commands and an architecture overview.
 
 ## 🔗 Related Repositories
 
-- **[reventless-ui](https://github.com/ReventlessDev/reventless-ui)** - React components and UI library for Reventless applications
-  - Uses `rescript-moment` from this repo via file reference
-  - ReScript 11.1.4 for UI compatibility
+- **reventless-ui** — a companion React component/UI library for Reventless applications, distributed separately. It consumes `rescript-moment` from this repo.
 
 ## 🏗️ Architecture
 

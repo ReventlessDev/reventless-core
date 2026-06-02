@@ -27,14 +27,31 @@ This is the package behind the documentation
 
 ## Run it locally
 
+On a fresh clone, bootstrap once from the **repo root** (creates the workspace
+config, installs, ensures the PPX binary, seeds dev users, builds this example):
+
 ```bash
-cd platform-in-memory
-pnpm run build      # once, and after source changes
-pnpm run dev:full   # backend (:4000/:4001) + host-shell UI (:5173)
+pnpm run setup        # see the root README "Getting Started"
 ```
 
-Open http://localhost:5173 and sign in as `admin` / `admin` (see
-`platform-in-memory/.reventless/users.yaml`).
+Then, from this example:
+
+```bash
+cd platform-in-memory
+pnpm run serve        # backend only: GraphQL (:4000/:4001) + MCP (:3001/:3002)
+# or, with the host-shell UI (requires reventless-host-shell):
+pnpm run dev:full     # backend + host-shell UI (:5173)
+```
+
+`pnpm run build` rebuilds after source changes. Sign in as `admin` / `admin`
+(or `user` / `user`) — `setup` seeds these into `platform-in-memory/.reventless/users.yaml`
+from the committed [`users.example.yaml`](platform-in-memory/users.example.yaml).
+Via the UI, use the LoginPage; against the backend directly:
+
+```bash
+curl -s -X POST http://localhost:4000/__inmemory/login \
+  -H 'content-type: application/json' -d '{"username":"admin","password":"admin"}'
+```
 
 Walkthrough: [Run it locally](../../packages/doc/docs-tutorials/run-locally.md) ·
 [Test it locally](../../packages/doc/docs-tutorials/test-locally.md).
