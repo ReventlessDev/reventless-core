@@ -40,8 +40,15 @@ Then, from this example:
 cd platform-in-memory
 pnpm run serve        # backend only: GraphQL (:4000/:4001) + MCP (:3001/:3002)
 # or, with the host-shell UI (requires reventless-host-shell):
-pnpm run dev:full     # backend + host-shell UI (:5173)
+pnpm run dev:full     # backend + host-shell UI (:5173), with live reload
 ```
+
+`dev:full` recompiles and restarts the backend on any `.res` change (live
+reload). Stores default to **on-disk SQLite** (`./.reventless/local.db`, persists
+across restarts); use `serve:memory` / `dev:full:memory` for stateless runs or
+`serve:reset` / `dev:full:reset` for a clean boot. The backend logs at
+`LOG_LEVEL=debug` by default (set `LOG_LEVEL=info` to quieten). See
+[docs/guides/local-dev.md](../../docs/guides/local-dev.md) for the full matrix.
 
 `pnpm run build` rebuilds after source changes. Sign in as `admin` / `admin`
 (or `user` / `user`) — `setup` seeds these into `platform-in-memory/.reventless/users.yaml`

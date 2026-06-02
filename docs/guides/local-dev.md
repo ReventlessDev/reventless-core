@@ -31,7 +31,15 @@ pnpm run build
 pnpm run dev:full
 ```
 
-`dev:full` uses `concurrently` to run the backend (`:4000`/`:4001`) and the UI dev server (`:5173`) side by side, with colour-coded output prefixed `[backend]` / `[ui]`. Concretely it runs `pnpm run serve` and, once the admin server is up (`wait-on tcp:4001`), `pnpm run dev:ui`.
+`dev:full` uses `concurrently` to run three processes side by side, with colour-coded output prefixed `[rs]` / `[backend]` / `[ui]`:
+
+| Prefix | Process | Purpose |
+|--------|---------|---------|
+| `rs` | `rescript watch` (workspace root) | recompiles `.res` → `.res.mjs` on save |
+| `backend` | `tsx watch` over `Main.res.mjs` (`serve:watch`) | restarts the backend (`:4000`/`:4001`) when any framework/plugin `.res.mjs` changes |
+| `ui` | `dev:ui`, started once the admin server is up (`wait-on tcp:4001`) | the UI dev server (`:5173`) |
+
+This gives **live reload**: edit a `.res` source anywhere in the framework or plugins and the backend recompiles and restarts automatically. A restart resets in-memory state — but with the default SQLite backend (below) your data survives the restart.
 
 ### How the UI dev server is resolved
 
@@ -46,6 +54,27 @@ A fresh checkout has **no** `reventless-ui` directory (it is not part of this re
 
 ---
 
+## Storage backend (SQLite by default)
+
+The in-memory platform can store events and read models either in process memory (wiped on every restart) or in an on-disk SQLite file (survives restarts — handy with live reload). The backend is chosen by the `REVENTLESS_LOCAL_BACKEND` env var; the run scripts wrap it so you rarely set it by hand:
+
+| Script | Backend | Notes |
+|--------|---------|-------|
+| `serve` / `serve:watch` / `dev:full` | **SQLite** `./.reventless/local.db` | default; persists across restarts |
+| `serve:memory` / `dev:full:memory` | in-memory | wiped on every restart |
+| `serve:reset` / `dev:full:reset` | SQLite, **wiped on start** | clean boot, then persists for that run |
+
+The default is SQLite, so `pnpm run dev:full` keeps your data across the automatic live-reload restarts. Use `:memory` for a stateless run, or `:reset` for a one-shot clean boot. The `.reventless/` directory is created automatically and is git-ignored.
+
+Set the env var directly to override:
+
+```bash
+REVENTLESS_LOCAL_BACKEND=memory pnpm run serve           # same as serve:memory
+REVENTLESS_LOCAL_BACKEND=sqlite:./.reventless/local.db?reset pnpm run serve
+```
+
+---
+
 ## Manual startup (two terminals)
 
 If you want separate control over each process:
@@ -55,9 +84,11 @@ If you want separate control over each process:
 # Build (once, or after source changes)
 pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run build
 
-# Start backend with debug logging
+# Start backend with GraphQL/MCP request logging (SQLite persistence, like serve)
 pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run dev
 ```
+
+`dev` is `serve` plus `GRAPHQL_DEBUG=1 MCP_DEBUG=1` (per-request logging) and is not watch-based — restart it manually after a rebuild. Use `serve:watch` / `dev:full` for live reload.
 
 **Terminal 2 — UI dev server** (from the same `platform-in-memory/` package)
 ```bash
@@ -94,13 +125,15 @@ Add run scripts to the plugin's `package.json` and add `@reventlessdev/reventles
   "@reventlessdev/reventless-host-shell": "*"
 },
 "scripts": {
-  "dev:local": "tsx src/LocalDev.res.mjs",
+  "dev:local": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} tsx watch src/LocalDev.res.mjs",
   "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
-  "dev:full": "concurrently --names backend,ui --prefix-colors cyan,magenta 'pnpm run dev:local' 'pnpm run dev:ui'"
+  "dev:full": "concurrently --names rs,backend,ui --prefix-colors blue,cyan,magenta 'rescript watch' 'pnpm run dev:local' 'npx wait-on tcp:4001 && pnpm run dev:ui'"
 }
 ```
 
 The `[ -d reventless-ui ]` branch only matters if you are also developing the UI source locally; otherwise `reventless-host-shell` runs.
+
+`rescript watch` recompiles your sources and `tsx watch` restarts the backend on change (live reload). The `REVENTLESS_LOCAL_BACKEND` default gives you SQLite persistence here too — add `:memory` / `:reset` variants as shown in [Storage backend](#storage-backend-sqlite-by-default) if you want them. The in-memory platform defaults to `LOG_LEVEL=debug` regardless of which entry-point you use.
 
 Then from the **plugin package** in reventless-core:
 
@@ -152,6 +185,8 @@ Both domain and admin queries are served at `http://localhost:4000/graphql`.
 
 | Variable | Effect |
 |----------|--------|
+| `LOG_LEVEL` | `silent` \| `error` \| `warn` \| `info` \| `debug`. The in-memory platform **defaults to `debug`** (surfaces e.g. the slice/aggregate `deciding on state:` lines); set `LOG_LEVEL=info` to quieten it. Other platforms default to `info`. |
+| `REVENTLESS_LOCAL_BACKEND` | Storage backend: `memory`, `sqlite:<path>`, or `sqlite:<path>?reset` (see [Storage backend](#storage-backend-sqlite-by-default)). Defaults to `sqlite:./.reventless/local.db` via the run scripts. |
 | `GRAPHQL_DEBUG=1` | Logs every incoming GraphQL request and response |
 | `MCP_DEBUG=1` | Logs MCP tool calls |
 | `PORT=NNNN` | Override domain server port (default 4000) |
