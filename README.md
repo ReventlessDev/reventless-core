@@ -69,7 +69,8 @@ corepack enable          # ensures the pinned pnpm version
 
 pnpm run setup           # one-command bootstrap (see below)
 
-# Run the hybrid example backend (GraphQL + MCP, in-memory stores):
+# Run the hybrid example backend (GraphQL + MCP; SQLite stores by default,
+# or `pnpm run serve:memory` for in-memory):
 cd examples/online-shop-hybrid/platform-in-memory
 pnpm run serve
 ```

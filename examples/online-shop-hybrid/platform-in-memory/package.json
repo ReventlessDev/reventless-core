@@ -10,11 +10,15 @@
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest",
-    "serve": "npx tsx src/Main.res.mjs",
-    "serve:watch": "npx tsx watch --clear-screen=false --exclude '**/node_modules/**' --include '../../../reventless/*/src/**/*.res.mjs' --include '../*/src/**/*.res.mjs' src/Main.res.mjs",
-    "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
+    "serve": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} npx tsx src/Main.res.mjs",
+    "serve:memory": "REVENTLESS_LOCAL_BACKEND=memory pnpm run serve",
+    "serve:reset": "REVENTLESS_LOCAL_BACKEND='sqlite:./.reventless/local.db?reset' pnpm run serve",
+    "serve:watch": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} npx tsx watch --clear-screen=false --exclude '**/node_modules/**' --include '../../../reventless/*/src/**/*.res.mjs' --include '../*/src/**/*.res.mjs' src/Main.res.mjs",
+    "dev": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs",
     "dev:ui": "[ -d reventless-ui ] && pnpm --filter ./reventless-ui run dev:ui || reventless-host-shell",
-    "dev:full": "concurrently --names rs,backend,ui --prefix-colors blue,cyan,magenta 'pnpm -w run watch' 'pnpm run serve:watch' 'npx wait-on tcp:4001 && pnpm run dev:ui'"
+    "dev:full": "REVENTLESS_LOCAL_BACKEND=${REVENTLESS_LOCAL_BACKEND:-sqlite:./.reventless/local.db} concurrently --names rs,backend,ui --prefix-colors blue,cyan,magenta 'pnpm -w run watch' 'pnpm run serve:watch' 'npx wait-on tcp:4001 && pnpm run dev:ui'",
+    "dev:full:memory": "REVENTLESS_LOCAL_BACKEND=memory pnpm run dev:full",
+    "dev:full:reset": "REVENTLESS_LOCAL_BACKEND='sqlite:./.reventless/local.db?reset' pnpm run dev:full"
   },
   "jest": {
     "testMatch": [
