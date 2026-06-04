@@ -92,13 +92,13 @@ jobs:
             echo "$CHANGED" | jq -r '.[].name'
           fi
 
-      - name: Build all packages
-        if: steps.changes.outputs.count != '0'
-        run: pnpm run build
-
-      # Tests already run in CI workflow - no need to run again
-      # - name: Run tests
-      #   run: npm run test
+      # No pre-version build: CI (the triggering workflow) already compiled
+      # and tested this commit, and any build output here would be discarded
+      # by the "Clean uncommitted changes" git reset/clean below before
+      # lerna version runs. The single authoritative build happens in
+      # "Build release artifacts" (clean + build) just before publish.
+      #
+      # Tests already run in CI workflow - no need to run again.
 
       - name: Determine prerelease identifier
         if: steps.changes.outputs.count != '0'
