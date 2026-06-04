@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-platform-in-memory",
   "private": true,
-  "version": "1.0.0-alpha.66",
+  "version": "1.0.0-alpha.67",
   "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
   "license": "Apache-2.0",
   "scripts": {

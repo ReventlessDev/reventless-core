@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.137 (2026-06-04)
+
+### Bug Fixes
+
+* **aws:** deliver plugin Retire to standard command-topic queues ([c7c0158](https://github.com/ReventlessDev/reventless-core/commit/c7c0158518a56958bbcbdee27fc2631fd238d66a))
+
+
 # 3.0.0-alpha.136 (2026-06-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
