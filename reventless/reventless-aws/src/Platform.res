@@ -614,7 +614,12 @@ module MakeWithConfig = (
         // hook can't reach Util_SQS_Runtime's Effect pipeline. Retire is a
         // payload-less variant so command JSON is just the bare string "Retire".
         let metaDict = Dict.fromArray([
-          ("service", "Platform"->JSON.Encode.string),
+          // Must match the Plugin aggregate's spec name — Read-model projection
+          // dispatch keys on meta.service (see ReadModel_Callback.res), and the
+          // PluginMapping is registered under source "Plugin". A "Platform" tag
+          // here silently routes the resulting Retired event to no mapping, so
+          // the row never updates from Connected to Retired.
+          ("service", "Plugin"->JSON.Encode.string),
           ("time", ReventlessCore.Message.nowAsISOString()->JSON.Encode.string),
           ("msgId", msgId->JSON.Encode.string),
           ("correlationId", msgId->JSON.Encode.string),
