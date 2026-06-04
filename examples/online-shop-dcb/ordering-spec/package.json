@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-ordering-spec",
   "private": true,
-  "version": "1.0.0-alpha.42",
+  "version": "1.0.0-alpha.43",
   "description": "Online Shop DCB example — Ordering plugin specification (extension point specs)",
   "license": "Apache-2.0",
   "scripts": {
