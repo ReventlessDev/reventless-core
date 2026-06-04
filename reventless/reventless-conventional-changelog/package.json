@@ -6,5 +6,10 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/reventless-conventional-changelog"
+  }
 }

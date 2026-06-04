@@ -3,10 +3,21 @@
   "version": "1.0.0-alpha.28",
   "description": "Prebuilt reventless-ppx native binary for macOS arm64 (Apple Silicon).",
   "license": "Apache-2.0",
-  "os": ["darwin"],
-  "cpu": ["arm64"],
-  "files": ["ppx.exe"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "ppx.exe"
+  ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "packages/reventless-ppx/npm/darwin-arm64"
   }
 }
