@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.33 (2026-06-04)
+
+### Bug Fixes
+
+* **ppx:** bump linux-x64 & darwin-arm64 platform packages to 1.0.0-alpha.33 ([ea48592](https://github.com/ReventlessDev/reventless-core/commit/ea485920142a9212f73e5df065b8291b9ccfd726))
+
+
 # 1.0.0-alpha.32 (2026-06-04)
 
 ### Features
