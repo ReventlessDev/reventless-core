@@ -3,10 +3,21 @@
   "version": "1.0.0-alpha.28",
   "description": "Prebuilt reventless-ppx native binary for Linux x64.",
   "license": "Apache-2.0",
-  "os": ["linux"],
-  "cpu": ["x64"],
-  "files": ["ppx.exe"],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "ppx.exe"
+  ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "packages/reventless-ppx/npm/linux-x64"
   }
 }

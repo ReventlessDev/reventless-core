@@ -64,5 +64,10 @@
   "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "reventless/reventless-core"
   }
 }
