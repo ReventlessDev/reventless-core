@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.75 (2026-06-04)
+
+### Features
+
+* **onboarding:** one-command setup, accurate docs, Intel-mac PPX prebuilt ([e5faa10](https://github.com/ReventlessDev/reventless-core/commit/e5faa10e3ea3fc2b53f3712a8da5301e50755c60))
+
+
 # 1.0.0-alpha.74 (2026-06-04)
 
 ### Bug Fixes

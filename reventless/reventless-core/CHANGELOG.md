@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.106 (2026-06-04)
+
+### Features
+
+* **core:** richer command/state logging and working LOG_LEVEL control ([284e562](https://github.com/ReventlessDev/reventless-core/commit/284e56217b90e29c42421926e507258332f11e11))
+* **core:** richer StateChangeSlice command-handler logging ([6fbab5c](https://github.com/ReventlessDev/reventless-core/commit/6fbab5c7a2248d919f656767f5c248811d1a6174))
+
+
 # 3.0.0-alpha.105 (2026-06-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core
