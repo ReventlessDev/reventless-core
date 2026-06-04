@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.34 (2026-06-04)
+
+### Bug Fixes
+
+* **ppx:** point optionalDependencies at republished platform binaries ([3f2964d](https://github.com/ReventlessDev/reventless-core/commit/3f2964d0702e71c758260a7bf4a8532d09d4e141))
+
+
 # 1.0.0-alpha.33 (2026-06-04)
 
 ### Bug Fixes
