@@ -110,6 +110,7 @@ function pickSortKeyValue(image) {
 
 export async function handler(event) {
   const url = new URL(APPSYNC_ENDPOINT);
+  let transientErr;
   for (const record of event.Records) {
     const topicRoot = topicRootFromEventSourceArn(record.eventSourceARN);
     if (topicRoot === undefined) {
@@ -133,16 +134,44 @@ export async function handler(event) {
     if (sortKeyValue !== undefined) descriptor.sortKeyValue = sortKeyValue;
     const body = JSON.stringify({ id: record.eventID, channel, events: [JSON.stringify(descriptor)] });
     const auth = await signedHeaders(url.hostname, "/event", body);
-    const res = await fetch(APPSYNC_ENDPOINT + "/event", {
-      method: "POST",
-      headers: { accept: "application/json, text/javascript", "content-encoding": "amz-1.0", "content-type": "application/json; charset=UTF-8", ...auth },
-      body,
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("StateTopic publish failed:", res.status, txt);
+    try {
+      const res = await fetch(APPSYNC_ENDPOINT + "/event", {
+        method: "POST",
+        headers: { accept: "application/json, text/javascript", "content-encoding": "amz-1.0", "content-type": "application/json; charset=UTF-8", ...auth },
+        body,
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        // 4xx: permanent (bad request, auth, channel format) — retrying won't
+        // help. Log structurally so a CloudWatch metric filter on
+        // "STATE_TOPIC_PUBLISH_FAILED type=permanent" surfaces it; continue
+        // processing so one bad record doesn't block the rest of the batch.
+        // 5xx / network: transient — record it and throw at the end so the
+        // ESM retries (bounded by maximumRetryAttempts + bisectBatch).
+        const isTransient = res.status >= 500;
+        const tag = isTransient ? "transient" : "permanent";
+        console.error(
+          "STATE_TOPIC_PUBLISH_FAILED type=" + tag +
+          " status=" + res.status +
+          " channel=" + channel +
+          " body=" + txt.slice(0, 500)
+        );
+        if (isTransient) transientErr = new Error("StateTopic publish failed: " + res.status);
+      }
+    } catch (e) {
+      // Network-level error (DNS, connection refused, timeout) — always transient.
+      console.error(
+        "STATE_TOPIC_PUBLISH_FAILED type=transient status=network" +
+        " channel=" + channel +
+        " err=" + (e && e.message)
+      );
+      transientErr = e;
     }
   }
+  // Throw after the loop so a single transient error doesn't stop us from
+  // emitting other records' descriptors first. The ESM will retry the batch;
+  // bisectBatchOnFunctionError isolates the bad record across retries.
+  if (transientErr) throw transientErr;
 }
 `;
 
@@ -248,7 +277,9 @@ function finish(eventsApi, opts) {
   entries.forEach(entry => {
     new (Aws.lambda.EventSourceMapping)(entry.topicName + "Stream2" + name + "StateTopic", {
       functionName: lambda.arn,
+      bisectBatchOnFunctionError: true,
       eventSourceArn: entry.streamArn,
+      maximumRetryAttempts: 3,
       startingPosition: "LATEST"
     }, opts);
   });
