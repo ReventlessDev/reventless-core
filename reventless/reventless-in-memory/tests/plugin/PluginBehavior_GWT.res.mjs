@@ -346,7 +346,7 @@ PluginTest.describe("PluginBehavior:", () => {
       TAG: "Retired",
       _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinitionWithUI
     }]));
-  PluginTest.test("Retire (inactive) is idempotent", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([
+  PluginTest.test("Retire (inactive/admin-suspended) supersedes via Retired", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
     "UnknownPluginDetected",
     {
       TAG: "Connected",
@@ -356,7 +356,10 @@ PluginTest.describe("PluginBehavior:", () => {
       TAG: "Deactivated",
       _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
     }
-  ]), "Retire")));
+  ]), "Retire"), [{
+      TAG: "Retired",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    }]));
   PluginTest.test("Retire (retired) is idempotent", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([
     "UnknownPluginDetected",
     {
@@ -370,7 +373,7 @@ PluginTest.describe("PluginBehavior:", () => {
   ]), "Retire")));
   PluginTest.test("Retire (detected) is a no-op (no events to register yet)", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents(["UnknownPluginDetected"]), "Retire")));
   PluginTest.test("Retire on a never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), "Retire"), "NotExisting"));
-  PluginTest.test("Activate (retired) brings the plugin back via Activated", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+  PluginTest.test("Activate (retired) is rejected — superseded versions are not admin-reactivatable", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
     "UnknownPluginDetected",
     {
       TAG: "Connected",
@@ -380,10 +383,69 @@ PluginTest.describe("PluginBehavior:", () => {
       TAG: "Retired",
       _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
     }
-  ]), "Activate"), [{
-      TAG: "Activated",
+  ]), "Activate"), "IsRetired"));
+  PluginTest.test("Deactivate (retired) is rejected", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    },
+    {
+      TAG: "Retired",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    }
+  ]), "Deactivate"), "IsRetired"));
+  PluginTest.test("Connect (retired) is rejected", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    },
+    {
+      TAG: "Retired",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    }
+  ]), {
+    TAG: "Connect",
+    _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+  }), "IsRetired"));
+  PluginTest.test("Heartbeat (retired) revives via Reconnected", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    },
+    {
+      TAG: "Retired",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    }
+  ]), "Heartbeat"), [{
+      TAG: "Reconnected",
       _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
     }]));
+  PluginTest.test("Heartbeat (retired, with UI fragments) emits Reconnected + UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    "UnknownPluginDetected",
+    {
+      TAG: "Connected",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinitionWithUI
+    },
+    {
+      TAG: "Retired",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinitionWithUI
+    }
+  ]), "Heartbeat"), [
+    {
+      TAG: "Reconnected",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinitionWithUI
+    },
+    {
+      TAG: "UIFragmentRegistered",
+      _0: {
+        pluginId: Plugin_Fixtures$ReventlessInMemory.pluginDefinitionWithUI.id,
+        manifest: Plugin_Fixtures$ReventlessInMemory.uiManifest
+      }
+    }
+  ]));
   PluginTest.test("Connect on never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), {
     TAG: "Connect",
     _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition

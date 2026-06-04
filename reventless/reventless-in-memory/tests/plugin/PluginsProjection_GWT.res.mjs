@@ -146,7 +146,7 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
       }
     }), (newrecord.status = "Connected", newrecord));
   });
-  PluginsProjectionTest.test("Retired on a Connected row yields status: Inactive", undefined, () => {
+  PluginsProjectionTest.test("Retired on a Connected row yields status: Retired", undefined, () => {
     let newrecord = {...Plugin_Fixtures$ReventlessInMemory.state};
     return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
       "UnknownPluginDetected",
@@ -157,9 +157,9 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
     ]), {
       TAG: "Retired",
       _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
-    }), (newrecord.status = "Inactive", newrecord));
+    }), (newrecord.status = "Retired", newrecord));
   });
-  PluginsProjectionTest.test("Retired on a Disconnected row also yields status: Inactive", undefined, () => {
+  PluginsProjectionTest.test("Retired on a Disconnected row also yields status: Retired", undefined, () => {
     let newrecord = {...Plugin_Fixtures$ReventlessInMemory.state};
     return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
       "UnknownPluginDetected",
@@ -174,14 +174,31 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
     ]), {
       TAG: "Retired",
       _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
-    }), (newrecord.status = "Inactive", newrecord));
+    }), (newrecord.status = "Retired", newrecord));
   });
-  PluginsProjectionTest.test("Retired with no prior row creates one at status: Inactive", undefined, () => {
+  PluginsProjectionTest.test("Retired with no prior row creates one at status: Retired", undefined, () => {
     let newrecord = {...Plugin_Fixtures$ReventlessInMemory.state};
     return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
       TAG: "Retired",
       _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
-    }), (newrecord.status = "Inactive", newrecord));
+    }), (newrecord.status = "Retired", newrecord));
+  });
+  PluginsProjectionTest.test("Reconnected after Retired yields status: Connected (heartbeat revival)", undefined, () => {
+    let newrecord = {...Plugin_Fixtures$ReventlessInMemory.state};
+    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
+      "UnknownPluginDetected",
+      {
+        TAG: "Connected",
+        _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+      },
+      {
+        TAG: "Retired",
+        _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+      }
+    ]), {
+      TAG: "Reconnected",
+      _0: Plugin_Fixtures$ReventlessInMemory.pluginDefinition
+    }), (newrecord.status = "Connected", newrecord));
   });
   PluginsProjectionTest.test("IncompatiblePluginDetected leaves a Connected row unchanged", undefined, () => {
     let newrecord = {...Plugin_Fixtures$ReventlessInMemory.state};

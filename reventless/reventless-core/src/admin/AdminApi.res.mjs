@@ -45,7 +45,7 @@ let uiFragmentMutationFields = [
 let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n    @aws_subscribe(mutations: ["Platform_UIFragmentRegistered", "Platform_UIFragmentUpdated", "Platform_UIFragmentDeregistered"])`;
 
 let pluginStatusSubscriptionTypes = [
-  `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n}`,
+  `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n  Retired\n}`,
   `type PluginStatusChangeEvent {\n  pluginId: ID!\n  status: PluginStatus!\n}`
 ];
 

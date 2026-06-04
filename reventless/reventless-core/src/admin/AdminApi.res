@@ -50,7 +50,7 @@ let uiFragmentSubscriptionField = `  onUIFragmentChange: UIFragmentChangeEvent\n
 // matches `PluginsReadModelSpec.status` so consumers can mirror tier 1 / tier 2
 // transitions exactly.
 let pluginStatusSubscriptionTypes = [
-  `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n}`,
+  `enum PluginStatus {\n  Connected\n  Disconnected\n  Inactive\n  Retired\n}`,
   `type PluginStatusChangeEvent {\n  pluginId: ID!\n  status: PluginStatus!\n}`,
 ]
 

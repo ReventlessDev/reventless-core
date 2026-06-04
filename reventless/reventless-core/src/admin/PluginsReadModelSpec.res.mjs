@@ -8,7 +8,8 @@ import * as Message$ReventlessCore from "../Message.res.mjs";
 let statusSchema = S.union([
   S.literal("Connected"),
   S.literal("Disconnected"),
-  S.literal("Inactive")
+  S.literal("Inactive"),
+  S.literal("Retired")
 ]);
 
 let stateSchema = S.schema(s => ({

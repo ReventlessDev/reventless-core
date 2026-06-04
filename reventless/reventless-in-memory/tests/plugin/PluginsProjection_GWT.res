@@ -92,33 +92,43 @@ describe("PluginsProjection:", () => {
     ->thenState({...state, status: Connected})
   )
 
-  // ── Retired — deploy-driven retirement of a superseded plugin version ────
+  // ── Retired — deploy-driven supersession of an older plugin version ──────
   //
-  // Replaces the previous direct DynamoDB write that
-  // publishRetireForOlderPluginVersions used to perform. The projection
-  // collapses Retired into status: Inactive (same outcome as user-driven
-  // Deactivated), while the EventLog keeps the source of retirement distinct.
+  // Issued by the platform deploy hook (publishRetireForOlderPluginVersions).
+  // Maps to status: Retired — distinct from Inactive (admin Deactivate). Both
+  // are filtered from the manifest, but Retired means "obsoleted by a newer
+  // version" and is revivable only by the version's own Heartbeat.
 
-  test("Retired on a Connected row yields status: Inactive", () =>
+  test("Retired on a Connected row yields status: Retired", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
     ->whenEvent(Retired(pluginDefinition))
-    ->thenState({...state, status: Inactive})
+    ->thenState({...state, status: Retired})
   )
 
-  test("Retired on a Disconnected row also yields status: Inactive", () =>
+  test("Retired on a Disconnected row also yields status: Retired", () =>
     givenEvents([
       UnknownPluginDetected,
       Connected(pluginDefinition),
       Disconnected(pluginDefinition),
     ])
     ->whenEvent(Retired(pluginDefinition))
-    ->thenState({...state, status: Inactive})
+    ->thenState({...state, status: Retired})
   )
 
-  test("Retired with no prior row creates one at status: Inactive", () =>
+  test("Retired with no prior row creates one at status: Retired", () =>
     givenEvents([])
     ->whenEvent(Retired(pluginDefinition))
-    ->thenState({...state, status: Inactive})
+    ->thenState({...state, status: Retired})
+  )
+
+  test("Reconnected after Retired yields status: Connected (heartbeat revival)", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Retired(pluginDefinition),
+    ])
+    ->whenEvent(Reconnected(pluginDefinition))
+    ->thenState({...state, status: Connected})
   )
 
   // ── IncompatiblePluginDetected — observation only, no status change ──────
