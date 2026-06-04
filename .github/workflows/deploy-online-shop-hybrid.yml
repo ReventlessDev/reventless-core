@@ -1,5 +1,8 @@
 # Deploy the online-shop-hybrid example to AWS.
 #
+# Registered with the GitHub Actions index so release.yml / build-lambda-layer.yml
+# can dispatch it via `gh workflow run deploy-online-shop-hybrid.yml`.
+#
 # Triggered by:
 #   - workflow_dispatch from release.yml when the release does NOT include reventless-aws
 #   - workflow_dispatch from build-lambda-layer.yml after a new layer is published
