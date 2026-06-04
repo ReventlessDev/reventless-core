@@ -507,18 +507,19 @@ function MakeWithConfig(Config) {
           ]
         ]);
         let messageBody = JSON.stringify(envelopeDict);
+        let isFifo = cmdTopicQueueUrl.endsWith(".fifo");
         await SQS$AwsSdk.SendMessageCommand.send(new ClientSqs.SendMessageCommand({
           MessageBody: messageBody,
           QueueUrl: cmdTopicQueueUrl,
-          MessageDeduplicationId: msgId,
-          MessageGroupId: Util_SQS_Runtime$ReventlessAws.safeGroupId(id)
+          MessageDeduplicationId: isFifo ? msgId : undefined,
+          MessageGroupId: isFifo ? Util_SQS_Runtime$ReventlessAws.safeGroupId(id) : undefined
         }));
       }
       return;
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-      console.log(`[publishRetireForOlderPluginVersions] skipped for ` + name + `@` + version + ` (` + msg + `)`);
+      console.error(`[publishRetireForOlderPluginVersions] ERROR — retire NOT delivered for ` + name + `@` + version + ` to ` + cmdTopicQueueUrl + ` (` + msg + `)`);
       return;
     }
   };
@@ -1687,18 +1688,19 @@ function Make($star) {
           ]
         ]);
         let messageBody = JSON.stringify(envelopeDict);
+        let isFifo = cmdTopicQueueUrl.endsWith(".fifo");
         await SQS$AwsSdk.SendMessageCommand.send(new ClientSqs.SendMessageCommand({
           MessageBody: messageBody,
           QueueUrl: cmdTopicQueueUrl,
-          MessageDeduplicationId: msgId,
-          MessageGroupId: Util_SQS_Runtime$ReventlessAws.safeGroupId(id)
+          MessageDeduplicationId: isFifo ? msgId : undefined,
+          MessageGroupId: isFifo ? Util_SQS_Runtime$ReventlessAws.safeGroupId(id) : undefined
         }));
       }
       return;
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-      console.log(`[publishRetireForOlderPluginVersions] skipped for ` + name + `@` + version + ` (` + msg + `)`);
+      console.error(`[publishRetireForOlderPluginVersions] ERROR — retire NOT delivered for ` + name + `@` + version + ` to ` + cmdTopicQueueUrl + ` (` + msg + `)`);
       return;
     }
   };

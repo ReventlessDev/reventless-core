@@ -627,20 +627,29 @@ module MakeWithConfig = (
           ("command", "Retire"->JSON.Encode.string),
         ])
         let messageBody = envelopeDict->JSON.Encode.object->JSON.stringify
+        // messageGroupId / messageDeduplicationId are FIFO-only — SQS rejects
+        // them on standard queues. The Plugin aggregate command-topic is a
+        // standard queue, so include the FIFO params only for `.fifo` targets.
+        // Retire is idempotent, so unordered / at-least-once delivery on a
+        // standard queue is safe.
+        let isFifo = cmdTopicQueueUrl->String.endsWith(".fifo")
         let _ = await AwsSdk.SQS.SendMessageCommand.send(
           AwsSdk.SQS.SendMessageCommand.make({
             AwsSdk.SQS.SendMessageCommand.queueUrl: cmdTopicQueueUrl,
             messageBody,
-            messageGroupId: Util_SQS_Runtime.safeGroupId(id),
-            messageDeduplicationId: msgId,
+            messageGroupId: ?(isFifo ? Some(Util_SQS_Runtime.safeGroupId(id)) : None),
+            messageDeduplicationId: ?(isFifo ? Some(msgId) : None),
           }),
         )
       }
     } catch {
     | exn =>
       let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Console.log(
-        `[publishRetireForOlderPluginVersions] skipped for ${name}@${version} (${msg})`,
+      // Best-effort — never block the deploy. But a failure here means
+      // superseded versions stay Connected until the heartbeat timeout (a real
+      // bug, not an expected skip), so log loudly with the target queue.
+      Console.error(
+        `[publishRetireForOlderPluginVersions] ERROR — retire NOT delivered for ${name}@${version} to ${cmdTopicQueueUrl} (${msg})`,
       )
     }
   }
