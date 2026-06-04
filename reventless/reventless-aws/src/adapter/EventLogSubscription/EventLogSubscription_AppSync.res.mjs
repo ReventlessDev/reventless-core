@@ -17,7 +17,7 @@ import * as Util_DeadLetterQueue$ReventlessAws from "../../util/Util_DeadLetterQ
 import * as Util_EventSourceMapping$ReventlessAws from "../../util/Util_EventSourceMapping.res.mjs";
 
 function makeHandlerCode(topicName) {
-  let channelName = topicName.replaceAll("_", "-");
+  let channelName = topicName.replace(/[^A-Za-z0-9-]/g, "-");
   return `
 import { createHmac, createHash } from "node:crypto";
 

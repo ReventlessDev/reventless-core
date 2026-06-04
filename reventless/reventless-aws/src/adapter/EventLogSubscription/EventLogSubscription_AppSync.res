@@ -22,8 +22,13 @@ open PulumiAws
 // The "originatorSlice" tag is injected by StateChangeSlice_Callback.encodeEvent.
 
 let makeHandlerCode = (~topicName: string): string => {
-  // AppSync Events channels cannot contain underscores — replace with hyphens.
-  let channelName = topicName->String.replaceAll("_", "-")
+  // Mirrors StateTopic_AppSync.pathSegment: AppSync Events channel segments
+  // allow only [A-Za-z0-9-]. Today's event-log displayNames are bare
+  // PascalCase identifiers (Catalog, Ordering, Plugin) so the rule is a no-op
+  // in practice — kept in lock-step prophylactically so a future displayName
+  // carrying `@/./:` etc. doesn't hit the same silent-drop the Plugins admin
+  // RM did when StateTopic still only normalised underscores.
+  let channelName = topicName->String.replaceRegExp(%re("/[^A-Za-z0-9-]/g"), "-")
   `
 import { createHmac, createHash } from "node:crypto";
 
