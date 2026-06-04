@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.82 (2026-06-04)
+
+### Features
+
+* **core:** richer command/state logging and working LOG_LEVEL control ([284e562](https://github.com/ReventlessDev/reventless-core/commit/284e56217b90e29c42421926e507258332f11e11))
+
+
 # 3.0.0-alpha.81 (2026-06-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-in-memory
