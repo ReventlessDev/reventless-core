@@ -469,7 +469,7 @@ function MakeWithConfig(Config) {
         let metaDict = Object.fromEntries([
           [
             "service",
-            "Platform"
+            "Plugin"
           ],
           [
             "time",
@@ -1650,7 +1650,7 @@ function Make($star) {
         let metaDict = Object.fromEntries([
           [
             "service",
-            "Platform"
+            "Plugin"
           ],
           [
             "time",
