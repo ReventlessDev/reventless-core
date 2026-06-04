@@ -1,5 +1,9 @@
 name: Build Lambda Layer
 
+# Registered with the GitHub Actions index so release.yml can dispatch it via
+# `gh workflow run build-lambda-layer.yml` (the API resolves filenames through
+# that index, not the git tree).
+
 on:
   push:
     branches: [main, beta, alpha]
