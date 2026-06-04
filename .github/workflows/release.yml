@@ -82,8 +82,16 @@ jobs:
       - name: Check for releasable changes
         id: changes
         run: |
-          CHANGED=$(npx lerna changed --json)
-          COUNT=$(echo "$CHANGED" | jq 'length')
+          # `lerna changed` exits non-zero when no releasable (non-private)
+          # packages changed — e.g. a commit that only touches private example
+          # packages (host-shell bumps) or the root lockfile. That is a valid
+          # "nothing to release" outcome, not an error, so tolerate the exit
+          # code and fall through to the skip branch below.
+          CHANGED=$(npx lerna changed --json 2>/dev/null || true)
+          if [[ -z "$CHANGED" ]]; then
+            CHANGED='[]'
+          fi
+          COUNT=$(echo "$CHANGED" | jq 'length' 2>/dev/null || echo 0)
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           if [[ "$COUNT" -eq 0 ]]; then
             echo "No packages have releasable changes — skipping release"
