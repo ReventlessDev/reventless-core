@@ -111,17 +111,28 @@ jobs:
             echo "projects=$PROJECTS" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check if PPX Linux binary is present
+      - name: Check if PPX Linux binary is available
         if: steps.affected.outputs.select != 'none'
         id: ppx_check
         run: |
-          if [ -f packages/reventless-ppx/ppx-linux.exe ]; then
+          # The native PPX is consumed from the published per-platform package
+          # @reventlessdev/reventless-ppx-linux-x64 (installed as an
+          # optionalDependency, resolved by packages/reventless-ppx/bin). Build
+          # from source ONLY when that binary is absent — i.e. the optionalDep
+          # was silently skipped (missing/unpublished) — which is the documented
+          # "no binary found" failure mode. A committed local .exe also counts.
+          # In the healthy case we skip the OCaml build entirely (the PPX is
+          # never compiled by a normal framework build — see publish-ppx.yml).
+          PKG_BIN="node_modules/@reventlessdev/reventless-ppx-linux-x64/ppx.exe"
+          if [ -x "$PKG_BIN" ] || [ -f packages/reventless-ppx/ppx-linux.exe ]; then
+            echo "Prebuilt PPX binary present ($PKG_BIN) — skipping from-source build"
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
+            echo "Prebuilt PPX binary missing (optionalDependency skipped?) — building from source"
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Setup OCaml (fallback — ppx-linux.exe missing)
+      - name: Setup OCaml (fallback — prebuilt PPX binary missing)
         if: steps.affected.outputs.select != 'none' && steps.ppx_check.outputs.present == 'false'
         uses: ocaml/setup-ocaml@v3
         with:
