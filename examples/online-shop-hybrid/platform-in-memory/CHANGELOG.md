@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.74 (2026-06-04)
+
+### Bug Fixes
+
+* **example:** bump host-shell pin to 3.0.0-alpha.21 in online-shop-hybrid ([c85cd32](https://github.com/ReventlessDev/reventless-core/commit/c85cd32e4bda2ad652a99d768d290926ab4b0eed))
+
+
 # 1.0.0-alpha.73 (2026-05-28)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-in-memory

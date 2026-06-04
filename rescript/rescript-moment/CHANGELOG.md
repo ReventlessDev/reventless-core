@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.10.0-alpha.8 (2026-06-04)
+
+### Bug Fixes
+
+* **rescript-moment:** republish as 0.10.0-alpha.7 ([4a8ccac](https://github.com/ReventlessDev/reventless-core/commit/4a8ccac3caa5ab4e9a9f4fe7fa2a1a3ffa7c6a77))
+
+
 # 0.10.0-alpha.6 (2026-05-25)
 
 **Note:** Version bump only for package @reventlessdev/rescript-moment
