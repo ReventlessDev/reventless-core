@@ -135,8 +135,7 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
             statusChange,
           },
         )
-      | Deactivated({name, version, eventCollector, extensionPoints, extensions} as pluginDef)
-      | Retired({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
+      | Deactivated({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
         UpdateWithDefault(
           id,
           {
@@ -157,6 +156,33 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
           state => {
             ...state,
             status: Inactive,
+            statusChange,
+          },
+        )
+      | Retired({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
+        // Deploy-superseded version. Distinct status: Retired (vs Inactive for
+        // admin Deactivate) — both are filtered from the manifest, but Retired
+        // marks "obsoleted by a newer version", not "admin-suspended".
+        UpdateWithDefault(
+          id,
+          {
+            PluginsReadModelSpec.name,
+            version,
+            eventCollector,
+            extensionPoints,
+            extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
+            extensionNames: extensions->Util.extractExtensionNames,
+            extensions,
+            status: Retired,
+            statusChange,
+            apiSchemaFragment: None,
+            uiFragments: None,
+            structure: None,
+            dcbEventLog: pluginDef.dcbEventLog,
+          },
+          state => {
+            ...state,
+            status: Retired,
             statusChange,
           },
         )

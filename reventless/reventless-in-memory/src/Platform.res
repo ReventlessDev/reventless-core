@@ -1365,6 +1365,7 @@ module MakeWithConfig = (
         | Some(Connected) => None
         | Some(Disconnected) => Some(("PluginUnavailable", "plugin is disconnected"))
         | Some(Inactive) => Some(("PluginInactive", "plugin is inactive"))
+        | Some(Retired) => Some(("PluginRetired", "plugin version has been retired"))
         | None => None
         }
       }
@@ -1541,6 +1542,7 @@ module MakeWithConfig = (
       | Connected => "Connected"
       | Disconnected => "Disconnected"
       | Inactive => "Inactive"
+      | Retired => "Retired"
       }
     let pluginStatusSubTopic = "onPluginStatusChange"
     let publishPluginStatusChange = (~pluginId, ~status) =>

@@ -180,11 +180,12 @@ describe("PluginBehavior:", () => {
     ->thenEvents([Deactivated(pluginDefinitionWithUI)])
   )
 
-  // ── Retire — deploy-driven retirement of a superseded plugin version ─────
+  // ── Retire — deploy-driven supersession of an older plugin version ───────
   //
-  // Issued by the platform deploy hook (publishRetireForOlderPluginVersions)
-  // instead of the previous direct DynamoDB write. Distinct from Deactivate so
-  // the EventLog records the source of retirement.
+  // Issued by the platform deploy hook (publishRetireForOlderPluginVersions).
+  // Lands in the Retired state — distinct from Inactive (admin Deactivate):
+  // an admin cannot Activate it back, but the version's own Heartbeat
+  // (rollback / redeploy) revives it through Reconnected.
 
   test("Retire (connected)", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
@@ -211,14 +212,14 @@ describe("PluginBehavior:", () => {
     ->thenEvents([Retired(pluginDefinitionWithUI)])
   )
 
-  test("Retire (inactive) is idempotent", () =>
+  test("Retire (inactive/admin-suspended) supersedes via Retired", () =>
     givenEvents([
       UnknownPluginDetected,
       Connected(pluginDefinition),
       Deactivated(pluginDefinition),
     ])
     ->whenCmd(Retire)
-    ->thenNoEvent
+    ->thenEvents([Retired(pluginDefinition)])
   )
 
   test("Retire (retired) is idempotent", () =>
@@ -243,14 +244,49 @@ describe("PluginBehavior:", () => {
     ->thenError(NotExisting)
   )
 
-  test("Activate (retired) brings the plugin back via Activated", () =>
+  test("Activate (retired) is rejected — superseded versions are not admin-reactivatable", () =>
     givenEvents([
       UnknownPluginDetected,
       Connected(pluginDefinition),
       Retired(pluginDefinition),
     ])
     ->whenCmd(Activate)
-    ->thenEvents([Activated(pluginDefinition)])
+    ->thenError(IsRetired)
+  )
+
+  test("Deactivate (retired) is rejected", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Retired(pluginDefinition)])
+    ->whenCmd(Deactivate)
+    ->thenError(IsRetired)
+  )
+
+  test("Connect (retired) is rejected", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Retired(pluginDefinition)])
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenError(IsRetired)
+  )
+
+  test("Heartbeat (retired) revives via Reconnected", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Retired(pluginDefinition),
+    ])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([Reconnected(pluginDefinition)])
+  )
+
+  test("Heartbeat (retired, with UI fragments) emits Reconnected + UIFragmentRegistered", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinitionWithUI),
+      Retired(pluginDefinitionWithUI),
+    ])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([
+      Reconnected(pluginDefinitionWithUI),
+      UIFragmentRegistered({pluginId: pluginDefinitionWithUI.id, manifest: uiManifest}),
+    ])
   )
 
   // ── NotConnected / Detected exhaustive negative-case coverage ────────────

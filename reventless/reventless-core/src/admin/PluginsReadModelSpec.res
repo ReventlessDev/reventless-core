@@ -5,6 +5,10 @@ type status =
   | Connected
   | Disconnected
   | Inactive
+  // Deploy-driven supersession by a newer version of the same plugin.
+  // Distinct from Inactive (admin suspend): hidden from the manifest like
+  // Inactive, but revivable only by the version's own Heartbeat.
+  | Retired
 
 @schema
 type state = {

@@ -53,3 +53,7 @@ type error =
   | AlreadyConnected
   | IsDisconnected
   | IsInactive
+  // Returned when an admin command targets a retired (deploy-superseded)
+  // version. Retired versions revive only via their own Heartbeat, never
+  // via admin Activate.
+  | IsRetired

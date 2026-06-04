@@ -59,6 +59,37 @@ the admin tier is [docs/plans/aws-plugin-activate-deactivate-resolver.md](../pla
   fragment. This event is not currently modelled in the platform spec
   and would need to be added if formal deregistration is required."
 
+## Cross-cutting: version supersession (`Retired`)
+
+`Retire` is a fourth lifecycle move that does **not** sit on the up/down
+axis above. It is emitted by the deploy hook
+(`publishRetireForOlderPluginVersions`) when a **newer version of the same
+plugin** connects, targeting the *old* version's aggregate
+(`name@version`). The plugin name stays in the catalog — only the
+superseded version row is affected — so it is neither an admin action
+(tier 2) nor a catalog/membership change (tier 3).
+
+- **Aggregate state**: `Retired(pluginDefinition)`
+  ([PluginBehavior.res](../../reventless/reventless-core/src/admin/PluginBehavior.res)).
+- **Trigger**: deploy-time `Retire`, one per superseded `name@version`.
+- **Recovery**: the version's **own** `Heartbeat` (a rollback / redeploy of
+  that exact version) revives it through `Reconnected → Connected`. An admin
+  `Activate` is rejected (`IsRetired`) — there is nothing for an admin to turn
+  back on; only a real redeploy of that version should bring it back.
+
+This makes `Inactive` and `Retired` mirror images on the two recovery axes:
+
+| State | Heartbeat revives? | Admin `Activate` revives? |
+|---|---|---|
+| `Disconnected` (tier 1) | yes | n/a (not suspended) |
+| `Inactive` (tier 2, admin suspend) | no | yes |
+| `Retired` (version superseded) | yes | no (`IsRetired`) |
+
+Before this split, both `Deactivate` and `Retire` collapsed onto `Inactive`,
+so a superseded version was admin-reactivatable and a straggler heartbeat
+could not be distinguished from a deliberate rollback. See
+[docs/plans/plugin-retired-state-version-supersession.md](../plans/plugin-retired-state-version-supersession.md).
+
 ## The membership-vs-availability principle
 
 Two orthogonal questions about any plugin:
@@ -92,17 +123,21 @@ isn't in the schema in the first place).
 
 The full matrix of what each tier changes:
 
-| Surface | `Connected` | `Disconnected` (tier 1) | `Inactive` (tier 2) | Decommissioned (tier 3) |
-|---|---|---|---|---|
-| Plugin RM `status` | `Connected` | `Disconnected` | `Inactive` | row deleted |
-| `apiSchemaFragment` / `uiFragments` (raw) | preserved | preserved | preserved | removed |
-| GraphQL SDL membership | included | **included** | **included** | excluded (re-stitch) |
-| GraphQL resolver gate | passes | rejects: `PluginUnavailable` | rejects: `PluginInactive` | n/a (404 at parse) |
-| `UIFragmentRegistry` row | present | absent (dereg on Disconnect) | absent (dereg on Deactivate) | absent |
-| `Platform_UIDefinitions` listing | included | filtered out | filtered out | filtered out |
-| Host-shell page / panel registry | mounted | unmounted | unmounted | unmounted |
-| Event-graph node | present | present | present | tombstoned |
-| MCP tool listing | included | included | included | excluded |
+| Surface | `Connected` | `Disconnected` (tier 1) | `Inactive` (tier 2) | `Retired` (supersession) | Decommissioned (tier 3) |
+|---|---|---|---|---|---|
+| Plugin RM `status` | `Connected` | `Disconnected` | `Inactive` | `Retired` | row deleted |
+| `apiSchemaFragment` / `uiFragments` (raw) | preserved | preserved | preserved | preserved | removed |
+| GraphQL SDL membership | included | **included** | **included** | **included** | excluded (re-stitch) |
+| GraphQL resolver gate | passes | rejects: `PluginUnavailable` | rejects: `PluginInactive` | rejects: `PluginRetired` | n/a (404 at parse) |
+| `UIFragmentRegistry` row | present | absent (dereg on Disconnect) | absent (dereg on Deactivate) | absent (dereg on Retire) | absent |
+| `Platform_UIDefinitions` listing | included | filtered out | filtered out | filtered out | filtered out |
+| Host-shell page / panel registry | mounted | unmounted | unmounted | unmounted | unmounted |
+| Event-graph node | present | present | present | present | tombstoned |
+| MCP tool listing | included | included | included | included | excluded |
+
+Like tiers 1 and 2, `Retired` changes availability only — SDL membership is
+untouched (no re-stitch). It differs from `Inactive` solely in its recovery
+rule (own-heartbeat vs admin `Activate`), per the table above.
 
 The two key rows are **GraphQL SDL membership** and **GraphQL resolver
 gate** — they encode the membership-vs-availability split. Tiers 1 and 2

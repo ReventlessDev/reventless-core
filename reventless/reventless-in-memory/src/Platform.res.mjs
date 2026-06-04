@@ -1334,6 +1334,11 @@ function MakeWithConfig(Config) {
             "PluginInactive",
             "plugin is inactive"
           ];
+        case "Retired" :
+          return [
+            "PluginRetired",
+            "plugin version has been retired"
+          ];
       }
     });
     currentDeployTarget.contents = "Platform";
@@ -1405,16 +1410,7 @@ function MakeWithConfig(Config) {
           return true;
         }
         let match = dict[pluginId];
-        if (match === undefined) {
-          return false;
-        }
-        switch (match) {
-          case "Connected" :
-            return true;
-          case "Disconnected" :
-          case "Inactive" :
-            return false;
-        }
+        return match === "Connected";
       }).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
@@ -1439,6 +1435,8 @@ function MakeWithConfig(Config) {
           return "Disconnected";
         case "Inactive" :
           return "Inactive";
+        case "Retired" :
+          return "Retired";
       }
     };
     let pluginStatusSubTopic = "onPluginStatusChange";
@@ -3175,6 +3173,11 @@ function Make($star) {
             "PluginInactive",
             "plugin is inactive"
           ];
+        case "Retired" :
+          return [
+            "PluginRetired",
+            "plugin version has been retired"
+          ];
       }
     });
     currentDeployTarget.contents = "Platform";
@@ -3246,16 +3249,7 @@ function Make($star) {
           return true;
         }
         let match = dict[pluginId];
-        if (match === undefined) {
-          return false;
-        }
-        switch (match) {
-          case "Connected" :
-            return true;
-          case "Disconnected" :
-          case "Inactive" :
-            return false;
-        }
+        return match === "Connected";
       }).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
@@ -3280,6 +3274,8 @@ function Make($star) {
           return "Disconnected";
         case "Inactive" :
           return "Inactive";
+        case "Retired" :
+          return "Retired";
       }
     };
     let pluginStatusSubTopic = "onPluginStatusChange";

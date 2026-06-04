@@ -19,6 +19,10 @@ let stateSchema = S.union([
   S.schema(s => ({
     TAG: "Inactive",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
+  })),
+  S.schema(s => ({
+    TAG: "Retired",
+    _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   }))
 ]);
 
@@ -218,6 +222,11 @@ function decide(state, command) {
           }
         }
         switch (command) {
+          case "Heartbeat" :
+            return {
+              TAG: "Ok",
+              _0: []
+            };
           case "Activate" :
             return {
               TAG: "Ok",
@@ -226,7 +235,48 @@ function decide(state, command) {
                   _0: pluginDefinition$3
                 }].concat(uiRegisterEvents(pluginDefinition$3.id, pluginDefinition$3.uiFragments))
             };
+          case "Retire" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Retired",
+                  _0: pluginDefinition$3
+                }]
+            };
+          default:
+            return {
+              TAG: "Error",
+              _0: "IsInactive"
+            };
+        }
+      case "Retired" :
+        let pluginDefinition$4 = state._0;
+        if (typeof command === "object") {
+          if (command.TAG === "ReportIncompatibility") {
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "IncompatiblePluginDetected",
+                  _0: command._0
+                }]
+            };
+          } else {
+            return {
+              TAG: "Error",
+              _0: "IsRetired"
+            };
+          }
+        }
+        switch (command) {
           case "Heartbeat" :
+            return {
+              TAG: "Ok",
+              _0: [{
+                  TAG: "Reconnected",
+                  _0: pluginDefinition$4
+                }].concat(uiRegisterEvents(pluginDefinition$4.id, pluginDefinition$4.uiFragments))
+            };
+          case "Disconnect" :
           case "Retire" :
             return {
               TAG: "Ok",
@@ -235,7 +285,7 @@ function decide(state, command) {
           default:
             return {
               TAG: "Error",
-              _0: "IsInactive"
+              _0: "IsRetired"
             };
         }
     }
@@ -307,9 +357,13 @@ function evolve(state, event) {
               _0: pluginDefinition
             };
           case "Deactivated" :
-          case "Retired" :
             return {
               TAG: "Inactive",
+              _0: pluginDefinition
+            };
+          case "Retired" :
+            return {
+              TAG: "Retired",
               _0: pluginDefinition
             };
           case "IncompatiblePluginDetected" :
@@ -340,9 +394,13 @@ function evolve(state, event) {
               _0: pluginDefinition$1
             };
           case "Deactivated" :
-          case "Retired" :
             return {
               TAG: "Inactive",
+              _0: pluginDefinition$1
+            };
+          case "Retired" :
+            return {
+              TAG: "Retired",
               _0: pluginDefinition$1
             };
           case "IncompatiblePluginDetected" :
@@ -358,6 +416,7 @@ function evolve(state, event) {
             };
         }
       case "Inactive" :
+        let pluginDefinition$2 = state._0;
         if (typeof event !== "object") {
           throw {
             RE_EXN_ID: Message$ReventlessCore.InvalidEvent,
@@ -369,8 +428,40 @@ function evolve(state, event) {
           case "Activated" :
             return {
               TAG: "Disconnected",
+              _0: pluginDefinition$2
+            };
+          case "Retired" :
+            return {
+              TAG: "Retired",
+              _0: pluginDefinition$2
+            };
+          case "IncompatiblePluginDetected" :
+          case "UIFragmentRegistered" :
+          case "UIFragmentUpdated" :
+          case "UIFragmentDeregistered" :
+            return state;
+          default:
+            throw {
+              RE_EXN_ID: Message$ReventlessCore.InvalidEvent,
+              _1: Message$ReventlessCore.encode(event, PluginSpec$ReventlessCore.eventSchema),
+              Error: new Error()
+            };
+        }
+      case "Retired" :
+        if (typeof event !== "object") {
+          throw {
+            RE_EXN_ID: Message$ReventlessCore.InvalidEvent,
+            _1: Message$ReventlessCore.encode(event, PluginSpec$ReventlessCore.eventSchema),
+            Error: new Error()
+          };
+        }
+        switch (event.TAG) {
+          case "Reconnected" :
+            return {
+              TAG: "Connected",
               _0: state._0
             };
+          case "Retired" :
           case "IncompatiblePluginDetected" :
           case "UIFragmentRegistered" :
           case "UIFragmentUpdated" :

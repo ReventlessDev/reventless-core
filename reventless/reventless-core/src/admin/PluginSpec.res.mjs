@@ -83,7 +83,8 @@ let errorSchema = S.union([
   S.literal("NotExisting"),
   S.literal("AlreadyConnected"),
   S.literal("IsDisconnected"),
-  S.literal("IsInactive")
+  S.literal("IsInactive"),
+  S.literal("IsRetired")
 ]);
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
