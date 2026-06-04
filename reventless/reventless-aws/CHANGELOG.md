@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.139 (2026-06-04)
+
+### Bug Fixes
+
+* **aws:** repair StateTopic channel format so admin Plugins list live-updates ([7aaa563](https://github.com/ReventlessDev/reventless-core/commit/7aaa563246c647a913da440bd382c20c953231ab))
+* **aws:** surface StateTopic publish failures and bound ESM retries ([1b0de23](https://github.com/ReventlessDev/reventless-core/commit/1b0de23c0a212ee88e9c7a54c69a511d48c896fd))
+* **aws:** widen EventLogSubscription channel-name rule for parity with StateTopic ([913b17f](https://github.com/ReventlessDev/reventless-core/commit/913b17ff934640e06bda1eb012b913a27ff61ef2))
+
+
 # 3.0.0-alpha.138 (2026-06-04)
 
 ### Bug Fixes
