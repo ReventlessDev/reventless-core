@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.138 (2026-06-04)
+
+### Bug Fixes
+
+* **aws:** tag Retire command with service: "Plugin" so projection picks it up ([e1c7efd](https://github.com/ReventlessDev/reventless-core/commit/e1c7efd5d26b57e5b4caeecebf7dff77e97b8a9a))
+
+
 # 3.0.0-alpha.137 (2026-06-04)
 
 ### Bug Fixes
