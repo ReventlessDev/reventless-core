@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.37 (2026-06-04)
+
+### Bug Fixes
+
+* **aws:** repair StateTopic channel format so admin Plugins list live-updates ([7aaa563](https://github.com/ReventlessDev/reventless-core/commit/7aaa563246c647a913da440bd382c20c953231ab))
+
+
 # 1.0.0-alpha.36 (2026-05-25)
 
 **Note:** Version bump only for package doc
