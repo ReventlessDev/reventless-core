@@ -132,20 +132,27 @@ a namespace that does not exist, so AWS silently delivers nothing.
    │          │               composite-key: "<id>-<subIdValue>"
    │          │
    │          └─ the read model's GraphQL LIST field name (see below),
-   │             with "_" normalised to "-".
+   │             sanitised so every non-[A-Za-z0-9-] char becomes "-".
    │
    └─ the channel namespace (always "default").
 ```
 
-### Segment normalisation: `_` → `-`
+### Segment normalisation: collapse to `[A-Za-z0-9-]`
 
-AppSync Events channel segments allow `[A-Za-z0-9-]` but **not underscores**. Both
-the publisher and the subscriber normalise `_` → `-` on every segment:
+AppSync Events channel segments allow only `[A-Za-z0-9-]`. Every other char —
+`_`, `@`, `.`, `:`, `/`, … — must collapse to `-` on **both** ends, otherwise the
+publisher hits `BadRequestException: Invalid Channel Format` and no descriptor
+ever reaches the browser. Both ends apply the same rule:
 
-- Publisher: `StateTopic_AppSync` handler — `topicRoot = topicName.replaceAll("_","-")`, and `segment(value)` for the entity key.
-- Subscriber: `AutoLive.normalizeSegment` — `s.replaceAll("_","-")`.
+- Publisher: `StateTopic_AppSync` handler — `pathSegment(value)` runs `value.replace(/[^A-Za-z0-9-]/g, "-")` on `topicRoot` and on the entityKey **on the URL path only**. The descriptor body's `id` keeps the original (unsanitised) entity key so the UI can match it against `row.id` from GraphQL.
+- Subscriber: `AutoLive.normalizeSegment` — `s.replaceRegExp(/[^A-Za-z0-9-]/g, "-")`, applied to the channel root and to the Entity-scope key when building the subscribe URL.
 
-So `Catalog_Products` becomes `Catalog-Products` on the wire on both sides.
+So `Catalog_Products` becomes `Catalog-Products`, and a plugin entity id like
+`Ordering@1.0.0-alpha.72` becomes `Ordering-1-0-0-alpha-72` — on the wire on
+both sides. **Historical note:** an earlier rule only normalised underscores,
+which silently broke the Plugins admin RM whose ids carry `@` and `.`. Keep the
+two ends in lock-step: a publisher-only widening of the rule still breaks
+Entity-scoped subscribes.
 
 ### The channel root **is the list field name** (invariant #2)
 

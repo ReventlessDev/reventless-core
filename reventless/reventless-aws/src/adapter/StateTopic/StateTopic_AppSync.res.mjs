@@ -50,11 +50,12 @@ async function signedHeaders(host, path, body) {
   return { ...headers, Authorization: \`AWS4-HMAC-SHA256 Credential=\${accessKeyId}/\${scope}, SignedHeaders=\${signH}, Signature=\${sig}\` };
 }
 
-// AppSync Events channel segments allow [A-Za-z0-9-]; values may carry "_"
-// or other separators. Underscores are normalised to "-" so the URL-encoded
-// segment never breaks the channel grammar.
-function segment(value) {
-  return String(value).replaceAll("_", "-");
+// AppSync Events channel segments allow only [A-Za-z0-9-]. Anything else
+// (\`@\`, \`.\`, \`:\`, \`_\`, \`/\`, …) collapses to \`-\` so the segment is a
+// legal channel-path token. The UI's AutoLive.normalizeSegment uses the same
+// rule for Entity-scoped subscribes.
+function pathSegment(value) {
+  return String(value).replace(/[^A-Za-z0-9-]/g, "-");
 }
 
 // Map record.eventSourceARN → topicRoot via STATE_TOPIC_MAP.
@@ -64,12 +65,15 @@ function topicRootFromEventSourceArn(arn) {
   if (!m) return undefined;
   const topicName = TOPIC_MAP[m[1]];
   if (topicName === undefined) return undefined;
-  return topicName.replaceAll("_", "-");
+  return pathSegment(topicName);
 }
 
 // Build entityKey from record.dynamodb.Keys. Framework convention:
 // partition-key attr is named "id"; composite tables have one extra attr (the
 // sort key) whose name comes from the projection's subIdConfig.subIdField.
+// Returns the ORIGINAL key string — the descriptor body uses this verbatim so
+// AutoListView can match it against the GraphQL row.id. The channel path
+// segment is derived later via pathSegment().
 function entityKeyFromRecord(record) {
   const keys = unmarshall(record.dynamodb.Keys ?? {});
   const id = keys.id;
@@ -77,12 +81,12 @@ function entityKeyFromRecord(record) {
     // Defensive: framework always names the partition key "id". If a future
     // table breaks the convention, fall back to a stable sort-join.
     const names = Object.keys(keys).sort();
-    return names.map((n) => segment(keys[n])).join("-");
+    return names.map((n) => String(keys[n])).join("-");
   }
   const subIdName = Object.keys(keys).find((k) => k !== "id");
   return subIdName === undefined
-    ? segment(id)
-    : segment(id) + "-" + segment(keys[subIdName]);
+    ? String(id)
+    : String(id) + "-" + String(keys[subIdName]);
 }
 
 // Map DDB stream eventName → descriptor changeKind.
@@ -119,7 +123,7 @@ export async function handler(event) {
         : record.dynamodb.NewImage;
     if (image === undefined) continue;
     const entityKey = entityKeyFromRecord(record);
-    const channel = channelRoot + "/" + entityKey;
+    const channel = channelRoot + "/" + pathSegment(entityKey);
     const unmarshalled = unmarshall(image);
     const descriptor = {
       changeKind: changeKindFor(record.eventName),
