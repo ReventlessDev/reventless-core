@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "rescript build",
-    "start": "rescript build -w",
+    "start": "rescript watch",
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "deploy": "./scripts/deploy.sh",

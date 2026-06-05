@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "build": "rescript build",
-    "start": "rescript build -w",
+    "start": "rescript watch",
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "test": "echo \"There are no tests for rescript-uuid.\"",
