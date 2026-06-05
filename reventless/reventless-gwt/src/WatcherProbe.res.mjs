@@ -13,12 +13,11 @@ function isAlive(pid) {
   }
 }
 
-function lockPath(dir) {
-  return Nodepath.join(Nodepath.join(dir, "lib"), "rescript.lock");
+function libLock(dir, name) {
+  return Nodepath.join(Nodepath.join(dir, "lib"), name);
 }
 
-function hasLiveWatcher(dir) {
-  let lock = lockPath(dir);
+function lockHasLivePid(lock) {
   if (!Nodefs.existsSync(lock)) {
     return false;
   }
@@ -30,9 +29,18 @@ function hasLiveWatcher(dir) {
   }
 }
 
+function hasLiveWatcher(dir) {
+  if (lockHasLivePid(libLock(dir, "watch.lock"))) {
+    return true;
+  } else {
+    return lockHasLivePid(libLock(dir, "rescript.lock"));
+  }
+}
+
 export {
   isAlive,
-  lockPath,
+  libLock,
+  lockHasLivePid,
   hasLiveWatcher,
 }
 /* node:fs Not a pure module */
