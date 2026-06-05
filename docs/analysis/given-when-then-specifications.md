@@ -553,21 +553,24 @@ Every `--format=vscode` invocation emits a `hello` line first so a client can de
 and ignore unknown events:
 
 ```
-{"event":"hello","protocol":1}
+{"event":"hello","protocol":2}
 ```
+
+Protocol 2 added the `components` inventory event and the `component` field on file `item`s (Plugin → kind →
+component grouping); a protocol-1 client simply ignores both.
 
 ##### Discovery stream
 
 ```
 {"event":"discoverStart"}
-{"event":"item","id":"CategoryBehavior_GWT.res","kind":"file","label":"CategoryBehavior_GWT.res","uri":"file:///.../CategoryBehavior_GWT.res"}
+{"event":"item","id":"CategoryBehavior_GWT.res","kind":"file","label":"CategoryBehavior_GWT.res","uri":"file:///.../CategoryBehavior_GWT.res","component":{"kind":"Aggregate","name":"Category"}}
 {"event":"item","id":"CategoryBehavior_GWT.res::CategoryBehavior","parent":"CategoryBehavior_GWT.res","kind":"suite","label":"CategoryBehavior","range":{"start":{"line":7,"character":0},"end":{"line":78,"character":1}}}
 {"event":"item","id":"...CategoryBehavior::Add","parent":"...CategoryBehavior","kind":"suite","label":"Add","range":{"start":{"line":8,"character":2},"end":{"line":24,"character":3}}}
 {"event":"item","id":"...Add::on new aggregate produces Added","parent":"...Add","kind":"test","label":"on new aggregate produces Added","range":{"start":{"line":10,"character":4},"end":{"line":14,"character":5}}}
 {"event":"discoverEnd","total":14}
 ```
 
-Each `item` event carries the exact fields a VS Code extension needs: `id` (used as `TestItem.id`), `parent` (for nesting), `kind` (`file`/`suite`/`test`), `label`, `uri` + `range` (for jump-to-source).
+Each `item` event carries the exact fields a VS Code extension needs: `id` (used as `TestItem.id`), `parent` (for nesting), `kind` (`file`/`suite`/`test`), `label`, `uri` + `range` (for jump-to-source). File items additionally carry `component` (`{kind, name}` derived from the folder convention) so a client groups tests by Plugin → component without parsing source.
 
 ##### Run stream
 
@@ -611,6 +614,17 @@ with a `start` script), and `build*` events report each managed `rescript build 
 | `packages` | record the build set (status-bar grouping) |
 | `buildStart` / `buildOk` / `buildFail` | status-bar state + "Reventless GWT — Build" output channel |
 | `buildExternal` | mark the package as covered by the user's own watcher |
+| `components` | full component inventory → activity-bar Plugin→kind→component tree + "untested slice" signal |
+
+`discover` and `watch` also emit a `components` event: the full set of components found in each owning
+package's `src/` (by folder convention — Aggregate / StateChangeSlice / ReadModel / …), **including
+components with no GWT tests**. `dir` matches the `packages` event so a client joins them per plugin; tests
+join via the `component` field on each file `item`. The difference (components present vs components with a
+test file) is the coverage signal.
+
+```
+{"event":"components","components":[{"dir":"/abs/catalog","kind":"Aggregate","name":"Category"},{"dir":"/abs/catalog","kind":"ReadModel","name":"CatalogActivity"}]}
+```
 
 The CLI owns the watchers (spawn, classify output, tear down on SIGINT via its process group); the extension
 only renders. Conflict avoidance lives CLI-side: `buildExternal` is emitted when `lib/rescript.lock` holds a
