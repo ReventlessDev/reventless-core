@@ -27,10 +27,10 @@
     "@smithy/node-http-handler": "^4.5.3"
   },
   "devDependencies": {
-    "rescript": "^12.2.0"
+    "rescript": "^12.3.0"
   },
   "peerDependencies": {
-    "rescript": "^12.2.0"
+    "rescript": "^12.3.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

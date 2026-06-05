@@ -15,10 +15,10 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "rescript": "^12.2.0"
+    "rescript": "^12.3.0"
   },
   "peerDependencies": {
-    "rescript": "^12.2.0"
+    "rescript": "^12.3.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

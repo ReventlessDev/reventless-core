@@ -37,7 +37,7 @@
     "@reventlessdev/reventless-aws": "workspace:*",
     "@reventlessdev/online-shop-hybrid-platform-aws": "workspace:*",
     "lerna": "^8.2.4",
-    "rescript": "^12.2.0",
+    "rescript": "^12.3.0",
     "yaml": "^2.8.3"
   },
   "scripts": {

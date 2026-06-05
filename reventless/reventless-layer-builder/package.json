@@ -19,7 +19,7 @@
     "url": "https://github.com/ReventlessDev/reventless-core/issues"
   },
   "devDependencies": {
-    "rescript": "^12.2.0"
+    "rescript": "^12.3.0"
   },
   "dependencies": {
     "@npmcli/arborist": "^9.4.2",

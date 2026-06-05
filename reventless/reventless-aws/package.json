@@ -33,12 +33,12 @@
   },
   "devDependencies": {
     "@glennsl/rescript-jest": "^0.13.1",
-    "rescript": "^12.2.0",
+    "rescript": "^12.3.0",
     "sury": "11.0.0-alpha.4",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {
-    "rescript": "^12.2.0"
+    "rescript": "^12.3.0"
   },
   "jest": {
     "setupFiles": [

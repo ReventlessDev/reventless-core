@@ -36,7 +36,7 @@ function walk(pathOpt, expected, actual, acc) {
         continue;
       };
     }
-  } else {
+  } else if (expected !== null) {
     switch (typeof expected) {
       case "object" :
         if (typeof actual === "object" && actual !== null && !Array.isArray(actual)) {
