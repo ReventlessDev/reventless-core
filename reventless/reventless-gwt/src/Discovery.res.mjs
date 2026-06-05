@@ -7,7 +7,8 @@ let ignoreNames = [
   "node_modules",
   ".git",
   "dist",
-  "lib"
+  "lib",
+  ".history"
 ];
 
 function shouldIgnore(name) {

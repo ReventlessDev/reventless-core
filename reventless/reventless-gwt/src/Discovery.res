@@ -1,9 +1,10 @@
 // Walks a directory tree and returns absolute paths of compiled GWT test
 // files (`*_GWT.res.mjs` plus `*GwtTest.res.mjs` — the two shapes used in
 // the monorepo today). Respects a minimal ignore set (`node_modules`,
-// `lib`, `.git`, `dist`). Full `.gitignore` parsing is out of scope for
-// Stage 7 — the runner is always invoked with explicit `tests/` directories
-// in practice.
+// `lib`, `.git`, `dist`, `.history`). Pruning `lib` covers compiled
+// `lib/bs` / `lib/ocaml` outputs. Full `.gitignore` parsing is out of scope;
+// the ignore set is enough to make a bare cwd scan (the auto-discovery
+// default) cheap and correct across a multi-package workspace.
 
 type dirent = {
   name: string,
@@ -27,7 +28,7 @@ type stats = {
 @module("node:path") external isAbsolute: string => bool = "isAbsolute"
 @module("node:path") external resolve: string => string = "resolve"
 
-let ignoreNames = ["node_modules", ".git", "dist", "lib"]
+let ignoreNames = ["node_modules", ".git", "dist", "lib", ".history"]
 let shouldIgnore = (name: string) => Array.includes(ignoreNames, name)
 
 let isGwtTestFile = (name: string) =>

@@ -157,4 +157,15 @@ describe("Cli.parseArgv", () => {
     | Error(msg) => expect(msg->String.includes("Unknown flag"))->toEqual(true)
     }
   })
+
+  testPromise("no path argument defaults to the cwd subtree (auto-discovery)", async () => {
+    let argv = ["/bin/node", "/path/to/bin", "watch", "--format=vscode"]
+    switch Cli.parseArgv(argv) {
+    | Ok(opts) => {
+        expect(opts.subcommand == Watch)->toEqual(true)
+        expect(opts.roots)->toEqual(["."])
+      }
+    | Error(msg) => JsError.throwWithMessage("expected Ok, got: " ++ msg)
+    }
+  })
 })

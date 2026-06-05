@@ -134,6 +134,20 @@ let locationJson = (loc: Collector.location): JSON.t => {
 
 let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.object(payload)))
 
+// Bumped whenever the event contract changes (new events, renamed fields). The
+// extension reads it from the `hello` line and degrades gracefully on mismatch
+// (e.g. ignores unknown `build*` events from a newer CLI).
+let protocolVersion = 1
+
+// First line of every `--format=vscode` invocation, so a client can detect a
+// version-skewed CLI before interpreting the stream.
+let hello = () => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("hello"))
+  d->Dict.set("protocol", JSON.Encode.int(protocolVersion))
+  event(d)
+}
+
 let discoverStart = () => {
   let d = Dict.make()
   d->Dict.set("event", JSON.Encode.string("discoverStart"))
@@ -222,6 +236,60 @@ let discoverEnd = (total: int) => {
   let d = Dict.make()
   d->Dict.set("event", JSON.Encode.string("discoverEnd"))
   d->Dict.set("total", JSON.Encode.int(total))
+  event(d)
+}
+
+// The set of workspace packages owning discovered tests — the build set a watch
+// session keeps compiling. Emitted in both `discover` and `watch` so any client
+// (or CI) can drive `rescript build -w` per package without its own derivation.
+let packages = (pkgs: array<PackageScan.pkg>) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("packages"))
+  let arr = pkgs->Array.map(p => {
+    let o = Dict.make()
+    o->Dict.set("name", JSON.Encode.string(p.name))
+    o->Dict.set("dir", JSON.Encode.string(p.dir))
+    o->Dict.set("build", JSON.Encode.string(p.build))
+    JSON.Encode.object(o)
+  })
+  d->Dict.set("packages", JSON.Encode.array(arr))
+  event(d)
+}
+
+// ─── Build status (watch mode) ──────────────────────────────────────────────
+// The managed `rescript build -w` per package surfaces its state so the client
+// renders progress without parsing compiler output itself. `package` is the
+// package directory (matching the `dir` in the `packages` event).
+
+let buildStart = (pkg: string) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("buildStart"))
+  d->Dict.set("package", JSON.Encode.string(pkg))
+  event(d)
+}
+
+let buildOk = (pkg: string, durationMs: float) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("buildOk"))
+  d->Dict.set("package", JSON.Encode.string(pkg))
+  d->Dict.set("durationMs", JSON.Encode.float(durationMs))
+  event(d)
+}
+
+let buildFail = (pkg: string, message: string) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("buildFail"))
+  d->Dict.set("package", JSON.Encode.string(pkg))
+  d->Dict.set("message", JSON.Encode.string(message))
+  event(d)
+}
+
+// Emitted instead of spawning when a developer's own `rescript build -w`
+// already holds the package's live lock — the client shows it as covered.
+let buildExternal = (pkg: string) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("buildExternal"))
+  d->Dict.set("package", JSON.Encode.string(pkg))
   event(d)
 }
 

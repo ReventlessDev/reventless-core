@@ -142,6 +142,12 @@ let parseFrame = (frame: string): option<location> => {
     } else {
       file
     }
+    // Strip the Loader's `?t=N` cache-busting query so locations point at the
+    // real file path.
+    let file = switch String.indexOf(file, "?") {
+    | -1 => file
+    | q => String.slice(file, ~start=0, ~end=q)
+    }
     switch (line, col) {
     | (Some(l), Some(c)) => Some({file, line: l, column: c})
     | _ => None

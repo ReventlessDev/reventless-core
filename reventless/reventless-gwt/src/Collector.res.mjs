@@ -133,9 +133,11 @@ function parseFrame(frame) {
   let line = Stdlib_Int.fromString(parts[n - 2 | 0], undefined);
   let file = parts.slice(0, n - 2 | 0).join(":");
   let file$1 = file.startsWith("file://") ? file.slice(7, file.length) : file;
+  let q = file$1.indexOf("?");
+  let file$2 = q !== -1 ? file$1.slice(0, q) : file$1;
   if (line !== undefined && col !== undefined) {
     return {
-      file: file$1,
+      file: file$2,
       line: line,
       column: col
     };

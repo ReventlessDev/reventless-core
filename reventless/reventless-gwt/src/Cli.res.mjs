@@ -9,12 +9,16 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as Collector$ReventlessGwt from "./Collector.res.mjs";
 import * as Discovery$ReventlessGwt from "./Discovery.res.mjs";
+import * as PackageScan$ReventlessGwt from "./PackageScan.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
 import * as Cancellation$ReventlessGwt from "./Cancellation.res.mjs";
 import * as FormatterTap$ReventlessGwt from "./FormatterTap.res.mjs";
+import * as WatcherProbe$ReventlessGwt from "./WatcherProbe.res.mjs";
 import * as FormatterJson$ReventlessGwt from "./FormatterJson.res.mjs";
 import * as FormatterHuman$ReventlessGwt from "./FormatterHuman.res.mjs";
 import * as FormatterJunit$ReventlessGwt from "./FormatterJunit.res.mjs";
+import * as ProcessManager$ReventlessGwt from "./ProcessManager.res.mjs";
+import * as BuildClassifier$ReventlessGwt from "./BuildClassifier.res.mjs";
 import * as FormatterVsCode$ReventlessGwt from "./FormatterVsCode.res.mjs";
 
 let toolVersion = "0.1.0";
@@ -57,7 +61,7 @@ function parseFormat(s) {
 }
 
 function defaultRoots() {
-  return ["tests"];
+  return ["."];
 }
 
 function help() {
@@ -233,7 +237,7 @@ Exit code is 1 if any test failed, 0 otherwise.
         watch: watch,
         filters: filters,
         schemaVersion: schemaVersion,
-        roots: roots.length === 0 ? ["tests"] : roots,
+        roots: roots.length === 0 ? ["."] : roots,
         toolVersion: toolVersion
       }
     };
@@ -451,8 +455,7 @@ async function runOnce(opts) {
   }
 }
 
-async function runDiscover(opts) {
-  let paths = await Discovery$ReventlessGwt.discover(opts.roots);
+async function emitDiscovery(paths) {
   FormatterVsCode$ReventlessGwt.discoverStart();
   let fileTests = [];
   for (let i = 0, i_finish = paths.length; i < i_finish; ++i) {
@@ -476,12 +479,38 @@ async function runDiscover(opts) {
   }
   FormatterVsCode$ReventlessGwt.emitDiscoveryItems(fileTests);
   let total = Stdlib_Array.reduce(fileTests, 0, (a, param) => a + param[1].length | 0);
-  FormatterVsCode$ReventlessGwt.discoverEnd(total);
+  FormatterVsCode$ReventlessGwt.packages(PackageScan$ReventlessGwt.scan(paths));
+  return FormatterVsCode$ReventlessGwt.discoverEnd(total);
+}
+
+async function runDiscover(opts) {
+  let paths = await Discovery$ReventlessGwt.discover(opts.roots);
+  await emitDiscovery(paths);
   return 0;
+}
+
+function startBuildWatchers(paths) {
+  Cancellation$ReventlessGwt.onCancel(ProcessManager$ReventlessGwt.killAll);
+  PackageScan$ReventlessGwt.scan(paths).forEach(pkg => {
+    if (WatcherProbe$ReventlessGwt.hasLiveWatcher(pkg.dir)) {
+      return FormatterVsCode$ReventlessGwt.buildExternal(pkg.dir);
+    }
+    let feed = BuildClassifier$ReventlessGwt.make({
+      onStart: () => FormatterVsCode$ReventlessGwt.buildStart(pkg.dir),
+      onOk: ms => FormatterVsCode$ReventlessGwt.buildOk(pkg.dir, ms),
+      onFail: msg => FormatterVsCode$ReventlessGwt.buildFail(pkg.dir, msg)
+    });
+    ProcessManager$ReventlessGwt.spawnWatcher(pkg, (_dir, line) => feed(line));
+  });
 }
 
 async function runWatch(opts) {
   let roots = opts.roots;
+  if (opts.format === "VsCode") {
+    let paths = await Discovery$ReventlessGwt.discover(roots);
+    await emitDiscovery(paths);
+    startBuildWatchers(paths);
+  }
   let runInProgress = {
     contents: false
   };
@@ -509,7 +538,7 @@ async function runWatch(opts) {
   Watch$ReventlessGwt.start(roots, _path => {
     run();
   });
-  new Promise((_resolve, _reject) => {});
+  await new Promise((resolve, _reject) => Cancellation$ReventlessGwt.onCancel(() => resolve()));
   return 0;
 }
 
@@ -519,6 +548,9 @@ async function main() {
   let msg = parseArgv(args);
   if (msg.TAG === "Ok") {
     let opts = msg._0;
+    if (opts.format === "VsCode") {
+      FormatterVsCode$ReventlessGwt.hello();
+    }
     let match = opts.subcommand;
     switch (match) {
       case "Run" :
@@ -551,7 +583,9 @@ export {
   runFiles,
   emitResult,
   runOnce,
+  emitDiscovery,
   runDiscover,
+  startBuildWatchers,
   runWatch,
   main,
 }
