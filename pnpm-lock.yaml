@@ -92,8 +92,8 @@ importers:
         specifier: ^8.2.4
         version: 8.2.4(@types/node@25.6.0)(babel-plugin-macros@3.1.0)(encoding@0.1.13)
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       yaml:
         specifier: ^2.8.3
         version: 2.8.3
@@ -114,7 +114,7 @@ importers:
         version: link:../../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -123,11 +123,11 @@ importers:
         specifier: workspace:*
         version: link:../../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/codegen/dilger/user-management:
     dependencies:
@@ -145,7 +145,7 @@ importers:
         version: link:../../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -154,11 +154,11 @@ importers:
         specifier: workspace:*
         version: link:../../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-aggregates/catalog:
     dependencies:
@@ -182,7 +182,7 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -194,11 +194,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-aggregates/catalog-spec:
     dependencies:
@@ -207,17 +207,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-aggregates/ordering:
     dependencies:
@@ -241,7 +241,7 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -253,11 +253,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-aggregates/ordering-spec:
     dependencies:
@@ -266,17 +266,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-aggregates/platform-in-memory:
     dependencies:
@@ -306,14 +306,14 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-dcb/catalog:
     dependencies:
@@ -346,14 +346,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-dcb/catalog-spec:
     dependencies:
@@ -362,17 +362,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-dcb/ordering:
     dependencies:
@@ -405,14 +405,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-dcb/ordering-spec:
     dependencies:
@@ -421,17 +421,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-dcb/platform-in-memory:
     dependencies:
@@ -464,14 +464,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/catalog:
     dependencies:
@@ -495,7 +495,7 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -507,11 +507,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/catalog-aws:
     dependencies:
@@ -538,17 +538,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/catalog-spec:
     dependencies:
@@ -557,17 +557,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/ordering:
     dependencies:
@@ -591,7 +591,7 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -603,11 +603,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/ordering-aws:
     dependencies:
@@ -634,17 +634,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/ordering-spec:
     dependencies:
@@ -653,17 +653,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/platform-aws:
     dependencies:
@@ -675,7 +675,7 @@ importers:
         version: link:../../../reventless/reventless-aws
       '@reventlessdev/reventless-host-shell':
         specifier: 3.0.0-alpha.26
-        version: 3.0.0-alpha.26(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        version: 3.0.0-alpha.26(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -684,17 +684,17 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   examples/online-shop-hybrid/platform-in-memory:
     dependencies:
@@ -724,7 +724,7 @@ importers:
         version: link:../../../reventless/reventless-spec
       sury:
         specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
@@ -737,11 +737,11 @@ importers:
         version: link:../../../packages/reventless-ppx
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     optionalDependencies:
       '@reventlessdev/reventless-host-shell':
         specifier: 3.0.0-alpha.26
-        version: 3.0.0-alpha.26(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+        version: 3.0.0-alpha.26(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   packages/doc:
     dependencies:
@@ -865,8 +865,8 @@ importers:
         version: 4.6.0
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-effect:
     dependencies:
@@ -884,8 +884,8 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-fast-csv:
     dependencies:
@@ -897,8 +897,8 @@ importers:
         version: 5.0.5
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-graphql-yoga:
     dependencies:
@@ -910,8 +910,8 @@ importers:
         version: 5.21.0(graphql@16.13.2)
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-hash-object:
     dependencies:
@@ -920,8 +920,8 @@ importers:
         version: 5.1.0
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-mcp-sdk:
     dependencies:
@@ -933,8 +933,8 @@ importers:
         version: 3.25.76
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-moment:
     devDependencies:
@@ -948,14 +948,14 @@ importers:
         specifier: ^2.30.1
         version: 2.30.1
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-node-streams:
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-node-zlib:
     dependencies:
@@ -967,8 +967,8 @@ importers:
         version: link:../rescript-node-streams
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-pulumi-aws:
     dependencies:
@@ -989,14 +989,14 @@ importers:
         specifier: ^0.25.12
         version: 0.25.12
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   rescript/rescript-pulumi-pulumi:
     dependencies:
@@ -1005,8 +1005,8 @@ importers:
         version: 3.224.0(typescript@5.9.3)
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-ssh2:
     dependencies:
@@ -1021,8 +1021,8 @@ importers:
         version: 1.17.0
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   rescript/rescript-uuid:
     dependencies:
@@ -1031,8 +1031,8 @@ importers:
         version: 13.0.0
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   reventless/reventless-aws:
     dependencies:
@@ -1077,30 +1077,30 @@ importers:
         specifier: ^0.13.1
         version: 0.13.1
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   reventless/reventless-codegen:
     dependencies:
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   reventless/reventless-conventional-changelog: {}
 
@@ -1147,14 +1147,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   reventless/reventless-gwt:
     dependencies:
@@ -1184,14 +1184,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   reventless/reventless-in-memory:
     dependencies:
@@ -1239,14 +1239,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/reventless-ppx
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
   reventless/reventless-infra:
     dependencies:
@@ -1264,17 +1264,17 @@ importers:
         version: link:../reventless-spec
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   reventless/reventless-interop:
     dependencies:
@@ -1283,17 +1283,17 @@ importers:
         version: link:../../rescript/rescript-pulumi-pulumi
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     devDependencies:
       '@glennsl/rescript-jest':
         specifier: ^0.13.1
         version: 0.13.1
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   reventless/reventless-layer-builder:
     dependencies:
@@ -1317,8 +1317,8 @@ importers:
         version: 1.1.7
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
   reventless/reventless-spec:
     dependencies:
@@ -1327,14 +1327,14 @@ importers:
         version: 1.1.1
       sury:
         specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.2.0)
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0))
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     devDependencies:
       rescript:
-        specifier: ^12.2.0
-        version: 12.2.0
+        specifier: ^12.3.0
+        version: 12.3.0
 
 packages:
 
@@ -4899,26 +4899,26 @@ packages:
       react-dom: ^18.0.0
       rescript: ^11.0.0
 
-  '@rescript/darwin-arm64@12.2.0':
-    resolution: {integrity: sha512-xc3K/J7Ujl1vPiFY2009mRf3kWRlUe/VZyJWprseKxlcEtUQv89ter7r6pY+YFbtYvA/fcaEncL9CVGEdattAg==}
+  '@rescript/darwin-arm64@12.3.0':
+    resolution: {integrity: sha512-tw0E+XcpPoFj3KizsT5qS/5O/dILi0NBZAz5I8ONK+F43qcqDJDDO+Ise45rGoNWhjwt9WOerYnOd0eUe3U9GA==}
     engines: {node: '>=20.11.0'}
     cpu: [arm64]
     os: [darwin]
 
-  '@rescript/darwin-x64@12.2.0':
-    resolution: {integrity: sha512-qqcTvnlSeoKkywLjG7cXfYvKZ1e4Gz2kUKcD6SiqDgCqm8TF+spwlFAiM6sloRUOFsc0bpC/0R0B3yr01FCB1A==}
+  '@rescript/darwin-x64@12.3.0':
+    resolution: {integrity: sha512-dW2R31PpBvPjSy50mSd9zKOT3dFw/gKtsUZoML81fPuXPJh0h5rwu9z3S40UUUzOa68uKNxXcVLrG1RAgs20Bw==}
     engines: {node: '>=20.11.0'}
     cpu: [x64]
     os: [darwin]
 
-  '@rescript/linux-arm64@12.2.0':
-    resolution: {integrity: sha512-ODmpG3ji+Nj/8d5yvXkeHlfKkmbw1Q4t1iIjVuNwtmFpz7TiEa7n/sQqoYdE+WzbDX3DoJfmJNbp3Ob7qCUoOg==}
+  '@rescript/linux-arm64@12.3.0':
+    resolution: {integrity: sha512-4GImq346kefHtaMhruFxVwWmr2shWEGQzAGdgZzn5zNWFN32hOXnztHjSFUmj5gmK9fFbidx/oB3BwdbRp5QFQ==}
     engines: {node: '>=20.11.0'}
     cpu: [arm64]
     os: [linux]
 
-  '@rescript/linux-x64@12.2.0':
-    resolution: {integrity: sha512-2W9Y9/g19Y4F/subl8yV3T8QBG2oRaP+HciNRcBjptyEdw9LmCKH8+rhWO6sp3E+nZLwoE2IAkwH0WKV3wqlxQ==}
+  '@rescript/linux-x64@12.3.0':
+    resolution: {integrity: sha512-0bPcKI0M38EpoFbhLz2w8ZAY3oZ0GWChwcDn43AN2EAWGLiCORhLP6biqRDg37jK/Bh8Y0MhYzjNWIeHoEDINQ==}
     engines: {node: '>=20.11.0'}
     cpu: [x64]
     os: [linux]
@@ -4929,14 +4929,14 @@ packages:
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
 
-  '@rescript/runtime@12.2.0':
-    resolution: {integrity: sha512-NwfljDRq1rjFPHUaca1nzFz13xsa9ZGkBkLvMhvVgavJT5+A4rMcLu8XAaVTi/oAhO/tlHf9ZDoOTF1AfyAk9Q==}
+  '@rescript/runtime@12.3.0':
+    resolution: {integrity: sha512-8SRM2f6+LaWach8NJjYQVCCmu6KYmJCb+437L7YpaUpJBDyUOC1x0FF75shZ/Gid9guKPF3zMHrTNHLuyQkkiQ==}
 
   '@rescript/std@11.1.4':
     resolution: {integrity: sha512-coR+xPh0fS4Mx0bDFUG8I9KhYv7FEXISKa775jvqVeus1zlVJjYf19/qj7mTzgrRmyCnxKBRvrfAM/BXYNUFCQ==}
 
-  '@rescript/win32-x64@12.2.0':
-    resolution: {integrity: sha512-fhf8CBj3p1lkIXPeNko3mVTKQfXXm4BoxJtR1xAXxUn43wDpd8Lox4w8/EPBbbW6C/YFQW6H7rtpY+2AKuNaDA==}
+  '@rescript/win32-x64@12.3.0':
+    resolution: {integrity: sha512-TM1aLfn8IJFi0/ztVwHqQOcmJg4jWFCmXjrIS9Tif+6Gx8NdX8ttommUscUghe+Dn2pI382FvqPPNWRUR3AI8g==}
     engines: {node: '>=20.11.0'}
     cpu: [x64]
     os: [win32]
@@ -11381,8 +11381,8 @@ packages:
       react-relay:
         optional: true
 
-  rescript@12.2.0:
-    resolution: {integrity: sha512-1Jf2cmNhyx5Mj2vwZ4XXPcXvNSjGj9D1jPBUcoqIOqRpLPo1ch2Ta/7eWh23xAHWHK5ow7BCDyYFjvZSjyjLzg==}
+  rescript@12.3.0:
+    resolution: {integrity: sha512-xdnpEoDNoeYjZ8HHATwKJEfWti1Nqwx266edfUC8378a5AO1VvZElj2ZZ/SIJNFgUnohH9yDThB+CHEQfijxKw==}
     engines: {node: '>=20.11.0'}
     hasBin: true
 
@@ -19724,24 +19724,24 @@ snapshots:
 
   '@repeaterjs/repeater@3.0.6': {}
 
-  '@rescript-mui/material@5.1.3(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)':
+  '@rescript-mui/material@5.1.3(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)':
     dependencies:
       '@mui/material': 5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      rescript: 12.2.0
+      rescript: 12.3.0
 
-  '@rescript/darwin-arm64@12.2.0':
+  '@rescript/darwin-arm64@12.3.0':
     optional: true
 
-  '@rescript/darwin-x64@12.2.0':
+  '@rescript/darwin-x64@12.3.0':
     optional: true
 
-  '@rescript/linux-arm64@12.2.0':
+  '@rescript/linux-arm64@12.3.0':
     optional: true
 
-  '@rescript/linux-x64@12.2.0':
+  '@rescript/linux-x64@12.3.0':
     optional: true
 
   '@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
@@ -19749,32 +19749,32 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@rescript/runtime@12.2.0': {}
+  '@rescript/runtime@12.3.0': {}
 
   '@rescript/std@11.1.4': {}
 
-  '@rescript/win32-x64@12.2.0':
+  '@rescript/win32-x64@12.3.0':
     optional: true
 
-  '@reventlessdev/rescript-moment@0.10.0-alpha.7(moment@2.30.1)(rescript@12.2.0)':
+  '@reventlessdev/rescript-moment@0.10.0-alpha.7(moment@2.30.1)(rescript@12.3.0)':
     dependencies:
       moment: 2.30.1
-      rescript: 12.2.0
+      rescript: 12.3.0
 
-  '@reventlessdev/reventless-host-shell@3.0.0-alpha.26(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
+  '@reventlessdev/reventless-host-shell@3.0.0-alpha.26(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)':
     dependencies:
       '@aws-sdk/client-cognito-identity-provider': 3.1033.0
       '@module-federation/runtime': 0.18.4
       '@module-federation/vite': 1.15.4(node-fetch@2.7.0(encoding@0.1.13))(typescript@5.9.3)(vite@6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3))
-      '@reventlessdev/reventless-routes': 3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)
-      '@reventlessdev/reventless-ui': 3.0.0-alpha.24(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)
+      '@reventlessdev/reventless-routes': 3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)
+      '@reventlessdev/reventless-ui': 3.0.0-alpha.24(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.3.0)
       graphql-ws: 5.16.2(graphql@16.13.2)
       jwt-decode: 4.0.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-error-boundary: 4.1.2(react@18.3.1)
       react-relay: 18.2.0(encoding@0.1.13)(react@18.3.1)
-      rescript-relay: 4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@18.2.0(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)
+      rescript-relay: 4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@18.2.0(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)
       vite: 6.4.2(@types/node@25.6.0)(jiti@1.21.7)(terser@5.46.1)(yaml@2.8.3)
     transitivePeerDependencies:
       - '@mui/system'
@@ -19820,14 +19820,14 @@ snapshots:
   '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.33':
     optional: true
 
-  '@reventlessdev/reventless-routes@3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)':
+  '@reventlessdev/reventless-routes@3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)':
     dependencies:
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      rescript: 12.2.0
+      rescript: 12.3.0
 
-  '@reventlessdev/reventless-ui@3.0.0-alpha.24(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.2.0)':
+  '@reventlessdev/reventless-ui@3.0.0-alpha.24(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(luxon@3.7.2)(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(rescript@12.3.0)':
     dependencies:
       '@date-io/moment': 2.17.0(moment@2.30.1)
       '@emotion/react': 11.14.0(@types/react@19.2.14)(react@18.3.1)
@@ -19835,10 +19835,10 @@ snapshots:
       '@mui/icons-material': 5.18.0(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(react@18.3.1)
       '@mui/material': 5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@mui/x-date-pickers': 6.20.2(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(dayjs@1.11.20)(luxon@3.7.2)(moment@2.30.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@rescript-mui/material': 5.1.3(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)
+      '@rescript-mui/material': 5.1.3(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@reventlessdev/rescript-moment': 0.10.0-alpha.7(moment@2.30.1)(rescript@12.2.0)
-      '@reventlessdev/reventless-routes': 3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.2.0)
+      '@reventlessdev/rescript-moment': 0.10.0-alpha.7(moment@2.30.1)(rescript@12.3.0)
+      '@reventlessdev/reventless-routes': 3.0.0-alpha.5(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)
       '@rjsf/core': 5.24.13(@rjsf/utils@5.24.13(react@18.3.1))(react@18.3.1)
       '@rjsf/mui': 5.24.13(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@mui/icons-material@5.18.0(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@rjsf/core@5.24.13(@rjsf/utils@5.24.13(react@18.3.1))(react@18.3.1))(@rjsf/utils@5.24.13(react@18.3.1))(react@18.3.1)
       '@rjsf/utils': 5.24.13(react@18.3.1)
@@ -19854,7 +19854,7 @@ snapshots:
       react-relay: 20.1.1(encoding@0.1.13)(react@18.3.1)
       react-test-renderer: 18.3.1(react@18.3.1)
       relay-runtime: 20.1.1(encoding@0.1.13)
-      rescript-relay: 4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@20.1.1(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0)
+      rescript-relay: 4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@20.1.1(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)
     transitivePeerDependencies:
       - '@mui/system'
       - '@types/react'
@@ -28128,33 +28128,33 @@ snapshots:
 
   requires-port@1.0.0: {}
 
-  rescript-relay@4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@18.2.0(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0):
+  rescript-relay@4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@18.2.0(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0):
     dependencies:
       detect-libc: 2.1.2
       relay-runtime: 20.1.1(encoding@0.1.13)
-      rescript: 12.2.0
+      rescript: 12.3.0
     optionalDependencies:
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-relay: 18.2.0(encoding@0.1.13)(react@18.3.1)
 
-  rescript-relay@4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@20.1.1(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.2.0):
+  rescript-relay@4.4.1(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-relay@20.1.1(encoding@0.1.13)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0):
     dependencies:
       detect-libc: 2.1.2
       relay-runtime: 20.1.1(encoding@0.1.13)
-      rescript: 12.2.0
+      rescript: 12.3.0
     optionalDependencies:
       '@rescript/react': 0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-relay: 20.1.1(encoding@0.1.13)(react@18.3.1)
 
-  rescript@12.2.0:
+  rescript@12.3.0:
     dependencies:
-      '@rescript/runtime': 12.2.0
+      '@rescript/runtime': 12.3.0
     optionalDependencies:
-      '@rescript/darwin-arm64': 12.2.0
-      '@rescript/darwin-x64': 12.2.0
-      '@rescript/linux-arm64': 12.2.0
-      '@rescript/linux-x64': 12.2.0
-      '@rescript/win32-x64': 12.2.0
+      '@rescript/darwin-arm64': 12.3.0
+      '@rescript/darwin-x64': 12.3.0
+      '@rescript/linux-arm64': 12.3.0
+      '@rescript/linux-x64': 12.3.0
+      '@rescript/win32-x64': 12.3.0
 
   resolve-alpn@1.2.1: {}
 
@@ -28789,13 +28789,13 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  sury-ppx@11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.2.0)):
+  sury-ppx@11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0)):
     dependencies:
-      sury: 11.0.0-alpha.4(rescript@12.2.0)
+      sury: 11.0.0-alpha.4(rescript@12.3.0)
 
-  sury@11.0.0-alpha.4(rescript@12.2.0):
+  sury@11.0.0-alpha.4(rescript@12.3.0):
     optionalDependencies:
-      rescript: 12.2.0
+      rescript: 12.3.0
 
   svg-parser@2.0.4: {}
 

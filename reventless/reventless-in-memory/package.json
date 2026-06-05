@@ -49,12 +49,12 @@
     "@glennsl/rescript-jest": "^0.13.1",
     "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
-    "rescript": "^12.2.0",
+    "rescript": "^12.3.0",
     "sury": "11.0.0-alpha.4",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {
-    "rescript": "^12.2.0"
+    "rescript": "^12.3.0"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
