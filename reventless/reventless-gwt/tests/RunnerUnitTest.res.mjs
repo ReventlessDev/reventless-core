@@ -155,6 +155,21 @@ describe("Cli.parseArgv", () => {
     }
     expect(msg._0.includes("Unknown flag")).toEqual(true);
   });
+  test("no path argument defaults to the cwd subtree (auto-discovery)", async () => {
+    let argv = [
+      "/bin/node",
+      "/path/to/bin",
+      "watch",
+      "--format=vscode"
+    ];
+    let opts = Cli$ReventlessGwt.parseArgv(argv);
+    if (opts.TAG !== "Ok") {
+      return Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts._0);
+    }
+    let opts$1 = opts._0;
+    expect(opts$1.subcommand === "Watch").toEqual(true);
+    expect(opts$1.roots).toEqual(["."]);
+  });
 });
 
 export {

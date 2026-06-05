@@ -141,6 +141,13 @@ function event(payload) {
   process.stdout.write(s + "\n");
 }
 
+function hello() {
+  let d = {};
+  d["event"] = "hello";
+  d["protocol"] = 1;
+  event(d);
+}
+
 function discoverStart() {
   let d = {};
   d["event"] = "discoverStart";
@@ -221,6 +228,50 @@ function discoverEnd(total) {
   let d = {};
   d["event"] = "discoverEnd";
   d["total"] = total;
+  event(d);
+}
+
+function packages(pkgs) {
+  let d = {};
+  d["event"] = "packages";
+  let arr = pkgs.map(p => {
+    let o = {};
+    o["name"] = p.name;
+    o["dir"] = p.dir;
+    o["build"] = p.build;
+    return o;
+  });
+  d["packages"] = arr;
+  event(d);
+}
+
+function buildStart(pkg) {
+  let d = {};
+  d["event"] = "buildStart";
+  d["package"] = pkg;
+  event(d);
+}
+
+function buildOk(pkg, durationMs) {
+  let d = {};
+  d["event"] = "buildOk";
+  d["package"] = pkg;
+  d["durationMs"] = durationMs;
+  event(d);
+}
+
+function buildFail(pkg, message) {
+  let d = {};
+  d["event"] = "buildFail";
+  d["package"] = pkg;
+  d["message"] = message;
+  event(d);
+}
+
+function buildExternal(pkg) {
+  let d = {};
+  d["event"] = "buildExternal";
+  d["package"] = pkg;
   event(d);
 }
 
@@ -329,6 +380,8 @@ function runEnd(s) {
   event(d);
 }
 
+let protocolVersion = 1;
+
 export {
   write,
   writeLine,
@@ -346,9 +399,16 @@ export {
   rangeJson,
   locationJson,
   event,
+  protocolVersion,
+  hello,
   discoverStart,
   emitDiscoveryItems,
   discoverEnd,
+  packages,
+  buildStart,
+  buildOk,
+  buildFail,
+  buildExternal,
   runStart,
   testStart,
   testPass,

@@ -37,7 +37,11 @@ let parseFormat = (s: string) =>
   | other => Error("Unknown --format value: " ++ other)
   }
 
-let defaultRoots = () => ["tests"]
+// With no explicit path argument, scan the whole working-directory subtree.
+// `Discovery.walk` already prunes `node_modules`/`lib`/`.git`/`dist`/`.history`,
+// so pointing at the cwd auto-discovers every plugin's GWT tests in a
+// multi-package workspace (e.g. an example root) with no roots configured.
+let defaultRoots = () => ["."]
 
 let help = () => `reventless-gwt — Given/When/Then runner for Reventless slices
 
@@ -372,8 +376,9 @@ let runOnce = async (opts: options): int => {
   result.summary.failed > 0 ? 1 : 0
 }
 
-let runDiscover = async (opts: options): int => {
-  let paths = await Discovery.discover(opts.roots)
+// Emits the full VS Code discovery stream (tree items + `packages`) for a set
+// of already-discovered test files. Shared by `discover` and `watch`.
+let emitDiscovery = async (paths: array<string>): unit => {
   FormatterVsCode.discoverStart()
   let fileTests: array<(string, array<RunnerTypes.testResult>)> = []
   for i in 0 to paths->Array.length - 1 {
@@ -395,12 +400,45 @@ let runDiscover = async (opts: options): int => {
   }
   FormatterVsCode.emitDiscoveryItems(fileTests)
   let total = fileTests->Array.reduce(0, (a, (_, ts)) => a + ts->Array.length)
+  FormatterVsCode.packages(PackageScan.scan(paths))
   FormatterVsCode.discoverEnd(total)
+}
+
+let runDiscover = async (opts: options): int => {
+  let paths = await Discovery.discover(opts.roots)
+  await emitDiscovery(paths)
   0
+}
+
+// Spawns (or adopts) a `rescript build -w` per package owning tests, wiring its
+// output to build-status events. Only for the VS Code client — a human `watch`
+// in a terminal keeps the lean re-run-only loop.
+let startBuildWatchers = (paths: array<string>): unit => {
+  Cancellation.onCancel(ProcessManager.killAll)
+  PackageScan.scan(paths)->Array.forEach(pkg =>
+    if WatcherProbe.hasLiveWatcher(pkg.dir) {
+      // A developer's own watcher already covers this package — defer to it.
+      FormatterVsCode.buildExternal(pkg.dir)
+    } else {
+      let feed = BuildClassifier.make({
+        onStart: () => FormatterVsCode.buildStart(pkg.dir),
+        onOk: ms => FormatterVsCode.buildOk(pkg.dir, ms),
+        onFail: msg => FormatterVsCode.buildFail(pkg.dir, msg),
+      })
+      ProcessManager.spawnWatcher(pkg, ~onStdout=(_dir, line) => feed(line))
+    }
+  )
 }
 
 let runWatch = async (opts: options): int => {
   let roots = opts.roots
+  // For the VS Code client, watch mode is the whole engine: emit the test tree
+  // and package set, take over the ReScript builds, then run + re-run on change.
+  if opts.format == VsCode {
+    let paths = await Discovery.discover(roots)
+    await emitDiscovery(paths)
+    startBuildWatchers(paths)
+  }
   let runInProgress = ref(false)
   let rerunPending = ref(false)
   let run = async () => {
@@ -421,8 +459,13 @@ let runWatch = async (opts: options): int => {
   let _watcher = Watch.start(roots, _path => {
     ignore(run())
   })
-  // Keep the event loop alive indefinitely.
-  let _: promise<unit> = Promise.make((_resolve, _reject) => ())
+  // Keep the process alive until cancelled. Awaiting here (rather than letting
+  // runWatch return) is essential: the bin wrapper calls `process.exit` on the
+  // resolved code, so a returning runWatch would tear down chokidar and the
+  // spawned build watchers immediately. Cancellation handlers run in
+  // registration order — ProcessManager.killAll first, then this resolve — so
+  // the watchers are killed before the process exits.
+  await Promise.make((resolve, _reject) => Cancellation.onCancel(() => resolve()))
   0
 }
 
@@ -435,6 +478,11 @@ let main = async (): int => {
       args->Array.some(a => a == "--help" || a == "-h") ? 0 : 2
     }
   | Ok(opts) =>
+    // Protocol handshake first, so a version-skewed extension can detect the
+    // CLI before interpreting the stream.
+    if opts.format == VsCode {
+      FormatterVsCode.hello()
+    }
     switch opts.subcommand {
     | Run => await runOnce(opts)
     | Discover => await runDiscover(opts)

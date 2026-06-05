@@ -4,13 +4,20 @@ import * as Nodeurl from "node:url";
 
 let dynamicImport = ((u) => import(u));
 
+let counter = {
+  contents: 0
+};
+
 async function loadFile(absolutePath) {
+  counter.contents = counter.contents + 1 | 0;
   let url = Nodeurl.pathToFileURL(absolutePath);
-  await dynamicImport(url.href);
+  let busted = url.href + "?t=" + counter.contents.toString();
+  await dynamicImport(busted);
 }
 
 export {
   dynamicImport,
+  counter,
   loadFile,
 }
 /* node:url Not a pure module */
