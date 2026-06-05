@@ -6,6 +6,25 @@ The extension is pure glue between the `reventless-gwt --format=vscode` NDJSON s
 
 ---
 
+## 0. Zero-config usage — any app (e.g. `online-shop-hybrid`)
+
+The extension drives a long-lived `reventless-gwt watch --format=vscode` per workspace folder. That one CLI process **auto-discovers every GWT test**, **owns a `rescript build -w` per package**, and **re-runs the affected tests on every recompile** — so for any Reventless app you just:
+
+1. **Open the folder** (single plugin *or* a multi-plugin example root like `examples/online-shop-hybrid`).
+2. That's it. The Testing panel populates, the status bar shows `$(sync~spin) reventless: building` → `$(check) reventless`, and saving any `.res` / `_GWT.res` re-runs its tests.
+
+No `reventless.roots`, no `.vscode/` files, no side-terminal `rescript build -w`:
+
+- **Roots are auto-discovered** — with no path argument the CLI scans the whole workspace-folder subtree (pruning `node_modules`/`lib`/`.git`/`.history`). `reventless.roots` remains only as an override.
+- **Builds are CLI-managed** — the CLI derives the package set (each `package.json` with a `start` script that owns tests) and spawns one watcher per package. If you already run `pnpm run start` for a package, the CLI detects its live `lib/rescript.lock` and **adopts** it instead of double-spawning (a "Reventless GWT — Build" channel line marks it `[external]`).
+- **Multi-plugin examples work in one window** — `online-shop-hybrid` yields watchers for `catalog`, `ordering`, `platform-in-memory` automatically.
+
+The status bar and a **"Reventless GWT — Build"** output channel surface build progress and any compile errors. A one-shot **Run** profile (the play icon) is still available for run-on-click / CI-style single runs, backed by `reventless-gwt run`.
+
+> The numbered sections below are the manual end-to-end *verification* walkthrough (CLI sanity → dev host → discovery → run → failure rendering → cancellation → packaging). They predate the `watch`-driven flow above and still hold for verifying the CLI directly; where they describe setting `reventless.roots` or running `rescript build -w` in a side terminal, that is now handled automatically.
+
+---
+
 ## 1. Build prerequisites
 
 From the monorepo root:
@@ -75,7 +94,7 @@ Two options.
 
 In the dev-host window: **File → Open Folder** → pick `reventless/reventless-gwt/`.
 
-The default `reventlessGwt.roots` config is `["tests"]`, which resolves to `reventless-gwt/tests/` relative to the workspace. The CLI resolver walks up from the workspace folder looking for `node_modules/.bin/reventless-gwt` and finds it at the monorepo root.
+The default `reventless.roots` config is `["tests"]`, which resolves to `reventless-gwt/tests/` relative to the workspace. The CLI resolver walks up from the workspace folder looking for `node_modules/.bin/reventless-gwt` and finds it at the monorepo root.
 
 ---
 
@@ -141,8 +160,8 @@ Mechanism: the extension forwards `token.onCancellationRequested` → `proc.kill
 
 In the dev host: **Settings → Extensions → Reventless GWT**.
 
-- **`reventlessGwt.cliPath`** — set to the absolute path of the CLI launcher, e.g. `/abs/path/to/reventless-core/reventless/reventless-gwt/bin/reventless-gwt.mjs`. Refresh the Testing panel (circular arrow icon). Discovery should still work. Clear the setting to fall back to the `node_modules/.bin` walk-up.
-- **`reventlessGwt.roots`** — set to a narrow value, e.g. `["tests/QueryGwtTest.res.mjs"]`. Refresh. The tree should shrink to just that file. Restore to `["tests"]` afterward.
+- **`reventless.cliPath`** — set to the absolute path of the CLI launcher, e.g. `/abs/path/to/reventless-core/reventless/reventless-gwt/bin/reventless-gwt.mjs`. Refresh the Testing panel (circular arrow icon). Discovery should still work. Clear the setting to fall back to the `node_modules/.bin` walk-up.
+- **`reventless.roots`** — set to a narrow value, e.g. `["tests/QueryGwtTest.res.mjs"]`. Refresh. The tree should shrink to just that file. Restore to `["tests"]` afterward.
 
 ---
 
@@ -156,7 +175,7 @@ The watcher glob is `**/*{_GWT,GwtTest}.res.mjs`, so changes to non-compiled sou
 
 ## 11. Known gotchas
 
-- **`node_modules/.bin/reventless-gwt` missing.** The extension's walk-up fails, falls back to PATH, which usually isn't set. Fix: `pnpm install` at the monorepo root, or set `reventlessGwt.cliPath` explicitly.
+- **`node_modules/.bin/reventless-gwt` missing.** The extension's walk-up fails, falls back to PATH, which usually isn't set. Fix: `pnpm install` at the monorepo root, or set `reventless.cliPath` explicitly.
 - **Stale `.res.mjs`.** Editing `.res` sources without rebuilding means the extension still sees the old test set. Always rebuild the gwt package after source edits.
 - **Extension source edits.** See §13 for the update flow in both the dev host and a VSIX-installed copy.
 - **Multiple workspace folders.** The extension currently uses `vscode.workspace.workspaceFolders?.[0]` — only the first folder is scanned. Multi-root workspaces need a follow-up.
