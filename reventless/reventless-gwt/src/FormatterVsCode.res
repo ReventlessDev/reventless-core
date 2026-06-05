@@ -137,7 +137,7 @@ let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.ob
 // Bumped whenever the event contract changes (new events, renamed fields). The
 // extension reads it from the `hello` line and degrades gracefully on mismatch
 // (e.g. ignores unknown `build*` events from a newer CLI).
-let protocolVersion = 2
+let protocolVersion = 3
 
 // First line of every `--format=vscode` invocation, so a client can detect a
 // version-skewed CLI before interpreting the stream.
@@ -359,6 +359,10 @@ let messagePayload = (t: RunnerTypes.testResult): JSON.t => {
   | Some(m) => {
       let hint = Hint.forMismatch(~slice=?t.slice, m)
       d->Dict.set("message", JSON.Encode.string(hint.message))
+      // The mismatch family — lets a client decide whether an apply-expected
+      // quick-fix is safe for this assertion (one family spans many `then*`
+      // combinators, so the family, not the combinator, is the discriminator).
+      d->Dict.set("kind", JSON.Encode.string(Outcome.kindName(m)))
       // Expected / actual for the diff view. Rendered as ReScript syntax.
       switch m {
       | EventsMismatch({expected, actual}) => {
