@@ -14,6 +14,7 @@ import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
 import * as Cancellation$ReventlessGwt from "./Cancellation.res.mjs";
 import * as FormatterTap$ReventlessGwt from "./FormatterTap.res.mjs";
 import * as WatcherProbe$ReventlessGwt from "./WatcherProbe.res.mjs";
+import * as ComponentScan$ReventlessGwt from "./ComponentScan.res.mjs";
 import * as FormatterJson$ReventlessGwt from "./FormatterJson.res.mjs";
 import * as FormatterHuman$ReventlessGwt from "./FormatterHuman.res.mjs";
 import * as FormatterJunit$ReventlessGwt from "./FormatterJunit.res.mjs";
@@ -479,7 +480,10 @@ async function emitDiscovery(paths) {
   }
   FormatterVsCode$ReventlessGwt.emitDiscoveryItems(fileTests);
   let total = Stdlib_Array.reduce(fileTests, 0, (a, param) => a + param[1].length | 0);
-  FormatterVsCode$ReventlessGwt.packages(PackageScan$ReventlessGwt.scan(paths));
+  let pkgs = PackageScan$ReventlessGwt.scan(paths);
+  FormatterVsCode$ReventlessGwt.packages(pkgs);
+  let comps = await ComponentScan$ReventlessGwt.scan(pkgs.map(p => p.dir));
+  FormatterVsCode$ReventlessGwt.components(comps);
   return FormatterVsCode$ReventlessGwt.discoverEnd(total);
 }
 

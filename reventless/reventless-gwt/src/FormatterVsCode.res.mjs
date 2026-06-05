@@ -7,6 +7,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Hint$ReventlessGwt from "./Hint.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
+import * as ComponentMeta$ReventlessGwt from "./ComponentMeta.res.mjs";
 import * as RenderRescript$ReventlessGwt from "./RenderRescript.res.mjs";
 
 function write(s) {
@@ -144,7 +145,7 @@ function event(payload) {
 function hello() {
   let d = {};
   d["event"] = "hello";
-  d["protocol"] = 1;
+  d["protocol"] = 2;
   event(d);
 }
 
@@ -168,6 +169,13 @@ function emitDiscoveryItems(files) {
     d["label"] = fileLabelOf(path);
     d["description"] = Nodepath.relative(process.cwd(), path);
     d["uri"] = fileUri;
+    let c = ComponentMeta$ReventlessGwt.componentOfTestFile(path);
+    if (c !== undefined) {
+      let comp = {};
+      comp["kind"] = c.kind;
+      comp["name"] = c.name;
+      d["component"] = comp;
+    }
     event(d);
     let seenDescribes = {};
     param[1].forEach(t => {
@@ -242,6 +250,20 @@ function packages(pkgs) {
     return o;
   });
   d["packages"] = arr;
+  event(d);
+}
+
+function components(comps) {
+  let d = {};
+  d["event"] = "components";
+  let arr = comps.map(c => {
+    let o = {};
+    o["dir"] = c.dir;
+    o["kind"] = c.kind;
+    o["name"] = c.name;
+    return o;
+  });
+  d["components"] = arr;
   event(d);
 }
 
@@ -380,7 +402,7 @@ function runEnd(s) {
   event(d);
 }
 
-let protocolVersion = 1;
+let protocolVersion = 2;
 
 export {
   write,
@@ -405,6 +427,7 @@ export {
   emitDiscoveryItems,
   discoverEnd,
   packages,
+  components,
   buildStart,
   buildOk,
   buildFail,

@@ -400,7 +400,11 @@ let emitDiscovery = async (paths: array<string>): unit => {
   }
   FormatterVsCode.emitDiscoveryItems(fileTests)
   let total = fileTests->Array.reduce(0, (a, (_, ts)) => a + ts->Array.length)
-  FormatterVsCode.packages(PackageScan.scan(paths))
+  let pkgs = PackageScan.scan(paths)
+  FormatterVsCode.packages(pkgs)
+  // Full component inventory (incl. untested components) from each package's src/.
+  let comps = await ComponentScan.scan(pkgs->Array.map(p => p.dir))
+  FormatterVsCode.components(comps)
   FormatterVsCode.discoverEnd(total)
 }
 

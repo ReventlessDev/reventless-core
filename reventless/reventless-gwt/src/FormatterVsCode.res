@@ -137,7 +137,7 @@ let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.ob
 // Bumped whenever the event contract changes (new events, renamed fields). The
 // extension reads it from the `hello` line and degrades gracefully on mismatch
 // (e.g. ignores unknown `build*` events from a newer CLI).
-let protocolVersion = 1
+let protocolVersion = 2
 
 // First line of every `--format=vscode` invocation, so a client can detect a
 // version-skewed CLI before interpreting the stream.
@@ -174,6 +174,17 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
     d->Dict.set("label", JSON.Encode.string(fileLabelOf(path)))
     d->Dict.set("description", JSON.Encode.string(relativeToCwd(path)))
     d->Dict.set("uri", JSON.Encode.string(fileUri))
+    // Component kind/name derived from the folder convention — lets the client
+    // group tests by Plugin → kind → component without parsing the source.
+    switch ComponentMeta.componentOfTestFile(path) {
+    | Some(c) => {
+        let comp = Dict.make()
+        comp->Dict.set("kind", JSON.Encode.string(c.kind))
+        comp->Dict.set("name", JSON.Encode.string(c.name))
+        d->Dict.set("component", JSON.Encode.object(comp))
+      }
+    | None => ()
+    }
     event(d)
     // Emit describe suites and test leaves.
     let seenDescribes = Dict.make()
@@ -253,6 +264,24 @@ let packages = (pkgs: array<PackageScan.pkg>) => {
     JSON.Encode.object(o)
   })
   d->Dict.set("packages", JSON.Encode.array(arr))
+  event(d)
+}
+
+// The full component inventory across the owning packages — every Aggregate /
+// slice / ReadModel / … in src/, whether or not it has a GWT test. `dir` matches
+// the `packages` event so a client joins them per plugin; tests join via the
+// `component` field on each file `item`. Drives the domain tree + coverage.
+let components = (comps: array<ComponentScan.component>) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("components"))
+  let arr = comps->Array.map(c => {
+    let o = Dict.make()
+    o->Dict.set("dir", JSON.Encode.string(c.dir))
+    o->Dict.set("kind", JSON.Encode.string(c.kind))
+    o->Dict.set("name", JSON.Encode.string(c.name))
+    JSON.Encode.object(o)
+  })
+  d->Dict.set("components", JSON.Encode.array(arr))
   event(d)
 }
 
