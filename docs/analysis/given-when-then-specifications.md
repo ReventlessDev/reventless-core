@@ -533,14 +533,28 @@ Both are supported (`--format=junit` exists), but TAP is preferable for several 
 
 `--format=vscode` is an NDJSON event stream tailored for the [VS Code Testing API](https://code.visualstudio.com/api/extension-guides/testing). It differs from `--format=json --stream` in three ways: it includes **discovery events** (so the test tree populates before any test runs), **per-test lifecycle events** (`testStart` so the spinner shows up), and **fields named for direct mapping to `TestController`/`TestItem`/`TestMessage`** without any translation layer in the extension.
 
-##### Two invocation modes
+##### Three invocation modes
 
 ```bash
 reventless-gwt discover --format=vscode [files...]   # populate the tree, no execution
-reventless-gwt run --format=vscode [--filter=<id>...] [files...]   # execute and stream results
+reventless-gwt run --format=vscode [--filter=<id>...] [files...]   # execute and stream results (one-shot)
+reventless-gwt watch --format=vscode [--filter=<id>...] [files...] # long-lived: discover + build + run + re-run
 ```
 
-Discovery is fast (compile + load only, no test bodies executed) so the extension can populate the tree on workspace open or file change.
+With **no `files...`** the CLI auto-discovers GWT tests across the whole cwd subtree (pruning
+`node_modules`/`lib`/`.git`/`.history`), so the extension passes only the workspace folder as cwd — no
+roots configuration. `watch` is the engine the extension drives: it emits the discovery stream once, then
+owns a `rescript build -w` per package and re-runs on every recompile. Discovery is fast (compile + load
+only, no test bodies executed) so the tree populates immediately on open.
+
+##### Protocol handshake
+
+Every `--format=vscode` invocation emits a `hello` line first so a client can detect a version-skewed CLI
+and ignore unknown events:
+
+```
+{"event":"hello","protocol":1}
+```
 
 ##### Discovery stream
 
@@ -577,6 +591,31 @@ Each event maps **directly** to a [`TestRun`](https://code.visualstudio.com/api/
 | `testFail` | `run.failed(testItem, new TestMessage(...), durationMs)` — `expected`/`actual` set on `TestMessage` for the diff view |
 | `testSkip` | `run.skipped(testItem)` |
 | `runEnd` | `run.end()` |
+
+##### Watch stream — `packages` + `build*` events
+
+`watch` additionally emits the derived build set and per-package build status. The `packages` event lists
+every workspace package owning tests (walked up from the discovered files to the nearest `package.json`
+with a `start` script), and `build*` events report each managed `rescript build -w`:
+
+```
+{"event":"packages","packages":[{"name":"@reventlessdev/online-shop-hybrid-catalog","dir":"/abs/catalog","build":"rescript build -w"}]}
+{"event":"buildStart","package":"/abs/catalog"}
+{"event":"buildOk","package":"/abs/catalog","durationMs":361}
+{"event":"buildFail","package":"/abs/catalog","message":"…/Category.res:24 This has type: string\nBut it's expected to have type: int"}
+{"event":"buildExternal","package":"/abs/ordering"}   // a developer's own `rescript build -w` already holds the lock — adopted, not duplicated
+```
+
+| CLI event | Extension call |
+|---|---|
+| `packages` | record the build set (status-bar grouping) |
+| `buildStart` / `buildOk` / `buildFail` | status-bar state + "Reventless GWT — Build" output channel |
+| `buildExternal` | mark the package as covered by the user's own watcher |
+
+The CLI owns the watchers (spawn, classify output, tear down on SIGINT via its process group); the extension
+only renders. Conflict avoidance lives CLI-side: `buildExternal` is emitted when `lib/rescript.lock` holds a
+live PID, so the extension never double-spawns. The whole `watch` run is one long-lived process — each
+internal re-run produces a fresh `runStart`…`runEnd` cycle.
 
 Three deliberate choices for `testFail`:
 
