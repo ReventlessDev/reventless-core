@@ -145,7 +145,7 @@ function event(payload) {
 function hello() {
   let d = {};
   d["event"] = "hello";
-  d["protocol"] = 2;
+  d["protocol"] = 3;
   event(d);
 }
 
@@ -334,6 +334,7 @@ function messagePayload(t) {
   if (m !== undefined) {
     let hint = Hint$ReventlessGwt.forMismatch(t.slice, m);
     d["message"] = hint.message;
+    d["kind"] = Outcome$ReventlessGwt.kindName(m);
     switch (m.TAG) {
       case "ErrorMismatch" :
         let actual = m.actual;
@@ -402,7 +403,7 @@ function runEnd(s) {
   event(d);
 }
 
-let protocolVersion = 2;
+let protocolVersion = 3;
 
 export {
   write,
