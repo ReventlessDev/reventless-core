@@ -8,7 +8,7 @@
     "generate": "generate-plugin src/",
     "prebuild": "pnpm run generate",
     "build": "rescript build",
-    "start": "rescript build -w",
+    "start": "rescript watch",
     "clean": "rescript clean",
     "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
     "test": "NODE_OPTIONS='--experimental-vm-modules' npx jest"
