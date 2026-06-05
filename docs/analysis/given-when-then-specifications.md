@@ -553,11 +553,13 @@ Every `--format=vscode` invocation emits a `hello` line first so a client can de
 and ignore unknown events:
 
 ```
-{"event":"hello","protocol":2}
+{"event":"hello","protocol":3}
 ```
 
 Protocol 2 added the `components` inventory event and the `component` field on file `item`s (Plugin → kind →
-component grouping); a protocol-1 client simply ignores both.
+component grouping). Protocol 3 added a `kind` field on each `testFail` message — the mismatch family
+(`EventsMismatch` / `ErrorMismatch` / …) a client uses to gate an apply-expected quick-fix. Both are additive;
+an older client simply ignores the unknown field/event.
 
 ##### Discovery stream
 
@@ -579,7 +581,7 @@ Each `item` event carries the exact fields a VS Code extension needs: `id` (used
 {"event":"testStart","id":"...Add::on new aggregate produces Added"}
 {"event":"testPass","id":"...Add::on new aggregate produces Added","durationMs":0.8}
 {"event":"testStart","id":"...Add::rejects when category already exists"}
-{"event":"testFail","id":"...Add::rejects when category already exists","durationMs":1.2,"messages":[{"message":"decide() returned Ok([...]) but the test expected Error.","expected":"Error(CategoryAlreadyExists)","actual":"Ok([CategoryAdded({categoryId: \"c1\", name: \"Electronics\"})])","location":{"uri":"file:///.../CategoryBehavior.res","range":{"start":{"line":34,"character":2},"end":{"line":40,"character":3}}}}]}
+{"event":"testFail","id":"...Add::rejects when category already exists","durationMs":1.2,"messages":[{"message":"decide() returned Ok([...]) but the test expected Error.","kind":"ErrorMismatch","expected":"Error(CategoryAlreadyExists)","actual":"Ok([CategoryAdded({categoryId: \"c1\", name: \"Electronics\"})])","location":{"uri":"file:///.../CategoryBehavior.res","range":{"start":{"line":34,"character":2},"end":{"line":40,"character":3}}}}]}
 {"event":"testSkip","id":"...Add::idempotent on duplicate","reason":"filtered"}
 {"event":"runEnd","passed":12,"failed":1,"skipped":1,"durationMs":287}
 ```
