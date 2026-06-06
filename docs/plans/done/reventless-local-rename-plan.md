@@ -1,6 +1,6 @@
 # Rename `reventless-in-memory` → `reventless-local` — Implementation Plan
 
-**Status:** In progress — Phases 0,2,3,4,5,7 DONE & verified; Phase 1/6 (UI `authMode`) DEFERRED (cross-repo, needs UI release). Do not move to `done/` until Phase 6 lands.
+**Status:** DONE (code-complete) — Phases 0–7 finished & verified (incl. Phase 1/6 UI `authMode`). Only Phase 8 (publish/deprecate the core package) remains, and that runs automatically via core's release CI on push to `alpha` — no further manual code work. Filed in `done/`.
 **Date:** 2026-06-06
 **Analysis:** [docs/analysis/reventless-local-rename.md](../analysis/reventless-local-rename.md)
 **Type:** Breaking rename (standalone, mechanical PR)
@@ -12,8 +12,8 @@
 - ✅ Core rename complete: package `@reventlessdev/reventless-local@3.0.0-alpha.86`, namespace `ReventlessLocal`, dir, 21 adapters, 3 example platforms, codegen, root `jest.config.js`, `.github/workflows/ci.yml`, `scripts/setup.mjs`, docs-site folder + sidebar, CLAUDE.md, conventions.
 - ✅ Verified: `pnpm run build` zero warnings · full suite **189 suites / 1448 tests pass** · codegen **golden tests green** · lockfile clean symmetric rename (no `reventless-ui` contamination).
 - ⚠️ **Deviation from OQ1 target:** the "drop suffix → bare names" plan was **not** used. Bare names collide with the functor parameter `Bus` and with 6 `reventless-core` modules opened via `open Reventless` (`PluginSpec`, `SideEffectHandler`, `QueryEngine`, the three `*Runtime_Builder`). **Resolution: uniform `Local` prefix** for all 21 always-in-process adapters (`LocalBus`, `LocalQueryEngine`, …). Still satisfies the intent (`_InMemory` now marks only a SQLite-twinned surface). Convention recorded in `.claude/rules/component-guidelines.md`.
-- ⏸️ **DEFERRED — Phase 1/6 (OQ3, `authMode`):** not done. Requires a reventless-ui release (dual-accept) + host-shell pin bump that can't be done autonomously. `config.json` `"authMode": "inmemory"`, the `provider: InMemory` auth variant, and `"memory:InMemory"` service tags were left untouched — platform still works. **This is the only open phase.**
-- ⏸️ Phase 8 (publish/deprecate) — post-merge, not started.
+- ✅ **DONE — Phase 1/6 (OQ3, `authMode`):** the `authMode` config string lives in the **UI repo** (`reventless-host-shell/public/config.json`), not core (core ships no authMode config; AWS deploys emit `"cognito"`). reventless-ui changes: dual-accept `"local"`+`"inmemory"` and variant `InMemory`→`Local` (released as **host-shell alpha.27**), then config default flipped to `"local"` (released as **host-shell alpha.28**). Core re-pinned `platform-aws` + `platform-local` to **alpha.27** then **alpha.28** (commits `47696ec9c`, `cf57e5917`). The `provider: InMemory` variant, `"memory:InMemory"` service tags, and `/__inmemory/login` route were deliberately kept (backend-mechanism contract).
+- ⏸️ Phase 8 (publish/deprecate the core package) — not started; happens via core release CI on push to `alpha`.
 - Historical `docs/plans/done/` + `docs/analysis/` left untouched (historical record, per repo convention).
 
 ---
@@ -22,7 +22,7 @@
 
 - **OQ1:** Keep `_InMemory` on the **3 persisted storage surfaces** (they have a `_Sqlite` twin); for the **21 always-in-process adapters**, drop the suffix — *implemented as a uniform `Local` prefix* (see deviation note above; bare names collide).
 - **OQ2:** Continue the version line — new package starts at `3.0.0-alpha.86`. ✅ done.
-- **OQ3:** Rename the UI `authMode` string `"inmemory"` → `"local"` via a dual-accept lockstep. ⏸️ deferred.
+- **OQ3:** Rename the UI `authMode` string `"inmemory"` → `"local"` via a dual-accept lockstep. ✅ done (host-shell alpha.27 dual-accept + alpha.28 config default; core re-pinned).
 - **OQ4:** Ship as a **standalone** mechanical rename PR.
 
 ## Target names
@@ -54,9 +54,9 @@
 
 ---
 
-## Phase 1 — UI lockstep, part 1 (reventless-ui) — decided OQ3  ⏸️ DEFERRED (needs UI release)
+## Phase 1 — UI lockstep, part 1 (reventless-ui) — decided OQ3  ✅ DONE (released as host-shell alpha.27)
 
-> Do this **before** flipping `config.json` in core, so neither repo points at a value the other rejects.
+> Do this **before** flipping `config.json` (the UI host-shell bundled default `reventless-host-shell/public/config.json` — NOT core; core ships no authMode config), so neither repo points at a value the other rejects.
 
 - [ ] In **reventless-ui**, find the `authMode` consumer (grep `inmemory` / `authMode` in the UI repo).
 - [ ] Widen the check to accept **both** `"inmemory"` and `"local"` (alias, don't replace yet).
@@ -147,7 +147,7 @@ Per-module checklist:
 
 ---
 
-## Phase 6 — UI lockstep, part 2 (the `config.json` flip)  ⏸️ DEFERRED (gated on Phase 1)
+## Phase 6 — UI lockstep, part 2 (the `config.json` flip)  ✅ DONE (host-shell alpha.28; core re-pinned)
 
 > Gated on Phase 1 having landed (UI accepts both values).
 
