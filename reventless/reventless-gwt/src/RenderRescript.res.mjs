@@ -45,50 +45,66 @@ function renderArray(level, arr) {
   return "[" + inner + "]";
 }
 
-function renderObject(level, dict) {
-  let keys = Object.keys(dict);
-  let tagJson = dict["TAG"];
-  if (tagJson !== undefined) {
-    let tagName;
-    tagName = typeof tagJson === "string" ? tagJson : "?";
-    let payloadKeys = keys.filter(k => {
-      if (k !== "TAG") {
-        return k.startsWith("_");
-      } else {
-        return false;
-      }
-    });
-    let len = payloadKeys.length;
-    if (len !== 1) {
-      if (len === 0) {
-        return tagName;
-      }
-    } else {
-      let match = payloadKeys[0];
-      if (match === "_0") {
-        let p = dict["_0"];
-        if (p !== undefined) {
-          return tagName + "(" + render(level + 1 | 0, p) + ")";
-        } else {
-          return tagName;
-        }
-      }
-    }
-    let ordered = payloadKeys.toSorted((a, b) => {
-      let parseTail = k => Stdlib_Option.getOr(Stdlib_Int.fromString(k.slice(1, k.length), undefined), 0);
-      return Primitive_int.compare(parseTail(a), parseTail(b));
-    });
-    let parts = ordered.map(k => render(level + 1 | 0, dict[k])).join(", ");
-    return tagName + "(" + parts + ")";
-  }
-  if (keys.length === 0) {
-    return "{}";
-  }
+function renderRecord(level, keys, dict) {
   let fields = keys.map(k => {
     let v = dict[k];
     return k + ": " + render(level + 1 | 0, v);
   }).join(", ");
   return "{" + fields + "}";
+}
+
+function renderObject(level, dict) {
+  let keys = Object.keys(dict);
+  let tagJson = dict["TAG"];
+  if (tagJson === undefined) {
+    if (keys.length !== 0) {
+      return renderRecord(level, keys, dict);
+    } else {
+      return "{}";
+    }
+  }
+  let tagName;
+  tagName = typeof tagJson === "string" ? tagJson : "?";
+  let positional = keys.filter(k => {
+    if (k !== "TAG") {
+      return k.startsWith("_");
+    } else {
+      return false;
+    }
+  });
+  let inlineFields = keys.filter(k => {
+    if (k !== "TAG") {
+      return !k.startsWith("_");
+    } else {
+      return false;
+    }
+  });
+  let len = positional.length;
+  if (len !== 1) {
+    if (len === 0) {
+      if (inlineFields.length !== 0) {
+        return tagName + "(" + renderRecord(level, inlineFields, dict) + ")";
+      } else {
+        return tagName;
+      }
+    }
+  } else {
+    let match = positional[0];
+    if (match === "_0") {
+      let p = dict["_0"];
+      if (p !== undefined) {
+        return tagName + "(" + render(level + 1 | 0, p) + ")";
+      } else {
+        return tagName;
+      }
+    }
+  }
+  let ordered = positional.toSorted((a, b) => {
+    let parseTail = k => Stdlib_Option.getOr(Stdlib_Int.fromString(k.slice(1, k.length), undefined), 0);
+    return Primitive_int.compare(parseTail(a), parseTail(b));
+  });
+  let parts = ordered.map(k => render(level + 1 | 0, dict[k])).join(", ");
+  return tagName + "(" + parts + ")";
 }
 
 function renderMany(arr) {
@@ -117,6 +133,7 @@ export {
   indent,
   render,
   renderArray,
+  renderRecord,
   renderObject,
   renderMany,
   renderOption,

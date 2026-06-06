@@ -2,6 +2,25 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 
+function variantTag(j) {
+  if (j === null || Array.isArray(j)) {
+    return;
+  }
+  switch (typeof j) {
+    case "string" :
+      return j;
+    case "object" :
+      let match = j["TAG"];
+      if (typeof match === "string") {
+        return match;
+      } else {
+        return;
+      }
+    default:
+      return;
+  }
+}
+
 function forMismatch(sliceOpt, m) {
   let slice = sliceOpt !== undefined ? sliceOpt : "<slice>";
   switch (m.TAG) {
@@ -12,19 +31,22 @@ function forMismatch(sliceOpt, m) {
         message: "decide() returned different events than expected. Check the event payload and count."
       };
     case "ErrorMismatch" :
-      if (m.actual !== undefined) {
-        return {
-          locus: slice + `.decide`,
-          branch: undefined,
-          message: "decide() returned a different Error variant than expected."
-        };
-      } else {
+      let actual = m.actual;
+      if (actual === undefined) {
         return {
           locus: slice + `.decide`,
           branch: undefined,
           message: "decide() returned Ok([...]) but the test expected Error."
         };
       }
+      let match = variantTag(m.expected);
+      let match$1 = variantTag(actual);
+      let message = match !== undefined && match$1 !== undefined && match === match$1 ? `decide() returned Error(` + match + `) as expected, but with a different payload.` : "decide() returned a different Error variant than expected.";
+      return {
+        locus: slice + `.decide`,
+        branch: undefined,
+        message: message
+      };
     case "StateMismatch" :
       return {
         locus: slice + `.evolve`,
@@ -94,6 +116,7 @@ function format(h) {
 }
 
 export {
+  variantTag,
   forMismatch,
   toJson,
   format,
