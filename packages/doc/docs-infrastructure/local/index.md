@@ -1,9 +1,9 @@
 ---
-title: InMemory Provider
+title: Local Provider
 sidebar_position: 1
 ---
 
-# InMemory Provider
+# Local Provider
 
 The `reventless-local` package implements all Reventless adapter interfaces using in-memory data structures. It is designed for local development and testing — no cloud infrastructure, no deployment, no costs.
 
@@ -17,7 +17,7 @@ The `reventless-local` package implements all Reventless adapter interfaces usin
 
 ## Architecture
 
-Unlike the AWS provider which creates separate Lambda functions connected by SQS and SNS, the InMemory provider runs everything in a single Node.js process:
+Unlike the AWS provider which creates separate Lambda functions connected by SQS and SNS, the Local provider runs everything in a single Node.js process:
 
 ```
 Platform.Make()
@@ -33,7 +33,7 @@ The bus acts as the glue: aggregates publish events to the bus, and read models 
 
 ## Service Mappings
 
-| Component | InMemory Implementation | Data Structure |
+| Component | Local Implementation | Data Structure |
 |-----------|------------------------|----------------|
 | **EventLog** | `EventLogStorage_InMemory` | `Dict<string, array<JSON.t>>` via STM TRef |
 | **CommandTopic** | `LocalCommandTopicChannel` | Bus command dispatch (direct handler call) |
@@ -51,7 +51,7 @@ The bus acts as the glue: aggregates publish events to the bus, and read models 
 
 ## Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Persistence | None — data lost on process exit | DynamoDB, S3 |
 | Event delivery | Synchronous (2-3 microtask ticks) | Asynchronous (SQS/SNS) |
@@ -62,5 +62,5 @@ The bus acts as the glue: aggregates publish events to the bus, and read models 
 
 ## Next Steps
 
-- [Getting Started](./get-started.md) — set up and run with the InMemory provider
+- [Getting Started](./get-started.md) — set up and run with the Local provider
 - [Adapter details](./adapters/eventlog.md) — how each adapter works internally

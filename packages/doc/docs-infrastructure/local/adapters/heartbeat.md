@@ -3,7 +3,7 @@ title: Heartbeat
 sidebar_position: 9
 ---
 
-# Heartbeat — InMemory
+# Heartbeat — Local
 
 **Source:** `reventless-local/src/adapter/Heartbeat/LocalHeartbeatRunner.res`
 
@@ -29,7 +29,7 @@ Active timer handles are tracked in a module-level dictionary for cleanup.
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Scheduling | `setInterval` | CloudWatch Events rule |
 | Timer resolution | Milliseconds | Minutes (CloudWatch minimum) |

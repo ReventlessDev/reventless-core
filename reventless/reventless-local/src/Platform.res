@@ -1,4 +1,4 @@
-// In-memory Platform — implements ReventlessInfra.Platform.T using only in-memory data structures.
+// Local Platform — implements ReventlessInfra.Platform.T using in-memory or SQLite data structures (selected via Backend).
 // Pulumi mock mode is activated automatically when Platform.Make() is applied.
 //
 // Example:
@@ -12,7 +12,7 @@
 // Self-installing at module import time — must be imported before any Effect.runPromise call.
 let _ = ReventlessCore.EffectLogger.install
 
-// The in-memory platform is a local-dev tool, so default to Debug-level logging
+// The local platform is a local-dev tool, so default to Debug-level logging
 // (surfaces e.g. the slice/aggregate `deciding on state:` lines). An explicit
 // LOG_LEVEL env var still overrides this (e.g. LOG_LEVEL=info or =silent).
 ReventlessCore.EffectLogger.setDefaultMinLevel(ReventlessCore.Logger.Debug)
@@ -44,7 +44,7 @@ module MakeWithConfig = (
   // commandHandlerConfig is accepted for transport-neutral parity with the
   // AWS platform. Lambda-specific knobs (memorySize, timeout, sqsBatchSize,
   // …) are no-ops in-memory. envVars are not propagated here because the
-  // in-memory platform has no per-component process boundary.
+  // local platform has no per-component process boundary.
   let _ = Config.commandHandlerConfig
   // Activate Pulumi mock mode — must happen before any component creation.
   // Idempotent, so safe to call even if TestRunner.setup() was already called.
@@ -963,7 +963,7 @@ module MakeWithConfig = (
               },
             ),
             status: Connected,
-            statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
+            statusChange: {at: Date.make()->Date.toISOString, by: "local"},
             apiSchemaFragment,
             uiFragments,
             structure: pluginStructure,
@@ -1155,17 +1155,17 @@ module MakeWithConfig = (
     // Fire onPlatformDeployed after all servers are started so late-deployed
     // plugins (e.g. PlatformInspector) have their handler refs populated.
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: Pulumi.Pulumi.getStackName(),
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: if Config.splitApi {
         "http://localhost:4001/graphql"
       } else {
         "http://localhost:4000/graphql"
       },
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: [],
     })
   }
@@ -1304,13 +1304,13 @@ module MakeWithConfig = (
         })
     })
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment,
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: "http://localhost:4000/graphql",
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: [],
     })
 
@@ -1583,7 +1583,7 @@ module MakeWithConfig = (
             let updated = {
               ...state,
               status: newStatus,
-              statusChange: {at: Date.make()->Date.toISOString, by: "in-memory"},
+              statusChange: {at: Date.make()->Date.toISOString, by: "local"},
             }
             let entry =
               updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
@@ -1950,19 +1950,19 @@ module MakeWithConfig = (
       DomainMCP_Server.start()
     }
 
-    // Fire onPlatformDeployed hook with in-memory platform metadata.
+    // Fire onPlatformDeployed hook with local platform metadata.
     ReventlessCore.Plugin_Helpers.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: "local",
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: if Config.splitApi {
         "http://localhost:4001/graphql"
       } else {
         "http://localhost:4000/graphql"
       },
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: [],
     })
     Dict.make()

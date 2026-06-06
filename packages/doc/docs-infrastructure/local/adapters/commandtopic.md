@@ -3,7 +3,7 @@ title: CommandTopic
 sidebar_position: 2
 ---
 
-# CommandTopic — InMemory
+# CommandTopic — Local
 
 **Source:** `reventless-local/src/adapter/CommandTopic/LocalCommandTopicChannel.res`
 
@@ -26,7 +26,7 @@ The `connect` function registers the aggregate's command handler on the bus usin
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Transport | Direct function call via bus | SQS FIFO queue |
 | Ordering | Guaranteed (single-threaded) | Per-message-group FIFO ordering |

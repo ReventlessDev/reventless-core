@@ -928,7 +928,7 @@ Event schema (generated) <->  @schema type event (source of truth)
 1. **Schema extraction prototype**: Build the Node.js script that reads compiled sury schemas from `.res.mjs` and produces the intermediate JSON representation
 2. **LiveStore codegen prototype**: Generate `events.ts` from the intermediate representation for one example (Catalog)
 3. **Validate wire format compatibility**: Confirm that sury JSON output and Effect Schema JSON output produce byte-identical payloads for the same event
-4. **Proof of concept**: Build a minimal SyncApi component using the in-memory platform with the `validate` approach
+4. **Proof of concept**: Build a minimal SyncApi component using the local platform with the `validate` approach
 5. **Auto-derive validate**: Implement the runtime schema-based command derivation (section 3.4) to reuse existing `decide` functions without code generation
 6. **AWS adapter**: Implement the SyncApi AWS adapter (API Gateway WebSocket + Lambda)
 7. **Client library**: Build a LiveStore sync provider package (`@livestore/sync-reventless`) implementing the custom sync provider interface

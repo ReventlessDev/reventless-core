@@ -148,7 +148,7 @@ type requestContext = {
 Simple, deterministic, no external dependencies. Two built-in identities cover the common development scenarios:
 
 ```rescript
-// reventless-in-memory/src/adapter/Auth/Auth_InMemory.res
+// reventless-local/src/adapter/Auth/Auth_InMemory.res
 
 let defaultUser: identity = {
   userId: "local-user",

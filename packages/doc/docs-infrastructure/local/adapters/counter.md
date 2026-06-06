@@ -3,7 +3,7 @@ title: Counter
 sidebar_position: 8
 ---
 
-# Counter — InMemory
+# Counter — Local
 
 **Source:** `reventless-local/src/adapter/Counter/LocalCounterHandler.res`
 
@@ -28,7 +28,7 @@ Counter values are stored in a module-level `Dict<string, int>`. A second `Dict<
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Storage | Module-level `Dict` | DynamoDB tables (references + counts) |
 | Deduplication | In-memory `(counterId, targetRef)` tracking | DynamoDB conditional writes |

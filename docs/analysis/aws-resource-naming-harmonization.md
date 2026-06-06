@@ -256,4 +256,4 @@ Naming-related sites that would change:
 
 Test fixtures that hardcode emitted names:
 
-- `reventless/reventless-in-memory/tests/components/aggregate/AggregateFixtures.res:54, 57` (`"TestItemAggrEventTopic"`)
+- `reventless/reventless-local/tests/components/aggregate/AggregateFixtures.res:54, 57` (`"TestItemAggrEventTopic"`)

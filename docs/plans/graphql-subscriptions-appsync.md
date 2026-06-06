@@ -292,7 +292,7 @@ Call site: `EventLogSubscription_AppSync.make(~name, ~topicName, ~eventTopic, ~a
 
 ## Phase 6 — In-memory WebSocket subscriptions ⬜
 
-**Target packages**: `reventless-in-memory`
+**Target packages**: `reventless-local`
 
 ### Motivation
 
@@ -337,7 +337,7 @@ Also note: the `AWSJSON` scalar used in Source A's `{Name}EventLogEvent` type mu
 | `reventless-aws` | `src/adapter/Api/CommandSubscriptionResolvers_AppSync.res` | 3 | Source C: `Subscription.onX` resolver per mutation field |
 | `reventless-aws` | `src/adapter/StateTopic/StateTopic_AppSync.res` | 4 | Source B: DynamoDB Stream → Lambda → AppSync Events API |
 | `reventless-aws` | `src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res` | 5 | Source A: SNS → SQS → Lambda → AppSync Events API |
-| `reventless-in-memory` | `src/adapter/Api/GraphQL_SubscriptionResolvers_InMemory.res` | 6 | WebSocket subscriptions for yoga (Sources A, B, C) |
+| `reventless-local` | `src/adapter/Api/GraphQL_SubscriptionResolvers_InMemory.res` | 6 | WebSocket subscriptions for yoga (Sources A, B, C) |
 
 ### Modified files
 
@@ -348,12 +348,12 @@ Also note: the `AWSJSON` scalar used in Source A's `{Name}EventLogEvent` type mu
 | `reventless-aws` | `src/adapter/Api/AppSync_Resolver_Native.res` | 1 | `makeSubscriptionResolverCode` + `makeSubscriptionResolver` |
 | `reventless-aws` | `src/adapter/Api/AppSync_Resolver_Retrying.res` | 1 | `makeSubscriptionResolverCode` + `makeSubscriptionResolver` |
 | `reventless-aws` | `src/Platform.res` | 1 | Backfill `subscriptions: []` in `emptyBaseFragment` |
-| `reventless-in-memory` | `src/Platform.res` | 1 | Backfill `subscriptions: []` in `emptyBaseFragment` |
+| `reventless-local` | `src/Platform.res` | 1 | Backfill `subscriptions: []` in `emptyBaseFragment` |
 | `reventless-aws` | `tests/AppSync_AdapterTest.res` | 1 | Backfill `subscriptions: []` in three encode calls |
 | `reventless-core` | `src/components/Plugin/Plugin_Builder.res` | 2 | Inject subscriptions via decode/re-encode after `generateFragment` |
 | `reventless-aws` | `src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res` | 3 | Call `CommandSubscriptionResolvers_AppSync.make` after mutation resolvers |
-| `reventless-in-memory` | `src/InMemory_Bus.res` | 6 | Add PubSub + publish to PubSub on state change / event append |
-| `reventless-in-memory` | `src/Platform.res` | 6 | Wire subscription resolvers into yoga server |
+| `reventless-local` | `src/InMemory_Bus.res` | 6 | Add PubSub + publish to PubSub on state change / event append |
+| `reventless-local` | `src/Platform.res` | 6 | Wire subscription resolvers into yoga server |
 
 ---
 

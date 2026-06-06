@@ -68,7 +68,7 @@ as **pivot files** (the ones most likely to expose
 behavioural-equivalence drift — open question #1 in the analysis). The build
 won't compile with only those two ported, so this phase also has to port the
 ~55 transitive files in `reventless-spec`, `reventless-infra`,
-`reventless-interop`, `reventless-core`, `reventless-in-memory` as bulk
+`reventless-interop`, `reventless-core`, `reventless-local` as bulk
 collateral — but those reads are mechanical; Message + Projection get the
 careful review.
 
@@ -146,7 +146,7 @@ Steps:
    in-memory) via scripted s/old/new on the call-site forms (`S.parseJsonOrThrow`
    → `Util_Sury.fromJson`, etc.). Inside `reventless-spec` use unqualified
    `Util_Sury.…`; outside use `Reventless.Util_Sury.…`.
-6. Run the `reventless-core` (386) and `reventless-in-memory` (416) test
+6. Run the `reventless-core` (386) and `reventless-local` (416) test
    suites. Resolve any failures — likely categories:
    - Behavioural equivalence drift between `reverseConvertToJsonOrThrow` and
      `decodeOrThrow(value, ~from=reverse(s), ~to=S.json)` under `S.transform` /
@@ -181,7 +181,7 @@ the same files.
 
 **Scope revision (from Phase 1 investigation):** Phase 1 ports ~55 files
 across `reventless-spec`, `reventless-infra`, `reventless-interop`,
-`reventless-core`, `reventless-in-memory` as collateral. Phase 2 therefore
+`reventless-core`, `reventless-local` as collateral. Phase 2 therefore
 ports the ~21 remaining files in `reventless-aws` (2), `reventless-gwt` (10),
 `reventless-codegen` (6), `rescript-pulumi-aws` (1), plus the hand-written
 `HeartbeatEntryPoint.mjs` and the example plugin packages.
@@ -193,7 +193,7 @@ Steps:
    - `S.reverseConvertToJsonStringOrThrow(s, ~space=N)` →
      `Util_Sury.toJsonString(_, s, ~space=N)`
    - `S.parseJsonStringOrThrow(s)` → `Util_Sury.fromJsonString(_, s)`
-   - `S.convertOrThrow(s)` (3 sites in `reventless-in-memory/src/Platform.res`)
+   - `S.convertOrThrow(s)` (3 sites in `reventless-local/src/Platform.res`)
      → `Util_Sury.fromJson(_, s)` (the calls take JSON values).
    - `S.enableJson()` (41 sites) → delete entire line (opportunity H).
 2. Update `reventless/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs`
@@ -283,7 +283,7 @@ Steps:
    `"sury": "11.0.0-alpha.4"` to `"sury": "11.0.0-alpha.5"` (exact again; do
    not reintroduce `^` until alpha graduates).
 2. `pnpm install`; confirm only `sury@11.0.0-alpha.5` resolves.
-3. Full local build + test pass across reventless-core, reventless-in-memory,
+3. Full local build + test pass across reventless-core, reventless-local,
    reventless-aws, reventless-gwt, reventless-codegen, reventless-spec,
    reventless-interop, plus the example plugins.
 4. Commit and push to `alpha`. CI publishes new alphas; Layer 60 builds with

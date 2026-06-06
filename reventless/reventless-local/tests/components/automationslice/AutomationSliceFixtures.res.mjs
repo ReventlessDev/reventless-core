@@ -255,7 +255,7 @@ function encodeSkipProcessEvent(event) {
 
 let testContext = {
   environment: "test",
-  platformName: "in-memory",
+  platformName: "local",
   pluginName: "TestPlugin",
   sliceName: "ShipOrder"
 };

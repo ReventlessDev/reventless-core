@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-The `reventless-in-memory` provider currently keeps every piece of state (event logs, DCB event log, query DBs, task bucket, pending commands) in ReScript `Dict`/`ref`/`Stm.TRef` values. Restarting the dev process — rerunning tests, restarting `pnpm dev`, reloading a GraphQL server — wipes all domain state, which is painful for any workflow that wants to iterate on a live dataset (UI development, manual QA, long-running demos, replay experiments).
+The `reventless-local` provider currently keeps every piece of state (event logs, DCB event log, query DBs, task bucket, pending commands) in ReScript `Dict`/`ref`/`Stm.TRef` values. Restarting the dev process — rerunning tests, restarting `pnpm dev`, reloading a GraphQL server — wipes all domain state, which is painful for any workflow that wants to iterate on a live dataset (UI development, manual QA, long-running demos, replay experiments).
 
 This document compares lightweight embedded databases, scores them against Reventless's storage interfaces, and recommends an approach that:
 
@@ -25,10 +25,10 @@ Only the four storage surfaces need durability. The bus, command handlers, subsc
 
 | Surface | Current in-memory shape | Semantics that must survive restart |
 |---|---|---|
-| [EventLog](../../reventless/reventless-in-memory/src/adapter/EventLog/EventLogStorage_InMemory.res) | `dict<array<JSON>>` per aggregate instance, wrapped in `Stm.TRef` | Append-only per `id`, optimistic concurrency on `seqNr == currentCount`, replay in insertion order, streaming replay |
-| [DcbEventLog](../../reventless/reventless-in-memory/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res) | `ref<array<rawSequencedEvent>>` with monotonic `position` counter | Append with conditional check (query + `after`), read with tag/event-type filter, head position, streaming read |
-| [QueryDb](../../reventless/reventless-in-memory/src/adapter/QueryDb/QueryDbStorage_InMemory.res) | `ref<dict<dict<JSON>>>` — partition key → sub-key → item | `load` by partition key (sub-key ordered), `save`/`delete` by `(id, subId)`, batch variants, scan-all, optional sub-id field extraction, optional GSI indexes, optional TTL |
-| [TaskBucket](../../reventless/reventless-in-memory/src/adapter/Task/TaskBucket_InMemory.res) | Currently a no-op stub | Object storage (key → bytes). No current state; a persistent backend should at least store key/bytes pairs for later task replay |
+| [EventLog](../../reventless/reventless-local/src/adapter/EventLog/EventLogStorage_InMemory.res) | `dict<array<JSON>>` per aggregate instance, wrapped in `Stm.TRef` | Append-only per `id`, optimistic concurrency on `seqNr == currentCount`, replay in insertion order, streaming replay |
+| [DcbEventLog](../../reventless/reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res) | `ref<array<rawSequencedEvent>>` with monotonic `position` counter | Append with conditional check (query + `after`), read with tag/event-type filter, head position, streaming read |
+| [QueryDb](../../reventless/reventless-local/src/adapter/QueryDb/QueryDbStorage_InMemory.res) | `ref<dict<dict<JSON>>>` — partition key → sub-key → item | `load` by partition key (sub-key ordered), `save`/`delete` by `(id, subId)`, batch variants, scan-all, optional sub-id field extraction, optional GSI indexes, optional TTL |
+| [TaskBucket](../../reventless/reventless-local/src/adapter/Task/TaskBucket_InMemory.res) | Currently a no-op stub | Object storage (key → bytes). No current state; a persistent backend should at least store key/bytes pairs for later task replay |
 
 Non-negotiable properties the chosen backend must supply or let us implement cheaply:
 
@@ -36,7 +36,7 @@ Non-negotiable properties the chosen backend must supply or let us implement che
 - **Ordered iteration under a prefix** — QueryDb returns sub-key-sorted items; DcbEventLog returns events after a given position.
 - **Secondary-attribute filtering** — DcbEventLog tag queries (`AND` over `{key, value}` pairs) must not require a full scan at realistic dev dataset sizes.
 - **Embedded, single-file, zero server** — we must not introduce a background daemon.
-- **Synchronous or same-tick-settling API** — the existing storage functions are `async` but mostly resolve immediately; an async driver that adds IO latency to every `save` changes observable test timings and undermines the 2/3-tick guarantees documented in [InMemory_Bus.res](../../reventless/reventless-in-memory/src/adapter/InMemory_Bus.res).
+- **Synchronous or same-tick-settling API** — the existing storage functions are `async` but mostly resolve immediately; an async driver that adds IO latency to every `save` changes observable test timings and undermines the 2/3-tick guarantees documented in [InMemory_Bus.res](../../reventless/reventless-local/src/adapter/InMemory_Bus.res).
 - **Clean reset/truncate** — tests call `Bus.reset()` between runs; the persistent backend needs the equivalent (`DELETE FROM *` or file truncation) gated behind a flag so developer sessions don't lose data.
 
 ---
@@ -145,11 +145,11 @@ That means: **two implementations of each `*_InMemory.res` file, both registerin
 
 ### Package and module layout
 
-Two viable shapes. Both keep `reventless-in-memory` the default and additive.
+Two viable shapes. Both keep `reventless-local` the default and additive.
 
 **Option A — extend the existing package (recommended).**
 ```
-reventless/reventless-in-memory/src/adapter/
+reventless/reventless-local/src/adapter/
   EventLog/
     EventLogStorage_InMemory.res           # current Dict-based
     EventLogStorage_Sqlite.res             # new
@@ -165,13 +165,13 @@ reventless/reventless-in-memory/src/adapter/
   Backend.res                              # new — backend selector
 ```
 
-Pros: single `@reventlessdev/reventless-in-memory` dependency for app developers; no workspace duplication; `Backend.res` is the one place that knows about both.
+Pros: single `@reventlessdev/reventless-local` dependency for app developers; no workspace duplication; `Backend.res` is the one place that knows about both.
 
 Cons: `better-sqlite3` becomes an optional peer dep. The package's `package.json` should declare it as `peerDependenciesMeta.optional = true` so pure-memory users don't download a native binary.
 
 **Option B — new package `reventless-local`.**
 
-Keeps the native binary entirely out of `reventless-in-memory`. Costs: two packages to publish in lockstep, a second functor layer in platform construction. Only worth doing if users who install `reventless-in-memory` for CI/testing really do not want the SQLite peer dep present.
+Keeps the native binary entirely out of `reventless-local`. Costs: two packages to publish in lockstep, a second functor layer in platform construction. Only worth doing if users who install `reventless-local` for CI/testing really do not want the SQLite peer dep present.
 
 **Recommendation: Option A.** Fewer moving parts; the native binary is optional; one import path for app developers.
 
@@ -211,7 +211,7 @@ Mechanism:
 
 ### Behavioural parity tests
 
-Every test in [reventless-in-memory/tests/](../../reventless/reventless-in-memory/tests/) should run under both backends. Concretely: a `describe.each([Memory, Sqlite])` wrapper (ReScript-flavoured via `Jest.describe` + a backend-selector fixture) so any divergence between the two adapters becomes a visible test failure. The small number of timing-sensitive tests (fake timers, subscriber count assertions) are unaffected — SQLite calls are synchronous and do not change microtask counts.
+Every test in [reventless-local/tests/](../../reventless/reventless-local/tests/) should run under both backends. Concretely: a `describe.each([Memory, Sqlite])` wrapper (ReScript-flavoured via `Jest.describe` + a backend-selector fixture) so any divergence between the two adapters becomes a visible test failure. The small number of timing-sensitive tests (fake timers, subscriber count assertions) are unaffected — SQLite calls are synchronous and do not change microtask counts.
 
 ### Reset semantics
 
@@ -233,7 +233,7 @@ Every test in [reventless-in-memory/tests/](../../reventless/reventless-in-memor
 
 ## Recommended Next Steps
 
-1. Prototype `EventLogStorage_Sqlite.res` + `QueryDbStorage_Sqlite.res` behind a `Backend.Sqlite` selector in `reventless-in-memory`. Keep the memory adapters untouched.
+1. Prototype `EventLogStorage_Sqlite.res` + `QueryDbStorage_Sqlite.res` behind a `Backend.Sqlite` selector in `reventless-local`. Keep the memory adapters untouched.
 2. Wire the backend selector through `Platform.Make`; add an env-var shortcut.
 3. Port every existing adapter test to run under both backends (`describe.each`).
 4. Add `DcbEventLogStorage_Sqlite.res` + `TaskBucket_Sqlite.res` once the event-log + query-db path is green.

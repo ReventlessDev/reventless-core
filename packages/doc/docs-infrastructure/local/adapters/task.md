@@ -3,7 +3,7 @@ title: Task
 sidebar_position: 6
 ---
 
-# Task — InMemory
+# Task — Local
 
 **Source:** `reventless-local/src/adapter/Task/LocalTaskBucket.res`
 
@@ -25,7 +25,7 @@ The `make` function returns a dummy resource (no actual storage bucket is create
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Storage | No actual storage | S3 bucket with CORS |
 | Events | Manual JSON with `eventName`/`key` fields | S3 ObjectCreated/ObjectRemoved events |

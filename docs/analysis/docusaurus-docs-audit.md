@@ -180,7 +180,7 @@ Documents how to write, test, and update skills in `.claude/skills/`. Appropriat
 
 ### `docs-framework/inner-workings/mcp.md` — Open source, correct placement ✓
 
-The MCP server is genuinely part of the open source framework: `MCP_SchemaGenerator.res` and `SuryToJsonSchema.res` in `reventless-core`, `MCP_Server.res` in `reventless-in-memory`, and a placeholder `MCP_Lambda.res` in `reventless-aws`. The `rescript-mcp-sdk` package provides open source bindings for the open MCP protocol SDK. Content is accurate and correctly placed in Framework internals.
+The MCP server is genuinely part of the open source framework: `MCP_SchemaGenerator.res` and `SuryToJsonSchema.res` in `reventless-core`, `MCP_Server.res` in `reventless-local`, and a placeholder `MCP_Lambda.res` in `reventless-aws`. The `rescript-mcp-sdk` package provides open source bindings for the open MCP protocol SDK. Content is accurate and correctly placed in Framework internals.
 
 The AWS adapter note ("not yet available") is honestly flagged in the doc itself.
 

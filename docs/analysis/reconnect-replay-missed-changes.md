@@ -464,7 +464,7 @@ matters.
   AppSync GraphQL resolver against the journal table.
 - `reventless/reventless-core/src/components/Plugin/Plugin_SubscriptionSchema.res` —
   emit `catchUpChanges` SDL field.
-- `reventless/reventless-in-memory/src/InMemory_Bus.res` — in-memory journal
+- `reventless/reventless-local/src/InMemory_Bus.res` — in-memory journal
   (small array; same TTL semantics).
 
 **Touched on the client** (Tiers 1 and 2):

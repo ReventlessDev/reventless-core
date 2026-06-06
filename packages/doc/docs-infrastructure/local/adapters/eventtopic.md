@@ -3,7 +3,7 @@ title: EventTopic
 sidebar_position: 3
 ---
 
-# EventTopic — InMemory
+# EventTopic — Local
 
 **Source:** `reventless-local/src/adapter/EventTopic/LocalEventTopicPublisher.res`
 
@@ -24,7 +24,7 @@ The adapter returns a dummy resource with the topic name, which `LocalEventColle
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Transport | Effect PubSub fan-out | SNS topic |
 | Delivery | Synchronous (2-3 microtask ticks) | Asynchronous SNS → SQS |

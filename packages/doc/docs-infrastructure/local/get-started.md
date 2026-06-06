@@ -1,11 +1,11 @@
 ---
-title: Getting Started with InMemory
+title: Getting Started with Local
 sidebar_position: 2
 ---
 
 # Getting Started with reventless-local
 
-This guide covers setting up and using the InMemory provider for local development and testing.
+This guide covers setting up and using the Local provider for local development and testing.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ npm install @reventless/reventless @reventless/reventless-local @reventless/reve
 
 ## Creating a Platform
 
-The InMemory provider exposes a `Platform.Make()` functor that creates an isolated local platform:
+The Local provider exposes a `Platform.Make()` functor that creates an isolated local platform:
 
 ```rescript
 module Platform = ReventlessLocal.Platform.Make()
@@ -108,7 +108,7 @@ afterAll(() => {
 
 ## GraphQL Server
 
-The InMemory platform starts a GraphQL server on **port 4000** automatically after all plugins are constructed. All mutation and query resolvers registered during plugin construction are available immediately.
+The Local platform starts a GraphQL server on **port 4000** automatically after all plugins are constructed. All mutation and query resolvers registered during plugin construction are available immediately.
 
 Access it at `http://localhost:4000/graphql`.
 
@@ -120,6 +120,6 @@ The MCP server starts alongside the GraphQL server, providing AI-native access t
 
 ## Next Steps
 
-- [InMemory Provider Overview](./index.md) — architecture and service mappings
+- [Local Provider Overview](./index.md) — architecture and service mappings
 - [Infrastructure Overview](/infrastructure) — compare with the AWS provider
 - [AWS Getting Started](/infrastructure/aws/get-started) — deploy to production on AWS

@@ -268,7 +268,7 @@ DynamoDB has a 10GB partition limit (but handles splits automatically). Cosmos D
 | `reventless-spec` | Pure type definitions, no cloud dependencies |
 | `reventless` (core) | Provider-agnostic by design; adapter interfaces are already abstract |
 | `rescript-uuid`, `rescript-hash-object`, etc. | Utility packages, no cloud coupling |
-| `reventless-in-memory` | Test platform, independent of cloud providers |
+| `reventless-local` | Test platform, independent of cloud providers |
 | `reventless-gen` | Code generation, cloud-agnostic |
 
 ### 4.2 Minimal Changes Likely Required
@@ -376,7 +376,7 @@ The deploy-time layer uses Pulumi, which has first-class Azure support via `@pul
 
 3. **Consider abstracting the API/GraphQL layer** in `reventless-infra` as a longer-term improvement. This benefits both AWS (AppSync could become one option among several) and Azure.
 
-4. **Invest heavily in integration tests.** The semantic differences between AWS and Azure services mean that unit tests alone won't catch ordering, consistency, and failure-mode issues. A shared adapter contract test suite (using the existing in-memory platform as a reference implementation) would be valuable.
+4. **Invest heavily in integration tests.** The semantic differences between AWS and Azure services mean that unit tests alone won't catch ordering, consistency, and failure-mode issues. A shared adapter contract test suite (using the existing local platform as a reference implementation) would be valuable.
 
 5. **Design the DcbEventLog partitioning strategy for Azure upfront.** This is the area where AWS and Azure diverge most, and retrofitting a partitioning strategy is much harder than designing it from the start.
 

@@ -3,7 +3,7 @@ title: ScheduledPublisher
 sidebar_position: 11
 ---
 
-# ScheduledPublisher — InMemory
+# ScheduledPublisher — Local
 
 **Source:** `reventless-local/src/adapter/Scheduler/LocalScheduledPublisher.res`
 
@@ -34,7 +34,7 @@ Schedule rates are converted to milliseconds:
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Scheduling | `setInterval` / `setTimeout` | CloudWatch Events rules |
 | Rate expressions | Converted to milliseconds | CloudWatch rate/cron expressions |

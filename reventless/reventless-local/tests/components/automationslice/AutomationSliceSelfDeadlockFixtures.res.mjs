@@ -368,7 +368,7 @@ let allEventTopics = Object.fromEntries([[
 
 let testContext = {
   environment: "test",
-  platformName: "in-memory",
+  platformName: "local",
   pluginName: "TestPlugin",
   sliceName: name$3
 };

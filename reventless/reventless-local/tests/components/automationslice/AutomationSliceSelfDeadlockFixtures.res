@@ -245,7 +245,7 @@ let allEventTopics: ReventlessInfra.EventTopic.allOutputs = Dict.fromArray([
 
 let testContext: Reventless.AutomationSlice.context = {
   environment: "test",
-  platformName: "in-memory",
+  platformName: "local",
   pluginName: "TestPlugin",
   sliceName: AutoShipSpec.name,
 }

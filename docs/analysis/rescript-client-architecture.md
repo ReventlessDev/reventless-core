@@ -1351,7 +1351,7 @@ The transport choice is orthogonal to the sync strategy (online-first vs offline
 
 ### 7.10 Consequences for the In-Memory Backend
 
-The in-memory backend (`reventless-in-memory`) is used for local development and testing. It currently accepts commands **only** via GraphQL mutations (graphql-yoga) or MCP tools, and delivers events **only** internally (bus fan-out to read model handlers — no client-facing event push). Switching to direct command dispatch and event subscriptions has significant implications for this implementation.
+The in-memory backend (`reventless-local`) is used for local development and testing. It currently accepts commands **only** via GraphQL mutations (graphql-yoga) or MCP tools, and delivers events **only** internally (bus fan-out to read model handlers — no client-facing event push). Switching to direct command dispatch and event subscriptions has significant implications for this implementation.
 
 #### Current In-Memory Architecture
 

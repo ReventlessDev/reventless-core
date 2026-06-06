@@ -3,7 +3,7 @@ title: CommandGenerator
 sidebar_position: 7
 ---
 
-# CommandGenerator — InMemory
+# CommandGenerator — Local
 
 **Source:** `reventless-local/src/adapter/CommandGenerator/LocalCommandGeneratorResolvers.res`
 
@@ -11,15 +11,15 @@ sidebar_position: 7
 
 ## How It Works
 
-The InMemory CommandGenerator is a lightweight adapter. The `handleResolversEvent` function wraps the `commandGenerator` callback in a `Pulumi.Output.make` — the event is passed directly to the generator function.
+The Local CommandGenerator is a lightweight adapter. The `handleResolversEvent` function wraps the `commandGenerator` callback in a `Pulumi.Output.make` — the event is passed directly to the generator function.
 
 The `make` function is a no-op that returns no resources (no AppSync API to create).
 
-In practice, the InMemory platform uses `CommandGeneratorResolvers_GraphQL` instead, which registers GraphQL mutation resolvers on the built-in GraphQL server.
+In practice, the Local platform uses `CommandGeneratorResolvers_GraphQL` instead, which registers GraphQL mutation resolvers on the built-in GraphQL server.
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | API | Built-in GraphQL server (port 4000) | AppSync GraphQL API |
 | Resolvers | Direct function binding | AppSync DynamoDB resolvers |

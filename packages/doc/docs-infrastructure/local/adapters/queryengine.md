@@ -3,7 +3,7 @@ title: QueryEngine
 sidebar_position: 10
 ---
 
-# QueryEngine — InMemory
+# QueryEngine — Local
 
 **Source:** `reventless-local/src/adapter/QueryEngine/LocalQueryEngine.res`
 
@@ -25,7 +25,7 @@ Created via `Make(Bus)` functor. Uses the bus's QueryDb registries to look up da
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Scan | In-memory array/stream iteration | DynamoDB Scan with filter expressions |
 | Query | Dict key lookup | DynamoDB Query with key conditions |

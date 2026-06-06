@@ -114,7 +114,7 @@ Packages affected (file count):
 | Package                  | Affected `.res` files |
 | ------------------------ | --------------------- |
 | `reventless-core`        | 29                    |
-| `reventless-in-memory`   | 22                    |
+| `reventless-local`   | 22                    |
 | `reventless-gwt`         | 10                    |
 | `reventless-codegen`     | 6                     |
 | `reventless-spec`        | 4                     |
@@ -224,7 +224,7 @@ happened**:
    sury-using files (`types/Message.res`, `types/Identity.res`,
    `types/StoredEvent.res`, `components/DcbDecode.res` + the schema
    introspection in `components/DcbTag.res`) are also ported. `reventless-core`
-   has ~29 affected files; `reventless-in-memory` has ~22. The "two pivot
+   has ~29 affected files; `reventless-local` has ~22. The "two pivot
    files" framing is preserved in the revised plan as the **careful manual
    port**, but the build forces ~55 files of collateral that get done in the
    same phase. Phase 2's scope shrinks correspondingly (see plan revision).
@@ -276,7 +276,7 @@ hotfix on `alpha`. Restores deploys today; no behaviour change.
 `fromJson` / `toJsonString` / `fromJsonString` shims, switch `Message.res` +
 `Projection.res` to use them. With both packages bumped to sury alpha.5
 locally and the helper in place, run the full `reventless-core` and
-`reventless-in-memory` test suites. This validates (a) the encoder-direction
+`reventless-local` test suites. This validates (a) the encoder-direction
 equivalence question and (b) sury-ppx alpha.2 + sury alpha.5 compatibility on
 a small surface.
 

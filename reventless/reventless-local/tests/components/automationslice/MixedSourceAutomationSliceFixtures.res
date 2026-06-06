@@ -163,11 +163,11 @@ module AutoFulfill = AutomationSliceMaker.Make(
   AutoFulfillAutomation,
 )
 
-// Mirrors the context that `Plugin_Builder` constructs for in-memory deployments
-// (environment from `LocalPluginSpec.environment`, platformName "in-memory").
+// Mirrors the context that `Plugin_Builder` constructs for local deployments
+// (environment from `LocalPluginSpec.environment`, platformName "local").
 let testContext: Reventless.AutomationSlice.context = {
-  environment: "in-memory",
-  platformName: "in-memory",
+  environment: "local",
+  platformName: "local",
   pluginName: "TestPlugin",
   sliceName: AutoFulfillSpec.name,
 }

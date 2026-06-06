@@ -3,7 +3,7 @@ title: QueryDb
 sidebar_position: 5
 ---
 
-# QueryDb — InMemory
+# QueryDb — Local
 
 **Source:** `reventless-local/src/adapter/QueryDb/QueryDbStorage_InMemory.res`
 
@@ -34,7 +34,7 @@ When created via `Make(Bus)`, the adapter registers three functions on the bus:
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Storage | In-memory `Dict` | DynamoDB table |
 | Indexes | Ignored (all lookups by primary key) | secondary index support with configurable projections |

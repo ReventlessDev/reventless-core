@@ -1,5 +1,5 @@
-// Plugin_Builder Spec for in-memory mode.
-// Provides no-op runtime operations, identity resource naming, and "in-memory" environment.
+// Plugin_Builder Spec for the local platform.
+// Provides no-op runtime operations, identity resource naming, and "local" environment.
 
 let runtimeOps: ReventlessCore.PluginRuntimeOperations.operations = {
   messagePublish: {
@@ -12,5 +12,5 @@ let resourceNaming: ReventlessInfra.ResourceNaming.operations = {
   urnName: name => name,
 }
 
-let environment = "in-memory"
-let platformName = "in-memory"
+let environment = "local"
+let platformName = "local"

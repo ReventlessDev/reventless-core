@@ -9,8 +9,8 @@ module type Spec = {
   let runtimeOps: PluginRuntimeOperations.operations
   let resourceNaming: ReventlessInfra.ResourceNaming.operations
   let environment: string
-  /** Deployment-level identity (Pulumi project name in AWS, "in-memory" in
-      the in-memory platform). Threaded into `AutomationSlice.context` so
+  /** Deployment-level identity (Pulumi project name in AWS, "local" in
+      the local platform). Threaded into `AutomationSlice.context` so
       mappings can populate partition tags from deployment metadata. */
   let platformName: string
   let hooks: Plugin_Helpers.platformHooks
