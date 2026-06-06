@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.49 (2026-06-06)
+
+### Bug Fixes
+
+* **reventless-gwt:** adopt rescript watch (watch.lock) so the engine coexists with rescript-vscode ([efbbbd2](https://github.com/ReventlessDev/reventless-core/commit/efbbbd2dd52ddf0df025e02dbbe9b7b87b3169ac))
+* **reventless-gwt:** prune the GWT DSL modules in src/ from discovery ([494f244](https://github.com/ReventlessDev/reventless-core/commit/494f24442c2ceec01751faaa65b22730e6541983))
+* **reventless-gwt:** render inline-record variant payloads in GWT diffs ([5fbcebd](https://github.com/ReventlessDev/reventless-core/commit/5fbcebd080c447836c719c6b0015af35b3c801cb))
+* **reventless-gwt:** surface ReScript exception messages in test runner ([4e3faf9](https://github.com/ReventlessDev/reventless-core/commit/4e3faf942e98d7e6e968f993726a0214ea6c0a14))
+### Features
+
+* **reventless-gwt:** carry component source files on the components event ([0c7f794](https://github.com/ReventlessDev/reventless-core/commit/0c7f79405d24444ed8e35bde774965ab24829712))
+* **reventless-gwt:** CLI-managed watch engine for zero-config editor testing ([706360c](https://github.com/ReventlessDev/reventless-core/commit/706360c0cfd80d8044e100fbd6480e4e4cc35d95))
+* **reventless-gwt:** component-aware discovery — component field + components inventory (protocol 2) ([de427a1](https://github.com/ReventlessDev/reventless-core/commit/de427a132b4760b6c61c61413bb38cdbad74e519))
+* **reventless-gwt:** emit mismatch kind on testFail (protocol 3) ([e248a6e](https://github.com/ReventlessDev/reventless-core/commit/e248a6e58a13529b911157cd76513e9f63ee5bac))
+* **reventless-gwt:** prune .gwtignore subtrees from discovery and component scan ([e7194be](https://github.com/ReventlessDev/reventless-core/commit/e7194be826a92fd78d68928a7515ee4a2a58d175))
+
+
 # 1.0.0-alpha.48 (2026-06-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

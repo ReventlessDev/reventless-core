@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-ordering",
   "private": true,
-  "version": "1.0.0-alpha.76",
+  "version": "1.0.0-alpha.77",
   "description": "Online Shop example — Ordering bounded context (Customer & Order) using the DCB pattern",
   "license": "Apache-2.0",
   "scripts": {
@@ -33,8 +33,8 @@
     "@reventlessdev/online-shop-dcb-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-dcb-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*"
   },
   "devDependencies": {

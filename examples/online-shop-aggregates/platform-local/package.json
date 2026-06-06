@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-platform-local",
   "private": true,
-  "version": "1.0.0-alpha.68",
+  "version": "1.0.0-alpha.69",
   "description": "Online Shop example — full aggregate platform with Catalog + Ordering plugins (in-memory)",
   "license": "Apache-2.0",
   "scripts": {
@@ -18,8 +18,8 @@
     "@reventlessdev/online-shop-aggregates-ordering": "workspace:*",
     "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"
   },
