@@ -1,6 +1,5 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog-spec",
-  "private": true,
   "version": "1.0.0-alpha.41",
   "description": "Online Shop Hybrid example — Catalog plugin specification (extension point specs)",
   "license": "Apache-2.0",

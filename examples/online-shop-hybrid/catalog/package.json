@@ -1,6 +1,5 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-catalog",
-  "private": true,
   "version": "1.0.0-alpha.72",
   "description": "Online Shop Hybrid example — Catalog plugin (Category aggregate + Product/ProductDemand DCB)",
   "license": "Apache-2.0",
