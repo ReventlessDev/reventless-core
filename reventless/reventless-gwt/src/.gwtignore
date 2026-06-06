@@ -1,0 +1,10 @@
+# Prunes this subtree from reventless-gwt discovery (test tree + component tree).
+#
+# These are the GWT DSL framework modules — `Automation_GWT`, `Behavior_GWT`,
+# `Mapping_GWT`, etc. — i.e. the `*_GWT.Make` functors the test runner is built
+# from. They are named with the same `_GWT` suffix that marks user test files, so
+# discovery would otherwise list each one as a test, even though loading the
+# compiled `*_GWT.res.mjs` registers no cases (the `describe`/`test` calls live
+# inside the functors, not at module top level).
+#
+# The package's real tests live in `tests/`, which this prune does not touch.
