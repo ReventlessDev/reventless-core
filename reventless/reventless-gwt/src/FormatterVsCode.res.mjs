@@ -145,7 +145,7 @@ function event(payload) {
 function hello() {
   let d = {};
   d["event"] = "hello";
-  d["protocol"] = 3;
+  d["protocol"] = 4;
   event(d);
 }
 
@@ -261,6 +261,7 @@ function components(comps) {
     o["dir"] = c.dir;
     o["kind"] = c.kind;
     o["name"] = c.name;
+    o["files"] = c.files.map(prim => prim);
     return o;
   });
   d["components"] = arr;
@@ -403,7 +404,7 @@ function runEnd(s) {
   event(d);
 }
 
-let protocolVersion = 3;
+let protocolVersion = 4;
 
 export {
   write,
