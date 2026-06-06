@@ -510,7 +510,7 @@ function startBuildWatchers(paths) {
     if (WatcherProbe$ReventlessGwt.hasLiveWatcher(pkg.dir)) {
       return FormatterVsCode$ReventlessGwt.buildExternal(pkg.dir);
     }
-    let feed = BuildClassifier$ReventlessGwt.make({
+    let feed = BuildClassifier$ReventlessGwt.make(undefined, {
       onStart: () => FormatterVsCode$ReventlessGwt.buildStart(pkg.dir),
       onOk: ms => FormatterVsCode$ReventlessGwt.buildOk(pkg.dir, ms),
       onFail: msg => FormatterVsCode$ReventlessGwt.buildFail(pkg.dir, msg)

@@ -49,6 +49,38 @@ describe("BuildClassifier", () => {
     expect(msg->String.includes("This has type: string"))->toEqual(true)
   })
 
+  testPromise("watchdog fails a build that starts but never terminates", async () => {
+    let oks = ref(0)
+    let fails = ref([])
+    let feed = BuildClassifier.make(~watchdogMs=50, {
+      onStart: () => (),
+      onOk: _ms => oks := oks.contents + 1,
+      onFail: msg => fails := Array.concat(fails.contents, [msg]),
+    })
+    feed("Parsed 1 source files")
+    // No "Finished …" and no error marker — a crashed/hung watcher.
+    await delay(120)
+    expect(oks.contents)->toEqual(0)
+    expect(fails.contents->Array.length)->toEqual(1)
+    let msg = fails.contents->Array.getUnsafe(0)
+    expect(msg->String.includes("watchdog"))->toEqual(true)
+  })
+
+  testPromise("watchdog does not fire once the build finishes", async () => {
+    let oks = ref(0)
+    let fails = ref([])
+    let feed = BuildClassifier.make(~watchdogMs=50, {
+      onStart: () => (),
+      onOk: _ms => oks := oks.contents + 1,
+      onFail: msg => fails := Array.concat(fails.contents, [msg]),
+    })
+    feed("Parsed 1 source files")
+    feed("Finished incremental compilation")
+    await delay(120)
+    expect(oks.contents)->toEqual(1)
+    expect(fails.contents->Array.length)->toEqual(0)
+  })
+
   testPromise("strips ANSI colour codes before matching the finish line", async () => {
     let oks = ref(0)
     let feed = BuildClassifier.make({
