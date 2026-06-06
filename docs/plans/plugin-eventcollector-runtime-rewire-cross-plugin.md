@@ -290,7 +290,7 @@ Step 3
   [x] 3.2  Subscribe / unsubscribe helpers deleted from the mapping. The
            ReventlessCore.PluginRuntimeOperations.operations record lost
            `topicSubscription`; AWS Util_TopicSubscription_Runtime.res removed
-           outright; in-memory adapter's runtimeOps trimmed to messagePublish
+           outright; local adapter's runtimeOps trimmed to messagePublish
            only.
   [x] 3.3  mapIncomingEvent now matches only `UnknownPluginDetected if pluginId
            == id` (self-bootstrap → emit ConnectPlugin). Cross-plugin

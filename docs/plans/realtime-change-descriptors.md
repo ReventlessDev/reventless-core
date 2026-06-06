@@ -38,7 +38,7 @@ The framework needs a different shape: **partition-scoped channels carrying smal
 | Resolution of client-side WebSocket `Sec-WebSocket-Protocol` blocker | ✅ | — |
 | Tenant-isolation auth at subscribe time (`OnSubscribe` handler hook) | ✅ (hook only — handler shipped by commercial extension) | Extension policy |
 | Client implementation | — | Out of scope — this plan covers the publish path and channel layout only |
-| In-memory (yoga) parity | ✅ (lightweight mock) | Full feature match with prod |
+| Local (yoga) parity | ✅ (lightweight mock) | Full feature match with prod |
 
 ---
 
@@ -156,7 +156,7 @@ events->Array.forEach(({position, event}) => {
 
 Location: `reventless-core/src/components/Projection/` (exact file to confirm during implementation). The hook is registered via the existing `subscriptionInfraHook` in `Platform.res`.
 
-If `position` is `null` (e.g. yoga in-memory mode where DCB positions aren't surfaced the same way), descriptors carry `position: null` and downstream dedup falls back to "process every delivery" — acceptable degradation.
+If `position` is `null` (e.g. yoga local mode where DCB positions aren't surfaced the same way), descriptors carry `position: null` and downstream dedup falls back to "process every delivery" — acceptable degradation.
 
 ### 4. OnPublish handler: coalescing and BulkInvalidated
 
@@ -296,7 +296,7 @@ Shipped as a 2-segment layout `{readModelName}/{entityKey}` — partitioning is 
 
 AWS `Platform.res`: the `noneDs` + `makeSubscriptionResolver` block under the StateTopic loop is gone; `StateTopic_AppSync.make` is the only thing wired per stream-enabled QueryDb.
 
-In-memory `Platform.res`: `bridgeSourceB` and the `sourceBEntries` loop dropped from the wiring. `bridgeSourceB` / `sourceBTopic` and the corresponding unit test remain as library helpers — Phase 8 will replace them with descriptor-shape publishing on a channel mirroring the AWS layout.
+Local `Platform.res`: `bridgeSourceB` and the `sourceBEntries` loop dropped from the wiring. `bridgeSourceB` / `sourceBTopic` and the corresponding unit test remain as library helpers — Phase 8 will replace them with descriptor-shape publishing on a channel mirroring the AWS layout.
 
 **Checklist:**
 
@@ -372,14 +372,14 @@ Implementation:
 - `GraphQL_FragmentGenerator.res` — new `deriveByIdsQueryField` plus a guarded `queries->Array.push` inside the queryEntries loop (only when `includeIdParam && subIdField === None`).
 - `rescript-pulumi-aws/AppSync_Resolver_Functions.res` — new `batchGetItemsByIds(tableName)` JS resolver template (`BatchGetItem` with the table name interpolated at deploy time, since BatchGetItem's `tables` map keys on the literal name).
 - `QueryDbResolvers_AppSync.res` — wires the resolver via the existing `storageResource`/`generateCode` helpers and appends it to the main resolver array.
-- `QueryDbResolvers_GraphQL.res` (in-memory) — adds a matching SDL field (via `deriveByIdsQueryField` for SDL parity) and a resolver that loops over `ops.loadStream(id)`, dropping missing ids and injecting the `id` field for Relay Node compatibility.
+- `QueryDbResolvers_GraphQL.res` (local) — adds a matching SDL field (via `deriveByIdsQueryField` for SDL parity) and a resolver that loops over `ops.loadStream(id)`, dropping missing ids and injecting the `id` field for Relay Node compatibility.
 
 **Checklist:**
 
 - [x] Schema generator emits the batch-by-ids field (single-key projections only)
 - [x] AppSync BatchGetItem resolver template
-- [x] In-memory adapter matches the resolver shape (uses the same SDL helper for parity)
-- [ ] Integration test for both prod and dev adapters — deferred (an in-memory unit test for the resolver would round out coverage; deployed integration test requires AWS access)
+- [x] Local adapter matches the resolver shape (uses the same SDL helper for parity)
+- [ ] Integration test for both prod and dev adapters — deferred (a local unit test for the resolver would round out coverage; deployed integration test requires AWS access)
 - [x] Build clean (1358 tests pass; existing `GraphQL_SchemaInspectorTest` query count bumped 2 → 3 to account for the new field)
 
 ### Phase 6: Resolve `Sec-WebSocket-Protocol` ✅
@@ -422,13 +422,13 @@ This phase also extended the `rescript-pulumi-aws` ReScript binding for `Channel
 - [x] `rescript-pulumi-aws` `ChannelNamespace` binding extended with the missing CloudFormation fields
 - [x] Build clean (1358 tests pass)
 
-### Phase 8: In-memory parity ✅
+### Phase 8: Local parity ✅
 
-`InMemory_Bus.publishStateChange` now carries the **change descriptor** rather than the full row state — dev clients consuming the bridge see the same JSON shape as AWS WebSocket subscribers.
+`LocalBus.publishStateChange` now carries the **change descriptor** rather than the full row state — dev clients consuming the bridge see the same JSON shape as AWS WebSocket subscribers.
 
 Concrete changes:
 
-- `InMemory_Bus.res` — `publishStateChange` parameter renamed `~state` → `~descriptor`; new module-level helper `makeStateChangeDescriptor(~changeKind, ~id, ~state)` produces the `{changeKind, id, sortKeyValue?}` payload (same `updatedAt → createdAt → omit` rule as the AWS Lambda).
+- `LocalBus.res` — `publishStateChange` parameter renamed `~state` → `~descriptor`; new module-level helper `makeStateChangeDescriptor(~changeKind, ~id, ~state)` produces the `{changeKind, id, sortKeyValue?}` payload (same `updatedAt → createdAt → omit` rule as the AWS Lambda).
 - `QueryDbStorage_InMemory.res` and `QueryDbStorage_Sqlite.res` — every `save`/`saveBatch`/`delete`/`deleteBatch` now builds a descriptor and publishes it. Entity key follows the AWS rule: single-key tables → partition value, composite tables → `pk-sk`. `delete`/`deleteBatch` now publish `"Removed"` descriptors (previously silent — fixed gap relative to AWS).
 - `GraphQL_SubscriptionResolversTest.res` — both Source B tests updated to assert the descriptor shape.
 
@@ -436,11 +436,11 @@ Concrete changes:
 - `changeKind` is `"Updated"` for save() in dev — the in-memory storage doesn't cheaply distinguish first-insert from update; AWS uses DDB streams' INSERT vs MODIFY for this. `"Removed"` is emitted on delete in both.
 - `position` is omitted in both dev and prod (Phase 3 deferred).
 - OnPublish coalescer omitted in dev (Phase 4 deferred; dev gets every change raw, which is fine at dev scale).
-- Channel-name parity is not implemented — the in-memory bus is keyed by read-model name and pubsub topic, not channel paths. Subscribers that need per-entity filtering must filter on `descriptor.id` themselves. Full channel parity would require a layered pubsub mirroring AppSync Events; out of scope.
+- Channel-name parity is not implemented — the local bus is keyed by read-model name and pubsub topic, not channel paths. Subscribers that need per-entity filtering must filter on `descriptor.id` themselves. Full channel parity would require a layered pubsub mirroring AppSync Events; out of scope.
 
 **Checklist:**
 
-- [x] `InMemory_Bus` publishes descriptors (not full state) on `publishStateChange`
+- [x] `LocalBus` publishes descriptors (not full state) on `publishStateChange`
 - [ ] Channel name mirrors the AWS channel format — partial: payload mirrors AWS; topic/channel layering doesn't. Subscribers filter by `descriptor.id`.
 - [x] OnPublish coalescer omitted in dev (Phase 4 deferred)
 - [x] `position` omitted in dev (Phase 3 deferred; both AWS and dev consistent)
@@ -461,7 +461,7 @@ Concrete changes:
 | `reventless-aws` | `src/adapter/Api/<batch-resolver>.res` | 5 | BatchGetItem-by-ids resolver template |
 | `reventless-core` | `src/components/Api/GraphQL_FragmentGenerator.res` | 5 | Emit `Plugin_FooItemsByIds(...)` field |
 | `reventless-core` | `src/Platform.res` | 7 | `subscribeAuthHook` hook surface |
-| `reventless-local` | `src/InMemory_Bus.res` | 8 | Descriptor-shape publish; channel format |
+| `reventless-local` | `src/adapter/LocalBus.res` | 8 | Descriptor-shape publish; channel format |
 
 ### New
 
@@ -478,7 +478,7 @@ Concrete changes:
 
 2. **OnPublish handler runtime model.** AppSync Events OnPublish runs per published event; persistent state across invocations relies on Lambda warm reuse. Cold starts lose the buffered window. Acceptable for the trailing-edge case (worst case: a few stray individual descriptors before the next burst settles) but document the failure mode.
 
-3. **In-memory adapter coalescer.** Whether dev should emulate coalescing or just publish raw. Simpler: publish raw in dev (every change becomes a descriptor), accept the dev/prod divergence. More complex: implement a small JS coalescer in `InMemory_Bus`. Recommend simpler unless dev gets confusing.
+3. **Local adapter coalescer.** Whether dev should emulate coalescing or just publish raw. Simpler: publish raw in dev (every change becomes a descriptor), accept the dev/prod divergence. More complex: implement a small JS coalescer in `LocalBus`. Recommend simpler unless dev gets confusing.
 
 4. **Channel name length under composite IDs.** If `partitionKey` is `plugin-name/component-name` (URL-encoded `plugin-name%2Fcomponent-name`) and exceeds 50 chars, we need a hashing fallback. Confirm typical lengths in current deployments and pick a fallback rule.
 

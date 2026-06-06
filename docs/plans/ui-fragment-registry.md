@@ -321,8 +321,8 @@ Phase 4 — AppSync subscription ✅
            with UIFragmentChangeEvent return type; UIFragmentChangeKind enum + UIFragmentChangeEvent
            type injected into admin schema types
   [x] 4.3  @aws_subscribe(mutations: [...]) wired on onUIFragmentChange; @aws_subscribe directive
-           stripped by in-memory yoga (only valid in AppSync)
-           In-memory: Source C PubSub bridge added in makePlatform, deployPlatform, deployPlugin
+           stripped by local yoga (only valid in AppSync)
+           Local: Source C PubSub bridge added in makePlatform, deployPlatform, deployPlugin
            fallback — mutation resolvers publish to "onUIFragmentChange" topic; subscription
            resolver registered; UIFragment query resolvers added to deployPlatform + deployPlugin
            fallback paths; 311/311 tests, zero warnings

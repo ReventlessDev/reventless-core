@@ -37,7 +37,7 @@ Also resolved: the Phase 0.3 marketing claim ("production since 2019 / financial
 
 A reader can walk one continuous, linked path:
 
-**A** understand *what Reventless is* → **B** understand the hybrid online-shop example → **C** run it locally (in-memory) → **D** deploy it to their own AWS and test it → **E** build their own app on their own domain; with a parallel **F** track for contributors (internals → extend the framework).
+**A** understand *what Reventless is* → **B** understand the hybrid online-shop example → **C** run it locally → **D** deploy it to their own AWS and test it → **E** build their own app on their own domain; with a parallel **F** track for contributors (internals → extend the framework).
 
 Three personas, one spine plus two branches:
 
@@ -112,14 +112,14 @@ Acceptance: navbar shows an "Introduction" entry that resolves; landing page lin
 
 ## Phase 2 — The spine: hybrid online-shop, end to end (High) — journeys B, C, D
 
-Built around `examples/online-shop-hybrid/` (real working app: `catalog`/`ordering` plugins + `-spec`/`-aws`, `platform-in-memory/`, `platform-aws/`, `deploy-manifest.yaml`). Target `docs-tutorials/` order:
+Built around `examples/online-shop-hybrid/` (real working app: `catalog`/`ordering` plugins + `-spec`/`-aws`, `platform-local/`, `platform-aws/`, `deploy-manifest.yaml`). Target `docs-tutorials/` order:
 
 | # | Page | Status | Source to fold in |
 |---|---|---|---|
 | 1 | Overview (`get-started.md`) | keep | — |
 | 2 | Choosing an approach (Aggregate / DCB / Hybrid) | light edit | `aggregate-vs-dcb-decision-guide.md` (summary + link) |
 | 3 | Hybrid walkthrough (`hybrid-based.md`) | **fix drift** | actual `examples/online-shop-hybrid/` source |
-| 4 | Run it locally (in-memory) | **NEW** | `local-dev.md` + `local-persistence.md`, reconciled to the package's real scripts |
+| 4 | Run it locally | **NEW** | `local-dev.md` + `local-persistence.md`, reconciled to the package's real scripts |
 | 5 | Test it locally | **NEW** | `users.yaml` (admin/admin), ports 4000/4001/5173 |
 | 6 | Deploy to your AWS account | **NEW** | `deployment-guide.md`, distilled to "deploy *this* example to *your* account" |
 | 7 | Test it on AWS | **NEW** | `platform-aws/verify-subscriptions.mjs` (document it) |
@@ -200,7 +200,7 @@ Acceptance: every USER/DEPLOY/CONTRIB guide is reachable from a sidebar exactly 
 
 1. **Absorb canonical USER guides** into App Guide (see Phase 3): `platform-and-plugin-guide` → "Build your own app"; `graphql-api-guide` → API; `querydb-key-design-guide` → QueryDb/StateView; `mixed-source-*` → advanced patterns; `given-when-then` → testing.
 2. **"Deploy your app to your own domain"** hand-off from App Guide into Infrastructure (host-shell custom domain — input from `docs/analysis/host-ui-custom-domain.md`, plus `ui-fragments-deployment.md`, `appsync-events-live-updates.md`).
-3. **Infrastructure:** add the custom-domain page for the deployed host-shell (journey E's "their own domain"); link the thin InMemory adapter pages from the spine's "run locally" page.
+3. **Infrastructure:** add the custom-domain page for the deployed host-shell (journey E's "their own domain"); link the thin Local adapter pages from the spine's "run locally" page.
 
 Acceptance: App Guide has a complete "build your own app" path; an Infrastructure page documents pointing the deployed host-shell at a user-owned domain.
 
