@@ -31,6 +31,13 @@ type stats = {
 let ignoreNames = ["node_modules", ".git", "dist", "lib", ".history"]
 let shouldIgnore = (name: string) => Array.includes(ignoreNames, name)
 
+// A directory carrying this sentinel file — and its whole subtree — is pruned
+// from discovery. Unlike the `ignoreNames` dir-name list, this is filesystem
+// state, so it excludes generated/vendored trees (e.g. codegen golden fixtures)
+// even when compiled `*_GWT.res.mjs` are present on disk.
+let gwtIgnoreFile = ".gwtignore"
+let isPruned = (entries: array<dirent>) => entries->Array.some(e => e.name == gwtIgnoreFile)
+
 let isGwtTestFile = (name: string) =>
   String.endsWith(name, "_GWT.res.mjs") ||
   String.endsWith(name, "GwtTest.res.mjs") ||
@@ -42,6 +49,9 @@ let rec walk = async (dir: string, acc: array<string>): array<string> => {
   } catch {
   | _ => []
   }
+  if isPruned(entries) {
+    acc
+  } else {
   let found = ref(acc)
   for i in 0 to entries->Array.length - 1 {
     let entry = entries->Array.getUnsafe(i)
@@ -56,6 +66,7 @@ let rec walk = async (dir: string, acc: array<string>): array<string> => {
     }
   }
   found.contents
+  }
 }
 
 // Returns absolute paths of `*GWT*.res.mjs` test files reachable from the
