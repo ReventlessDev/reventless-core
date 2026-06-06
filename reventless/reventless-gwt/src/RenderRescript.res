@@ -7,9 +7,11 @@
 // representation instead:
 //
 //   - Payload-less variants encode to a bare string ("VariantName").
-//   - Inlined-record variants encode to `{TAG: "Name", _0: {...}}` (BuckleScript
-//     representation). A single-argument variant still uses `_0`.
+//   - Single-argument variants encode to `{TAG: "Name", _0: x}`.
 //   - Multi-argument variants encode to `{TAG: "Name", _0: x, _1: y, ...}`.
+//   - Inline-record variants (`Name({a, b})`) are FLATTENED by ReScript: the
+//     record fields sit beside TAG as `{TAG: "Name", a: ..., b: ...}`, NOT under
+//     `_0`. These render back as `Name({a: ..., b: ...})`.
 //   - Plain records encode to `{field: value, ...}`.
 //   - Arrays/tuples encode to JSON arrays.
 //
@@ -49,6 +51,17 @@ and renderArray = (~level, arr: array<JSON.t>) =>
     "[" ++ inner ++ "]"
   }
 
+and renderRecord = (~level, keys: array<string>, dict: Dict.t<JSON.t>) => {
+  let fields =
+    keys
+    ->Array.map(k => {
+      let v = dict->Dict.getUnsafe(k)
+      k ++ ": " ++ render(~level=level + 1, v)
+    })
+    ->Array.join(", ")
+  "{" ++ fields ++ "}"
+}
+
 and renderObject = (~level, dict: Dict.t<JSON.t>) => {
   let keys = dict->Dict.keysToArray
   switch dict->Dict.get("TAG") {
@@ -57,17 +70,23 @@ and renderObject = (~level, dict: Dict.t<JSON.t>) => {
     | String(s) => s
     | _ => "?"
     }
-    let payloadKeys =
-      keys->Array.filter(k => k != "TAG" && String.startsWith(k, "_"))
-    switch payloadKeys {
-    | [] => tagName
+    // Positional args are `_0`, `_1`, …; an inline-record variant instead
+    // flattens its record fields beside TAG (no `_`-prefixed keys).
+    let positional = keys->Array.filter(k => k != "TAG" && String.startsWith(k, "_"))
+    let inlineFields = keys->Array.filter(k => k != "TAG" && !String.startsWith(k, "_"))
+    switch positional {
+    | [] =>
+      switch inlineFields {
+      | [] => tagName
+      | _ => tagName ++ "(" ++ renderRecord(~level, inlineFields, dict) ++ ")"
+      }
     | ["_0"] =>
       switch dict->Dict.get("_0") {
       | Some(p) => tagName ++ "(" ++ render(~level=level + 1, p) ++ ")"
       | None => tagName
       }
     | _ =>
-      let ordered = payloadKeys->Array.toSorted((a, b) => {
+      let ordered = positional->Array.toSorted((a, b) => {
         let parseTail = k =>
           String.slice(k, ~start=1, ~end=String.length(k))
           ->Int.fromString
@@ -83,15 +102,7 @@ and renderObject = (~level, dict: Dict.t<JSON.t>) => {
   | None =>
     switch keys {
     | [] => "{}"
-    | _ =>
-      let fields =
-        keys
-        ->Array.map(k => {
-          let v = dict->Dict.getUnsafe(k)
-          k ++ ": " ++ render(~level=level + 1, v)
-        })
-        ->Array.join(", ")
-      "{" ++ fields ++ "}"
+    | _ => renderRecord(~level, keys, dict)
     }
   }
 }

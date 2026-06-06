@@ -16,6 +16,19 @@ type t = {
   message: string,
 }
 
+// The constructor name of an encoded variant, if any: a payload-less variant is
+// a bare string; a variant with a payload is an object carrying "TAG".
+let variantTag = (j: JSON.t): option<string> =>
+  switch j {
+  | String(s) => Some(s)
+  | Object(dict) =>
+    switch dict->Dict.get("TAG") {
+    | Some(String(s)) => Some(s)
+    | _ => None
+    }
+  | _ => None
+  }
+
 // Generic fallback mapping, parameterised by the slice module name when the
 // caller can supply one. Branch specificity lives in the DSLs (they can pass
 // a richer hint through `withLocus` below).
@@ -31,10 +44,19 @@ let forMismatch = (~slice="<slice>", m: Outcome.mismatch): t =>
       branch: None,
       message: "decide() returned Ok([...]) but the test expected Error.",
     }
-  | ErrorMismatch({actual: Some(_)}) => {
-      locus: `${slice}.decide`,
-      branch: None,
-      message: "decide() returned a different Error variant than expected.",
+  | ErrorMismatch({expected, actual: Some(actual)}) => {
+      // Same constructor, different payload is the common case (e.g. a wrong
+      // field value) — don't mislabel it as a different variant.
+      let message = switch (variantTag(expected), variantTag(actual)) {
+      | (Some(e), Some(a)) if e == a =>
+        `decide() returned Error(${e}) as expected, but with a different payload.`
+      | _ => "decide() returned a different Error variant than expected."
+      }
+      {
+        locus: `${slice}.decide`,
+        branch: None,
+        message,
+      }
     }
   | StateMismatch(_) => {
       locus: `${slice}.evolve`,

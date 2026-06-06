@@ -45,6 +45,27 @@ describe("RenderRescript", () => {
     expect(rendered->String.includes("A({})"))->toEqual(true)
     expect(rendered->String.includes("B({})"))->toEqual(true)
   })
+
+  // Inline-record variants (`Name({...})`) are flattened by ReScript: the record
+  // fields sit beside TAG, not under `_0`. Regression for the dropped-payload bug
+  // where `ProductsNotAvailable({missing: [...]})` rendered as bare
+  // `ProductsNotAvailable`, making error diffs read `X != X`.
+  testPromise("renders inline-record variants with their flattened payload", async () => {
+    let d = Dict.make()
+    d->Dict.set("TAG", encodeString("ProductsNotAvailable"))
+    d->Dict.set("missing", JSON.Encode.array([encodeString("p1x")]))
+    let rendered = RenderRescript.render(JSON.Encode.object(d))
+    expect(rendered)->toEqual(`ProductsNotAvailable({missing: ["p1x"]})`)
+  })
+
+  testPromise("renders multi-field inline-record variants", async () => {
+    let d = Dict.make()
+    d->Dict.set("TAG", encodeString("Conflict"))
+    d->Dict.set("expected", JSON.Encode.int(1))
+    d->Dict.set("got", JSON.Encode.int(2))
+    let rendered = RenderRescript.render(JSON.Encode.object(d))
+    expect(rendered)->toEqual(`Conflict({expected: 1, got: 2})`)
+  })
 })
 
 describe("Diff", () => {

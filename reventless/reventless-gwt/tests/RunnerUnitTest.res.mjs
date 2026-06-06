@@ -45,6 +45,21 @@ describe("RenderRescript", () => {
     expect(rendered.includes("A({})")).toEqual(true);
     expect(rendered.includes("B({})")).toEqual(true);
   });
+  test("renders inline-record variants with their flattened payload", async () => {
+    let d = {};
+    d["TAG"] = "ProductsNotAvailable";
+    d["missing"] = ["p1x"];
+    let rendered = RenderRescript$ReventlessGwt.render(undefined, d);
+    expect(rendered).toEqual(`ProductsNotAvailable({missing: ["p1x"]})`);
+  });
+  test("renders multi-field inline-record variants", async () => {
+    let d = {};
+    d["TAG"] = "Conflict";
+    d["expected"] = 1;
+    d["got"] = 2;
+    let rendered = RenderRescript$ReventlessGwt.render(undefined, d);
+    expect(rendered).toEqual(`Conflict({expected: 1, got: 2})`);
+  });
 });
 
 describe("Diff", () => {
