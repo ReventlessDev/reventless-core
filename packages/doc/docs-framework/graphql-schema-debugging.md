@@ -39,7 +39,7 @@ When `GRAPHQL_DEBUG` is set:
 
 ### GraphiQL (browser)
 
-The in-memory platform starts with GraphiQL enabled. Open your browser at:
+The local platform starts with GraphiQL enabled. Open your browser at:
 
 ```
 http://localhost:4000/graphql
@@ -53,11 +53,11 @@ After the platform starts, `GraphQL_Server` stores the live schema object. You c
 
 ```rescript
 // Get the SDL as a string
-let sdl = ReventlessInMemory.GraphQL_Server.getLiveSdl()
+let sdl = ReventlessLocal.GraphQL_Server.getLiveSdl()
 // option<string> — None if server hasn't started
 
 // Print it to console
-ReventlessInMemory.GraphQL_Server.printLiveSdl()
+ReventlessLocal.GraphQL_Server.printLiveSdl()
 ```
 
 This uses `graphql`'s `printSchema` on the live schema object, so it reflects exactly what the server accepted after validation and normalization.
@@ -67,7 +67,7 @@ This uses `graphql`'s `printSchema` on the live schema object, so it reflects ex
 The `diagnostics()` function gives you a complete picture of the server's state, including **mismatch detection** (SDL fields without resolvers, or resolvers without SDL fields):
 
 ```rescript
-let d = ReventlessInMemory.GraphQL_Server.diagnostics()
+let d = ReventlessLocal.GraphQL_Server.diagnostics()
 // d.sdlMutationCount — number of mutation fields in SDL
 // d.resolverMutationCount — number of registered mutation resolvers
 // d.mismatches — array of mismatch descriptions (should be empty)
@@ -75,7 +75,7 @@ let d = ReventlessInMemory.GraphQL_Server.diagnostics()
 // d.serverRunning — whether the HTTP server is active
 
 // Or print everything at once:
-ReventlessInMemory.GraphQL_Server.printDiagnostics()
+ReventlessLocal.GraphQL_Server.printDiagnostics()
 ```
 
 Example output:
@@ -109,8 +109,8 @@ type Query {
 Compare the raw input SDL (before graphql-yoga parsing) with the live SDL (after parsing) to spot normalization differences:
 
 ```rescript
-let inputSdl = ReventlessInMemory.GraphQL_Server.getFullSdl()  // raw string fragments joined
-let liveSdl = ReventlessInMemory.GraphQL_Server.getLiveSdl()     // from printSchema
+let inputSdl = ReventlessLocal.GraphQL_Server.getFullSdl()  // raw string fragments joined
+let liveSdl = ReventlessLocal.GraphQL_Server.getLiveSdl()     // from printSchema
 ```
 
 If the input SDL was malformed, graphql-yoga would have thrown at startup. If both exist but differ, the difference reveals normalization the parser applied.
@@ -214,17 +214,17 @@ This prints the live SDL and full diagnostics, then exits. To keep the server ru
 
 ```rescript
 // In DebugSchema.res, comment out the last line:
-// ReventlessInMemory.GraphQL_Server.stop()
+// ReventlessLocal.GraphQL_Server.stop()
 ```
 
 Then visit `http://localhost:4000/graphql` in a browser.
 
 ## Integrating Into a New Platform Instance
 
-When building a new in-memory platform (e.g., in a test or example), add diagnostics after all components are wired:
+When building a new local platform (e.g., in a test or example), add diagnostics after all components are wired:
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 module MyPlugin = MyPluginModule.Make(Platform)
 
 Platform.makePlatform(
@@ -235,17 +235,17 @@ Platform.makePlatform(
 // 2. Inspect — pick the level you need
 
 // Quick check: is the server running with the right schema?
-ReventlessInMemory.GraphQL_Server.printLiveSdl()
+ReventlessLocal.GraphQL_Server.printLiveSdl()
 
 // Detailed check: are all resolvers matched to SDL fields?
-ReventlessInMemory.GraphQL_Server.printDiagnostics()
+ReventlessLocal.GraphQL_Server.printDiagnostics()
 
 // Programmatic check in a test:
-let d = ReventlessInMemory.GraphQL_Server.diagnostics()
+let d = ReventlessLocal.GraphQL_Server.diagnostics()
 assert(d.mismatches->Array.length == 0)
 
 // 3. Cleanup
-ReventlessInMemory.GraphQL_Server.stop()
+ReventlessLocal.GraphQL_Server.stop()
 // or GraphQL_Server.reset() between test suites
 ```
 
@@ -290,7 +290,7 @@ If they differ, the graphql parser normalized something. If the input SDL is wro
 | `printFragment` | `apiSchemaFragment => unit` | Formatted fragment to console |
 | `inspectPluginEntries` | `(~mutationEntries, ~queryEntries) => string` | Summary of plugin entries |
 
-### `ReventlessInMemory.GraphQL_Server`
+### `ReventlessLocal.GraphQL_Server`
 
 | Function | Signature | Description |
 |----------|-----------|-------------|

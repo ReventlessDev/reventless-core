@@ -32,7 +32,7 @@
     "@reventlessdev/reventless-interop": "workspace:*",
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-gwt": "workspace:*",
-    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-codegen": "workspace:*",
     "@reventlessdev/reventless-aws": "workspace:*",
     "@reventlessdev/online-shop-hybrid-platform-aws": "workspace:*",
@@ -42,7 +42,7 @@
   },
   "scripts": {
     "setup": "node ./scripts/setup.mjs",
-    "build": "rescript build && rescript build examples/online-shop-aggregates/platform-in-memory && rescript build examples/online-shop-dcb/platform-in-memory && rescript build examples/online-shop-hybrid/platform-in-memory",
+    "build": "rescript build && rescript build examples/online-shop-aggregates/platform-local && rescript build examples/online-shop-dcb/platform-local && rescript build examples/online-shop-hybrid/platform-local",
     "watch": "rescript watch",
     "clean": "rescript clean",
     "format": "rescript format",

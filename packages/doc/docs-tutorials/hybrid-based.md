@@ -448,4 +448,4 @@ If all answers point to the same approach, use that approach. If answers are mix
 ---
 
 **Next:** [Run it locally →](./run-locally) — start the whole shop on your machine
-with the in-memory platform.
+with the local platform.

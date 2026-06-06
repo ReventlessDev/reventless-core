@@ -82,7 +82,7 @@ commands and events, and translate directly into Reventless specs — the
 requirements become the running code.
 
 The core framework is cloud-agnostic; `reventless-aws` provides the AWS
-implementation (Lambda, SQS, SNS, DynamoDB, S3), and `reventless-in-memory`
+implementation (Lambda, SQS, SNS, DynamoDB, S3), and `reventless-local`
 runs the same components locally for development and testing.
 
 ## The documentation sections

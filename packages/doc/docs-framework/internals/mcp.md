@@ -104,7 +104,7 @@ let mcpSchemaRegistrationHook: ref<option<mcpRegistrationParams => unit>>
 
 Each platform sets this hook to register MCP tools and resources during plugin construction. The hook fires after GraphQL type registration, ensuring mutation resolvers are already available for reuse.
 
-### In-memory platform
+### Local platform
 
 ```rescript
 // In Platform.Make():
@@ -148,7 +148,7 @@ If no description is provided, one is auto-generated from the entry name (e.g., 
 | `reventless-core` | `src/components/Api/SuryToJsonSchema.res` | Sury schema → JSON Schema conversion |
 | `reventless-core` | `src/components/Api/MCP_SchemaGenerator.res` | Generate MCP tool/resource definitions |
 | `reventless-core` | `src/components/Plugin/Plugin_Helpers.res` | MCP registration hook |
-| `reventless-in-memory` | `src/adapter/MCP_Server.res` | In-memory MCP server (dev/test) |
+| `reventless-local` | `src/adapter/MCP_Server.res` | In-memory MCP server (dev/test) |
 | `reventless-aws` | `src/adapter/Mcp/MCP_Lambda.res` | AWS Lambda MCP adapter (placeholder) |
 
 ## Diagnostics

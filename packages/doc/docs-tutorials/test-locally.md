@@ -13,7 +13,7 @@ model update live.
 
 Reventless is secure by default: commands and queries require an authenticated
 user. Locally, authentication is backed by a YAML file —
-[`platform-in-memory/.reventless/users.yaml`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/platform-in-memory/.reventless/users.yaml):
+[`platform-local/.reventless/users.yaml`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/platform-local/.reventless/users.yaml):
 
 | Username | Password | Groups |
 |---|---|---|
@@ -27,7 +27,7 @@ Open the shell at **http://localhost:5173**, go to the login page, and sign in a
 platform admin views.
 
 :::note Anonymous requests
-Without an `X-User` header the in-memory platform falls back to an unprivileged
+Without an `X-User` header the local platform falls back to an unprivileged
 `defaultUser` so casual local browsing "just works". To exercise admin features,
 log in through the login page rather than relying on that fallback — `admin/admin`
 is the dev admin path.

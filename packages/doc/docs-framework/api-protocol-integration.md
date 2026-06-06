@@ -170,7 +170,7 @@ Create two implementations:
 - `generateFragment` — delegate to your fragment generator
 - `updateSchema` — stitch fragments and deploy the schema to the cloud resource
 
-**In-memory adapter** (`reventless-in-memory/src/adapter/Api/YourProtocol_InMemory_Adapter.res`):
+**In-memory adapter** (`reventless-local/src/adapter/Api/YourProtocol_InMemory_Adapter.res`):
 - `makeApiResource` — create a local server instance
 - `generateFragment` — delegate to your fragment generator
 - `updateSchema` — register routes/handlers on the local server
@@ -179,7 +179,7 @@ Create two implementations:
 
 Registration happens in `Plugin_Builder.construct()` via callbacks passed as parameters. Your platform adapter provides these callbacks when constructing plugins.
 
-For the in-memory platform (`reventless-in-memory/src/Platform.res`):
+For the local platform (`reventless-local/src/Platform.res`):
 - Pass your registration callback through the platform's construction flow
 - The callback receives the shared entry types and can call your generator to register routes/tools/resources
 
@@ -213,7 +213,7 @@ GraphQL and MCP use the canonical `fieldNames` from entries directly. REST proto
 - [ ] Stitcher with `encode`/`decode` (if protocol merges fragments)
 - [ ] Collision detection in stitcher
 - [ ] AWS adapter in `reventless-aws/src/components/Api/`
-- [ ] In-memory adapter in `reventless-in-memory/src/adapter/Api/`
+- [ ] In-memory adapter in `reventless-local/src/adapter/Api/`
 - [ ] Registration via explicit callbacks (not global mutable hooks)
 - [ ] Core operations included (Plugin CRUD, Clone)
 - [ ] Event log entries handled (if protocol supports history/subscriptions)

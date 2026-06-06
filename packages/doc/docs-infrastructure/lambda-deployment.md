@@ -48,7 +48,7 @@ The framework provides two platform implementations behind the same `ReventlessI
 
 | | In-Memory | AWS |
 |---|---|---|
-| **Package** | `reventless-in-memory` | `reventless-aws` |
+| **Package** | `reventless-local` | `reventless-aws` |
 | **`type api`** | `unit` | `Types.AppSync.api` |
 | **`type role`** | `unit` | `Types.AppSync.role` |
 | **Event storage** | In-memory dict | DynamoDB |
@@ -66,12 +66,12 @@ Plugin code that uses only `Platform.T` works identically on both platforms. The
 ```
 Layer 1 — Domain Specification    (deps: reventless-spec)
 Layer 2 — Plugin Assembly         (deps: reventless-spec + reventless-infra)
-Layer 3 — Composition Root        (deps: reventless-infra + reventless-aws or reventless-in-memory)
+Layer 3 — Composition Root        (deps: reventless-infra + reventless-aws or reventless-local)
 ```
 
 Layer 2 is where plugin functors live. They accept a `Platform: ReventlessInfra.Platform.T` parameter and use `Platform.Aggregate.Make`, `Platform.ReadModel.Make`, etc. This is platform-agnostic code.
 
-Layer 3 instantiates a concrete platform (`ReventlessAws.Platform.Make()` or `ReventlessInMemory.Platform.Make()`) and passes it to the plugin functor. This is the only layer that names a specific provider.
+Layer 3 instantiates a concrete platform (`ReventlessAws.Platform.Make()` or `ReventlessLocal.Platform.Make()`) and passes it to the plugin functor. This is the only layer that names a specific provider.
 
 ### Where AWS Builders Fit
 
@@ -251,7 +251,7 @@ ordering/                          # Platform-agnostic (Layer 1+2)
 │   │   └── StateViewSlice/
 │   └── Plugin.res                 # Auto-generated (Layer 2)
 ├── tests/
-│   └── E2E/OrderingE2ETest.res    # Uses in-memory platform
+│   └── E2E/OrderingE2ETest.res    # Uses local platform
 └── package.json                   # deps: reventless-spec, reventless-infra
 
 ordering-aws/                      # AWS deployment (Layer 3)
@@ -314,14 +314,14 @@ let default = Platform.deployPlugin(
 
 ---
 
-## 6. In-Memory Platform for Testing
+## 6. Local Platform for Testing
 
 ### How It Works
 
-The in-memory platform replaces all AWS services with in-process equivalents built on `InMemory_Bus`:
+The local platform replaces all AWS services with in-process equivalents built on `LocalBus`:
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 module Ordering = OrderingPlugin.Plugin.Make(Platform)  // uses the platform-agnostic plugin
 
 Platform.makePlatform(
@@ -330,7 +330,7 @@ Platform.makePlatform(
 )
 ```
 
-`InMemory_Bus` is a central event/command routing hub with:
+`LocalBus` is a central event/command routing hub with:
 - **Event hubs** — per-topic PubSub for event fan-out
 - **Command handlers** — per-channel command dispatch
 - **QueryDb registry** — per-read-model in-memory storage
@@ -338,14 +338,14 @@ Platform.makePlatform(
 
 ### Pulumi Mock Mode
 
-The in-memory platform activates Pulumi mock mode via `TestRunner.setup()`. This makes all `Pulumi.Output.t` values resolve synchronously, allowing tests to await infrastructure wiring:
+The local platform activates Pulumi mock mode via `TestRunner.setup()`. This makes all `Pulumi.Output.t` values resolve synchronously, allowing tests to await infrastructure wiring:
 
 ```rescript
 // In test setup
-let _ = ReventlessInMemory.TestRunner.setup()
+let _ = ReventlessLocal.TestRunner.setup()
 
 // Resolve an Output to get its value
-let ops = await component->Component.operations->ReventlessInMemory.TestRunner.resolve
+let ops = await component->Component.operations->ReventlessLocal.TestRunner.resolve
 ```
 
 ### E2E Test Pattern
@@ -353,10 +353,10 @@ let ops = await component->Component.operations->ReventlessInMemory.TestRunner.r
 ```rescript
 // CatalogE2ETest.res
 describe("Catalog E2E", () => {
-  let _ = ReventlessInMemory.TestRunner.setup()
+  let _ = ReventlessLocal.TestRunner.setup()
 
-  module Bus = ReventlessInMemory.InMemory_Bus.Make()
-  module Platform = ReventlessInMemory.Platform.MakeWithConfig({
+  module Bus = ReventlessLocal.LocalBus.Make()
+  module Platform = ReventlessLocal.Platform.MakeWithConfig({
     let silent = true
     let splitApi = false
     let cloner = false
@@ -423,17 +423,17 @@ The AWS Platform registers four hooks that extract infrastructure IDs for Lambda
 
 | Adapter | In-Memory Module | AWS Module |
 |---|---|---|
-| Runtime environment | `RuntimeEnvironment_InMemory` | `RuntimeEnvironment.Lambda` |
-| Command topic channel | `CommandTopicChannel_InMemory` | `CommandTopicChannel.SQS_FIFO` |
-| Event topic publisher | `EventTopicPublisher_InMemory` | `EventTopicPublisher.DynamoDbStream` |
+| Runtime environment | `LocalRuntimeEnvironment` | `RuntimeEnvironment.Lambda` |
+| Command topic channel | `LocalCommandTopicChannel` | `CommandTopicChannel.SQS_FIFO` |
+| Event topic publisher | `LocalEventTopicPublisher` | `EventTopicPublisher.DynamoDbStream` |
 | Event log storage | `EventLogStorage_InMemory` | `EventLogStorage.DynamoDbStream` |
-| Event collector channel | `EventCollectorChannel_InMemory` | `EventCollectorChannel.DynamoDbStream` |
+| Event collector channel | `LocalEventCollectorChannel` | `EventCollectorChannel.DynamoDbStream` |
 | QueryDb storage | `QueryDbStorage_InMemory` | `QueryDbStorage.DynamoDb` |
 | QueryDb resolvers | `QueryDbResolvers_GraphQL` | `QueryDbResolvers.AppSync` |
 | DCB event log storage | `DcbEventLogStorage_InMemory` | `DcbEventLogStorage.DynamoDb` |
 | Command generator resolvers | `CommandGeneratorResolvers_GraphQL` | `CommandGeneratorResolvers.AppSync` |
 
-The core builders (`Aggregate_Builder`, `ReadModel_Builder`, `StateViewSlice_Builder`, etc.) in `reventless-core` are parameterized by these adapters via functors. The platform packages (`reventless-aws`, `reventless-in-memory`) instantiate the core builders with their concrete adapters.
+The core builders (`Aggregate_Builder`, `ReadModel_Builder`, `StateViewSlice_Builder`, etc.) in `reventless-core` are parameterized by these adapters via functors. The platform packages (`reventless-aws`, `reventless-local`) instantiate the core builders with their concrete adapters.
 
 ---
 
@@ -509,7 +509,7 @@ let commandHandlerConfig: commandHandlerConfigs = {
 | `logRetentionDays` | A dedicated `CloudWatch.LogGroup` with `retentionInDays` |
 | `envVars` | Extra `environment.variables`, layered under framework-set keys |
 
-The in-memory platform accepts the same record for type parity but ignores
+The local platform accepts the same record for type parity but ignores
 Lambda-specific knobs; only the call-path that creates AWS infrastructure
 honors them.
 

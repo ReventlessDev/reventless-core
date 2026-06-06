@@ -6,11 +6,11 @@ sidebar_position: 4
 # Run the online shop locally
 
 You can run the entire hybrid online shop on your machine — no AWS account, no
-cloud resources. The `reventless-in-memory` platform runs the same plugin code
+cloud resources. The `reventless-local` platform runs the same plugin code
 the AWS platform runs, backed by in-memory stores and a local GraphQL server.
 
 Everything in this page happens inside
-[`examples/online-shop-hybrid/platform-in-memory/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/platform-in-memory).
+[`examples/online-shop-hybrid/platform-local/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/platform-local).
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ Everything in this page happens inside
 ## One command
 
 ```bash
-cd examples/online-shop-hybrid/platform-in-memory
+cd examples/online-shop-hybrid/platform-local
 
 pnpm run build      # once, and after any source change
 pnpm run dev:full   # backend + UI together
@@ -69,10 +69,10 @@ Useful environment variables for the backend:
 
 ## Optional: persist data between restarts
 
-By default the in-memory platform starts empty every run. If you want events to
+By default the local platform starts empty every run. If you want events to
 survive a restart while developing, the platform supports a file-backed store —
 see [local persistence](/infrastructure/local-persistence). For how the local
-runtime is wired, see the [InMemory adapters](/infrastructure/in-memory/) in the
+runtime is wired, see the [Local adapters](/infrastructure/local/) in the
 Infrastructure section.
 
 ---

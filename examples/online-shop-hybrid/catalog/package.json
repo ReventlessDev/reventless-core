@@ -32,7 +32,7 @@
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-in-memory": "workspace:*",
+    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"

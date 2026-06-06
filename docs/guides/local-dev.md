@@ -1,12 +1,12 @@
-# Local Dev Setup — In-Memory Platform as Browser-Accessible Backend
+# Local Dev Setup — Local Platform as Browser-Accessible Backend
 
-This guide explains how to run the in-memory platform locally so a UI dev server can connect to it for live GraphQL queries, mutations, and subscriptions.
+This guide explains how to run the local platform locally so a UI dev server can connect to it for live GraphQL queries, mutations, and subscriptions.
 
 ---
 
 ## How it works
 
-The in-memory platform starts a [graphql-yoga](https://the-guild.dev/graphql/yoga-server) server with full CORS support — no proxy or server changes needed. In the default `splitApi=true` mode two servers start:
+The local platform starts a [graphql-yoga](https://the-guild.dev/graphql/yoga-server) server with full CORS support — no proxy or server changes needed. In the default `splitApi=true` mode two servers start:
 
 | Server | Port | Serves |
 |--------|------|--------|
@@ -21,7 +21,7 @@ The UI dev server (Vite) proxies all `/graphql` requests to `http://localhost:40
 
 ## Quick start — one command
 
-From `examples/online-shop-hybrid/platform-in-memory/` in **reventless-core**:
+From `examples/online-shop-hybrid/platform-local/` in **reventless-core**:
 
 ```bash
 # Build first (once, or after source changes)
@@ -56,7 +56,7 @@ A fresh checkout has **no** `reventless-ui` directory (it is not part of this re
 
 ## Storage backend (SQLite by default)
 
-The in-memory platform can store events and read models either in process memory (wiped on every restart) or in an on-disk SQLite file (survives restarts — handy with live reload). The backend is chosen by the `REVENTLESS_LOCAL_BACKEND` env var; the run scripts wrap it so you rarely set it by hand:
+The local platform can store events and read models either in process memory (wiped on every restart) or in an on-disk SQLite file (survives restarts — handy with live reload). The backend is chosen by the `REVENTLESS_LOCAL_BACKEND` env var; the run scripts wrap it so you rarely set it by hand:
 
 | Script | Backend | Notes |
 |--------|---------|-------|
@@ -82,15 +82,15 @@ If you want separate control over each process:
 **Terminal 1 — reventless-core**
 ```bash
 # Build (once, or after source changes)
-pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run build
+pnpm --filter ./examples/online-shop-hybrid/platform-local run build
 
 # Start backend with GraphQL/MCP request logging (SQLite persistence, like serve)
-pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run dev
+pnpm --filter ./examples/online-shop-hybrid/platform-local run dev
 ```
 
 `dev` is `serve` plus `GRAPHQL_DEBUG=1 MCP_DEBUG=1` (per-request logging) and is not watch-based — restart it manually after a rebuild. Use `serve:watch` / `dev:full` for live reload.
 
-**Terminal 2 — UI dev server** (from the same `platform-in-memory/` package)
+**Terminal 2 — UI dev server** (from the same `platform-local/` package)
 ```bash
 pnpm run dev:ui
 ```
@@ -101,12 +101,12 @@ This launches `reventless-host-shell` (or the local UI source if present). It st
 
 ## Writing your own local dev entry-point
 
-For a plugin that does not yet have a platform-in-memory package, create a minimal entry file alongside its source (in **reventless-core**):
+For a plugin that does not yet have a platform-local package, create a minimal entry file alongside its source (in **reventless-core**):
 
 ### `src/LocalDev.res`
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 
 module MyPlugin = MyPlugin.Plugin.Make(Platform)
 
@@ -133,7 +133,7 @@ Add run scripts to the plugin's `package.json` and add `@reventlessdev/reventles
 
 The `[ -d reventless-ui ]` branch only matters if you are also developing the UI source locally; otherwise `reventless-host-shell` runs.
 
-`rescript watch` recompiles your sources and `tsx watch` restarts the backend on change (live reload). The `REVENTLESS_LOCAL_BACKEND` default gives you SQLite persistence here too — add `:memory` / `:reset` variants as shown in [Storage backend](#storage-backend-sqlite-by-default) if you want them. The in-memory platform defaults to `LOG_LEVEL=debug` regardless of which entry-point you use.
+`rescript watch` recompiles your sources and `tsx watch` restarts the backend on change (live reload). The `REVENTLESS_LOCAL_BACKEND` default gives you SQLite persistence here too — add `:memory` / `:reset` variants as shown in [Storage backend](#storage-backend-sqlite-by-default) if you want them. The local platform defaults to `LOG_LEVEL=debug` regardless of which entry-point you use.
 
 Then from the **plugin package** in reventless-core:
 
@@ -149,7 +149,7 @@ pnpm run dev:full
 Multiple plugins register into the same domain server — add them all to the `plugins` array:
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
@@ -171,7 +171,7 @@ The stitched schema at `:4000` includes all plugin types. Run schema update once
 To expose everything on a single port:
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.MakeWithConfig({
+module Platform = ReventlessLocal.Platform.MakeWithConfig({
   let splitApi = false
   let cloner = false
 })
@@ -185,7 +185,7 @@ Both domain and admin queries are served at `http://localhost:4000/graphql`.
 
 | Variable | Effect |
 |----------|--------|
-| `LOG_LEVEL` | `silent` \| `error` \| `warn` \| `info` \| `debug`. The in-memory platform **defaults to `debug`** (surfaces e.g. the slice/aggregate `deciding on state:` lines); set `LOG_LEVEL=info` to quieten it. Other platforms default to `info`. |
+| `LOG_LEVEL` | `silent` \| `error` \| `warn` \| `info` \| `debug`. The local platform **defaults to `debug`** (surfaces e.g. the slice/aggregate `deciding on state:` lines); set `LOG_LEVEL=info` to quieten it. Other platforms default to `info`. |
 | `REVENTLESS_LOCAL_BACKEND` | Storage backend: `memory`, `sqlite:<path>`, or `sqlite:<path>?reset` (see [Storage backend](#storage-backend-sqlite-by-default)). Defaults to `sqlite:./.reventless/local.db` via the run scripts. |
 | `GRAPHQL_DEBUG=1` | Logs every incoming GraphQL request and response |
 | `MCP_DEBUG=1` | Logs MCP tool calls |

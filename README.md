@@ -37,7 +37,7 @@ This is a [pnpm](https://pnpm.io) + [Lerna](https://lerna.js.org) monorepo. Pack
 - [reventless-spec](reventless/reventless-spec/) — type specifications and interfaces
 - [reventless-core](reventless/reventless-core/) — core framework (provider-agnostic)
 - [reventless-aws](reventless/reventless-aws/) — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
-- [reventless-in-memory](reventless/reventless-in-memory/) — in-memory platform for local dev and testing
+- [reventless-local](reventless/reventless-local/) — local platform for local dev and testing
 - [reventless-infra](reventless/reventless-infra/), [reventless-interop](reventless/reventless-interop/), [reventless-gwt](reventless/reventless-gwt/), [reventless-codegen](reventless/reventless-codegen/)
 
 ### ReScript bindings (`rescript/`)
@@ -71,7 +71,7 @@ pnpm run setup           # one-command bootstrap (see below)
 
 # Run the hybrid example backend (GraphQL + MCP; SQLite stores by default,
 # or `pnpm run serve:memory` for in-memory):
-cd examples/online-shop-hybrid/platform-in-memory
+cd examples/online-shop-hybrid/platform-local
 pnpm run serve
 ```
 
@@ -101,7 +101,7 @@ See [examples/online-shop-hybrid/README.md](examples/online-shop-hybrid/README.m
 1. **Creates `pnpm-workspace.yaml`** — it is gitignored (a symlink to [`pnpm-workspace.base.yaml`](pnpm-workspace.base.yaml), so the cross-repo dev overlay used by `pnpm link:on` / `link:off` can swap it). A fresh clone has none, so plain `pnpm install` would fail with `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`. (Manual equivalent: `node scripts/workspace-setup.mjs`.)
 2. **`pnpm install`** — from the repo root.
 3. **Ensures the ReScript PPX binary** for your platform (prebuilt, or built from source — see below).
-4. **Seeds `examples/.../platform-in-memory/.reventless/users.yaml`** from the committed `users.example.yaml` so local login works (`admin`/`admin`, `user`/`user`).
+4. **Seeds `examples/.../platform-local/.reventless/users.yaml`** from the committed `users.example.yaml` so local login works (`admin`/`admin`, `user`/`user`).
 5. **Builds** the hybrid in-memory example (skip with `pnpm run setup --no-build`).
 
 To build everything instead of just the example: `pnpm run build`. To run the full test suite: `pnpm test`.

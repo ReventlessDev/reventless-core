@@ -20,7 +20,7 @@ A Reventless plugin's schema (aggregates, commands, events, read models) is alre
 
 The host shell (a static SPA shipped from the `reventless-ui` workspace) queries both at boot, then renders a list, detail, or panel view for each fragment **generically** — using the schemas alone. No plugin code touches the browser unless the plugin explicitly opts into a custom UI bundle.
 
-This is Auto UI: the same code path works on the in-memory platform and on AWS.
+This is Auto UI: the same code path works on the local platform and on AWS.
 
 ---
 
@@ -52,12 +52,12 @@ The host shell reads these strings and decides which rendered view goes where. T
           │ GraphQL: Platform_UIFragments + Platform_UIDefinitions
           ▼
 ┌────────────────────┐
-│ in-memory platform │
+│ local platform │
 │ (Node process)     │
 └────────────────────┘
 ```
 
-The in-memory platform exposes the admin GraphQL server on a local port. Run `vite dev` in the host shell with `public/config.json` pointing at it. Plugin lifecycle events (`Connected`, `UIFragmentRegistered`) flow through the in-process bus, the QueryDb is seeded synchronously, and the queries resolve immediately.
+The local platform exposes the admin GraphQL server on a local port. Run `vite dev` in the host shell with `public/config.json` pointing at it. Plugin lifecycle events (`Connected`, `UIFragmentRegistered`) flow through the in-process bus, the QueryDb is seeded synchronously, and the queries resolve immediately.
 
 No CDN, no S3, no bundle distributions. The host shell rebuilds itself on save like any Vite app.
 

@@ -8,13 +8,13 @@ description: >-
 
 ## Purpose
 
-Provides testing patterns, templates, and debugging guidance for Reventless applications. Covers unit tests (BehaviorTest DSL, decision tests), projection tests, E2E integration tests with the in-memory platform, and common Jest/ESM pitfalls.
+Provides testing patterns, templates, and debugging guidance for Reventless applications. Covers unit tests (BehaviorTest DSL, decision tests), projection tests, E2E integration tests with the local platform, and common Jest/ESM pitfalls.
 
 ## When to Use
 
 - Creating new tests for aggregates, slices, read models, or projections
 - Debugging test failures (especially async/ESM-related)
-- Setting up E2E tests with the in-memory platform
+- Setting up E2E tests with the local platform
 - Writing mock storage or mock services for tests
 - When `reventless-app` generates test files
 
@@ -23,7 +23,7 @@ Provides testing patterns, templates, and debugging guidance for Reventless appl
 | File | Content |
 |------|---------|
 | `references/behavior-test-dsl.md` | givenEvents/whenCmd/thenEvent patterns for aggregates |
-| `references/e2e-test-patterns.md` | In-memory platform wiring, Bus setup, async resolution |
+| `references/e2e-test-patterns.md` | Local platform wiring, Bus setup, async resolution |
 | `references/mock-patterns.md` | Factory functions, counter-based failure injection, reset |
 | `references/jest-esm-gotchas.md` | testPromise broken, fake timers, @jest/globals, Array.getUnsafe |
 

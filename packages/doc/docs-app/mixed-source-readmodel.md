@@ -159,7 +159,7 @@ the hand-rolled form above is usually shorter. Use whichever you prefer.
 
 - `examples/online-shop-hybrid/catalog/src/CatalogActivity/ReadModel/` — the
   reference example for this pattern.
-- `reventless/reventless-in-memory/tests/components/readmodel/DcbReadModelE2ETest.res`
+- `reventless/reventless-local/tests/components/readmodel/DcbReadModelE2ETest.res`
   — focused integration test that exercises the DCB → ReadModel path
   end-to-end.
 - [Aggregate vs DCB decision guide](aggregate-vs-dcb-decision-guide) — when to

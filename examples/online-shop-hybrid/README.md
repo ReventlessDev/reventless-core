@@ -3,7 +3,7 @@
 A complete, working Reventless application: a small online shop modelled with a
 **hybrid** plugin style — aggregates for independent entities (Category,
 Customer) and DCB slices for interdependent ones (Product + ProductDemand, Order
-+ CatalogProduct). It runs locally on the in-memory platform and deploys to AWS
++ CatalogProduct). It runs locally on the local platform and deploys to AWS
 with Pulumi, exercising commands, events, projections, live subscriptions, and
 cross-plugin extension points end to end.
 
@@ -19,7 +19,7 @@ This is the package behind the documentation
 | `catalog/` | Catalog plugin: Category aggregate; Product/ProductDemand DCB slices; read models; task; EP + extension |
 | `ordering/` | Ordering plugin: Customer aggregate; Order/CatalogProduct DCB slices; automation; outbound email; EP + extension |
 | `catalog-aws/`, `ordering-aws/` | AWS deployment entry points for each plugin |
-| `platform-in-memory/` | Local dev runtime — GraphQL server + in-memory stores |
+| `platform-local/` | Local dev runtime — GraphQL server + in-memory stores |
 | `platform-aws/` | AWS platform: shared AppSync API, admin components, scheduler, host-shell SPA |
 
 `src/Plugin.res` in each plugin is **generated** by `generate-plugin src/` (a
@@ -37,7 +37,7 @@ pnpm run setup        # see the root README "Getting Started"
 Then, from this example:
 
 ```bash
-cd platform-in-memory
+cd platform-local
 pnpm run serve        # backend only: GraphQL (:4000/:4001) + MCP (:3001/:3002)
 # or, with the host-shell UI (requires reventless-host-shell):
 pnpm run dev:full     # backend + host-shell UI (:5173), with live reload
@@ -51,8 +51,8 @@ across restarts); use `serve:memory` / `dev:full:memory` for stateless runs or
 [docs/guides/local-dev.md](../../docs/guides/local-dev.md) for the full matrix.
 
 `pnpm run build` rebuilds after source changes. Sign in as `admin` / `admin`
-(or `user` / `user`) — `setup` seeds these into `platform-in-memory/.reventless/users.yaml`
-from the committed [`users.example.yaml`](platform-in-memory/users.example.yaml).
+(or `user` / `user`) — `setup` seeds these into `platform-local/.reventless/users.yaml`
+from the committed [`users.example.yaml`](platform-local/users.example.yaml).
 Via the UI, use the LoginPage; against the backend directly:
 
 ```bash

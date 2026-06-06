@@ -156,7 +156,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 ## Platform Main.res
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 
 module Catalog = CatalogPlugin.CatalogPlugin.Make(Platform)
 module Ordering = OrderingPlugin.OrderingPlugin.Make(Platform)

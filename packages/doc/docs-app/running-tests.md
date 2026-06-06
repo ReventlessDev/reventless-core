@@ -70,7 +70,7 @@ Navigate to the package directory and run its tests directly:
 cd reventless/reventless-core
 npm test
 
-cd reventless/reventless-in-memory
+cd reventless/reventless-local
 npm test
 
 cd examples/online-shop-dcb/catalog

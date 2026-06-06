@@ -191,7 +191,7 @@ Composition root wiring all components. See `references/aggregate-patterns.md` a
 Top-level composition wiring all plugins.
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 module Plugin1 = Plugin1Plugin.Plugin1Plugin.Make(Platform)
 module Plugin2 = Plugin2Plugin.Plugin2Plugin.Make(Platform)
 Platform.makePlatform(~version=Reventless.PackageVersion.fromCwd(), ~plugins=[module(Plugin1), module(Plugin2)])

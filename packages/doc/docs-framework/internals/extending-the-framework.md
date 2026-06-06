@@ -13,7 +13,7 @@ three most common kinds of extension onto that knowledge.
 
 Reventless is built so that the **provider-agnostic core** (`reventless-spec`,
 `reventless-core`) is separate from **provider implementations** (`reventless-aws`,
-`reventless-in-memory`). Almost every extension is "add another implementation of
+`reventless-local`). Almost every extension is "add another implementation of
 an existing interface" rather than "change the core".
 
 ## 1. A new component type
@@ -30,7 +30,7 @@ A component (Aggregate, ReadModel, Task, …) follows the
   logic and handlers.
 
 Then implement the adapter once per provider (under `reventless-aws/src/adapter/`
-and `reventless-in-memory/src/adapter/`), and surface the component on the
+and `reventless-local/src/adapter/`), and surface the component on the
 `Platform.T` module type so plugins can call `Platform.<Component>.Make(...)`. The
 plugin generator picks it up from a folder convention — see the
 [component reference](/app/component-overview) for the existing set.
@@ -46,7 +46,7 @@ provider you implement those interfaces for the new backend:
 - Task buckets, Scheduler, Heartbeat, and the API (GraphQL) integration
 
 The AWS adapter (`reventless-aws`) and the in-memory adapter
-(`reventless-in-memory`) are the two reference implementations to copy from.
+(`reventless-local`) are the two reference implementations to copy from.
 Deploy-time concerns live in `src/adapter/` (Pulumi resources); runtime concerns
 live in `src/adapter/Runtime/`. See [resources](./resources) and [pulumi](./pulumi)
 for how deploy-time and runtime are kept separate.

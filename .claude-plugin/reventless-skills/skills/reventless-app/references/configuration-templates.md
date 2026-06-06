@@ -80,7 +80,7 @@
   },
   "dependencies": {
     "@reventlessdev/{platform}-{plugin}-spec": "*",
-    "@reventlessdev/reventless-in-memory": "*",
+    "@reventlessdev/reventless-local": "*",
     "@reventlessdev/reventless-spec": "*",
     "sury": "^11.0.0-alpha.4"
   },
@@ -115,7 +115,7 @@
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-infra",
-    "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/reventless-local",
     "@reventlessdev/{platform}-{plugin}-spec"
   ],
   "dev-dependencies": [
@@ -152,7 +152,7 @@
   "dependencies": {
     "@reventlessdev/{platform}-{plugin1}": "*",
     "@reventlessdev/{platform}-{plugin2}": "*",
-    "@reventlessdev/reventless-in-memory": "*",
+    "@reventlessdev/reventless-local": "*",
     "@reventlessdev/reventless-spec": "*",
     "sury": "^11.0.0-alpha.4"
   },
@@ -182,7 +182,7 @@
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-infra",
-    "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/reventless-local",
     "@reventlessdev/{platform}-{plugin1}",
     "@reventlessdev/{platform}-{plugin2}"
   ],
@@ -218,7 +218,7 @@ Place each component type in its own subdirectory under `src/`. Use `"subdirs": 
 In both `package.json` and `rescript.json`, order dependencies:
 1. Third-party (`sury`)
 2. ReScript bindings (`rescript-pulumi-pulumi`)
-3. Framework packages (`reventless-spec`, `reventless-infra`, `reventless-in-memory`)
+3. Framework packages (`reventless-spec`, `reventless-infra`, `reventless-local`)
 4. Spec packages (`{platform}-{plugin}-spec`)
 5. Plugin packages (`{platform}-{plugin}`)
 

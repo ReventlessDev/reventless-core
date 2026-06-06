@@ -61,8 +61,8 @@ jobs:
 
           PROJECTS=""
           # In-memory adapter
-          if echo "$CHANGED" | grep -q "^reventless/reventless-in-memory/"; then
-            PROJECTS="$PROJECTS --selectProjects reventless-in-memory"
+          if echo "$CHANGED" | grep -q "^reventless/reventless-local/"; then
+            PROJECTS="$PROJECTS --selectProjects reventless-local"
           fi
           # Interop
           if echo "$CHANGED" | grep -q "^reventless/reventless-interop/"; then
@@ -95,7 +95,7 @@ jobs:
           fi
 
           # In-memory changes also affect all example tests (they depend on it)
-          if echo "$CHANGED" | grep -q "^reventless/reventless-in-memory/"; then
+          if echo "$CHANGED" | grep -q "^reventless/reventless-local/"; then
             PROJECTS="$PROJECTS --selectProjects online-shop-dcb-catalog --selectProjects online-shop-dcb-ordering"
             PROJECTS="$PROJECTS --selectProjects example-aggregate-catalog --selectProjects example-aggregate-ordering"
             PROJECTS="$PROJECTS --selectProjects online-shop-hybrid-catalog --selectProjects online-shop-hybrid-ordering"

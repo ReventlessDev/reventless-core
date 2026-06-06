@@ -33,7 +33,7 @@ type t = {
 | Provider | When Used |
 |----------|-----------|
 | `Cognito` | AWS deployments using Amazon Cognito for authentication. |
-| `InMemory` | Local development and testing with the in-memory platform. |
+| `InMemory` | Local development and testing with the local platform. |
 | `Custom(string)` | Third-party identity providers (e.g., `Custom("auth0")`, `Custom("oauth2")`). |
 
 ## Anonymous Identity
@@ -82,7 +82,7 @@ switch identity->Identity.getClaim("tenantId") {
 
 Identity is extracted at the API entry point and lives only in [RequestContext](request-context.md) for the duration of the request. It is **not** persisted with events.
 
-### In-Memory Platform (GraphQL)
+### Local Platform (GraphQL)
 
 The in-memory GraphQL server reads the `X-Identity` header from incoming requests. The header value is a JSON-encoded `Identity.t`:
 

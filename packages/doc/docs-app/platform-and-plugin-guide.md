@@ -481,7 +481,7 @@ the folder name and the platform factory the generator picks.
 
 **What it does not change:**
 
-- In the in-memory platform, `ReadModelStream` is an alias for `ReadModel` (no DynamoDB streams to enable).
+- In the local platform, `ReadModelStream` is an alias for `ReadModel` (no DynamoDB streams to enable).
 - The shape of `Spec` / `Projections` files, the GraphQL query field, resolvers,
   authorization, or the AutoUI manifest — only the live-update wiring differs.
 
@@ -956,7 +956,7 @@ The `project` function uses the same operations as aggregate projections, but re
 
 **What it does not change:**
 
-- In the in-memory platform, `StateViewSliceStream` is an alias for `StateViewSlice` (no DynamoDB streams to enable).
+- In the local platform, `StateViewSliceStream` is an alias for `StateViewSlice` (no DynamoDB streams to enable).
 - The shape of `Spec` / `Projection` files — you can move a slice between the two folders without editing its contents.
 
 **Example layout:**
@@ -1173,7 +1173,7 @@ Both examples use the same namespace conventions (`CatalogSpec`, `CatalogPlugin`
 The platform `Main.res` is identical to the aggregate version:
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
@@ -1407,7 +1407,7 @@ The platform package wires plugins together and starts the application.
 
 **`Main.res`**:
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)
@@ -1433,7 +1433,7 @@ Plugin modules are referenced as `<Namespace>.Plugin.Make(Platform)`: the packag
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-infra",
-    "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/reventless-local",
     "@reventlessdev/online-shop-aggregates-catalog-spec",
     "@reventlessdev/online-shop-aggregates-ordering-spec",
     "@reventlessdev/online-shop-aggregates-catalog",
@@ -1475,7 +1475,7 @@ In both `package.json` and `rescript.json`, order dependencies as:
 
 1. Third-party packages (`sury`, etc.)
 2. ReScript bindings (`rescript-pulumi-pulumi`, etc.)
-3. Framework packages (`reventless-spec`, `reventless-infra`, `reventless-in-memory`)
+3. Framework packages (`reventless-spec`, `reventless-infra`, `reventless-local`)
 4. Example/platform packages (`online-shop-aggregates-*`)
 
 ### package.json dependency placement
@@ -1496,7 +1496,7 @@ In both `package.json` and `rescript.json`, order dependencies as:
 
 ### Split API mode
 
-By default, the in-memory platform uses split API mode — core administrative schema (plugin management, clone) and plugin business domain schema are served on separate ports. Use `MakeWithConfig` with `splitApi = false` to serve them from a single endpoint instead.
+By default, the local platform uses split API mode — core administrative schema (plugin management, clone) and plugin business domain schema are served on separate ports. Use `MakeWithConfig` with `splitApi = false` to serve them from a single endpoint instead.
 
 **Port assignments (default — split mode):**
 
@@ -1510,7 +1510,7 @@ By default, the in-memory platform uses split API mode — core administrative s
 Use `MakeWithConfig` to disable split mode:
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.MakeWithConfig({
+module Platform = ReventlessLocal.Platform.MakeWithConfig({
   let silent = false
   let splitApi = false
 })
@@ -1649,7 +1649,7 @@ When `uiBundleUrl` is `None` (the default), `~uiFragments` is `None` and the plu
 
 The bundle URL is deployment configuration, not plugin code. Both deploy paths read it from the same env var: `<PLUGIN>_UI_BUNDLE_URL` (PascalCase plugin name → SCREAMING_SNAKE_CASE — e.g., `Catalog` → `CATALOG_UI_BUNDLE_URL`, `OnlineShop` → `ONLINE_SHOP_UI_BUNDLE_URL`).
 
-**In-memory (`platform-in-memory/src/Main.res`)** — the composition root reads env explicitly and forwards:
+**In-memory (`platform-local/src/Main.res`)** — the composition root reads env explicitly and forwards:
 
 ```rescript
 @val external processEnv: dict<string> = "process.env"

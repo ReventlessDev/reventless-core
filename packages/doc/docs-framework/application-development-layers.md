@@ -15,7 +15,7 @@ dependencies, and its own placement within the source tree.
 │  Wires domain modules into a platform-agnostic plugin functor       │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Layer 3 — Platform Composition Root                                │
-│  deps: reventless-infra + reventless-aws OR reventless-in-memory    │
+│  deps: reventless-infra + reventless-aws OR reventless-local    │
 │  Instantiates a concrete Platform and produces deployable outputs   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -519,7 +519,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 ### Rules for Layer 2
 
 - **Always a functor on `Platform.T`** — never hardcode `ReventlessAws.*` or
-  `ReventlessInMemory.*` here.
+  `ReventlessLocal.*` here.
 - **Only `Platform.*` factory calls** for component creation. Never reach into
   `ReventlessCore.*` builders directly.
 - **Domain types flow in, component types flow out** — `Platform.Aggregate.Make`
@@ -556,7 +556,7 @@ The composition root instantiates a concrete `Platform.T` and applies the
 plugin functor to it. This is the **only** file in an application that needs
 to know which infrastructure provider is being used.
 
-In test and local development, the provider is `reventless-in-memory`.
+In test and local development, the provider is `reventless-local`.
 In production deployments, the provider is `reventless-aws`.
 
 ### Package dependencies
@@ -567,7 +567,7 @@ In production deployments, the provider is `reventless-aws`.
   "sury",
   "@reventlessdev/reventless-spec",
   "@reventlessdev/reventless-infra",
-  "@reventlessdev/reventless-in-memory"
+  "@reventlessdev/reventless-local"
 ]
 ```
 
@@ -581,30 +581,30 @@ In production deployments, the provider is `reventless-aws`.
 ]
 ```
 
-A single application package typically includes both `reventless-in-memory`
+A single application package typically includes both `reventless-local`
 (for tests) and `reventless-aws` (for the Pulumi deployment entry point), with
 the provider choice isolated to different files.
 
 ### In-memory composition (tests)
 
-The in-memory platform is used in E2E tests and local development because it
+The local platform is used in E2E tests and local development because it
 needs no real AWS infrastructure. Each test creates its own isolated bus:
 
 ```rescript
 // tests/E2E/CatalogE2ETest.res
 
-module Bus = ReventlessInMemory.InMemory_Bus.Make()  // isolated bus for this test suite
+module Bus = ReventlessLocal.LocalBus.Make()  // isolated bus for this test suite
 
-let _ = ReventlessInMemory.TestRunner.setup()  // activate Pulumi mock mode
+let _ = ReventlessLocal.TestRunner.setup()  // activate Pulumi mock mode
 
 // Build the concrete Platform using the in-memory bus
-module Platform = ReventlessInMemory.Platform.Make(Bus)
+module Platform = ReventlessLocal.Platform.Make(Bus)
 
 // Apply the plugin functor
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 ```
 
-The `InMemory_Bus.Make()` call creates a fresh, isolated message bus. All
+The `LocalBus.Make()` call creates a fresh, isolated message bus. All
 component builders inside `CatalogPlugin.Make(Platform)` publish and subscribe
 through this bus. Tests interact with the plugin via the bus directly:
 
@@ -618,8 +618,8 @@ testPromise("AddProduct stores state", async () => {
 })
 ```
 
-The in-memory platform mirrors the AWS platform's `Platform.T` signature
-exactly. If your plugin functor compiles against the in-memory platform, it
+The local platform mirrors the AWS platform's `Platform.T` signature
+exactly. If your plugin functor compiles against the local platform, it
 will also compile against the AWS platform — the type system enforces this.
 
 ### AWS composition (Pulumi deployment)
@@ -644,7 +644,7 @@ the `Platform` module changes.
 
 Keeping the provider selection in one file means:
 
-- All other source files are testable with `reventless-in-memory` without
+- All other source files are testable with `reventless-local` without
   any conditional compilation or environment flags.
 - Switching providers (e.g. a future `reventless-azure`) requires changing
   only `index.res`.
@@ -765,9 +765,9 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
 **tests/E2E/ItemsTest.res** — in-memory for tests
 ```rescript
-module Bus      = ReventlessInMemory.InMemory_Bus.Make()
-let _           = ReventlessInMemory.TestRunner.setup()
-module Platform = ReventlessInMemory.Platform.Make(Bus)
+module Bus      = ReventlessLocal.LocalBus.Make()
+let _           = ReventlessLocal.TestRunner.setup()
+module Platform = ReventlessLocal.Platform.Make(Bus)
 module Items    = ItemsPlugin.Plugin.Make(Platform)
 ```
 
@@ -785,7 +785,7 @@ module Items    = ItemsPlugin.Plugin.Make(Platform)
 
 ```rescript
 // ✗ WRONG — importing a concrete provider in a domain or assembly file
-open ReventlessInMemory
+open ReventlessLocal
 module ItemAggregate = Aggregate_Builder.Make(Bus)
 ```
 
@@ -831,7 +831,7 @@ your domain spec files will fail to compile.
 
 ## Dependency reference
 
-| Layer | `reventless-spec` | `reventless-infra` | `reventless-aws` | `reventless-in-memory` |
+| Layer | `reventless-spec` | `reventless-infra` | `reventless-aws` | `reventless-local` |
 |---|:---:|:---:|:---:|:---:|
 | 1 — Domain spec | ✓ | — | — | — |
 | 2 — Plugin assembly | ✓ | ✓ | — | — |

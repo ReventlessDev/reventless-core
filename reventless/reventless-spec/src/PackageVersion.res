@@ -35,7 +35,7 @@ let fromModuleUrl = (url: string) => findVersion(url->fileURLToPath->dirname)
 
 /** Detect the caller's file via V8 Structured Stack Trace API and read the
     version from the nearest package.json. Skips frames from framework packages
-    (reventless-spec, reventless-core, reventless-infra, reventless-in-memory,
+    (reventless-spec, reventless-core, reventless-infra, reventless-local,
     reventless-aws, reventless-interop). Falls back to CWD's package.json. */
 let callerFile: unit => option<string> = %raw(`
   function() {

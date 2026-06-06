@@ -6,7 +6,7 @@ Include the BehaviorTest module in your test file:
 
 ```rescript
 open Product
-include ReventlessInMemory.BehaviorTest.Make(Product, ProductBehavior)
+include ReventlessLocal.BehaviorTest.Make(Product, ProductBehavior)
 ```
 
 This provides `givenEvents`, `whenCmd`, `thenEvent`, `thenError`, `thenNoEvents`.

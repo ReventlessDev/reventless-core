@@ -1,6 +1,6 @@
-# Local Persistence for the In-Memory Platform
+# Local Persistence for the Local Platform
 
-By default the in-memory platform wipes all state on restart. If you are iterating on a UI, demoing a workflow, or replaying events across multiple dev sessions, you can opt into a SQLite-backed persistence layer that survives restarts without running a separate database server.
+By default the local platform wipes all state on restart. If you are iterating on a UI, demoing a workflow, or replaying events across multiple dev sessions, you can opt into a SQLite-backed persistence layer that survives restarts without running a separate database server.
 
 Jest tests continue to use the pure in-memory path — persistence is strictly opt-in.
 
