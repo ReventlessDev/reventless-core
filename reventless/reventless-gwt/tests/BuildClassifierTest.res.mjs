@@ -19,7 +19,7 @@ describe("BuildClassifier", () => {
     let fails = {
       contents: []
     };
-    let feed = BuildClassifier$ReventlessGwt.make({
+    let feed = BuildClassifier$ReventlessGwt.make(undefined, {
       onStart: () => {
         starts.contents = starts.contents + 1 | 0;
       },
@@ -44,7 +44,7 @@ describe("BuildClassifier", () => {
     let fails = {
       contents: []
     };
-    let feed = BuildClassifier$ReventlessGwt.make({
+    let feed = BuildClassifier$ReventlessGwt.make(undefined, {
       onStart: () => {},
       onOk: _ms => {
         oks.contents = oks.contents + 1 | 0;
@@ -64,11 +64,56 @@ describe("BuildClassifier", () => {
     let msg = fails.contents[0];
     expect(msg.includes("This has type: string")).toEqual(true);
   });
+  test("watchdog fails a build that starts but never terminates", async () => {
+    let oks = {
+      contents: 0
+    };
+    let fails = {
+      contents: []
+    };
+    let feed = BuildClassifier$ReventlessGwt.make(50, {
+      onStart: () => {},
+      onOk: _ms => {
+        oks.contents = oks.contents + 1 | 0;
+      },
+      onFail: msg => {
+        fails.contents = fails.contents.concat([msg]);
+      }
+    });
+    feed("Parsed 1 source files");
+    await delay(120);
+    expect(oks.contents).toEqual(0);
+    expect(fails.contents.length).toEqual(1);
+    let msg = fails.contents[0];
+    expect(msg.includes("watchdog")).toEqual(true);
+  });
+  test("watchdog does not fire once the build finishes", async () => {
+    let oks = {
+      contents: 0
+    };
+    let fails = {
+      contents: []
+    };
+    let feed = BuildClassifier$ReventlessGwt.make(50, {
+      onStart: () => {},
+      onOk: _ms => {
+        oks.contents = oks.contents + 1 | 0;
+      },
+      onFail: msg => {
+        fails.contents = fails.contents.concat([msg]);
+      }
+    });
+    feed("Parsed 1 source files");
+    feed("Finished incremental compilation");
+    await delay(120);
+    expect(oks.contents).toEqual(1);
+    expect(fails.contents.length).toEqual(0);
+  });
   test("strips ANSI colour codes before matching the finish line", async () => {
     let oks = {
       contents: 0
     };
-    let feed = BuildClassifier$ReventlessGwt.make({
+    let feed = BuildClassifier$ReventlessGwt.make(undefined, {
       onStart: () => {},
       onOk: _ms => {
         oks.contents = oks.contents + 1 | 0;

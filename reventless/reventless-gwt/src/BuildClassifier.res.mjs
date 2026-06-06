@@ -29,7 +29,8 @@ function isErrorMarker(l) {
   }
 }
 
-function make(cb) {
+function make(watchdogMsOpt, cb) {
+  let watchdogMs = watchdogMsOpt !== undefined ? watchdogMsOpt : 120000;
   let compiling = {
     contents: false
   };
@@ -45,6 +46,9 @@ function make(cb) {
   let timer = {
     contents: undefined
   };
+  let watchdog = {
+    contents: undefined
+  };
   let clearTimer = () => {
     let t = timer.contents;
     if (t !== undefined) {
@@ -53,19 +57,41 @@ function make(cb) {
       return;
     }
   };
+  let clearWatchdog = () => {
+    let t = watchdog.contents;
+    if (t !== undefined) {
+      clearTimeout(t);
+      watchdog.contents = undefined;
+      return;
+    }
+  };
+  let reset = () => {
+    compiling.contents = false;
+    hasError.contents = false;
+    buffer.contents = [];
+  };
   let settle = () => {
     if (!(compiling.contents && hasError.contents)) {
       return;
     }
     let msg = buffer.contents.slice(0, 20).join("\n");
+    clearWatchdog();
     cb.onFail(msg);
-    compiling.contents = false;
-    hasError.contents = false;
-    buffer.contents = [];
+    reset();
   };
   let arm = () => {
     clearTimer();
     timer.contents = setTimeout(settle, 400);
+  };
+  let armWatchdog = () => {
+    clearWatchdog();
+    watchdog.contents = setTimeout(() => {
+      if (compiling.contents) {
+        clearTimer();
+        cb.onFail("build watchdog: no completion within " + (watchdogMs / 1000 | 0).toString() + "s");
+        return reset();
+      }
+    }, watchdogMs);
   };
   return line => {
     let l = stripAnsi(line).trim();
@@ -77,15 +103,14 @@ function make(cb) {
       hasError.contents = false;
       buffer.contents = [];
       startTime.contents = performance.now();
-      return arm();
+      arm();
+      return armWatchdog();
     } else if (isFinishLine(l)) {
       clearTimer();
+      clearWatchdog();
       if (compiling.contents) {
         cb.onOk(performance.now() - startTime.contents);
-        compiling.contents = false;
-        hasError.contents = false;
-        buffer.contents = [];
-        return;
+        return reset();
       } else {
         return;
       }
