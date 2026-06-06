@@ -18,6 +18,12 @@ function shouldIgnore(name) {
   return ignoreNames.includes(name);
 }
 
+let gwtIgnoreFile = ".gwtignore";
+
+function isPruned(entries) {
+  return entries.some(e => e.name === gwtIgnoreFile);
+}
+
 function isSrcResFile(name) {
   return name.endsWith(".res");
 }
@@ -30,6 +36,9 @@ async function walk(dir, acc) {
     });
   } catch (exn) {
     entries = [];
+  }
+  if (isPruned(entries)) {
+    return acc;
   }
   let found = acc;
   for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
@@ -87,6 +96,8 @@ async function scan(pkgDirs) {
 export {
   ignoreNames,
   shouldIgnore,
+  gwtIgnoreFile,
+  isPruned,
   isSrcResFile,
   walk,
   scan,

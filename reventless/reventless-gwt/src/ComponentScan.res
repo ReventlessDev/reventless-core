@@ -29,6 +29,12 @@ external _readdir: (string, readdirOpts) => promise<array<dirent>> = "readdir"
 let ignoreNames = ["node_modules", ".git", "dist", "lib", ".history"]
 let shouldIgnore = (name: string) => Array.includes(ignoreNames, name)
 
+// A directory carrying this sentinel file — and its whole subtree — is pruned
+// from the component scan, matching `Discovery`'s `.gwtignore` convention so
+// the domain tree and the test tree exclude the same generated/vendored trees.
+let gwtIgnoreFile = ".gwtignore"
+let isPruned = (entries: array<dirent>) => entries->Array.some(e => e.name == gwtIgnoreFile)
+
 // Source `.res` only — `.res.mjs` / `.res.js` end in `.mjs` / `.js`, and `.resi`
 // in `.resi`, so a plain `.res` suffix test excludes compiled output + interfaces.
 let isSrcResFile = (name: string) => String.endsWith(name, ".res")
@@ -39,6 +45,9 @@ let rec walk = async (dir: string, acc: array<string>): array<string> => {
   } catch {
   | _ => []
   }
+  if isPruned(entries) {
+    acc
+  } else {
   let found = ref(acc)
   for i in 0 to entries->Array.length - 1 {
     let entry = entries->Array.getUnsafe(i)
@@ -53,6 +62,7 @@ let rec walk = async (dir: string, acc: array<string>): array<string> => {
     }
   }
   found.contents
+  }
 }
 
 // Enumerate components across the given package directories (deduplicated per

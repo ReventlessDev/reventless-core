@@ -15,6 +15,12 @@ function shouldIgnore(name) {
   return ignoreNames.includes(name);
 }
 
+let gwtIgnoreFile = ".gwtignore";
+
+function isPruned(entries) {
+  return entries.some(e => e.name === gwtIgnoreFile);
+}
+
 function isGwtTestFile(name) {
   if (name.endsWith("_GWT.res.mjs") || name.endsWith("GwtTest.res.mjs")) {
     return true;
@@ -31,6 +37,9 @@ async function walk(dir, acc) {
     });
   } catch (exn) {
     entries = [];
+  }
+  if (isPruned(entries)) {
+    return acc;
   }
   let found = acc;
   for (let i = 0, i_finish = entries.length; i < i_finish; ++i) {
@@ -85,6 +94,8 @@ async function discover(roots) {
 export {
   ignoreNames,
   shouldIgnore,
+  gwtIgnoreFile,
+  isPruned,
   isGwtTestFile,
   walk,
   discover,
