@@ -218,7 +218,7 @@ Effect.logInfo(`CommandPublisher.send: bufferSize: ${bufferSizeStr}, chunk: ${ch
 |---------|-----------|-------------|
 | `reventless-core` | `@reventlessdev/rescript-effect` | Heavy — retry, streams, logging, concurrency |
 | `reventless-aws` | `@reventlessdev/rescript-effect` | Heavy — all AWS adapter retry/error handling |
-| `reventless-in-memory` | `@reventlessdev/rescript-effect` | Very heavy — entire Bus, streams, fibers |
+| `reventless-local` | `@reventlessdev/rescript-effect` | Very heavy — entire Bus, streams, fibers |
 | `reventless-infra` | `@reventlessdev/rescript-effect` | Type signatures only — Stream/Effect in specs |
 
 ---
@@ -368,7 +368,7 @@ a parallel, competing serialization system with no benefit.
 
 **Why not:** These are platform-abstraction modules designed for TypeScript applications that need
 to run on Node.js, Bun, and the browser. Reventless runs exclusively on AWS Lambda (Node.js). The
-framework has its own platform abstraction layer (`reventless-aws`, `reventless-in-memory`) that
+framework has its own platform abstraction layer (`reventless-aws`, `reventless-local`) that
 maps to the actual deployment targets. Effect Platform would be an abstraction layer on top of
 another abstraction layer.
 
@@ -762,7 +762,7 @@ unchanged. Changes are organizational and in specific API details.
 2. **Create a v4 branch** of `rescript-effect` when v4 RC ships
 3. **Run all 14 test files** against v4 to identify breaking changes
 4. **Fix binding adjustments** (expected to be mechanical renames)
-5. **Test framework integration** with `reventless-core`, `reventless-aws`, `reventless-in-memory`
+5. **Test framework integration** with `reventless-core`, `reventless-aws`, `reventless-local`
 6. **Ship after v4 reaches LTS** status
 
 The upgrade should be low-risk because:

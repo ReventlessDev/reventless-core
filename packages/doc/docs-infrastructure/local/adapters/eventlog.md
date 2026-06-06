@@ -3,7 +3,7 @@ title: EventLog
 sidebar_position: 1
 ---
 
-# EventLog — InMemory
+# EventLog — Local
 
 **Source:** `reventless-local/src/adapter/EventLog/EventLogStorage_InMemory.res`
 
@@ -28,7 +28,7 @@ When created via `Make(Bus)`, the adapter registers its `replay` function in the
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Storage | In-memory `Dict` via STM TRef | DynamoDB table with `id` + `sequenceNr` keys |
 | Concurrency | STM transactions (single-threaded) | DynamoDB optimistic concurrency |

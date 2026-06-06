@@ -55,7 +55,7 @@ The problem is that the framework needs the npm specifier, but ReScript has no c
 - `ExtensionPoint_Builder.res`
 - etc.
 
-The in-memory platform ignores `moduleUrl` entirely. It's a deploy-time-only concern.
+The local platform ignores `moduleUrl` entirely. It's a deploy-time-only concern.
 
 ---
 

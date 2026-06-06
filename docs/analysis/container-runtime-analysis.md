@@ -105,7 +105,7 @@ This is essentially Approach A but with the consumer loop factored into a shared
 - ECS Fargate Spot or K8s spot nodes can cut compute costs significantly.
 
 ### 5. Local Development Parity
-- The in-memory platform already supports local testing. A Docker Compose–based deployment would bridge the gap between the in-memory test environment and a real infrastructure run — no Lambda simulation needed.
+- The local platform already supports local testing. A Docker Compose–based deployment would bridge the gap between the in-memory test environment and a real infrastructure run — no Lambda simulation needed.
 
 ---
 
@@ -146,7 +146,7 @@ Supporting Kubernetes requires a new `rescript-pulumi-kubernetes` binding packag
 - All event publishing adapters (`EventTopic_Adapter.Publisher`, implementations)
 - Business logic: specs, behaviors, mappings, projections
 - Plugin and Core components
-- The `reventless-in-memory` package
+- The `reventless-local` package
 
 ### New Implementations Needed
 - `RuntimeEnvironment_ECS.res` — creates ECS task definitions, services, IAM task roles
@@ -196,7 +196,7 @@ This is the highest-risk phase because it requires design decisions that affect 
 **Deliverable:** Production-grade container runtime process.
 
 ### Phase 4 — Local Docker Compose Platform (1–2 weeks)
-- `reventless-docker-compose` package or extend `reventless-in-memory`
+- `reventless-docker-compose` package or extend `reventless-local`
 - Docker Compose file generation via Pulumi local/Docker provider
 - Uses real SQS/DynamoDB via LocalStack, or keeps in-memory adapters
 - Bridges gap between unit tests and real infrastructure
@@ -222,7 +222,7 @@ Container support is worth building, but the decision of *which approach to take
 
 **Priority order for target platforms:**
 1. **AWS ECS/Fargate** — lowest friction; same AWS ecosystem, same IAM, same VPC — most teams already familiar
-2. **Local Docker Compose** — developer experience; closes the gap between `reventless-in-memory` and real infra
+2. **Local Docker Compose** — developer experience; closes the gap between `reventless-local` and real infra
 3. **Kubernetes (EKS)** — for teams that already run K8s; lowest incremental value if ECS is already supported
 
 ---

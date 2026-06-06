@@ -1002,7 +1002,7 @@ function MakeWithConfig(Config) {
         });
         let state_statusChange = {
           at: new Date().toISOString(),
-          by: "in-memory"
+          by: "local"
         };
         let state_apiSchemaFragment = param[5];
         let state_uiFragments = param[6];
@@ -1157,13 +1157,13 @@ function MakeWithConfig(Config) {
       }
     }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: Pulumi.getStack(),
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: Config.splitApi ? "http://localhost:4001/graphql" : "http://localhost:4000/graphql",
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: []
     });
   };
@@ -1283,13 +1283,13 @@ function MakeWithConfig(Config) {
       });
     });
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: environment,
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: "http://localhost:4000/graphql",
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: []
     });
     seedPluginQueryDb(plugins$1);
@@ -1473,7 +1473,7 @@ function MakeWithConfig(Config) {
             let newrecord = {...state};
             newrecord.statusChange = {
               at: new Date().toISOString(),
-              by: "in-memory"
+              by: "local"
             };
             newrecord.status = newStatus;
             let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginsReadModelSpec$ReventlessCore.stateSchema);
@@ -1725,13 +1725,13 @@ function MakeWithConfig(Config) {
       DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
     }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: "local",
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: Config.splitApi ? "http://localhost:4001/graphql" : "http://localhost:4000/graphql",
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: []
     });
     return {};
@@ -2846,7 +2846,7 @@ function Make($star) {
         });
         let state_statusChange = {
           at: new Date().toISOString(),
-          by: "in-memory"
+          by: "local"
         };
         let state_apiSchemaFragment = param[5];
         let state_uiFragments = param[6];
@@ -2997,13 +2997,13 @@ function Make($star) {
       PlatformMCP_Server$ReventlessLocal.printDiagnostics();
     }
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: Pulumi.getStack(),
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: "http://localhost:4001/graphql",
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: []
     });
   };
@@ -3122,13 +3122,13 @@ function Make($star) {
       });
     });
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: environment,
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: "http://localhost:4000/graphql",
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: []
     });
     seedPluginQueryDb(plugins$1);
@@ -3312,7 +3312,7 @@ function Make($star) {
             let newrecord = {...state};
             newrecord.statusChange = {
               at: new Date().toISOString(),
-              by: "in-memory"
+              by: "local"
             };
             newrecord.status = newStatus;
             let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginsReadModelSpec$ReventlessCore.stateSchema);
@@ -3555,13 +3555,13 @@ function Make($star) {
     DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
     DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
     Plugin_Helpers$ReventlessCore.firePlatformDeployedHook({
-      name: "in-memory",
+      name: "local",
       environment: "local",
       region: "local",
       domainApiEndpoint: "http://localhost:4000/graphql",
-      domainApiRoleArn: "in-memory",
+      domainApiRoleArn: "local",
       platformApiEndpoint: "http://localhost:4001/graphql",
-      platformApiRoleArn: "in-memory",
+      platformApiRoleArn: "local",
       adminResources: []
     });
     return {};

@@ -13,7 +13,7 @@ It complements, and does not repeat, the two existing GWT documents:
 Files surveyed: every `*_GWT.res` in [`reventless/reventless-gwt/src/`](../../reventless/reventless-gwt/src/),
 the PPX kind-mapping in [`packages/reventless-ppx/src/ppx/Util.ml`](../../packages/reventless-ppx/src/ppx/Util.ml),
 and the existing `*_GWT.res` test files across the examples, `reventless-gwt/tests/`, and
-`reventless-in-memory/tests/plugin/` (where the platform Plugin behavior/projection GWT
+`reventless-local/tests/plugin/` (where the platform Plugin behavior/projection GWT
 tests now live).
 
 ---
@@ -130,7 +130,7 @@ these clarifies what the genuinely-missing cross-slice form would add.
 
 1. **Behavior given-history is multi-event.** `givenEvents([...])` folds an arbitrary
    prior history before the `whenCmd`. The platform Plugin behavior test
-   [`PluginBehavior_GWT.res`](../../reventless/reventless-in-memory/tests/plugin/PluginBehavior_GWT.res)
+   [`PluginBehavior_GWT.res`](../../reventless/reventless-local/tests/plugin/PluginBehavior_GWT.res)
    folds multi-event histories (e.g. `UnknownPluginDetected → Connected → Deactivated`)
    before the `whenCmd`. But this is still **one** slice deciding **one** command;
    the chain is in the *setup*, not in the *execution*.
@@ -164,14 +164,14 @@ reads a *flow*, not an isolated slice. Today every GWT test verifies one tile of
 board in isolation; nothing verifies that the **tiles connect** the way the diagram says.
 
 What's currently used to test connected flows is the **in-memory E2E integration tests**
-(e.g. [`DcbReadModelE2ETest.res`](../../reventless/reventless-in-memory/tests/components/readmodel/DcbReadModelE2ETest.res),
+(e.g. [`DcbReadModelE2ETest.res`](../../reventless/reventless-local/tests/components/readmodel/DcbReadModelE2ETest.res),
 the DCB slice E2E pattern in MEMORY): they dispatch real commands through `InMemory_Bus`, await
 `Output.apply` registration, and count events. These work, but they are **not GWT**:
 
 - No `Outcome` algebra → not discoverable or runnable by the `reventless-gwt` CLI runner.
 - Imperative bus wiring + `beforeAllAsync` resolution dance → not declarative, not the
   format the VS Code extension renders, not AI-derivable from an Event Modeling diagram.
-- They live in `reventless-in-memory`, not beside the slices they exercise.
+- They live in `reventless-local`, not beside the slices they exercise.
 
 The plan acknowledges this explicitly: *"E2E tests … are integration tests, not GWTs …
 Long term they could be expressed as `Mapping_GWT` scenarios but that's a separate
@@ -258,7 +258,7 @@ family and both ExtensionPoint directions appear in one coherent e-commerce doma
 ### 6.1 Is multi-plugin supported yet? Two different answers
 
 **At the platform / runtime level: yes, fully.** Both
-[`platform-in-memory`](../../examples/online-shop-hybrid/platform-in-memory/) and
+[`platform-local`](../../examples/online-shop-hybrid/platform-local/) and
 [`platform-aws`](../../examples/online-shop-hybrid/platform-aws/) compose the `catalog`
 and `ordering` plugins together, and cross-plugin communication is a first-class, working
 mechanism. Two ExtensionPoints form a closed loop, with the shared boundary types living
@@ -271,7 +271,7 @@ in dedicated spec packages (so neither plugin imports the other's source — per
 | `Orders_ExtensionPoint` (`ordering-spec`) | Ordering `ExtensionPoint/Orders_ExtensionPointMapping.res` | Catalog `Extension/Orders_Extension.res` | `ItemOrdered`, `ItemOrderCancelled` (per-product, array-decomposed) | `RecordProductDemand` |
 
 The in-memory bus routes the commands these extensions publish across the plugin
-boundary; the existing E2E integration tests in `reventless-in-memory` already prove this
+boundary; the existing E2E integration tests in `reventless-local` already prove this
 end to end.
 
 **At the GWT level: no — not even cross-slice, let alone cross-plugin.** All 25 hybrid

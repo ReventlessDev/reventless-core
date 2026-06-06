@@ -38,7 +38,7 @@ These are **runtime trigger payloads** — the data structure a Lambda function 
 
 ### Meaning 3: Bus/Channel Messages (In-Memory Platform)
 
-In the in-memory platform, messages flowing through the bus are sometimes called "events" even when they carry commands.
+In the local platform, messages flowing through the bus are sometimes called "events" even when they carry commands.
 
 | Current Name | Type Signature | Location |
 |---|---|---|
@@ -152,7 +152,7 @@ If "invocation" feels too verbose:
 **High impact (type definitions):**
 - `reventless-core/src/adapter/Runtime/Runtime.res` — core type renames
 - `reventless-core/src/adapter/Runtime/AggregateRuntime_Builder_Common.res` — dispatch dict renames
-- `reventless-in-memory/src/adapter/Runtime/RuntimeEnvironment_InMemory.res` — type alias
+- `reventless-local/src/adapter/Runtime/RuntimeEnvironment_InMemory.res` — type alias
 - `reventless-aws/src/adapter/Runtime/RuntimeEnvironment_Lambda.res` — type alias
 
 **Medium impact (adapter implementations):**

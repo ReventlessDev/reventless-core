@@ -461,7 +461,7 @@ Concrete changes:
 | `reventless-aws` | `src/adapter/Api/<batch-resolver>.res` | 5 | BatchGetItem-by-ids resolver template |
 | `reventless-core` | `src/components/Api/GraphQL_FragmentGenerator.res` | 5 | Emit `Plugin_FooItemsByIds(...)` field |
 | `reventless-core` | `src/Platform.res` | 7 | `subscribeAuthHook` hook surface |
-| `reventless-in-memory` | `src/InMemory_Bus.res` | 8 | Descriptor-shape publish; channel format |
+| `reventless-local` | `src/InMemory_Bus.res` | 8 | Descriptor-shape publish; channel format |
 
 ### New
 

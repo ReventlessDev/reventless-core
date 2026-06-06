@@ -20,9 +20,9 @@ let resourceNaming = {
   urnName: resourceNaming_urnName
 };
 
-let environment = "in-memory";
+let environment = "local";
 
-let platformName = "in-memory";
+let platformName = "local";
 
 export {
   runtimeOps,

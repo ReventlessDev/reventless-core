@@ -3,7 +3,7 @@ title: DcbEventLog
 sidebar_position: 13
 ---
 
-# DcbEventLog — InMemory
+# DcbEventLog — Local
 
 **Source:** `reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_InMemory.res`
 
@@ -40,7 +40,7 @@ When created via `Make(Bus)`, the adapter registers its `read` function on the b
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Storage | In-memory array | DynamoDB table with tag-based indexes |
 | Position | Incrementing integer counter | DynamoDB auto-generated position |

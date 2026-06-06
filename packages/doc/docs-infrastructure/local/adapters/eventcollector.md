@@ -3,7 +3,7 @@ title: EventCollector
 sidebar_position: 4
 ---
 
-# EventCollector — InMemory
+# EventCollector — Local
 
 **Source:** `reventless-local/src/adapter/EventCollector/LocalEventCollectorChannel.res`
 
@@ -26,7 +26,7 @@ A `subscriptionLatch` on the runtime signals when subscriptions are registered, 
 
 ## Key Differences from AWS
 
-| Aspect | InMemory | AWS |
+| Aspect | Local | AWS |
 |--------|----------|-----|
 | Transport | Effect PubSub stream subscription | DynamoDB Streams / SQS |
 | Backpressure | Bounded PubSub queues (configurable) | SQS visibility timeout |

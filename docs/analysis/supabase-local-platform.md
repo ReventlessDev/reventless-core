@@ -6,7 +6,7 @@ Create a platform that runs fully locally — using Reventless in-memory transpo
 
 ## Core Concept
 
-The in-memory platform splits cleanly into two concerns:
+The local platform splits cleanly into two concerns:
 
 | Concern | In-memory component | Keep / Replace |
 |---------|--------------------|----|
@@ -23,7 +23,7 @@ New ReScript bindings package: `rescript/rescript-supabase/` (bindings for `@sup
 
 Dependencies:
 - `reventless-core` — adapter interfaces
-- `reventless-in-memory` — reused Bus + transport modules
+- `reventless-local` — reused Bus + transport modules
 - `reventless-infra` — `Platform.T` module type
 - `rescript-supabase` — new Supabase JS bindings
 
@@ -134,7 +134,7 @@ Operations: `get(key)`, `put(key, value)`, `delete(key)`, `scan(prefix?)`.
 
 ## Platform Composition (`Platform.res`)
 
-The `Make` functor takes a `Config` module for credentials and mirrors the structure of `reventless-in-memory/src/Platform.res`, swapping only the storage modules:
+The `Make` functor takes a `Config` module for credentials and mirrors the structure of `reventless-local/src/Platform.res`, swapping only the storage modules:
 
 ```rescript
 module Make = (Config: {
@@ -151,13 +151,13 @@ module Make = (Config: {
   module EventLogStorage    = EventLogStorage_Supabase.Make(Db)
   module DcbEventLogStorage = DcbEventLogStorage_Supabase.Make(Db)
 
-  // All channel / transport pieces identical to reventless-in-memory
+  // All channel / transport pieces identical to reventless-local
   // Plugin_Builder.Make receives Supabase storage modules instead of InMemory ones
   module Plugin = Plugin_Builder_Supabase.Make(Bus, Db)
   module Core   = Core_Builder.Make(Bus)
 
   // ... Aggregate, ReadModel, DcbEventLog, Counter, Scheduler etc.
-  // All wired identically to reventless-in-memory/src/Platform.res
+  // All wired identically to reventless-local/src/Platform.res
 }
 ```
 

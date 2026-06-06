@@ -26,7 +26,7 @@ The current state is broken on multiple axes — separate workstreams below.
 
 ### F1 — Full in-memory Connect-flow refactor (extends 1.3b)
 The in-memory adapter still seeds plugin definitions directly into the Plugin
-QueryDb (`seedPluginQueryDb` in `reventless-in-memory/src/Platform.res:839`),
+QueryDb (`seedPluginQueryDb` in `reventless-local/src/Platform.res:839`),
 bypassing the Plugin aggregate's `Connect` command path. Hand-written
 `Platform_Plugin_Activate` / `Platform_Plugin_Deactivate` resolvers at
 `Platform.res:1378-1399` mutate the QueryDb directly.
@@ -82,7 +82,7 @@ split codes.
 `PluginStatusChangeEvent`, `Platform_PluginStatusChanged(pluginId, status)`,
 and the matching `onPluginStatusChange` subscription field with
 `@aws_subscribe`. `updatePluginStatus` (in
-`reventless-in-memory/src/Platform.res`) publishes to the
+`reventless-local/src/Platform.res`) publishes to the
 `"onPluginStatusChange"` PubSub topic after saving the new status. The
 platform server registers a matching subscription resolver alongside the
 existing `onUIFragmentChange` one.
@@ -108,7 +108,7 @@ What landed:
 1. **Yoga graphql-ws transport** (backend prerequisite — scope expanded
    beyond the original plan because yoga's default subscription transport
    is SSE-over-POST, which `graphql-ws` clients can't speak):
-   `reventless-in-memory/package.json` now depends on `graphql-ws@^5.16`
+   `reventless-local/package.json` now depends on `graphql-ws@^5.16`
    and `ws@^8.18`. `GraphQL_ServerInstance.start()` wraps the HTTP server
    with `new WebSocketServer({server, path: "/graphql"})` and hands it
    to `graphql-ws/lib/use/ws::useServer({schema}, wss)` whenever any
@@ -309,7 +309,7 @@ module PluginAggregate: (...) = Aggregate_Builder_Single.Make(
 )
 ```
 
-Mirror the same change in `reventless-in-memory/src/Platform.res` if it
+Mirror the same change in `reventless-local/src/Platform.res` if it
 uses an analogous NoResolver-style builder for the Plugin aggregate.
 
 If no AWS callsite of `Aggregate_Builder_NoResolver` remains after this,
@@ -400,7 +400,7 @@ silently leaves the UI fragment registry empty for that plugin.
 
 ## 2.2 In-memory `Platform_UIDefinitions` — match AWS status filter
 
-File: [reventless-in-memory/src/Platform.res:1276-1284](reventless-in-memory/src/Platform.res#L1276-L1284)
+File: [reventless-local/src/Platform.res:1276-1284](reventless-local/src/Platform.res#L1276-L1284)
 
 ```rescript
 queryResolvers->Dict.set(
@@ -417,14 +417,14 @@ AWS already filters by plugin status via the DynamoDB scan
 ([Platform_UIDefinitions_Lambda.res:31-44](reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L31-L44)):
 `FilterExpression: "contains(#status, :connected)"`. The in-memory
 resolver returns everything in `pluginStructuresStore`, which is seeded
-once at boot ([Platform.res:1177](reventless-in-memory/src/Platform.res#L1177))
+once at boot ([Platform.res:1177](reventless-local/src/Platform.res#L1177))
 and never reflects lifecycle changes.
 
 Match the AWS behavior: cross-reference `pluginStructuresStore` against
 the Plugin QueryDb status (via `Bus.getQueryDbScan(pluginQueryDbName)` —
 same store the `Platform_Plugins` resolver scans) and drop entries whose
 status is not `Connected`. Note: the built-in `Platform_Admin` entry
-seeded at [Platform.res:1182-1185](reventless-in-memory/src/Platform.res#L1182-L1185)
+seeded at [Platform.res:1182-1185](reventless-local/src/Platform.res#L1182-L1185)
 has no Plugin QueryDb row — always include it (it can't be deactivated).
 
 ## 2.3 Live API schema — runtime gate (membership stays, availability gates)
@@ -499,7 +499,7 @@ The framework declares an `onUIFragmentChange` subscription
 ([PluginBaseFragment.res:37](reventless-core/src/admin/PluginBaseFragment.res#L37))
 but the host shell never subscribes to it. Backend correctly fires the
 matching mutations from in-memory
-[Platform.res:1396-1417](reventless-in-memory/src/Platform.res#L1396-L1417)
+[Platform.res:1396-1417](reventless-local/src/Platform.res#L1396-L1417)
 (`Platform_UIFragmentRegistered` / `_Updated` / `_Deregistered`).
 
 Wire the host shell to:
@@ -616,6 +616,6 @@ user-plugin aggregates.
 - `reventless-aws/src/adapter/Runtime/AggregateRuntime_Builder_Single.res` — shared `AllAggregates` Lambda; no changes needed.
 - `reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs:97-138` — proves the Lambda already dispatches AppSync events to Plugin commands.
 - `reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res:31-44` — AWS status filter that in-memory should mirror.
-- `reventless-in-memory/src/Platform.res:1276-1284` — in-memory `Platform_UIDefinitions` resolver missing the status filter.
-- `reventless-in-memory/src/Platform.res:1396-1417` — backend already publishes `onUIFragmentChange` events the host shell doesn't subscribe to.
+- `reventless-local/src/Platform.res:1276-1284` — in-memory `Platform_UIDefinitions` resolver missing the status filter.
+- `reventless-local/src/Platform.res:1396-1417` — backend already publishes `onUIFragmentChange` events the host shell doesn't subscribe to.
 - `examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/CancelOrder.res:16` — `@noApi` usage example.

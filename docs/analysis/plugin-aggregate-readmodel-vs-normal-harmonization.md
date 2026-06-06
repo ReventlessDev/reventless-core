@@ -4,7 +4,7 @@
 **Date:** 2026-06-04
 **Scope:** `reventless-core/src/admin/` (Platform_Admin, Plugin aggregate, Plugins read model) vs. the
 generic component pipeline in `reventless-core/src/components/Plugin/`, plus the platform seeding paths in
-`reventless-in-memory/src/Platform.res` and `reventless-aws/.../Platform_UIDefinitions_Lambda.res`.
+`reventless-local/src/Platform.res` and `reventless-aws/.../Platform_UIDefinitions_Lambda.res`.
 
 ---
 
@@ -48,7 +48,7 @@ For a user plugin (`examples/online-shop-*`), the flow is fully automatic:
    stores `pluginDef.structure` into the Plugins read-model state.
 6. **Seeding for AutoUI.** The platform copies each plugin's `outputs.pluginStructure` into
    `pluginStructuresStore`
-   ([`seedPluginStructuresStore`](../../reventless/reventless-in-memory/src/Platform.res#L898)), from which
+   ([`seedPluginStructuresStore`](../../reventless/reventless-local/src/Platform.res#L898)), from which
    `Platform_UIDefinitions` serves the AutoUI manifest.
 
 **Key property:** the spec is the single source of truth; structure + schema are *derived*, and the plugin
@@ -97,8 +97,8 @@ does not flow through pluginStructure outputs" comment:
 
 | Location | What it seeds |
 |---|---|
-| [`Platform.res:1328`](../../reventless/reventless-in-memory/src/Platform.res#L1328) | `pluginStructuresStore` admin entry |
-| [`Platform.res:1043`](../../reventless/reventless-in-memory/src/Platform.res#L1043) (`seedAdminPlatformEventGraphEntry`) | PlatformEventGraph admin row |
+| [`Platform.res:1328`](../../reventless/reventless-local/src/Platform.res#L1328) | `pluginStructuresStore` admin entry |
+| [`Platform.res:1043`](../../reventless/reventless-local/src/Platform.res#L1043) (`seedAdminPlatformEventGraphEntry`) | PlatformEventGraph admin row |
 | [`Platform_UIDefinitions_Lambda.res:115`](../../reventless/reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L115) | AWS AutoUI manifest admin entry |
 
 ---

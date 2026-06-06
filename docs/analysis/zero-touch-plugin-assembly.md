@@ -465,7 +465,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
-The original `CatalogPlugin.res` and the `Plugin/` folder are deleted. The platform wiring file (`platform-in-memory/src/Main.res`) references `Plugin` instead of `CatalogPlugin`:
+The original `CatalogPlugin.res` and the `Plugin/` folder are deleted. The platform wiring file (`platform-local/src/Main.res`) references `Plugin` instead of `CatalogPlugin`:
 
 ```rescript
 // Before:
@@ -622,7 +622,7 @@ The generated file is **committed to git**: changes are visible in code review, 
 | `src/*/Aggregate/FooBehavior.res` | Unchanged | Already valid |
 | `src/*/ReadModel/FooProjections.res` | **Add `allMappings` export** | One new line per file |
 | `src/*/Extension/FooExtension.res` | **Rename inner module to `Mapping`** | One rename per file |
-| `platform-in-memory/src/Main.res` | **Update module reference** | `CatalogPlugin.Make` → `Catalog.Plugin.Make` |
+| `platform-local/src/Main.res` | **Update module reference** | `CatalogPlugin.Make` → `Catalog.Plugin.Make` |
 
 ---
 

@@ -68,7 +68,7 @@ Added `let targetName` to all three Spec module types:
 
 [Pairing.res](../../reventless/reventless-spec/src/generator/Pairing.res) parses `let targetName = "..."` from each slice file using `extractTargetName` and stores results in three new `Dict.t<option<string>>` fields on `resolved`. [Codegen.res](../../reventless/reventless-spec/src/generator/Codegen.res) calls `validateSliceTargets` at render time; it throws with a descriptive error if a declared `targetName` is not among the plugin's known aggregates + StateChangeSlices, or if a required `targetName` is absent.
 
-All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderConfirmation → None`, `ImportProduct → "AddProduct"`. Test fixture specs in `reventless-in-memory` also updated. Build: zero warnings, 1034 tests pass.
+All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderConfirmation → None`, `ImportProduct → "AddProduct"`. Test fixture specs in `reventless-local` also updated. Build: zero warnings, 1034 tests pass.
 
 ---
 
@@ -154,7 +154,7 @@ A small `findWritableOwner(~name)` helper inside `computeEdges` shares the writa
 
 **What landed.**
 
-Wired the in-memory equivalent of the AWS `PlatformEventGraphReadModel` into all three admin GraphQL registration sites in [reventless-in-memory/src/Platform.res](../../reventless/reventless-in-memory/src/Platform.res). The implementation departs from the original "instantiate `PlatformEventGraphReadModel` and add to `Admin.construct(~readModels=…)`" plan because the in-memory platform deliberately bypasses event-driven projection wiring for admin read models — instead, it seeds synchronous in-memory stores and registers GraphQL resolvers directly. Mirroring this pattern for the event graph turned out to be a 1:1 copy of the existing `pluginStructuresStore`-backed `platformCrossPluginEdges` registration, just for a different field.
+Wired the in-memory equivalent of the AWS `PlatformEventGraphReadModel` into all three admin GraphQL registration sites in [reventless-local/src/Platform.res](../../reventless/reventless-local/src/Platform.res). The implementation departs from the original "instantiate `PlatformEventGraphReadModel` and add to `Admin.construct(~readModels=…)`" plan because the in-memory platform deliberately bypasses event-driven projection wiring for admin read models — instead, it seeds synchronous in-memory stores and registers GraphQL resolvers directly. Mirroring this pattern for the event graph turned out to be a 1:1 copy of the existing `pluginStructuresStore`-backed `platformCrossPluginEdges` registration, just for a different field.
 
 Three registration sites now expose `Platform_PlatformEventGraph` (single by id) and `Platform_PlatformEventGraphs` (list, Connection-shaped):
 

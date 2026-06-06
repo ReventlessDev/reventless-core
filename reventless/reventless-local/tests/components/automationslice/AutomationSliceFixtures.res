@@ -129,7 +129,7 @@ module SkipProcessAutomation: Reventless.AutomationSlice.Automation
 
 let testContext: Reventless.AutomationSlice.context = {
   environment: "test",
-  platformName: "in-memory",
+  platformName: "local",
   pluginName: "TestPlugin",
   sliceName: "ShipOrder",
 }

@@ -39,14 +39,14 @@ A complete GWT layer needs a DSL for **every cell of that table**, with consiste
 
 ## 2. Current state and gaps
 
-All three existing DSLs live in [`reventless-core/tests/`](../../reventless/reventless-core/tests/), with near-duplicates of `BehaviorTest`/`ProjectionTest`/`AsyncTest` in [`reventless-in-memory/src/test/`](../../reventless/reventless-in-memory/src/test/).
+All three existing DSLs live in [`reventless-core/tests/`](../../reventless/reventless-core/tests/), with near-duplicates of `BehaviorTest`/`ProjectionTest`/`AsyncTest` in [`reventless-local/src/test/`](../../reventless/reventless-local/src/test/).
 
 ### 2.1 [BehaviorTest](../../reventless/reventless-core/tests/BehaviorTest.res) — Aggregate command slice
 
 Pure synchronous DSL. Functor over `(Spec, Behavior)`:
 
 ```rescript
-include ReventlessInMemory.BehaviorTest.Make(Category, CategoryBehavior)
+include ReventlessLocal.BehaviorTest.Make(Category, CategoryBehavior)
 
 test("on new aggregate produces Added", () =>
   givenEvents([])
@@ -137,7 +137,7 @@ The three existing DSLs were written at different times and accreted different s
 | Error-path combinators | full set | **commented out** | partial (`thenThrow`, `thenFail`) |
 | Idempotency assertion | `thenNoEvent` | `thenNoTargetEvent` | `thenNoState` |
 | `Spec` parameterisation | `Behavior.Spec` (rich) | `Aggregate.Spec` (rich) | `Projection.Mapping` (only sourceEvent + targetState) |
-| Duplicated module | `reventless-in-memory/src/test/BehaviorTest.res` | not duplicated | `reventless-in-memory/src/test/ProjectionTest.res` |
+| Duplicated module | `reventless-local/src/test/BehaviorTest.res` | not duplicated | `reventless-local/src/test/ProjectionTest.res` |
 
 Rough summary of what needs fixing:
 
@@ -147,7 +147,7 @@ Rough summary of what needs fixing:
 4. **Finish the error combinators in `EventMapping_GWT`.** The commented-out `thenTargetError`, `thenTargetEventsWithError` are still missing.
 5. **Promote `describeWithId` and `*WithTime`** to all DSLs — useful in every context.
 6. **Standardise `Spec` parameterisation.** Every Make functor takes `(Spec, Behavior?)` directly. Improves both human reading and AI generation.
-7. **Delete the `reventless-in-memory/src/test/*` copies.** They exist purely to dodge a `@send external` resolution issue across packages — see §6.1.1.
+7. **Delete the `reventless-local/src/test/*` copies.** They exist purely to dodge a `@send external` resolution issue across packages — see §6.1.1.
 
 ---
 
@@ -1257,7 +1257,7 @@ A staged, additive migration. Each stage is one PR that keeps every test green v
 
 ### 6.1 Phased migration
 
-1. **Stage 1 — Consolidate.** Create `reventless-gwt` package. Move `BehaviorTest`, `EventMappingTest`, `ProjectionTest`, `AsyncTest` from `reventless-core/tests/` into it. Delete the duplicates in `reventless-in-memory/src/test/` (see §6.1.1). Codemod example tests to `ReventlessGwt.*` imports. Keep current `Jest.assertion` return type to minimize churn.
+1. **Stage 1 — Consolidate.** Create `reventless-gwt` package. Move `BehaviorTest`, `EventMappingTest`, `ProjectionTest`, `AsyncTest` from `reventless-core/tests/` into it. Delete the duplicates in `reventless-local/src/test/` (see §6.1.1). Codemod example tests to `ReventlessGwt.*` imports. Keep current `Jest.assertion` return type to minimize churn.
 2. **Stage 2 — Outcome algebra.** Refactor combinators to return `Outcome.outcome`. Add `JestBind` adapter so existing test files compile unchanged (the adapter wraps the outcome at the `test(...)` boundary, not in `then*` calls).
 3. **Stage 3 — DCB DSLs.** Add `StateChangeSlice_GWT`, `StateViewSlice_GWT`, `AutomationSlice_GWT`, `InboundTranslationSlice_GWT`, `OutboundTranslationSlice_GWT`. Each mirrors the existing DSL shape so users learn one vocabulary.
 4. **Stage 4 — `thenAppendsConditionedOn`.** Add the implicit + explicit append-condition assertion to `StateChangeSlice_GWT` (§4.2).
@@ -1270,7 +1270,7 @@ A staged, additive migration. Each stage is one PR that keeps every test green v
 
 The runner-agnostic shape is established by Stage 2; everything from Stage 3 onward is additive on top of the same Outcome algebra.
 
-#### 6.1.1 Stage 1 detail: removing the `reventless-in-memory` re-exports
+#### 6.1.1 Stage 1 detail: removing the `reventless-local` re-exports
 
 The current re-exports exist for two specific reasons. Both go away once the DSLs live in `reventless-gwt`:
 
@@ -1283,11 +1283,11 @@ The current re-exports exist for two specific reasons. Both go away once the DSL
 
 1. `git mv reventless/reventless-core/tests/{BehaviorTest,EventMappingTest,ProjectionTest,AsyncTest}.res reventless/reventless-gwt/src/`
 2. Rename to `Behavior_GWT.res`, `EventMapping_GWT.res`, `Projection_GWT.res`, `AsyncTest.res`.
-3. `rm reventless/reventless-in-memory/src/test/{BehaviorTest,ProjectionTest,AsyncTest}.res` and their `.res.mjs` siblings.
-4. Update `reventless-in-memory/rescript.json` to remove `src/test`, or reduce to `Mocks/` and `TestRunner.res` only.
-5. Add `@reventlessdev/reventless-gwt` as a devDep of `reventless-in-memory` (only because some `TestRunner` helpers use `AsyncTest`).
-6. Codemod every example test: `ReventlessInMemory.BehaviorTest` → `ReventlessGwt.Behavior_GWT`, `ReventlessInMemory.ProjectionTest` → `ReventlessGwt.Projection_GWT`, `ReventlessInMemory.AsyncTest` → `ReventlessGwt.AsyncTest`.
-7. Add a thin `ReventlessInMemory.BehaviorTest = ReventlessGwt.Behavior_GWT` deprecation alias in `reventless-in-memory/src/test/Deprecated.res` for one release cycle.
+3. `rm reventless/reventless-local/src/test/{BehaviorTest,ProjectionTest,AsyncTest}.res` and their `.res.mjs` siblings.
+4. Update `reventless-local/rescript.json` to remove `src/test`, or reduce to `Mocks/` and `TestRunner.res` only.
+5. Add `@reventlessdev/reventless-gwt` as a devDep of `reventless-local` (only because some `TestRunner` helpers use `AsyncTest`).
+6. Codemod every example test: `ReventlessLocal.BehaviorTest` → `ReventlessGwt.Behavior_GWT`, `ReventlessLocal.ProjectionTest` → `ReventlessGwt.Projection_GWT`, `ReventlessLocal.AsyncTest` → `ReventlessGwt.AsyncTest`.
+7. Add a thin `ReventlessLocal.BehaviorTest = ReventlessGwt.Behavior_GWT` deprecation alias in `reventless-local/src/test/Deprecated.res` for one release cycle.
 8. Update `MEMORY.md` notes that reference the old paths.
 
 The only thing the in-memory package retains in `src/test/`:
@@ -1306,14 +1306,14 @@ The only thing the in-memory package retains in `src/test/`:
 | `examples/online-shop-dcb/*/tests/*/StateViewSlice/*ViewTest.res` | ~4 | rewrite to `_GWT` form (semi-automatic) |
 | `examples/online-shop-dcb/*/tests/E2E/*E2ETest.res` | ~2 | unchanged (uses in-memory bus, not GWT) |
 | `reventless/reventless-core/tests/**` | many | unchanged or in-place rename |
-| `reventless/reventless-in-memory/tests/**` | many | unchanged |
+| `reventless/reventless-local/tests/**` | many | unchanged |
 
 #### Codemod for renames (Aggregate Behavior + ReadModel Projection)
 
 Mechanical:
 
 ```
-- include ReventlessInMemory.BehaviorTest.Make(Category, CategoryBehavior)
+- include ReventlessLocal.BehaviorTest.Make(Category, CategoryBehavior)
 + include ReventlessGwt.Behavior_GWT.Make(Category, CategoryBehavior)
 + include ReventlessGwt.Bind
 ```
@@ -1350,7 +1350,7 @@ module EventMappingTest = EventMapping_GWT
 ```
 
 ```rescript
-// reventless-in-memory/src/test/Deprecated.res
+// reventless-local/src/test/Deprecated.res
 @deprecated("Use ReventlessGwt.Behavior_GWT instead")
 module BehaviorTest = ReventlessGwt.Behavior_GWT
 @deprecated("Use ReventlessGwt.Projection_GWT instead")
@@ -1374,6 +1374,6 @@ For DCB slices that today have **no** GWT (raw `expect`), migration is net-new a
 - **Generalise `EventMapping_GWT` to `Mapping_GWT`** (§4.7) so source and target can each be Behavior or StateChangeSlice — closes the cross-pattern gap.
 - **Add `thenAppendsConditionedOn` with auto-derivation** (§4.2.1) so the DCB optimistic-concurrency contract is checked implicitly and documentable explicitly.
 - **Add `Query_GWT`** (§4.8) so read model index/resolver/subId design is specifiable, closing the only major gap for full AI generation of read models.
-- **Rename and harmonise the existing DSLs** (§4.1, §2.6): `BehaviorTest`→`Behavior_GWT`, `ProjectionTest`→`Projection_GWT`, `EventMappingTest`→`EventMapping_GWT`. Standardise vocabulary, drop module-level `errors` ref, finish missing error combinators, delete duplicated `reventless-in-memory/src/test/*` modules.
+- **Rename and harmonise the existing DSLs** (§4.1, §2.6): `BehaviorTest`→`Behavior_GWT`, `ProjectionTest`→`Projection_GWT`, `EventMappingTest`→`EventMapping_GWT`. Standardise vocabulary, drop module-level `errors` ref, finish missing error combinators, delete duplicated `reventless-local/src/test/*` modules.
 - **Migration is fully additive** (§6): codemods for the existing rename, semi-automatic LLM rewrite for the few DCB hand-rolled tests, deprecation aliases keep every PR green.
 - **AI generation is feasible to a high ceiling** (§5) but only if the GWT corpus covers every cross-entity invariant. The two non-derivable areas — invariants without examples, read-model query patterns — must be made explicit as `_GWT` or `Query_GWT` scenarios. Otherwise an LLM will under-constrain `decide` and over-fit on the supplied examples.

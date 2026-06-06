@@ -191,8 +191,8 @@ let AutomationSliceMaker = AutomationSlice_Builder$ReventlessLocal.Make(Bus);
 let AutoFulfill = AutomationSliceMaker.Make(AutoFulfillSpec)(AutoFulfillAutomation);
 
 let testContext = {
-  environment: "in-memory",
-  platformName: "in-memory",
+  environment: "local",
+  platformName: "local",
   pluginName: "TestPlugin",
   sliceName: name$2
 };

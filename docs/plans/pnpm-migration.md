@@ -75,7 +75,7 @@ The 1-hour spike validated that pnpm + ReScript *can* work, but invalidated the 
 ### What the spike did NOT validate
 
 - Phase 0.3 (cross-repo link with sibling `reventless-ui`) was not attempted. The 1-hour budget was consumed by the issues above.
-- Whether a pre-existing `Main.res` type error in `examples/online-shop-hybrid/platform-in-memory` (`Catalog.make does not take ~uiBundleUrl`) is caused by pnpm or is a latent issue on `alpha` under npm — not verified.
+- Whether a pre-existing `Main.res` type error in `examples/online-shop-hybrid/platform-local` (`Catalog.make does not take ~uiBundleUrl`) is caused by pnpm or is a latent issue on `alpha` under npm — not verified.
 
 ### Verdict
 
@@ -134,7 +134,7 @@ onlyBuiltDependencies:
   - sury-ppx
 ```
 
-Delete any stray nested cross-repo symlinks inside `examples/online-shop-hybrid/platform-in-memory/` — these are npm-era hacks that conflict with clean workspace resolution.
+Delete any stray nested cross-repo symlinks inside `examples/online-shop-hybrid/platform-local/` — these are npm-era hacks that conflict with clean workspace resolution.
 
 ### 1.4 Declare phantom workspace deps (the big one)
 
@@ -165,7 +165,7 @@ This is the largest remediation step and is independent of every other change. E
   "@reventlessdev/reventless-infra": "workspace:*",
   "@reventlessdev/reventless-interop": "workspace:*",
   "@reventlessdev/reventless-core": "workspace:*",
-  "@reventlessdev/reventless-in-memory": "workspace:*",
+  "@reventlessdev/reventless-local": "workspace:*",
   "@reventlessdev/reventless-aws": "workspace:*",
   "@reventlessdev/online-shop-hybrid-platform-aws": "workspace:*",
   "@reventlessdev/reventless-ppx": "workspace:*"
@@ -175,11 +175,11 @@ This is the largest remediation step and is independent of every other change. E
 **1.4b — Workspace `rescript.json` → sibling `package.json`.** For each workspace whose `rescript.json` references `@reventlessdev/reventless-ppx/bin`, `sury-ppx/bin`, or any `@reventlessdev/*` dependency, add the corresponding entry to that workspace's `package.json`. The 20 rescript.json files found during the spike are:
 
 - `reventless/reventless-core/rescript.json`
-- `reventless/reventless-in-memory/rescript.json`
+- `reventless/reventless-local/rescript.json`
 - `examples/online-shop-aggregates/{catalog,catalog-spec,ordering,ordering-spec}/rescript.json`
-- `examples/online-shop-dcb/{catalog,catalog-spec,ordering,ordering-spec,platform-in-memory}/rescript.json`
-- `examples/online-shop-hybrid/{catalog,catalog-aws,catalog-spec,ordering,ordering-aws,ordering-spec,platform-in-memory,platform-aws}/rescript.json`
-- `examples/online-shop-aggregates/platform-in-memory/rescript.json` (already has reventless-ppx in build-time closure)
+- `examples/online-shop-dcb/{catalog,catalog-spec,ordering,ordering-spec,platform-local}/rescript.json`
+- `examples/online-shop-hybrid/{catalog,catalog-aws,catalog-spec,ordering,ordering-aws,ordering-spec,platform-local,platform-aws}/rescript.json`
+- `examples/online-shop-aggregates/platform-local/rescript.json` (already has reventless-ppx in build-time closure)
 
 For each of these, run: `grep '"@reventlessdev' rescript.json` and cross-check against that workspace's `package.json` `dependencies` + `devDependencies`. Add any missing entry as `workspace:*`.
 
@@ -281,7 +281,7 @@ Not in the v2 plan. pnpm 10 changed this default from `true` (v9) → `false`, w
 
 ### 1.4e Deviation — `dev-app` optional dep range
 
-`examples/online-shop-hybrid/platform-in-memory/package.json` had `"@reventlessdev/dev-app": "*"` in `optionalDependencies`. Under `pnpm install --frozen-lockfile`, pnpm's satisfies-check failed because `"*"` excludes prereleases by default, and the only published version of `dev-app` is `0.2.0-alpha.1` (a prerelease). Changed to `">=0.2.0-alpha"` to explicitly admit prereleases.
+`examples/online-shop-hybrid/platform-local/package.json` had `"@reventlessdev/dev-app": "*"` in `optionalDependencies`. Under `pnpm install --frozen-lockfile`, pnpm's satisfies-check failed because `"*"` excludes prereleases by default, and the only published version of `dev-app` is `0.2.0-alpha.1` (a prerelease). Changed to `">=0.2.0-alpha"` to explicitly admit prereleases.
 
 ### 1.7a Duplicated-package warnings
 

@@ -327,7 +327,7 @@ Same gap as Azure. See Azure analysis Section 3.3 for detailed discussion. The s
 | `reventless-spec` | Pure type definitions, no cloud dependencies |
 | `reventless` (core) | Provider-agnostic by design |
 | `rescript-uuid`, `rescript-hash-object`, etc. | Utility packages, no cloud coupling |
-| `reventless-in-memory` | Test platform, independent of cloud providers |
+| `reventless-local` | Test platform, independent of cloud providers |
 | `reventless-gen` | Code generation, cloud-agnostic |
 
 ### 4.2 Minimal Changes Likely Required
