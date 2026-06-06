@@ -9,6 +9,10 @@ type component = {
   dir: string,
   kind: string,
   name: string,
+  // Absolute paths of the component's `src/` files (spec + body files like
+  // `*_Behavior.res` / `*_Mappings.res`), in walk order. Lets the client list
+  // spec / implementation files under each component node.
+  files: array<string>,
 }
 
 type dirent = {
@@ -52,10 +56,13 @@ let rec walk = async (dir: string, acc: array<string>): array<string> => {
 }
 
 // Enumerate components across the given package directories (deduplicated per
-// dir+kind+name, declaration order preserved).
+// dir+kind+name, declaration order preserved). Each component accumulates the
+// source files that map to it (spec + body files).
+type orderEntry = {dir: string, kind: string, name: string, key: string}
+
 let scan = async (pkgDirs: array<string>): array<component> => {
-  let seen = Dict.make()
-  let out = []
+  let order = []
+  let filesByKey = Dict.make()
   for i in 0 to pkgDirs->Array.length - 1 {
     let dir = pkgDirs->Array.getUnsafe(i)
     let srcDir = join(dir, "src")
@@ -65,11 +72,11 @@ let scan = async (pkgDirs: array<string>): array<component> => {
         switch ComponentMeta.componentOfSrcFile(file) {
         | Some(c) =>
           let key = dir ++ "::" ++ c.kind ++ "::" ++ c.name
-          switch seen->Dict.get(key) {
-          | Some(_) => ()
+          switch filesByKey->Dict.get(key) {
+          | Some(existing) => filesByKey->Dict.set(key, Array.concat(existing, [file]))
           | None => {
-              seen->Dict.set(key, true)
-              out->Array.push({dir, kind: c.kind, name: c.name})
+              filesByKey->Dict.set(key, [file])
+              order->Array.push({dir, kind: c.kind, name: c.name, key})
             }
           }
         | None => ()
@@ -77,5 +84,10 @@ let scan = async (pkgDirs: array<string>): array<component> => {
       )
     }
   }
-  out
+  order->Array.map(o => {
+    dir: o.dir,
+    kind: o.kind,
+    name: o.name,
+    files: filesByKey->Dict.get(o.key)->Option.getOr([]),
+  })
 }

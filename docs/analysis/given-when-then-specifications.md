@@ -553,13 +553,15 @@ Every `--format=vscode` invocation emits a `hello` line first so a client can de
 and ignore unknown events:
 
 ```
-{"event":"hello","protocol":3}
+{"event":"hello","protocol":4}
 ```
 
 Protocol 2 added the `components` inventory event and the `component` field on file `item`s (Plugin → kind →
 component grouping). Protocol 3 added a `kind` field on each `testFail` message — the mismatch family
-(`EventsMismatch` / `ErrorMismatch` / …) a client uses to gate an apply-expected quick-fix. Both are additive;
-an older client simply ignores the unknown field/event.
+(`EventsMismatch` / `ErrorMismatch` / …) a client uses to gate an apply-expected quick-fix. Protocol 4 added a
+`files` array on each `components` entry (the component's `src/` spec + body file paths) so a client can list
+spec/implementation files under each component node. All are additive; an older client simply ignores the
+unknown field/event.
 
 ##### Discovery stream
 
@@ -622,10 +624,12 @@ with a `start` script), and `build*` events report each managed `rescript build 
 package's `src/` (by folder convention — Aggregate / StateChangeSlice / ReadModel / …), **including
 components with no GWT tests**. `dir` matches the `packages` event so a client joins them per plugin; tests
 join via the `component` field on each file `item`. The difference (components present vs components with a
-test file) is the coverage signal.
+test file) is the coverage signal. Each entry also carries `files` (protocol 4) — the absolute paths of the
+component's `src/` spec + body files — so a client can list the spec and implementation files (e.g.
+`*_Behavior.res`) under each component node; the client roles them by filename suffix.
 
 ```
-{"event":"components","components":[{"dir":"/abs/catalog","kind":"Aggregate","name":"Category"},{"dir":"/abs/catalog","kind":"ReadModel","name":"CatalogActivity"}]}
+{"event":"components","components":[{"dir":"/abs/catalog","kind":"Aggregate","name":"Category","files":["/abs/catalog/src/Category/Aggregate/Category.res","/abs/catalog/src/Category/Aggregate/Category_Behavior.res"]}]}
 ```
 
 The CLI owns the watchers (spawn, classify output, tear down on SIGINT via its process group); the extension

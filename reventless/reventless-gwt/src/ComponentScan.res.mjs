@@ -2,6 +2,7 @@
 
 import * as Nodefs from "node:fs";
 import * as Nodepath from "node:path";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Promises from "node:fs/promises";
 import * as ComponentMeta$ReventlessGwt from "./ComponentMeta.res.mjs";
 
@@ -47,8 +48,8 @@ async function walk(dir, acc) {
 }
 
 async function scan(pkgDirs) {
-  let seen = {};
-  let out = [];
+  let order = [];
+  let filesByKey = {};
   for (let i = 0, i_finish = pkgDirs.length; i < i_finish; ++i) {
     let dir = pkgDirs[i];
     let srcDir = Nodepath.join(dir, "src");
@@ -60,22 +61,27 @@ async function scan(pkgDirs) {
           return;
         }
         let key = dir + "::" + c.kind + "::" + c.name;
-        let match = seen[key];
-        if (match !== undefined) {
-          return;
+        let existing = filesByKey[key];
+        if (existing !== undefined) {
+          filesByKey[key] = existing.concat([file]);
         } else {
-          seen[key] = true;
-          out.push({
+          filesByKey[key] = [file];
+          order.push({
             dir: dir,
             kind: c.kind,
-            name: c.name
+            name: c.name,
+            key: key
           });
-          return;
         }
       });
     }
   }
-  return out;
+  return order.map(o => ({
+    dir: o.dir,
+    kind: o.kind,
+    name: o.name,
+    files: Stdlib_Option.getOr(filesByKey[o.key], [])
+  }));
 }
 
 export {

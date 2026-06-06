@@ -137,7 +137,7 @@ let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.ob
 // Bumped whenever the event contract changes (new events, renamed fields). The
 // extension reads it from the `hello` line and degrades gracefully on mismatch
 // (e.g. ignores unknown `build*` events from a newer CLI).
-let protocolVersion = 3
+let protocolVersion = 4
 
 // First line of every `--format=vscode` invocation, so a client can detect a
 // version-skewed CLI before interpreting the stream.
@@ -279,6 +279,9 @@ let components = (comps: array<ComponentScan.component>) => {
     o->Dict.set("dir", JSON.Encode.string(c.dir))
     o->Dict.set("kind", JSON.Encode.string(c.kind))
     o->Dict.set("name", JSON.Encode.string(c.name))
+    // Source files (spec + body) so the client can list them under the
+    // component; the client labels/roles them by filename suffix.
+    o->Dict.set("files", JSON.Encode.array(c.files->Array.map(JSON.Encode.string)))
     JSON.Encode.object(o)
   })
   d->Dict.set("components", JSON.Encode.array(arr))
