@@ -16,12 +16,116 @@ The extension drives a long-lived `reventless-gwt watch --format=vscode` per wor
 No `reventless.roots`, no `.vscode/` files, no side-terminal `rescript build -w`:
 
 - **Roots are auto-discovered** — with no path argument the CLI scans the whole workspace-folder subtree (pruning `node_modules`/`lib`/`.git`/`.history`). `reventless.roots` remains only as an override.
-- **Builds are CLI-managed** — the CLI derives the package set (each `package.json` with a `start` script that owns tests) and spawns one watcher per package. If you already run `pnpm run start` for a package, the CLI detects its live `lib/rescript.lock` and **adopts** it instead of double-spawning (a "Reventless GWT — Build" channel line marks it `[external]`).
+- **Builds are CLI-managed** — the CLI derives the package set (each `package.json` with a `start` script that owns tests) and spawns one watcher per package. If you already run `pnpm run start` for a package, the CLI detects its live `lib/rescript.lock` and **adopts** it instead of double-spawning (a "Reventless — Build" channel line marks it `[external]`).
 - **Multi-plugin examples work in one window** — `online-shop-hybrid` yields watchers for `catalog`, `ordering`, `platform-in-memory` automatically.
 
-The status bar and a **"Reventless GWT — Build"** output channel surface build progress and any compile errors. A one-shot **Run** profile (the play icon) is still available for run-on-click / CI-style single runs, backed by `reventless-gwt run`.
+The status bar and a **"Reventless — Build"** output channel surface build progress and any compile errors. A one-shot **Run** profile (the play icon) is still available for run-on-click / CI-style single runs, backed by `reventless-gwt run`.
 
 > The numbered sections below are the manual end-to-end *verification* walkthrough (CLI sanity → dev host → discovery → run → failure rendering → cancellation → packaging). They predate the `watch`-driven flow above and still hold for verifying the CLI directly; where they describe setting `reventless.roots` or running `rescript build -w` in a side terminal, that is now handled automatically.
+
+---
+
+## UI surface map — where to find every component
+
+Everything the extension renders, by location in the VS Code window. Use this as a manual dev-host checklist: each entry says **where** it appears, **what** it looks like, **how** to make it show, and the **provider** in [`src/extension.ts`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/src/extension.ts) that produces it.
+
+VS Code geography terms used below: **Activity Bar** = far-left vertical icon strip; **Primary Side Bar** = the panel that opens when you click an Activity Bar icon; **Panel** = the bottom area (Output / Problems / Terminal); **Status Bar** = the bottom strip; **editor** = the code area (CodeLens is clickable text above a line; the Code Action lightbulb is at the start of a line or via `Cmd+.`).
+
+```text
+VS Code window  (letters point to the sections below)
+
+Activity Bar (far-left strip)
+  Reventless icon  -> opens the Components view  [B]
+  flask icon       -> opens the Testing view     [C]
+
+Primary Side Bar (opens from an Activity Bar icon)
+  COMPONENTS .................. Plugin > kind > component > files   [B]
+                               (component files = spec + body + tests)
+  TESTING:
+    Test Explorer ............ file > suite > test                 [C]
+    REVENTLESS WATCH ......... one row per package + build state   [C]
+
+Editor
+  Run / coverage CodeLens, quick-fix lightbulb                     [E]
+  failure expected/actual diff                                     [F]
+
+Status Bar (bottom-left)
+  one folded health line, e.g. "Reventless - 312 pass 2 fail"      [D]
+
+Panel > Output (channel dropdown)
+  "Reventless"  and  "Reventless - Build"                          [G]
+```
+
+### A. Activity Bar — the Reventless icon
+- **Where:** far-left icon strip, a dedicated **Reventless** container (icon `media/reventless.svg`).
+- **Shows:** clicking it opens the **Components** view (below) in the Primary Side Bar.
+- **Trigger:** always present once the extension activates (activation fires on a workspace containing `*_GWT.res` / `*GwtTest.res` / `reventless-gwt.config.json`).
+- **Source:** `contributes.viewsContainers.activitybar` in `package.json`.
+
+### B. Primary Side Bar → **Components** view (Phase 2/3)
+- **Where:** click the Reventless Activity Bar icon → the view titled **COMPONENTS**.
+- **Shows:** a tree **Plugin → kind group → component → files**. Plugin nodes (the short package dir name, e.g. `catalog`) use `$(package)`; kind groups (`Aggregate`, `StateChangeSlice`, `ReadModel`, …) use `$(symbol-namespace)`; components use `$(symbol-method)`. Under each component, its **source files** list first — the spec (marked `spec`) then body/implementation files like `*_Behavior.res` / `*_Mappings.res` — followed by its **GWT test files**. Each file leaf uses the **same glyph as its category toggle** (`media/cat-spec.svg` / `cat-behavior.svg` / `cat-gwt.svg`), so the tree and the show/hide buttons match.
+- **Completeness indicator:** an incomplete component shows the description `⚠ missing <parts>` (any of `spec`, `behavior`, `GWT`) with a `$(warning)` icon; a complete one shows no description. The check is kind-aware: `Task` expects only a spec; `Extension` / `ExtensionPoint` expect a body file + a GWT (no separate spec). Source files always list regardless.
+- **Click-through:** clicking a component opens its **spec file** (or first test if no spec); clicking any file leaf opens that file.
+- **Category filters:** three title-bar toggles show/hide each file category, each with its own glyph (custom `media/cat-*.svg`: document = **spec**, `</>` = **behavior**, flask = **GWT**). All on by default; hiding a category strikes its glyph through (and dims it) and removes those files from every component. Commands `reventless.showSpec` / `hideSpec` (and behavior / gwt), also in the Command Palette.
+- **Flat / tree toggle:** `$(list-flat)` / `$(list-tree)` switches between the full tree (`plugin → kind → component → files`) and a **flat** view — `plugin → files`, every file directly under its plugin (grouped by component, spec → behavior → GWT), with no kind-group or component level. Commands `reventless.componentsAsFlat` / `componentsAsTree`.
+- **Expand / collapse:** the title bar has **Expand All** (`$(expand-all)`) and the native **Collapse All** (`$(collapse-all)`, from `showCollapseAll`); each **plugin** row also has inline **Expand** / **Collapse** (`$(expand-all)` / `$(collapse-all)`) for just that plugin's subtree.
+- **Trigger:** populates after the watch session's `components` + discovery `item` events arrive (a second or two after opening the folder). Untested components appear because the inventory scans `src/`, not just files that have tests.
+- **Overflow:** the title actions collapse into the `⋯` "More Actions" menu when the view is too narrow to show them all as icons.
+- **Source:** `ComponentTreeProvider`, view id `reventless.components`.
+
+### C. Testing view (flask icon) — two things live here
+Open it via the **flask icon** in the Activity Bar (or **View → Testing**).
+
+1. **Test Explorer tree** — the main content.
+   - **Shows:** `plugin → file → describe suite → test` leaves per discovered `*_GWT.res`, with pass ✓ / fail ✗ / skip markers and durations as the watch re-runs. The top level groups files by their owning plugin (package); running a plugin node runs that whole package (`--filter <package dir>`). After a run, each **file** row's description reads `<run time> · <path>` (e.g. `8ms · catalog/tests/…/Product_GWT.res.mjs`) — the aggregate time of that file's tests, before the path.
+   - **Run controls:** the double-play at the top runs all; hovering a row reveals a per-row play (one-shot `run --filter`).
+   - **Show-only-failed toggle:** a `$(filter)` button (title-bar action) flips the tree between **all tests** and **only failing tests** (`$(filter-filled)` when active). It prunes the tree to failed leaves + their ancestors and restores on toggle-off, reusing the same items so results persist. When the filter is on but **nothing is failing**, it shows a single `✓ No failing tests` row (so the filter visibly took effect, without VS Code's misleading "No tests found / install extensions" placeholder). Commands: `reventless.showOnlyFailed` / `reventless.showAllTests` (also in the Command Palette). The same toggle is what the status-bar click drives (D).
+   - **Expand all:** an `$(expand-all)` button (`reventless.expandAll`) opens every branch — the native tree only auto-expands to a fixed depth. *Collapse all* has **no title icon**: VS Code's test explorer doesn't give the tree focus on a title-icon click, so `list.collapseAll` had no reliable target; the `reventless.collapseAll` command remains in the Command Palette (where the tree keeps focus) and collapsing nodes by hand always works.
+   - **Auto-expand failures:** after each run, every failing test is revealed (its branch expanded) so failures are never hidden under a collapsed node.
+   - These title-bar actions live **only on the Test Explorer** (not the Watch view). When the side bar is too narrow to fit them as icons, VS Code collapses them into the title bar's `⋯` overflow menu automatically.
+   - **Source:** `TestController` `reventless-gwt` ("Reventless GWT") + `WatchSession`; the filter is `TestTree` (membership rebuilt from a retained model).
+
+2. **Reventless Watch view** — a separate collapsible view **below** the test tree (it's registered into the Testing container, not the Activity Bar). It's a **per-package build dashboard**: it shows which packages the CLI watch session is compiling (or has adopted from your own `rescript build -w`) and their live build state.
+   - **Where:** scroll to the bottom of the Testing side bar → the view titled **REVENTLESS WATCH**.
+   - **Shows:** one row per package, labelled with the short package name, and its build state — `starting…` `$(circle-large-outline)`, `building` `$(sync)`, `built` `$(check)`, `build failed` `$(error)`, `external (adopted)` `$(link)`. Tooltip carries the npm name, path, and build command.
+   - **Row click:** reveals that package in the Explorer (a per-row action).
+   - **Title actions:** **Restart Watch** (`$(debug-restart)`), **Stop**/**Start Watch** (`$(debug-stop)` / `$(debug-start)`, toggled by state), and **Open Build Log** (`$(output)`, shared channel). Restart kills and respawns the watch session(s) — re-running discovery and re-spawning/re-adopting the per-package build watchers; use it after adding a package, when a watcher is stuck, or to take over a package you'd been running yourself. Stop tears everything down (frees CPU) and Start brings it back. All three are also in the Command Palette. (Test-tree actions — filter / expand — live on the Test Explorer, not here.)
+   - **Trigger:** appears after the `packages` event. Force `external` by running your own `rescript build -w` for a package before opening the folder.
+   - **Source:** `WatchTreeProvider`, view id `reventless.watch`; title actions via `contributes.menus.view/title`.
+   - **Note:** the build *log* is a single shared channel, so "Open Build Log" shows the same output regardless of which package you came from — the per-package signal is the state icon/label, not separate logs.
+
+### D. Status Bar — workspace health (Phase 1a)
+- **Where:** **bottom-left** of the window (left-aligned, priority 100).
+- **Shows:** one folded summary, e.g. `$(check) Reventless · 312✓ 2✗`, `$(sync~spin) Reventless · building catalog`, `$(error) … · build failed`, `… · watch stopped`, with a `N⊘` segment when tests are skipped. Hover tooltip: *"Reventless watch session"*.
+- **Red background:** the whole item turns red (`statusBarItem.errorBackground`) on an error state — **failing tests**, a build failure, or a watcher that died unexpectedly. An in-progress build suppresses the red (spinner instead), and a clean run clears it.
+- **Watch off:** after a manual **Stop Watch**, the item reads `$(circle-slash) Reventless · watch off` (not red — it's intentional) until you **Start Watch** again.
+- **Click target:** clicking the item jumps to the **Test Explorer** (C) and reveals a test there. If **any test is failing**, it switches the explorer to *show-only-failed* and reveals the first failure; otherwise it switches to *show all* and reveals the first test. Command: `reventless.statusBarClick`.
+- **Trigger:** updates on every `build*` / `runEnd`. In a multi-folder workspace the tallies **sum** into this one item.
+- **Source:** `WatchRegistry.statusText()` (unit-tested in [`test/watchRegistry.test.mjs`](https://github.com/ReventlessDev/reventless-core/blob/main/packages/reventless-vscode/test/watchRegistry.test.mjs)).
+
+### E. Editor — CodeLenses and the quick-fix
+- **Run CodeLens (Phase 1c):** open any `*_GWT.res` → a clickable **`▷ Run`** sits **above each `test(…)` / `describe(…)`**. Clicking runs just that id via `run --filter`. Source: `GwtCodeLensProvider`.
+- **Coverage CodeLens (Phase 3):** open a component **spec** `.res` file (e.g. `Aggregate/Product.res`) → at the **very top (line 1)** a lens reads **`$(beaker) N GWT`** or **`$(warning) No GWT tests`**. It is package-scoped and skips body files (`_Behavior`, `_Projections`, …) and GWT files. Source: `SpecCoverageCodeLensProvider`.
+- **Apply-expected quick-fix (Phase 4):** in a `*_GWT.res` with a **failing `thenEvents([…])`** assertion, put the cursor on the failing test block → the **💡 lightbulb** (line start, or `Cmd+.`) offers **"Replace expected with actual (thenEvents)"**. It appears only for `EventsMismatch`; not for singular `thenEvent`, `thenError`, or state mismatches. Source: `ApplyExpectedProvider`.
+
+### F. Test failure detail — the expected/actual diff
+- **Where:** when a test fails, an inline red decoration appears on the assertion line in the editor (the message + a peek), and the same is reachable from the **Test Results** panel (**View → Testing → Show Test Output**, or click the failed leaf).
+- **Shows:** the hint message plus **Expected** / **Actual** panes rendered in **ReScript syntax** (e.g. `ProductsNotAvailable({missing: ["p1"]})`). `Cmd+Click` on the failure location jumps to the slice locus, not the test file.
+- **Source:** `FormatterVsCode.messagePayload` → `toTestMessage`.
+
+### G. Panel → Output channels
+- **Where:** **Panel** (bottom) → **Output** tab → the channel dropdown (top-right of the Output view).
+- **Channels:** **"Reventless"** (diagnostic log — spawn lines, protocol-mismatch notices, discover/run summaries) and **"Reventless — Build"** (`[ok]` / `[FAIL]` / `[external]` per package, with build-error bodies).
+- **Source:** `vscode.window.createOutputChannel(...)`; the Build channel is also what **Open Build Log** focuses.
+
+### H. Command Palette
+- **Where:** `Cmd+Shift+P`, all under the **Reventless:** prefix.
+- **Visible:** Open Build Log; Show Only / All Failed Tests; Expand / Collapse All Tests; Components as Flat / Tree; Show / Hide Spec / Behavior / GWT; Expand All Components; Restart / Stop / Start Watch. (These are the same commands behind the view-title icons — the palette is the always-available path, and the reliable one for *Collapse All Tests*.)
+- **Hidden** (`when: false`, invoked from the UI only): `reventless.runTest` (Run CodeLens), `reventless.statusBarClick` (status bar), `reventless.expandPlugin` / `collapsePlugin` (per-plugin inline actions — they need the row as an argument).
+
+### Not rendered yet (don't go looking)
+Per the [features plan](https://github.com/ReventlessDev/reventless-core/blob/main/docs/plans/reventless-vscode-features.md) status table: **Phase 5** (domain dead-code → `Problems` diagnostics), **Phase 6** (event-flow / D2 graph webview), and **Phase 8** (`buildFail` → `Problems` fallback) are unbuilt. (Phase 7 watch-session control is now done — Restart / Stop / Start on the Watch view.) Compile errors you see in **Problems** come from the `rescript-vscode` LSP, not this extension.
 
 ---
 
@@ -92,21 +196,21 @@ Two options.
 
 ## 4. Open a test workspace in the dev host
 
-In the dev-host window: **File → Open Folder** → pick `reventless/reventless-gwt/`.
+In the dev-host window: **File → Open Folder** → pick a Reventless app (e.g. `examples/online-shop-hybrid/`, or a single plugin like `reventless/reventless-gwt/`).
 
-The default `reventless.roots` config is `["tests"]`, which resolves to `reventless-gwt/tests/` relative to the workspace. The CLI resolver walks up from the workspace folder looking for `node_modules/.bin/reventless-gwt` and finds it at the monorepo root.
+`reventless.roots` now defaults to **empty**: the watch session auto-discovers every GWT test across the workspace-folder subtree, so no config is needed. The CLI resolver walks up from the workspace folder looking for `node_modules/.bin/reventless-gwt` and finds it at the monorepo root.
 
 ---
 
 ## 5. Verify discovery
 
-Open the **Testing** panel (flask icon in the sidebar). Expect:
+Open the **Testing** panel (flask icon in the sidebar). The tree is **plugin → file → suite → test**:
 
-- 8 file nodes (one per `*GwtTest.res.mjs` in `tests/`).
-- Under each file, one or more suites.
-- 41 total test leaves.
+- One **plugin** node per package that owns tests (e.g. `catalog`, `ordering`).
+- Under each, a **file** node per `*_GWT.res` (after a run its row shows `<time> · <path>`).
+- Under each file, one or more **suites**, then **test** leaves.
 
-These counts should match `pnpm --filter @reventlessdev/reventless-gwt test`.
+The total test count should match `pnpm --filter @reventlessdev/reventless-gwt test` (or the per-package `pnpm test`).
 
 Clicking a file, suite, or test row opens the underlying `.res` **source** (not the compiled `.res.mjs`) at the combinator's line. The CLI derives the `.res` sibling from the discovered `.res.mjs` path and grep-scans for the quoted label — `test("collect: …"` places the cursor on that line. Renamed or hand-written `.mjs` files with no sibling `.res` fall back to the compiled path.
 
@@ -116,9 +220,10 @@ If the panel is empty, check **Output → Log (Extension Host)** for the `revent
 
 ## 6. Run tests
 
-- **Run all** — click the double-play icon at the top of the Testing panel. All 41 should go green.
+- **Run all** — click the double-play icon at the top of the Testing panel; all should go green.
 - **Run one** — hover a single test → click the play icon. Only that test runs (VS Code passes the test's id to the extension, which forwards it as `--filter`).
-- **Run a subtree** — click the play icon on a file or suite row. Only descendants run.
+- **Run a subtree** — click the play icon on a plugin, file, or suite row. Only descendants run (a plugin node runs the whole package via `--filter <package dir>`).
+- **Continuous** — you usually don't need to click Run at all: the watch session re-runs affected tests automatically on every recompile (§14).
 
 All three paths use the CLI's substring-match `--filter`, so the ids emitted at discovery time MUST match the ids emitted at run time. (This was a real bug — both sides now prefix with the absolute file path.)
 
@@ -158,18 +263,16 @@ Mechanism: the extension forwards `token.onCancellationRequested` → `proc.kill
 
 ## 9. Verify configuration overrides
 
-In the dev host: **Settings → Extensions → Reventless GWT**.
+In the dev host: **Settings → Extensions → Reventless**.
 
-- **`reventless.cliPath`** — set to the absolute path of the CLI launcher, e.g. `/abs/path/to/reventless-core/reventless/reventless-gwt/bin/reventless-gwt.mjs`. Refresh the Testing panel (circular arrow icon). Discovery should still work. Clear the setting to fall back to the `node_modules/.bin` walk-up.
-- **`reventless.roots`** — set to a narrow value, e.g. `["tests/QueryGwtTest.res.mjs"]`. Refresh. The tree should shrink to just that file. Restore to `["tests"]` afterward.
+- **`reventless.cliPath`** — set to the absolute path of the CLI launcher, e.g. `/abs/path/to/reventless-core/reventless/reventless-gwt/bin/reventless-gwt.mjs`. Restart the watch (Watch view → Restart). Discovery should still work. Clear the setting to fall back to the `node_modules/.bin` walk-up.
+- **`reventless.roots`** — set to a narrow value, e.g. `["catalog/tests"]`. Restart the watch. The tree should shrink to just that subtree. Clear it to return to full auto-discovery.
 
 ---
 
 ## 10. Verify file watching
 
-With the Testing panel visible, `touch` any `*GwtTest.res.mjs` in `tests/`, or edit and rebuild a `*GwtTest.res`. Within ~250 ms the tree should refresh (this is the debounce in the extension's `FileSystemWatcher` handler). If the edit adds or removes a test, the tree reflects it.
-
-The watcher glob is `**/*{_GWT,GwtTest}.res.mjs`, so changes to non-compiled sources don't trigger it — you must rebuild.
+File watching is now owned by the **CLI `watch` session**, not the extension: the CLI runs a `rescript build -w` per package (or adopts yours), and on every recompile it re-discovers and re-runs the affected tests, streaming the updates. So just **edit and save a `.res`** — once it compiles, the tree refreshes and the affected tests re-run automatically (no rebuild step, no side terminal). Adding or removing a test is reflected on the next discovery cycle.
 
 ---
 
@@ -251,50 +354,36 @@ If the version in `package.json` didn't change, some versions of VS Code refuse 
 ### Sanity check after any update
 
 - Testing panel refreshes; discovered test count matches `pnpm --filter @reventlessdev/reventless-gwt test`.
-- **Output → Log (Extension Host)** (dev host) or **Output → Reventless GWT** (main VS Code) has no `reventless-gwt: discovery failed` lines. If it does, the CLI resolution broke — see §11's first bullet.
+- **Output → Log (Extension Host)** (dev host) or **Output → Reventless** (main VS Code) has no spawn/discovery error lines. If it does, the CLI resolution broke — see §11's first bullet.
 
 ---
 
-## 14. Continuous run (watch mode)
+## 14. Continuous run (watch session)
 
-The `Run` profile declares `supportsContinuousRun: true`, so the Testing panel shows a flask-with-eye toggle next to the normal double-play. Click it to keep a run alive: the extension executes the initial selection once, then re-executes the same selection every time a compiled `.res.mjs` under the watched roots changes.
+Continuous running is **the default** — there's no flask-eye toggle to enable. On activation the extension spawns one long-lived `reventless-gwt watch --format=vscode` per workspace folder, and the **CLI** is the engine: it discovers tests, owns a `rescript build -w` per package (or adopts one you're already running), and on every recompile re-discovers and re-runs the affected tests, streaming the results. The extension just renders the stream onto the Testing API.
 
-### Two-process setup
+So the flow is simply: **edit a `.res`, save it** → the CLI rebuilds → the tree refreshes and the affected tests re-run. No side terminal, no `.res.mjs` watching in the extension, no manual rebuild.
 
-Continuous run fires on `.res.mjs` changes, not `.res` saves. Run the ReScript watcher in a side terminal so edits produce fresh compiled output:
+### Controlling the session
 
-```bash
-pnpm --filter @reventlessdev/reventless-gwt run start
-# or from inside the affected package:
-pnpm run start   # equivalent to `rescript build -w`
-```
+The **Reventless Watch** view (§C) drives the session:
 
-The extension deliberately doesn't launch its own `rescript build -w` — fighting a watcher the user already has running is out of scope, and `rescript` serialises builds by default so racing two watchers causes lockfile contention.
+- **Restart** — kill and respawn the watcher(s); re-runs discovery and re-spawns/re-adopts the build watchers. Use after adding a package, when a watcher is stuck, or to take over a package you'd been building yourself.
+- **Stop / Start** — tear the session down (frees CPU; status bar shows `watch off`) and bring it back.
 
-### What gets re-run
+### Build ownership (spawn-or-adopt)
 
-Whatever the user originally selected — the extension replays `request.include` verbatim:
+The CLI spawns `pnpm run start` (`rescript build -w`) per test-owning package, unless it detects a live watcher already holding that package's `lib/watch.lock` / `lib/rescript.lock` — then it **adopts** it (Watch row shows `external (adopted)`, `$(link)`) rather than racing a second watcher over the build lock.
 
-- **Run all** → every discovered test re-runs.
-- **Run a file / suite / single test** → only that subtree re-runs.
+### Cancellation / teardown
 
-No dependency-graph awareness: editing one slice re-runs every selected test, not just the affected ones. A full suite completes in well under a second today (≈250 ms for 30 tests), so the added work isn't a concern.
-
-### How cancellation works
-
-Each iteration starts with `killInFlight()` — if a previous iteration is still mid-flight when a new `.res.mjs` change arrives, the extension sends `SIGINT` to the child CLI. The CLI's `Cancellation` module traps the signal, marks in-flight tests as `Skip{reason:"cancelled"}`, and exits cleanly. The new iteration then spawns a fresh process.
-
-Toggling the flask-eye icon off fires `token.onCancellationRequested`, which disposes the `FileSystemWatcher` subscription and kills any live process. Subsequent file edits are ignored until continuous run is re-enabled.
-
-### Debounce and rapid edits
-
-File-change events are debounced at 250 ms. A burst of saves (e.g. `:wa` across several files) collapses into a single re-run. If saves arrive while an iteration is already running, the extension marks a `pending` re-run and fires it as soon as the current iteration finishes — at most one queued behind the live one.
+Stopping, restarting, removing a workspace folder, or closing the window disposes the session: the extension sends `SIGINT` to the CLI, whose `Cancellation` handler tears down every spawned `rescript build -w` (via `ProcessManager.killAll`, `SIGTERM`) before exiting — no orphaned compilers.
 
 ### Known limitations
 
-- **Single debounce window.** A save that arrives 250 ms after a still-running iteration triggers a second iteration immediately after the first finishes, even if the first was already up-to-date with all changes. No practical impact — the extra run costs ≈ one suite duration.
-- **Reload Window cancels continuous mode.** Expected: the token fires as part of window teardown. Re-enable the flask-eye after reload.
-- **Closing the test panel does not cancel.** VS Code keeps the run profile alive; only the flask-eye toggle actually tears down the watcher.
+- **Build watchers are spawned once**, right after the initial discovery — not re-evaluated mid-session. Add a package, or stop your own external watcher for an adopted package, then **Restart** to pick it up.
+- **No respawn on death** — a watcher that exits isn't auto-restarted; **Restart** the session.
+- **Reload Window** disposes and re-creates the sessions (expected).
 
 ---
 
