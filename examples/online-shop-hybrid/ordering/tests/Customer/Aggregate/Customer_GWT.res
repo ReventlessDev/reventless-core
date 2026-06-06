@@ -32,10 +32,7 @@ describe("Customer Behavior", () => {
   )
 
   test("UpdateEmail on deactivated customer returns CustomerAlreadyDeactivated", () =>
-    givenEvents([
-      Registered({email: "alice@x.y", address: "123 Main"}),
-      Deactivated,
-    ])
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"}), Deactivated])
     ->whenCmd(UpdateEmail({email: "x@y"}))
     ->thenError(CustomerAlreadyDeactivated)
   )
@@ -59,10 +56,7 @@ describe("Customer Behavior", () => {
   )
 
   test("Deactivate on deactivated customer produces no events (idempotent)", () =>
-    givenEvents([
-      Registered({email: "alice@x.y", address: "123 Main"}),
-      Deactivated,
-    ])
+    givenEvents([Registered({email: "alice@x.y", address: "123 Main"}), Deactivated])
     ->whenCmd(Deactivate)
     ->thenNoEvent
   )
