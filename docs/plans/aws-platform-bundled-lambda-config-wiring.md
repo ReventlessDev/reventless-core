@@ -155,11 +155,11 @@ module Task = {
 }
 ```
 
-## Step 7 — In-memory Task runtime builder
+## Step 7 — Local Task runtime builder
 
 File: `reventless-core/src/adapter/Runtime/TaskRuntime_Builder_PerBucket.res`
 
-This in-memory variant implements the same `TaskRuntime_Builder.T` interface; update its `forBucketCallback` to accept and ignore `~callbackModulePath` and `~publishToAggregatesQueueUrls` (in-memory tasks don't need an ESM bundle path or SQS URLs).
+This local (in-process) variant implements the same `TaskRuntime_Builder.T` interface; update its `forBucketCallback` to accept and ignore `~callbackModulePath` and `~publishToAggregatesQueueUrls` (in-process tasks don't need an ESM bundle path or SQS URLs).
 
 ---
 

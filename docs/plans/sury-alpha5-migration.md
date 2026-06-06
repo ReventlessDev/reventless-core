@@ -113,7 +113,7 @@ Steps:
    `"11.0.0-alpha.5"` in all 9 framework + adapter packages **and** run
    `pnpm install` to refresh the lockfile to alpha.5. (The Phase 0 audit
    already established 9 packages — `reventless-{spec,infra,interop,core,
-   in-memory,gwt,codegen,aws}` + `rescript-pulumi-aws` — not the 4 the
+   local,gwt,codegen,aws}` + `rescript-pulumi-aws` — not the 4 the
    first draft named.)
 3. Pivot port — manually rewrite `reventless-core/src/Message.res` and
    `reventless-core/src/Projection.res` to call `Util_Sury.toJson` /
@@ -143,7 +143,7 @@ Steps:
    in alpha.5 it includes `TAG`. The check probably becomes `<= 1` (only the
    TAG entry), but confirm against fixture round-trips.
 5. Bulk-port the remaining ~55 collateral files (spec, infra, interop, core,
-   in-memory) via scripted s/old/new on the call-site forms (`S.parseJsonOrThrow`
+   local) via scripted s/old/new on the call-site forms (`S.parseJsonOrThrow`
    → `Util_Sury.fromJson`, etc.). Inside `reventless-spec` use unqualified
    `Util_Sury.…`; outside use `Reventless.Util_Sury.…`.
 6. Run the `reventless-core` (386) and `reventless-local` (416) test

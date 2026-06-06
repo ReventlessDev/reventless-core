@@ -105,7 +105,7 @@ await Promise.all(config.stateChangeSliceModules.map(async ({ spec, behavior }) 
 
 Verified: `grep -rn 'registerStateChangeSliceSpec'` in src yields exactly one caller — `reventless-aws/src/components/StateChangeSlice_Builder.res`. `registerDcbConfig`'s `stateChangeSliceModulePaths` arg also has zero external callers (would only fire if someone manually registered specs without going through the builder).
 
-`InMemory` and other non-AWS runtime entry points are not affected — they bind Spec and Behavior at build time via the same functor application (no JSON config indirection).
+`Local` and other non-AWS runtime entry points are not affected — they bind Spec and Behavior at build time via the same functor application (no JSON config indirection).
 
 ### Step 6 — Cold-start integration test ⏸ Deferred
 

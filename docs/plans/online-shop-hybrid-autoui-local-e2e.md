@@ -85,7 +85,7 @@ UI dev servers (chosen to avoid collision with backend):
 - `5001` — `catalog-ui` (Module Federation remote)
 - `5002` — `ordering-ui` (Module Federation remote)
 
-Platform-in-memory reads `CATALOG_UI_BUNDLE_URL=http://localhost:5001` and `ORDERING_UI_BUNDLE_URL=http://localhost:5002` so `Platform_UIFragments` advertises the dev-server URLs.
+platform-local reads `CATALOG_UI_BUNDLE_URL=http://localhost:5001` and `ORDERING_UI_BUNDLE_URL=http://localhost:5002` so `Platform_UIFragments` advertises the dev-server URLs.
 
 ---
 
@@ -105,7 +105,7 @@ sidebar            — sidebar navigation entries
 
 ### Design decision: URL supplied by platform, not plugin (Option B)
 
-`remoteEntryUrl` is a **deployment fact**, not a plugin fact — whoever deploys a plugin knows where its bundle lives; the plugin itself does not. The plugin package stays agnostic; the platform composition root (`platform-in-memory` / `platform-aws`) picks the URL.
+`remoteEntryUrl` is a **deployment fact**, not a plugin fact — whoever deploys a plugin knows where its bundle lives; the plugin itself does not. The plugin package stays agnostic; the platform composition root (`platform-local` / `platform-aws`) picks the URL.
 
 Considered and rejected: placing an `Env.res` in each plugin package reading a hardcoded env var name (e.g. `CATALOG_UI_BUNDLE_URL`). This couples plugins to deployment config, forces an `Env.res` convention on every UI-bearing plugin, and makes "same plugin, two deployments" awkward.
 
@@ -140,7 +140,7 @@ Positions remain fixed strings (`"platform-summary"`, `"resource-detail"`) — t
 
 ### 1.2 Update platform composition roots
 
-`platform-in-memory/src/Platform.res` reads env vars and passes them when wiring plugins:
+`platform-local/src/Platform.res` reads env vars and passes them when wiring plugins:
 
 ```rescript
 let catalogUiBundleUrl = Sys.getenv_opt("CATALOG_UI_BUNDLE_URL")
@@ -162,7 +162,7 @@ Step 1 ✅
            plugin has aggregates or readModels; otherwise make stays `() =>`)
   [x] 1.2  Regenerate catalog and ordering Plugin.res — both now have
            make = (~uiBundleUrl=?) with conditional makeAutoUIManifest wiring
-  [x] 1.3  platform-in-memory wraps plugins in CatalogMaker/OrderingMaker that
+  [x] 1.3  platform-local wraps plugins in CatalogMaker/OrderingMaker that
            read CATALOG_UI_BUNDLE_URL / ORDERING_UI_BUNDLE_URL from process.env
            and forward via ~uiBundleUrl=?. PluginMaker module type unchanged
            (make: unit => component) — wrapper pattern avoids breaking other
@@ -528,7 +528,7 @@ Add (or extend) the root `package.json` with `concurrently` + `wait-on`:
   "private": true,
   "scripts": {
     "dev:all": "concurrently --kill-others-on-fail --names backend,catalog-ui,ordering-ui,dashboard --prefix-colors cyan,yellow,magenta,green 'npm run dev:backend' 'npm run dev:catalog-ui' 'npm run dev:ordering-ui' 'npm run dev:dashboard'",
-    "dev:backend": "CATALOG_UI_BUNDLE_URL=http://localhost:5001 ORDERING_UI_BUNDLE_URL=http://localhost:5002 npm run dev -w platform-in-memory",
+    "dev:backend": "CATALOG_UI_BUNDLE_URL=http://localhost:5001 ORDERING_UI_BUNDLE_URL=http://localhost:5002 npm run dev -w platform-local",
     "dev:catalog-ui": "wait-on tcp:4001 && npm run dev -w catalog-ui",
     "dev:ordering-ui": "wait-on tcp:4001 && npm run dev -w ordering-ui",
     "dev:dashboard": "wait-on tcp:4001 tcp:5001 tcp:5002 && npm run dev -w dashboard"
@@ -549,7 +549,7 @@ Add (or extend) the root `package.json` with `concurrently` + `wait-on`:
 | Script | What it does |
 |---|---|
 | `npm run dev:all` | Start all four services with prefixed logs |
-| `npm run dev:backend` | Start only the in-memory platform (with UI env vars so `Platform_UIFragments` advertises dev-server URLs) |
+| `npm run dev:backend` | Start only the local platform (with UI env vars so `Platform_UIFragments` advertises dev-server URLs) |
 | `npm run dev:catalog-ui` / `dev:ordering-ui` | Start only one remote (for focused UI work — the dashboard can still load it if the other remote is running) |
 | `npm run dev:dashboard` | Start only the shell (assumes backend + remotes already running) |
 

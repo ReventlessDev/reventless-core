@@ -12,9 +12,9 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 
 ## Phase 1 — Remove `totalCount` from Connection SDL ✅ done
 
-**Context.** The `totalCount: Int` field on every `${Entity}Connection` is a footgun: populated in-memory, returns `null` in every AWS-backed deployment. Clients that code against it on the dev platform silently misbehave in production. See [auto-ui-entity-reference-dropdowns.md §B.8](../../../reventless-ui/docs/analysis/auto-ui-entity-reference-dropdowns.md#b8--core-cleanup-remove-totalcount-from-the-connection-sdl) for the full rationale.
+**Context.** The `totalCount: Int` field on every `${Entity}Connection` is a footgun: populated on the local platform, returns `null` in every AWS-backed deployment. Clients that code against it on the dev platform silently misbehave in production. See [auto-ui-entity-reference-dropdowns.md §B.8](../../../reventless-ui/docs/analysis/auto-ui-entity-reference-dropdowns.md#b8--core-cleanup-remove-totalcount-from-the-connection-sdl) for the full rationale.
 
-**Goal.** Drop the field from the schema entirely so no consumer can depend on it, removing the in-memory / AWS divergence at the source.
+**Goal.** Drop the field from the schema entirely so no consumer can depend on it, removing the local / AWS divergence at the source.
 
 **Files to change.**
 - [GraphQL_FragmentGenerator.res](../../reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res) — remove `totalCount: Int` from the connection type emitted by `deriveConnectionTypes` at line 122.
@@ -24,7 +24,7 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 
 **Concrete steps.**
 1. Remove `totalCount: Int` from the SDL string literal in `deriveConnectionTypes`.
-2. Drop the `totalCount` keys from both in-memory connection-response builders.
+2. Drop the `totalCount` keys from both local connection-response builders.
 3. Update the inspector test to assert the new shape (`edges`, `pageInfo` only).
 4. Run the full test suite; any cross-repo consumer that references `totalCount` in a GraphQL query will now fail the schema-validation step — verify this is limited to internal fixtures and test code.
 5. Grep for `totalCount` across `reventless-core`, `reventless-local`, `reventless-aws`, `reventless-ui`, and the example plugins; remove stale references.
@@ -32,7 +32,7 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 **Validation.**
 - `npm run test` passes in `reventless-core` and `reventless-local`.
 - `grep -r totalCount reventless` returns zero matches outside of this plan document and its analysis counterpart.
-- In-memory reventless-playground boots; Relay list queries return `edges` + `pageInfo` with no schema errors.
+- Local reventless-playground boots; Relay list queries return `edges` + `pageInfo` with no schema errors.
 
 **Commit message.**
 `feat!: remove totalCount from Connection SDL — field was unreliable in production (AWS never populated it)`
@@ -114,14 +114,14 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 - The first-non-`id` fallback walks sury's `Object({items})` (declaration-ordered) rather than `properties` (dict) so the result is deterministic across compiles.
 - When `DisplayName.getSpec` is present, `searchableFields` lists the *raw* underlying fields from `spec.fields` so clients with substring indexes can target them directly; otherwise it mirrors `labelField` (single element).
 - `Logger.warn` fires once per queryable that falls back to `"id"` — helps surface missing annotations without breaking the build.
-- Only the in-memory platform currently emits `Platform_UIDefinitions`; reventless-aws has no corresponding resolver (verified via `grep Platform_UIReadSideDef reventless/reventless-aws/src`), so no AWS work is needed until that query is mirrored there.
+- Only the local platform currently emits `Platform_UIDefinitions`; reventless-aws has no corresponding resolver (verified via `grep Platform_UIReadSideDef reventless/reventless-aws/src`), so no AWS work is needed until that query is mirrored there.
 
 **Goal.** Expose the display-label field name (annotated or fallback-inferred) on the GraphQL schema so the UI can render entity labels without shipping its own fallback logic.
 
 **Files to change.**
 - [Plugin.res (spec)](../../reventless/reventless-spec/src/components/Plugin.res) — add `labelField: string` and `searchableFields: array<string>` to `queryableDef`.
 - [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) — populate the new fields during read-model / stateViewSlice extraction. Source ladder: if `DisplayName.getSpec(stateSchema)->Option.isSome` → `labelField = "displayName"` (the projected column from Phase 2); else fallback to first non-`id` string property; final fallback `"id"` (log a warning). `searchableFields` mirrors `labelField` when composite is present and lists the *raw* underlying fields from `spec.fields` so clients with substring indexes can target them directly.
-- [Platform.res (in-memory)](../../reventless/reventless-local/src/Platform.res) — extend the SDL at line 1159 (and its copy at line 1740):
+- [Platform.res (local)](../../reventless/reventless-local/src/Platform.res) — extend the SDL at line 1159 (and its copy at line 1740):
   ```graphql
   type Platform_UIReadSideDef {
     name: String!
@@ -160,7 +160,7 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 **Implementation notes.**
 - The pre-existing `${ReturnType}Filter` generated for the `{singleFieldName}Items` (sort-key) query conflicted with the new connection-level filter name. Renamed the items filter to `${ReturnType}ItemsFilter`; the new connection filter owns the plain `${ReturnType}Filter`. Breaking change for any client that queries the items-query filter by name — but intentionally chosen so the connection filter gets the canonical name on the top-level list query, which is the predominant list shape.
 - `labelField` is threaded into the resolver via the existing `Plugin_Helpers.queryFieldNamesRegistry` rather than a new hook. Both `Plugin_Builder` and `Dcb_Builder` now call `Plugin_Structure.labelFieldsFromStateSchema` when populating the registry, so the resolver closes over the correct label column at construction time.
-- `search` is case-insensitive substring on the in-memory adapter (`String.toLowerCase`/`String.includes`); DynamoDB's `contains` is **case-sensitive** (FilterExpression has no `tolower`). The SDL documents `search` as case-insensitive — the in-memory dev experience matches, the AWS prod path degrades to case-sensitive. A truly case-insensitive AWS path requires either a projected lowercased label column or external full-text search (deferred to Phase 6.1).
+- `search` is case-insensitive substring on the local adapter (`String.toLowerCase`/`String.includes`); DynamoDB's `contains` is **case-sensitive** (FilterExpression has no `tolower`). The SDL documents `search` as case-insensitive — the local dev experience matches, the AWS prod path degrades to case-sensitive. A truly case-insensitive AWS path requires either a projected lowercased label column or external full-text search (deferred to Phase 6.1).
 - `ids` uses DynamoDB `FilterExpression: #id IN (:id0, :id1, …)` (scan + post-filter) on the AWS path. BatchGetItem optimisation deferred — open question 1 below.
 - The connection resolver does not yet implement cursor-based `first`/`after` slicing; filter is still applied pre-return. Pagination remains a follow-up — out of scope for this phase because the list resolver didn't paginate before Phase 4 either.
 
@@ -182,14 +182,14 @@ Phases are ordered for ship-independence — each lands and is validated on its 
 
 **Concrete steps.**
 1. Extend the SDL emitter; verify via schema snapshot test that every list query has the new optional arg.
-2. Implement the in-memory filter logic. Label field comes from the Phase 3 `labelField` on the queryable def; the resolver must have the plugin structure in scope (it already does via closure — verify).
+2. Implement the local filter logic. Label field comes from the Phase 3 `labelField` on the queryable def; the resolver must have the plugin structure in scope (it already does via closure — verify).
 3. Implement the DynamoDB filter translation. For `search`, use scan with `FilterExpression`; for `searchPrefix` with a declared GSI on the label column, use query-by-index instead for efficiency. Initially ship scan-only; GSI optimisation is a follow-up.
 4. Add resolver tests: filter by `search`, empty search (filter dropped), `ids` batch, combining `filter` + `first`/`after`.
 5. Document the semantics in the generator's commentary: `search` is case-insensitive substring, `searchPrefix` is case-insensitive prefix, `ids` is an exact-match set.
 
 **Validation.**
 - Schema snapshot: every `${Entity}Filter` input type present; every connection query accepts `filter: ${Entity}Filter`.
-- In-memory: `customers(filter: {search: "acme"}, first: 10)` returns customers whose `email` (or configured label) contains "acme", paginated.
+- Local: `customers(filter: {search: "acme"}, first: 10)` returns customers whose `email` (or configured label) contains "acme", paginated.
 - DynamoDB: same query against a deployed AWS platform returns matching rows.
 - Empty search string drops the filter entirely (no `contains(x, "")` sent to DynamoDB).
 
@@ -237,7 +237,7 @@ The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter`
   }
   ```
 - [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) — in `toCommandDef`, walk the command schema and collect `Reference.getTarget` results per property. Emit `references: []` when the schema has no annotations.
-- [Platform.res (in-memory)](../../reventless/reventless-local/src/Platform.res) — extend `Platform_UICommandDef` SDL at line 1157 (and its copy at line 1738) with:
+- [Platform.res (local)](../../reventless/reventless-local/src/Platform.res) — extend `Platform_UICommandDef` SDL at line 1157 (and its copy at line 1738) with:
   ```graphql
   references: [Platform_UIFieldReference!]!
   ```
@@ -330,13 +330,13 @@ The `!` marks the rename of `${ReturnType}Filter` → `${ReturnType}ItemsFilter`
 1. Build `Searchable.res` and the ppx pass. Unit-test the ppx on each row of the table above.
 2. Extend the index-aggregation logic in the ppx so `@searchable` emits GSI entries compatible with the existing `indexConfig` shape. Named groups produce one composite-sort-key index; unnamed produce one per field.
 3. Update the DynamoDB query engine (if needed) to accept `begins_with` on a searchable-shaped GSI. Verify against a deployed test stack.
-4. Update the in-memory resolver to use the same routing logic as DynamoDB — ensures parity between `filter.searchPrefix` behavior across platforms.
+4. Update the local resolver to use the same routing logic as DynamoDB — ensures parity between `filter.searchPrefix` behavior across platforms.
 5. Extend `PluginStructureTest.res` and the GraphQL schema snapshot to lock in: searchable fields land in `searchableFields`, `indexed=false` fields are listed but no GSI is emitted, groups collapse correctly.
 6. Document the 20-GSI DynamoDB cap in the ppx guide's `@searchable` section. Authors need to budget.
 
 **Validation.**
 - Ppx tests pass, all interaction rows covered.
-- In-memory: `customers(filter: {searchPrefix: "Ada"})` returns matching customers; resolver log shows "index hit" not "scan."
+- Local: `customers(filter: {searchPrefix: "Ada"})` returns matching customers; resolver log shows "index hit" not "scan."
 - DynamoDB: CloudWatch shows the searchable GSI handling `begins_with` queries; no scan RCU on annotated tables.
 - `filter.search` (substring) still scans with or without `@searchable` — not an index-eligible predicate.
 - Grouped fields: `searchPrefix` on the first group member works from the index; on the second member alone falls back to scan (documented trade-off).

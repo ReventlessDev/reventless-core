@@ -18,7 +18,7 @@
 
 Reventless platforms expose a GraphQL API through which clients issue commands and query read-model state. All of that is currently request/response: the client asks, the server answers. Clients have to poll to discover state changes.
 
-GraphQL subscriptions eliminate polling by opening a persistent WebSocket connection and pushing updates the moment they become available. This plan covers the complete AppSync subscription infrastructure and its in-memory (yoga) counterpart for local development.
+GraphQL subscriptions eliminate polling by opening a persistent WebSocket connection and pushing updates the moment they become available. This plan covers the complete AppSync subscription infrastructure and its local (yoga) counterpart for local development.
 
 This plan supersedes [graphql-subscriptions-realtime.md](Backlog/graphql-subscriptions-realtime.md), preserving its architectural design (Sources A, B, C; AppSync Events API push) and adding concrete implementation steps, file maps, and checklists. That backlog plan is archived.
 
@@ -28,7 +28,7 @@ This plan supersedes [graphql-subscriptions-realtime.md](Backlog/graphql-subscri
 
 ## Scope
 
-| Capability | AWS (production) | In-Memory (local dev) |
+| Capability | AWS (production) | Local (yoga, dev) |
 |-----------|------------------|-----------------------|
 | `@aws_subscribe` mutation-triggered subscriptions (Source C) | AppSync resolver on `Subscription` type | yoga subscription via PubSub |
 | State-change subscriptions — projected state pushed on QueryDb write (Source B) | DynamoDB Stream → Lambda → AppSync Events API | yoga subscription via PubSub |
@@ -124,7 +124,7 @@ Generates three categories of subscription SDL fields from the same data already
 
 Source C mirrors the mutation arg derivation exactly (reuses `GraphQL_FragmentGenerator.deriveMutationFieldFromObject`). Payload-less command variants are skipped (same as mutations).
 
-Source A includes the `{Name}EventLogEvent` type with `AWSJSON` payload. Note: `AWSJSON` is an AppSync scalar — not available in graphql-yoga. Phase 6 will need to substitute `String` for in-memory.
+Source A includes the `{Name}EventLogEvent` type with `AWSJSON` payload. Note: `AWSJSON` is an AppSync scalar — not available in graphql-yoga. Phase 6 will need to substitute `String` for the local SDL.
 
 **`Plugin_Builder.res`** wiring: replaced the single `generateFragment` call with:
 ```rescript
@@ -290,7 +290,7 @@ Call site: `EventLogSubscription_AppSync.make(~name, ~topicName, ~eventTopic, ~a
 
 ---
 
-## Phase 6 — In-memory WebSocket subscriptions ⬜
+## Phase 6 — Local WebSocket subscriptions ⬜
 
 **Target packages**: `reventless-local`
 
@@ -298,24 +298,24 @@ Call site: `EventLogSubscription_AppSync.make(~name, ~topicName, ~eventTopic, ~a
 
 The local dev experience must mirror production so client code works unchanged between environments. graphql-yoga v5 supports GraphQL subscriptions natively via `createPubSub` and the `graphql-ws` protocol.
 
-Note: Sources A and B in production use AppSync Events (Pub/Sub). In-memory will use graphql-yoga's PubSub which uses a different protocol. This is an acceptable dev/prod divergence for local development — the data shape is identical.
+Note: Sources A and B in production use AppSync Events (Pub/Sub). The local server uses graphql-yoga's PubSub which uses a different protocol. This is an acceptable dev/prod divergence for local development — the data shape is identical.
 
-Also note: the `AWSJSON` scalar used in Source A's `{Name}EventLogEvent` type must be replaced with `String` (or removed from the SDL) in the in-memory schema, since yoga does not define `AWSJSON`.
+Also note: the `AWSJSON` scalar used in Source A's `{Name}EventLogEvent` type must be replaced with `String` (or removed from the SDL) in the local schema, since yoga does not define `AWSJSON`.
 
 ### What to build
 
-**`InMemory_Bus` extension**: Add `createPubSub()` instance; publish to it whenever state changes or events are appended.
+**`LocalBus` extension**: Add `createPubSub()` instance; publish to it whenever state changes or events are appended.
 
-**`GraphQL_SubscriptionResolvers_InMemory.res`**: Registers yoga subscription resolvers that subscribe to the PubSub and yield events to WebSocket clients.
+**`LocalGraphQL_SubscriptionResolvers.res`**: Registers yoga subscription resolvers that subscribe to the PubSub and yield events to WebSocket clients.
 
-**`Platform_InMemory.res`**: Wire subscription resolvers into the yoga server setup.
+**`Platform.res`**: Wire subscription resolvers into the yoga server setup.
 
 ### Checklist
 - [x] `createPubSub` + `pubSubPublish` + `pubSubSubscribe` bindings added to `GraphqlYoga.res`
-- [x] `publishStateChange` / `subscribeToStateChanges` added to `InMemory_Bus.T` + `Impl`
+- [x] `publishStateChange` / `subscribeToStateChanges` added to `LocalBus.T` + `Impl`
 - [x] `QueryDbStorage_InMemory.save/saveBatch` call `Bus.publishStateChange` after each write (Source B hook)
-- [x] Source A hook: `EventTopicPublisher_InMemory` already calls `Bus.publishEvent`; `bridgeSourceA` subscribes and forwards to yoga PubSub
-- [x] `GraphQL_SubscriptionResolvers_InMemory.res` created with `bridgeSourceA`, `bridgeSourceB`, `registerAll`
+- [x] Source A hook: `LocalEventTopicPublisher` already calls `Bus.publishEvent`; `bridgeSourceA` subscribes and forwards to yoga PubSub
+- [x] `LocalGraphQL_SubscriptionResolvers.res` created with `bridgeSourceA`, `bridgeSourceB`, `registerAll`
 - [x] `registerSubscriptions` added to `GraphQL_ServerInstance.t` + `make` + `GraphQL_ServerInstance.res` (build/start/reset)
 - [x] `registerSubscriptions` added to `DomainGraphQL_Server.res` singleton + `asInterface`
 - [x] `PlatformGraphQL_Server.res` re-export updated
@@ -337,7 +337,7 @@ Also note: the `AWSJSON` scalar used in Source A's `{Name}EventLogEvent` type mu
 | `reventless-aws` | `src/adapter/Api/CommandSubscriptionResolvers_AppSync.res` | 3 | Source C: `Subscription.onX` resolver per mutation field |
 | `reventless-aws` | `src/adapter/StateTopic/StateTopic_AppSync.res` | 4 | Source B: DynamoDB Stream → Lambda → AppSync Events API |
 | `reventless-aws` | `src/adapter/EventLogSubscription/EventLogSubscription_AppSync.res` | 5 | Source A: SNS → SQS → Lambda → AppSync Events API |
-| `reventless-local` | `src/adapter/Api/GraphQL_SubscriptionResolvers_InMemory.res` | 6 | WebSocket subscriptions for yoga (Sources A, B, C) |
+| `reventless-local` | `src/adapter/Api/LocalGraphQL_SubscriptionResolvers.res` | 6 | WebSocket subscriptions for yoga (Sources A, B, C) |
 
 ### Modified files
 
@@ -352,7 +352,7 @@ Also note: the `AWSJSON` scalar used in Source A's `{Name}EventLogEvent` type mu
 | `reventless-aws` | `tests/AppSync_AdapterTest.res` | 1 | Backfill `subscriptions: []` in three encode calls |
 | `reventless-core` | `src/components/Plugin/Plugin_Builder.res` | 2 | Inject subscriptions via decode/re-encode after `generateFragment` |
 | `reventless-aws` | `src/adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res` | 3 | Call `CommandSubscriptionResolvers_AppSync.make` after mutation resolvers |
-| `reventless-local` | `src/InMemory_Bus.res` | 6 | Add PubSub + publish to PubSub on state change / event append |
+| `reventless-local` | `src/adapter/LocalBus.res` | 6 | Add PubSub + publish to PubSub on state change / event append |
 | `reventless-local` | `src/Platform.res` | 6 | Wire subscription resolvers into yoga server |
 
 ---
@@ -399,7 +399,7 @@ Phase 2 (SDL generation) ✅
 Phase 3 (Source C - @aws_subscribe resolvers) ✅
 Phase 4 (Source B - state-change push infra) ✅ / ⬜ plugin-builder wiring
 Phase 5 (Source A - event stream infra)       ✅ / ⬜ plugin-builder wiring
-Phase 6 (in-memory WebSocket)                 ✅ / ⬜ integration test
+Phase 6 (local WebSocket)                     ✅ / ⬜ integration test
 ```
 
 ---
@@ -447,7 +447,7 @@ Phase 6 (in-memory WebSocket)                 ✅ / ⬜ integration test
 
    **Infrastructure changes**: replace `@aws-sdk/client-appsync-events` handler code in `StateTopic_AppSync` and `EventLogSubscription_AppSync` with signed GraphQL mutation calls; add NONE data source Pulumi resources for `_pushStateChange` and `_pushEventAppended`; update the Source B/A subscription SDL fields in `Plugin_SubscriptionSchema` to add `@aws_subscribe`. No new `aws.appsync.Api` resource needed; all three sources use the same GraphQL WebSocket endpoint.
 
-   **Option C — Defer Sources A and B; ship Source C now**: Source C is fully wired and works with the existing GraphQL API. Ship it. Defer the A/B decision until the endpoint architecture is resolved. In-memory subscriptions (Phase 6) work as-is.
+   **Option C — Defer Sources A and B; ship Source C now**: Source C is fully wired and works with the existing GraphQL API. Ship it. Defer the A/B decision until the endpoint architecture is resolved. Local subscriptions (Phase 6) work as-is.
 
    **Implemented: Option A.** New files: `AwsNative_AppSync_Api.res`, `AwsNative_AppSync_ChannelNamespace.res` (Pulumi bindings); `AppSync_EventsApi.res` (creates Events API + `default` namespace, exposes `httpEndpoint`). `StateTopic_AppSync` and `EventLogSubscription_AppSync` updated: `~api` → `~eventsApi: AppSync_EventsApi.t`; endpoint from `eventsApi.api.dns.http`; IAM permission changed from `appsync:GraphQL` to `appsync:EventPublish`. Handler endpoint code simplified (no more `/graphql` stripping). Build clean — zero warnings.
 
@@ -455,7 +455,7 @@ Phase 6 (in-memory WebSocket)                 ✅ / ⬜ integration test
 
 2. **Two WebSocket connections for clients** *(only applies if Q0 Option A is chosen)*: Source C uses the GraphQL WebSocket; Sources A and B would use the AppSync Events WebSocket. Should the client library abstract this into a single subscription interface? (Tracked in `reventless-client-transport.md`.) If Q0 Option B is chosen, all three sources use the GraphQL WebSocket — this question disappears.
 
-3. **`AWSJSON` scalar in yoga**: Source A's `{Name}EventLogEvent` type uses `AWSJSON!`. This scalar is AppSync-specific and undefined in graphql-yoga. Phase 6 must either define a custom scalar or substitute `String` in the in-memory SDL.
+3. **`AWSJSON` scalar in yoga**: Source A's `{Name}EventLogEvent` type uses `AWSJSON!`. This scalar is AppSync-specific and undefined in graphql-yoga. Phase 6 must either define a custom scalar or substitute `String` in the local SDL.
 
 4. **Source B subscription filter — field name discovery**: The `makeSubscriptionResolver` call for Source B should pass `~subscriptionFilter` to enable per-entity filtering: only push to subscribers whose `ctx.args.id` matches the changed entity. Three options:
 

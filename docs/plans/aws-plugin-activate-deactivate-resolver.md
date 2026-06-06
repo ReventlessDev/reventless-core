@@ -14,18 +14,18 @@ The current state is broken on multiple axes — separate workstreams below.
 | 1.1 `@noApi` on internal-protocol command variants | ✅ done | `Heartbeat`, `Connect`, `Disconnect`, `ReportIncompatibility` annotated |
 | 1.2 Admin-prefix mutation-field registration helper | ✅ done | `Plugin_Helpers.registerAdminAggregateMutations`, called from `Platform_Admin.construct` |
 | 1.3a Switch AWS Plugin aggregate to `Aggregate_Builder_Single` | ✅ done | Auto-flow now wires AppSync resolvers for `Platform_Plugin_Activate`/`Deactivate` |
-| 1.3b Wire in-memory `PluginAggregate` | ⚠️ partial | Aggregate constructed and threaded into `Admin.construct`; full Activate/Deactivate command routing requires also routing the Connect flow through the aggregate (currently in-memory bypasses Connect with `seedPluginQueryDb`). Hand-written resolvers preserved for now; deferred. |
+| 1.3b Wire local `PluginAggregate` | ⚠️ partial | Aggregate constructed and threaded into `Admin.construct`; full Activate/Deactivate command routing requires also routing the Connect flow through the aggregate (currently the local adapter bypasses Connect with `seedPluginQueryDb`). Hand-written resolvers preserved for now; deferred. |
 | 1.4 Drop hand-rolled `PluginBaseFragment.mutationEntries` | ✅ done | Auto-derived entries now in `PluginBaseFragment.pluginAggregateMutationEntries`; consumed by `AdminApi.mutationEntries` (so AWS push picks them up) and resolver wiring fired via `Plugin_Helpers.registerAdminAggregateMutations`. Synthetic `idArgs` retained only inside `Platform_Admin_Structure` for Auto UI metadata. |
 | 1.5 Cognito `@aws_auth` on admin fragment | ⏳ verify on deploy | `injectAwsAuthAll` still wraps the admin fragment; the auto-derived `Platform_Plugin_Activate`/`Deactivate` fields land in the same fragment |
 | 2.1 Symmetric `Activate` emits `UIFragmentRegistered` | ✅ done | `PluginBehavior.Inactive → Activate` mirrors the `Connected → Deactivate` block |
-| 2.2 In-memory `Platform_UIDefinitions` status filter | ✅ done | Filters by Plugin RM status; built-in `Platform_Admin` always included |
-| 2.3 Resolver-level plugin status gate (Option B) | ✅ done (both adapters) | In-memory: `CommandGeneratorResolvers_GraphQL.setPluginStatusGate`. AWS: `AggregateEntryPoint.mjs::checkPluginStatus` cached scan against the Plugin RM table; `AggregateRuntime_Builder_Single.setPluginReadModelTable` injects the `PLUGIN_RM_TABLE_NAME` env var + `dynamodb:Scan` IAM policy. Both emit the split codes from the three-tier model (`PluginUnavailable` / `PluginInactive`). |
-| 2.4 Host-shell subscription to lifecycle | ⚠️ partial | Backend SDL (`Platform_PluginStatusChanged` mutation + `onPluginStatusChange: PluginStatusChangeEvent @aws_subscribe` field) added to `AdminApi.baseFragment`. In-memory `updatePluginStatus` publishes to the `"onPluginStatusChange"` PubSub topic; the platform server registers a matching subscription resolver. **In-memory frontend wired (F4 in-memory done)** — host shell `RegisterFragments.res` subscribes to `onPluginStatusChange` + `onUIFragmentChange` via `graphql-ws`, re-fetches Platform_UIDefinitions/UIFragments on each event, and swaps the page/panel/route registries atomically via `setPluginPages` / `setPluginPanels` / `setPluginRoutes`. AWS-side emit (would invoke `Platform_PluginStatusChanged` from the PluginProjection Lambda) still pending. |
+| 2.2 Local `Platform_UIDefinitions` status filter | ✅ done | Filters by Plugin RM status; built-in `Platform_Admin` always included |
+| 2.3 Resolver-level plugin status gate (Option B) | ✅ done (both adapters) | Local: `CommandGeneratorResolvers_GraphQL.setPluginStatusGate`. AWS: `AggregateEntryPoint.mjs::checkPluginStatus` cached scan against the Plugin RM table; `AggregateRuntime_Builder_Single.setPluginReadModelTable` injects the `PLUGIN_RM_TABLE_NAME` env var + `dynamodb:Scan` IAM policy. Both emit the split codes from the three-tier model (`PluginUnavailable` / `PluginInactive`). |
+| 2.4 Host-shell subscription to lifecycle | ⚠️ partial | Backend SDL (`Platform_PluginStatusChanged` mutation + `onPluginStatusChange: PluginStatusChangeEvent @aws_subscribe` field) added to `AdminApi.baseFragment`. Local `updatePluginStatus` publishes to the `"onPluginStatusChange"` PubSub topic; the platform server registers a matching subscription resolver. **Local frontend wired (F4 local done)** — host shell `RegisterFragments.res` subscribes to `onPluginStatusChange` + `onUIFragmentChange` via `graphql-ws`, re-fetches Platform_UIDefinitions/UIFragments on each event, and swaps the page/panel/route registries atomically via `setPluginPages` / `setPluginPanels` / `setPluginRoutes`. AWS-side emit (would invoke `Platform_PluginStatusChanged` from the PluginProjection Lambda) still pending. |
 
 ## Remaining follow-ups (deferred)
 
-### F1 — Full in-memory Connect-flow refactor (extends 1.3b)
-The in-memory adapter still seeds plugin definitions directly into the Plugin
+### F1 — Full local Connect-flow refactor (extends 1.3b)
+The local adapter still seeds plugin definitions directly into the Plugin
 QueryDb (`seedPluginQueryDb` in `reventless-local/src/Platform.res:839`),
 bypassing the Plugin aggregate's `Connect` command path. Hand-written
 `Platform_Plugin_Activate` / `Platform_Plugin_Deactivate` resolvers at
@@ -41,7 +41,7 @@ Replace this with:
 - Once the seed is event-driven, delete the hand-written Activate/Deactivate
   resolvers — `Plugin_Helpers.registerAdminAggregateMutations` (already firing
   via `Admin.construct`) has registered the auto-flow stubs, and the
-  `mutationBindHook` will bind the in-memory generateCommand.
+  `mutationBindHook` will bind the local generateCommand.
 
 Verify that the existing `seedPluginQueryDb` second call site (deployPlugin
 hot-path at `Platform.res:1961`) also routes via the aggregate.
@@ -73,12 +73,12 @@ Wiring (in `AggregateRuntime_Builder_Single.finish()`):
 - Gate is silently disabled if the env var is not set (legacy stacks /
   test paths).
 
-Bundled cleanup: ✅ the in-memory gate
+Bundled cleanup: ✅ the local gate
 (`CommandGeneratorResolvers_GraphQL.setPluginStatusGate`) emits matching
 split codes.
 
 ### F3 — Backend `onPluginStatusChange` subscription emit (Part 2.4 backend)
-**In-memory: ✅ done.** `AdminApi.baseFragment` declares
+**Local: ✅ done.** `AdminApi.baseFragment` declares
 `PluginStatusChangeEvent`, `Platform_PluginStatusChanged(pluginId, status)`,
 and the matching `onPluginStatusChange` subscription field with
 `@aws_subscribe`. `updatePluginStatus` (in
@@ -96,12 +96,12 @@ need IAM `appsync:GraphQL` on the Platform API and would call
 AppSync's `@aws_subscribe` directive then fans out to live subscribers.
 
 The same gap exists for the older `onUIFragmentChange` subscription — both
-declarations are present in the SDL but only the in-memory adapter actively
+declarations are present in the SDL but only the local adapter actively
 publishes to them. Fixing both AWS emits at once would be consistent.
 
 ### F4 — Host shell subscription wiring (Part 2.4 frontend, cross-repo)
 
-Status: **in-memory frontend done.** AWS path still gated by F3-AWS emit.
+Status: **local frontend done.** AWS path still gated by F3-AWS emit.
 
 What landed:
 
@@ -150,12 +150,12 @@ What landed:
    the next `Platform_UIDefinitions` result (status filter from 2.2)
    and activated plugins reappear. Cleanup disposes the client.
 
-Manual verification (still pending): with the in-memory adapter running
+Manual verification (still pending): with the local adapter running
 locally, click Deactivate on a plugin in the admin UI; confirm the
 sidebar entry disappears within ~1s without a page reload; Activate
 restores it. Existing automated tests pass
 (`tests/adapter/GraphQL_SubscriptionResolversTest.res.mjs`,
-`tests/adapter/Auth_InMemoryHttpTest.res.mjs`).
+`tests/adapter/LocalAuthHttpTest.res.mjs`).
 
 Dependencies on parallel work: the AWS path also needs an emit (the AWS
 half of F3) and the deploy-time `config.json` writer needs to set
@@ -171,8 +171,8 @@ before this works end-to-end against a deployed AppSync API.
 | Plugin read model `apiSchemaFragment` / `uiFragments` (raw fields) | ✅ preserved | ✅ preserved |
 | `UIFragmentRegistry` row | ✅ deleted (UIFragmentDeregistered → Delete) | ❌ never restored — Activate does not emit UIFragmentRegistered |
 | `Platform_UIDefinitions` AWS | ✅ DynamoDB scan filters `status contains "Connected"` | ❌ (moot until registry restore wired) |
-| `Platform_UIDefinitions` in-memory | ❌ no status filter; store seeded once at boot | n/a |
-| Live AppSync / in-memory GraphQL SDL | ✅ stays in SDL by design (membership preserved); ❌ resolver gate missing — calls succeed instead of being rejected | ❌ resolver gate restoration missing |
+| `Platform_UIDefinitions` local | ❌ no status filter; store seeded once at boot | n/a |
+| Live AppSync / local GraphQL SDL | ✅ stays in SDL by design (membership preserved); ❌ resolver gate missing — calls succeed instead of being rejected | ❌ resolver gate restoration missing |
 | Host shell page / panel registry | ❌ static at boot; no subscription | ❌ |
 
 # Part 1 — Resolver wiring on AWS
@@ -279,7 +279,7 @@ Plugin_Helpers.aggregateMutationFieldsRegistry->Dict.set(M.Spec.name, fieldNames
 
 This is what `CommandGenerator_Builder` reads at
 [reventless-core/src/components/CommandGenerator/CommandGenerator_Builder.res:35](reventless-core/src/components/CommandGenerator/CommandGenerator_Builder.res#L35)
-to know which AppSync resolvers to create. Same path for in-memory
+to know which AppSync resolvers to create. Same path for local
 (`mutationBindHook` at [Aggregate_Builder.res:111-115](reventless-core/src/components/Aggregate/Aggregate_Builder.res#L111-L115))
 and AWS (`forCommandGenerator` Lambda dispatch).
 
@@ -398,7 +398,7 @@ Deactivate and the only paths that re-insert it are `Connected` and
 `Reconnected` — neither fires on Activate. So Activate from `Inactive`
 silently leaves the UI fragment registry empty for that plugin.
 
-## 2.2 In-memory `Platform_UIDefinitions` — match AWS status filter
+## 2.2 Local `Platform_UIDefinitions` — match AWS status filter
 
 File: [reventless-local/src/Platform.res:1276-1284](reventless-local/src/Platform.res#L1276-L1284)
 
@@ -415,7 +415,7 @@ queryResolvers->Dict.set(
 
 AWS already filters by plugin status via the DynamoDB scan
 ([Platform_UIDefinitions_Lambda.res:31-44](reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res#L31-L44)):
-`FilterExpression: "contains(#status, :connected)"`. The in-memory
+`FilterExpression: "contains(#status, :connected)"`. The local
 resolver returns everything in `pluginStructuresStore`, which is seeded
 once at boot ([Platform.res:1177](reventless-local/src/Platform.res#L1177))
 and never reflects lifecycle changes.
@@ -433,7 +433,7 @@ This is the **biggest functional gap**. After Deactivate the deactivated
 plugin's GraphQL queries and mutations remain fully callable on both
 adapters because `GraphQL_Stitcher.stitch` runs only at platform start
 ([AppSync_Adapter.res:337](reventless-aws/src/components/Api/AppSync_Adapter.res#L337);
-in-memory `Platform.res` startServers path). Nothing subscribes to
+local `Platform.res` startServers path). Nothing subscribes to
 `Activated` / `Deactivated` events to re-stitch.
 
 ### Design principle
@@ -481,7 +481,7 @@ A single conflated error code forces clients to pick one wrong policy
 against a transiently-disconnected plugin). The gate already has the
 status string, so differentiation is essentially free.
 
-**Status note**: the in-memory implementation
+**Status note**: the local implementation
 (`CommandGeneratorResolvers_GraphQL.setPluginStatusGate`) currently
 returns a single `InactivePlugin` errorCode for both off-tiers.
 Splitting it into `PluginUnavailable` / `PluginInactive` is a small
@@ -498,7 +498,7 @@ Two queries currently run at boot and never refetch:
 The framework declares an `onUIFragmentChange` subscription
 ([PluginBaseFragment.res:37](reventless-core/src/admin/PluginBaseFragment.res#L37))
 but the host shell never subscribes to it. Backend correctly fires the
-matching mutations from in-memory
+matching mutations from local
 [Platform.res:1396-1417](reventless-local/src/Platform.res#L1396-L1417)
 (`Platform_UIFragmentRegistered` / `_Updated` / `_Deregistered`).
 
@@ -526,7 +526,7 @@ UIFragment mutations fire.
 | GraphQL SDL membership | ✅ **preserved** (no re-stitch — membership is structural) | ✅ preserved |
 | `UIFragmentRegistry` row | ✅ deleted | ✅ restored by symmetric `UIFragmentRegistered` emit |
 | `Platform_UIDefinitions` AWS | ✅ filtered by status | ✅ |
-| `Platform_UIDefinitions` in-memory | ✅ filtered by status | ✅ |
+| `Platform_UIDefinitions` local | ✅ filtered by status | ✅ |
 | Live GraphQL resolver gate | ✅ rejects: `PluginInactive` (Inactive) / `PluginUnavailable` (Disconnected) | ✅ passes again |
 | Host shell page / panel registry | ✅ unmounts on subscription | ✅ re-mounts on subscription |
 
@@ -538,7 +538,7 @@ Tearing down the SDL on a routine admin toggle would be the wrong contract.
 ## Verification
 
 1. `pnpm exec rescript build` clean — zero warnings across both adapters.
-2. Existing in-memory and AWS tests still pass.
+2. Existing local and AWS tests still pass.
 3. Deploy AWS alpha. Confirm in the synthesized SDL via AppSync console:
    - `Platform_Plugin_Activate(id: ID!): ...` and `Platform_Plugin_Deactivate(id: ID!): ...` exist
    - Both have `@aws_auth(cognito_groups: ["Admin"])`
@@ -553,7 +553,7 @@ Tearing down the SDL on a routine admin toggle would be the wrong contract.
      remain preserved across the toggle (PluginProjection already does
      this).
    - `Platform_UIDefinitions` response no longer / again contains the
-     plugin's structure (Part 2.2 on in-memory; 2.1 + correct on AWS).
+     plugin's structure (Part 2.2 on local; 2.1 + correct on AWS).
    - `Platform_UIFragments` response no longer / again contains the
      plugin's UI manifest (Part 2.1).
    - Calling a deactivated plugin's mutation directly returns the
@@ -615,7 +615,7 @@ user-plugin aggregates.
 - `reventless-aws/src/components/Aggregate_Builder_Single.res` — replacement.
 - `reventless-aws/src/adapter/Runtime/AggregateRuntime_Builder_Single.res` — shared `AllAggregates` Lambda; no changes needed.
 - `reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs:97-138` — proves the Lambda already dispatches AppSync events to Plugin commands.
-- `reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res:31-44` — AWS status filter that in-memory should mirror.
-- `reventless-local/src/Platform.res:1276-1284` — in-memory `Platform_UIDefinitions` resolver missing the status filter.
+- `reventless-aws/src/adapter/Api/Platform_UIDefinitions_Lambda.res:31-44` — AWS status filter that the local adapter should mirror.
+- `reventless-local/src/Platform.res:1276-1284` — local `Platform_UIDefinitions` resolver missing the status filter.
 - `reventless-local/src/Platform.res:1396-1417` — backend already publishes `onUIFragmentChange` events the host shell doesn't subscribe to.
 - `examples/online-shop-hybrid/ordering/src/Order/StateChangeSlice/CancelOrder.res:16` — `@noApi` usage example.
