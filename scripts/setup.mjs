@@ -56,14 +56,14 @@ if (NO_BUILD) {
   step(5, 'Skipping example build (--no-build)')
 } else {
   step(5, 'Building the hybrid in-memory example')
-  run('pnpm --filter ./examples/online-shop-hybrid/platform-in-memory run build')
+  run('pnpm --filter ./examples/online-shop-hybrid/platform-local run build')
 }
 
 console.log(`
 ✅ Setup complete.
 
 Run the example backend (GraphQL + MCP):
-  cd examples/online-shop-hybrid/platform-in-memory && pnpm run serve
+  cd examples/online-shop-hybrid/platform-local && pnpm run serve
 
 Then log in (Domain GraphQL server) as admin/admin:
   curl -s -X POST http://localhost:4000/__inmemory/login \\
@@ -131,12 +131,12 @@ function hasOpam() {
 function seedUsers() {
   const dir = join(
     ROOT,
-    'examples/online-shop-hybrid/platform-in-memory/.reventless',
+    'examples/online-shop-hybrid/platform-local/.reventless',
   )
   const target = join(dir, 'users.yaml')
   const example = join(
     ROOT,
-    'examples/online-shop-hybrid/platform-in-memory/users.example.yaml',
+    'examples/online-shop-hybrid/platform-local/users.example.yaml',
   )
   if (existsSync(target)) {
     ok('.reventless/users.yaml already present')

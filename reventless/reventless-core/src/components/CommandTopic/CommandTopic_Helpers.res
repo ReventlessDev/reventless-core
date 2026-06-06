@@ -78,7 +78,7 @@ let commandOutcomeToJson = (outcome: commandOutcome): JSON.t =>
 type publishJsonsAndWait = array<Reventless.Message.commandJson> => promise<array<commandOutcome>>
 
 // Encode the full message body expected by CommandTopic_Callback: {id, meta, command}.
-// Shared by CommandTopicChannel_InMemory and CommandTopicChannel_SQS_Sync.
+// Shared by LocalCommandTopicChannel and CommandTopicChannel_SQS_Sync.
 let encodeCommandJson = (cmdJson: Reventless.Message.commandJson): JSON.t =>
   JSON.Encode.object(
     Dict.fromArray([
@@ -89,7 +89,7 @@ let encodeCommandJson = (cmdJson: Reventless.Message.commandJson): JSON.t =>
   )
 
 // Runs handleCmds inline, manages the acceptedResultChannel side-channel, and maps
-// results to commandOutcome. Shared by CommandTopicChannel_InMemory and CommandTopicChannel_SQS_Sync.
+// results to commandOutcome. Shared by LocalCommandTopicChannel and CommandTopicChannel_SQS_Sync.
 let runInlineAndCollect = async (
   jsons: array<Reventless.Message.commandJson>,
   handleCmds: jsonCommandsHandler,

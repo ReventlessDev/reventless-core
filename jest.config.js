@@ -3,14 +3,14 @@ const path = require("path");
 const setupFile = path.resolve(__dirname, "jest.setup.cjs");
 // node:sqlite cannot be resolved by Jest 27's CJS resolver. The bridge .mjs
 // pulls the real module off globalThis (populated by sqliteGlobal setup) so
-// any project that transitively loads reventless-in-memory still resolves it.
+// any project that transitively loads reventless-local still resolves it.
 const sqliteBridge = path.resolve(
   __dirname,
-  "reventless/reventless-in-memory/__mocks__/nodeSqlite.mjs",
+  "reventless/reventless-local/__mocks__/nodeSqlite.mjs",
 );
 const sqliteGlobalSetup = path.resolve(
   __dirname,
-  "reventless/reventless-in-memory/tests/setup/sqliteGlobal.cjs",
+  "reventless/reventless-local/tests/setup/sqliteGlobal.cjs",
 );
 
 /** @type {import('jest').Config} */
@@ -57,8 +57,8 @@ module.exports = {
       setupFiles: [setupFile],
     },
     {
-      displayName: "reventless-in-memory",
-      rootDir: "./reventless/reventless-in-memory",
+      displayName: "reventless-local",
+      rootDir: "./reventless/reventless-local",
       testMatch: [
         "<rootDir>/tests/**/*Test.res.mjs",
         "<rootDir>/tests/**/*_GWT.res.mjs",

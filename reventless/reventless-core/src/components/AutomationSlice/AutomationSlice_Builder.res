@@ -141,7 +141,7 @@ module Make = (
                   // Awaiting would self-deadlock: the bus's allDone for the
                   // inner event needs this fiber to dequeue it, but the fiber
                   // is still inside this handler. Detaching mirrors the
-                  // fire-and-forget shape InMemory_Bus already uses for
+                  // fire-and-forget shape LocalBus already uses for
                   // cross-plugin EP→Extension routing.
                   let _ =
                     Callback.phase2(publishJsonsFn)

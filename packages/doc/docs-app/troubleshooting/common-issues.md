@@ -101,7 +101,7 @@ open AsyncTest
 describe("My DCB Test", () => {
   beforeAllAsync(async () => {
     // Force the Output chain to resolve, triggering handler registration
-    let _ = await eventLog->Reventless.Component.operations->ReventlessInMemory.TestRunner.resolve
+    let _ = await eventLog->Reventless.Component.operations->ReventlessLocal.TestRunner.resolve
   })
 
   // ... your tests

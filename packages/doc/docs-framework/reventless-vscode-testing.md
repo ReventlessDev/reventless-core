@@ -17,7 +17,7 @@ No `reventless.roots`, no `.vscode/` files, no side-terminal `rescript build -w`
 
 - **Roots are auto-discovered** — with no path argument the CLI scans the whole workspace-folder subtree (pruning `node_modules`/`lib`/`.git`/`.history`). `reventless.roots` remains only as an override.
 - **Builds are CLI-managed** — the CLI derives the package set (each `package.json` with a `start` script that owns tests) and spawns one watcher per package. If you already run `pnpm run start` for a package, the CLI detects its live `lib/rescript.lock` and **adopts** it instead of double-spawning (a "Reventless — Build" channel line marks it `[external]`).
-- **Multi-plugin examples work in one window** — `online-shop-hybrid` yields watchers for `catalog`, `ordering`, `platform-in-memory` automatically.
+- **Multi-plugin examples work in one window** — `online-shop-hybrid` yields watchers for `catalog`, `ordering`, `platform-local` automatically.
 
 The status bar and a **"Reventless — Build"** output channel surface build progress and any compile errors. A one-shot **Run** profile (the play icon) is still available for run-on-click / CI-style single runs, backed by `reventless-gwt run`.
 

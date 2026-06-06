@@ -38,7 +38,7 @@ catalog/                               # Plugin implementation
     │   └── Orders_Extension.res           # Subscribe to Ordering events
     └── Plugin.res                         # GENERATED — wires everything
 
-platform-in-memory/                    # Platform assembly
+platform-local/                    # Platform assembly
 ├── package.json
 ├── rescript.json
 └── src/
@@ -90,7 +90,7 @@ The wiring file is **generated** from the folder layout — do not hand-edit it:
 ### Platform Main (e.g., `Main.res`)
 
 A few lines that start everything:
-1. Create the platform: `module Platform = ReventlessInMemory.Platform.Make()`
+1. Create the platform: `module Platform = ReventlessLocal.Platform.Make()`
 2. Build each plugin: `module Catalog = CatalogPlugin.Plugin.Make(Platform)` (note the `.Plugin.` segment)
 3. Start: `Platform.makePlatform(~version=..., ~plugins=[...])`
 

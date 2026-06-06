@@ -1,10 +1,10 @@
 # E2E Test Patterns
 
-## In-Memory Platform E2E Test Structure
+## Local Platform E2E Test Structure
 
 ```rescript
 // 1. Create Bus externally
-module Bus = ReventlessInMemory.InMemory_Bus.Make()
+module Bus = ReventlessLocal.LocalBus.Make()
 
 // 2. Subscribe to event topics BEFORE wiring
 let capturedEventCount: ref<int> = ref(0)
@@ -13,7 +13,7 @@ let _ = Bus.subscribeToEvents("ProductAggrEventTopic", async (_, _, _) => {
 })
 
 // 3. Setup TestRunner
-let _ = ReventlessInMemory.TestRunner.setup()
+let _ = ReventlessLocal.TestRunner.setup()
 
 // 4. Build component
 module ProductAgg = Platform.Aggregate.Make(Product, ProductBehavior, ...)
@@ -21,7 +21,7 @@ let agg = ProductAgg.make(~api=())
 
 // 5. Test
 jestTest("Add command publishes event", async () => {
-  let ops = await agg->Reventless.Component.operations->ReventlessInMemory.TestRunner.resolve
+  let ops = await agg->Reventless.Component.operations->ReventlessLocal.TestRunner.resolve
   await ops.publishJsons([{Message.id: "p1", meta: testMeta, commandJson}])
   expect(capturedEventCount.contents)->toBe(1)
 })
@@ -37,7 +37,7 @@ describe("CatalogE2E:", () => {
   beforeAllAsync(async () => {
     let _ = await eventLog
       ->Reventless.Component.operations
-      ->ReventlessInMemory.TestRunner.resolve
+      ->ReventlessLocal.TestRunner.resolve
   })
 
   jestTest("AddProduct command produces event", async () => { ... })
@@ -78,7 +78,7 @@ beforeAllAsync(async () => {
 // CORRECT — use Component.operations
 let ops = await component
   ->ReventlessCore.Component.operations
-  ->ReventlessInMemory.TestRunner.resolve
+  ->ReventlessLocal.TestRunner.resolve
 
 // WRONG — Maker modules don't have operations
 let ops = SomeMaker.operations  // does NOT work

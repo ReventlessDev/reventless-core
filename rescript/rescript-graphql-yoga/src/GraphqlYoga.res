@@ -97,7 +97,7 @@ external createYoga: {
 /**
  * Variant of `createYoga` that also installs a context factory. Yoga merges
  * the factory's return value into the resolver `context` argument, so
- * authentication adapters (e.g. `Auth_InMemory.authenticate`) can attach an
+ * authentication adapters (e.g. `LocalAuth.authenticate`) can attach an
  * `identity` field that resolvers read off `ctx.identity`.
  */
 @module("graphql-yoga")

@@ -110,7 +110,7 @@ This is the API surface for application developers. They call `ReventlessMyprovi
 
 ## InMemory Adapters
 
-The `reventless-in-memory` package implements the same adapter interfaces using simple in-process data structures. It dramatically simplifies local development and testing:
+The `reventless-local` package implements the same adapter interfaces using simple in-process data structures. It dramatically simplifies local development and testing:
 
 - **No Pulumi** — resources are plain ReScript records, not `Pulumi.Output.t<'a>` wrappers
 - **No AWS** — event logs, queues, and buckets are in-memory maps and arrays
@@ -135,4 +135,4 @@ let make = (~name, ~opts=?) => {
 }
 ```
 
-The InMemory package is used by all framework tests. See the [InMemory Provider](/infrastructure/in-memory) for usage instructions.
+The Local package is used by all framework tests. See the [Local Provider](/infrastructure/local) for usage instructions.

@@ -28,7 +28,7 @@ For a deep dive into how this separation works, see the [Adapter Pattern](./adap
 
 ### InMemory
 
-**Package:** `reventless-in-memory`
+**Package:** `reventless-local`
 
 The InMemory provider runs everything in a single process using in-memory data structures. No cloud infrastructure is needed.
 
@@ -37,9 +37,9 @@ The InMemory provider runs everything in a single process using in-memory data s
 - Unit and integration testing with Jest
 - Exploring the framework without cloud credentials
 
-The InMemory provider includes a shared event bus (`InMemory_Bus`), a built-in GraphQL server, and an MCP server for AI-native access. All adapter interfaces are fully implemented.
+The InMemory provider includes a shared event bus (`LocalBus`), a built-in GraphQL server, and an MCP server for AI-native access. All adapter interfaces are fully implemented.
 
-[InMemory Provider Documentation &rarr;](./in-memory/)
+[Local Provider Documentation &rarr;](./local/)
 
 ### AWS
 

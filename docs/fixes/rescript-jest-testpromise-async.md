@@ -3,7 +3,7 @@
 ## Context
 
 Discovered while implementing `packages/reventless-example-aggregate/` E2E tests.
-The E2E tests use the in-memory platform to verify the full command → event pipeline.
+The E2E tests use the local platform to verify the full command → event pipeline.
 
 ## Symptom
 
@@ -98,7 +98,7 @@ type expectResult
 
 ```rescript
 jestTest("CreateItem command publishes 1 event", async () => {
-  let ops = await agg->ItemAgg.operations->ReventlessInMemory.TestRunner.resolve
+  let ops = await agg->ItemAgg.operations->ReventlessLocal.TestRunner.resolve
   await ops.publishJsons([...])
   nativeExpect(capturedEventCount.contents)->nativeToBe(1)
   // nativeExpect(...).toBe(...) throws JestAssertionError on failure,

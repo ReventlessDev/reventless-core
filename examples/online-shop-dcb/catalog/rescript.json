@@ -27,7 +27,7 @@
     "@glennsl/rescript-jest",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
-    "@reventlessdev/reventless-in-memory",
+    "@reventlessdev/reventless-local",
     "@reventlessdev/reventless-gwt",
     "@reventlessdev/rescript-pulumi-pulumi",
     "@reventlessdev/online-shop-dcb-catalog-spec",

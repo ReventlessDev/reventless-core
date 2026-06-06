@@ -19,7 +19,7 @@ There are two sources of unqualified module access in a ReScript package:
 
 ### 1. Same-package modules
 
-All `.res` files within a single package share a flat namespace with each other. If `reventless-in-memory` lists both `src/` and `tests/` in its `"sources"`, every file in both directories sees every other file unqualified — regardless of subdirectory. This is why `TestRunner`, `InMemory_Bus`, `AsyncTest`, `DcbEventLog_Builder` etc. are all accessible without a prefix inside the test files.
+All `.res` files within a single package share a flat namespace with each other. If `reventless-local` lists both `src/` and `tests/` in its `"sources"`, every file in both directories sees every other file unqualified — regardless of subdirectory. This is why `TestRunner`, `LocalBus`, `AsyncTest`, `DcbEventLog_Builder` etc. are all accessible without a prefix inside the test files.
 
 ### 2. Dependencies with `"namespace": false`
 
@@ -75,4 +75,4 @@ let testMeta: Reventless.Message.meta = { ... }
 - **Prefer `open` at a small scope** (inside a `let` block or function) rather than at module top level. This limits the shadowing risk.
 - **Avoid `open`ing two packages that share module names** (e.g., `open Reventless` and then relying on `ReventlessCoreCommandTopic` unqualified).
 - **Warning 44 is a signal, not noise** — it usually means a wrong module will be selected after the open. Treat it as an error (`+44` in `rescript.json` `"warnings": { "error": "+44" }`).
-- **Use `-44` only when the shadowing is intentional** and you have verified correctness. The `reventless-in-memory` package uses `"-44"` to suppress it as a non-error, relying on compiler warnings being visible in the build output.
+- **Use `-44` only when the shadowing is intentional** and you have verified correctness. The `reventless-local` package uses `"-44"` to suppress it as a non-error, relying on compiler warnings being visible in the build output.

@@ -13,7 +13,7 @@ Provides AWS-specific deployment patterns for Reventless applications. Covers th
 ## When to Use
 
 - Deploying a Reventless platform to AWS
-- Switching from in-memory platform to AWS platform
+- Switching from local platform to AWS platform
 - Configuring Pulumi stacks and component resources
 - Understanding DynamoDB table design for event logs and query databases
 - Choosing Lambda deployment strategy (Single, PerAggregate, Micro)
@@ -32,7 +32,7 @@ Provides AWS-specific deployment patterns for Reventless applications. Covers th
 
 | Aspect | In-Memory | AWS |
 |--------|-----------|-----|
-| Platform | `ReventlessInMemory.Platform.Make()` | `ReventlessAws.Platform.Make()` |
+| Platform | `ReventlessLocal.Platform.Make()` | `ReventlessAws.Platform.Make()` |
 | Event storage | In-memory arrays | DynamoDB tables |
 | Command delivery | Direct function calls | SQS FIFO queues |
 | Event publication | In-memory bus | SNS topics |

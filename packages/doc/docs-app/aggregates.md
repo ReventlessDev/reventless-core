@@ -319,7 +319,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 }
 ```
 
-Both variants go in the same `~aggregates` array — the channel choice is encoded in the builder. In the AWS platform, `MakeAsync` provisions a FIFO SQS queue and its own Lambda. In the in-memory platform, both `Make` and `MakeAsync` behave identically.
+Both variants go in the same `~aggregates` array — the channel choice is encoded in the builder. In the AWS platform, `MakeAsync` provisions a FIFO SQS queue and its own Lambda. In the local platform, both `Make` and `MakeAsync` behave identically.
 
 When a command is dispatched to a `MakeAsync` aggregate, the mutation returns:
 

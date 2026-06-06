@@ -74,7 +74,7 @@ Filter a single package from root:
 
 ```bash
 pnpm --filter @reventlessdev/reventless-core run build
-pnpm --filter ./reventless/reventless-in-memory run test
+pnpm --filter ./reventless/reventless-local run test
 ```
 
 ### Compiler warnings
@@ -148,7 +148,7 @@ everything installs from the registry as usual.
 
 ## Running a local dev server
 
-The in-memory platform exposes a GraphQL backend a UI dev server can
+The local platform exposes a GraphQL backend a UI dev server can
 connect to. See [local-dev.md](/tutorials/run-locally) for the full setup,
 including the one-command `pnpm run dev:full` variant that runs backend
 and UI side by side.

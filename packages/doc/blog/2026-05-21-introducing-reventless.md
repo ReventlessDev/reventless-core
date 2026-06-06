@@ -24,7 +24,7 @@ glue that holds it together.
 Reventless removes that plumbing. You write the domain logic; the framework
 generates the serverless infrastructure and the runtime that connects it. The
 core is cloud-agnostic — `reventless-aws` provides the AWS implementation, and
-`reventless-in-memory` runs the same components locally for development and
+`reventless-local` runs the same components locally for development and
 testing.
 
 ## The programming model

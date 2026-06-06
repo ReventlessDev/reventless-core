@@ -731,8 +731,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 The plugin is referenced from the platform assembly as `CatalogPlugin.Plugin.Make(Platform)` — note the `.Plugin.` segment. Swapping `Platform` is the only change needed to move from an in-memory test environment to a full AWS deployment:
 
 ```rescript
-// platform-in-memory/src/Main.res
-module Platform = ReventlessInMemory.Platform.Make()
+// platform-local/src/Main.res
+module Platform = ReventlessLocal.Platform.Make()
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)

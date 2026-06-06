@@ -23,7 +23,7 @@ The [tutorial](/tutorials/get-started) is a single guided track built on
    protocol. Category and Customer are aggregates; Product/ProductDemand and
    Order/CatalogProduct are DCB slices.
 2. **Run it locally** — [start the whole shop](/tutorials/run-locally) on the
-   in-memory platform with one command, served through a local GraphQL API and the
+   local platform with one command, served through a local GraphQL API and the
    host-shell UI.
 3. **Deploy it to your AWS account** — [fork-and-deploy](/tutorials/deploy-to-aws)
    with Pulumi: point the stacks at your own org, pick your Cognito setup, and ship.

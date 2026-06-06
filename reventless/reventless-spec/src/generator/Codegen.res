@@ -456,7 +456,7 @@ let renderMain = (~config: Config.config): string => {
 //
 // When the standard variant has UI components (aggregates or readmodels), AWS
 // reads `<PLUGIN_NAME_SNAKE>_UI_BUNDLE_URL` from process.env and forwards it,
-// matching the platform-in-memory convention so the same env var works in both
+// matching the platform-local convention so the same env var works in both
 // deploy paths.
 
 // Convert a PascalCase plugin name to SCREAMING_SNAKE_CASE for env var naming.

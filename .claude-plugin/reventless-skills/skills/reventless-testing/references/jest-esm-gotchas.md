@@ -83,7 +83,7 @@ Reset timers/intervals at the end of each test:
 ```rescript
 afterEach(() => {
   SP.reset()
-  // or HeartbeatRunner_InMemory.reset()
+  // or LocalHeartbeatRunner.reset()
 })
 ```
 

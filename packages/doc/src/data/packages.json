@@ -30,7 +30,7 @@
           "private": false
         },
         {
-          "name": "@reventlessdev/reventless-in-memory",
+          "name": "@reventlessdev/reventless-local",
           "description": "In-memory platform for Reventless (for testing without AWS)",
           "private": false
         },

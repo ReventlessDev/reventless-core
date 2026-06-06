@@ -8,7 +8,7 @@ Uses the BehaviorTest DSL: `givenEvents → whenCmd → thenEvent/thenError`
 // tests/Aggregate/ProductBehaviorTest.res
 
 open Product
-include ReventlessInMemory.BehaviorTest.Make(Product, ProductBehavior)
+include ReventlessLocal.BehaviorTest.Make(Product, ProductBehavior)
 
 describe("ProductBehavior:", () => {
   test("on new aggregate produces Added", () =>

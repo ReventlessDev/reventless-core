@@ -1,0 +1,37 @@
+{
+  "name": "@reventlessdev/online-shop-dcb-platform-local",
+  "private": true,
+  "version": "1.0.0-alpha.67",
+  "description": "Online Shop example — full DCB platform with Catalog + Ordering plugins (in-memory)",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "run": "npx tsx src/Main.res.mjs",
+    "dev": "GRAPHQL_DEBUG=1 MCP_DEBUG=1 npx tsx src/Main.res.mjs"
+  },
+  "dependencies": {
+    "@reventlessdev/online-shop-dcb-catalog": "workspace:*",
+    "@reventlessdev/online-shop-dcb-catalog-spec": "workspace:*",
+    "@reventlessdev/online-shop-dcb-ordering": "workspace:*",
+    "@reventlessdev/online-shop-dcb-ordering-spec": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-local": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*"
+  },
+  "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "rescript": "^12.3.0",
+    "sury": "^11.0.0-alpha.4",
+    "sury-ppx": "11.0.0-alpha.2"
+  },
+  "peerDependencies": {
+    "rescript": "^12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

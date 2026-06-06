@@ -200,7 +200,7 @@ Each implementation is split into **five packages** — two spec packages contai
 | `ordering-spec` | Ordering's public Extension Point spec (`OrdersExtensionPoint`) — depended on by Catalog |
 | `catalog` | Catalog plugin implementation — aggregates/slices, read models, extension point mapping, extension |
 | `ordering` | Ordering plugin implementation — aggregates/slices, read models, extension point mapping, extension |
-| `online-shop-*` | Platform assembly — creates the in-memory platform, instantiates both plugins, wires the core |
+| `online-shop-*` | Platform assembly — creates the local platform, instantiates both plugins, wires the core |
 
 The spec packages are the **only cross-plugin dependency**. Catalog depends on `ordering-spec` (to subscribe to its Extension Point), and Ordering depends on `catalog-spec` (to subscribe to its Extension Point). Neither plugin package imports the other plugin's internal modules — only spec packages cross the boundary.
 
@@ -216,7 +216,7 @@ Every plugin is a module function `Make(Platform: Platform.T)`. Swapping the `Pl
 
 | Platform | Used For |
 |---|---|
-| `ReventlessInMemory` | Unit tests and local development |
+| `ReventlessLocal` | Unit tests and local development |
 | `ReventlessAws` | Production deployment on AWS |
 
 No business logic changes are needed when switching platforms.

@@ -15,9 +15,9 @@ Each plugin and the platform are split into two packages:
 
 | Package | Purpose | Depends on |
 |---|---|---|
-| `catalog/` | Plugin code, tests, in-memory dev | `reventless-infra`, `reventless-in-memory` |
+| `catalog/` | Plugin code, tests, in-memory dev | `reventless-infra`, `reventless-local` |
 | `catalog-aws/` | AWS deployment entry point | `reventless-aws`, `catalog` |
-| `platform/` | In-memory dev server (all plugins) | `reventless-in-memory`, all plugins |
+| `platform/` | In-memory dev server (all plugins) | `reventless-local`, all plugins |
 | `platform-aws/` | AWS platform deployment | `reventless-aws` |
 
 Plugin packages never depend on `reventless-aws`. The `-aws` packages are private (`"private": true` in `package.json`) — they are entry points, not published libraries.
@@ -184,7 +184,7 @@ Key points:
 **`platform/src/Main.res`** -- in-memory dev server (unchanged):
 
 ```rescript
-module Platform = ReventlessInMemory.Platform.Make()
+module Platform = ReventlessLocal.Platform.Make()
 
 module Catalog = CatalogPlugin.Plugin.Make(Platform)
 module Ordering = OrderingPlugin.Plugin.Make(Platform)

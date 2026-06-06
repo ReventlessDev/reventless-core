@@ -1057,7 +1057,7 @@ no source code updates required.
 
 - git mv reventless/reventless → reventless/reventless-core
 - package.json and rescript.json name updated to @reventlessdev/reventless-core
-- reventless-aws and reventless-in-memory dependency references updated
+- reventless-aws and reventless-local dependency references updated
 - Root package.json and rescript.json renamed to "reventless-monorepo" to
   avoid name collision that caused ReScript to skip building the sub-package
 - Updated recompiled .res.mjs output files with new relative import paths

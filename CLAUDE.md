@@ -17,7 +17,7 @@ This is a Lerna monorepo. Packages are organized by type — **always place new 
 | Folder | Purpose | Examples |
 |--------|---------|---------|
 | `rescript/` | ReScript bindings for JS/npm libraries | `rescript-uuid`, `rescript-graphql-yoga` |
-| `reventless/` | Reventless framework + extension packages | `reventless-spec`, `reventless-in-memory` |
+| `reventless/` | Reventless framework + extension packages | `reventless-spec`, `reventless-local` |
 | `examples/` | Example applications | `examples/online-shop-aggregates/`, `examples/online-shop-dcb/`. (Codegen golden-output fixtures are **not** here — they live under `reventless/reventless-codegen/tests/golden/<adapter>/<fixture-stem>/` and are diffed against the input fixtures in `tests/fixtures/` by `ForwardGoldenTest.res`.) |
 | `packages/` | Build tooling and documentation only | `doc` |
 
@@ -35,7 +35,7 @@ pnpm test                      # Run tests in all packages
 pnpm run clean                 # Clean all packages
 ```
 
-### Per-package commands (run from the package directory, e.g. `reventless/reventless-in-memory/`)
+### Per-package commands (run from the package directory, e.g. `reventless/reventless-local/`)
 ```bash
 pnpm run build                 # rescript build
 pnpm run start                 # rescript build -w (watch mode)
@@ -218,7 +218,7 @@ From the codebase documentation:
 - `reventless-spec` — type specifications and interfaces
 - `reventless` — core framework (provider-agnostic)
 - `reventless-aws` — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
-- `reventless-in-memory` — in-memory platform for local dev and testing
+- `reventless-local` — local platform for dev and testing (in-memory or SQLite backend, selected via `Backend.Memory`/`Backend.Sqlite` or `REVENTLESS_LOCAL_BACKEND`)
 - `reventless-interop` — JS interop helpers
 - `reventless-layer-builder` — Lambda layer builder (private)
 

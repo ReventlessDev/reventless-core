@@ -58,7 +58,7 @@ The AI generates 30+ files across 5 packages:
 - ExtensionPoint: ExtensionPoint/Orders_ExtensionPointMapping.res
 - `Plugin.res` (generated)
 
-**platform-in-memory/** — 1 file: `src/Main.res`
+**platform-local/** — 1 file: `src/Main.res`
 
 ### Phase 4: Build and Verify
 
@@ -74,7 +74,7 @@ compiles with ReScript.
 
 ## The Result
 
-Running `node src/Main.res.mjs` from the `platform-in-memory` package starts:
+Running `node src/Main.res.mjs` from the `platform-local` package starts:
 
 - **GraphQL API** on port 4000 — all commands and queries available
 - **MCP server** on port 3001 — AI agents can discover and use all tools/resources

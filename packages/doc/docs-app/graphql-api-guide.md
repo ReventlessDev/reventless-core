@@ -40,7 +40,7 @@ Reventless currently ships two Platform implementations. The same plugin code, t
 
 | Implementation         | Package                   | Endpoint                                | Backing infrastructure                                | Typical use                                            |
 | ---------------------- | ------------------------- | --------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
-| **In-memory Platform** | `reventless-in-memory`    | `http://localhost:4000/graphql` (graphql-yoga) with GraphiQL enabled | All components run in one Node process; event log, query db, and bus are JS data structures | Local development, integration tests, demos            |
+| **In-memory Platform** | `reventless-local`    | `http://localhost:4000/graphql` (graphql-yoga) with GraphiQL enabled | All components run in one Node process; event log, query db, and bus are JS data structures | Local development, integration tests, demos            |
 | **AWS Platform**       | `reventless-aws`          | AppSync HTTPS endpoint provisioned by Pulumi | DynamoDB (event log + query db), Lambda (command handlers, projections), SQS / SNS (event/command bus), S3 (task buckets), AppSync (GraphQL gateway) | Production deployments                                 |
 
 Both platforms expose the same Domain API shape described in this guide. The differences clients may notice in practice:
@@ -51,11 +51,11 @@ Both platforms expose the same Domain API shape described in this guide. The dif
   - **Source B** — read-model feed (`on<Type>_stateChanged`): one field per queryable type, fires after the projection has written the new state.
   - **Source C** — mutation-accepted feed (`on<MutationField>`): one field per mutation, fires when the mutation is accepted.
 
-  The in-memory platform delivers all three feeds over its in-process bus through graphql-yoga's subscription transport. The AWS platform delivers Source C via AppSync's native `@aws_subscribe` directive and Sources A and B via AppSync Events.
-- **Authorization.** The AWS platform honours per-table Cognito authorization rules attached at the read-model level; the in-memory platform ignores them (every operation is permitted).
-- **Latency and durability.** Operations on the in-memory platform are synchronous and lose state when the process exits; the AWS platform is eventually consistent (event → projection → query db) and durable.
+  The local platform delivers all three feeds over its in-process bus through graphql-yoga's subscription transport. The AWS platform delivers Source C via AppSync's native `@aws_subscribe` directive and Sources A and B via AppSync Events.
+- **Authorization.** The AWS platform honours per-table Cognito authorization rules attached at the read-model level; the local platform ignores them (every operation is permitted).
+- **Latency and durability.** Operations on the local platform are synchronous and lose state when the process exits; the AWS platform is eventually consistent (event → projection → query db) and durable.
 
-Use the in-memory platform while you build and test your plugins, and switch to the AWS platform for deployment — without changing any plugin code.
+Use the local platform while you build and test your plugins, and switch to the AWS platform for deployment — without changing any plugin code.
 
 ## 2. Where the GraphQL surface comes from
 
@@ -406,7 +406,7 @@ searchPrefix: String
 ids: [ID!]
 ```
 
-`@scan` and `@scanSort` are deliberately verbose — they enable client filtering and sorting on fields that have no backing index. On AWS DynamoDB they cost O(n); on the in-memory platform they are free. Use them where ergonomics outweigh cost.
+`@scan` and `@scanSort` are deliberately verbose — they enable client filtering and sorting on fields that have no backing index. On AWS DynamoDB they cost O(n); on the local platform they are free. Use them where ergonomics outweigh cost.
 
 ## 8. Cross-table references and labels
 
@@ -551,7 +551,7 @@ type Query {
 
 If no plugin contributes any mutations, the schema declares `type Mutation { _noop: String }` so it still parses. The same fallback applies to subscriptions.
 
-`@aws_subscribe` is an AppSync directive used by the mutation-accepted subscription feed (§10.3). On the AWS deployment it routes subscription delivery through AppSync; on the in-memory platform it is a no-op.
+`@aws_subscribe` is an AppSync directive used by the mutation-accepted subscription feed (§10.3). On the AWS deployment it routes subscription delivery through AppSync; on the local platform it is a no-op.
 
 ## 10. Subscriptions
 
