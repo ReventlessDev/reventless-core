@@ -253,6 +253,18 @@ function passesFilter(id, filters) {
   }
 }
 
+let exnMessage = (function(e) {
+  if (e == null) return "unknown error"
+  if (typeof e === "string") return e
+  if (typeof e.message === "string" && e.message.length) return e.message
+  if (typeof e.RE_EXN_ID === "string") {
+    var id = e.RE_EXN_ID
+    var tag = id.lastIndexOf(".") >= 0 ? id.slice(id.lastIndexOf(".") + 1) : id
+    return (typeof e._1 === "string" && e._1.length) ? e._1 : tag
+  }
+  return "unknown error"
+});
+
 async function runEntry(entry) {
   let start = performance.now();
   let status = "Pass";
@@ -280,13 +292,12 @@ async function runEntry(entry) {
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       status = "Fail";
-      let jsExn = Stdlib_JsExn.fromException(exn);
-      let err = Stdlib_Option.getOr(Stdlib_Option.flatMap(jsExn, Stdlib_JsExn.message), "unknown error");
-      let stack = ((jsExn && jsExn.stack) || null);
+      let err = exnMessage(exn);
+      let stack = ((e => (e && e.stack) || ""))(exn);
       mismatch = {
         TAG: "Throw",
         error: err,
-        stack: Stdlib_Option.getOr(stack, "")
+        stack: stack
       };
     }
   }
@@ -582,6 +593,7 @@ export {
   help,
   parseArgv,
   passesFilter,
+  exnMessage,
   runEntry,
   loadAndCollect,
   runFiles,

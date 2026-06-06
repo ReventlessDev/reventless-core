@@ -165,6 +165,23 @@ let passesFilter = (id: string, filters: array<string>) =>
   filters->Array.length == 0 ||
     filters->Array.some(f => id->String.includes(f))
 
+// Extract a human-readable message from any thrown value. JS Errors carry a
+// `.message`; ReScript exceptions are tagged objects (`RE_EXN_ID` + an optional
+// string payload), e.g. `failwith("…")` raises `Failure("…")`. Without this the
+// catch block below collapsed every ReScript exception to "unknown error",
+// hiding messages like a slice's `failwith("not implemented: …")`.
+let exnMessage: exn => string = %raw(`function(e) {
+  if (e == null) return "unknown error"
+  if (typeof e === "string") return e
+  if (typeof e.message === "string" && e.message.length) return e.message
+  if (typeof e.RE_EXN_ID === "string") {
+    var id = e.RE_EXN_ID
+    var tag = id.lastIndexOf(".") >= 0 ? id.slice(id.lastIndexOf(".") + 1) : id
+    return (typeof e._1 === "string" && e._1.length) ? e._1 : tag
+  }
+  return "unknown error"
+}`)
+
 // Execute a single entry, catching exceptions and thrown values so a
 // misbehaved slice doesn't abort the rest of the suite.
 let runEntry = async (entry: Collector.entry): RunnerTypes.testResult => {
@@ -186,11 +203,9 @@ let runEntry = async (entry: Collector.entry): RunnerTypes.testResult => {
     } catch {
     | exn => {
         status := Fail
-        let jsExn = exn->JsExn.fromException
-        let err = jsExn->Option.flatMap(JsExn.message)->Option.getOr("unknown error")
-        let stack: option<string> = %raw(`(jsExn && jsExn.stack) || null`)
-        mismatch :=
-          Some(Outcome.Throw({error: err, stack: stack->Option.getOr("")}))
+        let err = exnMessage(exn)
+        let stack: string = %raw(`(e => (e && e.stack) || "")`)(exn)
+        mismatch := Some(Outcome.Throw({error: err, stack: stack}))
       }
     }
   }
