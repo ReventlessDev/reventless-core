@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-ordering",
   "private": true,
-  "version": "3.0.0-alpha.74",
+  "version": "3.0.0-alpha.75",
   "description": "Online Shop example — Ordering plugin (Customer & Order aggregates)",
   "license": "Apache-2.0",
   "scripts": {
@@ -33,8 +33,8 @@
     "@reventlessdev/online-shop-aggregates-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
-    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "sury": "^11.0.0-alpha.4"
   },

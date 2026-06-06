@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.38 (2026-06-06)
+
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([966855f](https://github.com/ReventlessDev/reventless-core/commit/966855fd31e518d56a381bf40204735809cead15))
+### Features
+
+* **reventless-vscode:** component/test explorer surfaces + watch controls ([ec9aefa](https://github.com/ReventlessDev/reventless-core/commit/ec9aefa63a5da64952a0bb2b1e8312a454e3efa8))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 1.0.0-alpha.37 (2026-06-04)
 
 ### Bug Fixes
