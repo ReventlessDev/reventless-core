@@ -8,7 +8,7 @@ let toolVersion = "0.1.0"
 
 type format = Human | Json | Tap | Junit | VsCode
 
-type subcommand = Run | Discover | Watch
+type subcommand = Run | Discover | Watch | Platform
 
 type options = {
   subcommand: subcommand,
@@ -96,6 +96,10 @@ let parseArgv = (argv: array<string>): result<options, string> => {
     | "watch" => {
         subcommand := Watch
         watch := true
+        i := 1
+      }
+    | "platform" => {
+        subcommand := Platform
         i := 1
       }
     | "--help" | "-h" => showHelp := true
@@ -516,6 +520,34 @@ let runWatch = async (opts: options): int => {
   0
 }
 
+// Launches an app's reventless-local platform as a managed child with the domain
+// event tap on, streaming lifecycle + events. For the VS Code client the callbacks
+// emit NDJSON; a human `platform` prints readable lines and passes the child's own
+// logs through.
+let runPlatform = async (opts: options): int => {
+  let callbacks: PlatformRunner.callbacks = if opts.format == VsCode {
+    {
+      onStart: (~package, ~dir, ~domainPort, ~platformPort) =>
+        FormatterVsCode.platformStart(~package, ~dir, ~domainPort, ~platformPort),
+      onReady: (~domainEndpoint) => FormatterVsCode.platformReady(~domainEndpoint),
+      onDomainEvent: json => FormatterVsCode.domainEvent(json),
+      onLog: line => FormatterVsCode.platformLog(~line),
+      onStop: code => FormatterVsCode.platformStop(~code),
+    }
+  } else {
+    {
+      onStart: (~package, ~dir as _, ~domainPort, ~platformPort as _) =>
+        Console.log(`▶ platform ${package} starting (domain http://localhost:${Int.toString(domainPort)})`),
+      onReady: (~domainEndpoint) => Console.log(`✓ platform ready — ${domainEndpoint}`),
+      onDomainEvent: json => Console.log("· event " ++ JSON.stringify(json)),
+      onLog: line => Console.log(line),
+      onStop: code =>
+        Console.log(`■ platform stopped (code ${code->Option.mapOr("?", c => Int.toString(c))})`),
+    }
+  }
+  await PlatformRunner.run(~roots=opts.roots, ~backend="memory", ~callbacks)
+}
+
 let main = async (): int => {
   Cancellation.install()
   let args = argv
@@ -534,6 +566,7 @@ let main = async (): int => {
     | Run => await runOnce(opts)
     | Discover => await runDiscover(opts)
     | Watch => await runWatch(opts)
+    | Platform => await runPlatform(opts)
     }
   }
 }

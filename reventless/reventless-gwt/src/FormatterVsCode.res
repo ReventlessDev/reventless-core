@@ -137,7 +137,8 @@ let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.ob
 // Bumped whenever the event contract changes (new events, renamed fields). The
 // extension reads it from the `hello` line and degrades gracefully on mismatch
 // (e.g. ignores unknown `build*` events from a newer CLI).
-let protocolVersion = 6
+// v7: local platform runner events (platformStart/Ready/Log/Stop + domainEvent).
+let protocolVersion = 7
 
 // First line of every `--format=vscode` invocation, so a client can detect a
 // version-skewed CLI before interpreting the stream.
@@ -372,6 +373,49 @@ let buildExternal = (pkg: string) => {
   let d = Dict.make()
   d->Dict.set("event", JSON.Encode.string("buildExternal"))
   d->Dict.set("package", JSON.Encode.string(pkg))
+  event(d)
+}
+
+// ── Local platform runner events (protocol 7) ───────────────────────────────
+// The runner (`reventless-gwt platform`) spawns an app's reventless-local
+// platform child, streams its domain events (via the LocalBus NDJSON tap), and
+// surfaces lifecycle. The extension renders a status item + event timeline.
+
+let platformStart = (~package: string, ~dir: string, ~domainPort: int, ~platformPort: int) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("platformStart"))
+  d->Dict.set("package", JSON.Encode.string(package))
+  d->Dict.set("dir", JSON.Encode.string(dir))
+  d->Dict.set("domainPort", JSON.Encode.int(domainPort))
+  d->Dict.set("platformPort", JSON.Encode.int(platformPort))
+  event(d)
+}
+
+let platformReady = (~domainEndpoint: string) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("platformReady"))
+  d->Dict.set("domainEndpoint", JSON.Encode.string(domainEndpoint))
+  event(d)
+}
+
+// `payload` is the parsed JSON object the LocalBus tap emitted (already shaped
+// `{event:"domainEvent", seq, topic, service, payload, ts}`) — re-emitted verbatim
+// as one NDJSON line so the extension parses it like any other engine event.
+let domainEvent = (payload: JSON.t) => writeLine(JSON.stringify(payload))
+
+// A non-tap stdout/stderr line from the platform child (its human ANSI logs),
+// forwarded so the extension can show it in the "Reventless — Platform" channel.
+let platformLog = (~line: string) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("platformLog"))
+  d->Dict.set("line", JSON.Encode.string(line))
+  event(d)
+}
+
+let platformStop = (~code: option<int>) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("platformStop"))
+  d->Dict.set("code", code->Option.mapOr(JSON.Encode.null, c => JSON.Encode.int(c)))
   event(d)
 }
 
