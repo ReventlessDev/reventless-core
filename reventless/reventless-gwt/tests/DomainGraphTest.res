@@ -49,6 +49,7 @@ let structure = (
   ~stateViewSlices=[],
   ~stateChangeSlices=[],
   ~automationSlices=[],
+  ~extensionPoints=[],
 ): Reventless.Plugin.pluginStructure => {
   readModels,
   stateViewSlices,
@@ -58,6 +59,7 @@ let structure = (
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
+  extensionPoints: Some(extensionPoints),
 }
 
 let hasEdge = (g: DomainGraph.graph, from, to, kind) =>
@@ -158,5 +160,32 @@ describe("DomainGraph.build", () => {
     // …and the extension is named by its EP + consuming plugin.
     let ext = g.nodes->Array.find(n => n.id == "Catalog:ext:Ordering.Orders")->Option.getOrThrow
     expect(ext.label)->toBe("Ordering.Orders.Catalog")
+  })
+
+  testPromise("an owned extension point is fed by the producers of its source events", async () => {
+    // Catalog owns the Catalog.Products EP; its source events are the internal
+    // Catalog events produced by AddProduct, so the producing write-side feeds
+    // the EP through those events.
+    let ep: Reventless.Plugin.extensionPointDef = {
+      name: "Catalog.Products",
+      delegateNames: ["CatalogDcbEventLog"],
+      sourceEventTypes: ["Catalog.ProductAdded"],
+    }
+    let catalog = structure(
+      ~stateChangeSlices=[
+        writable(
+          ~name="AddProduct",
+          ~commands=[command(~name="AddProduct", ~mutationField="Catalog_AddProduct")],
+          ~produces=["Catalog.ProductAdded"],
+        ),
+      ],
+      ~extensionPoints=[ep],
+    )
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)], ~edges=[])
+    expect(nodeKind(g, "Catalog:ep:Catalog.Products"))->toEqual(Some("ExtensionPoint"))
+    // The producing write-side emits the source event…
+    expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits"))->toBe(true)
+    // …which feeds the extension point — so EP focus reaches the producer.
+    expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds"))->toBe(true)
   })
 })

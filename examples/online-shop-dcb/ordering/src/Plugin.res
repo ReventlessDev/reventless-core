@@ -34,6 +34,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~automationSlices=[module(AutoShipOrderSlice)],
     ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
     ~extensions=[module(Products_Extension)],
+    ~extensionPoints=[module(Orders_ExtensionPointMapping)],
   )
 
   let make = () =>

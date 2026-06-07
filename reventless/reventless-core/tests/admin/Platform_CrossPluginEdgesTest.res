@@ -15,6 +15,7 @@ let emptyStructure: pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
+  extensionPoints: None,
 }
 
 let writable = (

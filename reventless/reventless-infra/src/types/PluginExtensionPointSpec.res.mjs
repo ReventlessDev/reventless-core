@@ -135,6 +135,10 @@ let inboundTranslationSliceDefSchema = Plugin$Reventless.inboundTranslationSlice
 
 let extensionDefSchema = Plugin$Reventless.extensionDefSchema;
 
+let extensionPointDefSchema = Plugin$Reventless.extensionPointDefSchema;
+
+let extensionPointDefArrayOptionSchema = Plugin$Reventless.extensionPointDefArrayOptionSchema;
+
 let pluginStructureSchema = Plugin$Reventless.pluginStructureSchema;
 
 let pluginStructureOptionSchema = Plugin$Reventless.pluginStructureOptionSchema;
@@ -176,6 +180,8 @@ export {
   outboundTranslationSliceDefSchema,
   inboundTranslationSliceDefSchema,
   extensionDefSchema,
+  extensionPointDefSchema,
+  extensionPointDefArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOptionSchema,
   graphNodeSchema,

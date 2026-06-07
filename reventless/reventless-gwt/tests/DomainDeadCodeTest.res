@@ -52,6 +52,7 @@ let structure = (
   outboundTranslationSlices,
   inboundTranslationSlices: [],
   extensions,
+  extensionPoints: None,
 }
 
 describe("DomainDeadCode.analyze — orphan events", () => {

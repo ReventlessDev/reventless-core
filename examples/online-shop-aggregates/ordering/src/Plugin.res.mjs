@@ -172,7 +172,27 @@ function Make(Platform) {
     AvailableProductsReadModel,
     CustomersReadModel,
     OrdersReadModel
-  ], undefined, undefined, undefined, undefined, undefined, [Products_Extension]);
+  ], undefined, undefined, undefined, undefined, undefined, [Products_Extension], [{
+      ExtensionPoint: {
+        name: Orders_ExtensionPoint$OrderingSpec.name,
+        moduleUrl: Orders_ExtensionPoint$OrderingSpec.moduleUrl,
+        commandSchema: Orders_ExtensionPoint$OrderingSpec.commandSchema,
+        eventSchema: Orders_ExtensionPoint$OrderingSpec.eventSchema,
+        directiveSchema: Orders_ExtensionPoint$OrderingSpec.directiveSchema
+      },
+      Delegate: {
+        Id: Id$Reventless.$$String,
+        name: Order$OrderingPlugin.name,
+        eventSchema: Order$OrderingPlugin.eventSchema,
+        errorSchema: Order$OrderingPlugin.errorSchema,
+        commandSchema: Order$OrderingPlugin.commandSchema,
+        moduleUrl: Order$OrderingPlugin.moduleUrl,
+        commandAuthorization: Order$OrderingPlugin.commandAuthorization
+      },
+      moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
+      mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
+      mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
+    }]);
   let make = uiBundleUrl => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [
     CatalogProductAggregate,
     CustomerAggregate,

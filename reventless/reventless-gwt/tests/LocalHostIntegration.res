@@ -49,6 +49,20 @@ test("loadGraph cold-loads structures + cross-plugin edges from the real plugins
   let order = ordering.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Order")->Option.getOrThrow
   ok(order.producedEventTypes->Array.includes("Ordering.Placed"))
 
+  // extensionPoints (producer side): Catalog owns Catalog.Products, fed by the
+  // Product aggregate's internal events — so the EP's sourceEventTypes are a
+  // subset of the producer's producedEventTypes, the link the event graph draws.
+  let catalogEps = catalog.extensionPoints->Option.getOr([])
+  let productsEp =
+    catalogEps->Array.find((e: Reventless.Plugin.extensionPointDef) => e.name == "Catalog.Products")->Option.getOrThrow
+  ok(productsEp.delegateNames->Array.includes("Product"), ~message=productsEp.delegateNames->Array.join(","))
+  ok(
+    productsEp.sourceEventTypes->Array.includes("Catalog.Added"),
+    ~message=productsEp.sourceEventTypes->Array.join(","),
+  )
+  let product = catalog.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Product")->Option.getOrThrow
+  ok(productsEp.sourceEventTypes->Array.every(e => product.producedEventTypes->Array.includes(e)))
+
   // edges: the two bidirectional Extension↔ExtensionPoint links.
   let keys = g.edges->Array.map(edgeKey)
   ok(

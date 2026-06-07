@@ -72,7 +72,7 @@ function Make(Spec) {
         pages: pages
       };
     };
-    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt) => {
+    let makePluginDefinition = (name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt) => {
       let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
       let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
       let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -81,7 +81,8 @@ function Make(Spec) {
       let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
       let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
       let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
-      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions);
+      let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
+      return Plugin_Structure$ReventlessCore.make(name, aggregates, readModels, stateViewSlices, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints);
     };
     let make = (name, heartbeatInterval, extensionPointsOpt, extensionsOpt, aggregatesOpt, readModelsOpt, tasksOpt, stateChangeSlicesOpt, stateViewSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, uiFragments, pluginStructure, opts) => {
       let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];

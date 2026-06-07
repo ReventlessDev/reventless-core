@@ -176,7 +176,8 @@ let structure = {
   automationSlices: structure_automationSlices,
   outboundTranslationSlices: structure_outboundTranslationSlices,
   inboundTranslationSlices: structure_inboundTranslationSlices,
-  extensions: structure_extensions
+  extensions: structure_extensions,
+  extensionPoints: undefined
 };
 
 let pluginName = pluginId;

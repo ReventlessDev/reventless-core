@@ -66,7 +66,7 @@ function labelFieldsFromStateSchema(entityName, stateSchema) {
   }
 }
 
-function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt) {
+function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, outboundTranslationSlicesOpt, inboundTranslationSlicesOpt, extensionsOpt, extensionPointsOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
   let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
@@ -75,6 +75,7 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
   let outboundTranslationSlices = outboundTranslationSlicesOpt !== undefined ? outboundTranslationSlicesOpt : [];
   let inboundTranslationSlices = inboundTranslationSlicesOpt !== undefined ? inboundTranslationSlicesOpt : [];
   let extensions = extensionsOpt !== undefined ? extensionsOpt : [];
+  let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
   let qualify = (prefix, names) => names.map(n => prefix + "." + n);
   let isCreateCommandName = name => [
     "Add",
@@ -341,6 +342,27 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       commandTypes: qualify(E.Spec.name, DcbTag$Reventless.extractAllVariantNames(E.Spec.commandSchema))
     };
   });
+  let epByName = {};
+  extensionPoints.forEach(M => {
+    let epName = M.ExtensionPoint.name;
+    let sourceEvents = qualify(name, DcbTag$Reventless.extractVariantNames(M.Delegate.eventSchema));
+    let match = Stdlib_Option.getOr(epByName[epName], [
+      [],
+      []
+    ]);
+    epByName[epName] = [
+      match[0].concat([M.Delegate.name]),
+      match[1].concat(sourceEvents)
+    ];
+  });
+  let extensionPointDefs = Object.entries(epByName).map(param => {
+    let match = param[1];
+    return {
+      name: param[0],
+      delegateNames: Belt_SetString.toArray(Belt_SetString.fromArray(match[0])),
+      sourceEventTypes: Belt_SetString.toArray(Belt_SetString.fromArray(match[1]))
+    };
+  });
   return {
     readModels: readModelDefs,
     stateViewSlices: stateViewDefs,
@@ -349,7 +371,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     automationSlices: automationSliceDefs,
     outboundTranslationSlices: outboundTranslationSliceDefs,
     inboundTranslationSlices: inboundTranslationSliceDefs,
-    extensions: extensionDefs
+    extensions: extensionDefs,
+    extensionPoints: extensionPointDefs
   };
 }
 

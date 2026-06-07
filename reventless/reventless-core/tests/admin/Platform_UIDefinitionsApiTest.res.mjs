@@ -99,7 +99,8 @@ let structure = {
   automationSlices: structure_automationSlices,
   outboundTranslationSlices: structure_outboundTranslationSlices,
   inboundTranslationSlices: structure_inboundTranslationSlices,
-  extensions: structure_extensions
+  extensions: structure_extensions,
+  extensionPoints: undefined
 };
 
 let encoded = Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Catalog", structure);
@@ -188,7 +189,8 @@ Jest.describe("allowedStates + statusField populated", () => {
     automationSlices: structureWithStates_automationSlices,
     outboundTranslationSlices: structureWithStates_outboundTranslationSlices,
     inboundTranslationSlices: structureWithStates_inboundTranslationSlices,
-    extensions: structureWithStates_extensions
+    extensions: structureWithStates_extensions,
+    extensionPoints: undefined
   };
   let json = JSON.stringify(Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Platform", structureWithStates));
   Jest.test("encodes populated allowedStates as a JSON array", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"allowedStates\":[\"Inactive\"]")), true));

@@ -70,6 +70,7 @@ let structure: pluginStructure = {
       commandTypes: [],
     },
   ],
+  extensionPoints: None,
 }
 
 let encoded = Platform_UIDefinitionsApi.encodePluginStructureEntry(
@@ -172,6 +173,7 @@ describe("allowedStates + statusField populated", () => {
     outboundTranslationSlices: [],
     inboundTranslationSlices: [],
     extensions: [],
+    extensionPoints: None,
   }
 
   let json =

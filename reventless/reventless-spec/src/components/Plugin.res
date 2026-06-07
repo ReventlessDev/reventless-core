@@ -222,6 +222,26 @@ type extensionDef = {
   commandTypes: array<string>,
 }
 
+/**
+Describes an extension point owned by a plugin, from the *producer* side.
+
+`sourceEventTypes` are the owner-plugin internal events (the `Delegate`'s events)
+that feed this extension point's published protocol — plugin-qualified to match
+`writableDef.producedEventTypes`, so the event graph can link a producing
+write-side to the extension point it ultimately feeds. `delegateNames` are the
+connected targets (one per `ExtensionPointMapping`).
+*/
+@schema
+type extensionPointDef = {
+  name: string,
+  delegateNames: array<string>,
+  sourceEventTypes: array<string>,
+}
+
+// js_nullable creates `array | null` (not `| undefined`), which passes sury's
+// jsonableValidation inside the pluginStructure union variant payload.
+let extensionPointDefArrayOptionSchema = _jsNullable(S.array(extensionPointDefSchema), ())
+
 @schema
 type pluginStructure = {
   readModels: array<queryableDef>,
@@ -232,6 +252,11 @@ type pluginStructure = {
   outboundTranslationSlices: array<outboundTranslationSliceDef>,
   inboundTranslationSlices: array<inboundTranslationSliceDef>,
   extensions: array<extensionDef>,
+  // Extension points owned by this plugin (producer side). Optional so plugin
+  // definitions persisted before this field existed still decode (absent → None,
+  // read as []). js_nullable keeps it JSON-safe inside union variant payloads.
+  extensionPoints: @s.matches(extensionPointDefArrayOptionSchema)
+  option<array<extensionPointDef>>,
 }
 
 let pluginStructureOptionSchema = _jsNullable(pluginStructureSchema, ())
