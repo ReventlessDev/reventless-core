@@ -76,6 +76,7 @@ USAGE:
   reventless-gwt run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
+  reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -90,6 +91,8 @@ FLAGS:
   --stream              NDJSON streaming (json/vscode)
   --watch               Re-run on file change
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
+  --backend <b>         platform: storage backend for the spawned local platform
+                        ("memory" default, or "sqlite:<path>[?reset]")
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -105,6 +108,7 @@ function parseArgv(argv) {
   let filters = [];
   let schemaVersion;
   let roots = [];
+  let backend = "memory";
   let error;
   let showHelp = false;
   let i = 0;
@@ -171,6 +175,11 @@ function parseArgv(argv) {
     } else if (arg.startsWith("--schema-version=")) {
       let v$4 = arg.slice(17, arg.length);
       schemaVersion = v$4;
+    } else if (arg.startsWith("--backend=")) {
+      backend = arg.slice(10, arg.length);
+    } else if (arg === "--backend" && (i + 1 | 0) < len) {
+      backend = slice[i + 1 | 0];
+      i = i + 1 | 0;
     } else if (arg.startsWith("--")) {
       error = "Unknown flag: " + arg;
     } else {
@@ -187,6 +196,7 @@ USAGE:
   reventless-gwt run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
+  reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -201,6 +211,8 @@ FLAGS:
   --stream              NDJSON streaming (json/vscode)
   --watch               Re-run on file change
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
+  --backend <b>         platform: storage backend for the spawned local platform
+                        ("memory" default, or "sqlite:<path>[?reset]")
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -217,6 +229,7 @@ USAGE:
   reventless-gwt run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
+  reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -231,6 +244,8 @@ FLAGS:
   --stream              NDJSON streaming (json/vscode)
   --watch               Re-run on file change
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
+  --backend <b>         platform: storage backend for the spawned local platform
+                        ("memory" default, or "sqlite:<path>[?reset]")
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -247,6 +262,7 @@ Exit code is 1 if any test failed, 0 otherwise.
         filters: filters,
         schemaVersion: schemaVersion,
         roots: roots.length === 0 ? ["."] : roots,
+        backend: backend,
         toolVersion: toolVersion
       }
     };
@@ -608,7 +624,7 @@ async function runPlatform(opts) {
         console.log(`■ platform stopped (code ` + Stdlib_Option.mapOr(code, "?", c => c.toString()) + `)`);
       }
     });
-  return await PlatformRunner$ReventlessGwt.run(opts.roots, "memory", callbacks);
+  return await PlatformRunner$ReventlessGwt.run(opts.roots, opts.backend, callbacks);
 }
 
 async function main() {
