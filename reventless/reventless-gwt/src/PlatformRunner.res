@@ -16,19 +16,31 @@ type lineClass =
   | Ready // the Domain GraphQL server's "listening on …" line
   | Log(string) // any other stdout/stderr line (the platform's human logs)
 
+// Strip ANSI CSI escapes (colour/bold, `\x1b[…m`, etc.) from a log line. The
+// spawned platform child currently emits coloured logs even when non-TTY (the
+// framework bakes ANSI before sink detection — see
+// docs/plans/logging-output-optimization.md Tier 1.2/1.3), which renders as noise
+// in the VS Code "Reventless — Platform" output channel. Stripping here keeps the
+// `platformLog` wire payload plain text, so the extension stays a pure renderer.
+// (Readiness/tap detection runs on the RAW line, so the substring checks are
+// unaffected.) Remove once the framework emits plain text in non-TTY sinks.
+let _ansiRe = %re("/\x1b\[[0-9;]*[A-Za-z]/g")
+let stripAnsi = (s: string): string => s->String.replaceRegExp(_ansiRe, "")
+
 // Pure line classifier — the unit-tested core. ANSI escapes around bracketed
-// component tags survive substring checks, so readiness is detected structurally.
+// component tags survive substring checks, so readiness is detected structurally;
+// the human-log payload is then stripped of ANSI for clean rendering.
 let classifyLine = (line: string): lineClass =>
   if line->String.startsWith(tapSentinel) {
     let jsonStr = line->String.slice(~start=tapSentinel->String.length, ~end=line->String.length)
     switch JSON.parseOrThrow(jsonStr) {
-    | exception _ => Log(line)
+    | exception _ => Log(stripAnsi(line))
     | json => Domain(json)
     }
   } else if line->String.includes("GraphQL:Domain") && line->String.includes("listening on") {
     Ready
   } else {
-    Log(line)
+    Log(stripAnsi(line))
   }
 
 type callbacks = {

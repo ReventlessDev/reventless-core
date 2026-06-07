@@ -66,6 +66,23 @@ describe("PlatformRunner.classifyLine", () => {
     }
     expect(true).toBe(true);
   });
+  test("a Log line has its ANSI colour/bold escapes stripped", async () => {
+    let esc = String.fromCharCode(27);
+    let line = `12:00:00 ` + esc + `[36mI` + esc + `[0m ` + esc + `[1m[Catalog][Aggregate(Product)]` + esc + `[0m handling command`;
+    let clean = PlatformRunner$ReventlessGwt.classifyLine(line);
+    if (typeof clean !== "object") {
+      expect("expected Log").toEqual("Log");
+      return;
+    }
+    if (clean.TAG === "Domain") {
+      expect("expected Log").toEqual("Log");
+      return;
+    }
+    expect(clean._0).toEqual("12:00:00 I [Catalog][Aggregate(Product)] handling command");
+  });
+  test("stripAnsi leaves a plain line untouched", async () => {
+    expect(PlatformRunner$ReventlessGwt.stripAnsi("plain text, no escapes")).toEqual("plain text, no escapes");
+  });
 });
 
 /*  Not a pure module */

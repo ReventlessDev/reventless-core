@@ -19,6 +19,24 @@ embeds raw `\x1b[…m` escapes in the `message` field. About 30 stray
 also misses Fargate, ECS, Azure, GCP, and CI runners. See the analysis
 for the full trace.
 
+## Related sink — the VS Code local platform runner
+
+The Phase 9 runner ([reventless-vscode-local-platform-runner.md](./reventless-vscode-local-platform-runner.md))
+spawns the app's local platform as a **non-TTY child** and forwards its stdout to the "Reventless — Platform"
+output channel (as `platformLog` NDJSON events). Because `AnsiStyle.bold` / `LogPrefix.fmtComp` bake ANSI
+**before** sink detection (the exact Tier 1.2/1.3 bug), the child emits coloured/bold logs despite being
+non-TTY, and the channel rendered them as noise.
+
+- **Interim mitigation (shipped):** the runner strips ANSI from each forwarded log line
+  (`PlatformRunner.stripAnsi`, [`PlatformRunner.res`](../../reventless/reventless-gwt/src/PlatformRunner.res)),
+  so the `platformLog` wire payload is plain text and the extension stays a pure renderer. Tap/readiness
+  detection still runs on the raw line. Unit-tested in `PlatformRunnerTest`.
+- **Gap this exposes for Tier 1:** there is **no "plain text, no ANSI" mode**. The proposed detection makes
+  `REVENTLESS_LOG_FORMAT=text` keep ANSI and `=json` emit JSON — but a *piped/embedded text* consumer (the VS
+  Code channel, a log file, `tee`) wants human-readable text **without** ANSI. Tier 1 should either add a third
+  mode or have non-TTY default the text branch to ANSI-off. Once that lands, the runner can set the env and the
+  `stripAnsi` shim can be removed.
+
 ## Plan structure
 
 Three tiers, each independently shippable:
