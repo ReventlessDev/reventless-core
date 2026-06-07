@@ -56,7 +56,8 @@ function structure(aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChange
     automationSlices: automationSlices,
     outboundTranslationSlices: outboundTranslationSlices,
     inboundTranslationSlices: [],
-    extensions: extensions
+    extensions: extensions,
+    extensionPoints: undefined
   };
 }
 

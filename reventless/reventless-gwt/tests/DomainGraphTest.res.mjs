@@ -54,12 +54,13 @@ function automation(name, consumesOpt) {
   };
 }
 
-function structure(aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt) {
+function structure(aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChangeSlicesOpt, automationSlicesOpt, extensionPointsOpt) {
   let aggregates = aggregatesOpt !== undefined ? aggregatesOpt : [];
   let readModels = readModelsOpt !== undefined ? readModelsOpt : [];
   let stateViewSlices = stateViewSlicesOpt !== undefined ? stateViewSlicesOpt : [];
   let stateChangeSlices = stateChangeSlicesOpt !== undefined ? stateChangeSlicesOpt : [];
   let automationSlices = automationSlicesOpt !== undefined ? automationSlicesOpt : [];
+  let extensionPoints = extensionPointsOpt !== undefined ? extensionPointsOpt : [];
   return {
     readModels: readModels,
     stateViewSlices: stateViewSlices,
@@ -68,7 +69,8 @@ function structure(aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChange
     automationSlices: automationSlices,
     outboundTranslationSlices: [],
     inboundTranslationSlices: [],
-    extensions: []
+    extensions: [],
+    extensionPoints: extensionPoints
   };
 }
 
@@ -96,7 +98,7 @@ describe("DomainGraph.build", () => {
           mutationField: "Shop_Order_Place",
           references: [],
           allowedStates: undefined
-        }], ["Shop.Placed"], undefined, undefined)], undefined, [queryable("OrderView", ["Shop.Placed"])], undefined, undefined);
+        }], ["Shop.Placed"], undefined, undefined)], undefined, [queryable("OrderView", ["Shop.Placed"])], undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -113,7 +115,7 @@ describe("DomainGraph.build", () => {
     let shop = structure([writable("Order", undefined, [
         "Shop.Placed",
         "Shop.Shipped"
-      ], undefined, ["Orders"])], [queryable("Orders", undefined)], undefined, undefined, undefined);
+      ], undefined, ["Orders"])], [queryable("Orders", undefined)], undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -122,7 +124,7 @@ describe("DomainGraph.build", () => {
     expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", "projects")).toBe(true);
   });
   test("automation slices are triggered by their consumed events", async () => {
-    let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined, [automation("Notify", ["Shop.Placed"])]);
+    let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined, [automation("Notify", ["Shop.Placed"])], undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -134,7 +136,7 @@ describe("DomainGraph.build", () => {
     let shop = structure([
       writable("A", undefined, ["Shop.Touched"], undefined, undefined),
       writable("B", undefined, ["Shop.Touched"], undefined, undefined)
-    ], undefined, undefined, undefined, undefined);
+    ], undefined, undefined, undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
@@ -175,7 +177,7 @@ describe("DomainGraph.build", () => {
       eventTypes: extension_eventTypes,
       commandTypes: extension_commandTypes
     };
-    let init = structure([writable("ProductDemand", undefined, ["Catalog.Recorded"], undefined, undefined)], undefined, undefined, undefined, undefined);
+    let init = structure([writable("ProductDemand", undefined, ["Catalog.Recorded"], undefined, undefined)], undefined, undefined, undefined, undefined, undefined);
     let catalog_readModels = init.readModels;
     let catalog_stateViewSlices = init.stateViewSlices;
     let catalog_stateChangeSlices = init.stateChangeSlices;
@@ -184,6 +186,7 @@ describe("DomainGraph.build", () => {
     let catalog_outboundTranslationSlices = init.outboundTranslationSlices;
     let catalog_inboundTranslationSlices = init.inboundTranslationSlices;
     let catalog_extensions = [extension];
+    let catalog_extensionPoints = init.extensionPoints;
     let catalog = {
       readModels: catalog_readModels,
       stateViewSlices: catalog_stateViewSlices,
@@ -192,7 +195,8 @@ describe("DomainGraph.build", () => {
       automationSlices: catalog_automationSlices,
       outboundTranslationSlices: catalog_outboundTranslationSlices,
       inboundTranslationSlices: catalog_inboundTranslationSlices,
-      extensions: catalog_extensions
+      extensions: catalog_extensions,
+      extensionPoints: catalog_extensionPoints
     };
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
@@ -206,6 +210,31 @@ describe("DomainGraph.build", () => {
     expect(protoEvent.plugin).toBe("");
     let ext = Stdlib_Option.getOrThrow(g.nodes.find(n => n.id === "Catalog:ext:Ordering.Orders"), undefined);
     expect(ext.label).toBe("Ordering.Orders.Catalog");
+  });
+  test("an owned extension point is fed by the producers of its source events", async () => {
+    let ep_delegateNames = ["CatalogDcbEventLog"];
+    let ep_sourceEventTypes = ["Catalog.ProductAdded"];
+    let ep = {
+      name: "Catalog.Products",
+      delegateNames: ep_delegateNames,
+      sourceEventTypes: ep_sourceEventTypes
+    };
+    let catalog = structure(undefined, undefined, undefined, [writable("AddProduct", [{
+          name: "AddProduct",
+          schema: "",
+          level: "Instance",
+          aggregateIdField: undefined,
+          mutationField: "Catalog_AddProduct",
+          references: [],
+          allowedStates: undefined
+        }], ["Catalog.ProductAdded"], undefined, undefined)], undefined, [ep]);
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Catalog",
+        catalog
+      ]], []);
+    expect(nodeKind(g, "Catalog:ep:Catalog.Products")).toEqual("ExtensionPoint");
+    expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits")).toBe(true);
+    expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds")).toBe(true);
   });
 });
 

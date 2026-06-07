@@ -137,6 +137,14 @@ let extensionDefSchema = S.schema(s => ({
   commandTypes: s.m(S.array(S.string))
 }));
 
+let extensionPointDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  delegateNames: s.m(S.array(S.string)),
+  sourceEventTypes: s.m(S.array(S.string))
+}));
+
+let extensionPointDefArrayOptionSchema = SuryResMjs.js_nullable(S.array(extensionPointDefSchema));
+
 let pluginStructureSchema = S.schema(s => ({
   readModels: s.m(S.array(queryableDefSchema)),
   stateViewSlices: s.m(S.array(queryableDefSchema)),
@@ -145,7 +153,8 @@ let pluginStructureSchema = S.schema(s => ({
   automationSlices: s.m(S.array(automationSliceDefSchema)),
   outboundTranslationSlices: s.m(S.array(outboundTranslationSliceDefSchema)),
   inboundTranslationSlices: s.m(S.array(inboundTranslationSliceDefSchema)),
-  extensions: s.m(S.array(extensionDefSchema))
+  extensions: s.m(S.array(extensionDefSchema)),
+  extensionPoints: s.m(extensionPointDefArrayOptionSchema)
 }));
 
 let pluginStructureOptionSchema = SuryResMjs.js_nullable(pluginStructureSchema);
@@ -214,6 +223,8 @@ export {
   outboundTranslationSliceDefSchema,
   inboundTranslationSliceDefSchema,
   extensionDefSchema,
+  extensionPointDefSchema,
+  extensionPointDefArrayOptionSchema,
   pluginStructureSchema,
   pluginStructureOptionSchema,
   graphNodeSchema,

@@ -904,6 +904,7 @@ module Make = (
     ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=[],
     ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
     ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
+    ~extensionPoints: array<module(ReventlessInfra.ExtensionPointMapping.Mapping)>=[],
   ): Reventless.Plugin.pluginStructure =>
     Plugin_Structure.make(
       ~name,
@@ -915,6 +916,7 @@ module Make = (
       ~outboundTranslationSlices,
       ~inboundTranslationSlices,
       ~extensions,
+      ~extensionPoints,
     )
 
   let make = (

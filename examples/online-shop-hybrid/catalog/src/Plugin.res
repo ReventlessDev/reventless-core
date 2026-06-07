@@ -42,6 +42,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~stateChangeSlices=[module(AddProductSlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
     ~extensions=[module(Orders_Extension)],
+    ~extensionPoints=[module(Products_ExtensionPointMapping)],
   )
 
   let make = (~uiBundleUrl=?) =>

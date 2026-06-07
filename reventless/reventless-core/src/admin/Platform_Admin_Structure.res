@@ -128,4 +128,5 @@ let structure: pluginStructure = {
   outboundTranslationSlices: [],
   inboundTranslationSlices: [],
   extensions: [],
+  extensionPoints: None,
 }

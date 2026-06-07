@@ -248,7 +248,27 @@ function Make(Platform) {
     ChangeProductNameSlice,
     ChangeProductPriceSlice,
     RecordProductDemandSlice
-  ], undefined, undefined, [ImportProductSlice], [Orders_Extension]);
+  ], undefined, undefined, [ImportProductSlice], [Orders_Extension], [{
+      ExtensionPoint: {
+        name: Products_ExtensionPoint$CatalogSpec.name,
+        moduleUrl: Products_ExtensionPoint$CatalogSpec.moduleUrl,
+        commandSchema: Products_ExtensionPoint$CatalogSpec.commandSchema,
+        eventSchema: Products_ExtensionPoint$CatalogSpec.eventSchema,
+        directiveSchema: Products_ExtensionPoint$CatalogSpec.directiveSchema
+      },
+      Delegate: {
+        Id: Id$Reventless.$$String,
+        name: Products_ExtensionPointMapping$CatalogPlugin.Delegate.name,
+        eventSchema: Products_ExtensionPointMapping$CatalogPlugin.Delegate.eventSchema,
+        errorSchema: Products_ExtensionPointMapping$CatalogPlugin.Delegate.errorSchema,
+        commandSchema: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandSchema,
+        moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.Delegate.moduleUrl,
+        commandAuthorization: Products_ExtensionPointMapping$CatalogPlugin.Delegate.commandAuthorization
+      },
+      moduleUrl: Products_ExtensionPointMapping$CatalogPlugin.moduleUrl,
+      mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
+      mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
+    }]);
   let make = uiBundleUrl => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [CategoryAggregate], [
     CatalogActivityReadModel,
     CategoriesReadModel

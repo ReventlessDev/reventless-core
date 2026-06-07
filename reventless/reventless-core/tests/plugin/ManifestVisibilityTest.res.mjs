@@ -164,7 +164,7 @@ Jest.describe("ReadModel visibility filter", () => {
 });
 
 Jest.describe("Plugin_Structure.make — visibility filter", () => {
-  let structure = Plugin_Structure$ReventlessCore.make("VisibilityPlugin", undefined, readModels, undefined, undefined, undefined, undefined, undefined, undefined);
+  let structure = Plugin_Structure$ReventlessCore.make("VisibilityPlugin", undefined, readModels, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
   Jest.test("readModels excludes Internal entries", () => Jest.Expect.toBe(Jest.Expect.expect(structure.readModels.length), 1));
   Jest.test("readModels retains the Public entry by name", () => {
     let first = structure.readModels[0];

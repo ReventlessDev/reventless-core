@@ -242,7 +242,27 @@ function Make(Platform) {
     RefundOrderSlice,
     ShipOrderSlice,
     SyncCatalogProductSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [Products_Extension]);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, [Products_Extension], [{
+      ExtensionPoint: {
+        name: Orders_ExtensionPoint$OrderingSpec.name,
+        moduleUrl: Orders_ExtensionPoint$OrderingSpec.moduleUrl,
+        commandSchema: Orders_ExtensionPoint$OrderingSpec.commandSchema,
+        eventSchema: Orders_ExtensionPoint$OrderingSpec.eventSchema,
+        directiveSchema: Orders_ExtensionPoint$OrderingSpec.directiveSchema
+      },
+      Delegate: {
+        Id: Id$Reventless.$$String,
+        name: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.name,
+        eventSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.eventSchema,
+        errorSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.errorSchema,
+        commandSchema: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandSchema,
+        moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.moduleUrl,
+        commandAuthorization: Orders_ExtensionPointMapping$OrderingPlugin.Delegate.commandAuthorization
+      },
+      moduleUrl: Orders_ExtensionPointMapping$OrderingPlugin.moduleUrl,
+      mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
+      mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
+    }]);
   let make = uiBundleUrl => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     PlaceOrderSlice,

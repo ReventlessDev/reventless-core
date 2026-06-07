@@ -185,8 +185,9 @@ function renderTaskMakeParam(tasks) {
   return "      ~tasks=[" + entries.join(", ") + "],";
 }
 
-function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions) {
-  let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0 || extensions.length !== 0;
+function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices, stateViewSlicesStream, stateChangeSlices, automationSlices, outboundTranslationSlices, inboundTranslationSlices, extensions, extensionPoints) {
+  let epMappingStems = extensionPoints.flatMap(param => param.mappings);
+  let hasComponents = aggregates.length !== 0 || readModels.length !== 0 || stateViewSlices.length !== 0 || stateViewSlicesStream.length !== 0 || stateChangeSlices.length !== 0 || automationSlices.length !== 0 || outboundTranslationSlices.length !== 0 || inboundTranslationSlices.length !== 0 || extensions.length !== 0 || epMappingStems.length !== 0;
   if (!hasComponents) {
     return;
   }
@@ -231,6 +232,10 @@ function renderPluginStructureCall(name, aggregates, readModels, stateViewSlices
   if (extensions.length !== 0) {
     let entries$6 = extensions.map(s => "module(" + s + ")");
     ls.push("    ~extensions=[" + entries$6.join(", ") + "],");
+  }
+  if (epMappingStems.length !== 0) {
+    let entries$7 = epMappingStems.map(s => "module(" + s + ")");
+    ls.push("    ~extensionPoints=[" + entries$7.join(", ") + "],");
   }
   ls.push("  )");
   return ls;
@@ -400,7 +405,7 @@ function renderComposition(config, resolved) {
     lines.push("  // Extensions");
     push(renderExtensions(resolved.extensions));
   }
-  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions);
+  let pluginStructureLines = renderPluginStructureCall(config.name, resolved.aggregates, resolved.readModels, resolved.stateViewSlices, resolved.stateViewSlicesStream, resolved.stateChangeSlices, resolved.automationSlices, resolved.outboundTranslationSlices, resolved.inboundTranslationSlices, resolved.extensions, resolved.extensionPoints);
   let hasPluginStructure = Stdlib_Option.isSome(pluginStructureLines);
   if (pluginStructureLines !== undefined) {
     pluginStructureLines.forEach(l => {

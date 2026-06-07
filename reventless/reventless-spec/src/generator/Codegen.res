@@ -268,7 +268,12 @@ let renderPluginStructureCall = (
   ~outboundTranslationSlices: array<string>,
   ~inboundTranslationSlices: array<string>,
   ~extensions: array<string>,
+  ~extensionPoints: array<Pairing.extensionPointDef>,
 ): option<array<string>> => {
+  // The structure call carries the EP *mapping* files (one per Delegate
+  // connection), not the wrapped ExtensionPoint module — Plugin_Structure reads
+  // each mapping's Delegate to derive the extension point's source event types.
+  let epMappingStems = extensionPoints->Array.flatMap(({mappings}) => mappings)
   let hasComponents =
     aggregates->Array.length > 0 ||
     readModels->Array.length > 0 ||
@@ -278,7 +283,8 @@ let renderPluginStructureCall = (
     automationSlices->Array.length > 0 ||
     outboundTranslationSlices->Array.length > 0 ||
     inboundTranslationSlices->Array.length > 0 ||
-    extensions->Array.length > 0
+    extensions->Array.length > 0 ||
+    epMappingStems->Array.length > 0
   if !hasComponents {
     None
   } else {
@@ -326,6 +332,10 @@ let renderPluginStructureCall = (
     if extensions->Array.length > 0 {
       let entries = extensions->Array.map(s => "module(" ++ s ++ ")")
       ls->Array.push("    ~extensions=[" ++ entries->Array.join(", ") ++ "],")
+    }
+    if epMappingStems->Array.length > 0 {
+      let entries = epMappingStems->Array.map(s => "module(" ++ s ++ ")")
+      ls->Array.push("    ~extensionPoints=[" ++ entries->Array.join(", ") ++ "],")
     }
     ls->Array.push("  )")
     Some(ls)
@@ -617,6 +627,7 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
     ~outboundTranslationSlices=resolved.outboundTranslationSlices,
     ~inboundTranslationSlices=resolved.inboundTranslationSlices,
     ~extensions=resolved.extensions,
+    ~extensionPoints=resolved.extensionPoints,
   )
   let hasPluginStructure = pluginStructureLines->Option.isSome
   switch pluginStructureLines {

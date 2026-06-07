@@ -85,6 +85,7 @@ let make = (
   ~outboundTranslationSlices: array<module(ReventlessInfra.OutboundTranslationSlice.T)>=[],
   ~inboundTranslationSlices: array<module(ReventlessInfra.InboundTranslationSlice.T)>=[],
   ~extensions: array<module(ReventlessInfra.Extension.Blueprint)>=[],
+  ~extensionPoints: array<module(ReventlessInfra.ExtensionPointMapping.Mapping)>=[],
 ): Reventless.Plugin.pluginStructure => {
   // Event schemas: filter out payload-less variants — DCB event-type lookups
   // can't WHERE-clause on bare-string events, so the plugin graph mustn't
@@ -458,6 +459,34 @@ let make = (
       }: Reventless.Plugin.extensionDef)
     })
 
+  // ── Extension points (producer side) ──────────────────────────────────────
+  //
+  // The mapping modules connect one Delegate (an aggregate / DCB event log) to
+  // one extension point. Several mappings can target the SAME extension point
+  // (Make2 / Make3 / MakeMulti), so group by the EP's dotted spec name and union
+  // each delegate's name + its source event types. Source events are qualified
+  // with the plugin name to match `producedEventTypes` on the write-sides, so the
+  // event graph can draw producing-write-side → event → extension-point.
+
+  let dedupe = (xs: array<string>) =>
+    xs->Belt.Set.String.fromArray->Belt.Set.String.toArray
+
+  let epByName: Dict.t<(array<string>, array<string>)> = Dict.make()
+  extensionPoints->Array.forEach((module(M: ReventlessInfra.ExtensionPointMapping.Mapping)) => {
+    let epName = M.ExtensionPoint.name
+    let sourceEvents = qualify(~prefix=name, eventVariantNames(M.Delegate.eventSchema->S.castToUnknown))
+    let (dels, evs) = epByName->Dict.get(epName)->Option.getOr(([], []))
+    epByName->Dict.set(epName, (Array.concat(dels, [M.Delegate.name]), Array.concat(evs, sourceEvents)))
+  })
+  let extensionPointDefs =
+    epByName
+    ->Dict.toArray
+    ->Array.map(((epName, (dels, evs))) => ({
+      Reventless.Plugin.name: epName,
+      delegateNames: dedupe(dels),
+      sourceEventTypes: dedupe(evs),
+    }: Reventless.Plugin.extensionPointDef))
+
   {
     readModels: readModelDefs,
     stateViewSlices: stateViewDefs,
@@ -467,5 +496,6 @@ let make = (
     outboundTranslationSlices: outboundTranslationSliceDefs,
     inboundTranslationSlices: inboundTranslationSliceDefs,
     extensions: extensionDefs,
+    extensionPoints: Some(extensionPointDefs),
   }
 }

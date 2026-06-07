@@ -27,7 +27,8 @@ let emptyStructure = {
   automationSlices: emptyStructure_automationSlices,
   outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
   inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-  extensions: emptyStructure_extensions
+  extensions: emptyStructure_extensions,
+  extensionPoints: undefined
 };
 
 function writable(name, producedEventTypesOpt, consumedEventTypesOpt, linkedViewsOpt) {
@@ -123,7 +124,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ],
         [
@@ -136,7 +138,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]
       ];
@@ -164,7 +167,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ],
         [
@@ -177,7 +181,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: [automation("AutoShipOrder", ["PluginA.OrderPlaced"], ["PluginB.ShipOrder"], "ShipOrder")],
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]
       ];
@@ -205,7 +210,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ],
         [
@@ -218,7 +224,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: [outbound("SendOrderConfirmation", ["PluginA.OrderPlaced"], [], undefined)],
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]
       ];
@@ -245,7 +252,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]];
       return Jest.Expect.toBe(Jest.Expect.expect(Platform_CrossPluginEdges$ReventlessCore.computeEdges(entries).length), 0);
@@ -264,7 +272,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: [automation("AutoShipOrder", [], ["PluginB.ShipOrder"], "ShipOrder")],
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ],
         [
@@ -277,7 +286,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]
       ];
@@ -304,7 +314,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: [automation("AutoShipOrder", [], ["PluginA.ShipOrder"], "ShipOrder")],
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]];
       let edges = Platform_CrossPluginEdges$ReventlessCore.computeEdges(entries).filter(e => e.mechanism === "AutomationSlice");
@@ -322,7 +333,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: [automation("AutoAdd", [], ["PluginB.AddProduct"], "Product")],
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ],
         [
@@ -335,7 +347,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]
       ];
@@ -360,7 +373,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
                 commandTypes: ["PluginB.AddProduct"],
                 targetName: "Product"
               }],
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ],
         [
@@ -373,7 +387,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
             automationSlices: emptyStructure_automationSlices,
             outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
             inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]
       ];
@@ -404,7 +419,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
                 commandTypes: ["PluginA.AddProduct"],
                 targetName: "Product"
               }],
-            extensions: emptyStructure_extensions
+            extensions: emptyStructure_extensions,
+            extensionPoints: undefined
           }
         ]];
       let edges = Platform_CrossPluginEdges$ReventlessCore.computeEdges(entries).filter(e => e.mechanism === "InboundTranslation");
@@ -423,7 +439,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
           automationSlices: emptyStructure_automationSlices,
           outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
           inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-          extensions: emptyStructure_extensions
+          extensions: emptyStructure_extensions,
+          extensionPoints: undefined
         }
       ],
       [
@@ -436,7 +453,8 @@ Jest.describe("Platform_CrossPluginEdges.computeEdges", () => {
           automationSlices: emptyStructure_automationSlices,
           outboundTranslationSlices: emptyStructure_outboundTranslationSlices,
           inboundTranslationSlices: emptyStructure_inboundTranslationSlices,
-          extensions: [extension("Catalog.Products", ["AddProduct"], undefined, ["Catalog.Products.AddProduct"])]
+          extensions: [extension("Catalog.Products", ["AddProduct"], undefined, ["Catalog.Products.AddProduct"])],
+          extensionPoints: undefined
         }
       ]
     ];

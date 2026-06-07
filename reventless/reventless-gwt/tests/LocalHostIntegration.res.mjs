@@ -41,6 +41,12 @@ Nodetest.test("loadGraph cold-loads structures + cross-plugin edges from the rea
   let ordering = Stdlib_Option.getOrThrow(structureFor(g, "Ordering"), undefined);
   let order = Stdlib_Option.getOrThrow(ordering.aggregates.find(a => a.name === "Order"), undefined);
   Strict.ok(order.producedEventTypes.includes("Ordering.Placed"));
+  let catalogEps = Stdlib_Option.getOr(catalog.extensionPoints, []);
+  let productsEp = Stdlib_Option.getOrThrow(catalogEps.find(e => e.name === "Catalog.Products"), undefined);
+  Strict.ok(productsEp.delegateNames.includes("Product"), productsEp.delegateNames.join(","));
+  Strict.ok(productsEp.sourceEventTypes.includes("Catalog.Added"), productsEp.sourceEventTypes.join(","));
+  let product = Stdlib_Option.getOrThrow(catalog.aggregates.find(a => a.name === "Product"), undefined);
+  Strict.ok(productsEp.sourceEventTypes.every(e => product.producedEventTypes.includes(e)));
   let keys = g.edges.map(edgeKey);
   Strict.ok(keys.includes("Extension:Ordering.Ordering.Orders->Catalog.Ordering.Orders"), keys.join(" | "));
   Strict.ok(keys.includes("Extension:Catalog.Catalog.Products->Ordering.Catalog.Products"), keys.join(" | "));

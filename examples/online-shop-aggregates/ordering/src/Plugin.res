@@ -36,6 +36,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
     ~readModels=[module(AvailableProductsReadModel), module(CustomersReadModel), module(OrdersReadModel)],
     ~extensions=[module(Products_Extension)],
+    ~extensionPoints=[module(Orders_ExtensionPointMapping)],
   )
 
   let make = (~uiBundleUrl=?) =>
