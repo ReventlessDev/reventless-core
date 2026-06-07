@@ -7,12 +7,6 @@ import * as PlatformScan$ReventlessGwt from "./PlatformScan.res.mjs";
 
 let tapSentinel = "@@RVLESS_EVT@@ ";
 
-let _ansiRe = /\x1b\[[0-9;]*[A-Za-z]/g;
-
-function stripAnsi(s) {
-  return s.replace(_ansiRe, "");
-}
-
 function classifyLine(line) {
   if (!line.startsWith(tapSentinel)) {
     if (line.includes("GraphQL:Domain") && line.includes("listening on")) {
@@ -20,7 +14,7 @@ function classifyLine(line) {
     } else {
       return {
         TAG: "Log",
-        _0: line.replace(_ansiRe, "")
+        _0: line
       };
     }
   }
@@ -31,7 +25,7 @@ function classifyLine(line) {
   } catch (exn) {
     return {
       TAG: "Log",
-      _0: line.replace(_ansiRe, "")
+      _0: line
     };
   }
   return {
@@ -140,8 +134,6 @@ async function run(roots, backend, callbacks) {
 
 export {
   tapSentinel,
-  _ansiRe,
-  stripAnsi,
   classifyLine,
   openEphemeral,
   allocFreePorts,
