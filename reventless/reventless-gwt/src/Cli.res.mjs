@@ -9,6 +9,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as Collector$ReventlessGwt from "./Collector.res.mjs";
 import * as Discovery$ReventlessGwt from "./Discovery.res.mjs";
+import * as LocalHost$ReventlessGwt from "./LocalHost.res.mjs";
 import * as PackageScan$ReventlessGwt from "./PackageScan.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
 import * as Cancellation$ReventlessGwt from "./Cancellation.res.mjs";
@@ -16,6 +17,7 @@ import * as FormatterTap$ReventlessGwt from "./FormatterTap.res.mjs";
 import * as WatcherProbe$ReventlessGwt from "./WatcherProbe.res.mjs";
 import * as ComponentScan$ReventlessGwt from "./ComponentScan.res.mjs";
 import * as FormatterJson$ReventlessGwt from "./FormatterJson.res.mjs";
+import * as DomainDeadCode$ReventlessGwt from "./DomainDeadCode.res.mjs";
 import * as FormatterHuman$ReventlessGwt from "./FormatterHuman.res.mjs";
 import * as FormatterJunit$ReventlessGwt from "./FormatterJunit.res.mjs";
 import * as ProcessManager$ReventlessGwt from "./ProcessManager.res.mjs";
@@ -467,6 +469,23 @@ async function runOnce(opts) {
   }
 }
 
+async function emitDeadCode(pkgs) {
+  let plugins = LocalHost$ReventlessGwt.discover(pkgs.map(p => p.dir));
+  if (plugins.length === 0) {
+    return;
+  }
+  let platformModulePath = LocalHost$ReventlessGwt.resolveLocalPlatform(plugins[0].packageDir);
+  if (platformModulePath === undefined) {
+    return;
+  }
+  try {
+    let graph = await LocalHost$ReventlessGwt.loadGraph(platformModulePath, plugins);
+    return FormatterVsCode$ReventlessGwt.deadCode(DomainDeadCode$ReventlessGwt.analyze(graph.structures, graph.edges));
+  } catch (exn) {
+    return;
+  }
+}
+
 async function emitDiscovery(paths) {
   FormatterVsCode$ReventlessGwt.discoverStart();
   let fileTests = [];
@@ -495,7 +514,8 @@ async function emitDiscovery(paths) {
   FormatterVsCode$ReventlessGwt.packages(pkgs);
   let comps = await ComponentScan$ReventlessGwt.scan(pkgs.map(p => p.dir));
   FormatterVsCode$ReventlessGwt.components(comps);
-  return FormatterVsCode$ReventlessGwt.discoverEnd(total);
+  FormatterVsCode$ReventlessGwt.discoverEnd(total);
+  return await emitDeadCode(pkgs);
 }
 
 async function runDiscover(opts) {
@@ -599,6 +619,7 @@ export {
   runFiles,
   emitResult,
   runOnce,
+  emitDeadCode,
   emitDiscovery,
   runDiscover,
   startBuildWatchers,

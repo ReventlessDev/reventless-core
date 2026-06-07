@@ -137,7 +137,7 @@ let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.ob
 // Bumped whenever the event contract changes (new events, renamed fields). The
 // extension reads it from the `hello` line and degrades gracefully on mismatch
 // (e.g. ignores unknown `build*` events from a newer CLI).
-let protocolVersion = 4
+let protocolVersion = 5
 
 // First line of every `--format=vscode` invocation, so a client can detect a
 // version-skewed CLI before interpreting the stream.
@@ -285,6 +285,27 @@ let components = (comps: array<ComponentScan.component>) => {
     JSON.Encode.object(o)
   })
   d->Dict.set("components", JSON.Encode.array(arr))
+  event(d)
+}
+
+// Domain-level dead code (Phase 5) — produced events no component consumes, from
+// reflecting each plugin's `pluginStructure` via the local host (DomainDeadCode).
+// Best-effort and additive: emitted after `discoverEnd` when the local platform is
+// resolvable; absent otherwise. The client renders each finding as a Diagnostic on
+// the producing component's declaration (`plugin`/`component` resolve a spec file via
+// the `components` inventory; `detail` is the orphaned event type to locate within).
+let deadCode = (findings: array<DomainDeadCode.finding>) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("deadCode"))
+  let arr = findings->Array.map(f => {
+    let o = Dict.make()
+    o->Dict.set("kind", JSON.Encode.string(f.kind))
+    o->Dict.set("plugin", JSON.Encode.string(f.pluginName))
+    o->Dict.set("component", JSON.Encode.string(f.componentName))
+    o->Dict.set("detail", JSON.Encode.string(f.detail))
+    JSON.Encode.object(o)
+  })
+  d->Dict.set("findings", JSON.Encode.array(arr))
   event(d)
 }
 

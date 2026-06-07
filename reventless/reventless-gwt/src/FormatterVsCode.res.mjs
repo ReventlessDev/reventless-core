@@ -145,7 +145,7 @@ function event(payload) {
 function hello() {
   let d = {};
   d["event"] = "hello";
-  d["protocol"] = 4;
+  d["protocol"] = 5;
   event(d);
 }
 
@@ -265,6 +265,21 @@ function components(comps) {
     return o;
   });
   d["components"] = arr;
+  event(d);
+}
+
+function deadCode(findings) {
+  let d = {};
+  d["event"] = "deadCode";
+  let arr = findings.map(f => {
+    let o = {};
+    o["kind"] = f.kind;
+    o["plugin"] = f.pluginName;
+    o["component"] = f.componentName;
+    o["detail"] = f.detail;
+    return o;
+  });
+  d["findings"] = arr;
   event(d);
 }
 
@@ -404,7 +419,7 @@ function runEnd(s) {
   event(d);
 }
 
-let protocolVersion = 4;
+let protocolVersion = 5;
 
 export {
   write,
@@ -430,6 +445,7 @@ export {
   discoverEnd,
   packages,
   components,
+  deadCode,
   buildStart,
   buildOk,
   buildFail,
