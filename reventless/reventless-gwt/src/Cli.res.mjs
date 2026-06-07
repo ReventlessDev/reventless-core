@@ -10,6 +10,7 @@ import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as Collector$ReventlessGwt from "./Collector.res.mjs";
 import * as Discovery$ReventlessGwt from "./Discovery.res.mjs";
 import * as LocalHost$ReventlessGwt from "./LocalHost.res.mjs";
+import * as DomainGraph$ReventlessGwt from "./DomainGraph.res.mjs";
 import * as PackageScan$ReventlessGwt from "./PackageScan.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
 import * as Cancellation$ReventlessGwt from "./Cancellation.res.mjs";
@@ -469,7 +470,7 @@ async function runOnce(opts) {
   }
 }
 
-async function emitDeadCode(pkgs) {
+async function emitDomainAnalysis(pkgs) {
   let plugins = LocalHost$ReventlessGwt.discover(pkgs.map(p => p.dir));
   if (plugins.length === 0) {
     return;
@@ -479,8 +480,9 @@ async function emitDeadCode(pkgs) {
     return;
   }
   try {
-    let graph = await LocalHost$ReventlessGwt.loadGraph(platformModulePath, plugins);
-    return FormatterVsCode$ReventlessGwt.deadCode(DomainDeadCode$ReventlessGwt.analyze(graph.structures, graph.edges));
+    let loaded = await LocalHost$ReventlessGwt.loadGraph(platformModulePath, plugins);
+    FormatterVsCode$ReventlessGwt.deadCode(DomainDeadCode$ReventlessGwt.analyze(loaded.structures, loaded.edges));
+    return FormatterVsCode$ReventlessGwt.graph(DomainGraph$ReventlessGwt.build(loaded.structures, loaded.edges));
   } catch (exn) {
     return;
   }
@@ -515,7 +517,7 @@ async function emitDiscovery(paths) {
   let comps = await ComponentScan$ReventlessGwt.scan(pkgs.map(p => p.dir));
   FormatterVsCode$ReventlessGwt.components(comps);
   FormatterVsCode$ReventlessGwt.discoverEnd(total);
-  return await emitDeadCode(pkgs);
+  return await emitDomainAnalysis(pkgs);
 }
 
 async function runDiscover(opts) {
@@ -619,7 +621,7 @@ export {
   runFiles,
   emitResult,
   runOnce,
-  emitDeadCode,
+  emitDomainAnalysis,
   emitDiscovery,
   runDiscover,
   startBuildWatchers,

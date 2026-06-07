@@ -145,7 +145,7 @@ function event(payload) {
 function hello() {
   let d = {};
   d["event"] = "hello";
-  d["protocol"] = 5;
+  d["protocol"] = 6;
   event(d);
 }
 
@@ -280,6 +280,29 @@ function deadCode(findings) {
     return o;
   });
   d["findings"] = arr;
+  event(d);
+}
+
+function graph(g) {
+  let d = {};
+  d["event"] = "graph";
+  let nodes = g.nodes.map(n => {
+    let o = {};
+    o["id"] = n.id;
+    o["kind"] = n.kind;
+    o["label"] = n.label;
+    o["plugin"] = n.plugin;
+    return o;
+  });
+  let edges = g.edges.map(e => {
+    let o = {};
+    o["from"] = e.from;
+    o["to"] = e.to;
+    o["kind"] = e.kind;
+    return o;
+  });
+  d["nodes"] = nodes;
+  d["edges"] = edges;
   event(d);
 }
 
@@ -419,7 +442,7 @@ function runEnd(s) {
   event(d);
 }
 
-let protocolVersion = 5;
+let protocolVersion = 6;
 
 export {
   write,
@@ -446,6 +469,7 @@ export {
   packages,
   components,
   deadCode,
+  graph,
   buildStart,
   buildOk,
   buildFail,
