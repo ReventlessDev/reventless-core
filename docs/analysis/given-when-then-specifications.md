@@ -562,7 +562,9 @@ component grouping). Protocol 3 added a `kind` field on each `testFail` message 
 `files` array on each `components` entry (the component's `src/` spec + body file paths) so a client can list
 spec/implementation files under each component node. Protocol 5 added the `deadCode` event — domain-level
 orphan analysis (produced events no component consumes), reflected from each plugin's `pluginStructure` via the
-local host. All are additive; an older client simply ignores the unknown field/event.
+local host. Protocol 6 added the `graph` event — the Event-Modeling node/edge graph assembled from the same
+host load (commands → events → projections + cross-plugin wiring). All are additive; an older client simply
+ignores the unknown field/event.
 
 ##### Discovery stream
 
@@ -661,6 +663,25 @@ the producing write-side has a non-empty `linkedViews` (classic aggregate → re
 event-opaque — so such a write-side is never flagged), or it appears in an edge's `viaEvents`. Scope (v1):
 orphan events only — "extension points with zero extensions" and "read models nothing resolves against" need
 data `pluginStructure` does not carry and are deferred.
+
+##### Event-Modeling graph stream — `graph` event (protocol 6)
+
+Emitted alongside `deadCode` (same single host load), the `graph` event carries the Event-Modeling node/edge
+model — assembled by `DomainGraph.build` from each plugin's `pluginStructure` (intra-plugin: Command →
+*handles* → write-side → *emits* → Event → *projects* → read-side; Event → *triggers* → automation/translation)
+plus `Platform_CrossPluginEdges.computeEdges` for cross-plugin wiring (Extension↔ExtensionPoint, automation /
+translation routing, event-type matches — the edge `mechanism` becomes the connection kind).
+
+```
+{"event":"graph","nodes":[{"id":"Catalog:Category","kind":"Aggregate","label":"Category","plugin":"Catalog"},{"id":"Catalog_Category_Add","kind":"Command","label":"Add","plugin":"Catalog"},{"id":"Catalog.Added","kind":"Event","label":"Added","plugin":"Catalog"},{"id":"Catalog:Categories","kind":"ReadModel","label":"Categories","plugin":"Catalog"}],"edges":[{"from":"Catalog_Category_Add","to":"Catalog:Category","kind":"handles"},{"from":"Catalog:Category","to":"Catalog.Added","kind":"emits"},{"from":"Catalog.Added","to":"Catalog:Categories","kind":"projects"}]}
+```
+
+Node ids are stable and collision-free across kinds: write-/read-side/automation/translation = `"<plugin>:<name>"`,
+command = the unique `mutationField`, event = the plugin-qualified type, extension = `"<plugin>:ext:<name>"`,
+extension point = `"<owner>:ep:<name>"`. Node `kind` drives the D2 class; edge `kind` is the relation
+(`handles`/`emits`/`projects`/`triggers`) or a cross-plugin `mechanism`. The extension renders it as a D2
+diagram in a webview (clickable to open the `.res`); reusable by CI / other editors over the same contract.
+Same best-effort / additive contract as `deadCode` (omitted when the local platform isn't resolvable).
 
 The CLI owns the watchers (spawn, classify output, tear down on SIGINT via its process group); the extension
 only renders. Conflict avoidance lives CLI-side: `buildExternal` is emitted when `lib/rescript.lock` holds a
