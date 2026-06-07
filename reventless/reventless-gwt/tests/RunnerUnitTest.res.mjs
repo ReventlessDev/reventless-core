@@ -185,6 +185,31 @@ describe("Cli.parseArgv", () => {
     expect(opts$1.subcommand === "Watch").toEqual(true);
     expect(opts$1.roots).toEqual(["."]);
   });
+  test("platform backend defaults to memory; --backend overrides", async () => {
+    let opts = Cli$ReventlessGwt.parseArgv([
+      "/bin/node",
+      "/path/to/bin",
+      "platform",
+      "--format=vscode"
+    ]);
+    if (opts.TAG === "Ok") {
+      let opts$1 = opts._0;
+      expect(opts$1.subcommand === "Platform").toEqual(true);
+      expect(opts$1.backend).toEqual("memory");
+    } else {
+      Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts._0);
+    }
+    let opts$2 = Cli$ReventlessGwt.parseArgv([
+      "/bin/node",
+      "/path/to/bin",
+      "platform",
+      "--backend=sqlite:./db?reset"
+    ]);
+    if (opts$2.TAG !== "Ok") {
+      return Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts$2._0);
+    }
+    expect(opts$2._0.backend).toEqual("sqlite:./db?reset");
+  });
 });
 
 export {

@@ -18,6 +18,9 @@ type options = {
   filters: array<string>,
   schemaVersion: option<string>,
   roots: array<string>,
+  // `platform` only: the REVENTLESS_LOCAL_BACKEND value passed to the spawned
+  // platform child ("memory" default, or "sqlite:<path>[?reset]").
+  backend: string,
   toolVersion: string,
 }
 
@@ -49,6 +52,7 @@ USAGE:
   reventless-gwt run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
+  reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -63,6 +67,8 @@ FLAGS:
   --stream              NDJSON streaming (json/vscode)
   --watch               Re-run on file change
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
+  --backend <b>         platform: storage backend for the spawned local platform
+                        ("memory" default, or "sqlite:<path>[?reset]")
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -77,6 +83,7 @@ let parseArgv = (argv: array<string>): result<options, string> => {
   let filters = ref([])
   let schemaVersion: ref<option<string>> = ref(None)
   let roots = ref([])
+  let backend = ref("memory")
   let error = ref(None)
   let showHelp = ref(false)
   let i = ref(0)
@@ -137,6 +144,11 @@ let parseArgv = (argv: array<string>): result<options, string> => {
     } else if String.startsWith(arg, "--schema-version=") {
       let v = String.slice(arg, ~start=17, ~end=String.length(arg))
       schemaVersion := Some(v)
+    } else if String.startsWith(arg, "--backend=") {
+      backend := String.slice(arg, ~start=10, ~end=String.length(arg))
+    } else if arg == "--backend" && i.contents + 1 < len {
+      backend := slice->Array.getUnsafe(i.contents + 1)
+      i := i.contents + 1
     } else if String.startsWith(arg, "--") {
       error := Some("Unknown flag: " ++ arg)
     } else {
@@ -158,6 +170,7 @@ let parseArgv = (argv: array<string>): result<options, string> => {
         filters: filters.contents,
         schemaVersion: schemaVersion.contents,
         roots: roots.contents->Array.length == 0 ? defaultRoots() : roots.contents,
+        backend: backend.contents,
         toolVersion,
       })
     }
@@ -545,7 +558,7 @@ let runPlatform = async (opts: options): int => {
         Console.log(`■ platform stopped (code ${code->Option.mapOr("?", c => Int.toString(c))})`),
     }
   }
-  await PlatformRunner.run(~roots=opts.roots, ~backend="memory", ~callbacks)
+  await PlatformRunner.run(~roots=opts.roots, ~backend=opts.backend, ~callbacks)
 }
 
 let main = async (): int => {
