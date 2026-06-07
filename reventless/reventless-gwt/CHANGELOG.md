@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.50 (2026-06-07)
+
+### Bug Fixes
+
+* **reventless-gwt,reventless-vscode:** clear stuck build-status spinner when a watcher dies or hangs ([3ee777e](https://github.com/ReventlessDev/reventless-core/commit/3ee777e03591443b81bbdfe423bf009d48c9d084))
+### Features
+
+* **reventless-gwt:** local-host foundation + domain dead-code (Phases 4.5, 5) ([1e5242a](https://github.com/ReventlessDev/reventless-core/commit/1e5242ae8c9cf60ce23342b2bdeb8be45667cee6))
+
+
 # 1.0.0-alpha.49 (2026-06-06)
 
 ### Bug Fixes
