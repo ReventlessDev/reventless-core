@@ -17,7 +17,7 @@ function spawnWatcher(pkg, onStdout) {
   let proc = ChildProcess$ReventlessGwt.spawn("pnpm", [
     "run",
     "start"
-  ], pkg.dir);
+  ], pkg.dir, undefined);
   ChildProcess$ReventlessGwt.onStdoutLine(proc, line => onStdout(pkg.dir, line));
   running[pkg.dir] = {
     dir: pkg.dir,

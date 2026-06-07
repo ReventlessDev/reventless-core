@@ -21,6 +21,7 @@ import * as FormatterJson$ReventlessGwt from "./FormatterJson.res.mjs";
 import * as DomainDeadCode$ReventlessGwt from "./DomainDeadCode.res.mjs";
 import * as FormatterHuman$ReventlessGwt from "./FormatterHuman.res.mjs";
 import * as FormatterJunit$ReventlessGwt from "./FormatterJunit.res.mjs";
+import * as PlatformRunner$ReventlessGwt from "./PlatformRunner.res.mjs";
 import * as ProcessManager$ReventlessGwt from "./ProcessManager.res.mjs";
 import * as BuildClassifier$ReventlessGwt from "./BuildClassifier.res.mjs";
 import * as FormatterVsCode$ReventlessGwt from "./FormatterVsCode.res.mjs";
@@ -118,6 +119,10 @@ function parseArgv(argv) {
       case "discover" :
         subcommand = "Discover";
         format = "VsCode";
+        i = 1;
+        break;
+      case "platform" :
+        subcommand = "Platform";
         i = 1;
         break;
       case "run" :
@@ -579,6 +584,33 @@ async function runWatch(opts) {
   return 0;
 }
 
+async function runPlatform(opts) {
+  let callbacks = opts.format === "VsCode" ? ({
+      onStart: FormatterVsCode$ReventlessGwt.platformStart,
+      onReady: FormatterVsCode$ReventlessGwt.platformReady,
+      onDomainEvent: FormatterVsCode$ReventlessGwt.domainEvent,
+      onLog: FormatterVsCode$ReventlessGwt.platformLog,
+      onStop: FormatterVsCode$ReventlessGwt.platformStop
+    }) : ({
+      onStart: ($$package, param, domainPort, param$1) => {
+        console.log(`▶ platform ` + $$package + ` starting (domain http://localhost:` + domainPort.toString() + `)`);
+      },
+      onReady: domainEndpoint => {
+        console.log(`✓ platform ready — ` + domainEndpoint);
+      },
+      onDomainEvent: json => {
+        console.log("· event " + JSON.stringify(json));
+      },
+      onLog: line => {
+        console.log(line);
+      },
+      onStop: code => {
+        console.log(`■ platform stopped (code ` + Stdlib_Option.mapOr(code, "?", c => c.toString()) + `)`);
+      }
+    });
+  return await PlatformRunner$ReventlessGwt.run(opts.roots, "memory", callbacks);
+}
+
 async function main() {
   Cancellation$ReventlessGwt.install();
   let args = process.argv;
@@ -596,6 +628,8 @@ async function main() {
         return await runDiscover(opts);
       case "Watch" :
         return await runWatch(opts);
+      case "Platform" :
+        return await runPlatform(opts);
     }
   } else {
     console.error(msg._0);
@@ -626,6 +660,7 @@ export {
   runDiscover,
   startBuildWatchers,
   runWatch,
+  runPlatform,
   main,
 }
 /* Stdlib_JsExn Not a pure module */

@@ -3,10 +3,24 @@
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Nodechild_process from "node:child_process";
 
-function spawn(cmd, args, cwd) {
+function mergeEnv(overrides) {
+  let m = {};
+  Object.entries(process.env).forEach(param => {
+    m[param[0]] = param[1];
+  });
+  if (overrides !== undefined) {
+    Object.entries(overrides).forEach(param => {
+      m[param[0]] = param[1];
+    });
+  }
+  return m;
+}
+
+function spawn(cmd, args, cwd, env) {
   return Nodechild_process.spawn(cmd, args, {
     cwd: cwd,
-    detached: true
+    detached: true,
+    env: mergeEnv(env)
   });
 }
 
@@ -66,6 +80,7 @@ function killTree(proc, signal) {
 }
 
 export {
+  mergeEnv,
   spawn,
   pid,
   onLines,

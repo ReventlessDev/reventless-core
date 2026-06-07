@@ -145,7 +145,7 @@ function event(payload) {
 function hello() {
   let d = {};
   d["event"] = "hello";
-  d["protocol"] = 6;
+  d["protocol"] = 7;
   event(d);
 }
 
@@ -336,6 +336,42 @@ function buildExternal(pkg) {
   event(d);
 }
 
+function platformStart($$package, dir, domainPort, platformPort) {
+  let d = {};
+  d["event"] = "platformStart";
+  d["package"] = $$package;
+  d["dir"] = dir;
+  d["domainPort"] = domainPort;
+  d["platformPort"] = platformPort;
+  event(d);
+}
+
+function platformReady(domainEndpoint) {
+  let d = {};
+  d["event"] = "platformReady";
+  d["domainEndpoint"] = domainEndpoint;
+  event(d);
+}
+
+function domainEvent(payload) {
+  let s = JSON.stringify(payload);
+  process.stdout.write(s + "\n");
+}
+
+function platformLog(line) {
+  let d = {};
+  d["event"] = "platformLog";
+  d["line"] = line;
+  event(d);
+}
+
+function platformStop(code) {
+  let d = {};
+  d["event"] = "platformStop";
+  d["code"] = Stdlib_Option.mapOr(code, null, c => c);
+  event(d);
+}
+
 function runStart(total, filter) {
   let d = {};
   d["event"] = "runStart";
@@ -442,7 +478,7 @@ function runEnd(s) {
   event(d);
 }
 
-let protocolVersion = 6;
+let protocolVersion = 7;
 
 export {
   write,
@@ -474,6 +510,11 @@ export {
   buildOk,
   buildFail,
   buildExternal,
+  platformStart,
+  platformReady,
+  domainEvent,
+  platformLog,
+  platformStop,
   runStart,
   testStart,
   testPass,

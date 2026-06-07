@@ -10,10 +10,25 @@ type stream
 type spawnOptions = {
   cwd: string,
   detached: bool,
+  env: Dict.t<string>,
 }
 
 @module("node:child_process")
 external _spawn: (string, array<string>, spawnOptions) => t = "spawn"
+
+@val external _processEnv: Dict.t<string> = "process.env"
+
+// Merge the current process env with optional overrides into a fresh dict — node's
+// `spawn` replaces the whole env, so callers that pass `~env` still inherit PATH etc.
+let mergeEnv = (overrides: option<Dict.t<string>>): Dict.t<string> => {
+  let m = Dict.make()
+  _processEnv->Dict.toArray->Array.forEach(((k, v)) => m->Dict.set(k, v))
+  switch overrides {
+  | Some(o) => o->Dict.toArray->Array.forEach(((k, v)) => m->Dict.set(k, v))
+  | None => ()
+  }
+  m
+}
 
 @get external _pid: t => Nullable.t<int> = "pid"
 @get external _stdout: t => stream = "stdout"
@@ -24,8 +39,8 @@ external _spawn: (string, array<string>, spawnOptions) => t = "spawn"
 @send external _kill: (t, string) => bool = "kill"
 @val external _processKill: (int, string) => unit = "process.kill"
 
-let spawn = (cmd: string, args: array<string>, ~cwd: string): t =>
-  _spawn(cmd, args, {cwd, detached: true})
+let spawn = (cmd: string, args: array<string>, ~cwd: string, ~env: option<Dict.t<string>>=?): t =>
+  _spawn(cmd, args, {cwd, detached: true, env: mergeEnv(env)})
 
 let pid = (proc: t): option<int> => proc->_pid->Nullable.toOption
 
