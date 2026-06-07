@@ -54,19 +54,14 @@ describe("PlatformRunner.classifyLine", () => {
     }
   })
 
-  testPromise("a Log line has its ANSI colour/bold escapes stripped", async () => {
-    // The child emits coloured logs even when non-TTY; the Log payload must be
-    // plain text for the VS Code output channel. Build real ESC (0x1b) bytes.
+  testPromise("a Log line preserves its ANSI colour/bold escapes (rendered in the terminal)", async () => {
+    // The child emits coloured logs; the Log payload keeps the ANSI so the
+    // extension's Pseudoterminal renders colour/bold. Build real ESC (0x1b) bytes.
     let esc = String.fromCharCode(27)
-    let line = `12:00:00 ${esc}[36mI${esc}[0m ${esc}[1m[Catalog][Aggregate(Product)]${esc}[0m handling command`
+    let line = `12:00:00 ${esc}[36mI${esc}[0m ${esc}[1m[Catalog]${esc}[0m handling command`
     switch PlatformRunner.classifyLine(line) {
-    | Log(clean) =>
-      expect(clean)->toEqual("12:00:00 I [Catalog][Aggregate(Product)] handling command")
+    | Log(raw) => expect(raw)->toEqual(line)
     | _ => expect("expected Log")->toEqual("Log")
     }
-  })
-
-  testPromise("stripAnsi leaves a plain line untouched", async () => {
-    expect(PlatformRunner.stripAnsi("plain text, no escapes"))->toEqual("plain text, no escapes")
   })
 })

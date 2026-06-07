@@ -23,19 +23,19 @@ for the full trace.
 
 The Phase 9 runner ([reventless-vscode-local-platform-runner.md](./reventless-vscode-local-platform-runner.md))
 spawns the app's local platform as a **non-TTY child** and forwards its stdout to the "Reventless — Platform"
-output channel (as `platformLog` NDJSON events). Because `AnsiStyle.bold` / `LogPrefix.fmtComp` bake ANSI
-**before** sink detection (the exact Tier 1.2/1.3 bug), the child emits coloured/bold logs despite being
-non-TTY, and the channel rendered them as noise.
+view (as `platformLog` NDJSON events). Because `AnsiStyle.bold` / `LogPrefix.fmtComp` bake ANSI **before** sink
+detection (the exact Tier 1.2/1.3 bug), the child emits coloured/bold logs despite being non-TTY.
 
-- **Interim mitigation (shipped):** the runner strips ANSI from each forwarded log line
-  (`PlatformRunner.stripAnsi`, [`PlatformRunner.res`](../../reventless/reventless-gwt/src/PlatformRunner.res)),
-  so the `platformLog` wire payload is plain text and the extension stays a pure renderer. Tap/readiness
-  detection still runs on the raw line. Unit-tested in `PlatformRunnerTest`.
-- **Gap this exposes for Tier 1:** there is **no "plain text, no ANSI" mode**. The proposed detection makes
-  `REVENTLESS_LOG_FORMAT=text` keep ANSI and `=json` emit JSON — but a *piped/embedded text* consumer (the VS
-  Code channel, a log file, `tee`) wants human-readable text **without** ANSI. Tier 1 should either add a third
-  mode or have non-TTY default the text branch to ANSI-off. Once that lands, the runner can set the env and the
-  `stripAnsi` shim can be removed.
+- **Resolution (shipped):** rather than fight the ANSI, the runner **embraces** it — the `platformLog` wire
+  payload keeps its ANSI ([`PlatformRunner.res`](../../reventless/reventless-gwt/src/PlatformRunner.res) no
+  longer strips), and the extension renders it in a **VS Code Pseudoterminal** (an xterm renderer that
+  interprets colour/bold), so the runner log reads exactly as on the command line. (An OutputChannel can't
+  render ANSI — that's why the first attempt stripped it; the terminal is the right surface.)
+- **Still relevant to Tier 1:** this only works because the *consumer* is a terminal. **Non-terminal** sinks
+  (CloudWatch, a log file, `tee`) still want ANSI-free text, and the framework's pre-sink ANSI baking remains
+  the Tier 1.2/1.3 fix below. Note the gap: the proposed detection has no "plain text, no ANSI" mode
+  (`=text` keeps ANSI, `=json` emits JSON) — a piped text consumer wants neither; consider a third mode or
+  defaulting non-TTY text to ANSI-off.
 
 ## Plan structure
 
