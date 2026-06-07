@@ -693,6 +693,17 @@ module MakeWithConfig = (
   @val external processEnv: dict<string> = "process.env"
   let graphqlDebug = processEnv->Dict.get("GRAPHQL_DEBUG")->Option.isSome
 
+  // Per-session server ports for the VS Code local platform runner (features
+  // plan Phase 9). The runner spawns one platform child per app folder; default
+  // ports (4000/4001/3001/3002) collide when several run, so each is overridable
+  // via env. Defaults preserve today's behaviour for all non-runner callers.
+  let resolvePort = (key, fallback) =>
+    processEnv->Dict.get(key)->Option.flatMap(v => Int.fromString(v))->Option.getOr(fallback)
+  let domainPort = resolvePort("REVENTLESS_DOMAIN_PORT", 4000)
+  let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001)
+  let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001)
+  let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002)
+
   type mcpSupported = | @as(true) McpSupported | @as(false) McpNotSupported
   let mcpSupported = McpSupported
 
@@ -1135,14 +1146,14 @@ module MakeWithConfig = (
       // requests. Unified mode does this in makePlatform; split mode defers
       // server startup to here so it must do the same.
       UserStore.autoLoadOnce()
-      DomainGraphQL_Server.start()
-      DomainMCP_Server.start()
+      DomainGraphQL_Server.start(~port=domainPort, ())
+      DomainMCP_Server.start(~port=domainMcpPort, ())
       PlatformGraphQL_Server.start(
-        ~port=4001,
+        ~port=platformPort,
         ~contextFactory=Auth_GraphqlContext.buildAuthContext,
         (),
       )
-      PlatformMCP_Server.start(~port=3002, ())
+      PlatformMCP_Server.start(~port=platformMcpPort, ())
     }
     if graphqlDebug {
       DomainGraphQL_Server.printDiagnostics()

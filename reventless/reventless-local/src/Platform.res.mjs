@@ -677,6 +677,11 @@ function MakeWithConfig(Config) {
     return Component$ReventlessCore.operations(S.make(undefined));
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
+  let resolvePort = (key, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(process.env[key], v => Stdlib_Int.fromString(v, undefined)), fallback);
+  let domainPort = resolvePort("REVENTLESS_DOMAIN_PORT", 4000);
+  let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
+  let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
+  let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
   let pluginQueryDbOpsRef = {
     contents: undefined
   };
@@ -1143,10 +1148,10 @@ function MakeWithConfig(Config) {
   let startServers = () => {
     if (Config.splitApi) {
       UserStore$ReventlessLocal.autoLoadOnce();
-      DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
-      DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
-      PlatformGraphQL_Server$ReventlessLocal.start(4001, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
-      PlatformMCP_Server$ReventlessLocal.start(3002, undefined);
+      DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
+      DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
+      PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
+      PlatformMCP_Server$ReventlessLocal.start(platformMcpPort, undefined);
     }
     if (graphqlDebug) {
       DomainGraphQL_Server$ReventlessLocal.printDiagnostics();
@@ -2521,6 +2526,11 @@ function Make($star) {
     return Component$ReventlessCore.operations(S.make(undefined));
   };
   let graphqlDebug = Stdlib_Option.isSome(process.env["GRAPHQL_DEBUG"]);
+  let resolvePort = (key, fallback) => Stdlib_Option.getOr(Stdlib_Option.flatMap(process.env[key], v => Stdlib_Int.fromString(v, undefined)), fallback);
+  let domainPort = resolvePort("REVENTLESS_DOMAIN_PORT", 4000);
+  let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
+  let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
+  let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
   let pluginQueryDbOpsRef = {
     contents: undefined
   };
@@ -2986,10 +2996,10 @@ function Make($star) {
   };
   let startServers = () => {
     UserStore$ReventlessLocal.autoLoadOnce();
-    DomainGraphQL_Server$ReventlessLocal.start(undefined, undefined, undefined);
-    DomainMCP_Server$ReventlessLocal.start(undefined, undefined);
-    PlatformGraphQL_Server$ReventlessLocal.start(4001, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
-    PlatformMCP_Server$ReventlessLocal.start(3002, undefined);
+    DomainGraphQL_Server$ReventlessLocal.start(domainPort, undefined, undefined);
+    DomainMCP_Server$ReventlessLocal.start(domainMcpPort, undefined);
+    PlatformGraphQL_Server$ReventlessLocal.start(platformPort, Auth_GraphqlContext$ReventlessLocal.buildAuthContext, undefined);
+    PlatformMCP_Server$ReventlessLocal.start(platformMcpPort, undefined);
     if (graphqlDebug) {
       DomainGraphQL_Server$ReventlessLocal.printDiagnostics();
       DomainMCP_Server$ReventlessLocal.printDiagnostics();

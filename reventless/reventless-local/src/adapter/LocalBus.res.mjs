@@ -36,6 +36,45 @@ function makeStateChangeDescriptor(changeKind, id, state) {
   return descriptor;
 }
 
+function eventTapEnabled() {
+  return Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"]);
+}
+
+let eventTapSeq = {
+  contents: 0
+};
+
+function emitEventTap(topic, service, payload) {
+  eventTapSeq.contents = eventTapSeq.contents + 1 | 0;
+  let line = Object.fromEntries([
+    [
+      "event",
+      "domainEvent"
+    ],
+    [
+      "seq",
+      eventTapSeq.contents
+    ],
+    [
+      "topic",
+      topic
+    ],
+    [
+      "service",
+      service
+    ],
+    [
+      "payload",
+      payload
+    ],
+    [
+      "ts",
+      new Date().toISOString()
+    ]
+  ]);
+  console.log("@@RVLESS_EVT@@ " + JSON.stringify(line));
+}
+
 function Impl(C) {
   let capacity = C.capacity;
   let eventHubs = {
@@ -106,6 +145,9 @@ function Impl(C) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
+      emitEventTap(topicName, service, json);
+    }
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -331,6 +373,9 @@ function Make($star) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
+      emitEventTap(topicName, service, json);
+    }
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -556,6 +601,9 @@ function MakeSilent($star) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
+      emitEventTap(topicName, service, json);
+    }
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -782,6 +830,9 @@ function MakeBounded(C) {
     }), Queue.shutdown(queue))), queue => Stream.fromQueue(queue));
   };
   let publishEvent = async (topicName, service, meta, json) => {
+    if (Stdlib_Option.isSome(process.env["REVENTLESS_EVENT_TAP"])) {
+      emitEventTap(topicName, service, json);
+    }
     let hub = eventHubs.contents[topicName];
     if (hub === undefined) {
       return;
@@ -944,6 +995,9 @@ function MakeBounded(C) {
 export {
   pickSortKeyValue,
   makeStateChangeDescriptor,
+  eventTapEnabled,
+  eventTapSeq,
+  emitEventTap,
   Impl,
   Make,
   MakeSilent,
