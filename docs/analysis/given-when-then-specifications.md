@@ -560,8 +560,9 @@ Protocol 2 added the `components` inventory event and the `component` field on f
 component grouping). Protocol 3 added a `kind` field on each `testFail` message — the mismatch family
 (`EventsMismatch` / `ErrorMismatch` / …) a client uses to gate an apply-expected quick-fix. Protocol 4 added a
 `files` array on each `components` entry (the component's `src/` spec + body file paths) so a client can list
-spec/implementation files under each component node. All are additive; an older client simply ignores the
-unknown field/event.
+spec/implementation files under each component node. Protocol 5 added the `deadCode` event — domain-level
+orphan analysis (produced events no component consumes), reflected from each plugin's `pluginStructure` via the
+local host. All are additive; an older client simply ignores the unknown field/event.
 
 ##### Discovery stream
 
@@ -631,6 +632,35 @@ component's `src/` spec + body files — so a client can list the spec and imple
 ```
 {"event":"components","components":[{"dir":"/abs/catalog","kind":"Aggregate","name":"Category","files":["/abs/catalog/src/Category/Aggregate/Category.res","/abs/catalog/src/Category/Aggregate/Category_Behavior.res"]}]}
 ```
+
+##### Domain dead-code stream — `deadCode` event (protocol 5)
+
+After `discoverEnd`, `discover` and `watch` emit one `deadCode` event carrying domain-level orphans —
+**produced events no component consumes** — computed by reflecting each plugin's `pluginStructure` through the
+local host (`LocalHost.loadGraph` cold-loads `reventless-local`'s `Platform.Make()`, reads each
+`Plugin.Make(plat).pluginStructure`, runs `Platform_CrossPluginEdges.computeEdges`) and diffing produced vs
+consumed event types (`DomainDeadCode.analyze`). It is the event-sourcing counterpart to reactive dead code —
+the domain layer the language LSP cannot see.
+
+```
+{"event":"deadCode","findings":[{"kind":"OrphanEvent","plugin":"Catalog","component":"Category","detail":"Catalog.Archived"}]}
+```
+
+The event is **best-effort and additive**: emitted with `findings:[]` when nothing is orphaned, and omitted
+entirely when there are no plugin packages or `reventless-local` isn't resolvable from a plugin's
+`node_modules` (the CLI resolves `@reventlessdev/reventless-local/src/Platform.res.mjs` via `createRequire`
+from a plugin package). Any load failure is swallowed so the discovery stream is never compromised.
+
+| CLI event | Extension call |
+|---|---|
+| `deadCode` | one `vscode.Diagnostic` per finding on the producing component's declaration — `plugin`/`component` resolve a spec file via the `components` inventory; `detail` (the orphaned event type) is located within it by text search (as in the Phase 4 apply-expected anchor) |
+
+Reachability rules (`DomainDeadCode`): an event is consumed when some component lists it in
+`consumedEventTypes` (DCB-style — state-view/automation/outbound/consistency reads, across *all* plugins), or
+the producing write-side has a non-empty `linkedViews` (classic aggregate → read-model projection, which is
+event-opaque — so such a write-side is never flagged), or it appears in an edge's `viaEvents`. Scope (v1):
+orphan events only — "extension points with zero extensions" and "read models nothing resolves against" need
+data `pluginStructure` does not carry and are deferred.
 
 The CLI owns the watchers (spawn, classify output, tear down on SIGINT via its process group); the extension
 only renders. Conflict avoidance lives CLI-side: `buildExternal` is emitted when `lib/rescript.lock` holds a
