@@ -391,11 +391,12 @@ let runOnce = async (opts: options): int => {
   result.summary.failed > 0 ? 1 : 0
 }
 
-// Reflects each plugin's pluginStructure via the local host and emits orphaned
-// produced events as a `deadCode` event. Skips silently when there are no plugin
-// packages or the local platform isn't resolvable, and swallows any load failure so
-// the discovery stream is never compromised.
-let emitDeadCode = async (pkgs: array<PackageScan.pkg>): unit =>
+// Reflects each plugin's pluginStructure via the local host (a single cold load) and
+// emits the domain-analysis events: `deadCode` (orphan events) and `graph` (the
+// Event-Modeling node/edge model). Skips silently when there are no plugin packages
+// or the local platform isn't resolvable, and swallows any load failure so the
+// discovery stream is never compromised.
+let emitDomainAnalysis = async (pkgs: array<PackageScan.pkg>): unit =>
   switch LocalHost.discover(~packageDirs=pkgs->Array.map(p => p.dir)) {
   | [] => ()
   | plugins =>
@@ -403,8 +404,11 @@ let emitDeadCode = async (pkgs: array<PackageScan.pkg>): unit =>
     | None => ()
     | Some(platformModulePath) =>
       try {
-        let graph = await LocalHost.loadGraph(~platformModulePath, ~plugins)
-        FormatterVsCode.deadCode(DomainDeadCode.analyze(~structures=graph.structures, ~edges=graph.edges))
+        let loaded = await LocalHost.loadGraph(~platformModulePath, ~plugins)
+        FormatterVsCode.deadCode(
+          DomainDeadCode.analyze(~structures=loaded.structures, ~edges=loaded.edges),
+        )
+        FormatterVsCode.graph(DomainGraph.build(~structures=loaded.structures, ~edges=loaded.edges))
       } catch {
       | _ => ()
       }
@@ -441,9 +445,10 @@ let emitDiscovery = async (paths: array<string>): unit => {
   let comps = await ComponentScan.scan(pkgs->Array.map(p => p.dir))
   FormatterVsCode.components(comps)
   FormatterVsCode.discoverEnd(total)
-  // Domain dead-code: emitted after the core stream so the tree shows first. Loads
-  // the local platform to reflect pluginStructure — best-effort; never breaks discovery.
-  await emitDeadCode(pkgs)
+  // Domain analysis (dead-code + graph): emitted after the core stream so the tree
+  // shows first. One cold load of the local platform reflects pluginStructure —
+  // best-effort; never breaks discovery.
+  await emitDomainAnalysis(pkgs)
 }
 
 let runDiscover = async (opts: options): int => {

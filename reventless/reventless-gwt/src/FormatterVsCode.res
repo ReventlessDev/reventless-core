@@ -137,7 +137,7 @@ let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.ob
 // Bumped whenever the event contract changes (new events, renamed fields). The
 // extension reads it from the `hello` line and degrades gracefully on mismatch
 // (e.g. ignores unknown `build*` events from a newer CLI).
-let protocolVersion = 5
+let protocolVersion = 6
 
 // First line of every `--format=vscode` invocation, so a client can detect a
 // version-skewed CLI before interpreting the stream.
@@ -306,6 +306,35 @@ let deadCode = (findings: array<DomainDeadCode.finding>) => {
     JSON.Encode.object(o)
   })
   d->Dict.set("findings", JSON.Encode.array(arr))
+  event(d)
+}
+
+// Event-Modeling graph (Phase 6) — the node/edge model assembled from each plugin's
+// `pluginStructure` + cross-plugin edges (DomainGraph). Best-effort and additive,
+// emitted alongside `deadCode` after `discoverEnd` from the same single host load.
+// The client renders it as a D2 diagram in a webview. Node `kind` drives the D2
+// class (Command / Event / Aggregate / ReadModel / …); edge `kind` is the relation
+// (handles / emits / projects / triggers) or a cross-plugin mechanism.
+let graph = (g: DomainGraph.graph) => {
+  let d = Dict.make()
+  d->Dict.set("event", JSON.Encode.string("graph"))
+  let nodes = g.nodes->Array.map(n => {
+    let o = Dict.make()
+    o->Dict.set("id", JSON.Encode.string(n.id))
+    o->Dict.set("kind", JSON.Encode.string(n.kind))
+    o->Dict.set("label", JSON.Encode.string(n.label))
+    o->Dict.set("plugin", JSON.Encode.string(n.plugin))
+    JSON.Encode.object(o)
+  })
+  let edges = g.edges->Array.map(e => {
+    let o = Dict.make()
+    o->Dict.set("from", JSON.Encode.string(e.from))
+    o->Dict.set("to", JSON.Encode.string(e.to))
+    o->Dict.set("kind", JSON.Encode.string(e.kind))
+    JSON.Encode.object(o)
+  })
+  d->Dict.set("nodes", JSON.Encode.array(nodes))
+  d->Dict.set("edges", JSON.Encode.array(edges))
   event(d)
 }
 
