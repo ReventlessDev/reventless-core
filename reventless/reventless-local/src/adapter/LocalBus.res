@@ -90,6 +90,33 @@ let makeStateChangeDescriptor = (
   descriptor->JSON.Encode.object
 }
 
+// Opt-in NDJSON domain-event tap for the VS Code local platform runner (features
+// plan Phase 9). Enabled when REVENTLESS_EVENT_TAP is set; off by default so normal
+// runs stay quiet. Emitted from publishEvent so every event is captured with its
+// real topic name (the EventTopic resource name consumers subscribe to) — no need
+// to guess topic names from EventLog registry keys. Each line is sentinel-prefixed
+// so the runner's line parser can pick it out of the platform's ANSI log noise on
+// stdout. The emit is a plain Console.log, so it never perturbs publishEvent's
+// subscriber-countdown delivery semantics.
+@val external tapProcessEnv: dict<string> = "process.env"
+// Read per publish (not once at import) so the runner can toggle it live and so
+// hermetic tests can flip it between cases. The cost is one dict lookup per event.
+let eventTapEnabled = () => tapProcessEnv->Dict.get("REVENTLESS_EVENT_TAP")->Option.isSome
+let eventTapSeq = ref(0)
+let emitEventTap = (~topic: string, ~service: string, ~payload: JSON.t) => {
+  eventTapSeq := eventTapSeq.contents + 1
+  let line =
+    Dict.fromArray([
+      ("event", JSON.Encode.string("domainEvent")),
+      ("seq", JSON.Encode.int(eventTapSeq.contents)),
+      ("topic", JSON.Encode.string(topic)),
+      ("service", JSON.Encode.string(service)),
+      ("payload", payload),
+      ("ts", JSON.Encode.string(Date.make()->Date.toISOString)),
+    ])->JSON.Encode.object
+  Console.log("@@RVLESS_EVT@@ " ++ line->JSON.stringify)
+}
+
 module type T = {
   // Event fan-out: aggregate EventTopic → read model EventCollector
   let publishEvent: (string, string, ReventlessCore.Message.meta, JSON.t) => promise<unit>
@@ -267,6 +294,9 @@ module Impl = (C: BusConfig): T => {
   }
 
   let publishEvent = async (topicName, service, meta, json) => {
+    if eventTapEnabled() {
+      emitEventTap(~topic=topicName, ~service, ~payload=json)
+    }
     switch eventHubs.contents->Dict.get(topicName) {
     | None => ()
     | Some(hub) =>
