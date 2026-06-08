@@ -280,6 +280,43 @@ describe("JSON sink", () => {
     expect(lines->Array.some(line => line->fieldOf("correlationId") == Some("c-123")))->toBe(true)
   })
 
+  test("every JSON record carries an RFC 3339 time field", () => {
+    let lines = captureLogs(() => log.info(~comp="Platform", "tick"))
+    let ok = switch lines->Array.get(0)->Option.flatMap(l => l->fieldOf("time")) {
+    | Some(t) => t->String.includes("T") && t->String.endsWith("Z")
+    | None => false
+    }
+    expect(ok)->toBe(true)
+  })
+
+  test("service field is emitted when REVENTLESS_SERVICE is set", () => {
+    _processEnv->Dict.set("REVENTLESS_SERVICE", "TestService")
+    let lines = captureLogs(() => log.info(~comp="Platform", "tick"))
+    let got = lines->Array.get(0)->Option.flatMap(l => l->fieldOf("service"))
+    _processEnv->Dict.delete("REVENTLESS_SERVICE")
+    expect(got)->toEqual(Some("TestService"))
+  })
+
+  test("oversized detail is truncated to a preview stub", () => {
+    let big = String.repeat("x", 40000)
+    let detail = Dict.fromArray([("blob", JSON.Encode.string(big))])->JSON.Encode.object
+    // ~detail flows through emit (Logger.t's ~data goes into the message instead).
+    let direct = captureLogs(() => Logger.emit(~level=Info, ~comp="Platform", ~detail, "big"))
+    let ok = switch direct->Array.get(0)->Option.flatMap(l => l->JSON.parseOrThrow->JSON.Decode.object) {
+    | Some(obj) =>
+      switch obj->Dict.get("detail")->Option.flatMap(JSON.Decode.object) {
+      | Some(d) =>
+        d->Dict.get("truncated")->Option.flatMap(JSON.Decode.bool) == Some(true) &&
+          d->Dict.get("preview")->Option.flatMap(JSON.Decode.string)->Option.mapOr(false, p =>
+            p->String.length <= 512
+          )
+      | None => false
+      }
+    | None => false
+    }
+    expect(ok)->toBe(true)
+  })
+
   test("LogFormat.cmdName carries no ANSI in a JSON sink", () => {
     let meta: Message.meta = {
       service: "testService",

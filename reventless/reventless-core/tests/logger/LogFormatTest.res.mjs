@@ -2,6 +2,7 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
+import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
@@ -230,6 +231,36 @@ Jest.describe("JSON sink", () => {
   Jest.test("Effect.annotateLogs(correlationId) surfaces as a top-level field", () => {
     let lines = captureLogs(() => Effect.runSync(Effect.annotateLogs(EffectLogger$ReventlessCore.logInfo("Aggregate(Product)", undefined, "handling"), "correlationId", "c-123")));
     return Jest.Expect.toBe(Jest.Expect.expect(lines.some(line => Primitive_object.equal(fieldOf(line, "correlationId"), "c-123"))), true);
+  });
+  Jest.test("every JSON record carries an RFC 3339 time field", () => {
+    let lines = captureLogs(() => log.info("Platform", undefined, "tick"));
+    let t = Stdlib_Option.flatMap(lines[0], l => fieldOf(l, "time"));
+    let ok = t !== undefined ? t.includes("T") && t.endsWith("Z") : false;
+    return Jest.Expect.toBe(Jest.Expect.expect(ok), true);
+  });
+  Jest.test("service field is emitted when REVENTLESS_SERVICE is set", () => {
+    process.env["REVENTLESS_SERVICE"] = "TestService";
+    let lines = captureLogs(() => log.info("Platform", undefined, "tick"));
+    let got = Stdlib_Option.flatMap(lines[0], l => fieldOf(l, "service"));
+    Stdlib_Dict.$$delete(process.env, "REVENTLESS_SERVICE");
+    return Jest.Expect.toEqual(Jest.Expect.expect(got), "TestService");
+  });
+  Jest.test("oversized detail is truncated to a preview stub", () => {
+    let big = "x".repeat(40000);
+    let detail = Object.fromEntries([[
+        "blob",
+        big
+      ]]);
+    let direct = captureLogs(() => Logger$ReventlessCore.emit("Info", "Platform", detail, undefined, "big"));
+    let obj = Stdlib_Option.flatMap(direct[0], l => Stdlib_JSON.Decode.object(JSON.parse(l)));
+    let ok;
+    if (obj !== undefined) {
+      let d = Stdlib_Option.flatMap(obj["detail"], Stdlib_JSON.Decode.object);
+      ok = d !== undefined ? Primitive_object.equal(Stdlib_Option.flatMap(d["truncated"], Stdlib_JSON.Decode.bool), true) && Stdlib_Option.mapOr(Stdlib_Option.flatMap(d["preview"], Stdlib_JSON.Decode.string), false, p => p.length <= 512) : false;
+    } else {
+      ok = false;
+    }
+    return Jest.Expect.toBe(Jest.Expect.expect(ok), true);
   });
   Jest.test("LogFormat.cmdName carries no ANSI in a JSON sink", () => {
     let cmd_meta = {
