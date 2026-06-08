@@ -4,8 +4,6 @@ import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
-import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
-import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 
 function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, specModuleUrl, mappingsModuleUrl, publishToAggregatesQueueUrls, commandTopic) {
@@ -15,7 +13,7 @@ function forCommandTopic(param, connect, memorySizeOpt, timeoutOpt, specModuleUr
   let channel = commandTopic.channel;
   let channelParts = channel.parts;
   let queue = channelParts.queue;
-  let name = ComponentType$ReventlessCore.nameOpt(commandTopicResource.__name, CommandTopic$ReventlessCore.componentType);
+  let name = Stdlib_Option.getOr(commandTopicResource.__name, "UnnamedExtPoint") + "CmdHandler";
   let opts_parent = commandTopicResource;
   let opts = {
     parent: opts_parent

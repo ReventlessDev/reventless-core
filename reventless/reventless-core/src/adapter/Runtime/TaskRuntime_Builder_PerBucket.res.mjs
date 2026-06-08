@@ -9,7 +9,7 @@ function Make(RuntimeEnvironment) {
       let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
       let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
       let resource = Component$ReventlessCore.toPulumiResource(task);
-      let name$1 = Stdlib_Option.getOr(resource.__name, "UnnamedTask") + name;
+      let name$1 = Stdlib_Option.getOr(resource.__name, "UnnamedTask") + name + "SideEffectHandler";
       let runtime = RuntimeEnvironment.make(name$1, handler.apply(handler => RuntimeEnvironment.asEventHandler(handler)), memorySize, timeout, {
         parent: resource
       });

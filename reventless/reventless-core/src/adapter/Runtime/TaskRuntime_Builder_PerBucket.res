@@ -25,7 +25,9 @@ module Make = (
     task: Task.component,
   ) => {
     let resource = task->Component.toPulumiResource
-    let name = resource.name->Option.getOr("UnnamedTask") ++ name
+    // `name` is the PascalCase bucket stem; give the side-effect handler the
+    // SideEffectHandler kind (matches the AWS TaskRuntime builder).
+    let name = resource.name->Option.getOr("UnnamedTask") ++ name ++ "SideEffectHandler"
     let runtime = RuntimeEnvironment.make(
       ~name,
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),

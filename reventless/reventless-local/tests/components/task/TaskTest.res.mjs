@@ -38,7 +38,7 @@ describe("Task_Builder.Make:", () => {
       let bucketNames = outputs.bucketNames;
       let idOutput = bucketNames["Reports"];
       let id = await TestRunner$ReventlessLocal.resolve(idOutput);
-      expect(id).toBe("OneBucketTaskReports");
+      expect(id).toBe("OneBucketTaskReportsBucket");
     });
   });
 });
