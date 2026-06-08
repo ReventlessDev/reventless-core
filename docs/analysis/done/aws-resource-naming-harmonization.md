@@ -261,11 +261,15 @@ Observations:
 |---|---|---|
 | EP CommandTopic (SQS) | `ExtensionPoint_Builder.res:44-46` `childName = name.replace(".","")->ComponentType.name(ExtensionPoint)` → `CommandTopic_Builder` appends `CmdTopic` | `<EP>ExtPointCmdTopic` (e.g. `CatalogProductsExtPointCmdTopic`) |
 | EP EventTopic (SNS) | `ExtensionPoint_Builder.res:98` `~name=childName` | `<EP>ExtPointEventTopic` |
-| EP command handler Lambda | `ExtensionPointRuntime_Builder_PerExtensionPoint.res:71` `~name` (= the EP CommandTopic resource name) | `<EP>ExtPoint…` — the `*CmdTopic` row in the Lambda table |
+| EP command handler Lambda (regular plugin EP) | `ExtensionPointRuntime_Builder_PerExtensionPoint.res:71` `~name` (= the EP CommandTopic resource name) | `<EP>ExtPoint…` — the `*CmdTopic` row in the Lambda table |
+| EP command handler Lambda (platform-admin `Core.Plugin` EP) | `PluginExtensionPointRuntime_Builder.res:42` `~name` — **separate builder** | `CorePluginExtPointCmdTopic` |
 
 Observations:
 - `ExtPoint` is an abbreviation (`ComponentType.toName(ExtensionPoint) = "ExtPoint"`) — parallels the `Aggr` short form kept for aggregates. Either accept it as an established short form or expand it; decide consistently with the §5.2 root-term choice.
 - The EP command-handler **Lambda inherits the `CmdTopic` kind**, not the unified `CmdHandler` kind that §5 introduced for every other command handler. To make `grep CmdHandler` truly find *all* command handlers, the EP Lambda should append `CmdHandler` to the bare EP name (mirroring the DCB fix in `PluginRuntime_Builder`): `<EP>ExtPointCmdHandler`.
+- **Two builders, not one.** Regular plugin EPs route through `ExtensionPointRuntime_Builder_PerExtensionPoint`; the platform-admin `Core.Plugin` EP routes through `PluginExtensionPointRuntime_Builder`. Both must apply the `CmdHandler` change — the first implementation pass fixed only the former, and live AWS verification caught `CorePluginExtPointCmdTopic` still deploying from the latter (fixed in `19102b908`).
+- The EP SQS **queue** correctly keeps `ExtPointCmdTopic` (it *is* a command topic); only the consuming Lambda moves to `CmdHandler`. Confirmed live: queues `CatalogProductsExtPointCmdTopic` etc. coexist with Lambdas `…ExtPointCmdHandler`.
+- A parallel **in-memory** path (`reventless-core/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res:26` plus the core Micro/Single plugin runtime builders) still names handlers via the `CmdTopic` kind; it emits no AWS resources, so it is an optional consistency follow-up.
 
 ### 8.3 Scheduler 🟡
 
@@ -354,7 +358,7 @@ The out-of-scope families in §8 live in:
 - `reventless/reventless-aws/src/adapter/Task/TaskBucket_S3.res:12, 13, 38, 54, 71, 89` (notification handlers + IAM policy ids)
 - `reventless/reventless-aws/src/adapter/Runtime/TaskRuntime_Builder_PerBucket.res:20, 73, 91` (`fullName` SideEffectHandler Lambda + scheduler policy)
 - `reventless/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Builder.res:43, 46, 98` (`ExtPoint` childName, CommandTopic, EventTopic)
-- `reventless/reventless-aws/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res:71` (EP command-handler Lambda — append `CmdHandler`)
+- `reventless/reventless-aws/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res:71` and `reventless/reventless-aws/src/adapter/Runtime/PluginExtensionPointRuntime_Builder.res:42` (EP command-handler Lambdas — **both** append `CmdHandler`; the admin `Core.Plugin` EP uses the second builder)
 - `reventless/reventless-core/src/components/Scheduler/Scheduler_Builder.res:15` (bare `Scheduler` constant)
 - `reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate.res:83` (constant IAM role name)
 - `reventless/reventless-core/src/components/Plugin/Plugin_Builder.res:735` + `reventless/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Single.res:54` / `_Micro.res:54` (Heartbeat — verify only)
