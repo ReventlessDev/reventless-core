@@ -1,0 +1,23 @@
+{
+  "name": "@reventlessdev/reventless-vscode-protocol",
+  "version": "1.0.0-alpha.2",
+  "description": "Shared NDJSON contract (StreamEvent) between the reventless-gwt CLI (--format=vscode) and the reventless-vscode extension — a single sury @schema both emit and decode.",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "build": "rescript build",
+    "watch": "rescript build -w",
+    "clean": "rescript clean && rm -rf lib"
+  },
+  "dependencies": {
+    "@rescript/runtime": "12.3.0",
+    "sury": "11.0.0-alpha.4"
+  },
+  "devDependencies": {
+    "rescript": "^12.3.0",
+    "sury-ppx": "11.0.0-alpha.2"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

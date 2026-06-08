@@ -1,0 +1,118 @@
+// The NDJSON contract between the `reventless-gwt watch/platform --format=vscode`
+// CLI and the `reventless-vscode` extension — a single sury `@schema` definition both
+// sides use: the CLI *emits* via `toJsonLine` (serialize) and the extension *decodes*
+// via `parseStreamEvent` (parse + validate). A `protocolVersion` bump now touches this
+// one definition instead of drifting across two hand-written declarations.
+//
+// `@tag("event")` makes the ReScript variant's runtime representation the flat wire
+// shape (`{event:"item", …fields}`), so sury round-trips it exactly as the CLI's
+// previous hand-built JSON, and genType renders the `{event:…}` union the extension
+// host shell switches on. CommonJS output so the CJS extension consumes it natively
+// and the ESM CLI imports it (ESM→CJS is well-supported).
+
+// JSON.t schemas (the `domainEvent` payload) require sury's json support enabled
+// before any schema referencing it is built.
+let () = S.enableJson()
+
+// `js_nullable` (exported as `nullable` from sury's CJS entry) yields a `T | null`
+// schema typed as `option` — unlike `S.null`/`S.nullable`, which add `undefined` and
+// then fail sury's `jsonableValidation` on serialize (the reverse direction the CLI
+// uses). See the reventless-core sury notes.
+@module("sury") external jsNullable: (S.t<'a>, unit) => S.t<option<'a>> = "nullable"
+
+@genType @schema
+type position = {line: int, character: int}
+
+@genType @schema
+type vsRange = {start: position, end: position}
+
+@genType @schema
+type failLocation = {uri: string, range: vsRange}
+
+@genType @schema
+type failMessage = {
+  message: string,
+  kind?: string,
+  expected?: string,
+  actual?: string,
+  location?: failLocation,
+}
+
+@genType @schema
+type packageInfo = {name: string, dir: string, build: string}
+
+@genType @schema
+type componentMeta = {kind: string, name: string}
+
+@genType @schema
+type componentRef = {kind: string, name: string, dir: string, files?: array<string>}
+
+@genType @schema
+type deadCodeFinding = {kind: string, plugin: string, component: string, detail: string}
+
+// `to` is a ReScript keyword → `@as` keeps the runtime/wire/TS field name `to`.
+@genType @schema
+type graphNode = {id: string, kind: string, label: string, plugin: string}
+@genType @schema
+type graphEdge = {from: string, @as("to") to_: string, kind: string}
+
+// The watch + platform-runner stream as a flat, internally-tagged variant.
+// `discoverStart` carries an optional phantom field so it serialises as an object
+// (`{event:"discoverStart"}`) rather than a bare string (a `@tag` nullary).
+@genType @schema @tag("event")
+type streamEvent =
+  | @as("hello") Hello({protocol: int})
+  | @as("discoverStart") DiscoverStart({_unused?: bool})
+  | @as("item")
+  Item({
+      id: string,
+      parent?: string,
+      kind: string,
+      label: string,
+      description?: string,
+      uri?: string,
+      range?: vsRange,
+      component?: componentMeta,
+    })
+  | @as("packages") Packages({packages: array<packageInfo>})
+  | @as("components") Components({components: array<componentRef>})
+  | @as("discoverEnd") DiscoverEnd({total: int})
+  | @as("buildStart") BuildStart({package: string})
+  | @as("buildOk") BuildOk({package: string, durationMs: float})
+  | @as("buildFail") BuildFail({package: string, message: string})
+  | @as("buildExternal") BuildExternal({package: string})
+  | @as("runStart") RunStart({total: int, filter: array<string>})
+  | @as("testStart") TestStart({id: string})
+  | @as("testPass") TestPass({id: string, durationMs: float})
+  | @as("testFail") TestFail({id: string, durationMs: float, messages: array<failMessage>})
+  | @as("testSkip") TestSkip({id: string, reason: string})
+  | @as("runEnd") RunEnd({passed: int, failed: int, skipped: int, durationMs: float})
+  | @as("deadCode") DeadCode({findings: array<deadCodeFinding>})
+  | @as("graph") Graph({nodes: array<graphNode>, edges: array<graphEdge>})
+  | @as("platformStart")
+  PlatformStart({package: string, dir: string, domainPort: int, platformPort: int})
+  | @as("platformReady") PlatformReady({domainEndpoint: string})
+  | @as("domainEvent") DomainEvent({seq: int, topic: string, service: string, payload: JSON.t, ts: string})
+  | @as("platformLog") PlatformLog({line: string})
+  | @as("platformStop") PlatformStop({code: @s.matches(jsNullable(S.int, ())) option<int>})
+
+// Bumped whenever the contract changes (new events, renamed fields). Single source —
+// the CLI's `hello` emission and the extension's protocol check both read this.
+// v7: local platform runner events (platformStart/Ready/Log/Stop + domainEvent).
+let protocolVersion = 7
+
+// Decode + validate one NDJSON line. `None` for a malformed line or an unknown event
+// (a version-skewed CLI degrades gracefully — same effect as the old "ignore unknown").
+@genType
+let parseStreamEvent = (raw: string): option<streamEvent> =>
+  switch S.parseJsonStringOrThrow(raw, streamEventSchema) {
+  | v => Some(v)
+  | exception _ => None
+  }
+
+// Serialize one event to its NDJSON line (the CLI emit path). `@tag` + the schema
+// reproduce the exact flat wire the CLI previously hand-built. `reverseConvertOrThrow`
+// applies the schema's reverse transforms (e.g. `None` code → `null`) without sury's
+// strict `jsonableValidation` (which the union's `JSON.t` payload would trip).
+let toJsonLine = (e: streamEvent): string =>
+  e->S.reverseConvertOrThrow(streamEventSchema)->JSON.stringifyAny->Option.getOr("")

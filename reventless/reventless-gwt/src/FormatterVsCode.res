@@ -1,17 +1,21 @@
-// NDJSON event stream tailored for the VS Code Testing API. Each line maps
-// directly to a `TestRun` method call; field names mirror `TestItem` /
-// `TestMessage` so the extension needs no translation layer. See §3.3 of the
-// analysis doc for the event table.
+// NDJSON event stream tailored for the VS Code Testing API. Each line maps directly
+// to a `TestRun` method call; field names mirror `TestItem` / `TestMessage` so the
+// extension needs no translation layer.
+//
+// The contract is the shared `@reventlessdev/reventless-vscode-protocol` `Protocol`
+// module — the SAME sury `@schema` the extension decodes with. Every event is built as
+// a `Protocol.streamEvent` variant and serialized via `Protocol.toJsonLine`, so a
+// `protocolVersion` bump or field change touches that one definition instead of
+// drifting between this emitter and the extension's decoder.
+
+module P = ReventlessVscodeProtocol.Protocol
 
 @val external processStdout: {"write": string => unit} = "process.stdout"
 let write = (s: string) => processStdout["write"](s)
 let writeLine = (s: string) => write(s ++ "\n")
 
-let setIfSome = (d: Dict.t<JSON.t>, k: string, o: option<JSON.t>) =>
-  switch o {
-  | Some(v) => d->Dict.set(k, v)
-  | None => ()
-  }
+// Serialize one contract event to its NDJSON line (single source: Protocol).
+let emit = (e: P.streamEvent) => writeLine(P.toJsonLine(e))
 
 let uriOf = (path: string) => "file://" ++ path
 
@@ -32,11 +36,9 @@ let relativeToCwd = (abs: string) => pathRelative(processCwd(), abs)
 
 // ─── .res-source locator ───────────────────────────────────────────────────
 // ReScript v12 does not emit JS source maps, so V8 stack frames (the basis for
-// Collector.captureLocation) point at `.res.mjs`. Every GWT combinator
-// (`test`, `describe`, `given`, …) takes a string literal as its first
-// argument — scanning the sibling `.res` file for that literal yields an
-// exact line. This turns the Testing panel's tree-node clicks into
-// `.res` jumps instead of compiled-output jumps.
+// Collector.captureLocation) point at `.res.mjs`. Every GWT combinator takes a string
+// literal as its first argument — scanning the sibling `.res` file for that literal
+// yields an exact line, turning tree-node clicks into `.res` jumps.
 
 @module("node:fs") external _readFileSync: (string, string) => string = "readFileSync"
 @module("node:fs") external _existsSync: string => bool = "existsSync"
@@ -112,55 +114,30 @@ let locateInSource = (mjsPath: string, label: string): option<Collector.location
     }
   }
 
-let rangeJson = (loc: Collector.location): JSON.t => {
-  let start = Dict.make()
-  start->Dict.set("line", JSON.Encode.int(loc.line - 1))
-  start->Dict.set("character", JSON.Encode.int(loc.column - 1))
-  let end_ = Dict.make()
-  end_->Dict.set("line", JSON.Encode.int(loc.line - 1))
-  end_->Dict.set("character", JSON.Encode.int(loc.column - 1))
-  let r = Dict.make()
-  r->Dict.set("start", JSON.Encode.object(start))
-  r->Dict.set("end", JSON.Encode.object(end_))
-  JSON.Encode.object(r)
+// 1-based Collector.location → 0-based vscode range (both ends at the token start, as
+// the previous emitter did).
+let rangeOf = (loc: Collector.location): P.vsRange => {
+  let pos: P.position = {line: loc.line - 1, character: loc.column - 1}
+  {start: pos, end: pos}
 }
 
-let locationJson = (loc: Collector.location): JSON.t => {
-  let d = Dict.make()
-  d->Dict.set("uri", JSON.Encode.string(uriOf(loc.file)))
-  d->Dict.set("range", rangeJson(loc))
-  JSON.Encode.object(d)
+let locationOf = (loc: Collector.location): P.failLocation => {
+  uri: uriOf(loc.file),
+  range: rangeOf(loc),
 }
 
-let event = (payload: Dict.t<JSON.t>) => writeLine(JSON.stringify(JSON.Encode.object(payload)))
-
-// Bumped whenever the event contract changes (new events, renamed fields). The
-// extension reads it from the `hello` line and degrades gracefully on mismatch
-// (e.g. ignores unknown `build*` events from a newer CLI).
-// v7: local platform runner events (platformStart/Ready/Log/Stop + domainEvent).
-let protocolVersion = 7
+// Bumped whenever the event contract changes — single source in `Protocol`.
+let protocolVersion = P.protocolVersion
 
 // First line of every `--format=vscode` invocation, so a client can detect a
 // version-skewed CLI before interpreting the stream.
-let hello = () => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("hello"))
-  d->Dict.set("protocol", JSON.Encode.int(protocolVersion))
-  event(d)
-}
+let hello = () => emit(Hello({protocol: P.protocolVersion}))
 
-let discoverStart = () => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("discoverStart"))
-  event(d)
-}
+let discoverStart = () => emit(DiscoverStart({}))
 
-// Used in both `discover` and `run` flows — emit one `item` per file, one
-// per describe, one per test so the tree populates before any test runs.
-// File / suite / test URIs point at `.res` sources whenever the sibling
-// `.res` is readable — `locateInSource` grep-scans for the quoted label.
-// Falls back to `.res.mjs` when no `.res` is adjacent (e.g. a hand-written
-// `.mjs` or a renamed build output) so nothing regresses for downstream users.
+// Used in both `discover` and `run` flows — emit one `item` per file, one per describe,
+// one per test so the tree populates before any test runs. File / suite / test URIs
+// point at `.res` sources whenever the sibling `.res` is readable.
 let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>) => {
   files->Array.forEach(((path, tests)) => {
     let fileId = path
@@ -168,29 +145,24 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
     | Some(resPath) if _existsSync(resPath) => uriOf(resPath)
     | _ => uriOf(path)
     }
-    let d = Dict.make()
-    d->Dict.set("event", JSON.Encode.string("item"))
-    d->Dict.set("id", JSON.Encode.string(fileId))
-    d->Dict.set("kind", JSON.Encode.string("file"))
-    d->Dict.set("label", JSON.Encode.string(fileLabelOf(path)))
-    d->Dict.set("description", JSON.Encode.string(relativeToCwd(path)))
-    d->Dict.set("uri", JSON.Encode.string(fileUri))
-    // Component kind/name derived from the folder convention — lets the client
-    // group tests by Plugin → kind → component without parsing the source.
-    switch ComponentMeta.componentOfTestFile(path) {
-    | Some(c) => {
-        let comp = Dict.make()
-        comp->Dict.set("kind", JSON.Encode.string(c.kind))
-        comp->Dict.set("name", JSON.Encode.string(c.name))
-        d->Dict.set("component", JSON.Encode.object(comp))
-      }
-    | None => ()
-    }
-    event(d)
+    let component =
+      ComponentMeta.componentOfTestFile(path)->Option.map((c): P.componentMeta => {
+        kind: c.kind,
+        name: c.name,
+      })
+    emit(
+      Item({
+        id: fileId,
+        kind: "file",
+        label: fileLabelOf(path),
+        description: relativeToCwd(path),
+        uri: fileUri,
+        component: ?component,
+      }),
+    )
     // Emit describe suites and test leaves.
     let seenDescribes = Dict.make()
     tests->Array.forEach(t => {
-      // Emit nested describe chain as `suite` items.
       let stack = ref([])
       t.describePath->Array.forEach(label => {
         let parent =
@@ -203,20 +175,17 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
         | Some(_) => ()
         | None => {
             seenDescribes->Dict.set(id, true)
-            let s = Dict.make()
-            s->Dict.set("event", JSON.Encode.string("item"))
-            s->Dict.set("id", JSON.Encode.string(id))
-            s->Dict.set("parent", JSON.Encode.string(parent))
-            s->Dict.set("kind", JSON.Encode.string("suite"))
-            s->Dict.set("label", JSON.Encode.string(label))
-            switch locateInSource(path, label) {
-            | Some(loc) => {
-                s->Dict.set("uri", JSON.Encode.string(uriOf(loc.file)))
-                s->Dict.set("range", rangeJson(loc))
-              }
-            | None => ()
-            }
-            event(s)
+            let loc = locateInSource(path, label)
+            emit(
+              Item({
+                id,
+                parent,
+                kind: "suite",
+                label,
+                uri: ?loc->Option.map(l => uriOf(l.file)),
+                range: ?loc->Option.map(rangeOf),
+              }),
+            )
           }
         }
       })
@@ -225,324 +194,164 @@ let emitDiscoveryItems = (files: array<(string, array<RunnerTypes.testResult>)>)
           ? fileId
           : fileId ++ "::" ++ t.describePath->Array.join("::")
       let testId = fileId ++ "::" ++ t.id
-      let leaf = Dict.make()
-      leaf->Dict.set("event", JSON.Encode.string("item"))
-      leaf->Dict.set("id", JSON.Encode.string(testId))
-      leaf->Dict.set("parent", JSON.Encode.string(parent))
-      leaf->Dict.set("kind", JSON.Encode.string("test"))
-      leaf->Dict.set("label", JSON.Encode.string(t.name))
       let resLoc = locateInSource(path, t.name)
-      switch (resLoc, t.location) {
-      | (Some(loc), _) | (None, Some(loc)) => {
-          leaf->Dict.set("uri", JSON.Encode.string(uriOf(loc.file)))
-          leaf->Dict.set("range", rangeJson(loc))
-        }
-      | (None, None) => ()
+      let loc = switch (resLoc, t.location) {
+      | (Some(loc), _) | (None, Some(loc)) => Some(loc)
+      | (None, None) => None
       }
-      event(leaf)
+      emit(
+        Item({
+          id: testId,
+          parent,
+          kind: "test",
+          label: t.name,
+          uri: ?loc->Option.map(l => uriOf(l.file)),
+          range: ?loc->Option.map(rangeOf),
+        }),
+      )
     })
   })
 }
 
-let discoverEnd = (total: int) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("discoverEnd"))
-  d->Dict.set("total", JSON.Encode.int(total))
-  event(d)
-}
+let discoverEnd = (total: int) => emit(DiscoverEnd({total: total}))
 
 // The set of workspace packages owning discovered tests — the build set a watch
-// session keeps compiling. Emitted in both `discover` and `watch` so any client
-// (or CI) can drive `rescript build -w` per package without its own derivation.
-let packages = (pkgs: array<PackageScan.pkg>) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("packages"))
-  let arr = pkgs->Array.map(p => {
-    let o = Dict.make()
-    o->Dict.set("name", JSON.Encode.string(p.name))
-    o->Dict.set("dir", JSON.Encode.string(p.dir))
-    o->Dict.set("build", JSON.Encode.string(p.build))
-    JSON.Encode.object(o)
-  })
-  d->Dict.set("packages", JSON.Encode.array(arr))
-  event(d)
-}
+// session keeps compiling.
+let packages = (pkgs: array<PackageScan.pkg>) =>
+  emit(
+    Packages({
+      packages: pkgs->Array.map((p): P.packageInfo => {name: p.name, dir: p.dir, build: p.build}),
+    }),
+  )
 
-// The full component inventory across the owning packages — every Aggregate /
-// slice / ReadModel / … in src/, whether or not it has a GWT test. `dir` matches
-// the `packages` event so a client joins them per plugin; tests join via the
-// `component` field on each file `item`. Drives the domain tree + coverage.
-let components = (comps: array<ComponentScan.component>) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("components"))
-  let arr = comps->Array.map(c => {
-    let o = Dict.make()
-    o->Dict.set("dir", JSON.Encode.string(c.dir))
-    o->Dict.set("kind", JSON.Encode.string(c.kind))
-    o->Dict.set("name", JSON.Encode.string(c.name))
-    // Source files (spec + body) so the client can list them under the
-    // component; the client labels/roles them by filename suffix.
-    o->Dict.set("files", JSON.Encode.array(c.files->Array.map(JSON.Encode.string)))
-    JSON.Encode.object(o)
-  })
-  d->Dict.set("components", JSON.Encode.array(arr))
-  event(d)
-}
+// The full component inventory across the owning packages — every Aggregate / slice /
+// ReadModel / … in src/, whether or not it has a GWT test.
+let components = (comps: array<ComponentScan.component>) =>
+  emit(
+    Components({
+      components: comps->Array.map((c): P.componentRef => {
+        dir: c.dir,
+        kind: c.kind,
+        name: c.name,
+        files: c.files,
+      }),
+    }),
+  )
 
-// Domain-level dead code (Phase 5) — produced events no component consumes, from
-// reflecting each plugin's `pluginStructure` via the local host (DomainDeadCode).
-// Best-effort and additive: emitted after `discoverEnd` when the local platform is
-// resolvable; absent otherwise. The client renders each finding as a Diagnostic on
-// the producing component's declaration (`plugin`/`component` resolve a spec file via
-// the `components` inventory; `detail` is the orphaned event type to locate within).
-let deadCode = (findings: array<DomainDeadCode.finding>) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("deadCode"))
-  let arr = findings->Array.map(f => {
-    let o = Dict.make()
-    o->Dict.set("kind", JSON.Encode.string(f.kind))
-    o->Dict.set("plugin", JSON.Encode.string(f.pluginName))
-    o->Dict.set("component", JSON.Encode.string(f.componentName))
-    o->Dict.set("detail", JSON.Encode.string(f.detail))
-    JSON.Encode.object(o)
-  })
-  d->Dict.set("findings", JSON.Encode.array(arr))
-  event(d)
-}
+// Domain-level dead code (Phase 5) — produced events no component consumes.
+let deadCode = (findings: array<DomainDeadCode.finding>) =>
+  emit(
+    DeadCode({
+      findings: findings->Array.map((f): P.deadCodeFinding => {
+        kind: f.kind,
+        plugin: f.pluginName,
+        component: f.componentName,
+        detail: f.detail,
+      }),
+    }),
+  )
 
 // Event-Modeling graph (Phase 6) — the node/edge model assembled from each plugin's
-// `pluginStructure` + cross-plugin edges (DomainGraph). Best-effort and additive,
-// emitted alongside `deadCode` after `discoverEnd` from the same single host load.
-// The client renders it as a D2 diagram in a webview. Node `kind` drives the D2
-// class (Command / Event / Aggregate / ReadModel / …); edge `kind` is the relation
-// (handles / emits / projects / triggers) or a cross-plugin mechanism.
-let graph = (g: DomainGraph.graph) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("graph"))
-  let nodes = g.nodes->Array.map(n => {
-    let o = Dict.make()
-    o->Dict.set("id", JSON.Encode.string(n.id))
-    o->Dict.set("kind", JSON.Encode.string(n.kind))
-    o->Dict.set("label", JSON.Encode.string(n.label))
-    o->Dict.set("plugin", JSON.Encode.string(n.plugin))
-    JSON.Encode.object(o)
-  })
-  let edges = g.edges->Array.map(e => {
-    let o = Dict.make()
-    o->Dict.set("from", JSON.Encode.string(e.from))
-    o->Dict.set("to", JSON.Encode.string(e.to))
-    o->Dict.set("kind", JSON.Encode.string(e.kind))
-    JSON.Encode.object(o)
-  })
-  d->Dict.set("nodes", JSON.Encode.array(nodes))
-  d->Dict.set("edges", JSON.Encode.array(edges))
-  event(d)
-}
+// `pluginStructure` + cross-plugin edges.
+let graph = (g: DomainGraph.graph) =>
+  emit(
+    Graph({
+      nodes: g.nodes->Array.map((n): P.graphNode => {
+        id: n.id,
+        kind: n.kind,
+        label: n.label,
+        plugin: n.plugin,
+      }),
+      edges: g.edges->Array.map((e): P.graphEdge => {from: e.from, to_: e.to, kind: e.kind}),
+    }),
+  )
 
 // ─── Build status (watch mode) ──────────────────────────────────────────────
-// The managed `rescript build -w` per package surfaces its state so the client
-// renders progress without parsing compiler output itself. `package` is the
-// package directory (matching the `dir` in the `packages` event).
 
-let buildStart = (pkg: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("buildStart"))
-  d->Dict.set("package", JSON.Encode.string(pkg))
-  event(d)
-}
-
-let buildOk = (pkg: string, durationMs: float) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("buildOk"))
-  d->Dict.set("package", JSON.Encode.string(pkg))
-  d->Dict.set("durationMs", JSON.Encode.float(durationMs))
-  event(d)
-}
-
-let buildFail = (pkg: string, message: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("buildFail"))
-  d->Dict.set("package", JSON.Encode.string(pkg))
-  d->Dict.set("message", JSON.Encode.string(message))
-  event(d)
-}
-
-// Emitted instead of spawning when a developer's own `rescript build -w`
-// already holds the package's live lock — the client shows it as covered.
-let buildExternal = (pkg: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("buildExternal"))
-  d->Dict.set("package", JSON.Encode.string(pkg))
-  event(d)
-}
+let buildStart = (pkg: string) => emit(BuildStart({package: pkg}))
+let buildOk = (pkg: string, durationMs: float) => emit(BuildOk({package: pkg, durationMs: durationMs}))
+let buildFail = (pkg: string, message: string) => emit(BuildFail({package: pkg, message: message}))
+let buildExternal = (pkg: string) => emit(BuildExternal({package: pkg}))
 
 // ── Local platform runner events (protocol 7) ───────────────────────────────
-// The runner (`reventless-gwt platform`) spawns an app's reventless-local
-// platform child, streams its domain events (via the LocalBus NDJSON tap), and
-// surfaces lifecycle. The extension renders a status item + event timeline.
 
-let platformStart = (~package: string, ~dir: string, ~domainPort: int, ~platformPort: int) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("platformStart"))
-  d->Dict.set("package", JSON.Encode.string(package))
-  d->Dict.set("dir", JSON.Encode.string(dir))
-  d->Dict.set("domainPort", JSON.Encode.int(domainPort))
-  d->Dict.set("platformPort", JSON.Encode.int(platformPort))
-  event(d)
-}
+let platformStart = (~package: string, ~dir: string, ~domainPort: int, ~platformPort: int) =>
+  emit(PlatformStart({package, dir, domainPort, platformPort}))
 
-let platformReady = (~domainEndpoint: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("platformReady"))
-  d->Dict.set("domainEndpoint", JSON.Encode.string(domainEndpoint))
-  event(d)
-}
+let platformReady = (~domainEndpoint: string) => emit(PlatformReady({domainEndpoint: domainEndpoint}))
 
 // `payload` is the parsed JSON object the LocalBus tap emitted (already shaped
-// `{event:"domainEvent", seq, topic, service, payload, ts}`) — re-emitted verbatim
-// as one NDJSON line so the extension parses it like any other engine event.
+// `{event:"domainEvent", seq, topic, service, payload, ts}`) — re-emitted verbatim as
+// one NDJSON line so the extension parses it like any other engine event.
 let domainEvent = (payload: JSON.t) => writeLine(JSON.stringify(payload))
 
-// A non-tap stdout/stderr line from the platform child (its human ANSI logs),
-// forwarded so the extension can show it in the "Reventless — Platform" channel.
-let platformLog = (~line: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("platformLog"))
-  d->Dict.set("line", JSON.Encode.string(line))
-  event(d)
-}
+let platformLog = (~line: string) => emit(PlatformLog({line: line}))
 
-let platformStop = (~code: option<int>) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("platformStop"))
-  d->Dict.set("code", code->Option.mapOr(JSON.Encode.null, c => JSON.Encode.int(c)))
-  event(d)
-}
+let platformStop = (~code: option<int>) => emit(PlatformStop({code: code}))
 
-let runStart = (~total: int, ~filter: array<string>) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("runStart"))
-  d->Dict.set("total", JSON.Encode.int(total))
-  d->Dict.set("filter", filter->Array.map(JSON.Encode.string)->JSON.Encode.array)
-  event(d)
-}
+let runStart = (~total: int, ~filter: array<string>) => emit(RunStart({total, filter}))
 
-let testStart = (id: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("testStart"))
-  d->Dict.set("id", JSON.Encode.string(id))
-  event(d)
-}
+let testStart = (id: string) => emit(TestStart({id: id}))
 
-let testPass = (id: string, durationMs: float) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("testPass"))
-  d->Dict.set("id", JSON.Encode.string(id))
-  d->Dict.set("durationMs", JSON.Encode.float(durationMs))
-  event(d)
-}
+let testPass = (id: string, durationMs: float) => emit(TestPass({id, durationMs}))
 
-let testSkip = (id: string, reason: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("testSkip"))
-  d->Dict.set("id", JSON.Encode.string(id))
-  d->Dict.set("reason", JSON.Encode.string(reason))
-  event(d)
-}
+let testSkip = (id: string, reason: string) => emit(TestSkip({id, reason}))
 
-let messagePayload = (t: RunnerTypes.testResult): JSON.t => {
-  let d = Dict.make()
+// The failure payload the extension renders — built as a typed `Protocol.failMessage`.
+let messagePayload = (t: RunnerTypes.testResult): P.failMessage =>
   switch t.mismatch {
-  | Some(m) => {
-      let hint = Hint.forMismatch(~slice=?t.slice, m)
-      d->Dict.set("message", JSON.Encode.string(hint.message))
-      // The mismatch family — lets a client decide whether an apply-expected
-      // quick-fix is safe for this assertion (one family spans many `then*`
-      // combinators, so the family, not the combinator, is the discriminator).
-      d->Dict.set("kind", JSON.Encode.string(Outcome.kindName(m)))
-      // Expected / actual for the diff view. Rendered as ReScript syntax.
-      switch m {
-      | EventsMismatch({expected, actual}) => {
-          d->Dict.set(
-            "expected",
-            JSON.Encode.string(RenderRescript.renderMany(expected)),
-          )
-          d->Dict.set("actual", JSON.Encode.string(RenderRescript.renderMany(actual)))
-        }
-      | ErrorMismatch({expected, actual, actualEvents}) => {
-          d->Dict.set(
-            "expected",
-            JSON.Encode.string("Error(" ++ RenderRescript.render(expected) ++ ")"),
-          )
-          let actStr = switch actual {
-          | Some(v) => "Error(" ++ RenderRescript.render(v) ++ ")"
-          | None => "Ok(" ++ RenderRescript.renderMany(actualEvents) ++ ")"
-          }
-          d->Dict.set("actual", JSON.Encode.string(actStr))
-        }
-      | StateMismatch({expected, actual, _}) => {
-          d->Dict.set("expected", JSON.Encode.string(RenderRescript.renderOption(expected)))
-          d->Dict.set("actual", JSON.Encode.string(RenderRescript.renderOption(actual)))
-        }
-      | NoEventExpected({actual}) => {
-          d->Dict.set("expected", JSON.Encode.string("[]"))
-          d->Dict.set("actual", JSON.Encode.string(RenderRescript.renderMany(actual)))
-        }
-      | QueryRowsMismatch({expected, actual}) => {
-          d->Dict.set("expected", JSON.Encode.string(RenderRescript.renderMany(expected)))
-          d->Dict.set("actual", JSON.Encode.string(RenderRescript.renderMany(actual)))
-        }
-      | PublishedActionsMismatch({expected, actual}) => {
-          d->Dict.set("expected", JSON.Encode.string(RenderRescript.renderMany(expected)))
-          d->Dict.set("actual", JSON.Encode.string(RenderRescript.renderMany(actual)))
-        }
-      | AppendConditionMismatch({expected, actual}) => {
-          d->Dict.set("expected", JSON.Encode.string(RenderRescript.render(expected)))
-          d->Dict.set("actual", JSON.Encode.string(RenderRescript.render(actual)))
-        }
-      | TranslateError({expected, actual}) => {
-          d->Dict.set("expected", JSON.Encode.string(expected))
-          d->Dict.set("actual", JSON.Encode.string(actual->Option.getOr("(none)")))
-        }
-      | TodoMismatch(_) => {
-          d->Dict.set("expected", JSON.Encode.string(Outcome.format(m)))
-          d->Dict.set("actual", JSON.Encode.string(""))
-        }
-      | Throw({error}) => {
-          d->Dict.set("expected", JSON.Encode.string(""))
-          d->Dict.set("actual", JSON.Encode.string(error))
-        }
+  | Some(m) =>
+    let hint = Hint.forMismatch(~slice=?t.slice, m)
+    // Expected / actual for the diff view, rendered as ReScript syntax.
+    let (expected, actual) = switch m {
+    | EventsMismatch({expected, actual}) => (
+        Some(RenderRescript.renderMany(expected)),
+        Some(RenderRescript.renderMany(actual)),
+      )
+    | ErrorMismatch({expected, actual, actualEvents}) =>
+      let actStr = switch actual {
+      | Some(v) => "Error(" ++ RenderRescript.render(v) ++ ")"
+      | None => "Ok(" ++ RenderRescript.renderMany(actualEvents) ++ ")"
       }
-      // Location points at the test file — prefer the sibling `.res` path
-      // resolved via the test label so Cmd+Click on the failure header
-      // jumps to the readable source, not the compiled `.res.mjs`.
-      switch t.location {
-      | Some(loc) =>
-        let resLoc = locateInSource(loc.file, t.name)
-        d->Dict.set("location", locationJson(resLoc->Option.getOr(loc)))
-      | None => ()
-      }
+      (Some("Error(" ++ RenderRescript.render(expected) ++ ")"), Some(actStr))
+    | StateMismatch({expected, actual, _}) => (
+        Some(RenderRescript.renderOption(expected)),
+        Some(RenderRescript.renderOption(actual)),
+      )
+    | NoEventExpected({actual}) => (Some("[]"), Some(RenderRescript.renderMany(actual)))
+    | QueryRowsMismatch({expected, actual}) => (
+        Some(RenderRescript.renderMany(expected)),
+        Some(RenderRescript.renderMany(actual)),
+      )
+    | PublishedActionsMismatch({expected, actual}) => (
+        Some(RenderRescript.renderMany(expected)),
+        Some(RenderRescript.renderMany(actual)),
+      )
+    | AppendConditionMismatch({expected, actual}) => (
+        Some(RenderRescript.render(expected)),
+        Some(RenderRescript.render(actual)),
+      )
+    | TranslateError({expected, actual}) => (Some(expected), Some(actual->Option.getOr("(none)")))
+    | TodoMismatch(_) => (Some(Outcome.format(m)), Some(""))
+    | Throw({error}) => (Some(""), Some(error))
     }
-  | None => d->Dict.set("message", JSON.Encode.string("failed"))
+    // Location points at the test file — prefer the sibling `.res` resolved via the
+    // test label so Cmd+Click jumps to readable source, not compiled `.res.mjs`.
+    let location =
+      t.location->Option.map(loc => locationOf(locateInSource(loc.file, t.name)->Option.getOr(loc)))
+    {
+      message: hint.message,
+      // The mismatch family — lets a client gate the apply-expected quick-fix.
+      kind: ?Some(Outcome.kindName(m)),
+      expected: ?expected,
+      actual: ?actual,
+      location: ?location,
+    }
+  | None => {message: "failed"}
   }
-  JSON.Encode.object(d)
-}
 
-let testFail = (t: RunnerTypes.testResult, id: string) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("testFail"))
-  d->Dict.set("id", JSON.Encode.string(id))
-  d->Dict.set("durationMs", JSON.Encode.float(t.durationMs))
-  d->Dict.set("messages", JSON.Encode.array([messagePayload(t)]))
-  event(d)
-}
+let testFail = (t: RunnerTypes.testResult, id: string) =>
+  emit(TestFail({id, durationMs: t.durationMs, messages: [messagePayload(t)]}))
 
-let runEnd = (s: RunnerTypes.summary) => {
-  let d = Dict.make()
-  d->Dict.set("event", JSON.Encode.string("runEnd"))
-  d->Dict.set("passed", JSON.Encode.int(s.passed))
-  d->Dict.set("failed", JSON.Encode.int(s.failed))
-  d->Dict.set("skipped", JSON.Encode.int(s.skipped))
-  d->Dict.set("durationMs", JSON.Encode.float(s.durationMs))
-  event(d)
-}
+let runEnd = (s: RunnerTypes.summary) =>
+  emit(RunEnd({passed: s.passed, failed: s.failed, skipped: s.skipped, durationMs: s.durationMs}))
