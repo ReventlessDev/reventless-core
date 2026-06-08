@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.142 (2026-06-08)
+
+**Note:** Version bump only for package @reventlessdev/reventless-aws
+
+
+
+
+
 # 3.0.0-alpha.141 (2026-06-07)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws

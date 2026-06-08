@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.89 (2026-06-08)
+
+### Features
+
+* **reventless-local:** opt-in NDJSON event tap + per-session port overrides ([7cb1273](https://github.com/ReventlessDev/reventless-core/commit/7cb1273736591776480af43257c03dc2ffb76188))
+
+
 # 3.0.0-alpha.88 (2026-06-07)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local
