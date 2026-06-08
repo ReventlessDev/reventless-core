@@ -119,6 +119,9 @@ function fmtPlainPrefix(comp, param) {
 }
 
 function fmtComp(comp, param) {
+  if (!AnsiStyle$Reventless.useAnsi()) {
+    return fmtPlainPrefix(comp, undefined);
+  }
   let p = resolvePlugin(comp, undefined);
   let plugin = p !== undefined ? pluginColor(p) + AnsiStyle$Reventless.bold(`[` + p + `]`) : "";
   let c = comp !== undefined ? AnsiStyle$Reventless.bold(`[` + comp + `]`) + ` ` : "";
@@ -142,4 +145,4 @@ export {
   fmtPlainPrefix,
   fmtComp,
 }
-/* No side effect */
+/* AnsiStyle-Reventless Not a pure module */

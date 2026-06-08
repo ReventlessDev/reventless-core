@@ -9,7 +9,6 @@
 // LOG_LEVEL env var: "silent" | "debug" | "warn" | "error" | (anything else = "info")
 
 @val external _logLevel: option<string> = "process.env.LOG_LEVEL"
-@val external _isLambda: option<string> = "process.env.AWS_LAMBDA_FUNCTION_NAME"
 
 type logFn = (~comp: string=?, ~data: JSON.t=?, string) => unit
 
@@ -74,9 +73,10 @@ let fmtPlainPrefix = Reventless.LogPrefix.fmtPlainPrefix
 //   Terminal (in-memory): shows only the message line.
 //   Lambda (CloudWatch):  outputs JSON with message + detail fields.
 let emit = (~level: level, ~comp=?, ~detail: option<JSON.t>=?, msg: string) => {
-  let isLambda = _isLambda->Option.isSome
-
-  if isLambda {
+  // Sink decision lives in Reventless.AnsiStyle (single source of truth, shared
+  // with fmtComp / AnsiStyle.bold). Non-TTY collectors (Lambda, Fargate, ECS,
+  // Azure, GCP, Docker, CI, piped stdout) all get JSON; a TTY stays text.
+  if Reventless.AnsiStyle.isJsonSink() {
     // CloudWatch structured JSON — message in summary, detail expandable on click
     let message = `${fmtPlainPrefix(~comp?, ())}${msg}`
     switch detail {

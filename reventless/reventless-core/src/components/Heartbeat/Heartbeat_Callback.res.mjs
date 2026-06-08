@@ -37,4 +37,4 @@ export {
   PluginExtensionPointSpec,
   Make,
 }
-/* Message-ReventlessCore Not a pure module */
+/* Logger-ReventlessCore Not a pure module */

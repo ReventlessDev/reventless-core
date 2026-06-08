@@ -2,11 +2,22 @@
 
 import * as S from "sury/src/S.res.mjs";
 import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
+import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Effect from "effect/Effect";
+import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
+import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "../../src/util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../src/util/LogFormat.res.mjs";
 import * as PluginSpec$ReventlessCore from "../../src/admin/PluginSpec.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../src/util/EffectLogger.res.mjs";
 
 S.enableJson();
+
+process.env["REVENTLESS_LOG_FORMAT"] = "text";
+
+AnsiStyle$Reventless.reload();
 
 Jest.describe("LogFormat", () => {
   Jest.describe("commandJsonsToLogMessages", () => {
@@ -102,4 +113,127 @@ Jest.describe("LogFormat", () => {
   }));
 });
 
+function hasAnsi(s) {
+  return s.includes("\x1b");
+}
+
+function captureLogs(fn) {
+  let captured = [];
+  let original = console.log;
+  console.log = s => {
+    captured.push(s);
+  };
+  let result;
+  try {
+    fn();
+    result = {
+      TAG: "Ok",
+      _0: undefined
+    };
+  } catch (raw_e) {
+    let e = Primitive_exceptions.internalToException(raw_e);
+    result = {
+      TAG: "Error",
+      _0: e
+    };
+  }
+  console.log = original;
+  if (result.TAG === "Ok") {
+    return captured;
+  }
+  throw result._0;
+}
+
+let validLevels = [
+  "DEBUG",
+  "INFO",
+  "WARN",
+  "ERROR"
+];
+
+function isCleanRecord(line) {
+  if (line.includes("\x1b")) {
+    return false;
+  }
+  try {
+    let obj = Stdlib_JSON.Decode.object(JSON.parse(line));
+    if (obj === undefined) {
+      return false;
+    }
+    let levelOk = Stdlib_Option.mapOr(Stdlib_Option.flatMap(obj["level"], Stdlib_JSON.Decode.string), false, l => validLevels.includes(l));
+    let msgOk = Stdlib_Option.isSome(Stdlib_Option.flatMap(obj["message"], Stdlib_JSON.Decode.string));
+    if (levelOk) {
+      return msgOk;
+    } else {
+      return false;
+    }
+  } catch (exn) {
+    return false;
+  }
+}
+
+function messageOf(line) {
+  let obj = Stdlib_JSON.Decode.object(JSON.parse(line));
+  if (obj !== undefined) {
+    return Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["message"], Stdlib_JSON.Decode.string), "");
+  } else {
+    return "";
+  }
+}
+
+Jest.describe("JSON sink", () => {
+  beforeAll(() => {
+    process.env["REVENTLESS_LOG_FORMAT"] = "json";
+    AnsiStyle$Reventless.reload();
+  });
+  afterAll(() => {
+    process.env["REVENTLESS_LOG_FORMAT"] = "text";
+    AnsiStyle$Reventless.reload();
+  });
+  let log = Logger$ReventlessCore.makeLogger("Debug");
+  Jest.test("Logger.info emits one clean JSON record with a plain comp prefix", () => {
+    let lines = captureLogs(() => log.info("Aggregate(Product)", undefined, "handling command"));
+    let ok = lines.length === 1 && isCleanRecord(lines[0]) && messageOf(lines[0]).includes("[Aggregate(Product)]");
+    return Jest.Expect.toBe(Jest.Expect.expect(ok), true);
+  });
+  Jest.test("Logger.warn emits one clean JSON record", () => {
+    let lines = captureLogs(() => log.warn("Platform", undefined, "heartbeat skipped"));
+    return Jest.Expect.toBe(Jest.Expect.expect(lines.length === 1 && isCleanRecord(lines[0])), true);
+  });
+  Jest.test("Logger.error with ~data emits one clean JSON record", () => {
+    let lines = captureLogs(() => log.error("Util_AppSync_Caller", JSON.parse(`{"errors":["boom"]}`), "query errors"));
+    return Jest.Expect.toBe(Jest.Expect.expect(lines.length === 1 && isCleanRecord(lines[0])), true);
+  });
+  Jest.test("EffectLogger.logInfo emits clean JSON through install()", () => {
+    let lines = captureLogs(() => Effect.runSync(EffectLogger$ReventlessCore.logInfo("Aggregate(Product)", undefined, "replay done")));
+    let allClean = lines.filter(l => !isCleanRecord(l)).length === 0;
+    return Jest.Expect.toBe(Jest.Expect.expect(lines.length >= 1 && allClean), true);
+  });
+  Jest.test("LogFormat.cmdName carries no ANSI in a JSON sink", () => {
+    let cmd_meta = {
+      service: "testService",
+      time: "testTime",
+      ip: "testIp",
+      user: "testUser",
+      msgId: "testMsgId",
+      correlationId: "testCorrelationId"
+    };
+    let cmd_commandJson = Message$ReventlessCore.encode("Heartbeat", PluginSpec$ReventlessCore.commandSchema);
+    let cmd = {
+      id: "0",
+      meta: cmd_meta,
+      commandJson: cmd_commandJson
+    };
+    let name = LogFormat$ReventlessCore.cmdName(cmd);
+    return Jest.Expect.toBe(Jest.Expect.expect(!name.includes("\x1b") && name === "Heartbeat"), true);
+  });
+});
+
+export {
+  hasAnsi,
+  captureLogs,
+  validLevels,
+  isCleanRecord,
+  messageOf,
+}
 /*  Not a pure module */
