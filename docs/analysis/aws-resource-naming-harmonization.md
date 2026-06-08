@@ -231,6 +231,90 @@ Whichever path is chosen, the **single change** that unlocks the rename is to ma
 
 ---
 
+## 8. Resource families outside the original inventory (follow-up)
+
+§2 inventoried the aggregate/DCB command-handler lineage (event logs, command topics, event topics, collectors, command-handler Lambdas, the subscription/state-topic Lambdas). **That is what §5 harmonized and what shipped** (commit `8f4aadaf5`, deployed). The framework provisions several *other* resource families that the original survey skipped — they were never in scope, so they still carry their pre-harmonization names. This section catalogues them so a follow-up pass has the same per-resource map §2 gave the first pass.
+
+Severity legend: 🔴 malformed (broken separator / mixed case), 🟡 off-scheme abbreviation or kind mismatch, 🟢 already consistent, documented for completeness.
+
+### 8.1 Task buckets + SideEffectHandler Lambdas 🔴
+
+The most visibly broken family. A `Task/` with a bucket spec produces an S3 bucket, two notification handlers, IAM policies, **and** a SideEffectHandler Lambda — all named off a raw concatenation of the PascalCase task name and the user's (often kebab-case) `bucketName`, with **no separator**.
+
+| Resource | Naming code | Emitted name (example) |
+|---|---|---|
+| S3 bucket | `Task_Builder.res:140` `let name = taskName ++ bucketName` → `TaskBucket_S3.res:130` | `ImportProductsproduct-imports` |
+| Object-created handler | `TaskBucket_S3.res:12` `name ++ "Created"` | `ImportProductsproduct-importsCreated` |
+| Object-removed handler | `TaskBucket_S3.res:13` `name ++ "Deleted"` | `ImportProductsproduct-importsDeleted` |
+| IAM policy ids | `TaskBucket_S3.res:38/54/71/89` `name ++ "WriteS3"`/`"ReadS3"`/`"SendSQS"`/`"LambdaPolicy"` | `ImportProductsproduct-importsWriteS3` |
+| SideEffectHandler Lambda | `TaskRuntime_Builder_PerBucket.res:20` `fullName = resource.name ++ name` (task name ++ bucket name), used at `:73` | `ImportProductsproduct-imports` |
+| Scheduler policy | `TaskRuntime_Builder_PerBucket.res:91` `${fullName}SchedulerPolicy` | `ImportProductsproduct-importsSchedulerPolicy` |
+
+Observations:
+- `taskName ("ImportProducts")` (PascalCase) glued to `bucketName ("product-imports")` (kebab-case) → `ImportProductsproduct-imports`. The S3 *physical* name is auto-derived from this logical name (no explicit `bucket=`), so the malformed name is globally visible.
+- `bucketName` is also the runtime **lookup key** (returned as a `Dict` key at `Task_Builder.res:165`, read by `ResourceQueryRuntime.bucketNameOfTaskExn`), so it cannot simply be dropped — only the *resource name* derivation needs fixing, not the key.
+- Proposed: PascalCase-sanitize the bucket segment for the resource name and give the Lambda the established `SideEffectHandler` kind word: bucket → `<Task><BucketStem>Bucket` (`ImportProductsProductImportsBucket`), Lambda → `<Task><BucketStem>SideEffectHandler`. Keep the raw `bucketName` as the lookup key.
+
+### 8.2 ExtensionPoint CommandTopic / EventTopic / Lambda 🟡
+
+| Resource | Naming code | Emitted name |
+|---|---|---|
+| EP CommandTopic (SQS) | `ExtensionPoint_Builder.res:44-46` `childName = name.replace(".","")->ComponentType.name(ExtensionPoint)` → `CommandTopic_Builder` appends `CmdTopic` | `<EP>ExtPointCmdTopic` (e.g. `CatalogProductsExtPointCmdTopic`) |
+| EP EventTopic (SNS) | `ExtensionPoint_Builder.res:98` `~name=childName` | `<EP>ExtPointEventTopic` |
+| EP command handler Lambda | `ExtensionPointRuntime_Builder_PerExtensionPoint.res:71` `~name` (= the EP CommandTopic resource name) | `<EP>ExtPoint…` — the `*CmdTopic` row in the Lambda table |
+
+Observations:
+- `ExtPoint` is an abbreviation (`ComponentType.toName(ExtensionPoint) = "ExtPoint"`) — parallels the `Aggr` short form kept for aggregates. Either accept it as an established short form or expand it; decide consistently with the §5.2 root-term choice.
+- The EP command-handler **Lambda inherits the `CmdTopic` kind**, not the unified `CmdHandler` kind that §5 introduced for every other command handler. To make `grep CmdHandler` truly find *all* command handlers, the EP Lambda should append `CmdHandler` to the bare EP name (mirroring the DCB fix in `PluginRuntime_Builder`): `<EP>ExtPointCmdHandler`.
+
+### 8.3 Scheduler 🟡
+
+| Resource | Naming code | Emitted name |
+|---|---|---|
+| Scheduler component | `Scheduler_Builder.res:15` `~name=Scheduler.componentType->ComponentType.toName` | `Scheduler` (bare constant, no stem) |
+
+Observation: like the old `AllAggregates`, the platform-wide Scheduler singleton encodes no stem — it is a bare constant. Acceptable as a globally-unique name, but for scope-visibility consistency consider `PlatformScheduler` (it is a platform-level singleton). This is the same "constant resource name" pattern §3 flagged as strategy leakage; here it is benign because there is genuinely one Scheduler.
+
+### 8.4 Heartbeat 🟢
+
+| Resource | Naming code | Emitted name |
+|---|---|---|
+| Heartbeat component | `Plugin_Builder.res:735` `SpecificHeartbeat.make(~name=childName)` | `<Plugin>Plugin…Heartbeat` |
+| Heartbeat Lambda | `PluginRuntime_Builder_Single.res:54` / `_Micro.res:54` `~name=resource.name->ComponentType.nameOpt(Heartbeat)` | `<…>Heartbeat` (the `*Heartbeat` Lambda) |
+
+Observation: `Heartbeat` is already the full canonical word — on-scheme. Only verify the `childName` (`<Plugin>Plugin`) does not produce a `PluginPluginHeartbeat` double-word when composed.
+
+### 8.5 Counter 🟢
+
+| Resource | Naming code | Emitted name |
+|---|---|---|
+| Counter component | `Counter_Builder.res:128` `~name=name->ComponentType.name(Counter)`; default stem `Counter.res:25` `toName = "Counter"` | `<stem>Counter` |
+
+Observation: `Counter` is the full canonical word — on-scheme.
+
+### 8.6 Cloner 🟡
+
+| Resource | Naming code | Emitted name |
+|---|---|---|
+| Fargate execution IAM role | `ClonerRunner_Fargate.res:83` `~name="ClonerTaskExecutionSecretsManagerAccess"` | constant |
+| Fargate task / cluster | `ClonerRunner_Fargate.res` (tagged with `Cloner.componentType`) | derived |
+
+Observation: a hand-rolled constant IAM role name embedding `ClonerTask…`. Low priority (single platform resource), but it is another hand-rolled string outside `ComponentType.toName`. Bring under the scheme as `Cloner<Role>` if the family is ever revisited.
+
+### 8.7 Summary of follow-up work
+
+| Family | Severity | Action |
+|---|---|---|
+| Task bucket + SideEffectHandler | 🔴 | Sanitize `taskName ++ bucketName`; add `Bucket` / `SideEffectHandler` kinds. **Destructive** (S3 physical name changes). |
+| ExtensionPoint Lambda | 🟡 | Append `CmdHandler` kind so EP command handlers are greppable; decide `ExtPoint` vs expansion. |
+| Scheduler | 🟡 | Optional `PlatformScheduler` scope prefix. |
+| Cloner IAM role | 🟡 | Route the constant through the scheme if revisited. |
+| Heartbeat, Counter | 🟢 | None — already on-scheme; verify no double-word. |
+
+None of these were touched by commit `8f4aadaf5`; the `meta.service`/tag non-goals in §5.5 apply equally here.
+
+---
+
 ## Appendix A: Files touched by a full rename
 
 Naming-related sites that would change:
@@ -261,3 +345,17 @@ Naming-related sites that would change:
 Test fixtures that hardcode emitted names:
 
 - `reventless/reventless-local/tests/components/aggregate/AggregateFixtures.res:54, 57` (`"TestItemAggrEventTopic"`)
+
+## Appendix B: Files touched by the §8 follow-up
+
+The out-of-scope families in §8 live in:
+
+- `reventless/reventless-core/src/components/Task/Task_Builder.res:140` (`taskName ++ bucketName`)
+- `reventless/reventless-aws/src/adapter/Task/TaskBucket_S3.res:12, 13, 38, 54, 71, 89` (notification handlers + IAM policy ids)
+- `reventless/reventless-aws/src/adapter/Runtime/TaskRuntime_Builder_PerBucket.res:20, 73, 91` (`fullName` SideEffectHandler Lambda + scheduler policy)
+- `reventless/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Builder.res:43, 46, 98` (`ExtPoint` childName, CommandTopic, EventTopic)
+- `reventless/reventless-aws/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res:71` (EP command-handler Lambda — append `CmdHandler`)
+- `reventless/reventless-core/src/components/Scheduler/Scheduler_Builder.res:15` (bare `Scheduler` constant)
+- `reventless/reventless-aws/src/adapter/Cloner/ClonerRunner_Fargate.res:83` (constant IAM role name)
+- `reventless/reventless-core/src/components/Plugin/Plugin_Builder.res:735` + `reventless/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Single.res:54` / `_Micro.res:54` (Heartbeat — verify only)
+- `reventless/reventless-core/src/components/Counter/Counter_Builder.res:128` (Counter — verify only)

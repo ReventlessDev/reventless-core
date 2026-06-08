@@ -91,8 +91,9 @@ describe("Task_Builder.Make:", () => {
       let bucketNames = outputs.bucketNames->Option.getUnsafe
       let idOutput = bucketNames->Dict.get("Reports")->Option.getUnsafe
       let id = await idOutput->TestRunner.resolve
-      // In-memory bucket uses bucket name as id: taskName ++ bucketName = "OneBucketTaskReports"
-      expect(id)->toBe("OneBucketTaskReports")
+      // In-memory bucket id = resource name: taskName ++ pascalCase(bucketName) ++ "Bucket"
+      // = "OneBucketTask" ++ "Reports" ++ "Bucket". The lookup key stays "Reports".
+      expect(id)->toBe("OneBucketTaskReportsBucket")
     })
   })
 })

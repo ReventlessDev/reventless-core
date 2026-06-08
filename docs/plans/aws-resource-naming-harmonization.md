@@ -2,6 +2,11 @@
 
 Implements the proposal in [docs/analysis/aws-resource-naming-harmonization.md](../analysis/aws-resource-naming-harmonization.md). Goal: collapse the three coexisting naming patterns into one scheme — `<Scope><Stem><Kind>[<Variant>]` — with one canonical `<Kind>` suffix per AWS resource type, sourced from a single place (`ComponentType.toName`) plus a small fixed vocabulary, and delete every hand-rolled suffix string.
 
+## Status
+
+- **Phase 1 (the original §2 inventory — aggregate/DCB command-handler lineage)**: ✅ shipped in commit `8f4aadaf5`, **cold-cutover deploy successful** on `alpha`. Build clean, 967 tests green. One item deliberately deferred (Step 6, UI Lambdas — Resolver collision).
+- **Phase 2 (analysis §8 follow-up families — Task buckets, ExtensionPoint, Scheduler, Cloner)**: ✅ code done (P2-1 Task buckets/SideEffectHandler, P2-2 ExtensionPoint `CmdHandler`); P2-3 Scheduler / P2-4 Cloner intentionally left as-is; P2-5 Heartbeat/Counter verified clean. Build clean, 967 tests green (TaskTest assertion updated), AWS hybrid example builds. **Cold-cutover deploy pending** (user-initiated). See Phase 2 section.
+
 ## Decisions (resolved from analysis §7 — override before starting if wrong)
 
 1. **Casing:** `QueryDB` → `QueryDb`. camelCase everywhere; no uppercase abbreviations.
@@ -71,24 +76,27 @@ These already route through `ComponentType.name`, so Step 1 propagates automatic
 File: `reventless/reventless-core/src/components/Dcb/Dcb_Builder.res:179, 202`
 
 - `~name=`${name}StateChanges`` → `~name=`${name}Dcb`` → final `<Plugin>DcbCmdTopic`
-- `~name=`${name}StateChangesAsync`` → `~name=`${name}Dcb`` + `Async` variant → `<Plugin>DcbCmdTopicAsync`
+- `~name=`${name}StateChangesAsync`` → `~name=`${name}DcbAsync`` → final `<Plugin>DcbAsyncCmdTopic`
 
-The `CommandTopic_Builder` re-adds `CmdTopic` itself, so the stem must be just `<Plugin>Dcb`, not `<Plugin>DcbCmdTopic`. Confirm the inner `DcbCommandTopicSpecAsync.name = childName ++ "Async"` (line ~197) still composes to the intended `…DcbCmdTopicAsync` and not `…AsyncCmdTopic`; adjust variant placement so `Async` lands after `CmdTopic` per the formula `<…><Kind><Variant>`.
+**As shipped (variant-before-kind):** `CommandTopic_Builder.res:75` always appends the `CmdTopic` kind *last*, so the async queue is `<Plugin>DcbAsyncCmdTopic`, not the `…CmdTopicAsync` the §5.3 example drafted. Putting the variant after the kind would require restructuring `CommandTopic_Builder` and would ripple into every aggregate queue name — out of scope. Stem `Dcb`/`DcbAsync`, kind `CmdTopic` greppable.
 
-This also flows through `PluginRuntime_Builder.forDcbCommandTopic` (`:763`) and the async path (`:852`), which read `commandTopicResource.name` — they inherit the new stem with no edit, but verify.
+This flows through `PluginRuntime_Builder.forDcbCommandTopic`, which reads `commandTopicResource.name` (the bare `<Plugin>Dcb`/`<Plugin>DcbAsync`). **As shipped:** async dispatch is detected via `baseName->String.endsWith("Async")` *before* the kind is appended, then the DCB Lambda is named `baseName ++ "CmdHandler"` → `<Plugin>DcbCmdHandler` / `<Plugin>DcbAsyncCmdHandler`.
 
 ## Step 4 — AggregateRuntime strategy builders (the strategy-leakage fix)
 
 Replace strategy-encoded Lambda names with the uniform `CmdHandler`/`CmdGen`/`EventMapper` kinds:
 
-- **Single** `AggregateRuntime_Builder_Single.res:271`: `~name="AllAggregates"` → `~name=`${pluginName}CmdHandler`` (decision 2). Confirm a plugin name is in scope at that site; if only the platform scope is available, thread the plugin name in.
-- **Micro** `AggregateRuntime_Builder_Micro.res`:
-  - `:219` `baseName ++ "CmdTopic"` → `baseName ++ "CmdHandler"` (CT Lambda)
-  - `:248` `baseName ++ "CmdGen"` → unchanged ✓
-  - `:292` `baseName ++ "EvtMapper"` → `baseName ++ "EventMapper"` (kill the fabricated `Evt`)
-- **PerAggregate** `AggregateRuntime_Builder_PerAggregate.res:211`: `~name` (= `<Entity>Aggr`) → `<Entity>AggrCmdHandler`. The Lambda currently borrows the bare aggregate name; append the `CmdHandler` kind so the command-handler Lambda is greppable across lineages.
+**As shipped — the strategy builders live in *two* packages (core + aws), with sync and async variants each:**
 
-After this step `grep CmdHandler` finds every command-handler Lambda in both lineages (analysis §4).
+- **Single** — `AggregateRuntime_Builder_Single.res` (both `reventless-core` and `reventless-aws` copies): `~name="AllAggregates"` → `"AllAggregatesCmdHandler"` (decision 2 — Single is platform-wide, no plugin scope). The `aggregateHandler("AllAggregates")` log label moves too; the EventCollector `connect(~name="AllAggregates")` keeps the bare stem (→ `…EventColl`). The aws copy also renames the scan IAM policy `AllAggregatesPluginRmScan`/`…Policy` → `AllAggregatesCmdHandler…`.
+- **Single async** — `AggregateRuntime_Builder_Single_Async.res` (aws): `"AllAggregatesAsync"` → `"AllAggregatesAsyncCmdHandler"`.
+- **Micro** `AggregateRuntime_Builder_Micro.res` + **Micro async** `_Micro_Async.res` (aws):
+  - `baseName ++ "CmdTopic"` → `baseName ++ "CmdHandler"` (CT Lambda)
+  - `baseName ++ "CmdGen"` → unchanged ✓
+  - `baseName ++ "EvtMapper"` → `baseName ++ "EventMapper"` (kill the fabricated `Evt`)
+- **PerAggregate** `AggregateRuntime_Builder_PerAggregate.res`: one Lambda does both CommandTopic + EventCollector and reused `name` for both. Split: keep `name` (= `<Entity>Aggr`) for the EventCollector connect (→ `…AggrEventColl`), add `lambdaName = name ++ "CmdHandler"` for the Lambda → `<Entity>AggrCmdHandler`.
+
+After this step `grep CmdHandler` finds every command-handler Lambda in both lineages (analysis §4). Note Micro CT `<Entity>AggrCmdHandler` deliberately matches PerAggregate's Lambda name so switching strategies doesn't rename the shared CT.
 
 ## Step 5 — AppSync subscription / state-topic Lambdas, roles, policies, ESM
 
@@ -131,7 +139,7 @@ In-memory channel names like `"TestItemAggrEventTopic"` are a separate formula. 
 
 ## Step 10 — Build, zero-warning gate, cold-cutover
 
-**Status:** Code + build + test done. Root `pnpm run build` is clean (only pre-existing `EventTapTest.res` `sliceToEnd`/`getExn` deprecations remain, unrelated to this work). Tests green: reventless-core 407, reventless-aws 114, reventless-local 446 (967 total). **Cold-cutover deploy NOT performed** — it is destructive and user-initiated; run it manually when ready.
+**Status:** ✅ Done. Root `pnpm run build` clean (only pre-existing `EventTapTest.res` `sliceToEnd`/`getExn` deprecations remain, unrelated). Tests green: reventless-core 407, reventless-aws 114, reventless-local 446 (967 total). Example builds verified incl. `online-shop-hybrid/platform-aws` (only AWS-backed example — exercises every renamed `reventless-aws` builder). **Cold-cutover deploy performed and successful** on `alpha`.
 
 
 1. Bottom-up build per package; after each, run the warning gate:
@@ -146,7 +154,7 @@ In-memory channel names like `"TestItemAggrEventTopic"` are a separate formula. 
 
 - `ComponentType.toName` is the only producer of component suffixes; no hand-rolled suffix strings remain in §2.4 / §2.5 sites.
 - `grep -r "EvtMapper\|StateChgSlc\|AllAggregates\|StateChanges\|AutoSlice\|InTransSlice\|OutTransSlice\|QueryDB" reventless/ examples/` returns nothing (except intentional `pluginAggrCmdTopicUrl` export key and any deliberately-retained tag strings).
-- Both lineages compose names via `<Scope><Stem><Kind>[<Variant>]`; DCB CommandTopic is `<Plugin>DcbCmdTopic` / `<Plugin>DcbCmdTopicAsync`.
+- Both lineages compose names via `<Scope><Stem><Kind>[<Variant>]`; DCB CommandTopic is `<Plugin>DcbCmdTopic` / `<Plugin>DcbAsyncCmdTopic` (variant-before-kind, as shipped).
 - Zero compiler warnings; all tests green; alpha stack redeployed clean.
 
 ## Out of scope (analysis §5.5)
@@ -159,3 +167,49 @@ In-memory channel names like `"TestItemAggrEventTopic"` are a separate formula. 
 - Single-strategy plugin-name availability at `AggregateRuntime_Builder_Single.res:271` (Step 4).
 - That `toName` and `toString` are genuinely disjoint consumers (Step 1 ⚠️).
 - Whether any in-memory channel name actually moved (Step 9).
+
+---
+
+# Phase 2 — §8 follow-up families (not started)
+
+Implements analysis **§8** (the resource families the original §2 inventory skipped). These were never in Phase 1 scope, so they still carry pre-harmonization names. Same scheme, same non-goals (tags/`meta.service` unchanged), same `alpha` cold-cutover migration. Each step builds + runs the zero-warning gate before the next.
+
+### Phase 2 decisions (RESOLVED)
+
+1. **Task bucket resource name** → **`<Task><PascalBucket><Kind>`** (collision-safe; a Task can declare multiple buckets). Bucket `<Task><PascalBucket>Bucket`, Lambda `<Task><PascalBucket>SideEffectHandler`. `bucketName` stays the runtime lookup key; only the resource-name derivation changed (PascalCase-sanitised via a `pascalCase` helper, empty stem for the default unnamed bucket so it stays `<Task>Bucket`). E.g. `ImportProductsProductImportsBucket` / `…SideEffectHandler`; bucket `inbound` → `ImportProductsInboundBucket`. Destructive (S3 physical name derives from logical name) — covered by the cold-cutover.
+2. **`ExtPoint`** → **kept** as an established short form (parallels `Aggr`/`CmdGen`/`EventColl`). Only the EP command-handler Lambda gained the unified `CmdHandler` kind.
+3. **Scheduler** → **kept bare** `Scheduler` (benign globally-unique singleton; no extra destructive rename).
+
+### Step P2-1 — Task buckets + SideEffectHandler Lambdas 🔴 (the reported `ImportProductsproduct-imports`)
+
+Files: `Task_Builder.res:140`, `TaskBucket_S3.res:12, 13, 38, 54, 71, 89`, `TaskRuntime_Builder_PerBucket.res:20, 73, 91`.
+
+- `Task_Builder.res:140` `let name = taskName ++ bucketName` → derive a clean camelCase resource name (PascalCase the bucket segment per decision 1); keep `bucketName` as the returned Dict key at `:165`.
+- The notification handlers (`name ++ "Created"`/`"Deleted"`), IAM policy ids (`name ++ "WriteS3"`/`"ReadS3"`/`"SendSQS"`/`"LambdaPolicy"`), and the SideEffectHandler Lambda (`TaskRuntime_Builder_PerBucket.res:20` `fullName = resource.name ++ name`, used at `:73`) all inherit the base name — they move automatically once the base is fixed. Give the Lambda the `SideEffectHandler` kind if decision 1 splits it out.
+- Verify the runtime lookup (`ResourceQueryRuntime`) still resolves by the unchanged `bucketName` key.
+
+### Step P2-2 — ExtensionPoint command-handler Lambda 🟡
+
+Files: `ExtensionPoint_Builder.res:43, 46, 98`, `ExtensionPointRuntime_Builder_PerExtensionPoint.res:71`.
+
+- The EP command-handler Lambda inherits the EP CommandTopic's bare name (`<EP>ExtPoint`) — append the unified `CmdHandler` kind (mirror the DCB fix in `PluginRuntime_Builder`) so `grep CmdHandler` finds EP handlers too: `<EP>ExtPointCmdHandler`.
+- Apply the `ExtPoint`-vs-expanded decision (decision 2) to `childName` if expanding.
+
+### Step P2-3 — Scheduler 🟡
+
+File: `Scheduler_Builder.res:15` `~name=Scheduler.componentType->ComponentType.toName` (bare `Scheduler`). If decision 3 chooses a scope prefix, emit `PlatformScheduler`; otherwise leave (benign singleton).
+
+### Step P2-4 — Cloner IAM role 🟡
+
+File: `ClonerRunner_Fargate.res:83` — hand-rolled constant `"ClonerTaskExecutionSecretsManagerAccess"`. Bring under the scheme (`Cloner<Role>`) only if this family is revisited; low priority, single platform resource.
+
+### Step P2-5 — Heartbeat + Counter 🟢 (verify only)
+
+- `Heartbeat` (`Plugin_Builder.res:735`, `PluginRuntime_Builder_Single.res:54` / `_Micro.res:54`) and `Counter` (`Counter_Builder.res:128`) are already on the full-word scheme. No edits — only confirm `childName` (`<Plugin>Plugin`) doesn't yield a `PluginPluginHeartbeat` double-word.
+
+### Phase 2 acceptance
+
+- No malformed concatenations remain: `grep -rn 'taskName ++ bucketName'` gone; Task bucket/Lambda/policy names read as clean camelCase with explicit `Bucket`/`SideEffectHandler` kinds.
+- EP command-handler Lambda carries `CmdHandler`; `grep CmdHandler` now finds aggregate, DCB, **and** ExtensionPoint command handlers.
+- Zero compiler warnings; all tests green; example builds incl. `online-shop-hybrid/platform-aws` (it has a Task + ExtensionPoints); alpha cold-cutover redeploy clean.
+- Heartbeat/Counter confirmed double-word-free.

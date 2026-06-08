@@ -13,7 +13,7 @@ function forBucketCallback(param, connect, memorySizeOpt, timeoutOpt, name, call
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 4096;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : 600;
   let resource = Component$ReventlessCore.toPulumiResource(task);
-  let fullName = Stdlib_Option.getOr(resource.__name, "UnnamedTask") + name;
+  let fullName = Stdlib_Option.getOr(resource.__name, "UnnamedTask") + name + "SideEffectHandler";
   let envVars = {};
   let publishToAggregatesEnvVars = {};
   Stdlib_Dict.forEachWithKey(publishToAggregatesQueueUrls, (queueUrlOutput, aggName) => {

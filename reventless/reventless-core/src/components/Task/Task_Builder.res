@@ -1,5 +1,19 @@
 let log = Logger.fromEnv()
 
+// PascalCase a (possibly kebab/snake-case) bucket id for use as a resource-name
+// segment: "product-imports" -> "ProductImports". The raw id stays the runtime
+// lookup key; only the emitted resource name is sanitized.
+let pascalCase = s =>
+  s
+  ->String.split("-")
+  ->Array.flatMap(p => p->String.split("_"))
+  ->Array.filter(p => p->String.length > 0)
+  ->Array.map(p =>
+    p->String.slice(~start=0, ~end=1)->String.toUpperCase ++
+      p->String.slice(~start=1, ~end=p->String.length)
+  )
+  ->Array.join("")
+
 module Make = (
   Spec: Task.Spec,
   RuntimeEnvironment: Runtime.Environment,
@@ -137,7 +151,11 @@ module Make = (
       buckets
       ->Array.map(bucketSpec => {
         let bucketName = bucketSpec.bucketName->Option.getOr("Bucket")
-        let name = taskName ++ bucketName
+        // `bucketStem` is the PascalCase resource-name segment (empty for the
+        // default unnamed bucket so the name stays `<Task>Bucket`, not
+        // `<Task>BucketBucket`). `bucketName` above remains the runtime key.
+        let bucketStem = bucketSpec.bucketName->Option.mapOr("", pascalCase)
+        let name = taskName ++ bucketStem ++ "Bucket"
         let bucket = TaskBucket.make(~name, ~opts)
         let opts = {Pulumi.ComponentResource.parent: bucket.parts->Pulumi.Resource.makeFromJs}
 
@@ -155,7 +173,7 @@ module Make = (
               ),
               ~memorySize=4096,
               ~timeout=600,
-              ~name=bucketName,
+              ~name=bucketStem,
               ~callbackModulePath=Spec.moduleUrl,
               ~publishToAggregatesQueueUrls,
               ~schedulerConfig,

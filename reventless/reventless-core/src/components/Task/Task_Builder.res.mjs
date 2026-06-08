@@ -14,6 +14,10 @@ import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
+function pascalCase(s) {
+  return s.split("-").flatMap(p => p.split("_")).filter(p => p.length > 0).map(p => p.slice(0, 1).toUpperCase() + p.slice(1, p.length)).join("");
+}
+
 function Make(Spec) {
   return RuntimeEnvironment => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (TaskRuntimeBuilder => (TaskBucket => (SpecificSideEffectHandler => {
     let make = (queryBucketName, scheduler, schedulerRoleUrn, publishToAggregates, queryEngine, resourceNaming, allAggregates, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(Task$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
@@ -75,13 +79,14 @@ function Make(Spec) {
       });
       let bucketNames = Stdlib_Option.map(config.buckets, buckets => Object.fromEntries(buckets.map(bucketSpec => {
         let bucketName = Stdlib_Option.getOr(bucketSpec.bucketName, "Bucket");
-        let name = extra$1 + bucketName;
+        let bucketStem = Stdlib_Option.mapOr(bucketSpec.bucketName, "", pascalCase);
+        let name = extra$1 + bucketStem + "Bucket";
         let bucket = TaskBucket.make(name, opts);
         let opts_parent = bucket.parts;
         let opts$1 = {
           parent: opts_parent
         };
-        Stdlib_Option.forEach(bucketSpec.callback, callback => TaskRuntimeBuilder.forBucketCallback(createHandler(sideEffectHandler, callback), none => TaskBucket.connect(name, bucket, bucketSpec.bucketMode, allCommandTopics, none, opts$1), 4096, 600, bucketName, Spec.moduleUrl, publishToAggregatesQueueUrls, schedulerConfig, extra));
+        Stdlib_Option.forEach(bucketSpec.callback, callback => TaskRuntimeBuilder.forBucketCallback(createHandler(sideEffectHandler, callback), none => TaskBucket.connect(name, bucket, bucketSpec.bucketMode, allCommandTopics, none, opts$1), 4096, 600, bucketStem, Spec.moduleUrl, publishToAggregatesQueueUrls, schedulerConfig, extra));
         return [
           bucketName,
           bucket.resources[0].id
@@ -104,6 +109,7 @@ function Make(Spec) {
 
 export {
   log,
+  pascalCase,
   Make,
 }
 /* log Not a pure module */

@@ -17,7 +17,9 @@ let forBucketCallback = (
   task: ReventlessCore.Task.component,
 ) => {
   let resource = task->ReventlessCore.Component.toPulumiResource
-  let fullName = resource.name->Option.getOr("UnnamedTask") ++ name
+  // `name` is the PascalCase bucket stem (empty for the default bucket); the
+  // SideEffectHandler Lambda for this task bucket reads `<Task><Bucket>SideEffectHandler`.
+  let fullName = resource.name->Option.getOr("UnnamedTask") ++ name ++ "SideEffectHandler"
 
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
 
