@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.67 (2026-06-08)
+
+### Features
+
+* **reventless-core:** extension-point source events in pluginStructure ([1e1d925](https://github.com/ReventlessDev/reventless-core/commit/1e1d9258b5a228b9fdfa003348a5367281573b3c))
+
+
 # 3.0.0-alpha.66 (2026-06-06)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra

@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.51 (2026-06-08)
+
+### Bug Fixes
+
+* **reventless-gwt,reventless-vscode:** render platform log in a Pseudoterminal (ANSI colors) ([1838de5](https://github.com/ReventlessDev/reventless-core/commit/1838de58f23946c8ee99058e110f0d56acc590f8))
+* **reventless-gwt:** strip ANSI from platform runner log lines ([99bbab4](https://github.com/ReventlessDev/reventless-core/commit/99bbab46b1b9a9c1b6bab634c8c6647323a2ba7d))
+### Features
+
+* **reventless-core:** extension-point source events in pluginStructure ([1e1d925](https://github.com/ReventlessDev/reventless-core/commit/1e1d9258b5a228b9fdfa003348a5367281573b3c))
+* **reventless-gwt,reventless-vscode:** runner Phase 6 — Sqlite toggle, replay, export ([3c6e7c9](https://github.com/ReventlessDev/reventless-core/commit/3c6e7c93aa4e5ae8cd0a5d385362c1aaacb76587))
+* **reventless-gwt:** event-modeling graph event (Phase 6), protocol 6 ([0a78913](https://github.com/ReventlessDev/reventless-core/commit/0a78913d21ad348660f1b190603e4c511dd292e6))
+* **reventless-gwt:** local platform runner CLI (reventless-gwt platform) ([a5a8b6c](https://github.com/ReventlessDev/reventless-core/commit/a5a8b6c93b722e1c6249a538a64159af6ebfe6ad))
+
+
 # 1.0.0-alpha.50 (2026-06-07)
 
 ### Bug Fixes

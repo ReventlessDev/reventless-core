@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-catalog-spec",
   "private": true,
-  "version": "1.0.0-alpha.47",
+  "version": "1.0.0-alpha.48",
   "description": "Online Shop DCB example — Catalog plugin specification (extension point specs)",
   "license": "Apache-2.0",
   "scripts": {
