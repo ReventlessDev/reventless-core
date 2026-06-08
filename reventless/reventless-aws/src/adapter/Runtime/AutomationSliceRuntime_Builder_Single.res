@@ -1,6 +1,8 @@
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
@@ -82,8 +84,9 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
     })
     ->ignore
 
-    Console.log(
-      `AutomationSliceRuntime_Builder_Single: registered ${eventCollectorName} for ${parentName}`,
+    log.info(
+      ~comp="AutomationSliceRuntime_Builder_Single",
+      `registered ${eventCollectorName} for ${parentName}`,
     )
   | None =>
     JsError.throwWithMessage(
@@ -135,8 +138,9 @@ let finish = () =>
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
-            Console.warn(
-              `AutomationSliceRuntime_Builder_Single: no bundled info registered for ${spec.componentName}`,
+            log.warn(
+              ~comp="AutomationSliceRuntime_Builder_Single",
+              `no bundled info registered for ${spec.componentName}`,
             )
           }
         })
@@ -173,8 +177,9 @@ let finish = () =>
           ~opts,
         )
       | None =>
-        Console.warn(
-          `AutomationSliceRuntime_Builder_Single.finish: grandParent not set`,
+        log.warn(
+          ~comp="AutomationSliceRuntime_Builder_Single",
+          `finish: grandParent not set`,
         )
       }
     }

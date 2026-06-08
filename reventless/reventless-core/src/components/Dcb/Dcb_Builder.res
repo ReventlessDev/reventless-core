@@ -1,6 +1,8 @@
 // Converts a file:// module URL to a path relative to the project root (located by lerna.json),
 // resolving symlinks so workspace packages show their source location rather than node_modules.
 // Falls back to the bare URL string on any error.
+let log = Logger.fromEnv()
+
 let toRelativePath: string => string = %raw(`function toRelativePath(moduleUrl) {
   try {
     const fs = process.getBuiltinModule('node:fs');
@@ -123,7 +125,7 @@ module Make = (
         switch Reventless.DcbValidation.validateProducedAndConsumed(~produced, ~consumed) {
         | Error(errors) =>
           errors->Array.forEach(err =>
-            Console.error(`DCB validation error (${err.sliceName}): ${err.message}`)
+            log.error(~comp="Dcb_Builder", `DCB validation error (${err.sliceName}): ${err.message}`)
           )
         | Ok() => ()
         }

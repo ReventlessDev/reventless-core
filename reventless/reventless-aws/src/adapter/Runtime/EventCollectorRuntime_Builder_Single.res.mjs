@@ -5,10 +5,13 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let readModelInfos = {};
 
@@ -53,7 +56,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     memorySize: memorySize,
     timeout: timeout
   });
-  console.log(`EventCollectorRuntime_Builder_Single: registered ` + eventCollectorName + ` for ` + parentName);
+  log.info("EventCollectorRuntime_Builder_Single", undefined, `registered ` + eventCollectorName + ` for ` + parentName);
 }
 
 let finished = {
@@ -83,24 +86,23 @@ function finish() {
       let sortedSpecs = storedSpecs.toSorted((a, b) => Primitive_string.compare(a.componentName, b.componentName));
       sortedSpecs.forEach(spec => {
         let info = readModelInfos[spec.componentName];
-        if (info !== undefined) {
-          let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-          let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
-          packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-          packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-          let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-          let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
-          let handlerJson = Pulumi.all([
-            info.queryDbTableName,
-            spec.sourceUrns
-          ]).apply(param => {
-            let sourceUrn = param[1][0];
-            return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}`;
-          });
-          handlerOutputs.push(handlerJson);
-          return;
+        if (info === undefined) {
+          return log.warn("EventCollectorRuntime_Builder_Single", undefined, `no handler registered for ` + spec.componentName);
         }
-        console.warn(`EventCollectorRuntime_Builder_Single: no handler registered for ` + spec.componentName);
+        let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
+        let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
+        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+        packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+        let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+        let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
+        let handlerJson = Pulumi.all([
+          info.queryDbTableName,
+          spec.sourceUrns
+        ]).apply(param => {
+          let sourceUrn = param[1][0];
+          return `{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}`;
+        });
+        handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
@@ -110,7 +112,7 @@ function finish() {
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllReadModels", channelSpecs, runtime, opts);
     } else {
-      console.warn(`EventCollectorRuntime_Builder_Single.finish: grandParent not set`);
+      log.warn("EventCollectorRuntime_Builder_Single", undefined, `finish: grandParent not set`);
     }
   }
   finished.contents = true;
@@ -123,6 +125,7 @@ let RuntimeEnvironment;
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
+  log,
   readModelInfos,
   registerReadModel,
   storedSpecs,
@@ -131,4 +134,4 @@ export {
   finished,
   finish,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

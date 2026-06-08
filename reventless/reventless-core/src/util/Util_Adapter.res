@@ -1,5 +1,7 @@
 open ReventlessInfra.Adapter
 
+let log = Logger.fromEnv()
+
 let filterSupportedResources: (
   array<resource>,
   array<string>,
@@ -37,7 +39,7 @@ let findResource = (resources, service) =>
         ->Pulumi.Output.all
         ->Pulumi.Output.apply(resources => {
           let resourcesStr = resources->Adapter.resolvedToString
-          Console.log2(err, resourcesStr)
+          log.error(~comp="Util_Adapter", ~data=JSON.Encode.string(resourcesStr), err)
         })
       JsError.throwWithMessage(err)
     | matching => matching->Array.getUnsafe(0)
@@ -49,7 +51,7 @@ let findResolvedResource = (resources, service) =>
   switch resources->filterSupportedResolvedResources([service]) {
   | [] =>
     let err = `Util.Adapter.findResolvedResource: Couldn't find service ${service} in resources: ${resources->Adapter.resolvedToString}`
-    Console.log(err)
+    log.error(~comp="Util_Adapter", err)
     JsError.throwWithMessage(err)
   | matching => matching->Array.getUnsafe(0)
   }

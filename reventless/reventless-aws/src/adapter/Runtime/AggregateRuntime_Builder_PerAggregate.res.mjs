@@ -3,12 +3,15 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Aggregate$ReventlessCore from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let aggregateInfos = {};
 
@@ -125,34 +128,33 @@ function finish() {
   if (specs.length !== 0) {
     specs.forEach(spec => {
       let info = aggregateInfos[spec.aggregateName];
-      if (info !== undefined) {
-        let aggregateOpts_parent = spec.aggregateResource;
-        let aggregateOpts = {
-          parent: aggregateOpts_parent
-        };
-        let name = ComponentType$ReventlessCore.name(spec.aggregateName, Aggregate$ReventlessCore.componentType);
-        let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-        let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
-        let handlerConfigOutput = Pulumi.all([
-          info.eventLogTableName,
-          spec.queueUrl,
-          spec.queueArn
-        ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}]}`);
-        let envVars = {};
-        envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-        let packageDirs = {};
-        let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-        let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
-        packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-        packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
-        let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
-        let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, spec.memorySize, spec.timeout, undefined, undefined, undefined, aggregateOpts);
-        spec.connects.forEach(connect => connect(runtime));
-        let channelSpecs = Stdlib_Option.mapOr(spec.eventCollectorChannelSpec, [], cs => [cs]);
-        EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(name, channelSpecs, runtime, aggregateOpts);
-        return;
+      if (info === undefined) {
+        return log.warn("AggregateRuntime_Builder_PerAggregate", undefined, `no handler registered for ` + spec.aggregateName);
       }
-      console.warn(`AggregateRuntime_Builder_PerAggregate: no handler registered for ` + spec.aggregateName);
+      let aggregateOpts_parent = spec.aggregateResource;
+      let aggregateOpts = {
+        parent: aggregateOpts_parent
+      };
+      let name = ComponentType$ReventlessCore.name(spec.aggregateName, Aggregate$ReventlessCore.componentType);
+      let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+      let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
+      let handlerConfigOutput = Pulumi.all([
+        info.eventLogTableName,
+        spec.queueUrl,
+        spec.queueArn
+      ]).apply(param => `{"handlers":[{"specModule":` + specModule + `,"behaviorModule":` + behaviorModule + `,"eventLogTable":"` + param[0] + `","queueUrl":"` + param[1] + `","queueArn":"` + param[2] + `"}]}`);
+      let envVars = {};
+      envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+      let packageDirs = {};
+      let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
+      let behaviorPkg = Util_Bundle$ReventlessAws.extractPackageName(info.behaviorModulePath);
+      packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+      packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
+      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, spec.memorySize, spec.timeout, undefined, undefined, undefined, aggregateOpts);
+      spec.connects.forEach(connect => connect(runtime));
+      let channelSpecs = Stdlib_Option.mapOr(spec.eventCollectorChannelSpec, [], cs => [cs]);
+      EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(name, channelSpecs, runtime, aggregateOpts);
     });
   }
   finished.contents = true;
@@ -168,6 +170,7 @@ export {
   CommandTopicChannel,
   EventCollectorChannel,
   RuntimeEnvironment,
+  log,
   aggregateInfos,
   registerAggregate,
   storedSpecs,
@@ -178,4 +181,4 @@ export {
   finished,
   finish,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

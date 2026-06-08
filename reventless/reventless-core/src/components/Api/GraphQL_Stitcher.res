@@ -2,6 +2,8 @@
 // Merges a base fragment with plugin fragments into a single SDL string.
 // Detects and logs type/field name collisions.
 
+let log = Logger.fromEnv()
+
 type fragmentParts = {
   types: array<string>,
   mutations: array<string>,
@@ -121,7 +123,7 @@ let stitch = (
       if name->String.length == 0 {
         allTypes->Array.push(typeDef)
       } else if seenTypeNames->Set.has(name) {
-        Console.warn(`[GraphQL_Stitcher] Duplicate type — skipped: ${name}`)
+        log.warn(~comp="GraphQL_Stitcher", `Duplicate type — skipped: ${name}`)
       } else {
         seenTypeNames->Set.add(name)
         allTypes->Array.push(typeDef)
@@ -137,7 +139,7 @@ let stitch = (
     mutations->Array.forEach(field => {
       let fieldName = extractLeadingName(field)
       if seenMutationFields->Set.has(fieldName) {
-        Console.warn(`[GraphQL_Stitcher] Duplicate mutation field — skipped: ${fieldName}`)
+        log.warn(~comp="GraphQL_Stitcher", `Duplicate mutation field — skipped: ${fieldName}`)
       } else {
         seenMutationFields->Set.add(fieldName)
         allMutations->Array.push(field)
@@ -159,7 +161,7 @@ let stitch = (
     queries->Array.forEach(field => {
       let fieldName = extractLeadingName(field)
       if seenQueryFields->Set.has(fieldName) {
-        Console.warn(`[GraphQL_Stitcher] Duplicate query field — skipped: ${fieldName}`)
+        log.warn(~comp="GraphQL_Stitcher", `Duplicate query field — skipped: ${fieldName}`)
       } else {
         seenQueryFields->Set.add(fieldName)
         allQueries->Array.push(field)
@@ -175,7 +177,7 @@ let stitch = (
     subscriptions->Array.forEach(field => {
       let fieldName = extractLeadingName(field)
       if seenSubscriptionFields->Set.has(fieldName) {
-        Console.warn(`[GraphQL_Stitcher] Duplicate subscription field — skipped: ${fieldName}`)
+        log.warn(~comp="GraphQL_Stitcher", `Duplicate subscription field — skipped: ${fieldName}`)
       } else {
         seenSubscriptionFields->Set.add(fieldName)
         allSubscriptions->Array.push(field)

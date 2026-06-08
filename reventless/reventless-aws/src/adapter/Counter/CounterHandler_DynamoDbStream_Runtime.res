@@ -3,12 +3,17 @@
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
+let log = ReventlessCore.Logger.fromEnv()
+
 let addToCounterTarget = async (
   table: ReventlessInfra.Adapter.resource,
   {ReventlessInfra.Counter.counterId: counterId, target, targetRef},
 ) => {
   let tableName = table.name->Pulumi.Output.get
-  Console.log(__MODULE__ ++ ".addToCounterTarget: " ++ counterId ++ " " ++ target->Int.toString)
+  log.debug(
+    ~comp="CounterHandler_DynamoDbStream_Runtime",
+    `addToCounterTarget: ${counterId} ${target->Int.toString}`,
+  )
   let updateOutput: UpdateCommand.output = await UpdateCommand.make({
     tableName,
     key: Dict.fromArray([("id", counterId->JSON.Encode.string)]),
@@ -31,12 +36,11 @@ let addToCounterTarget = async (
     returnValues: #UPDATED_NEW,
     conditionExpression: "NOT contains(#targetRefs, :targetRef)",
   })->UpdateCommand.send
-  Console.log(
-    __MODULE__ ++
-    `.addToCounterTarget: current count for ${counterId}: ` ++
-    updateOutput.attributes
-    ->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count")
-    ->Option.mapOr("N/A", v => v->Int.toString),
+  log.debug(
+    ~comp="CounterHandler_DynamoDbStream_Runtime",
+    `addToCounterTarget: current count for ${counterId}: ${updateOutput.attributes
+      ->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count")
+      ->Option.mapOr("N/A", v => v->Int.toString)}`,
   )
 }
 
@@ -63,12 +67,9 @@ let handleStreamEvent = (
     )
 
   ignoredRecords->Array.forEach(record =>
-    Console.warn(
-      __MODULE__ ++
-      ": ignoring record from eventSource: " ++
-      record.eventSource ++
-      " " ++
-      record.eventSourceARN,
+    log.warn(
+      ~comp="CounterHandler_DynamoDbStream_Runtime",
+      `ignoring record from eventSource: ${record.eventSource} ${record.eventSourceARN}`,
     )
   )
 
@@ -84,7 +85,10 @@ let handleStreamEvent = (
       }
       Some((id, inc))
     | NewAndOldImage(id, _, _) =>
-      Console.log(__MODULE__ ++ " (references): ignoring duplicate id: " ++ id)
+      log.debug(
+        ~comp="CounterHandler_DynamoDbStream_Runtime",
+        `(references): ignoring duplicate id: ${id}`,
+      )
       None
     | _ => None
     }

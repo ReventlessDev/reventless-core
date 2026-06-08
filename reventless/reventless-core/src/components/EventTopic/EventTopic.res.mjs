@@ -6,7 +6,10 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Adapter$ReventlessCore from "../../adapter/Adapter.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let NotPublishedToPublisher = /* @__PURE__ */Primitive_exceptions.create("EventTopic-ReventlessCore.NotPublishedToPublisher");
 
@@ -27,13 +30,11 @@ function filter(allEventTopics, sourceNames) {
   ])));
 }
 
-function log(eventTopics, description) {
+function log$1(eventTopics, description) {
   Pulumi.all(Object.entries(Stdlib_Dict.mapValues(eventTopics, eventTopic => eventTopic.resources[0])).map(param => {
     let name = param[0];
     return param[1].service.apply(service => name + `(` + service + `)`);
-  })).apply(topics => {
-    console.log(description, topics.join(", "));
-  });
+  })).apply(topics => log.info("EventTopic", undefined, description + `: ` + topics.join(", ")));
 }
 
 let componentType = "EventTopic";
@@ -44,6 +45,6 @@ export {
   toResolvedOutputs,
   allOutputsToResources,
   filter,
-  log,
+  log$1 as log,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

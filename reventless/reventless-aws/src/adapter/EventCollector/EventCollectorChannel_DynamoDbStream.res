@@ -2,6 +2,8 @@ type callbackEvent = PulumiAws.Lambda.CallbackFunction.event
 type channelParts = unit
 type runtimeParts = Util.Lambda.runtimeParts
 
+let log = ReventlessCore.Logger.fromEnv()
+
 let connect = (
   ~name,
   ~channelSpecs: array<
@@ -35,14 +37,19 @@ let make: ReventlessCore.EventCollector_Adapter.channelMaker<callbackEvent, 'con
     ->Dict.valuesToArray
     ->Array.map(outputs => outputs.resources->Array.getUnsafe(0)) // FIXME
 
-  let enqueueEventNotSupported = (delay, id, messageBody) =>
+  let enqueueEventNotSupported = (delay, id, messageBody) => {
     // TODO: can we check this at deploy time ?
-    Console.log4(
-      __MODULE__ ++ " supports no enqueueEvent:",
-      delay,
-      id,
-      messageBody,
-    )->Promise.resolve
+    log.debug(
+      ~comp="EventCollectorChannel_DynamoDbStream",
+      ~data=Dict.fromArray([
+        ("delay", delay->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string),
+        ("id", id->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string),
+        ("messageBody", messageBody->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string),
+      ])->JSON.Encode.object,
+      "supports no enqueueEvent",
+    )
+    Promise.resolve()
+  }
 
   let handleChannelEvent = handleEvents =>
     EventCollectorChannel_SQS_Runtime.handleDynamoDbEvent(handleEvents, ...)->Pulumi.Output.make

@@ -4,10 +4,13 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let sideEffectInfos = {};
 
@@ -50,7 +53,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     memorySize: memorySize,
     timeout: timeout
   });
-  console.log(`SideEffectHandlerRuntime_Builder_Single: registered ` + eventCollectorName + ` for ` + parentName);
+  log.info("SideEffectHandlerRuntime_Builder_Single", undefined, `registered ` + eventCollectorName + ` for ` + parentName);
 }
 
 let finished = {
@@ -79,20 +82,19 @@ function finish() {
       let packageDirs = {};
       storedSpecs.forEach(spec => {
         let info = sideEffectInfos[spec.componentName];
-        if (info !== undefined) {
-          info.sideEffectModulePaths.forEach(modPath => {
-            let pkg = Util_Bundle$ReventlessAws.extractPackageName(modPath);
-            packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
-          });
-          let modulesJson = info.sideEffectModulePaths.map(p => Stdlib_Option.getOr(JSON.stringify(p), `""`)).join(",");
-          let handlerJson = spec.sourceUrns.apply(urns => {
-            let sourceUrn = urns[0];
-            return `{"sideEffectModules":[` + modulesJson + `],"sourceUrn":"` + sourceUrn + `"}`;
-          });
-          handlerOutputs.push(handlerJson);
-          return;
+        if (info === undefined) {
+          return log.warn("SideEffectHandlerRuntime_Builder_Single", undefined, `no handler registered for ` + spec.componentName);
         }
-        console.warn(`SideEffectHandlerRuntime_Builder_Single: no handler registered for ` + spec.componentName);
+        info.sideEffectModulePaths.forEach(modPath => {
+          let pkg = Util_Bundle$ReventlessAws.extractPackageName(modPath);
+          packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+        });
+        let modulesJson = info.sideEffectModulePaths.map(p => Stdlib_Option.getOr(JSON.stringify(p), `""`)).join(",");
+        let handlerJson = spec.sourceUrns.apply(urns => {
+          let sourceUrn = urns[0];
+          return `{"sideEffectModules":[` + modulesJson + `],"sourceUrn":"` + sourceUrn + `"}`;
+        });
+        handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
@@ -102,7 +104,7 @@ function finish() {
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllSideEffectHandlers", channelSpecs, runtime, opts);
     } else {
-      console.warn(`SideEffectHandlerRuntime_Builder_Single.finish: grandParent not set`);
+      log.warn("SideEffectHandlerRuntime_Builder_Single", undefined, `finish: grandParent not set`);
     }
   }
   finished.contents = true;
@@ -115,6 +117,7 @@ let RuntimeEnvironment;
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
+  log,
   sideEffectInfos,
   registerSideEffectHandler,
   storedSpecs,
@@ -123,4 +126,4 @@ export {
   finished,
   finish,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

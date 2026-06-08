@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 module Make = (
   Spec: Reventless.StateChangeSlice.Spec,
   Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec,
@@ -18,7 +20,11 @@ module Make = (
             | command' => Some({ReventlessInfra.CommandTopic.reference, command: command'})
             | exception err =>
               let commandStr = json->JSON.stringify
-              Console.error2(`Couldn't decode command ${commandStr}:`, err)
+              log.error(
+                ~comp=`StateChangeSlice(${Spec.name})`,
+                ~data=err->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string,
+                `Couldn't decode command ${commandStr}`,
+              )
               None
             }
           )

@@ -4,15 +4,18 @@ import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_DynamoDbStream_Runtime.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 async function addToCounterTarget(table, param) {
   let targetRef = param.targetRef;
   let target = param.target;
   let counterId = param.counterId;
   let tableName = table.name.get();
-  console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ".addToCounterTarget: " + counterId + " " + target.toString());
+  log.debug("CounterHandler_DynamoDbStream_Runtime", undefined, `addToCounterTarget: ` + counterId + ` ` + target.toString());
   let updateOutput = await DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({
     Key: Object.fromEntries([[
         "id",
@@ -63,7 +66,7 @@ async function addToCounterTarget(table, param) {
     ReturnValues: "UPDATED_NEW",
     UpdateExpression: "ADD #count :inc, #total :inc SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle),     #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)"
   }));
-  console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (`.addToCounterTarget: current count for ` + counterId + `: `) + Stdlib_Option.mapOr(DynamoDb_DocumentClient$AwsSdk.getIntAttribute(updateOutput.Attributes, "count"), "N/A", v => v.toString()));
+  return log.debug("CounterHandler_DynamoDbStream_Runtime", undefined, `addToCounterTarget: current count for ` + counterId + `: ` + Stdlib_Option.mapOr(DynamoDb_DocumentClient$AwsSdk.getIntAttribute(updateOutput.Attributes, "count"), "N/A", v => v.toString()));
 }
 
 let referencesViewSchema = S.schema(s => ({
@@ -85,9 +88,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
       return false;
     }
   });
-  match[1].forEach(record => {
-    console.warn("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource: " + record.eventSource + " " + record.eventSourceARN);
-  });
+  match[1].forEach(record => log.warn("CounterHandler_DynamoDbStream_Runtime", undefined, `ignoring record from eventSource: ` + record.eventSource + ` ` + record.eventSourceARN));
   let match$1 = Stdlib_Array.partition(match[0], record => record.eventSourceARN === referencesARN);
   let references = Stdlib_Array.filterMap(match$1[0], record => {
     let match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
@@ -115,7 +116,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
       case "OldImage" :
         return;
       case "NewAndOldImage" :
-        console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + " (references): ignoring duplicate id: " + match._0);
+        log.debug("CounterHandler_DynamoDbStream_Runtime", undefined, `(references): ignoring duplicate id: ` + match._0);
         return;
     }
   });
@@ -136,8 +137,9 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
 }
 
 export {
+  log,
   addToCounterTarget,
   referencesViewSchema,
   handleStreamEvent,
 }
-/* referencesViewSchema Not a pure module */
+/* log Not a pure module */

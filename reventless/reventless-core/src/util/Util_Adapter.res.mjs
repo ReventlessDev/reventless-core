@@ -3,7 +3,10 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Logger$ReventlessCore from "./Logger.res.mjs";
 import * as Adapter$ReventlessCore from "../adapter/Adapter.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function filterSupportedResources(resources, supportedServices) {
   return Pulumi.all(resources.map(resource => resource.service)).apply(services => Stdlib_Array.zip(resources, services).filter(param => {
@@ -24,7 +27,7 @@ function findResource(resources, service) {
     let err = `Util.Adapter.findResource: Couldn't find service ` + service + ` in resources`;
     Pulumi.all(resources.map(Adapter$ReventlessCore.resourceToResolvedOutput)).apply(resources => {
       let resourcesStr = Adapter$ReventlessCore.resolvedToString(resources);
-      console.log(err, resourcesStr);
+      log.error("Util_Adapter", resourcesStr, err);
     });
     return Stdlib_JsError.throwWithMessage(err);
   }));
@@ -36,7 +39,7 @@ function findResolvedResource(resources, service) {
     return matching[0];
   }
   let err = `Util.Adapter.findResolvedResource: Couldn't find service ` + service + ` in resources: ` + Adapter$ReventlessCore.resolvedToString(resources);
-  console.log(err);
+  log.error("Util_Adapter", undefined, err);
   return Stdlib_JsError.throwWithMessage(err);
 }
 
@@ -67,6 +70,7 @@ function partitionResolvedResourcesByService(resources, supportedService) {
 }
 
 export {
+  log,
   filterSupportedResources,
   filterSupportedResolvedResources,
   findResource,
@@ -75,4 +79,4 @@ export {
   partitionSupportedResources,
   partitionResolvedResourcesByService,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

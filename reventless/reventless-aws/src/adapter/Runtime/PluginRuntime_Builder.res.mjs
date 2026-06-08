@@ -6,6 +6,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
@@ -16,6 +17,8 @@ import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/s
 import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
 import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let configRef = {
   contents: {
@@ -406,21 +409,21 @@ function Make(EventCollectorChannel) {
     let timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     let hbConfig = heartbeatConfigRef.contents;
     let epQueueUrl = hbConfig.epQueueUrl;
-    if (epQueueUrl !== undefined) {
-      let resource = Component$ReventlessCore.toPulumiResource(heartbeat);
-      let name = ComponentType$ReventlessCore.nameOpt(resource.__name, Heartbeat$ReventlessCore.componentType);
-      let opts_parent = resource;
-      let opts = {
-        parent: opts_parent
-      };
-      let envVars = {};
-      envVars["EP_QUEUE_URL"] = epQueueUrl;
-      envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
-      envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
-      let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs", {}, undefined);
-      return connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, opts));
+    if (epQueueUrl === undefined) {
+      return log.warn("PluginRuntime_Builder", undefined, "forPluginHeartbeat skipped (no EP queue URL)");
     }
-    console.warn("PluginRuntime_Builder: forPluginHeartbeat skipped (no EP queue URL)");
+    let resource = Component$ReventlessCore.toPulumiResource(heartbeat);
+    let name = ComponentType$ReventlessCore.nameOpt(resource.__name, Heartbeat$ReventlessCore.componentType);
+    let opts_parent = resource;
+    let opts = {
+      parent: opts_parent
+    };
+    let envVars = {};
+    envVars["EP_QUEUE_URL"] = epQueueUrl;
+    envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
+    envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
+    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs", {}, undefined);
+    connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, opts));
   };
   let forDcbCommandTopic = (param, connect, $staropt$star, $staropt$star$1, dcbCommandTopic) => {
     $staropt$star !== undefined;
@@ -428,8 +431,7 @@ function Make(EventCollectorChannel) {
     let dcbConfig = dcbConfigRef.contents;
     let allSlicePaths = registeredSliceModulePaths.concat(dcbConfig.stateChangeSliceModulePaths);
     if (allSlicePaths.length === 0) {
-      console.warn("PluginRuntime_Builder: forDcbCommandTopic skipped (no slice specs)");
-      return;
+      return log.warn("PluginRuntime_Builder", undefined, "forDcbCommandTopic skipped (no slice specs)");
     }
     let commandTopicResource = Component$ReventlessCore.toPulumiResource(dcbCommandTopic);
     let name = Stdlib_Option.getOr(commandTopicResource.__name, "UnnamedDcb");
@@ -505,6 +507,7 @@ function Make(EventCollectorChannel) {
 }
 
 export {
+  log,
   configRef,
   dcbConfigRef,
   registeredSliceModulePaths,
@@ -519,4 +522,4 @@ export {
   registerConfig,
   Make,
 }
-/* @pulumi/aws Not a pure module */
+/* log Not a pure module */

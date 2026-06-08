@@ -4,12 +4,15 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Belt_SetString from "@rescript/runtime/lib/es6/Belt_SetString.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Counter$ReventlessCore from "../Counter/Counter.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
 import * as EventMapper$ReventlessCore from "./EventMapper.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as EventMapper_Callback$ReventlessCore from "./EventMapper_Callback.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function Make(Target) {
   return SpecificEventCollector => (Mappings => (AggregateRuntimeBuilder => {
@@ -28,12 +31,8 @@ function Make(Target) {
         });
         let match = Stdlib_Option.mapOr(Mappings.counter, [
           Pulumi.output({
-            count: async _items => {
-              console.log("No counter deployed, but trying to use count");
-            },
-            addToCounterTarget: async _target => {
-              console.log("No counter deployed, but trying to use addToCounterTarget");
-            }
+            count: async _items => log.warn("EventMapper", undefined, "No counter deployed, but trying to use count"),
+            addToCounterTarget: async _target => log.warn("EventMapper", undefined, "No counter deployed, but trying to use addToCounterTarget")
           }),
           undefined
         ], Counter => {
@@ -76,6 +75,7 @@ function Make(Target) {
 }
 
 export {
+  log,
   Make,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

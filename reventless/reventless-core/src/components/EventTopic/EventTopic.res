@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 let componentType = ComponentType.EventTopic
 
 type outputs = ReventlessInfra.EventTopic.outputs
@@ -61,5 +63,7 @@ let log = (eventTopics, description) => {
       service->Pulumi.Output.apply(service => `${name}(${service})`)
     )
     ->Pulumi.Output.all
-    ->Pulumi.Output.apply(topics => Console.log2(description, topics->Array.joinUnsafe(", ")))
+    ->Pulumi.Output.apply(topics =>
+      log.info(~comp="EventTopic", `${description}: ${topics->Array.joinUnsafe(", ")}`)
+    )
 }

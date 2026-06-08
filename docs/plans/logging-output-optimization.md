@@ -218,14 +218,17 @@ top-level JSON keys; route stray `Console.*` through `Logger.emit`.
 > - **2.3** `\x00` detail-encoding removed. `EffectLogger` now carries
 >   `~comp`/`~detail` as Effect log annotations (detail JSON-stringified, re-parsed
 >   in `install()`); `Logger.detailSeparator` deleted.
-> - **2.4** Console cleanup done for the **6 named files** (~28 sites:
->   `Platform.res`, `Plugin_Stack.res`, `Util_StaticBundle.res`,
->   `Util_AppSync_Caller.res`, `ClonerRunner_Fargate_Runtime.res`,
->   `StateViewSliceRuntime_Builder_Single.res`). **Not done:** the broader
->   "0 hits across aws+core+infra" goal (§2.6) — ~50 further `Console.log2/3/4`
->   debug-trace sites (DataCleaner, Counter, Message, EventMapper_Builder,
->   GraphQL_Stitcher, …) remain; many are multi-arg and need per-site
->   judgement on `~data` shape. Tracked as follow-up.
+> - **2.4 + §2.6 — DONE.** Every live `Console.log/warn/error/log2/3/4` across
+>   `reventless-aws/src`, `reventless-core/src`, `reventless-infra/src` now flows
+>   through `Logger` (the 6 named files plus the full sweep: ~22 more files —
+>   all runtime builders, core component/util builders, `Message`,
+>   `AppSync_Resolver_Retrying`, `AppSync_Adapter`, `Counter`). Multi-arg calls
+>   map their extra args to `~data`; pure dev traces (`Counter`, the `Message.log`
+>   tap, `Adapter.logResource`) demoted to `log.debug`. The only `Console.*` left
+>   are intentional: `Logger.res` (the sink itself), `OutputLogger.res` (a Pulumi
+>   `Output` inspection helper), and `DataCleaner.res` (sites sit inside a
+>   `/* … */` block — dead code). Verified: 407 core + 446 local + 114 aws tests
+>   green.
 
 ### 2.1 Add `plugin` and `comp` as top-level JSON fields
 

@@ -4,10 +4,13 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let bundledInfos = {};
 
@@ -61,7 +64,7 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
     memorySize: memorySize,
     timeout: timeout
   });
-  console.log(`AutomationSliceRuntime_Builder_Single: registered ` + eventCollectorName + ` for ` + parentName);
+  log.info("AutomationSliceRuntime_Builder_Single", undefined, `registered ` + eventCollectorName + ` for ` + parentName);
 }
 
 let finished = {
@@ -92,23 +95,22 @@ function finish() {
       let dcbQueueUrl = url !== undefined ? url : Pulumi.output("NOT_AVAILABLE");
       storedSpecs.forEach(spec => {
         let info = bundledInfos[spec.componentName];
-        if (info !== undefined) {
-          let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-          packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
-          let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-          let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);
-          let handlerJson = Pulumi.all([
-            info.queryDbTableName,
-            dcbQueueUrl,
-            spec.sourceUrns
-          ]).apply(param => {
-            let sourceUrn = param[2][0];
-            return `{"specModule":` + specModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + sourceUrn + `"}`;
-          });
-          handlerOutputs.push(handlerJson);
-          return;
+        if (info === undefined) {
+          return log.warn("AutomationSliceRuntime_Builder_Single", undefined, `no bundled info registered for ` + spec.componentName);
         }
-        console.warn(`AutomationSliceRuntime_Builder_Single: no bundled info registered for ` + spec.componentName);
+        let pkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
+        packageDirs[pkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(pkg);
+        let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+        let callbackType = Stdlib_Option.getOr(JSON.stringify(info.callbackType), `""`);
+        let handlerJson = Pulumi.all([
+          info.queryDbTableName,
+          dcbQueueUrl,
+          spec.sourceUrns
+        ]).apply(param => {
+          let sourceUrn = param[2][0];
+          return `{"specModule":` + specModule + `,"callbackType":` + callbackType + `,"queryDbTableName":"` + param[0] + `","dcbQueueUrl":"` + param[1] + `","sourceUrn":"` + sourceUrn + `"}`;
+        });
+        handlerOutputs.push(handlerJson);
       });
       let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
       let envVars = {};
@@ -118,7 +120,7 @@ function finish() {
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", channelSpecs, runtime, opts);
     } else {
-      console.warn(`AutomationSliceRuntime_Builder_Single.finish: grandParent not set`);
+      log.warn("AutomationSliceRuntime_Builder_Single", undefined, `finish: grandParent not set`);
     }
   }
   finished.contents = true;
@@ -131,6 +133,7 @@ let RuntimeEnvironment;
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
+  log,
   bundledInfos,
   dcbQueueUrlRef,
   setDcbQueueUrl,
@@ -141,4 +144,4 @@ export {
   finished,
   finish,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

@@ -1,3 +1,5 @@
+let logger = Logger.fromEnv()
+
 module type Service = {
   module Id: Reventless.Id.T
 
@@ -42,7 +44,7 @@ let encodeCommand' = (command', idSchema, commandSchema) =>
 let uuid = Uuid.v4
 
 let log: ('a, string) => 'a = (value, str) => {
-  Console.log2(str, value)
+  logger.debug(~comp="Message", ~data=value->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string, str)
   value
 }
 
@@ -77,12 +79,16 @@ let serviceNameOfMsg = msgJson =>
       switch meta->S.parseJsonOrThrow(metaSchema) {
       | msgMeta => Some(msgMeta.service)
       | exception err =>
-        Console.log2("Message.serviceNameOfMsg: Couldn't parse meta:", err)
+        logger.warn(
+          ~comp="Message",
+          ~data=err->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string,
+          "serviceNameOfMsg: Couldn't parse meta",
+        )
         None
       }
     )
   | None =>
-    Console.log2("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson)
+    logger.warn(~comp="Message", ~data=msgJson, "serviceNameOfMsg: couldn't decodeObject")
     None
   }
 

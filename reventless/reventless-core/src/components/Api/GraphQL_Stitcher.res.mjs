@@ -4,6 +4,9 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function encode(parts) {
   let encoded = JSON.stringify(Object.fromEntries([
@@ -95,11 +98,13 @@ function stitch(baseFragment, pluginFragments) {
       let name = extractLeadingName(typeDef);
       if (name.length === 0) {
         allTypes.push(typeDef);
+        return;
       } else if (seenTypeNames.has(name)) {
-        console.warn(`[GraphQL_Stitcher] Duplicate type — skipped: ` + name);
+        return log.warn("GraphQL_Stitcher", undefined, `Duplicate type — skipped: ` + name);
       } else {
         seenTypeNames.add(name);
         allTypes.push(typeDef);
+        return;
       }
     });
   });
@@ -109,10 +114,11 @@ function stitch(baseFragment, pluginFragments) {
     param.mutations.forEach(field => {
       let fieldName = extractLeadingName(field);
       if (seenMutationFields.has(fieldName)) {
-        console.warn(`[GraphQL_Stitcher] Duplicate mutation field — skipped: ` + fieldName);
+        return log.warn("GraphQL_Stitcher", undefined, `Duplicate mutation field — skipped: ` + fieldName);
       } else {
         seenMutationFields.add(fieldName);
         allMutations.push(field);
+        return;
       }
     });
   });
@@ -127,10 +133,11 @@ function stitch(baseFragment, pluginFragments) {
     param.queries.forEach(field => {
       let fieldName = extractLeadingName(field);
       if (seenQueryFields.has(fieldName)) {
-        console.warn(`[GraphQL_Stitcher] Duplicate query field — skipped: ` + fieldName);
+        return log.warn("GraphQL_Stitcher", undefined, `Duplicate query field — skipped: ` + fieldName);
       } else {
         seenQueryFields.add(fieldName);
         allQueries.push(field);
+        return;
       }
     });
   });
@@ -140,10 +147,11 @@ function stitch(baseFragment, pluginFragments) {
     param.subscriptions.forEach(field => {
       let fieldName = extractLeadingName(field);
       if (seenSubscriptionFields.has(fieldName)) {
-        console.warn(`[GraphQL_Stitcher] Duplicate subscription field — skipped: ` + fieldName);
+        return log.warn("GraphQL_Stitcher", undefined, `Duplicate subscription field — skipped: ` + fieldName);
       } else {
         seenSubscriptionFields.add(fieldName);
         allSubscriptions.push(field);
+        return;
       }
     });
   });
@@ -207,6 +215,7 @@ function isCatastrophicSchemaShrink(currentSdl, newSdl, threshold) {
 }
 
 export {
+  log,
   encode,
   decode,
   extractLeadingName,
@@ -217,4 +226,4 @@ export {
   countRootTypeFields,
   isCatastrophicSchemaShrink,
 }
-/* No side effect */
+/* log Not a pure module */

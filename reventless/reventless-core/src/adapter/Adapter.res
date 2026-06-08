@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 type resolvedResource = ReventlessInfra.Adapter.resolvedResource
 
 let outputToResource: Pulumi.Output.t<
@@ -97,7 +99,16 @@ let resourcesToResolvedOutput = (resources: array<ReventlessInfra.Adapter.resour
   ->Pulumi.Output.all
 
 let logResource = r => {
-  let _ = r->resourceToResolvedOutput->Pulumi.Output.apply(r => Console.log2("resource:", r))
+  let _ =
+    r
+    ->resourceToResolvedOutput
+    ->Pulumi.Output.apply(r =>
+      log.debug(
+        ~comp="Adapter",
+        ~data=r->JSON.stringifyAny->Option.getOr("")->JSON.Encode.string,
+        "resource",
+      )
+    )
 }
 
 let resolvedToString = (resources: array<resolvedResource>) => {
