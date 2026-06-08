@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.113 (2026-06-08)
+
+### Features
+
+* **logging:** operational hygiene — truncation, ISO time, service field, Insights guide (Tier 3) ([42f8d49](https://github.com/ReventlessDev/reventless-core/commit/42f8d49ebdb20beaf0ec20a0d2cc2561b4e11ab0))
+* **logging:** sink-aware ANSI formatting — clean JSON in non-TTY sinks (Tier 1) ([7da6256](https://github.com/ReventlessDev/reventless-core/commit/7da62568eaa06c2bedf5d7ad6d10b1ec006a6b75))
+* **logging:** structured JSON fields + correlationId/requestId tracing (Tier 2) ([49738c5](https://github.com/ReventlessDev/reventless-core/commit/49738c5e54f0707b4a9c6991c07c61abe41ccf64))
+
+
 # 3.0.0-alpha.112 (2026-06-08)
 
 ### Features

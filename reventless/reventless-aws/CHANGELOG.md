@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.143 (2026-06-08)
+
+### Features
+
+* **logging:** structured JSON fields + correlationId/requestId tracing (Tier 2) ([49738c5](https://github.com/ReventlessDev/reventless-core/commit/49738c5e54f0707b4a9c6991c07c61abe41ccf64))
+
+
 # 3.0.0-alpha.142 (2026-06-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
