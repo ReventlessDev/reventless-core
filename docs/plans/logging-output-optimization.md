@@ -5,11 +5,12 @@ non-TTY sink (CloudWatch first, but the same shape works for Azure
 Monitor, GCP Cloud Logging, Datadog, Loki) while preserving the current
 human-readable terminal rendering on the local platform.
 
-Status: **Tiers 1 & 2 implemented and locally verified** (full build clean;
-404 reventless-core + 446 reventless-local tests green, incl. JSON-sink,
-plugin/comp-field, detail-via-annotation, and correlationId-surfacing guards).
-Remaining gates: manual CloudWatch verification in alpha (§1.5, §2.5) and the
-broader Console cleanup (§2.6, see Tier 2 note). Tier 3 not started.
+Status: **All three tiers implemented and locally verified** (full build clean;
+407 reventless-core + 446 reventless-local tests green, incl. JSON-sink,
+plugin/comp-field, detail-via-annotation, correlationId-surfacing, time/service,
+and detail-truncation guards). Remaining before this plan can move to `done/`:
+manual CloudWatch verification in alpha (§1.5, §2.5, §3.5) and — optional — the
+broader Console cleanup (§2.6, see Tier 2 note).
 Companion analysis: `docs/analysis/logging-output-optimization.md`.
 
 ## Problem (one-paragraph recap)
@@ -380,6 +381,19 @@ Acceptance: 0 hits returned (modulo the in-place comment-out cases).
 ## Tier 3 — Operational hygiene
 
 Low priority, ship after Tier 2 lands.
+
+> **DONE (code).**
+> - **3.1** `Logger.truncateDetail` replaces a `~detail` larger than
+>   `REVENTLESS_LOG_MAX_DETAIL_BYTES` (default 32 KB) with
+>   `{truncated, bytes, preview}` (512-char preview).
+> - **3.2** Every JSON record carries an RFC 3339 `time` field (`Logger.iso`).
+> - **3.3** `service` field from `REVENTLESS_SERVICE` (override) else
+>   `AWS_LAMBDA_FUNCTION_NAME`, read per-emit so a platform/test can set it.
+> - **3.4** New guide: `docs/guides/cloudwatch-logs-insights.md` (field table +
+>   6 ready-to-paste Insights queries).
+> - Tests in `LogFormatTest` ("JSON sink"): time present + RFC 3339, service via
+>   env, oversized-detail truncation. Remaining §3.5 gate: see the truncation /
+>   field checks against a real CloudWatch record after deploy.
 
 ### 3.1 Truncate oversized `detail`
 

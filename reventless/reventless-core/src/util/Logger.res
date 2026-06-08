@@ -10,6 +10,26 @@
 
 @val external _logLevel: option<string> = "process.env.LOG_LEVEL"
 
+// service field (3.3): explicit REVENTLESS_SERVICE override wins, else the
+// Lambda function name. Read per-emit (cheap) so a platform/test can set it
+// after module init. None ⇒ field omitted.
+@val external _serviceOverride: option<string> = "process.env.REVENTLESS_SERVICE"
+@val external _lambdaName: option<string> = "process.env.AWS_LAMBDA_FUNCTION_NAME"
+let serviceName = (): option<string> =>
+  switch _serviceOverride {
+  | Some(s) => Some(s)
+  | None => _lambdaName
+  }
+
+// detail truncation cap (3.1) — configurable; default 32 KB. CloudWatch caps a
+// single record at 256 KB, so an oversized ~detail is replaced with a preview
+// stub rather than risking a silent drop.
+@val external _maxDetailBytes: option<string> = "process.env.REVENTLESS_LOG_MAX_DETAIL_BYTES"
+let maxDetailBytes = switch _maxDetailBytes {
+| Some(s) => s->Int.fromString->Option.getOr(32 * 1024)
+| None => 32 * 1024
+}
+
 type logFn = (~comp: string=?, ~data: JSON.t=?, string) => unit
 
 type t = {
@@ -55,6 +75,23 @@ let hms = () => {
   `${h}:${m}:${s}`
 }
 
+// RFC 3339 / ISO-8601 timestamp for the JSON `time` field (3.2).
+let iso = () => Date.make()->Date.toISOString
+
+// Replace an oversized detail payload with a bounded preview stub (3.1).
+let truncateDetail = (d: JSON.t): JSON.t => {
+  let s = d->JSON.stringify
+  if s->String.length > maxDetailBytes {
+    Dict.fromArray([
+      ("truncated", JSON.Encode.bool(true)),
+      ("bytes", JSON.Encode.int(s->String.length)),
+      ("preview", s->String.slice(~start=0, ~end=512)->JSON.Encode.string),
+    ])->JSON.Encode.object
+  } else {
+    d
+  }
+}
+
 // Plugin-name resolution + prefix formatting live in `Reventless.LogPrefix`
 // so that infra-layer log helpers (ExtensionPointMapping, ExtensionMapping)
 // can share the same logic without depending on this package.
@@ -90,15 +127,17 @@ let emit = (
       )
     let fields =
       [
+        ("time", iso()->JSON.Encode.string),
         ("level", levelLabel(level)->JSON.Encode.string),
         ("message", msg->JSON.Encode.string),
       ]
+      ->Array.concat(serviceName()->Option.mapOr([], s => [("service", JSON.Encode.string(s))]))
       ->Array.concat(
         resolvePlugin(~comp?, ())->Option.mapOr([], p => [("plugin", JSON.Encode.string(p))]),
       )
       ->Array.concat(comp->Option.mapOr([], c => [("comp", JSON.Encode.string(c))]))
       ->Array.concat(annotationFields)
-      ->Array.concat(detail->Option.mapOr([], d => [("detail", d)]))
+      ->Array.concat(detail->Option.mapOr([], d => [("detail", truncateDetail(d))]))
     Console.log(fields->Dict.fromArray->JSON.Encode.object->JSON.stringify)
   } else {
     // Terminal — colored, human-readable, no detail
