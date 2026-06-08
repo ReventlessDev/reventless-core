@@ -147,14 +147,22 @@ let fmtPlainPrefix = (~comp=?, ()) => {
 // Bold-bracketed prefix used for terminal output.
 // Plugin bracket is colored (foreground) by a stable hash of the plugin name;
 // no trailing space between `[Plugin]` and `[Comp]`.
-let fmtComp = (~comp=?, ()) => {
-  let plugin = switch resolvePlugin(~comp?, ()) {
-  | Some(p) => `${pluginColor(p)}${AnsiStyle.bold(`[${p}]`)}`
-  | None => ""
+//
+// Sink-aware: in a non-TTY/JSON sink it falls back to `fmtPlainPrefix` so no
+// ANSI colour or bold leaks into structured logs. This makes every caller that
+// pre-formats a prefix before reaching `Logger.emit` (EffectLogger.withComp,
+// the infra-layer `compLog`s) correct without per-call-site changes.
+let fmtComp = (~comp=?, ()) =>
+  if !AnsiStyle.useAnsi() {
+    fmtPlainPrefix(~comp?, ())
+  } else {
+    let plugin = switch resolvePlugin(~comp?, ()) {
+    | Some(p) => `${pluginColor(p)}${AnsiStyle.bold(`[${p}]`)}`
+    | None => ""
+    }
+    let c = switch comp {
+    | Some(c) => `${AnsiStyle.bold(`[${c}]`)} `
+    | None => ""
+    }
+    plugin ++ c
   }
-  let c = switch comp {
-  | Some(c) => `${AnsiStyle.bold(`[${c}]`)} `
-  | None => ""
-  }
-  plugin ++ c
-}

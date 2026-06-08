@@ -5,7 +5,10 @@ non-TTY sink (CloudWatch first, but the same shape works for Azure
 Monitor, GCP Cloud Logging, Datadog, Loki) while preserving the current
 human-readable terminal rendering on the local platform.
 
-Status: not started. Companion analysis: `docs/analysis/logging-output-optimization.md`.
+Status: **Tier 1 implemented and locally verified** (build clean, 401
+reventless-core tests green incl. 5 new JSON-sink guards). Remaining Tier 1
+gate: manual CloudWatch verification in alpha (§1.5). Tiers 2–3 not started.
+Companion analysis: `docs/analysis/logging-output-optimization.md`.
 
 ## Problem (one-paragraph recap)
 
@@ -53,6 +56,17 @@ Open and merge Tier 1 first; verify CloudWatch is clean; then proceed.
 
 Goal: every JSON record's `message` field is free of `\x1b` escapes;
 no observable change in TTY output.
+
+> **DONE (code).** Single source of truth chosen (the note under §1.2): the
+> resolver lives in `reventless-spec/src/AnsiStyle.res` (the lowest layer —
+> `LogPrefix` depends on it, not vice versa), exposed as `isJsonSink()` /
+> `useAnsi()` / `bold` / a test-only `reload()`. `LogPrefix.fmtComp` and
+> `Logger.emit` both read it; the `_isLambda` external is gone. Detection
+> matches the plan's table: `REVENTLESS_LOG_FORMAT` override wins, else TTY ⇒
+> text, else JSON. Jest is non-TTY ⇒ defaults to JSON, so `LogFormatTest`
+> forces `REVENTLESS_LOG_FORMAT=text` at file top for the existing
+> human-format assertions; the new `describe("JSON sink")` flips to json.
+> Open gate: deploy + CloudWatch eyeball (§1.5).
 
 ### 1.1 Centralise sink detection
 

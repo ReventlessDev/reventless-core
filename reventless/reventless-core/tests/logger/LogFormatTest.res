@@ -4,6 +4,14 @@ open LogFormat
 
 S.enableJson()
 
+// Sink detection (Reventless.AnsiStyle) defaults a non-TTY stdout — Jest
+// included — to JSON, which no-ops `bold`/`fmtComp`. The human-format
+// assertions below expect ANSI, so force text mode for this file. The
+// "JSON sink" block flips to json and restores text in its own setup.
+@val external _processEnv: Dict.t<string> = "process.env"
+_processEnv->Dict.set("REVENTLESS_LOG_FORMAT", "text")
+Reventless.AnsiStyle.reload()
+
 describe("LogFormat", () => {
   describe("commandJsonsToLogMessages", () => {
     test(
@@ -120,5 +128,130 @@ describe("LogFormat", () => {
         expect(msg)->toEqual(expected)
       },
     )
+  })
+})
+
+// ─── JSON sink (non-TTY collector: CloudWatch / Datadog / …) ─────────────────
+// Regression guard: in a JSON sink every emitted record must parse as JSON and
+// must NOT carry any ANSI escape (\x1b) anywhere. This fails the moment a new
+// helper inlines an ANSI code into a path that reaches Logger.emit.
+
+type consoleObj = {mutable log: string => unit}
+@val external _console: consoleObj = "console"
+
+let hasAnsi = (s: string): bool => s->String.includes("\x1b")
+
+// Run `fn` with console.log captured; restores the original even if `fn` throws.
+// Logger's JSON branch emits every level through Console.log, so this captures
+// all of it.
+let captureLogs = (fn: unit => unit): array<string> => {
+  let captured: array<string> = []
+  let original = _console.log
+  _console.log = s => captured->Array.push(s)
+  let result = try {
+    fn()
+    Ok()
+  } catch {
+  | e => Error(e)
+  }
+  _console.log = original
+  switch result {
+  | Ok() => captured
+  | Error(e) => throw(e)
+  }
+}
+
+let validLevels = ["DEBUG", "INFO", "WARN", "ERROR"]
+
+// True when a captured line is a clean JSON log record: parses as JSON, carries
+// no ANSI escape anywhere, has a string `message` and a known `level`.
+let isCleanRecord = (line: string): bool =>
+  !hasAnsi(line) &&
+  (try {
+    switch line->JSON.parseOrThrow->JSON.Decode.object {
+    | Some(obj) =>
+      let levelOk =
+        obj
+        ->Dict.get("level")
+        ->Option.flatMap(JSON.Decode.string)
+        ->Option.mapOr(false, l => validLevels->Array.includes(l))
+      let msgOk = obj->Dict.get("message")->Option.flatMap(JSON.Decode.string)->Option.isSome
+      levelOk && msgOk
+    | None => false
+    }
+  } catch {
+  | _ => false
+  })
+
+let messageOf = (line: string): string =>
+  switch line->JSON.parseOrThrow->JSON.Decode.object {
+  | Some(obj) => obj->Dict.get("message")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+  | None => ""
+  }
+
+describe("JSON sink", () => {
+  // Flip to json for the whole block; restore text afterwards so a re-run of the
+  // file (or shared module state) keeps the human-format assertions valid.
+  beforeAll(() => {
+    _processEnv->Dict.set("REVENTLESS_LOG_FORMAT", "json")
+    Reventless.AnsiStyle.reload()
+  })
+  afterAll(() => {
+    _processEnv->Dict.set("REVENTLESS_LOG_FORMAT", "text")
+    Reventless.AnsiStyle.reload()
+  })
+
+  // Logger.t goes Debug+ regardless of LOG_LEVEL via an explicit min level.
+  let log = Logger.makeLogger(~minLevel=Debug)
+
+  test("Logger.info emits one clean JSON record with a plain comp prefix", () => {
+    let lines = captureLogs(() => log.info(~comp="Aggregate(Product)", "handling command"))
+    let ok =
+      lines->Array.length == 1 &&
+      isCleanRecord(lines->Array.getUnsafe(0)) &&
+      (lines->Array.getUnsafe(0))->messageOf->String.includes("[Aggregate(Product)]")
+    expect(ok)->toBe(true)
+  })
+
+  test("Logger.warn emits one clean JSON record", () => {
+    let lines = captureLogs(() => log.warn(~comp="Platform", "heartbeat skipped"))
+    expect(lines->Array.length == 1 && isCleanRecord(lines->Array.getUnsafe(0)))->toBe(true)
+  })
+
+  test("Logger.error with ~data emits one clean JSON record", () => {
+    let lines = captureLogs(() =>
+      log.error(
+        ~comp="Util_AppSync_Caller",
+        ~data=JSON.parseOrThrow(`{"errors":["boom"]}`),
+        "query errors",
+      )
+    )
+    expect(lines->Array.length == 1 && isCleanRecord(lines->Array.getUnsafe(0)))->toBe(true)
+  })
+
+  test("EffectLogger.logInfo emits clean JSON through install()", () => {
+    let lines = captureLogs(() =>
+      EffectLogger.logInfo(~comp="Aggregate(Product)", "replay done")->Effect.runSync
+    )
+    let allClean = lines->Array.filter(l => !isCleanRecord(l))->Array.length == 0
+    expect(lines->Array.length >= 1 && allClean)->toBe(true)
+  })
+
+  test("LogFormat.cmdName carries no ANSI in a JSON sink", () => {
+    let meta: Message.meta = {
+      service: "testService",
+      time: "testTime",
+      ip: "testIp",
+      user: "testUser",
+      msgId: "testMsgId",
+      correlationId: "testCorrelationId",
+    }
+    let cmd: Message.commandJson = {
+      Message.id: "0",
+      meta,
+      commandJson: (Heartbeat: PluginSpec.command)->Message.encode(PluginSpec.commandSchema),
+    }
+    let name = cmd->cmdName
+    expect(!hasAnsi(name) && name == "Heartbeat")->toBe(true)
   })
 })
