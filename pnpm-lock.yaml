@@ -746,6 +746,13 @@ importers:
         version: 1.0.0-alpha.33
 
   packages/reventless-vscode:
+    dependencies:
+      '@rescript/runtime':
+        specifier: 12.3.0
+        version: 12.3.0
+      '@reventlessdev/reventless-vscode-protocol':
+        specifier: workspace:*
+        version: link:../../reventless/reventless-vscode-protocol
     devDependencies:
       '@types/node':
         specifier: ^22.19.17
@@ -753,6 +760,9 @@ importers:
       '@types/vscode':
         specifier: ^1.116.0
         version: 1.116.0
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -1170,6 +1180,9 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../reventless-spec
+      '@reventlessdev/reventless-vscode-protocol':
+        specifier: workspace:*
+        version: link:../reventless-vscode-protocol
       chokidar:
         specifier: ^3.6.0
         version: 3.6.0
@@ -1335,6 +1348,22 @@ importers:
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
+
+  reventless/reventless-vscode-protocol:
+    dependencies:
+      '@rescript/runtime':
+        specifier: 12.3.0
+        version: 12.3.0
+      sury:
+        specifier: 11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+      sury-ppx:
+        specifier: 11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
 packages:
 

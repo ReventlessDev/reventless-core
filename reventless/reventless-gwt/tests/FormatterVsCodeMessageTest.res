@@ -17,22 +17,16 @@ let failingResult = (~mismatch): RunnerTypes.testResult => {
   skipReason: None,
 }
 
-let getField = (j: JSON.t, k: string): option<JSON.t> =>
-  switch j {
-  | Object(o) => o->Dict.get(k)
-  | _ => None
-  }
-
 describe("FormatterVsCode.messagePayload", () => {
   testPromise("includes the mismatch kind for an EventsMismatch", async () => {
-    let j = FormatterVsCode.messagePayload(
+    let m = FormatterVsCode.messagePayload(
       failingResult(~mismatch=Some(Outcome.EventsMismatch({expected: [], actual: []}))),
     )
-    expect(getField(j, "kind"))->toEqual(Some(JSON.String("EventsMismatch")))
+    expect(m.kind)->toEqual(Some("EventsMismatch"))
   })
 
   testPromise("includes the mismatch kind for an ErrorMismatch", async () => {
-    let j = FormatterVsCode.messagePayload(
+    let m = FormatterVsCode.messagePayload(
       failingResult(
         ~mismatch=Some(
           Outcome.ErrorMismatch({
@@ -43,6 +37,6 @@ describe("FormatterVsCode.messagePayload", () => {
         ),
       ),
     )
-    expect(getField(j, "kind"))->toEqual(Some(JSON.String("ErrorMismatch")))
+    expect(m.kind)->toEqual(Some("ErrorMismatch"))
   })
 })

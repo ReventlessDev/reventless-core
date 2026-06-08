@@ -28,6 +28,7 @@
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
+    "@reventlessdev/reventless-vscode-protocol": "workspace:*",
     "chokidar": "^3.6.0",
     "picocolors": "^1.1.1"
   },
