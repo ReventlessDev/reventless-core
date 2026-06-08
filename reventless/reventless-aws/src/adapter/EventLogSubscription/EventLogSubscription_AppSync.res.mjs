@@ -151,7 +151,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
   let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCode);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
-  let lambda = new (Aws.lambda.Function)(name + "EventLogSubLambda", {
+  let lambda = new (Aws.lambda.Function)(name + "EventLogSubscriber", {
     handler: "index.handler",
     runtime: "nodejs22.x",
     code: code,
@@ -175,7 +175,7 @@ function make(name, topicName, eventTopicOutputs, eventsApi, opts) {
     sourceCodeHash: sourceCodeHash
   }, opts);
   let lambdaOutput = Pulumi.output(lambda);
-  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambdaOutput, name + "EventLogSubESM", queue, undefined, opts);
+  Util_EventSourceMapping$ReventlessAws.subscribeSqs(lambdaOutput, name + "EventLogSubEventSourceMapping", queue, undefined, opts);
 }
 
 export {

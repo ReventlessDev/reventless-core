@@ -290,7 +290,7 @@ The plugin generator then emits `Platform.Aggregate.MakeAsync(Inventory, Invento
 | `SQS_Sync` (default) | none | `CommandAccepted` \| `CommandRejected` | User-facing CRUD, payment commands |
 | `SQS_Async` | `@@reventless.async` | `CommandPending` | High-contention writes, internal automation |
 
-Async aggregates land in a separate `AllAggregatesAsync` Lambda; sync aggregates stay on the default `AllAggregates` Lambda. Each Lambda is only provisioned when at least one aggregate of that flavor exists — sync-only setups pay no extra Lambda cost.
+Async aggregates land in a separate `AllAggregatesAsyncCmdHandler` Lambda; sync aggregates stay on the default `AllAggregatesCmdHandler` Lambda. Each Lambda is only provisioned when at least one aggregate of that flavor exists — sync-only setups pay no extra Lambda cost.
 
 ---
 
@@ -1023,7 +1023,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 **Key differences from aggregate plugin composition:**
 - **`Platform.StateChangeSlice.Make(Spec, Spec_Behavior)`** instead of aggregate + behavior
 - **`Platform.StateViewSlice.Make(Spec, Spec_Projection)`** (or `StateViewSliceStream.Make` for the live-update variant) instead of read model + projection mappings
-- **DCB slice arrays** (`~stateChangeSlices`, `~stateViewSlices`, etc.) passed directly to `Plugin.make` — empty arrays can be omitted. For high-contention slices, add `@@reventless.async` at the top of the slice spec file and the plugin generator will emit `Platform.StateChangeSlice.MakeAsync(Spec, Spec_Behavior)` instead of `Make`; async slices use a FIFO queue and return `CommandPending`, while sync slices use the standard channel and return `CommandAccepted` / `CommandRejected`. Both go in the same `~stateChangeSlices` array, and the async slices share a separate `<Plugin>StateChangesAsync` Lambda only provisioned when at least one slice opts in (sync slices go to the per-plugin `<Plugin>StateChanges` Lambda).
+- **DCB slice arrays** (`~stateChangeSlices`, `~stateViewSlices`, etc.) passed directly to `Plugin.make` — empty arrays can be omitted. For high-contention slices, add `@@reventless.async` at the top of the slice spec file and the plugin generator will emit `Platform.StateChangeSlice.MakeAsync(Spec, Spec_Behavior)` instead of `Make`; async slices use a FIFO queue and return `CommandPending`, while sync slices use the standard channel and return `CommandAccepted` / `CommandRejected`. Both go in the same `~stateChangeSlices` array, and the async slices share a separate `<Plugin>DcbAsyncCmdHandler` Lambda only provisioned when at least one slice opts in (sync slices go to the per-plugin `<Plugin>DcbCmdHandler` Lambda).
 
 ---
 

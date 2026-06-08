@@ -224,13 +224,13 @@ Runtime builders consolidate multiple components into fewer Lambdas:
 
 | Lambda Name | Contents | Runtime Builder |
 |---|---|---|
-| `AllAggregates` | All aggregate handlers | `AggregateRuntime_Builder_Single` |
+| `AllAggregatesCmdHandler` | All aggregate handlers | `AggregateRuntime_Builder_Single` |
 | `AllReadModels` | All read model projections | `EventCollectorRuntime_Builder_Single` |
 | `AllStateViewSlices` | All DCB state view slice handlers | `StateViewSliceRuntime_Builder_Single` |
 | `AllAutomationSlices` | All automation + outbound translation handlers | `AutomationSliceRuntime_Builder_Single` |
 | `*CmdTopic` | Per-aggregate/EP command topic handler | `ExtensionPointRuntime_Builder_PerExtensionPoint` |
 | `*Heartbeat` | Plugin heartbeat handler | `PluginRuntime_Builder` |
-| `<Plugin>StateChanges` / `<Plugin>StateChangesAsync` | DCB command topic composite handler (per plugin, async created only if any `@@reventless.async` slice exists) | `PluginRuntime_Builder` |
+| `<Plugin>DcbCmdHandler` / `<Plugin>DcbAsyncCmdHandler` | DCB command topic composite handler (per plugin, async created only if any `@@reventless.async` slice exists) | `PluginRuntime_Builder` |
 
 Each consolidated Lambda receives events from multiple DynamoDB Streams and routes them to the correct handler based on the source ARN (passed via environment variables).
 
@@ -458,10 +458,10 @@ The core builders (`Aggregate_Builder`, `ReadModel_Builder`, `StateViewSlice_Bui
 `Platform.MakeWithConfig` accepts a `commandHandlerConfig` record that lets you
 tune the four command-handler Lambdas independently:
 
-- `AllAggregates` — sync aggregates, platform-wide
-- `AllAggregatesAsync` — async aggregates (opted in via `@@reventless.async`), platform-wide
-- `<Plugin>StateChanges` — sync DCB slices, per plugin
-- `<Plugin>StateChangesAsync` — async DCB slices, per plugin
+- `AllAggregatesCmdHandler` — sync aggregates, platform-wide
+- `AllAggregatesAsyncCmdHandler` — async aggregates (opted in via `@@reventless.async`), platform-wide
+- `<Plugin>DcbCmdHandler` — sync DCB slices, per plugin
+- `<Plugin>DcbAsyncCmdHandler` — async DCB slices, per plugin
 
 Every field on the inner `commandHandlerConfig` record is optional. Unset fields
 fall back to the framework defaults exposed as
@@ -483,7 +483,7 @@ module Platform = ReventlessAws.Platform.MakeWithConfig({
 })
 ```
 
-In the example above, only `AllAggregatesAsync` and `<Plugin>StateChangesAsync`
+In the example above, only `AllAggregatesAsyncCmdHandler` and `<Plugin>DcbAsyncCmdHandler`
 diverge from defaults — the sync Lambdas (and any branch you omit entirely)
 ship with the framework-default Lambda config.
 

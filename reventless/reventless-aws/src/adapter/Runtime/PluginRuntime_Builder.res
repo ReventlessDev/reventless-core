@@ -71,8 +71,9 @@ let heartbeatConfigRef: ref<heartbeatConfig> = ref({
 let registerHeartbeatConfig = (~pluginId, ~heartbeatTimeout=10, ~epQueueUrl=?, ()) =>
   heartbeatConfigRef := {pluginId, heartbeatTimeout, epQueueUrl}
 
-// Per-flavor commandHandlerConfig override for the two `<Plugin>StateChanges` Lambdas;
-// populated by Platform.MakeWithConfig from `commandHandlerConfig.stateChanges.{sync,async}`.
+// Per-flavor commandHandlerConfig override for the two DCB command-handler Lambdas
+// (`<Plugin>DcbCmdHandler` sync / `<Plugin>DcbAsyncCmdHandler` async); populated by
+// Platform.MakeWithConfig from `commandHandlerConfig.stateChanges.{sync,async}`.
 let syncStateChangesConfigRef: ref<ReventlessCore.Runtime.commandHandlerConfig> = ref(
   ({}: ReventlessCore.Runtime.commandHandlerConfig),
 )
@@ -759,10 +760,11 @@ module Make = (
       log.warn(~comp="PluginRuntime_Builder", "forDcbCommandTopic skipped (no slice specs)")
     } else {
       let commandTopicResource = dcbCommandTopic->ReventlessCore.Component.toPulumiResource
-      // The CommandTopic resource is already named `<Plugin>StateChanges` or
-      // `<Plugin>StateChangesAsync` by Dcb_Builder — don't append the
-      // `CommandTopic` componentType suffix again on the Lambda.
-      let name = commandTopicResource.name->Option.getOr("UnnamedDcb")
+      // The CommandTopic resource is named `<Plugin>Dcb` (sync) or
+      // `<Plugin>DcbAsync` (async) by Dcb_Builder. Detect async off that bare
+      // stem (below), then append the canonical `CmdHandler` Lambda kind so the
+      // command-handler Lambda is greppable alongside the aggregate lineage.
+      let baseName = commandTopicResource.name->Option.getOr("UnnamedDcb")
       let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
 
       // Extract SQS queue from the DCB CommandTopic
@@ -776,11 +778,12 @@ module Make = (
       | None => Pulumi.Output.make("NOT_AVAILABLE")
       }
 
-      // The async DCB CommandTopic is named `<Plugin>StateChangesAsync` by
-      // Dcb_Builder, so the canonical name's `Async` suffix is an unambiguous
-      // signal. Flip DcbCommandTopicEntryPoint into async dispatch — Route 1
-      // returns CommandPending instead of running the slice handler inline.
-      let isAsync = name->String.endsWith("Async")
+      // The async DCB CommandTopic is named `<Plugin>DcbAsync` by Dcb_Builder,
+      // so the bare stem's `Async` suffix is an unambiguous signal. Flip
+      // DcbCommandTopicEntryPoint into async dispatch — Route 1 returns
+      // CommandPending instead of running the slice handler inline.
+      let isAsync = baseName->String.endsWith("Async")
+      let name = baseName ++ "CmdHandler"
 
       let cfg = isAsync ? asyncStateChangesConfigRef.contents : syncStateChangesConfigRef.contents
 

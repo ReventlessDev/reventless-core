@@ -493,7 +493,7 @@ let asyncSlices = stateChangeSlices->Array.filter((module(M: StateChangeSlice.T)
 module DcbCommandTopicSpecAsync = { let name = childName ++ "Async"; @schema type command = JSON.t }
 module DcbAsyncCommandTopic = CommandTopic_Builder.Make(DcbCommandTopicSpecAsync, DcbCommandTopicChannelAsync)
 let asyncDcbCommandTopicOpt = if asyncSlices->Array.length > 0 {
-  Some(DcbAsyncCommandTopic.make(~name=`${name}StateChangesAsync`, ~opts))
+  Some(DcbAsyncCommandTopic.make(~name=`${name}DcbAsync`, ~opts))
 } else { None }
 
 // 7. Each sync StateChangeSlice.make registers its handler in the global registry

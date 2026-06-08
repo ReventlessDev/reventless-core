@@ -231,7 +231,7 @@ let make = (
   let appsyncEndpoint = AppSync_EventsApi.httpEndpoint(eventsApi)
 
   let lambda = Lambda.Function.make(
-    ~name=name ++ "EventLogSubLambda",
+    ~name=name ++ "EventLogSubscriber",
     ~args={
       handler: "index.handler"->Pulumi.Input.make,
       runtime: "nodejs22.x"->Pulumi.Input.make,
@@ -258,7 +258,7 @@ let make = (
   let lambdaOutput = lambda->Pulumi.Output.make
   let _esm = Util_EventSourceMapping.subscribeSqs(
     ~lambda=lambdaOutput,
-    ~name=name ++ "EventLogSubESM",
+    ~name=name ++ "EventLogSubEventSourceMapping",
     ~queue,
     ~opts,
   )

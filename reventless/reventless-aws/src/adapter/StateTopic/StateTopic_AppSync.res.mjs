@@ -247,7 +247,7 @@ function finish(eventsApi, opts) {
   let sourceCodeHash = Util_Bundle$ReventlessAws.hashString(handlerCode);
   let layers = Stdlib_Option.getOr(Stdlib_Option.map(Lambda$PulumiAws.reventlessLayerArn, arn => [arn]), []);
   let appsyncEndpoint = AppSync_EventsApi$ReventlessAws.httpEndpoint(eventsApi);
-  let lambda = new (Aws.lambda.Function)(name + "StateTopicLambda", {
+  let lambda = new (Aws.lambda.Function)(name + "StateTopicPublisher", {
     handler: "index.handler",
     runtime: "nodejs22.x",
     code: code,

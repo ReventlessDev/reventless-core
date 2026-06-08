@@ -69,8 +69,9 @@ type forEventCollector<'handler, 'component> = (
 ) => unit
 
 // commandHandlerConfig — per-Lambda tuning for the four command-handler Lambdas:
-// AllAggregates (sync), AllAggregatesAsync, <Plugin>StateChanges (sync),
-// <Plugin>StateChangesAsync. Every field is optional; the framework fills
+// AllAggregatesCmdHandler (sync), AllAggregatesAsyncCmdHandler,
+// <Plugin>DcbCmdHandler (sync), <Plugin>DcbAsyncCmdHandler. Every field is
+// optional; the framework fills
 // unset fields from CommandHandlerDefaults below. Transport-neutral: the
 // AWS platform maps fields to Lambda/SQS/CloudWatch primitives; the
 // in-memory platform honors envVars and ignores the rest.
