@@ -13,7 +13,7 @@ let publish = (topic, message) =>
   ->Effect.retry(SNS_Error.retrySchedule)
   ->Effect.catchAll(err => {
     let msg = SNS_Error.message(err)
-    Effect.logError("Util_SNS_Runtime.publish: " ++ msg)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "publish: " ++ msg)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
   ->Effect.runPromise
@@ -27,7 +27,7 @@ let publishFifo = (topic, ~messageGroupId, ~message) =>
   ->Effect.retry(SNS_Error.retrySchedule)
   ->Effect.catchAll(err => {
     let msg = SNS_Error.message(err)
-    Effect.logError("Util_SNS_Runtime.publishFifo: " ++ msg)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "publishFifo: " ++ msg)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
   ->Effect.runPromise

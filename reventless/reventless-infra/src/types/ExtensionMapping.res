@@ -253,8 +253,12 @@ module Make = (MappingImpl: Mapping): (
       Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec)
     }
 
+  // Carry `comp` as a structured Effect log annotation — EffectLogger.install
+  // (in reventless-core, wired at Lambda startup) lifts it to the top-level
+  // JSON `comp` field. Without the unified logger installed, Effect's default
+  // logger still renders the annotation, just less prettily.
   let compLog = (comp, msg) =>
-    Effect.logInfo(`${Reventless.LogPrefix.fmtComp(~comp, ())}${msg}`)->Effect.runSync
+    Effect.logInfo(msg)->Effect.annotateLogs("comp", comp)->Effect.runSync
 
   let encodeMeta = (meta: Reventless.Message.meta, service) => {
     ...meta,

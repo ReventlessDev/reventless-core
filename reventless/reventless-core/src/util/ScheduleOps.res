@@ -77,8 +77,9 @@ let create = (
         () => createSchedule(channelResources, schedule),
       )
       ->Effect.tap(_ =>
-        Effect.logInfo(
-          `ScheduleOps.create: created ${schedule->JSON.stringifyAny->Option.getOr("")}`,
+        EffectLogger.logInfo(
+          ~comp=__MODULE__,
+          `create: created ${schedule->JSON.stringifyAny->Option.getOr("")}`,
         )
       )
       ->Effect.runPromiseExit
@@ -87,8 +88,9 @@ let create = (
         ~onFailure=cause => cause->Cause.pretty,
         ~onSuccess=_ => "unknown",
       )
-      Effect.logError(
-        `ScheduleOps.create: couldn't create ${schedule
+      EffectLogger.logError(
+        ~comp=__MODULE__,
+        `create: couldn't create ${schedule
           ->JSON.stringifyAny
           ->Option.getOr("")}: ${errMsg}`,
       )->Effect.runSync
@@ -109,14 +111,14 @@ let delete = (
         ~catch=err => Util.Error.messageFromUnknown(err, "schedule delete"),
         () => deleteSchedule(channelResources, name),
       )
-      ->Effect.tap(_ => Effect.logInfo(`ScheduleOps.delete: deleted ${name}`))
+      ->Effect.tap(_ => EffectLogger.logInfo(~comp=__MODULE__, `delete: deleted ${name}`))
       ->Effect.runPromiseExit
     if !(exit->Exit.isSuccess) {
       let errMsg = exit->Exit.match(
         ~onFailure=cause => cause->Cause.pretty,
         ~onSuccess=_ => "unknown",
       )
-      Effect.logError(`ScheduleOps.delete: couldn't delete ${name}: ${errMsg}`)->Effect.runSync
+      EffectLogger.logError(~comp=__MODULE__, `delete: couldn't delete ${name}: ${errMsg}`)->Effect.runSync
       throw(ScheduleNotDeleted(name))
     }
   }

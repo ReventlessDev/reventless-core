@@ -26,8 +26,8 @@ let createSchedule = (~roleArn: string): ReventlessCore.Scheduler.createSchedule
   (queueResources, schedule) =>
     switch queueResources {
     | [] =>
-      let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !"
-      Effect.logError(err)
+      let err = "createSchedule not possible: no Queue configured !"
+      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, err)
       ->Effect.flatMap(_ =>
         Effect.sync(() => JsError.throwWithMessage(err))
       )
@@ -67,8 +67,8 @@ let createSchedule = (~roleArn: string): ReventlessCore.Scheduler.createSchedule
 let deleteSchedule: ReventlessCore.Scheduler.deleteSchedule = (queueResources, name) =>
   switch queueResources {
   | [] =>
-    let err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !"
-    Effect.logError(err)
+    let err = "deleteSchedule not possible: no Queue configured !"
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, err)
     ->Effect.flatMap(_ =>
       Effect.sync(() => JsError.throwWithMessage(err))
     )

@@ -4,7 +4,7 @@
 
 import * as Effect from "effect/Effect";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
-import { patchSpecId, makeQueueRef } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { MakeCounterHandler, MakeEventCollectorHandler } from "@reventlessdev/reventless-core/src/components/EventMapper/EventMapper_Callback.res.mjs";
 import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
@@ -30,12 +30,14 @@ function patchMappingsSourceIds(mappingsModule) {
 let _currentRequestId = "unknown";
 
 function runEffect(correlationId, effect) {
-  return effect
-    // Promote correlationId/requestId to top-level JSON log fields — decoded by
-    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
-    // unified logger isn't installed.
+  let e = effect
+    // Promote correlationId/requestId/plugin to top-level JSON log fields —
+    // decoded by EffectLogger.install() from Effect log annotations. Harmless
+    // no-op if the unified logger isn't installed.
     .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
+  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
+  return e
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -62,8 +64,8 @@ async function buildHandler() {
 
   const publishJsons = sqsPublishJsons(makeQueueRef(config.queueUrl), "SQS_FIFO");
   const queryEngine = {
-    query: async () => { console.error("EventMapper queryEngine not available in bundled mode"); return []; },
-    get: async () => { console.error("EventMapper queryEngine not available in bundled mode"); return undefined; },
+    query: async () => { log.error("queryEngine not available in bundled mode", { comp: "EventMapperEntryPoint" }); return []; },
+    get: async () => { log.error("queryEngine not available in bundled mode", { comp: "EventMapperEntryPoint" }); return undefined; },
   };
 
   const counterHandler = MakeCounterHandler(patchedTarget)(patchedMappings)({ publishJsons, queryEngine });
@@ -87,7 +89,7 @@ export async function handler(event, context) {
   const grouped = groupBySource(records);
 
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
-    console.log("----- eventMapperHandler: processing " + arn);
+    log.debug("processing " + arn, { comp: "EventMapperRuntime" });
     await runEffect(undefined, streamHandler({ Records: subRecords }, context));
   }));
 

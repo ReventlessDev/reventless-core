@@ -36,7 +36,8 @@ module Make = (
           queryEngine,
         )
       | None =>
-        Effect.logError(
+        EffectLogger.logError(
+          ~comp=`ExtensionPoint(${MappingSpec.name})`,
           "mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
         )->Effect.runSync
         []
@@ -66,8 +67,9 @@ module Make = (
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `ExtensionPoint(${MappingSpec.name}): beforePublishHook error: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`ExtensionPoint(${MappingSpec.name})`,
+          `beforePublishHook error: ${errMsg}`,
         )->Effect.runSync
         eventJson
       }
@@ -77,8 +79,9 @@ module Make = (
     | err =>
       let errMsg =
         err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Effect.logError(
-        `ExtensionPoint: Error on publishToEventTopic command: ${errMsg}`,
+      EffectLogger.logError(
+        ~comp=`ExtensionPoint(${MappingSpec.name})`,
+        `Error on publishToEventTopic command: ${errMsg}`,
       )->Effect.runSync
     }
 
@@ -99,8 +102,9 @@ module Make = (
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `ExtensionPoint(${MappingSpec.name}): afterPublishHook error: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`ExtensionPoint(${MappingSpec.name})`,
+          `afterPublishHook error: ${errMsg}`,
         )->Effect.runSync
       }
     }
@@ -119,7 +123,7 @@ module Make = (
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(`ExtensionPoint: Error on calling handler: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(~comp=`ExtensionPoint(${MappingSpec.name})`, `Error on calling handler: ${errMsg}`)->Effect.runSync
       }
     }
 

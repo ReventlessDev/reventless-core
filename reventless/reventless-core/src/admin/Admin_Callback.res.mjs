@@ -3,9 +3,10 @@
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as LogFormat$ReventlessCore from "../util/LogFormat.res.mjs";
+import * as EffectLogger$ReventlessCore from "../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
-  let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => Effect.zipRight(Effect.logInfo(`Admin handleJsonEvents: outgoing event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect.map(Effect.all(Spec.outgoingExtensionPointJsonEventsHandlers.map(handleEvent => Effect.promise(() => handleEvent(eventJson$p, Spec.pluginDefinition))), {
+  let handleJsonEvents = stream => Stream.runDrain(Stream.mapEffect(stream, eventJson$p => Effect.zipRight(EffectLogger$ReventlessCore.logInfo("Admin", undefined, `handleJsonEvents: outgoing event: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)), Effect.map(Effect.all(Spec.outgoingExtensionPointJsonEventsHandlers.map(handleEvent => Effect.promise(() => handleEvent(eventJson$p, Spec.pluginDefinition))), {
     concurrency: "unbounded"
   }), param => {}))));
   return {

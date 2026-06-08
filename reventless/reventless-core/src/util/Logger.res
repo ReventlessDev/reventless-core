@@ -105,11 +105,14 @@ let resolvePlugin = Reventless.LogPrefix.resolvePlugin
 // ~detail: structured data shown only in CloudWatch (expandable on click).
 //   Terminal (in-memory): shows only the message line.
 //   JSON sink (CloudWatch/…): structured object with plugin/comp/detail fields.
+// ~plugin: explicit plugin override (e.g. from Effect annotations set at the
+//   Lambda boundary). Falls back to LogPrefix.resolvePlugin lookup if absent.
 // ~annotations: extra structured key/value pairs (e.g. correlationId, requestId)
 //   carried via Effect log annotations. JSON sink only; ignored in the TTY view.
 let emit = (
   ~level: level,
   ~comp=?,
+  ~plugin: option<string>=?,
   ~detail: option<JSON.t>=?,
   ~annotations: option<dict<string>>=?,
   msg: string,
@@ -121,6 +124,11 @@ let emit = (
     // Structured JSON for any log collector. Plugin/comp/annotations are promoted
     // to top-level queryable keys instead of being baked into `message`; `message`
     // stays clean human text. `detail` is the expandable structured payload.
+    // Explicit ~plugin wins; otherwise fall back to the LogPrefix registry.
+    let pluginField = switch plugin {
+    | Some(_) as p => p
+    | None => resolvePlugin(~comp?, ())
+    }
     let annotationFields =
       annotations->Option.mapOr([], a =>
         a->Dict.toArray->Array.map(((k, v)) => (k, JSON.Encode.string(v)))
@@ -132,9 +140,7 @@ let emit = (
         ("message", msg->JSON.Encode.string),
       ]
       ->Array.concat(serviceName()->Option.mapOr([], s => [("service", JSON.Encode.string(s))]))
-      ->Array.concat(
-        resolvePlugin(~comp?, ())->Option.mapOr([], p => [("plugin", JSON.Encode.string(p))]),
-      )
+      ->Array.concat(pluginField->Option.mapOr([], p => [("plugin", JSON.Encode.string(p))]))
       ->Array.concat(comp->Option.mapOr([], c => [("comp", JSON.Encode.string(c))]))
       ->Array.concat(annotationFields)
       ->Array.concat(detail->Option.mapOr([], d => [("detail", truncateDetail(d))]))

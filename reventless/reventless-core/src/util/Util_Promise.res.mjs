@@ -5,6 +5,7 @@ import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as EffectLogger$ReventlessCore from "./EffectLogger.res.mjs";
 
 function filterRejected(results) {
   return results.map((result, idx) => [
@@ -69,7 +70,7 @@ async function onEndHandler(flush, resolve) {
   } catch (raw_e) {
     let e = Primitive_exceptions.internalToException(raw_e);
     if (e.RE_EXN_ID === "JsExn") {
-      Effect.runSync(Effect.logError("File \"Util_Promise.res\", line 55, characters 23-30" + `: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "unknown")));
+      Effect.runSync(EffectLogger$ReventlessCore.logError("Util_Promise-ReventlessCore", undefined, "File \"Util_Promise.res\", line 55, characters 47-54" + `: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(e._1), "unknown")));
     } else {
       throw e;
     }

@@ -3,6 +3,7 @@
 import * as Effect from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as CloudWatchEvents$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/CloudWatchEvents.res.mjs";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as ClientCloudwatchEvents from "@aws-sdk/client-cloudwatch-events";
 
 function plural(count) {
@@ -56,8 +57,8 @@ function createSchedule(roleArn) {
           }]
       })))), param => {}));
     }
-    let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !";
-    return Effect.runPromise(Effect.flatMap(Effect.logError(err), () => Effect.sync(() => Stdlib_JsError.throwWithMessage(err))));
+    let err = "createSchedule not possible: no Queue configured !";
+    return Effect.runPromise(Effect.flatMap(EffectLogger$ReventlessCore.logError("ScheduledPublisher_CloudWatchEvents_Runtime-ReventlessAws", undefined, err), () => Effect.sync(() => Stdlib_JsError.throwWithMessage(err))));
   };
 }
 
@@ -71,8 +72,8 @@ function deleteSchedule(queueResources, name) {
       Name: name
     })))), param => {}));
   }
-  let err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !";
-  return Effect.runPromise(Effect.flatMap(Effect.logError(err), () => Effect.sync(() => Stdlib_JsError.throwWithMessage(err))));
+  let err = "deleteSchedule not possible: no Queue configured !";
+  return Effect.runPromise(Effect.flatMap(EffectLogger$ReventlessCore.logError("ScheduledPublisher_CloudWatchEvents_Runtime-ReventlessAws", undefined, err), () => Effect.sync(() => Stdlib_JsError.throwWithMessage(err))));
 }
 
 export {

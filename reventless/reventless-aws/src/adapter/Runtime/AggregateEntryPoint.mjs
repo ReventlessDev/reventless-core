@@ -4,7 +4,7 @@
 // Handles both SQS CommandTopic events (Route 2) and AppSync direct invocation (Route 1).
 
 import * as Effect from "effect/Effect";
-import { patchSpecId, makeQueueRef } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { Make as eventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/EventLog/EventLog_Operations.res.mjs";
 import { Make as aggregateCallbackMake } from "@reventlessdev/reventless-core/src/components/Aggregate/Aggregate_Callback.res.mjs";
@@ -92,7 +92,7 @@ async function checkPluginStatus(event) {
   try {
     statuses = await loadPluginStatuses();
   } catch (err) {
-    console.warn("checkPluginStatus: failed to load Plugin RM statuses:", err?.message ?? err);
+    log.warn("checkPluginStatus: failed to load Plugin RM statuses", { comp: "AggregateEntryPoint", detail: err?.message ?? String(err) });
     return null;
   }
   const status = statuses[pluginPrefix];
@@ -189,12 +189,14 @@ function buildCommandGeneratorHandler(parts, dispatchMode) {
 let _currentRequestId = "unknown";
 
 function runEffect(correlationId, effect) {
-  return effect
-    // Promote correlationId/requestId to top-level JSON log fields — decoded by
-    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
-    // unified logger isn't installed.
+  let e = effect
+    // Promote correlationId/requestId/plugin to top-level JSON log fields —
+    // decoded by EffectLogger.install() from Effect log annotations. Harmless
+    // no-op if the unified logger isn't installed.
     .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
+  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
+  return e
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -261,7 +263,7 @@ export async function handler(event, context) {
     // without touching the EventLog or CommandTopic.
     const rejection = await checkPluginStatus(event);
     if (rejection !== null) {
-      console.log("----- commandGeneratorHandler: plugin status gate rejected (" + rejection.errorCode + ")");
+      log.warn("plugin status gate rejected: " + rejection.errorCode, { comp: "CommandGenerator" });
       return rejection;
     }
     const entries = Object.entries(cmdGenHandlers);
@@ -273,16 +275,16 @@ export async function handler(event, context) {
       const [name, cmdGenHandler] = entries[i];
       try {
         const r = await runEffect(undefined, cmdGenHandler(event, context));
-        console.log("----- commandGeneratorHandler: processed command via " + name);
+        log.debug("processed command via " + name, { comp: "CommandGenerator" });
         result = r;
         found = true;
       } catch (e) {
-        console.log("----- commandGeneratorHandler: handler '" + name + "' threw: " + (e && e.message ? e.message : String(e)));
+        log.debug("handler '" + name + "' threw, trying next", { comp: "CommandGenerator", detail: e && e.message ? e.message : String(e) });
         i = i + 1;
       }
     }
     if (!found) {
-      console.warn("commandGeneratorHandler: no handler matched command");
+      log.warn("no handler matched command", { comp: "CommandGenerator" });
       return null;
     }
     // generateCommand returns a ReScript commandOutcome variant
@@ -298,10 +300,10 @@ export async function handler(event, context) {
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
     const cmdHandler = cmdTopicHandlers[arn];
     if (cmdHandler !== undefined) {
-      console.log("----- aggregateHandler: found handler for CommandTopic " + arn);
+      log.debug("found handler for CommandTopic " + arn, { comp: "AggregateRuntime" });
       await runEffect(correlationId, cmdHandler({ Records: subRecords }, context));
     } else {
-      console.warn("aggregateHandler: no handler found: " + arn);
+      log.warn("no handler found: " + arn, { comp: "AggregateRuntime" });
     }
   }));
   return "";

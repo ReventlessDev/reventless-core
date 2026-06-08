@@ -6,7 +6,7 @@
 import * as Chunk from "effect/Chunk";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
-import { patchSpecId, makeQueueRef } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { decodeCommand$p as decodeCommandPrime } from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { extractVariantNames } from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
@@ -43,12 +43,14 @@ function extractTypeName(json) {
 let _currentRequestId = "unknown";
 
 function runEffect(correlationId, effect) {
-  return effect
-    // Promote correlationId/requestId to top-level JSON log fields — decoded by
-    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
-    // unified logger isn't installed.
+  let e = effect
+    // Promote correlationId/requestId/plugin to top-level JSON log fields —
+    // decoded by EffectLogger.install() from Effect log annotations. Harmless
+    // no-op if the unified logger isn't installed.
     .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
+  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
+  return e
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -136,11 +138,11 @@ async function buildHandler() {
           if (sliceHandler !== undefined) {
             return sliceHandler(Stream.make(topicItem));
           } else {
-            console.warn("DCB: no handler for command type: " + typeNameOpt);
+            log.warn("no handler for command type: " + typeNameOpt, { comp: "DcbCommandTopicRuntime" });
             return Effect.succeed([]);
           }
         }
-        console.warn("DCB: could not extract command type");
+        log.warn("could not extract command type", { comp: "DcbCommandTopicRuntime" });
         return Effect.succeed([]);
       })
     ),
@@ -204,7 +206,7 @@ export async function handler(event, context) {
   // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload
   // shape (`{command, arguments, meta, identity?}`).
   if (event.command != null && event.arguments != null) {
-    console.log("----- dcbCommandTopicHandler: AppSync direct invocation (" + DISPATCH_MODE + ")");
+    log.debug("AppSync direct invocation (" + DISPATCH_MODE + ")", { comp: "DcbCommandTopicRuntime" });
     const outcome = await runEffect(undefined, cmdGenHandler(event));
     return commandOutcomeToJson(outcome);
   }
@@ -212,7 +214,7 @@ export async function handler(event, context) {
   // Route 2: SQS CommandTopic events
   const records = event.Records || [];
   const correlationId = extractCorrelationId(records);
-  console.log("----- dcbCommandTopicHandler: processing " + records.length.toString() + " record(s)");
+  log.debug("processing " + records.length.toString() + " record(s)", { comp: "DcbCommandTopicRuntime" });
   await runEffect(correlationId, sqsHandler(event, context));
   return "";
 }

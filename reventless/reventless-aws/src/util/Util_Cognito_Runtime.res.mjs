@@ -4,6 +4,7 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect$1 from "effect/Effect";
 import * as Cognito_Error$ReventlessAws from "../errors/Cognito_Error.res.mjs";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as ClientCognitoIdentityProvider from "@aws-sdk/client-cognito-identity-provider";
 
 function userPoolEndpoint(region, userPoolId) {
@@ -23,7 +24,7 @@ function signUp(region, userPoolId, userPoolClientId, userName, password) {
 }
 
 function signUpIfMissing(region, userPoolId, userPoolClientId, userName, password) {
-  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.flatMap(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => signUp(region, userPoolId, userPoolClientId, userName, password)), result => Effect$1.logInfo(`Created User ` + userName + ` ` + Stdlib_Option.getOr(result.UserSub, ""))), err => Effect$1.logInfo(Cognito_Error$ReventlessAws.message(err))));
+  return Effect$1.runPromise(Effect$1.catchAll(Effect$1.flatMap(Effect.tryPromise(Cognito_Error$ReventlessAws.classify, () => signUp(region, userPoolId, userPoolClientId, userName, password)), result => EffectLogger$ReventlessCore.logInfo("Util_Cognito_Runtime-ReventlessAws", undefined, `Created User ` + userName + ` ` + Stdlib_Option.getOr(result.UserSub, ""))), err => EffectLogger$ReventlessCore.logInfo("Util_Cognito_Runtime-ReventlessAws", undefined, Cognito_Error$ReventlessAws.message(err))));
 }
 
 export {

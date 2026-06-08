@@ -4,7 +4,7 @@
 // Routes DynamoDB Stream events from references and counts tables.
 
 import { schema as surySchema, string as suryString, $$int as suryInt, parseJsonOrThrow } from "sury/src/S.res.mjs";
-import { patchSpecId, makeTableRef, makeQueueRef } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, makeTableRef, makeQueueRef, log } from "./HandlerFactoryHelpers.mjs";
 import { parseDynamoDbStreamRecordState } from "@reventlessdev/reventless-aws/src/util/Util_DynamoDbStream_Runtime.res.mjs";
 import { Make as counterCallbackMake } from "@reventlessdev/reventless-core/src/components/Counter/Counter_Callback.res.mjs";
 import { MakeCounterHandler } from "@reventlessdev/reventless-core/src/components/EventMapper/EventMapper_Callback.res.mjs";
@@ -71,7 +71,7 @@ export async function handler(event, _context) {
         return [[id, inc]];
       }
       case 2: // NewAndOldImage — duplicate
-        console.log("CounterEntryPoint (references): ignoring duplicate id: " + state._0);
+        log.debug("ignoring duplicate id: " + state._0, { comp: "CounterEntryPoint" });
         return [];
       default:
         return [];

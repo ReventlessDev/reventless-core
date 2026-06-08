@@ -5,13 +5,68 @@ non-TTY sink (CloudWatch first, but the same shape works for Azure
 Monitor, GCP Cloud Logging, Datadog, Loki) while preserving the current
 human-readable terminal rendering on the local platform.
 
-Status: **All three tiers implemented and locally verified** (full build clean;
-407 reventless-core + 446 reventless-local tests green, incl. JSON-sink,
-plugin/comp-field, detail-via-annotation, correlationId-surfacing, time/service,
-and detail-truncation guards). Remaining before this plan can move to `done/`:
-manual CloudWatch verification in alpha (§1.5, §2.5, §3.5) and — optional — the
-broader Console cleanup (§2.6, see Tier 2 note).
+Status: **All three tiers implemented and verified end-to-end in alpha
+CloudWatch** (full build clean; 407 reventless-core + 446 reventless-local + 114
+reventless-aws tests green; a post-verification sweep extended the original §2.4
+scope to also cover hand-written `.mjs` Lambda entry-point shims, two
+infra-layer `compLog` helpers, and ~30 bare `Effect.log*` callers across
+`reventless-aws/src`, `reventless-core/src`, and `reventless-infra/src`).
 Companion analysis: `docs/analysis/logging-output-optimization.md`.
+
+## Post-verification follow-ups (2026-06-08)
+
+Inspecting live CloudWatch records from the post-rename alpha deploy
+(`AllAggregatesCmdHandler-a9e841e`, `CatalogPluginEventColl-689371d`) confirmed
+§1.5 (no ``), §3.5 (`time`/`service`), and the correlationId trace
+across a SQS hop. Four observable gaps surfaced and were closed in the same
+PR series:
+
+- **`plugin` field at runtime.** `Logger.emit` already called
+  `LogPrefix.resolvePlugin(~comp?)`, but the underlying
+  `componentPluginRegistry` is populated only inside
+  `Plugin_Builder.Make.construct` (deploy-time). Runtime Lambdas saw an empty
+  registry, so the field never resolved. Fix: `Logger.emit` now takes a
+  `~plugin` override; `EffectLogger.install()` lifts a `plugin` annotation
+  into it; `HandlerFactoryHelpers.mjs` derives plugin from
+  `AWS_LAMBDA_FUNCTION_NAME` (regex `^([A-Z][a-zA-Z0-9]+)Plugin(?:[A-Z]|$|-)`)
+  and exports it as `pluginName`; every entry-point shim now annotates
+  `plugin` alongside `correlationId`/`requestId` in `runEffect`. Multi-plugin
+  Lambdas (`AllAggregatesCmdHandler`, `AllReadModels`) correctly omit the
+  field. Test: `Effect.annotateLogs(plugin) overrides registry resolution`.
+
+- **Hand-written `.mjs` shim noise.** `AggregateEntryPoint.mjs` and 8 sibling
+  shims emitted bare `console.log("----- …handler: …")` lines that bypassed
+  Logger entirely. Fix: shared `log = {debug, info, warn, error}` exported
+  from `HandlerFactoryHelpers.mjs` (mirrors `Logger.t`); all 30+ call sites
+  routed through it. Cold-start / per-invocation traces demoted to `debug`,
+  errors stay at `error` / `warn`. The CloudWatch Embedded Metric Format
+  emission in `AdminEventCollectorEntryPoint.mjs` deliberately stays as a raw
+  `console.log` (EMF requires `_aws` at the record root).
+
+- **Infra `compLog` helpers.** `ExtensionPointMapping.res:184` and
+  `ExtensionMapping.res:256` baked the `LogPrefix.fmtComp(~comp)` prefix into
+  the message string. Rewritten as
+  `Effect.logInfo(msg)->Effect.annotateLogs("comp", comp)` so the comp lifts
+  to a top-level field via `EffectLogger.install()`. `reventless-infra`
+  doesn't depend on `reventless-core` so it uses raw `Effect.annotateLogs`,
+  not `EffectLogger.logInfo`.
+
+- **~30 raw `Effect.log*` callers.** Sites across `reventless-aws/src` (Util_*,
+  CommandTopicChannel_SQS, ScheduledPublisher, EventCollectorChannel_SQS,
+  QueryEngine_DynamoDb, QueryDbStorage_DynamoDb, EventLogStorage_DynamoDb) and
+  `reventless-core/src` (Util_Promise, ScheduleOps, Util_AdapterRuntime,
+  Util_QueryDbRuntime, Validation, FTPHandler, Admin_Callback,
+  PluginExtensionPoint_Plugin, plus all `*_Operations`/`*_Callback` files in
+  the AutomationSlice/OutboundTranslationSlice/SideEffectHandler/Extension/
+  EventMapper/ExtensionPoint/InboundTranslationSlice/DcbEventLog/Counter/
+  EventLog component trees) inherited `correlationId`/`requestId` from the
+  surrounding annotation but had no `comp`. Migrated to
+  `EffectLogger.log<Level>(~comp=…, msg)` — the canonical `~comp` is
+  `__MODULE__` for utility helpers and a meaningful component-scoped string
+  (`AutomationSlice(${Spec.name})`, `Counter`, `Core.Plugin`, etc.) for
+  business components. Verified: 0 raw `Effect.log{Info,Error,Warning,Debug}`
+  outside `EffectLogger.res` and the 2 `compLog` helpers (which use the same
+  annotation pattern).
 
 ## Problem (one-paragraph recap)
 

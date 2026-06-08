@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as Util_QueryDbRuntime$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDbRuntime.res.mjs";
@@ -165,9 +166,9 @@ function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, 
     Limit: params_Limit,
     ScanIndexForward: params_ScanIndexForward
   };
-  return Effect.runPromise(Effect.flatMap(Effect.logDebug("queryByTableName params: " + Stdlib_Option.getOr(JSON.stringify(params), "")), () => Effect.catchAll(Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(params)), items => items.map(js => JSON.parse(JSON.stringify(js)))), err => {
+  return Effect.runPromise(Effect.flatMap(EffectLogger$ReventlessCore.logDebug("QueryEngine_DynamoDb-ReventlessAws", undefined, "queryByTableName params: " + Stdlib_Option.getOr(JSON.stringify(params), "")), () => Effect.catchAll(Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(params)), items => items.map(js => JSON.parse(JSON.stringify(js)))), err => {
     let msg = DynamoDb_Error$ReventlessAws.message(err);
-    return Effect.map(Effect.logError("Error: " + msg), () => []);
+    return Effect.map(EffectLogger$ReventlessCore.logError("QueryEngine_DynamoDb-ReventlessAws", undefined, "queryByTableName: " + msg), () => []);
   })));
 }
 
@@ -195,9 +196,9 @@ function scanByTableName(tableName, filterConfigs, limit) {
     FilterExpression: params_FilterExpression,
     Limit: params_Limit
   };
-  return Effect.runPromise(Effect.flatMap(Effect.logDebug("scanByTableName params: " + Stdlib_Option.getOr(JSON.stringify(params), "")), () => Effect.catchAll(Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(params)), items => items.map(js => JSON.parse(JSON.stringify(js)))), err => {
+  return Effect.runPromise(Effect.flatMap(EffectLogger$ReventlessCore.logDebug("QueryEngine_DynamoDb-ReventlessAws", undefined, "scanByTableName params: " + Stdlib_Option.getOr(JSON.stringify(params), "")), () => Effect.catchAll(Effect.map(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(params)), items => items.map(js => JSON.parse(JSON.stringify(js)))), err => {
     let msg = DynamoDb_Error$ReventlessAws.message(err);
-    return Effect.map(Effect.logError("Error: " + msg), () => []);
+    return Effect.map(EffectLogger$ReventlessCore.logError("QueryEngine_DynamoDb-ReventlessAws", undefined, "scanByTableName: " + msg), () => []);
   })));
 }
 

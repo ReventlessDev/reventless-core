@@ -3,7 +3,7 @@
 // wires ReadModel_Callback.Make, builds handler map keyed by source URN.
 
 import * as Effect from "effect/Effect";
-import { patchSpecId, makeTableRef } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, makeTableRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { Make as readModelCallbackMake } from "@reventlessdev/reventless-core/src/components/ReadModel/ReadModel_Callback.res.mjs";
 import { load as qdbLoad, loadStream as qdbLoadStream, save as qdbSave, saveBatch as qdbSaveBatch, count as qdbCount, $$delete as qdbDelete, deleteBatch as qdbDeleteBatch } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
@@ -47,12 +47,14 @@ function fixMappingsModule(mod) {
 let _currentRequestId = "unknown";
 
 function runEffect(correlationId, effect) {
-  return effect
-    // Promote correlationId/requestId to top-level JSON log fields — decoded by
-    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
-    // unified logger isn't installed.
+  let e = effect
+    // Promote correlationId/requestId/plugin to top-level JSON log fields —
+    // decoded by EffectLogger.install() from Effect log annotations. Harmless
+    // no-op if the unified logger isn't installed.
     .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
+  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
+  return e
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -118,10 +120,10 @@ export async function handler(event, context) {
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
     const streamHandler = handlers[arn];
     if (streamHandler !== undefined) {
-      console.log("----- readModelHandler: found handler for " + arn);
+      log.debug("found handler for " + arn, { comp: "ReadModelRuntime" });
       await runEffect(undefined, streamHandler({ Records: subRecords }, context));
     } else {
-      console.warn("readModelHandler: no handler found: " + arn);
+      log.warn("no handler found: " + arn, { comp: "ReadModelRuntime" });
     }
   }));
 

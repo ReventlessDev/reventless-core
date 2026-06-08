@@ -4,11 +4,12 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect/Effect";
 import * as SQS_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS_Helpers.res.mjs";
 import * as SQS_Error$ReventlessAws from "../errors/SQS_Error.res.mjs";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 
 function sendMessage(channelId, messageBody) {
   return Effect$1.runPromise(Effect$1.catchAll(Effect$1.retry(Effect$1.map(Effect.tryPromise(SQS_Error$ReventlessAws.classify, () => SQS_Helpers$AwsSdk.sendMessage(channelId, messageBody, undefined, undefined, undefined)), () => {}), SQS_Error$ReventlessAws.retrySchedule), err => {
     let msg = SQS_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(Effect$1.logError("Failed to send message to channel: " + msg), () => Effect$1.fail(err));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_PluginMessage_Runtime-ReventlessAws", undefined, "Failed to send message to channel: " + msg), () => Effect$1.fail(err));
   }));
 }
 

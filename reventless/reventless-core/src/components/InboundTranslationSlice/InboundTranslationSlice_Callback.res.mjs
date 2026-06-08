@@ -7,6 +7,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 S.enableJson();
 
@@ -85,7 +86,7 @@ function Make(Spec) {
             } catch (raw_exn) {
               let exn = Primitive_exceptions.internalToException(raw_exn);
               let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(Effect.logError(`InboundTranslationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`InboundTranslationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + errMsg));
               encodeError.contents = "failed to encode command";
               return;
             }

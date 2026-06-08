@@ -16,6 +16,7 @@ import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/compon
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
@@ -84,7 +85,7 @@ function Make(RuntimeEnvironment) {
             if (pj !== undefined) {
               Stdlib_Promise.$$catch(Callback.phase2(pj).then(() => syncToQueryDb(queryDbOps)), exn => {
                 let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-                Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): detached phase 2 error: ` + errMsg));
+                Effect.runSync(EffectLogger$ReventlessCore.logError(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `detached phase 2 error: ` + errMsg));
                 return Promise.resolve();
               });
               return;

@@ -5,6 +5,7 @@ import * as Stream from "@reventlessdev/rescript-effect/src/Stream.res.mjs";
 import * as Effect$1 from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
 import * as DynamoDb_DocumentClient$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/DynamoDb_DocumentClient.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
@@ -98,7 +99,7 @@ function replayStream(table) {
 }
 
 function replay(table) {
-  return id => Effect$1.runPromise(Effect$1.catchAll(Stream.runCollect(replayStream(table)(id)), msg => Effect$1.flatMap(Effect$1.logError(`Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.fail(msg))));
+  return id => Effect$1.runPromise(Effect$1.catchAll(Stream.runCollect(replayStream(table)(id)), msg => Effect$1.flatMap(EffectLogger$ReventlessCore.logError("EventLogStorage_DynamoDb_Runtime-ReventlessAws", undefined, `Couldn't replay events for id ` + id + ` after retries: ` + msg), () => Effect$1.fail(msg))));
 }
 
 function appendStream(table) {

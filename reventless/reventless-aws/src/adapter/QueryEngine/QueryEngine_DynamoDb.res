@@ -98,14 +98,14 @@ let queryByTableName = (
       limit,
     }
   }
-  Effect.logDebug("queryByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
+  ReventlessCore.EffectLogger.logDebug(~comp=__MODULE__, "queryByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
   ->Effect.flatMap(_ =>
     Util_DynamoDb_Runtime.queryStream(params)
     ->Stream.runCollect
     ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
     ->Effect.catchAll(err => {
       let msg = DynamoDb_Error.message(err)
-      Effect.logError("Error: " ++ msg)->Effect.map(_ => [])
+      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "queryByTableName: " ++ msg)->Effect.map(_ => [])
     })
   )
   ->Effect.runPromise
@@ -130,14 +130,14 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
     expressionAttributeValues: ?attributeValues,
     limit,
   }
-  Effect.logDebug("scanByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
+  ReventlessCore.EffectLogger.logDebug(~comp=__MODULE__, "scanByTableName params: " ++ params->JSON.stringifyAny->Option.getOr(""))
   ->Effect.flatMap(_ =>
     Util_DynamoDb_Runtime.scanStream(params)
     ->Stream.runCollect
     ->Effect.map(items => items->Array.map(js => js->JSON.stringify->JSON.parseOrThrow))
     ->Effect.catchAll(err => {
       let msg = DynamoDb_Error.message(err)
-      Effect.logError("Error: " ++ msg)->Effect.map(_ => [])
+      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "scanByTableName: " ++ msg)->Effect.map(_ => [])
     })
   )
   ->Effect.runPromise

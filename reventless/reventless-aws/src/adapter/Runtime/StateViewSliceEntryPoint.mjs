@@ -6,7 +6,7 @@
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import { parseJsonOrThrow } from "sury/src/S.res.mjs";
-import { makeTableRef } from "./HandlerFactoryHelpers.mjs";
+import { makeTableRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { handleAction } from "@reventlessdev/reventless-core/src/Projection.res.mjs";
 import { load, loadStream, save, saveBatch, count, $$delete, deleteBatch } from "@reventlessdev/reventless-aws/src/adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.res.mjs";
@@ -18,12 +18,14 @@ const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifie
 let _currentRequestId = "unknown";
 
 function runEffect(correlationId, effect) {
-  return effect
-    // Promote correlationId/requestId to top-level JSON log fields — decoded by
-    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
-    // unified logger isn't installed.
+  let e = effect
+    // Promote correlationId/requestId/plugin to top-level JSON log fields —
+    // decoded by EffectLogger.install() from Effect log annotations. Harmless
+    // no-op if the unified logger isn't installed.
     .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
+  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
+  return e
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -61,7 +63,7 @@ function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName) 
           const eventJson = json.event != null ? json.event : json;
           return project(parseJsonOrThrow(eventJson, eventSchema));
         } catch (exn) {
-          console.log("StateViewSlice: Failed to decode event:", exn);
+          log.error("failed to decode event", { comp: "StateViewSliceRuntime", detail: exn && exn.message ? exn.message : String(exn) });
           return [];
         }
       })),
@@ -103,12 +105,12 @@ export async function handler(event, context) {
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
     const streamHandlers = handlers[arn];
     if (streamHandlers !== undefined && streamHandlers.length > 0) {
-      console.log("----- stateViewSliceHandler: found " + streamHandlers.length + " handler(s) for " + arn);
+      log.debug("found " + streamHandlers.length + " handler(s) for " + arn, { comp: "StateViewSliceRuntime" });
       await Promise.all(streamHandlers.map(h =>
         runEffect(undefined, h({ Records: subRecords }, context))
       ));
     } else {
-      console.warn("stateViewSliceHandler: no handler found: " + arn);
+      log.warn("no handler found: " + arn, { comp: "StateViewSliceRuntime" });
     }
   }));
   return "";

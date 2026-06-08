@@ -152,8 +152,9 @@ module Make = (
                         ->JsExn.fromException
                         ->Option.flatMap(JsExn.message)
                         ->Option.getOr("unknown")
-                      Effect.logError(
-                        `AutomationSlice(${Spec.name}): detached phase 2 error: ${errMsg}`,
+                      EffectLogger.logError(
+                        ~comp=`AutomationSlice(${Spec.name})`,
+                        `detached phase 2 error: ${errMsg}`,
                       )->Effect.runSync
                       Promise.resolve()
                     })

@@ -88,7 +88,8 @@ let replay = table =>
     replayStream(table)(id)
     ->Stream.runCollect
     ->Effect.catchAll(msg => {
-      Effect.logError(
+      ReventlessCore.EffectLogger.logError(
+        ~comp=__MODULE__,
         `Couldn't replay events for id ${id} after retries: ${msg}`,
       )
       ->Effect.flatMap(_ => Effect.fail(msg))

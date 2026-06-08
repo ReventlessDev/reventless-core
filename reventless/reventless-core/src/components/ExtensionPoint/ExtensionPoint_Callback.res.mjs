@@ -7,6 +7,7 @@ import * as Effect$1 from "effect/Effect";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../../util/ScheduleOps.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function Make(Spec) {
   return MappingSpec => (Mappings => {
@@ -34,7 +35,7 @@ function Make(Spec) {
           };
         }), param => {
           let errorResult = param[0];
-          return Effect$1.map(Effect$1.logError(param[1]), () => errorResult);
+          return Effect$1.map(EffectLogger$ReventlessCore.logError("ExtensionPoint", undefined, param[1]), () => errorResult);
         });
       }
       let handler = action._1;
@@ -53,7 +54,7 @@ function Make(Spec) {
         _0: reference$1
       })), param => {
         let errorResult = param[0];
-        return Effect$1.map(Effect$1.logError(param[1]), () => errorResult);
+        return Effect$1.map(EffectLogger$ReventlessCore.logError("ExtensionPoint", undefined, param[1]), () => errorResult);
       });
     };
     let handleIncomingCommands = stream => Effect$1.flatMap(Stream.runCollect(stream), topicItems => {

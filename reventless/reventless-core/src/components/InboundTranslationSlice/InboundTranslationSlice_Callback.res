@@ -114,8 +114,9 @@ module Make = (
               | exn =>
                 let errMsg =
                   exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-                Effect.logError(
-                  `InboundTranslationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
+                EffectLogger.logError(
+                  ~comp=`InboundTranslationSlice(${Spec.name})`,
+                  `failed to encode command: ${errMsg}`,
                 )->Effect.runSync
                 encodeError := Some("failed to encode command")
               }

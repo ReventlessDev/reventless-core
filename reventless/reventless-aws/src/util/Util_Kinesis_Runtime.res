@@ -13,7 +13,7 @@ let putRecord = (stream, ~data) =>
   ->Effect.retry(Kinesis_Error.retrySchedule)
   ->Effect.catchAll(err => {
     let msg = Kinesis_Error.message(err)
-    Effect.logError(`Util_Kinesis_Runtime.putRecord: ${msg}`)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `putRecord: ${msg}`)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
   ->Effect.runPromise

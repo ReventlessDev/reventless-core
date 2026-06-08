@@ -88,8 +88,9 @@ function truncateDetail(d) {
   }
 }
 
-function emit(level, comp, detail, annotations, msg) {
+function emit(level, comp, plugin, detail, annotations, msg) {
   if (AnsiStyle$Reventless.isJsonSink()) {
+    let pluginField = plugin !== undefined ? plugin : LogPrefix$Reventless.resolvePlugin(comp, undefined);
     let annotationFields = Stdlib_Option.mapOr(annotations, [], a => Object.entries(a).map(param => [
       param[0],
       param[1]
@@ -110,7 +111,7 @@ function emit(level, comp, detail, annotations, msg) {
     ].concat(Stdlib_Option.mapOr(serviceName(), [], s => [[
         "service",
         s
-      ]])).concat(Stdlib_Option.mapOr(LogPrefix$Reventless.resolvePlugin(comp, undefined), [], p => [[
+      ]])).concat(Stdlib_Option.mapOr(pluginField, [], p => [[
         "plugin",
         p
       ]])).concat(Stdlib_Option.mapOr(comp, [], c => [[
@@ -149,7 +150,7 @@ function makeLogger(minLevelOpt) {
       return;
     }
     let dataStr = Stdlib_Option.getOr(Stdlib_Option.map(data, d => ` ` + JSON.stringify(d)), "");
-    emit(level, comp, undefined, undefined, msg + dataStr);
+    emit(level, comp, undefined, undefined, undefined, msg + dataStr);
   };
   return {
     debug: (comp, data, msg) => log("Debug", comp, data, msg),

@@ -52,7 +52,8 @@ module Make = (
       switch Mapping.mapOutgoingEvent {
       | Some(mapOutgoingEvent) => mapOutgoingEvent(eventJson', pluginDef)
       | None =>
-        Effect.logError(
+        EffectLogger.logError(
+          ~comp,
           "mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
         )->Effect.runSync
         []
@@ -72,8 +73,9 @@ module Make = (
     try await pub([cmdJson]) catch {
     | err =>
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Effect.logError(
-        `Extension: Error on publish command to aggregate ${aggregateName}: ${errMsg}`,
+      EffectLogger.logError(
+        ~comp,
+        `Error on publish command to aggregate ${aggregateName}: ${errMsg}`,
       )->Effect.runSync
     }
   }
@@ -82,8 +84,9 @@ module Make = (
     try await Ops.publishToPluginExtensionPoint([cmdJson]) catch {
     | err =>
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Effect.logError(
-        `Extension: Error on publish command to Plugin ExtensionPoint: ${errMsg}`,
+      EffectLogger.logError(
+        ~comp,
+        `Error on publish command to Plugin ExtensionPoint: ${errMsg}`,
       )->Effect.runSync
     }
 
@@ -106,7 +109,7 @@ module Make = (
     try await handler() catch {
     | err =>
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Effect.logError(`ExtensionPoint: Error on calling handler: ${errMsg}`)->Effect.runSync
+      EffectLogger.logError(~comp, `Error on calling handler: ${errMsg}`)->Effect.runSync
     }
 
   let applyIncomingCommandAction = async action =>
@@ -182,7 +185,8 @@ module Make = (
 
     | exception err =>
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      Effect.logError(
+      EffectLogger.logError(
+        ~comp,
         `Could not decode event': ${eventJson'->JSON.stringify} ${errMsg}`,
       )->Effect.runSync
     }

@@ -48,8 +48,9 @@ let load = table =>
     ->Effect.catchAll(err => {
       let tableName = table.name
       let msg = ReventlessCore.QueryDb.storageErrorToString(err)
-      Effect.logError(
-        __MODULE__ ++ `.load: Error: Couldn't load state for ${id} from ${tableName}: ${msg}`,
+      ReventlessCore.EffectLogger.logError(
+        ~comp=__MODULE__,
+        `load: Couldn't load state for ${id} from ${tableName}: ${msg}`,
       )
       ->Effect.map(_ => Error(err))
     })
@@ -66,12 +67,12 @@ let save = table =>
       ->Effect.flatMap(result =>
         switch result {
         | Ok() =>
-          Effect.logInfo(__MODULE__ ++ `.save: saved Init state to ${tableName}: id=${id}`)
+          ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, `save: saved Init state to ${tableName}: id=${id}`)
           ->Effect.map(_ => Ok())
         | Error(errorMsg) =>
-          Effect.logInfo(
-            __MODULE__ ++
-            `.save: Error: Couldn't save Init state to ${tableName}, id=${id}: ${errorMsg}`,
+          ReventlessCore.EffectLogger.logError(
+            ~comp=__MODULE__,
+            `save: Couldn't save Init state to ${tableName}, id=${id}: ${errorMsg}`,
           )
           ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg)))
         }
@@ -83,12 +84,12 @@ let save = table =>
       ->Effect.flatMap(result =>
         switch result {
         | Ok() =>
-          Effect.logInfo(__MODULE__ ++ `.save: saved state to ${tableName}: id=${id}`)
+          ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, `save: saved state to ${tableName}: id=${id}`)
           ->Effect.map(_ => Ok())
         | Error(errorMsg) =>
-          Effect.logInfo(
-            __MODULE__ ++
-            `.save: Error: Couldn't save state to ${tableName}, id=${id}: ${errorMsg}`,
+          ReventlessCore.EffectLogger.logError(
+            ~comp=__MODULE__,
+            `save: Couldn't save state to ${tableName}, id=${id}: ${errorMsg}`,
           )
           ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotSavedToStorage(errorMsg)))
         }
@@ -112,8 +113,8 @@ let writeMultiple = (writeRequests, op, ids, table) => {
 
   let logSplitEffect =
     if batches > 1 {
-      Effect.logInfo(
-        __MODULE__ ++
+      ReventlessCore.EffectLogger.logInfo(
+        ~comp=__MODULE__,
         `writeBatch: splitting up batch of size ${size->Int.toString} into ${batches->Int.toString} batches`,
       )
     } else {
@@ -146,24 +147,22 @@ let writeMultiple = (writeRequests, op, ids, table) => {
   ->Effect.flatMap(errors =>
     switch errors {
     | [] =>
-      Effect.logInfo(
-        __MODULE__ ++ `.writeBatch: ${op} ${count} states: ${tableName}, ids:${allIdsStr}`,
+      ReventlessCore.EffectLogger.logInfo(
+        ~comp=__MODULE__,
+        `writeBatch: ${op} ${count} states: ${tableName}, ids:${allIdsStr}`,
       )
       ->Effect.map(_ => Ok())
     | errors =>
       let errorsStr = errors->Array.joinUnsafe("; ")
-      let errorMsg =
-        __MODULE__ ++ `.writeBatch: Error: Couldn't save states to ${tableName}: ${errorsStr}`
-      Effect.logError(errorMsg)
+      let errorMsg = `writeBatch: Couldn't save states to ${tableName}: ${errorsStr}`
+      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, errorMsg)
       ->Effect.map(_ => Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg)))
     }
   )
   ->Effect.catchAll(err => {
     let msg = DynamoDb_Error.message(err)
-    let errorMsg =
-      __MODULE__ ++
-      `.writeBatch: Error: Couldn't save states to ${tableName}, ${count} ids:${allIdsStr}: ${msg}`
-    Effect.logError(errorMsg)
+    let errorMsg = `writeBatch: Couldn't save states to ${tableName}, ${count} ids:${allIdsStr}: ${msg}`
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, errorMsg)
     ->Effect.map(_ => Error(ReventlessInfra.QueryDb.BatchNotFullyWrittenToStorage(errorMsg)))
   })
   ->Effect.runPromise
@@ -187,8 +186,9 @@ let saveBatch = table =>
 let count = table =>
   (id, fieldName, inc) => {
     let tableName = table.name
-    Effect.logInfo(
-      __MODULE__ ++ `.count: ${tableName}, ${id}, ${fieldName}, ${inc->Int.toString}`,
+    ReventlessCore.EffectLogger.logInfo(
+      ~comp=__MODULE__,
+      `count: ${tableName}, ${id}, ${fieldName}, ${inc->Int.toString}`,
     )
     ->Effect.flatMap(_ =>
       Effect.tryPromise(
@@ -209,8 +209,9 @@ let count = table =>
       switch updateOutput.attributes->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count") {
       | Some(value) => Effect.succeed(Ok(value))
       | None =>
-        Effect.logError(
-          __MODULE__ ++ `.count: Error: Invalid updateOutput in count on ${tableName}`,
+        ReventlessCore.EffectLogger.logError(
+          ~comp=__MODULE__,
+          `count: Invalid updateOutput in count on ${tableName}`,
         )
         ->Effect.map(_ =>
           Error(ReventlessInfra.QueryDb.NotCountedOnStorage("Invalid updateOutput in count"))
@@ -218,7 +219,7 @@ let count = table =>
       }
     )
     ->Effect.catchAll(errorMsg =>
-      Effect.logError(__MODULE__ ++ `.count: Error: Couldn't count on ${tableName}: ${errorMsg}`)
+      ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `count: Couldn't count on ${tableName}: ${errorMsg}`)
       ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotCountedOnStorage(errorMsg)))
     )
     ->Effect.runPromise
@@ -232,15 +233,15 @@ let delete = table =>
     ->Effect.flatMap(result =>
       switch result {
       | Ok() =>
-        Effect.logInfo(
-          __MODULE__ ++
-          `.delete: deleted state from ${tableName}: id=${id}, sort=${sort->JSON.stringifyAny->Option.getOr("None")}`,
+        ReventlessCore.EffectLogger.logInfo(
+          ~comp=__MODULE__,
+          `delete: deleted state from ${tableName}: id=${id}, sort=${sort->JSON.stringifyAny->Option.getOr("None")}`,
         )
         ->Effect.map(_ => Ok())
       | Error(errorMsg) =>
-        Effect.logError(
-          __MODULE__ ++
-          `.delete: Error: Couldn't delete state from ${tableName}, id=${id}, sort=${sort->JSON.stringifyAny->Option.getOr("None")}: ${errorMsg}`,
+        ReventlessCore.EffectLogger.logError(
+          ~comp=__MODULE__,
+          `delete: Couldn't delete state from ${tableName}, id=${id}, sort=${sort->JSON.stringifyAny->Option.getOr("None")}: ${errorMsg}`,
         )
         ->Effect.map(_ => Error(ReventlessInfra.QueryDb.NotDeletedFromStorage(errorMsg)))
       }

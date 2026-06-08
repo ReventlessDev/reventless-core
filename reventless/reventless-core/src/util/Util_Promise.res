@@ -52,7 +52,7 @@ let onEndHandler = async (flush, resolve) => {
   let _ = switch await flush() {
   | _res => resolve()
   | exception JsExn(e) =>
-    Effect.logError(`${__LOC__}: ${e->JsExn.message->Option.getOr("unknown")}`)->Effect.runSync
+    EffectLogger.logError(~comp=__MODULE__, `${__LOC__}: ${e->JsExn.message->Option.getOr("unknown")}`)->Effect.runSync
   }
 }
 

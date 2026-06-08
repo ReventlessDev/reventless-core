@@ -27,7 +27,7 @@ function Make(MappingSpec) {
       if (mapOutgoingEvent$1 !== undefined) {
         return mapOutgoingEvent$1(eventJson$p, pluginDef);
       } else {
-        Effect.runSync(Effect.logError("mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !"));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, "mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !"));
         return [];
       }
     };
@@ -39,7 +39,7 @@ function Make(MappingSpec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(Effect.logError(`Extension: Error on publish command to aggregate ` + aggregateName + `: ` + errMsg));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `Error on publish command to aggregate ` + aggregateName + `: ` + errMsg));
       }
     };
     let publishPluginExtensionPointCommand = async cmdJson => {
@@ -48,7 +48,7 @@ function Make(MappingSpec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(Effect.logError(`Extension: Error on publish command to Plugin ExtensionPoint: ` + errMsg));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `Error on publish command to Plugin ExtensionPoint: ` + errMsg));
       }
     };
     let forwardCommand = (extensionPointName, commandJson) => {
@@ -72,7 +72,7 @@ function Make(MappingSpec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(Effect.logError(`ExtensionPoint: Error on calling handler: ` + errMsg));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `Error on calling handler: ` + errMsg));
       }
     };
     let applyIncomingCommandAction = async action => {
@@ -119,7 +119,7 @@ function Make(MappingSpec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(Effect.logError(`Could not decode event': ` + JSON.stringify(eventJson$p) + ` ` + errMsg));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `Could not decode event': ` + JSON.stringify(eventJson$p) + ` ` + errMsg));
       }
       let commandActions = mapIncomingEvent(event$p, pluginDef, Ops.queryEngine);
       let apply = async commandActions => await Util_Promise$ReventlessCore.toUnit(Promise.all(commandActions.map(applyIncomingCommandAction)));

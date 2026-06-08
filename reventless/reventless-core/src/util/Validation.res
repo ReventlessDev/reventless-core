@@ -31,7 +31,7 @@ let merge: (t<'a, 'b>, t<'a, 'b>) => t<'a, 'b> = (v1, v2) => {
 }
 
 let defaultErrorHandler = err => {
-  Effect.logError(err->JSON.stringifyAny->Option.getOr("unknown"))->Effect.runSync
+  EffectLogger.logError(~comp=__MODULE__, err->JSON.stringifyAny->Option.getOr("unknown"))->Effect.runSync
   Failure("Couldn't resolve promise.")
 }
 

@@ -103,10 +103,12 @@ let install = () =>
   _defaultLogger.log = opts => {
     let msg = opts->_message->_messageToString
     let level = opts->_logLevel->_ordinal->ordinalToLevel
-    // Decode log annotations: `comp` and `detail` get dedicated Logger.emit
-    // handling (prefix/plugin resolution, expandable payload); everything else
-    // (correlationId, requestId, …) flows through as top-level string fields.
+    // Decode log annotations: `comp`, `plugin`, and `detail` get dedicated
+    // Logger.emit handling (prefix/plugin resolution, expandable payload);
+    // everything else (correlationId, requestId, …) flows through as
+    // top-level string fields.
     let comp = ref(None)
+    let plugin = ref(None)
     let detail = ref(None)
     let extra = Dict.make()
     opts
@@ -115,6 +117,7 @@ let install = () =>
     ->Array.forEach(((k, v)) =>
       switch k {
       | "comp" => comp := v->JSON.Decode.string
+      | "plugin" => plugin := v->JSON.Decode.string
       | "detail" =>
         detail :=
           switch v->JSON.Decode.string {
@@ -132,7 +135,14 @@ let install = () =>
       }
     )
     let annotations = extra->Dict.toArray->Array.length == 0 ? None : Some(extra)
-    Logger.emit(~level, ~comp=?comp.contents, ~detail=?detail.contents, ~annotations?, msg)
+    Logger.emit(
+      ~level,
+      ~comp=?comp.contents,
+      ~plugin=?plugin.contents,
+      ~detail=?detail.contents,
+      ~annotations?,
+      msg,
+    )
   }
 
 // Self-installing: runs at module initialization time.
