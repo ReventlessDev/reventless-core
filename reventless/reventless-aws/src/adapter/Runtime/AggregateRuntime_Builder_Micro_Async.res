@@ -221,7 +221,7 @@ let finish = () =>
             ~packageDirs,
           )
 
-          let cmdTopicName = baseName ++ "CmdTopic"
+          let cmdTopicName = baseName ++ "CmdHandler"
           let cmdTopicRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
             ~name=cmdTopicName,
             ~code=cmdTopicCode,
@@ -295,7 +295,7 @@ let finish = () =>
               ~packageDirs=evtMapperPackageDirs,
             )
 
-            let evtMapperName = baseName ++ "EvtMapper"
+            let evtMapperName = baseName ++ "EventMapper"
             let evtMapperRuntime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
               ~name=evtMapperName,
               ~code=evtMapperCode,

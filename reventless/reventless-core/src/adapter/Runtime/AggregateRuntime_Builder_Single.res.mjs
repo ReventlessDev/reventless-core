@@ -33,7 +33,7 @@ function Make(RuntimeEnvironment) {
         let opts = {
           parent: opts_parent
         };
-        let runtime = RuntimeEnvironment.make("AllAggregates", Pulumi.output(aggregateHandler("AllAggregates")), match[1], match[2], opts);
+        let runtime = RuntimeEnvironment.make("AllAggregatesCmdHandler", Pulumi.output(aggregateHandler("AllAggregatesCmdHandler")), match[1], match[2], opts);
         specs.map(param => {
           param.connects.forEach(connect => connect(runtime));
         });

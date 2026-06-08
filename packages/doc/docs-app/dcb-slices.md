@@ -260,7 +260,7 @@ type error = ...
 type event = ...
 ```
 
-The generator then emits `Platform.StateChangeSlice.MakeAsync(...)` instead. Async slices share a per-plugin `<Plugin>StateChangesAsync` Lambda (FIFO-backed); sync slices stay on the default `<Plugin>StateChanges` Lambda. The async Lambda is only provisioned when at least one slice opts in — sync-only setups pay no extra Lambda cost.
+The generator then emits `Platform.StateChangeSlice.MakeAsync(...)` instead. Async slices share a per-plugin `<Plugin>DcbAsyncCmdHandler` Lambda (FIFO-backed); sync slices stay on the default `<Plugin>DcbCmdHandler` Lambda. The async Lambda is only provisioned when at least one slice opts in — sync-only setups pay no extra Lambda cost.
 
 See [CommandTopic](./components/commandtopic.md#sync-vs-async) for the channel-level details.
 

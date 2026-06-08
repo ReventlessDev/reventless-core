@@ -250,7 +250,7 @@ let finish = () =>
         cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.setBatchSize)
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
-          ~name="AllAggregatesAsync",
+          ~name="AllAggregatesAsyncCmdHandler",
           ~code,
           ~sourceCodeHash,
           ~envVars,

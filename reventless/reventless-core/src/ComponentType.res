@@ -103,7 +103,7 @@ let toName = componentType =>
   | EventTopic => "EventTopic"
   | ExtensionPoint => "ExtPoint"
   | Extension => "Extension"
-  | QueryDb => "QueryDB"
+  | QueryDb => "QueryDb"
   | ReadModel => "ReadModel"
   | Scheduler => "Scheduler"
   | Service => "Service"
@@ -114,11 +114,11 @@ let toName = componentType =>
   | Heartbeat => "Heartbeat"
   | Cloner => "Cloner"
   | DcbEventLog => "DcbEventLog"
-  | StateChangeSlice => "StateChgSlc"
+  | StateChangeSlice => "StateChangeSlice"
   | StateViewSlice => "StateViewSlice"
-  | AutomationSlice => "AutoSlice"
-  | OutboundTranslationSlice => "OutTransSlice"
-  | InboundTranslationSlice => "InTransSlice"
+  | AutomationSlice => "AutomationSlice"
+  | OutboundTranslationSlice => "OutboundTranslationSlice"
+  | InboundTranslationSlice => "InboundTranslationSlice"
   }
 
 let name = (name, t) => name ++ t->toName

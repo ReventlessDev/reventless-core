@@ -330,7 +330,7 @@ For aggregates that should publish-and-forget (high contention, long-running han
 type command = ...
 ```
 
-The plugin generator then emits `Platform.Aggregate.MakeAsync(...)` instead, routing the aggregate to a FIFO-backed Lambda that returns `CommandPending` immediately. The async path uses an `AllAggregatesAsync` Lambda, separate from the default `AllAggregates` Lambda — but both are only provisioned when at least one aggregate of that flavor exists. Sync-only setups (the default) pay no extra Lambda cost.
+The plugin generator then emits `Platform.Aggregate.MakeAsync(...)` instead, routing the aggregate to a FIFO-backed Lambda that returns `CommandPending` immediately. The async path uses an `AllAggregatesAsyncCmdHandler` Lambda, separate from the default `AllAggregatesCmdHandler` Lambda — but both are only provisioned when at least one aggregate of that flavor exists. Sync-only setups (the default) pay no extra Lambda cost.
 
 See [CommandTopic](./commandtopic.md#sync-vs-async) for the channel-level details of how each flavor is wired.
 

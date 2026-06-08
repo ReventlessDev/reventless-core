@@ -181,6 +181,11 @@ let finish = () =>
             spec.aggregateName->ReventlessCore.ComponentType.name(
               ReventlessCore.Aggregate.componentType,
             )
+          // The single per-aggregate Lambda carries the canonical `CmdHandler`
+          // kind (greppable alongside Single/Micro); the EventCollector connect
+          // below keeps the bare `<Entity>Aggr` stem so it composes to
+          // `<Entity>AggrEventColl`.
+          let lambdaName = name ++ "CmdHandler"
 
           // Build HANDLER_CONFIG with single handler
           let specModule =
@@ -211,7 +216,7 @@ let finish = () =>
           )
 
           let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
-            ~name,
+            ~name=lambdaName,
             ~code,
             ~sourceCodeHash,
             ~envVars,

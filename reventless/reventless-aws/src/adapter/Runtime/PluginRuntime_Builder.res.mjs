@@ -434,7 +434,7 @@ function Make(EventCollectorChannel) {
       return log.warn("PluginRuntime_Builder", undefined, "forDcbCommandTopic skipped (no slice specs)");
     }
     let commandTopicResource = Component$ReventlessCore.toPulumiResource(dcbCommandTopic);
-    let name = Stdlib_Option.getOr(commandTopicResource.__name, "UnnamedDcb");
+    let baseName = Stdlib_Option.getOr(commandTopicResource.__name, "UnnamedDcb");
     let opts_parent = commandTopicResource;
     let opts = {
       parent: opts_parent
@@ -444,7 +444,8 @@ function Make(EventCollectorChannel) {
     let queue = channelParts.queue;
     let tableName = dcbConfig.dcbTableName;
     let dcbTableName = tableName !== undefined ? tableName : Pulumi.output("NOT_AVAILABLE");
-    let isAsync = name.endsWith("Async");
+    let isAsync = baseName.endsWith("Async");
+    let name = baseName + "CmdHandler";
     let cfg = isAsync ? asyncStateChangesConfigRef.contents : syncStateChangesConfigRef.contents;
     let envVars = {};
     envVars["DCB_TABLE"] = dcbTableName;

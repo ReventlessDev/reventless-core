@@ -271,7 +271,7 @@ let finish = () =>
         cfg.sqsBatchSize->Option.forEach(CommandTopicChannel.setBatchSize)
 
         let runtime = RuntimeEnvironment_Lambda.makeFromCodeAsset(
-          ~name="AllAggregates",
+          ~name="AllAggregatesCmdHandler",
           ~code,
           ~sourceCodeHash,
           ~envVars,
@@ -297,10 +297,10 @@ let finish = () =>
             ->Pulumi.Output.apply(((name, roleId)) => {
               open PulumiAws.PolicyDocument
               let _ = PulumiAws.IAM.RolePolicy.make(
-                ~name="AllAggregatesPluginRmScan",
+                ~name="AllAggregatesCmdHandlerPluginRmScan",
                 ~args={
                   PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
-                    ~id="AllAggregatesPluginRmScanPolicy",
+                    ~id="AllAggregatesCmdHandlerPluginRmScanPolicy",
                     ~statements=[
                       {
                         sid: "AllowScanPluginRm",

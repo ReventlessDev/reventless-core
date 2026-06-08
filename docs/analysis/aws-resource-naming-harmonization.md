@@ -14,7 +14,7 @@ Three patterns coexist today and contradict each other:
 2. **Plain English suffix** hand-rolled at the call site — `"StateChanges"`, `"StateChangesAsync"`, `"Lambda"`, `"EventLogSubLambda"`, `"StateTopicLambda"`, `"EventLogSubQueue"`.
 3. **Strategy override** in the AggregateRuntime builders — `"AllAggregates"` (Single), bare component name (PerAggregate), or fresh abbreviations like `"EvtMapper"` (Micro) that don't match any other layer.
 
-The proposal in §5 collapses these to one scheme: `<Scope><Stem><Kind>` with one canonical `<Kind>` suffix per AWS resource type, plus a small, alphabetised vocabulary.
+The proposal in §5 collapses these to one scheme: `<Scope><Stem><Kind>` with one canonical `<Kind>` suffix per AWS resource type, built from a small, fixed vocabulary: **`Aggr`**, **`Cmd`**, **`Event`** (never `Evt`), **`Slice`** (never `Slc`) — plus the established short compounds **`CmdGen`** and **`EventColl`**.
 
 ---
 
@@ -128,7 +128,7 @@ All other components let Pulumi default the role/policy names (which then inheri
 
 ## 3. The four axes of inconsistency
 
-1. **Vocabulary** — `Aggr` vs `Aggregate`, `Cmd` vs `Command`, `Evt` vs `Event`, `Slc` vs `Slice`. The codebase has at least two abbreviations for every term.
+1. **Vocabulary** — `Aggr` vs `Aggregate`, `Cmd` vs `Command`, `Evt` vs `Event`, `Slc` vs `Slice`. The codebase has at least two forms for every term. Canonical choice (§5.2): the short form for the four root terms (`Aggr`, `Cmd`, `Event` — note `Event` is the *full* form here, never `Evt` — `Slice`), full words elsewhere, with `CmdGen` and `EventColl` kept as established compound short forms.
 2. **Word order** — `<Entity><ComponentType>` (`OrderAggrEventLog`) vs `<Scope><FunctionalStem>` (`CatalogStateChanges`) vs `<Stem><ResourceKind>` (`PlatformUIDefinitionsLambda`).
 3. **Component-type repetition** — DCB names like `CatalogStateChangesCmdTopic` carry two component words because the parent stem already names a function and the child builder appends its own type.
 4. **Strategy leakage** — `AllAggregates` and `EvtMapper` encode runtime-strategy choices into resource names; PerAggregate and DCB hide them. Switching strategies therefore renames resources, which is destructive in Pulumi (delete + create).
@@ -161,43 +161,47 @@ Constraints any harmonized scheme must respect:
 
 ### 5.2 Canonical kind vocabulary
 
-Drop the abbreviations. Use the full word that already appears in framework documentation and the component-type enum.
+Standardize on `Aggr` / `Cmd` / `Event` / `Slice` plus the established compound short forms `CmdGen` and `EventColl`. Every other word is spelled out. The variants that drop out (`Evt`, `Slc`, `Coll` as a standalone, `Hand`, etc.) disappear.
 
 | AWS resource | Today (mixed) | Proposed `<Kind>` |
 |---|---|---|
 | DynamoDB event log (aggregate) | `EventLog` | `EventLog` ✓ |
-| DynamoDB event log (DCB) | `DcbEventLog` | `EventLog` (with `Dcb` Stem when applicable) |
+| DynamoDB event log (DCB) | `DcbEventLog` | `EventLog` (with `Dcb` in Stem when applicable) |
 | DynamoDB query store | `QueryDB` | `QueryDb` (camelCase) |
-| SQS command queue | `CmdTopic` | `CommandTopic` |
-| SQS event collector | `EventColl` | `EventCollector` |
-| SQS subscription buffer | `EventLogSubQueue` | `EventSubscriptionQueue` |
+| SQS command queue | `CmdTopic` | `CmdTopic` ✓ |
+| SQS event collector | `EventColl` | `EventColl` ✓ |
+| SQS subscription buffer | `EventLogSubQueue` | `EventLogSubQueue` ✓ |
 | SNS event topic | `EventTopic` | `EventTopic` ✓ |
-| Lambda — command handler | `CmdTopic`, `StateChangesCmdTopic`, `AllAggregates`, `<Agg>Aggr` | `CommandHandler` |
-| Lambda — command generator | `CmdGen` | `CommandGenerator` |
+| Lambda — command handler | `CmdTopic`, `StateChangesCmdTopic`, `AllAggregates`, `<Agg>Aggr` | `CmdHandler` |
+| Lambda — command generator | `CmdGen` | `CmdGen` ✓ |
 | Lambda — event mapper | `EvtMapper`, `EventMapper` | `EventMapper` |
-| Lambda — event subscription | `EventLogSubLambda` | `EventSubscriber` |
+| Lambda — event subscription | `EventLogSubLambda` | `EventLogSubscriber` |
 | Lambda — state topic | `StateTopicLambda` | `StateTopicPublisher` |
 | Lambda — UI definitions | `Lambda` (after PlatformUIDefinitions) | `UiResolver` (or split per role) |
 | IAM role | varies | `Role` |
 | IAM policy | varies | `Policy` |
 | Lambda ESM | `EventLogSubESM` | `EventSourceMapping` |
 
+The `*Slice` family (`StateChangeSlice`, `StateViewSlice`, `AutomationSlice`, `InboundTranslationSlice`, `OutboundTranslationSlice`) takes the full `Slice` suffix uniformly — no more `Slc`, no more `AutoSlice` / `InTransSlice` / `OutTransSlice`.
+
 ### 5.3 Lineage stems
 
 | Architecture | Stem composition | Example (`Catalog` plugin, `Order` aggregate, `ProductDemand` DCB slice) |
 |---|---|---|
-| Aggregate | `<Entity>` | `OrderEventLog`, `OrderCommandTopic`, `OrderEventTopic`, `OrderCommandHandler`, `OrderCommandGenerator`, `OrderEventMapper` |
-| ReadModel | `<View>` | `OrdersQueryDb` (plural per convention), `OrdersEventSubscriber` |
-| DCB | `<Plugin>Dcb` for the shared infra; `<Plugin><SliceStem>` for per-slice resources | `CatalogDcbEventLog`, `CatalogDcbCommandTopic`, `CatalogDcbCommandHandler`, `CatalogProductDemandSlice` (logical only) |
-| Async DCB | … `Async` variant | `CatalogDcbCommandTopicAsync`, `CatalogDcbCommandHandlerAsync` |
-| Platform | `Platform<Feature>` | `PlatformUiDefinitionsResolver`, `PlatformPluginAggregateCommandTopic` |
+| Aggregate | `<Entity>` | `OrderAggrEventLog`, `OrderAggrCmdTopic`, `OrderAggrEventTopic`, `OrderAggrCmdHandler`, `OrderAggrCmdGen`, `OrderAggrEventMapper` |
+| ReadModel | `<View>` | `OrdersQueryDb` (plural per convention), `OrdersEventLogSubscriber` |
+| DCB | `<Plugin>Dcb` for the shared infra; `<Plugin><SliceStem>` for per-slice logical names | `CatalogDcbEventLog`, `CatalogDcbCmdTopic`, `CatalogDcbCmdHandler`, `CatalogProductDemandSlice` (logical only) |
+| Async DCB | … `Async` variant | `CatalogDcbCmdTopicAsync`, `CatalogDcbCmdHandlerAsync` |
+| Platform | `Platform<Feature>` | `PlatformUiDefinitionsResolver`, `PlatformPluginAggrCmdTopic` |
+
+The `Aggr` segment is retained on aggregate-side resources because it is already pervasive in operator muscle-memory, CloudWatch log groups, and the `pluginAggrCmdTopicUrl` stack export. Dropping it would mean a no-grep-coverage migration with no offsetting clarity gain.
 
 ### 5.4 Why this resolves the four axes
 
-1. **Vocabulary** — every abbreviation gets one full-word replacement; the `ComponentType.toName` table becomes a 1:1 echo of `toString`, removing the silent contradictions (`EventMapper` vs `EvtMapper`, `StateChangeSlice` vs `StateChanges`).
-2. **Word order** — universal `<Scope><Stem><Kind>`. The DCB CommandTopic loses its synthetic `StateChanges` stem (which never matched a component type) in favour of `<Plugin>DcbCommandTopic`, which mirrors how the aggregate side composes naturally.
-3. **Component-type repetition** — `CatalogStateChangesCmdTopic` becomes `CatalogDcbCommandTopic`: one stem, one kind.
-4. **Strategy leakage** — `AllAggregates` becomes `<Plugin>CommandHandler` (Single), `<Aggregate>CommandHandler` (PerAggregate), or `<Aggregate><Sub>Handler` (Micro). Switching Single↔PerAggregate still requires replacement (the *number* of Lambdas changes), but switching PerAggregate↔Micro of a single aggregate stops renaming the shared CT/EM/CG names.
+1. **Vocabulary** — every term has exactly one canonical form (`Aggr`, `Cmd`, `Event`, `Slice`, plus `CmdGen` / `EventColl`). The silent contradictions disappear: `EventMapper` replaces `EvtMapper` in the Micro runtime; the dead `StateChgSlc` value in `ComponentType.toName` becomes `StateChangeSlice`; the hand-rolled `StateChanges` stem on the DCB CommandTopic goes away (see point 2).
+2. **Word order** — universal `<Scope><Stem><Kind>`. The DCB CommandTopic loses its synthetic `StateChanges` stem (which never matched a component type) in favour of `<Plugin>DcbCmdTopic`, mirroring how the aggregate side composes naturally.
+3. **Component-type repetition** — `CatalogStateChangesCmdTopic` becomes `CatalogDcbCmdTopic`: one stem, one kind.
+4. **Strategy leakage** — `AllAggregates` becomes `<Plugin>CmdHandler` (Single), `<Aggregate>AggrCmdHandler` (PerAggregate), or `<Aggregate>Aggr<Sub>Handler` (Micro, where `<Sub>` is `Cmd` / `EventMapper` / `CmdGen`). Switching Single↔PerAggregate still requires replacement (the *number* of Lambdas changes), but switching PerAggregate↔Micro of a single aggregate stops renaming the shared CT/EM/CG names.
 
 ### 5.5 Non-goals
 
@@ -221,9 +225,9 @@ Whichever path is chosen, the **single change** that unlocks the rename is to ma
 ## 7. Open questions
 
 1. **`QueryDB` vs `QueryDb` casing** — sury and Pulumi don't care, but consistency suggests camelCase. The `ComponentType.toString` value is already `"QueryDB"` (uppercase suffix), which is exported in resource tags. Decide before renaming.
-2. **`Aggr` is short and ubiquitous in operator muscle-memory.** Switching to `Aggregate` lengthens every aggregate-side name by 5 chars. With a 64-char Lambda budget and `~16` char Pulumi stack suffix, `<Entity>AggregateCommandHandler` fits comfortably (~40 chars for a 14-char entity). Acceptable.
-3. **Per-aggregate vs Single strategy in Lambda names** — keeping the runtime-strategy information out of the name (option B: `<Aggregate>CommandHandler` even for Single) means a Single deployment has a single Lambda named after… nothing canonical. Two reasonable resolutions: `<Plugin>CommandHandler` (Single, plugin-scoped) or revive `AllAggregates` *only* for Single mode. Pick before §5.3 stems are finalised.
-4. **Sliced DCB** — slices today have no per-resource AWS footprint (all consolidated into `CatalogDcbCommandTopic`). If we ever break a slice out into its own Lambda (per-slice strategy parallel to PerAggregate), the proposed scheme needs a `<Plugin><SliceStem>CommandHandler` form pre-agreed.
+2. **Per-aggregate vs Single strategy in Lambda names** — keeping the runtime-strategy information out of the name (option B: `<Aggregate>AggrCmdHandler` even for Single) means a Single deployment has a single Lambda named after… nothing canonical. Two reasonable resolutions: `<Plugin>CmdHandler` (Single, plugin-scoped) or revive `AllAggregates` *only* for Single mode. Pick before §5.3 stems are finalised.
+3. **Sliced DCB** — slices today have no per-resource AWS footprint (all consolidated into `CatalogDcbCmdTopic`). If we ever break a slice out into its own Lambda (per-slice strategy parallel to PerAggregate), the proposed scheme needs a `<Plugin><SliceStem>CmdHandler` form pre-agreed.
+4. **`EventLogSubscriber` vs `EventLogSub`** — §5.2 keeps the full `Subscriber` suffix to avoid `Sub` ambiguity (subscriber? subscription? substitution?). The matching SQS queue and IAM role/policy retain `EventLogSub` as the *family* prefix (`EventLogSubQueue`, `EventLogSubRole`, `EventLogSubPolicy`, `EventLogSubESM` → `EventLogSubEventSourceMapping`). Confirm before locking in.
 
 ---
 

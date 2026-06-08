@@ -147,7 +147,7 @@ function toName(componentType) {
     case "Extension" :
       return "Extension";
     case "QueryDb" :
-      return "QueryDB";
+      return "QueryDb";
     case "ReadModel" :
       return "ReadModel";
     case "Scheduler" :
@@ -169,15 +169,15 @@ function toName(componentType) {
     case "DcbEventLog" :
       return "DcbEventLog";
     case "StateChangeSlice" :
-      return "StateChgSlc";
+      return "StateChangeSlice";
     case "StateViewSlice" :
       return "StateViewSlice";
     case "AutomationSlice" :
-      return "AutoSlice";
+      return "AutomationSlice";
     case "OutboundTranslationSlice" :
-      return "OutTransSlice";
+      return "OutboundTranslationSlice";
     case "InboundTranslationSlice" :
-      return "InTransSlice";
+      return "InboundTranslationSlice";
   }
 }
 

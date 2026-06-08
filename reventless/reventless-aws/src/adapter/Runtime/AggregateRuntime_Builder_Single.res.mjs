@@ -187,15 +187,15 @@ function finish() {
       }));
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
       Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS_Sync$ReventlessAws.setBatchSize);
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregates", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAggregatesCmdHandler", match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, opts);
       let tableName$1 = pluginRmTableName.contents;
       if (tableName$1 !== undefined) {
         Pulumi.all([
           tableName$1,
           runtime.parts.lambdaRole.id
         ]).apply(param => {
-          new (Aws.iam.RolePolicy)("AllAggregatesPluginRmScan", {
-            policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAggregatesPluginRmScanPolicy", [{
+          new (Aws.iam.RolePolicy)("AllAggregatesCmdHandlerPluginRmScan", {
+            policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, "AllAggregatesCmdHandlerPluginRmScanPolicy", [{
                 Sid: "AllowScanPluginRm",
                 Effect: "Allow",
                 Action: ["dynamodb:Scan"],

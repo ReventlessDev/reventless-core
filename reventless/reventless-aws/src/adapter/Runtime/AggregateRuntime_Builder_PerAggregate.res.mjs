@@ -136,6 +136,7 @@ function finish() {
         parent: aggregateOpts_parent
       };
       let name = ComponentType$ReventlessCore.name(spec.aggregateName, Aggregate$ReventlessCore.componentType);
+      let lambdaName = name + "CmdHandler";
       let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
       let behaviorModule = Stdlib_Option.getOr(JSON.stringify(info.behaviorModulePath), `""`);
       let handlerConfigOutput = Pulumi.all([
@@ -151,7 +152,7 @@ function finish() {
       packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
       packageDirs[behaviorPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(behaviorPkg);
       let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AggregateEntryPoint.mjs", packageDirs, undefined);
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, spec.memorySize, spec.timeout, undefined, undefined, undefined, aggregateOpts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(lambdaName, match.code, match.sourceCodeHash, envVars, spec.memorySize, spec.timeout, undefined, undefined, undefined, aggregateOpts);
       spec.connects.forEach(connect => connect(runtime));
       let channelSpecs = Stdlib_Option.mapOr(spec.eventCollectorChannelSpec, [], cs => [cs]);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(name, channelSpecs, runtime, aggregateOpts);

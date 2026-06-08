@@ -613,7 +613,7 @@ let catalog = Catalog.make()
 
 testPromise("AddProduct stores state", async () => {
   let _ = await Bus.dispatchCommand("ProductCmdTopic", commandJson)
-  let state = await Bus.getQueryDb("ProductsQueryDB")
+  let state = await Bus.getQueryDb("ProductsQueryDb")
   expect(state)->toBeSome
 })
 ```

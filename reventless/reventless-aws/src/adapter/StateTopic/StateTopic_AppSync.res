@@ -366,7 +366,7 @@ let finish = (
     let appsyncEndpoint = AppSync_EventsApi.httpEndpoint(eventsApi)
 
     let lambda = Lambda.Function.make(
-      ~name=name ++ "StateTopicLambda",
+      ~name=name ++ "StateTopicPublisher",
       ~args={
         handler: "index.handler"->Pulumi.Input.make,
         runtime: "nodejs22.x"->Pulumi.Input.make,
