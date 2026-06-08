@@ -39,9 +39,11 @@ let forCommandTopic = (
   let channelParts: Util.SQS.channelParts = Obj.magic(channel.parts)
   let queue = channelParts.queue
 
-  let name = commandTopicResource.name->ReventlessCore.ComponentType.nameOpt(
-    ReventlessCore.CommandTopic.componentType,
-  )
+  // The EP command-handler Lambda inherits the bare EP CommandTopic resource
+  // name (`<EP>ExtPoint`) and appends the unified `CmdHandler` kind so it is
+  // greppable alongside the aggregate/DCB command handlers (analysis §8.2).
+  // Mirrors ExtensionPointRuntime_Builder_PerExtensionPoint.
+  let name = commandTopicResource.name->Option.getOr("UnnamedExtPoint") ++ "CmdHandler"
   let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
 
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
