@@ -16,34 +16,27 @@ function failingResult(mismatch) {
   };
 }
 
-function getField(j, k) {
-  if (typeof j === "object" && j !== null && !Array.isArray(j)) {
-    return j[k];
-  }
-}
-
 describe("FormatterVsCode.messagePayload", () => {
   test("includes the mismatch kind for an EventsMismatch", async () => {
-    let j = FormatterVsCode$ReventlessGwt.messagePayload(failingResult({
+    let m = FormatterVsCode$ReventlessGwt.messagePayload(failingResult({
       TAG: "EventsMismatch",
       expected: [],
       actual: []
     }));
-    expect(getField(j, "kind")).toEqual("EventsMismatch");
+    expect(m.kind).toEqual("EventsMismatch");
   });
   test("includes the mismatch kind for an ErrorMismatch", async () => {
-    let j = FormatterVsCode$ReventlessGwt.messagePayload(failingResult({
+    let m = FormatterVsCode$ReventlessGwt.messagePayload(failingResult({
       TAG: "ErrorMismatch",
       expected: "CategoryAlreadyExists",
       actual: undefined,
       actualEvents: []
     }));
-    expect(getField(j, "kind")).toEqual("ErrorMismatch");
+    expect(m.kind).toEqual("ErrorMismatch");
   });
 });
 
 export {
   failingResult,
-  getField,
 }
 /*  Not a pure module */
