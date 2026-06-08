@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.53 (2026-06-08)
+
+### Bug Fixes
+
+* **reventless-vscode:** repair cross-package genType bridge and verify the shared NDJSON contract end-to-end ([71d5512](https://github.com/ReventlessDev/reventless-core/commit/71d5512c244739ced99c0cbe4083509174d3273e))
+
+
 # 1.0.0-alpha.52 (2026-06-08)
 
 ### Features

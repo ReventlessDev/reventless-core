@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.53 (2026-06-08)
+
+### Features
+
+* **logging:** sink-aware ANSI formatting — clean JSON in non-TTY sinks (Tier 1) ([7da6256](https://github.com/ReventlessDev/reventless-core/commit/7da62568eaa06c2bedf5d7ad6d10b1ec006a6b75))
+
+
 # 3.0.0-alpha.52 (2026-06-08)
 
 ### Features

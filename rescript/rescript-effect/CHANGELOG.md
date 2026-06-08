@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.1.0-alpha.18 (2026-06-08)
+
+### Features
+
+* **logging:** structured JSON fields + correlationId/requestId tracing (Tier 2) ([49738c5](https://github.com/ReventlessDev/reventless-core/commit/49738c5e54f0707b4a9c6991c07c61abe41ccf64))
+
+
 # 0.1.0-alpha.17 (2026-06-06)
 
 **Note:** Version bump only for package @reventlessdev/rescript-effect
