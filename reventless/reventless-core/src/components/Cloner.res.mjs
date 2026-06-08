@@ -3,8 +3,11 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
+import * as Logger$ReventlessCore from "../util/Logger.res.mjs";
 import * as Component$ReventlessCore from "./Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../ComponentType.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let noRunner = {
   resources: Pulumi.output([])
@@ -36,9 +39,9 @@ function Make(Runner) {
     ].map(str => secretsConfig.get(str));
     let reventlessCiSecretUrn = secretsConfig.get("reventless-ci");
     let runner;
+    let exit = 0;
     if (secretUrns.length !== 3) {
-      console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
-      runner = noRunner;
+      exit = 1;
     } else {
       let aws = secretUrns[0];
       if (aws !== undefined) {
@@ -52,17 +55,18 @@ function Make(Runner) {
               repository
             ], opts);
           } else {
-            console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
-            runner = noRunner;
+            exit = 1;
           }
         } else {
-          console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
-          runner = noRunner;
+          exit = 1;
         }
       } else {
-        console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
-        runner = noRunner;
+        exit = 1;
       }
+    }
+    if (exit === 1) {
+      log.info("Cloner", undefined, "No ClonerRunner created because no secrets are configured in Pulumi config !");
+      runner = noRunner;
     }
     return Component$ReventlessCore.setOutputs(extra, {
       resources: runner.resources
@@ -76,8 +80,9 @@ function Make(Runner) {
 let componentType = "Cloner";
 
 export {
+  log,
   componentType,
   Adapter,
   Make,
 }
-/* noRunner Not a pure module */
+/* log Not a pure module */

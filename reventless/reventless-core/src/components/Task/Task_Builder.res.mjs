@@ -6,10 +6,13 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Task$ReventlessCore from "./Task.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Aggregate$ReventlessCore from "../Aggregate/Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as Util_Promise$ReventlessCore from "../../util/Util_Promise.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function Make(Spec) {
   return RuntimeEnvironment => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (TaskRuntimeBuilder => (TaskBucket => (SpecificSideEffectHandler => {
@@ -38,15 +41,13 @@ function Make(Spec) {
             if (operations !== undefined) {
               return await operations.createSchedule(taskAction._0);
             } else {
-              console.log("No SideEffectHandler to create schedule");
-              return;
+              return log.info("Task", undefined, "No SideEffectHandler to create schedule");
             }
           case "DeleteSchedule" :
             if (operations !== undefined) {
               return await operations.deleteSchedule(taskAction._0);
             } else {
-              console.log("No SideEffectHandler to delete schedule");
-              return;
+              return log.info("Task", undefined, "No SideEffectHandler to delete schedule");
             }
         }
       })));
@@ -102,6 +103,7 @@ function Make(Spec) {
 }
 
 export {
+  log,
   Make,
 }
-/* Output-Pulumi Not a pure module */
+/* log Not a pure module */

@@ -9,7 +9,10 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as IndexJs from "@pulumi/pulumi/dynamic/index.js";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let appsyncJsRuntime = {
   name: "APPSYNC_JS",
@@ -113,7 +116,7 @@ async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelay
       }
     });
     if (isRetryable) {
-      console.log(`[AppSync_Resolver_Retrying] attempt ` + (attempt + 1 | 0).toString() + `/` + maxAttempts.toString() + ` failed, retrying in ` + delayMs.toString() + `ms: ` + name + `: ` + msg);
+      log.info("AppSync_Resolver_Retrying", undefined, `attempt ` + (attempt + 1 | 0).toString() + `/` + maxAttempts.toString() + ` failed, retrying in ` + delayMs.toString() + `ms: ` + name + `: ` + msg);
       await new Promise((resolve, param) => {
         setTimeout(resolve, delayMs);
       });
@@ -122,7 +125,7 @@ async function runWithRaceRetry(attemptOpt, maxAttemptsOpt, delayMsOpt, maxDelay
       return await runWithRaceRetry(attempt + 1 | 0, maxAttempts, cappedDelay, maxDelayMs, makeCall);
     }
     if (attempt > 0) {
-      console.log(`[AppSync_Resolver_Retrying] giving up after ` + (attempt + 1 | 0).toString() + ` attempts: ` + name + `: ` + msg);
+      log.warn("AppSync_Resolver_Retrying", undefined, `giving up after ` + (attempt + 1 | 0).toString() + ` attempts: ` + name + `: ` + msg);
     }
     if (jsExn !== undefined) {
       return jsThrow(Primitive_option.valFromOption(jsExn));
@@ -323,7 +326,7 @@ async function read_(id, props) {
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     if (Stdlib_Option.mapOr(Stdlib_JsExn.fromException(exn), false, isAlreadyDeletedError)) {
-      console.log(`[AppSync_Resolver_Retrying] resolver ` + getInput.typeName + `.` + getInput.fieldName + ` missing in AppSync; reporting drift`);
+      log.info("AppSync_Resolver_Retrying", undefined, `resolver ` + getInput.typeName + `.` + getInput.fieldName + ` missing in AppSync; reporting drift`);
       return {};
     }
     let jsExn = Stdlib_JsExn.fromException(exn);
@@ -424,6 +427,7 @@ function makePipelineJsResolver(name, api, type_, field, code, functions, opts) 
 let Functions;
 
 export {
+  log,
   appsyncJsRuntime,
   newOf1,
   newOf0,
@@ -455,4 +459,4 @@ export {
   makeUnitJsResolver,
   makePipelineJsResolver,
 }
-/* Stdlib_JsExn Not a pure module */
+/* log Not a pure module */

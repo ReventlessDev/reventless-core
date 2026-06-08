@@ -13,6 +13,7 @@ import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
@@ -20,6 +21,8 @@ import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.
 import * as EventCollector_Builder$ReventlessCore from "../EventCollector/EventCollector_Builder.res.mjs";
 import * as OutboundTranslationSlice$ReventlessCore from "./OutboundTranslationSlice.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "./OutboundTranslationSlice_Callback.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function Make(RuntimeEnvironment) {
   return QueryDbStorage => (QueryDbResolvers => (EventCollectorChannel => (EventCollectorRuntimeBuilder => (Api => {
@@ -84,8 +87,9 @@ function Make(RuntimeEnvironment) {
                 Effect.runSync(Effect.logError(`OutboundTranslationSlice(` + Spec.name + `): detached phase 2 error: ` + errMsg));
                 return Promise.resolve();
               });
+              return;
             } else {
-              console.error(`OutboundTranslationSlice(` + Spec.name + `): publishJsons not yet resolved`);
+              return log.error(`OutboundTranslationSlice(` + Spec.name + `)`, undefined, `publishJsons not yet resolved`);
             }
           }));
           let handler = SpecificEventCollector.makeHandler(ec, jsonEventsHandler);
@@ -126,6 +130,7 @@ function Make(RuntimeEnvironment) {
 }
 
 export {
+  log,
   Make,
 }
-/* Stream Not a pure module */
+/* log Not a pure module */

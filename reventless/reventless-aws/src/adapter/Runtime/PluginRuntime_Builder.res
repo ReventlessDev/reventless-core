@@ -1,3 +1,5 @@
+let log = ReventlessCore.Logger.fromEnv()
+
 type adminConfig = {
   eventTopicArn: option<Pulumi.Output.t<string>>,
   pluginReadModelTableName: option<Pulumi.Output.t<string>>,
@@ -698,7 +700,7 @@ module Make = (
     let hbConfig = heartbeatConfigRef.contents
     switch hbConfig.epQueueUrl {
     | None =>
-      Console.warn("PluginRuntime_Builder: forPluginHeartbeat skipped (no EP queue URL)")
+      log.warn(~comp="PluginRuntime_Builder", "forPluginHeartbeat skipped (no EP queue URL)")
     | Some(epQueueUrl) =>
       let resource = heartbeat->ReventlessCore.Component.toPulumiResource
       let name = resource.name->ReventlessCore.ComponentType.nameOpt(
@@ -754,7 +756,7 @@ module Make = (
     let allSlicePaths =
       registeredSliceModulePaths->Array.concat(dcbConfig.stateChangeSliceModulePaths)
     if allSlicePaths->Array.length == 0 {
-      Console.warn("PluginRuntime_Builder: forDcbCommandTopic skipped (no slice specs)")
+      log.warn(~comp="PluginRuntime_Builder", "forDcbCommandTopic skipped (no slice specs)")
     } else {
       let commandTopicResource = dcbCommandTopic->ReventlessCore.Component.toPulumiResource
       // The CommandTopic resource is already named `<Plugin>StateChanges` or

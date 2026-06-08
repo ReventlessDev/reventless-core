@@ -1,6 +1,8 @@
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
@@ -105,8 +107,9 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
         ~opts,
       )
     | None =>
-      Console.warn(
-        `EventCollectorRuntime_Builder_PerEventCollector: no bundled info registered for ${parentName}`,
+      log.warn(
+        ~comp="EventCollectorRuntime_Builder_PerEventCollector",
+        `no bundled info registered for ${parentName}`,
       )
     }
   | None =>

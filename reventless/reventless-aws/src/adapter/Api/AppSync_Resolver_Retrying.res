@@ -31,6 +31,8 @@
 // so the SDK module is NOT part of the captured closure. Each provider method
 // resolves the SDK on first use and caches an initialised client.
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type appSyncClient
 
 type sdkRuntime = {name: string, runtimeVersion: string}
@@ -231,8 +233,9 @@ let rec runWithRaceRetry = async (
       attempt < maxAttempts &&
       jsExn->Option.mapOr(false, e => isFieldNotFoundError(e) || isSchemaAlteringError(e))
     if isRetryable {
-      Console.log(
-        `[AppSync_Resolver_Retrying] attempt ${(attempt + 1)->Int.toString}/${maxAttempts->Int.toString} failed, retrying in ${delayMs->Int.toString}ms: ${name}: ${msg}`,
+      log.info(
+        ~comp="AppSync_Resolver_Retrying",
+        `attempt ${(attempt + 1)->Int.toString}/${maxAttempts->Int.toString} failed, retrying in ${delayMs->Int.toString}ms: ${name}: ${msg}`,
       )
       let _ = await Promise.make((resolve, _) => setTimeout(resolve, delayMs)->ignore)
       let nextDelay = delayMs * 2
@@ -248,8 +251,9 @@ let rec runWithRaceRetry = async (
       // Only log when we exhausted retries on a retryable error — not on the
       // first non-retryable failure, which the caller may handle itself.
       if attempt > 0 {
-        Console.log(
-          `[AppSync_Resolver_Retrying] giving up after ${(attempt + 1)->Int.toString} attempts: ${name}: ${msg}`,
+        log.warn(
+          ~comp="AppSync_Resolver_Retrying",
+          `giving up after ${(attempt + 1)->Int.toString} attempts: ${name}: ${msg}`,
         )
       }
       // Re-throw the original JavaScript error so Pulumi can display its message.
@@ -492,8 +496,9 @@ let read_ = async (id: string, props: providerInputs): readResult => {
     {id, props}
   } catch {
   | exn if exn->JsExn.fromException->Option.mapOr(false, isAlreadyDeletedError) =>
-    Console.log(
-      `[AppSync_Resolver_Retrying] resolver ${getInput.typeName}.${getInput.fieldName} missing in AppSync; reporting drift`,
+    log.info(
+      ~comp="AppSync_Resolver_Retrying",
+      `resolver ${getInput.typeName}.${getInput.fieldName} missing in AppSync; reporting drift`,
     )
     ({}: readResult)
   | exn =>

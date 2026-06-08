@@ -8,6 +8,9 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "./util/Logger.res.mjs";
+
+let logger = Logger$ReventlessCore.fromEnv();
 
 function toEventSchema$p(idSchema, eventSchema) {
   return S.object(s => ({
@@ -46,7 +49,7 @@ function uuid(prim) {
 }
 
 function log(value, str) {
-  console.log(str, value);
+  logger.debug("Message", Stdlib_Option.getOr(JSON.stringify(value), ""), str);
   return value;
 }
 
@@ -87,13 +90,13 @@ function serviceNameOfMsg(msgJson) {
         msgMeta = S.parseJsonOrThrow(meta, Message$Reventless.metaSchema);
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
-        console.log("Message.serviceNameOfMsg: Couldn't parse meta:", err);
+        logger.warn("Message", Stdlib_Option.getOr(JSON.stringify(err), ""), "serviceNameOfMsg: Couldn't parse meta");
         return;
       }
       return msgMeta.service;
     });
   } else {
-    console.log("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson);
+    logger.warn("Message", msgJson, "serviceNameOfMsg: couldn't decodeObject");
     return;
   }
 }
@@ -373,6 +376,7 @@ let encode = Message$Reventless.encode;
 let InvalidEvent = Message$Reventless.InvalidEvent;
 
 export {
+  logger,
   serviceSchema,
   metaSchema,
   contextSchema,
@@ -411,4 +415,4 @@ export {
   splitMessage,
   combineMessage,
 }
-/* S Not a pure module */
+/* logger Not a pure module */

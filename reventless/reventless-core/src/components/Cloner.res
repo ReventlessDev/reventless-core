@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 let componentType = ComponentType.Cloner
 
 type outputs = {resources: Pulumi.Output.t<array<ReventlessInfra.Adapter.resource>>}
@@ -63,7 +65,10 @@ module Make = (Runner: Adapter.Runner): (T with type api = Runner.api) => {
       )
 
     | _ =>
-      Console.log("No ClonerRunner created because no secrets are configured in Pulumi config !")
+      log.info(
+        ~comp="Cloner",
+        "No ClonerRunner created because no secrets are configured in Pulumi config !",
+      )
       Adapter.noRunner
     }
     self->Component.setOutputs({resources: runner.resources})

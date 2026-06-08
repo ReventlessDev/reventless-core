@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 module Make = (
   Target: Reventless.EventMapping.Target,
   SpecificEventCollector: EventCollector.T,
@@ -33,9 +35,10 @@ module Make = (
       (
         Pulumi.Output.make({
           let ops: Counter.operations = {
-            count: async _items => Console.log("No counter deployed, but trying to use count"),
+            count: async _items =>
+              log.warn(~comp="EventMapper", "No counter deployed, but trying to use count"),
             addToCounterTarget: async _target =>
-              Console.log("No counter deployed, but trying to use addToCounterTarget"),
+              log.warn(~comp="EventMapper", "No counter deployed, but trying to use addToCounterTarget"),
           }
           ops
         }),

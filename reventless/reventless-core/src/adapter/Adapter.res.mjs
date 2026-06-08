@@ -2,7 +2,11 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output.res.mjs";
+import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
+import * as Logger$ReventlessCore from "../util/Logger.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function outputToResource(resourceOutput) {
   return {
@@ -112,9 +116,7 @@ function resourcesToResolvedOutput(resources) {
 }
 
 function logResource(r) {
-  resourceToResolvedOutput(r).apply(r => {
-    console.log("resource:", r);
-  });
+  resourceToResolvedOutput(r).apply(r => log.debug("Adapter", Stdlib_Option.getOr(JSON.stringify(r), ""), "resource"));
 }
 
 function resolvedToString(resources) {
@@ -179,6 +181,7 @@ function fromInteropResources(rs) {
 }
 
 export {
+  log,
   outputToResource,
   resourcesOutputToResource,
   resolvedToResource,
@@ -195,4 +198,4 @@ export {
   fromInteropResource,
   fromInteropResources,
 }
-/* Output-Pulumi Not a pure module */
+/* log Not a pure module */

@@ -7,4 +7,4 @@ let queryDbStorageResources = Util_QueryDb$ReventlessCore.getLocalStorageResourc
 export {
   queryDbStorageResources,
 }
-/* No side effect */
+/* Util_QueryDb-ReventlessCore Not a pure module */

@@ -6,6 +6,8 @@ module CommandTopicChannel = CommandTopicChannel.SQS_Async
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
@@ -212,8 +214,9 @@ let finish = () =>
               )
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
-            Console.warn(
-              `AggregateRuntime_Builder_Single_Async: no handler registered for ${spec.aggregateName}`,
+            log.warn(
+              ~comp="AggregateRuntime_Builder_Single_Async",
+              `no handler registered for ${spec.aggregateName}`,
             )
           }
         })

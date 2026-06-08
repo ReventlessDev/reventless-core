@@ -5,6 +5,8 @@
 
 open PulumiAws
 
+let log = ReventlessCore.Logger.fromEnv()
+
 // ── SHA-256 helper ─────────────────────────────────────────────────────────
 
 type hashObject
@@ -129,7 +131,7 @@ let getIntrospectionSdl = async (client: appSyncClient, apiId: string): string =
   } catch {
   | exn =>
     let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-    Console.warn(`[AppSync_Adapter] getIntrospectionSdl failed for ${apiId}: ${msg}`)
+    log.warn(~comp="AppSync_Adapter", `getIntrospectionSdl failed for ${apiId}: ${msg}`)
     ""
   }
 }

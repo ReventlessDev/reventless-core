@@ -1,3 +1,5 @@
+let log = Logger.fromEnv()
+
 module Make = (
   Spec: Task.Spec,
   RuntimeEnvironment: Runtime.Environment,
@@ -79,12 +81,12 @@ module Make = (
         | CreateSchedule(schedule) =>
           switch operations {
           | Some(operations) => await operations.createSchedule(schedule)
-          | None => Console.log("No SideEffectHandler to create schedule")
+          | None => log.info(~comp="Task", "No SideEffectHandler to create schedule")
           }
         | DeleteSchedule(scheduleId) =>
           switch operations {
           | Some(operations) => await operations.deleteSchedule(scheduleId)
-          | None => Console.log("No SideEffectHandler to delete schedule")
+          | None => log.info(~comp="Task", "No SideEffectHandler to delete schedule")
           }
         }
       })

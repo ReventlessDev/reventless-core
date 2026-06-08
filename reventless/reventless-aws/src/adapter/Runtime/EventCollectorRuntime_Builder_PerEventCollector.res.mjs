@@ -3,12 +3,15 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let readModelInfos = {};
 
@@ -32,39 +35,38 @@ function forEventCollector(param, eventTopics, resources, memorySizeOpt, timeout
   }
   let parentName = Stdlib_Option.getOr(parentResource.__name, "Unnamed");
   let info = readModelInfos[parentName];
-  if (info !== undefined) {
-    let sourceUrns = Pulumi.all(Component$ReventlessCore.outputs(eventCollector).resources.map(param => param.urn));
-    let name = ComponentType$ReventlessCore.nameOpt(eventCollectorResource.__name, EventCollector$ReventlessCore.componentType);
-    let opts_parent = eventCollectorResource;
-    let opts = {
-      parent: opts_parent
-    };
-    let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-    let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
-    let handlerConfigOutput = Pulumi.all([
-      info.queryDbTableName,
-      sourceUrns
-    ]).apply(param => {
-      let sourceUrn = param[1][0];
-      return `{"handlers":[{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}]}`;
-    });
-    let envVars = {};
-    envVars["HANDLER_CONFIG"] = handlerConfigOutput;
-    let packageDirs = {};
-    let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
-    let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
-    packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
-    packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
-    let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs", packageDirs, undefined);
-    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, opts);
-    EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(name, [{
-        channel: channel,
-        eventTopics: eventTopics,
-        resources: resources
-      }], runtime, opts);
-    return;
+  if (info === undefined) {
+    return log.warn("EventCollectorRuntime_Builder_PerEventCollector", undefined, `no bundled info registered for ` + parentName);
   }
-  console.warn(`EventCollectorRuntime_Builder_PerEventCollector: no bundled info registered for ` + parentName);
+  let sourceUrns = Pulumi.all(Component$ReventlessCore.outputs(eventCollector).resources.map(param => param.urn));
+  let name = ComponentType$ReventlessCore.nameOpt(eventCollectorResource.__name, EventCollector$ReventlessCore.componentType);
+  let opts_parent = eventCollectorResource;
+  let opts = {
+    parent: opts_parent
+  };
+  let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
+  let mappingsModule = Stdlib_Option.getOr(JSON.stringify(info.mappingsModulePath), `""`);
+  let handlerConfigOutput = Pulumi.all([
+    info.queryDbTableName,
+    sourceUrns
+  ]).apply(param => {
+    let sourceUrn = param[1][0];
+    return `{"handlers":[{"specModule":` + specModule + `,"mappingsModule":` + mappingsModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}]}`;
+  });
+  let envVars = {};
+  envVars["HANDLER_CONFIG"] = handlerConfigOutput;
+  let packageDirs = {};
+  let specPkg = Util_Bundle$ReventlessAws.extractPackageName(info.specModulePath);
+  let mappingsPkg = Util_Bundle$ReventlessAws.extractPackageName(info.mappingsModulePath);
+  packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
+  packageDirs[mappingsPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(mappingsPkg);
+  let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/ReadModelEntryPoint.mjs", packageDirs, undefined);
+  let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, opts);
+  EventCollectorChannel_DynamoDbStream$ReventlessAws.connect(name, [{
+      channel: channel,
+      eventTopics: eventTopics,
+      resources: resources
+    }], runtime, opts);
 }
 
 function finish() {
@@ -78,9 +80,10 @@ let RuntimeEnvironment;
 export {
   EventCollectorChannel,
   RuntimeEnvironment,
+  log,
   readModelInfos,
   registerReadModel,
   forEventCollector,
   finish,
 }
-/* @pulumi/pulumi Not a pure module */
+/* log Not a pure module */

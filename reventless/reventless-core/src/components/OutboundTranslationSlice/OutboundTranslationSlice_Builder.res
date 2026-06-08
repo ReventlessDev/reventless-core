@@ -3,6 +3,8 @@
 //
 // Follows the AutomationSlice_Builder pattern for adapter injection.
 
+let log = Logger.fromEnv()
+
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
   QueryDbStorage: QueryDb_Adapter.Storage,
@@ -129,8 +131,9 @@ module Make = (
                         Promise.resolve()
                       })
                   | None =>
-                    Console.error(
-                      `OutboundTranslationSlice(${Spec.name}): publishJsons not yet resolved`,
+                    log.error(
+                      ~comp=`OutboundTranslationSlice(${Spec.name})`,
+                      `publishJsons not yet resolved`,
                     )
                   }
                 },

@@ -11,11 +11,14 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ClientAppsync from "@aws-sdk/client-appsync";
 import * as Auth_Cognito$ReventlessAws from "../../adapter/Auth/Auth_Cognito.res.mjs";
 import * as AppSync_Error$ReventlessAws from "../../errors/AppSync_Error.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function sha256Hex(input) {
   return Nodecrypto.createHash("sha256").update(input).digest("hex");
@@ -70,7 +73,7 @@ async function getIntrospectionSdl(client, apiId) {
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-    console.warn(`[AppSync_Adapter] getIntrospectionSdl failed for ` + apiId + `: ` + msg);
+    log.warn("AppSync_Adapter", undefined, `getIntrospectionSdl failed for ` + apiId + `: ` + msg);
     return "";
   }
 }
@@ -289,6 +292,7 @@ function updateSchema(api, baseFragment, pluginFragments) {
 }
 
 export {
+  log,
   sha256Hex,
   startSchemaCreation,
   startSchemaCreationRetrying,
@@ -305,4 +309,4 @@ export {
   generateFragment,
   updateSchema,
 }
-/* Effect Not a pure module */
+/* log Not a pure module */

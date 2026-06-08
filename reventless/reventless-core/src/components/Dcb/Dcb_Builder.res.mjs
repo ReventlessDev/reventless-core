@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as DcbValidation$Reventless from "@reventlessdev/reventless-spec/src/components/DcbValidation.res.mjs";
 import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
@@ -21,6 +22,8 @@ import * as AutomationSlice_Callback$ReventlessCore from "../AutomationSlice/Aut
 import * as CommandGenerator_Callback$ReventlessCore from "../CommandGenerator/CommandGenerator_Callback.res.mjs";
 import * as InboundTranslationSlice_Callback$ReventlessCore from "../InboundTranslationSlice/InboundTranslationSlice_Callback.res.mjs";
 import * as OutboundTranslationSlice_Callback$ReventlessCore from "../OutboundTranslationSlice/OutboundTranslationSlice_Callback.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let toRelativePath = (function toRelativePath(moduleUrl) {
   try {
@@ -107,9 +110,7 @@ function Make(DcbEventLogStorage) {
       ]));
       let errors = DcbValidation$Reventless.validateProducedAndConsumed(produced, consumed);
       if (errors.TAG !== "Ok") {
-        errors._0.forEach(err => {
-          console.error(`DCB validation error (` + err.sliceName + `): ` + err.message);
-        });
+        errors._0.forEach(err => log.error("Dcb_Builder", undefined, `DCB validation error (` + err.sliceName + `): ` + err.message));
       }
       let producedSchemas = produced.map(param => param[1]);
       let arr = producedSchemas.flatMap(DcbTag$Reventless.extractTaggedFields);
@@ -519,8 +520,9 @@ function Make(DcbEventLogStorage) {
 }
 
 export {
+  log,
   toRelativePath,
   emptyResult,
   Make,
 }
-/* S Not a pure module */
+/* log Not a pure module */
