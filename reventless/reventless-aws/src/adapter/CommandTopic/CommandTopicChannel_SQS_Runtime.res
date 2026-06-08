@@ -35,10 +35,9 @@ let handleQueueEvent = (
               }
               deleteMessageBatchEntry->Some
             | Error(reference) =>
-              Effect.logError(
-                __MODULE__ ++
-                ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle: " ++
-                reference,
+              ReventlessCore.EffectLogger.logError(
+                ~comp=__MODULE__,
+                "handleQueueEvent: Couldn't handle command with ReceiptHandle: " ++ reference,
               )->Effect.runSync
               None
             },
@@ -49,10 +48,11 @@ let handleQueueEvent = (
       | [] => Effect.succeed()
       | entries =>
         Util.SQS_Runtime.deleteMessages(entries, queue)
-        ->Effect.tap(_ => Effect.logInfo("handleQueueEvent: Deleted all commands from queue"))
+        ->Effect.tap(_ => ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, "handleQueueEvent: Deleted all commands from queue"))
         ->Effect.catchAll(errorMsg =>
-          Effect.logError(
-            __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch: " ++ errorMsg,
+          ReventlessCore.EffectLogger.logError(
+            ~comp=__MODULE__,
+            "handleQueueEvent: Couldn't deleteMessageBatch: " ++ errorMsg,
           )
         )
       }
@@ -63,7 +63,7 @@ let publishJsons = (queue, queueService) =>
   async jsons =>
     switch jsons->Array.length {
     | 0 =>
-      Effect.logInfo(__MODULE__ ++ ".publishJsons: No commands to send")->Effect.runPromise->ignore
+      ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, "publishJsons: No commands to send")->Effect.runPromise->ignore
     | 1 =>
       await queue->Util_SQS_Runtime.send(queueService, jsons->Array.getUnsafe(0))->Effect.runPromise
     | _ =>

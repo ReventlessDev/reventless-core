@@ -3,6 +3,7 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stdlib_Promise from "@rescript/runtime/lib/es6/Stdlib_Promise.js";
+import * as EffectLogger$ReventlessCore from "./EffectLogger.res.mjs";
 
 function merge(v1, v2) {
   switch (v1.TAG) {
@@ -104,7 +105,7 @@ function merge(v1, v2) {
 }
 
 function defaultErrorHandler(err) {
-  Effect.runSync(Effect.logError(Stdlib_Option.getOr(JSON.stringify(err), "unknown")));
+  Effect.runSync(EffectLogger$ReventlessCore.logError("Validation-ReventlessCore", undefined, Stdlib_Option.getOr(JSON.stringify(err), "unknown")));
   return {
     TAG: "Failure",
     _0: "Couldn't resolve promise."

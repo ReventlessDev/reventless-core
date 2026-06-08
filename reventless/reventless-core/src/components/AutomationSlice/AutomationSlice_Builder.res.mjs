@@ -15,6 +15,7 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as EventTopic$ReventlessCore from "../EventTopic/EventTopic.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 import * as AutomationSlice$ReventlessCore from "./AutomationSlice.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "../QueryDb/QueryDb_Builder.res.mjs";
@@ -74,7 +75,7 @@ function Make(RuntimeEnvironment) {
             await syncToQueryDb(queryDbOps);
             Stdlib_Promise.$$catch(Callback.phase2(publishJsonsFn).then(() => syncToQueryDb(queryDbOps)), exn => {
               let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-              Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): detached phase 2 error: ` + errMsg));
+              Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `detached phase 2 error: ` + errMsg));
               return Promise.resolve();
             });
           }));

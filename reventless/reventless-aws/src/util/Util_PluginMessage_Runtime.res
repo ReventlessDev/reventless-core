@@ -7,7 +7,7 @@ let sendMessage = (~channelId, ~messageBody) =>
   ->Effect.retry(SQS_Error.retrySchedule)
   ->Effect.catchAll(err => {
     let msg = SQS_Error.message(err)
-    Effect.logError("Failed to send message to channel: " ++ msg)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "Failed to send message to channel: " ++ msg)
     ->Effect.flatMap(_ => Effect.fail(err))
   })
   ->Effect.runPromise

@@ -10,6 +10,7 @@ import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Me
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 S.enableJson();
 
@@ -107,7 +108,7 @@ function Make(Spec) {
         } catch (raw_exn) {
           let exn = Primitive_exceptions.internalToException(raw_exn);
           let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to decode todoItem: ` + errMsg));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to decode todoItem: ` + errMsg));
           item = undefined;
         }
         Stdlib_Option.forEach(item, item => {
@@ -126,7 +127,7 @@ function Make(Spec) {
           } catch (raw_exn) {
             let exn = Primitive_exceptions.internalToException(raw_exn);
             let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-            Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to encode command: ` + errMsg));
+            Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to encode command: ` + errMsg));
             let newrecord$1 = {...row};
             newrecord$1.retryCount = row.retryCount + 1 | 0;
             newrecord$1.status = "Failed";
@@ -152,7 +153,7 @@ function Make(Spec) {
       } catch (raw_exn) {
         let exn = Primitive_exceptions.internalToException(raw_exn);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-        Effect.runSync(Effect.logError(`AutomationSlice(` + Spec.name + `): failed to publish commands: ` + errMsg));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`AutomationSlice(` + Spec.name + `)`, undefined, `failed to publish commands: ` + errMsg));
         pending.forEach(param => {
           let row = param[1];
           let id = param[0];

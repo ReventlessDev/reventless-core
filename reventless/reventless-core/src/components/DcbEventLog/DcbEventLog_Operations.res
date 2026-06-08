@@ -60,8 +60,9 @@ module Make = (Ops: Ops): T => {
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `DcbEventLog(${name}): beforePublishHook error: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`DcbEventLog(${name})`,
+          `beforePublishHook error: ${errMsg}`,
         )->Effect.runSync
         rawEventsJson
       }
@@ -75,7 +76,7 @@ module Make = (Ops: Ops): T => {
       try await Ops.publishJson(serviceName, rawEvent.meta, eventJson') catch {
       | JsExn(err) =>
         let errMsg = err->JsExn.message->Option.getOr("unknown")
-        Effect.logError(`DcbEventLog(${name}): EventTopic.publish Error: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(~comp=`DcbEventLog(${name})`, `EventTopic.publish Error: ${errMsg}`)->Effect.runSync
       }
     })
     ->Promise.all
@@ -97,8 +98,9 @@ module Make = (Ops: Ops): T => {
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `DcbEventLog(${name}): afterPublishHook error: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`DcbEventLog(${name})`,
+          `afterPublishHook error: ${errMsg}`,
         )->Effect.runSync
       }
     }

@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Counter$ReventlessCore from "./Counter.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
 
 let countsStateSchema = S.schema(s => ({
@@ -25,7 +26,7 @@ function groupByCounterId(references) {
 }
 
 function Make(Spec) {
-  let counterHandler = (references, counts) => Effect.runPromise(Effect.zipRight(Effect.zipRight(Effect.zipRight(Effect.logInfo(`counterHandler: references: ` + references.length.toString()), Effect.logInfo(`counterHandler: counts: ` + Stdlib_Option.getOr(JSON.stringify(counts), "[]"))), Effect.map(Effect.all(groupByCounterId(references).map(param => {
+  let counterHandler = (references, counts) => Effect.runPromise(Effect.zipRight(Effect.zipRight(Effect.zipRight(EffectLogger$ReventlessCore.logInfo("Counter", undefined, `counterHandler: references: ` + references.length.toString()), EffectLogger$ReventlessCore.logInfo("Counter", undefined, `counterHandler: counts: ` + Stdlib_Option.getOr(JSON.stringify(counts), "[]"))), Effect.map(Effect.all(groupByCounterId(references).map(param => {
     let dec = param[1];
     let counterId = param[0];
     return Effect.promise(() => Spec.countsDbCount(counterId, "count", -dec | 0));
@@ -37,7 +38,7 @@ function Make(Spec) {
     let id = match.id;
     if (count === 0) {
       let match$1 = Counter$ReventlessCore.unmakeId(id);
-      Effect.runSync(Effect.logInfo("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString())));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo("Counter_Callback-ReventlessCore", undefined, `counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
       let meta = Message$ReventlessCore.generateMeta(ComponentType$ReventlessCore.toName("Counter"), undefined, "Counter", undefined, undefined, undefined, undefined, undefined);
       return Object.fromEntries([
         [
@@ -54,7 +55,7 @@ function Make(Spec) {
         ]
       ]);
     }
-    Effect.runSync(Effect.logInfo("Counter_Callback-ReventlessCore" + (`.counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString())));
+    Effect.runSync(EffectLogger$ReventlessCore.logInfo("Counter_Callback-ReventlessCore", undefined, `counterHandler: counted down ` + Spec.name + `(` + id + `) to ` + count.toString()));
   })))));
   return {
     counterHandler: counterHandler

@@ -66,7 +66,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import * as Effect from "effect/Effect";
-import { patchSpecId, makeQueueRef, scanByTableName } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, makeQueueRef, scanByTableName, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { subscribeQueueToTopic, unsubscribeQueueFromTopic } from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
 import { sendMessage } from "@reventlessdev/reventless-aws/src/util/Util_PluginMessage_Runtime.res.mjs";
 import { publish as snsPublish } from "@reventlessdev/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res.mjs";
@@ -213,9 +213,7 @@ async function getCurrentSchemaSdl(apiId) {
     // resp.schema is a Uint8Array of the SDL text.
     return Buffer.from(resp.schema).toString("utf-8");
   } catch (e) {
-    console.warn(
-      `[updateApiSchema] could not introspect current schema (${(e && e.message) || e}) — skipping shrink guard`
-    );
+    log.warn(`could not introspect current schema (${(e && e.message) || e}) — skipping shrink guard`, { comp: "updateApiSchema" });
     return "";
   }
 }
@@ -232,8 +230,13 @@ function parseShrinkThreshold(raw) {
 // shaped like this is auto-parsed by CloudWatch into the metric
 // Reventless/Runtime SchemaShrinkRejected (dimension ApiId) — no PutMetricData
 // call, SDK dependency, or extra IAM permission required.
+// NOTE: must stay as a raw `console.log` of the exact EMF envelope — routing
+// through `log.info` would add `time`/`level`/`message` siblings and break
+// CloudWatch's EMF auto-detect (the `_aws` block must be at the root of the
+// log record).
 function emitShrinkRejectionMetric(apiId, currentRootFields, newRootFields) {
   try {
+    // eslint-disable-next-line no-console
     console.log(
       JSON.stringify({
         _aws: {
@@ -283,12 +286,14 @@ async function collectDeploySchemaFragments(tableName) {
 let _currentRequestId = "unknown";
 
 function runEffect(correlationId, effect) {
-  return effect
-    // Promote correlationId/requestId to top-level JSON log fields — decoded by
-    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
-    // unified logger isn't installed.
+  let e = effect
+    // Promote correlationId/requestId/plugin to top-level JSON log fields —
+    // decoded by EffectLogger.install() from Effect log annotations. Harmless
+    // no-op if the unified logger isn't installed.
     .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
+  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
+  return e
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -338,20 +343,20 @@ function mkManageSubscriptions(tableName) {
     if (!queueArn || !topicArn) return;
     try {
       await subscribeQueueToTopic(queueArn, topicArn);
-      console.log(`[manageSubscriptions] subscribed ${label}: ${topicArn} -> ${queueArn}`);
+      log.info(`subscribed ${label}: ${topicArn} -> ${queueArn}`, { comp: "manageSubscriptions" });
     } catch (e) {
       const msg = (e && e.message) || String(e);
-      console.error(`[manageSubscriptions] subscribe failed ${label}: ${topicArn} -> ${queueArn}: ${msg}`);
+      log.error(`subscribe failed ${label}: ${topicArn} -> ${queueArn}`, { comp: "manageSubscriptions", detail: msg });
     }
   };
   const tryUnsubscribe = async (queueArn, topicArn, label) => {
     if (!queueArn || !topicArn) return;
     try {
       await unsubscribeQueueFromTopic(queueArn, topicArn);
-      console.log(`[manageSubscriptions] unsubscribed ${label}: ${topicArn} -> ${queueArn}`);
+      log.info(`unsubscribed ${label}: ${topicArn} -> ${queueArn}`, { comp: "manageSubscriptions" });
     } catch (e) {
       const msg = (e && e.message) || String(e);
-      console.error(`[manageSubscriptions] unsubscribe failed ${label}: ${topicArn} -> ${queueArn}: ${msg}`);
+      log.error(`unsubscribe failed ${label}: ${topicArn} -> ${queueArn}`, { comp: "manageSubscriptions", detail: msg });
     }
   };
   const scanConnectedPeers = async (excludeId) => {
@@ -387,10 +392,7 @@ function mkManageSubscriptions(tableName) {
       const myName = pluginNameOfId(pluginDef.id);
       const liveSibling = peers.find((p) => pluginNameOfId(p.id) === myName);
       if (liveSibling) {
-        console.log(
-          `[manageSubscriptions] disconnect skipped for ${pluginDef.id}: ` +
-            `sibling version ${liveSibling.id} still Connected and shares the same EC queue / EP topics`
-        );
+        log.info(`disconnect skipped for ${pluginDef.id}: sibling version ${liveSibling.id} still Connected and shares the same EC queue / EP topics`, { comp: "manageSubscriptions" });
         return;
       }
     }
@@ -473,12 +475,12 @@ async function reconcileSubscriptionsOnce(tableName, manageSubscriptions) {
         try {
           await manageSubscriptions(state, "connect");
         } catch (e) {
-          console.warn("[reconcileSubscriptions] manageSubscriptions failed: " + ((e && e.message) || e));
+          log.warn("manageSubscriptions failed", { comp: "reconcileSubscriptions", detail: (e && e.message) || String(e) });
         }
       }
     }
   } catch (e) {
-    console.warn("[reconcileSubscriptions] scan failed: " + ((e && e.message) || e));
+    log.warn("scan failed", { comp: "reconcileSubscriptions", detail: (e && e.message) || String(e) });
   }
 }
 
@@ -506,9 +508,7 @@ function mkUpdateApiSchema(schemaTableName, apiId, clonerEnabled) {
     let fragments;
     if (hasSchemaTable) {
       fragments = await collectDeploySchemaFragments(schemaTableName);
-      console.log(
-        `[updateApiSchema] stitching ${fragments.length} deploy-schema fragment(s) from ${schemaTableName}`
-      );
+      log.info(`stitching ${fragments.length} deploy-schema fragment(s) from ${schemaTableName}`, { comp: "updateApiSchema" });
     } else {
       const resolved = await queryEngine.scan(
         "Plugin",
@@ -516,9 +516,7 @@ function mkUpdateApiSchema(schemaTableName, apiId, clonerEnabled) {
         1000
       );
       fragments = resolved.map((json) => json && json.apiSchemaFragment).filter(Boolean);
-      console.warn(
-        `[updateApiSchema] PluginSchemaPersistence table unavailable — falling back to ${fragments.length} Connected Plugin RM fragment(s)`
-      );
+      log.warn(`PluginSchemaPersistence table unavailable — falling back to ${fragments.length} Connected Plugin RM fragment(s)`, { comp: "updateApiSchema" });
     }
     const adminBase = injectAwsAuthAll(adminBaseFragment(clonerEnabled || false), "Admin");
     const sdl = graphqlStitch(adminBase, fragments);
@@ -531,10 +529,7 @@ function mkUpdateApiSchema(schemaTableName, apiId, clonerEnabled) {
         countRootTypeFields(currentSdl, "Mutation") + countRootTypeFields(currentSdl, "Query");
       const newRootFields =
         countRootTypeFields(sdl, "Mutation") + countRootTypeFields(sdl, "Query");
-      console.error(
-        `[updateApiSchema] ABORTED schema push for ${apiId}: new SDL has ${newRootFields} root field(s) ` +
-          `vs ${currentRootFields} live (threshold ${threshold}). Refusing to clobber resolvers.`
-      );
+      log.error(`ABORTED schema push for ${apiId}: new SDL has ${newRootFields} root field(s) vs ${currentRootFields} live (threshold ${threshold}). Refusing to clobber resolvers.`, { comp: "updateApiSchema" });
       emitShrinkRejectionMetric(apiId, currentRootFields, newRootFields);
       return;
     }
@@ -765,11 +760,7 @@ async function buildHandler() {
   // it through ExtensionMapping.Make, and build per-extension Extension_Operations.
   const userExtensionHandlers = await Promise.all(config.extensions.map(async (ext) => {
     if (!ext.specModule || !ext.mappingsModule || !ext.delegateModule) {
-      console.warn(
-        "AdminEventCollectorEntryPoint: extension '" + ext.name +
-        "' missing module specifier(s); skipping. specModule=" + ext.specModule +
-        ", mappingsModule=" + ext.mappingsModule + ", delegateModule=" + ext.delegateModule
-      );
+      log.warn("extension '" + ext.name + "' missing module specifier(s); skipping. specModule=" + ext.specModule + ", mappingsModule=" + ext.mappingsModule + ", delegateModule=" + ext.delegateModule, { comp: "AdminEventCollectorEntryPoint" });
       return null;
     }
     const epSpec = patchSpecId(await importFromAsset(ext.specModule));
@@ -881,7 +872,7 @@ export async function handler(event, context) {
   _currentRequestId = context?.awsRequestId || "unknown";
   const records = event.Records || [];
   const correlationId = extractCorrelationId(records);
-  console.log("----- pluginEventCollectorHandler: processing " + records.length.toString() + " record(s)");
+  log.debug("processing " + records.length.toString() + " record(s)", { comp: "PluginEventCollectorRuntime" });
   const sqsHandler = await sqsHandlerPromise;
   await runEffect(correlationId, sqsHandler(event, context));
   return "";

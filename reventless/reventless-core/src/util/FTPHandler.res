@@ -44,7 +44,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
 
   client
   ->FTP.Client.onEnd(() => {
-    Effect.logInfo("Client.onEnd")->Effect.runSync
+    EffectLogger.logInfo(~comp=__MODULE__, "Client.onEnd")->Effect.runSync
     resolve(result.contents)
   })
   ->FTP.Client.onError(err => {
@@ -68,12 +68,13 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
 
           sftp
           ->FTP.onEnd(() => {
-            Effect.logInfo("FTPHandler: end sftp stream")->Effect.runSync
+            EffectLogger.logInfo(~comp=__MODULE__, "end sftp stream")->Effect.runSync
             // client->FTP.Client.end_
           })
           ->FTP.onError(err => {
-            Effect.logError(
-              `FTPHandler: Error: ${err->JSON.stringifyAny->Option.getOr("unknown")}`,
+            EffectLogger.logError(
+              ~comp=__MODULE__,
+              `Error: ${err->JSON.stringifyAny->Option.getOr("unknown")}`,
             )->Effect.runSync
             client->FTP.Client.error(err->FTP.toJsError)->ignore
             endFtp()
@@ -95,16 +96,17 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
               ->FTP.createWriteStream(sftp, ~path=_)
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
-                Effect.logInfo("FTPHandler: writable ended")->Effect.runSync
+                EffectLogger.logInfo(~comp=__MODULE__, "writable ended")->Effect.runSync
               })
               ->NodeStreams.Writable.onClose(() => {
                 result := Ok(true) // Workaround: since Node 18 there is no call to onFinish() anymore
-                Effect.logInfo("FTPHandler: writable closed")->Effect.runSync
+                EffectLogger.logInfo(~comp=__MODULE__, "writable closed")->Effect.runSync
                 endFtp()
               })
               ->NodeStreams.Writable.onError(err => {
-                Effect.logError(
-                  `FTPHandler: Error in Write Stream: ${err
+                EffectLogger.logError(
+                  ~comp=__MODULE__,
+                  `Error in Write Stream: ${err
                     ->JsExn.message
                     ->Option.getOr("unknown")}`,
                 )->Effect.runSync

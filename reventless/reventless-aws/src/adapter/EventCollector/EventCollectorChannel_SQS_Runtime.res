@@ -67,8 +67,9 @@ let handleDynamoDbEvent = handleEvents =>
   }
 
 let enqueueEvent = (queue: Util_SQS_Runtime.resolvedQueue, delay, _id, messageBody) =>
-  Effect.logInfo(
-    __MODULE__ ++ ".enqueueEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
+  ReventlessCore.EffectLogger.logInfo(
+    ~comp=__MODULE__,
+    "enqueueEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
   )
   ->Effect.flatMap(_ =>
     Effect.promise(() => queue->Util_SQS_Runtime.sendMessage(~delay, messageBody))
@@ -77,8 +78,9 @@ let enqueueEvent = (queue: Util_SQS_Runtime.resolvedQueue, delay, _id, messageBo
   ->Effect.runPromise
 
 let enqueueFifoEvent = (queue: Util_SQS_Runtime.resolvedQueue, delay, id, messageBody) =>
-  Effect.logInfo(
-    __MODULE__ ++ ".enqueueFifoEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
+  ReventlessCore.EffectLogger.logInfo(
+    ~comp=__MODULE__,
+    "enqueueFifoEvent: " ++ delay->Int.toString ++ " " ++ messageBody ++ " " ++ queue.name,
   )
   ->Effect.flatMap(_ =>
     Effect.promise(() =>

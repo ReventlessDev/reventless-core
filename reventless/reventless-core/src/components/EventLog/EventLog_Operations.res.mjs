@@ -15,6 +15,7 @@ import * as Schedule from "effect/Schedule";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "./EventPublish_Callback.res.mjs";
 
 function isTransient(msg) {
@@ -66,7 +67,7 @@ function Make(Spec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect$1.runSync(Effect$1.logError(`EventLog(` + Spec.name + `): beforePublishHook error: ` + errMsg));
+        return Effect$1.runSync(EffectLogger$ReventlessCore.logError(`EventLog(` + Spec.name + `)`, undefined, `beforePublishHook error: ` + errMsg));
       }
     };
     let runAfterPublishHook = async (idStr, eventsJson, meta) => {
@@ -80,7 +81,7 @@ function Make(Spec) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect$1.runSync(Effect$1.logError(`EventLog(` + Spec.name + `): afterPublishHook error: ` + errMsg));
+        return Effect$1.runSync(EffectLogger$ReventlessCore.logError(`EventLog(` + Spec.name + `)`, undefined, `afterPublishHook error: ` + errMsg));
       }
     };
     let publishToEventTopic = async (id, events$p, eventsJson) => {

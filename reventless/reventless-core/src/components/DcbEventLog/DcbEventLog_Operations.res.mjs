@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as EventPublish_Callback$ReventlessCore from "../EventLog/EventPublish_Callback.res.mjs";
 
 function Make(Ops) {
@@ -34,7 +35,7 @@ function Make(Ops) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        Effect.runSync(Effect.logError(`DcbEventLog(` + name + `): beforePublishHook error: ` + errMsg));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, `beforePublishHook error: ` + errMsg));
         finalRawEventsJson = rawEventsJson;
       }
     } else {
@@ -50,7 +51,7 @@ function Make(Ops) {
         let err = Primitive_exceptions.internalToException(raw_err);
         if (err.RE_EXN_ID === "JsExn") {
           let errMsg = Stdlib_Option.getOr(Stdlib_JsExn.message(err._1), "unknown");
-          return Effect.runSync(Effect.logError(`DcbEventLog(` + name + `): EventTopic.publish Error: ` + errMsg));
+          return Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, `EventTopic.publish Error: ` + errMsg));
         }
         throw err;
       }
@@ -73,7 +74,7 @@ function Make(Ops) {
     } catch (raw_err$1) {
       let err$1 = Primitive_exceptions.internalToException(raw_err$1);
       let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
-      return Effect.runSync(Effect.logError(`DcbEventLog(` + name + `): afterPublishHook error: ` + errMsg$1));
+      return Effect.runSync(EffectLogger$ReventlessCore.logError(`DcbEventLog(` + name + `)`, undefined, `afterPublishHook error: ` + errMsg$1));
     }
   };
   let append = async (rawEvents, condition) => {

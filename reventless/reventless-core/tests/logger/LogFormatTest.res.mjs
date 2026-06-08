@@ -232,6 +232,10 @@ Jest.describe("JSON sink", () => {
     let lines = captureLogs(() => Effect.runSync(Effect.annotateLogs(EffectLogger$ReventlessCore.logInfo("Aggregate(Product)", undefined, "handling"), "correlationId", "c-123")));
     return Jest.Expect.toBe(Jest.Expect.expect(lines.some(line => Primitive_object.equal(fieldOf(line, "correlationId"), "c-123"))), true);
   });
+  Jest.test("Effect.annotateLogs(plugin) overrides registry resolution", () => {
+    let lines = captureLogs(() => Effect.runSync(Effect.annotateLogs(EffectLogger$ReventlessCore.logInfo("Aggregate(Unregistered)", undefined, "handling"), "plugin", "Ordering")));
+    return Jest.Expect.toBe(Jest.Expect.expect(lines.some(line => Primitive_object.equal(fieldOf(line, "plugin"), "Ordering"))), true);
+  });
   Jest.test("every JSON record carries an RFC 3339 time field", () => {
     let lines = captureLogs(() => log.info("Platform", undefined, "tick"));
     let t = Stdlib_Option.flatMap(lines[0], l => fieldOf(l, "time"));
@@ -251,7 +255,7 @@ Jest.describe("JSON sink", () => {
         "blob",
         big
       ]]);
-    let direct = captureLogs(() => Logger$ReventlessCore.emit("Info", "Platform", detail, undefined, "big"));
+    let direct = captureLogs(() => Logger$ReventlessCore.emit("Info", "Platform", undefined, detail, undefined, "big"));
     let obj = Stdlib_Option.flatMap(direct[0], l => Stdlib_JSON.Decode.object(JSON.parse(l)));
     let ok;
     if (obj !== undefined) {

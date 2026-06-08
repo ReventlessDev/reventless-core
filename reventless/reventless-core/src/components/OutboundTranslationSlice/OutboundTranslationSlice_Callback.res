@@ -89,8 +89,9 @@ module Make = (
       | exn =>
         let errMsg =
           exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `OutboundTranslationSlice(${Spec.name}): failed to decode outboundItem: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`OutboundTranslationSlice(${Spec.name})`,
+          `failed to decode outboundItem: ${errMsg}`,
         )->Effect.runSync
         None
       }
@@ -119,8 +120,9 @@ module Make = (
           | exn =>
             let errMsg =
               exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-            Effect.logError(
-              `OutboundTranslationSlice(${Spec.name}): failed to encode inbound command: ${errMsg}`,
+            EffectLogger.logError(
+              ~comp=`OutboundTranslationSlice(${Spec.name})`,
+              `failed to encode inbound command: ${errMsg}`,
             )->Effect.runSync
             None
           }
@@ -139,8 +141,9 @@ module Make = (
             | exn =>
               let errMsg =
                 exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-              Effect.logError(
-                `OutboundTranslationSlice(${Spec.name}): failed to publish command: ${errMsg}`,
+              EffectLogger.logError(
+                ~comp=`OutboundTranslationSlice(${Spec.name})`,
+                `failed to publish command: ${errMsg}`,
               )->Effect.runSync
               todoItems->Dict.set(
                 id,

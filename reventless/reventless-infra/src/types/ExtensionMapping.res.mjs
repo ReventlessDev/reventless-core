@@ -9,7 +9,6 @@ import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Message.res.mjs";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
-import * as LogPrefix$Reventless from "@reventlessdev/reventless-spec/src/LogPrefix.res.mjs";
 import * as PluginExtensionPointSpec$ReventlessInfra from "./PluginExtensionPointSpec.res.mjs";
 
 let cmp = Primitive_string.compare;
@@ -68,7 +67,7 @@ function Make(MappingImpl) {
     let tags$1 = DcbTag$Reventless.extractTags(Delegate.commandSchema, targetCmd);
     return DcbTag$Reventless.getCompositePartitionKeyValue(tags$1, pt._0);
   };
-  let compLog = (comp, msg) => Effect.runSync(Effect.logInfo(LogPrefix$Reventless.fmtComp(comp, undefined) + msg));
+  let compLog = (comp, msg) => Effect.runSync(Effect.annotateLogs(Effect.logInfo(msg), "comp", comp));
   let encodeMeta = (meta, service) => {
     let newrecord = {...meta};
     newrecord.msgId = Uuid.v4();

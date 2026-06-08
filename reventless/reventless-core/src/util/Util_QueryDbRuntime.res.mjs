@@ -2,12 +2,13 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as EffectLogger$ReventlessCore from "./EffectLogger.res.mjs";
 
 function getRuntimeResource(allQueryDbs, queryDbName) {
   try {
     return Stdlib_Option.getOrThrow(allQueryDbs[queryDbName], undefined);
   } catch (exn) {
-    Effect.runSync(Effect.logError(`Util_QueryDbRuntime.getRuntimeResource: Couldn't find QueryDb ` + queryDbName + ` in ` + Object.keys(allQueryDbs).join(", ")));
+    Effect.runSync(EffectLogger$ReventlessCore.logError("Util_QueryDbRuntime-ReventlessCore", undefined, `getRuntimeResource: Couldn't find QueryDb ` + queryDbName + ` in ` + Object.keys(allQueryDbs).join(", ")));
     throw exn;
   }
 }

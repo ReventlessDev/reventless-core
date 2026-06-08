@@ -28,8 +28,9 @@ let putWithRetries = (table, id, item) => {
   ->Effect.catchAll(err =>
     switch err {
     | Transient(msg) | Permanent(msg) =>
-      Effect.logError(
-        __MODULE__ ++ `.putWithRetries: id=${id}: ${msg}`,
+      ReventlessCore.EffectLogger.logError(
+        ~comp=__MODULE__,
+        `putWithRetries: id=${id}: ${msg}`,
       )
       ->Effect.map(_ => Error(`put id=${id} failed: ${msg}`))
     | StaleState(msg) =>
@@ -50,8 +51,9 @@ let putIfNotExistsWithRetries = (~idKey, ~sortKey=?, table, id, item) => {
     switch err {
     | StaleState(_) => Effect.succeed(Error(`Stale State: id=${id}`))
     | Transient(msg) | Permanent(msg) =>
-      Effect.logError(
-        __MODULE__ ++ `.putIfNotExistsWithRetries: id=${id}: ${msg}`,
+      ReventlessCore.EffectLogger.logError(
+        ~comp=__MODULE__,
+        `putIfNotExistsWithRetries: id=${id}: ${msg}`,
       )
       ->Effect.map(_ => Error(`putIfNotExists id=${id} failed: ${msg}`))
     }
@@ -71,8 +73,9 @@ let deleteWithRetries = (~sort=?, table, id) =>
   ->Effect.retry(DynamoDb_Error.retrySchedule)
   ->Effect.catchAll(err => {
     let msg = DynamoDb_Error.message(err)
-    Effect.logError(
-      __MODULE__ ++ `.delete: id=${id}: ${msg}`,
+    ReventlessCore.EffectLogger.logError(
+      ~comp=__MODULE__,
+      `delete: id=${id}: ${msg}`,
     )
     ->Effect.map(_ => Error(`delete id=${id} failed: ${msg}`))
   })
@@ -186,9 +189,9 @@ let batchWriteWithRetries = batchWriteRequests => {
       if writeOutput->hasUnprocessedItems {
         let unprocessedRequests = writeOutput.BatchWriteCommand.unprocessedItems->Option.getOrThrow
         let count = unprocessedRequests->Dict.keysToArray->Array.length->Int.toString
-        Effect.logInfo(
-          __MODULE__ ++
-          `.batchWriteWithRetries: retry ${retry->Int.toString}: ${count} unprocessed items`,
+        ReventlessCore.EffectLogger.logInfo(
+          ~comp=__MODULE__,
+          `batchWriteWithRetries: retry ${retry->Int.toString}: ${count} unprocessed items`,
         )
         ->Effect.flatMap(_ => attempt(retry + 1, unprocessedRequests))
       } else {

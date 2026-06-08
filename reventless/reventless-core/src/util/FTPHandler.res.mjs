@@ -10,6 +10,7 @@ import * as FTP$ReventlessCore from "./FTP.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Message$ReventlessCore from "../Message.res.mjs";
 import * as Util_Error$ReventlessCore from "./Util_Error.res.mjs";
+import * as EffectLogger$ReventlessCore from "./EffectLogger.res.mjs";
 import * as Util_Promise$ReventlessCore from "./Util_Promise.res.mjs";
 
 function ftp(connectionParams, ftpAction) {
@@ -44,7 +45,7 @@ function ftp(connectionParams, ftpAction) {
       readyTimeout: readyTimeout
     });
   SSH2.Client.onReady(client.on("end", () => {
-    Effect.runSync(Effect.logInfo("Client.onEnd"));
+    Effect.runSync(EffectLogger$ReventlessCore.logInfo("FTPHandler-ReventlessCore", undefined, "Client.onEnd"));
     resolve(result.contents);
   }).on("error", err => resolve({
     TAG: "Error",
@@ -73,8 +74,8 @@ function ftp(connectionParams, ftpAction) {
         let endFtp = () => {
           client.end();
         };
-        sftp.on("end", () => Effect.runSync(Effect.logInfo("FTPHandler: end sftp stream"))).on("error", err => {
-          Effect.runSync(Effect.logError(`FTPHandler: Error: ` + Stdlib_Option.getOr(JSON.stringify(err), "unknown")));
+        sftp.on("end", () => Effect.runSync(EffectLogger$ReventlessCore.logInfo("FTPHandler-ReventlessCore", undefined, "end sftp stream"))).on("error", err => {
+          Effect.runSync(EffectLogger$ReventlessCore.logError("FTPHandler-ReventlessCore", undefined, `Error: ` + Stdlib_Option.getOr(JSON.stringify(err), "unknown")));
           client.emit("error", err);
           client.end();
         });
@@ -108,16 +109,16 @@ function ftp(connectionParams, ftpAction) {
               TAG: "Ok",
               _0: true
             };
-            Effect.runSync(Effect.logInfo("FTPHandler: writable ended"));
+            Effect.runSync(EffectLogger$ReventlessCore.logInfo("FTPHandler-ReventlessCore", undefined, "writable ended"));
           }).on("close", () => {
             result.contents = {
               TAG: "Ok",
               _0: true
             };
-            Effect.runSync(Effect.logInfo("FTPHandler: writable closed"));
+            Effect.runSync(EffectLogger$ReventlessCore.logInfo("FTPHandler-ReventlessCore", undefined, "writable closed"));
             client.end();
           }).on("error", err => {
-            Effect.runSync(Effect.logError(`FTPHandler: Error in Write Stream: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err), "unknown")));
+            Effect.runSync(EffectLogger$ReventlessCore.logError("FTPHandler-ReventlessCore", undefined, `Error in Write Stream: ` + Stdlib_Option.getOr(Stdlib_JsExn.message(err), "unknown")));
             let err$1 = new Error("FTPHandler: Error in Write Stream");
             sftp.emit("error", err$1);
           });

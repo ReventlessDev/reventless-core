@@ -49,10 +49,10 @@ module Make = (Spec: Spec): T => {
       | exception err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(`SideEffects.map: Couldn't decode meta: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(~comp="SideEffects", `map: Couldn't decode meta: ${errMsg}`)->Effect.runSync
         None
       | _ =>
-        Effect.logError("SideEffects.map: Invalid JSON object")->Effect.runSync
+        EffectLogger.logError(~comp="SideEffects", "map: Invalid JSON object")->Effect.runSync
         None
       }
     })
@@ -67,8 +67,9 @@ module Make = (Spec: Spec): T => {
       | Some((eventObj, eventMeta, sideEffect)) =>
         module SideEffect = unpack(sideEffect)
         let sourceName = SideEffect.Source.name
-        Effect.logInfo(
-          `SideEffectHandler.eventsHandler: handling event from source ${sourceName}: ${LogFormat.event'JsonToLogMessage(
+        EffectLogger.logInfo(
+          ~comp="SideEffectHandler",
+          `eventsHandler: handling event from source ${sourceName}: ${LogFormat.event'JsonToLogMessage(
               eventJson',
             )}`,
         )->Effect.zipRight(
@@ -98,14 +99,15 @@ module Make = (Spec: Spec): T => {
                   `SideEffect: Error while processing: ${errMsg}`
                 },
                 () => SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine),
-              )->Effect.catchAll(errMsg => Effect.logError(errMsg))
+              )->Effect.catchAll(errMsg => EffectLogger.logError(~comp="SideEffectHandler", errMsg))
             | _ =>
-              Effect.logError(
-                `SideEffectHandler.eventHandler: Invalid event ${eventJson'->JSON.stringify}`,
+              EffectLogger.logError(
+                ~comp="SideEffectHandler",
+                `eventHandler: Invalid event ${eventJson'->JSON.stringify}`,
               )
             }
           )
-          ->Effect.catchAll(errMsg => Effect.logError(errMsg))
+          ->Effect.catchAll(errMsg => EffectLogger.logError(~comp="SideEffectHandler", errMsg))
         )
       | None => Effect.succeed()
       }

@@ -29,11 +29,13 @@ module Make = (Spec: Spec) => {
   //   2. Emits CountFinished events for any counters that reached zero
   // Builds an Effect pipeline and converts to promise at the boundary (type = promise<unit>).
   let counterHandler = (~references, ~counts) =>
-    Effect.logInfo(
+    EffectLogger.logInfo(
+      ~comp="Counter",
       `counterHandler: references: ${references->Array.length->Int.toString}`,
     )
     ->Effect.zipRight(
-      Effect.logInfo(
+      EffectLogger.logInfo(
+        ~comp="Counter",
         `counterHandler: counts: ${counts->JSON.stringifyAny->Option.getOr("[]")}`,
       )
     )
@@ -60,9 +62,9 @@ module Make = (Spec: Spec) => {
             switch state->Message.decode(countsStateSchema) {
             | {id, count} if count == 0 =>
               let (counterId, _) = id->Counter.unmakeId
-              Effect.logInfo(
-                __MODULE__ ++
-                `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
+              EffectLogger.logInfo(
+                ~comp=__MODULE__,
+                `counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
               )->Effect.runSync
               let meta = Message.generateMeta(
                 ~service=ComponentType.Counter->ComponentType.toName,
@@ -78,9 +80,9 @@ module Make = (Spec: Spec) => {
                 ->JSON.Encode.object,
               )
             | {id, count} =>
-              Effect.logInfo(
-                __MODULE__ ++
-                `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
+              EffectLogger.logInfo(
+                ~comp=__MODULE__,
+                `counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
               )->Effect.runSync
               None
             }

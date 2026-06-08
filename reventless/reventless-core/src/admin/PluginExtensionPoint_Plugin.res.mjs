@@ -10,6 +10,7 @@ import * as Message$ReventlessCore from "../Message.res.mjs";
 import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src/Compat.res.mjs";
 import * as PluginSpec$ReventlessCore from "./PluginSpec.res.mjs";
 import * as ScheduleOps$ReventlessCore from "../util/ScheduleOps.res.mjs";
+import * as EffectLogger$ReventlessCore from "../util/EffectLogger.res.mjs";
 import * as CompatMatrix$ReventlessInterop from "@reventlessdev/reventless-interop/src/protocol/CompatMatrix.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "./PluginsReadModelSpec.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
@@ -36,7 +37,7 @@ function Make(Spec) {
       ]
     ], 1000);
     if (jsons.length === 0) {
-      return Effect.runSync(Effect.logWarning(`ForwardCommand: Couldn't find Plugin with ExtensionPoint ` + extensionPointName));
+      return Effect.runSync(EffectLogger$ReventlessCore.logWarn("Core.Plugin", undefined, `ForwardCommand: Couldn't find Plugin with ExtensionPoint ` + extensionPointName));
     }
     let plugin = jsons[0];
     let exit = 0;
@@ -47,12 +48,12 @@ function Make(Spec) {
     } catch (raw_err) {
       let err = Primitive_exceptions.internalToException(raw_err);
       let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-      return Effect.runSync(Effect.logError(`ForwardCommand: Couldn't decode Plugin: ` + errMsg));
+      return Effect.runSync(EffectLogger$ReventlessCore.logError("Core.Plugin", undefined, `ForwardCommand: Couldn't decode Plugin: ` + errMsg));
     }
     if (exit === 1) {
       let extensionPoint = plugin$1.extensionPoints.find(extensionPoint => extensionPoint.name === extensionPointName);
       if (extensionPoint === undefined) {
-        return Effect.runSync(Effect.logWarning(`ForwardCommand: Couldn't find ExtensionPoint ` + extensionPointName + ` in ` + plugin$1.name));
+        return Effect.runSync(EffectLogger$ReventlessCore.logWarn("Core.Plugin", undefined, `ForwardCommand: Couldn't find ExtensionPoint ` + extensionPointName + ` in ` + plugin$1.name));
       }
       let exit$1 = 0;
       let val;
@@ -62,10 +63,10 @@ function Make(Spec) {
       } catch (raw_err$1) {
         let err$1 = Primitive_exceptions.internalToException(raw_err$1);
         let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(Effect.logError(`PluginExtensionPoint_PluginMapping: Error on publish command: ` + errMsg$1));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError("Core.Plugin", undefined, `ForwardCommand: Error on publish command: ` + errMsg$1));
       }
       if (exit$1 === 2) {
-        return Effect.runSync(Effect.logInfo(`ForwardCommand: published command to ` + plugin$1.name + ` ` + extensionPoint.commandTopic));
+        return Effect.runSync(EffectLogger$ReventlessCore.logInfo("Core.Plugin", undefined, `ForwardCommand: published command to ` + plugin$1.name + ` ` + extensionPoint.commandTopic));
       }
     }
   };
@@ -151,7 +152,7 @@ function Make(Spec) {
       case "ConnectPlugin" :
         let pluginDefinition = cmd._0;
         let protocolErrors = pluginDefinition.extensionProtocols.flatMap(proto => Compat$ReventlessInterop.validateProtocol(CompatMatrix$ReventlessInterop.corePlugin, proto.extensionPointName, proto.commandVersion, proto.eventVersion));
-        let reportAction = protocolErrors.length !== 0 ? (Effect.runSync(Effect.logWarning(`[Core.Plugin] Protocol version mismatch for plugin ` + pluginDefinition.id + `: ` + Stdlib_Option.getOr(JSON.stringify(protocolErrors), "[]"))), [{
+        let reportAction = protocolErrors.length !== 0 ? (Effect.runSync(EffectLogger$ReventlessCore.logWarn("Core.Plugin", undefined, `Protocol version mismatch for plugin ` + pluginDefinition.id + `: ` + Stdlib_Option.getOr(JSON.stringify(protocolErrors), "[]"))), [{
               TAG: "PublishCommand",
               _0: id,
               _1: {

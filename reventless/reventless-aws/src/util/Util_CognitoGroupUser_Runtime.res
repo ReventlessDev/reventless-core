@@ -28,7 +28,7 @@ let addUserToGroup = (
   ->Effect.retry(Cognito_Error.retrySchedule)
   ->Effect.catchAll(err => {
     let msg = Cognito_Error.message(err)
-    Effect.logError(`Util_CognitoGroupUser_Runtime.addUserToGroup: ${msg}`)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `addUserToGroup: ${msg}`)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
   ->Effect.runPromise
@@ -59,7 +59,7 @@ let removeUserFromGroup = (
   ->Effect.retry(Cognito_Error.retrySchedule)
   ->Effect.catchAll(err => {
     let msg = Cognito_Error.message(err)
-    Effect.logError(`Util_CognitoGroupUser_Runtime.removeUserFromGroup: ${msg}`)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `removeUserFromGroup: ${msg}`)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
   ->Effect.runPromise

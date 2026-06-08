@@ -44,24 +44,26 @@ module MakeCounterHandler = (
           )
         switch entry {
         | None =>
-          Effect.logInfo(`EventMapper.map: No mapping ${source} -> ${target} found`)->Effect.runSync
+          EffectLogger.logInfo(~comp="EventMapper", `map: No mapping ${source} -> ${target} found`)->Effect.runSync
           None
         | Some((mapping, acceptedTags)) =>
           module Mapping = unpack(mapping)
           let source = Mapping.Source.name
-          Effect.logInfo(`EventMapper.map: found mapping ${source} -> ${target}`)->Effect.runSync
+          EffectLogger.logInfo(~comp="EventMapper", `map: found mapping ${source} -> ${target}`)->Effect.runSync
           Some((eventObj', eventMeta, mapping, acceptedTags))
         }
       | None =>
-        Effect.logError(
-          `EventMapper_Callback.findMapping: Invalid JSON object: ${eventJson'->JSON.stringify}`,
+        EffectLogger.logError(
+          ~comp="EventMapper",
+          `findMapping: Invalid JSON object: ${eventJson'->JSON.stringify}`,
         )->Effect.runSync
         None
       | exception err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `EventMapper_Callback.findMapping: Couldn't decode meta: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp="EventMapper",
+          `findMapping: Couldn't decode meta: ${errMsg}`,
         )->Effect.runSync
         None
       }
@@ -120,8 +122,9 @@ module MakeCounterHandler = (
       eventsJson'
       ->Array.mapWithIndex((eventJson', idx) => {
         let idx = idx + 1
-        Effect.logInfo(
-          `EventMapper.eventsHandler: incoming event ${idx->Int.toString}/${eventsCount->Int.toString}: ${LogFormat.event'JsonToLogMessage(
+        EffectLogger.logInfo(
+          ~comp="EventMapper",
+          `eventsHandler: incoming event ${idx->Int.toString}/${eventsCount->Int.toString}: ${LogFormat.event'JsonToLogMessage(
               eventJson',
             )}`,
         )->Effect.runSync
@@ -155,8 +158,9 @@ module MakeCounterHandler = (
               | (Some(eventId), Some(event)) =>
                 Mapping.map(eventId, event, Ops.queryEngine)->processMappingActions(eventMeta)->Some
               | _ =>
-                Effect.logError(
-                  `EventMapper.map: Invalid event: ${eventJson'->JSON.stringify}`,
+                EffectLogger.logError(
+                  ~comp="EventMapper",
+                  `map: Invalid event: ${eventJson'->JSON.stringify}`,
                 )->Effect.runSync
                 None
               }
@@ -164,8 +168,9 @@ module MakeCounterHandler = (
             | err =>
               let errMsg =
                 err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-              Effect.logError(
-                `EventMapper.map: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
+              EffectLogger.logError(
+                ~comp="EventMapper",
+                `map: Couldn't decode event: ${eventJson'->JSON.stringify} ${errMsg}`,
               )->Effect.runSync
               None
             }
@@ -210,8 +215,9 @@ module MakeCounterHandler = (
       Effect.promise(() => commonEventsHandler([eventJson']))
       ->Effect.tap(((_, countActions)) =>
         if countActions->Array.length > 0 {
-          Effect.logError(
-            "EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!",
+          EffectLogger.logError(
+            ~comp="EventMapper",
+            "handleCounterEvents: Counter actions are not allowed in Count mapping!",
           )
         } else {
           Effect.succeed()
@@ -255,7 +261,7 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       )
       ->Effect.retry(countRetrySchedule)
       ->Effect.catchAll(errMsg =>
-        Effect.logError(__MODULE__ ++ `.doCount: count error after retries: ${errMsg}`)
+        EffectLogger.logError(~comp=__MODULE__, `doCount: count error after retries: ${errMsg}`)
       )
     }
 
@@ -281,15 +287,17 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
             | _ => None
             },
         )
-        Effect.logInfo(
-          `EventMapper.eventCollectorEventsHandler: countItems: ${countItems
+        EffectLogger.logInfo(
+          ~comp="EventMapper",
+          `eventCollectorEventsHandler: countItems: ${countItems
             ->Array.length
             ->Int.toString}`,
         )
         ->Effect.flatMap(_ => doCount(countItems))
         ->Effect.flatMap(_ =>
-          Effect.logInfo(
-            `EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ${addToCounterTargetActions
+          EffectLogger.logInfo(
+            ~comp="EventMapper",
+            `eventCollectorEventsHandler: addToCounterTargetActions: ${addToCounterTargetActions
               ->JSON.stringifyAny
               ->Option.getOr("[]")}`,
           )

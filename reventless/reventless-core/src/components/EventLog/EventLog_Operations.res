@@ -69,8 +69,9 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `EventLog(${Spec.name}): beforePublishHook error: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`EventLog(${Spec.name})`,
+          `beforePublishHook error: ${errMsg}`,
         )->Effect.runSync
       }
     }
@@ -85,8 +86,9 @@ module Make = (Spec: ReventlessInfra.EventLog.T, Ops: Ops with module Spec = Spe
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `EventLog(${Spec.name}): afterPublishHook error: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`EventLog(${Spec.name})`,
+          `afterPublishHook error: ${errMsg}`,
         )->Effect.runSync
       }
     }

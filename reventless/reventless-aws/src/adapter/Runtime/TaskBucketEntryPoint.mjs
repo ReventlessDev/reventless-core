@@ -2,7 +2,7 @@
 // At cold start: reads HANDLER_CONFIG, dynamically imports callback module,
 // wires TaskBucket_S3_Runtime.handleBucketEvent, dispatches task actions to SQS.
 
-import { makeQueueRef } from "./HandlerFactoryHelpers.mjs";
+import { makeQueueRef, log } from "./HandlerFactoryHelpers.mjs";
 import { handleBucketEvent } from "@reventlessdev/reventless-aws/src/adapter/Task/TaskBucket_S3_Runtime.res.mjs";
 import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import {
@@ -55,7 +55,7 @@ function makeSchedulerOps(schedulerCfg) {
   const targetArn = process.env[schedulerCfg.targetArnEnv];
   const targetName = process.env[schedulerCfg.targetNameEnv];
   if (!roleArn || !targetArn || !targetName) {
-    console.warn("TaskBucketEntryPoint: scheduler env vars missing — schedules will no-op");
+    log.warn("scheduler env vars missing — schedules will no-op", { comp: "TaskBucketRuntime" });
     return null;
   }
   const client = new CloudWatchEventsClient({});
@@ -111,7 +111,7 @@ async function buildHandler() {
           if (pub !== undefined) {
             await pub(cmdJsons);
           } else {
-            console.warn(`TaskBucketEntryPoint: No publish function for aggregate "${aggregateName}"`);
+            log.warn(`no publish function for aggregate "${aggregateName}"`, { comp: "TaskBucketRuntime" });
           }
           break;
         }
@@ -120,7 +120,7 @@ async function buildHandler() {
           if (ops) {
             await ops.createSchedule(action._0);
           } else {
-            console.warn("TaskBucketEntryPoint: CreateSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)");
+            log.warn("CreateSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)", { comp: "TaskBucketRuntime" });
           }
           break;
         }
@@ -129,12 +129,12 @@ async function buildHandler() {
           if (ops) {
             await ops.deleteSchedule(action._0);
           } else {
-            console.warn("TaskBucketEntryPoint: DeleteSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)");
+            log.warn("DeleteSchedule skipped — no scheduler configured for this Task (add sideEffects to setup)", { comp: "TaskBucketRuntime" });
           }
           break;
         }
         default:
-          console.warn(`TaskBucketEntryPoint: unknown task action TAG ${action.TAG}`);
+          log.warn(`unknown task action TAG ${action.TAG}`, { comp: "TaskBucketRuntime" });
       }
     }));
 

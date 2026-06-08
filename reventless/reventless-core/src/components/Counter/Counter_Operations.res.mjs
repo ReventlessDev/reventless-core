@@ -5,6 +5,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Counter$ReventlessCore from "./Counter.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 let referencesStateSchema = S.schema(s => ({
   id: s.m(S.string),
@@ -26,7 +27,7 @@ function logCountItems(countItems) {
     let references = param[1];
     let size = references.length;
     let referencesStr = references.join(",");
-    Effect.runSync(Effect.logInfo(`  ` + size.toString() + ` reference(s) for counterId ` + param[0] + `: ` + referencesStr));
+    Effect.runSync(EffectLogger$ReventlessCore.logInfo("Counter", undefined, `  ` + size.toString() + ` reference(s) for counterId ` + param[0] + `: ` + referencesStr));
   });
 }
 
@@ -52,13 +53,13 @@ function Make(Ops) {
     }));
     if (result.TAG === "Ok") {
       let batchSize = countItems.length;
-      Effect.runSync(Effect.logInfo("Counter_Operations-ReventlessCore" + (`: saved batch of ` + batchSize.toString() + ` reference(s):`)));
+      Effect.runSync(EffectLogger$ReventlessCore.logInfo("Counter_Operations-ReventlessCore", undefined, `saved batch of ` + batchSize.toString() + ` reference(s):`));
       return logCountItems(countItems);
     }
     let err = result._0;
     if (typeof err === "object" && err.TAG === "NotSavedToStorage") {
       let batchSize$1 = countItems.length;
-      Effect.runSync(Effect.logError(`Counter error: couldn't save batch of ` + batchSize$1.toString() + ` reference(s):`));
+      Effect.runSync(EffectLogger$ReventlessCore.logError("Counter", undefined, `couldn't save batch of ` + batchSize$1.toString() + ` reference(s):`));
       logCountItems(countItems);
       throw {
         RE_EXN_ID: NotCounted,
@@ -67,7 +68,7 @@ function Make(Ops) {
       };
     }
     let batchSize$2 = countItems.length;
-    Effect.runSync(Effect.logError(`Unknown Counter error: couldn't save batch of ` + batchSize$2.toString() + ` reference(s):`));
+    Effect.runSync(EffectLogger$ReventlessCore.logError("Counter", undefined, `Unknown error: couldn't save batch of ` + batchSize$2.toString() + ` reference(s):`));
     logCountItems(countItems);
     throw {
       RE_EXN_ID: NotCounted,

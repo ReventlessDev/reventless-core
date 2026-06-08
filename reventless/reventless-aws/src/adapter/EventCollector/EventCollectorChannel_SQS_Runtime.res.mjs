@@ -3,6 +3,7 @@
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as Util_SQS_Runtime$ReventlessAws from "../../util/Util_SQS_Runtime.res.mjs";
 import * as Util_DynamoDbStream_Runtime$ReventlessAws from "../../util/Util_DynamoDbStream_Runtime.res.mjs";
 
@@ -72,11 +73,11 @@ function handleDynamoDbEvent(handleEvents) {
 }
 
 function enqueueEvent(queue, delay, _id, messageBody) {
-  return Effect.runPromise(Effect.map(Effect.flatMap(Effect.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody))), () => {}));
+  return Effect.runPromise(Effect.map(Effect.flatMap(EffectLogger$ReventlessCore.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws", undefined, "enqueueEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody))), () => {}));
 }
 
 function enqueueFifoEvent(queue, delay, id, messageBody) {
-  return Effect.runPromise(Effect.map(Effect.flatMap(Effect.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, Util_SQS_Runtime$ReventlessAws.safeGroupId(id), messageBody))), () => {}));
+  return Effect.runPromise(Effect.map(Effect.flatMap(EffectLogger$ReventlessCore.logInfo("EventCollectorChannel_SQS_Runtime-ReventlessAws", undefined, "enqueueFifoEvent: " + delay.toString() + " " + messageBody + " " + queue.name), () => Effect.promise(() => Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, Util_SQS_Runtime$ReventlessAws.safeGroupId(id), messageBody))), () => {}));
 }
 
 export {

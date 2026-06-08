@@ -280,6 +280,18 @@ describe("JSON sink", () => {
     expect(lines->Array.some(line => line->fieldOf("correlationId") == Some("c-123")))->toBe(true)
   })
 
+  test("Effect.annotateLogs(plugin) overrides registry resolution", () => {
+    // The component is NOT registered against any plugin; without an explicit
+    // ~plugin annotation, resolvePlugin would fall back through transformations
+    // and emit no plugin field. With the annotation, plugin wins.
+    let lines = captureLogs(() =>
+      EffectLogger.logInfo(~comp="Aggregate(Unregistered)", "handling")
+      ->Effect.annotateLogs("plugin", "Ordering")
+      ->Effect.runSync
+    )
+    expect(lines->Array.some(line => line->fieldOf("plugin") == Some("Ordering")))->toBe(true)
+  })
+
   test("every JSON record carries an RFC 3339 time field", () => {
     let lines = captureLogs(() => log.info(~comp="Platform", "tick"))
     let ok = switch lines->Array.get(0)->Option.flatMap(l => l->fieldOf("time")) {

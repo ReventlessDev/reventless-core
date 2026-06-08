@@ -4,6 +4,7 @@ import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect/Effect";
 import * as Kinesis$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/Kinesis.res.mjs";
 import * as ClientKinesis from "@aws-sdk/client-kinesis";
+import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as Kinesis_Error$ReventlessAws from "../errors/Kinesis_Error.res.mjs";
 
 function putRecord(stream, data) {
@@ -13,7 +14,7 @@ function putRecord(stream, data) {
     PartitionKey: ""
   }))), param => {}), Kinesis_Error$ReventlessAws.retrySchedule), err => {
     let msg = Kinesis_Error$ReventlessAws.message(err);
-    return Effect$1.flatMap(Effect$1.logError(`Util_Kinesis_Runtime.putRecord: ` + msg), () => Effect$1.fail(msg));
+    return Effect$1.flatMap(EffectLogger$ReventlessCore.logError("Util_Kinesis_Runtime-ReventlessAws", undefined, `putRecord: ` + msg), () => Effect$1.fail(msg));
   }));
 }
 

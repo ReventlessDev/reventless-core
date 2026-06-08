@@ -24,7 +24,7 @@ function Make(MappingSpec) {
       if (mapOutgoingEvent$1 !== undefined) {
         return mapOutgoingEvent$1(eventJson$p, ScheduleOps$ReventlessCore.create(scheduler, queue, resourceNaming), ScheduleOps$ReventlessCore.$$delete(scheduler, queue, resourceNaming), queryEngine);
       } else {
-        Effect.runSync(Effect.logError("mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !"));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, "mapOutgoingEvent: shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !"));
         return [];
       }
     };
@@ -47,7 +47,7 @@ function Make(MappingSpec) {
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
           let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-          Effect.runSync(Effect.logError(`ExtensionPoint(` + MappingSpec.name + `): beforePublishHook error: ` + errMsg));
+          Effect.runSync(EffectLogger$ReventlessCore.logError(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `beforePublishHook error: ` + errMsg));
           finalEventJson = eventJson;
         }
       } else {
@@ -58,7 +58,7 @@ function Make(MappingSpec) {
       } catch (raw_err$1) {
         let err$1 = Primitive_exceptions.internalToException(raw_err$1);
         let errMsg$1 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$1), Stdlib_JsExn.message), "unknown");
-        Effect.runSync(Effect.logError(`ExtensionPoint: Error on publishToEventTopic command: ` + errMsg$1));
+        Effect.runSync(EffectLogger$ReventlessCore.logError(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `Error on publishToEventTopic command: ` + errMsg$1));
       }
       let hook$1 = EventPublish_Callback$ReventlessCore.afterPublishHook.contents;
       if (hook$1 === undefined) {
@@ -79,7 +79,7 @@ function Make(MappingSpec) {
       } catch (raw_err$2) {
         let err$2 = Primitive_exceptions.internalToException(raw_err$2);
         let errMsg$2 = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err$2), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(Effect.logError(`ExtensionPoint(` + MappingSpec.name + `): afterPublishHook error: ` + errMsg$2));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `afterPublishHook error: ` + errMsg$2));
       }
     };
     let applyEventAction = async action => {
@@ -97,7 +97,7 @@ function Make(MappingSpec) {
           } catch (raw_err) {
             let err = Primitive_exceptions.internalToException(raw_err);
             let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-            return Effect.runSync(Effect.logError(`ExtensionPoint: Error on calling handler: ` + errMsg));
+            return Effect.runSync(EffectLogger$ReventlessCore.logError(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `Error on calling handler: ` + errMsg));
           }
       }
     };

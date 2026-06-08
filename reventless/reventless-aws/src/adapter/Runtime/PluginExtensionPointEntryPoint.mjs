@@ -3,7 +3,7 @@
 // Handles Heartbeat, Cloner, and other plugin-level extension point commands.
 
 import * as Effect from "effect/Effect";
-import { patchSpecId, makeQueueRef, scanByTableName } from "./HandlerFactoryHelpers.mjs";
+import { patchSpecId, makeQueueRef, scanByTableName, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
 import { sendMessage } from "@reventlessdev/reventless-aws/src/util/Util_PluginMessage_Runtime.res.mjs";
 import * as PluginExtensionPointSpec from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
@@ -17,12 +17,14 @@ import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule 
 let _currentRequestId = "unknown";
 
 function runEffect(correlationId, effect) {
-  return effect
-    // Promote correlationId/requestId to top-level JSON log fields — decoded by
-    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
-    // unified logger isn't installed.
+  let e = effect
+    // Promote correlationId/requestId/plugin to top-level JSON log fields —
+    // decoded by EffectLogger.install() from Effect log annotations. Harmless
+    // no-op if the unified logger isn't installed.
     .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
-    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId));
+  if (pluginName) e = e.pipe(Effect.annotateLogs("plugin", pluginName));
+  return e
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -129,7 +131,7 @@ export async function handler(event, context) {
   const records = event.Records || [];
   const correlationId = extractCorrelationId(records);
 
-  console.log("----- pluginExtensionPointHandler: processing " + records.length.toString() + " record(s)");
+  log.debug("processing " + records.length.toString() + " record(s)", { comp: "PluginExtensionPointRuntime" });
   await runEffect(correlationId, sqsHandler(event, context));
   return "";
 }

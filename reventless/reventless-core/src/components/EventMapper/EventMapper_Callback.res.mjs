@@ -16,6 +16,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as Util_Error$ReventlessCore from "../../util/Util_Error.res.mjs";
+import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 
 function MakeCounterHandler(Target) {
   return Mappings => (Ops => {
@@ -31,7 +32,7 @@ function MakeCounterHandler(Target) {
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        Effect$1.runSync(Effect$1.logError(`EventMapper_Callback.findMapping: Couldn't decode meta: ` + errMsg));
+        Effect$1.runSync(EffectLogger$ReventlessCore.logError("EventMapper", undefined, `findMapping: Couldn't decode meta: ` + errMsg));
         return;
       }
       if (eventMeta !== undefined) {
@@ -40,7 +41,7 @@ function MakeCounterHandler(Target) {
         if (entry !== undefined) {
           let mapping = entry[0];
           let source$1 = mapping.Source.name;
-          Effect$1.runSync(Effect$1.logInfo(`EventMapper.map: found mapping ` + source$1 + ` -> ` + target));
+          Effect$1.runSync(EffectLogger$ReventlessCore.logInfo("EventMapper", undefined, `map: found mapping ` + source$1 + ` -> ` + target));
           return [
             eventObj$p,
             eventMeta,
@@ -48,10 +49,10 @@ function MakeCounterHandler(Target) {
             entry[1]
           ];
         }
-        Effect$1.runSync(Effect$1.logInfo(`EventMapper.map: No mapping ` + source + ` -> ` + target + ` found`));
+        Effect$1.runSync(EffectLogger$ReventlessCore.logInfo("EventMapper", undefined, `map: No mapping ` + source + ` -> ` + target + ` found`));
         return;
       }
-      Effect$1.runSync(Effect$1.logError(`EventMapper_Callback.findMapping: Invalid JSON object: ` + JSON.stringify(eventJson$p)));
+      Effect$1.runSync(EffectLogger$ReventlessCore.logError("EventMapper", undefined, `findMapping: Invalid JSON object: ` + JSON.stringify(eventJson$p)));
     });
     let createCommandJson = (delay, id, meta, command) => ({
       id: Target.Id.toString(id),
@@ -120,7 +121,7 @@ function MakeCounterHandler(Target) {
       let eventsCount = eventsJson$p.length;
       let match = Stdlib_Array.partition(Stdlib_Array.filterMap(eventsJson$p.map((eventJson$p, idx) => {
         let idx$1 = idx + 1 | 0;
-        Effect$1.runSync(Effect$1.logInfo(`EventMapper.eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
+        Effect$1.runSync(EffectLogger$ReventlessCore.logInfo("EventMapper", undefined, `eventsHandler: incoming event ` + idx$1.toString() + `/` + eventsCount.toString() + `: ` + LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p)));
         let match = findMapping(mappingsWithTags, eventJson$p);
         if (match === undefined) {
           return;
@@ -144,13 +145,13 @@ function MakeCounterHandler(Target) {
             exit = 1;
           }
           if (exit === 1) {
-            Effect$1.runSync(Effect$1.logError(`EventMapper.map: Invalid event: ` + JSON.stringify(eventJson$p)));
+            Effect$1.runSync(EffectLogger$ReventlessCore.logError("EventMapper", undefined, `map: Invalid event: ` + JSON.stringify(eventJson$p)));
             return;
           }
         } catch (raw_err) {
           let err = Primitive_exceptions.internalToException(raw_err);
           let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-          Effect$1.runSync(Effect$1.logError(`EventMapper.map: Couldn't decode event: ` + JSON.stringify(eventJson$p) + ` ` + errMsg));
+          Effect$1.runSync(EffectLogger$ReventlessCore.logError("EventMapper", undefined, `map: Couldn't decode event: ` + JSON.stringify(eventJson$p) + ` ` + errMsg));
           return;
         }
       }), entry => entry).flat(), resultType => resultType.TAG !== "Counter");
@@ -175,7 +176,7 @@ function MakeCounterHandler(Target) {
     };
     let handleCounterEvents = stream => Stream.runForEach(stream, eventJson$p => Effect$1.flatMap(Effect$1.tap(Effect$1.promise(() => commonEventsHandler([eventJson$p])), param => {
       if (param[1].length !== 0) {
-        return Effect$1.logError("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!");
+        return EffectLogger$ReventlessCore.logError("EventMapper", undefined, "handleCounterEvents: Counter actions are not allowed in Count mapping!");
       } else {
         return Effect$1.succeed();
       }
@@ -201,14 +202,14 @@ function MakeEventCollectorHandler(Ops) {
         return countAction._0;
       }
     });
-    return Effect$1.flatMap(Effect$1.flatMap(Effect$1.flatMap(Effect$1.flatMap(Effect$1.logInfo(`EventMapper.eventCollectorEventsHandler: countItems: ` + countItems.length.toString()), () => {
+    return Effect$1.flatMap(Effect$1.flatMap(Effect$1.flatMap(Effect$1.flatMap(EffectLogger$ReventlessCore.logInfo("EventMapper", undefined, `eventCollectorEventsHandler: countItems: ` + countItems.length.toString()), () => {
       let match = countItems.length;
       if (match !== 0) {
-        return Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(e => Util_Error$ReventlessCore.messageFromUnknown(e, "unknown"), () => Ops.count(countItems)), countRetrySchedule), errMsg => Effect$1.logError("EventMapper_Callback-ReventlessCore" + (`.doCount: count error after retries: ` + errMsg)));
+        return Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(e => Util_Error$ReventlessCore.messageFromUnknown(e, "unknown"), () => Ops.count(countItems)), countRetrySchedule), errMsg => EffectLogger$ReventlessCore.logError("EventMapper_Callback-ReventlessCore", undefined, `doCount: count error after retries: ` + errMsg));
       } else {
         return Effect$1.succeed();
       }
-    }), () => Effect$1.logInfo(`EventMapper.eventCollectorEventsHandler: addToCounterTargetActions: ` + Stdlib_Option.getOr(JSON.stringify(addToCounterTargetActions), "[]"))), () => Effect$1.map(Effect$1.all(Stdlib_Array.filterMap(addToCounterTargetActions, x => {
+    }), () => EffectLogger$ReventlessCore.logInfo("EventMapper", undefined, `eventCollectorEventsHandler: addToCounterTargetActions: ` + Stdlib_Option.getOr(JSON.stringify(addToCounterTargetActions), "[]"))), () => Effect$1.map(Effect$1.all(Stdlib_Array.filterMap(addToCounterTargetActions, x => {
       if (x.TAG === "Count") {
         return;
       }

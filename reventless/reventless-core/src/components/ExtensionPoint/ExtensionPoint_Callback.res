@@ -72,7 +72,7 @@ module Make = (
         },
       )
       ->Effect.catchAll(((errorResult, errMsg)) =>
-        Effect.logError(errMsg)->Effect.map(_ => errorResult)
+        EffectLogger.logError(~comp="ExtensionPoint", errMsg)->Effect.map(_ => errorResult)
       )
     | AbstractCall(reference, handler) =>
       Effect.tryPromise(
@@ -84,7 +84,7 @@ module Make = (
       )
       ->Effect.map(_ => Ok(reference))
       ->Effect.catchAll(((errorResult, errMsg)) =>
-        Effect.logError(errMsg)->Effect.map(_ => errorResult)
+        EffectLogger.logError(~comp="ExtensionPoint", errMsg)->Effect.map(_ => errorResult)
       )
     }
 

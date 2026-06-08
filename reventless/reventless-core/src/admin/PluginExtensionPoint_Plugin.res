@@ -36,7 +36,8 @@ module Make = (Spec: Spec) => {
     | jsons =>
       switch jsons {
       | [] =>
-        Effect.logWarning(
+        EffectLogger.logWarn(
+          ~comp="Core.Plugin",
           `ForwardCommand: Couldn't find Plugin with ExtensionPoint ${extensionPointName}`,
         )->Effect.runSync
       | plugins =>
@@ -54,26 +55,29 @@ module Make = (Spec: Spec) => {
               ~messageBody=command,
             ) {
             | _ =>
-              Effect.logInfo(
+              EffectLogger.logInfo(
+                ~comp="Core.Plugin",
                 `ForwardCommand: published command to ${plugin.name} ${extensionPoint.commandTopic}`,
               )->Effect.runSync
             | exception err =>
               let errMsg =
                 err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-              Effect.logError(
-                `PluginExtensionPoint_PluginMapping: Error on publish command: ${errMsg}`,
+              EffectLogger.logError(
+                ~comp="Core.Plugin",
+                `ForwardCommand: Error on publish command: ${errMsg}`,
               )->Effect.runSync
             }
 
           | None =>
-            Effect.logWarning(
+            EffectLogger.logWarn(
+              ~comp="Core.Plugin",
               `ForwardCommand: Couldn't find ExtensionPoint ${extensionPointName} in ${plugin.name}`,
             )->Effect.runSync
           }
         | exception err =>
           let errMsg =
             err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-          Effect.logError(`ForwardCommand: Couldn't decode Plugin: ${errMsg}`)->Effect.runSync
+          EffectLogger.logError(~comp="Core.Plugin", `ForwardCommand: Couldn't decode Plugin: ${errMsg}`)->Effect.runSync
         }
       }
     }
@@ -152,8 +156,9 @@ module Make = (Spec: Spec) => {
             )
           )
         let reportAction = if protocolErrors->Array.length > 0 {
-          Effect.logWarning(
-            `[Core.Plugin] Protocol version mismatch for plugin ${pluginDefinition.id}: ${protocolErrors
+          EffectLogger.logWarn(
+            ~comp="Core.Plugin",
+            `Protocol version mismatch for plugin ${pluginDefinition.id}: ${protocolErrors
               ->JSON.stringifyAny
               ->Option.getOr("[]")}`,
           )->Effect.runSync

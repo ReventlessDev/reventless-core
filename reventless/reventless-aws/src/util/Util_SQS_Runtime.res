@@ -52,7 +52,7 @@ let send = (queue, queueService, commandJson) => {
   ->Effect.retry(SQS_Error.sendRetrySchedule)
   ->Effect.catchAll(err => {
     let msg = SQS_Error.message(err)
-    Effect.logError("Util.SQS_Runtime.send: Error: " ++ msg)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, "send: " ++ msg)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
 }
@@ -89,8 +89,9 @@ let sendMessages = (queue, queueService, commandJsons) => {
             failedIds->Array.some(failedId => failedId == msgId)
           )
         if retry < sendMessagesMaxRetries {
-          Effect.logInfo(
-            `Util.SQS_Runtime.sendMessages: ${failedIds->Array.length->Int.toString} failed ids, retrying subset`,
+          ReventlessCore.EffectLogger.logInfo(
+            ~comp=__MODULE__,
+            `sendMessages: ${failedIds->Array.length->Int.toString} failed ids, retrying subset`,
           )
           ->Effect.flatMap(_ => attempt(retry + 1, commandJsonsToRetry))
         } else {
@@ -102,7 +103,7 @@ let sendMessages = (queue, queueService, commandJsons) => {
   attempt(0, commandJsons)
   ->Effect.catchAll(err => {
     let msg = SQS_Error.message(err)
-    Effect.logError(`Util.SQS_Runtime.sendMessages: ${msg}`)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `sendMessages: ${msg}`)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
 }
@@ -140,8 +141,9 @@ let deleteMessages = (entries, queue) => {
             receiptHandle: entry.receiptHandle,
           })
         if retry < deleteMessagesMaxRetries {
-          Effect.logInfo(
-            `Util.SQS_Runtime.deleteMessages: ${failedIds->Array.length->Int.toString} failed ids, retrying subset`,
+          ReventlessCore.EffectLogger.logInfo(
+            ~comp=__MODULE__,
+            `deleteMessages: ${failedIds->Array.length->Int.toString} failed ids, retrying subset`,
           )
           ->Effect.flatMap(_ => attempt(retry + 1, entriesToRetry))
         } else {
@@ -153,7 +155,7 @@ let deleteMessages = (entries, queue) => {
   attempt(0, entries)
   ->Effect.catchAll(err => {
     let msg = SQS_Error.message(err)
-    Effect.logError(`Util.SQS_Runtime.deleteMessages: ${msg}`)
+    ReventlessCore.EffectLogger.logError(~comp=__MODULE__, `deleteMessages: ${msg}`)
     ->Effect.flatMap(_ => Effect.fail(msg))
   })
 }

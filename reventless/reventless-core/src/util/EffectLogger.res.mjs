@@ -82,6 +82,9 @@ function install() {
     let comp = {
       contents: undefined
     };
+    let plugin = {
+      contents: undefined
+    };
     let detail = {
       contents: undefined
     };
@@ -107,6 +110,9 @@ function install() {
           }
           detail.contents = tmp;
           return;
+        case "plugin" :
+          plugin.contents = Stdlib_JSON.Decode.string(v);
+          return;
         default:
           let s$1 = Stdlib_JSON.Decode.string(v);
           if (s$1 !== undefined) {
@@ -118,7 +124,7 @@ function install() {
       }
     });
     let annotations = Object.entries(extra).length === 0 ? undefined : extra;
-    Logger$ReventlessCore.emit(level, comp.contents, detail.contents, annotations, msg);
+    Logger$ReventlessCore.emit(level, comp.contents, plugin.contents, detail.contents, annotations, msg);
   };
 }
 

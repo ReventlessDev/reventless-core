@@ -144,8 +144,9 @@ module Make = (
       | exn =>
         let errMsg =
           exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `AutomationSlice(${Spec.name}): failed to decode todoItem: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`AutomationSlice(${Spec.name})`,
+          `failed to decode todoItem: ${errMsg}`,
         )->Effect.runSync
         None
       }
@@ -160,8 +161,9 @@ module Make = (
           | exn =>
             let errMsg =
               exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-            Effect.logError(
-              `AutomationSlice(${Spec.name}): failed to encode command: ${errMsg}`,
+            EffectLogger.logError(
+              ~comp=`AutomationSlice(${Spec.name})`,
+              `failed to encode command: ${errMsg}`,
             )->Effect.runSync
             todoItems->Dict.set(
               id,
@@ -189,8 +191,9 @@ module Make = (
       | exn =>
         let errMsg =
           exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        Effect.logError(
-          `AutomationSlice(${Spec.name}): failed to publish commands: ${errMsg}`,
+        EffectLogger.logError(
+          ~comp=`AutomationSlice(${Spec.name})`,
+          `failed to publish commands: ${errMsg}`,
         )->Effect.runSync
         // Mark items as Failed for retry
         pending->Array.forEach(((id, row)) => {

@@ -46,7 +46,7 @@ let signUpIfMissing = (
     () => signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password),
   )
   ->Effect.flatMap(result =>
-    Effect.logInfo(`Created User ${userName} ${result.userSub->Option.getOr("")}`)
+    ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, `Created User ${userName} ${result.userSub->Option.getOr("")}`)
   )
-  ->Effect.catchAll(err => Effect.logInfo(Cognito_Error.message(err)))
+  ->Effect.catchAll(err => ReventlessCore.EffectLogger.logInfo(~comp=__MODULE__, Cognito_Error.message(err)))
   ->Effect.runPromise
