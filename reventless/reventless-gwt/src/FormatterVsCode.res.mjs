@@ -9,6 +9,7 @@ import * as Hint$ReventlessGwt from "./Hint.res.mjs";
 import * as Outcome$ReventlessGwt from "./Outcome.res.mjs";
 import * as ComponentMeta$ReventlessGwt from "./ComponentMeta.res.mjs";
 import * as RenderRescript$ReventlessGwt from "./RenderRescript.res.mjs";
+import * as Protocol$ReventlessVscodeProtocol from "@reventlessdev/reventless-vscode-protocol/src/Protocol.res.mjs";
 
 function write(s) {
   process.stdout.write(s);
@@ -18,11 +19,9 @@ function writeLine(s) {
   process.stdout.write(s + "\n");
 }
 
-function setIfSome(d, k, o) {
-  if (o !== undefined) {
-    d[k] = o;
-    return;
-  }
+function emit(e) {
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  process.stdout.write(s + "\n");
 }
 
 function uriOf(path) {
@@ -117,42 +116,39 @@ function locateInSource(mjsPath, label) {
   };
 }
 
-function rangeJson(loc) {
-  let start = {};
-  start["line"] = loc.line - 1 | 0;
-  start["character"] = loc.column - 1 | 0;
-  let end_ = {};
-  end_["line"] = loc.line - 1 | 0;
-  end_["character"] = loc.column - 1 | 0;
-  let r = {};
-  r["start"] = start;
-  r["end"] = end_;
-  return r;
+function rangeOf(loc) {
+  let pos_line = loc.line - 1 | 0;
+  let pos_character = loc.column - 1 | 0;
+  let pos = {
+    line: pos_line,
+    character: pos_character
+  };
+  return {
+    start: pos,
+    end: pos
+  };
 }
 
-function locationJson(loc) {
-  let d = {};
-  d["uri"] = "file://" + loc.file;
-  d["range"] = rangeJson(loc);
-  return d;
-}
-
-function event(payload) {
-  let s = JSON.stringify(payload);
-  process.stdout.write(s + "\n");
+function locationOf(loc) {
+  return {
+    uri: "file://" + loc.file,
+    range: rangeOf(loc)
+  };
 }
 
 function hello() {
-  let d = {};
-  d["event"] = "hello";
-  d["protocol"] = 7;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "hello",
+    protocol: Protocol$ReventlessVscodeProtocol.protocolVersion
+  });
+  process.stdout.write(s + "\n");
 }
 
 function discoverStart() {
-  let d = {};
-  d["event"] = "discoverStart";
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "discoverStart"
+  });
+  process.stdout.write(s + "\n");
 }
 
 function emitDiscoveryItems(files) {
@@ -162,21 +158,24 @@ function emitDiscoveryItems(files) {
     let fileUri = resPath !== undefined ? (
         Nodefs.existsSync(resPath) ? "file://" + resPath : "file://" + path
       ) : "file://" + path;
-    let d = {};
-    d["event"] = "item";
-    d["id"] = path;
-    d["kind"] = "file";
-    d["label"] = fileLabelOf(path);
-    d["description"] = Nodepath.relative(process.cwd(), path);
-    d["uri"] = fileUri;
-    let c = ComponentMeta$ReventlessGwt.componentOfTestFile(path);
-    if (c !== undefined) {
-      let comp = {};
-      comp["kind"] = c.kind;
-      comp["name"] = c.name;
-      d["component"] = comp;
-    }
-    event(d);
+    let component = Stdlib_Option.map(ComponentMeta$ReventlessGwt.componentOfTestFile(path), c => ({
+      kind: c.kind,
+      name: c.name
+    }));
+    let e_3 = fileLabelOf(path);
+    let e_4 = Nodepath.relative(process.cwd(), path);
+    let e_5 = fileUri;
+    let e = {
+      event: "item",
+      id: path,
+      kind: "file",
+      label: e_3,
+      description: e_4,
+      uri: e_5,
+      component: component
+    };
+    let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+    process.stdout.write(s + "\n");
     let seenDescribes = {};
     param[1].forEach(t => {
       let stack = {
@@ -191,166 +190,169 @@ function emitDiscoveryItems(files) {
           return;
         }
         seenDescribes[id] = true;
-        let s = {};
-        s["event"] = "item";
-        s["id"] = id;
-        s["parent"] = parent;
-        s["kind"] = "suite";
-        s["label"] = label;
         let loc = locateInSource(path, label);
-        if (loc !== undefined) {
-          s["uri"] = "file://" + loc.file;
-          s["range"] = rangeJson(loc);
-        }
-        event(s);
+        let e_1 = parent;
+        let e_5 = Stdlib_Option.map(loc, l => "file://" + l.file);
+        let e_6 = Stdlib_Option.map(loc, rangeOf);
+        let e = {
+          event: "item",
+          id: id,
+          parent: e_1,
+          kind: "suite",
+          label: label,
+          uri: e_5,
+          range: e_6
+        };
+        let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+        process.stdout.write(s + "\n");
       });
       let parent = t.describePath.length === 0 ? path : path + "::" + t.describePath.join("::");
       let testId = path + "::" + t.id;
-      let leaf = {};
-      leaf["event"] = "item";
-      leaf["id"] = testId;
-      leaf["parent"] = parent;
-      leaf["kind"] = "test";
-      leaf["label"] = t.name;
       let resLoc = locateInSource(path, t.name);
       let match = t.location;
-      let exit = 0;
-      let loc;
-      if (resLoc !== undefined) {
-        loc = resLoc;
-        exit = 1;
-      } else if (match !== undefined) {
-        loc = match;
-        exit = 1;
-      }
-      if (exit === 1) {
-        leaf["uri"] = "file://" + loc.file;
-        leaf["range"] = rangeJson(loc);
-      }
-      event(leaf);
+      let loc = resLoc !== undefined ? resLoc : (
+          match !== undefined ? match : undefined
+        );
+      let e_1 = parent;
+      let e_3 = t.name;
+      let e_5 = Stdlib_Option.map(loc, l => "file://" + l.file);
+      let e_6 = Stdlib_Option.map(loc, rangeOf);
+      let e = {
+        event: "item",
+        id: testId,
+        parent: e_1,
+        kind: "test",
+        label: e_3,
+        uri: e_5,
+        range: e_6
+      };
+      let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+      process.stdout.write(s + "\n");
     });
   });
 }
 
 function discoverEnd(total) {
-  let d = {};
-  d["event"] = "discoverEnd";
-  d["total"] = total;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "discoverEnd",
+    total: total
+  });
+  process.stdout.write(s + "\n");
 }
 
 function packages(pkgs) {
-  let d = {};
-  d["event"] = "packages";
-  let arr = pkgs.map(p => {
-    let o = {};
-    o["name"] = p.name;
-    o["dir"] = p.dir;
-    o["build"] = p.build;
-    return o;
-  });
-  d["packages"] = arr;
-  event(d);
+  let e = {
+    event: "packages",
+    packages: pkgs.map(p => ({
+      name: p.name,
+      dir: p.dir,
+      build: p.build
+    }))
+  };
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  process.stdout.write(s + "\n");
 }
 
 function components(comps) {
-  let d = {};
-  d["event"] = "components";
-  let arr = comps.map(c => {
-    let o = {};
-    o["dir"] = c.dir;
-    o["kind"] = c.kind;
-    o["name"] = c.name;
-    o["files"] = c.files.map(prim => prim);
-    return o;
-  });
-  d["components"] = arr;
-  event(d);
+  let e = {
+    event: "components",
+    components: comps.map(c => ({
+      kind: c.kind,
+      name: c.name,
+      dir: c.dir,
+      files: c.files
+    }))
+  };
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  process.stdout.write(s + "\n");
 }
 
 function deadCode(findings) {
-  let d = {};
-  d["event"] = "deadCode";
-  let arr = findings.map(f => {
-    let o = {};
-    o["kind"] = f.kind;
-    o["plugin"] = f.pluginName;
-    o["component"] = f.componentName;
-    o["detail"] = f.detail;
-    return o;
-  });
-  d["findings"] = arr;
-  event(d);
+  let e = {
+    event: "deadCode",
+    findings: findings.map(f => ({
+      kind: f.kind,
+      plugin: f.pluginName,
+      component: f.componentName,
+      detail: f.detail
+    }))
+  };
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  process.stdout.write(s + "\n");
 }
 
 function graph(g) {
-  let d = {};
-  d["event"] = "graph";
-  let nodes = g.nodes.map(n => {
-    let o = {};
-    o["id"] = n.id;
-    o["kind"] = n.kind;
-    o["label"] = n.label;
-    o["plugin"] = n.plugin;
-    return o;
-  });
-  let edges = g.edges.map(e => {
-    let o = {};
-    o["from"] = e.from;
-    o["to"] = e.to;
-    o["kind"] = e.kind;
-    return o;
-  });
-  d["nodes"] = nodes;
-  d["edges"] = edges;
-  event(d);
+  let e_0 = g.nodes.map(n => ({
+    id: n.id,
+    kind: n.kind,
+    label: n.label,
+    plugin: n.plugin
+  }));
+  let e_1 = g.edges.map(e => ({
+    from: e.from,
+    to: e.to,
+    kind: e.kind
+  }));
+  let e = {
+    event: "graph",
+    nodes: e_0,
+    edges: e_1
+  };
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  process.stdout.write(s + "\n");
 }
 
 function buildStart(pkg) {
-  let d = {};
-  d["event"] = "buildStart";
-  d["package"] = pkg;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "buildStart",
+    package: pkg
+  });
+  process.stdout.write(s + "\n");
 }
 
 function buildOk(pkg, durationMs) {
-  let d = {};
-  d["event"] = "buildOk";
-  d["package"] = pkg;
-  d["durationMs"] = durationMs;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "buildOk",
+    package: pkg,
+    durationMs: durationMs
+  });
+  process.stdout.write(s + "\n");
 }
 
 function buildFail(pkg, message) {
-  let d = {};
-  d["event"] = "buildFail";
-  d["package"] = pkg;
-  d["message"] = message;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "buildFail",
+    package: pkg,
+    message: message
+  });
+  process.stdout.write(s + "\n");
 }
 
 function buildExternal(pkg) {
-  let d = {};
-  d["event"] = "buildExternal";
-  d["package"] = pkg;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "buildExternal",
+    package: pkg
+  });
+  process.stdout.write(s + "\n");
 }
 
 function platformStart($$package, dir, domainPort, platformPort) {
-  let d = {};
-  d["event"] = "platformStart";
-  d["package"] = $$package;
-  d["dir"] = dir;
-  d["domainPort"] = domainPort;
-  d["platformPort"] = platformPort;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "platformStart",
+    package: $$package,
+    dir: dir,
+    domainPort: domainPort,
+    platformPort: platformPort
+  });
+  process.stdout.write(s + "\n");
 }
 
 function platformReady(domainEndpoint) {
-  let d = {};
-  d["event"] = "platformReady";
-  d["domainEndpoint"] = domainEndpoint;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "platformReady",
+    domainEndpoint: domainEndpoint
+  });
+  process.stdout.write(s + "\n");
 }
 
 function domainEvent(payload) {
@@ -359,131 +361,159 @@ function domainEvent(payload) {
 }
 
 function platformLog(line) {
-  let d = {};
-  d["event"] = "platformLog";
-  d["line"] = line;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "platformLog",
+    line: line
+  });
+  process.stdout.write(s + "\n");
 }
 
 function platformStop(code) {
-  let d = {};
-  d["event"] = "platformStop";
-  d["code"] = Stdlib_Option.mapOr(code, null, c => c);
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "platformStop",
+    code: code
+  });
+  process.stdout.write(s + "\n");
 }
 
 function runStart(total, filter) {
-  let d = {};
-  d["event"] = "runStart";
-  d["total"] = total;
-  d["filter"] = filter.map(prim => prim);
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "runStart",
+    total: total,
+    filter: filter
+  });
+  process.stdout.write(s + "\n");
 }
 
 function testStart(id) {
-  let d = {};
-  d["event"] = "testStart";
-  d["id"] = id;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "testStart",
+    id: id
+  });
+  process.stdout.write(s + "\n");
 }
 
 function testPass(id, durationMs) {
-  let d = {};
-  d["event"] = "testPass";
-  d["id"] = id;
-  d["durationMs"] = durationMs;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "testPass",
+    id: id,
+    durationMs: durationMs
+  });
+  process.stdout.write(s + "\n");
 }
 
 function testSkip(id, reason) {
-  let d = {};
-  d["event"] = "testSkip";
-  d["id"] = id;
-  d["reason"] = reason;
-  event(d);
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "testSkip",
+    id: id,
+    reason: reason
+  });
+  process.stdout.write(s + "\n");
 }
 
 function messagePayload(t) {
-  let d = {};
   let m = t.mismatch;
-  if (m !== undefined) {
-    let hint = Hint$ReventlessGwt.forMismatch(t.slice, m);
-    d["message"] = hint.message;
-    d["kind"] = Outcome$ReventlessGwt.kindName(m);
-    switch (m.TAG) {
-      case "ErrorMismatch" :
-        let actual = m.actual;
-        d["expected"] = "Error(" + RenderRescript$ReventlessGwt.render(undefined, m.expected) + ")";
-        let actStr = actual !== undefined ? "Error(" + RenderRescript$ReventlessGwt.render(undefined, actual) + ")" : "Ok(" + RenderRescript$ReventlessGwt.renderMany(m.actualEvents) + ")";
-        d["actual"] = actStr;
-        break;
-      case "StateMismatch" :
-        d["expected"] = RenderRescript$ReventlessGwt.renderOption(m.expected);
-        d["actual"] = RenderRescript$ReventlessGwt.renderOption(m.actual);
-        break;
-      case "NoEventExpected" :
-        d["expected"] = "[]";
-        d["actual"] = RenderRescript$ReventlessGwt.renderMany(m.actual);
-        break;
-      case "TodoMismatch" :
-        d["expected"] = Outcome$ReventlessGwt.format(m);
-        d["actual"] = "";
-        break;
-      case "AppendConditionMismatch" :
-        d["expected"] = RenderRescript$ReventlessGwt.render(undefined, m.expected);
-        d["actual"] = RenderRescript$ReventlessGwt.render(undefined, m.actual);
-        break;
-      case "TranslateError" :
-        d["expected"] = m.expected;
-        d["actual"] = Stdlib_Option.getOr(m.actual, "(none)");
-        break;
-      case "EventsMismatch" :
-      case "QueryRowsMismatch" :
-      case "PublishedActionsMismatch" :
-        d["expected"] = RenderRescript$ReventlessGwt.renderMany(m.expected);
-        d["actual"] = RenderRescript$ReventlessGwt.renderMany(m.actual);
-        break;
-      case "Throw" :
-        d["expected"] = "";
-        d["actual"] = m.error;
-        break;
-    }
-    let loc = t.location;
-    if (loc !== undefined) {
-      let resLoc = locateInSource(loc.file, t.name);
-      d["location"] = locationJson(Stdlib_Option.getOr(resLoc, loc));
-    }
-  } else {
-    d["message"] = "failed";
+  if (m === undefined) {
+    return {
+      message: "failed"
+    };
   }
-  return d;
+  let hint = Hint$ReventlessGwt.forMismatch(t.slice, m);
+  let match;
+  switch (m.TAG) {
+    case "ErrorMismatch" :
+      let actual = m.actual;
+      let actStr = actual !== undefined ? "Error(" + RenderRescript$ReventlessGwt.render(undefined, actual) + ")" : "Ok(" + RenderRescript$ReventlessGwt.renderMany(m.actualEvents) + ")";
+      match = [
+        "Error(" + RenderRescript$ReventlessGwt.render(undefined, m.expected) + ")",
+        actStr
+      ];
+      break;
+    case "StateMismatch" :
+      match = [
+        RenderRescript$ReventlessGwt.renderOption(m.expected),
+        RenderRescript$ReventlessGwt.renderOption(m.actual)
+      ];
+      break;
+    case "NoEventExpected" :
+      match = [
+        "[]",
+        RenderRescript$ReventlessGwt.renderMany(m.actual)
+      ];
+      break;
+    case "TodoMismatch" :
+      match = [
+        Outcome$ReventlessGwt.format(m),
+        ""
+      ];
+      break;
+    case "AppendConditionMismatch" :
+      match = [
+        RenderRescript$ReventlessGwt.render(undefined, m.expected),
+        RenderRescript$ReventlessGwt.render(undefined, m.actual)
+      ];
+      break;
+    case "TranslateError" :
+      match = [
+        m.expected,
+        Stdlib_Option.getOr(m.actual, "(none)")
+      ];
+      break;
+    case "Throw" :
+      match = [
+        "",
+        m.error
+      ];
+      break;
+    default:
+      match = [
+        RenderRescript$ReventlessGwt.renderMany(m.expected),
+        RenderRescript$ReventlessGwt.renderMany(m.actual)
+      ];
+  }
+  let location = Stdlib_Option.map(t.location, loc => locationOf(Stdlib_Option.getOr(locateInSource(loc.file, t.name), loc)));
+  return {
+    message: hint.message,
+    kind: Outcome$ReventlessGwt.kindName(m),
+    expected: match[0],
+    actual: match[1],
+    location: location
+  };
 }
 
 function testFail(t, id) {
-  let d = {};
-  d["event"] = "testFail";
-  d["id"] = id;
-  d["durationMs"] = t.durationMs;
-  d["messages"] = [messagePayload(t)];
-  event(d);
+  let e_1 = t.durationMs;
+  let e_2 = [messagePayload(t)];
+  let e = {
+    event: "testFail",
+    id: id,
+    durationMs: e_1,
+    messages: e_2
+  };
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine(e);
+  process.stdout.write(s + "\n");
 }
 
 function runEnd(s) {
-  let d = {};
-  d["event"] = "runEnd";
-  d["passed"] = s.passed;
-  d["failed"] = s.failed;
-  d["skipped"] = s.skipped;
-  d["durationMs"] = s.durationMs;
-  event(d);
+  let s$1 = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "runEnd",
+    passed: s.passed,
+    failed: s.failed,
+    skipped: s.skipped,
+    durationMs: s.durationMs
+  });
+  process.stdout.write(s$1 + "\n");
 }
 
-let protocolVersion = 7;
+let P;
+
+let protocolVersion = Protocol$ReventlessVscodeProtocol.protocolVersion;
 
 export {
+  P,
   write,
   writeLine,
-  setIfSome,
+  emit,
   uriOf,
   fileLabelOf,
   relativeToCwd,
@@ -494,9 +524,8 @@ export {
   escapeForDouble,
   escapeForSingle,
   locateInSource,
-  rangeJson,
-  locationJson,
-  event,
+  rangeOf,
+  locationOf,
   protocolVersion,
   hello,
   discoverStart,
