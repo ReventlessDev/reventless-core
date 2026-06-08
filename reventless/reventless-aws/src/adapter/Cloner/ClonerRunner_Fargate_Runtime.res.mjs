@@ -2,6 +2,9 @@
 
 import * as ECS$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/ECS.res.mjs";
 import * as ClientEcs from "@aws-sdk/client-ecs";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 async function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload, param) {
   let environment = Object.fromEntries([
@@ -14,7 +17,7 @@ async function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, p
       payload.restoreDateTime
     ]
   ]);
-  console.log("clone: requested by user " + payload.meta.user + " from ip " + payload.meta.ip);
+  log.info("ClonerRunner", undefined, "clone: requested by user " + payload.meta.user + " from ip " + payload.meta.ip);
   await ECS$AwsSdk.RunTaskCommand.send(new ClientEcs.RunTaskCommand({
     taskDefinition: taskDefinition.get(),
     launchType: "FARGATE",
@@ -36,6 +39,7 @@ async function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, p
 }
 
 export {
+  log,
   clone,
 }
-/* ECS-AwsSdk Not a pure module */
+/* log Not a pure module */

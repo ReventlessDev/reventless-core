@@ -48,38 +48,32 @@ function hms() {
   return h + `:` + m + `:` + s;
 }
 
-function emit(level, comp, detail, msg) {
+function emit(level, comp, detail, annotations, msg) {
   if (AnsiStyle$Reventless.isJsonSink()) {
-    let message = LogPrefix$Reventless.fmtPlainPrefix(comp, undefined) + msg;
-    if (detail !== undefined) {
-      let obj = Object.fromEntries([
-        [
-          "level",
-          levelLabel(level)
-        ],
-        [
-          "message",
-          message
-        ],
-        [
-          "detail",
-          detail
-        ]
-      ]);
-      console.log(JSON.stringify(obj));
-      return;
-    }
-    let obj$1 = Object.fromEntries([
+    let annotationFields = Stdlib_Option.mapOr(annotations, [], a => Object.entries(a).map(param => [
+      param[0],
+      param[1]
+    ]));
+    let fields = [
       [
         "level",
         levelLabel(level)
       ],
       [
         "message",
-        message
+        msg
       ]
-    ]);
-    console.log(JSON.stringify(obj$1));
+    ].concat(Stdlib_Option.mapOr(LogPrefix$Reventless.resolvePlugin(comp, undefined), [], p => [[
+        "plugin",
+        p
+      ]])).concat(Stdlib_Option.mapOr(comp, [], c => [[
+        "comp",
+        c
+      ]])).concat(annotationFields).concat(Stdlib_Option.mapOr(detail, [], d => [[
+        "detail",
+        d
+      ]]));
+    console.log(JSON.stringify(Object.fromEntries(fields)));
     return;
   }
   let t = hms();
@@ -108,7 +102,7 @@ function makeLogger(minLevelOpt) {
       return;
     }
     let dataStr = Stdlib_Option.getOr(Stdlib_Option.map(data, d => ` ` + JSON.stringify(d)), "");
-    emit(level, comp, undefined, msg + dataStr);
+    emit(level, comp, undefined, undefined, msg + dataStr);
   };
   return {
     debug: (comp, data, msg) => log("Debug", comp, data, msg),
@@ -160,8 +154,6 @@ function fromEnv() {
   }
 }
 
-let detailSeparator = "\x00";
-
 let currentPluginName = LogPrefix$Reventless.currentPluginName;
 
 let registerComponentPlugin = LogPrefix$Reventless.registerComponentPlugin;
@@ -169,6 +161,8 @@ let registerComponentPlugin = LogPrefix$Reventless.registerComponentPlugin;
 let fmtComp = LogPrefix$Reventless.fmtComp;
 
 let fmtPlainPrefix = LogPrefix$Reventless.fmtPlainPrefix;
+
+let resolvePlugin = LogPrefix$Reventless.resolvePlugin;
 
 export {
   levelToInt,
@@ -178,12 +172,12 @@ export {
   cyan,
   dim,
   reset,
-  detailSeparator,
   hms,
   currentPluginName,
   registerComponentPlugin,
   fmtComp,
   fmtPlainPrefix,
+  resolvePlugin,
   emit,
   makeLogger,
   silent,

@@ -18,6 +18,7 @@ import * as ClientSqs from "@aws-sdk/client-sqs";
 import * as Plugin$ReventlessAws from "./components/Plugin.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as LibDynamodb from "@aws-sdk/lib-dynamodb";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as Scheduler$ReventlessAws from "./components/Scheduler.res.mjs";
@@ -89,6 +90,8 @@ import * as ReadModel_Builder_NoResolver_Stream$ReventlessAws from "./components
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
 import * as AggregateRuntime_Builder_Single_Async$ReventlessAws from "./adapter/Runtime/AggregateRuntime_Builder_Single_Async.res.mjs";
 import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let apiConfigRef = {
   contents: undefined
@@ -464,7 +467,7 @@ function MakeWithConfig(Config) {
       let user = `deploy:` + name + `@` + version;
       for (let i = 0, i_finish = staleIds.length; i < i_finish; ++i) {
         let id = staleIds[i];
-        console.log(`[publishRetireForOlderPluginVersions] retiring ` + id + ` (superseded by ` + name + `@` + version + `)`);
+        log.info("publishRetireForOlderPluginVersions", undefined, `retiring ` + id + ` (superseded by ` + name + `@` + version + `)`);
         let msgId = Message$ReventlessCore.uuid();
         let metaDict = Object.fromEntries([
           [
@@ -519,8 +522,7 @@ function MakeWithConfig(Config) {
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-      console.error(`[publishRetireForOlderPluginVersions] ERROR — retire NOT delivered for ` + name + `@` + version + ` to ` + cmdTopicQueueUrl + ` (` + msg + `)`);
-      return;
+      return log.error("publishRetireForOlderPluginVersions", undefined, `retire NOT delivered for ` + name + `@` + version + ` to ` + cmdTopicQueueUrl + ` (` + msg + `)`);
     }
   };
   let hooksApiRef = {
@@ -556,7 +558,7 @@ function MakeWithConfig(Config) {
     StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
-    console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
+    log.info("preResolversSchemaHook", undefined, `Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
     let capturedDeployTarget = currentDeployTarget.contents;
     let match;
     if (capturedDeployTarget === "Domain") {
@@ -628,7 +630,7 @@ function MakeWithConfig(Config) {
               pluginFragment.encoded
             ]
           ]);
-          console.log(`[preResolversSchemaHook] Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
+          log.info("preResolversSchemaHook", undefined, `Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
           let scanAllDeploySchemaItems = async () => {
             let allItems = [];
             let startKey;
@@ -663,7 +665,7 @@ function MakeWithConfig(Config) {
             Item: deployItem,
             TableName: tableNameOpt
           })).then(param => {
-            console.log(`[preResolversSchemaHook] Scanning ` + tableNameOpt + ` for deploy-schema entries`);
+            log.info("preResolversSchemaHook", undefined, `Scanning ` + tableNameOpt + ` for deploy-schema entries`);
             return scanAllDeploySchemaItems();
           }).then(items => {
             let fragments = Stdlib_Array.filterMap(items, item => {
@@ -686,15 +688,15 @@ function MakeWithConfig(Config) {
                 return;
               }
             });
-            console.log(`[preResolversSchemaHook] Found ` + fragments.length.toString() + ` deploy-schema entries`);
+            log.info("preResolversSchemaHook", undefined, `Found ` + fragments.length.toString() + ` deploy-schema entries`);
             return Promise.resolve(fragments);
           }), err => {
             let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-            console.log(`[preResolversSchemaHook] DynamoDB write/scan failed (` + msg + `) — using current plugin only`);
+            log.info("preResolversSchemaHook", undefined, `DynamoDB write/scan failed (` + msg + `) — using current plugin only`);
             return Promise.resolve([pluginFragment]);
           });
         }
-        console.log("[preResolversSchemaHook] No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
+        log.info("preResolversSchemaHook", undefined, "No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
@@ -711,27 +713,27 @@ function MakeWithConfig(Config) {
           let expected = countRoots(sdl);
           let live = countRoots(liveSdl);
           if (liveSdl === "") {
-            console.log(`[preResolversSchemaHook] hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
+            log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
             skipPush = false;
           } else if (live < expected) {
-            console.log(`[preResolversSchemaHook] hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
+            log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
             skipPush = false;
           } else {
-            console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
+            log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
             skipPush = true;
           }
         } else {
           skipPush = false;
         }
         if (!skipPush) {
-          console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
+          log.info("preResolversSchemaHook", undefined, `Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
           await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
             apiId: apiId,
             definition: sdl
           });
-          console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+          log.info("preResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
           await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-          console.log("[preResolversSchemaHook] Schema is ACTIVE");
+          log.info("preResolversSchemaHook", undefined, "Schema is ACTIVE");
           if (tableNameOpt !== undefined) {
             await writeSchemaHash(tableNameOpt, apiId, currentHash);
           }
@@ -751,15 +753,15 @@ function MakeWithConfig(Config) {
       targetApi,
       adminBarrier
     ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
-      console.log(`[preAdminResolversSchemaHook] Pushing admin schema to ` + apiId);
+      log.info("preAdminResolversSchemaHook", undefined, `Pushing admin schema to ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
       return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
         apiId: apiId,
         definition: sdl
       }).then(async () => {
-        console.log("[preAdminResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+        log.info("preAdminResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        console.log("[preAdminResolversSchemaHook] schema is ACTIVE");
+        return log.info("preAdminResolversSchemaHook", undefined, "schema is ACTIVE");
       });
     }));
   };
@@ -784,8 +786,7 @@ function MakeWithConfig(Config) {
     if (resource !== undefined) {
       return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig(pluginId, undefined, Pulumi.output(resource.id), undefined);
     } else {
-      console.warn("Platform: heartbeat EP channel has no resources");
-      return;
+      return log.warn("Platform", undefined, "heartbeat EP channel has no resources");
     }
   };
   let hooks_adminExtensionPoints = {
@@ -912,7 +913,7 @@ function MakeWithConfig(Config) {
     return Component$ReventlessCore.operations(component);
   };
   let makePlatform = (version, plugins) => {
-    console.log(`[Platform] v` + version);
+    log.info("Platform", undefined, `v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
@@ -977,7 +978,7 @@ function MakeWithConfig(Config) {
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
   };
   let deployPlatform = (version, hostUiBundle) => {
-    console.log(`[Platform:deployPlatform] v` + version);
+    log.info("Platform:deployPlatform", undefined, `v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
@@ -1233,7 +1234,7 @@ function MakeWithConfig(Config) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
-    console.log(`[Platform:deployPlugin] target=` + tmp);
+    log.info("Platform:deployPlugin", undefined, `target=` + tmp);
     currentDeployTarget.contents = apiTarget;
     let tmp$1;
     tmp$1 = apiTarget === "Domain" ? "Domain" : "Platform";
@@ -1645,7 +1646,7 @@ function Make($star) {
       let user = `deploy:` + name + `@` + version;
       for (let i = 0, i_finish = staleIds.length; i < i_finish; ++i) {
         let id = staleIds[i];
-        console.log(`[publishRetireForOlderPluginVersions] retiring ` + id + ` (superseded by ` + name + `@` + version + `)`);
+        log.info("publishRetireForOlderPluginVersions", undefined, `retiring ` + id + ` (superseded by ` + name + `@` + version + `)`);
         let msgId = Message$ReventlessCore.uuid();
         let metaDict = Object.fromEntries([
           [
@@ -1700,8 +1701,7 @@ function Make($star) {
     } catch (raw_exn) {
       let exn = Primitive_exceptions.internalToException(raw_exn);
       let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-      console.error(`[publishRetireForOlderPluginVersions] ERROR — retire NOT delivered for ` + name + `@` + version + ` to ` + cmdTopicQueueUrl + ` (` + msg + `)`);
-      return;
+      return log.error("publishRetireForOlderPluginVersions", undefined, `retire NOT delivered for ` + name + `@` + version + ` to ` + cmdTopicQueueUrl + ` (` + msg + `)`);
     }
   };
   let hooksApiRef = {
@@ -1737,7 +1737,7 @@ function Make($star) {
     StateTopic_AppSync$ReventlessAws.finish(eventsApi, {});
   }));
   let hooks_preResolversSchemaHook = (name, version, pluginFragment) => {
-    console.log(`[preResolversSchemaHook] Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
+    log.info("preResolversSchemaHook", undefined, `Pushing schema for plugin ` + name + `@` + version + ` to AppSync`);
     let capturedDeployTarget = currentDeployTarget.contents;
     let match;
     if (capturedDeployTarget === "Domain") {
@@ -1809,7 +1809,7 @@ function Make($star) {
               pluginFragment.encoded
             ]
           ]);
-          console.log(`[preResolversSchemaHook] Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
+          log.info("preResolversSchemaHook", undefined, `Writing deploy-schema entry for ` + name + ` to ` + tableNameOpt);
           let scanAllDeploySchemaItems = async () => {
             let allItems = [];
             let startKey;
@@ -1844,7 +1844,7 @@ function Make($star) {
             Item: deployItem,
             TableName: tableNameOpt
           })).then(param => {
-            console.log(`[preResolversSchemaHook] Scanning ` + tableNameOpt + ` for deploy-schema entries`);
+            log.info("preResolversSchemaHook", undefined, `Scanning ` + tableNameOpt + ` for deploy-schema entries`);
             return scanAllDeploySchemaItems();
           }).then(items => {
             let fragments = Stdlib_Array.filterMap(items, item => {
@@ -1867,15 +1867,15 @@ function Make($star) {
                 return;
               }
             });
-            console.log(`[preResolversSchemaHook] Found ` + fragments.length.toString() + ` deploy-schema entries`);
+            log.info("preResolversSchemaHook", undefined, `Found ` + fragments.length.toString() + ` deploy-schema entries`);
             return Promise.resolve(fragments);
           }), err => {
             let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-            console.log(`[preResolversSchemaHook] DynamoDB write/scan failed (` + msg + `) — using current plugin only`);
+            log.info("preResolversSchemaHook", undefined, `DynamoDB write/scan failed (` + msg + `) — using current plugin only`);
             return Promise.resolve([pluginFragment]);
           });
         }
-        console.log("[preResolversSchemaHook] No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
+        log.info("preResolversSchemaHook", undefined, "No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
       return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
@@ -1892,27 +1892,27 @@ function Make($star) {
           let expected = countRoots(sdl);
           let live = countRoots(liveSdl);
           if (liveSdl === "") {
-            console.log(`[preResolversSchemaHook] hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
+            log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
             skipPush = false;
           } else if (live < expected) {
-            console.log(`[preResolversSchemaHook] hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
+            log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
             skipPush = false;
           } else {
-            console.log(`[preResolversSchemaHook] SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
+            log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
             skipPush = true;
           }
         } else {
           skipPush = false;
         }
         if (!skipPush) {
-          console.log(`[preResolversSchemaHook] Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
+          log.info("preResolversSchemaHook", undefined, `Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
           await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
             apiId: apiId,
             definition: sdl
           });
-          console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+          log.info("preResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
           await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-          console.log("[preResolversSchemaHook] Schema is ACTIVE");
+          log.info("preResolversSchemaHook", undefined, "Schema is ACTIVE");
           if (tableNameOpt !== undefined) {
             await writeSchemaHash(tableNameOpt, apiId, currentHash);
           }
@@ -1932,15 +1932,15 @@ function Make($star) {
       targetApi,
       adminBarrier
     ]), param => Output$Pulumi.flatMap(param[0].id, apiId => {
-      console.log(`[preAdminResolversSchemaHook] Pushing admin schema to ` + apiId);
+      log.info("preAdminResolversSchemaHook", undefined, `Pushing admin schema to ` + apiId);
       let client = AppSync_Adapter$ReventlessAws.getClient();
       return AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
         apiId: apiId,
         definition: sdl
       }).then(async () => {
-        console.log("[preAdminResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE");
+        log.info("preAdminResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
         await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-        console.log("[preAdminResolversSchemaHook] schema is ACTIVE");
+        return log.info("preAdminResolversSchemaHook", undefined, "schema is ACTIVE");
       });
     }));
   };
@@ -1965,8 +1965,7 @@ function Make($star) {
     if (resource !== undefined) {
       return PluginRuntime_Builder$ReventlessAws.registerHeartbeatConfig(pluginId, undefined, Pulumi.output(resource.id), undefined);
     } else {
-      console.warn("Platform: heartbeat EP channel has no resources");
-      return;
+      return log.warn("Platform", undefined, "heartbeat EP channel has no resources");
     }
   };
   let hooks_adminExtensionPoints = {
@@ -2093,7 +2092,7 @@ function Make($star) {
     return Component$ReventlessCore.operations(component);
   };
   let makePlatform = (version, plugins) => {
-    console.log(`[Platform] v` + version);
+    log.info("Platform", undefined, `v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
@@ -2147,7 +2146,7 @@ function Make($star) {
     Pulumi$Pulumi.$$export("domainApiRoleArn", Output$Pulumi.flatMap(domainApiRole, role => role.arn));
   };
   let deployPlatform = (version, hostUiBundle) => {
-    console.log(`[Platform:deployPlatform] v` + version);
+    log.info("Platform:deployPlatform", undefined, `v` + version);
     let scheduler = makeScheduler();
     hooks_scheduler.contents = scheduler;
     hooksApiRef.contents = Platform_Casts$ReventlessAws.wrapHookedValue(domainApi);
@@ -2391,7 +2390,7 @@ function Make($star) {
     let apiTarget = apiTargetOpt !== undefined ? apiTargetOpt : "Domain";
     let tmp;
     tmp = apiTarget === "Domain" ? "Domain" : "Platform";
-    console.log(`[Platform:deployPlugin] target=` + tmp);
+    log.info("Platform:deployPlugin", undefined, `target=` + tmp);
     currentDeployTarget.contents = apiTarget;
     let tmp$1;
     tmp$1 = apiTarget === "Domain" ? "Domain" : "Platform";
@@ -2451,6 +2450,7 @@ function Make($star) {
 }
 
 export {
+  log,
   apiConfigRef,
   getApiConfig,
   splitApiOutputsRef,
@@ -2458,4 +2458,4 @@ export {
   MakeWithConfig,
   Make,
 }
-/* S Not a pure module */
+/* log Not a pure module */

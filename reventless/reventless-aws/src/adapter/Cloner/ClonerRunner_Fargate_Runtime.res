@@ -1,5 +1,7 @@
 open ReventlessCore.Cloner
 
+let log = ReventlessCore.Logger.fromEnv()
+
 let clone = async (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, payload, _) => {
   let {organization, project, stack} = fullQualifiedStackName
 
@@ -10,7 +12,8 @@ let clone = async (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets,
     ]->Dict.fromArray
   }
 
-  Console.log(
+  log.info(
+    ~comp="ClonerRunner",
     "clone: requested by user " ++
     payload["meta"]["user"] ++
     " from ip " ++

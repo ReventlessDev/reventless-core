@@ -4,7 +4,10 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as HashNode from "@smithy/hash-node";
 import * as SignatureV4 from "@smithy/signature-v4";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as CredentialProviderNode from "@aws-sdk/credential-provider-node";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let sha256 = HashNode.Hash.bind(null, "sha256");
 
@@ -94,7 +97,7 @@ async function sendQuery(endpoint, region, queryString) {
   }
   let errors = d["errors"];
   if (errors !== undefined) {
-    console.error(`[Util_AppSync_Caller] query errors: ` + JSON.stringify(errors));
+    log.error("Util_AppSync_Caller", errors, "query errors");
     return;
   } else {
     return d["data"];
@@ -151,12 +154,12 @@ async function sendMutation(endpoint, region, mutation, variables) {
   let json = await response.json();
   let errors = Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["errors"]);
   if (errors !== undefined) {
-    console.error(`[Util_AppSync_Caller] ` + mutation + ` errors: ` + JSON.stringify(errors));
-    return;
+    return log.error("Util_AppSync_Caller", errors, mutation + ` errors`);
   }
 }
 
 export {
+  log,
   sha256,
   graphqlEnum,
   jsonToLiteral,
@@ -164,4 +167,4 @@ export {
   sendQuery,
   sendMutation,
 }
-/* sha256 Not a pure module */
+/* log Not a pure module */

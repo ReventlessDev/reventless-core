@@ -47,11 +47,6 @@ let cyan = "\x1b[36m"
 let dim = "\x1b[90m"
 let reset = "\x1b[0m"
 
-// Null-byte separator for embedding detail in Effect log messages.
-// EffectLogger encodes: "message\x00{detail json}"
-// install() decodes: split on \x00, extract detail.
-let detailSeparator = "\x00"
-
 let hms = () => {
   let d = Date.make()
   let h = d->Date.getHours->Int.toString->String.padStart(2, "0")
@@ -67,33 +62,44 @@ let currentPluginName = Reventless.LogPrefix.currentPluginName
 let registerComponentPlugin = Reventless.LogPrefix.registerComponentPlugin
 let fmtComp = Reventless.LogPrefix.fmtComp
 let fmtPlainPrefix = Reventless.LogPrefix.fmtPlainPrefix
+let resolvePlugin = Reventless.LogPrefix.resolvePlugin
 
 // Central emit — all log output flows through here.
 // ~detail: structured data shown only in CloudWatch (expandable on click).
 //   Terminal (in-memory): shows only the message line.
-//   Lambda (CloudWatch):  outputs JSON with message + detail fields.
-let emit = (~level: level, ~comp=?, ~detail: option<JSON.t>=?, msg: string) => {
+//   JSON sink (CloudWatch/…): structured object with plugin/comp/detail fields.
+// ~annotations: extra structured key/value pairs (e.g. correlationId, requestId)
+//   carried via Effect log annotations. JSON sink only; ignored in the TTY view.
+let emit = (
+  ~level: level,
+  ~comp=?,
+  ~detail: option<JSON.t>=?,
+  ~annotations: option<dict<string>>=?,
+  msg: string,
+) => {
   // Sink decision lives in Reventless.AnsiStyle (single source of truth, shared
   // with fmtComp / AnsiStyle.bold). Non-TTY collectors (Lambda, Fargate, ECS,
   // Azure, GCP, Docker, CI, piped stdout) all get JSON; a TTY stays text.
   if Reventless.AnsiStyle.isJsonSink() {
-    // CloudWatch structured JSON — message in summary, detail expandable on click
-    let message = `${fmtPlainPrefix(~comp?, ())}${msg}`
-    switch detail {
-    | Some(d) =>
-      let obj = Dict.fromArray([
+    // Structured JSON for any log collector. Plugin/comp/annotations are promoted
+    // to top-level queryable keys instead of being baked into `message`; `message`
+    // stays clean human text. `detail` is the expandable structured payload.
+    let annotationFields =
+      annotations->Option.mapOr([], a =>
+        a->Dict.toArray->Array.map(((k, v)) => (k, JSON.Encode.string(v)))
+      )
+    let fields =
+      [
         ("level", levelLabel(level)->JSON.Encode.string),
-        ("message", message->JSON.Encode.string),
-        ("detail", d),
-      ])
-      Console.log(obj->JSON.Encode.object->JSON.stringify)
-    | None =>
-      let obj = Dict.fromArray([
-        ("level", levelLabel(level)->JSON.Encode.string),
-        ("message", message->JSON.Encode.string),
-      ])
-      Console.log(obj->JSON.Encode.object->JSON.stringify)
-    }
+        ("message", msg->JSON.Encode.string),
+      ]
+      ->Array.concat(
+        resolvePlugin(~comp?, ())->Option.mapOr([], p => [("plugin", JSON.Encode.string(p))]),
+      )
+      ->Array.concat(comp->Option.mapOr([], c => [("comp", JSON.Encode.string(c))]))
+      ->Array.concat(annotationFields)
+      ->Array.concat(detail->Option.mapOr([], d => [("detail", d)]))
+    Console.log(fields->Dict.fromArray->JSON.Encode.object->JSON.stringify)
   } else {
     // Terminal — colored, human-readable, no detail
     let t = hms()

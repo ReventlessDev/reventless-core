@@ -8,8 +8,11 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ClientCloudfront from "@aws-sdk/client-cloudfront";
 import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6";
 
@@ -56,13 +59,11 @@ async function invalidateDistribution(distributionId, paths) {
       InvalidationBatch: input_InvalidationBatch
     };
     await client.send(new ClientCloudfront.CreateInvalidationCommand(input));
-    console.log(`[makeUiBundleDistribution] CloudFront invalidation submitted for ` + distributionId);
-    return;
+    return log.info("makeUiBundleDistribution", undefined, `CloudFront invalidation submitted for ` + distributionId);
   } catch (raw_exn) {
     let exn = Primitive_exceptions.internalToException(raw_exn);
     let msg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(exn), Stdlib_JsExn.message), "unknown");
-    console.log(`[makeUiBundleDistribution] CloudFront invalidation skipped (` + msg + `)`);
-    return;
+    return log.info("makeUiBundleDistribution", undefined, `CloudFront invalidation skipped (` + msg + `)`);
   }
 }
 
@@ -249,6 +250,7 @@ function makeUiBundleDistribution(pluginId, bundleVersion, assetsDir, spaFallbac
 }
 
 export {
+  log,
   cachingOptimizedPolicyId,
   cachingDisabledPolicyId,
   cloudFrontAliasZoneId,
@@ -258,4 +260,4 @@ export {
   invalidateDistribution,
   makeUiBundleDistribution,
 }
-/* @pulumi/aws Not a pure module */
+/* log Not a pure module */

@@ -474,6 +474,16 @@ external logWarning: string => t<unit, 'e, 'r> = "logWarning"
 @module("effect/Effect")
 external logError: string => t<unit, 'e, 'r> = "logError"
 
+/**
+Attaches a structured key/value annotation to every log record produced while
+the given effect runs. The annotation surfaces on `loggerOptions.annotations`
+in a custom logger (see `effect/Logger`), letting a log sink promote it to a
+top-level field (e.g. `correlationId`, `requestId`) instead of baking it into
+the message string.
+*/
+@module("effect/Effect")
+external annotateLogs: (t<'a, 'e, 'r>, string, string) => t<'a, 'e, 'r> = "annotateLogs"
+
 // ─── Running effects ─────────────────────────────────────────────────────
 
 /**

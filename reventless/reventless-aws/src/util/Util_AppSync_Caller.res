@@ -8,6 +8,8 @@
 // Arguments are serialised as inline GraphQL literals — no variable-type
 // declarations required, so any mutation can be called generically.
 
+let log = ReventlessCore.Logger.fromEnv()
+
 // ── AWS credential provider ────────────────────────────────────────────────
 
 type awsCredentials = {
@@ -154,7 +156,7 @@ let sendQuery = async (~endpoint: string, ~region: string, ~queryString: string)
   | Some(d) =>
     switch d->Dict.get("errors") {
     | Some(errors) =>
-      Console.error(`[Util_AppSync_Caller] query errors: ${errors->JSON.stringify}`)
+      log.error(~comp="Util_AppSync_Caller", ~data=errors, "query errors")
       None
     | None => d->Dict.get("data")
     }
@@ -205,7 +207,7 @@ let sendMutation = async (~endpoint: string, ~region: string, ~mutation: string,
   let json = await response->responseJson
   switch json->JSON.Decode.object->Option.flatMap(d => d->Dict.get("errors")) {
   | Some(errors) =>
-    Console.error(`[Util_AppSync_Caller] ${mutation} errors: ${errors->JSON.stringify}`)
+    log.error(~comp="Util_AppSync_Caller", ~data=errors, `${mutation} errors`)
   | None => ()
   }
 }

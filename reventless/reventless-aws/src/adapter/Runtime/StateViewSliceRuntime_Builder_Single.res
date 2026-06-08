@@ -1,6 +1,8 @@
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
+let log = ReventlessCore.Logger.fromEnv()
+
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
@@ -84,8 +86,9 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
     })
     ->ignore
 
-    Console.log(
-      `StateViewSliceRuntime_Builder_Single: registered ${eventCollectorName} for ${parentName}`,
+    log.info(
+      ~comp="StateViewSliceRuntime_Builder_Single",
+      `registered ${eventCollectorName} for ${parentName}`,
     )
   | None =>
     JsError.throwWithMessage(
@@ -195,7 +198,10 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ~channelSpecs=[{channel: channel, eventTopics, resources: allQueryDbResources}],
         )
       | None =>
-        Console.warn("StateViewSliceRuntime_Builder_Single.finishWithDcbEventLog: DCB EventLog has no parent")
+        log.warn(
+          ~comp="StateViewSliceRuntime_Builder_Single",
+          "finishWithDcbEventLog: DCB EventLog has no parent",
+        )
       }
     }
     finished := true
@@ -203,7 +209,10 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
 
 let finish = () =>
   if !finished.contents {
-    Console.log(`StateViewSliceRuntime_Builder_Single.finish: ${storedSpecs->Array.length->Int.toString} storedSpecs, ${sliceInfos->Dict.keysToArray->Array.length->Int.toString} sliceInfos, grandParent=${grandParent.contents->Option.map(_ => "Some")->Option.getOr("None")}`)
+    log.info(
+      ~comp="StateViewSliceRuntime_Builder_Single",
+      `finish: ${storedSpecs->Array.length->Int.toString} storedSpecs, ${sliceInfos->Dict.keysToArray->Array.length->Int.toString} sliceInfos, grandParent=${grandParent.contents->Option.map(_ => "Some")->Option.getOr("None")}`,
+    )
     if storedSpecs->Array.length > 0 {
       let (maxMemorySize, maxTimeout) = storedSpecs->Array.reduce((0, 0), (
         (accMemorySize, accTimeout),
@@ -238,8 +247,9 @@ let finish = () =>
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
-            Console.warn(
-              `StateViewSliceRuntime_Builder_Single: no handler registered for ${spec.componentName}`,
+            log.warn(
+              ~comp="StateViewSliceRuntime_Builder_Single",
+              `no handler registered for ${spec.componentName}`,
             )
           }
         })
@@ -253,9 +263,7 @@ let finish = () =>
           ~timeout=maxTimeout,
         )
       | None =>
-        Console.warn(
-          `StateViewSliceRuntime_Builder_Single.finish: grandParent not set`,
-        )
+        log.warn(~comp="StateViewSliceRuntime_Builder_Single", `finish: grandParent not set`)
       }
     }
     finished := true

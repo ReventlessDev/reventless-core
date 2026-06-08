@@ -5,9 +5,11 @@ non-TTY sink (CloudWatch first, but the same shape works for Azure
 Monitor, GCP Cloud Logging, Datadog, Loki) while preserving the current
 human-readable terminal rendering on the local platform.
 
-Status: **Tier 1 implemented and locally verified** (build clean, 401
-reventless-core tests green incl. 5 new JSON-sink guards). Remaining Tier 1
-gate: manual CloudWatch verification in alpha (§1.5). Tiers 2–3 not started.
+Status: **Tiers 1 & 2 implemented and locally verified** (full build clean;
+404 reventless-core + 446 reventless-local tests green, incl. JSON-sink,
+plugin/comp-field, detail-via-annotation, and correlationId-surfacing guards).
+Remaining gates: manual CloudWatch verification in alpha (§1.5, §2.5) and the
+broader Console cleanup (§2.6, see Tier 2 note). Tier 3 not started.
 Companion analysis: `docs/analysis/logging-output-optimization.md`.
 
 ## Problem (one-paragraph recap)
@@ -196,6 +198,33 @@ No other call site touched. PR diff < 150 lines.
 
 Goal: promote what's currently baked into `message` into queryable
 top-level JSON keys; route stray `Console.*` through `Logger.emit`.
+
+> **DONE (code), pending CloudWatch verification.**
+> - **2.1** `Logger.emit` JSON branch now emits `plugin`/`comp` as top-level
+>   keys; `message` is clean. Tests in `LogFormatTest` ("JSON sink").
+> - **2.2** `Effect.annotateLogs` binding added to `rescript-effect`.
+>   `runEffect` in `AggregateRuntime_Builder_Common` + `EventCollectorRuntime_Builder_Single`
+>   annotate `correlationId`. All 10 AWS Lambda entry-point shims
+>   (`*EntryPoint.mjs`) annotate `correlationId` **and** `requestId`
+>   (captured from `context.awsRequestId` at handler entry into a
+>   module-level `_currentRequestId`, read by their `runEffect` — chosen over
+>   a signature change to avoid call-site churn on unverifiable runtime shims).
+>   `EffectLogger.install()` decodes `loggerOptions.annotations`
+>   (`HashMap.toEntries`): `comp`/`detail` get dedicated emit handling, the
+>   rest (correlationId/requestId) pass through `Logger.emit(~annotations)` as
+>   top-level string fields. Locally unit-tested; **end-to-end correlation
+>   trace (§2.5) still needs an alpha deploy.**
+> - **2.3** `\x00` detail-encoding removed. `EffectLogger` now carries
+>   `~comp`/`~detail` as Effect log annotations (detail JSON-stringified, re-parsed
+>   in `install()`); `Logger.detailSeparator` deleted.
+> - **2.4** Console cleanup done for the **6 named files** (~28 sites:
+>   `Platform.res`, `Plugin_Stack.res`, `Util_StaticBundle.res`,
+>   `Util_AppSync_Caller.res`, `ClonerRunner_Fargate_Runtime.res`,
+>   `StateViewSliceRuntime_Builder_Single.res`). **Not done:** the broader
+>   "0 hits across aws+core+infra" goal (§2.6) — ~50 further `Console.log2/3/4`
+>   debug-trace sites (DataCleaner, Counter, Message, EventMapper_Builder,
+>   GraphQL_Stitcher, …) remain; many are multi-arg and need per-site
+>   judgement on `~data` shape. Tracked as follow-up.
 
 ### 2.1 Add `plugin` and `comp` as top-level JSON fields
 

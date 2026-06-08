@@ -43,8 +43,16 @@ function fixMappingsModule(mod) {
   return mod;
 }
 
+// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
+let _currentRequestId = "unknown";
+
 function runEffect(correlationId, effect) {
   return effect
+    // Promote correlationId/requestId to top-level JSON log fields — decoded by
+    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
+    // unified logger isn't installed.
+    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -102,6 +110,7 @@ async function buildAllHandlers() {
 const initPromise = buildAllHandlers();
 
 export async function handler(event, context) {
+  _currentRequestId = context?.awsRequestId || "unknown";
   const handlers = await initPromise;
   const records = event.Records || [];
   const grouped = groupBySource(records);

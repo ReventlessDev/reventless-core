@@ -6,18 +6,29 @@
 //   2. logInfo/logWarn/logError/logDebug — structured helpers with ~comp and ~detail
 //      that return Effect.t<unit> for use in Effect pipelines.
 //
-// ~detail: structured JSON shown only in CloudWatch (expandable on click).
-//   Encoded as message\x00{json} in the Effect log string; decoded by install().
+// ~comp / ~detail and any ambient annotations (e.g. correlationId, requestId set
+// via Effect.annotateLogs at the request boundary) travel as Effect log
+// annotations — NOT baked into the message string. install() reads them off
+// `loggerOptions.annotations` and forwards them to Logger.emit, which promotes
+// them to top-level JSON fields. The message stays clean human text.
 //
 // Usage: import at platform startup (module init calls install()).
 //   EffectLogger.logInfo(~comp=`Aggregate(${Spec.name})`, ~detail=eventJson, "replay done")
 
 type loggerOptions
 type logLevel
+type annotationsMap
 
 @get external _message: loggerOptions => JSON.t = "message"
 @get external _logLevel: loggerOptions => logLevel = "logLevel"
 @get external _ordinal: logLevel => int = "ordinal"
+@get external _annotations: loggerOptions => annotationsMap = "annotations"
+
+// Effect stores log annotations as a HashMap<string, unknown>; toEntries gives a
+// plain [key, value] array. Values arrive as raw JS — string annotations decode
+// directly via JSON.Decode.string.
+@module("effect/HashMap")
+external _annotationEntries: annotationsMap => array<(string, JSON.t)> = "toEntries"
 
 let _messageToString = (msg: JSON.t): string =>
   switch msg {
@@ -90,20 +101,38 @@ let ordinalToLevel = ordinal =>
 
 let install = () =>
   _defaultLogger.log = opts => {
-    let raw = opts->_message->_messageToString
+    let msg = opts->_message->_messageToString
     let level = opts->_logLevel->_ordinal->ordinalToLevel
-    // Split on null-byte separator: "message\x00{detail json}"
-    let idx = raw->String.indexOf(Logger.detailSeparator)
-    if idx >= 0 {
-      let msg = raw->String.slice(~start=0, ~end=idx)
-      let detailStr = raw->String.slice(~start=idx + 1, ~end=raw->String.length)
-      let detail = try Some(detailStr->JSON.parseOrThrow) catch {
-      | _ => None
+    // Decode log annotations: `comp` and `detail` get dedicated Logger.emit
+    // handling (prefix/plugin resolution, expandable payload); everything else
+    // (correlationId, requestId, …) flows through as top-level string fields.
+    let comp = ref(None)
+    let detail = ref(None)
+    let extra = Dict.make()
+    opts
+    ->_annotations
+    ->_annotationEntries
+    ->Array.forEach(((k, v)) =>
+      switch k {
+      | "comp" => comp := v->JSON.Decode.string
+      | "detail" =>
+        detail :=
+          switch v->JSON.Decode.string {
+          | Some(s) =>
+            try Some(s->JSON.parseOrThrow) catch {
+            | _ => Some(JSON.Encode.string(s))
+            }
+          | None => Some(v)
+          }
+      | _ =>
+        switch v->JSON.Decode.string {
+        | Some(s) => extra->Dict.set(k, s)
+        | None => extra->Dict.set(k, v->JSON.stringify)
+        }
       }
-      Logger.emit(~level, ~detail?, msg)
-    } else {
-      Logger.emit(~level, raw)
-    }
+    )
+    let annotations = extra->Dict.toArray->Array.length == 0 ? None : Some(extra)
+    Logger.emit(~level, ~comp=?comp.contents, ~detail=?detail.contents, ~annotations?, msg)
   }
 
 // Self-installing: runs at module initialization time.
@@ -112,27 +141,28 @@ install()
 // ─── Structured log helpers ──────────────────────────────────────────────────
 // Returns Effect.t<unit> — usable in Effect pipelines or with ->Effect.runSync.
 //
-// ~detail: structured JSON data — shown only in CloudWatch (expandable on click).
-//   In-memory terminal output shows only the message line.
+// ~comp / ~detail attach as Effect log annotations; install() reads them back.
+//   ~detail: structured JSON shown only in a JSON sink (expandable on click);
+//   the in-memory terminal output shows only the message line.
 
-let withComp = (~comp=?, msg) => {
-  let prefix = Logger.fmtComp(~comp?, ())
-  prefix == "" ? msg : `${prefix}${msg}`
-}
-
-let encode = (~comp=?, ~detail=?, msg) => {
-  let text = withComp(~comp?, msg)
+// Attach comp/detail as annotations on the log effect. detail is stringified so
+// it rides through Effect's string-keyed annotation map; install() re-parses it.
+let _annotate = (eff, ~comp=?, ~detail=?) => {
+  let eff = switch comp {
+  | Some(c) => eff->Effect.annotateLogs("comp", c)
+  | None => eff
+  }
   switch detail {
-  | Some(d) => `${text}${Logger.detailSeparator}${d->JSON.stringify}`
-  | None => text
+  | Some(d) => eff->Effect.annotateLogs("detail", d->JSON.stringify)
+  | None => eff
   }
 }
 
 let logInfo = (~comp=?, ~detail=?, msg) =>
-  Effect.logInfo(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())
+  Effect.logInfo(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())
 let logWarn = (~comp=?, ~detail=?, msg) =>
-  Effect.logWarning(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())
+  Effect.logWarning(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())
 let logError = (~comp=?, ~detail=?, msg) =>
-  Effect.logError(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())
+  Effect.logError(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())
 let logDebug = (~comp=?, ~detail=?, msg) =>
-  Effect.logDebug(encode(~comp?, ~detail?, msg))->_withMinimumLogLevel(_effectMin())
+  Effect.logDebug(msg)->_annotate(~comp?, ~detail?)->_withMinimumLogLevel(_effectMin())

@@ -1,3 +1,5 @@
+let log = ReventlessCore.Logger.fromEnv()
+
 // AWS managed cache policy — CachingOptimized (GET/HEAD, no query strings/cookies).
 // Suited for hashed asset chunks whose URL changes on every build.
 let cachingOptimizedPolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6"
@@ -101,11 +103,11 @@ let invalidateDistribution = async (~distributionId: string, ~paths: array<strin
       },
     }
     let _ = await client->cfSend(input->makeCreateInvalidationCommand)
-    Console.log(`[makeUiBundleDistribution] CloudFront invalidation submitted for ${distributionId}`)
+    log.info(~comp="makeUiBundleDistribution", `CloudFront invalidation submitted for ${distributionId}`)
   } catch {
   | exn =>
     let msg = exn->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-    Console.log(`[makeUiBundleDistribution] CloudFront invalidation skipped (${msg})`)
+    log.info(~comp="makeUiBundleDistribution", `CloudFront invalidation skipped (${msg})`)
   }
 }
 

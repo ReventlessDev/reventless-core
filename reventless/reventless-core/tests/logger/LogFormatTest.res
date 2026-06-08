@@ -183,10 +183,11 @@ let isCleanRecord = (line: string): bool =>
   | _ => false
   })
 
-let messageOf = (line: string): string =>
+// Read a top-level string field off a captured JSON record (None if absent).
+let fieldOf = (line: string, key: string): option<string> =>
   switch line->JSON.parseOrThrow->JSON.Decode.object {
-  | Some(obj) => obj->Dict.get("message")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-  | None => ""
+  | Some(obj) => obj->Dict.get(key)->Option.flatMap(JSON.Decode.string)
+  | None => None
   }
 
 describe("JSON sink", () => {
@@ -204,13 +205,23 @@ describe("JSON sink", () => {
   // Logger.t goes Debug+ regardless of LOG_LEVEL via an explicit min level.
   let log = Logger.makeLogger(~minLevel=Debug)
 
-  test("Logger.info emits one clean JSON record with a plain comp prefix", () => {
+  test("Logger.info emits one clean JSON record with comp as a top-level field", () => {
     let lines = captureLogs(() => log.info(~comp="Aggregate(Product)", "handling command"))
+    let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
     let ok =
       lines->Array.length == 1 &&
-      isCleanRecord(lines->Array.getUnsafe(0)) &&
-      (lines->Array.getUnsafe(0))->messageOf->String.includes("[Aggregate(Product)]")
+      isCleanRecord(line) &&
+      // comp is promoted to a top-level key, message stays clean (no [Comp] prefix)
+      line->fieldOf("comp") == Some("Aggregate(Product)") &&
+      line->fieldOf("message") == Some("handling command")
     expect(ok)->toBe(true)
+  })
+
+  test("Logger.info resolves plugin to a top-level field when the comp is registered", () => {
+    Logger.registerComponentPlugin(~componentName="Product", ~pluginName="Catalog")
+    let lines = captureLogs(() => log.info(~comp="Aggregate(Product)", "handling command"))
+    let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
+    expect(lines->Array.length == 1 && line->fieldOf("plugin") == Some("Catalog"))->toBe(true)
   })
 
   test("Logger.warn emits one clean JSON record", () => {
@@ -235,6 +246,38 @@ describe("JSON sink", () => {
     )
     let allClean = lines->Array.filter(l => !isCleanRecord(l))->Array.length == 0
     expect(lines->Array.length >= 1 && allClean)->toBe(true)
+  })
+
+  test("EffectLogger.logInfo carries ~comp + ~detail as structured fields (no \\x00)", () => {
+    let lines = captureLogs(() =>
+      EffectLogger.logInfo(
+        ~comp="Aggregate(Product)",
+        ~detail=JSON.parseOrThrow(`{"id":"p-1"}`),
+        "added",
+      )->Effect.runSync
+    )
+    let ok = lines->Array.some(line =>
+      switch line->JSON.parseOrThrow->JSON.Decode.object {
+      | Some(obj) =>
+        obj->Dict.get("comp")->Option.flatMap(JSON.Decode.string) == Some("Aggregate(Product)") &&
+        obj
+        ->Dict.get("detail")
+        ->Option.flatMap(JSON.Decode.object)
+        ->Option.flatMap(d => d->Dict.get("id"))
+        ->Option.flatMap(JSON.Decode.string) == Some("p-1")
+      | None => false
+      }
+    )
+    expect(ok)->toBe(true)
+  })
+
+  test("Effect.annotateLogs(correlationId) surfaces as a top-level field", () => {
+    let lines = captureLogs(() =>
+      EffectLogger.logInfo(~comp="Aggregate(Product)", "handling")
+      ->Effect.annotateLogs("correlationId", "c-123")
+      ->Effect.runSync
+    )
+    expect(lines->Array.some(line => line->fieldOf("correlationId") == Some("c-123")))->toBe(true)
   })
 
   test("LogFormat.cmdName carries no ANSI in a JSON sink", () => {

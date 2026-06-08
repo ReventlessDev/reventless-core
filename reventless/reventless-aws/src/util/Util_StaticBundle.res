@@ -1,3 +1,5 @@
+let log = ReventlessCore.Logger.fromEnv()
+
 @module("path") external join2: (string, string) => string = "join"
 @module("path") external relative: (string, string) => string = "relative"
 
@@ -113,8 +115,9 @@ let contentTypeFor = (relativePath: string): string => {
   | "wasm" => "application/wasm"
   | "pdf" => "application/pdf"
   | _ =>
-    Console.warn(
-      `Util_StaticBundle.contentTypeFor: no MIME mapping for "${relativePath}", defaulting to application/octet-stream`,
+    log.warn(
+      ~comp="Util_StaticBundle",
+      `contentTypeFor: no MIME mapping for "${relativePath}", defaulting to application/octet-stream`,
     )
     "application/octet-stream"
   }

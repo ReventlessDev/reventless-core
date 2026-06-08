@@ -35,13 +35,15 @@ module Make = (
   })
   type effectHandler = Runtime.effectHandler<RuntimeEnvironment.event, context, unit, string>
   let eventCollectorHandlers: dict<array<effectHandler>> = Dict.make()
-  let runEffect = (~correlationId=?, effect) =>
+  let runEffect = (~correlationId=?, effect) => {
+    let cid = correlationId->Option.getOr("unknown")
     effect
-    ->Effect.provideService(
-      RequestContext.tag,
-      RequestContext.test(~correlationId=correlationId->Option.getOr("unknown")),
-    )
+    // Annotate the request scope so every EffectLogger call inside the handler
+    // carries correlationId as a top-level JSON field (decoded in install()).
+    ->Effect.annotateLogs("correlationId", cid)
+    ->Effect.provideService(RequestContext.tag, RequestContext.test(~correlationId=cid))
     ->Effect.runPromise
+  }
 
   let eventCollectorHandler = parentName =>
     async (event: RuntimeEnvironment.event, context) => {
