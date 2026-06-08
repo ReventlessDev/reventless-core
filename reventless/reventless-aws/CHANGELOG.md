@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.145 (2026-06-08)
+
+### Bug Fixes
+
+* **naming:** EP CmdHandler kind for the platform-admin Plugin extension point ([19102b9](https://github.com/ReventlessDev/reventless-core/commit/19102b908a535ca62f6a5db435032ed8275a03eb))
+
+
 # 3.0.0-alpha.144 (2026-06-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
