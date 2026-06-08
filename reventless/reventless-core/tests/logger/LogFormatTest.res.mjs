@@ -5,6 +5,7 @@ import * as Jest from "@glennsl/rescript-jest/src/jest.res.mjs";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as AnsiStyle$Reventless from "@reventlessdev/reventless-spec/src/AnsiStyle.res.mjs";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "../../src/util/Logger.res.mjs";
@@ -172,12 +173,10 @@ function isCleanRecord(line) {
   }
 }
 
-function messageOf(line) {
+function fieldOf(line, key) {
   let obj = Stdlib_JSON.Decode.object(JSON.parse(line));
   if (obj !== undefined) {
-    return Stdlib_Option.getOr(Stdlib_Option.flatMap(obj["message"], Stdlib_JSON.Decode.string), "");
-  } else {
-    return "";
+    return Stdlib_Option.flatMap(obj[key], Stdlib_JSON.Decode.string);
   }
 }
 
@@ -191,10 +190,17 @@ Jest.describe("JSON sink", () => {
     AnsiStyle$Reventless.reload();
   });
   let log = Logger$ReventlessCore.makeLogger("Debug");
-  Jest.test("Logger.info emits one clean JSON record with a plain comp prefix", () => {
+  Jest.test("Logger.info emits one clean JSON record with comp as a top-level field", () => {
     let lines = captureLogs(() => log.info("Aggregate(Product)", undefined, "handling command"));
-    let ok = lines.length === 1 && isCleanRecord(lines[0]) && messageOf(lines[0]).includes("[Aggregate(Product)]");
+    let line = lines.length === 1 ? lines[0] : "";
+    let ok = lines.length === 1 && isCleanRecord(line) && Primitive_object.equal(fieldOf(line, "comp"), "Aggregate(Product)") && Primitive_object.equal(fieldOf(line, "message"), "handling command");
     return Jest.Expect.toBe(Jest.Expect.expect(ok), true);
+  });
+  Jest.test("Logger.info resolves plugin to a top-level field when the comp is registered", () => {
+    Logger$ReventlessCore.registerComponentPlugin("Product", "Catalog");
+    let lines = captureLogs(() => log.info("Aggregate(Product)", undefined, "handling command"));
+    let line = lines.length === 1 ? lines[0] : "";
+    return Jest.Expect.toBe(Jest.Expect.expect(lines.length === 1 && Primitive_object.equal(fieldOf(line, "plugin"), "Catalog")), true);
   });
   Jest.test("Logger.warn emits one clean JSON record", () => {
     let lines = captureLogs(() => log.warn("Platform", undefined, "heartbeat skipped"));
@@ -208,6 +214,22 @@ Jest.describe("JSON sink", () => {
     let lines = captureLogs(() => Effect.runSync(EffectLogger$ReventlessCore.logInfo("Aggregate(Product)", undefined, "replay done")));
     let allClean = lines.filter(l => !isCleanRecord(l)).length === 0;
     return Jest.Expect.toBe(Jest.Expect.expect(lines.length >= 1 && allClean), true);
+  });
+  Jest.test("EffectLogger.logInfo carries ~comp + ~detail as structured fields (no \\x00)", () => {
+    let lines = captureLogs(() => Effect.runSync(EffectLogger$ReventlessCore.logInfo("Aggregate(Product)", JSON.parse(`{"id":"p-1"}`), "added")));
+    let ok = lines.some(line => {
+      let obj = Stdlib_JSON.Decode.object(JSON.parse(line));
+      if (obj !== undefined && Primitive_object.equal(Stdlib_Option.flatMap(obj["comp"], Stdlib_JSON.Decode.string), "Aggregate(Product)")) {
+        return Primitive_object.equal(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_Option.flatMap(obj["detail"], Stdlib_JSON.Decode.object), d => d["id"]), Stdlib_JSON.Decode.string), "p-1");
+      } else {
+        return false;
+      }
+    });
+    return Jest.Expect.toBe(Jest.Expect.expect(ok), true);
+  });
+  Jest.test("Effect.annotateLogs(correlationId) surfaces as a top-level field", () => {
+    let lines = captureLogs(() => Effect.runSync(Effect.annotateLogs(EffectLogger$ReventlessCore.logInfo("Aggregate(Product)", undefined, "handling"), "correlationId", "c-123")));
+    return Jest.Expect.toBe(Jest.Expect.expect(lines.some(line => Primitive_object.equal(fieldOf(line, "correlationId"), "c-123"))), true);
   });
   Jest.test("LogFormat.cmdName carries no ANSI in a JSON sink", () => {
     let cmd_meta = {
@@ -234,6 +256,6 @@ export {
   captureLogs,
   validLevels,
   isCleanRecord,
-  messageOf,
+  fieldOf,
 }
 /*  Not a pure module */

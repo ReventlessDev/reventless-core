@@ -5,6 +5,9 @@ import * as Path from "path";
 import * as Crypto from "crypto";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
+
+let log = Logger$ReventlessCore.fromEnv();
 
 function toForwardSlashes(p) {
   return p.replaceAll("\\", "/");
@@ -111,12 +114,13 @@ function contentTypeFor(relativePath) {
     case "xml" :
       return "application/xml; charset=utf-8";
     default:
-      console.warn(`Util_StaticBundle.contentTypeFor: no MIME mapping for "` + relativePath + `", defaulting to application/octet-stream`);
+      log.warn("Util_StaticBundle", undefined, `contentTypeFor: no MIME mapping for "` + relativePath + `", defaulting to application/octet-stream`);
       return "application/octet-stream";
   }
 }
 
 export {
+  log,
   toForwardSlashes,
   isHidden,
   walkInto,
@@ -125,4 +129,4 @@ export {
   extensionOf,
   contentTypeFor,
 }
-/* fs Not a pure module */
+/* log Not a pure module */

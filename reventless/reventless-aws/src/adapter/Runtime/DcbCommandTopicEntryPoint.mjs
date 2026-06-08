@@ -39,8 +39,16 @@ function extractTypeName(json) {
   return undefined;
 }
 
+// Set at handler entry; read by runEffect to tag logs with the Lambda request id.
+let _currentRequestId = "unknown";
+
 function runEffect(correlationId, effect) {
   return effect
+    // Promote correlationId/requestId to top-level JSON log fields — decoded by
+    // EffectLogger.install() from Effect log annotations. Harmless no-op if the
+    // unified logger isn't installed.
+    .pipe(Effect.annotateLogs("correlationId", correlationId || "unknown"))
+    .pipe(Effect.annotateLogs("requestId", _currentRequestId))
     .pipe(Effect.provideService(requestContextTag, { correlationId: correlationId || "unknown" }))
     .pipe(Effect.runPromise);
 }
@@ -190,6 +198,7 @@ async function buildHandler() {
 const initPromise = buildHandler();
 
 export async function handler(event, context) {
+  _currentRequestId = context?.awsRequestId || "unknown";
   const [sqsHandler, cmdGenHandler] = await initPromise;
 
   // Route 1: AppSync direct invocation — payload carries the CommandGenerator.payload

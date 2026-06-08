@@ -18,7 +18,10 @@ function Make(RuntimeEnvironment) {
     let commandGeneratorHandlers = {};
     let commandTopicHandlers = {};
     let eventCollectorHandlers = {};
-    let runEffect = (correlationId, effect) => Effect.runPromise(Effect.provideService(effect, RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(Stdlib_Option.getOr(correlationId, "unknown"), undefined, undefined)));
+    let runEffect = (correlationId, effect) => {
+      let cid = Stdlib_Option.getOr(correlationId, "unknown");
+      return Effect.runPromise(Effect.provideService(Effect.annotateLogs(effect, "correlationId", cid), RequestContext$ReventlessCore.tag, RequestContext$ReventlessCore.test(cid, undefined, undefined)));
+    };
     let aggregateHandler = aggregateName => (async (event, context) => {
       let correlationId = RuntimeEnvironment.extractCorrelationId(event);
       let comp = `AggregateRuntime(` + aggregateName + `)`;

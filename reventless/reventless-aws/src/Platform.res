@@ -11,6 +11,8 @@
 // Custom config:
 //   module Platform = Platform.MakeWithConfig({let splitApi = false; let cloner = true})
 
+let log = ReventlessCore.Logger.fromEnv()
+
 // API config ref — populated during MakeWithConfig so slice builders
 // can access api/apiRole outside the functor constraint.
 //
@@ -606,8 +608,9 @@ module MakeWithConfig = (
       let user = `deploy:${name}@${version}`
       for i in 0 to staleIds->Array.length - 1 {
         let id = staleIds->Array.getUnsafe(i)
-        Console.log(
-          `[publishRetireForOlderPluginVersions] retiring ${id} (superseded by ${name}@${version})`,
+        log.info(
+          ~comp="publishRetireForOlderPluginVersions",
+          `retiring ${id} (superseded by ${name}@${version})`,
         )
         let msgId = ReventlessCore.Message.uuid()
         // Build the {id, meta, command} envelope manually — the deploy-time
@@ -653,8 +656,9 @@ module MakeWithConfig = (
       // Best-effort — never block the deploy. But a failure here means
       // superseded versions stay Connected until the heartbeat timeout (a real
       // bug, not an expected skip), so log loudly with the target queue.
-      Console.error(
-        `[publishRetireForOlderPluginVersions] ERROR — retire NOT delivered for ${name}@${version} to ${cmdTopicQueueUrl} (${msg})`,
+      log.error(
+        ~comp="publishRetireForOlderPluginVersions",
+        `retire NOT delivered for ${name}@${version} to ${cmdTopicQueueUrl} (${msg})`,
       )
     }
   }
@@ -733,16 +737,17 @@ module MakeWithConfig = (
       ->Pulumi.Output.all2
       ->Pulumi.Output.flatMap(((api, _)) =>
         api.id->Pulumi.Output.flatMap(apiId => {
-          Console.log(`[preAdminResolversSchemaHook] Pushing admin schema to ${apiId}`)
+          log.info(~comp="preAdminResolversSchemaHook", `Pushing admin schema to ${apiId}`)
           let client = AppSync_Adapter.getClient()
           client
           ->AppSync_Adapter.startSchemaCreationRetrying({apiId, definition: sdl})
           ->Promise.then(async _ => {
-            Console.log(
-              "[preAdminResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE",
+            log.info(
+              ~comp="preAdminResolversSchemaHook",
+              "startSchemaCreation called, waiting for ACTIVE",
             )
             await AppSync_Adapter.waitForSchemaActive(client, apiId)
-            Console.log("[preAdminResolversSchemaHook] schema is ACTIVE")
+            log.info(~comp="preAdminResolversSchemaHook", "schema is ACTIVE")
           })
           ->Pulumi.Output.fromPromise
         })
@@ -755,7 +760,10 @@ module MakeWithConfig = (
     // stitches them together — ensuring the schema is cumulative rather than
     // overwritten by each plugin deployment.
     preResolversSchemaHook: (~name, ~version, pluginFragment) => {
-      Console.log(`[preResolversSchemaHook] Pushing schema for plugin ${name}@${version} to AppSync`)
+      log.info(
+        ~comp="preResolversSchemaHook",
+        `Pushing schema for plugin ${name}@${version} to AppSync`,
+      )
 
       // Capture deploy target synchronously — deployPlugin resets currentDeployTarget to
       // Domain after P.make() returns, before any Pulumi.Output async callbacks run.
@@ -843,8 +851,9 @@ module MakeWithConfig = (
         let writeAndScanFragments = () =>
           switch tableNameOpt {
           | None =>
-            Console.log(
-              "[preResolversSchemaHook] No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence",
+            log.info(
+              ~comp="preResolversSchemaHook",
+              "No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence",
             )
             Promise.resolve([pluginFragment])
           | Some(tableName) =>
@@ -855,8 +864,9 @@ module MakeWithConfig = (
                 ("id", `${schemaPrefix}${name}`->JSON.Encode.string),
                 ("fragment", pluginFragment.encoded->JSON.Encode.string),
               ])->JSON.Encode.object
-            Console.log(
-              `[preResolversSchemaHook] Writing deploy-schema entry for ${name} to ${tableName}`,
+            log.info(
+              ~comp="preResolversSchemaHook",
+              `Writing deploy-schema entry for ${name} to ${tableName}`,
             )
             // Paginated scan — accumulate every deploy-schema entry across pages.
             // A single ScanCommand returns at most 1 MB before yielding a
@@ -890,8 +900,9 @@ module MakeWithConfig = (
             PutCommand.send(PutCommand.make({PutCommand.tableName: tableName, item: deployItem}))
             ->Promise.then(_ => {
               // Scan for all deploy-schema entries from previously deployed plugins.
-              Console.log(
-                `[preResolversSchemaHook] Scanning ${tableName} for deploy-schema entries`,
+              log.info(
+                ~comp="preResolversSchemaHook",
+                `Scanning ${tableName} for deploy-schema entries`,
               )
               scanAllDeploySchemaItems()
             })
@@ -912,8 +923,9 @@ module MakeWithConfig = (
                 | _ => None
                 }
               })
-              Console.log(
-                `[preResolversSchemaHook] Found ${fragments->Array.length->Int.toString} deploy-schema entries`,
+              log.info(
+                ~comp="preResolversSchemaHook",
+                `Found ${fragments->Array.length->Int.toString} deploy-schema entries`,
               )
               Promise.resolve(fragments)
             })
@@ -923,8 +935,9 @@ module MakeWithConfig = (
                 ->JsExn.fromException
                 ->Option.flatMap(JsExn.message)
                 ->Option.getOr("unknown")
-              Console.log(
-                `[preResolversSchemaHook] DynamoDB write/scan failed (${msg}) — using current plugin only`,
+              log.info(
+                ~comp="preResolversSchemaHook",
+                `DynamoDB write/scan failed (${msg}) — using current plugin only`,
               )
               Promise.resolve([pluginFragment])
             })
@@ -990,34 +1003,41 @@ module MakeWithConfig = (
                 let expected = countRoots(sdl)
                 let live = countRoots(liveSdl)
                 if liveSdl == "" {
-                  Console.log(
-                    `[preResolversSchemaHook] hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`,
+                  log.info(
+                    ~comp="preResolversSchemaHook",
+                    `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`,
                   )
                   false
                 } else if live < expected {
-                  Console.log(
-                    `[preResolversSchemaHook] hash matches but live schema drifted (${live->Int.toString} root field(s) live vs ${expected->Int.toString} expected) — forcing repair push`,
+                  log.info(
+                    ~comp="preResolversSchemaHook",
+                    `hash matches but live schema drifted (${live->Int.toString} root field(s) live vs ${expected->Int.toString} expected) — forcing repair push`,
                   )
                   false
                 } else {
-                  Console.log(
-                    `[preResolversSchemaHook] SDL unchanged (hash ${currentHash->String.slice(~start=0, ~end=12)}…) and live schema intact (${live->Int.toString} root fields); skipping push`,
+                  log.info(
+                    ~comp="preResolversSchemaHook",
+                    `SDL unchanged (hash ${currentHash->String.slice(~start=0, ~end=12)}…) and live schema intact (${live->Int.toString} root fields); skipping push`,
                   )
                   true
                 }
               | _ => false
               }
               if !skipPush {
-                Console.log(
-                  `[preResolversSchemaHook] Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
+                log.info(
+                  ~comp="preResolversSchemaHook",
+                  `Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
                 )
                 await client->AppSync_Adapter.startSchemaCreationRetrying({
                   apiId,
                   definition: sdl,
                 })
-                Console.log("[preResolversSchemaHook] startSchemaCreation called, waiting for ACTIVE")
+                log.info(
+                  ~comp="preResolversSchemaHook",
+                  "startSchemaCreation called, waiting for ACTIVE",
+                )
                 await AppSync_Adapter.waitForSchemaActive(client, apiId)
-                Console.log("[preResolversSchemaHook] Schema is ACTIVE")
+                log.info(~comp="preResolversSchemaHook", "Schema is ACTIVE")
                 switch tableNameOpt {
                 | Some(tn) =>
                   await writeSchemaHash(~tableName=tn, ~apiId, ~hash=currentHash)
@@ -1079,7 +1099,7 @@ module MakeWithConfig = (
           (),
         )
       | None =>
-        Console.warn("Platform: heartbeat EP channel has no resources")
+        log.warn(~comp="Platform", "heartbeat EP channel has no resources")
       }
     },
 
@@ -1277,7 +1297,7 @@ module MakeWithConfig = (
   // In split mode, create a dedicated core AppSync API and push the core schema.
   // In unified mode, makePlatform is a no-op (schema stitching handled by events).
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
-    Console.log(`[Platform] v${version}`)
+    log.info(~comp="Platform", `v${version}`)
     // Create scheduler and populate platform context refs so Plugin_Builder
     // can read them without app plugins having to pass them through.
     let scheduler = makeScheduler()
@@ -1431,7 +1451,7 @@ module MakeWithConfig = (
   }
 
   let deployPlatform = (~version, ~hostUiBundle: option<hostUiBundleConfig>=?) => {
-    Console.log(`[Platform:deployPlatform] v${version}`)
+    log.info(~comp="Platform:deployPlatform", `v${version}`)
     let scheduler = makeScheduler()
     hooks.scheduler := Some(scheduler)
     hooks.api := Some(domainApi->wrapHookedValue)
@@ -1923,7 +1943,13 @@ module MakeWithConfig = (
   let startServers = () => ()
 
   let deployPlugin = (~plugin: module(PluginMaker), ~apiTarget=Domain) => {
-    Console.log(`[Platform:deployPlugin] target=${switch apiTarget { | Domain => "Domain" | Platform => "Platform" }}`)
+    log.info(
+      ~comp="Platform:deployPlugin",
+      `target=${switch apiTarget {
+        | Domain => "Domain"
+        | Platform => "Platform"
+        }}`,
+    )
     currentDeployTarget := apiTarget
     // Expose deploy target via hooks so Plugin_Builder can stamp pluginDefinition.apiTarget.
     // This must be set before P.make() and is captured synchronously by Plugin_Builder
