@@ -7,7 +7,8 @@ sidebar_position: 4
 
 You can run the entire hybrid online shop on your machine — no AWS account, no
 cloud resources. The `reventless-local` platform runs the same plugin code
-the AWS platform runs, backed by in-memory stores and a local GraphQL server.
+the AWS platform runs, backed by a local store (SQLite by default, persisted to
+`.reventless/local.db`) and a local GraphQL server.
 
 Everything in this page happens inside
 [`examples/online-shop-hybrid/platform-local/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid/platform-local).
@@ -30,14 +31,16 @@ pnpm run build      # once, and after any source change
 pnpm run dev:full   # backend + UI together
 ```
 
-`dev:full` starts two processes side by side (colour-coded `[backend]` / `[ui]`); the backend
+`dev:full` starts three processes side by side (colour-coded `[rs]` / `[backend]` / `[ui]`):
+a ReScript watcher that recompiles on change, the backend, and the UI dev server. The backend
 exposes two endpoints:
 
 | Process | What it is | URL |
 |---|---|---|
-| Backend — domain API | Plugin queries, mutations, subscriptions | `http://localhost:4000/graphql` |
-| Backend — admin API | `Admin_*` queries, platform introspection | `http://localhost:4001/graphql` |
-| UI dev server | `reventless-host-shell` (the Auto UI shell) | `http://localhost:5173` |
+| `[rs]` ReScript watch | Recompiles plugin/framework sources on change | — |
+| `[backend]` — domain API | Plugin queries, mutations, subscriptions | `http://localhost:4000/graphql` |
+| `[backend]` — platform/admin API | `Admin_*` queries, platform introspection | `http://localhost:4001/graphql` |
+| `[ui]` dev server | `reventless-host-shell` (the Auto UI shell) | `http://localhost:5173` |
 
 Open **http://localhost:5173** and you have the running shop: create categories
 and products, register customers, place orders, and watch read models update
@@ -68,16 +71,26 @@ Useful environment variables for the backend:
 |---|---|
 | `GRAPHQL_DEBUG=1` | Log every GraphQL request/response |
 | `MCP_DEBUG=1` | Log MCP tool calls |
-| `PORT=NNNN` | Override the domain port (default 4000) |
-| `ADMIN_PORT=NNNN` | Override the admin port (default 4001) |
+| `REVENTLESS_DOMAIN_PORT=NNNN` | Override the domain API port (default 4000) |
+| `REVENTLESS_PLATFORM_PORT=NNNN` | Override the platform/admin API port (default 4001) |
+| `REVENTLESS_LOCAL_BACKEND=…` | `memory`, or `sqlite:./path.db` (append `?reset` to start fresh); default `sqlite:./.reventless/local.db` |
 
-## Optional: persist data between restarts
+(The MCP servers use `REVENTLESS_DOMAIN_MCP_PORT` (default 3001) and
+`REVENTLESS_PLATFORM_MCP_PORT` (default 3002).)
 
-By default the local platform starts empty every run. If you want events to
-survive a restart while developing, the platform supports a file-backed store —
-see [local persistence](/infrastructure/local-persistence). For how the local
-runtime is wired, see the [Local adapters](/infrastructure/local/) in the
-Infrastructure section.
+## Backends: persistent vs fresh
+
+By default the local platform **persists** to a SQLite file (`.reventless/local.db`), so your
+data survives restarts. To start fresh or run fully ephemeral:
+
+```bash
+pnpm run serve:reset       # SQLite, wiped on start
+pnpm run serve:memory      # in-memory, nothing persisted (dev:full:memory for the full stack)
+```
+
+Or set `REVENTLESS_LOCAL_BACKEND` directly (`memory` / `sqlite:./path.db?reset`). See
+[local persistence](/infrastructure/local-persistence) for the store format and the
+[Local adapters](/infrastructure/local/) for how the runtime is wired.
 
 ---
 
