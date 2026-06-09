@@ -15,9 +15,9 @@ Each plugin and the platform are split into two packages:
 
 | Package | Purpose | Depends on |
 |---|---|---|
-| `catalog/` | Plugin code, tests, in-memory dev | `reventless-infra`, `reventless-local` |
+| `catalog/` | Plugin code, tests, local dev | `reventless-infra`, `reventless-local` |
 | `catalog-aws/` | AWS deployment entry point | `reventless-aws`, `catalog` |
-| `platform/` | In-memory dev server (all plugins) | `reventless-local`, all plugins |
+| `platform/` | Local dev server (all plugins) | `reventless-local`, all plugins |
 | `platform-aws/` | AWS platform deployment | `reventless-aws` |
 
 Plugin packages never depend on `reventless-aws`. The `-aws` packages are private (`"private": true` in `package.json`) — they are entry points, not published libraries.
@@ -108,7 +108,7 @@ No second platform deploy is needed when plugins change.
 
 ### 4a. Create the package structure
 
-Each plugin gets an `-aws` package alongside its agnostic package. The platform gets `platform/` (in-memory) and `platform-aws/` (AWS):
+Each plugin gets an `-aws` package alongside its agnostic package. The platform gets `platform/` (local) and `platform-aws/` (AWS):
 
 ```
 my-app/
@@ -131,7 +131,7 @@ my-app/
 │   ├── src/Main.res
 │   ├── ...
 ├── platform/
-│   ├── src/Main.res                  # In-memory dev server
+│   ├── src/Main.res                  # Local dev server
 │   ├── package.json
 │   └── rescript.json
 ├── platform-aws/
@@ -181,7 +181,7 @@ Key points:
 - `Platform.Make()` configures the infrastructure builders. In per-plugin mode, it reads the platform's API ID from the `platform:stack` StackReference.
 - Plugins create their own DataSources/Resolvers against the shared API. The schema fragment is registered at runtime via the PluginExtensionPoint.
 
-**`platform/src/Main.res`** -- in-memory dev server (unchanged):
+**`platform/src/Main.res`** -- local dev server (unchanged):
 
 ```rescript
 module Platform = ReventlessLocal.Platform.Make()
@@ -337,7 +337,7 @@ Notes:
 
 Plugins with aggregates or read models accept an optional UI bundle URL — the location of the Module-Federation remote that exposes the plugin's React components for the platform shell. The generated AWS `Plugin.res` reads `<PLUGIN>_UI_BUNDLE_URL` from `process.env` (PascalCase plugin name → SCREAMING_SNAKE_CASE: `Catalog` → `CATALOG_UI_BUNDLE_URL`). Unset → no UI fragments are registered for that plugin.
 
-Set it on the deployed Lambda by adding the env var to the Pulumi stack config and threading it through to the plugin's deploy step. The same env-var name is consumed by the in-memory dev platform, so a single setting works for both deploy paths. See `platform-and-plugin-guide.md` → AutoUI for the runtime mechanics.
+Set it on the deployed Lambda by adding the env var to the Pulumi stack config and threading it through to the plugin's deploy step. The same env-var name is consumed by the local dev platform, so a single setting works for both deploy paths. See `platform-and-plugin-guide.md` → AutoUI for the runtime mechanics.
 
 ### 4g. Create `deploy-manifest.yaml` at the project root
 
@@ -399,7 +399,7 @@ The same architecture works when plugins live in separate repositories. Each plu
 
 ```
 repo: my-org/platform
-├── platform/                  # In-memory dev server (depends on all plugins)
+├── platform/                  # Local dev server (depends on all plugins)
 ├── platform-aws/              # AWS platform deployment
 ├── deploy-manifest.yaml       # platform only
 └── .github/workflows/deploy-aws.yml
@@ -467,7 +467,7 @@ config:
 
 ### Platform repo and local development
 
-The platform repo contains `platform/` for the in-memory dev server. It depends on all plugin packages (published versions). For local development with unpublished plugin changes, use `npm link` or workspace overrides to point to local checkouts.
+The platform repo contains `platform/` for the local dev server. It depends on all plugin packages (published versions). For local development with unpublished plugin changes, use `npm link` or workspace overrides to point to local checkouts.
 
 ### Deployment coordination
 
@@ -653,7 +653,7 @@ At runtime, the plugin connects to the PluginExtensionPoint with its schema frag
 
 ### `Platform.makePlatform(~version, ~plugins)`
 
-Monolithic deployment mode (still supported). Deploys the platform and all plugins in a single Pulumi stack. Used by the `platform/` package for in-memory local development:
+Monolithic deployment mode (still supported). Deploys the platform and all plugins in a single Pulumi stack. Used by the `platform/` package for local development:
 
 ```rescript
 Platform.makePlatform(

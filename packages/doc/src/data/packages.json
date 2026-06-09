@@ -31,7 +31,7 @@
         },
         {
           "name": "@reventlessdev/reventless-local",
-          "description": "In-memory platform for Reventless (for testing without AWS)",
+          "description": "Local platform for Reventless (in-memory or SQLite backend, for development and testing without AWS)",
           "private": false
         },
         {
