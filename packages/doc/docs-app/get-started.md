@@ -1,6 +1,5 @@
 ---
 title: Get Started
-date: 2021-11-22
 draft: false
 sidebar_position: 2
 ---
@@ -34,39 +33,50 @@ See [ReScript Syntax](./rescript-syntax.md#ppx) for details on `@schema` and `@s
 - install [Visual Studio Code](https://code.visualstudio.com)
 - install [ReScript](https://marketplace.visualstudio.com/items?itemName=rescript-ide.rescript-vscode) (extension id: `rescript-ide.rescript-vscode`)
 
-### Install Node
+### Install Node and pnpm
 
-- install [Node.js 22.x](https://nodejs.org/) (LTS version as of 2025)
+- install [Node.js 22.17.1](https://nodejs.org/) (see `.node-version`)
+- enable [pnpm](https://pnpm.io) 10 via Corepack: `corepack enable && corepack prepare pnpm@10 --activate`
 
 ### Initialize a new Project
 
-Run `npm init` in the directory you want to create the new project and answer all questions.
+Run `pnpm init` in the directory you want to create the new project in.
 
 Add build scripts to your `package.json`:
 
 ```json
 {
   "scripts": {
+    "generate": "generate-plugin src/",
+    "prebuild": "pnpm run generate",
     "build": "rescript build",
     "clean": "rescript clean",
-    "start": "rescript build -w"
+    "start": "rescript watch"
   }
 }
 ```
 
+`generate-plugin` (shipped with `@reventlessdev/reventless-spec`) scans `src/` and writes the
+composition root `src/Plugin.res` before each build. See the [Plugin System](./plugin-system.md)
+guide for what it wires.
+
 ### Install Dependencies
 
-Add the Reventless packages, the ReScript compiler, and Sury to your project, then install them:
+Add the Reventless packages, the ReScript compiler, and Sury to your project. Packages are
+published under the `@reventlessdev` scope on the GitHub Package Registry:
 
 ```bash
-npm install @reventless/reventless @reventless/reventless-spec
-npm install --save-dev rescript sury
-npm install
+pnpm add @reventlessdev/reventless-spec @reventlessdev/reventless-infra sury
+pnpm add -D @reventlessdev/reventless-ppx @reventlessdev/reventless-gwt rescript sury-ppx
 ```
+
+Then add a provider package (see [Choose a Provider](#choose-a-provider) below) — e.g.
+`@reventlessdev/reventless-local` for local development.
 
 ### Configure ReScript
 
-Create a `rescript.json` in your project root with the PPX flags. The `reventless-ppx` **must** come before `sury-ppx`:
+Create a `rescript.json` in your project root. The `reventless-ppx` **must** come before
+`sury-ppx`, and the output suffix is `.res.mjs`:
 
 ```json
 {
@@ -76,26 +86,35 @@ Create a `rescript.json` in your project root with the PPX flags. The `reventles
   "sources": [{ "dir": "src", "subdirs": true }],
   "dependencies": [
     "sury",
-    "@reventlessdev/reventless-spec"
-  ]
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-local"
+  ],
+  "suffix": ".res.mjs"
 }
 ```
 
 The PPX auto-injects boilerplate (`let name`, DCB tag annotations, and more) so you can focus on domain logic. See [PPX annotations](./rescript-syntax.md#reventless-ppx-annotations) for details.
 
-### Choose a Cloud Provider
+### Choose a Provider
 
-The Reventless-Framework is cloud-provider agnostic. Therefore there is a different package per provider, which contains pre-configured default components and the necessary adapters to configure the components yourself when needed.  
-The packages are called `@reventless/reventless-<providerName>` (e.g. `@reventless/reventless-aws`)
+Reventless is provider-agnostic: a separate package per provider supplies the pre-configured
+components and adapters. Packages are named `@reventlessdev/reventless-<provider>`:
 
-> Currently we support only AWS out of the box, but plan to increase the supported provider in the future.
+- `@reventlessdev/reventless-local` — in-memory / SQLite backend for development and testing
+- `@reventlessdev/reventless-aws` — AWS (DynamoDB, Lambda, SQS, SNS, S3)
 
-Choose the according package and install it by running e.g. `npm i @reventless/reventless-aws` inside your project directory.
+> AWS and local providers ship today; more cloud targets are planned.
 
-### Core- & API-Stack
+Install the one you need, e.g. `pnpm add @reventlessdev/reventless-aws`.
 
-A [`Stack`](https://www.pulumi.com/docs/intro/concepts/stack/) is the actual deployment unit used by our infrastructure as code tool of choice [Pulumi](https://www.pulumi.com).  
-The foundation of any platform built using Reventless is a Core-Stack. This is the central piece providing the necessary functionalities for `Plugins` to interact with each other.
+### The Platform
+
+A **Platform** is the foundation every Reventless system is built on: it provides the shared
+infrastructure (event routing, command channels, the admin plugin) that lets `Plugin`s interact
+with each other. You select a Platform by choosing a provider — `ReventlessLocal.Platform` for
+local runs, `ReventlessAws.Platform` for AWS — and each `Plugin` is a functor
+`Make(Platform: ReventlessInfra.Platform.T)`. See the [Plugin System](./plugin-system.md) guide.
 
 ## Create a new Plugin
 

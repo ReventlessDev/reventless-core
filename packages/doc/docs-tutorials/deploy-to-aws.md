@@ -81,7 +81,7 @@ The platform serves the host-shell SPA from the published
 `platform-aws/package.json`:
 
 ```json
-"@reventlessdev/reventless-host-shell": "3.0.0-alpha.18"
+"@reventlessdev/reventless-host-shell": "3.0.0-alpha.28"
 ```
 
 The pin is exact on purpose — bump it deliberately when a newer host-shell is

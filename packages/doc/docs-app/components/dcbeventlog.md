@@ -4,7 +4,7 @@ date: 2026-02-17
 draft: false
 ---
 
-For a short summary of DcbEventLog, see [Reventless Components Overview.](../component-overview.md#dcbeventlog)
+For a short summary of DcbEventLog, see [Reventless Components Overview.](../component-overview.md)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`DcbEventLog.res`), builder logic (`DcbEventLog_Builder.res`), operations (`DcbEventLog_Operations.res`), tag utilities (`DcbTag.res`), and adapter interface (`DcbEventLog_Adapter.res`).

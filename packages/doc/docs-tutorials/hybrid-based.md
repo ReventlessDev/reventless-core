@@ -12,6 +12,10 @@ The hybrid approach mixes **aggregate-based** and **DCB-based** components withi
 
 In this example: **Category** and **Customer** stay as aggregates because their lifecycles are fully independent. **Product + ProductDemand** and **Order + CatalogProduct** share DCB event logs because they benefit from querying each other's events in the same filtered read.
 
+> Everything that isn't aggregate-vs-DCB-specific — translation slices, automations,
+> extension points, extensions, and all cross-plugin wiring — is **identical** across the
+> aggregate, DCB, and hybrid implementations. Only the entity modeling differs.
+
 :::info This page tracks the real package
 The code on this page describes the actual
 [`examples/online-shop-hybrid/`](https://github.com/ReventlessDev/reventless-core/tree/main/examples/online-shop-hybrid)
@@ -45,7 +49,7 @@ A named grouping of products (e.g. "Books", "Electronics"). Category has its own
 
 **Why an aggregate?** Category has no relationship to Product or ProductDemand events. Including it in the DCB log would add noise without benefit. Its simple Add/Rename/Archive lifecycle is a natural fit for an isolated aggregate with per-instance consistency.
 
-### Chapter: Product
+### DCB Entity: Product
 
 A product listing with a name, description, and price. Product events are tagged by `productId` in the shared DCB event log.
 
@@ -67,13 +71,13 @@ live updates.)
 
 #### Inbound Translation: Import Product from Supplier
 
-An **InboundTranslationSlice** receives external supplier data, validates it, and translates it into an `AddProduct` command — identical to the DCB-based implementation.
+An **InboundTranslationSlice** receives external supplier data, validates it, and translates it into an `AddProduct` command.
 
 | Inbound Translation Slice | External Input | Command Produced |
 |---|---|---|
 | `ImportProduct` | Supplier product JSON | `AddProduct` |
 
-### Chapter: ProductDemand
+### DCB Entity: ProductDemand
 
 Tracks per-product order demand. Driven entirely by events arriving from Ordering's Extension Point. Demand events are tagged by `productId` — the same tag as Product events, so the `ProductDemandView` can combine both in a single filtered read.
 
@@ -123,37 +127,21 @@ Conceptually, the events flowing through the shared Catalog DCB log are:
 
 ```rescript
 // Illustrative union — assembled from the slices, not a file you write.
-
-open Reventless
+// The `productId` tag is what lets ProductDemand and Product events be read together.
 @schema
 type event =
-  | ProductAdded({
-      productId: @s.matches(DcbTag.string) string,
-      name: string,
-      description: string,
-      price: float,
-    })
+  | ProductAdded({productId: @s.matches(DcbTag.string) string, name: string, /* … */})
   | ProductNameChanged({productId: @s.matches(DcbTag.string) string, name: string})
-  | ProductDescriptionChanged({
-      productId: @s.matches(DcbTag.string) string,
-      description: string,
-    })
-  | ProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
-  | ProductDemandRecorded({
-      productId: @s.matches(DcbTag.string) string,
-      orderId: string,
-    })
-  | ProductDemandRevoked({
-      productId: @s.matches(DcbTag.string) string,
-      orderId: string,
-    })
+  // … ProductDescriptionChanged, ProductPriceChanged
+  | ProductDemandRecorded({productId: @s.matches(DcbTag.string) string, orderId: string})
+  | ProductDemandRevoked({productId: @s.matches(DcbTag.string) string, orderId: string})
 ```
 
 Compare this with the pure DCB implementation, whose Catalog log also carries `CategoryAdded`, `CategoryRenamed`, and `CategoryArchived`. In the hybrid approach those events live in the Category aggregate's own event log instead.
 
 ### Extension Point: `ProductsExtensionPoint`
 
-Outbound API from Catalog to Ordering. Translates internal `CatalogEventLog` events into a stable public vocabulary — identical to the other implementations.
+Outbound API from Catalog to Ordering. Translates internal Product events into a stable public vocabulary.
 
 | EP Event | Triggered By |
 |---|---|
@@ -162,7 +150,7 @@ Outbound API from Catalog to Ordering. Translates internal `CatalogEventLog` eve
 
 ### Extension: `OrdersExtension`
 
-Inbound subscription to Ordering's `OrdersExtensionPoint`. Routes demand events to `RecordProductDemand` slice commands — identical to the other implementations.
+Inbound subscription to Ordering's `OrdersExtensionPoint`. Routes demand events to `RecordProductDemand` slice commands.
 
 | EP Event Received | Command Dispatched |
 |---|---|
@@ -188,7 +176,7 @@ A registered buyer with contact details and account status. Customer has its own
 
 **Why an aggregate?** Customer lifecycle is fully independent. No cross-entity consistency with Order or CatalogProduct is needed. Its register/update/deactivate lifecycle is a natural fit for a simple aggregate.
 
-### Chapter: Order
+### DCB Entity: Order
 
 A confirmed purchase referencing product IDs and a customer. Order events are tagged by `orderId` in the shared DCB event log.
 
@@ -211,7 +199,7 @@ only.
 
 #### Automation: Auto-Ship Order
 
-An **AutomationSlice** automatically ships every placed order — identical to the DCB-based implementation.
+An **AutomationSlice** automatically ships every placed order.
 
 | Automation Slice | Trigger Event | Command Issued | Resolved By |
 |---|---|---|---|
@@ -219,7 +207,7 @@ An **AutomationSlice** automatically ships every placed order — identical to t
 
 #### Outbound Translation: Send Order Confirmation Email
 
-An **OutboundTranslationSlice** sends a confirmation email whenever an order is placed — identical to the DCB-based implementation.
+An **OutboundTranslationSlice** sends a confirmation email whenever an order is placed.
 
 | Outbound Translation Slice | Trigger Event | External Action |
 |---|---|---|
@@ -230,13 +218,13 @@ An **OutboundTranslationSlice** sends a confirmation email whenever an order is 
 module is the recommended pattern: the slice depends on the service interface,
 and only the service knows how to talk to the outside world.
 
-### Chapter: CatalogProduct
+### DCB Entity: CatalogProduct
 
 A lightweight shadow copy of Catalog product data, kept in sync via Catalog's Extension Point. CatalogProduct events are tagged by `productId` in the shared DCB event log.
 
 | State Change Slices | Commands | Events |
 |---|---|---|
-| `SyncCatalogProduct` | `SyncNewProduct`, `SyncPriceChange` | `CatalogProductSynced`, `CatalogProductPriceChanged` |
+| `SyncCatalogProduct` | `SyncNewProduct`, `ChangeSyncedPrice` | `CatalogProductSynced`, `CatalogProductPriceChanged` |
 
 | State View Slice (Stream) | Events | Queryable view |
 |---|---|---|
@@ -257,36 +245,20 @@ Conceptually, the events flowing through the shared Ordering DCB log are:
 
 ```rescript
 // Illustrative union — assembled from the slices, not a file you write.
-
-open Reventless
 @schema
 type event =
-  | OrderPlaced({
-      orderId: @s.matches(DcbTag.string) string,
-      customerId: string,
-      productIds: array<string>,
-    })
+  | OrderPlaced({orderId: @s.matches(DcbTag.string) string, productIds: array<string>, /* … */})
   | OrderShipped({orderId: @s.matches(DcbTag.string) string})
-  | OrderCancelled({
-      orderId: @s.matches(DcbTag.string) string,
-      productIds: array<string>,
-    })
-  | CatalogProductSynced({
-      productId: @s.matches(DcbTag.string) string,
-      name: string,
-      price: float,
-    })
-  | CatalogProductPriceChanged({
-      productId: @s.matches(DcbTag.string) string,
-      price: float,
-    })
+  // … OrderCancelled
+  | CatalogProductSynced({productId: @s.matches(DcbTag.string) string, name: string, price: float})
+  | CatalogProductPriceChanged({productId: @s.matches(DcbTag.string) string, price: float})
 ```
 
 Compare this with the pure DCB implementation, whose Ordering log also carries `CustomerRegistered`, `EmailChanged`, `AddressChanged`, and `CustomerDeactivated`. In the hybrid approach those events live in the Customer aggregate's own event log instead.
 
 ### Extension Point: `OrdersExtensionPoint`
 
-Outbound API from Ordering to Catalog — identical to the other implementations.
+Outbound API from Ordering to Catalog.
 
 | EP Event | Triggered By |
 |---|---|
@@ -295,12 +267,12 @@ Outbound API from Ordering to Catalog — identical to the other implementations
 
 ### Extension: `ProductsExtension`
 
-Inbound subscription to Catalog's `ProductsExtensionPoint` — identical to the other implementations.
+Inbound subscription to Catalog's `ProductsExtensionPoint`.
 
 | EP Event Received | Command Dispatched |
 |---|---|
-| `ProductBecameAvailable` | `SyncCatalogProduct` |
-| `ProductPriceChanged` | `SyncCatalogProduct` |
+| `ProductBecameAvailable` | `SyncNewProduct` |
+| `ProductPriceChanged` | `ChangeSyncedPrice` |
 
 ---
 
@@ -427,23 +399,10 @@ Customer and the DCB slice arrays for Order/CatalogProduct.
 
 ## When to Choose Hybrid
 
-| Scenario | Recommended Approach |
-|---|---|
-| All entities have independent lifecycles | **Aggregate-based** — simplest model, isolated streams |
-| All entities benefit from shared event log | **DCB-based** — cross-entity consistency, fewer tables |
-| Some entities are independent, others need cross-entity consistency | **Hybrid** — best of both |
-
-The hybrid boundary must be clean: entities that need cross-entity consistency **must** share the same DCB event log. Entities that are independent **should** be aggregates — including them in the DCB log adds noise without benefit.
-
-### Decision checklist
-
-For each entity in your Plugin, ask:
-
-1. **Does this entity need to see events from other entities in its decision model?** → DCB
-2. **Does a read model need to combine events from this entity with another entity's events?** → Both entities should share a DCB log
-3. **Is this entity's lifecycle fully independent?** → Aggregate
-
-If all answers point to the same approach, use that approach. If answers are mixed, use hybrid.
+The hybrid boundary must be clean: entities that need cross-entity consistency **must** share
+the same DCB event log; independent entities **should** be aggregates, since adding them to the
+DCB log adds noise without benefit. For the per-entity decision procedure, see
+[Choosing an approach](./choosing-an-approach).
 
 ---
 

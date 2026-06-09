@@ -15,33 +15,38 @@ This guide walks through creating a new `reventless-<provider>` package from scr
 
 ## 1. Create the Package
 
-Add a new directory under `packages/` in the monorepo:
+Provider packages live under `reventless/` (the framework root), **not** `packages/`
+(which is build tooling and docs only):
 
 ```bash
-mkdir packages/reventless-myprovider
-cd packages/reventless-myprovider
+mkdir reventless/reventless-myprovider
+cd reventless/reventless-myprovider
 ```
 
 ## 2. Set Up rescript.json
 
+The `reventless-ppx` flag **must** come before `sury-ppx`, and the output suffix is
+`.res.mjs`:
+
 ```json
 {
   "name": "reventless-myprovider",
-  "version": "11.0.0",
+  "version": "1.0.0-alpha.0",
   "sources": [
     {
       "dir": "src",
       "subdirs": true
     }
   ],
-  "bs-dependencies": [
-    "reventless-spec",
-    "reventless",
+  "ppx-flags": ["@reventlessdev/reventless-ppx/bin", "sury-ppx/bin"],
+  "bsc-flags": ["-open RescriptCore"],
+  "dependencies": [
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-core",
+    "@reventlessdev/reventless-infra",
     "rescript-myprovider-sdk"
   ],
-  "ppx-flags": ["sury-ppx/bin"],
-  "bsc-flags": ["-open RescriptCore"],
-  "suffix": ".res.js"
+  "suffix": ".res.mjs"
 }
 ```
 
@@ -49,25 +54,27 @@ cd packages/reventless-myprovider
 
 ```json
 {
-  "name": "@reventless/reventless-myprovider",
-  "version": "0.0.1",
+  "name": "@reventlessdev/reventless-myprovider",
+  "version": "1.0.0-alpha.0",
   "private": true,
   "scripts": {
     "build": "rescript build",
-    "start": "rescript build -w",
-    "rebuild": "rescript clean && rescript build",
+    "start": "rescript watch",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "clean": "rescript clean",
     "test": "jest"
   },
   "dependencies": {
-    "@reventless/reventless": "*",
-    "@reventless/reventless-spec": "*"
+    "@reventlessdev/reventless-core": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*"
   }
 }
 ```
 
 ## 4. Implement Adapter Interfaces
 
-For each component you want to support, implement the adapter interfaces defined in `reventless`. See the [Adapter Pattern](./adapter-pattern.md) for the full checklist.
+For each component you want to support, implement the adapter interfaces defined in `reventless-core`. See the [Adapter Pattern](./adapter-pattern.md) for the full checklist.
 
 Start with the core event sourcing adapters:
 
@@ -92,7 +99,7 @@ This is the API surface that application developers use.
 The `reventless-aws` package is the canonical reference implementation. When in doubt, examine how it implements a given adapter — the patterns apply directly to other providers.
 
 ```
-packages/reventless-aws/src/adapter/
+reventless/reventless-aws/src/adapter/
 ├── EventLog/
 ├── CommandTopic/
 ├── EventTopic/

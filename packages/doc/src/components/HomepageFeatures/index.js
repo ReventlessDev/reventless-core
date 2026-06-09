@@ -68,9 +68,9 @@ const FeatureList = [
     icon: '🚀',
     description: (
       <>
-        In production in the financial industry since 2019. Built on Effect: typed
-        error handling, automatic retries with backoff, and streaming throughout —
-        for efficient projection rebuilds and event replay at scale.
+        In production in the financial industry since 2019. Built on a typed effect
+        system: typed error handling, automatic retries with backoff, and streaming
+        throughout — for efficient projection rebuilds and event replay at scale.
       </>
     ),
   },

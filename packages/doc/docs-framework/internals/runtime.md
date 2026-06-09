@@ -162,9 +162,9 @@ module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_PerAggregat
 
 ```d2
 Micro: Micro Strategy {
-  L4: CommandTopic\nLambda
-  L5: CommandGenerator\nLambda
-  L6: EventCollector\nLambda
+  L4: "CommandTopic\nLambda"
+  L5: "CommandGenerator\nLambda"
+  L6: "EventCollector\nLambda"
   CT: CommandTopic { class: command-topic }
   CG: CommandGenerator { class: command-generator }
   EC: EventCollector { class: event-collector }
@@ -253,12 +253,12 @@ Manages runtime for plugin components:
 ```d2
 shape: sequence_diagram
 
-Component: Component
-RuntimeBuilder: RuntimeBuilder
-RuntimeEnvironment: RuntimeEnvironment
+Component: Component { class: aggregate }
+RuntimeBuilder: RuntimeBuilder { class: adapter }
+RuntimeEnvironment: RuntimeEnvironment { class: adapter }
 Lambda: Lambda { class: aws-service }
 Channel: Channel { class: aws-service }
-Handler: Handler 
+Handler: Handler { class: aws-service }
 
 Component -> RuntimeBuilder: Register handler
 RuntimeBuilder -> RuntimeEnvironment: Create Lambda

@@ -1,17 +1,24 @@
 ---
-title: Providers
+title: Infrastructure & Providers
 sidebar_position: 1
 ---
 
-# Providers
+# Infrastructure & Providers
 
-Reventless is a **provider-agnostic** event-sourced CQRS framework. The core `reventless` package defines components and abstract adapter interfaces but contains no infrastructure code. **Providers** are packages that implement these adapter interfaces for a specific platform.
+Reventless is a **provider-agnostic** event-sourced CQRS framework. The core `reventless-core` package defines components and abstract adapter interfaces but contains no infrastructure code. **Providers** are packages that implement these adapter interfaces for a specific platform.
+
+> **Deploying an app?** Jump to **[AWS Provider](./aws/)** → [AWS Get Started](./aws/get-started.md)
+> and the [Deployment Guide](./deployment-guide.md). For local runs, see the
+> [Local Provider](./local/).
+>
+> **Writing a new provider?** Start at [Scaffolding a Provider Package](./get-started.md)
+> and the [Adapter Pattern](./adapter-pattern.md).
 
 ## What a Provider Does
 
 A provider package:
 
-1. **Implements adapter interfaces** — provides concrete implementations of `EventLog_Adapter.Storage`, `CommandTopic_Adapter.Channel`, `EventTopic_Adapter.Publisher`, and other adapter interfaces defined in `reventless`
+1. **Implements adapter interfaces** — provides concrete implementations of `EventLog_Adapter.Storage`, `CommandTopic_Adapter.Channel`, `EventTopic_Adapter.Publisher`, and other adapter interfaces defined in `reventless-core`
 2. **Provides pre-configured builders** — exports `Make` functors that wire the framework builders with provider-specific adapters, so application developers get a simple API
 3. **Manages infrastructure** — creates the actual resources (tables, queues, topics, functions) needed to run the application
 
@@ -26,18 +33,20 @@ For a deep dive into how this separation works, see the [Adapter Pattern](./adap
 
 ## Available Providers
 
-### InMemory
+### Local
 
 **Package:** `reventless-local`
 
-The InMemory provider runs everything in a single process using in-memory data structures. No cloud infrastructure is needed.
+The Local provider runs everything in a single process. It offers two interchangeable
+backends — an in-memory store and a SQLite store (selected via `Backend.Memory` /
+`Backend.Sqlite` or the `REVENTLESS_LOCAL_BACKEND` env var). No cloud infrastructure is needed.
 
 **Use cases:**
 - Local development and rapid prototyping
 - Unit and integration testing with Jest
 - Exploring the framework without cloud credentials
 
-The InMemory provider includes a shared event bus (`LocalBus`), a built-in GraphQL server, and an MCP server for AI-native access. All adapter interfaces are fully implemented.
+The Local provider includes a shared event bus (`LocalBus`), a built-in GraphQL server, and an MCP server for AI-native access. All adapter interfaces are fully implemented.
 
 [Local Provider Documentation &rarr;](./local/)
 
