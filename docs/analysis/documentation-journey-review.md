@@ -437,3 +437,83 @@ event-graph / UI-fragment machinery.
 - ⚠️ Unverified (flagged for the editor): existence of `pnpm run generate` (`aggregates.md:248`),
   the `@noApi` annotation (`hybrid-based.md:204`), and whether `/infrastructure/aws/*` /
   `/infrastructure/custom-domain` routes referenced by the tutorials resolve.
+
+---
+
+# Addendum — Hands-on verification (2026-06-09)
+
+**Method:** actually executed the runnable steps of the tutorial spine and app get-started
+against the repo (`examples/online-shop-hybrid/platform-local`), introspected the live GraphQL
+schema, and checked every file/script/config the AWS-path pages reference. This goes beyond the
+read-only review above — several findings are bugs that only surface when you *run* the steps.
+
+**What works:** `pnpm run build` compiles the local platform (150 modules); the backend boots
+(reaches `startServers`, binds the platform API on 4001); the documented CQRS loop works once
+the field names are corrected (verified a real `Catalog_Category_Add` mutation + `Catalog_Categories`
+read round-trip). All AWS-path file/dir/script references resolve.
+
+## Confirmed bugs — `docs-tutorials/run-locally.md`
+
+- **HV-1 (backend default is SQLite, not in-memory).** `serve`, `dev`, and `dev:full` default to
+  `REVENTLESS_LOCAL_BACKEND=sqlite:./.reventless/local.db` (a `local.db` file is created and
+  **persists** across restarts). Memory is opt-in via `serve:memory` / `dev:full:memory`. The page
+  contradicts this twice: line 10 "backed by in-memory stores" and line 76 "By default the local
+  platform starts empty every run" with persistence framed as optional. It's backwards — persistence
+  is the default; ephemeral is the opt-in. (`test-locally.md:75` "all on in-memory infrastructure"
+  has the same error.)
+- **HV-2 (wrong env-var names).** The page's table lists `PORT` and `ADMIN_PORT`. The platform
+  actually reads `REVENTLESS_DOMAIN_PORT` (default 4000) and `REVENTLESS_PLATFORM_PORT` (default
+  4001), plus `REVENTLESS_DOMAIN_MCP_PORT` (3001) and `REVENTLESS_PLATFORM_MCP_PORT` (3002) —
+  see `reventless/reventless-local/src/Platform.res:702-705`. `GRAPHQL_DEBUG`/`MCP_DEBUG` are correct.
+- **HV-3 ("two processes" is three).** `dev:full` runs `concurrently --names rs,backend,ui` — three
+  processes (`rs` = `pnpm -w run watch` rescript watcher, `backend` = `serve:watch`, `ui`). The page
+  (line 33, including the earlier cleanup edit) says "two processes". The UI also waits on `tcp:4001`,
+  not the domain port.
+- **HV-4 (minor, terminology).** Port 4001 is the **platform** API in code (`platformPort`); the page
+  calls it "admin API". Defensible (it serves `Admin_*`) but drifts from the code's term.
+
+## Confirmed bugs — `docs-tutorials/test-locally.md`
+
+- **HV-5 (login table is wrong).** The page lists `admin/alice/bob/carol`. The committed seed
+  template `examples/online-shop-hybrid/platform-local/users.example.yaml` defines only **`admin`/`admin`**
+  (groups `Admin, User`) and **`user`/`user`** (group `User`). `alice`, `bob`, and `carol` do not exist.
+- **HV-6 (link target is gitignored).** The page links to `platform-local/.reventless/users.yaml`,
+  which is gitignored (repo `.gitignore: .reventless/`) — the GitHub link 404s. It should link to the
+  committed `users.example.yaml`, and mention that `scripts/setup.mjs` (or
+  `cp users.example.yaml .reventless/users.yaml`) seeds the real file.
+- **HV-7 (GraphQL examples don't run — verified against the live schema).** Both snippets fail with
+  `GRAPHQL_VALIDATION_FAILED`. Operations are **plugin-prefixed**, command mutations return the
+  `CommandResult` **union** (need a selection set), and read queries return Relay **connections**:
+  - Mutation: `Category_AddCategory(id, name)` → **`Catalog_Category_Add(id: "books", name: "Books") { __typename }`**
+    (verified → `{"__typename":"CommandAccepted"}`).
+  - Query: `Categories { id name }` → **`Catalog_Categories { edges { node { id name } } }`**
+    (verified → returns the added category).
+  - (For DCB-slice commands the shape is `Catalog_AddProduct(...) { __typename }` — no `Category_` infix.)
+- **HV-8 (minor).** `X-User: admin` works but is **not required** for reads — without it the platform
+  falls back to `defaultUser` and the query still returns data. Fine, but the example implies the header
+  is load-bearing.
+
+## AWS path — `deploy-to-aws.md` / `test-on-aws.md` (reference-checked, not executed)
+
+- All references resolve: `platform-aws/`, `catalog-aws/`, `ordering-aws/` each with
+  `Pulumi.{alpha,beta,main,yaml}`; `catalog-aws/Pulumi.alpha.yaml` carries the
+  `platform:stack: reventless/...` line the page tells you to repoint; `platform-aws/verify-subscriptions.mjs`
+  exists with the hardcoded host config block the page says to edit.
+- **Note:** "Source B" (test-on-aws) *is* defined — in `verify-subscriptions.mjs`'s header (Source A/B).
+  The earlier cleanup reworded it to "the live-update path", which is clearer for a doc reader; no further
+  action needed.
+- Not executed (needs an AWS account + Pulumi org); correctness of the deploy sequence itself is unverified.
+
+## App Guide — `docs-app/get-started.md` (recipe checked, not run end-to-end)
+
+- `generate-plugin` is a real bin (`reventless/reventless-spec/package.json` → `./run-generator.mjs`),
+  so the `"generate": "generate-plugin src/"` + `prebuild` scripts are valid.
+- Package scope/names, `rescript.json` `suffix: ".res.mjs"`, and the `reventless-ppx` → `sury-ppx` flag
+  order all match the working `catalog` example. The recipe is internally consistent; a true fresh-project
+  run (outside the monorepo, installing from the registry) was not performed.
+
+## Severity
+
+HV-1, HV-5, HV-7 are user-blocking on the evaluator/app-dev happy path (a copy-pasted login or curl
+fails). HV-2, HV-3, HV-6 mislead but don't hard-block. HV-4, HV-8 are minor. Fixes are tracked in
+`docs/plans/tutorial-handson-fixes.md`.
