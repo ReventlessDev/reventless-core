@@ -4,7 +4,7 @@ date: 2026-01-26
 draft: false
 ---
 
-For a short summary of SideEffectHandler, see [Reventless Components Overview.](../component-overview.md#sideeffecthandler)
+For a short summary of SideEffectHandler, see [Reventless Components Overview.](../component-overview.md)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`SideEffectHandler.res`), builder logic (`SideEffectHandler_Builder.res`), and runtime callbacks (`SideEffectHandler_Callback.res`).

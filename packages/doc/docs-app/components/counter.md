@@ -4,7 +4,7 @@ date: 2026-01-26
 draft: false
 ---
 
-For a short summary of Counter, see [Reventless Components Overview.](../component-overview.md#counter)
+For a short summary of Counter, see [Reventless Components Overview.](../component-overview.md)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`Counter.res`), builder logic (`Counter_Builder.res`), runtime operations (`Counter_Operations.res`), and runtime callbacks (`Counter_Callback.res`).

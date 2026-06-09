@@ -2,7 +2,7 @@
 title: EventCollector
 ---
 
-For a short summary of EventCollector, see [Reventless Components Overview.](../component-overview.md#eventcollector)
+For a short summary of EventCollector, see [Reventless Components Overview.](../component-overview.md)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`EventCollector.res`), builder logic (`EventCollector_Builder.res`), and adapter interface (`EventCollector_Adapter.res`).

@@ -5,13 +5,13 @@ sidebar_position: 1
 
 # Reventless — Framework Developer Guide
 
-This guide is for contributors to the **`reventless`** package — the cloud-agnostic framework core that application developers build on top of.
+This guide is for contributors to the **`reventless-core`** package — the cloud-agnostic framework core that application developers build on top of.
 
 If you are building an application with Reventless, see the [App Developer Guide](/app). If you are writing a new cloud provider adapter package, see the [Infrastructure Guide](/infrastructure).
 
 ## What the Framework Is
 
-The `reventless` package defines:
+The `reventless-core` package defines:
 
 - **Component module types** (`Aggregate.T`, `ReadModel.T`, `Plugin.T`, etc.) — the contracts that all implementations must satisfy
 - **Builder functors** (`Aggregate_Builder.Make`, `ReadModel_Builder.Make`, etc.) — generic implementations parameterized over adapter interfaces
@@ -22,33 +22,33 @@ The framework itself does not depend on any cloud provider. All infrastructure c
 
 ## Repository Structure
 
+The monorepo has four package roots; framework packages live under `reventless/`. See the
+generated [Packages](./packages.mdx) page for the full, always-current list.
+
 ```
-packages/
+reventless/
 ├── reventless-spec/    # Type specs and shared interfaces (no impl)
-├── reventless/         # Framework core (this package)
+├── reventless-core/    # Framework core (this package)
 │   └── src/
 │       ├── components/   # Component definitions and builders
 │       │   ├── Aggregate/
 │       │   ├── ReadModel/
 │       │   ├── Plugin/
 │       │   └── ...
+│       ├── admin/        # Built-in Platform Admin components
 │       └── adapter/      # Adapter interfaces and runtime builders
-└── reventless-aws/     # AWS cloud provider implementation
+├── reventless-aws/     # AWS cloud provider implementation
+└── reventless-local/   # Local (in-memory / SQLite) provider
 ```
 
 ## Key Abstractions
 
 ### Component Structure Pattern
 
-Each component follows a consistent file structure:
-
-- `Component.res` — type definitions (the `component` type, `outputs`, etc.)
-- `Component_Builder.res` — the `Make` functor that constructs components
-- `Component_Adapter.res` — adapter interfaces (Storage, Channel, etc.)
-- `Component_Operations.res` — runtime business logic
-- `Component_Callback.res` — runtime event/command handlers
-
-See [Component Structure Pattern](./internals/component-structure-pattern.md) for a full walkthrough using EventLog as an example.
+Each component follows a consistent file structure — two required files (`Component.res`,
+`Component_Builder.res`) plus up to three optional ones (`_Adapter`, `_Operations`,
+`_Callback`). See [Component Structure Pattern](./internals/component-structure-pattern.md)
+for the full breakdown and a walkthrough using EventLog as an example.
 
 ### Pulumi.Output.t Wrapping
 
@@ -69,7 +69,7 @@ module Make = (Spec: Spec, Storage: Storage, Channel: Channel): T => { ... }
 
 ## Where to Start
 
-1. [Get started](./get-started.md) — clone, build, and run tests
-2. [Internals](./internals/framework-internals.md) — how the framework fits together
-3. [Component structure](./internals/component-structure-pattern.md) — the file pattern used across all components
-4. [Messages](./internals/messages.md) — how commands and events are serialized and routed
+1. [Contributing setup](./contributing.md) — clone, build, and run tests
+2. [Framework internals](./internals/framework-internals.md) — the ordered tour of how the framework fits together
+3. [Component structure pattern](./internals/component-structure-pattern.md) — the file pattern used across all components
+4. [Extending the framework](./internals/extending-the-framework.md) — add a component or a provider adapter

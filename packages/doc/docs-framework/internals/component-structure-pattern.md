@@ -61,7 +61,7 @@ The EventLog component demonstrates the full pattern with all optional files:
 ### File Structure
 
 ```
-packages/reventless/src/components/EventLog/
+reventless/reventless-core/src/components/EventLog/
 ├── EventLog.res           # Core types and interface
 ├── EventLog_Builder.res   # Factory/construction
 ├── EventLog_Adapter.res   # Provider-agnostic adapter interface
@@ -187,8 +187,8 @@ module Make = (
           {
             module Spec = Spec
             module EventTopic = SpecificEventTopic
-            let eventTopic = eventTopicOps
-            let storage = storageOps
+            let eventTopic = eventTopic
+            let storage = storage
           },
         )
         {append: Runtime.append, replay: Runtime.replay}
@@ -209,18 +209,18 @@ In the call to `Component.setOperations`, we're using `Pulumi.Output.apply` to t
 
 ```d2
 UserCode: User Code {
-  Spec: "EventLog.Spec\nUser-defined types"
+  Spec: "EventLog.Spec\nUser-defined types" { class: spec }
 }
 
 ComponentFiles: Component Files {
   Interface: "EventLog.res\nType definitions"
   Builder: "EventLog_Builder.res\nFactory"
-  Adapter: "EventLog_Adapter.res\nAbstract interface"
+  Adapter: "EventLog_Adapter.res\nAbstract interface" { class: adapter }
   Operations: "EventLog_Operations.res\nRuntime operations"
 }
 
 ProviderImpl: Provider Implementation {
-  AWSAdapter: "AWS EventLog Storage\nDynamoDB implementation"
+  AWSAdapter: "AWS EventLog Storage\nDynamoDB implementation" { class: aws-service }
 }
 
 TypeSafeOps: "Type-safe operations\nappend/replay"
@@ -324,7 +324,7 @@ self->Component.setOperations(
    - Use generic types (`string`, `Js.Json.t`) for provider independence
 
 4. **Add Component_Operations.res (if needed)**
-   - Implement runtime operationswith type-safe operations
+   - Implement runtime operations with type-safe operations
    - Handle serialization/deserialization
    - Transform generic adapter operations to typed operations
 

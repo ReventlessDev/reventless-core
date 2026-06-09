@@ -26,7 +26,8 @@ Handler: "Command Handler\n(Lambda)" { class: aggregate }
 Aggregate: "Aggregate\n(State Machine)" { class: aggregate }
 EventLog: "Event Log\n(DynamoDB)" { class: event-log }
 EventTopic: "Event Topic\n(DynamoDB Streams)" { class: event-topic }
-ReadModel: "Read Model\n(Lambda + DynamoDB)" { class: read-model }
+ReadModel: "Read Model\n(Lambda)" { class: read-model }
+QueryDb: "Query DB\n(DynamoDB)" { class: query-db }
 EventMapper: "Event Mapper\n(Lambda)" { class: event-mapper }
 OtherCommandTopic: Other Command Topic { class: command-topic }
 
@@ -35,7 +36,8 @@ CommandTopic -> Handler: { class: command-flow }
 Handler -> Aggregate: { class: command-flow }
 Aggregate -> EventLog: { class: event-flow }
 EventLog -> EventTopic: { class: event-flow }
-EventTopic -> ReadModel: { class: projection-flow }
+EventTopic -> ReadModel: { class: event-flow }
+ReadModel -> QueryDb: project { class: projection-flow }
 EventTopic -> EventMapper: { class: event-flow }
 EventMapper -> OtherCommandTopic: { class: command-flow }
 ```
@@ -261,7 +263,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~heartbeatInterval=60,
+      ~heartbeatInterval=5,
       ~aggregates=[module(ProductAggregate)],
       ~readModels=[module(ProductsReadModel)],
     )
@@ -273,7 +275,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 The composition root is the only file that imports `reventless-aws`. It instantiates the Platform with AWS config and passes it to the [plugin module function](./rescript-syntax.md#functors), then calls `makePlatform` to create the Pulumi infrastructure.
 
 ```rescript
-// index.res — composition root
+// Main.res — composition root
 
 // Create the AWS platform (wires DynamoDB, Lambda, SQS, SNS, etc.)
 module Platform = ReventlessAws.Platform.Make(Config)
@@ -313,7 +315,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
-      ~heartbeatInterval=60,
+      ~heartbeatInterval=5,
       ~aggregates=[module(ProductAggregate), module(InventoryAggregate)],
     )
 }

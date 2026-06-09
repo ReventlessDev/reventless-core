@@ -31,7 +31,7 @@ Handler -> Slice2: { class: command-flow }
 Handler -> Handler3: { class: command-flow }
 Slice1 -> EventLog: { class: event-flow }
 Slice2 -> EventLog: { class: event-flow }
-EventLog -> ViewSlice: { class: projection-flow }
+EventLog -> ViewSlice: { class: event-flow }
 ViewSlice -> QueryDb: { class: projection-flow }
 EventLog -> Read
 Read -> Evolve

@@ -17,6 +17,9 @@ Everything in this page happens inside
 - Node v22.17.1 (see `.node-version`) and pnpm 10 (via `corepack`).
 - A checkout of `reventless-core`. You do **not** need the UI source — the local
   UI is provided by the published `reventless-host-shell` package.
+- A GitHub Package Registry token with `read:packages` for `@reventlessdev/*` — the
+  first `pnpm install` pulls published packages (e.g. `reventless-host-shell`). See
+  [Registry and Tokens](/framework/registry-and-tokens).
 
 ## One command
 
@@ -27,7 +30,8 @@ pnpm run build      # once, and after any source change
 pnpm run dev:full   # backend + UI together
 ```
 
-`dev:full` starts two things side by side (colour-coded `[backend]` / `[ui]`):
+`dev:full` starts two processes side by side (colour-coded `[backend]` / `[ui]`); the backend
+exposes two endpoints:
 
 | Process | What it is | URL |
 |---|---|---|

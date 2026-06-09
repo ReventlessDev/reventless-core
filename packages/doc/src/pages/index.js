@@ -38,7 +38,7 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--secondary button--lg"
-            to="/framework/get-started">
+            to="/framework/contributing">
             Contribute
           </Link>
         </div>
@@ -70,7 +70,7 @@ const ReadingPaths = [
     persona: 'Contributor',
     question: '“I want to contribute to the framework.”',
     steps: [
-      <><Link to="/framework/get-started">Contributing get-started</Link></>,
+      <><Link to="/framework/contributing">Contributing setup</Link></>,
       <><Link to="/framework/internals/framework-internals">Framework internals</Link> (ordered)</>,
       <><Link to="/framework/internals/component-structure-pattern">Component-structure pattern</Link> → <Link to="/framework/internals/extending-the-framework">extending the framework</Link></>,
     ],

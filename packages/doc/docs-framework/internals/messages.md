@@ -195,7 +195,7 @@ Client -> CT: command' { class: command-flow }
 CT -> Agg: command' { class: command-flow }
 Agg -> EL: "event'[]" { class: event-flow }
 EL -> ET: "event'[]" { class: event-flow }
-ET -> RM: event' { class: projection-flow }
+ET -> RM: event' { class: event-flow }
 ```
 
 This flow demonstrates:
@@ -223,7 +223,7 @@ C1 -> A { class: command-flow }
 A -> E1 { class: event-flow }
 A -> E2 { class: event-flow }
 E1 -> EM { class: event-flow }
-E2 -> RM2 { class: projection-flow }
+E2 -> RM2 { class: event-flow }
 EM -> C2 { class: command-flow }
 ```
 

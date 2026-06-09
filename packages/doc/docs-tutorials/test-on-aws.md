@@ -45,7 +45,7 @@ confirm read models update.
 
 The example ships a verification script that drives a command and confirms the
 change is pushed over a WebSocket subscription — the AWS equivalent of watching
-the live view update in the local UI. It exercises **Source B**:
+the live view update in the local UI. It exercises the live-update path:
 
 ```
 AddProduct command → DynamoDB write → DynamoDB Stream → StateTopic Lambda
@@ -85,4 +85,4 @@ clients.
 - Build your own application → [App Guide](/app/get-started).
 - Point the deployed shell at your own domain →
   [Custom domain for the host UI](/infrastructure/custom-domain).
-- Contribute to the framework → [Contributing](/framework/get-started).
+- Contribute to the framework → [Contributing](/framework/contributing).

@@ -4,7 +4,7 @@
 const sidebars = {
   frameworkSidebar: [
     'index',
-    'get-started',
+    'contributing',
     'packages',
     'development-process',
     'ppx-binary-management',
@@ -53,7 +53,6 @@ const sidebars = {
       type: 'category',
       label: 'Dev environment',
       items: [
-        'contributing',
         'pnpm-guide',
         'cross-repo-dev-linking',
         'registry-and-tokens',

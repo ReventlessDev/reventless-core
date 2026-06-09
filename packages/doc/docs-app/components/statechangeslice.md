@@ -4,7 +4,7 @@ date: 2026-02-17
 draft: false
 ---
 
-For a short summary of StateChangeSlice, see [Reventless Components Overview.](../component-overview.md#statechangeslice)
+For a short summary of StateChangeSlice, see [Reventless Components Overview.](../component-overview.md)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`StateChangeSlice.res`), builder logic (`StateChangeSlice_Builder.res`), and callback/handler logic (`StateChangeSlice_Callback.res`).

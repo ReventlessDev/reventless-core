@@ -1,6 +1,5 @@
 ---
 title: Component Overview
-date: 2022-09-27
 draft: false
 ---
 
@@ -212,7 +211,7 @@ dcb_layout: "" {
     outbound_slice -> todo_db: sync state { class: projection-flow }
     outbound_slice -> external: "translate (API call)"
     external -> inbound_slice: "external input"
-    inbound_slice -> todo_db: audit logwebhook { class: projection-flow }
+    inbound_slice -> todo_db: audit log { class: projection-flow }
   }
 
   read_side: Read Side {
@@ -270,495 +269,54 @@ dcb_layout: "" {
 - **Plugin System**: Cross-plugin communication via ExtensionPoints and Extensions
 - **Scheduling**: Time-based command generation and health monitoring
 
-### Aggregate
-
-[*Aggregate*s](https://www.martinfowler.com/bliki/DDD_Aggregate.html) are the transactional units in your system.  
-An Aggregate receives Commands and outputs Events based on the current State. A single Command can result in _any number_ of Events.  
-Only the Aggregate's Events will be stored. If a new Command gets handled the actual State will be calculated based on the previous Events ([Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). The current State will never be persisted to storage.
-
-```d2
-direction: right
-
-command: Command { class: msg-command }
-aggregate: Aggregate { class: aggregate }
-event: Event { class: msg-event }
-
-command -> aggregate: 1 { class: command-flow }
-aggregate -> event: many { class: event-flow }
-```
-
-- **responsibility**: ensure only valid Commands create Events having the necessary information attached; emit Events
-- **in**: Command
-- **out**: Events
-
-[Read more about the Aggregate component.](./components/aggregate.md)
-
-### StateChangeSlice
-
-The **StateChangeSlice** is the DCB equivalent of an Aggregate. It handles Commands by reading a decision state from the shared DcbEventLog (scoped to a partition key), applying business rules, and appending new Events. Multiple StateChangeSlices share the same DcbEventLog, enabling cross-entity consistency.
-
-```d2
-direction: right
-
-command: Command { class: msg-command }
-slice: StateChangeSlice { class: state-change-slice }
-eventlog: DcbEventLog { class: event-log }
-event: Event { class: msg-event }
-
-command -> slice: 1 { class: command-flow }
-eventlog -> slice: "decision state" { class: event-flow }
-slice -> eventlog: "append" { class: event-flow }
-slice -> event: many { class: event-flow }
-```
-
-- **responsibility**: enforce business rules against a scoped decision model; append Events to DcbEventLog with optimistic concurrency
-- **in**: Command, Events from DcbEventLog (scoped by partition tag)
-- **out**: Events appended to DcbEventLog
-
-[Read more about the StateChangeSlice component.](./components/statechangeslice.md)
-
-### StateViewSlice
-
-The **StateViewSlice** is the DCB equivalent of a ReadModel. It subscribes to the shared DcbEventLog, projects events into a QueryDb table, and serves read queries. Unlike a ReadModel it does not need a separate EventCollector — it reads directly from the DcbEventLog.
-
-```d2
-direction: right
-
-eventlog: DcbEventLog { class: event-log }
-slice: StateViewSlice { class: state-view-slice }
-querydb: QueryDb { class: query-db }
-
-eventlog -> slice: events { class: event-flow }
-slice -> querydb: "project" { class: projection-flow }
-```
-
-- **responsibility**: project DcbEventLog events into query-optimised state; serve read queries
-- **in**: Events from DcbEventLog
-- **out**: State in QueryDb
-
-[Read more about the StateViewSlice component.](./components/stateviewslice.md)
-
-### AutomationSlice
-
-The **AutomationSlice** implements the Event Modeling **Automation** pattern (TODO List Pattern) for DCB-based plugins. It subscribes to a shared DcbEventLog, accumulates pending work items into a TODO list, processes them exactly once by issuing commands, and marks items as completed when resolution events arrive.
-
-```d2
-direction: right
-
-events: Events { class: msg-event }
-automation: AutomationSlice { class: automation-slice }
-commands: Commands { class: msg-command }
-
-events -> automation: collect { class: event-flow }
-automation -> commands: process { class: command-flow }
-events -> automation: resolve { class: event-flow }
-```
-
-- **responsibility**: collect pending work items from events; process each item exactly once; track completion via resolution events; provide retry and heartbeat semantics
-- **in**: Events from DcbEventLog
-- **out**: Commands to CommandTopic
-
-[Read more about the AutomationSlice component.](./components/automationslice.md)
-
-### OutboundTranslationSlice
-
-The **OutboundTranslationSlice** implements the Event Modeling **Translation** pattern for outbound external communication in DCB-based plugins. It listens to events from a shared DcbEventLog, accumulates outbound work items into a TODO list, translates each item by calling an external service, and optionally publishes a command back into the domain.
-
-```d2
-direction: right
-
-events: Events { class: msg-event }
-outbound: OutboundTranslationSlice { class: automation-slice }
-external: External System { class: external-system }
-commands: Commands { class: msg-command }
-
-events -> outbound: collect { class: event-flow }
-outbound -> external: "translate (API call)"
-external -> outbound: response
-outbound -> commands: "command (optional)" { class: command-flow }
-```
-
-- **responsibility**: collect outbound items from events; call external services for each item via the `translate` function; optionally publish commands back into the domain; track status with per-item retry semantics
-- **in**: Events from DcbEventLog
-- **out**: External API calls; optional commands to CommandTopic
-
-[Read more about the OutboundTranslationSlice component.](./components/outboundtranslationslice.md)
-
-### InboundTranslationSlice
-
-The **InboundTranslationSlice** implements the Event Modeling **Translation** pattern for inbound external communication in DCB-based plugins. It receives external input (webhooks, API calls, message queue messages), validates and transforms it through an anti-corruption layer, and publishes domain commands.
-
-```d2
-direction: right
-
-external: External System { class: external-system }
-inbound: InboundTranslationSlice { class: automation-slice }
-commands: Commands { class: msg-command }
-
-external -> inbound: "external input" { class: command-flow }
-inbound -> commands: translate { class: command-flow }
-```
-
-- **responsibility**: receive external input; validate against a schema; translate to domain commands via an anti-corruption layer; publish commands to the shared CommandTopic; maintain an audit log of all translation attempts
-- **in**: External JSON input (via `operations.receive`)
-- **out**: Commands to CommandTopic
-
-[Read more about the InboundTranslationSlice component.](./components/inboundtranslationslice.md)
-
-### EventLog
-
-The **EventLog** is the foundational storage component for event sourcing in Reventless. It provides append-only event storage with efficient replay capabilities, ensuring that all domain events are durably persisted and can be replayed to reconstruct aggregate state.
-
-```d2
-direction: right
-
-aggregate: Aggregate { class: aggregate }
-event_log: EventLog { class: event-log }
-event_topic: Event Topic { class: event-topic }
-
-aggregate -> event_log: append events { class: event-flow }
-event_log -> event_topic: publish events { class: event-flow }
-event_log -> aggregate: replay events { class: replay }
-```
-
-- **responsibility**: durably store events in append-only fashion; provide event replay for aggregate state reconstruction; publish events to EventTopic for distribution
-- **in**: Events from Aggregate (via `append` operation)
-- **out**: Events to EventTopic (automatic); Events to Aggregate (via `replay` operation)
-
-[Read more about the EventLog component.](./components/eventlog.md)
-
-### DcbEventLog
-
-The **DcbEventLog** (Dynamic Consistency Boundary Event Log) is the shared event storage component used by DCB state change slices. It provides tag-based querying and optimistic concurrency control for handling commands across multiple slices that share the same event log.
-
-```d2
-direction: right
-
-slice1: Slice 1 { class: state-change-slice }
-slice2: Slice 2 { class: state-change-slice }
-dcb_log: DcbEventLog { class: dcb-event-log }
-event_topic: Event Topic { class: event-topic }
-
-slice1 -> dcb_log: append { class: event-flow }
-slice2 -> dcb_log: append { class: event-flow }
-dcb_log -> slice1: read/query { class: replay }
-dcb_log -> slice2: read/query { class: replay }
-dcb_log -> event_topic: publish events { class: event-flow }
-```
-
-- **responsibility**: tag-based event queries for decision model building; optimistic concurrency control; shared event storage for DCB slices
-- **in**: Events from StateChangeSlices (via `append` operation)
-- **out**: Events to EventTopic (automatic); Events to StateChangeSlices (via `read` operation)
-
-[Read more about the DcbEventLog component.](./components/dcbeventlog.md)
-
-### CommandTopic
-
-The **CommandTopic** is the message queue component that delivers commands to Aggregates with strict ordering guarantees and reliable delivery. It ensures commands are processed exactly once per aggregate instance, in the order they were sent.
-
-```d2
-direction: right
-
-api: API / CommandGenerator { class: command-generator }
-event_mapper: Event Mapper { class: event-mapper }
-cmd_topic: Command Topic { class: command-topic }
-aggregate: Aggregate { class: aggregate }
-
-api -> cmd_topic: command { class: command-flow }
-event_mapper -> cmd_topic: commands { class: command-flow }
-cmd_topic -> aggregate: commands { class: command-flow }
-```
-
-- **responsibility**: queue commands for delivery to Aggregates; ensure FIFO ordering per aggregate; provide exactly-once delivery guarantees; handle retries and dead letter processing
-- **in**: Commands from API (via CommandGenerator), EventMapper, Extensions, or ExtensionPoints
-- **out**: Commands to Aggregate command handlers
-
-[Read more about the CommandTopic component.](./components/commandtopic.md)
-
-### EventTopic
-
-The **EventTopic** is the event distribution component that enables fan-out delivery of events to multiple subscribers. It receives events from the EventLog and distributes them to EventCollectors, which then deliver events to ReadModels, EventMappers, and SideEffectHandlers.
-
-```d2
-direction: right
-
-event_log: EventLog { class: event-log }
-event_topic: Event Topic { class: event-topic }
-collector1: Event Collector 1 { class: event-collector }
-collector2: Event Collector 2 { class: event-collector }
-collector3: Event Collector 3 { class: event-collector }
-
-event_log -> event_topic: publish events { class: event-flow }
-event_topic -> collector1: fan-out { class: event-flow }
-event_topic -> collector2: fan-out { class: event-flow }
-event_topic -> collector3: fan-out { class: event-flow }
-```
-
-- **responsibility**: distribute events from EventLog to multiple subscribers; enable fan-out pattern for event-driven architecture; provide ordering guarantees per aggregate
-- **in**: Events from EventLog (via `publish` operation)
-- **out**: Events to EventCollectors (via SNS subscriptions)
-
-[Read more about the EventTopic component.](./components/eventtopic.md)
-
-### EventCollector
-
-The **EventCollector** is the event consumption component that receives events from EventTopics. It provides a unified interface for components like ReadModels, EventMappers, and SideEffectHandlers to consume events with ordering guarantees.
-
-```d2
-direction: right
-
-topic1: Event Topic 1 { class: event-topic }
-topic2: Event Topic 2 { class: event-topic }
-collector: Event Collector { class: event-collector }
-read_model: Read Model { class: read-model }
-event_mapper: Event Mapper { class: event-mapper }
-side_effect_handler: Side Effect Handler { class: side-effect }
-
-topic1 -> collector: events { class: event-flow }
-topic2 -> collector: events { class: event-flow }
-collector -> read_model: events { class: event-flow }
-collector -> event_mapper: events { class: event-flow }
-collector -> side_effect_handler: events { class: event-flow }
-```
-
-- **responsibility**: subscribe to EventTopics; buffer events; deliver events to handlers with ordering guarantees; handle retries and dead letter processing
-- **in**: Events from EventTopics
-- **out**: Events to ReadModel projections, EventMapper mappings, or SideEffectHandler functions
-
-[Read more about the EventCollector component.](./components/eventcollector.md)
-
-### QueryDb
-
-The **QueryDb** is the read model storage component that provides efficient querying of projected state. It stores denormalized views of aggregate data, enabling fast queries without replaying events. QueryDb integrates with AWS AppSync for GraphQL APIs and supports configurable indexes, TTL, and batch operations.
-
-```d2
-direction: right
-
-client: Client { class: client }
-api: GraphQL API { class: api }
-read_model: Read Model { class: read-model }
-query_db: Query DB { class: query-db }
-
-client -> api: request { class: command-flow }
-api -> query_db: query
-read_model -> query_db: save/update { class: projection-flow }
-```
-
-- **responsibility**: store projected read model state; provide efficient query operations; support multiple access patterns via indexes; integrate with GraphQL APIs; handle automatic data expiration via TTL
-- **in**: State updates from ReadModel projections (via `save`, `saveBatch` operations)
-- **out**: Query results to API resolvers (via `load` operation)
-
-[Read more about the QueryDb component.](./components/querydb.md)
-
-### CommandGenerator
-
-The **CommandGenerator** bridges the gap between external clients and event-sourced aggregates by transforming GraphQL mutations into Reventless commands. It enables web and mobile applications to interact with aggregates through a type-safe GraphQL API.
-
-```d2
-direction: right
-
-client: GraphQL Client { class: client }
-api: GraphQL API { class: api }
-cmd_gen: Command Generator { class: command-generator }
-cmd_topic: Command Topic { class: command-topic }
-aggregate: Aggregate { class: aggregate }
-
-client -> api: GraphQL mutation { class: command-flow }
-api -> cmd_gen: resolver invocation { class: command-flow }
-cmd_gen -> cmd_topic: command { class: command-flow }
-cmd_topic -> aggregate: command { class: command-flow }
-```
-
-- **responsibility**: transform GraphQL mutations into aggregate commands; validate and enrich command metadata; publish commands to CommandTopic; provide type-safe API for external clients
-- **in**: GraphQL mutations from clients (via API Gateway/AppSync)
-- **out**: Commands to target aggregate's CommandTopic
-
-[Read more about the CommandGenerator component.](./components/commandgenerator.md)
-
-### Counter
-
-The **Counter** component provides atomic counting operations and deduplication capabilities for event processing. It's primarily used by EventMappers to prevent duplicate command generation and maintain accurate event processing metrics.
-
-```d2
-direction: right
-
-event_mapper: Event Mapper { class: event-mapper }
-counter: Counter { class: counter }
-
-event_mapper -> counter: increment/check
-counter -> event_mapper: count result
-```
-
-- **responsibility**: provide atomic increment/decrement operations; prevent duplicate event processing; maintain processing metrics; support conditional operations based on count values
-- **in**: Count operations from EventMapper or other components
-- **out**: Count results and deduplication status
-
-[Read more about the Counter component.](./components/counter.md)
-
-### ReadModel
-
-A _ReadModel_ is a queryable persisted state: It takes Events from one or more Aggregates and persists a newly calculated state. The new state is based on the previous state and the incoming Event.
-
-```d2
-direction: right
-
-event: Event { class: msg-event }
-read_model: Read Model { class: read-model }
-
-event -> read_model: many { class: event-flow }
-```
-
-- **responsibility**: create and persist State to be queried
-- **in**: Events
-- **out**: -
-
-[Read more about the ReadModel component.](./components/readmodel.md)
-
-### EventMapper
-
-An EventMapper attached to an Aggregate maps Events of (potentially multiple Aggregates) to Commands for this Aggregate. This is always needed if some Event in one Aggregate needs to trigger a reaction in another.
-
-```d2
-direction: right
-
-events: Events { class: msg-event }
-event_mapper: EventMapper { class: event-mapper }
-commands: Commands { class: msg-command }
-
-events -> event_mapper: many { class: event-flow }
-event_mapper -> commands: many { class: command-flow }
-```
-
-- **responsibility**: generate Commands for a given Aggregate based on (multiple) other Aggregates' Events
-- **in**: Events
-- **out**: Commands
-
-[Read more about the EventMapper component.](./components/eventmapper.md)
-
-### Task
-
-Tasks are the "escape-hatch" of the dogmatic Command/Event paradigm. They allow to implement logic loosely coupled to Events (or even not at all). An example would be some calculation, which needs to be done in some specific interval.
-
-Another intention of Tasks is to interface with the outside world (e.g. other systems). An example of this would be up-/downloads or calling foreign APIs.
-
-Tasks may be implemented provider specific, since it's not possible to provide adapter for any possible scenario.
-
-[Read more about the Task component.](./components/task.md)
-
-### Scheduler
-
-The Scheduler component provides time-based command publishing capabilities, enabling scheduled workflows, periodic tasks, and cron-like event generation. It allows applications to create and manage schedules dynamically at runtime.
-
-```d2
-direction: right
-
-application: Application { class: client }
-scheduler: Scheduler { class: scheduler }
-cmd_topic: Command Topic { class: command-topic }
-
-application -> scheduler: createSchedule { class: command-flow }
-scheduler -> cmd_topic: triggers { class: command-flow }
-```
-
-- **responsibility**: manage time-based event scheduling and command publishing
-- **in**: schedule definitions with timing patterns and payloads
-- **out**: scheduled events/commands published to configured targets
-
-[Read more about the Scheduler component.](./components/scheduler.md)
-
-### Heartbeat
-
-The Heartbeat component provides periodic health check signals and keepalive mechanisms, specifically designed to integrate with the platform admin's Plugin ExtensionPoint system. It enables health monitoring, periodic extension invocations, and watchdog timer functionality.
-
-```d2
-direction: right
-
-cloudwatch: CloudWatch Events { class: scheduler }
-lambda: Lambda { class: heartbeat }
-admin_ep: Admin Plugin ExtensionPoint { class: extension-point }
-
-cloudwatch -> lambda: triggers
-lambda -> admin_ep: heartbeat { class: event-flow }
-```
-
-- **responsibility**: generate periodic heartbeat signals for health monitoring and extension triggering
-- **in**: timeout configuration and admin Plugin ExtensionPoint connection details
-- **out**: periodic heartbeat messages sent to admin Plugin ExtensionPoint
-
-[Read more about the Heartbeat component.](./components/heartbeat.md)
-
-#### SideEffectHandler
-
-A `SideEffectHandler` is similar to an `EventMapper`, but targeting `Task`s (and functions) outside of the Command/Event paradigm. For example: calling a foreign API everytime a specific `Event` occurs.
-It takes `Event`s of (potentially multiple) `Aggregate`s as input and calls functions dependent on the `Event`.
-
-```d2
-direction: right
-
-events: Events { class: msg-event }
-side_effect_handler: SideEffectHandler { class: side-effect }
-task: Task { class: task }
-
-events -> side_effect_handler: many { class: event-flow }
-side_effect_handler -> task: calls
-```
-
-- **responsibility**: execute `functions` of a given `task` based on (multiple) `aggregate`s' `Events`
-- **in**: `Event`s
-- **out**: -
-
-[Read more about the SideEffectHandler component.](./components/sideeffecthandler.md)
-
-### Plugin
-
-A `Plugin` usually corresponds to a [`Bounded Context`](https://www.martinfowler.com/bliki/BoundedContext.html) in `DDD` (Domain Driven Design) as well to a single deployment unit. A `Plugin` is defined by it's configuration (name, version, etc) and it's child-components (`Aggregate`s, `ReadModel`s, `Task`s, etc)
-
-[Read more about the Plugin component.](./components/plugin.md)
-
-### ExtensionPoint
-
-`ExtensionPoint`s (together with their relatign `Extension`s) are the mechanics to share data between several `Plugin`s. The `ExtensionPoint`'s `Spec` defines the `Event`s, which will be sent and the `Command`s which will be received by it.
-
-[Read more about the ExtensionPoint component.](./components/extensionpoint.md)
-
-#### ExtensionPointMapping
-
-An `ExtensionPointMapping` defines a `Plugin`s border. It maps `Event`s from single `Aggregate`s to `Event`s of the `ExtensionPoint`. These are totally different Events (and therefore types), although they may seem similar. This is done to decouple outside dependencies from changes of the plugin and provide a simple interface to interact with.
-A `Command` sent to the `ExtensionPoint` will be mapped to a specific `Command` inside the plugin by this component.
-
-- **responsibility**: map plugin specific Command & Events to those of the `ExtensionPoint`
-- **in**: `Plugin` sepcific `Event`s (from inside the `Plugin`) / `ExtensionPoint` Command`s (from `Extension`s)
-- **out**: `ExtensionPoint` `Event`s (to `Extension`s) / `Plugin` specific `Command`s (to components inside the `Plugin`)
-
-### Extension
-
-An `Extension` enables a `Plugin` to consume events from and send commands to another `Plugin`'s `ExtensionPoint`. It acts as the consumer side of cross-Plugin communication, translating external events into internal commands and optionally forwarding internal events back to the `ExtensionPoint`.
-
-```d2
-direction: right
-
-ext_point: ExtensionPoint { class: extension-point }
-extension: Extension { class: extension }
-aggregate: Aggregate { class: aggregate }
-
-ext_point -> extension: events { class: event-flow }
-extension -> aggregate: commands { class: command-flow }
-aggregate -> extension: events { class: event-flow }
-extension -> ext_point: commands { class: cross-plugin }
-```
-
-- **responsibility**: consume events from remote `ExtensionPoint`s and generate commands for local `Aggregate`s; optionally forward local events back to `ExtensionPoint`s
-- **in**: `ExtensionPoint` `Event`s (from remote `Plugin`s)
-- **out**: `Aggregate` `Command`s (to local `Aggregate`s) / `ExtensionPoint` `Command`s (to remote `Plugin`s)
-
-[Read more about the Extension component.](./components/extension.md)
-
-#### ExtensionMapping
-
-An `ExtensionMapping` defines how a `Plugin` interacts with a remote `ExtensionPoint`. It maps incoming `ExtensionPoint` `Event`s to local `Aggregate` `Command`s and optionally maps outgoing `Aggregate` `Event`s to `ExtensionPoint` `Command`s.
-
-- **responsibility**: translate between remote `ExtensionPoint` events/commands and local `Aggregate` commands/events
-- **in**: `ExtensionPoint` `Event`s (from remote `Plugin`) / `Aggregate` `Event`s (from local `Aggregate`s)
-- **out**: `Aggregate` `Command`s (to local `Aggregate`s) / `ExtensionPoint` `Command`s (to remote `Plugin`)
-
-[Read more about Extension Mappings.](./components/extension.md#extension-mappings)
+> **Live updates.** A QueryDb table can stream its changes to subscribed clients: the QueryDb
+> stream feeds a **StateTopic** Lambda that publishes to the AppSync Events API. See
+> [AppSync Events live updates](/infrastructure/appsync-events-live-updates) for the wire path.
+
+## Component reference
+
+Each component is documented in detail on its own page. The table below is a one-line map;
+follow the link for types, operations, and examples.
+
+### Write side
+
+| Component | Role | Details |
+|---|---|---|
+| **Aggregate** | Transactional unit: handles a command against replayed state, emits events to its own EventLog | [aggregate](./components/aggregate.md) |
+| **StateChangeSlice** | DCB equivalent of an Aggregate: decides against a tag-scoped read of the shared DcbEventLog and appends with optimistic concurrency | [statechangeslice](./components/statechangeslice.md) |
+| **EventLog** | Append-only per-aggregate event storage with replay; publishes to EventTopic | [eventlog](./components/eventlog.md) |
+| **DcbEventLog** | Shared, tag-queryable event store for DCB slices, with optimistic concurrency | [dcbeventlog](./components/dcbeventlog.md) |
+| **CommandTopic** | FIFO command queue with exactly-once, in-order delivery to handlers | [commandtopic](./components/commandtopic.md) |
+| **CommandGenerator** | Turns GraphQL mutations into commands published to a CommandTopic | [commandgenerator](./components/commandgenerator.md) |
+
+### Read side
+
+| Component | Role | Details |
+|---|---|---|
+| **ReadModel** | Projects events from one or more Aggregates into persisted, queryable state | [readmodel](./components/readmodel.md) |
+| **StateViewSlice** | DCB equivalent of a ReadModel: projects DcbEventLog events directly into a QueryDb (no separate EventCollector) | [stateviewslice](./components/stateviewslice.md) |
+| **QueryDb** | Stores denormalized read-model state; serves API queries; supports indexes and TTL | [querydb](./components/querydb.md) |
+| **EventTopic** | Fans events out from an EventLog to multiple EventCollectors | [eventtopic](./components/eventtopic.md) |
+| **EventCollector** | Subscribes to EventTopics and delivers ordered events to ReadModels, EventMappers, and SideEffectHandlers | [eventcollector](./components/eventcollector.md) |
+
+### Reactions, automation & translation
+
+| Component | Role | Details |
+|---|---|---|
+| **EventMapper** | Maps events (from one or more Aggregates) to commands for a target Aggregate | [eventmapper](./components/eventmapper.md) |
+| **AutomationSlice** | DCB Automation (TODO-list) pattern: collects work from events, issues commands once, tracks resolution | [automationslice](./components/automationslice.md) |
+| **InboundTranslationSlice** | Anti-corruption layer: validates external input (webhooks/APIs) and translates it into domain commands | [inboundtranslationslice](./components/inboundtranslationslice.md) |
+| **OutboundTranslationSlice** | Calls external services per event with per-item retry; optionally publishes commands back | [outboundtranslationslice](./components/outboundtranslationslice.md) |
+| **SideEffectHandler** | Like an EventMapper but targets Tasks/functions outside the command/event paradigm | [sideeffecthandler](./components/sideeffecthandler.md) |
+| **Task** | Escape hatch for logic loosely coupled to events — interval jobs, uploads, foreign API calls | [task](./components/task.md) |
+| **Counter** | Atomic counts and dedup, used by EventMappers to avoid duplicate command generation | [counter](./components/counter.md) |
+
+### Cross-plugin & platform
+
+| Component | Role | Details |
+|---|---|---|
+| **Plugin** | A bounded context and deployment unit grouping the components above | [plugin](./components/plugin.md) |
+| **ExtensionPoint** | A plugin's outbound contract: maps internal events to a stable public event vocabulary | [extensionpoint](./components/extensionpoint.md) |
+| **Extension** | A plugin's inbound subscription: maps a remote ExtensionPoint's events to local commands | [extension](./components/extension.md) |
+| **Scheduler** | Time-based command publishing for scheduled/periodic workflows | [scheduler](./components/scheduler.md) |
+| **Heartbeat** | Periodic health/keepalive signals into the Platform Admin's Plugin ExtensionPoint | [heartbeat](./components/heartbeat.md) |

@@ -4,7 +4,7 @@ date: 2021-11-22
 draft: false
 ---
 
-For a short summary of an Aggregate, see [Reventless Components Overview.](../component-overview.md#aggregate)
+For a short summary of an Aggregate, see [Reventless Components Overview.](../component-overview.md)
 
 :::info Framework Implementation
 This component follows the Reventless [Component Structure Pattern](/framework/internals/component-structure-pattern), using separate files for interface definitions (`Aggregate.res`), builder logic (`Aggregate_Builder.res`), and runtime callbacks (`Aggregate_Callback.res`).
