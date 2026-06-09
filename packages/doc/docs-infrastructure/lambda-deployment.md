@@ -1,6 +1,6 @@
 # Lambda Deployment Architecture
 
-This guide explains how Reventless deploys Lambda handlers on AWS, how this relates to the **in-memory** and **AWS** platforms, and the conventions for writing platform-agnostic vs. AWS-specific plugin code.
+This guide explains how Reventless deploys Lambda handlers on AWS, how this relates to the **local** and **AWS** platforms, and the conventions for writing platform-agnostic vs. AWS-specific plugin code.
 
 For related guides, see:
 - [Application Development Layers](/framework/application-development-layers) — the three-layer architecture
@@ -46,15 +46,15 @@ No closure serialization occurs. Pulumi manages only the infrastructure resource
 
 The framework provides two platform implementations behind the same `ReventlessInfra.Platform.T` module type:
 
-| | In-Memory | AWS |
+| | Local | AWS |
 |---|---|---|
 | **Package** | `reventless-local` | `reventless-aws` |
 | **`type api`** | `unit` | `Types.AppSync.api` |
 | **`type role`** | `unit` | `Types.AppSync.role` |
-| **Event storage** | In-memory dict | DynamoDB |
-| **Command dispatch** | In-memory bus | SQS FIFO |
-| **Event fan-out** | In-memory bus | DynamoDB Streams |
-| **Query storage** | In-memory dict | DynamoDB + GSI |
+| **Event storage** | In-memory / SQLite | DynamoDB |
+| **Command dispatch** | In-process bus | SQS FIFO |
+| **Event fan-out** | In-process bus | DynamoDB Streams |
+| **Query storage** | In-memory / SQLite | DynamoDB + GSI |
 | **Handler runtime** | Deferred promise | Lambda function |
 | **API** | GraphQL Yoga (local) | AppSync |
 | **Used for** | Tests, local dev | Production deployment |
@@ -87,7 +87,7 @@ Aggregates, ReadModels, and ExtensionPoints register Lambda handlers when their 
     ┌────────────────┼────────────────────┐
     │                │                    │
     ▼                ▼                    ▼
-  Tests          In-Memory Dev      AWS deployment
+  Tests          Local Dev          AWS deployment
   (in-memory)    (GraphQL Yoga)     (Lambda + DynamoDB + AppSync)
 ```
 

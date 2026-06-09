@@ -40,7 +40,7 @@ Reventless currently ships two Platform implementations. The same plugin code, t
 
 | Implementation         | Package                   | Endpoint                                | Backing infrastructure                                | Typical use                                            |
 | ---------------------- | ------------------------- | --------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
-| **In-memory Platform** | `reventless-local`    | `http://localhost:4000/graphql` (graphql-yoga) with GraphiQL enabled | All components run in one Node process; event log, query db, and bus are JS data structures | Local development, integration tests, demos            |
+| **Local Platform** | `reventless-local`    | `http://localhost:4000/graphql` (graphql-yoga) with GraphiQL enabled | All components run in one Node process; event log and query db use a SQLite store by default (in-memory backend optional), the bus is in-process | Local development, integration tests, demos            |
 | **AWS Platform**       | `reventless-aws`          | AppSync HTTPS endpoint provisioned by Pulumi | DynamoDB (event log + query db), Lambda (command handlers, projections), SQS / SNS (event/command bus), S3 (task buckets), AppSync (GraphQL gateway) | Production deployments                                 |
 
 Both platforms expose the same Domain API shape described in this guide. The differences clients may notice in practice:

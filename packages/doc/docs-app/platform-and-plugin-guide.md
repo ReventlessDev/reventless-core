@@ -1649,7 +1649,7 @@ When `uiBundleUrl` is `None` (the default), `~uiFragments` is `None` and the plu
 
 The bundle URL is deployment configuration, not plugin code. Both deploy paths read it from the same env var: `<PLUGIN>_UI_BUNDLE_URL` (PascalCase plugin name → SCREAMING_SNAKE_CASE — e.g., `Catalog` → `CATALOG_UI_BUNDLE_URL`, `OnlineShop` → `ONLINE_SHOP_UI_BUNDLE_URL`).
 
-**In-memory (`platform-local/src/Main.res`)** — the composition root reads env explicitly and forwards:
+**Local (`platform-local/src/Main.res`)** — the composition root reads env explicitly and forwards:
 
 ```rescript
 @val external processEnv: dict<string> = "process.env"
