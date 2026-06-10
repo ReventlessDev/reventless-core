@@ -103,6 +103,10 @@ let makeStateChangeDescriptor = (
 // hermetic tests can flip it between cases. The cost is one dict lookup per event.
 let eventTapEnabled = () => tapProcessEnv->Dict.get("REVENTLESS_EVENT_TAP")->Option.isSome
 let eventTapSeq = ref(0)
+// Seed the in-memory tap counter from a persistent store's existing event count
+// so the timeline's #N continues across process restarts / app switches instead
+// of restarting at 1. Called once at platform startup for the sqlite backend.
+let seedEventTapSeq = (n: int) => eventTapSeq := n
 let emitEventTap = (~topic: string, ~service: string, ~payload: JSON.t) => {
   eventTapSeq := eventTapSeq.contents + 1
   let line =

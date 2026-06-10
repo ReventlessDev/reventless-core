@@ -25,6 +25,20 @@ function decodePayload(row) {
   }
 }
 
+function countAll(db) {
+  SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))");
+  let row = SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT COUNT(*) AS c FROM event_log"), []);
+  if (row === undefined) {
+    return 0;
+  }
+  let match = row["c"];
+  if (typeof match === "number") {
+    return match | 0;
+  } else {
+    return 0;
+  }
+}
+
 function makeStorage(db, name, param) {
   SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE IF NOT EXISTS event_log (log_name TEXT NOT NULL, aggregate_id TEXT NOT NULL, seq_nr INTEGER NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (log_name, aggregate_id, seq_nr))");
   let insertStmt = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO event_log(log_name, aggregate_id, seq_nr, payload) VALUES(?,?,?,?)");
@@ -134,6 +148,7 @@ function Make(Bus) {
 export {
   ensureSchema,
   decodePayload,
+  countAll,
   makeStorage,
   Make,
 }

@@ -44,6 +44,20 @@ let parseDataPayload = (s: string): JSON.t =>
   | exception _ => JSON.Encode.null
   }
 
+// Total DCB events persisted in this table. Used at startup to seed the
+// event-tap counter so the timeline numbering continues across restarts.
+let countAll = (db: SqliteDriver.t): int => {
+  ensureSchema(db)
+  switch db->SqliteDriver.prepare("SELECT COUNT(*) AS c FROM dcb_event")->SqliteDriver.get([]) {
+  | Some(row) =>
+    switch row->Dict.get("c") {
+    | Some(JSON.Number(n)) => Float.toInt(n)
+    | _ => 0
+    }
+  | None => 0
+  }
+}
+
 // Pull the integer position out of a row column that may be Number or String
 // (node:sqlite returns INTEGER as either, depending on size).
 let coercePosition = (v: JSON.t): int =>

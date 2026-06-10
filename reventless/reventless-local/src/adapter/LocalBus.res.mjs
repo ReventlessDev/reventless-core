@@ -44,6 +44,10 @@ let eventTapSeq = {
   contents: 0
 };
 
+function seedEventTapSeq(n) {
+  eventTapSeq.contents = n;
+}
+
 function emitEventTap(topic, service, payload) {
   eventTapSeq.contents = eventTapSeq.contents + 1 | 0;
   let line = Object.fromEntries([
@@ -997,6 +1001,7 @@ export {
   makeStateChangeDescriptor,
   eventTapEnabled,
   eventTapSeq,
+  seedEventTapSeq,
   emitEventTap,
   Impl,
   Make,

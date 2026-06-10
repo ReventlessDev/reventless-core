@@ -69,8 +69,8 @@ describe("LocalBus event tap (Phase 9)", () => {
     let lines = tapLines(logs);
     expect(lines.length).toBe(2);
     let first = lines[0];
-    let json = JSON.parse(first.slice(sentinel.length));
-    let obj = Stdlib_Option.getExn(Stdlib_JSON.Decode.object(json), undefined);
+    let json = JSON.parse(first.slice(sentinel.length, first.length));
+    let obj = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined);
     expect(Stdlib_Option.flatMap(obj["event"], Stdlib_JSON.Decode.string)).toEqual("domainEvent");
     expect(Stdlib_Option.flatMap(obj["topic"], Stdlib_JSON.Decode.string)).toEqual("CatalogEventTopic");
     expect(Stdlib_Option.flatMap(obj["seq"], Stdlib_JSON.Decode.float)).toEqual(1.0);

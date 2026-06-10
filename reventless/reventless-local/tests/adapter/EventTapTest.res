@@ -40,7 +40,7 @@ let captureLogs = async (fn: unit => promise<unit>): array<string> => {
   console.log = original
   switch result {
   | Ok() => captured
-  | Error(e) => raise(e)
+  | Error(e) => throw(e)
   }
 }
 
@@ -79,8 +79,9 @@ describe("LocalBus event tap (Phase 9)", () => {
     // First line decodes to the expected envelope: event="domainEvent", the real
     // topic name, and the payload passed to publishEvent (no topic-name guessing).
     let first = lines->Array.getUnsafe(0)
-    let json = first->String.sliceToEnd(~start=sentinel->String.length)->JSON.parseOrThrow
-    let obj = json->JSON.Decode.object->Option.getExn
+    let json =
+      first->String.slice(~start=sentinel->String.length, ~end=first->String.length)->JSON.parseOrThrow
+    let obj = json->JSON.Decode.object->Option.getOrThrow
     expect(obj->Dict.get("event")->Option.flatMap(JSON.Decode.string))->toEqual(Some("domainEvent"))
     expect(obj->Dict.get("topic")->Option.flatMap(JSON.Decode.string))->toEqual(
       Some("CatalogEventTopic"),

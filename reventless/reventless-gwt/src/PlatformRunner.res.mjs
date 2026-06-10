@@ -99,6 +99,10 @@ async function run(roots, backend, callbacks) {
       [
         "LOG_LEVEL",
         "info"
+      ],
+      [
+        "REVENTLESS_LOG_FORMAT",
+        "text"
       ]
     ]);
     callbacks.onStart(pkg.name, pkg.dir, dPort, pPort);

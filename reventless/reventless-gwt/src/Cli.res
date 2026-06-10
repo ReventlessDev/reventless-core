@@ -21,6 +21,10 @@ type options = {
   // `platform` only: the REVENTLESS_LOCAL_BACKEND value passed to the spawned
   // platform child ("memory" default, or "sqlite:<path>[?reset]").
   backend: string,
+  // `platform --list` only: enumerate the launchable platform packages (one
+  // NDJSON `{name, dir}` line each) and exit, rather than spawning one. Used by
+  // the VS Code extension to populate its active-app picker.
+  listPlatforms: bool,
   toolVersion: string,
 }
 
@@ -53,6 +57,7 @@ USAGE:
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
   reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-gwt platform --list [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -69,6 +74,8 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --list                platform: list launchable platform packages as NDJSON
+                        ({name, dir} per line) and exit
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -84,6 +91,7 @@ let parseArgv = (argv: array<string>): result<options, string> => {
   let schemaVersion: ref<option<string>> = ref(None)
   let roots = ref([])
   let backend = ref("memory")
+  let listPlatforms = ref(false)
   let error = ref(None)
   let showHelp = ref(false)
   let i = ref(0)
@@ -149,6 +157,8 @@ let parseArgv = (argv: array<string>): result<options, string> => {
     } else if arg == "--backend" && i.contents + 1 < len {
       backend := slice->Array.getUnsafe(i.contents + 1)
       i := i.contents + 1
+    } else if arg == "--list" {
+      listPlatforms := true
     } else if String.startsWith(arg, "--") {
       error := Some("Unknown flag: " ++ arg)
     } else {
@@ -171,6 +181,7 @@ let parseArgv = (argv: array<string>): result<options, string> => {
         schemaVersion: schemaVersion.contents,
         roots: roots.contents->Array.length == 0 ? defaultRoots() : roots.contents,
         backend: backend.contents,
+        listPlatforms: listPlatforms.contents,
         toolVersion,
       })
     }
@@ -561,6 +572,19 @@ let runPlatform = async (opts: options): int => {
   await PlatformRunner.run(~roots=opts.roots, ~backend=opts.backend, ~callbacks)
 }
 
+// `platform --list`: enumerate the launchable platform packages under the roots
+// and print one NDJSON `{name, dir}` object per line. The VS Code extension reads
+// these to populate its active-app picker (app root = the package's parent dir).
+// Plain stdout, no protocol handshake — it's a one-shot query, not a stream.
+let listPlatforms = async (opts: options): int => {
+  let pkgs = await PlatformScan.scan(opts.roots)
+  pkgs->Array.forEach(pkg => {
+    let obj = Dict.fromArray([("name", JSON.String(pkg.name)), ("dir", JSON.String(pkg.dir))])
+    Console.log(JSON.stringify(JSON.Object(obj)))
+  })
+  0
+}
+
 let main = async (): int => {
   Cancellation.install()
   let args = argv
@@ -579,7 +603,7 @@ let main = async (): int => {
     | Run => await runOnce(opts)
     | Discover => await runDiscover(opts)
     | Watch => await runWatch(opts)
-    | Platform => await runPlatform(opts)
+    | Platform => opts.listPlatforms ? await listPlatforms(opts) : await runPlatform(opts)
     }
   }
 }

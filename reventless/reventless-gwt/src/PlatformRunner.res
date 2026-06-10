@@ -105,6 +105,12 @@ let run = async (~roots: array<string>, ~backend: string, ~callbacks: callbacks)
       // real logs — the "listening on" line drives readiness and the rest becomes
       // platformLog. Override the inherited silent.
       ("LOG_LEVEL", "info"),
+      // The child's stdout is a pipe (we line-parse it), so the framework's sink
+      // detection would auto-pick JSON (non-TTY). But every consumer of `onLog`
+      // renders ANSI — the CLI forwards to the developer's terminal, the extension
+      // to an xterm Pseudoterminal — so force human text mode for bold/colour.
+      // (Tap event lines stay JSON regardless: they're sentinel-prefixed.)
+      ("REVENTLESS_LOG_FORMAT", "text"),
     ])
 
     callbacks.onStart(~package=pkg.name, ~dir=pkg.dir, ~domainPort=dPort, ~platformPort=pPort)

@@ -52,6 +52,7 @@ import * as PluginsReadModelSpec$ReventlessCore from "@reventlessdev/reventless-
 import * as DomainGraphQL_Server$ReventlessLocal from "./adapter/DomainGraphQL_Server.res.mjs";
 import * as LocalGraphQL_Adapter$ReventlessLocal from "./adapter/Api/LocalGraphQL_Adapter.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
+import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/EventLogStorage_Sqlite.res.mjs";
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraphQL_Server.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
@@ -65,6 +66,7 @@ import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/
 import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
 import * as Platform_UIDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIDefinitionsApi.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
+import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as DcbEventLogStorage_InMemory$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
@@ -104,6 +106,7 @@ function MakeWithConfig(Config) {
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
+    LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
   }
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,
@@ -1960,6 +1963,7 @@ function Make($star) {
     }
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
+    LocalBus$ReventlessLocal.seedEventTapSeq(EventLogStorage_Sqlite$ReventlessLocal.countAll(db) + DcbEventLogStorage_Sqlite$ReventlessLocal.countAll(db) | 0);
   }
   let Bus = LocalBus$ReventlessLocal.Impl({
     capacity: undefined,

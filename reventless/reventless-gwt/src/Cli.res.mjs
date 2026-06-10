@@ -15,6 +15,7 @@ import * as PackageScan$ReventlessGwt from "./PackageScan.res.mjs";
 import * as RunnerTypes$ReventlessGwt from "./RunnerTypes.res.mjs";
 import * as Cancellation$ReventlessGwt from "./Cancellation.res.mjs";
 import * as FormatterTap$ReventlessGwt from "./FormatterTap.res.mjs";
+import * as PlatformScan$ReventlessGwt from "./PlatformScan.res.mjs";
 import * as WatcherProbe$ReventlessGwt from "./WatcherProbe.res.mjs";
 import * as ComponentScan$ReventlessGwt from "./ComponentScan.res.mjs";
 import * as FormatterJson$ReventlessGwt from "./FormatterJson.res.mjs";
@@ -77,6 +78,7 @@ USAGE:
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
   reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-gwt platform --list [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -93,6 +95,8 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --list                platform: list launchable platform packages as NDJSON
+                        ({name, dir} per line) and exit
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -109,6 +113,7 @@ function parseArgv(argv) {
   let schemaVersion;
   let roots = [];
   let backend = "memory";
+  let listPlatforms = false;
   let error;
   let showHelp = false;
   let i = 0;
@@ -180,6 +185,8 @@ function parseArgv(argv) {
     } else if (arg === "--backend" && (i + 1 | 0) < len) {
       backend = slice[i + 1 | 0];
       i = i + 1 | 0;
+    } else if (arg === "--list") {
+      listPlatforms = true;
     } else if (arg.startsWith("--")) {
       error = "Unknown flag: " + arg;
     } else {
@@ -197,6 +204,7 @@ USAGE:
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
   reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-gwt platform --list [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -213,6 +221,8 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --list                platform: list launchable platform packages as NDJSON
+                        ({name, dir} per line) and exit
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -230,6 +240,7 @@ USAGE:
   reventless-gwt discover [--format=vscode] [path...]
   reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
   reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-gwt platform --list [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)
@@ -246,6 +257,8 @@ FLAGS:
   --schema-version <v>  Pin a JSON schema version for stable AI prompts
   --backend <b>         platform: storage backend for the spawned local platform
                         ("memory" default, or "sqlite:<path>[?reset]")
+  --list                platform: list launchable platform packages as NDJSON
+                        ({name, dir} per line) and exit
   --help                Show this help and exit
 
 Exit code is 1 if any test failed, 0 otherwise.
@@ -263,6 +276,7 @@ Exit code is 1 if any test failed, 0 otherwise.
         schemaVersion: schemaVersion,
         roots: roots.length === 0 ? ["."] : roots,
         backend: backend,
+        listPlatforms: listPlatforms,
         toolVersion: toolVersion
       }
     };
@@ -627,6 +641,24 @@ async function runPlatform(opts) {
   return await PlatformRunner$ReventlessGwt.run(opts.roots, opts.backend, callbacks);
 }
 
+async function listPlatforms(opts) {
+  let pkgs = await PlatformScan$ReventlessGwt.scan(opts.roots);
+  pkgs.forEach(pkg => {
+    let obj = Object.fromEntries([
+      [
+        "name",
+        pkg.name
+      ],
+      [
+        "dir",
+        pkg.dir
+      ]
+    ]);
+    console.log(JSON.stringify(obj));
+  });
+  return 0;
+}
+
 async function main() {
   Cancellation$ReventlessGwt.install();
   let args = process.argv;
@@ -645,7 +677,11 @@ async function main() {
       case "Watch" :
         return await runWatch(opts);
       case "Platform" :
-        return await runPlatform(opts);
+        if (opts.listPlatforms) {
+          return await listPlatforms(opts);
+        } else {
+          return await runPlatform(opts);
+        }
     }
   } else {
     console.error(msg._0);
@@ -677,6 +713,7 @@ export {
   startBuildWatchers,
   runWatch,
   runPlatform,
+  listPlatforms,
   main,
 }
 /* Stdlib_JsExn Not a pure module */

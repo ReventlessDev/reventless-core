@@ -69,6 +69,13 @@ module MakeWithConfig = (
     }
     let db = SqliteDriver.openDb(~path)
     BackendState.setSqlite(~db, ~path)
+    // Persistent stores keep their event numbering across restarts and app
+    // switches: seed the in-memory event-tap counter from the rows already on
+    // disk so the timeline's #N continues instead of restarting at 1. (After a
+    // reset the file is empty, so this seeds 0 — a clean session starts at #1.)
+    LocalBus.seedEventTapSeq(
+      EventLogStorage_Sqlite.countAll(db) + DcbEventLogStorage_Sqlite.countAll(db),
+    )
   }
 
   module Bus = LocalBus.Impl({

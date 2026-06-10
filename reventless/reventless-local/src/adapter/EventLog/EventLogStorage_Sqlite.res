@@ -33,6 +33,20 @@ let decodePayload = (row: dict<JSON.t>): JSON.t =>
   | _ => JSON.Encode.null
   }
 
+// Total events persisted across all aggregates in this table. Used at startup to
+// seed the event-tap counter so the timeline numbering continues across restarts.
+let countAll = (db: SqliteDriver.t): int => {
+  ensureSchema(db)
+  switch db->SqliteDriver.prepare("SELECT COUNT(*) AS c FROM event_log")->SqliteDriver.get([]) {
+  | Some(row) =>
+    switch row->Dict.get("c") {
+    | Some(JSON.Number(n)) => Float.toInt(n)
+    | _ => 0
+    }
+  | None => 0
+  }
+}
+
 let makeStorage = (~db: SqliteDriver.t, ~name: string, ~opts as _) => {
   ensureSchema(db)
 

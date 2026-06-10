@@ -30,6 +30,20 @@ function parseDataPayload(s) {
   }
 }
 
+function countAll(db) {
+  ensureSchema(db);
+  let row = SqliteDriver$ReventlessLocal.get(SqliteDriver$ReventlessLocal.prepare(db, "SELECT COUNT(*) AS c FROM dcb_event"), []);
+  if (row === undefined) {
+    return 0;
+  }
+  let match = row["c"];
+  if (typeof match === "number") {
+    return match | 0;
+  } else {
+    return 0;
+  }
+}
+
 function coercePosition(v) {
   switch (typeof v) {
     case "string" :
@@ -275,6 +289,7 @@ export {
   ensureSchema,
   posToInt,
   parseDataPayload,
+  countAll,
   coercePosition,
   sqlEscape,
   buildClauseSql,
