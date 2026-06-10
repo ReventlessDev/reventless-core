@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.1.0-alpha.19 (2026-06-10)
+
+### Features
+
+* **logging:** structured JSON fields + correlationId/requestId tracing (Tier 2) ([7335638](https://github.com/ReventlessDev/reventless-core/commit/7335638c7b7da376e2368dd829c3a26290114d5e))
+
+
 # 0.1.0-alpha.18 (2026-06-08)
 
 ### Features

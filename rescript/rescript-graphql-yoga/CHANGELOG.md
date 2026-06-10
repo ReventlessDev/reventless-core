@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.15 (2026-06-10)
+
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 1.0.0-alpha.14 (2026-06-06)
 
 * refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([966855f](https://github.com/ReventlessDev/reventless-core/commit/966855fd31e518d56a381bf40204735809cead15))

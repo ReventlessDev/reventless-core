@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.55 (2026-06-10)
+
+### Bug Fixes
+
+* **reventless-gwt,reventless-vscode:** clear stuck build-status spinner when a watcher dies or hangs ([1a6c1aa](https://github.com/ReventlessDev/reventless-core/commit/1a6c1aa624f5b740bd826a0b7d82bd8d58d4e342))
+* **reventless-gwt,reventless-vscode:** render platform log in a Pseudoterminal (ANSI colors) ([b3a848f](https://github.com/ReventlessDev/reventless-core/commit/b3a848f457c7144a9d3156888e64fcfd8cf8b29d))
+* **reventless-gwt:** adopt rescript watch (watch.lock) so the engine coexists with rescript-vscode ([464d127](https://github.com/ReventlessDev/reventless-core/commit/464d127c774a08bb6366aab10bb5772f427a890a))
+* **reventless-gwt:** prune the GWT DSL modules in src/ from discovery ([849ea0a](https://github.com/ReventlessDev/reventless-core/commit/849ea0add03edd42b5f08f4e64d96468fe57058c))
+* **reventless-gwt:** render inline-record variant payloads in GWT diffs ([fe78c9d](https://github.com/ReventlessDev/reventless-core/commit/fe78c9de6a50417ded5103c1cb1974ba0a80459e))
+* **reventless-gwt:** strip ANSI from platform runner log lines ([28786d2](https://github.com/ReventlessDev/reventless-core/commit/28786d2062488dd71aba62eb40477774c4c73942))
+* **reventless-gwt:** surface ReScript exception messages in test runner ([f73dbc3](https://github.com/ReventlessDev/reventless-core/commit/f73dbc3a721fb2671b4099ceb86e9bcf107703ff))
+* **reventless-vscode:** repair cross-package genType bridge and verify the shared NDJSON contract end-to-end ([f9d2e15](https://github.com/ReventlessDev/reventless-core/commit/f9d2e15ec70ea3def88818cb3acd7a17ba2d240e))
+### Features
+
+* **reventless-core:** extension-point source events in pluginStructure ([9c47a0e](https://github.com/ReventlessDev/reventless-core/commit/9c47a0ea9a1643ac12fbe8dc1c43244e580de024))
+* **reventless-gwt,reventless-vscode:** runner Phase 6 — Sqlite toggle, replay, export ([43356f7](https://github.com/ReventlessDev/reventless-core/commit/43356f7b453a9dd3ed03eced16cc95b8b70309e6))
+* **reventless-gwt:** carry component source files on the components event ([64c7057](https://github.com/ReventlessDev/reventless-core/commit/64c705745a7f3606b64aa08f824ea58f7b539681))
+* **reventless-gwt:** CLI-managed watch engine for zero-config editor testing ([4f6445f](https://github.com/ReventlessDev/reventless-core/commit/4f6445f6942972e62ee4e34a4ec4e98e9eb41a3e))
+* **reventless-gwt:** component-aware discovery — component field + components inventory (protocol 2) ([564c583](https://github.com/ReventlessDev/reventless-core/commit/564c583c3707b82ce2538bd76dd9996e313cef8d))
+* **reventless-gwt:** emit mismatch kind on testFail (protocol 3) ([8269878](https://github.com/ReventlessDev/reventless-core/commit/826987818d506a5fc1aac21e0b46d776c313395b))
+* **reventless-gwt:** event-modeling graph event (Phase 6), protocol 6 ([a36d7f2](https://github.com/ReventlessDev/reventless-core/commit/a36d7f25e55c500164879ebbe0274d6989c8cf7e))
+* **reventless-gwt:** local platform runner CLI (reventless-gwt platform) ([1be0be7](https://github.com/ReventlessDev/reventless-core/commit/1be0be7eca04acf4876d9e71e20d9ccdd049151c))
+* **reventless-gwt:** local-host foundation + domain dead-code (Phases 4.5, 5) ([23c368a](https://github.com/ReventlessDev/reventless-core/commit/23c368a1b171dd14bc70d277d6d75bd2ac048a46))
+* **reventless-gwt:** prune .gwtignore subtrees from discovery and component scan ([51ab8b1](https://github.com/ReventlessDev/reventless-core/commit/51ab8b180df9a6cb6a68b3c9203ab385d215b29d))
+* **reventless-vscode:** port watchRegistry to ReScript + share the StreamEvent NDJSON contract with the CLI (Phase 3 + Stretch) ([9f9ee8d](https://github.com/ReventlessDev/reventless-core/commit/9f9ee8d73cf754863d364ddae3f899320fed46c0))
+* **vscode:** scope views to an active app + continue local event numbering across restarts ([59336f3](https://github.com/ReventlessDev/reventless-core/commit/59336f3ccb30028e1702e29f7941468f67180ff3)), closes [#1](https://github.com/ReventlessDev/reventless-core/issues/1)
+
+
 # 1.0.0-alpha.54 (2026-06-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

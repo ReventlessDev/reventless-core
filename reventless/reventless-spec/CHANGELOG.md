@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.54 (2026-06-10)
+
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+### Features
+
+* **logging:** sink-aware ANSI formatting — clean JSON in non-TTY sinks (Tier 1) ([32ae533](https://github.com/ReventlessDev/reventless-core/commit/32ae5337a45ff9cbd26754b5b1c71c5c7070507b))
+* **reventless-core:** extension-point source events in pluginStructure ([9c47a0e](https://github.com/ReventlessDev/reventless-core/commit/9c47a0ea9a1643ac12fbe8dc1c43244e580de024))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 3.0.0-alpha.53 (2026-06-08)
 
 ### Features

@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.80 (2026-06-10)
+
+### Bug Fixes
+
+* **examples:** restore publishing of online-shop-hybrid packages ([8fa95d3](https://github.com/ReventlessDev/reventless-core/commit/8fa95d3e6de4f10284afdde4aa24a10dcffe202b))
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+### Features
+
+* **reventless-core:** extension-point source events in pluginStructure ([9c47a0e](https://github.com/ReventlessDev/reventless-core/commit/9c47a0ea9a1643ac12fbe8dc1c43244e580de024))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 1.0.0-alpha.79 (2026-06-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog

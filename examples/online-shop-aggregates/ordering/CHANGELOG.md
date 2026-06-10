@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.82 (2026-06-10)
+
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+### Features
+
+* **reventless-core:** extension-point source events in pluginStructure ([9c47a0e](https://github.com/ReventlessDev/reventless-core/commit/9c47a0ea9a1643ac12fbe8dc1c43244e580de024))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 3.0.0-alpha.81 (2026-06-09)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

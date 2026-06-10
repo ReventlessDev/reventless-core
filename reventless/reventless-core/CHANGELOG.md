@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.115 (2026-06-10)
+
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+### Features
+
+* **core:** richer command/state logging and working LOG_LEVEL control ([514901f](https://github.com/ReventlessDev/reventless-core/commit/514901f4b0324d55a65a8f7c07675238b908b2d4))
+* **core:** richer StateChangeSlice command-handler logging ([4ed036b](https://github.com/ReventlessDev/reventless-core/commit/4ed036b7c1b4549d05102f3639eb16f76557140f))
+* **logging:** operational hygiene — truncation, ISO time, service field, Insights guide (Tier 3) ([ed9f98e](https://github.com/ReventlessDev/reventless-core/commit/ed9f98e8d015213d04a9a546fe108a70e6bfcee8))
+* **logging:** sink-aware ANSI formatting — clean JSON in non-TTY sinks (Tier 1) ([32ae533](https://github.com/ReventlessDev/reventless-core/commit/32ae5337a45ff9cbd26754b5b1c71c5c7070507b))
+* **logging:** structured JSON fields + correlationId/requestId tracing (Tier 2) ([7335638](https://github.com/ReventlessDev/reventless-core/commit/7335638c7b7da376e2368dd829c3a26290114d5e))
+* **reventless-core:** extension-point source events in pluginStructure ([9c47a0e](https://github.com/ReventlessDev/reventless-core/commit/9c47a0ea9a1643ac12fbe8dc1c43244e580de024))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 3.0.0-alpha.114 (2026-06-08)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

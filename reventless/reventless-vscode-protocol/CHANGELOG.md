@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.5 (2026-06-10)
+
+### Bug Fixes
+
+* **reventless-vscode:** repair cross-package genType bridge and verify the shared NDJSON contract end-to-end ([f9d2e15](https://github.com/ReventlessDev/reventless-core/commit/f9d2e15ec70ea3def88818cb3acd7a17ba2d240e))
+### Features
+
+* **reventless-vscode:** port watchRegistry to ReScript + share the StreamEvent NDJSON contract with the CLI (Phase 3 + Stretch) ([9f9ee8d](https://github.com/ReventlessDev/reventless-core/commit/9f9ee8d73cf754863d364ddae3f899320fed46c0))
+* **vscode:** scope views to an active app + continue local event numbering across restarts ([59336f3](https://github.com/ReventlessDev/reventless-core/commit/59336f3ccb30028e1702e29f7941468f67180ff3)), closes [#1](https://github.com/ReventlessDev/reventless-core/issues/1)
+
+
 # 1.0.0-alpha.4 (2026-06-08)
 
 ### Bug Fixes

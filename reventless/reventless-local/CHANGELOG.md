@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.94 (2026-06-10)
+
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+### Features
+
+* **reventless-local:** opt-in NDJSON event tap + per-session port overrides ([8eb078d](https://github.com/ReventlessDev/reventless-core/commit/8eb078d6c93ffc34743accd2f05362ae5098882f))
+* **vscode:** scope views to an active app + continue local event numbering across restarts ([59336f3](https://github.com/ReventlessDev/reventless-core/commit/59336f3ccb30028e1702e29f7941468f67180ff3)), closes [#1](https://github.com/ReventlessDev/reventless-core/issues/1)
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 3.0.0-alpha.93 (2026-06-09)
 
 **Note:** Version bump only for package @reventlessdev/reventless-local

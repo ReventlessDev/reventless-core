@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.45 (2026-06-10)
+
+### Bug Fixes
+
+* **examples:** restore publishing of online-shop-hybrid packages ([8fa95d3](https://github.com/ReventlessDev/reventless-core/commit/8fa95d3e6de4f10284afdde4aa24a10dcffe202b))
+
+
 # 1.0.0-alpha.44 (2026-06-08)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-spec

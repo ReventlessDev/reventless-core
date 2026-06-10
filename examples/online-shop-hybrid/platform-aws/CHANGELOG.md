@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.92 (2026-06-10)
+
+### Bug Fixes
+
+* **deps:** bump reventless-host-shell to 3.0.0-alpha.26 ([8f134d9](https://github.com/ReventlessDev/reventless-core/commit/8f134d9a9229299e69863cfcddd2642b00b242aa))
+* **example:** bump host-shell pin to 3.0.0-alpha.21 in online-shop-hybrid ([88e374e](https://github.com/ReventlessDev/reventless-core/commit/88e374ea6a3b995544b8cb94b6ef366c7bf52677))
+
+
 # 1.0.0-alpha.91 (2026-06-08)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.2.0-alpha.4 (2026-06-10)
+
+**Note:** Version bump only for package @reventlessdev/reventless-conventional-changelog
+
+
+
+
+
 # 1.2.0-alpha.3 (2026-06-04)
 
 **Note:** Version bump only for package @reventlessdev/reventless-conventional-changelog

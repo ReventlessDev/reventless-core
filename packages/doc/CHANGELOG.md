@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.42 (2026-06-10)
+
+### Bug Fixes
+
+* **aws:** repair StateTopic channel format so admin Plugins list live-updates ([de444b7](https://github.com/ReventlessDev/reventless-core/commit/de444b7d5a9cf6192a6880109ab77de12c07191c))
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+### Features
+
+* **reventless-vscode:** component/test explorer surfaces + watch controls ([b229e69](https://github.com/ReventlessDev/reventless-core/commit/b229e69fb69f9346b7d5420b08c4ccbbaa207f8a))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 1.0.0-alpha.41 (2026-06-09)
 
 **Note:** Version bump only for package doc

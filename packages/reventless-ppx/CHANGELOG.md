@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.35 (2026-06-10)
+
+### Bug Fixes
+
+* **ppx:** bump linux-x64 & darwin-arm64 platform packages to 1.0.0-alpha.33 ([a192c13](https://github.com/ReventlessDev/reventless-core/commit/a192c138e2be94fe386af010c3744e6e65d44172))
+* **ppx:** point optionalDependencies at republished platform binaries ([ee4614b](https://github.com/ReventlessDev/reventless-core/commit/ee4614b06a588b2eb78080d020cd7a15ccc8dcd3))
+### Features
+
+* **onboarding:** one-command setup, accurate docs, Intel-mac PPX prebuilt ([5a98bff](https://github.com/ReventlessDev/reventless-core/commit/5a98bff01f17bdba3c28c312da507245029d6349))
+
+
 # 1.0.0-alpha.34 (2026-06-04)
 
 ### Bug Fixes

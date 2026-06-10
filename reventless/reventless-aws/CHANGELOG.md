@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.146 (2026-06-10)
+
+### Bug Fixes
+
+* **aws:** deliver plugin Retire to standard command-topic queues ([f4e507d](https://github.com/ReventlessDev/reventless-core/commit/f4e507df250db8d3b96edc1251117cd8cc4be645))
+* **aws:** repair StateTopic channel format so admin Plugins list live-updates ([de444b7](https://github.com/ReventlessDev/reventless-core/commit/de444b7d5a9cf6192a6880109ab77de12c07191c))
+* **aws:** surface StateTopic publish failures and bound ESM retries ([6bc4e62](https://github.com/ReventlessDev/reventless-core/commit/6bc4e629d3c839778467657158f9055fe7e52e11))
+* **aws:** tag Retire command with service: "Plugin" so projection picks it up ([6bd7f59](https://github.com/ReventlessDev/reventless-core/commit/6bd7f599d507a722978e15249a919b3a38aeb8b9))
+* **aws:** widen EventLogSubscription channel-name rule for parity with StateTopic ([b5d30a3](https://github.com/ReventlessDev/reventless-core/commit/b5d30a35819bbea1965a25b691595dccf267fe15))
+* **naming:** EP CmdHandler kind for the platform-admin Plugin extension point ([cc55347](https://github.com/ReventlessDev/reventless-core/commit/cc55347ce89a2a789cd8debd270c4ee13649d6d9))
+* refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))
+### Features
+
+* **logging:** structured JSON fields + correlationId/requestId tracing (Tier 2) ([7335638](https://github.com/ReventlessDev/reventless-core/commit/7335638c7b7da376e2368dd829c3a26290114d5e))
+
+### BREAKING CHANGES
+
+* @reventlessdev/reventless-in-memory -> @reventlessdev/reventless-local;
+namespace ReventlessInMemory -> ReventlessLocal.
+
+
+
 # 3.0.0-alpha.145 (2026-06-08)
 
 ### Bug Fixes
