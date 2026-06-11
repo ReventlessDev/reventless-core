@@ -56,10 +56,11 @@ let () =
   print_string (Yojson.Safe.pretty_to_string j);
   print_newline ();
 
-  (* ── GWT extraction ─────────────────────────────────────────────────────
+  (* ── GWT extraction (curried baseline) ──────────────────────────────────
      ReScript `describe("X", () => { test("t", () => a->f(b)->g(c)) })`
-     reaches the ppx as multi-arg / nested applies — reproduced here in
-     curried form, which has the identical Parsetree shape. *)
+     reaches the ppx as multi-arg / nested applies. This block uses curried
+     `fun` for the apply/step shapes; the callback-wrapper encoding that real
+     ReScript v12 emits (`Function$`) is exercised in the block below. *)
   let gwt_body : structure =
     [%str
       describe "AddProduct" (fun () ->
@@ -103,6 +104,59 @@ let () =
   gmust "string example value" "\"kind\":\"string\",\"value\":\"prod-1\"";
   print_string (Yojson.Safe.pretty_to_string gj);
   print_newline ();
+
+  (* ── GWT extraction over the REAL ReScript v12 encoding ──────────────────
+     ReScript v12 wraps every lambda as `Function$(inner_fun)` — a
+     `Pexp_construct (Lident "Function$", Some fun)` — so `describe`/`test`
+     callbacks reach the ppx as a construct, not a bare `Pexp_fun`. The block
+     above used curried `fun`, which does NOT reproduce that wrapper (the
+     original "identical Parsetree shape" assumption was wrong, and the GWT
+     sidecar silently emitted nothing for real builds). This re-runs the
+     extraction over the wrapped form to lock the regression. *)
+  let rec wrap_funs (e : expression) : expression =
+    let e =
+      { e with
+        pexp_desc =
+          (match e.pexp_desc with
+           | Pexp_fun (l, d, p, body) -> Pexp_fun (l, d, p, wrap_funs body)
+           | Pexp_apply (f, args) ->
+             Pexp_apply (wrap_funs f, List.map (fun (l, a) -> (l, wrap_funs a)) args)
+           | Pexp_sequence (a, b) -> Pexp_sequence (wrap_funs a, wrap_funs b)
+           | other -> other) }
+    in
+    match e.pexp_desc with
+    | Pexp_fun _ ->
+      { e with
+        pexp_desc =
+          Pexp_construct ({ txt = Lident "Function$"; loc = e.pexp_loc }, Some e) }
+    | _ -> e
+  in
+  let gwt_body_v12 : structure =
+    List.map
+      (fun item ->
+        match item.pstr_desc with
+        | Pstr_eval (e, attrs) -> { item with pstr_desc = Pstr_eval (wrap_funs e, attrs) }
+        | _ -> item)
+      gwt_body
+  in
+  (match
+     ReventlessPpx__SidecarEmit.gwt_fragment_json ~fname:"AddProduct_GWT.res" gwt_body_v12
+   with
+   | None ->
+     Printf.printf "  FAIL(gwt v12): Function$-wrapped callbacks extracted nothing\n";
+     exit 1
+   | Some j ->
+     let s = Yojson.Safe.to_string j in
+     let contains hay sub =
+       let lh = String.length hay and ls = String.length sub in
+       let rec go i = i + ls <= lh && (String.equal (String.sub hay i ls) sub || go (i + 1)) in
+       ls = 0 || go 0
+     in
+     if contains s "\"element\":\"AddProduct\""
+        && contains s "\"element\":\"ProductAdded\""
+        && contains s "\"element\":\"ProductAlreadyExists\""
+     then Printf.printf "  ok(gwt): Function$-wrapped (ReScript v12) extraction\n"
+     else (Printf.printf "  FAIL(gwt v12): missing elements in:\n%s\n" s; exit 1));
 
   (* spec_id_for: nearest preceding comment line wins. *)
   (match

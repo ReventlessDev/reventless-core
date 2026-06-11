@@ -476,6 +476,18 @@ let string_of_expr (e : expression) : string option =
   | Pexp_constant (Pconst_string (s, _, _)) -> Some s
   | _ -> None
 
+(* ReScript v12 wraps every (uncurried) lambda as [Function$(inner_fun)] — a
+   `Pexp_construct (Lident "Function$", Some inner)` around the real `Pexp_fun`
+   (see `TypeAnnotationInjection.annotate_function`). `describe`/`test` callbacks
+   therefore present as a construct, not a `Pexp_fun`, so the function body must
+   be reached through this wrapper. (Hand-built test ASTs skip the wrapper, which
+   is why the unit test never exercised this.) *)
+let rec fun_body (e : expression) : expression option =
+  match e.pexp_desc with
+  | Pexp_construct ({ txt = Lident "Function$"; _ }, Some inner) -> fun_body inner
+  | Pexp_fun (_, _, _, body) -> Some body
+  | _ -> None
+
 let rec collect_tests (e : expression)
     (acc : (Location.t * string * expression) list) :
     (Location.t * string * expression) list =
@@ -485,9 +497,8 @@ let rec collect_tests (e : expression)
     let arg_exprs = List.map snd args in
     match arg_exprs with
     | title_e :: fn :: _ -> (
-      match (string_of_expr title_e, fn.pexp_desc) with
-      | Some title, Pexp_fun (_, _, _, test_body) ->
-        (e.pexp_loc, title, test_body) :: acc
+      match (string_of_expr title_e, fun_body fn) with
+      | Some title, Some test_body -> (e.pexp_loc, title, test_body) :: acc
       | _ -> acc)
     | _ -> acc)
   | Pexp_let (_, _, cont) -> collect_tests cont acc
@@ -506,8 +517,8 @@ let describe_of_item (item : structure_item) :
         _ ) -> (
     match List.map snd args with
     | name_e :: fn :: _ -> (
-      match (string_of_expr name_e, fn.pexp_desc) with
-      | Some spec_name, Pexp_fun (_, _, _, body) ->
+      match (string_of_expr name_e, fun_body fn) with
+      | Some spec_name, Some body ->
         Some (spec_name, List.rev (collect_tests body []))
       | _ -> None)
     | _ -> None)
