@@ -68,6 +68,7 @@ const sidebars = {
         'component-testing',
         'd2-diagrams',
         'forward-codegen-pipeline',
+        'reverse-codegen-pipeline',
         'graphql-schema-debugging',
         'output-types-in-reventless-spec',
         'reventless-vscode-testing',

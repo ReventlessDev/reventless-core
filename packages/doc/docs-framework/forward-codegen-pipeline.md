@@ -1,15 +1,15 @@
 # Forward Codegen Pipeline
 
-This guide covers the **forward leg** of the Event Model ↔ code roundtrip — turning an upstream Event Modeling artifact (Dilger JSON today; prooph-board / YAML / Reventless-native later) into the Spec + GWT files that compose a Reventless plugin.
+This guide covers the **forward leg** of the Event Model ↔ code roundtrip — turning an upstream Event Modeling artifact (Event Modeling JSON today; prooph-board / YAML / Reventless-native later) into the Spec + GWT files that compose a Reventless plugin.
 
-The pipeline is owned by the `@reventlessdev/reventless-codegen` package. The reverse pass (code → model) and the AI synthesis of skeleton bodies are separate, planned capabilities and are not described here.
+The pipeline is owned by the `@reventlessdev/reventless-codegen` package. The inverse direction (code → model) is the [Reverse Codegen Pipeline](./reverse-codegen-pipeline.md). AI synthesis of skeleton bodies is a separate, planned capability and is not described here.
 
 ---
 
 ## TL;DR
 
 ```bash
-# Validate a Dilger JSON document
+# Validate an Event Modeling JSON document
 pnpm exec node reventless/reventless-codegen/run-codegen.mjs validate \
   --in path/to/model.json --plugin-name Catalog
 
@@ -87,7 +87,7 @@ The `forward` subcommand surfaces the same warnings before writing files; if any
 
 ## Adapters
 
-Currently only the **Dilger** adapter (`--adapter dilger`) ships. The `Adapter.T` interface is in place for future adapters (prooph-board, YAML DSL, Reventless-native canonical JSON), each of which is a self-contained follow-up.
+Currently only the **Event Modeling** adapter (`--adapter eventmodeling`) ships. The `Adapter.T` interface is in place for future adapters (prooph-board, YAML DSL, Reventless-native canonical JSON), each of which is a self-contained follow-up.
 
 ---
 
