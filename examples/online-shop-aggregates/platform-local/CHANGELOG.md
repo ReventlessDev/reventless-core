@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.77 (2026-06-11)
+
+**Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-local
+
+
+
+
+
 # 1.0.0-alpha.76 (2026-06-10)
 
 * refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.37 (2026-06-11)
+
+### Bug Fixes
+
+* **ppx:** drop unpublished darwin-x64 optionalDep + sync lockfile to alpha.36 ([d6c0e1e](https://github.com/ReventlessDev/reventless-core/commit/d6c0e1e186a0d7155375c1f4e9a6e63bb69f5d6e))
+### Features
+
+* **ppx:** emit .model.json + .gwt.json sidecars for spec/GWT files under REVENTLESS_EMIT_SIDECAR (Plan 06 Phases 1-2) ([c683af9](https://github.com/ReventlessDev/reventless-core/commit/c683af96323731d6f3c76ba7357e98e560a948ea))
+
+
 # 1.0.0-alpha.35 (2026-06-10)
 
 ### Bug Fixes
