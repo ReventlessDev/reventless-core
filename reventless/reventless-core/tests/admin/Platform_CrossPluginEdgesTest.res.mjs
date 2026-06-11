@@ -55,7 +55,8 @@ function queryable(name, consumedEventTypesOpt) {
     linkedWriteSide: [],
     labelField: "id",
     searchableFields: ["id"],
-    statusField: undefined
+    statusField: undefined,
+    visibility: undefined
   };
 }
 

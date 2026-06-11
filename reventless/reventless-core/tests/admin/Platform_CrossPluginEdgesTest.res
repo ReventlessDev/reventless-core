@@ -41,6 +41,7 @@ let queryable = (~name, ~consumedEventTypes=[]): queryableDef => {
   labelField: "id",
   searchableFields: ["id"],
   statusField: None,
+  visibility: None,
 }
 
 let automation = (~name, ~consumedEventTypes, ~producedCommandTypes, ~targetName): automationSliceDef => {

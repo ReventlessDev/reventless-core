@@ -27,6 +27,7 @@ let qbl: queryableDef = {
   labelField: "displayName",
   searchableFields: ["displayName"],
   statusField: None,
+  visibility: None,
 }
 
 let wbl: writableDef = {
@@ -133,6 +134,38 @@ describe("encodePluginStructureEntry", () => {
   )
 })
 
+describe("visibility filtering (deployed AutoUI hides Internal)", () => {
+  // Internal ReadModels / StateViewSlices are carried in pluginStructure for developer
+  // tooling but must not surface in the UI definitions the deployed AutoUI builds its
+  // menu / pages from — see Plugin_Structure.res / Visibility.res.
+  let internalQbl: queryableDef = {
+    name: "AvailableProducts",
+    queryField: "Ordering_AvailableProducts",
+    schema: "{}",
+    consumedEventTypes: ["CatalogProductSynced"],
+    linkedWriteSide: [],
+    labelField: "name",
+    searchableFields: ["name"],
+    statusField: None,
+    visibility: Some("Internal"),
+  }
+  let mixed: pluginStructure = {
+    ...structure,
+    readModels: [qbl, internalQbl],
+    stateViewSlices: [internalQbl],
+  }
+  let mixedJson =
+    Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId="Ordering", mixed)->JSON.stringify
+
+  test("excludes an Internal queryableDef from the encoded read-side", () =>
+    expect(mixedJson->String.includes("AvailableProducts"))->toEqual(false)
+  )
+
+  test("keeps a Public queryableDef", () =>
+    expect(mixedJson->String.includes("\"name\":\"Products\""))->toEqual(true)
+  )
+})
+
 describe("allowedStates + statusField populated", () => {
   let cmdWithStates: commandDef = {
     name: "Activate",
@@ -153,6 +186,7 @@ describe("allowedStates + statusField populated", () => {
     labelField: "name",
     searchableFields: ["name"],
     statusField: Some("status"),
+    visibility: None,
   }
 
   let wblWithStates: writableDef = {

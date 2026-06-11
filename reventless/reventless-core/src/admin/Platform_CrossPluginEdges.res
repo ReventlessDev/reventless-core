@@ -51,12 +51,12 @@ let computeEdges = (pluginEntries: array<(string, pluginStructure)>): array<grap
   let eventConsumers =
     pluginEntries->Array.flatMap(((pluginName, structure)) =>
       Array.flat([
-        structure.stateViewSlices->Array.map(svs => (
-          pluginName,
-          svs.name,
-          "StateViewSlice",
-          svs.consumedEventTypes,
-        )),
+        // Internal slices are carried in pluginStructure for developer tooling but are
+        // hidden from the deployed AutoUI's web event graph — skip them here so they gain
+        // no cross-plugin edges (the dev `DomainGraph` builds its own intra-plugin edges).
+        structure.stateViewSlices
+        ->Array.filter(svs => svs.visibility != Some("Internal"))
+        ->Array.map(svs => (pluginName, svs.name, "StateViewSlice", svs.consumedEventTypes)),
         structure.automationSlices->Array.map(a => (
           pluginName,
           a.name,

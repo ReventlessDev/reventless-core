@@ -28,10 +28,15 @@ let nodesFromStructure = (~pluginName, structure: pluginStructure): array<graphN
     structure.stateChangeSlices->Array.map(({name}) =>
       nodeFor(~pluginName, ~name, ~kind="StateChangeSlice")
     ),
-    structure.stateViewSlices->Array.map(({name}) =>
-      nodeFor(~pluginName, ~name, ~kind="StateViewSlice")
-    ),
-    structure.readModels->Array.map(({name}) => nodeFor(~pluginName, ~name, ~kind="ReadModel")),
+    // Internal ReadModels / StateViewSlices are carried in pluginStructure for developer
+    // tooling (the reventless-gwt / VSCode domain graph) but stay out of the deployed
+    // AutoUI's web event graph — filter them on the visibility tag.
+    structure.stateViewSlices
+    ->Array.filter(q => q.visibility != Some("Internal"))
+    ->Array.map(({name}) => nodeFor(~pluginName, ~name, ~kind="StateViewSlice")),
+    structure.readModels
+    ->Array.filter(q => q.visibility != Some("Internal"))
+    ->Array.map(({name}) => nodeFor(~pluginName, ~name, ~kind="ReadModel")),
     structure.automationSlices->Array.map(({name}) =>
       nodeFor(~pluginName, ~name, ~kind="AutomationSlice")
     ),

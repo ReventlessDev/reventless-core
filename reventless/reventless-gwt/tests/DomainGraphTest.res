@@ -25,7 +25,7 @@ let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[]
   consistencyRead: None,
 }
 
-let queryable = (~name, ~consumes=[]): Reventless.Plugin.queryableDef => {
+let queryable = (~name, ~consumes=[], ~visibility=None): Reventless.Plugin.queryableDef => {
   name,
   queryField: "",
   schema: "",
@@ -34,6 +34,7 @@ let queryable = (~name, ~consumes=[]): Reventless.Plugin.queryableDef => {
   labelField: "id",
   searchableFields: [],
   statusField: None,
+  visibility,
 }
 
 let automation = (~name, ~consumes=[]): Reventless.Plugin.automationSliceDef => {
@@ -87,6 +88,21 @@ describe("DomainGraph.build", () => {
     expect(hasEdge(g, "Shop_Order_Place", "Shop:Order", "handles"))->toBe(true)
     expect(hasEdge(g, "Shop:Order", "Shop.Placed", "emits"))->toBe(true)
     expect(hasEdge(g, "Shop.Placed", "Shop:OrderView", "projects"))->toBe(true)
+  })
+
+  testPromise("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {
+    // Internal components are hidden from the deployed AutoUI but carried in pluginStructure
+    // so the developer-facing domain graph can render them — see Plugin_Structure.res /
+    // Visibility.res. Mirrors the AvailableProducts case (a consume-only Internal slice).
+    let shop = structure(
+      ~aggregates=[writable(~name="Order", ~produces=["Shop.Placed"])],
+      ~stateViewSlices=[
+        queryable(~name="AvailableView", ~consumes=["Shop.Placed"], ~visibility=Some("Internal")),
+      ],
+    )
+    let g = DomainGraph.build(~structures=[("Shop", shop)], ~edges=[])
+    expect(nodeKind(g, "Shop:AvailableView"))->toEqual(Some("StateViewSlice"))
+    expect(hasEdge(g, "Shop.Placed", "Shop:AvailableView", "projects"))->toBe(true)
   })
 
   testPromise("classic linkedViews draws each produced event into the linked read model", async () => {

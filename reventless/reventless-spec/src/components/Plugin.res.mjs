@@ -98,7 +98,8 @@ let queryableDefSchema = S.schema(s => ({
   linkedWriteSide: s.m(S.array(S.string)),
   labelField: s.m(S.string),
   searchableFields: s.m(S.array(S.string)),
-  statusField: s.m(stringOptionSchema)
+  statusField: s.m(stringOptionSchema),
+  visibility: s.m(stringOptionSchema)
 }));
 
 let writableDefSchema = S.schema(s => ({

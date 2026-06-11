@@ -125,7 +125,8 @@ let pluginReadModel = {
   linkedWriteSide: pluginReadModel_linkedWriteSide,
   labelField: "name",
   searchableFields: pluginReadModel_searchableFields,
-  statusField: pluginReadModel_statusField
+  statusField: pluginReadModel_statusField,
+  visibility: undefined
 };
 
 let eventGraphReadModel_queryField = Api_Naming$ReventlessCore.adminField("PlatformEventGraphs");
@@ -146,7 +147,8 @@ let eventGraphReadModel = {
   linkedWriteSide: eventGraphReadModel_linkedWriteSide,
   labelField: "pluginName",
   searchableFields: eventGraphReadModel_searchableFields,
-  statusField: undefined
+  statusField: undefined,
+  visibility: undefined
 };
 
 let structure_readModels = [

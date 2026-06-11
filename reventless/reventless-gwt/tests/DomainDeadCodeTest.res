@@ -26,6 +26,7 @@ let queryable = (~name, ~consumes=[]): Reventless.Plugin.queryableDef => {
   labelField: "id",
   searchableFields: [],
   statusField: None,
+  visibility: None,
 }
 
 let automation = (~name, ~consumes=[]): Reventless.Plugin.automationSliceDef => {

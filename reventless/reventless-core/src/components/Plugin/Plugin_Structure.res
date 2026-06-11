@@ -300,21 +300,20 @@ let make = (
   // ── Build queryable defs ───────────────────────────────────────────────────
   //
   // Internal ReadModels and StateViewSlices (marked `@@reventless.visibility(Internal)`)
-  // are excluded from pluginStructure entirely — they have no menu entry, no
-  // drill-down page, and no node in the AutoUI event graph. They remain
-  // resolvable via GraphQL (cross-plugin lookups still work) because the
-  // GraphQL schema fragment is built independently of pluginStructure.
+  // are CARRIED in pluginStructure, tagged via `queryableDef.visibility` (`None` = Public,
+  // `Some("Internal")` = Internal). Developer tools — the `reventless-gwt` / VSCode domain
+  // graph and dead-code analysis — read them so an Internal view still shows up there. The
+  // deployed AutoUI's consumers (Platform_UIDefinitionsApi menu/pages, Platform_EventGraph
+  // web nodes, Platform_CrossPluginEdges) re-filter on the tag so the live UI keeps hiding
+  // them — see Visibility.res, which documents this contract.
+  let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
+    switch v {
+    | Public => None
+    | Internal => Some("Internal")
+    }
 
   let readModelDefs =
     readModels
-    ->Array.filter((
-      module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-    ) =>
-      switch R.Spec.visibility {
-      | Public => true
-      | Internal => false
-      }
-    )
     ->Array.map((
       module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
     ) => {
@@ -333,37 +332,31 @@ let make = (
         labelField,
         searchableFields,
         statusField: statusFieldFromStateSchema(stateSchema),
+        visibility: visibilityTag(R.Spec.visibility),
       }: Reventless.Plugin.queryableDef)
     })
 
   let stateViewDefs =
-    stateViewSlices
-    ->Array.mapWithIndex((module(SVS: ReventlessInfra.StateViewSlice.T), i) =>
-      switch SVS.Spec.visibility {
-      | Internal => None
-      | Public =>
-        let qf = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=SVS.Spec.name)
-        let (_, consumed) = svsConsumed->Array.getUnsafe(i)
-        let stateSchema = SVS.Spec.stateSchema->S.castToUnknown
-        let (labelField, searchableFields) = labelFieldsFromStateSchema(
-          ~entityName=SVS.Spec.name,
-          stateSchema,
-        )
-        Some(
-          ({
-            Reventless.Plugin.name: SVS.Spec.name,
-            queryField: qf.listFieldName,
-            schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
-            consumedEventTypes: consumed,
-            linkedWriteSide: linkedWriteSideFor(consumed),
-            labelField,
-            searchableFields,
-            statusField: statusFieldFromStateSchema(stateSchema),
-          }: Reventless.Plugin.queryableDef),
-        )
-      }
-    )
-    ->Array.filterMap(x => x)
+    stateViewSlices->Array.mapWithIndex((module(SVS: ReventlessInfra.StateViewSlice.T), i) => {
+      let qf = Api_Naming.queryFieldNamesForStateView(~plugin=name, ~viewName=SVS.Spec.name)
+      let (_, consumed) = svsConsumed->Array.getUnsafe(i)
+      let stateSchema = SVS.Spec.stateSchema->S.castToUnknown
+      let (labelField, searchableFields) = labelFieldsFromStateSchema(
+        ~entityName=SVS.Spec.name,
+        stateSchema,
+      )
+      ({
+        Reventless.Plugin.name: SVS.Spec.name,
+        queryField: qf.listFieldName,
+        schema: stateSchema->SuryToJsonSchema.deriveObjectSchema->JSON.stringify,
+        consumedEventTypes: consumed,
+        linkedWriteSide: linkedWriteSideFor(consumed),
+        labelField,
+        searchableFields,
+        statusField: statusFieldFromStateSchema(stateSchema),
+        visibility: visibilityTag(SVS.Spec.visibility),
+      }: Reventless.Plugin.queryableDef)
+    })
 
   // ── Build writable defs ────────────────────────────────────────────────────
 

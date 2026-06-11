@@ -55,6 +55,11 @@ let encodeCommandDef = (c: commandDef): JSON.t =>
     ),
   ])->JSON.Encode.object
 
+// Internal ReadModels / StateViewSlices are carried in pluginStructure for developer
+// tooling but must stay out of the deployed AutoUI — the menu, drill-down pages and
+// queryable defs are all derived from this response, so filter them here.
+let isPublicQueryable = (q: queryableDef): bool => q.visibility != Some("Internal")
+
 let encodeQueryableDef = (r: queryableDef): JSON.t =>
   Dict.fromArray([
     ("name", JSON.Encode.string(r.name)),
@@ -111,8 +116,17 @@ let encodeExtensionDef = (e: extensionDef): JSON.t =>
 let encodePluginStructureEntry = (~pluginId: string, def: pluginStructure): JSON.t =>
   Dict.fromArray([
     ("pluginId", JSON.Encode.string(Plugin.name(pluginId))),
-    ("readModels", def.readModels->Array.map(encodeQueryableDef)->JSON.Encode.array),
-    ("stateViewSlices", def.stateViewSlices->Array.map(encodeQueryableDef)->JSON.Encode.array),
+    (
+      "readModels",
+      def.readModels->Array.filter(isPublicQueryable)->Array.map(encodeQueryableDef)->JSON.Encode.array,
+    ),
+    (
+      "stateViewSlices",
+      def.stateViewSlices
+      ->Array.filter(isPublicQueryable)
+      ->Array.map(encodeQueryableDef)
+      ->JSON.Encode.array,
+    ),
     ("stateChangeSlices", def.stateChangeSlices->Array.map(encodeWritableDef)->JSON.Encode.array),
     ("aggregates", def.aggregates->Array.map(encodeWritableDef)->JSON.Encode.array),
     (

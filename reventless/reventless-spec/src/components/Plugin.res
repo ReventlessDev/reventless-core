@@ -179,6 +179,16 @@ type queryableDef = {
   `queryableDef` set this explicitly.
   */
   statusField: @s.matches(stringOptionSchema) option<string>,
+  /**
+  Component visibility hint (`@@reventless.visibility`). `Some("Internal")` marks a
+  ReadModel / StateViewSlice that the deployed AutoUI hides from its menu, drill-down
+  pages, web event graph and cross-plugin edges. `None` (absent) means Public. Internal
+  components are still CARRIED in `pluginStructure` (tagged here) so developer tools — the
+  `reventless-gwt` / VSCode domain graph and dead-code analysis — can see them, per
+  Visibility.res. Optional for back-compat: definitions persisted before this field
+  existed decode as `None` (Public).
+  */
+  visibility: @s.matches(stringOptionSchema) option<string>,
 }
 
 @schema

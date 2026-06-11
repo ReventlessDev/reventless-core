@@ -106,6 +106,7 @@ let pluginReadModel: queryableDef = {
   labelField: "name",
   searchableFields: ["name"],
   statusField: Some("status"),
+  visibility: None,
 }
 
 let eventGraphReadModel: queryableDef = {
@@ -117,6 +118,7 @@ let eventGraphReadModel: queryableDef = {
   labelField: "pluginName",
   searchableFields: ["pluginName"],
   statusField: None,
+  visibility: None,
 }
 
 let structure: pluginStructure = {

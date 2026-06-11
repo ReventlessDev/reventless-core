@@ -36,7 +36,8 @@ let qbl = {
   linkedWriteSide: qbl_linkedWriteSide,
   labelField: "displayName",
   searchableFields: qbl_searchableFields,
-  statusField: undefined
+  statusField: undefined,
+  visibility: undefined
 };
 
 let wbl_commands = [cmd];
@@ -134,6 +135,49 @@ Jest.describe("encodePluginStructureEntry", () => {
   Jest.test("encodes None statusField as null", () => Jest.Expect.toEqual(Jest.Expect.expect(json.includes("\"statusField\":null")), true));
 });
 
+Jest.describe("visibility filtering (deployed AutoUI hides Internal)", () => {
+  let internalQbl_consumedEventTypes = ["CatalogProductSynced"];
+  let internalQbl_linkedWriteSide = [];
+  let internalQbl_searchableFields = ["name"];
+  let internalQbl_visibility = "Internal";
+  let internalQbl = {
+    name: "AvailableProducts",
+    queryField: "Ordering_AvailableProducts",
+    schema: "{}",
+    consumedEventTypes: internalQbl_consumedEventTypes,
+    linkedWriteSide: internalQbl_linkedWriteSide,
+    labelField: "name",
+    searchableFields: internalQbl_searchableFields,
+    statusField: undefined,
+    visibility: internalQbl_visibility
+  };
+  let mixed_readModels = [
+    qbl,
+    internalQbl
+  ];
+  let mixed_stateViewSlices = [internalQbl];
+  let mixed_stateChangeSlices = structure_stateChangeSlices;
+  let mixed_aggregates = structure_aggregates;
+  let mixed_automationSlices = structure_automationSlices;
+  let mixed_outboundTranslationSlices = structure_outboundTranslationSlices;
+  let mixed_inboundTranslationSlices = structure_inboundTranslationSlices;
+  let mixed_extensions = structure_extensions;
+  let mixed = {
+    readModels: mixed_readModels,
+    stateViewSlices: mixed_stateViewSlices,
+    stateChangeSlices: mixed_stateChangeSlices,
+    aggregates: mixed_aggregates,
+    automationSlices: mixed_automationSlices,
+    outboundTranslationSlices: mixed_outboundTranslationSlices,
+    inboundTranslationSlices: mixed_inboundTranslationSlices,
+    extensions: mixed_extensions,
+    extensionPoints: undefined
+  };
+  let mixedJson = JSON.stringify(Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Ordering", mixed));
+  Jest.test("excludes an Internal queryableDef from the encoded read-side", () => Jest.Expect.toEqual(Jest.Expect.expect(mixedJson.includes("AvailableProducts")), false));
+  Jest.test("keeps a Public queryableDef", () => Jest.Expect.toEqual(Jest.Expect.expect(mixedJson.includes("\"name\":\"Products\"")), true));
+});
+
 Jest.describe("allowedStates + statusField populated", () => {
   let cmdWithStates_aggregateIdField = "id";
   let cmdWithStates_references = [];
@@ -159,7 +203,8 @@ Jest.describe("allowedStates + statusField populated", () => {
     linkedWriteSide: qblWithStatus_linkedWriteSide,
     labelField: "name",
     searchableFields: qblWithStatus_searchableFields,
-    statusField: qblWithStatus_statusField
+    statusField: qblWithStatus_statusField,
+    visibility: undefined
   };
   let wblWithStates_commands = [cmdWithStates];
   let wblWithStates_producedEventTypes = [];

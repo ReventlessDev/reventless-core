@@ -248,10 +248,14 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
     let match$3 = scored[0];
     return match$3[0];
   };
-  let readModelDefs = readModels.filter(R => {
-    let match = R.Spec.visibility;
-    return match === "Public";
-  }).map(R => {
+  let visibilityTag = v => {
+    if (v === "Public") {
+      return;
+    } else {
+      return "Internal";
+    }
+  };
+  let readModelDefs = readModels.map(R => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForReadModel(name, R.Spec.name, undefined);
     let stateSchema = R.Spec.stateSchema;
     let match = labelFieldsFromStateSchema(R.Spec.name, stateSchema);
@@ -263,30 +267,28 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       linkedWriteSide: [],
       labelField: match[0],
       searchableFields: match[1],
-      statusField: statusFieldFromStateSchema(stateSchema)
+      statusField: statusFieldFromStateSchema(stateSchema),
+      visibility: visibilityTag(R.Spec.visibility)
     };
   });
-  let stateViewDefs = Stdlib_Array.filterMap(stateViewSlices.map((SVS, i) => {
-    let match = SVS.Spec.visibility;
-    if (match !== "Public") {
-      return;
-    }
+  let stateViewDefs = stateViewSlices.map((SVS, i) => {
     let qf = Api_Naming$ReventlessCore.queryFieldNamesForStateView(name, SVS.Spec.name, undefined);
-    let match$1 = svsConsumed[i];
-    let consumed = match$1[1];
+    let match = svsConsumed[i];
+    let consumed = match[1];
     let stateSchema = SVS.Spec.stateSchema;
-    let match$2 = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
+    let match$1 = labelFieldsFromStateSchema(SVS.Spec.name, stateSchema);
     return {
       name: SVS.Spec.name,
       queryField: qf.listFieldName,
       schema: JSON.stringify(SuryToJsonSchema$ReventlessCore.deriveObjectSchema(stateSchema)),
       consumedEventTypes: consumed,
       linkedWriteSide: linkedWriteSideFor(consumed),
-      labelField: match$2[0],
-      searchableFields: match$2[1],
-      statusField: statusFieldFromStateSchema(stateSchema)
+      labelField: match$1[0],
+      searchableFields: match$1[1],
+      statusField: statusFieldFromStateSchema(stateSchema),
+      visibility: visibilityTag(SVS.Spec.visibility)
     };
-  }), x => x);
+  });
   let stateChangeDefs = stateChangeSlices.map((SCS, i) => {
     let match = scsProduced[i];
     let produced = match[1];

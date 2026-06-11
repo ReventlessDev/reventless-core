@@ -26,7 +26,8 @@ function queryable(name, consumesOpt) {
     linkedWriteSide: [],
     labelField: "id",
     searchableFields: [],
-    statusField: undefined
+    statusField: undefined,
+    visibility: undefined
   };
 }
 
