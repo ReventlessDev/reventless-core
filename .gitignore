@@ -79,3 +79,8 @@ package-lock.json
 # pnpm-workspace.local.yaml is the developer's overlay input.
 pnpm-workspace.yaml
 pnpm-workspace.local.yaml
+# Reverse codegen sidecars — derived PPX artifacts (Plan 06), emitted only
+# under REVENTLESS_EMIT_SIDECAR=1 by the `reventless-codegen export` CLI.
+*.model.json
+*.gwt.json
+*.wiring.json
