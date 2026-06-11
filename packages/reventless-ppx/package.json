@@ -14,7 +14,6 @@
   },
   "optionalDependencies": {
     "@reventlessdev/reventless-ppx-darwin-arm64": "1.0.0-alpha.36",
-    "@reventlessdev/reventless-ppx-darwin-x64": "1.0.0-alpha.36",
     "@reventlessdev/reventless-ppx-linux-x64": "1.0.0-alpha.36"
   },
   "publishConfig": {
