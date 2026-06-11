@@ -641,6 +641,15 @@ let dispatch_task_impl ~loc ~specifier ~name body =
   !prefix @ body @ suffix
 
 let transform (str : structure) : structure =
+  (* Plan 06 Phase 2: emit <Stem>.gwt.json from the inline-literal test bodies
+     before GwtInference injects the include/open. No-op unless
+     REVENTLESS_EMIT_SIDECAR=1 and the file carries @@reventless.gwt. *)
+  let () =
+    match GwtInference.find_gwt_attr str with
+    | Some (_, gloc) ->
+      SidecarEmit.maybe_emit_gwt ~fname:gloc.Location.loc_start.pos_fname str
+    | None -> ()
+  in
   let str = GwtInference.transform str in
   (* Inline spec-shaped inner modules (test fixtures, framework-internal
      helpers) get auth-field injection before any other pass — independent
@@ -671,6 +680,10 @@ let transform (str : structure) : structure =
     let dcb_tags = has_dcb_tags_attr str
                    || Util.is_in_slice_folder loc.loc_start.pos_fname in
     let body = strip_ppx_attrs str in
+    (* Capture the spec body before the DCB-tag passes rewrite the field
+       annotations into [@s.matches(...)] — the Plan 06 sidecar emitter reads
+       the original [@partitionTag] / [@noDcbTag] / [@dcbTag] / [@id] intent. *)
+    let raw_spec_body = body in
     let () = DcbTagInference.check_deprecated_no_tag body in
     let body = ReferenceInference.transform_structure body in
     let body = if dcb_tags then DcbTagInference.transform_structure ~loc body else body in
@@ -684,6 +697,12 @@ let transform (str : structure) : structure =
     match mode with
     | Spec name_opt ->
       let name = derive_spec_name ~loc name_opt in
+      (* Plan 06 Phase 1: emit a <Stem>.model.json sidecar when
+         REVENTLESS_EMIT_SIDECAR=1. No-op for ordinary builds. *)
+      let () =
+        SidecarEmit.maybe_emit ~spec_name:name
+          ~fname:loc.loc_start.pos_fname raw_spec_body
+      in
       let pkg = ModuleUrl.find_package_for loc in
       let has_reventless_spec = match pkg with
         | Some p -> p.has_reventless_spec

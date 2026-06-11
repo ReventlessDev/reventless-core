@@ -1,0 +1,5 @@
+(test
+ (name test_sidecar)
+ (libraries ReventlessPpx ppxlib yojson)
+ (flags (:standard -w -9-26-27))
+ (preprocess (pps ppxlib.metaquot)))
