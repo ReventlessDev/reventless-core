@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.57 (2026-06-12)
+
+### Features
+
+* **vscode:** jump from event-graph nodes to source + show Internal components in the dev graph ([6a6e5e4](https://github.com/ReventlessDev/reventless-core/commit/6a6e5e466c6ea5c0c7315ccc37a538e0b496c99a))
+
+
 # 1.0.0-alpha.56 (2026-06-11)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

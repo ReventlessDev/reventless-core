@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-anthropic",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "description": "ReScript bindings for @anthropic-ai/sdk and @anthropic-ai/claude-agent-sdk",
   "license": "Apache-2.0",
   "scripts": {
@@ -18,8 +18,8 @@
     "rescript": "^12.3.0"
   },
   "peerDependencies": {
-    "rescript": "^12.3.0",
-    "@anthropic-ai/claude-agent-sdk": ">=0.3.0"
+    "@anthropic-ai/claude-agent-sdk": ">=0.3.0",
+    "rescript": "^12.3.0"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/claude-agent-sdk": {

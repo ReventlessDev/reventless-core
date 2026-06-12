@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.39 (2026-06-12)
+
+### Bug Fixes
+
+* **codegen:** make code→JSON→code round-trip reproduce goldens byte-for-byte ([f1a8c16](https://github.com/ReventlessDev/reventless-core/commit/f1a8c163c27be12a949a7b983744bfc01614bed0))
+
+
 # 1.0.0-alpha.37 (2026-06-11)
 
 ### Bug Fixes

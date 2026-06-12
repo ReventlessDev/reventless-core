@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-jest",
-  "version": "1.0.0-alpha.0",
+  "version": "1.0.0-alpha.1",
   "description": "Direct ReScript bindings to Jest's global APIs with throwing `expect` and native async test bodies",
   "license": "Apache-2.0",
   "scripts": {
@@ -11,7 +11,6 @@
     "test": "echo \"There are no tests for rescript-jest.\"",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
-  "dependencies": {},
   "devDependencies": {
     "rescript": "^12.3.0"
   },
