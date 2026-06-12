@@ -1,6 +1,6 @@
 # Plan: PPX Component Suffix Stripping Fix
 
-**Analysis:** `docs/analysis/ppx-component-suffix-stripping.md` *(in private-consumer-repo)*
+**Analysis:** `docs/analysis/ppx-component-suffix-stripping.md` *(in the downstream consumer repo)*
 
 **Problem:** `filename_to_name` in `Util.ml` strips all `component_suffixes` unconditionally. Inside slice folders, suffixes like `Plugin` and `Aggregate` are part of user-defined entity names, not framework type labels. E.g. `StateChange/SyncPlugin.res` → entity `"Sync"` (wrong, should be `"SyncPlugin"`).
 

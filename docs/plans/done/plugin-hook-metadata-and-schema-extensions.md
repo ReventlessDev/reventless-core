@@ -35,7 +35,7 @@ type pluginInfo = {
   // ... existing fields unchanged ...
   kind?: pluginKind,       // absent = Domain
   displayName?: string,
-  vendor?: string,         // e.g. "private-consumer", "AcmeCorp"
+  vendor?: string,         // e.g. "Reventless", "AcmeCorp"
 }
 ```
 

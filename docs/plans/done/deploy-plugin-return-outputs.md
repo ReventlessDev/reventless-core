@@ -1,7 +1,7 @@
 # Plan: Return pluginOutputs from deployPlugin
 
 **Status:** Done
-**Related:** `private-consumer-repo/docs/plans/console-oq2-plugin-registry-persistence.md`
+**Related:** a downstream consumer analysis (`plans/console-oq2-plugin-registry-persistence.md`)
 
 ## Goal
 
@@ -85,11 +85,11 @@ If the compiler warns about unused return values, prefix with `let _ =`.
 
 ## What this unblocks
 
-After this change, private-consumer-repo plugin stacks can:
+After this change, the downstream consumer repo plugin stacks can:
 
 ```rescript
 let pluginOutputs = Platform.deployPlugin(~version=..., ~plugin=module(Catalog))
 // SDK helper derives component list from pluginOutputs and writes plugin-info to DynamoDB
 ```
 
-The `PluginRmStore` helper, the plugin-info JSON construction, and the DynamoDB write all live in private-consumer-repo (reventless-sdk), not in core.
+The `PluginRmStore` helper, the plugin-info JSON construction, and the DynamoDB write all live in the downstream consumer repo (reventless-sdk), not in core.

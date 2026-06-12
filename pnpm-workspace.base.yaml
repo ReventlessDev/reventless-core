@@ -3,9 +3,6 @@ packages:
   - 'rescript/*'
   - 'reventless/*'
   - 'examples/**'
-  # Codegen golden-output fixtures — buildable workspace members, paired with
-  # the input fixtures at reventless-codegen/tests/fixtures/.
-  - 'reventless/reventless-codegen/tests/golden/*/*'
 
 # pnpm 10 blocks postinstall scripts by default; allowlist the ones we need.
 # Keep this list in sync with the set of deps that ship native binaries or

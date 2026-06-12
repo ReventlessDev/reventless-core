@@ -15,12 +15,12 @@ This plan adds a **retry-on-404 wrapper** around the existing
 `aws-native.appsync.Resolver` call site, so create/update operations that
 hit the propagation race are transparently retried with exponential
 backoff. This is Option C from
-`private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md`,
+a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`),
 specialised for the case where we already have the native resource in
 place — we wrap the resource construction in a Pulumi `ComponentResource`
 that handles retry, instead of writing a full custom dynamic provider.
 
-**Source analysis:** `private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md`
+**Source analysis:** a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`)
 (Option C, narrowed by Option F's failure record).
 
 **Alternative plan:** `docs/plans/appsync-resolver-retry-dynamic.md`
@@ -449,14 +449,14 @@ know to evaluate retry needs per-resource.
 | `reventless-aws/src/adapter/Api/AppSync_Resolver_Native.res` | Untouched — kept as bindings |
 | `reventless-aws/tests/AppSync_Resolver_RetryingTest.res` | New — unit tests for error classifier |
 | `reventless-aws/docs/guides/dual-aws-provider.md` | Updated — Native vs Retrying, runbook |
-| `private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md` | Updated — Option C closing entry |
+| a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`) | Updated — Option C closing entry |
 
 ---
 
 ## References
 
 - Source analysis (Option C, narrowed by Option F's failure):
-  `private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md`
+  a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`)
 - Original full retry plan: `docs/plans/appsync-resolver-retry-dynamic.md`
   (use as the implementation template for `AppSync_Resolver_Retrying`)
 - Option F plan & implementation: `docs/plans/appsync-resolver-aws-native.md`

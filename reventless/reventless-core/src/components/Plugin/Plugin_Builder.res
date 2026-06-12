@@ -839,7 +839,7 @@ module Make = (
     // Internal ReadModels are hidden from the AutoUI manifest. They remain
     // fully wired (resolvers, GraphQL schema, queryable defs, authorization)
     // — visibility is a UX hint, not a security boundary. See
-    // private-consumer-repo/docs/analysis/component-visibility-and-metadata-annotations.md
+    // docs/plans/done/component-visibility-annotations.md
     let visibleReadModels =
       readModels->Array.filter((
         module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),

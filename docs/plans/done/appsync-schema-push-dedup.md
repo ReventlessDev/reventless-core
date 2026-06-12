@@ -20,7 +20,7 @@ Combined with the retry wrapper
 (`docs/plans/done/appsync-resolver-aws-native-retry.md`), this
 completes the fix.
 
-**Source analysis:** `private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md`
+**Source analysis:** a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`)
 — see the "Out of scope" note at the end of the Option C section
 mentioning schema-push deduplication as a complementary optimisation.
 
@@ -396,7 +396,7 @@ One extra entry per AppSync API (two, in dual-API setups). Trivial.
 
 ## References
 
-- Source analysis: `private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md`
+- Source analysis: a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`)
 - Companion plan (retry): `docs/plans/done/appsync-resolver-aws-native-retry.md`
 - [`StartSchemaCreation` API](https://docs.aws.amazon.com/appsync/latest/APIReference/API_StartSchemaCreation.html)
 - [Node.js `crypto.createHash`](https://nodejs.org/api/crypto.html#cryptocreatehashalgorithm-options)

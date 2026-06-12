@@ -1,6 +1,6 @@
 # Plan: QueryDb Annotations and Sort Key Queries
 
-**Analysis:** `private-consumer-repo/docs/analysis/querydb-design-patterns.md`
+**Analysis:** a downstream consumer analysis (`analysis/querydb-design-patterns.md`)
 
 **Scope:** Extend `reventless-ppx`, framework specs, builders, storage adapters, and resolvers
 to support declarative `@schema type state` annotations for composite keys, secondary indexes,

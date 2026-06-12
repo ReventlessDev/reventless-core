@@ -38,7 +38,7 @@ This is a [pnpm](https://pnpm.io) + [Lerna](https://lerna.js.org) monorepo. Pack
 - [reventless-core](reventless/reventless-core/) — core framework (provider-agnostic)
 - [reventless-aws](reventless/reventless-aws/) — AWS adapters (DynamoDB, Lambda, SQS, SNS, S3)
 - [reventless-local](reventless/reventless-local/) — local platform for local dev and testing
-- [reventless-infra](reventless/reventless-infra/), [reventless-interop](reventless/reventless-interop/), [reventless-gwt](reventless/reventless-gwt/), [reventless-codegen](reventless/reventless-codegen/)
+- [reventless-infra](reventless/reventless-infra/), [reventless-interop](reventless/reventless-interop/), [reventless-gwt](reventless/reventless-gwt/)
 
 ### ReScript bindings (`rescript/`)
 

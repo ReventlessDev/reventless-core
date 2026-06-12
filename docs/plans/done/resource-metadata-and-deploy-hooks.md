@@ -238,7 +238,7 @@ reventless:role = "eventLog"
 reventless:kind = "Aggregate"
 ```
 
-This enables AWS Resource Groups / Tag Editor queries without parsing Pulumi state. Useful for cost attribution (`@private-consumer/billing`) and compliance auditing.
+This enables AWS Resource Groups / Tag Editor queries without parsing Pulumi state. Useful for cost attribution (e.g. a billing extension) and compliance auditing.
 
 **Implementation:** Pass tags through from `Plugin_Builder.construct` to each component builder to each `Util_*.res` function. Requires adding `tags?: dict<string>` to all Pulumi resource creation calls.
 
@@ -345,5 +345,5 @@ Steps can be implemented incrementally:
 After each step:
 1. Build reventless-core (all packages)
 2. Run core test suite
-3. Build private-consumer-repo examples (platform, catalog-aws, ordering-aws)
+3. Build the downstream consumer repo examples (platform, catalog-aws, ordering-aws)
 4. Run business test suite (20/20 in-memory tests)

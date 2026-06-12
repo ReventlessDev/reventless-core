@@ -1,6 +1,6 @@
 # Plan: `@compositePartitionTag` PPX Attribute
 
-**Analysis:** `docs/analysis/platform-inspector-dcb-partition-keys.md` (in private-consumer-repo)
+**Analysis:** `docs/analysis/platform-inspector-dcb-partition-keys.md` (in the downstream consumer repo)
 
 **Goal:** Support composite DCB partition keys via a field-level PPX annotation. The annotation marks
 N fields whose values are concatenated (in declaration order) with a configurable separator to form
@@ -181,7 +181,7 @@ let getCompositePartitionKeyValue = (
 
 ### 6 — Documentation ✅
 
-- [x] Update `docs/analysis/platform-inspector-dcb-partition-keys.md` (in private-consumer-repo)
+- [x] Update `docs/analysis/platform-inspector-dcb-partition-keys.md` (in the downstream consumer repo)
       to mark Approach 2 as implemented.
 - [x] Add a short reference entry to the sury PPX patterns reference in the skills plugin.
 

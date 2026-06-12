@@ -124,7 +124,7 @@ The `Obj.magic` cast disappears because `deriveObjectSchema` returns `JSON.t` di
 - **Integration ✅.** `reventless/reventless-core/tests/plugin/PluginStructureTest.res` gained a `queryableDef.schema propagates x-reventless-* annotations` describe block backed by a new fixture `tests/plugin/StateViewSlice/PsAnnotatedView.res` (one `@id itemId`, one `@subId version`, one `@index("byOwner") ownerId`, plus an unannotated `name`). After `JSON.parseOrThrow`, the test asserts `x-reventless-id` on `itemId`, `x-reventless-subId` on `version`, `x-reventless-index = "byOwner"` on `ownerId`, no `x-reventless-*` on `name`, and no `x-reventless-id` on the unannotated `Orders` SVS for cross-checking. The pre-existing "produces three SVS entries" count was bumped to four.
 - **Build ✅.** `pnpm exec rescript-legacy build` from `reventless-core` — clean, zero warnings.
 - **Tests ✅.** `pnpm test` from `reventless/reventless-core` — 312 tests across 29 suites, all green (24 in `PluginStructureTest`, 18 in `SuryToJsonSchemaTest`).
-- **Server-side wire smoke ✅.** Run 2026-04-29 against `private-consumer-repo/examples/online-shop/platform-in-memory` linked to local core (`pnpm link:on` overlay), restarted on `:4001`, probed directly via `POST /graphql { Platform_UIDefinitions { stateViewSlices { name schema } } }`. The Platform plugin's `DeploymentHistory` SVS schema now ships:
+- **Server-side wire smoke ✅.** Run 2026-04-29 against a downstream consumer example app (online-shop `platform-in-memory`) linked to local core (`pnpm link:on` overlay), restarted on `:4001`, probed directly via `POST /graphql { Platform_UIDefinitions { stateViewSlices { name schema } } }`. The Platform plugin's `DeploymentHistory` SVS schema now ships:
 
     | field          | `x-reventless-*` keys                              |
     |----------------|-----------------------------------------------------|
@@ -145,6 +145,6 @@ The `Obj.magic` cast disappears because `deriveObjectSchema` returns `JSON.t` di
 
 ### Cross-repo coordination
 
-The fix is purely in `reventless-core`. No `reventless-ui` change is needed — the auto-UI is already correctly deciding capability from whatever schema it sees. `private-consumer-repo` only needs to rebuild against the patched `reventless-core` (workspace-link via `pnpm-workspace.local.yaml`, or republish + reinstall) for the smoke to pass.
+The fix is purely in `reventless-core`. No `reventless-ui` change is needed — the auto-UI is already correctly deciding capability from whatever schema it sees. the downstream consumer repo only needs to rebuild against the patched `reventless-core` (workspace-link via `pnpm-workspace.local.yaml`, or republish + reinstall) for the smoke to pass.
 
 The corresponding tracking note in the UI plan (`reventless-ui/docs/plans/autoui-improvements-ui.md`, Phase 6.5 validation block) can be flipped from ❌ to ✅ once this lands and the browser smoke is re-run.

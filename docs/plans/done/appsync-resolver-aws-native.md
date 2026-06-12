@@ -14,7 +14,7 @@ with `NotFoundException: No field named X found on type Query`. If this
 hypothesis holds, no custom retry logic is needed; AWS orchestrates the
 wait server-side.
 
-**Source analysis:** `private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md`
+**Source analysis:** a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`)
 (Option F).
 
 **Alternative plan (Option C — custom dynamic resource with client-side
@@ -42,7 +42,7 @@ Option F was adopted.
 All 25 operations clean (5 up + 5 destroy per region × 2 regions). No
 `NotFoundException: No field named` across `eu-west-1` or `us-east-1`.
 Option F adopted. See the Option F risk-assessment section of
-`private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md` for
+a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`) for
 the empirical record. Proceeding to Phase 2.
 
 
@@ -430,7 +430,7 @@ The plans are mutually exclusive. Do not implement both.
 
 ## References
 
-- Business-repo analysis (Option F): `private-consumer-repo/docs/analysis/appsync-resolver-creation-race.md`
+- Business-repo analysis (Option F): a downstream consumer analysis (`analysis/appsync-resolver-creation-race.md`)
 - Alternative (Option C): see "Option C" section in the analysis doc
   above. Standalone plan file removed after Option F was adopted.
 - [`pulumi-aws-native` README — "aws as primary, aws-native as needed"](https://github.com/pulumi/pulumi-aws-native)

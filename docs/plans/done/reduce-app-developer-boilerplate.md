@@ -564,7 +564,7 @@ Extracted to separate plan: `single-arg-make-and-composable-ep-mappings.md`
 
 ### Breaking Changes
 
-Phases 2-3 are breaking changes to `Platform.T` (`feat!:`). All Platform implementations (Platform.T type, AWS Platform, InMemory Platform) are updated atomically. Example plugins in this monorepo are updated in the same commit. External consumers (private-consumer-repo) need updating.
+Phases 2-3 are breaking changes to `Platform.T` (`feat!:`). All Platform implementations (Platform.T type, AWS Platform, InMemory Platform) are updated atomically. Example plugins in this monorepo are updated in the same commit. External consumers (the downstream consumer repo) need updating.
 
 Phases 8-10 are additional breaking changes (`feat!:`). Phase 9 (`producedEvent` → `event`) affects all StateChangeSlice specs.
 

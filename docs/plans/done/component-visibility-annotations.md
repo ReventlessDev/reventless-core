@@ -1,6 +1,6 @@
 # Plan: Component Visibility Annotations ✅ DONE
 
-Implements the design in [private-consumer-repo/docs/analysis/component-visibility-and-metadata-annotations.md](../../../private-consumer-repo/docs/analysis/component-visibility-and-metadata-annotations.md).
+Implements the design in a downstream consumer analysis (`analysis/component-visibility-and-metadata-annotations.md`).
 
 **Goal.** Add a file-level `@@reventless.visibility(...)` PPX attribute to ReadModel and StateViewSlice specs that controls whether the component appears in the AutoUI manifest. Ship as a variant from day one (not a bool) to keep future cases backwards-compatible.
 

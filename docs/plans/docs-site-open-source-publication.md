@@ -182,9 +182,9 @@ Decide **one canonical home** per topic. Default (open decision #2): `git mv` th
 | rescript-monorepo-build-behaviour.md | Contributing | Migrate |
 | rescript-option-proxy-pitfall.md | Contributing | Migrate |
 | output-types-in-reventless-spec.md | Contributing | Migrate |
-| forward-codegen-pipeline.md | Contributing | Migrate |
+| forward-codegen-pipeline.md | — | Moved to the developer-tooling repo |
 | graphql-schema-debugging.md | Contributing | Migrate |
-| reventless-vscode-testing.md | Contributing | Migrate or keep internal |
+| reventless-vscode-testing.md | Contributing | Keep — user docs for the free VS Code extension |
 | GITHUB_MIGRATION_GUIDE.md | — | **Do not publish** |
 | GITHUB.IMPLEMENTATION_SUMMARY.md | — | **Do not publish** |
 | CICD_SETUP.md | — | **Do not publish** |

@@ -23,7 +23,7 @@ branch, parked 2026-05-01) was validated end-to-end on 2026-05-03 and
 compiled against the sibling's own deps. ReScript reports
 `inconsistent assumptions over interface S` — the same class of error
 the script was supposed to fix. See
-[../../../../private-consumer/private-consumer-repo/docs/plans/improve-core-dep-update-workflow.md](../../../../private-consumer/private-consumer-repo/docs/plans/improve-core-dep-update-workflow.md)
+a downstream consumer analysis (`plans/improve-core-dep-update-workflow.md`)
 Fix 1 for the validation log. The `feat/overlay-symlink-sibling-deps`
 branch should not be merged. The recurring CI fragility (the
 gitignored runtime workspace file going missing in fresh checkouts) is
@@ -35,7 +35,7 @@ output (the second was applied to `release.yml` on 2026-05-03).
 **Sibling plans (also rejected):**
 [reventless-ui](../../../../reventless-ui/docs/plans/rejected/replace-workspace-overlay-with-link-protocol.md)
 and
-[private-consumer-repo](../../../../../private-consumer/private-consumer-repo/docs/plans/rejected/replace-workspace-overlay-with-link-protocol.md).
+the downstream consumer repo.
 business has been rolled back to the overlay system. ui's partial
 execution of Step 1 (tracked `pnpm-workspace.yaml`) happens to be
 benign because ui's only cross-repo dep is a leaf binding
@@ -160,7 +160,7 @@ This repo:
   `cross-repo-link.config.json.example` lists the current set, taken
   from [pnpm-workspace.local.yaml.example](../../pnpm-workspace.local.yaml.example).
 - Consumed by: `reventless-ui` (ui's core deps) and
-  `private-consumer-repo` (business's core deps).
+  the downstream consumer repo (business's core deps).
 
 Special: this repo just shipped
 [overlay-symlink-sibling-deps.md](overlay-symlink-sibling-deps.md)
@@ -230,7 +230,7 @@ plan exists to end. Plan all three within a short window.
 
 - pnpm `catalog:` references. Complementary; track separately.
 - Skipping `pnpm clean` in upgrade guides (see business's
-  [improve-core-dep-update-workflow.md](../../../../private-consumer/private-consumer-repo/docs/plans/improve-core-dep-update-workflow.md)
+  `improve-core-dep-update-workflow.md`
   Fix 2).
 - Single-root pnpm workspace spanning all three repos. Considered and
   rejected by the same business plan as too invasive.
