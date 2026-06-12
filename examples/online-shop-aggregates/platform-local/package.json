@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-platform-local",
   "private": true,
-  "version": "1.0.0-alpha.78",
+  "version": "1.0.0-alpha.79",
   "description": "Online Shop example — full aggregate platform with Catalog + Ordering plugins (in-memory)",
   "license": "Apache-2.0",
   "scripts": {
