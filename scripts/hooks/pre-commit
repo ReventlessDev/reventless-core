@@ -1,0 +1,16 @@
+#!/bin/sh
+# Repo hygiene: block AWS account IDs and private-repo references.
+# Mirrors .github/workflows/repo-hygiene.yml — keep in sync.
+# Install: git config core.hooksPath scripts/hooks
+files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(md|res|ts|mjs|yml|yaml|json)$' | grep -v pnpm-lock || true)
+[ -z "$files" ] && exit 0
+fail=0
+hits=$(echo "$files" | xargs grep -nE '\b[0-9]{12}\b' 2>/dev/null | grep -vE '123456789012|000000000000' | grep -vE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-' || true)
+if [ -n "$hits" ]; then
+  echo "$hits"; echo "ERROR: 12-digit AWS-account-shaped number staged (use 123456789012 as placeholder)"; fail=1
+fi
+refs=$(echo "$files" | xargs grep -niE 'private-consumer-repo|private-consumer' 2>/dev/null || true)
+if [ -n "$refs" ]; then
+  echo "$refs"; echo "ERROR: private-repo reference staged"; fail=1
+fi
+exit $fail

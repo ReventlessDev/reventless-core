@@ -1,0 +1,27 @@
+name: Repo hygiene
+on:
+  push:
+    branches: [alpha]
+  pull_request:
+
+jobs:
+  leak-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block AWS account IDs and private-repo references
+        run: |
+          set -e
+          # 12-digit AWS-account-shaped numbers (excluding placeholders, lockfiles, UUIDs)
+          if grep -rnE '\b[0-9]{12}\b' --include='*.md' --include='*.res' --include='*.ts' --include='*.mjs' --include='*.yml' --include='*.yaml' --include='*.json' . \
+            | grep -v node_modules | grep -vE 'pnpm-lock\.yaml' \
+            | grep -vE '123456789012|000000000000' \
+            | grep -vE '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-' ; then
+            echo '::error::12-digit AWS-account-shaped number found (use 123456789012 as placeholder)'; exit 1
+          fi
+          # private repo references must not appear in this repository
+          if grep -rniE 'private-consumer-repo|private-consumer' --include='*.md' --include='*.res' --include='*.ts' --include='*.mjs' --include='*.yml' --include='*.yaml' --include='*.json' . \
+            | grep -v node_modules ; then
+            echo '::error::private-repo reference found'; exit 1
+          fi
+          echo 'hygiene OK'
