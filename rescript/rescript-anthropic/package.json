@@ -1,0 +1,37 @@
+{
+  "name": "@reventlessdev/rescript-anthropic",
+  "version": "1.0.0-alpha.0",
+  "description": "ReScript bindings for @anthropic-ai/sdk and @anthropic-ai/claude-agent-sdk",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "test": "echo \"There are no tests for rescript-anthropic.\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "rescript": "^12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "^12.3.0",
+    "@anthropic-ai/claude-agent-sdk": ">=0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/claude-agent-sdk": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "rescript/rescript-anthropic"
+  }
+}
