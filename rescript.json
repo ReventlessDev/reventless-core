@@ -25,7 +25,6 @@
     "@reventlessdev/reventless-core",
     "@reventlessdev/reventless-gwt",
     "@reventlessdev/reventless-local",
-    "@reventlessdev/reventless-codegen",
     "@reventlessdev/reventless-aws",
     "@reventlessdev/online-shop-hybrid-platform-aws"
   ],

@@ -61,9 +61,6 @@ importers:
       '@reventlessdev/reventless-aws':
         specifier: workspace:*
         version: link:reventless/reventless-aws
-      '@reventlessdev/reventless-codegen':
-        specifier: workspace:*
-        version: link:reventless/reventless-codegen
       '@reventlessdev/reventless-conventional-changelog':
         specifier: workspace:*
         version: link:reventless/reventless-conventional-changelog
@@ -724,28 +721,6 @@ importers:
         specifier: 1.0.0-alpha.38
         version: 1.0.0-alpha.38
 
-  packages/reventless-vscode:
-    dependencies:
-      '@rescript/runtime':
-        specifier: 12.3.0
-        version: 12.3.0
-      '@reventlessdev/reventless-vscode-protocol':
-        specifier: workspace:*
-        version: link:../../reventless/reventless-vscode-protocol
-    devDependencies:
-      '@types/node':
-        specifier: ^22.19.17
-        version: 22.19.17
-      '@types/vscode':
-        specifier: ^1.116.0
-        version: 1.116.0
-      rescript:
-        specifier: ^12.3.0
-        version: 12.3.0
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
   rescript/rescript-anthropic:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
@@ -1034,90 +1009,6 @@ importers:
       sury:
         specifier: 11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)
-      sury-ppx:
-        specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
-
-  reventless/reventless-codegen:
-    dependencies:
-      '@anthropic-ai/claude-agent-sdk':
-        specifier: '>=0.3.0'
-        version: 0.3.173(@anthropic-ai/sdk@0.71.2(zod@3.25.76))(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(zod@3.25.76)
-      '@anthropic-ai/sdk':
-        specifier: ^0.71.0
-        version: 0.71.2(zod@3.25.76)
-      '@reventlessdev/rescript-anthropic':
-        specifier: workspace:*
-        version: link:../../rescript/rescript-anthropic
-      '@reventlessdev/rescript-jest':
-        specifier: workspace:*
-        version: link:../../rescript/rescript-jest
-      sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
-      zod:
-        specifier: ^3.25.0
-        version: 3.25.76
-    devDependencies:
-      rescript:
-        specifier: ^12.3.0
-        version: 12.3.0
-      sury-ppx:
-        specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
-
-  reventless/reventless-codegen/tests/golden/eventmodeling/catalog-minimal:
-    dependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../../../reventless-gwt
-      '@reventlessdev/reventless-infra':
-        specifier: workspace:*
-        version: link:../../../../../reventless-infra
-      '@reventlessdev/reventless-local':
-        specifier: workspace:*
-        version: link:../../../../../reventless-local
-      '@reventlessdev/reventless-spec':
-        specifier: workspace:*
-        version: link:../../../../../reventless-spec
-      sury:
-        specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
-    devDependencies:
-      '@reventlessdev/reventless-ppx':
-        specifier: workspace:*
-        version: link:../../../../../../packages/reventless-ppx
-      rescript:
-        specifier: ^12.3.0
-        version: 12.3.0
-      sury-ppx:
-        specifier: 11.0.0-alpha.2
-        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
-
-  reventless/reventless-codegen/tests/golden/eventmodeling/user-management:
-    dependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../../../reventless-gwt
-      '@reventlessdev/reventless-infra':
-        specifier: workspace:*
-        version: link:../../../../../reventless-infra
-      '@reventlessdev/reventless-local':
-        specifier: workspace:*
-        version: link:../../../../../reventless-local
-      '@reventlessdev/reventless-spec':
-        specifier: workspace:*
-        version: link:../../../../../reventless-spec
-      sury:
-        specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
-    devDependencies:
-      '@reventlessdev/reventless-ppx':
-        specifier: workspace:*
-        version: link:../../../../../../packages/reventless-ppx
-      rescript:
-        specifier: ^12.3.0
-        version: 12.3.0
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -5893,9 +5784,6 @@ packages:
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
-
-  '@types/vscode@1.116.0':
-    resolution: {integrity: sha512-sYHp4MO6BqJ2PD7Hjt0hlIS3tMaYsVPJrd0RUjDJ8HtOYnyJIEej0bLSccM8rE77WrC+Xox/kdBwEFDO8MsxNA==}
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -20495,8 +20383,6 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@types/vscode@1.116.0': {}
-
   '@types/ws@8.18.1':
     dependencies:
       '@types/node': 22.19.17
@@ -21413,7 +21299,7 @@ snapshots:
 
   chrome-launcher@0.15.2:
     dependencies:
-      '@types/node': 22.19.17
+      '@types/node': 25.6.0
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
@@ -21424,7 +21310,7 @@ snapshots:
 
   chromium-edge-launcher@0.3.0:
     dependencies:
-      '@types/node': 22.19.17
+      '@types/node': 25.6.0
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
