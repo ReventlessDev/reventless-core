@@ -69,37 +69,37 @@ let Ops = EventLog_Operations$ReventlessCore.Make({
   storage: EventLogFixtures$ReventlessCore.mockStorage
 });
 
-beforeEach(() => EventLogFixtures$ReventlessCore.reset());
+globalThis.beforeEach(() => EventLogFixtures$ReventlessCore.reset());
 
-describe("EventLog_Operations:", () => {
-  describe("append", () => {
-    test("stores encoded events in storage", async () => {
+globalThis.describe("EventLog_Operations:", () => {
+  globalThis.describe("append", () => {
+    globalThis.test("stores encoded events in storage", async () => {
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       await Ops.append(1, "item-1", [event$p]);
       let stored = Stdlib_Option.getOr(EventLogFixtures$ReventlessCore.storedEvents.contents["item-1"], []);
-      expect(stored.length).toBe(1);
+      globalThis.expect(stored.length).toBe(1);
     });
-    test("publishes events to event topic", async () => {
+    globalThis.test("publishes events to event topic", async () => {
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       await Ops.append(1, "item-1", [event$p]);
-      expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(1);
+      globalThis.expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(1);
     });
-    test("storage failure returns Error result", async () => {
+    globalThis.test("storage failure returns Error result", async () => {
       EventLogFixtures$ReventlessCore.failNextAppend.contents = true;
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       let result = await Ops.append(1, "item-1", [event$p]);
-      expect(Stdlib_Result.isError(result)).toBe(true);
+      globalThis.expect(Stdlib_Result.isError(result)).toBe(true);
     });
-    test("multiple events all stored and published", async () => {
+    globalThis.test("multiple events all stored and published", async () => {
       let events$p = [
         EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
           TAG: "ItemCreated",
@@ -112,7 +112,7 @@ describe("EventLog_Operations:", () => {
       ];
       await Ops.append(1, "agg-1", events$p);
       let stored = Stdlib_Option.getOr(EventLogFixtures$ReventlessCore.storedEvents.contents["agg-1"], []);
-      expect([
+      globalThis.expect([
         stored.length,
         EventLogFixtures$ReventlessCore.capturedPublishes.contents.length
       ]).toEqual([
@@ -120,21 +120,21 @@ describe("EventLog_Operations:", () => {
         2
       ]);
     });
-    test("returns Ok on success", async () => {
+    globalThis.test("returns Ok on success", async () => {
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       let result = await Ops.append(1, "item-1", [event$p]);
-      expect(Stdlib_Result.isOk(result)).toBe(true);
+      globalThis.expect(Stdlib_Result.isOk(result)).toBe(true);
     });
   });
-  describe("replay", () => {
-    test("returns empty array for unknown id", async () => {
+  globalThis.describe("replay", () => {
+    globalThis.test("returns empty array for unknown id", async () => {
       let events = await Ops.replay("unknown-id");
-      expect(events.length).toBe(0);
+      globalThis.expect(events.length).toBe(0);
     });
-    test("decodes stored events back to typed events", async () => {
+    globalThis.test("decodes stored events back to typed events", async () => {
       let event = {
         TAG: "ItemCreated",
         name: "Widget"
@@ -142,11 +142,11 @@ describe("EventLog_Operations:", () => {
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", event);
       await Ops.append(1, "item-1", [event$p]);
       let replayed = await Ops.replay("item-1");
-      expect(replayed.length).toBe(1);
+      globalThis.expect(replayed.length).toBe(1);
       let first = replayed[0];
-      expect(first).toEqual(event);
+      globalThis.expect(first).toEqual(event);
     });
-    test("decodes multiple events in order", async () => {
+    globalThis.test("decodes multiple events in order", async () => {
       let events = [
         {
           TAG: "ItemCreated",
@@ -160,10 +160,10 @@ describe("EventLog_Operations:", () => {
       let events$p = events.map(event => EventLogFixtures$ReventlessCore.makeEvent$p("item-1", event));
       await Ops.append(1, "item-1", events$p);
       let replayed = await Ops.replay("item-1");
-      expect(replayed.length).toBe(2);
-      expect(replayed).toEqual(events);
+      globalThis.expect(replayed.length).toBe(2);
+      globalThis.expect(replayed).toEqual(events);
     });
-    test("separate aggregates have independent event logs", async () => {
+    globalThis.test("separate aggregates have independent event logs", async () => {
       await Ops.append(1, "agg-A", [EventLogFixtures$ReventlessCore.makeEvent$p("agg-A", {
           TAG: "ItemCreated",
           name: "A"
@@ -174,7 +174,7 @@ describe("EventLog_Operations:", () => {
         })]);
       let eventsA = await Ops.replay("agg-A");
       let eventsB = await Ops.replay("agg-B");
-      expect([
+      globalThis.expect([
         eventsA.length,
         eventsB.length
       ]).toEqual([

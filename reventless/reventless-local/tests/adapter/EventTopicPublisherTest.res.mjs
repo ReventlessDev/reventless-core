@@ -15,20 +15,20 @@ let testMeta = {
   correlationId: ""
 };
 
-describe("LocalEventTopicPublisher", () => {
-  describe("make", () => {
-    test("returns one resource whose name resolves to the topic name", async () => {
+globalThis.describe("LocalEventTopicPublisher", () => {
+  globalThis.describe("make", () => {
+    globalThis.test("returns one resource whose name resolves to the topic name", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let pub = TestPublisher.make("MyTopic", [], {});
-      expect(pub.resources.length).toBe(1);
+      globalThis.expect(pub.resources.length).toBe(1);
       let resource = pub.resources[0];
       let name = await TestRunner$ReventlessLocal.resolve(resource.name);
-      expect(name).toBe("MyTopic");
+      globalThis.expect(name).toBe("MyTopic");
     });
   });
-  describe("publishJson", () => {
-    test("delivers event to subscriber on the same topic", async () => {
+  globalThis.describe("publishJson", () => {
+    globalThis.test("delivers event to subscriber on the same topic", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let received = {
@@ -40,9 +40,9 @@ describe("LocalEventTopicPublisher", () => {
       let pub = TestPublisher.make("TestTopic", [], {});
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       await publishFn("svc", testMeta, "hello");
-      expect(received.contents).toEqual("hello");
+      globalThis.expect(received.contents).toEqual("hello");
     });
-    test("publishing to topic-a does not trigger topic-b subscriber", async () => {
+    globalThis.test("publishing to topic-a does not trigger topic-b subscriber", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let countA = {
@@ -60,10 +60,10 @@ describe("LocalEventTopicPublisher", () => {
       let pub = TestPublisher.make("topic-a", [], {});
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       await publishFn("svc", testMeta, null);
-      expect(countA.contents).toBe(1);
-      expect(countB.contents).toBe(0);
+      globalThis.expect(countA.contents).toBe(1);
+      globalThis.expect(countB.contents).toBe(0);
     });
-    test("passes service name from publishJson call to subscriber", async () => {
+    globalThis.test("passes service name from publishJson call to subscriber", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let receivedService = {
@@ -75,7 +75,7 @@ describe("LocalEventTopicPublisher", () => {
       let pub = TestPublisher.make("svcTopic", [], {});
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       await publishFn("MyService", testMeta, null);
-      expect(receivedService.contents).toBe("MyService");
+      globalThis.expect(receivedService.contents).toBe("MyService");
     });
   });
 });

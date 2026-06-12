@@ -24,56 +24,56 @@ function getSks(result) {
   return result.items.map(item => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(item), d => d[skField]), Stdlib_JSON.Decode.string), ""));
 }
 
-describe("SortKey_Filter.apply:", () => {
-  test("no filters returns all items in order", async () => {
+globalThis.describe("SortKey_Filter.apply:", () => {
+  globalThis.test("no filters returns all items in order", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
-    expect(r.items.length).toBe(5);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(r.items.length).toBe(5);
+    globalThis.expect(getSks(r)).toEqual([
       "art/2026-01",
       "art/2026-02",
       "math/2026-01",
       "math/2026-02",
       "science/2026-01"
     ]);
-    expect(r.nextToken).toBe(undefined);
+    globalThis.expect(r.nextToken).toBe(undefined);
   });
-  test("prefix filters to matching sort keys", async () => {
+  globalThis.test("prefix filters to matching sort keys", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, "math", undefined, undefined, undefined, undefined, undefined, undefined);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "math/2026-01",
       "math/2026-02"
     ]);
-    expect(r.nextToken).toBe(undefined);
+    globalThis.expect(r.nextToken).toBe(undefined);
   });
-  test("from filters to sort keys >= from", async () => {
+  globalThis.test("from filters to sort keys >= from", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, "math/2026-01", undefined, undefined, undefined, undefined, undefined);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "math/2026-01",
       "math/2026-02",
       "science/2026-01"
     ]);
   });
-  test("to filters to sort keys <= to", async () => {
+  globalThis.test("to filters to sort keys <= to", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, "art/2026-02", undefined, undefined, undefined, undefined);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "art/2026-01",
       "art/2026-02"
     ]);
   });
-  test("from+to gives BETWEEN range", async () => {
+  globalThis.test("from+to gives BETWEEN range", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, "art/2026-02", "math/2026-01", undefined, undefined, undefined, undefined);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "art/2026-02",
       "math/2026-01"
     ]);
   });
-  test("eq filters to exact match only", async () => {
+  globalThis.test("eq filters to exact match only", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, "math/2026-02", undefined, undefined, undefined);
-    expect(getSks(r)).toEqual(["math/2026-02"]);
+    globalThis.expect(getSks(r)).toEqual(["math/2026-02"]);
   });
-  test("reverse returns items in descending order", async () => {
+  globalThis.test("reverse returns items in descending order", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, undefined, true, undefined, undefined);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "science/2026-01",
       "math/2026-02",
       "math/2026-01",
@@ -81,48 +81,48 @@ describe("SortKey_Filter.apply:", () => {
       "art/2026-01"
     ]);
   });
-  test("limit returns first N items", async () => {
+  globalThis.test("limit returns first N items", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, undefined, undefined, 2, undefined);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "art/2026-01",
       "art/2026-02"
     ]);
-    expect(r.nextToken).toBe("2");
+    globalThis.expect(r.nextToken).toBe("2");
   });
-  test("nextToken resumes from offset", async () => {
+  globalThis.test("nextToken resumes from offset", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, undefined, undefined, 2, 2);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "math/2026-01",
       "math/2026-02"
     ]);
-    expect(r.nextToken).toBe("4");
+    globalThis.expect(r.nextToken).toBe("4");
   });
-  test("last page has no nextToken", async () => {
+  globalThis.test("last page has no nextToken", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, undefined, undefined, 2, 4);
-    expect(getSks(r)).toEqual(["science/2026-01"]);
-    expect(r.nextToken).toBe(undefined);
+    globalThis.expect(getSks(r)).toEqual(["science/2026-01"]);
+    globalThis.expect(r.nextToken).toBe(undefined);
   });
-  test("prefix + limit + nextToken paginates correctly", async () => {
+  globalThis.test("prefix + limit + nextToken paginates correctly", async () => {
     let r1 = SortKey_Filter$ReventlessLocal.apply(items, skField, "art", undefined, undefined, undefined, undefined, 1, undefined);
-    expect(getSks(r1)).toEqual(["art/2026-01"]);
-    expect(r1.nextToken).toBe("1");
+    globalThis.expect(getSks(r1)).toEqual(["art/2026-01"]);
+    globalThis.expect(r1.nextToken).toBe("1");
     let r2 = SortKey_Filter$ReventlessLocal.apply(items, skField, "art", undefined, undefined, undefined, undefined, 1, 1);
-    expect(getSks(r2)).toEqual(["art/2026-02"]);
-    expect(r2.nextToken).toBe(undefined);
+    globalThis.expect(getSks(r2)).toEqual(["art/2026-02"]);
+    globalThis.expect(r2.nextToken).toBe(undefined);
   });
-  test("reverse + limit returns last N items", async () => {
+  globalThis.test("reverse + limit returns last N items", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, undefined, true, 3, undefined);
-    expect(getSks(r)).toEqual([
+    globalThis.expect(getSks(r)).toEqual([
       "science/2026-01",
       "math/2026-02",
       "math/2026-01"
     ]);
-    expect(r.nextToken).toBe("3");
+    globalThis.expect(r.nextToken).toBe("3");
   });
-  test("eq with no match returns empty", async () => {
+  globalThis.test("eq with no match returns empty", async () => {
     let r = SortKey_Filter$ReventlessLocal.apply(items, skField, undefined, undefined, undefined, "nonexistent", undefined, undefined, undefined);
-    expect(r.items.length).toBe(0);
-    expect(r.nextToken).toBe(undefined);
+    globalThis.expect(r.items.length).toBe(0);
+    globalThis.expect(r.nextToken).toBe(undefined);
   });
 });
 

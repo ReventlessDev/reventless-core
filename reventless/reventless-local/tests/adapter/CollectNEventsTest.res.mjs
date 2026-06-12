@@ -14,8 +14,8 @@ let meta = {
   correlationId: ""
 };
 
-describe("TestRunner.collectNEvents", () => {
-  test("resolves after exactly n events", async () => {
+globalThis.describe("TestRunner.collectNEvents", () => {
+  globalThis.test("resolves after exactly n events", async () => {
     let Bus = LocalBus$ReventlessLocal.Make({});
     let collecting = TestRunner$ReventlessLocal.collectNEvents(Bus.subscribeToEvents, "T", 3);
     let json = JSON.parse("{}");
@@ -23,9 +23,9 @@ describe("TestRunner.collectNEvents", () => {
     await Bus.publishEvent("T", "svc", meta, json);
     await Bus.publishEvent("T", "svc", meta, json);
     let events = await collecting;
-    expect(events.length).toBe(3);
+    globalThis.expect(events.length).toBe(3);
   });
-  test("captures service, meta, and json from each event", async () => {
+  globalThis.test("captures service, meta, and json from each event", async () => {
     let Bus = LocalBus$ReventlessLocal.Make({});
     let collecting = TestRunner$ReventlessLocal.collectNEvents(Bus.subscribeToEvents, "T", 2);
     let j1 = JSON.parse(`{"id":1}`);
@@ -35,15 +35,15 @@ describe("TestRunner.collectNEvents", () => {
     let events = await collecting;
     let e0 = events[0];
     let e1 = events[1];
-    expect(e0.json).toEqual(j1);
-    expect(e1.json).toEqual(j2);
+    globalThis.expect(e0.json).toEqual(j1);
+    globalThis.expect(e1.json).toEqual(j2);
   });
-  test("resolves immediately for n = 0", async () => {
+  globalThis.test("resolves immediately for n = 0", async () => {
     let Bus = LocalBus$ReventlessLocal.Make({});
     let events = await TestRunner$ReventlessLocal.collectNEvents(Bus.subscribeToEvents, "T", 0);
-    expect(events.length).toBe(0);
+    globalThis.expect(events.length).toBe(0);
   });
-  test("does not resolve before n events arrive", async () => {
+  globalThis.test("does not resolve before n events arrive", async () => {
     let Bus = LocalBus$ReventlessLocal.Make({});
     let collecting = TestRunner$ReventlessLocal.collectNEvents(Bus.subscribeToEvents, "T", 3);
     let json = JSON.parse("{}");
@@ -57,12 +57,12 @@ describe("TestRunner.collectNEvents", () => {
     await Bus.publishEvent("T", "svc", meta, json);
     await Bus.publishEvent("T", "svc", meta, json);
     await Promise.resolve();
-    expect(resolved.contents).toBe(false);
+    globalThis.expect(resolved.contents).toBe(false);
     await Bus.publishEvent("T", "svc", meta, json);
     await collecting;
-    expect(resolved.contents).toBe(true);
+    globalThis.expect(resolved.contents).toBe(true);
   });
-  test("works with multiple independent topics", async () => {
+  globalThis.test("works with multiple independent topics", async () => {
     let Bus = LocalBus$ReventlessLocal.Make({});
     let collectingA = TestRunner$ReventlessLocal.collectNEvents(Bus.subscribeToEvents, "A", 1);
     let collectingB = TestRunner$ReventlessLocal.collectNEvents(Bus.subscribeToEvents, "B", 2);
@@ -72,8 +72,8 @@ describe("TestRunner.collectNEvents", () => {
     await Bus.publishEvent("B", "svc", meta, json);
     let eventsA = await collectingA;
     let eventsB = await collectingB;
-    expect(eventsA.length).toBe(1);
-    expect(eventsB.length).toBe(2);
+    globalThis.expect(eventsA.length).toBe(1);
+    globalThis.expect(eventsB.length).toBe(2);
   });
 });
 

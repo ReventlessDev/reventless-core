@@ -1,8 +1,7 @@
 // Unit tests for LocalTaskBucket.
 // Covers makeHandler (event extraction) and make (dummy resource for Task_Builder compatibility).
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 // No Pulumi mock needed (LocalTaskBucket has no Pulumi.Output usage)
 

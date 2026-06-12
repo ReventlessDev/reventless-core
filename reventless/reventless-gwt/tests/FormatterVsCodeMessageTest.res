@@ -2,8 +2,7 @@
 // VS Code extension renders. Asserts the `kind` discriminator (the mismatch
 // family) is present so a client can gate the apply-expected quick-fix.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 let failingResult = (~mismatch): RunnerTypes.testResult => {
   id: "t1",

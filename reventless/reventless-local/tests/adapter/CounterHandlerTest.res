@@ -1,8 +1,7 @@
 // Unit tests for LocalCounterHandler.
 // CounterHandler uses module-level refs — call reset() in beforeEach for isolation.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 // No Pulumi mock needed (LocalCounterHandler uses no Output)
 

@@ -1,5 +1,4 @@
-open Jest
-open Expect
+open JestGlobals
 
 // Test schemas for produced events
 @schema
@@ -68,7 +67,7 @@ let u = S.castToUnknown
 
 describe("DcbValidation:", () => {
   describe("validateProducedAndConsumed", () => {
-    test("passes when all consumed events match produced events", () => {
+    testSync("passes when all consumed events match produced events", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u), ("ArchiveItem", producedBSchema->u)],
         ~consumed=[("ItemView", consumedFullSchema->u)],
@@ -76,7 +75,7 @@ describe("DcbValidation:", () => {
       expect(result)->toEqual(Ok())
     })
 
-    test("passes with partial field projection", () => {
+    testSync("passes with partial field projection", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u)],
         ~consumed=[("CheckExists", consumedPartialSchema->u)],
@@ -84,7 +83,7 @@ describe("DcbValidation:", () => {
       expect(result)->toEqual(Ok())
     })
 
-    test("passes with payload-less consumed events", () => {
+    testSync("passes with payload-less consumed events", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u), ("ArchiveItem", producedBSchema->u)],
         ~consumed=[("CheckExists", consumedPayloadLessSchema->u)],
@@ -92,7 +91,7 @@ describe("DcbValidation:", () => {
       expect(result)->toEqual(Ok())
     })
 
-    test("passes when multiple producers have identical shapes and tags", () => {
+    testSync("passes when multiple producers have identical shapes and tags", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u), ("CloneItem", producedADuplicateSchema->u)],
         ~consumed=[],
@@ -100,7 +99,7 @@ describe("DcbValidation:", () => {
       expect(result)->toEqual(Ok())
     })
 
-    test("fails when consumed event has no producer", () => {
+    testSync("fails when consumed event has no producer", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u)],
         ~consumed=[("DeleteHandler", consumedDanglingSchema->u)],
@@ -116,7 +115,7 @@ describe("DcbValidation:", () => {
       }
     })
 
-    test("fails when consumed event references field not in produced shape", () => {
+    testSync("fails when consumed event references field not in produced shape", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u)],
         ~consumed=[("RatingView", consumedBadFieldSchema->u)],
@@ -132,7 +131,7 @@ describe("DcbValidation:", () => {
       }
     })
 
-    test("fails when consumed field type mismatches produced field type", () => {
+    testSync("fails when consumed field type mismatches produced field type", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u)],
         ~consumed=[("BadTypeView", consumedBadTypeSchema->u)],
@@ -149,7 +148,7 @@ describe("DcbValidation:", () => {
       }
     })
 
-    test("fails when producers have different fields for same TAG", () => {
+    testSync("fails when producers have different fields for same TAG", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u), ("ImportItem", producedAMismatchFieldsSchema->u)],
         ~consumed=[],
@@ -165,7 +164,7 @@ describe("DcbValidation:", () => {
       }
     })
 
-    test("fails when producers have different tag annotations for same TAG", () => {
+    testSync("fails when producers have different tag annotations for same TAG", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u), ("UntaggerItem", producedAMismatchTagsSchema->u)],
         ~consumed=[],
@@ -179,7 +178,7 @@ describe("DcbValidation:", () => {
       }
     })
 
-    test("fails when producers have different field types for same TAG", () => {
+    testSync("fails when producers have different field types for same TAG", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u), ("BadTypeItem", producedAMismatchTypeSchema->u)],
         ~consumed=[],
@@ -195,12 +194,12 @@ describe("DcbValidation:", () => {
       }
     })
 
-    test("passes with empty produced and consumed", () => {
+    testSync("passes with empty produced and consumed", () => {
       let result = validate(~produced=[], ~consumed=[])
       expect(result)->toEqual(Ok())
     })
 
-    test("collects multiple errors at once", () => {
+    testSync("collects multiple errors at once", () => {
       let result = validate(
         ~produced=[("AddItem", producedASchema->u)],
         ~consumed=[("DeleteHandler", consumedDanglingSchema->u), ("BadTypeView", consumedBadTypeSchema->u)],

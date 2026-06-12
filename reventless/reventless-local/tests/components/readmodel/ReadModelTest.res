@@ -1,8 +1,7 @@
 // E2E tests for ReadModel_Builder.
 // Verifies the full publish → EventCollector → projection → QueryDb pipeline.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open ReadModelFixtures
 
 describe("ReadModel E2E", () => {

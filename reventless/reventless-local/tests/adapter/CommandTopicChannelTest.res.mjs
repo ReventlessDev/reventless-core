@@ -19,9 +19,9 @@ let testMeta = {
   correlationId: "corr-001"
 };
 
-describe("LocalCommandTopicChannel", () => {
-  describe("encodeCommandJson", () => {
-    test("produces {id, meta, command} JSON shape", async () => {
+globalThis.describe("LocalCommandTopicChannel", () => {
+  globalThis.describe("encodeCommandJson", () => {
+    globalThis.test("produces {id, meta, command} JSON shape", async () => {
       let cmdJson = {
         id: "agg-1",
         meta: testMeta,
@@ -30,47 +30,47 @@ describe("LocalCommandTopicChannel", () => {
       let encoded = CommandTopic$ReventlessCore.encodeCommandJson(cmdJson);
       let dict;
       dict = typeof encoded === "object" && encoded !== null && !Array.isArray(encoded) ? encoded : ({});
-      expect(dict["id"]).toEqual("agg-1");
-      expect(dict["command"]).toEqual("DoSomething");
-      expect(Stdlib_Option.isSome(dict["meta"])).toBe(true);
+      globalThis.expect(dict["id"]).toEqual("agg-1");
+      globalThis.expect(dict["command"]).toEqual("DoSomething");
+      globalThis.expect(Stdlib_Option.isSome(dict["meta"])).toBe(true);
     });
   });
-  describe("decodeId", () => {
-    test("extracts id string from encoded message body", async () => {
+  globalThis.describe("decodeId", () => {
+    globalThis.test("extracts id string from encoded message body", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
       let body = Object.fromEntries([[
           "id",
           "agg-42"
         ]]);
-      expect(TestChannel.decodeId(body)).toBe("agg-42");
+      globalThis.expect(TestChannel.decodeId(body)).toBe("agg-42");
     });
-    test("returns empty string for non-object input", async () => {
+    globalThis.test("returns empty string for non-object input", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
-      expect(TestChannel.decodeId("not-an-object")).toBe("");
+      globalThis.expect(TestChannel.decodeId("not-an-object")).toBe("");
     });
-    test("returns empty string when id field is missing", async () => {
+    globalThis.test("returns empty string when id field is missing", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
       let body = Object.fromEntries([[
           "other",
           1
         ]]);
-      expect(TestChannel.decodeId(body)).toBe("");
+      globalThis.expect(TestChannel.decodeId(body)).toBe("");
     });
-    test("returns empty string when id field is not a string", async () => {
+    globalThis.test("returns empty string when id field is not a string", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
       let body = Object.fromEntries([[
           "id",
           99
         ]]);
-      expect(TestChannel.decodeId(body)).toBe("");
+      globalThis.expect(TestChannel.decodeId(body)).toBe("");
     });
   });
-  describe("publishJsons", () => {
-    test("dispatches each command to the bus with full {id, meta, command} body", async () => {
+  globalThis.describe("publishJsons", () => {
+    globalThis.test("dispatches each command to the bus with full {id, meta, command} body", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
       let received = {
@@ -89,9 +89,9 @@ describe("LocalCommandTopicChannel", () => {
       let receivedJson = Stdlib_Option.getOr(received.contents, null);
       let receivedDict;
       receivedDict = typeof receivedJson === "object" && receivedJson !== null && !Array.isArray(receivedJson) ? receivedJson : ({});
-      expect(receivedDict["id"]).toEqual("item-1");
+      globalThis.expect(receivedDict["id"]).toEqual("item-1");
     });
-    test("dispatches multiple commands in order", async () => {
+    globalThis.test("dispatches multiple commands in order", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
       let count = {
@@ -114,11 +114,11 @@ describe("LocalCommandTopicChannel", () => {
           commandJson: null
         }
       ]);
-      expect(count.contents).toBe(2);
+      globalThis.expect(count.contents).toBe(2);
     });
   });
-  describe("connect", () => {
-    test("registers handler; dispatch reaches the runtime handlerDeferred", async () => {
+  globalThis.describe("connect", () => {
+    globalThis.test("registers handler; dispatch reaches the runtime handlerDeferred", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
       let received = {
@@ -140,9 +140,9 @@ describe("LocalCommandTopicChannel", () => {
       let ch = TestChannel.make("testCmd", undefined);
       ch.connect("testCmd", ch, runtime, [], {});
       await TestBus.dispatchCommand("testCmd", "test-payload");
-      expect(received.contents).toEqual("test-payload");
+      globalThis.expect(received.contents).toEqual("test-payload");
     });
-    test("unresolved Deferred does not crash on dispatch", async () => {
+    globalThis.test("unresolved Deferred does not crash on dispatch", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestChannel = LocalCommandTopicChannel$ReventlessLocal.Make(TestBus);
       let handlerDeferred = Effect.runSync(Deferred.make());
@@ -158,7 +158,7 @@ describe("LocalCommandTopicChannel", () => {
       let ch = TestChannel.make("noHandlerCmd", undefined);
       ch.connect("noHandlerCmd", ch, runtime, [], {});
       TestBus.dispatchCommand("noHandlerCmd", null);
-      expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
       Effect.runSync(Deferred.succeed(handlerDeferred, async (param, param$1) => {}));
     });
   });

@@ -122,76 +122,76 @@ let scanStateSchemaWithAnnotations = S.Metadata.set(scanStateSchema, StateAnnota
   visibility: undefined
 });
 
-describe("GraphQL_SchemaInspector", () => {
-  describe("inspectScalar", () => {
-    test("plain string derives to String", async () => {
-      expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.string)).toBe("String");
+globalThis.describe("GraphQL_SchemaInspector", () => {
+  globalThis.describe("inspectScalar", () => {
+    globalThis.test("plain string derives to String", async () => {
+      globalThis.expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.string)).toBe("String");
     });
-    test("tagged string derives to ID", async () => {
-      expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(DcbTag$Reventless.string)).toBe("ID");
+    globalThis.test("tagged string derives to ID", async () => {
+      globalThis.expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(DcbTag$Reventless.string)).toBe("ID");
     });
-    test("float derives to Float", async () => {
-      expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.float)).toBe("Float");
+    globalThis.test("float derives to Float", async () => {
+      globalThis.expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.float)).toBe("Float");
     });
-    test("bool derives to Boolean", async () => {
-      expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.bool)).toBe("Boolean");
+    globalThis.test("bool derives to Boolean", async () => {
+      globalThis.expect(GraphQL_SchemaInspector$ReventlessCore.inspectScalar(S.bool)).toBe("Boolean");
     });
   });
-  describe("inspectObjectType", () => {
-    test("derives type definition from object schema", async () => {
+  globalThis.describe("inspectObjectType", () => {
+    globalThis.test("derives type definition from object schema", async () => {
       let result = GraphQL_SchemaInspector$ReventlessCore.inspectObjectType("TestState", testStateSchema);
-      expect(Stdlib_Option.isSome(result)).toBe(true);
+      globalThis.expect(Stdlib_Option.isSome(result)).toBe(true);
       let sdl = Stdlib_Option.getOrThrow(result, undefined);
-      expect(sdl.includes("type TestState")).toBe(true);
-      expect(sdl.includes("id: ID!")).toBe(true);
-      expect(sdl.includes("name: String")).toBe(true);
-      expect(sdl.includes("price: Float")).toBe(true);
-      expect(sdl.includes("active: Boolean")).toBe(true);
+      globalThis.expect(sdl.includes("type TestState")).toBe(true);
+      globalThis.expect(sdl.includes("id: ID!")).toBe(true);
+      globalThis.expect(sdl.includes("name: String")).toBe(true);
+      globalThis.expect(sdl.includes("price: Float")).toBe(true);
+      globalThis.expect(sdl.includes("active: Boolean")).toBe(true);
     });
-    test("returns None for non-object schema", async () => {
+    globalThis.test("returns None for non-object schema", async () => {
       let result = GraphQL_SchemaInspector$ReventlessCore.inspectObjectType("Foo", S.string);
-      expect(Stdlib_Option.isNone(result)).toBe(true);
+      globalThis.expect(Stdlib_Option.isNone(result)).toBe(true);
     });
   });
-  describe("inspectMutationFields", () => {
-    test("derives fields from single-variant (DCB slice) command", async () => {
+  globalThis.describe("inspectMutationFields", () => {
+    globalThis.test("derives fields from single-variant (DCB slice) command", async () => {
       let fields = GraphQL_SchemaInspector$ReventlessCore.inspectMutationFields("Catalog_AddProduct", addCommandSchema);
-      expect(fields.length).toBe(1);
+      globalThis.expect(fields.length).toBe(1);
       let field = fields[0];
-      expect(field.includes("Catalog_AddProduct")).toBe(true);
-      expect(field.includes("productId: ID!")).toBe(true);
-      expect(field.includes("name: String")).toBe(true);
+      globalThis.expect(field.includes("Catalog_AddProduct")).toBe(true);
+      globalThis.expect(field.includes("productId: ID!")).toBe(true);
+      globalThis.expect(field.includes("name: String")).toBe(true);
     });
-    test("derives fields from union (aggregate) command", async () => {
+    globalThis.test("derives fields from union (aggregate) command", async () => {
       let fields = GraphQL_SchemaInspector$ReventlessCore.inspectMutationFields("App_Item", unionCommandSchema);
-      expect(fields.length).toBe(2);
+      globalThis.expect(fields.length).toBe(2);
       let createField = fields[0];
-      expect(createField.includes("App_Item_Create")).toBe(true);
-      expect(createField.includes("itemId: ID!")).toBe(true);
+      globalThis.expect(createField.includes("App_Item_Create")).toBe(true);
+      globalThis.expect(createField.includes("itemId: ID!")).toBe(true);
       let renameField = fields[1];
-      expect(renameField.includes("App_Item_Rename")).toBe(true);
-      expect(renameField.includes("newName: String")).toBe(true);
+      globalThis.expect(renameField.includes("App_Item_Rename")).toBe(true);
+      globalThis.expect(renameField.includes("newName: String")).toBe(true);
     });
-    test("returns empty for non-object/non-union schema", async () => {
+    globalThis.test("returns empty for non-object/non-union schema", async () => {
       let fields = GraphQL_SchemaInspector$ReventlessCore.inspectMutationFields("Foo", S.string);
-      expect(fields.length).toBe(0);
+      globalThis.expect(fields.length).toBe(0);
     });
   });
-  describe("inspectQueryFields", () => {
-    test("derives type def and query fields from state schema", async () => {
+  globalThis.describe("inspectQueryFields", () => {
+    globalThis.test("derives type def and query fields from state schema", async () => {
       let result = GraphQL_SchemaInspector$ReventlessCore.inspectQueryFields("Catalog_Product", "CatalogProduct", testStateSchema);
-      expect(Stdlib_Option.isSome(result.typeDef)).toBe(true);
+      globalThis.expect(Stdlib_Option.isSome(result.typeDef)).toBe(true);
       let typeDef = Stdlib_Option.getOrThrow(result.typeDef, undefined);
-      expect(typeDef.includes("type CatalogProduct")).toBe(true);
-      expect(result.singleQuery.includes("Catalog_Product(id: ID!)")).toBe(true);
-      expect(result.singleQuery.includes("CatalogProduct")).toBe(true);
-      expect(Stdlib_Option.isSome(result.listQuery)).toBe(true);
+      globalThis.expect(typeDef.includes("type CatalogProduct")).toBe(true);
+      globalThis.expect(result.singleQuery.includes("Catalog_Product(id: ID!)")).toBe(true);
+      globalThis.expect(result.singleQuery.includes("CatalogProduct")).toBe(true);
+      globalThis.expect(Stdlib_Option.isSome(result.listQuery)).toBe(true);
       let listQ = Stdlib_Option.getOrThrow(result.listQuery, undefined);
-      expect(listQ.includes("Catalog_Products")).toBe(true);
+      globalThis.expect(listQ.includes("Catalog_Products")).toBe(true);
     });
   });
-  describe("includeIdParam — ReadModel vs StateViewSlice", () => {
-    test("ReadModel fragment: query has (id: ID!) and type has injected id: ID!", async () => {
+  globalThis.describe("includeIdParam — ReadModel vs StateViewSlice", () => {
+    globalThis.test("ReadModel fragment: query has (id: ID!) and type has injected id: ID!", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "RM_Product",
           listFieldName: "RM_Products",
@@ -202,8 +202,8 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("RM_Product(id: ID!): RMProduct")).toBe(true);
-      expect(sdl.includes("type RMProduct")).toBe(true);
+      globalThis.expect(sdl.includes("RM_Product(id: ID!): RMProduct")).toBe(true);
+      globalThis.expect(sdl.includes("type RMProduct")).toBe(true);
       let typeLines = sdl.split("\n");
       let idFieldInType = typeLines.some(line => {
         if (line.trim() === "id: ID!") {
@@ -212,9 +212,9 @@ describe("GraphQL_SchemaInspector", () => {
           return false;
         }
       });
-      expect(idFieldInType).toBe(true);
+      globalThis.expect(idFieldInType).toBe(true);
     });
-    test("StateViewSlice fragment: query has no (id: ID!) and type has no injected id", async () => {
+    globalThis.test("StateViewSlice fragment: query has no (id: ID!) and type has no injected id", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "SV_Item",
           listFieldName: "SV_Items",
@@ -225,18 +225,18 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("SV_Item: SVItem")).toBe(true);
-      expect(sdl.includes("SV_Item(id: ID!)")).toBe(false);
-      expect(sdl.includes("type SVItem")).toBe(true);
-      expect(sdl.includes("productId: ID!")).toBe(true);
+      globalThis.expect(sdl.includes("SV_Item: SVItem")).toBe(true);
+      globalThis.expect(sdl.includes("SV_Item(id: ID!)")).toBe(false);
+      globalThis.expect(sdl.includes("type SVItem")).toBe(true);
+      globalThis.expect(sdl.includes("productId: ID!")).toBe(true);
       let typeSection = Stdlib_Option.getOr(sdl.split("type SVItem")[1], "");
       let typeEnd = typeSection.indexOf("}");
       let typeEnd$1 = typeEnd >= 0 ? typeEnd : typeSection.length;
       let typeBody = typeSection.slice(0, typeEnd$1);
       let hasInjectedId = typeBody.split("\n").some(line => line.trim() === "id: ID!");
-      expect(hasInjectedId).toBe(false);
+      globalThis.expect(hasInjectedId).toBe(false);
     });
-    test("default includeIdParam (omitted) behaves like ReadModel", async () => {
+    globalThis.test("default includeIdParam (omitted) behaves like ReadModel", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Default_Thing",
           listFieldName: "Default_Things",
@@ -246,11 +246,11 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("Default_Thing(id: ID!): DefaultThing")).toBe(true);
+      globalThis.expect(sdl.includes("Default_Thing(id: ID!): DefaultThing")).toBe(true);
     });
   });
-  describe("Relay compliance", () => {
-    test("entity type includes 'implements Node' when includeIdParam is true", async () => {
+  globalThis.describe("Relay compliance", () => {
+    globalThis.test("entity type includes 'implements Node' when includeIdParam is true", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Relay_Product",
           listFieldName: "Relay_Products",
@@ -261,10 +261,10 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("type RelayProduct implements Node")).toBe(true);
-      expect(sdl.includes("id: ID!")).toBe(true);
+      globalThis.expect(sdl.includes("type RelayProduct implements Node")).toBe(true);
+      globalThis.expect(sdl.includes("id: ID!")).toBe(true);
     });
-    test("non-entity type does not include 'implements Node'", async () => {
+    globalThis.test("non-entity type does not include 'implements Node'", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Relay_View",
           listFieldName: "Relay_Views",
@@ -275,10 +275,10 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("type RelayView implements Node")).toBe(false);
-      expect(sdl.includes("type RelayView {")).toBe(true);
+      globalThis.expect(sdl.includes("type RelayView implements Node")).toBe(false);
+      globalThis.expect(sdl.includes("type RelayView {")).toBe(true);
     });
-    test("connectionSpec generates Edge and Connection types instead of plural wrapper", async () => {
+    globalThis.test("connectionSpec generates Edge and Connection types instead of plural wrapper", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Relay_Product",
           listFieldName: "Relay_Products",
@@ -290,22 +290,22 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("type RelayProductEdge")).toBe(true);
-      expect(sdl.includes("node: RelayProduct!")).toBe(true);
-      expect(sdl.includes("cursor: String!")).toBe(true);
-      expect(sdl.includes("type RelayProductConnection")).toBe(true);
-      expect(sdl.includes("edges: [RelayProductEdge!]!")).toBe(true);
-      expect(sdl.includes("pageInfo: PageInfo!")).toBe(true);
-      expect(sdl.includes("totalCount")).toBe(false);
-      expect(sdl.includes("Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String): RelayProductConnection!")).toBe(true);
-      expect(sdl.includes("input RelayProductFilter")).toBe(true);
-      expect(sdl.includes("search: String")).toBe(true);
-      expect(sdl.includes("searchPrefix: String")).toBe(true);
-      expect(sdl.includes("ids: [ID!]")).toBe(true);
-      expect(sdl.includes("items: [RelayProduct!]!")).toBe(false);
-      expect(sdl.includes("nextToken:")).toBe(false);
+      globalThis.expect(sdl.includes("type RelayProductEdge")).toBe(true);
+      globalThis.expect(sdl.includes("node: RelayProduct!")).toBe(true);
+      globalThis.expect(sdl.includes("cursor: String!")).toBe(true);
+      globalThis.expect(sdl.includes("type RelayProductConnection")).toBe(true);
+      globalThis.expect(sdl.includes("edges: [RelayProductEdge!]!")).toBe(true);
+      globalThis.expect(sdl.includes("pageInfo: PageInfo!")).toBe(true);
+      globalThis.expect(sdl.includes("totalCount")).toBe(false);
+      globalThis.expect(sdl.includes("Relay_Products(filter: RelayProductFilter, first: Int, after: String, last: Int, before: String): RelayProductConnection!")).toBe(true);
+      globalThis.expect(sdl.includes("input RelayProductFilter")).toBe(true);
+      globalThis.expect(sdl.includes("search: String")).toBe(true);
+      globalThis.expect(sdl.includes("searchPrefix: String")).toBe(true);
+      globalThis.expect(sdl.includes("ids: [ID!]")).toBe(true);
+      globalThis.expect(sdl.includes("items: [RelayProduct!]!")).toBe(false);
+      globalThis.expect(sdl.includes("nextToken:")).toBe(false);
     });
-    test("subIdField generates ItemsFilter (distinct from connection Filter)", async () => {
+    globalThis.test("subIdField generates ItemsFilter (distinct from connection Filter)", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Items_Product",
           listFieldName: "Items_Products",
@@ -318,11 +318,11 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("input ItemsProductFilter")).toBe(true);
-      expect(sdl.includes("input ItemsProductItemsFilter")).toBe(true);
-      expect(sdl.includes("Items_ProductItems(id: ID!, filter: ItemsProductItemsFilter,")).toBe(true);
+      globalThis.expect(sdl.includes("input ItemsProductFilter")).toBe(true);
+      globalThis.expect(sdl.includes("input ItemsProductItemsFilter")).toBe(true);
+      globalThis.expect(sdl.includes("Items_ProductItems(id: ID!, filter: ItemsProductItemsFilter,")).toBe(true);
     });
-    test("explicit connectionSpec=false generates legacy plural wrapper (opt-out)", async () => {
+    globalThis.test("explicit connectionSpec=false generates legacy plural wrapper (opt-out)", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Legacy_Product",
           listFieldName: "Legacy_Products",
@@ -334,12 +334,12 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("items: [LegacyProduct!]!")).toBe(true);
-      expect(sdl.includes("nextToken: String")).toBe(true);
-      expect(sdl.includes("LegacyProductEdge")).toBe(false);
-      expect(sdl.includes("LegacyProductConnection")).toBe(false);
+      globalThis.expect(sdl.includes("items: [LegacyProduct!]!")).toBe(true);
+      globalThis.expect(sdl.includes("nextToken: String")).toBe(true);
+      globalThis.expect(sdl.includes("LegacyProductEdge")).toBe(false);
+      globalThis.expect(sdl.includes("LegacyProductConnection")).toBe(false);
     });
-    test("stitcher injects Node interface and node query", async () => {
+    globalThis.test("stitcher injects Node interface and node query", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Stitch_Product",
           listFieldName: "Stitch_Products",
@@ -349,14 +349,14 @@ describe("GraphQL_SchemaInspector", () => {
           includeIdParam: true
         }]);
       let sdl = GraphQL_Stitcher$ReventlessCore.stitch(fragment, []);
-      expect(sdl.includes("interface Node")).toBe(true);
-      expect(sdl.includes("node(id: ID!): Node")).toBe(true);
-      expect(sdl.includes("type PageInfo")).toBe(true);
-      expect(sdl.includes("hasNextPage: Boolean!")).toBe(true);
+      globalThis.expect(sdl.includes("interface Node")).toBe(true);
+      globalThis.expect(sdl.includes("node(id: ID!): Node")).toBe(true);
+      globalThis.expect(sdl.includes("type PageInfo")).toBe(true);
+      globalThis.expect(sdl.includes("hasNextPage: Boolean!")).toBe(true);
     });
   });
-  describe("inspectFragment", () => {
-    test("decodes and previews a fragment", async () => {
+  globalThis.describe("inspectFragment", () => {
+    globalThis.test("decodes and previews a fragment", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([{
           fieldNames: ["Test_Add"],
           commandSchema: addCommandSchema
@@ -368,22 +368,22 @@ describe("GraphQL_SchemaInspector", () => {
           authorization: undefined
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
-      expect(inspection.types.length).toBe(8);
-      expect(inspection.mutations.length).toBe(1);
-      expect(inspection.queries.length).toBe(3);
-      expect(inspection.sdlPreview.includes("type TestState")).toBe(true);
-      expect(inspection.sdlPreview.includes("type TestStateEdge")).toBe(true);
-      expect(inspection.sdlPreview.includes("type TestStateConnection")).toBe(true);
-      expect(inspection.sdlPreview.includes("input TestStateFilter")).toBe(true);
-      expect(inspection.sdlPreview.includes("edges: [TestStateEdge!]!")).toBe(true);
-      expect(inspection.sdlPreview.includes("Test_Add")).toBe(true);
-      expect(inspection.sdlPreview.includes("Test_State")).toBe(true);
-      expect(inspection.sdlPreview.includes("TestStateConnection!")).toBe(true);
-      expect(inspection.sdlPreview.includes("union CommandResult")).toBe(true);
+      globalThis.expect(inspection.types.length).toBe(8);
+      globalThis.expect(inspection.mutations.length).toBe(1);
+      globalThis.expect(inspection.queries.length).toBe(3);
+      globalThis.expect(inspection.sdlPreview.includes("type TestState")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("type TestStateEdge")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("type TestStateConnection")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("input TestStateFilter")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("edges: [TestStateEdge!]!")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("Test_Add")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("Test_State")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("TestStateConnection!")).toBe(true);
+      globalThis.expect(inspection.sdlPreview.includes("union CommandResult")).toBe(true);
     });
   });
-  describe("inspectPluginEntries", () => {
-    test("formats mutation and query entries", async () => {
+  globalThis.describe("inspectPluginEntries", () => {
+    globalThis.test("formats mutation and query entries", async () => {
       let summary = GraphQL_SchemaInspector$ReventlessCore.inspectPluginEntries([{
           fieldNames: [
             "Plugin_Add",
@@ -397,15 +397,15 @@ describe("GraphQL_SchemaInspector", () => {
           stateSchema: testStateSchema,
           authorization: undefined
         }]);
-      expect(summary.includes("Mutations (2)")).toBe(true);
-      expect(summary.includes("Plugin_Add")).toBe(true);
-      expect(summary.includes("Plugin_Remove")).toBe(true);
-      expect(summary.includes("Queries (1)")).toBe(true);
-      expect(summary.includes("Plugin_Item(id) -> PluginItem")).toBe(true);
+      globalThis.expect(summary.includes("Mutations (2)")).toBe(true);
+      globalThis.expect(summary.includes("Plugin_Add")).toBe(true);
+      globalThis.expect(summary.includes("Plugin_Remove")).toBe(true);
+      globalThis.expect(summary.includes("Queries (1)")).toBe(true);
+      globalThis.expect(summary.includes("Plugin_Item(id) -> PluginItem")).toBe(true);
     });
   });
-  describe("server capability — auto-derived Filter / OrderBy", () => {
-    test("read model with no annotations emits the unchanged search-only Filter", async () => {
+  globalThis.describe("server capability — auto-derived Filter / OrderBy", () => {
+    globalThis.test("read model with no annotations emits the unchanged search-only Filter", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Plain_View",
           listFieldName: "Plain_Views",
@@ -417,16 +417,16 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("input PlainViewFilter")).toBe(true);
-      expect(sdl.includes("search: String")).toBe(true);
-      expect(sdl.includes("searchPrefix: String")).toBe(true);
-      expect(sdl.includes("ids: [ID!]")).toBe(true);
-      expect(sdl.includes("Eq:")).toBe(false);
-      expect(sdl.includes("PlainViewOrderBy")).toBe(false);
-      expect(sdl.includes("PlainViewOrderField")).toBe(false);
-      expect(sdl.includes("orderBy:")).toBe(false);
+      globalThis.expect(sdl.includes("input PlainViewFilter")).toBe(true);
+      globalThis.expect(sdl.includes("search: String")).toBe(true);
+      globalThis.expect(sdl.includes("searchPrefix: String")).toBe(true);
+      globalThis.expect(sdl.includes("ids: [ID!]")).toBe(true);
+      globalThis.expect(sdl.includes("Eq:")).toBe(false);
+      globalThis.expect(sdl.includes("PlainViewOrderBy")).toBe(false);
+      globalThis.expect(sdl.includes("PlainViewOrderField")).toBe(false);
+      globalThis.expect(sdl.includes("orderBy:")).toBe(false);
     });
-    test("read model with @id + @index emits Eq filters + OrderBy + orderBy arg", async () => {
+    globalThis.test("read model with @id + @index emits Eq filters + OrderBy + orderBy arg", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Indexed_Product",
           listFieldName: "Indexed_Products",
@@ -438,15 +438,15 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("input IndexedProductFilter")).toBe(true);
-      expect(sdl.includes("productIdEq: ID")).toBe(true);
-      expect(sdl.includes("ownerIdEq: ID")).toBe(true);
-      expect(sdl.includes("enum IndexedProductOrderField")).toBe(true);
-      expect(sdl.includes("input IndexedProductOrderBy")).toBe(true);
-      expect(sdl.includes("direction: SortOrder!")).toBe(true);
-      expect(sdl.includes("orderBy: IndexedProductOrderBy")).toBe(true);
+      globalThis.expect(sdl.includes("input IndexedProductFilter")).toBe(true);
+      globalThis.expect(sdl.includes("productIdEq: ID")).toBe(true);
+      globalThis.expect(sdl.includes("ownerIdEq: ID")).toBe(true);
+      globalThis.expect(sdl.includes("enum IndexedProductOrderField")).toBe(true);
+      globalThis.expect(sdl.includes("input IndexedProductOrderBy")).toBe(true);
+      globalThis.expect(sdl.includes("direction: SortOrder!")).toBe(true);
+      globalThis.expect(sdl.includes("orderBy: IndexedProductOrderBy")).toBe(true);
     });
-    test("read model with @scan / @scanSort folds opt-in fields into Filter / OrderBy", async () => {
+    globalThis.test("read model with @scan / @scanSort folds opt-in fields into Filter / OrderBy", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Scan_Item",
           listFieldName: "Scan_Items",
@@ -458,31 +458,31 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("statusEq: String")).toBe(true);
-      expect(sdl.includes("enum ScanItemOrderField")).toBe(true);
-      expect(sdl.includes("name")).toBe(true);
-      expect(sdl.includes("orderBy: ScanItemOrderBy")).toBe(true);
-      expect(sdl.includes("nameEq:")).toBe(false);
-      expect(sdl.includes("statusFrom:")).toBe(false);
-      expect(sdl.includes("statusTo:")).toBe(false);
+      globalThis.expect(sdl.includes("statusEq: String")).toBe(true);
+      globalThis.expect(sdl.includes("enum ScanItemOrderField")).toBe(true);
+      globalThis.expect(sdl.includes("name")).toBe(true);
+      globalThis.expect(sdl.includes("orderBy: ScanItemOrderBy")).toBe(true);
+      globalThis.expect(sdl.includes("nameEq:")).toBe(false);
+      globalThis.expect(sdl.includes("statusFrom:")).toBe(false);
+      globalThis.expect(sdl.includes("statusTo:")).toBe(false);
     });
-    test("validateScanSortAlignment warns when @scanSort field is not a sort key", async () => {
+    globalThis.test("validateScanSortAlignment warns when @scanSort field is not a sort key", async () => {
       let warnings = GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(scanStateSchemaWithAnnotations, "ScanItem", []);
-      expect(warnings.length).toBe(1);
+      globalThis.expect(warnings.length).toBe(1);
       let msg = warnings[0];
-      expect(msg.includes("ScanItem")).toBe(true);
-      expect(msg.includes("name")).toBe(true);
-      expect(msg.includes("per-page")).toBe(true);
+      globalThis.expect(msg.includes("ScanItem")).toBe(true);
+      globalThis.expect(msg.includes("name")).toBe(true);
+      globalThis.expect(msg.includes("per-page")).toBe(true);
     });
-    test("validateScanSortAlignment is silent when @scanSort field aligns with a known sort key", async () => {
+    globalThis.test("validateScanSortAlignment is silent when @scanSort field aligns with a known sort key", async () => {
       let warnings = GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(scanStateSchemaWithAnnotations, "ScanItem", ["name"]);
-      expect(warnings).toEqual([]);
+      globalThis.expect(warnings).toEqual([]);
     });
-    test("validateScanSortAlignment is a no-op when there are no @scanSort fields", async () => {
+    globalThis.test("validateScanSortAlignment is a no-op when there are no @scanSort fields", async () => {
       let warnings = GraphQL_FragmentGenerator$ReventlessCore.validateScanSortAlignment(indexedStateSchemaWithAnnotations, "IndexedProduct", []);
-      expect(warnings).toEqual([]);
+      globalThis.expect(warnings).toEqual([]);
     });
-    test("read model with @subId emits range filters + OrderBy on the sort key", async () => {
+    globalThis.test("read model with @subId emits range filters + OrderBy on the sort key", async () => {
       let fragment = GraphQL_FragmentGenerator$ReventlessCore.generate([], [{
           singleFieldName: "Ordered_Item",
           listFieldName: "Ordered_Items",
@@ -494,57 +494,57 @@ describe("GraphQL_SchemaInspector", () => {
         }]);
       let inspection = GraphQL_SchemaInspector$ReventlessCore.inspectFragment(fragment);
       let sdl = inspection.sdlPreview;
-      expect(sdl.includes("createdAtEq: String")).toBe(true);
-      expect(sdl.includes("createdAtFrom: String")).toBe(true);
-      expect(sdl.includes("createdAtTo: String")).toBe(true);
-      expect(sdl.includes("enum OrderedItemOrderField")).toBe(true);
-      expect(sdl.includes("orderBy: OrderedItemOrderBy")).toBe(true);
+      globalThis.expect(sdl.includes("createdAtEq: String")).toBe(true);
+      globalThis.expect(sdl.includes("createdAtFrom: String")).toBe(true);
+      globalThis.expect(sdl.includes("createdAtTo: String")).toBe(true);
+      globalThis.expect(sdl.includes("enum OrderedItemOrderField")).toBe(true);
+      globalThis.expect(sdl.includes("orderBy: OrderedItemOrderBy")).toBe(true);
     });
   });
-  describe("GraphQL_Server diagnostics", () => {
-    test("diagnostics detects resolver without SDL field", async () => {
+  globalThis.describe("GraphQL_Server diagnostics", () => {
+    globalThis.test("diagnostics detects resolver without SDL field", async () => {
       GraphQL_Server$ReventlessLocal.reset();
       let resolvers = {};
       resolvers["orphanResolver"] = async (_root, _args, _ctx) => "ok";
       GraphQL_Server$ReventlessLocal.registerMutations([], resolvers);
       let d = GraphQL_Server$ReventlessLocal.diagnostics();
-      expect(d.resolverMutationCount).toBe(1);
-      expect(d.sdlMutationCount).toBe(0);
-      expect(d.mismatches.length).toBe(1);
-      expect(d.mismatches[0].includes("resolver but no SDL field")).toBe(true);
+      globalThis.expect(d.resolverMutationCount).toBe(1);
+      globalThis.expect(d.sdlMutationCount).toBe(0);
+      globalThis.expect(d.mismatches.length).toBe(1);
+      globalThis.expect(d.mismatches[0].includes("resolver but no SDL field")).toBe(true);
       return GraphQL_Server$ReventlessLocal.reset();
     });
-    test("diagnostics detects SDL field without resolver", async () => {
+    globalThis.test("diagnostics detects SDL field without resolver", async () => {
       GraphQL_Server$ReventlessLocal.reset();
       GraphQL_Server$ReventlessLocal.registerQueries(["  orphanField(id: ID!): String"], {});
       let d = GraphQL_Server$ReventlessLocal.diagnostics();
-      expect(d.sdlQueryCount).toBe(1);
-      expect(d.resolverQueryCount).toBe(0);
-      expect(d.mismatches.length).toBe(1);
-      expect(d.mismatches[0].includes("SDL field but no resolver")).toBe(true);
+      globalThis.expect(d.sdlQueryCount).toBe(1);
+      globalThis.expect(d.resolverQueryCount).toBe(0);
+      globalThis.expect(d.mismatches.length).toBe(1);
+      globalThis.expect(d.mismatches[0].includes("SDL field but no resolver")).toBe(true);
       return GraphQL_Server$ReventlessLocal.reset();
     });
-    test("diagnostics reports no mismatches when fields and resolvers match", async () => {
+    globalThis.test("diagnostics reports no mismatches when fields and resolvers match", async () => {
       GraphQL_Server$ReventlessLocal.reset();
       let resolvers = {};
       resolvers["myQuery"] = async (_root, _args, _ctx) => "ok";
       GraphQL_Server$ReventlessLocal.registerQueries(["  myQuery(id: ID!): String"], resolvers);
       let d = GraphQL_Server$ReventlessLocal.diagnostics();
-      expect(d.mismatches.length).toBe(0);
-      expect(d.sdlQueryCount).toBe(1);
-      expect(d.resolverQueryCount).toBe(1);
+      globalThis.expect(d.mismatches.length).toBe(0);
+      globalThis.expect(d.sdlQueryCount).toBe(1);
+      globalThis.expect(d.resolverQueryCount).toBe(1);
       return GraphQL_Server$ReventlessLocal.reset();
     });
-    test("getFullSdl returns None before start", async () => {
+    globalThis.test("getFullSdl returns None before start", async () => {
       GraphQL_Server$ReventlessLocal.reset();
-      expect(Stdlib_Option.isNone(GraphQL_Server$ReventlessLocal.getFullSdl())).toBe(true);
+      globalThis.expect(Stdlib_Option.isNone(GraphQL_Server$ReventlessLocal.getFullSdl())).toBe(true);
     });
-    test("getRegisteredSdl returns Query/Mutation SDL", async () => {
+    globalThis.test("getRegisteredSdl returns Query/Mutation SDL", async () => {
       GraphQL_Server$ReventlessLocal.reset();
       GraphQL_Server$ReventlessLocal.registerQueries(["  hello: String"], {});
       let sdl = GraphQL_Server$ReventlessLocal.getRegisteredSdl();
-      expect(sdl.includes("hello: String")).toBe(true);
-      expect(sdl.includes("type Query")).toBe(true);
+      globalThis.expect(sdl.includes("hello: String")).toBe(true);
+      globalThis.expect(sdl.includes("type Query")).toBe(true);
       return GraphQL_Server$ReventlessLocal.reset();
     });
   });

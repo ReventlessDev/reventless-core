@@ -30,9 +30,9 @@ function makeRuntime(handler) {
   };
 }
 
-describe("LocalEventCollectorChannel", () => {
-  describe("make", () => {
-    test("collects all event topic resources as channel resources", async () => {
+globalThis.describe("LocalEventCollectorChannel", () => {
+  globalThis.describe("make", () => {
+    globalThis.test("collects all event topic resources as channel resources", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let TestCollector = LocalEventCollectorChannel$ReventlessLocal.Make(TestBus);
@@ -53,17 +53,17 @@ describe("LocalEventCollectorChannel", () => {
         ]
       ]);
       let ch = TestCollector.make("collector", eventTopics, {});
-      expect(ch.resources.length).toBe(2);
+      globalThis.expect(ch.resources.length).toBe(2);
     });
-    test("empty eventTopics produces empty resources", async () => {
+    globalThis.test("empty eventTopics produces empty resources", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestCollector = LocalEventCollectorChannel$ReventlessLocal.Make(TestBus);
       let ch = TestCollector.make("collector", {}, {});
-      expect(ch.resources.length).toBe(0);
+      globalThis.expect(ch.resources.length).toBe(0);
     });
   });
-  describe("connect", () => {
-    test("subscribes to event topic; published events reach the handler", async () => {
+  globalThis.describe("connect", () => {
+    globalThis.test("subscribes to event topic; published events reach the handler", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let TestCollector = LocalEventCollectorChannel$ReventlessLocal.Make(TestBus);
@@ -91,9 +91,9 @@ describe("LocalEventCollectorChannel", () => {
       await Effect.runPromise(runtime.parts.subscriptionLatch.await);
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       await publishFn("svc", testMeta, null);
-      expect(received.contents).toBe(1);
+      globalThis.expect(received.contents).toBe(1);
     });
-    test("multiple event topics all deliver to the same handler", async () => {
+    globalThis.test("multiple event topics all deliver to the same handler", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let TestCollector = LocalEventCollectorChannel$ReventlessLocal.Make(TestBus);
@@ -131,9 +131,9 @@ describe("LocalEventCollectorChannel", () => {
       let pub2Fn = await TestRunner$ReventlessLocal.resolve(pub2.publishJson);
       await pub1Fn("svc", testMeta, null);
       await pub2Fn("svc", testMeta, null);
-      expect(received.contents).toBe(2);
+      globalThis.expect(received.contents).toBe(2);
     });
-    test("unresolved Deferred does not crash on event delivery", async () => {
+    globalThis.test("unresolved Deferred does not crash on event delivery", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let TestPublisher = LocalEventTopicPublisher$ReventlessLocal.Make(TestBus);
       let TestCollector = LocalEventCollectorChannel$ReventlessLocal.Make(TestBus);
@@ -165,7 +165,7 @@ describe("LocalEventCollectorChannel", () => {
       await Effect.runPromise(runtime_parts.subscriptionLatch.await);
       let publishFn = await TestRunner$ReventlessLocal.resolve(pub.publishJson);
       publishFn("svc", testMeta, null);
-      expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
       Effect.runSync(Deferred.succeed(handlerDeferred, async (param, param$1) => {}));
     });
   });

@@ -5,16 +5,16 @@ import * as Nodepath from "node:path";
 import * as Promises from "node:fs/promises";
 import * as LocalHost$ReventlessGwt from "../src/LocalHost.res.mjs";
 
-describe("LocalHost.packageNameToPluginName", () => {
-  test("PascalCases scoped / dashed / underscored package names", async () => {
-    expect(LocalHost$ReventlessGwt.packageNameToPluginName("@scope/my-catalog")).toBe("MyCatalog");
-    expect(LocalHost$ReventlessGwt.packageNameToPluginName("online-shop")).toBe("OnlineShop");
-    expect(LocalHost$ReventlessGwt.packageNameToPluginName("online-shop-aggregates-catalog")).toBe("OnlineShopAggregatesCatalog");
+globalThis.describe("LocalHost.packageNameToPluginName", () => {
+  globalThis.test("PascalCases scoped / dashed / underscored package names", async () => {
+    globalThis.expect(LocalHost$ReventlessGwt.packageNameToPluginName("@scope/my-catalog")).toBe("MyCatalog");
+    globalThis.expect(LocalHost$ReventlessGwt.packageNameToPluginName("online-shop")).toBe("OnlineShop");
+    globalThis.expect(LocalHost$ReventlessGwt.packageNameToPluginName("online-shop-aggregates-catalog")).toBe("OnlineShopAggregatesCatalog");
   });
 });
 
-describe("LocalHost name derivation + discovery", () => {
-  test("derivePluginName prefers plugin.json then PascalCase(package.json); discover skips non-plugins", async () => {
+globalThis.describe("LocalHost name derivation + discovery", () => {
+  globalThis.test("derivePluginName prefers plugin.json then PascalCase(package.json); discover skips non-plugins", async () => {
     let root = Nodepath.join(Nodeos.tmpdir(), "reventless-localhost-test");
     await Promises.rm(root, {
       recursive: true,
@@ -39,20 +39,20 @@ describe("LocalHost name derivation + discovery", () => {
     await Promises.mkdir(Nodepath.join(c, "src"), {
       recursive: true
     });
-    expect(LocalHost$ReventlessGwt.derivePluginName(aSrc)).toBe("Catalog");
-    expect(LocalHost$ReventlessGwt.derivePluginName(bSrc)).toBe("MyOrdering");
+    globalThis.expect(LocalHost$ReventlessGwt.derivePluginName(aSrc)).toBe("Catalog");
+    globalThis.expect(LocalHost$ReventlessGwt.derivePluginName(bSrc)).toBe("MyOrdering");
     let refs = LocalHost$ReventlessGwt.discover([
       a,
       b,
       c
     ]);
-    expect(refs.map(r => r.name)).toEqual([
+    globalThis.expect(refs.map(r => r.name)).toEqual([
       "Catalog",
       "MyOrdering"
     ]);
     let first = refs[0];
-    expect(first.modulePath.endsWith("Plugin.res.mjs")).toBe(true);
-    expect(first.packageDir).toBe(a);
+    globalThis.expect(first.modulePath.endsWith("Plugin.res.mjs")).toBe(true);
+    globalThis.expect(first.packageDir).toBe(a);
     await Promises.rm(root, {
       recursive: true,
       force: true

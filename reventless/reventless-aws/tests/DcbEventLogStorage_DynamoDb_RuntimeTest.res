@@ -1,4 +1,4 @@
-open TestHelpers
+open JestGlobals
 
 module Runtime = DcbEventLogStorage_DynamoDb_Runtime
 
@@ -14,11 +14,11 @@ let table: Util_DynamoDb_Runtime.resolvedTable = {
 }
 
 describe("Runtime.fencePartitionKey", () => {
-  test("formats the fence partition key", () => {
+  testSync("formats the fence partition key", () => {
     expect(Runtime.fencePartitionKey(tag("orderId", "ord-1")))->toBe("fence#orderId:ord-1")
   })
 
-  test("does not collide with event partition keys", () => {
+  testSync("does not collide with event partition keys", () => {
     let fenceId = Runtime.fencePartitionKey(tag("orderId", "ord-1"))
     let eventId = "orderId:ord-1"
     expect(fenceId == eventId)->toBe(false)
@@ -26,7 +26,7 @@ describe("Runtime.fencePartitionKey", () => {
 })
 
 describe("Runtime.fenceKey", () => {
-  test("returns key with id and FENCE sort key", () => {
+  testSync("returns key with id and FENCE sort key", () => {
     let key = Runtime.fenceKey(tag("orderId", "ord-1"))
     expect(key->Dict.get("id"))->toEqual(Some("fence#orderId:ord-1"->JSON.Encode.string))
     expect(key->Dict.get("position"))->toEqual(Some("FENCE"->JSON.Encode.string))
@@ -34,16 +34,16 @@ describe("Runtime.fenceKey", () => {
 })
 
 describe("Runtime.collectQueryTags", () => {
-  test("returns empty array for empty query", () => {
+  testSync("returns empty array for empty query", () => {
     expect(Runtime.collectQueryTags([]))->toEqual([])
   })
 
-  test("returns empty array when no queryItem has tags", () => {
+  testSync("returns empty array when no queryItem has tags", () => {
     let q: Reventless.DcbTag.query = [{eventTypes: ["Foo"]}]
     expect(Runtime.collectQueryTags(q))->toEqual([])
   })
 
-  test("collects tags from a single queryItem", () => {
+  testSync("collects tags from a single queryItem", () => {
     let q: Reventless.DcbTag.query = [
       {tags: [tag("orderId", "o1"), tag("customerId", "c1")]},
     ]
@@ -51,7 +51,7 @@ describe("Runtime.collectQueryTags", () => {
     expect(result->Array.length)->toBe(2)
   })
 
-  test("dedupes same tag value across queryItems", () => {
+  testSync("dedupes same tag value across queryItems", () => {
     let q: Reventless.DcbTag.query = [
       {tags: [tag("productId", "p1")]},
       {tags: [tag("productId", "p1")]},
@@ -61,7 +61,7 @@ describe("Runtime.collectQueryTags", () => {
     expect(result->Array.length)->toBe(2)
   })
 
-  test("ignores queryItems without tags but keeps others", () => {
+  testSync("ignores queryItems without tags but keeps others", () => {
     let q: Reventless.DcbTag.query = [
       {eventTypes: ["Foo"]},
       {tags: [tag("orderId", "o1")]},
@@ -72,11 +72,11 @@ describe("Runtime.collectQueryTags", () => {
 })
 
 describe("Runtime.collectEventTags", () => {
-  test("returns empty array for no events", () => {
+  testSync("returns empty array for no events", () => {
     expect(Runtime.collectEventTags([]))->toEqual([])
   })
 
-  test("dedupes tag values across events", () => {
+  testSync("dedupes tag values across events", () => {
     let event1: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {
       eventType: "ProductAdded",
       data: JSON.Object(Dict.make()),
@@ -95,7 +95,7 @@ describe("Runtime.collectEventTags", () => {
 })
 
 describe("Runtime.buildConditionalFenceUpdate", () => {
-  test("uses attribute_not_exists when after is None", () => {
+  testSync("uses attribute_not_exists when after is None", () => {
     let update = Runtime.buildConditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
@@ -105,7 +105,7 @@ describe("Runtime.buildConditionalFenceUpdate", () => {
     expect(update.conditionExpression)->toEqual(Some("attribute_not_exists(lastPosition)"))
   })
 
-  test("includes lastPosition <= :after when after is Some", () => {
+  testSync("includes lastPosition <= :after when after is Some", () => {
     let update = Runtime.buildConditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
@@ -120,7 +120,7 @@ describe("Runtime.buildConditionalFenceUpdate", () => {
     )
   })
 
-  test("always sets lastPosition to newPosition", () => {
+  testSync("always sets lastPosition to newPosition", () => {
     let update = Runtime.buildConditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
@@ -133,7 +133,7 @@ describe("Runtime.buildConditionalFenceUpdate", () => {
     )
   })
 
-  test("targets the fence sentinel item", () => {
+  testSync("targets the fence sentinel item", () => {
     let update = Runtime.buildConditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
@@ -146,7 +146,7 @@ describe("Runtime.buildConditionalFenceUpdate", () => {
 })
 
 describe("Runtime.buildUnconditionalFenceUpdate", () => {
-  test("does not set a conditionExpression", () => {
+  testSync("does not set a conditionExpression", () => {
     let update = Runtime.buildUnconditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
@@ -155,7 +155,7 @@ describe("Runtime.buildUnconditionalFenceUpdate", () => {
     expect(update.conditionExpression)->toEqual(None)
   })
 
-  test("still bumps lastPosition", () => {
+  testSync("still bumps lastPosition", () => {
     let update = Runtime.buildUnconditionalFenceUpdate(
       "TestTable",
       tag("orderId", "o1"),
@@ -166,12 +166,12 @@ describe("Runtime.buildUnconditionalFenceUpdate", () => {
 })
 
 describe("Runtime.buildQueryByPartitionKeyInput", () => {
-  test("omits consistentRead by default (eventually consistent)", () => {
+  testSync("omits consistentRead by default (eventually consistent)", () => {
     let input = Runtime.buildQueryByPartitionKeyInput(table, "orderId:o1")
     expect(input.consistentRead)->toEqual(None)
   })
 
-  test("omits consistentRead when ~strongConsistency=false", () => {
+  testSync("omits consistentRead when ~strongConsistency=false", () => {
     let input = Runtime.buildQueryByPartitionKeyInput(
       table,
       "orderId:o1",
@@ -180,7 +180,7 @@ describe("Runtime.buildQueryByPartitionKeyInput", () => {
     expect(input.consistentRead)->toEqual(None)
   })
 
-  test("sets consistentRead=true when ~strongConsistency=true", () => {
+  testSync("sets consistentRead=true when ~strongConsistency=true", () => {
     let input = Runtime.buildQueryByPartitionKeyInput(
       table,
       "orderId:o1",
@@ -189,7 +189,7 @@ describe("Runtime.buildQueryByPartitionKeyInput", () => {
     expect(input.consistentRead)->toEqual(Some(true))
   })
 
-  test("does not target a GSI (uses base table)", () => {
+  testSync("does not target a GSI (uses base table)", () => {
     let input = Runtime.buildQueryByPartitionKeyInput(
       table,
       "orderId:o1",
@@ -198,7 +198,7 @@ describe("Runtime.buildQueryByPartitionKeyInput", () => {
     expect(input.indexName)->toEqual(None)
   })
 
-  test("threads ~after into the key condition without dropping consistentRead", () => {
+  testSync("threads ~after into the key condition without dropping consistentRead", () => {
     let input = Runtime.buildQueryByPartitionKeyInput(
       table,
       "orderId:o1",
@@ -218,7 +218,7 @@ describe("Runtime.buildEventPuts", () => {
     meta: testMeta(),
   }
 
-  test("emits one Put per event with the table name", () => {
+  testSync("emits one Put per event with the table name", () => {
     let puts = Runtime.buildEventPuts(
       table,
       [event("Created", [tag("orderId", "o1")]), event("Shipped", [tag("orderId", "o1")])],
@@ -229,7 +229,7 @@ describe("Runtime.buildEventPuts", () => {
     expect(first.put->Option.map(p => p.tableName))->toEqual(Some("TestTable"))
   })
 
-  test("returns no Puts when events is empty", () => {
+  testSync("returns no Puts when events is empty", () => {
     let puts = Runtime.buildEventPuts(table, [], "100")
     expect(puts->Array.length)->toBe(0)
   })

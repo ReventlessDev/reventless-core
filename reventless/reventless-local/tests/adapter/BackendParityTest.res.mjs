@@ -26,8 +26,8 @@ async function runUnderSqlite(fn) {
   return SqliteDriver$ReventlessLocal.close(db);
 }
 
-describe("Backend parity (Memory vs Sqlite)", () => {
-  test("EventLog: append + replay returns the same events under both", async () => {
+globalThis.describe("Backend parity (Memory vs Sqlite)", () => {
+  globalThis.test("EventLog: append + replay returns the same events under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = EventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
@@ -44,14 +44,14 @@ describe("Backend parity (Memory vs Sqlite)", () => {
       await ops.append(0, "id-x", [e1]);
       await ops.append(1, "id-x", [e2]);
       let replayed = await ops.replay("id-x");
-      expect(replayed.length).toBe(2);
-      expect(replayed[0]).toEqual(e1);
-      expect(replayed[1]).toEqual(e2);
+      globalThis.expect(replayed.length).toBe(2);
+      globalThis.expect(replayed[0]).toEqual(e1);
+      globalThis.expect(replayed[1]).toEqual(e2);
     };
     await runUnderMemory(scenario);
     return await runUnderSqlite(scenario);
   });
-  test("QueryDb: save + loadStream returns the same item under both", async () => {
+  globalThis.test("QueryDb: save + loadStream returns the same item under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
@@ -59,13 +59,13 @@ describe("Backend parity (Memory vs Sqlite)", () => {
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("k", "val", "Any", undefined);
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("k")), param => Effect.succeed([])));
-      expect(items.length).toBe(1);
-      expect(items[0]).toEqual("val");
+      globalThis.expect(items.length).toBe(1);
+      globalThis.expect(items[0]).toEqual("val");
     };
     await runUnderMemory(scenario);
     return await runUnderSqlite(scenario);
   });
-  test("EventLog: conflict detection works under both", async () => {
+  globalThis.test("EventLog: conflict detection works under both", async () => {
     let scenario = async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = EventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
@@ -78,10 +78,10 @@ describe("Backend parity (Memory vs Sqlite)", () => {
       await ops.append(0, "cid", [e]);
       let result = await ops.append(0, "cid", [e]);
       if (result.TAG === "Ok") {
-        expect("expected conflict").toBe("actual Ok");
+        globalThis.expect("expected conflict").toBe("actual Ok");
         return;
       }
-      expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
     };
     await runUnderMemory(scenario);
     return await runUnderSqlite(scenario);

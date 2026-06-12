@@ -62,8 +62,8 @@ function structure(aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChange
   };
 }
 
-describe("DomainDeadCode.analyze — orphan events", () => {
-  test("flags a produced event no component consumes", async () => {
+globalThis.describe("DomainDeadCode.analyze — orphan events", () => {
+  globalThis.test("flags a produced event no component consumes", async () => {
     let shop = structure([writable("Order", [
         "Shop.Placed",
         "Shop.Archived"
@@ -72,9 +72,9 @@ describe("DomainDeadCode.analyze — orphan events", () => {
         "Shop",
         shop
       ]], []);
-    expect(findings.map(f => f.detail)).toEqual(["Shop.Archived"]);
+    globalThis.expect(findings.map(f => f.detail)).toEqual(["Shop.Archived"]);
     let f = findings[0];
-    expect([
+    globalThis.expect([
       f.kind,
       f.pluginName,
       f.componentName
@@ -84,7 +84,7 @@ describe("DomainDeadCode.analyze — orphan events", () => {
       "Order"
     ]);
   });
-  test("a consumer in ANY plugin clears the orphan (cross-plugin)", async () => {
+  globalThis.test("a consumer in ANY plugin clears the orphan (cross-plugin)", async () => {
     let shop = structure([writable("Order", ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined);
     let analytics = structure(undefined, undefined, undefined, undefined, [automation("OnPlaced", ["Shop.Placed"])], undefined, undefined);
     let findings = DomainDeadCode$ReventlessGwt.analyze([
@@ -97,9 +97,9 @@ describe("DomainDeadCode.analyze — orphan events", () => {
         analytics
       ]
     ], []);
-    expect(findings.length).toBe(0);
+    globalThis.expect(findings.length).toBe(0);
   });
-  test("consumption via a state-view slice and a state-change DCB read both count", async () => {
+  globalThis.test("consumption via a state-view slice and a state-change DCB read both count", async () => {
     let s = structure([writable("Order", [
         "Shop.Placed",
         "Shop.Shipped"
@@ -108,9 +108,9 @@ describe("DomainDeadCode.analyze — orphan events", () => {
         "Shop",
         s
       ]], []);
-    expect(findings.length).toBe(0);
+    globalThis.expect(findings.length).toBe(0);
   });
-  test("edge viaEvents marks an event consumed (reachability over the graph)", async () => {
+  globalThis.test("edge viaEvents marks an event consumed (reachability over the graph)", async () => {
     let shop = structure([writable("Order", ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined);
     let edge_source = {
       pluginName: "Shop",
@@ -134,9 +134,9 @@ describe("DomainDeadCode.analyze — orphan events", () => {
         "Shop",
         shop
       ]], [edge]);
-    expect(findings.length).toBe(0);
+    globalThis.expect(findings.length).toBe(0);
   });
-  test("a linked classic read model clears all the aggregate's events (rule 2)", async () => {
+  globalThis.test("a linked classic read model clears all the aggregate's events (rule 2)", async () => {
     let shop = structure([writable("Order", [
         "Shop.Placed",
         "Shop.Archived"
@@ -145,23 +145,23 @@ describe("DomainDeadCode.analyze — orphan events", () => {
         "Shop",
         shop
       ]], []);
-    expect(findings.length).toBe(0);
+    globalThis.expect(findings.length).toBe(0);
   });
-  test("an aggregate with no view and no consumer is fully orphaned", async () => {
+  globalThis.test("an aggregate with no view and no consumer is fully orphaned", async () => {
     let shop = structure([writable("Audit", ["Shop.Logged"], undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined);
     let findings = DomainDeadCode$ReventlessGwt.analyze([[
         "Shop",
         shop
       ]], []);
-    expect(findings.map(f => f.detail)).toEqual(["Shop.Logged"]);
+    globalThis.expect(findings.map(f => f.detail)).toEqual(["Shop.Logged"]);
   });
-  test("state-change slices are scanned as producers too", async () => {
+  globalThis.test("state-change slices are scanned as producers too", async () => {
     let s = structure(undefined, undefined, undefined, [writable("Reserve", ["Shop.Reserved"], undefined, undefined)], undefined, undefined, undefined);
     let findings = DomainDeadCode$ReventlessGwt.analyze([[
         "Shop",
         s
       ]], []);
-    expect(findings.map(f => [
+    globalThis.expect(findings.map(f => [
       f.componentName,
       f.detail
     ])).toEqual([[

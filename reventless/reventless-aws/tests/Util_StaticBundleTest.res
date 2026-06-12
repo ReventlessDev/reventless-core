@@ -1,4 +1,4 @@
-open TestHelpers
+open JestGlobals
 
 @module("fs") external mkdtempSync: string => string = "mkdtempSync"
 @module("fs") external mkdirSync: (string, {"recursive": bool}) => unit = "mkdirSync"
@@ -21,58 +21,58 @@ let makeFixture = (): string => {
 }
 
 describe("Util_StaticBundle.contentTypeFor", () => {
-  test("html", () =>
+  testSync("html", () =>
     expect(Util_StaticBundle.contentTypeFor("index.html"))->toBe("text/html; charset=utf-8")
   )
-  test("css", () =>
+  testSync("css", () =>
     expect(Util_StaticBundle.contentTypeFor("foo/bar.css"))->toBe("text/css; charset=utf-8")
   )
-  test("js", () =>
+  testSync("js", () =>
     expect(Util_StaticBundle.contentTypeFor("app.js"))->toBe(
       "application/javascript; charset=utf-8",
     )
   )
-  test("mjs", () =>
+  testSync("mjs", () =>
     expect(Util_StaticBundle.contentTypeFor("module.mjs"))->toBe(
       "application/javascript; charset=utf-8",
     )
   )
-  test("json", () =>
+  testSync("json", () =>
     expect(Util_StaticBundle.contentTypeFor("data.json"))->toBe(
       "application/json; charset=utf-8",
     )
   )
-  test("svg", () =>
+  testSync("svg", () =>
     expect(Util_StaticBundle.contentTypeFor("logo.svg"))->toBe("image/svg+xml")
   )
-  test("woff2", () =>
+  testSync("woff2", () =>
     expect(Util_StaticBundle.contentTypeFor("font.woff2"))->toBe("font/woff2")
   )
-  test("wasm", () =>
+  testSync("wasm", () =>
     expect(Util_StaticBundle.contentTypeFor("blob.wasm"))->toBe("application/wasm")
   )
-  test("uppercase extension is normalised", () =>
+  testSync("uppercase extension is normalised", () =>
     expect(Util_StaticBundle.contentTypeFor("LOGO.PNG"))->toBe("image/png")
   )
-  test("unknown extension defaults to octet-stream", () =>
+  testSync("unknown extension defaults to octet-stream", () =>
     expect(Util_StaticBundle.contentTypeFor("blob.xyz"))->toBe("application/octet-stream")
   )
 })
 
 describe("Util_StaticBundle.sanitizeName", () => {
-  test("replaces slashes with dashes", () =>
+  testSync("replaces slashes with dashes", () =>
     expect(Util_StaticBundle.sanitizeName("foo/bar/baz"))->toBe("foo-bar-baz")
   )
-  test("replaces dots with dashes", () =>
+  testSync("replaces dots with dashes", () =>
     expect(Util_StaticBundle.sanitizeName("index.html"))->toBe("index-html")
   )
-  test("replaces both", () =>
+  testSync("replaces both", () =>
     expect(Util_StaticBundle.sanitizeName("assets/logo.svg"))->toBe("assets-logo-svg")
   )
 })
 
 describe("Util_StaticBundle.walk", () => {
-  test("returns one entry per file, skips dotfiles, uses forward slashes", () => {
+  testSync("returns one entry per file, skips dotfiles, uses forward slashes", () => {
     let dir = makeFixture()
     let entries = Util_StaticBundle.walk(dir)
     let keys =
@@ -89,14 +89,14 @@ describe("Util_StaticBundle.walk", () => {
     rmSync(dir, {"recursive": true, "force": true})
   })
 
-  test("computes a non-empty content hash for each entry", () => {
+  testSync("computes a non-empty content hash for each entry", () => {
     let dir = makeFixture()
     let entries = Util_StaticBundle.walk(dir)
     entries->Array.forEach(e => expect(e.contentHash->String.length > 0)->toBe(true))
     rmSync(dir, {"recursive": true, "force": true})
   })
 
-  test("identical contents produce identical hashes", () => {
+  testSync("identical contents produce identical hashes", () => {
     let dir = makeFixture()
     let entries = Util_StaticBundle.walk(dir)
     let indexEntry =
@@ -111,7 +111,7 @@ describe("Util_StaticBundle.walk", () => {
     rmSync(dir2, {"recursive": true, "force": true})
   })
 
-  test("different contents produce different hashes", () => {
+  testSync("different contents produce different hashes", () => {
     let dirA = mkdtempSync(join2(tmpdir(), "static-bundle-"))
     writeFileSync(join2(dirA, "f.txt"), "AAA")
     let dirB = mkdtempSync(join2(tmpdir(), "static-bundle-"))
@@ -123,7 +123,7 @@ describe("Util_StaticBundle.walk", () => {
     rmSync(dirB, {"recursive": true, "force": true})
   })
 
-  test("throws when assetsDir does not exist", () => {
+  testSync("throws when assetsDir does not exist", () => {
     let missing = join2(tmpdir(), "static-bundle-does-not-exist-xyz123")
     let threw = try {
       let _ = Util_StaticBundle.walk(missing)

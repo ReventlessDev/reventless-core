@@ -1,8 +1,7 @@
 // Unit tests for LocalQueryEngine.
 // Verifies query (by id and key) and scan operations via the bus storage registry.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

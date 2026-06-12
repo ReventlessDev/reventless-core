@@ -19,8 +19,8 @@ function buildJwt(claims) {
   return header + `.` + payload + `.` + "sig";
 }
 
-describe("Auth_Cognito.authenticate", () => {
-  test("no Authorization header → Anonymous", async () => {
+globalThis.describe("Auth_Cognito.authenticate", () => {
+  globalThis.test("no Authorization header → Anonymous", async () => {
     let r = await Auth_Cognito$ReventlessAws.authenticate(buildContext([]));
     if (typeof r !== "object") {
       return;
@@ -28,7 +28,7 @@ describe("Auth_Cognito.authenticate", () => {
       return Stdlib_JsError.throwWithMessage("expected Anonymous");
     }
   });
-  test("non-Bearer Authorization header → Anonymous", async () => {
+  globalThis.test("non-Bearer Authorization header → Anonymous", async () => {
     let r = await Auth_Cognito$ReventlessAws.authenticate(buildContext([[
         "authorization",
         "Basic dXNlcjpwYXNz"
@@ -39,7 +39,7 @@ describe("Auth_Cognito.authenticate", () => {
       return Stdlib_JsError.throwWithMessage("expected Anonymous");
     }
   });
-  test("malformed Bearer token → AuthError", async () => {
+  globalThis.test("malformed Bearer token → AuthError", async () => {
     let r = await Auth_Cognito$ReventlessAws.authenticate(buildContext([[
         "authorization",
         "Bearer not-a-jwt"
@@ -48,7 +48,7 @@ describe("Auth_Cognito.authenticate", () => {
       return Stdlib_JsError.throwWithMessage("expected AuthError");
     }
   });
-  test("valid Cognito JWT → Authenticated with sub/groups/username", async () => {
+  globalThis.test("valid Cognito JWT → Authenticated with sub/groups/username", async () => {
     let claims = Object.fromEntries([
       [
         "sub",
@@ -78,14 +78,14 @@ describe("Auth_Cognito.authenticate", () => {
       return Stdlib_JsError.throwWithMessage("expected Authenticated");
     }
     let identity = r._0;
-    expect(identity.userId).toBe("c3741234-aaaa-bbbb-cccc-ddddeeee1234");
-    expect(identity.username).toBe("alice@example.com");
-    expect(identity.groups).toEqual([
+    globalThis.expect(identity.userId).toBe("c3741234-aaaa-bbbb-cccc-ddddeeee1234");
+    globalThis.expect(identity.username).toBe("alice@example.com");
+    globalThis.expect(identity.groups).toEqual([
       "Admin",
       "User"
     ]);
   });
-  test("JWT without cognito:groups → empty groups", async () => {
+  globalThis.test("JWT without cognito:groups → empty groups", async () => {
     let claims = Object.fromEntries([
       [
         "sub",
@@ -108,10 +108,10 @@ describe("Auth_Cognito.authenticate", () => {
       return Stdlib_JsError.throwWithMessage("expected Authenticated");
     }
     let identity = r._0;
-    expect(identity.groups).toEqual([]);
-    expect(identity.username).toBe("bob");
+    globalThis.expect(identity.groups).toEqual([]);
+    globalThis.expect(identity.username).toBe("bob");
   });
-  test("header lookup is case-insensitive (Authorization)", async () => {
+  globalThis.test("header lookup is case-insensitive (Authorization)", async () => {
     let claims = Object.fromEntries([[
         "sub",
         "user-mixed-case"
@@ -127,12 +127,12 @@ describe("Auth_Cognito.authenticate", () => {
     if (r.TAG !== "Authenticated") {
       return Stdlib_JsError.throwWithMessage("expected Authenticated");
     }
-    expect(r._0.userId).toBe("user-mixed-case");
+    globalThis.expect(r._0.userId).toBe("user-mixed-case");
   });
 });
 
-describe("Auth_Cognito.fromAppSyncIdentity", () => {
-  test("None → Anonymous", () => {
+globalThis.describe("Auth_Cognito.fromAppSyncIdentity", () => {
+  globalThis.test("None → Anonymous", () => {
     let match = Auth_Cognito$ReventlessAws.fromAppSyncIdentity(undefined);
     if (typeof match !== "object") {
       return;
@@ -140,7 +140,7 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
       return Stdlib_JsError.throwWithMessage("expected Anonymous");
     }
   });
-  test("Cognito identity: sub + claims.cognito:groups → Authenticated with Cognito provider", () => {
+  globalThis.test("Cognito identity: sub + claims.cognito:groups → Authenticated with Cognito provider", () => {
     let claims = Object.fromEntries([
       [
         "cognito:username",
@@ -167,9 +167,9 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
       return Stdlib_JsError.throwWithMessage("expected Authenticated");
     }
     let identity$1 = identity._0;
-    expect(identity$1.userId).toBe("c3741234-aaaa");
-    expect(identity$1.username).toBe("alice@example.com");
-    expect(identity$1.groups).toEqual(["Admin"]);
+    globalThis.expect(identity$1.userId).toBe("c3741234-aaaa");
+    globalThis.expect(identity$1.username).toBe("alice@example.com");
+    globalThis.expect(identity$1.groups).toEqual(["Admin"]);
     let match = identity$1.provider;
     if (typeof match !== "object" && match === "Cognito") {
       return;
@@ -177,7 +177,7 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
       return Stdlib_JsError.throwWithMessage("expected Cognito provider");
     }
   });
-  test("Cognito identity: missing claims.cognito:groups → empty groups", () => {
+  globalThis.test("Cognito identity: missing claims.cognito:groups → empty groups", () => {
     let id_sub = "user-no-groups";
     let id_claims = {};
     let id = {
@@ -192,10 +192,10 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
       return Stdlib_JsError.throwWithMessage("expected Authenticated");
     }
     let identity$1 = identity._0;
-    expect(identity$1.groups).toEqual([]);
-    expect(identity$1.username).toBe("user-no-groups");
+    globalThis.expect(identity$1.groups).toEqual([]);
+    globalThis.expect(identity$1.username).toBe("user-no-groups");
   });
-  test("IAM identity: no sub but userArn present → Custom(\"aws-iam\") provider", () => {
+  globalThis.test("IAM identity: no sub but userArn present → Custom(\"aws-iam\") provider", () => {
     let identity = Auth_Cognito$ReventlessAws.fromAppSyncIdentity({
       username: "heartbeat-lambda",
       userArn: "arn:aws:iam::123456789012:role/heartbeat-lambda",
@@ -208,15 +208,15 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
       return Stdlib_JsError.throwWithMessage("expected Authenticated");
     }
     let identity$1 = identity._0;
-    expect(identity$1.userId).toBe("arn:aws:iam::123456789012:role/heartbeat-lambda");
-    expect(identity$1.username).toBe("heartbeat-lambda");
-    expect(identity$1.groups).toEqual([]);
+    globalThis.expect(identity$1.userId).toBe("arn:aws:iam::123456789012:role/heartbeat-lambda");
+    globalThis.expect(identity$1.username).toBe("heartbeat-lambda");
+    globalThis.expect(identity$1.groups).toEqual([]);
     let match = identity$1.provider;
     if (typeof match !== "object" || match._0 !== "aws-iam") {
       return Stdlib_JsError.throwWithMessage("expected Custom(\"aws-iam\") provider");
     }
   });
-  test("IAM identity: userArn alone (no username) → username falls back to ARN", () => {
+  globalThis.test("IAM identity: userArn alone (no username) → username falls back to ARN", () => {
     let identity = Auth_Cognito$ReventlessAws.fromAppSyncIdentity({
       userArn: "arn:aws:iam::123:role/x"
     });
@@ -226,9 +226,9 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
     if (identity.TAG !== "Authenticated") {
       return Stdlib_JsError.throwWithMessage("expected Authenticated");
     }
-    expect(identity._0.username).toBe("arn:aws:iam::123:role/x");
+    globalThis.expect(identity._0.username).toBe("arn:aws:iam::123:role/x");
   });
-  test("Neither sub nor userArn → Anonymous", () => {
+  globalThis.test("Neither sub nor userArn → Anonymous", () => {
     let match = Auth_Cognito$ReventlessAws.fromAppSyncIdentity({
       accountId: "123"
     });

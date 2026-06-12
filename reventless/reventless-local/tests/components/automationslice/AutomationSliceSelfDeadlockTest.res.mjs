@@ -4,8 +4,8 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as AutomationSliceSelfDeadlockFixtures$ReventlessLocal from "./AutomationSliceSelfDeadlockFixtures.res.mjs";
 
-describe("AutomationSlice self-deadlock regression:", () => {
-  beforeAll(async () => {
+globalThis.describe("AutomationSlice self-deadlock regression:", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(AutomationSliceSelfDeadlockFixtures$ReventlessLocal.DcbLogMaker.operations(AutomationSliceSelfDeadlockFixtures$ReventlessLocal.dcbEventLog));
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(AutomationSliceSelfDeadlockFixtures$ReventlessLocal.autoShipSlice));
     await Promise.resolve();
@@ -13,18 +13,18 @@ describe("AutomationSlice self-deadlock regression:", () => {
     let resource = AutomationSliceSelfDeadlockFixtures$ReventlessLocal.dcbTopicOutputs.resources[0];
     await TestRunner$ReventlessLocal.resolve(resource.name);
   });
-  test("Place → Placed → AutoShip → Ship → Shipped completes", async () => {
+  globalThis.test("Place → Placed → AutoShip → Ship → Shipped completes", async () => {
     let outcome = await AutomationSliceSelfDeadlockFixtures$ReventlessLocal.withTimeout(AutomationSliceSelfDeadlockFixtures$ReventlessLocal.publishJsons([AutomationSliceSelfDeadlockFixtures$ReventlessLocal.placeCmdJson("order-1")]), 1500);
     let tmp;
     tmp = outcome.TAG === "Ok" ? "ok" : outcome._0;
-    expect(tmp).toBe("ok");
+    globalThis.expect(tmp).toBe("ok");
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
     let eventTypes = await AutomationSliceSelfDeadlockFixtures$ReventlessLocal.readEventTypes("order-1");
-    expect(eventTypes.includes("Placed")).toBe(true);
-    expect(eventTypes.includes("Shipped")).toBe(true);
+    globalThis.expect(eventTypes.includes("Placed")).toBe(true);
+    globalThis.expect(eventTypes.includes("Shipped")).toBe(true);
   });
 });
 

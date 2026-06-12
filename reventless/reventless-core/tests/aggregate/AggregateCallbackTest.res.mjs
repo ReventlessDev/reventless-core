@@ -4,16 +4,16 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as AggregateFixtures$ReventlessCore from "./AggregateFixtures.res.mjs";
 
-beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
+globalThis.beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
 
-describe("Aggregate_Callback.handleCommands:", () => {
-  describe("single command — new aggregate", () => {
-    test("Create returns Ok(reference) and stores 1 event", async () => {
+globalThis.describe("Aggregate_Callback.handleCommands:", () => {
+  globalThis.describe("single command — new aggregate", () => {
+    globalThis.test("Create returns Ok(reference) and stores 1 event", async () => {
       let results = await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
           TAG: "Create",
           name: "Widget"
         })])));
-      expect([
+      globalThis.expect([
         results,
         AggregateFixtures$ReventlessCore.mock.getAll().length
       ]).toEqual([
@@ -25,8 +25,8 @@ describe("Aggregate_Callback.handleCommands:", () => {
       ]);
     });
   });
-  describe("command on existing aggregate", () => {
-    test("Rename after Create replays history and appends new event", async () => {
+  globalThis.describe("command on existing aggregate", () => {
+    globalThis.test("Rename after Create replays history and appends new event", async () => {
       await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
           TAG: "Create",
           name: "Widget"
@@ -35,7 +35,7 @@ describe("Aggregate_Callback.handleCommands:", () => {
           TAG: "Rename",
           newName: "Gadget"
         })])));
-      expect([
+      globalThis.expect([
         results,
         AggregateFixtures$ReventlessCore.mock.getAll().length
       ]).toEqual([
@@ -47,13 +47,13 @@ describe("Aggregate_Callback.handleCommands:", () => {
       ]);
     });
   });
-  describe("behavior returns no events", () => {
-    test("Rename on new aggregate returns Ok with no event stored", async () => {
+  globalThis.describe("behavior returns no events", () => {
+    globalThis.test("Rename on new aggregate returns Ok with no event stored", async () => {
       let results = await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
           TAG: "Rename",
           newName: "Gadget"
         })])));
-      expect([
+      globalThis.expect([
         results,
         AggregateFixtures$ReventlessCore.mock.getAll().length
       ]).toEqual([
@@ -65,21 +65,21 @@ describe("Aggregate_Callback.handleCommands:", () => {
       ]);
     });
   });
-  describe("append failure", () => {
-    test("eventLog.append fails → reference returned Error", async () => {
+  globalThis.describe("append failure", () => {
+    globalThis.test("eventLog.append fails → reference returned Error", async () => {
       AggregateFixtures$ReventlessCore.mock.failNextAppend.contents = true;
       let results = await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
           TAG: "Create",
           name: "Widget"
         })])));
-      expect(results).toEqual([{
+      globalThis.expect(results).toEqual([{
           TAG: "Error",
           _0: "ref-1"
         }]);
     });
   });
-  describe("multiple commands for same aggregate ID", () => {
-    test("Create then Rename in one batch accumulate state correctly", async () => {
+  globalThis.describe("multiple commands for same aggregate ID", () => {
+    globalThis.test("Create then Rename in one batch accumulate state correctly", async () => {
       let results = await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([
         AggregateFixtures$ReventlessCore.makeTopicItem("agg-1", "ref-1", {
           TAG: "Create",
@@ -90,7 +90,7 @@ describe("Aggregate_Callback.handleCommands:", () => {
           newName: "Gadget"
         })
       ])));
-      expect([
+      globalThis.expect([
         results,
         AggregateFixtures$ReventlessCore.mock.getAll().length
       ]).toEqual([
@@ -108,8 +108,8 @@ describe("Aggregate_Callback.handleCommands:", () => {
       ]);
     });
   });
-  describe("commands for different aggregate IDs", () => {
-    test("each ID processed independently", async () => {
+  globalThis.describe("commands for different aggregate IDs", () => {
+    globalThis.test("each ID processed independently", async () => {
       let results = await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([
         AggregateFixtures$ReventlessCore.makeTopicItem("agg-a", "ref-a", {
           TAG: "Create",
@@ -120,7 +120,7 @@ describe("Aggregate_Callback.handleCommands:", () => {
           name: "Beta"
         })
       ])));
-      expect([
+      globalThis.expect([
         results.length,
         AggregateFixtures$ReventlessCore.mock.getAll().length
       ]).toEqual([
@@ -129,10 +129,10 @@ describe("Aggregate_Callback.handleCommands:", () => {
       ]);
     });
   });
-  describe("empty batch", () => {
-    test("returns empty array", async () => {
+  globalThis.describe("empty batch", () => {
+    globalThis.test("returns empty array", async () => {
       let results = await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([])));
-      expect(results).toEqual([]);
+      globalThis.expect(results).toEqual([]);
     });
   });
 });

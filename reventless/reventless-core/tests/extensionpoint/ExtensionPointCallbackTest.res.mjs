@@ -4,16 +4,16 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as ExtensionPointFixtures$ReventlessCore from "./ExtensionPointFixtures.res.mjs";
 
-beforeEach(() => ExtensionPointFixtures$ReventlessCore.reset());
+globalThis.beforeEach(() => ExtensionPointFixtures$ReventlessCore.reset());
 
-describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
-  describe("AbstractPublishCommand — known aggregate", () => {
-    test("dispatches to aggregate publishJsons, returns Ok(reference)", async () => {
+globalThis.describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
+  globalThis.describe("AbstractPublishCommand — known aggregate", () => {
+    globalThis.test("dispatches to aggregate publishJsons, returns Ok(reference)", async () => {
       let results = await Effect.runPromise(ExtensionPointFixtures$ReventlessCore.TestHandler.handleIncomingCommands(Stream.fromIterable([ExtensionPointFixtures$ReventlessCore.makeTopicItem("ref-1", {
           TAG: "RouteToAgg",
           aggId: "agg-1"
         })])));
-      expect([
+      globalThis.expect([
         results,
         ExtensionPointFixtures$ReventlessCore.capturedPublishedCmds.contents.length
       ]).toEqual([
@@ -25,8 +25,8 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
       ]);
     });
   });
-  describe("AbstractPublishCommand — unknown aggregate", () => {
-    test("throws internally, returns Error(reference)", async () => {
+  globalThis.describe("AbstractPublishCommand — unknown aggregate", () => {
+    globalThis.test("throws internally, returns Error(reference)", async () => {
       let results = await Effect.runPromise(ExtensionPointFixtures$ReventlessCore.TestHandler.handleIncomingCommands(Stream.fromIterable([
         ExtensionPointFixtures$ReventlessCore.makeTopicItem("ref-a", {
           TAG: "RouteToAgg",
@@ -37,18 +37,18 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
           aggId: "agg-2"
         })
       ])));
-      expect(results.length).toBe(2);
+      globalThis.expect(results.length).toBe(2);
       let allOk = results.every(r => r.TAG === "Ok");
-      expect(allOk).toBe(true);
+      globalThis.expect(allOk).toBe(true);
     });
   });
-  describe("AbstractCall handler succeeds", () => {
-    test("handler called, returns Ok(reference)", async () => {
+  globalThis.describe("AbstractCall handler succeeds", () => {
+    globalThis.test("handler called, returns Ok(reference)", async () => {
       let results = await Effect.runPromise(ExtensionPointFixtures$ReventlessCore.TestHandler.handleIncomingCommands(Stream.fromIterable([ExtensionPointFixtures$ReventlessCore.makeTopicItem("ref-1", {
           TAG: "CallHandler",
           value: "test"
         })])));
-      expect([
+      globalThis.expect([
         results,
         ExtensionPointFixtures$ReventlessCore.capturedCallCount.contents
       ]).toEqual([
@@ -60,8 +60,8 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
       ]);
     });
   });
-  describe("mixed actions", () => {
-    test("AbstractPublishCommand and AbstractCall both resolved", async () => {
+  globalThis.describe("mixed actions", () => {
+    globalThis.test("AbstractPublishCommand and AbstractCall both resolved", async () => {
       let results = await Effect.runPromise(ExtensionPointFixtures$ReventlessCore.TestHandler.handleIncomingCommands(Stream.fromIterable([
         ExtensionPointFixtures$ReventlessCore.makeTopicItem("ref-pub", {
           TAG: "RouteToAgg",
@@ -72,7 +72,7 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
           value: "v"
         })
       ])));
-      expect([
+      globalThis.expect([
         results.length,
         ExtensionPointFixtures$ReventlessCore.capturedPublishedCmds.contents.length,
         ExtensionPointFixtures$ReventlessCore.capturedCallCount.contents
@@ -83,10 +83,10 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
       ]);
     });
   });
-  describe("empty batch", () => {
-    test("returns empty array", async () => {
+  globalThis.describe("empty batch", () => {
+    globalThis.test("returns empty array", async () => {
       let results = await Effect.runPromise(ExtensionPointFixtures$ReventlessCore.TestHandler.handleIncomingCommands(Stream.fromIterable([])));
-      expect(results).toEqual([]);
+      globalThis.expect(results).toEqual([]);
     });
   });
 });

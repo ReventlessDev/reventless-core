@@ -3,65 +3,65 @@
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as MixedSourceReadModelFixtures$ReventlessLocal from "./MixedSourceReadModelFixtures.res.mjs";
 
-describe("MixedSource ReadModel", () => {
-  beforeAll(async () => {
+globalThis.describe("MixedSource ReadModel", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(MixedSourceReadModelFixtures$ReventlessLocal.MixedRM.operations(MixedSourceReadModelFixtures$ReventlessLocal.rm));
     await TestRunner$ReventlessLocal.resolve(MixedSourceReadModelFixtures$ReventlessLocal.aggregateResource.name);
     await TestRunner$ReventlessLocal.resolve(MixedSourceReadModelFixtures$ReventlessLocal.dcbResource.name);
   });
-  test("aggregate event projects with source 'aggregate'", async () => {
+  globalThis.test("aggregate event projects with source 'aggregate'", async () => {
     await MixedSourceReadModelFixtures$ReventlessLocal.publishAggregateEvent("agg-1", {
       TAG: "AggregateItemCreated",
       name: "Widget"
     });
     let states = await MixedSourceReadModelFixtures$ReventlessLocal.loadState("agg-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.name).toBe("Widget");
-    expect(state.source).toBe("aggregate");
+    globalThis.expect(state.name).toBe("Widget");
+    globalThis.expect(state.source).toBe("aggregate");
   });
-  test("DCB event projects with source 'dcb'", async () => {
+  globalThis.test("DCB event projects with source 'dcb'", async () => {
     await MixedSourceReadModelFixtures$ReventlessLocal.publishDcbEvent("dcb-1", {
       TAG: "DcbItemAdded",
       name: "Gadget"
     });
     let states = await MixedSourceReadModelFixtures$ReventlessLocal.loadState("dcb-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.name).toBe("Gadget");
-    expect(state.source).toBe("dcb");
+    globalThis.expect(state.name).toBe("Gadget");
+    globalThis.expect(state.source).toBe("dcb");
   });
-  test("both sources coexist independently", async () => {
+  globalThis.test("both sources coexist independently", async () => {
     let aggStates = await MixedSourceReadModelFixtures$ReventlessLocal.loadState("agg-1");
     let dcbStates = await MixedSourceReadModelFixtures$ReventlessLocal.loadState("dcb-1");
-    expect(aggStates.length).toBe(1);
-    expect(dcbStates.length).toBe(1);
+    globalThis.expect(aggStates.length).toBe(1);
+    globalThis.expect(dcbStates.length).toBe(1);
     let agg = aggStates[0];
     let dcb = dcbStates[0];
-    expect(agg.source).toBe("aggregate");
-    expect(dcb.source).toBe("dcb");
+    globalThis.expect(agg.source).toBe("aggregate");
+    globalThis.expect(dcb.source).toBe("dcb");
   });
-  test("aggregate update modifies existing entry", async () => {
+  globalThis.test("aggregate update modifies existing entry", async () => {
     await MixedSourceReadModelFixtures$ReventlessLocal.publishAggregateEvent("agg-1", {
       TAG: "AggregateItemRenamed",
       name: "Super Widget"
     });
     let states = await MixedSourceReadModelFixtures$ReventlessLocal.loadState("agg-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.name).toBe("Super Widget");
-    expect(state.source).toBe("aggregate");
+    globalThis.expect(state.name).toBe("Super Widget");
+    globalThis.expect(state.source).toBe("aggregate");
   });
-  test("DCB update modifies existing entry", async () => {
+  globalThis.test("DCB update modifies existing entry", async () => {
     await MixedSourceReadModelFixtures$ReventlessLocal.publishDcbEvent("dcb-1", {
       TAG: "DcbItemNameChanged",
       name: "Super Gadget"
     });
     let states = await MixedSourceReadModelFixtures$ReventlessLocal.loadState("dcb-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.name).toBe("Super Gadget");
-    expect(state.source).toBe("dcb");
+    globalThis.expect(state.name).toBe("Super Gadget");
+    globalThis.expect(state.source).toBe("dcb");
   });
 });
 

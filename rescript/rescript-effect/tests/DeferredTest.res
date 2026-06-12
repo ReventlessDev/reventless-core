@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("Deferred", () => {
   testPromise("make + succeed + await_ delivers the value", async () => {

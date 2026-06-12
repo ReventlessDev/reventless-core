@@ -38,7 +38,6 @@
     "@reventlessdev/reventless-spec": "workspace:*"
   },
   "devDependencies": {
-    "@glennsl/rescript-jest": "^0.13.1",
     "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.3.0",

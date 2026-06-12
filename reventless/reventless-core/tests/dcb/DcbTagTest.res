@@ -1,39 +1,38 @@
-open Jest
-open Expect
+open JestGlobals
 
 describe("DcbTag:", () => {
   describe("jsonValueToString", () => {
-    test(
+    testSync(
       "converts string value",
       () => expect(Reventless.DcbTag.jsonValueToString(JSON.String("hello")))->toBe("hello"),
     )
 
-    test(
+    testSync(
       "converts integer-like number",
       () => expect(Reventless.DcbTag.jsonValueToString(JSON.Number(42.)))->toBe("42"),
     )
 
-    test(
+    testSync(
       "converts float number",
       () => expect(Reventless.DcbTag.jsonValueToString(JSON.Number(3.14)))->toBe("3.14"),
     )
 
-    test(
+    testSync(
       "converts boolean true",
       () => expect(Reventless.DcbTag.jsonValueToString(JSON.Boolean(true)))->toBe("true"),
     )
 
-    test(
+    testSync(
       "converts boolean false",
       () => expect(Reventless.DcbTag.jsonValueToString(JSON.Boolean(false)))->toBe("false"),
     )
 
-    test(
+    testSync(
       "converts null",
       () => expect(Reventless.DcbTag.jsonValueToString(JSON.Null))->toBe("null"),
     )
 
-    test(
+    testSync(
       "converts array via JSON.stringify",
       () =>
         expect(
@@ -43,7 +42,7 @@ describe("DcbTag:", () => {
   })
 
   describe("isTagged", () => {
-    test(
+    testSync(
       "returns true for Reventless.DcbTag.string schema",
       () =>
         expect(
@@ -51,7 +50,7 @@ describe("DcbTag:", () => {
         )->toBe(true),
     )
 
-    test(
+    testSync(
       "returns true for Reventless.DcbTag.int schema",
       () =>
         expect(
@@ -59,7 +58,7 @@ describe("DcbTag:", () => {
         )->toBe(true),
     )
 
-    test(
+    testSync(
       "returns false for plain S.string schema",
       () =>
         expect(Reventless.DcbTag.isTagged(S.string->Reventless.DcbTag.toUnknownSchema))->toBe(
@@ -69,7 +68,7 @@ describe("DcbTag:", () => {
   })
 
   describe("extractTags from variant (Union) schema", () => {
-    test(
+    testSync(
       "extracts itemId tag from ItemCreated",
       () =>
         expect(
@@ -80,7 +79,7 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.key: "itemId", value: "item-1"}]),
     )
 
-    test(
+    testSync(
       "extracts itemId tag from ItemRenamed",
       () =>
         expect(
@@ -91,7 +90,7 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.key: "itemId", value: "item-2"}]),
     )
 
-    test(
+    testSync(
       "extracts multiple tags from CountUpdated",
       () =>
         expect(
@@ -105,7 +104,7 @@ describe("DcbTag:", () => {
         ]),
     )
 
-    test(
+    testSync(
       "returns empty array for SimpleEvent (no payload)",
       () =>
         expect(
@@ -116,7 +115,7 @@ describe("DcbTag:", () => {
         )->toEqual([]),
     )
 
-    test(
+    testSync(
       "returns empty array for untagged PlainEvent",
       () =>
         expect(
@@ -127,7 +126,7 @@ describe("DcbTag:", () => {
         )->toEqual([]),
     )
 
-    test(
+    testSync(
       "returns empty array for untagged EmptyEvent",
       () =>
         expect(
@@ -140,7 +139,7 @@ describe("DcbTag:", () => {
   })
 
   describe("extractTags from Object schema", () => {
-    test(
+    testSync(
       "extracts tenantId tag from object record",
       () =>
         expect(
@@ -153,7 +152,7 @@ describe("DcbTag:", () => {
   })
 
   describe("extractTags from command schema", () => {
-    test(
+    testSync(
       "extracts itemId tag from CreateItem command",
       () =>
         expect(
@@ -164,7 +163,7 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.key: "itemId", value: "item-1"}]),
     )
 
-    test(
+    testSync(
       "extracts itemId tag from RenameItem command",
       () =>
         expect(
@@ -180,7 +179,7 @@ describe("DcbTag:", () => {
     describe(
       "Union (variant) schemas",
       () => {
-        test(
+        testSync(
           "extracts all unique tagged field names from event schema",
           () =>
             expect(
@@ -188,7 +187,7 @@ describe("DcbTag:", () => {
             )->toEqual(["amount", "category", "itemId"]),
         )
 
-        test(
+        testSync(
           "extracts tagged field names from command schema",
           () =>
             expect(
@@ -196,7 +195,7 @@ describe("DcbTag:", () => {
             )->toEqual(["itemId"]),
         )
 
-        test(
+        testSync(
           "returns empty array for untagged variant schema",
           () =>
             expect(
@@ -204,7 +203,7 @@ describe("DcbTag:", () => {
             )->toEqual([]),
         )
 
-        test(
+        testSync(
           "deduplicates field names across variants",
           () => {
             // TestEventLogSpec has:
@@ -219,7 +218,7 @@ describe("DcbTag:", () => {
           },
         )
 
-        test(
+        testSync(
           "returns sorted field names",
           () => {
             let fields = Reventless.DcbTag.extractTaggedFields(
@@ -236,7 +235,7 @@ describe("DcbTag:", () => {
     describe(
       "Object (record) schemas",
       () => {
-        test(
+        testSync(
           "extracts tagged field names from object schema",
           () =>
             expect(Reventless.DcbTag.extractTaggedFields(DcbFixtures.objectEventSchema))->toEqual([
@@ -244,7 +243,7 @@ describe("DcbTag:", () => {
             ]),
         )
 
-        test(
+        testSync(
           "returns empty array for object with no tagged fields",
           () =>
             expect(
@@ -252,7 +251,7 @@ describe("DcbTag:", () => {
             )->toEqual([]),
         )
 
-        test(
+        testSync(
           "extracts multiple tagged fields from object schema",
           () =>
             expect(
@@ -265,7 +264,7 @@ describe("DcbTag:", () => {
     describe(
       "Edge cases",
       () => {
-        test(
+        testSync(
           "handles variants with no payload (SimpleEvent)",
           () => {
             // TestEventLogSpec includes SimpleEvent which has no payload
@@ -277,7 +276,7 @@ describe("DcbTag:", () => {
           },
         )
 
-        test(
+        testSync(
           "handles schema with mix of tagged and untagged fields",
           () =>
             expect(Reventless.DcbTag.extractTaggedFields(DcbFixtures.mixedEventSchema))->toEqual([
@@ -285,7 +284,7 @@ describe("DcbTag:", () => {
             ]),
         )
 
-        test(
+        testSync(
           "handles empty schema gracefully",
           () =>
             expect(
@@ -293,7 +292,7 @@ describe("DcbTag:", () => {
             )->toEqual([]),
         )
 
-        test(
+        testSync(
           "handles schema with int tags",
           () =>
             expect(Reventless.DcbTag.extractTaggedFields(DcbFixtures.intTagEventSchema))->toEqual([
@@ -306,7 +305,7 @@ describe("DcbTag:", () => {
     describe(
       "isTaggedArray",
       () => {
-        test(
+        testSync(
           "returns true for array of tagged strings",
           () => {
             let schema = S.array(Reventless.DcbTag.string)->Reventless.DcbTag.toUnknownSchema
@@ -314,7 +313,7 @@ describe("DcbTag:", () => {
           },
         )
 
-        test(
+        testSync(
           "returns false for array of plain strings",
           () => {
             let schema = S.array(S.string)->Reventless.DcbTag.toUnknownSchema
@@ -322,7 +321,7 @@ describe("DcbTag:", () => {
           },
         )
 
-        test(
+        testSync(
           "returns false for tagged scalar",
           () =>
             expect(
@@ -332,7 +331,7 @@ describe("DcbTag:", () => {
             )->toBe(false),
         )
 
-        test(
+        testSync(
           "returns false for plain string",
           () =>
             expect(
@@ -345,7 +344,7 @@ describe("DcbTag:", () => {
     describe(
       "Complex schemas",
       () => {
-        test(
+        testSync(
           "extracts from schema with many variants and fields",
           () =>
             expect(Reventless.DcbTag.extractTaggedFields(DcbFixtures.complexEventSchema))->toEqual([
@@ -356,7 +355,7 @@ describe("DcbTag:", () => {
             ]),
         )
 
-        test(
+        testSync(
           "handles variants with multiple tagged fields in same variant",
           () =>
             expect(
@@ -368,7 +367,7 @@ describe("DcbTag:", () => {
   })
 
   describe("extractTagsExpanded (array expansion)", () => {
-    test(
+    testSync(
       "expands array tagged field into per-element tags",
       () =>
         expect(
@@ -387,7 +386,7 @@ describe("DcbTag:", () => {
         ]),
     )
 
-    test(
+    testSync(
       "handles empty array tagged field",
       () =>
         expect(
@@ -398,7 +397,7 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.key: "orderId", value: "ord-1"}]),
     )
 
-    test(
+    testSync(
       "scalar tagged fields unchanged",
       () =>
         expect(
@@ -411,7 +410,7 @@ describe("DcbTag:", () => {
   })
 
   describe("extractCompositePartitionFields", () => {
-    test(
+    testSync(
       "extracts 3 fields from single-variant composite schema",
       () => {
         let fields = Reventless.DcbTag.extractCompositePartitionFields(
@@ -422,7 +421,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "fields are sorted by position",
       () => {
         let fields = Reventless.DcbTag.extractCompositePartitionFields(
@@ -433,7 +432,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "extracts separator values",
       () => {
         let fields = Reventless.DcbTag.extractCompositePartitionFields(
@@ -443,7 +442,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "deduplicates fields across variants",
       () => {
         let fields = Reventless.DcbTag.extractCompositePartitionFields(
@@ -454,7 +453,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "returns empty for schema without composite fields",
       () => {
         let fields = Reventless.DcbTag.extractCompositePartitionFields(
@@ -466,7 +465,7 @@ describe("DcbTag:", () => {
   })
 
   describe("getCompositePartitionKeyValue", () => {
-    test(
+    testSync(
       "joins values with default separator",
       () => {
         let spec: Reventless.DcbTag.compositePartitionSpec = {
@@ -484,7 +483,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "joins values with mixed separators",
       () => {
         let spec: Reventless.DcbTag.compositePartitionSpec = {
@@ -502,7 +501,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "uses empty string for missing tag values",
       () => {
         let spec: Reventless.DcbTag.compositePartitionSpec = {
@@ -514,7 +513,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "handles tags in different order than keys",
       () => {
         let spec: Reventless.DcbTag.compositePartitionSpec = {
@@ -534,7 +533,7 @@ describe("DcbTag:", () => {
   describe("derivePartitionTag", () => {
     let u = S.castToUnknown
 
-    test(
+    testSync(
       "returns Composite for schema with >= 2 composite fields",
       () => {
         let result = Reventless.DcbTag.derivePartitionTag([
@@ -549,7 +548,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "returns Composite with custom separators",
       () => {
         let result = Reventless.DcbTag.derivePartitionTag([
@@ -564,7 +563,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "returns Simple for schema with only @partitionTag",
       () => {
         let result = Reventless.DcbTag.derivePartitionTag([
@@ -577,7 +576,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "returns Simple for schema with single tagged field",
       () => {
         let result = Reventless.DcbTag.derivePartitionTag([
@@ -590,7 +589,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "throws on mixed composite and simple partition strategy",
       () => {
         let threw = ref(false)
@@ -611,7 +610,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "throws on single composite field (< 2)",
       () => {
         let threw = ref(false)
@@ -632,7 +631,7 @@ describe("DcbTag:", () => {
   })
 
   describe("isCompositePartitionMember", () => {
-    test(
+    testSync(
       "returns true for compositePartitionMember schema",
       () =>
         expect(
@@ -642,7 +641,7 @@ describe("DcbTag:", () => {
         )->toBe(true),
     )
 
-    test(
+    testSync(
       "returns false for plain DcbTag.string",
       () =>
         expect(
@@ -652,7 +651,7 @@ describe("DcbTag:", () => {
         )->toBe(false),
     )
 
-    test(
+    testSync(
       "returns false for plain S.string",
       () =>
         expect(
@@ -666,7 +665,7 @@ describe("DcbTag:", () => {
   describe("buildQueryFromCommand", () => {
     let eventTypes = ["EventA", "EventB"]
 
-    test(
+    testSync(
       "scalar-only command produces single AND clause",
       () =>
         expect(
@@ -683,7 +682,7 @@ describe("DcbTag:", () => {
         ]),
     )
 
-    test(
+    testSync(
       "tagged array command produces per-element OR clauses",
       () =>
         expect(
@@ -703,7 +702,7 @@ describe("DcbTag:", () => {
         ]),
     )
 
-    test(
+    testSync(
       "tagged array with single element produces two OR clauses",
       () =>
         expect(
@@ -722,7 +721,7 @@ describe("DcbTag:", () => {
         ]),
     )
 
-    test(
+    testSync(
       "tagged array with empty array produces single clause for scalar tag",
       () =>
         expect(
@@ -734,7 +733,7 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.eventTypes, tags: [{key: "orderId", value: "ord-1"}]}]),
     )
 
-    test(
+    testSync(
       "hasTaggedArrayFields detects tagged arrays",
       () => {
         expect(Reventless.DcbTag.hasTaggedArrayFields(DcbFixtures.crossEntityCommandSchema))->toBe(
@@ -743,7 +742,7 @@ describe("DcbTag:", () => {
       },
     )
 
-    test(
+    testSync(
       "hasTaggedArrayFields returns false for scalar-only schemas",
       () => {
         expect(Reventless.DcbTag.hasTaggedArrayFields(DcbFixtures.singleTagCommandSchema))->toBe(
@@ -754,7 +753,7 @@ describe("DcbTag:", () => {
   })
 
   describe("stringForKey (tag-key override)", () => {
-    test(
+    testSync(
       "isTagged is true for stringForKey schema",
       () =>
         expect(
@@ -764,7 +763,7 @@ describe("DcbTag:", () => {
         )->toBe(true),
     )
 
-    test(
+    testSync(
       "extractTags returns the override key for a scalar field",
       () =>
         expect(
@@ -775,7 +774,7 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.key: "productSku", value: "SKU-42"}]),
     )
 
-    test(
+    testSync(
       "extractTagsExpanded uses the override key on every array element",
       () =>
         expect(
@@ -793,7 +792,7 @@ describe("DcbTag:", () => {
         ]),
     )
 
-    test(
+    testSync(
       "buildQueryFromCommand emits the override key in OR clauses",
       () =>
         expect(
@@ -821,7 +820,7 @@ describe("DcbTag:", () => {
         ]),
     )
 
-    test(
+    testSync(
       "singular producer + plural consumer share the same tag key (round-trip)",
       () => {
         // Producer: singular field name `productId: string`.

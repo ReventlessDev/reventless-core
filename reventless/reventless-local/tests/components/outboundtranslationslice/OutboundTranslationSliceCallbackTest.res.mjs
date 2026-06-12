@@ -51,8 +51,8 @@ let CommandBackCallback = OutboundTranslationSlice_Callback$ReventlessCore.Make(
   targetName: OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.targetName
 })(ProcessPaymentTranslation);
 
-describe("OutboundTranslationSlice Callback", () => {
-  beforeEach(() => {
+globalThis.describe("OutboundTranslationSlice Callback", () => {
+  globalThis.beforeEach(() => {
     Object.keys(FireForgetCallback.todoItems).forEach(k => Stdlib_Dict.$$delete(FireForgetCallback.todoItems, k));
     Object.keys(CommandBackCallback.todoItems).forEach(k => Stdlib_Dict.$$delete(CommandBackCallback.todoItems, k));
     OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.translateFn.contents = async (id, _item) => ({
@@ -66,22 +66,22 @@ describe("OutboundTranslationSlice Callback", () => {
       ]
     });
   });
-  describe("Phase 1 — collect", () => {
-    test("OrderShipped event creates a pending outbound item", async () => {
+  globalThis.describe("Phase 1 — collect", () => {
+    globalThis.test("OrderShipped event creates a pending outbound item", async () => {
       FireForgetCallback.phase1([{
           TAG: "OrderShipped",
           orderId: "ord-1",
           email: "test@example.com"
         }]);
       let items = FireForgetCallback.todoItems;
-      expect(Object.entries(items).length).toBe(1);
+      globalThis.expect(Object.entries(items).length).toBe(1);
       let row = items["ord-1"];
-      expect(Stdlib_Option.isSome(row)).toBe(true);
+      globalThis.expect(Stdlib_Option.isSome(row)).toBe(true);
       let r = Stdlib_Option.getOrThrow(row, undefined);
-      expect(r.status).toBe("Pending");
-      expect(r.retryCount).toBe(0);
+      globalThis.expect(r.status).toBe("Pending");
+      globalThis.expect(r.retryCount).toBe(0);
     });
-    test("duplicate event does not create a second item (idempotent)", async () => {
+    globalThis.test("duplicate event does not create a second item (idempotent)", async () => {
       FireForgetCallback.phase1([{
           TAG: "OrderShipped",
           orderId: "ord-1",
@@ -92,9 +92,9 @@ describe("OutboundTranslationSlice Callback", () => {
           orderId: "ord-1",
           email: "other@example.com"
         }]);
-      expect(Object.entries(FireForgetCallback.todoItems).length).toBe(1);
+      globalThis.expect(Object.entries(FireForgetCallback.todoItems).length).toBe(1);
     });
-    test("multiple different events create multiple items", async () => {
+    globalThis.test("multiple different events create multiple items", async () => {
       FireForgetCallback.phase1([
         {
           TAG: "OrderShipped",
@@ -107,11 +107,11 @@ describe("OutboundTranslationSlice Callback", () => {
           email: "b@example.com"
         }
       ]);
-      expect(Object.entries(FireForgetCallback.todoItems).length).toBe(2);
+      globalThis.expect(Object.entries(FireForgetCallback.todoItems).length).toBe(2);
     });
   });
-  describe("Phase 2 — translate (fire-and-forget)", () => {
-    test("Ok(None) marks item as Completed, no command published", async () => {
+  globalThis.describe("Phase 2 — translate (fire-and-forget)", () => {
+    globalThis.test("Ok(None) marks item as Completed, no command published", async () => {
       FireForgetCallback.phase1([{
           TAG: "OrderShipped",
           orderId: "ord-1",
@@ -124,11 +124,11 @@ describe("OutboundTranslationSlice Callback", () => {
         publishedCommands.contents = cmds;
       };
       await FireForgetCallback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
       let row = Stdlib_Option.getOrThrow(FireForgetCallback.todoItems["ord-1"], undefined);
-      expect(row.status).toBe("Completed");
+      globalThis.expect(row.status).toBe("Completed");
     });
-    test("empty TODO list produces no commands", async () => {
+    globalThis.test("empty TODO list produces no commands", async () => {
       let publishedCommands = {
         contents: []
       };
@@ -136,11 +136,11 @@ describe("OutboundTranslationSlice Callback", () => {
         publishedCommands.contents = cmds;
       };
       await FireForgetCallback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
     });
   });
-  describe("Phase 2 — translate (command-back)", () => {
-    test("Ok(Some(...)) marks item as Completed and publishes command", async () => {
+  globalThis.describe("Phase 2 — translate (command-back)", () => {
+    globalThis.test("Ok(Some(...)) marks item as Completed and publishes command", async () => {
       CommandBackCallback.phase1([{
           TAG: "PaymentReceived",
           orderId: "ord-1",
@@ -153,13 +153,13 @@ describe("OutboundTranslationSlice Callback", () => {
         publishedCommands.contents = publishedCommands.contents.concat(cmds);
       };
       await CommandBackCallback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(1);
+      globalThis.expect(publishedCommands.contents.length).toBe(1);
       let cmd = publishedCommands.contents[0];
-      expect(cmd.id).toBe("ord-1");
+      globalThis.expect(cmd.id).toBe("ord-1");
       let row = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-1"], undefined);
-      expect(row.status).toBe("Completed");
+      globalThis.expect(row.status).toBe("Completed");
     });
-    test("Error marks item as Failed with incremented retryCount", async () => {
+    globalThis.test("Error marks item as Failed with incremented retryCount", async () => {
       OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.translateFn.contents = async (_id, _item) => ({
         TAG: "Error",
         _0: "gateway timeout"
@@ -172,10 +172,10 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish = async _cmds => {};
       await CommandBackCallback.phase2(mockPublish);
       let row = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-1"], undefined);
-      expect(row.status).toBe("Failed");
-      expect(row.retryCount).toBe(1);
+      globalThis.expect(row.status).toBe("Failed");
+      globalThis.expect(row.retryCount).toBe(1);
     });
-    test("failed items with retryCount < maxRetries are retried", async () => {
+    globalThis.test("failed items with retryCount < maxRetries are retried", async () => {
       OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.translateFn.contents = async (_id, _item) => ({
         TAG: "Error",
         _0: "timeout"
@@ -188,7 +188,7 @@ describe("OutboundTranslationSlice Callback", () => {
       let mockPublish = async _cmds => {};
       await CommandBackCallback.phase2(mockPublish);
       let row1 = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-1"], undefined);
-      expect(row1.retryCount).toBe(1);
+      globalThis.expect(row1.retryCount).toBe(1);
       OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.translateFn.contents = async (id, _item) => ({
         TAG: "Ok",
         _0: [
@@ -206,11 +206,11 @@ describe("OutboundTranslationSlice Callback", () => {
         publishedCommands.contents = cmds;
       };
       await CommandBackCallback.phase2(successPublish);
-      expect(publishedCommands.contents.length).toBe(1);
+      globalThis.expect(publishedCommands.contents.length).toBe(1);
       let row2 = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-1"], undefined);
-      expect(row2.status).toBe("Completed");
+      globalThis.expect(row2.status).toBe("Completed");
     });
-    test("failed items beyond maxRetries are not retried", async () => {
+    globalThis.test("failed items beyond maxRetries are not retried", async () => {
       OutboundTranslationSliceFixtures$ReventlessLocal.ProcessPaymentSpec.translateFn.contents = async (_id, _item) => ({
         TAG: "Error",
         _0: "timeout"
@@ -224,7 +224,7 @@ describe("OutboundTranslationSlice Callback", () => {
       await CommandBackCallback.phase2(mockPublish);
       await CommandBackCallback.phase2(mockPublish);
       let row = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-1"], undefined);
-      expect(row.retryCount).toBe(2);
+      globalThis.expect(row.retryCount).toBe(2);
       let publishedCommands = {
         contents: []
       };
@@ -232,11 +232,11 @@ describe("OutboundTranslationSlice Callback", () => {
         publishedCommands.contents = cmds;
       };
       await CommandBackCallback.phase2(trackPublish);
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
       let row2 = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-1"], undefined);
-      expect(row2.retryCount).toBe(2);
+      globalThis.expect(row2.retryCount).toBe(2);
     });
-    test("individual item failure does not affect other items", async () => {
+    globalThis.test("individual item failure does not affect other items", async () => {
       let callCount = {
         contents: 0
       };
@@ -280,10 +280,10 @@ describe("OutboundTranslationSlice Callback", () => {
       };
       await CommandBackCallback.phase2(mockPublish);
       let row1 = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-1"], undefined);
-      expect(row1.status).toBe("Failed");
+      globalThis.expect(row1.status).toBe("Failed");
       let row2 = Stdlib_Option.getOrThrow(CommandBackCallback.todoItems["ord-2"], undefined);
-      expect(row2.status).toBe("Completed");
-      expect(publishedCommands.contents.length).toBe(1);
+      globalThis.expect(row2.status).toBe("Completed");
+      globalThis.expect(publishedCommands.contents.length).toBe(1);
     });
   });
 });

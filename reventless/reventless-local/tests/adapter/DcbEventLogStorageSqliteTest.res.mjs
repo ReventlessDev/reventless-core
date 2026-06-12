@@ -28,8 +28,8 @@ function stored(eventType, tags, data) {
   };
 }
 
-describe("DcbEventLogStorage_Sqlite", () => {
-  test("append + read round-trips events with tags", async () => await runUnderSqlite(async () => {
+globalThis.describe("DcbEventLogStorage_Sqlite", () => {
+  globalThis.test("append + read round-trips events with tags", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-rt", [], {
@@ -48,19 +48,19 @@ describe("DcbEventLogStorage_Sqlite", () => {
       ]]));
     let result = await ops.append([e1], undefined);
     if (result.TAG === "Ok") {
-      expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
     } else {
-      expect(result._0).toBe("Ok");
+      globalThis.expect(result._0).toBe("Ok");
     }
     let read = await ops.read([], undefined);
-    expect(read.events.length).toBe(1);
+    globalThis.expect(read.events.length).toBe(1);
     let first = read.events[0];
-    expect(first.eventType).toBe("ItemAdded");
-    expect(first.tags.length).toBe(1);
-    expect(first.tags[0].key).toBe("itemId");
-    expect(first.tags[0].value).toBe("x1");
+    globalThis.expect(first.eventType).toBe("ItemAdded");
+    globalThis.expect(first.tags.length).toBe(1);
+    globalThis.expect(first.tags[0].key).toBe("itemId");
+    globalThis.expect(first.tags[0].value).toBe("x1");
   }));
-  test("read filters by tag", async () => await runUnderSqlite(async () => {
+  globalThis.test("read filters by tag", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-tagfilter", [], {
@@ -86,9 +86,9 @@ describe("DcbEventLogStorage_Sqlite", () => {
             value: "a1"
           }]
       }], undefined);
-    expect(read.events.length).toBe(2);
+    globalThis.expect(read.events.length).toBe(2);
   }));
-  test("append with conflicting condition returns Error", async () => await runUnderSqlite(async () => {
+  globalThis.test("append with conflicting condition returns Error", async () => await runUnderSqlite(async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let Storage = DcbEventLogStorage_InMemory$ReventlessLocal.Make(TestBus);
     let s = Storage.make("dcb-conflict", [], {
@@ -114,12 +114,12 @@ describe("DcbEventLogStorage_Sqlite", () => {
     };
     let result = await ops.append([e], cond);
     if (result.TAG === "Ok") {
-      expect("expected conflict").toBe("got Ok");
+      globalThis.expect("expected conflict").toBe("got Ok");
       return;
     }
-    expect(true).toBe(true);
+    globalThis.expect(true).toBe(true);
   }));
-  test("events persist across a file reopen", async () => {
+  globalThis.test("events persist across a file reopen", async () => {
     let path = `/tmp/reventless-test-dcb-` + Date.now().toString() + `.db`;
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     BackendState$ReventlessLocal.setSqlite(db, path);
@@ -151,7 +151,7 @@ describe("DcbEventLogStorage_Sqlite", () => {
     }, opts);
     let ops2 = await TestRunner$ReventlessLocal.resolve(s2.operations);
     let read = await ops2.read([], undefined);
-    expect(read.events.length).toBe(1);
+    globalThis.expect(read.events.length).toBe(1);
     SqliteDriver$ReventlessLocal.close(db2);
     return BackendState$ReventlessLocal.setMemory();
   });

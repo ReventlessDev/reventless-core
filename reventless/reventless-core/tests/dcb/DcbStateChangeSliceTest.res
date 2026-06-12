@@ -1,5 +1,4 @@
-open Jest
-open Expect
+open JestGlobals
 
 let mock = DcbFixtures.makeMockStorage()
 

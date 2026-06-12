@@ -22,14 +22,14 @@ function encodeEvent(event) {
   };
 }
 
-describe("DcbEventLog.appendStream (in-memory adapter)", () => {
-  beforeAll(async () => {
+globalThis.describe("DcbEventLog.appendStream (in-memory adapter)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     DcbFixtures$ReventlessLocal.capturedEventCount.contents = 0;
   });
-  test("appendStream writes all events from stream", async () => {
+  globalThis.test("appendStream writes all events from stream", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
     let stream = Stream.fromIterable([
       encodeEvent({
@@ -46,18 +46,18 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
     let result = await Effect.runPromise(ops.appendStream(stream, undefined));
     let isOk;
     isOk = result.TAG === "Ok";
-    expect(isOk).toBe(true);
+    globalThis.expect(isOk).toBe(true);
     let read = await ops.read(DcbFixtures$ReventlessLocal.tagQuery("as-w1"), undefined);
-    expect(read.events.length).toBe(2);
+    globalThis.expect(read.events.length).toBe(2);
   });
-  test("appendStream on empty stream succeeds", async () => {
+  globalThis.test("appendStream on empty stream succeeds", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
     let result = await Effect.runPromise(ops.appendStream(Stream.empty, undefined));
     let isOk;
     isOk = result.TAG === "Ok";
-    expect(isOk).toBe(true);
+    globalThis.expect(isOk).toBe(true);
   });
-  test("readStream → appendStream pipeline copies events", async () => {
+  globalThis.test("readStream → appendStream pipeline copies events", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
     await ops.append([encodeEvent({
         TAG: "ItemAdded",
@@ -72,7 +72,7 @@ describe("DcbEventLog.appendStream (in-memory adapter)", () => {
     }));
     await Effect.runPromise(ops.appendStream(srcStream, undefined));
     let dst = await ops.read(DcbFixtures$ReventlessLocal.tagQuery("as-src"), undefined);
-    expect(dst.events.length).toBe(2);
+    globalThis.expect(dst.events.length).toBe(2);
   });
 });
 

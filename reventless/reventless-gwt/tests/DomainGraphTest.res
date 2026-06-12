@@ -3,8 +3,7 @@
 // Jest. The real end-to-end shape over the example plugins is exercised by the
 // LocalHost integration; here hand-built fixtures pin the edge wiring.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 let command = (~name, ~mutationField): Reventless.Plugin.commandDef => {
   name,

@@ -13,8 +13,8 @@ function makeFreshDb() {
   return SqliteDriver$ReventlessLocal.openDb(":memory:");
 }
 
-describe("EventLogStorage_Sqlite", () => {
-  test("append + replay round-trips events in order", async () => {
+globalThis.describe("EventLogStorage_Sqlite", () => {
+  globalThis.test("append + replay round-trips events in order", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -32,21 +32,21 @@ describe("EventLogStorage_Sqlite", () => {
         "Renamed"
       ]]);
     let r1 = await ops.append(0, "id-1", [event1]);
-    expect(r1).toEqual({
+    globalThis.expect(r1).toEqual({
       TAG: "Ok",
       _0: undefined
     });
     let r2 = await ops.append(1, "id-1", [event2]);
-    expect(r2).toEqual({
+    globalThis.expect(r2).toEqual({
       TAG: "Ok",
       _0: undefined
     });
     let replayed = await ops.replay("id-1");
-    expect(replayed.length).toBe(2);
-    expect(replayed[0]).toEqual(event1);
-    expect(replayed[1]).toEqual(event2);
+    globalThis.expect(replayed.length).toBe(2);
+    globalThis.expect(replayed[0]).toEqual(event1);
+    globalThis.expect(replayed[1]).toEqual(event2);
   });
-  test("append detects concurrency conflicts via PK collision", async () => {
+  globalThis.test("append detects concurrency conflicts via PK collision", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -62,12 +62,12 @@ describe("EventLogStorage_Sqlite", () => {
     await ops.append(0, "id-c", [e]);
     let result = await ops.append(0, "id-c", [e]);
     if (result.TAG === "Ok") {
-      expect("expected conflict").toBe("actual Ok");
+      globalThis.expect("expected conflict").toBe("actual Ok");
       return;
     }
-    expect(true).toBe(true);
+    globalThis.expect(true).toBe(true);
   });
-  test("replay returns empty array for unknown id", async () => {
+  globalThis.test("replay returns empty array for unknown id", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -77,9 +77,9 @@ describe("EventLogStorage_Sqlite", () => {
     let s = Storage.make("agg", opts);
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     let replayed = await ops.replay("not-there");
-    expect(replayed.length).toBe(0);
+    globalThis.expect(replayed.length).toBe(0);
   });
-  test("events persist across a reopen of the database file", async () => {
+  globalThis.test("events persist across a reopen of the database file", async () => {
     let path = `/tmp/reventless-test-eventlog-` + Date.now().toString() + `.db`;
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(path);
@@ -104,7 +104,7 @@ describe("EventLogStorage_Sqlite", () => {
     let s2 = Storage2.make("persist", opts);
     let ops2 = await TestRunner$ReventlessLocal.resolve(s2.operations);
     let replayed = await ops2.replay("id-p");
-    expect(replayed.length).toBe(1);
+    globalThis.expect(replayed.length).toBe(1);
     return SqliteDriver$ReventlessLocal.close(db$1);
   });
 });

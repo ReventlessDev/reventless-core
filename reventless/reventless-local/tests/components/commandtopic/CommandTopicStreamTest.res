@@ -1,8 +1,7 @@
 // Tests for CommandTopic.publishJsonsStream (Phase I of effect-stream-integration plan).
 // Verifies that a Stream<commandJson> drives publishing without collecting into an array.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open CommandTopicStreamFixtures
 
 describe("CommandTopic.publishJsonsStream", () => {

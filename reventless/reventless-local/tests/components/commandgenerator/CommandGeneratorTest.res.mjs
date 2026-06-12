@@ -6,10 +6,10 @@ import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/I
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as CommandGeneratorFixtures$ReventlessLocal from "./CommandGeneratorFixtures.res.mjs";
 
-describe("CommandGenerator_Builder.Make:", () => {
-  beforeEach(() => CommandGeneratorFixtures$ReventlessLocal.resetMocks());
-  describe("makeHandler:", () => {
-    test("CreateCGItem payload publishes correct commandJson", async () => {
+globalThis.describe("CommandGenerator_Builder.Make:", () => {
+  globalThis.beforeEach(() => CommandGeneratorFixtures$ReventlessLocal.resetMocks());
+  globalThis.describe("makeHandler:", () => {
+    globalThis.test("CreateCGItem payload publishes correct commandJson", async () => {
       let handler = await TestRunner$ReventlessLocal.resolve(CommandGeneratorFixtures$ReventlessLocal.CGMaker.makeHandler(CommandGeneratorFixtures$ReventlessLocal.mockPublish, undefined));
       let payload_arguments = {
         id: "item-1",
@@ -27,18 +27,18 @@ describe("CommandGenerator_Builder.Make:", () => {
         identity: Identity$Reventless.anonymous
       };
       await Effect.runPromise(handler(payload, undefined));
-      expect(CommandGeneratorFixtures$ReventlessLocal.capturedCmds.contents.length).toBe(1);
+      globalThis.expect(CommandGeneratorFixtures$ReventlessLocal.capturedCmds.contents.length).toBe(1);
       let cmd = CommandGeneratorFixtures$ReventlessLocal.capturedCmds.contents[0];
-      expect(cmd.id).toBe("item-1");
+      globalThis.expect(cmd.id).toBe("item-1");
       let decoded = S.parseJsonOrThrow(cmd.commandJson, CommandGeneratorFixtures$ReventlessLocal.CGSpec.commandSchema);
-      expect(decoded).toEqual({
+      globalThis.expect(decoded).toEqual({
         TAG: "CreateCGItem",
         name: "widget"
       });
     });
-    test("make creates a CommandGenerator component without throwing", async () => {
+    globalThis.test("make creates a CommandGenerator component without throwing", async () => {
       CommandGeneratorFixtures$ReventlessLocal.CGMaker.make("test-cg", undefined);
-      return expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
     });
   });
 });

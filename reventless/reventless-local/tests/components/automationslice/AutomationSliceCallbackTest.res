@@ -2,8 +2,7 @@
 // exercises per-source decode dispatch, context plumbing, and toTags
 // validation.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open AutomationSliceFixtures
 
 module Callback = ReventlessCore.AutomationSlice_Callback.Make(

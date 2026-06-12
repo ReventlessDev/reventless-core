@@ -7,13 +7,13 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as EventLogFixtures$ReventlessLocal from "./EventLogFixtures.res.mjs";
 
-describe("EventLog.appendStream (in-memory adapter)", () => {
-  beforeAll(async () => {
+globalThis.describe("EventLog.appendStream (in-memory adapter)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
   });
-  beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
-  describe("basic append", () => {
-    test("appendStream writes all events to storage", async () => {
+  globalThis.beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
+  globalThis.describe("basic append", () => {
+    globalThis.test("appendStream writes all events to storage", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       let stream = Stream$1.fromIterable([
         {
@@ -31,15 +31,15 @@ describe("EventLog.appendStream (in-memory adapter)", () => {
       ]);
       await Effect.runPromise(ops.appendStream(0, "as-basic-1", stream));
       let replayed = await ops.replay("as-basic-1");
-      expect(replayed.length).toBe(3);
+      globalThis.expect(replayed.length).toBe(3);
     });
-    test("appendStream on empty stream writes nothing", async () => {
+    globalThis.test("appendStream on empty stream writes nothing", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await Effect.runPromise(ops.appendStream(0, "as-empty-1", Stream$1.empty));
       let replayed = await ops.replay("as-empty-1");
-      expect(replayed.length).toBe(0);
+      globalThis.expect(replayed.length).toBe(0);
     });
-    test("appendStream preserves event order", async () => {
+    globalThis.test("appendStream preserves event order", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       let stream = Stream$1.fromIterable([
         {
@@ -54,12 +54,12 @@ describe("EventLog.appendStream (in-memory adapter)", () => {
       await Effect.runPromise(ops.appendStream(0, "as-order-1", stream));
       let replayed = await Effect.runPromise(Stream.runCollect(ops.replayStream("as-order-1")));
       let first = replayed[0];
-      expect(first).toEqual({
+      globalThis.expect(first).toEqual({
         TAG: "ItemCreated",
         name: "first"
       });
     });
-    test("appendStream after array append continues from correct sequenceNr", async () => {
+    globalThis.test("appendStream after array append continues from correct sequenceNr", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "as-seq-1", [EventLogFixtures$ReventlessLocal.makeEvent$p("as-seq-1", {
           TAG: "ItemCreated",
@@ -71,11 +71,11 @@ describe("EventLog.appendStream (in-memory adapter)", () => {
         }]);
       await Effect.runPromise(ops.appendStream(1, "as-seq-1", stream));
       let replayed = await ops.replay("as-seq-1");
-      expect(replayed.length).toBe(2);
+      globalThis.expect(replayed.length).toBe(2);
     });
   });
-  describe("replayStream → appendStream pipeline", () => {
-    test("can copy events from one aggregate to another via streams", async () => {
+  globalThis.describe("replayStream → appendStream pipeline", () => {
+    globalThis.test("can copy events from one aggregate to another via streams", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "as-src-1", [
         EventLogFixtures$ReventlessLocal.makeEvent$p("as-src-1", {
@@ -90,9 +90,9 @@ describe("EventLog.appendStream (in-memory adapter)", () => {
       let sourceStream = ops.replayStream("as-src-1");
       await Effect.runPromise(ops.appendStream(0, "as-dst-1", sourceStream));
       let destEvents = await ops.replay("as-dst-1");
-      expect(destEvents.length).toBe(2);
+      globalThis.expect(destEvents.length).toBe(2);
     });
-    test("copied events round-trip through decode correctly", async () => {
+    globalThis.test("copied events round-trip through decode correctly", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "as-src-2", [EventLogFixtures$ReventlessLocal.makeEvent$p("as-src-2", {
           TAG: "ItemCreated",
@@ -102,7 +102,7 @@ describe("EventLog.appendStream (in-memory adapter)", () => {
       await Effect.runPromise(ops.appendStream(0, "as-dst-2", sourceStream));
       let destEvents = await Effect.runPromise(Stream.runCollect(ops.replayStream("as-dst-2")));
       let first = destEvents[0];
-      expect(first).toEqual({
+      globalThis.expect(first).toEqual({
         TAG: "ItemCreated",
         name: "copied"
       });

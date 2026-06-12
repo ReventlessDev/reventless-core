@@ -1,8 +1,7 @@
 // Integration tests for EventCollector_Builder with in-memory channel.
 
 open TestFixtures
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open EventCollectorFixtures
 
 describe("EventCollector (in-memory)", () => {

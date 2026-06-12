@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/reventless-core": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
@@ -33,7 +34,6 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@glennsl/rescript-jest": "^0.13.1",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.3.0",
     "sury": "11.0.0-alpha.4",

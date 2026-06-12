@@ -9,8 +9,8 @@ function endsWith(paths, suffix) {
   return paths.some(p => p.endsWith(suffix));
 }
 
-describe("Discovery .gwtignore prune", () => {
-  test("keeps sibling GWT tests but prunes a subtree carrying .gwtignore", async () => {
+globalThis.describe("Discovery .gwtignore prune", () => {
+  globalThis.test("keeps sibling GWT tests but prunes a subtree carrying .gwtignore", async () => {
     let root = Nodepath.join(Nodeos.tmpdir(), "reventless-gwt-gwtignore-test");
     await Promises.rm(root, {
       recursive: true,
@@ -28,8 +28,8 @@ describe("Discovery .gwtignore prune", () => {
     await Promises.writeFile(Nodepath.join(skip, "Skip_GWT.res.mjs"), "");
     await Promises.writeFile(Nodepath.join(skip, ".gwtignore"), "");
     let found = await Discovery$ReventlessGwt.discover([root]);
-    expect(endsWith(found, "keep/Keep_GWT.res.mjs")).toBe(true);
-    expect(endsWith(found, "skip/Skip_GWT.res.mjs")).toBe(false);
+    globalThis.expect(endsWith(found, "keep/Keep_GWT.res.mjs")).toBe(true);
+    globalThis.expect(endsWith(found, "skip/Skip_GWT.res.mjs")).toBe(false);
     await Promises.rm(root, {
       recursive: true,
       force: true

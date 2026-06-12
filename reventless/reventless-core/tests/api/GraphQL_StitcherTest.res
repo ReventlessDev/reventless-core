@@ -1,5 +1,4 @@
-open Jest
-open Expect
+open JestGlobals
 open GraphQL_Stitcher
 
 // A representative stitched schema: admin base (Platform_*) plus two domain
@@ -52,33 +51,33 @@ type Query {
 }`
 
 describe("GraphQL_Stitcher.countRootTypeFields", () => {
-  test("counts Mutation fields", () => {
+  testSync("counts Mutation fields", () => {
     expect(countRootTypeFields(~sdl=fullSchemaSdl, ~typeName="Mutation"))->toBe(4)
   })
-  test("counts Query fields", () => {
+  testSync("counts Query fields", () => {
     expect(countRootTypeFields(~sdl=fullSchemaSdl, ~typeName="Query"))->toBe(4)
   })
-  test("ignores @aws_auth directive lines, counts each Mutation field once", () => {
+  testSync("ignores @aws_auth directive lines, counts each Mutation field once", () => {
     expect(countRootTypeFields(~sdl=authAnnotatedSdl, ~typeName="Mutation"))->toBe(2)
   })
-  test("ignores @aws_auth directive lines, counts each Query field once", () => {
+  testSync("ignores @aws_auth directive lines, counts each Query field once", () => {
     expect(countRootTypeFields(~sdl=authAnnotatedSdl, ~typeName="Query"))->toBe(1)
   })
-  test("missing type returns 0", () => {
+  testSync("missing type returns 0", () => {
     expect(countRootTypeFields(~sdl=fullSchemaSdl, ~typeName="Subscription"))->toBe(0)
   })
-  test("empty SDL returns 0", () => {
+  testSync("empty SDL returns 0", () => {
     expect(countRootTypeFields(~sdl="", ~typeName="Mutation"))->toBe(0)
   })
 })
 
 describe("GraphQL_Stitcher.isCatastrophicSchemaShrink", () => {
-  test("rejects the all-disconnected collapse (8 → 3 root fields, < 50%)", () => {
+  testSync("rejects the all-disconnected collapse (8 → 3 root fields, < 50%)", () => {
     expect(
       isCatastrophicSchemaShrink(~currentSdl=fullSchemaSdl, ~newSdl=collapsedSchemaSdl, ~threshold=0.5),
     )->toBe(true)
   })
-  test("allows an intentional small removal above threshold (8 → 7)", () => {
+  testSync("allows an intentional small removal above threshold (8 → 7)", () => {
     let minusOneSdl = `type Query {
   node(id: ID!): Node
   Platform_plugins: [Plugin]
@@ -95,12 +94,12 @@ type Mutation {
       isCatastrophicSchemaShrink(~currentSdl=fullSchemaSdl, ~newSdl=minusOneSdl, ~threshold=0.5),
     )->toBe(false)
   })
-  test("allows the first push when there is no live schema to protect", () => {
+  testSync("allows the first push when there is no live schema to protect", () => {
     expect(
       isCatastrophicSchemaShrink(~currentSdl="", ~newSdl=fullSchemaSdl, ~threshold=0.5),
     )->toBe(false)
   })
-  test("allows an unchanged re-push (same SDL)", () => {
+  testSync("allows an unchanged re-push (same SDL)", () => {
     expect(
       isCatastrophicSchemaShrink(~currentSdl=fullSchemaSdl, ~newSdl=fullSchemaSdl, ~threshold=0.5),
     )->toBe(false)

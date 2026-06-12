@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("Latch", () => {
   testPromise("makeLatch(false) starts closed — open_ releases awaiting fiber", async () => {

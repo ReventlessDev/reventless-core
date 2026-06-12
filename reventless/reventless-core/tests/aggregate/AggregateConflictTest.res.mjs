@@ -236,10 +236,10 @@ function makeTopicItem(reference, command) {
   };
 }
 
-beforeEach(() => mock.reset());
+globalThis.beforeEach(() => mock.reset());
 
-describe("Aggregate_Callback — conflict retry:", () => {
-  test("1 conflict retries and succeeds", async () => {
+globalThis.describe("Aggregate_Callback — conflict retry:", () => {
+  globalThis.test("1 conflict retries and succeeds", async () => {
     mock.failNextAppendsWithConflict.contents = 1;
     let results = await Effect.runPromise(TestHandler.handleCommands(Stream.fromIterable([{
         command: {
@@ -252,13 +252,13 @@ describe("Aggregate_Callback — conflict retry:", () => {
         },
         reference: "ref-1"
       }])));
-    expect(results).toEqual([{
+    globalThis.expect(results).toEqual([{
         TAG: "Ok",
         _0: "ref-1"
       }]);
-    expect(mock.appendCallCount.contents).toBe(2);
+    globalThis.expect(mock.appendCallCount.contents).toBe(2);
   });
-  test("conflict triggers re-replay", async () => {
+  globalThis.test("conflict triggers re-replay", async () => {
     mock.failNextAppendsWithConflict.contents = 1;
     await Effect.runPromise(TestHandler.handleCommands(Stream.fromIterable([{
         command: {
@@ -271,9 +271,9 @@ describe("Aggregate_Callback — conflict retry:", () => {
         },
         reference: "ref-1"
       }])));
-    expect(mock.replayCallCount.contents).toBe(2);
+    globalThis.expect(mock.replayCallCount.contents).toBe(2);
   });
-  test("2 conflicts retry twice and succeed", async () => {
+  globalThis.test("2 conflicts retry twice and succeed", async () => {
     mock.failNextAppendsWithConflict.contents = 2;
     let results = await Effect.runPromise(TestHandler.handleCommands(Stream.fromIterable([{
         command: {
@@ -286,13 +286,13 @@ describe("Aggregate_Callback — conflict retry:", () => {
         },
         reference: "ref-1"
       }])));
-    expect(results).toEqual([{
+    globalThis.expect(results).toEqual([{
         TAG: "Ok",
         _0: "ref-1"
       }]);
-    expect(mock.appendCallCount.contents).toBe(3);
+    globalThis.expect(mock.appendCallCount.contents).toBe(3);
   });
-  test("max retries exhausted returns Error with detail message", async () => {
+  globalThis.test("max retries exhausted returns Error with detail message", async () => {
     mock.failNextAppendsWithConflict.contents = 4;
     let results = await Effect.runPromise(TestHandler.handleCommands(Stream.fromIterable([{
         command: {
@@ -305,13 +305,13 @@ describe("Aggregate_Callback — conflict retry:", () => {
         },
         reference: "ref-1"
       }])));
-    expect(results).toEqual([{
+    globalThis.expect(results).toEqual([{
         TAG: "Error",
         _0: "concurrent modification (3 retries exhausted): conflict"
       }]);
-    expect(mock.appendCallCount.contents).toBe(4);
+    globalThis.expect(mock.appendCallCount.contents).toBe(4);
   });
-  test("successful append after conflict stores event", async () => {
+  globalThis.test("successful append after conflict stores event", async () => {
     mock.failNextAppendsWithConflict.contents = 1;
     await Effect.runPromise(TestHandler.handleCommands(Stream.fromIterable([{
         command: {
@@ -324,9 +324,9 @@ describe("Aggregate_Callback — conflict retry:", () => {
         },
         reference: "ref-1"
       }])));
-    expect(mock.getAll().length).toBe(1);
+    globalThis.expect(mock.getAll().length).toBe(1);
   });
-  test("no conflict does not retry", async () => {
+  globalThis.test("no conflict does not retry", async () => {
     let results = await Effect.runPromise(TestHandler.handleCommands(Stream.fromIterable([{
         command: {
           id: "agg-1",
@@ -338,12 +338,12 @@ describe("Aggregate_Callback — conflict retry:", () => {
         },
         reference: "ref-1"
       }])));
-    expect(results).toEqual([{
+    globalThis.expect(results).toEqual([{
         TAG: "Ok",
         _0: "ref-1"
       }]);
-    expect(mock.appendCallCount.contents).toBe(1);
-    expect(mock.replayCallCount.contents).toBe(1);
+    globalThis.expect(mock.appendCallCount.contents).toBe(1);
+    globalThis.expect(mock.replayCallCount.contents).toBe(1);
   });
 });
 

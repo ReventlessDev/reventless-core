@@ -17,53 +17,53 @@ function makeTaggedEvent(tag, payload) {
   return d;
 }
 
-describe("RenderRescript", () => {
-  test("renders tagged variants with BuckleScript representation", async () => {
+globalThis.describe("RenderRescript", () => {
+  globalThis.test("renders tagged variants with BuckleScript representation", async () => {
     let payload = {};
     payload["name"] = "Electronics";
     let ev = makeTaggedEvent("CategoryAdded", payload);
     let rendered = RenderRescript$ReventlessGwt.render(undefined, ev);
-    expect(rendered).toEqual(`CategoryAdded({name: "Electronics"})`);
+    globalThis.expect(rendered).toEqual(`CategoryAdded({name: "Electronics"})`);
   });
-  test("renders payload-less variants as bare strings", async () => {
-    expect(RenderRescript$ReventlessGwt.render(undefined, "CategoryArchived")).toEqual(`"CategoryArchived"`);
+  globalThis.test("renders payload-less variants as bare strings", async () => {
+    globalThis.expect(RenderRescript$ReventlessGwt.render(undefined, "CategoryArchived")).toEqual(`"CategoryArchived"`);
   });
-  test("renders plain records in field order", async () => {
+  globalThis.test("renders plain records in field order", async () => {
     let d = {};
     d["id"] = "c1";
     d["count"] = 3;
     let rendered = RenderRescript$ReventlessGwt.render(undefined, d);
-    expect(rendered).toEqual(`{id: "c1", count: 3}`);
+    globalThis.expect(rendered).toEqual(`{id: "c1", count: 3}`);
   });
-  test("renderMany splits large arrays across lines", async () => {
+  globalThis.test("renderMany splits large arrays across lines", async () => {
     let a = makeTaggedEvent("A", {});
     let b = makeTaggedEvent("B", {});
     let rendered = RenderRescript$ReventlessGwt.renderMany([
       a,
       b
     ]);
-    expect(rendered.includes("A({})")).toEqual(true);
-    expect(rendered.includes("B({})")).toEqual(true);
+    globalThis.expect(rendered.includes("A({})")).toEqual(true);
+    globalThis.expect(rendered.includes("B({})")).toEqual(true);
   });
-  test("renders inline-record variants with their flattened payload", async () => {
+  globalThis.test("renders inline-record variants with their flattened payload", async () => {
     let d = {};
     d["TAG"] = "ProductsNotAvailable";
     d["missing"] = ["p1x"];
     let rendered = RenderRescript$ReventlessGwt.render(undefined, d);
-    expect(rendered).toEqual(`ProductsNotAvailable({missing: ["p1x"]})`);
+    globalThis.expect(rendered).toEqual(`ProductsNotAvailable({missing: ["p1x"]})`);
   });
-  test("renders multi-field inline-record variants", async () => {
+  globalThis.test("renders multi-field inline-record variants", async () => {
     let d = {};
     d["TAG"] = "Conflict";
     d["expected"] = 1;
     d["got"] = 2;
     let rendered = RenderRescript$ReventlessGwt.render(undefined, d);
-    expect(rendered).toEqual(`Conflict({expected: 1, got: 2})`);
+    globalThis.expect(rendered).toEqual(`Conflict({expected: 1, got: 2})`);
   });
 });
 
-describe("Diff", () => {
-  test("emits one entry per differing leaf", async () => {
+globalThis.describe("Diff", () => {
+  globalThis.test("emits one entry per differing leaf", async () => {
     let d1 = {};
     d1["name"] = "A";
     d1["count"] = 1;
@@ -71,21 +71,21 @@ describe("Diff", () => {
     d2["name"] = "B";
     d2["count"] = 1;
     let diff = Diff$ReventlessGwt.diff(d1, d2);
-    expect(diff.length).toEqual(1);
+    globalThis.expect(diff.length).toEqual(1);
     let first = diff[0];
-    expect(first.path).toEqual("name");
+    globalThis.expect(first.path).toEqual("name");
   });
-  test("emits zero entries when values are identical", async () => {
+  globalThis.test("emits zero entries when values are identical", async () => {
     let d = {};
     d["a"] = 1;
     let d2 = {};
     d2["a"] = 1;
-    expect(Diff$ReventlessGwt.diff(d, d2).length).toEqual(0);
+    globalThis.expect(Diff$ReventlessGwt.diff(d, d2).length).toEqual(0);
   });
 });
 
-describe("FormatterJson.mismatchJson", () => {
-  test("ErrorMismatch carries dual-rendered expected + actualEvents", async () => {
+globalThis.describe("FormatterJson.mismatchJson", () => {
+  globalThis.test("ErrorMismatch carries dual-rendered expected + actualEvents", async () => {
     let p = {};
     p["categoryId"] = "c1";
     p["name"] = "X";
@@ -99,12 +99,12 @@ describe("FormatterJson.mismatchJson", () => {
     };
     let j = FormatterJson$ReventlessGwt.mismatchJson(m, "AddCategory");
     let str = JSON.stringify(j);
-    expect(str.includes(`"kind":"ErrorMismatch"`)).toEqual(true);
-    expect(str.includes(`"type":"CategoryAlreadyExists"`)).toEqual(true);
-    expect(str.includes(`CategoryAdded({categoryId: \\\"c1\\\", name: \\\"X\\\"})`)).toEqual(true);
-    expect(str.includes(`"locus":"AddCategory.decide"`)).toEqual(true);
+    globalThis.expect(str.includes(`"kind":"ErrorMismatch"`)).toEqual(true);
+    globalThis.expect(str.includes(`"type":"CategoryAlreadyExists"`)).toEqual(true);
+    globalThis.expect(str.includes(`CategoryAdded({categoryId: \\\"c1\\\", name: \\\"X\\\"})`)).toEqual(true);
+    globalThis.expect(str.includes(`"locus":"AddCategory.decide"`)).toEqual(true);
   });
-  test("EventsMismatch includes a fieldDiff derived from payloads", async () => {
+  globalThis.test("EventsMismatch includes a fieldDiff derived from payloads", async () => {
     let p = {};
     p["name"] = "Electronics";
     let expected = [makeTaggedEvent("Added", p)];
@@ -118,13 +118,13 @@ describe("FormatterJson.mismatchJson", () => {
     };
     let j = FormatterJson$ReventlessGwt.mismatchJson(m, undefined);
     let str = JSON.stringify(j);
-    expect(str.includes(`"fieldDiff"`)).toEqual(true);
-    expect(str.includes(`"path":"0._0.name"`)).toEqual(true);
+    globalThis.expect(str.includes(`"fieldDiff"`)).toEqual(true);
+    globalThis.expect(str.includes(`"path":"0._0.name"`)).toEqual(true);
   });
 });
 
-describe("Cli.parseArgv", () => {
-  test("parses run subcommand with --format=json --filter=Foo", async () => {
+globalThis.describe("Cli.parseArgv", () => {
+  globalThis.test("parses run subcommand with --format=json --filter=Foo", async () => {
     let argv = [
       "/bin/node",
       "/path/to/bin",
@@ -138,12 +138,12 @@ describe("Cli.parseArgv", () => {
       return Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts._0);
     }
     let opts$1 = opts._0;
-    expect(opts$1.subcommand === "Run").toEqual(true);
-    expect(opts$1.format === "Json").toEqual(true);
-    expect(opts$1.filters).toEqual(["Foo"]);
-    expect(opts$1.roots).toEqual(["tests/"]);
+    globalThis.expect(opts$1.subcommand === "Run").toEqual(true);
+    globalThis.expect(opts$1.format === "Json").toEqual(true);
+    globalThis.expect(opts$1.filters).toEqual(["Foo"]);
+    globalThis.expect(opts$1.roots).toEqual(["tests/"]);
   });
-  test("discover subcommand defaults to vscode format", async () => {
+  globalThis.test("discover subcommand defaults to vscode format", async () => {
     let argv = [
       "/bin/node",
       "/path/to/bin",
@@ -154,10 +154,10 @@ describe("Cli.parseArgv", () => {
       return Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts._0);
     }
     let opts$1 = opts._0;
-    expect(opts$1.subcommand === "Discover").toEqual(true);
-    expect(opts$1.format === "VsCode").toEqual(true);
+    globalThis.expect(opts$1.subcommand === "Discover").toEqual(true);
+    globalThis.expect(opts$1.format === "VsCode").toEqual(true);
   });
-  test("unknown flag reports an error", async () => {
+  globalThis.test("unknown flag reports an error", async () => {
     let argv = [
       "/bin/node",
       "/path/to/bin",
@@ -168,9 +168,9 @@ describe("Cli.parseArgv", () => {
     if (msg.TAG === "Ok") {
       return Stdlib_JsError.throwWithMessage("expected Error");
     }
-    expect(msg._0.includes("Unknown flag")).toEqual(true);
+    globalThis.expect(msg._0.includes("Unknown flag")).toEqual(true);
   });
-  test("no path argument defaults to the cwd subtree (auto-discovery)", async () => {
+  globalThis.test("no path argument defaults to the cwd subtree (auto-discovery)", async () => {
     let argv = [
       "/bin/node",
       "/path/to/bin",
@@ -182,10 +182,10 @@ describe("Cli.parseArgv", () => {
       return Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts._0);
     }
     let opts$1 = opts._0;
-    expect(opts$1.subcommand === "Watch").toEqual(true);
-    expect(opts$1.roots).toEqual(["."]);
+    globalThis.expect(opts$1.subcommand === "Watch").toEqual(true);
+    globalThis.expect(opts$1.roots).toEqual(["."]);
   });
-  test("platform backend defaults to memory; --backend overrides", async () => {
+  globalThis.test("platform backend defaults to memory; --backend overrides", async () => {
     let opts = Cli$ReventlessGwt.parseArgv([
       "/bin/node",
       "/path/to/bin",
@@ -194,8 +194,8 @@ describe("Cli.parseArgv", () => {
     ]);
     if (opts.TAG === "Ok") {
       let opts$1 = opts._0;
-      expect(opts$1.subcommand === "Platform").toEqual(true);
-      expect(opts$1.backend).toEqual("memory");
+      globalThis.expect(opts$1.subcommand === "Platform").toEqual(true);
+      globalThis.expect(opts$1.backend).toEqual("memory");
     } else {
       Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts._0);
     }
@@ -208,7 +208,7 @@ describe("Cli.parseArgv", () => {
     if (opts$2.TAG !== "Ok") {
       return Stdlib_JsError.throwWithMessage("expected Ok, got: " + opts$2._0);
     }
-    expect(opts$2._0.backend).toEqual("sqlite:./db?reset");
+    globalThis.expect(opts$2._0.backend).toEqual("sqlite:./db?reset");
   });
 });
 

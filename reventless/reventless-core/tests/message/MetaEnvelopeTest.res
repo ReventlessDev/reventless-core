@@ -5,16 +5,15 @@
 // - StoredEvent encode/decode round-trip + the flat-dict bridge
 // - generateMeta omits ip/user when not supplied (no `""`/`"unknown"` sentinels)
 //
-// `open Jest; open Expect` returns `Jest.assertion` from each `->toBe`/`->toEqual`,
-// so intermediate assertions are piped to `->ignore`; the trailing one supplies
-// the implicit `unit` return of the test body.
+// Bindings come from @reventlessdev/rescript-jest (`JestGlobals`): `expect`'s
+// matchers throw on mismatch and return `unit`, so every assertion in a body
+// executes at its line — no need to return a single assertion from the test.
 
-open Jest
-open Expect
+open JestGlobals
 open Message
 
 describe("Message.meta optional fields:", () => {
-  test("generateMeta() with no ~ip/~user omits those keys from JSON", () => {
+  testSync("generateMeta() with no ~ip/~user omits those keys from JSON", () => {
     let meta = generateMeta(~service="svc")
     let json = meta->S.reverseConvertToJsonOrThrow(metaSchema)
     let obj = json->JSON.Decode.object->Option.getOrThrow
@@ -31,19 +30,19 @@ describe("Message.meta optional fields:", () => {
     expect(obj->Dict.get("correlationId")->Option.isSome)->toBe(true)
   })
 
-  test("generateMeta() correlationId defaults to msgId", () => {
+  testSync("generateMeta() correlationId defaults to msgId", () => {
     let meta = generateMeta(~service="svc")
     expect(meta.correlationId)->toBe(meta.msgId)
   })
 
-  test("generateMeta(~user=alice) round-trips Some(alice)", () => {
+  testSync("generateMeta(~user=alice) round-trips Some(alice)", () => {
     let meta = generateMeta(~service="svc", ~user="alice")
     let json = meta->S.reverseConvertToJsonOrThrow(metaSchema)
     let decoded = json->S.parseJsonOrThrow(metaSchema)
     expect(decoded.user)->toEqual(Some("alice"))
   })
 
-  test("all new optional fields round-trip when set", () => {
+  testSync("all new optional fields round-trip when set", () => {
     let headers = Dict.fromArray([("tenantId", "t1"), ("feature.x", "on")])
     let meta = generateMeta(
       ~service="svc",
@@ -74,19 +73,19 @@ describe("Message.meta optional fields:", () => {
 })
 
 describe("Message.deriveMeta:", () => {
-  test("emits a new msgId distinct from the parent", () => {
+  testSync("emits a new msgId distinct from the parent", () => {
     let parent = generateMeta(~service="svc")
     let child = deriveMeta(~parent)
     expect(child.msgId == parent.msgId)->toBe(false)
   })
 
-  test("sets causationId = parent.msgId", () => {
+  testSync("sets causationId = parent.msgId", () => {
     let parent = generateMeta(~service="svc")
     let child = deriveMeta(~parent)
     expect(child.causationId)->toEqual(Some(parent.msgId))
   })
 
-  test("inherits correlationId (chain-root id stays stable)", () => {
+  testSync("inherits correlationId (chain-root id stays stable)", () => {
     let root = generateMeta(~service="svc") // correlationId = msgId here
     let mid = deriveMeta(~parent=root)
     let leaf = deriveMeta(~parent=mid)
@@ -96,7 +95,7 @@ describe("Message.deriveMeta:", () => {
     expect(leaf.causationId)->toEqual(Some(mid.msgId))
   })
 
-  test("inherits ip/user/traceparent/schemaVersion/headers from parent", () => {
+  testSync("inherits ip/user/traceparent/schemaVersion/headers from parent", () => {
     let parent = generateMeta(
       ~service="svc",
       ~ip="10.0.0.1",
@@ -113,7 +112,7 @@ describe("Message.deriveMeta:", () => {
     expect(child.headers->Option.getOr(Dict.make())->Dict.get("k"))->toEqual(Some("v"))
   })
 
-  test("~service overrides parent's service; defaults to parent's service", () => {
+  testSync("~service overrides parent's service; defaults to parent's service", () => {
     let parent = generateMeta(~service="parent-svc")
     let inherited = deriveMeta(~parent)
     let overridden = deriveMeta(~parent, ~service="child-svc")
@@ -123,7 +122,7 @@ describe("Message.deriveMeta:", () => {
 })
 
 describe("StoredEvent encode/decode round-trip:", () => {
-  test("aggregate-style record (no tags) round-trips through the flat-dict bridge", () => {
+  testSync("aggregate-style record (no tags) round-trips through the flat-dict bridge", () => {
     let meta = generateMeta(~service="catalog")
     let stored: Reventless.StoredEvent.storedEvent<string> = {
       id: "agg-1",
@@ -149,7 +148,7 @@ describe("StoredEvent encode/decode round-trip:", () => {
     expect(roundTrip.tags)->toEqual(None)
   })
 
-  test("DCB-style record (with tags) round-trips and preserves the tag list", () => {
+  testSync("DCB-style record (with tags) round-trips and preserves the tag list", () => {
     let meta = generateMeta(~service="catalog", ~causationId="cmd-1")
     let stored: Reventless.StoredEvent.storedEvent<string> = {
       id: "productId:p-1",
@@ -176,7 +175,7 @@ describe("StoredEvent encode/decode round-trip:", () => {
     expect(first.value)->toBe("p-1")
   })
 
-  test("meta is flattened to top-level keys in the on-disk JSON (DynamoDB GSI projectability)", () => {
+  testSync("meta is flattened to top-level keys in the on-disk JSON (DynamoDB GSI projectability)", () => {
     let meta = generateMeta(~service="catalog")
     let stored: Reventless.StoredEvent.storedEvent<string> = {
       id: "agg-1",

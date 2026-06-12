@@ -1,24 +1,14 @@
 // Integration tests for CommandGenerator_Builder (in-memory).
 // Verifies that makeHandler returns a resolver that generates and publishes commands.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open CommandGeneratorFixtures
-
-// ─────────────────────────────────────────────────────────────
-// Use native jest `test` binding to properly await async bodies.
-// testPromise from @glennsl/rescript-jest discards the returned Promise
-// (see MEMORY.md: "@glennsl/rescript-jest: testPromise is broken for async tests").
-// ─────────────────────────────────────────────────────────────
-
-@val external jestTest: (string, unit => promise<unit>) => unit = "test"
-@val external nativeExpect: 'a => {..} = "expect"
 
 describe("CommandGenerator_Builder.Make:", () => {
   let _ = beforeEach(() => resetMocks())
 
   describe("makeHandler:", () => {
-    jestTest("CreateCGItem payload publishes correct commandJson", async () => {
+    testPromise("CreateCGItem payload publishes correct commandJson", async () => {
       // Resolve the handler from the Output wrapper
       let handler = await CGMaker.makeHandler(~publishJsons=mockPublish, ~publishJsonsAndWait=None)->TestRunner.resolve
 
@@ -44,10 +34,10 @@ describe("CommandGenerator_Builder.Make:", () => {
       expect(decoded)->toEqual(CGSpec.CreateCGItem({name: "widget"}))
     })
 
-    jestTest("make creates a CommandGenerator component without throwing", async () => {
+    testPromise("make creates a CommandGenerator component without throwing", async () => {
       let cg = CGMaker.make(~name="test-cg")
       let _ = cg
-      nativeExpect(true)["toBe"](. true)
+      expect(true)->toBe(true)
     })
   })
 })

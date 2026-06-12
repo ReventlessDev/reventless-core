@@ -3,24 +3,24 @@
 import * as Pulumi from "@pulumi/pulumi";
 import * as LocalCounterHandler$ReventlessLocal from "../../src/adapter/Counter/LocalCounterHandler.res.mjs";
 
-beforeEach(() => LocalCounterHandler$ReventlessLocal.reset());
+globalThis.beforeEach(() => LocalCounterHandler$ReventlessLocal.reset());
 
 function makeHandler() {
   return LocalCounterHandler$ReventlessLocal.make("counter", "refs", undefined, "counts", undefined, undefined, "", "", Pulumi.output(""), {});
 }
 
-describe("LocalCounterHandler", () => {
-  describe("addToCounterTarget", () => {
-    test("increments counter by target amount", async () => {
+globalThis.describe("LocalCounterHandler", () => {
+  globalThis.describe("addToCounterTarget", () => {
+    globalThis.test("increments counter by target amount", async () => {
       let handler = makeHandler();
       await handler.addToCounterTarget({
         counterId: "likes",
         target: 3,
         targetRef: "ref-1"
       });
-      expect(LocalCounterHandler$ReventlessLocal.getCount("likes")).toBe(3);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("likes")).toBe(3);
     });
-    test("same (counterId, targetRef) pair is counted only once", async () => {
+    globalThis.test("same (counterId, targetRef) pair is counted only once", async () => {
       let handler = makeHandler();
       await handler.addToCounterTarget({
         counterId: "likes",
@@ -32,9 +32,9 @@ describe("LocalCounterHandler", () => {
         target: 5,
         targetRef: "ref-dup"
       });
-      expect(LocalCounterHandler$ReventlessLocal.getCount("likes")).toBe(5);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("likes")).toBe(5);
     });
-    test("different targetRef values for same counterId accumulate", async () => {
+    globalThis.test("different targetRef values for same counterId accumulate", async () => {
       let handler = makeHandler();
       await handler.addToCounterTarget({
         counterId: "views",
@@ -46,9 +46,9 @@ describe("LocalCounterHandler", () => {
         target: 3,
         targetRef: "ref-b"
       });
-      expect(LocalCounterHandler$ReventlessLocal.getCount("views")).toBe(5);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("views")).toBe(5);
     });
-    test("multiple counters are tracked independently", async () => {
+    globalThis.test("multiple counters are tracked independently", async () => {
       let handler = makeHandler();
       await handler.addToCounterTarget({
         counterId: "alpha",
@@ -60,32 +60,32 @@ describe("LocalCounterHandler", () => {
         target: 7,
         targetRef: "r1"
       });
-      expect(LocalCounterHandler$ReventlessLocal.getCount("alpha")).toBe(10);
-      expect(LocalCounterHandler$ReventlessLocal.getCount("beta")).toBe(7);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("alpha")).toBe(10);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("beta")).toBe(7);
     });
   });
-  describe("getCount", () => {
-    test("returns 0 for unknown counterId", async () => {
-      expect(LocalCounterHandler$ReventlessLocal.getCount("no-such-counter")).toBe(0);
+  globalThis.describe("getCount", () => {
+    globalThis.test("returns 0 for unknown counterId", async () => {
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("no-such-counter")).toBe(0);
     });
   });
-  describe("reset", () => {
-    test("clears all counter values and deduplication state", async () => {
+  globalThis.describe("reset", () => {
+    globalThis.test("clears all counter values and deduplication state", async () => {
       let handler = makeHandler();
       await handler.addToCounterTarget({
         counterId: "x",
         target: 99,
         targetRef: "ref-x"
       });
-      expect(LocalCounterHandler$ReventlessLocal.getCount("x")).toBe(99);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("x")).toBe(99);
       LocalCounterHandler$ReventlessLocal.reset();
-      expect(LocalCounterHandler$ReventlessLocal.getCount("x")).toBe(0);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("x")).toBe(0);
       await handler.addToCounterTarget({
         counterId: "x",
         target: 99,
         targetRef: "ref-x"
       });
-      expect(LocalCounterHandler$ReventlessLocal.getCount("x")).toBe(99);
+      globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("x")).toBe(99);
     });
   });
 });

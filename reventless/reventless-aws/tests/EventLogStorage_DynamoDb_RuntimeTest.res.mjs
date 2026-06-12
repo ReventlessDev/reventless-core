@@ -18,43 +18,43 @@ function mkJson(i) {
     ]]);
 }
 
-describe("Runtime.append", () => {
-  test("rejects > 100 events with a clear error before any AWS call", async () => {
+globalThis.describe("Runtime.append", () => {
+  globalThis.test("rejects > 100 events with a clear error before any AWS call", async () => {
     let jsons = Stdlib_Array.fromInitializer(101, mkJson);
     let result = await EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table)(0, "test-id", jsons);
     if (result.TAG === "Ok") {
-      expect("expected Error, got Ok").toBe("");
+      globalThis.expect("expected Error, got Ok").toBe("");
       return;
     }
     let msg = result._0;
-    expect(msg.includes("max 100 events per command")).toBe(true);
-    expect(msg.includes("101")).toBe(true);
+    globalThis.expect(msg.includes("max 100 events per command")).toBe(true);
+    globalThis.expect(msg.includes("101")).toBe(true);
   });
 });
 
-describe("Runtime.buildTransactItems", () => {
-  test("builds one Put per event with attribute_not_exists(#p) condition", () => {
+globalThis.describe("Runtime.buildTransactItems", () => {
+  globalThis.test("builds one Put per event with attribute_not_exists(#p) condition", () => {
     let jsons = Stdlib_Array.fromInitializer(2, mkJson);
     let items = EventLogStorage_DynamoDb_Runtime$ReventlessAws.buildTransactItems("TestTable", jsons);
-    expect(items.length).toBe(2);
+    globalThis.expect(items.length).toBe(2);
     let first = items[0];
     let p = first.Put;
     if (p !== undefined) {
-      expect(p.TableName).toBe("TestTable");
-      expect(p.ConditionExpression).toEqual("attribute_not_exists(#p)");
-      expect(Stdlib_Option.flatMap(p.ExpressionAttributeNames, __x => __x["#p"])).toEqual("position");
+      globalThis.expect(p.TableName).toBe("TestTable");
+      globalThis.expect(p.ConditionExpression).toEqual("attribute_not_exists(#p)");
+      globalThis.expect(Stdlib_Option.flatMap(p.ExpressionAttributeNames, __x => __x["#p"])).toEqual("position");
     } else {
-      expect("expected Put, got None").toBe("");
+      globalThis.expect("expected Put, got None").toBe("");
     }
   });
-  test("scales to 100 items (TransactWriteItems hard limit)", () => {
+  globalThis.test("scales to 100 items (TransactWriteItems hard limit)", () => {
     let jsons = Stdlib_Array.fromInitializer(100, mkJson);
     let items = EventLogStorage_DynamoDb_Runtime$ReventlessAws.buildTransactItems("TestTable", jsons);
-    expect(items.length).toBe(100);
+    globalThis.expect(items.length).toBe(100);
   });
-  test("returns empty array for empty input", () => {
+  globalThis.test("returns empty array for empty input", () => {
     let items = EventLogStorage_DynamoDb_Runtime$ReventlessAws.buildTransactItems("TestTable", []);
-    expect(items.length).toBe(0);
+    globalThis.expect(items.length).toBe(0);
   });
 });
 

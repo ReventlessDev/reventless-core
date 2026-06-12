@@ -8,72 +8,72 @@ import * as AppSync_Adapter$ReventlessAws from "../src/components/Api/AppSync_Ad
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
 
-describe("AppSync_Adapter.sha256Hex", () => {
-  test("returns a 64-character hex string", () => {
+globalThis.describe("AppSync_Adapter.sha256Hex", () => {
+  globalThis.test("returns a 64-character hex string", () => {
     let hash = AppSync_Adapter$ReventlessAws.sha256Hex("hello");
-    expect(hash.length).toBe(64);
+    globalThis.expect(hash.length).toBe(64);
   });
-  test("is stable — same input produces same digest", () => {
+  globalThis.test("is stable — same input produces same digest", () => {
     let sdl = "type Query { ping: String }";
-    expect(AppSync_Adapter$ReventlessAws.sha256Hex(sdl)).toBe(AppSync_Adapter$ReventlessAws.sha256Hex(sdl));
+    globalThis.expect(AppSync_Adapter$ReventlessAws.sha256Hex(sdl)).toBe(AppSync_Adapter$ReventlessAws.sha256Hex(sdl));
   });
-  test("differs for inputs that differ by one character", () => {
-    expect(AppSync_Adapter$ReventlessAws.sha256Hex("type Query { ping: String }")).not.toBe(AppSync_Adapter$ReventlessAws.sha256Hex("type Query { pong: String }"));
+  globalThis.test("differs for inputs that differ by one character", () => {
+    globalThis.expect(AppSync_Adapter$ReventlessAws.sha256Hex("type Query { ping: String }")).not.toBe(AppSync_Adapter$ReventlessAws.sha256Hex("type Query { pong: String }"));
   });
 });
 
 let decodeFragment = GraphQL_Stitcher$ReventlessCore.decode;
 
-describe("AppSync_Adapter.injectAwsAuthAll", () => {
+globalThis.describe("AppSync_Adapter.injectAwsAuthAll", () => {
   let baseFragment = AdminApi$ReventlessCore.baseFragment(true);
-  test("adds @aws_auth directive to all mutation fields", () => {
+  globalThis.test("adds @aws_auth directive to all mutation fields", () => {
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     parts.mutations.forEach(field => {
-      expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+      globalThis.expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
     });
   });
-  test("adds @aws_auth directive to all query fields", () => {
+  globalThis.test("adds @aws_auth directive to all query fields", () => {
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     parts.queries.forEach(field => {
-      expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+      globalThis.expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
     });
   });
-  test("preserves type definitions unchanged", () => {
+  globalThis.test("preserves type definitions unchanged", () => {
     let original = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
-    expect(parts.types).toEqual(original.types);
+    globalThis.expect(parts.types).toEqual(original.types);
   });
-  test("uses specified group name", () => {
+  globalThis.test("uses specified group name", () => {
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "SuperAdmin");
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     parts.mutations.forEach(field => {
-      expect(field).toContain(`cognito_groups: ["SuperAdmin"]`);
+      globalThis.expect(field).toContain(`cognito_groups: ["SuperAdmin"]`);
     });
   });
-  test("preserves subscription fields with @aws_auth directive", () => {
+  globalThis.test("preserves subscription fields with @aws_auth directive", () => {
     let original = GraphQL_Stitcher$ReventlessCore.decode(baseFragment);
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
-    expect(parts.subscriptions.length).toBe(original.subscriptions.length);
-    expect(parts.subscriptions.length).toBeGreaterThan(0);
+    globalThis.expect(parts.subscriptions.length).toBe(original.subscriptions.length);
+    globalThis.expect(parts.subscriptions.length).toBeGreaterThan(0);
     parts.subscriptions.forEach(field => {
-      expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+      globalThis.expect(field).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
     });
   });
-  test("admin Plugin aggregate subscription fields survive the round-trip", () => {
+  globalThis.test("admin Plugin aggregate subscription fields survive the round-trip", () => {
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuthAll(baseFragment, "Admin");
     let parts = GraphQL_Stitcher$ReventlessCore.decode(augmented);
     let joined = parts.subscriptions.join("\n");
-    expect(joined).toContain("onPlatform_Plugin_Activate");
-    expect(joined).toContain("onPlatform_Plugin_Deactivate");
+    globalThis.expect(joined).toContain("onPlatform_Plugin_Activate");
+    globalThis.expect(joined).toContain("onPlatform_Plugin_Deactivate");
   });
 });
 
-describe("AppSync_Adapter.injectAwsAuth", () => {
-  test("injects auth only on entries with authorization", () => {
+globalThis.describe("AppSync_Adapter.injectAwsAuth", () => {
+  globalThis.test("injects auth only on entries with authorization", () => {
     let mutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let baseFragment = AdminApi$ReventlessCore.baseFragment(false);
     let augmented = AppSync_Adapter$ReventlessAws.injectAwsAuth(baseFragment, mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries);
@@ -83,22 +83,22 @@ describe("AppSync_Adapter.injectAwsAuth", () => {
       return;
     }
     let hasAuthQuery = parts.queries.some(field => field.includes("@aws_auth"));
-    expect(hasAuthQuery).toBe(true);
+    globalThis.expect(hasAuthQuery).toBe(true);
   });
 });
 
-describe("AppSync_Adapter.generateFragment", () => {
-  test("produces fragment with auth directives from entries", () => {
+globalThis.describe("AppSync_Adapter.generateFragment", () => {
+  globalThis.test("produces fragment with auth directives from entries", () => {
     let mutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
     let fragment = AppSync_Adapter$ReventlessAws.generateFragment(mutationEntries, PluginBaseFragment$ReventlessCore.queryEntries);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(fragment);
-    expect(parts.types.length).toBeGreaterThan(0);
-    expect(parts.mutations.length).toBeGreaterThan(0);
-    expect(parts.queries.length).toBeGreaterThan(0);
+    globalThis.expect(parts.types.length).toBeGreaterThan(0);
+    globalThis.expect(parts.mutations.length).toBeGreaterThan(0);
+    globalThis.expect(parts.queries.length).toBeGreaterThan(0);
   });
 });
 
-describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => {
+globalThis.describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => {
   let makeFragment = (mutationFields, queryFields) => GraphQL_Stitcher$ReventlessCore.encode({
     types: [],
     mutations: mutationFields,
@@ -118,7 +118,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     authorization: undefined,
     permission: permission
   });
-  test("AllowGroups([\"Admin\"]) emits cognito_groups: [\"Admin\"] on mutation", () => {
+  globalThis.test("AllowGroups([\"Admin\"]) emits cognito_groups: [\"Admin\"] on mutation", () => {
     let fp = Object.fromEntries([[
         "catalog_Category_Archive",
         {
@@ -131,9 +131,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
     let m = parts.mutations[0];
-    expect(m).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
+    globalThis.expect(m).toContain(`@aws_auth(cognito_groups: ["Admin"])`);
   });
-  test("AllowGroups multi-group emits comma-separated groups", () => {
+  globalThis.test("AllowGroups multi-group emits comma-separated groups", () => {
     let fp = Object.fromEntries([[
         "p_X",
         {
@@ -148,9 +148,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let frag = makeFragment(["p_X(id: ID!): String"], []);
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
-    expect(parts.mutations[0]).toContain(`@aws_auth(cognito_groups: ["Admin", "Editor"])`);
+    globalThis.expect(parts.mutations[0]).toContain(`@aws_auth(cognito_groups: ["Admin", "Editor"])`);
   });
-  test("AllowAuthenticated emits no directive", () => {
+  globalThis.test("AllowAuthenticated emits no directive", () => {
     let fp = Object.fromEntries([[
         "p_Add",
         "AllowAuthenticated"
@@ -159,9 +159,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let frag = makeFragment(["p_Add(id: ID!): String"], []);
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
-    expect(parts.mutations[0]).not.toContain("@aws_auth");
+    globalThis.expect(parts.mutations[0]).not.toContain("@aws_auth");
   });
-  test("DenyAll emits sentinel __deny_all__ group", () => {
+  globalThis.test("DenyAll emits sentinel __deny_all__ group", () => {
     let fp = Object.fromEntries([[
         "p_Hide",
         "DenyAll"
@@ -170,9 +170,9 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let frag = makeFragment(["p_Hide(id: ID!): String"], []);
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
-    expect(parts.mutations[0]).toContain(`"__deny_all__"`);
+    globalThis.expect(parts.mutations[0]).toContain(`"__deny_all__"`);
   });
-  test("Per-field permissions: only annotated fields get directives", () => {
+  globalThis.test("Per-field permissions: only annotated fields get directives", () => {
     let fp = Object.fromEntries([
       [
         "p_Archive",
@@ -199,18 +199,18 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let archive = parts.mutations.find(f => f.includes("p_Archive"));
     let add = parts.mutations.find(f => f.includes("p_Add"));
     if (archive !== undefined) {
-      expect(archive).toContain(`cognito_groups: ["Admin"]`);
+      globalThis.expect(archive).toContain(`cognito_groups: ["Admin"]`);
     } else {
       Stdlib_JsError.throwWithMessage("missing archive field");
     }
     if (add !== undefined) {
-      expect(add).not.toContain("@aws_auth");
+      globalThis.expect(add).not.toContain("@aws_auth");
       return;
     } else {
       return Stdlib_JsError.throwWithMessage("missing add field");
     }
   });
-  test("Query permission applies to BOTH single and list field names", () => {
+  globalThis.test("Query permission applies to BOTH single and list field names", () => {
     let entry = queryEntry("p_Item", "p_Items", {
       TAG: "AllowGroups",
       _0: ["Manager"]
@@ -224,14 +224,14 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let item = parts.queries.find(f => f.includes("p_Item("));
     let items = parts.queries.find(f => f.includes("p_Items("));
     if (item !== undefined && items !== undefined) {
-      expect(item).toContain(`cognito_groups: ["Manager"]`);
-      expect(items).toContain(`cognito_groups: ["Manager"]`);
+      globalThis.expect(item).toContain(`cognito_groups: ["Manager"]`);
+      globalThis.expect(items).toContain(`cognito_groups: ["Manager"]`);
       return;
     } else {
       return Stdlib_JsError.throwWithMessage("missing query fields");
     }
   });
-  test("Spec-level permission wins over legacy authorization field", () => {
+  globalThis.test("Spec-level permission wins over legacy authorization field", () => {
     let fp = Object.fromEntries([[
         "p_X",
         {
@@ -255,10 +255,10 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
     let m = parts.mutations[0];
-    expect(m).toContain(`cognito_groups: ["Manager"]`);
-    expect(m).not.toContain(`"Admin"`);
+    globalThis.expect(m).toContain(`cognito_groups: ["Manager"]`);
+    globalThis.expect(m).not.toContain(`"Admin"`);
   });
-  test("AllowAuthenticated on a field overrides the legacy authorization (removes directive)", () => {
+  globalThis.test("AllowAuthenticated on a field overrides the legacy authorization (removes directive)", () => {
     let fp = Object.fromEntries([[
         "p_X",
         "AllowAuthenticated"
@@ -278,12 +278,12 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     let frag = makeFragment(["p_X(id: ID!): String"], []);
     let aug = AppSync_Adapter$ReventlessAws.injectAwsAuth(frag, [entry], []);
     let parts = GraphQL_Stitcher$ReventlessCore.decode(aug);
-    expect(parts.mutations[0]).not.toContain("@aws_auth");
+    globalThis.expect(parts.mutations[0]).not.toContain("@aws_auth");
   });
 });
 
-describe("Split mode — empty base fragment", () => {
-  test("empty stitcher encode produces fragment with no fields", () => {
+globalThis.describe("Split mode — empty base fragment", () => {
+  globalThis.test("empty stitcher encode produces fragment with no fields", () => {
     let emptyFragment = GraphQL_Stitcher$ReventlessCore.encode({
       types: [],
       mutations: [],
@@ -291,11 +291,11 @@ describe("Split mode — empty base fragment", () => {
       subscriptions: []
     });
     let parts = GraphQL_Stitcher$ReventlessCore.decode(emptyFragment);
-    expect(parts.types).toHaveLength(0);
-    expect(parts.mutations).toHaveLength(0);
-    expect(parts.queries).toHaveLength(0);
+    globalThis.expect(parts.types).toHaveLength(0);
+    globalThis.expect(parts.mutations).toHaveLength(0);
+    globalThis.expect(parts.queries).toHaveLength(0);
   });
-  test("stitching with empty base produces only plugin fields", () => {
+  globalThis.test("stitching with empty base produces only plugin fields", () => {
     let emptyBase = GraphQL_Stitcher$ReventlessCore.encode({
       types: [],
       mutations: [],
@@ -309,14 +309,14 @@ describe("Split mode — empty base fragment", () => {
       subscriptions: []
     });
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(emptyBase, [pluginFragment]);
-    expect(sdl).toContain("MyPlugin_Item_Create");
-    expect(sdl).toContain("MyPlugin_Item");
-    expect(sdl).not.toContain("Platform_Plugin");
+    globalThis.expect(sdl).toContain("MyPlugin_Item_Create");
+    globalThis.expect(sdl).toContain("MyPlugin_Item");
+    globalThis.expect(sdl).not.toContain("Platform_Plugin");
   });
-  test("stitching admin base without plugins produces only admin fields", () => {
+  globalThis.test("stitching admin base without plugins produces only admin fields", () => {
     let adminBase = AdminApi$ReventlessCore.baseFragment(false);
     let sdl = GraphQL_Stitcher$ReventlessCore.stitch(adminBase, []);
-    expect(sdl).toContain("Platform_Plugin");
+    globalThis.expect(sdl).toContain("Platform_Plugin");
   });
 });
 

@@ -4,81 +4,81 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as PlatformRunner$ReventlessGwt from "../src/PlatformRunner.res.mjs";
 
-describe("PlatformRunner.classifyLine", () => {
-  test("classifies a tap line as Domain with the parsed payload", async () => {
+globalThis.describe("PlatformRunner.classifyLine", () => {
+  globalThis.test("classifies a tap line as Domain with the parsed payload", async () => {
     let json = PlatformRunner$ReventlessGwt.classifyLine(`@@RVLESS_EVT@@ {"event":"domainEvent","seq":1,"topic":"CatalogEventTopic","service":"CatalogDcbEventLog","payload":{"event":{"TAG":"ProductAdded"}},"ts":"2026-06-07T00:00:00.000Z"}`);
     if (typeof json !== "object") {
-      expect("not Domain").toEqual("Domain");
+      globalThis.expect("not Domain").toEqual("Domain");
       return;
     }
     if (json.TAG === "Domain") {
       let topic = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json._0), d => d["topic"]), Stdlib_JSON.Decode.string);
-      expect(topic).toEqual("CatalogEventTopic");
+      globalThis.expect(topic).toEqual("CatalogEventTopic");
       return;
     }
-    expect("not Domain").toEqual("Domain");
+    globalThis.expect("not Domain").toEqual("Domain");
   });
-  test("a malformed tap line falls back to Log (never throws)", async () => {
+  globalThis.test("a malformed tap line falls back to Log (never throws)", async () => {
     let match = PlatformRunner$ReventlessGwt.classifyLine("@@RVLESS_EVT@@ {not json");
     if (typeof match !== "object") {
-      expect("not Log").toEqual("Log");
+      globalThis.expect("not Log").toEqual("Log");
       return;
     }
     if (match.TAG === "Domain") {
-      expect("not Log").toEqual("Log");
+      globalThis.expect("not Log").toEqual("Log");
       return;
     }
-    expect(true).toBe(true);
+    globalThis.expect(true).toBe(true);
   });
-  test("classifies the Domain GraphQL listening line as Ready", async () => {
+  globalThis.test("classifies the Domain GraphQL listening line as Ready", async () => {
     let match = PlatformRunner$ReventlessGwt.classifyLine(`12:00:00 [36mI[0m [1m[GraphQL:Domain][0m listening on http://localhost:4100/graphql (SDL: /sdl)`);
     if (typeof match !== "object") {
-      expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
       return;
     }
     if (match.TAG === "Domain") {
-      expect("not Ready").toEqual("Ready");
+      globalThis.expect("not Ready").toEqual("Ready");
       return;
     }
-    expect("not Ready").toEqual("Ready");
+    globalThis.expect("not Ready").toEqual("Ready");
   });
-  test("the Platform (not Domain) listening line is NOT Ready", async () => {
+  globalThis.test("the Platform (not Domain) listening line is NOT Ready", async () => {
     let match = PlatformRunner$ReventlessGwt.classifyLine(`12:00:00 I [GraphQL:Platform] listening on http://localhost:4101/graphql`);
     if (typeof match !== "object") {
-      expect("expected Log").toEqual("Log");
+      globalThis.expect("expected Log").toEqual("Log");
       return;
     }
     if (match.TAG === "Domain") {
-      expect("expected Log").toEqual("Log");
+      globalThis.expect("expected Log").toEqual("Log");
       return;
     }
-    expect(true).toBe(true);
+    globalThis.expect(true).toBe(true);
   });
-  test("an arbitrary log line is Log", async () => {
+  globalThis.test("an arbitrary log line is Log", async () => {
     let match = PlatformRunner$ReventlessGwt.classifyLine("12:00:00 I [Catalog][Aggregate(Product)] handling command");
     if (typeof match !== "object") {
-      expect("expected Log").toEqual("Log");
+      globalThis.expect("expected Log").toEqual("Log");
       return;
     }
     if (match.TAG === "Domain") {
-      expect("expected Log").toEqual("Log");
+      globalThis.expect("expected Log").toEqual("Log");
       return;
     }
-    expect(true).toBe(true);
+    globalThis.expect(true).toBe(true);
   });
-  test("a Log line preserves its ANSI colour/bold escapes (rendered in the terminal)", async () => {
+  globalThis.test("a Log line preserves its ANSI colour/bold escapes (rendered in the terminal)", async () => {
     let esc = String.fromCharCode(27);
     let line = `12:00:00 ` + esc + `[36mI` + esc + `[0m ` + esc + `[1m[Catalog]` + esc + `[0m handling command`;
     let raw = PlatformRunner$ReventlessGwt.classifyLine(line);
     if (typeof raw !== "object") {
-      expect("expected Log").toEqual("Log");
+      globalThis.expect("expected Log").toEqual("Log");
       return;
     }
     if (raw.TAG === "Domain") {
-      expect("expected Log").toEqual("Log");
+      globalThis.expect("expected Log").toEqual("Log");
       return;
     }
-    expect(raw._0).toEqual(line);
+    globalThis.expect(raw._0).toEqual(line);
   });
 });
 

@@ -4,21 +4,21 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as CounterFixtures$ReventlessLocal from "./CounterFixtures.res.mjs";
 import * as LocalCounterHandler$ReventlessLocal from "../../../src/adapter/Counter/LocalCounterHandler.res.mjs";
 
-describe("Counter E2E", () => {
-  beforeAll(async () => {
+globalThis.describe("Counter E2E", () => {
+  globalThis.beforeAll(async () => {
     await CounterFixtures$ReventlessLocal.resolveOps();
   });
-  beforeEach(() => LocalCounterHandler$ReventlessLocal.reset());
-  test("addToCounterTarget increments count", async () => {
+  globalThis.beforeEach(() => LocalCounterHandler$ReventlessLocal.reset());
+  globalThis.test("addToCounterTarget increments count", async () => {
     let ops = await CounterFixtures$ReventlessLocal.resolveOps();
     await ops.addToCounterTarget({
       counterId: "item-1",
       target: 1,
       targetRef: "ref-1"
     });
-    expect(LocalCounterHandler$ReventlessLocal.getCount("item-1")).toBe(1);
+    globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("item-1")).toBe(1);
   });
-  test("addToCounterTarget with same targetRef is deduplicated", async () => {
+  globalThis.test("addToCounterTarget with same targetRef is deduplicated", async () => {
     let ops = await CounterFixtures$ReventlessLocal.resolveOps();
     await ops.addToCounterTarget({
       counterId: "item-1",
@@ -30,9 +30,9 @@ describe("Counter E2E", () => {
       target: 1,
       targetRef: "ref-1"
     });
-    expect(LocalCounterHandler$ReventlessLocal.getCount("item-1")).toBe(1);
+    globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("item-1")).toBe(1);
   });
-  test("addToCounterTarget with different targetRefs accumulates", async () => {
+  globalThis.test("addToCounterTarget with different targetRefs accumulates", async () => {
     let ops = await CounterFixtures$ReventlessLocal.resolveOps();
     await ops.addToCounterTarget({
       counterId: "item-1",
@@ -44,9 +44,9 @@ describe("Counter E2E", () => {
       target: 1,
       targetRef: "ref-2"
     });
-    expect(LocalCounterHandler$ReventlessLocal.getCount("item-1")).toBe(2);
+    globalThis.expect(LocalCounterHandler$ReventlessLocal.getCount("item-1")).toBe(2);
   });
-  test("count saves references to ReferencesDb", async () => {
+  globalThis.test("count saves references to ReferencesDb", async () => {
     let ops = await CounterFixtures$ReventlessLocal.resolveOps();
     await ops.count([{
         counterId: "counter-1",
@@ -54,7 +54,7 @@ describe("Counter E2E", () => {
         inc: 1
       }]);
     let db = CounterFixtures$ReventlessLocal.Bus.getQueryDb("TestCounterCounterReferences");
-    expect(Stdlib_Option.isSome(db)).toBe(true);
+    globalThis.expect(Stdlib_Option.isSome(db)).toBe(true);
   });
 });
 

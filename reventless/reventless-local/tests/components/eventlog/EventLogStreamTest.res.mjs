@@ -7,13 +7,13 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as EventLogFixtures$ReventlessLocal from "./EventLogFixtures.res.mjs";
 
-describe("EventLog.replayStream (in-memory adapter)", () => {
-  beforeAll(async () => {
+globalThis.describe("EventLog.replayStream (in-memory adapter)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
   });
-  beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
-  describe("basic streaming", () => {
-    test("replayStream returns all appended events", async () => {
+  globalThis.beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
+  globalThis.describe("basic streaming", () => {
+    globalThis.test("replayStream returns all appended events", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "stream-1", [EventLogFixtures$ReventlessLocal.makeEvent$p("stream-1", {
           TAG: "ItemCreated",
@@ -24,14 +24,14 @@ describe("EventLog.replayStream (in-memory adapter)", () => {
           id: "stream-1"
         })]);
       let count = await Effect.runPromise(Stream$1.runFold(ops.replayStream("stream-1"), 0, (n, param) => n + 1 | 0));
-      expect(count).toBe(2);
+      globalThis.expect(count).toBe(2);
     });
-    test("replayStream for unknown id returns empty stream", async () => {
+    globalThis.test("replayStream for unknown id returns empty stream", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       let count = await Effect.runPromise(Stream$1.runFold(ops.replayStream("no-such-id"), 0, (n, param) => n + 1 | 0));
-      expect(count).toBe(0);
+      globalThis.expect(count).toBe(0);
     });
-    test("replayStream emits events in append order", async () => {
+    globalThis.test("replayStream emits events in append order", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "stream-2", [EventLogFixtures$ReventlessLocal.makeEvent$p("stream-2", {
           TAG: "ItemCreated",
@@ -42,14 +42,14 @@ describe("EventLog.replayStream (in-memory adapter)", () => {
           id: "stream-2"
         })]);
       let events = await Effect.runPromise(Stream.runCollect(ops.replayStream("stream-2")));
-      expect(events.length).toBe(2);
+      globalThis.expect(events.length).toBe(2);
       let first = events[0];
-      expect(first).toEqual({
+      globalThis.expect(first).toEqual({
         TAG: "ItemCreated",
         name: "First"
       });
     });
-    test("separate aggregate IDs have independent streams", async () => {
+    globalThis.test("separate aggregate IDs have independent streams", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "agg-X", [EventLogFixtures$ReventlessLocal.makeEvent$p("agg-X", {
           TAG: "ItemCreated",
@@ -67,10 +67,10 @@ describe("EventLog.replayStream (in-memory adapter)", () => {
       ]);
       let countX = await Effect.runPromise(Stream$1.runFold(ops.replayStream("agg-X"), 0, (n, param) => n + 1 | 0));
       let countY = await Effect.runPromise(Stream$1.runFold(ops.replayStream("agg-Y"), 0, (n, param) => n + 1 | 0));
-      expect(countX).toBe(1);
-      expect(countY).toBe(2);
+      globalThis.expect(countX).toBe(1);
+      globalThis.expect(countY).toBe(2);
     });
-    test("take(2) on a 5-event log returns only 2 events", async () => {
+    globalThis.test("take(2) on a 5-event log returns only 2 events", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "stream-3", [
         EventLogFixtures$ReventlessLocal.makeEvent$p("stream-3", {
@@ -95,11 +95,11 @@ describe("EventLog.replayStream (in-memory adapter)", () => {
         })
       ]);
       let first2 = await Effect.runPromise(Stream.runCollect(Stream$1.take(ops.replayStream("stream-3"), 2)));
-      expect(first2.length).toBe(2);
+      globalThis.expect(first2.length).toBe(2);
     });
   });
-  describe("tuple fold — (state, count) pattern used in Aggregate_Callback", () => {
-    test("runFold produces correct count for sequenceNr", async () => {
+  globalThis.describe("tuple fold — (state, count) pattern used in Aggregate_Callback", () => {
+    globalThis.test("runFold produces correct count for sequenceNr", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       await ops.append(0, "fold-1", [
         EventLogFixtures$ReventlessLocal.makeEvent$p("fold-1", {
@@ -122,9 +122,9 @@ describe("EventLog.replayStream (in-memory adapter)", () => {
         param[0],
         param[1] + 1 | 0
       ]));
-      expect(match[1]).toBe(3);
+      globalThis.expect(match[1]).toBe(3);
     });
-    test("runFold on empty stream returns initial accumulator", async () => {
+    globalThis.test("runFold on empty stream returns initial accumulator", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
       let match = await Effect.runPromise(Stream$1.runFold(ops.replayStream("unknown-fold"), [
         undefined,
@@ -133,8 +133,8 @@ describe("EventLog.replayStream (in-memory adapter)", () => {
         param[0],
         param[1] + 1 | 0
       ]));
-      expect(match[0]).toEqual(undefined);
-      expect(match[1]).toBe(0);
+      globalThis.expect(match[0]).toEqual(undefined);
+      globalThis.expect(match[1]).toBe(0);
     });
   });
 });

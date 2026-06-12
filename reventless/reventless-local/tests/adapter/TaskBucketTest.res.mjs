@@ -2,9 +2,9 @@
 
 import * as LocalTaskBucket$ReventlessLocal from "../../src/adapter/Task/LocalTaskBucket.res.mjs";
 
-describe("LocalTaskBucket", () => {
-  describe("makeHandler", () => {
-    test("calls callback with eventName and key extracted from JSON object", async () => {
+globalThis.describe("LocalTaskBucket", () => {
+  globalThis.describe("makeHandler", () => {
+    globalThis.test("calls callback with eventName and key extracted from JSON object", async () => {
       let receivedEventName = {
         contents: ""
       };
@@ -28,10 +28,10 @@ describe("LocalTaskBucket", () => {
         ]
       ]);
       await handler(json, undefined);
-      expect(receivedEventName.contents).toBe("ObjectCreated:Put");
-      expect(receivedKey.contents).toBe("uploads/file.csv");
+      globalThis.expect(receivedEventName.contents).toBe("ObjectCreated:Put");
+      globalThis.expect(receivedKey.contents).toBe("uploads/file.csv");
     });
-    test("uses 'ObjectCreated' when JSON has no eventName field", async () => {
+    globalThis.test("uses 'ObjectCreated' when JSON has no eventName field", async () => {
       let receivedEventName = {
         contents: ""
       };
@@ -45,9 +45,9 @@ describe("LocalTaskBucket", () => {
           "some/path"
         ]]);
       await handler(json, undefined);
-      expect(receivedEventName.contents).toBe("ObjectCreated");
+      globalThis.expect(receivedEventName.contents).toBe("ObjectCreated");
     });
-    test("uses empty string when JSON has no key field", async () => {
+    globalThis.test("uses empty string when JSON has no key field", async () => {
       let receivedKey = {
         contents: "initial"
       };
@@ -61,9 +61,9 @@ describe("LocalTaskBucket", () => {
           "ObjectRemoved"
         ]]);
       await handler(json, undefined);
-      expect(receivedKey.contents).toBe("");
+      globalThis.expect(receivedKey.contents).toBe("");
     });
-    test("non-object JSON uses 'ObjectCreated' and empty string for key", async () => {
+    globalThis.test("non-object JSON uses 'ObjectCreated' and empty string for key", async () => {
       let receivedEventName = {
         contents: ""
       };
@@ -77,10 +77,10 @@ describe("LocalTaskBucket", () => {
       };
       let handler = LocalTaskBucket$ReventlessLocal.makeHandler(callback);
       await handler("not-an-object", undefined);
-      expect(receivedEventName.contents).toBe("ObjectCreated");
-      expect(receivedKey.contents).toBe("");
+      globalThis.expect(receivedEventName.contents).toBe("ObjectCreated");
+      globalThis.expect(receivedKey.contents).toBe("");
     });
-    test("non-string eventName field falls back to ObjectCreated", async () => {
+    globalThis.test("non-string eventName field falls back to ObjectCreated", async () => {
       let receivedEventName = {
         contents: ""
       };
@@ -94,9 +94,9 @@ describe("LocalTaskBucket", () => {
           42
         ]]);
       await handler(json, undefined);
-      expect(receivedEventName.contents).toBe("ObjectCreated");
+      globalThis.expect(receivedEventName.contents).toBe("ObjectCreated");
     });
-    test("returns task actions from callback", async () => {
+    globalThis.test("returns task actions from callback", async () => {
       let callback = async (param, param$1) => [{
           TAG: "DeleteSchedule",
           _0: "my-schedule"
@@ -104,13 +104,13 @@ describe("LocalTaskBucket", () => {
       let handler = LocalTaskBucket$ReventlessLocal.makeHandler(callback);
       let json = Object.fromEntries([]);
       let actions = await handler(json, undefined);
-      expect(actions.length).toBe(1);
+      globalThis.expect(actions.length).toBe(1);
     });
   });
-  describe("make", () => {
-    test("returns one dummy resource so Task_Builder can access resources[0]", async () => {
+  globalThis.describe("make", () => {
+    globalThis.test("returns one dummy resource so Task_Builder can access resources[0]", async () => {
       let bucket = LocalTaskBucket$ReventlessLocal.make("my-bucket", {});
-      expect(bucket.resources.length).toBe(1);
+      globalThis.expect(bucket.resources.length).toBe(1);
     });
   });
 });

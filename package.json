@@ -26,6 +26,7 @@
     "@reventlessdev/rescript-graphql-yoga": "workspace:*",
     "@reventlessdev/rescript-mcp-sdk": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",

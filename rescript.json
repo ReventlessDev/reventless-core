@@ -18,6 +18,7 @@
     "@reventlessdev/rescript-mcp-sdk",
     "@reventlessdev/rescript-effect",
     "@reventlessdev/rescript-uuid",
+    "@reventlessdev/rescript-jest",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-interop",

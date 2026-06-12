@@ -8,44 +8,44 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as DcbFixtures$ReventlessLocal from "./DcbFixtures.res.mjs";
 
-describe("DcbEventLog.readStream (in-memory adapter)", () => {
-  beforeAll(async () => {
+globalThis.describe("DcbEventLog.readStream (in-memory adapter)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     DcbFixtures$ReventlessLocal.capturedEventCount.contents = 0;
   });
-  describe("basic streaming", () => {
-    test("readStream for tag with no matching events returns empty stream", async () => {
+  globalThis.describe("basic streaming", () => {
+    globalThis.test("readStream for tag with no matching events returns empty stream", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
       let count = await Effect.runPromise(Stream$1.runFold(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("no-such-id"), undefined), 0, (n, param) => n + 1 | 0));
-      expect(count).toBe(0);
+      globalThis.expect(count).toBe(0);
     });
-    test("readStream emits all events matching a tag query", async () => {
+    globalThis.test("readStream emits all events matching a tag query", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson("stream-1", "Widget"), "stream-1");
       let count = await Effect.runPromise(Stream$1.runFold(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("stream-1"), undefined), 0, (n, param) => n + 1 | 0));
-      expect(count).toBe(1);
+      globalThis.expect(count).toBe(1);
     });
-    test("readStream for distinct IDs returns independent streams", async () => {
+    globalThis.test("readStream for distinct IDs returns independent streams", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson("stream-A", "Alpha"), "stream-A");
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson("stream-B", "Beta"), "stream-B");
       let countA = await Effect.runPromise(Stream$1.runFold(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("stream-A"), undefined), 0, (n, param) => n + 1 | 0));
       let countB = await Effect.runPromise(Stream$1.runFold(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("stream-B"), undefined), 0, (n, param) => n + 1 | 0));
-      expect(countA).toBe(1);
-      expect(countB).toBe(1);
+      globalThis.expect(countA).toBe(1);
+      globalThis.expect(countB).toBe(1);
     });
-    test("take(1) limits stream without loading all", async () => {
+    globalThis.test("take(1) limits stream without loading all", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson("stream-C1", "C1"), "stream-C1");
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson("stream-C2", "C2"), "stream-C2");
       let result = await Effect.runPromise(Stream.runCollect(Stream$1.take(ops.readStream(DcbFixtures$ReventlessLocal.typeQuery("ItemAdded"), undefined), 1)));
-      expect(result.length).toBe(1);
+      globalThis.expect(result.length).toBe(1);
     });
   });
-  describe("fold patterns — (state, headPosition) used in StateChangeSlice_Callback", () => {
-    test("runFold extracts last headPosition for append condition", async () => {
+  globalThis.describe("fold patterns — (state, headPosition) used in StateChangeSlice_Callback", () => {
+    globalThis.test("runFold extracts last headPosition for append condition", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson("fold-1", "FoldItem"), "fold-1");
       let match = await Effect.runPromise(Stream$1.runFold(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("fold-1"), undefined), [
@@ -55,9 +55,9 @@ describe("DcbEventLog.readStream (in-memory adapter)", () => {
         undefined,
         se.position
       ]));
-      expect(Stdlib_Option.isSome(match[1])).toBe(true);
+      globalThis.expect(Stdlib_Option.isSome(match[1])).toBe(true);
     });
-    test("runFold on empty stream returns initial accumulator", async () => {
+    globalThis.test("runFold on empty stream returns initial accumulator", async () => {
       let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(DcbFixtures$ReventlessLocal.eventLog));
       let match = await Effect.runPromise(Stream$1.runFold(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("no-such-id-fold"), undefined), [
         false,
@@ -66,24 +66,24 @@ describe("DcbEventLog.readStream (in-memory adapter)", () => {
         true,
         se.position
       ]));
-      expect(match[1]).toEqual(undefined);
+      globalThis.expect(match[1]).toEqual(undefined);
     });
   });
-  describe("StateChangeSlice regression — second command sees first event via stream fold", () => {
-    test("second AddItem with same ID is rejected (state sees existing event)", async () => {
+  globalThis.describe("StateChangeSlice regression — second command sees first event via stream fold", () => {
+    globalThis.test("second AddItem with same ID is rejected (state sees existing event)", async () => {
       let id = "dup-test-stream";
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson(id, "First"), id);
       let countBefore = DcbFixtures$ReventlessLocal.capturedEventCount.contents;
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson(id, "Duplicate"), id);
-      expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(countBefore);
+      globalThis.expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(countBefore);
     });
-    test("second AddItem with different ID succeeds", async () => {
+    globalThis.test("second AddItem with different ID succeeds", async () => {
       let id1 = "distinct-1";
       let id2 = "distinct-2";
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson(id1, "First"), id1);
       let countAfterFirst = DcbFixtures$ReventlessLocal.capturedEventCount.contents;
       await DcbFixtures$ReventlessLocal.dispatch(DcbFixtures$ReventlessLocal.addItemJson(id2, "Second"), id2);
-      expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(countAfterFirst + 1 | 0);
+      globalThis.expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(countAfterFirst + 1 | 0);
     });
   });
 });

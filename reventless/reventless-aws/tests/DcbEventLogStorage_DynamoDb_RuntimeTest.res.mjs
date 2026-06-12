@@ -23,44 +23,44 @@ let table = {
   hashKey: "id"
 };
 
-describe("Runtime.fencePartitionKey", () => {
-  test("formats the fence partition key", () => {
-    expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fencePartitionKey({
+globalThis.describe("Runtime.fencePartitionKey", () => {
+  globalThis.test("formats the fence partition key", () => {
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fencePartitionKey({
       key: "orderId",
       value: "ord-1"
     })).toBe("fence#orderId:ord-1");
   });
-  test("does not collide with event partition keys", () => {
+  globalThis.test("does not collide with event partition keys", () => {
     let fenceId = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fencePartitionKey({
       key: "orderId",
       value: "ord-1"
     });
-    expect(fenceId === "orderId:ord-1").toBe(false);
+    globalThis.expect(fenceId === "orderId:ord-1").toBe(false);
   });
 });
 
-describe("Runtime.fenceKey", () => {
-  test("returns key with id and FENCE sort key", () => {
+globalThis.describe("Runtime.fenceKey", () => {
+  globalThis.test("returns key with id and FENCE sort key", () => {
     let key = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.fenceKey({
       key: "orderId",
       value: "ord-1"
     });
-    expect(key["id"]).toEqual("fence#orderId:ord-1");
-    expect(key["position"]).toEqual("FENCE");
+    globalThis.expect(key["id"]).toEqual("fence#orderId:ord-1");
+    globalThis.expect(key["position"]).toEqual("FENCE");
   });
 });
 
-describe("Runtime.collectQueryTags", () => {
-  test("returns empty array for empty query", () => {
-    expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectQueryTags([])).toEqual([]);
+globalThis.describe("Runtime.collectQueryTags", () => {
+  globalThis.test("returns empty array for empty query", () => {
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectQueryTags([])).toEqual([]);
   });
-  test("returns empty array when no queryItem has tags", () => {
+  globalThis.test("returns empty array when no queryItem has tags", () => {
     let q = [{
         eventTypes: ["Foo"]
       }];
-    expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectQueryTags(q)).toEqual([]);
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectQueryTags(q)).toEqual([]);
   });
-  test("collects tags from a single queryItem", () => {
+  globalThis.test("collects tags from a single queryItem", () => {
     let q = [{
         tags: [
           {
@@ -74,9 +74,9 @@ describe("Runtime.collectQueryTags", () => {
         ]
       }];
     let result = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectQueryTags(q);
-    expect(result.length).toBe(2);
+    globalThis.expect(result.length).toBe(2);
   });
-  test("dedupes same tag value across queryItems", () => {
+  globalThis.test("dedupes same tag value across queryItems", () => {
     let q = [
       {
         tags: [{
@@ -98,9 +98,9 @@ describe("Runtime.collectQueryTags", () => {
       }
     ];
     let result = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectQueryTags(q);
-    expect(result.length).toBe(2);
+    globalThis.expect(result.length).toBe(2);
   });
-  test("ignores queryItems without tags but keeps others", () => {
+  globalThis.test("ignores queryItems without tags but keeps others", () => {
     let q = [
       {
         eventTypes: ["Foo"]
@@ -113,15 +113,15 @@ describe("Runtime.collectQueryTags", () => {
       }
     ];
     let result = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectQueryTags(q);
-    expect(result.length).toBe(1);
+    globalThis.expect(result.length).toBe(1);
   });
 });
 
-describe("Runtime.collectEventTags", () => {
-  test("returns empty array for no events", () => {
-    expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectEventTags([])).toEqual([]);
+globalThis.describe("Runtime.collectEventTags", () => {
+  globalThis.test("returns empty array for no events", () => {
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.collectEventTags([])).toEqual([]);
   });
-  test("dedupes tag values across events", () => {
+  globalThis.test("dedupes tag values across events", () => {
     let event1_data = {};
     let event1_tags = [
       {
@@ -162,93 +162,93 @@ describe("Runtime.collectEventTags", () => {
       event1,
       event2
     ]);
-    expect(result.length).toBe(3);
+    globalThis.expect(result.length).toBe(3);
   });
 });
 
-describe("Runtime.buildConditionalFenceUpdate", () => {
-  test("uses attribute_not_exists when after is None", () => {
+globalThis.describe("Runtime.buildConditionalFenceUpdate", () => {
+  globalThis.test("uses attribute_not_exists when after is None", () => {
     let update = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalFenceUpdate("TestTable", {
       key: "orderId",
       value: "o1"
     }, "100", undefined);
-    expect(update.ConditionExpression).toEqual("attribute_not_exists(lastPosition)");
+    globalThis.expect(update.ConditionExpression).toEqual("attribute_not_exists(lastPosition)");
   });
-  test("includes lastPosition <= :after when after is Some", () => {
+  globalThis.test("includes lastPosition <= :after when after is Some", () => {
     let update = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalFenceUpdate("TestTable", {
       key: "orderId",
       value: "o1"
     }, "100", "50");
-    expect(update.ConditionExpression).toEqual("attribute_not_exists(lastPosition) OR lastPosition <= :after");
-    expect(Stdlib_Option.flatMap(update.ExpressionAttributeValues, v => v[":after"])).toEqual("50");
+    globalThis.expect(update.ConditionExpression).toEqual("attribute_not_exists(lastPosition) OR lastPosition <= :after");
+    globalThis.expect(Stdlib_Option.flatMap(update.ExpressionAttributeValues, v => v[":after"])).toEqual("50");
   });
-  test("always sets lastPosition to newPosition", () => {
+  globalThis.test("always sets lastPosition to newPosition", () => {
     let update = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalFenceUpdate("TestTable", {
       key: "orderId",
       value: "o1"
     }, "100", undefined);
-    expect(update.UpdateExpression).toBe("SET lastPosition = :new");
-    expect(Stdlib_Option.flatMap(update.ExpressionAttributeValues, v => v[":new"])).toEqual("100");
+    globalThis.expect(update.UpdateExpression).toBe("SET lastPosition = :new");
+    globalThis.expect(Stdlib_Option.flatMap(update.ExpressionAttributeValues, v => v[":new"])).toEqual("100");
   });
-  test("targets the fence sentinel item", () => {
+  globalThis.test("targets the fence sentinel item", () => {
     let update = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalFenceUpdate("TestTable", {
       key: "orderId",
       value: "o1"
     }, "100", undefined);
-    expect(update.Key["id"]).toEqual("fence#orderId:o1");
-    expect(update.Key["position"]).toEqual("FENCE");
+    globalThis.expect(update.Key["id"]).toEqual("fence#orderId:o1");
+    globalThis.expect(update.Key["position"]).toEqual("FENCE");
   });
 });
 
-describe("Runtime.buildUnconditionalFenceUpdate", () => {
-  test("does not set a conditionExpression", () => {
+globalThis.describe("Runtime.buildUnconditionalFenceUpdate", () => {
+  globalThis.test("does not set a conditionExpression", () => {
     let update = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildUnconditionalFenceUpdate("TestTable", {
       key: "orderId",
       value: "o1"
     }, "100");
-    expect(update.ConditionExpression).toEqual(undefined);
+    globalThis.expect(update.ConditionExpression).toEqual(undefined);
   });
-  test("still bumps lastPosition", () => {
+  globalThis.test("still bumps lastPosition", () => {
     let update = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildUnconditionalFenceUpdate("TestTable", {
       key: "orderId",
       value: "o1"
     }, "100");
-    expect(update.UpdateExpression).toBe("SET lastPosition = :new");
+    globalThis.expect(update.UpdateExpression).toBe("SET lastPosition = :new");
   });
 });
 
-describe("Runtime.buildQueryByPartitionKeyInput", () => {
-  test("omits consistentRead by default (eventually consistent)", () => {
+globalThis.describe("Runtime.buildQueryByPartitionKeyInput", () => {
+  globalThis.test("omits consistentRead by default (eventually consistent)", () => {
     let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, undefined);
-    expect(input.ConsistentRead).toEqual(undefined);
+    globalThis.expect(input.ConsistentRead).toEqual(undefined);
   });
-  test("omits consistentRead when ~strongConsistency=false", () => {
+  globalThis.test("omits consistentRead when ~strongConsistency=false", () => {
     let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, false);
-    expect(input.ConsistentRead).toEqual(undefined);
+    globalThis.expect(input.ConsistentRead).toEqual(undefined);
   });
-  test("sets consistentRead=true when ~strongConsistency=true", () => {
+  globalThis.test("sets consistentRead=true when ~strongConsistency=true", () => {
     let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, true);
-    expect(input.ConsistentRead).toEqual(true);
+    globalThis.expect(input.ConsistentRead).toEqual(true);
   });
-  test("does not target a GSI (uses base table)", () => {
+  globalThis.test("does not target a GSI (uses base table)", () => {
     let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", undefined, true);
-    expect(input.IndexName).toEqual(undefined);
+    globalThis.expect(input.IndexName).toEqual(undefined);
   });
-  test("threads ~after into the key condition without dropping consistentRead", () => {
+  globalThis.test("threads ~after into the key condition without dropping consistentRead", () => {
     let input = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildQueryByPartitionKeyInput(table, "orderId:o1", "50", true);
-    expect(input.ConsistentRead).toEqual(true);
-    expect(input.KeyConditionExpression).toEqual("id = :pk AND #pos > :after");
+    globalThis.expect(input.ConsistentRead).toEqual(true);
+    globalThis.expect(input.KeyConditionExpression).toEqual("id = :pk AND #pos > :after");
   });
 });
 
-describe("Runtime.buildEventPuts", () => {
+globalThis.describe("Runtime.buildEventPuts", () => {
   let event = (eventType, tags) => ({
     eventType: eventType,
     data: {},
     tags: tags,
     meta: testMeta()
   });
-  test("emits one Put per event with the table name", () => {
+  globalThis.test("emits one Put per event with the table name", () => {
     let puts = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildEventPuts(table, [
       event("Created", [{
           key: "orderId",
@@ -259,18 +259,18 @@ describe("Runtime.buildEventPuts", () => {
           value: "o1"
         }])
     ], "100", undefined);
-    expect(puts.length).toBe(2);
+    globalThis.expect(puts.length).toBe(2);
     let first = puts[0];
-    expect(Stdlib_Option.map(first.Put, p => p.TableName)).toEqual("TestTable");
+    globalThis.expect(Stdlib_Option.map(first.Put, p => p.TableName)).toEqual("TestTable");
   });
-  test("returns no Puts when events is empty", () => {
+  globalThis.test("returns no Puts when events is empty", () => {
     let puts = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildEventPuts(table, [], "100", undefined);
-    expect(puts.length).toBe(0);
+    globalThis.expect(puts.length).toBe(0);
   });
 });
 
-describe("Runtime.appendUnconditional", () => {
-  test("rejects appends exceeding 100 items with a clear error", async () => {
+globalThis.describe("Runtime.appendUnconditional", () => {
+  globalThis.test("rejects appends exceeding 100 items with a clear error", async () => {
     let manyTags = Stdlib_Array.fromInitializer(100, i => ({
       key: "k",
       value: `v` + i.toString()
@@ -287,15 +287,15 @@ describe("Runtime.appendUnconditional", () => {
     });
     let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendUnconditional(table, events, undefined);
     if (result.TAG === "Ok") {
-      expect("expected Error, got Ok").toBe("");
+      globalThis.expect("expected Error, got Ok").toBe("");
       return;
     }
-    expect(result._0.includes("limit exceeded")).toBe(true);
+    globalThis.expect(result._0.includes("limit exceeded")).toBe(true);
   });
 });
 
-describe("Runtime.appendConditional", () => {
-  test("rejects tagless conditions with a clear error", async () => {
+globalThis.describe("Runtime.appendConditional", () => {
+  globalThis.test("rejects tagless conditions with a clear error", async () => {
     let cond_query = [{
         eventTypes: ["Foo"]
       }];
@@ -304,12 +304,12 @@ describe("Runtime.appendConditional", () => {
     };
     let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [], cond, undefined);
     if (result.TAG === "Ok") {
-      expect("expected Error, got Ok").toBe("");
+      globalThis.expect("expected Error, got Ok").toBe("");
       return;
     }
-    expect(result._0.includes("tagless")).toBe(true);
+    globalThis.expect(result._0.includes("tagless")).toBe(true);
   });
-  test("rejects appends exceeding 100 items with a clear error", async () => {
+  globalThis.test("rejects appends exceeding 100 items with a clear error", async () => {
     let manyTags = Stdlib_Array.fromInitializer(100, i => ({
       key: "k",
       value: `v` + i.toString()
@@ -334,10 +334,10 @@ describe("Runtime.appendConditional", () => {
     };
     let result = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event], cond, undefined);
     if (result.TAG === "Ok") {
-      expect("expected Error, got Ok").toBe("");
+      globalThis.expect("expected Error, got Ok").toBe("");
       return;
     }
-    expect(result._0.includes("limit exceeded")).toBe(true);
+    globalThis.expect(result._0.includes("limit exceeded")).toBe(true);
   });
 });
 

@@ -1,17 +1,16 @@
-open Jest
-open Expect
+open JestGlobals
 open Reventless.Projection
 open EventMapperFixtures
 
 describe("Mapping.Make:", () => {
   describe("sourceName", () => {
-    test("equals source spec name", () =>
+    testSync("equals source spec name", () =>
       expect(ItemMapping.sourceName)->toBe("SourceAggregate")
     )
   })
 
   describe("project", () => {
-    test("ItemCreated maps to Create action", () => {
+    testSync("ItemCreated maps to Create action", () => {
       let event' = makeSourceEvent'("item-1", SourceSpec.ItemCreated({name: "Widget", price: 9.99}))
       let action = ItemMapping.project(event')
       switch action {
@@ -21,7 +20,7 @@ describe("Mapping.Make:", () => {
       }
     })
 
-    test("ItemPriceUpdated maps to Update action", () => {
+    testSync("ItemPriceUpdated maps to Update action", () => {
       let event' = makeSourceEvent'("item-1", SourceSpec.ItemPriceUpdated({newPrice: 14.99}))
       let action = ItemMapping.project(event')
       switch action {
@@ -30,7 +29,7 @@ describe("Mapping.Make:", () => {
       }
     })
 
-    test("ItemRemoved maps to Delete action", () => {
+    testSync("ItemRemoved maps to Delete action", () => {
       let event' = makeSourceEvent'("item-1", SourceSpec.ItemRemoved)
       let action = ItemMapping.project(event')
       switch action {
@@ -39,7 +38,7 @@ describe("Mapping.Make:", () => {
       }
     })
 
-    test("Update action applies function correctly", () => {
+    testSync("Update action applies function correctly", () => {
       let event' = makeSourceEvent'("item-1", SourceSpec.ItemPriceUpdated({newPrice: 14.99}))
       let action = ItemMapping.project(event')
       switch action {

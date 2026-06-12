@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 open EventMapperFixtures
 
 let _ = beforeEach(() => resetMocks())

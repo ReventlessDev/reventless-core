@@ -4,8 +4,7 @@
 // integration test; here we drive the analysis with hand-built fixtures to pin the
 // orphan / not-orphan boundary precisely.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 // ── terse builders for the verbose pluginStructure sub-records ──
 let writable = (~name, ~produces=[], ~consumes=[], ~linkedViews=[]): Reventless.Plugin.writableDef => {

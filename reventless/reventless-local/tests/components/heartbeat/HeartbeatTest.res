@@ -3,8 +3,7 @@
 // Adapter-level timer tests are in adapter/HeartbeatRunnerTest.res.
 
 open TestFixtures
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open HeartbeatFixtures
 
 describe("Heartbeat_Builder.Make:", () => {

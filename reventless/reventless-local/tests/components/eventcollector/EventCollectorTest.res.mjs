@@ -5,19 +5,19 @@ import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mj
 import * as TestFixtures$ReventlessLocal from "../../TestFixtures.res.mjs";
 import * as EventCollectorFixtures$ReventlessLocal from "./EventCollectorFixtures.res.mjs";
 
-describe("EventCollector (in-memory)", () => {
-  beforeAll(async () => {
+globalThis.describe("EventCollector (in-memory)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventCollectorFixtures$ReventlessLocal.eventCollector));
     await TestRunner$ReventlessLocal.resolve(EventCollectorFixtures$ReventlessLocal.topicResource.name);
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     EventCollectorFixtures$ReventlessLocal.capturedEvents.contents = [];
   });
-  test("EventCollector component exists", async () => {
+  globalThis.test("EventCollector component exists", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventCollectorFixtures$ReventlessLocal.eventCollector));
-    expect(typeof ops.enqueueEvent).toBe("function");
+    globalThis.expect(typeof ops.enqueueEvent).toBe("function");
   });
-  test("bus publishes events to topic subscribers", async () => {
+  globalThis.test("bus publishes events to topic subscribers", async () => {
     let received = {
       contents: 0
     };
@@ -29,7 +29,7 @@ describe("EventCollector (in-memory)", () => {
         "TestEvent"
       ]]);
     await EventCollectorFixtures$ReventlessLocal.Bus.publishEvent(EventCollectorFixtures$ReventlessLocal.topicName, "test", TestFixtures$ReventlessLocal.testMeta, testEvent);
-    expect(received.contents).toBe(1);
+    globalThis.expect(received.contents).toBe(1);
   });
 });
 

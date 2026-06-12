@@ -4,8 +4,7 @@
 // integration is covered by running `node bin/reventless-gwt.mjs run tests/`
 // against the DSL worked-example suites.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 let encodeString = (s: string): JSON.t => JSON.Encode.string(s)
 

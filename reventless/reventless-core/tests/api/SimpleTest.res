@@ -1,8 +1,7 @@
-open Jest
-open Expect
+open JestGlobals
 
 describe("Basic test", () => {
-  test("1 + 1 = 2", () => {
+  testSync("1 + 1 = 2", () => {
     expect(1 + 1)->toBe(2)
   })
 })

@@ -17,6 +17,6 @@
     }
   ],
   "dependencies": [
-    "@glennsl/rescript-jest"
+    "@reventlessdev/rescript-jest"
   ]
 }

@@ -1,7 +1,7 @@
-open TestHelpers
+open JestGlobals
 
 describe("MCP_Lambda.generateAdminConfig", () => {
-  test("produces tools from admin mutation entries (no cloner)", () => {
+  testSync("produces tools from admin mutation entries (no cloner)", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="test",
       ~serverVersion="1.0.0",
@@ -11,7 +11,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     expect(config.tools)->toHaveLength(2)
   })
 
-  test("produces additional clone tool when cloner=true", () => {
+  testSync("produces additional clone tool when cloner=true", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="test",
       ~serverVersion="1.0.0",
@@ -21,7 +21,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     expect(config.tools)->toHaveLength(3)
   })
 
-  test("produces resources from admin query entries", () => {
+  testSync("produces resources from admin query entries", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="test",
       ~serverVersion="1.0.0",
@@ -30,7 +30,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     expect(config.resources->Array.length)->toBeGreaterThan(0)
   })
 
-  test("server name has -admin suffix", () => {
+  testSync("server name has -admin suffix", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="my-platform",
       ~serverVersion="2.0.0",
@@ -38,7 +38,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     expect(config.serverName)->toBe("my-platform-admin")
   })
 
-  test("server version is passed through", () => {
+  testSync("server version is passed through", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="test",
       ~serverVersion="3.1.4",
@@ -46,7 +46,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     expect(config.serverVersion)->toBe("3.1.4")
   })
 
-  test("tools have non-empty names and descriptions", () => {
+  testSync("tools have non-empty names and descriptions", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="test",
       ~serverVersion="1.0.0",
@@ -58,7 +58,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     })
   })
 
-  test("resources have non-empty names and URI templates", () => {
+  testSync("resources have non-empty names and URI templates", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="test",
       ~serverVersion="1.0.0",
@@ -69,7 +69,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     })
   })
 
-  test("commandTopicArns are mapped to tools", () => {
+  testSync("commandTopicArns are mapped to tools", () => {
     let arns = Dict.make()
     // Use a tool name that matches the first mutation field
     let firstEntry: ReventlessInfra.Api.mutationSchemaEntry =
@@ -91,7 +91,7 @@ describe("MCP_Lambda.generateAdminConfig", () => {
     expect(config.tools->Array.length)->toBeGreaterThan(0)
   })
 
-  test("event history resources default to empty", () => {
+  testSync("event history resources default to empty", () => {
     let config = MCP_Lambda.generateAdminConfig(
       ~serverName="test",
       ~serverVersion="1.0.0",

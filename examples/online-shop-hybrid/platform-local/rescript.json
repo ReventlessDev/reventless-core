@@ -24,7 +24,6 @@
   ],
   "dependencies": [
     "sury",
-    "@glennsl/rescript-jest",
     "@reventlessdev/online-shop-hybrid-catalog-spec",
     "@reventlessdev/online-shop-hybrid-ordering-spec",
     "@reventlessdev/online-shop-hybrid-catalog",

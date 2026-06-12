@@ -1,8 +1,7 @@
 // Unit tests for LocalEventCollectorChannel.
 // Verifies resource collection in make() and subscriber wiring in connect().
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

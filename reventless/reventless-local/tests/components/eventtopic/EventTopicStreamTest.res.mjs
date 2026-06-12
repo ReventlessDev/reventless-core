@@ -7,14 +7,14 @@ import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mj
 import * as TestFixtures$ReventlessLocal from "../../TestFixtures.res.mjs";
 import * as EventTopicStreamFixtures$ReventlessLocal from "./EventTopicStreamFixtures.res.mjs";
 
-describe("EventTopic.publishJsonStream", () => {
-  beforeAll(async () => {
+globalThis.describe("EventTopic.publishJsonStream", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventTopicStreamFixtures$ReventlessLocal.evtTopic));
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     EventTopicStreamFixtures$ReventlessLocal.received.contents = 0;
   });
-  test("streams 2 events to all subscribers", async () => {
+  globalThis.test("streams 2 events to all subscribers", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventTopicStreamFixtures$ReventlessLocal.evtTopic));
     let stream = Stream.fromIterable([
       {
@@ -31,13 +31,13 @@ describe("EventTopic.publishJsonStream", () => {
     await Effect.runPromise(ops.publishJsonStream(stream));
     await Promise.resolve();
     await Promise.resolve();
-    expect(EventTopicStreamFixtures$ReventlessLocal.received.contents).toBe(2);
+    globalThis.expect(EventTopicStreamFixtures$ReventlessLocal.received.contents).toBe(2);
   });
-  test("empty stream publishes nothing to subscribers", async () => {
+  globalThis.test("empty stream publishes nothing to subscribers", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventTopicStreamFixtures$ReventlessLocal.evtTopic));
     await Effect.runPromise(ops.publishJsonStream(Stream.empty));
     await Promise.resolve();
-    expect(EventTopicStreamFixtures$ReventlessLocal.received.contents).toBe(0);
+    globalThis.expect(EventTopicStreamFixtures$ReventlessLocal.received.contents).toBe(0);
   });
 });
 

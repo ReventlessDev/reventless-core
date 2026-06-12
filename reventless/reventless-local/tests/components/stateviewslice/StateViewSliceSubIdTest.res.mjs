@@ -3,12 +3,12 @@
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as StateViewSliceSubIdFixtures$ReventlessLocal from "./StateViewSliceSubIdFixtures.res.mjs";
 
-describe("StateViewSlice sub-ID E2E", () => {
-  beforeAll(async () => {
+globalThis.describe("StateViewSlice sub-ID E2E", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(StateViewSliceSubIdFixtures$ReventlessLocal.ScoresViewMaker.operations(StateViewSliceSubIdFixtures$ReventlessLocal.sv));
     await TestRunner$ReventlessLocal.resolve(StateViewSliceSubIdFixtures$ReventlessLocal.dcbEventTopicResource.name);
   });
-  test("ScoreRecorded stores item with composite sub-key", async () => {
+  globalThis.test("ScoreRecorded stores item with composite sub-key", async () => {
     await StateViewSliceSubIdFixtures$ReventlessLocal.appendEvent({
       TAG: "ScoreRecorded",
       id: "player-1",
@@ -17,12 +17,12 @@ describe("StateViewSlice sub-ID E2E", () => {
       score: 90
     });
     let scores = await StateViewSliceSubIdFixtures$ReventlessLocal.loadScores("player-1");
-    expect(scores.length).toBe(1);
+    globalThis.expect(scores.length).toBe(1);
     let s = scores[0];
-    expect(s.category).toBe("math");
-    expect(s.score).toBe(90);
+    globalThis.expect(s.category).toBe("math");
+    globalThis.expect(s.score).toBe(90);
   });
-  test("multiple ScoreRecorded events for same id are all kept", async () => {
+  globalThis.test("multiple ScoreRecorded events for same id are all kept", async () => {
     await StateViewSliceSubIdFixtures$ReventlessLocal.appendEvent({
       TAG: "ScoreRecorded",
       id: "player-2",
@@ -45,9 +45,9 @@ describe("StateViewSlice sub-ID E2E", () => {
       score: 85
     });
     let scores = await StateViewSliceSubIdFixtures$ReventlessLocal.loadScores("player-2");
-    expect(scores.length).toBe(3);
+    globalThis.expect(scores.length).toBe(3);
   });
-  test("loadStream returns sub-key items in alphabetical order", async () => {
+  globalThis.test("loadStream returns sub-key items in alphabetical order", async () => {
     await StateViewSliceSubIdFixtures$ReventlessLocal.appendEvent({
       TAG: "ScoreRecorded",
       id: "player-3",
@@ -70,15 +70,15 @@ describe("StateViewSlice sub-ID E2E", () => {
       score: 77
     });
     let scores = await StateViewSliceSubIdFixtures$ReventlessLocal.loadScores("player-3");
-    expect(scores.length).toBe(3);
+    globalThis.expect(scores.length).toBe(3);
     let s0 = scores[0];
     let s1 = scores[1];
     let s2 = scores[2];
-    expect(s0.category).toBe("art");
-    expect(s1.category).toBe("math");
-    expect(s2.category).toBe("science");
+    globalThis.expect(s0.category).toBe("art");
+    globalThis.expect(s1.category).toBe("math");
+    globalThis.expect(s2.category).toBe("science");
   });
-  test("items for different players are independent", async () => {
+  globalThis.test("items for different players are independent", async () => {
     await StateViewSliceSubIdFixtures$ReventlessLocal.appendEvent({
       TAG: "ScoreRecorded",
       id: "player-4",
@@ -95,12 +95,12 @@ describe("StateViewSlice sub-ID E2E", () => {
     });
     let scores4 = await StateViewSliceSubIdFixtures$ReventlessLocal.loadScores("player-4");
     let scores5 = await StateViewSliceSubIdFixtures$ReventlessLocal.loadScores("player-5");
-    expect(scores4.length).toBe(1);
-    expect(scores5.length).toBe(1);
+    globalThis.expect(scores4.length).toBe(1);
+    globalThis.expect(scores5.length).toBe(1);
     let s4 = scores4[0];
     let s5 = scores5[0];
-    expect(s4.score).toBe(60);
-    expect(s5.score).toBe(100);
+    globalThis.expect(s4.score).toBe(60);
+    globalThis.expect(s5.score).toBe(100);
   });
 });
 

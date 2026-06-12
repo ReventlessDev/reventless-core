@@ -9,9 +9,9 @@ TestRunner$ReventlessLocal.setup();
 
 let opts = {};
 
-describe("LocalQueryEngine", () => {
-  describe("query", () => {
-    test("query by id returns items saved in the matching QueryDbStorage", async () => {
+globalThis.describe("LocalQueryEngine", () => {
+  globalThis.describe("query", () => {
+    globalThis.test("query by id returns items saved in the matching QueryDbStorage", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -23,10 +23,10 @@ describe("LocalQueryEngine", () => {
         TAG: "String",
         _0: "user-1"
       }, undefined, undefined, undefined, undefined);
-      expect(items.length).toBe(1);
-      expect(items[0]).toEqual("Alice");
+      globalThis.expect(items.length).toBe(1);
+      globalThis.expect(items[0]).toEqual("Alice");
     });
-    test("query with explicit key overrides the id parameter", async () => {
+    globalThis.test("query with explicit key overrides the id parameter", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -38,10 +38,10 @@ describe("LocalQueryEngine", () => {
         TAG: "String",
         _0: "ignored"
       }, undefined, undefined, undefined, undefined);
-      expect(items.length).toBe(1);
-      expect(items[0]).toEqual("Widget");
+      globalThis.expect(items.length).toBe(1);
+      globalThis.expect(items[0]).toEqual("Widget");
     });
-    test("query for unknown readModelName returns empty array", async () => {
+    globalThis.test("query for unknown readModelName returns empty array", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
@@ -49,9 +49,9 @@ describe("LocalQueryEngine", () => {
         TAG: "String",
         _0: "any"
       }, undefined, undefined, undefined, undefined);
-      expect(items.length).toBe(0);
+      globalThis.expect(items.length).toBe(0);
     });
-    test("query with Int id converts to string key for lookup", async () => {
+    globalThis.test("query with Int id converts to string key for lookup", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -63,11 +63,11 @@ describe("LocalQueryEngine", () => {
         TAG: "Int",
         _0: 42
       }, undefined, undefined, undefined, undefined);
-      expect(items.length).toBe(1);
+      globalThis.expect(items.length).toBe(1);
     });
   });
-  describe("scan", () => {
-    test("scan returns all items from the matching QueryDbStorage", async () => {
+  globalThis.describe("scan", () => {
+    globalThis.test("scan returns all items from the matching QueryDbStorage", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -77,18 +77,18 @@ describe("LocalQueryEngine", () => {
       await ops.save("o2", "order2", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
       let items = await engine.scan("orders", [], 100);
-      expect(items.length).toBe(2);
+      globalThis.expect(items.length).toBe(2);
     });
-    test("scan for unknown readModelName returns empty array", async () => {
+    globalThis.test("scan for unknown readModelName returns empty array", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
       let items = await engine.scan("no-such-model", [], 100);
-      expect(items.length).toBe(0);
+      globalThis.expect(items.length).toBe(0);
     });
   });
-  describe("scan with ~limit", () => {
-    test("~limit=2 on a 5-item QueryDb returns exactly 2 items", async () => {
+  globalThis.describe("scan with ~limit", () => {
+    globalThis.test("~limit=2 on a 5-item QueryDb returns exactly 2 items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -101,9 +101,9 @@ describe("LocalQueryEngine", () => {
       await ops.save("k5", "e", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
       let result = await engine.scan("items", [], 2);
-      expect(result.length).toBe(2);
+      globalThis.expect(result.length).toBe(2);
     });
-    test("~limit larger than total returns all items (no padding)", async () => {
+    globalThis.test("~limit larger than total returns all items (no padding)", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -113,9 +113,9 @@ describe("LocalQueryEngine", () => {
       await ops.save("t2", "y", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
       let result = await engine.scan("things", [], 100);
-      expect(result.length).toBe(2);
+      globalThis.expect(result.length).toBe(2);
     });
-    test("~limit=0 returns empty array", async () => {
+    globalThis.test("~limit=0 returns empty array", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -124,9 +124,9 @@ describe("LocalQueryEngine", () => {
       await ops.save("s1", "z", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
       let result = await engine.scan("stuff", [], 0);
-      expect(result.length).toBe(0);
+      globalThis.expect(result.length).toBe(0);
     });
-    test("~limit=3 on a 3-item QueryDb returns all 3 items", async () => {
+    globalThis.test("~limit=3 on a 3-item QueryDb returns all 3 items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let QE = LocalQueryEngine$ReventlessLocal.Make(TestBus);
@@ -137,7 +137,7 @@ describe("LocalQueryEngine", () => {
       await ops.save("w3", "r", "Any", undefined);
       let engine = await TestRunner$ReventlessLocal.resolve(QE.make({}));
       let result = await engine.scan("widgets", [], 3);
-      expect(result.length).toBe(3);
+      globalThis.expect(result.length).toBe(3);
     });
   });
 });

@@ -1,5 +1,12 @@
 # Fix: `testPromise` in `@glennsl/rescript-jest` does not await async tests
 
+> **Superseded (2026-06-12).** `@glennsl/rescript-jest` has been removed from the
+> repo entirely. All hand-written tests now use `@reventlessdev/rescript-jest`
+> (module `JestGlobals`), which binds Jest's globals directly with throwing
+> `expect` and native async bodies — `test` registers an async test, `testSync` a
+> sync one. Kept as the historical record of why the local bindings (and
+> ultimately the shared package) were needed.
+
 ## Context
 
 Discovered while implementing `packages/reventless-example-aggregate/` E2E tests.

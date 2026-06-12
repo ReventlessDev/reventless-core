@@ -1,5 +1,4 @@
-open Jest
-open Expect
+open JestGlobals
 open LogFormat
 
 S.enableJson()
@@ -14,14 +13,14 @@ Reventless.AnsiStyle.reload()
 
 describe("LogFormat", () => {
   describe("commandJsonsToLogMessages", () => {
-    test(
+    testSync(
       "empty",
       () => {
         let arr: array<Message.commandJson> = []
         expect(commandJsonsToLogMessages(arr))->toEqual([])
       },
     )
-    test(
+    testSync(
       "simple",
       () => {
         let commands: array<PluginSpec.command> = [Heartbeat]
@@ -47,7 +46,7 @@ describe("LogFormat", () => {
         expect(commandJsonsToLogMessages(arr))->toEqual([expected])
       },
     )
-    test(
+    testSync(
       "complex",
       () => {
         let commands: array<PluginSpec.command> = [
@@ -104,7 +103,7 @@ describe("LogFormat", () => {
     )
   })
   describe("event'JsonToLogMessage", () => {
-    test(
+    testSync(
       "simple",
       () => {
         open PluginSpec
@@ -205,7 +204,7 @@ describe("JSON sink", () => {
   // Logger.t goes Debug+ regardless of LOG_LEVEL via an explicit min level.
   let log = Logger.makeLogger(~minLevel=Debug)
 
-  test("Logger.info emits one clean JSON record with comp as a top-level field", () => {
+  testSync("Logger.info emits one clean JSON record with comp as a top-level field", () => {
     let lines = captureLogs(() => log.info(~comp="Aggregate(Product)", "handling command"))
     let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
     let ok =
@@ -217,19 +216,19 @@ describe("JSON sink", () => {
     expect(ok)->toBe(true)
   })
 
-  test("Logger.info resolves plugin to a top-level field when the comp is registered", () => {
+  testSync("Logger.info resolves plugin to a top-level field when the comp is registered", () => {
     Logger.registerComponentPlugin(~componentName="Product", ~pluginName="Catalog")
     let lines = captureLogs(() => log.info(~comp="Aggregate(Product)", "handling command"))
     let line = lines->Array.length == 1 ? lines->Array.getUnsafe(0) : ""
     expect(lines->Array.length == 1 && line->fieldOf("plugin") == Some("Catalog"))->toBe(true)
   })
 
-  test("Logger.warn emits one clean JSON record", () => {
+  testSync("Logger.warn emits one clean JSON record", () => {
     let lines = captureLogs(() => log.warn(~comp="Platform", "heartbeat skipped"))
     expect(lines->Array.length == 1 && isCleanRecord(lines->Array.getUnsafe(0)))->toBe(true)
   })
 
-  test("Logger.error with ~data emits one clean JSON record", () => {
+  testSync("Logger.error with ~data emits one clean JSON record", () => {
     let lines = captureLogs(() =>
       log.error(
         ~comp="Util_AppSync_Caller",
@@ -240,7 +239,7 @@ describe("JSON sink", () => {
     expect(lines->Array.length == 1 && isCleanRecord(lines->Array.getUnsafe(0)))->toBe(true)
   })
 
-  test("EffectLogger.logInfo emits clean JSON through install()", () => {
+  testSync("EffectLogger.logInfo emits clean JSON through install()", () => {
     let lines = captureLogs(() =>
       EffectLogger.logInfo(~comp="Aggregate(Product)", "replay done")->Effect.runSync
     )
@@ -248,7 +247,7 @@ describe("JSON sink", () => {
     expect(lines->Array.length >= 1 && allClean)->toBe(true)
   })
 
-  test("EffectLogger.logInfo carries ~comp + ~detail as structured fields (no \\x00)", () => {
+  testSync("EffectLogger.logInfo carries ~comp + ~detail as structured fields (no \\x00)", () => {
     let lines = captureLogs(() =>
       EffectLogger.logInfo(
         ~comp="Aggregate(Product)",
@@ -271,7 +270,7 @@ describe("JSON sink", () => {
     expect(ok)->toBe(true)
   })
 
-  test("Effect.annotateLogs(correlationId) surfaces as a top-level field", () => {
+  testSync("Effect.annotateLogs(correlationId) surfaces as a top-level field", () => {
     let lines = captureLogs(() =>
       EffectLogger.logInfo(~comp="Aggregate(Product)", "handling")
       ->Effect.annotateLogs("correlationId", "c-123")
@@ -280,7 +279,7 @@ describe("JSON sink", () => {
     expect(lines->Array.some(line => line->fieldOf("correlationId") == Some("c-123")))->toBe(true)
   })
 
-  test("Effect.annotateLogs(plugin) overrides registry resolution", () => {
+  testSync("Effect.annotateLogs(plugin) overrides registry resolution", () => {
     // The component is NOT registered against any plugin; without an explicit
     // ~plugin annotation, resolvePlugin would fall back through transformations
     // and emit no plugin field. With the annotation, plugin wins.
@@ -292,7 +291,7 @@ describe("JSON sink", () => {
     expect(lines->Array.some(line => line->fieldOf("plugin") == Some("Ordering")))->toBe(true)
   })
 
-  test("every JSON record carries an RFC 3339 time field", () => {
+  testSync("every JSON record carries an RFC 3339 time field", () => {
     let lines = captureLogs(() => log.info(~comp="Platform", "tick"))
     let ok = switch lines->Array.get(0)->Option.flatMap(l => l->fieldOf("time")) {
     | Some(t) => t->String.includes("T") && t->String.endsWith("Z")
@@ -301,7 +300,7 @@ describe("JSON sink", () => {
     expect(ok)->toBe(true)
   })
 
-  test("service field is emitted when REVENTLESS_SERVICE is set", () => {
+  testSync("service field is emitted when REVENTLESS_SERVICE is set", () => {
     _processEnv->Dict.set("REVENTLESS_SERVICE", "TestService")
     let lines = captureLogs(() => log.info(~comp="Platform", "tick"))
     let got = lines->Array.get(0)->Option.flatMap(l => l->fieldOf("service"))
@@ -309,7 +308,7 @@ describe("JSON sink", () => {
     expect(got)->toEqual(Some("TestService"))
   })
 
-  test("oversized detail is truncated to a preview stub", () => {
+  testSync("oversized detail is truncated to a preview stub", () => {
     let big = String.repeat("x", 40000)
     let detail = Dict.fromArray([("blob", JSON.Encode.string(big))])->JSON.Encode.object
     // ~detail flows through emit (Logger.t's ~data goes into the message instead).
@@ -329,7 +328,7 @@ describe("JSON sink", () => {
     expect(ok)->toBe(true)
   })
 
-  test("LogFormat.cmdName carries no ANSI in a JSON sink", () => {
+  testSync("LogFormat.cmdName carries no ANSI in a JSON sink", () => {
     let meta: Message.meta = {
       service: "testService",
       time: "testTime",

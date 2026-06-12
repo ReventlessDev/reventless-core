@@ -11,8 +11,7 @@
 
 @@warning("-44")
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

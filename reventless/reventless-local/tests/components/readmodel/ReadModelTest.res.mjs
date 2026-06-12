@@ -3,33 +3,33 @@
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as ReadModelFixtures$ReventlessLocal from "./ReadModelFixtures.res.mjs";
 
-describe("ReadModel E2E", () => {
-  beforeAll(async () => {
+globalThis.describe("ReadModel E2E", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(ReadModelFixtures$ReventlessLocal.ItemReadModel.operations(ReadModelFixtures$ReventlessLocal.rm));
     await TestRunner$ReventlessLocal.resolve(ReadModelFixtures$ReventlessLocal.topicResource.name);
   });
-  test("ItemCreated event projects into ReadModel state", async () => {
+  globalThis.test("ItemCreated event projects into ReadModel state", async () => {
     await ReadModelFixtures$ReventlessLocal.publishItemCreated("item-1", "Widget");
     let states = await ReadModelFixtures$ReventlessLocal.loadState("item-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.name).toBe("Widget");
+    globalThis.expect(state.name).toBe("Widget");
   });
-  test("query for unknown ID returns empty", async () => {
+  globalThis.test("query for unknown ID returns empty", async () => {
     let states = await ReadModelFixtures$ReventlessLocal.loadState("unknown-id");
-    expect(states.length).toBe(0);
+    globalThis.expect(states.length).toBe(0);
   });
-  test("multiple events project independently", async () => {
+  globalThis.test("multiple events project independently", async () => {
     await ReadModelFixtures$ReventlessLocal.publishItemCreated("item-2", "Gadget");
     await ReadModelFixtures$ReventlessLocal.publishItemCreated("item-3", "Doohickey");
     let states2 = await ReadModelFixtures$ReventlessLocal.loadState("item-2");
     let states3 = await ReadModelFixtures$ReventlessLocal.loadState("item-3");
-    expect(states2.length).toBe(1);
-    expect(states3.length).toBe(1);
+    globalThis.expect(states2.length).toBe(1);
+    globalThis.expect(states3.length).toBe(1);
     let state2 = states2[0];
     let state3 = states3[0];
-    expect(state2.name).toBe("Gadget");
-    expect(state3.name).toBe("Doohickey");
+    globalThis.expect(state2.name).toBe("Gadget");
+    globalThis.expect(state3.name).toBe("Doohickey");
   });
 });
 

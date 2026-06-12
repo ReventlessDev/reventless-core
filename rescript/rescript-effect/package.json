@@ -15,9 +15,6 @@
     "testMatch": [
       "<rootDir>/tests/**/*Test.res.mjs"
     ],
-    "testPathIgnorePatterns": [
-      "AsyncTest.res.mjs"
-    ],
     "moduleFileExtensions": [
       "js",
       "mjs"
@@ -27,6 +24,7 @@
     "effect": "3.21.2"
   },
   "devDependencies": {
+    "@reventlessdev/rescript-jest": "workspace:*",
     "@jest/globals": "^29.7.0",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",

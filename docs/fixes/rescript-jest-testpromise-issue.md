@@ -1,5 +1,9 @@
 # Issue report: `testPromise` silently drops the async Promise, causing concurrent test execution
 
+> **Superseded (2026-06-12).** This repo no longer depends on
+> `@glennsl/rescript-jest`; hand-written tests use `@reventlessdev/rescript-jest`
+> (`JestGlobals`). Retained as the historical upstream-issue write-up.
+
 **Project**: `@glennsl/rescript-jest`
 **Repo**: https://github.com/glennsl/rescript-jest
 

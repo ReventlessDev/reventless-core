@@ -1,5 +1,4 @@
-open Jest
-open Expect
+open JestGlobals
 
 let getProperty = (schema: JSON.t, key: string): option<JSON.t> =>
   switch schema->JSON.Decode.object {
@@ -36,7 +35,7 @@ let emptySpec: Reventless.StateAnnotations.stateAnnotationSpec = {
 
 describe("SuryToJsonSchema:", () => {
   describe("deriveObjectSchema with no annotations:", () => {
-    test("emits plain JSON Schema when no metadata is attached", () => {
+    testSync("emits plain JSON Schema when no metadata is attached", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -55,7 +54,7 @@ describe("SuryToJsonSchema:", () => {
     let withSpec = (schema, spec) =>
       schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)
 
-    test("emits x-reventless-id on field listed in ids", () => {
+    testSync("emits x-reventless-id on field listed in ids", () => {
       let schema = S.schema(s =>
         {
           "entityId": s.matches(S.string),
@@ -72,7 +71,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(Some(true))
     })
 
-    test("emits x-reventless-compositeId on each compositeId field", () => {
+    testSync("emits x-reventless-compositeId on each compositeId field", () => {
       let schema = S.schema(s =>
         {
           "environment": s.matches(S.string),
@@ -97,7 +96,7 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), Some(true)))
     })
 
-    test("emits x-reventless-subId on field listed in subIds", () => {
+    testSync("emits x-reventless-subId on field listed in subIds", () => {
       let schema = S.schema(s =>
         {
           "itemId": s.matches(S.string),
@@ -114,7 +113,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(Some(true))
     })
 
-    test("emits x-reventless-index as the index name when named", () => {
+    testSync("emits x-reventless-index as the index name when named", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -134,7 +133,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(Some("byOwner"))
     })
 
-    test("emits x-reventless-index as true for unnamed @index", () => {
+    testSync("emits x-reventless-index as true for unnamed @index", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -154,7 +153,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(Some(true))
     })
 
-    test("does not emit x-reventless-* on unannotated fields", () => {
+    testSync("does not emit x-reventless-* on unannotated fields", () => {
       let schema = S.schema(s =>
         {
           "entityId": s.matches(S.string),
@@ -169,7 +168,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(None)
     })
 
-    test("emits x-reventless-hidden on field listed in hidden", () => {
+    testSync("emits x-reventless-hidden on field listed in hidden", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -188,7 +187,7 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), None))
     })
 
-    test("emits x-reventless-summary on field listed in summary", () => {
+    testSync("emits x-reventless-summary on field listed in summary", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -207,7 +206,7 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), None))
     })
 
-    test("emits x-reventless-drillTarget as the slice name", () => {
+    testSync("emits x-reventless-drillTarget as the slice name", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -229,7 +228,7 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some("ResourceInventory"), None))
     })
 
-    test("emits x-reventless-drillTargetKey as the key path", () => {
+    testSync("emits x-reventless-drillTargetKey as the key path", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -250,7 +249,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(Some("kind/name"))
     })
 
-    test("does not emit x-reventless-drillTargetKey when no key was supplied", () => {
+    testSync("does not emit x-reventless-drillTargetKey when no key was supplied", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -268,7 +267,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(None)
     })
 
-    test("emits x-reventless-scan on field listed in scan", () => {
+    testSync("emits x-reventless-scan on field listed in scan", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -287,7 +286,7 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), None))
     })
 
-    test("emits x-reventless-scanSort on field listed in scanSort", () => {
+    testSync("emits x-reventless-scanSort on field listed in scanSort", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -306,7 +305,7 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), None))
     })
 
-    test("emits x-reventless-collapsed on field listed in collapsed", () => {
+    testSync("emits x-reventless-collapsed on field listed in collapsed", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -325,7 +324,7 @@ describe("SuryToJsonSchema:", () => {
       ))->toEqual((Some(true), None))
     })
 
-    test("emits x-reventless-visibility at top level when visibility is Internal", () => {
+    testSync("emits x-reventless-visibility at top level when visibility is Internal", () => {
       let schema = S.schema(s => {"id": s.matches(S.string)})->S.castToUnknown
       let schema' = schema->withSpec({...emptySpec, visibility: Some("Internal")})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
@@ -334,7 +333,7 @@ describe("SuryToJsonSchema:", () => {
       )->toBe(Some("Internal"))
     })
 
-    test("omits x-reventless-visibility when visibility is None (default Public)", () => {
+    testSync("omits x-reventless-visibility when visibility is None (default Public)", () => {
       let schema = S.schema(s => {"id": s.matches(S.string)})->S.castToUnknown
       let schema' = schema->withSpec({...emptySpec, visibility: None})
       let json = SuryToJsonSchema.deriveObjectSchema(schema')
@@ -361,7 +360,7 @@ describe("SuryToJsonSchema:", () => {
     let sortStrings = (xs: array<string>): array<string> =>
       xs->Array.toSorted(String.compare)
 
-    test("properties keyset matches between deriveObjectSchema and S.toJSONSchema", () => {
+    testSync("properties keyset matches between deriveObjectSchema and S.toJSONSchema", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -374,7 +373,7 @@ describe("SuryToJsonSchema:", () => {
       expect(derived->getKeys->sortStrings)->toEqual(native->getKeys->sortStrings)
     })
 
-    test("required array matches between deriveObjectSchema and S.toJSONSchema", () => {
+    testSync("required array matches between deriveObjectSchema and S.toJSONSchema", () => {
       let schema = S.schema(s =>
         {
           "id": s.matches(S.string),
@@ -386,7 +385,7 @@ describe("SuryToJsonSchema:", () => {
       expect(derived->getRequired->sortStrings)->toEqual(native->getRequired->sortStrings)
     })
 
-    test("S.toJSONSchema does NOT emit x-reventless-* keys even when metadata is set", () => {
+    testSync("S.toJSONSchema does NOT emit x-reventless-* keys even when metadata is set", () => {
       let withSpec = (schema, spec) =>
         schema->S.Metadata.set(~id=Reventless.StateAnnotations.stateAnnotationsId, spec)
       let schema = S.schema(s =>

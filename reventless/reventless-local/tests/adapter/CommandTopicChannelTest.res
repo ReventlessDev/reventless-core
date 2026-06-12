@@ -1,8 +1,7 @@
 // Unit tests for LocalCommandTopicChannel.
 // Covers encodeCommandJson (shared helper), decodeId, publishJsons, and connect wiring.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

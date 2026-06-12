@@ -5,10 +5,10 @@ import * as Counter$ReventlessCore from "../../src/components/Counter/Counter.re
 import * as CounterFixtures$ReventlessCore from "./CounterFixtures.res.mjs";
 import * as Counter_Callback$ReventlessCore from "../../src/components/Counter/Counter_Callback.res.mjs";
 
-beforeEach(() => CounterFixtures$ReventlessCore.reset());
+globalThis.beforeEach(() => CounterFixtures$ReventlessCore.reset());
 
-describe("Counter_Callback.groupByCounterId:", () => {
-  test("groups references by counter ID and sums increments", async () => {
+globalThis.describe("Counter_Callback.groupByCounterId:", () => {
+  globalThis.test("groups references by counter ID and sums increments", async () => {
     let result = Counter_Callback$ReventlessCore.groupByCounterId([
       [
         Counter$ReventlessCore.makeId([
@@ -26,12 +26,12 @@ describe("Counter_Callback.groupByCounterId:", () => {
       ]
     ]);
     let sorted = result.toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
-    expect(sorted).toEqual([[
+    globalThis.expect(sorted).toEqual([[
         "counter-a",
         3
       ]]);
   });
-  test("groups different counter IDs independently", async () => {
+  globalThis.test("groups different counter IDs independently", async () => {
     let result = Counter_Callback$ReventlessCore.groupByCounterId([
       [
         Counter$ReventlessCore.makeId([
@@ -49,7 +49,7 @@ describe("Counter_Callback.groupByCounterId:", () => {
       ]
     ]);
     let sorted = result.toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]));
-    expect(sorted).toEqual([
+    globalThis.expect(sorted).toEqual([
       [
         "counter-a",
         1
@@ -60,15 +60,15 @@ describe("Counter_Callback.groupByCounterId:", () => {
       ]
     ]);
   });
-  test("returns empty array for empty input", async () => {
+  globalThis.test("returns empty array for empty input", async () => {
     let result = Counter_Callback$ReventlessCore.groupByCounterId([]);
-    expect(result).toEqual([]);
+    globalThis.expect(result).toEqual([]);
   });
 });
 
-describe("Counter_Callback.counterHandler:", () => {
-  describe("count reaches zero", () => {
-    test("CountFinished event dispatched via jsonEventsHandler", async () => {
+globalThis.describe("Counter_Callback.counterHandler:", () => {
+  globalThis.describe("count reaches zero", () => {
+    globalThis.test("CountFinished event dispatched via jsonEventsHandler", async () => {
       let ref1 = Counter$ReventlessCore.makeId([
         "counter-1",
         "ref-a"
@@ -79,7 +79,7 @@ describe("Counter_Callback.counterHandler:", () => {
           1
         ]], counts);
       let batches = CounterFixtures$ReventlessCore.capturedEventBatches.contents;
-      expect([
+      globalThis.expect([
         batches.length,
         batches[0].length
       ]).toEqual([
@@ -88,8 +88,8 @@ describe("Counter_Callback.counterHandler:", () => {
       ]);
     });
   });
-  describe("count above zero", () => {
-    test("no CountFinished event, countsDbCount still called", async () => {
+  globalThis.describe("count above zero", () => {
+    globalThis.test("no CountFinished event, countsDbCount still called", async () => {
       let ref1 = Counter$ReventlessCore.makeId([
         "counter-1",
         "ref-a"
@@ -101,12 +101,12 @@ describe("Counter_Callback.counterHandler:", () => {
         ]], counts);
       let batches = CounterFixtures$ReventlessCore.capturedEventBatches.contents;
       let events = batches[0];
-      expect(events.length).toBe(0);
-      expect(CounterFixtures$ReventlessCore.capturedCountCalls.contents.length).toBe(1);
+      globalThis.expect(events.length).toBe(0);
+      globalThis.expect(CounterFixtures$ReventlessCore.capturedCountCalls.contents.length).toBe(1);
     });
   });
-  describe("multiple counters in batch", () => {
-    test("each decremented independently", async () => {
+  globalThis.describe("multiple counters in batch", () => {
+    globalThis.test("each decremented independently", async () => {
       let refA = Counter$ReventlessCore.makeId([
         "counter-a",
         "ref-1"
@@ -129,10 +129,10 @@ describe("Counter_Callback.counterHandler:", () => {
           1
         ]
       ], counts);
-      expect(CounterFixtures$ReventlessCore.capturedCountCalls.contents.length).toBe(2);
+      globalThis.expect(CounterFixtures$ReventlessCore.capturedCountCalls.contents.length).toBe(2);
       let batches = CounterFixtures$ReventlessCore.capturedEventBatches.contents;
       let events = batches[0];
-      expect(events.length).toBe(1);
+      globalThis.expect(events.length).toBe(1);
     });
   });
 });

@@ -1,8 +1,7 @@
 // Integration tests for SideEffectHandler builder (in-memory).
 // Publishes events to the bus and verifies side effect execute is called.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open SideEffectHandlerFixtures
 
 // ─────────────────────────────────────────────────────────────

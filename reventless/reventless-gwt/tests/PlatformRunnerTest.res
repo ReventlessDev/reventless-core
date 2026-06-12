@@ -3,8 +3,7 @@
 // (features plan Phase 9). The tap emits sentinel-prefixed JSON; the Domain
 // GraphQL "listening" line marks readiness; everything else is a passthrough log.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("PlatformRunner.classifyLine", () => {
   testPromise("classifies a tap line as Domain with the parsed payload", async () => {

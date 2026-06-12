@@ -9,7 +9,7 @@ function buildContext(headers) {
   };
 }
 
-test("no X-User, no X-Groups → defaultUser (in-memory dev convenience)", async () => {
+globalThis.test("no X-User, no X-Groups → defaultUser (in-memory dev convenience)", async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([]));
   if (typeof result !== "object") {
@@ -19,11 +19,11 @@ test("no X-User, no X-Groups → defaultUser (in-memory dev convenience)", async
     return Stdlib_JsError.throwWithMessage("expected Authenticated(defaultUser)");
   }
   let identity = result._0;
-  expect(identity.username).toEqual("user");
-  expect(identity.groups).toEqual(["User"]);
+  globalThis.expect(identity.username).toEqual("user");
+  globalThis.expect(identity.groups).toEqual(["User"]);
 });
 
-test("X-User: admin resolves built-in admin identity", async () => {
+globalThis.test("X-User: admin resolves built-in admin identity", async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([[
       "x-user",
@@ -36,14 +36,14 @@ test("X-User: admin resolves built-in admin identity", async () => {
     return Stdlib_JsError.throwWithMessage("expected Authenticated");
   }
   let identity = result._0;
-  expect(identity.username).toEqual("admin");
-  expect(identity.groups).toEqual([
+  globalThis.expect(identity.username).toEqual("admin");
+  globalThis.expect(identity.groups).toEqual([
     "Admin",
     "User"
   ]);
 });
 
-test("X-User: user resolves built-in default identity", async () => {
+globalThis.test("X-User: user resolves built-in default identity", async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([[
       "x-user",
@@ -56,11 +56,11 @@ test("X-User: user resolves built-in default identity", async () => {
     return Stdlib_JsError.throwWithMessage("expected Authenticated");
   }
   let identity = result._0;
-  expect(identity.username).toEqual("user");
-  expect(identity.groups).toEqual(["User"]);
+  globalThis.expect(identity.username).toEqual("user");
+  globalThis.expect(identity.groups).toEqual(["User"]);
 });
 
-test("unknown X-User falls back to Anonymous", async () => {
+globalThis.test("unknown X-User falls back to Anonymous", async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([[
       "x-user",
@@ -73,7 +73,7 @@ test("unknown X-User falls back to Anonymous", async () => {
   }
 });
 
-test("X-Groups overrides the resolved identity's groups", async () => {
+globalThis.test("X-Groups overrides the resolved identity's groups", async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([
     [
@@ -92,14 +92,14 @@ test("X-Groups overrides the resolved identity's groups", async () => {
     return Stdlib_JsError.throwWithMessage("expected Authenticated");
   }
   let identity = result._0;
-  expect(identity.username).toEqual("admin");
-  expect(identity.groups).toEqual([
+  globalThis.expect(identity.username).toEqual("admin");
+  globalThis.expect(identity.groups).toEqual([
     "Editor",
     "Viewer"
   ]);
 });
 
-test("X-Groups alone yields defaultUser tagged with the override groups", async () => {
+globalThis.test("X-Groups alone yields defaultUser tagged with the override groups", async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([[
       "x-groups",
@@ -112,11 +112,11 @@ test("X-Groups alone yields defaultUser tagged with the override groups", async 
     return Stdlib_JsError.throwWithMessage("expected Authenticated");
   }
   let identity = result._0;
-  expect(identity.userId).toEqual("local-user");
-  expect(identity.groups).toEqual(["Tester"]);
+  globalThis.expect(identity.userId).toEqual("local-user");
+  globalThis.expect(identity.groups).toEqual(["Tester"]);
 });
 
-test("registerUser injects a custom identity", async () => {
+globalThis.test("registerUser injects a custom identity", async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   LocalAuth$ReventlessLocal.registerUser("alice", {
     userId: "alice-id",
@@ -135,8 +135,8 @@ test("registerUser injects a custom identity", async () => {
     return Stdlib_JsError.throwWithMessage("expected Authenticated");
   }
   let identity = result._0;
-  expect(identity.userId).toEqual("alice-id");
-  expect(identity.groups).toEqual(["Editor"]);
+  globalThis.expect(identity.userId).toEqual("alice-id");
+  globalThis.expect(identity.groups).toEqual(["Editor"]);
 });
 
 export {

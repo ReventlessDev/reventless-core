@@ -5,7 +5,7 @@ import * as Stream from "effect/Stream";
 import * as AggregateFixtures$ReventlessCore from "./AggregateFixtures.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../../src/components/CommandTopic/CommandTopic_Helpers.res.mjs";
 
-beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
+globalThis.beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
 
 let capturedRejections = {
   contents: []
@@ -37,9 +37,9 @@ function uninstallChannels() {
   CommandTopic_Helpers$ReventlessCore.acceptedResultChannel.contents = undefined;
 }
 
-describe("Aggregate decide-rejection propagation:", () => {
-  describe("single rejected command", () => {
-    test("Create on existing aggregate reports Rejected with errorCode", async () => {
+globalThis.describe("Aggregate decide-rejection propagation:", () => {
+  globalThis.describe("single rejected command", () => {
+    globalThis.test("Create on existing aggregate reports Rejected with errorCode", async () => {
       await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-seed", {
           TAG: "Create",
           name: "Widget"
@@ -50,19 +50,19 @@ describe("Aggregate decide-rejection propagation:", () => {
           name: "Widget"
         })])));
       uninstallChannels();
-      expect(results).toEqual([{
+      globalThis.expect(results).toEqual([{
           TAG: "Ok",
           _0: "ref-1"
         }]);
-      expect(capturedRejections.contents.length).toBe(1);
+      globalThis.expect(capturedRejections.contents.length).toBe(1);
       let match = capturedRejections.contents[0];
-      expect(match[0]).toEqual("ref-1");
-      expect(match[1].errorCode).toEqual("AlreadyExists");
-      expect(AggregateFixtures$ReventlessCore.mock.getAll().length).toBe(1);
+      globalThis.expect(match[0]).toEqual("ref-1");
+      globalThis.expect(match[1].errorCode).toEqual("AlreadyExists");
+      globalThis.expect(AggregateFixtures$ReventlessCore.mock.getAll().length).toBe(1);
     });
   });
-  describe("mixed batch", () => {
-    test("rejected command does not cancel surviving commands", async () => {
+  globalThis.describe("mixed batch", () => {
+    globalThis.test("rejected command does not cancel surviving commands", async () => {
       await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem("agg-1", "ref-seed", {
           TAG: "Create",
           name: "Widget"
@@ -83,25 +83,25 @@ describe("Aggregate decide-rejection propagation:", () => {
         })
       ])));
       uninstallChannels();
-      expect(results.length).toBe(3);
+      globalThis.expect(results.length).toBe(3);
       results.forEach(r => {
         if (r.TAG === "Ok") {
           return;
         }
-        expect("expected all Ok").toEqual("got Error");
+        globalThis.expect("expected all Ok").toEqual("got Error");
       });
-      expect(AggregateFixtures$ReventlessCore.mock.getAll().length).toBe(3);
+      globalThis.expect(AggregateFixtures$ReventlessCore.mock.getAll().length).toBe(3);
       let rejected = capturedRejections.contents;
-      expect(rejected.length).toBe(1);
+      globalThis.expect(rejected.length).toBe(1);
       let match = rejected[0];
-      expect(match[0]).toEqual("ref-2");
-      expect(match[1].errorCode).toEqual("AlreadyExists");
+      globalThis.expect(match[0]).toEqual("ref-2");
+      globalThis.expect(match[1].errorCode).toEqual("AlreadyExists");
       let accepted = capturedAccepts.contents;
-      expect(accepted.length).toBe(2);
+      globalThis.expect(accepted.length).toBe(2);
     });
   });
-  describe("all-reject batch", () => {
-    test("3 rejecting commands → no append, all reported Rejected, no Accepted", async () => {
+  globalThis.describe("all-reject batch", () => {
+    globalThis.test("3 rejecting commands → no append, all reported Rejected, no Accepted", async () => {
       installChannels();
       let results = await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([
         AggregateFixtures$ReventlessCore.makeTopicItem("agg-x", "ref-1", {
@@ -118,7 +118,7 @@ describe("Aggregate decide-rejection propagation:", () => {
         })
       ])));
       uninstallChannels();
-      expect(results).toEqual([
+      globalThis.expect(results).toEqual([
         {
           TAG: "Ok",
           _0: "ref-1"
@@ -132,16 +132,16 @@ describe("Aggregate decide-rejection propagation:", () => {
           _0: "ref-3"
         }
       ]);
-      expect(AggregateFixtures$ReventlessCore.mock.getAll().length).toBe(0);
-      expect(capturedRejections.contents.length).toBe(3);
+      globalThis.expect(AggregateFixtures$ReventlessCore.mock.getAll().length).toBe(0);
+      globalThis.expect(capturedRejections.contents.length).toBe(3);
       capturedRejections.contents.forEach(param => {
-        expect(param[1].errorCode).toEqual("NotFound");
+        globalThis.expect(param[1].errorCode).toEqual("NotFound");
       });
-      expect(capturedAccepts.contents.length).toBe(0);
+      globalThis.expect(capturedAccepts.contents.length).toBe(0);
     });
   });
-  describe("payload-less variant errors", () => {
-    test("errorDetail is empty string for unit-payload variants", async () => {
+  globalThis.describe("payload-less variant errors", () => {
+    globalThis.test("errorDetail is empty string for unit-payload variants", async () => {
       installChannels();
       await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
           TAG: "Rename",
@@ -149,7 +149,7 @@ describe("Aggregate decide-rejection propagation:", () => {
         })])));
       uninstallChannels();
       let match = capturedRejections.contents[0];
-      expect(match[1].errorDetail).toEqual("");
+      globalThis.expect(match[1].errorDetail).toEqual("");
     });
   });
 });

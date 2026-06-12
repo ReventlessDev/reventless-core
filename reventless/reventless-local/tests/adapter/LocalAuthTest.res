@@ -3,8 +3,7 @@
 
 @@warning("-44")
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 let buildContext = (headers: array<(string, string)>): ReventlessCore.Auth_Adapter.requestContext => {
   headers: Dict.fromArray(headers),

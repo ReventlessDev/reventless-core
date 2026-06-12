@@ -2,8 +2,7 @@
 // Tests for CsvStream.parseRows — Effect Stream bridge for FastCSV.
 // See docs/plans/effect-stream-integration.md Phase E.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 // Write a UTF-8 string to a file synchronously (no return value).
 @module("fs") external writeFileSync: (string, string) => unit = "writeFileSync"

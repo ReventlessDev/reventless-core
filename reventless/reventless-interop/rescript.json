@@ -24,7 +24,7 @@
   "dependencies": [
     "sury",
     "@reventlessdev/rescript-pulumi-pulumi",
-    "@glennsl/rescript-jest"
+    "@reventlessdev/rescript-jest"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

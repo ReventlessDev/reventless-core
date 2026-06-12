@@ -2,8 +2,7 @@
 // These tests verify the streaming replay API and the (state, count) fold pattern
 // used by Aggregate_Callback to replace the two-pass replay + Array.length approach.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open EventLogFixtures
 
 describe("EventLog.replayStream (in-memory adapter)", () => {

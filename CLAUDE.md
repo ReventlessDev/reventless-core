@@ -227,6 +227,7 @@ From the codebase documentation:
 - `rescript-uuid`, `rescript-fast-csv`, `rescript-hash-object`
 - `rescript-node-streams`, `rescript-node-zlib`, `rescript-ssh2`
 - `rescript-graphql-yoga` — bindings for graphql-yoga v5
+- `rescript-jest` — shared Jest-global bindings (`JestGlobals`) with throwing `expect`; the single repo-wide Jest binding for hand-written tests (replaced `@glennsl/rescript-jest`)
 - `rescript-moment` (shared with UI repo via file reference)
 
 **`examples/` — Example applications:**

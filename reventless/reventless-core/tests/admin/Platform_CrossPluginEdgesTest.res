@@ -2,8 +2,7 @@
 // cross-plugin mechanisms (EventTypeMatch with broad consumer types,
 // AutomationSlice, InboundTranslation, Extension).
 
-open Jest
-open Expect
+open JestGlobals
 open Reventless.Plugin
 
 let emptyStructure: pluginStructure = {
@@ -85,7 +84,7 @@ let summarize = (e: graphEdge) => (
 
 describe("Platform_CrossPluginEdges.computeEdges", () => {
   describe("EventTypeMatch — broad consumer types", () => {
-    test("aggregate → cross-plugin StateViewSlice produces edge with kind StateViewSlice", () => {
+    testSync("aggregate → cross-plugin StateViewSlice produces edge with kind StateViewSlice", () => {
       let entries = [
         (
           "PluginA",
@@ -121,7 +120,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
       ])
     })
 
-    test("aggregate → cross-plugin AutomationSlice consumer produces edge with kind AutomationSlice", () => {
+    testSync("aggregate → cross-plugin AutomationSlice consumer produces edge with kind AutomationSlice", () => {
       let entries = [
         (
           "PluginA",
@@ -165,7 +164,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
       ])
     })
 
-    test("aggregate → cross-plugin OutboundTranslationSlice consumer produces edge with kind OutboundTranslationSlice", () => {
+    testSync("aggregate → cross-plugin OutboundTranslationSlice consumer produces edge with kind OutboundTranslationSlice", () => {
       let entries = [
         (
           "PluginA",
@@ -207,7 +206,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
       ])
     })
 
-    test("same-plugin event consumers do not produce cross-plugin edges", () => {
+    testSync("same-plugin event consumers do not produce cross-plugin edges", () => {
       let entries = [
         (
           "PluginA",
@@ -227,7 +226,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
   })
 
   describe("AutomationSlice mechanism", () => {
-    test("cross-plugin command routing produces AutomationSlice edge with target kind StateChangeSlice", () => {
+    testSync("cross-plugin command routing produces AutomationSlice edge with target kind StateChangeSlice", () => {
       let entries = [
         (
           "PluginA",
@@ -268,7 +267,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
       ])
     })
 
-    test("same-plugin AutomationSlice target produces no cross-plugin edge", () => {
+    testSync("same-plugin AutomationSlice target produces no cross-plugin edge", () => {
       let entries = [
         (
           "PluginA",
@@ -292,7 +291,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
       expect(edges->Array.length)->toBe(0)
     })
 
-    test("AutomationSlice routing into a cross-plugin Aggregate marks target kind Aggregate", () => {
+    testSync("AutomationSlice routing into a cross-plugin Aggregate marks target kind Aggregate", () => {
       let entries = [
         (
           "PluginA",
@@ -324,7 +323,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
   })
 
   describe("InboundTranslation mechanism", () => {
-    test("cross-plugin command routing produces InboundTranslation edge", () => {
+    testSync("cross-plugin command routing produces InboundTranslation edge", () => {
       let entries = [
         (
           "PluginA",
@@ -364,7 +363,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
       ])
     })
 
-    test("same-plugin InboundTranslation target produces no cross-plugin edge", () => {
+    testSync("same-plugin InboundTranslation target produces no cross-plugin edge", () => {
       let entries = [
         (
           "PluginA",
@@ -389,7 +388,7 @@ describe("Platform_CrossPluginEdges.computeEdges", () => {
   })
 
   describe("Extension mechanism (regression coverage)", () => {
-    test("dotted EP-name prefix in another plugin produces Extension edge", () => {
+    testSync("dotted EP-name prefix in another plugin produces Extension edge", () => {
       let entries = [
         (
           "Catalog",

@@ -51,14 +51,14 @@ function tapLines(logs) {
   return logs.filter(l => l.startsWith(sentinel));
 }
 
-describe("LocalBus event tap (Phase 9)", () => {
-  test("tap off → no sentinel line is emitted", async () => {
+globalThis.describe("LocalBus event tap (Phase 9)", () => {
+  globalThis.test("tap off → no sentinel line is emitted", async () => {
     Stdlib_Dict.$$delete(process.env, "REVENTLESS_EVENT_TAP");
     let TestBus = LocalBus$ReventlessLocal.MakeSilent({});
     let logs = await captureLogs(async () => await TestBus.publishEvent("SomeTopic", "svc", defaultMeta, JSON.parse(`{"a":1}`)));
-    expect(tapLines(logs).length).toBe(0);
+    globalThis.expect(tapLines(logs).length).toBe(0);
   });
-  test("tap on → one well-formed line per published event", async () => {
+  globalThis.test("tap on → one well-formed line per published event", async () => {
     process.env["REVENTLESS_EVENT_TAP"] = "ndjson";
     let TestBus = LocalBus$ReventlessLocal.MakeSilent({});
     let logs = await captureLogs(async () => {
@@ -67,21 +67,21 @@ describe("LocalBus event tap (Phase 9)", () => {
     });
     Stdlib_Dict.$$delete(process.env, "REVENTLESS_EVENT_TAP");
     let lines = tapLines(logs);
-    expect(lines.length).toBe(2);
+    globalThis.expect(lines.length).toBe(2);
     let first = lines[0];
     let json = JSON.parse(first.slice(sentinel.length, first.length));
     let obj = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(json), undefined);
-    expect(Stdlib_Option.flatMap(obj["event"], Stdlib_JSON.Decode.string)).toEqual("domainEvent");
-    expect(Stdlib_Option.flatMap(obj["topic"], Stdlib_JSON.Decode.string)).toEqual("CatalogEventTopic");
-    expect(Stdlib_Option.flatMap(obj["seq"], Stdlib_JSON.Decode.float)).toEqual(1.0);
-    expect(Stdlib_Option.isSome(obj["payload"])).toBe(true);
+    globalThis.expect(Stdlib_Option.flatMap(obj["event"], Stdlib_JSON.Decode.string)).toEqual("domainEvent");
+    globalThis.expect(Stdlib_Option.flatMap(obj["topic"], Stdlib_JSON.Decode.string)).toEqual("CatalogEventTopic");
+    globalThis.expect(Stdlib_Option.flatMap(obj["seq"], Stdlib_JSON.Decode.float)).toEqual(1.0);
+    globalThis.expect(Stdlib_Option.isSome(obj["payload"])).toBe(true);
   });
-  test("tap emits even when the topic has no subscribers", async () => {
+  globalThis.test("tap emits even when the topic has no subscribers", async () => {
     process.env["REVENTLESS_EVENT_TAP"] = "ndjson";
     let TestBus = LocalBus$ReventlessLocal.MakeSilent({});
     let logs = await captureLogs(async () => await TestBus.publishEvent("Lonely", "svc", defaultMeta, null));
     Stdlib_Dict.$$delete(process.env, "REVENTLESS_EVENT_TAP");
-    expect(tapLines(logs).length).toBe(1);
+    globalThis.expect(tapLines(logs).length).toBe(1);
   });
 });
 

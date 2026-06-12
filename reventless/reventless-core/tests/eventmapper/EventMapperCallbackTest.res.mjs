@@ -5,42 +5,42 @@ import * as Stream from "effect/Stream";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as EventMapperFixtures$ReventlessCore from "./EventMapperFixtures.res.mjs";
 
-beforeEach(() => EventMapperFixtures$ReventlessCore.resetMocks());
+globalThis.beforeEach(() => EventMapperFixtures$ReventlessCore.resetMocks());
 
-describe("MakeCounterHandler.handleCounterEvents:", () => {
-  describe("event with matching source mapping", () => {
-    test("publishes command JSON for OrderPlaced", async () => {
+globalThis.describe("MakeCounterHandler.handleCounterEvents:", () => {
+  globalThis.describe("event with matching source mapping", () => {
+    globalThis.test("publishes command JSON for OrderPlaced", async () => {
       let eventJson = EventMapperFixtures$ReventlessCore.makeEventJson(undefined, "src-1", Message$ReventlessCore.encode({
         TAG: "OrderPlaced",
         orderId: "order-1",
         amount: 99.99
       }, EventMapperFixtures$ReventlessCore.CmdSourceSpec.eventSchema));
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents(Stream.fromIterable([eventJson])));
-      expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(1);
+      globalThis.expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(1);
     });
   });
-  describe("event with unknown service", () => {
-    test("skipped — no publish", async () => {
+  globalThis.describe("event with unknown service", () => {
+    globalThis.test("skipped — no publish", async () => {
       let eventJson = EventMapperFixtures$ReventlessCore.makeEventJson("UnknownService", "src-1", Message$ReventlessCore.encode({
         TAG: "OrderPlaced",
         orderId: "order-1",
         amount: 50.0
       }, EventMapperFixtures$ReventlessCore.CmdSourceSpec.eventSchema));
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents(Stream.fromIterable([eventJson])));
-      expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(0);
+      globalThis.expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(0);
     });
   });
-  describe("invalid event JSON", () => {
-    test("skipped gracefully — no throw, no publish", async () => {
+  globalThis.describe("invalid event JSON", () => {
+    globalThis.test("skipped gracefully — no throw, no publish", async () => {
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestCounterHandler.handleCounterEvents(Stream.fromIterable(["not-an-object"])));
-      expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(0);
+      globalThis.expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(0);
     });
   });
 });
 
-describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
-  describe("Count action", () => {
-    test("calls count with the countItem", async () => {
+globalThis.describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
+  globalThis.describe("Count action", () => {
+    globalThis.test("calls count with the countItem", async () => {
       let countItem = {
         counterId: "c1",
         reference: "ref-1",
@@ -54,11 +54,11 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
           }]
       ];
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestECHandler.handleJsonEvents(Stream.fromIterable([null])));
-      expect(EventMapperFixtures$ReventlessCore.capturedCountItems.contents).toEqual([countItem]);
+      globalThis.expect(EventMapperFixtures$ReventlessCore.capturedCountItems.contents).toEqual([countItem]);
     });
   });
-  describe("AddToCounterTarget action", () => {
-    test("calls addToCounterTarget with the counterTargetRef", async () => {
+  globalThis.describe("AddToCounterTarget action", () => {
+    globalThis.test("calls addToCounterTarget with the counterTargetRef", async () => {
       let target = {
         counterId: "c1",
         target: 5,
@@ -72,11 +72,11 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
           }]
       ];
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestECHandler.handleJsonEvents(Stream.fromIterable([null])));
-      expect(EventMapperFixtures$ReventlessCore.capturedCounterTargets.contents).toEqual([target]);
+      globalThis.expect(EventMapperFixtures$ReventlessCore.capturedCounterTargets.contents).toEqual([target]);
     });
   });
-  describe("Publisher action", () => {
-    test("calls publishJsons with the command", async () => {
+  globalThis.describe("Publisher action", () => {
+    globalThis.test("calls publishJsons with the command", async () => {
       let cmd = {
         id: "agg-1",
         meta: EventMapperFixtures$ReventlessCore.evtMapTestMeta,
@@ -87,11 +87,11 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
         []
       ];
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestECHandler.handleJsonEvents(Stream.fromIterable([null])));
-      expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(1);
+      globalThis.expect(EventMapperFixtures$ReventlessCore.capturedCmds.contents.length).toBe(1);
     });
   });
-  describe("mixed actions", () => {
-    test("both publish and count called", async () => {
+  globalThis.describe("mixed actions", () => {
+    globalThis.test("both publish and count called", async () => {
       let cmd = {
         id: "agg-1",
         meta: EventMapperFixtures$ReventlessCore.evtMapTestMeta,
@@ -109,7 +109,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
           }]
       ];
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestECHandler.handleJsonEvents(Stream.fromIterable([null])));
-      expect([
+      globalThis.expect([
         EventMapperFixtures$ReventlessCore.capturedCmds.contents.length,
         EventMapperFixtures$ReventlessCore.capturedCountItems.contents.length
       ]).toEqual([
@@ -118,8 +118,8 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
       ]);
     });
   });
-  describe("doCount retry", () => {
-    test("retries when count throws, eventually succeeds", async () => {
+  globalThis.describe("doCount retry", () => {
+    globalThis.test("retries when count throws, eventually succeeds", async () => {
       EventMapperFixtures$ReventlessCore.mockCountFailUntil.contents = 1;
       EventMapperFixtures$ReventlessCore.mockCommonHandler.contents = async param => [
         Promise.resolve([]),
@@ -133,7 +133,7 @@ describe("MakeEventCollectorHandler.handleJsonEvents:", () => {
           }]
       ];
       await Effect.runPromise(EventMapperFixtures$ReventlessCore.TestECHandler.handleJsonEvents(Stream.fromIterable([null])));
-      expect(EventMapperFixtures$ReventlessCore.mockCountCallCount.contents >= 2).toBe(true);
+      globalThis.expect(EventMapperFixtures$ReventlessCore.mockCountCallCount.contents >= 2).toBe(true);
     });
   });
 });

@@ -33,7 +33,6 @@
     "@reventlessdev/online-shop-aggregates-catalog-spec"
   ],
   "dev-dependencies": [
-    "@glennsl/rescript-jest"
   ],
   "compiler-flags": [],
   "suffix": ".res.mjs"

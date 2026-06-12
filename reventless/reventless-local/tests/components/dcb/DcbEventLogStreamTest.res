@@ -1,8 +1,7 @@
 // Tests for DcbEventLog.readStream (Phase D of effect-stream-integration plan).
 // Mirrors the pattern of EventLogStreamTest.res for the DCB event log.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open DcbFixtures
 
 describe("DcbEventLog.readStream (in-memory adapter)", () => {

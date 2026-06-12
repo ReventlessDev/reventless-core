@@ -21,57 +21,57 @@ function makeFixture() {
   return base;
 }
 
-describe("Util_StaticBundle.contentTypeFor", () => {
-  test("html", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("index.html")).toBe("text/html; charset=utf-8");
+globalThis.describe("Util_StaticBundle.contentTypeFor", () => {
+  globalThis.test("html", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("index.html")).toBe("text/html; charset=utf-8");
   });
-  test("css", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("foo/bar.css")).toBe("text/css; charset=utf-8");
+  globalThis.test("css", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("foo/bar.css")).toBe("text/css; charset=utf-8");
   });
-  test("js", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("app.js")).toBe("application/javascript; charset=utf-8");
+  globalThis.test("js", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("app.js")).toBe("application/javascript; charset=utf-8");
   });
-  test("mjs", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("module.mjs")).toBe("application/javascript; charset=utf-8");
+  globalThis.test("mjs", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("module.mjs")).toBe("application/javascript; charset=utf-8");
   });
-  test("json", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("data.json")).toBe("application/json; charset=utf-8");
+  globalThis.test("json", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("data.json")).toBe("application/json; charset=utf-8");
   });
-  test("svg", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("logo.svg")).toBe("image/svg+xml");
+  globalThis.test("svg", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("logo.svg")).toBe("image/svg+xml");
   });
-  test("woff2", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("font.woff2")).toBe("font/woff2");
+  globalThis.test("woff2", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("font.woff2")).toBe("font/woff2");
   });
-  test("wasm", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("blob.wasm")).toBe("application/wasm");
+  globalThis.test("wasm", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("blob.wasm")).toBe("application/wasm");
   });
-  test("uppercase extension is normalised", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("LOGO.PNG")).toBe("image/png");
+  globalThis.test("uppercase extension is normalised", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("LOGO.PNG")).toBe("image/png");
   });
-  test("unknown extension defaults to octet-stream", () => {
-    expect(Util_StaticBundle$ReventlessAws.contentTypeFor("blob.xyz")).toBe("application/octet-stream");
-  });
-});
-
-describe("Util_StaticBundle.sanitizeName", () => {
-  test("replaces slashes with dashes", () => {
-    expect(Util_StaticBundle$ReventlessAws.sanitizeName("foo/bar/baz")).toBe("foo-bar-baz");
-  });
-  test("replaces dots with dashes", () => {
-    expect(Util_StaticBundle$ReventlessAws.sanitizeName("index.html")).toBe("index-html");
-  });
-  test("replaces both", () => {
-    expect(Util_StaticBundle$ReventlessAws.sanitizeName("assets/logo.svg")).toBe("assets-logo-svg");
+  globalThis.test("unknown extension defaults to octet-stream", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.contentTypeFor("blob.xyz")).toBe("application/octet-stream");
   });
 });
 
-describe("Util_StaticBundle.walk", () => {
-  test("returns one entry per file, skips dotfiles, uses forward slashes", () => {
+globalThis.describe("Util_StaticBundle.sanitizeName", () => {
+  globalThis.test("replaces slashes with dashes", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.sanitizeName("foo/bar/baz")).toBe("foo-bar-baz");
+  });
+  globalThis.test("replaces dots with dashes", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.sanitizeName("index.html")).toBe("index-html");
+  });
+  globalThis.test("replaces both", () => {
+    globalThis.expect(Util_StaticBundle$ReventlessAws.sanitizeName("assets/logo.svg")).toBe("assets-logo-svg");
+  });
+});
+
+globalThis.describe("Util_StaticBundle.walk", () => {
+  globalThis.test("returns one entry per file, skips dotfiles, uses forward slashes", () => {
     let dir = makeFixture();
     let entries = Util_StaticBundle$ReventlessAws.walk(dir);
     let keys = entries.map(e => e.relativePath).toSorted(Primitive_string.compare);
-    expect(keys).toEqual([
+    globalThis.expect(keys).toEqual([
       "app.css",
       "app.js",
       "assets/favicon.ico",
@@ -83,18 +83,18 @@ describe("Util_StaticBundle.walk", () => {
       force: true
     });
   });
-  test("computes a non-empty content hash for each entry", () => {
+  globalThis.test("computes a non-empty content hash for each entry", () => {
     let dir = makeFixture();
     let entries = Util_StaticBundle$ReventlessAws.walk(dir);
     entries.forEach(e => {
-      expect(e.contentHash.length > 0).toBe(true);
+      globalThis.expect(e.contentHash.length > 0).toBe(true);
     });
     Fs.rmSync(dir, {
       recursive: true,
       force: true
     });
   });
-  test("identical contents produce identical hashes", () => {
+  globalThis.test("identical contents produce identical hashes", () => {
     let dir = makeFixture();
     let entries = Util_StaticBundle$ReventlessAws.walk(dir);
     let indexEntry = entries.find(e => e.relativePath === "index.html");
@@ -103,7 +103,7 @@ describe("Util_StaticBundle.walk", () => {
     Fs.writeFileSync(Path.join(dir2, "index.html"), "<html></html>");
     let entries2 = Util_StaticBundle$ReventlessAws.walk(dir2);
     let indexHash2 = entries2[0].contentHash;
-    expect(indexHash).toBe(indexHash2);
+    globalThis.expect(indexHash).toBe(indexHash2);
     Fs.rmSync(dir, {
       recursive: true,
       force: true
@@ -113,14 +113,14 @@ describe("Util_StaticBundle.walk", () => {
       force: true
     });
   });
-  test("different contents produce different hashes", () => {
+  globalThis.test("different contents produce different hashes", () => {
     let dirA = Fs.mkdtempSync(Path.join(Os.tmpdir(), "static-bundle-"));
     Fs.writeFileSync(Path.join(dirA, "f.txt"), "AAA");
     let dirB = Fs.mkdtempSync(Path.join(Os.tmpdir(), "static-bundle-"));
     Fs.writeFileSync(Path.join(dirB, "f.txt"), "BBB");
     let hashA = Util_StaticBundle$ReventlessAws.walk(dirA)[0].contentHash;
     let hashB = Util_StaticBundle$ReventlessAws.walk(dirB)[0].contentHash;
-    expect(hashA === hashB).toBe(false);
+    globalThis.expect(hashA === hashB).toBe(false);
     Fs.rmSync(dirA, {
       recursive: true,
       force: true
@@ -130,7 +130,7 @@ describe("Util_StaticBundle.walk", () => {
       force: true
     });
   });
-  test("throws when assetsDir does not exist", () => {
+  globalThis.test("throws when assetsDir does not exist", () => {
     let missing = Path.join(Os.tmpdir(), "static-bundle-does-not-exist-xyz123");
     let threw;
     try {
@@ -139,7 +139,7 @@ describe("Util_StaticBundle.walk", () => {
     } catch (exn) {
       threw = true;
     }
-    expect(threw).toBe(true);
+    globalThis.expect(threw).toBe(true);
   });
 });
 

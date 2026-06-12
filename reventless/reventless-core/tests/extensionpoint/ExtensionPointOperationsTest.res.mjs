@@ -239,42 +239,42 @@ function reset() {
   capturedCallCount.contents = 0;
 }
 
-describe("ExtensionPoint_Operations.Make:", () => {
-  beforeEach(() => reset());
-  describe("outgoingJsonEventsHandler — AbstractPublishEvent:", () => {
-    test("known aggregate calls publishToEventTopic with correct destination id", async () => {
+globalThis.describe("ExtensionPoint_Operations.Make:", () => {
+  globalThis.beforeEach(() => reset());
+  globalThis.describe("outgoingJsonEventsHandler — AbstractPublishEvent:", () => {
+    globalThis.test("known aggregate calls publishToEventTopic with correct destination id", async () => {
       let eventJson = makeEventJsonForAgg("PublishAgg");
       await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
-      expect(capturedPublished.contents.length).toBe(1);
+      globalThis.expect(capturedPublished.contents.length).toBe(1);
       let item = capturedPublished.contents[0];
-      expect(item[0]).toBe("ep-dest");
+      globalThis.expect(item[0]).toBe("ep-dest");
     });
-    test("publishToEventTopic receives the original event JSON", async () => {
+    globalThis.test("publishToEventTopic receives the original event JSON", async () => {
       let eventJson = makeEventJsonForAgg("PublishAgg");
       await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
       let item = capturedPublished.contents[0];
-      expect(item[2]).toEqual(eventJson);
+      globalThis.expect(item[2]).toEqual(eventJson);
     });
   });
-  describe("outgoingJsonEventsHandler — AbstractCall:", () => {
-    test("known aggregate with AbstractCall invokes the handler", async () => {
+  globalThis.describe("outgoingJsonEventsHandler — AbstractCall:", () => {
+    globalThis.test("known aggregate with AbstractCall invokes the handler", async () => {
       let eventJson = makeEventJsonForAgg("CallAgg");
       await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
-      expect(capturedCallCount.contents).toBe(1);
-      expect(capturedPublished.contents.length).toBe(0);
+      globalThis.expect(capturedCallCount.contents).toBe(1);
+      globalThis.expect(capturedPublished.contents.length).toBe(0);
     });
   });
-  describe("outgoingJsonEventsHandler — AbstractPublishEventAsync:", () => {
-    test("async mapping resolves and calls publishToEventTopic", async () => {
+  globalThis.describe("outgoingJsonEventsHandler — AbstractPublishEventAsync:", () => {
+    globalThis.test("async mapping resolves and calls publishToEventTopic", async () => {
       let eventJson = makeEventJsonForAgg("AsyncAgg");
       await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
-      expect(capturedPublished.contents.length).toBe(1);
+      globalThis.expect(capturedPublished.contents.length).toBe(1);
       let item = capturedPublished.contents[0];
-      expect(item[0]).toBe("ep-async-dest");
+      globalThis.expect(item[0]).toBe("ep-async-dest");
     });
   });
-  describe("outgoingJsonEventsHandler — no matching mapping:", () => {
-    test("event from unknown aggregate throws", async () => {
+  globalThis.describe("outgoingJsonEventsHandler — no matching mapping:", () => {
+    globalThis.test("event from unknown aggregate throws", async () => {
       let eventJson = makeEventJsonForAgg("UnknownAgg");
       let didThrow = false;
       try {
@@ -282,7 +282,7 @@ describe("ExtensionPoint_Operations.Make:", () => {
       } catch (exn) {
         didThrow = true;
       }
-      expect(didThrow).toBe(true);
+      globalThis.expect(didThrow).toBe(true);
     });
   });
 });

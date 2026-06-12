@@ -9,44 +9,44 @@ function pkgJson(depsOpt, scriptsOpt) {
   return `{"name":"@app/platform-local","dependencies":` + deps + `,"scripts":` + scripts + `}`;
 }
 
-describe("PlatformScan.matchPlatform", () => {
-  test("matches when it depends on reventless-local and Main.res.mjs exists", async () => {
+globalThis.describe("PlatformScan.matchPlatform", () => {
+  globalThis.test("matches when it depends on reventless-local and Main.res.mjs exists", async () => {
     let text = pkgJson(`{"@reventlessdev/reventless-local":"workspace:*"}`, undefined);
     let match = PlatformScan$ReventlessGwt.matchPlatform(text, true);
     if (match !== undefined) {
-      expect(match[0]).toEqual("@app/platform-local");
+      globalThis.expect(match[0]).toEqual("@app/platform-local");
     } else {
-      expect("None").toEqual("Some");
+      globalThis.expect("None").toEqual("Some");
     }
   });
-  test("no match when src/Main.res.mjs is absent", async () => {
+  globalThis.test("no match when src/Main.res.mjs is absent", async () => {
     let text = pkgJson(`{"@reventlessdev/reventless-local":"workspace:*"}`, undefined);
-    expect(Stdlib_Option.isNone(PlatformScan$ReventlessGwt.matchPlatform(text, false))).toBe(true);
+    globalThis.expect(Stdlib_Option.isNone(PlatformScan$ReventlessGwt.matchPlatform(text, false))).toBe(true);
   });
-  test("no match without the reventless-local dependency", async () => {
+  globalThis.test("no match without the reventless-local dependency", async () => {
     let text = pkgJson(`{"sury":"^11"}`, undefined);
-    expect(Stdlib_Option.isNone(PlatformScan$ReventlessGwt.matchPlatform(text, true))).toBe(true);
+    globalThis.expect(Stdlib_Option.isNone(PlatformScan$ReventlessGwt.matchPlatform(text, true))).toBe(true);
   });
-  test("prefers the serve:memory script over serve", async () => {
+  globalThis.test("prefers the serve:memory script over serve", async () => {
     let text = pkgJson(`{"@reventlessdev/reventless-local":"workspace:*"}`, `{"serve":"tsx Main","serve:memory":"REVENTLESS_LOCAL_BACKEND=memory tsx Main"}`);
     let match = PlatformScan$ReventlessGwt.matchPlatform(text, true);
     if (match !== undefined) {
-      expect(match[1]).toEqual("serve:memory");
+      globalThis.expect(match[1]).toEqual("serve:memory");
     } else {
-      expect("None").toEqual("Some");
+      globalThis.expect("None").toEqual("Some");
     }
   });
-  test("falls back to serve when serve:memory is absent", async () => {
+  globalThis.test("falls back to serve when serve:memory is absent", async () => {
     let text = pkgJson(`{"@reventlessdev/reventless-local":"workspace:*"}`, `{"serve":"tsx Main"}`);
     let match = PlatformScan$ReventlessGwt.matchPlatform(text, true);
     if (match !== undefined) {
-      expect(match[1]).toEqual("serve");
+      globalThis.expect(match[1]).toEqual("serve");
     } else {
-      expect("None").toEqual("Some");
+      globalThis.expect("None").toEqual("Some");
     }
   });
-  test("matches via devDependencies too", async () => {
-    expect(Stdlib_Option.isSome(PlatformScan$ReventlessGwt.matchPlatform(`{"name":"p","devDependencies":{"@reventlessdev/reventless-local":"*"}}`, true))).toBe(true);
+  globalThis.test("matches via devDependencies too", async () => {
+    globalThis.expect(Stdlib_Option.isSome(PlatformScan$ReventlessGwt.matchPlatform(`{"name":"p","devDependencies":{"@reventlessdev/reventless-local":"*"}}`, true))).toBe(true);
   });
 });
 

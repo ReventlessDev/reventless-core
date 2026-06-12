@@ -28,26 +28,26 @@ let Ops = QueryDb_Operations$ReventlessCore.Make({
   jsonOps: QueryDbFixtures$ReventlessCore.mockJsonOps
 });
 
-beforeEach(() => QueryDbFixtures$ReventlessCore.reset());
+globalThis.beforeEach(() => QueryDbFixtures$ReventlessCore.reset());
 
-describe("QueryDb_Operations:", () => {
-  describe("loadStream", () => {
-    test("returns empty stream for unknown id", async () => {
+globalThis.describe("QueryDb_Operations:", () => {
+  globalThis.describe("loadStream", () => {
+    globalThis.test("returns empty stream for unknown id", async () => {
       let result = await Effect.runPromise(Stream.runCollect(Ops.loadStream("unknown-id")));
-      expect(result).toEqual([]);
+      globalThis.expect(result).toEqual([]);
     });
-    test("decodes saved state back to typed state", async () => {
+    globalThis.test("decodes saved state back to typed state", async () => {
       await Ops.save("item-1", {
         name: "Widget",
         count: 5
       }, "Init", undefined);
       let result = await Effect.runPromise(Stream.runCollect(Ops.loadStream("item-1")));
       if (result.length !== 1) {
-        expect("unexpected result").toEqual("Ok([state])");
+        globalThis.expect("unexpected result").toEqual("Ok([state])");
         return;
       }
       let s = result[0];
-      expect([
+      globalThis.expect([
         s.name,
         s.count
       ]).toEqual([
@@ -55,7 +55,7 @@ describe("QueryDb_Operations:", () => {
         5
       ]);
     });
-    test("returns updated state after overwrite", async () => {
+    globalThis.test("returns updated state after overwrite", async () => {
       await Ops.save("item-1", {
         name: "Widget",
         count: 1
@@ -66,47 +66,47 @@ describe("QueryDb_Operations:", () => {
       }, "Overwrite", undefined);
       let result = await Effect.runPromise(Stream.runCollect(Ops.loadStream("item-1")));
       if (result.length !== 1) {
-        expect("unexpected result").toEqual("Ok([state])");
+        globalThis.expect("unexpected result").toEqual("Ok([state])");
         return;
       }
       let s = result[0];
-      expect(s.name).toBe("Widget Updated");
+      globalThis.expect(s.name).toBe("Widget Updated");
     });
   });
-  describe("save", () => {
-    test("returns Ok on success", async () => {
+  globalThis.describe("save", () => {
+    globalThis.test("returns Ok on success", async () => {
       let result = await Ops.save("item-1", {
         name: "Widget",
         count: 1
       }, "Init", undefined);
-      expect(Stdlib_Result.isOk(result)).toBe(true);
+      globalThis.expect(Stdlib_Result.isOk(result)).toBe(true);
     });
-    test("stores id field in JSON", async () => {
+    globalThis.test("stores id field in JSON", async () => {
       await Ops.save("item-42", {
         name: "Widget",
         count: 0
       }, "Init", undefined);
       let stored = Stdlib_Option.getOr(QueryDbFixtures$ReventlessCore.store.contents["item-42"], []);
-      expect(stored.length).toBe(1);
+      globalThis.expect(stored.length).toBe(1);
       let json = stored[0];
       let idField = Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(json), d => d["id"]), j => {
         if (typeof j === "string") {
           return j;
         }
       });
-      expect(idField).toEqual("item-42");
+      globalThis.expect(idField).toEqual("item-42");
     });
-    test("returns Error when storage fails", async () => {
+    globalThis.test("returns Error when storage fails", async () => {
       QueryDbFixtures$ReventlessCore.failNextWrite.contents = true;
       let result = await Ops.save("item-1", {
         name: "Widget",
         count: 1
       }, "Init", undefined);
-      expect(Stdlib_Result.isError(result)).toBe(true);
+      globalThis.expect(Stdlib_Result.isError(result)).toBe(true);
     });
   });
-  describe("saveBatch", () => {
-    test("saves multiple states", async () => {
+  globalThis.describe("saveBatch", () => {
+    globalThis.test("saves multiple states", async () => {
       let batch = [
         [
           "item-1",
@@ -128,7 +128,7 @@ describe("QueryDb_Operations:", () => {
       await Ops.saveBatch(batch);
       let r1 = await Effect.runPromise(Stream.runCollect(Ops.loadStream("item-1")));
       let r2 = await Effect.runPromise(Stream.runCollect(Ops.loadStream("item-2")));
-      expect([
+      globalThis.expect([
         r1.length !== 0,
         r2.length !== 0
       ]).toEqual([
@@ -136,7 +136,7 @@ describe("QueryDb_Operations:", () => {
         true
       ]);
     });
-    test("returns Error when storage fails", async () => {
+    globalThis.test("returns Error when storage fails", async () => {
       QueryDbFixtures$ReventlessCore.failNextWrite.contents = true;
       let result = await Ops.saveBatch([[
           "item-1",
@@ -146,18 +146,18 @@ describe("QueryDb_Operations:", () => {
           },
           undefined
         ]]);
-      expect(Stdlib_Result.isError(result)).toBe(true);
+      globalThis.expect(Stdlib_Result.isError(result)).toBe(true);
     });
   });
-  describe("delete", () => {
-    test("removes state from storage", async () => {
+  globalThis.describe("delete", () => {
+    globalThis.test("removes state from storage", async () => {
       await Ops.save("item-1", {
         name: "Widget",
         count: 1
       }, "Init", undefined);
       await Ops.$$delete("item-1", undefined);
       let result = await Effect.runPromise(Stream.runCollect(Ops.loadStream("item-1")));
-      expect(result).toEqual([]);
+      globalThis.expect(result).toEqual([]);
     });
   });
 });

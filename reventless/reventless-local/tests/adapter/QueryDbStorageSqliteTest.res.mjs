@@ -15,8 +15,8 @@ function makeFreshDb() {
   return SqliteDriver$ReventlessLocal.openDb(":memory:");
 }
 
-describe("QueryDbStorage_Sqlite", () => {
-  test("save then loadStream round-trips an item", async () => {
+globalThis.describe("QueryDbStorage_Sqlite", () => {
+  globalThis.test("save then loadStream round-trips an item", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -27,10 +27,10 @@ describe("QueryDbStorage_Sqlite", () => {
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("id1", "value1", "Any", undefined);
     let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("id1")), param => Effect.succeed([])));
-    expect(items.length).toBe(1);
-    expect(items[0]).toEqual("value1");
+    globalThis.expect(items.length).toBe(1);
+    globalThis.expect(items[0]).toEqual("value1");
   });
-  test("save overwrites existing item at same (id, subKey)", async () => {
+  globalThis.test("save overwrites existing item at same (id, subKey)", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -42,10 +42,10 @@ describe("QueryDbStorage_Sqlite", () => {
     await ops.save("k", "a", "Any", undefined);
     await ops.save("k", "b", "Any", undefined);
     let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("k")), param => Effect.succeed([])));
-    expect(items.length).toBe(1);
-    expect(items[0]).toEqual("b");
+    globalThis.expect(items.length).toBe(1);
+    globalThis.expect(items[0]).toEqual("b");
   });
-  test("saveBatch atomically writes several items", async () => {
+  globalThis.test("saveBatch atomically writes several items", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -74,11 +74,11 @@ describe("QueryDbStorage_Sqlite", () => {
     let items1 = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("id1")), param => Effect.succeed([])));
     let items2 = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("id2")), param => Effect.succeed([])));
     let items3 = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("id3")), param => Effect.succeed([])));
-    expect(items1.length).toBe(1);
-    expect(items2.length).toBe(1);
-    expect(items3.length).toBe(1);
+    globalThis.expect(items1.length).toBe(1);
+    globalThis.expect(items2.length).toBe(1);
+    globalThis.expect(items3.length).toBe(1);
   });
-  test("delete removes an item from a partition", async () => {
+  globalThis.test("delete removes an item from a partition", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -90,9 +90,9 @@ describe("QueryDbStorage_Sqlite", () => {
     await ops.save("k", "a", "Any", undefined);
     await ops.delete("k", undefined);
     let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("k")), param => Effect.succeed([])));
-    expect(items.length).toBe(0);
+    globalThis.expect(items.length).toBe(0);
   });
-  test("items persist across a file reopen", async () => {
+  globalThis.test("items persist across a file reopen", async () => {
     let path = `/tmp/reventless-test-qdb-` + Date.now().toString() + `.db`;
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(path);
@@ -113,8 +113,8 @@ describe("QueryDbStorage_Sqlite", () => {
     let s2 = Storage2.make("persist", [], undefined, undefined, undefined, undefined, opts);
     let ops2 = await TestRunner$ReventlessLocal.resolve(s2.operations);
     let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops2.loadStream("k")), param => Effect.succeed([])));
-    expect(items.length).toBe(1);
-    expect(items[0]).toEqual("hello");
+    globalThis.expect(items.length).toBe(1);
+    globalThis.expect(items[0]).toEqual("hello");
     return SqliteDriver$ReventlessLocal.close(db$1);
   });
 });

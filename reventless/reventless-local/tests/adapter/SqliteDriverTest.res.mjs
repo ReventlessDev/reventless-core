@@ -6,8 +6,8 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Backend$ReventlessLocal from "../../src/adapter/Backend.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.res.mjs";
 
-describe("SqliteDriver", () => {
-  test("open / exec / prepare / run / get / all / iterate / close round-trip", async () => {
+globalThis.describe("SqliteDriver", () => {
+  globalThis.test("open / exec / prepare / run / get / all / iterate / close round-trip", async () => {
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE t(id INTEGER PRIMARY KEY, v TEXT)");
     let insert = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO t(id, v) VALUES(?, ?)");
@@ -21,11 +21,11 @@ describe("SqliteDriver", () => {
     ]);
     let selectAll = SqliteDriver$ReventlessLocal.prepare(db, "SELECT id, v FROM t WHERE id > ? ORDER BY id");
     let rows = SqliteDriver$ReventlessLocal.all(selectAll, [0]);
-    expect(rows.length).toBe(2);
+    globalThis.expect(rows.length).toBe(2);
     let firstRow = rows[0];
-    expect(Stdlib_Option.getOr(firstRow["v"], null)).toEqual("hello");
+    globalThis.expect(Stdlib_Option.getOr(firstRow["v"], null)).toEqual("hello");
     let getOne = SqliteDriver$ReventlessLocal.get(selectAll, [0]);
-    expect(Stdlib_Option.isSome(getOne)).toBe(true);
+    globalThis.expect(Stdlib_Option.isSome(getOne)).toBe(true);
     let countViaIterate = {
       contents: 0
     };
@@ -33,10 +33,10 @@ describe("SqliteDriver", () => {
     iter.forEach(_row => {
       countViaIterate.contents = countViaIterate.contents + 1 | 0;
     });
-    expect(countViaIterate.contents).toBe(2);
+    globalThis.expect(countViaIterate.contents).toBe(2);
     return SqliteDriver$ReventlessLocal.close(db);
   });
-  test("transaction commits on success, rolls back on exception", async () => {
+  globalThis.test("transaction commits on success, rolls back on exception", async () => {
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     SqliteDriver$ReventlessLocal.exec(db, "CREATE TABLE t(id INTEGER PRIMARY KEY)");
     let insert = SqliteDriver$ReventlessLocal.prepare(db, "INSERT INTO t(id) VALUES(?)");
@@ -46,7 +46,7 @@ describe("SqliteDriver", () => {
       SqliteDriver$ReventlessLocal.run(insert, [2]);
     });
     let row = Stdlib_Option.getOrThrow(SqliteDriver$ReventlessLocal.get(countAll, []), undefined);
-    expect(Stdlib_Option.getOr(row["c"], null)).toEqual(2);
+    globalThis.expect(Stdlib_Option.getOr(row["c"], null)).toEqual(2);
     let didThrow = false;
     try {
       SqliteDriver$ReventlessLocal.transaction(db, () => {
@@ -65,30 +65,30 @@ describe("SqliteDriver", () => {
         throw exn;
       }
     }
-    expect(didThrow).toBe(true);
+    globalThis.expect(didThrow).toBe(true);
     let rowAfter = Stdlib_Option.getOrThrow(SqliteDriver$ReventlessLocal.get(countAll, []), undefined);
-    expect(Stdlib_Option.getOr(rowAfter["c"], null)).toEqual(2);
+    globalThis.expect(Stdlib_Option.getOr(rowAfter["c"], null)).toEqual(2);
     return SqliteDriver$ReventlessLocal.close(db);
   });
-  test("Backend.fromEnv parses sqlite path and reset flag", async () => {
+  globalThis.test("Backend.fromEnv parses sqlite path and reset flag", async () => {
     let originalEnv = process.env["REVENTLESS_LOCAL_BACKEND"];
     process.env["REVENTLESS_LOCAL_BACKEND"] = "sqlite:./local.db";
     let parsed = Backend$ReventlessLocal.fromEnv();
-    expect(parsed).toEqual({
+    globalThis.expect(parsed).toEqual({
       TAG: "Sqlite",
       path: "./local.db",
       resetOnStart: false
     });
     process.env["REVENTLESS_LOCAL_BACKEND"] = "sqlite:./local.db?reset";
     let parsedReset = Backend$ReventlessLocal.fromEnv();
-    expect(parsedReset).toEqual({
+    globalThis.expect(parsedReset).toEqual({
       TAG: "Sqlite",
       path: "./local.db",
       resetOnStart: true
     });
     process.env["REVENTLESS_LOCAL_BACKEND"] = "memory";
     let parsedMem = Backend$ReventlessLocal.fromEnv();
-    expect(parsedMem).toEqual("Memory");
+    globalThis.expect(parsedMem).toEqual("Memory");
     if (originalEnv !== undefined) {
       process.env["REVENTLESS_LOCAL_BACKEND"] = originalEnv;
       return;

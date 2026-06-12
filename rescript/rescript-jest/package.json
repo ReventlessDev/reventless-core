@@ -1,0 +1,29 @@
+{
+  "name": "@reventlessdev/rescript-jest",
+  "version": "1.0.0-alpha.0",
+  "description": "Direct ReScript bindings to Jest's global APIs with throwing `expect` and native async test bodies",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rescript build",
+    "start": "rescript watch",
+    "clean": "rescript clean",
+    "rebuild": "pnpm run clean && pnpm run build -- -with-deps",
+    "test": "echo \"There are no tests for rescript-jest.\"",
+    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "rescript": "^12.3.0"
+  },
+  "peerDependencies": {
+    "rescript": "^12.3.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReventlessDev/reventless-core.git",
+    "directory": "rescript/rescript-jest"
+  }
+}

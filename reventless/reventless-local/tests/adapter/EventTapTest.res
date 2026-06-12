@@ -4,8 +4,7 @@
 // published event to stdout (console.log), with the event's real topic name and
 // payload. Off by default so normal runs stay quiet.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

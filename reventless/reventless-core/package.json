@@ -52,7 +52,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@glennsl/rescript-jest": "^0.13.1",
+    "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.3.0",
     "sury": "11.0.0-alpha.4",

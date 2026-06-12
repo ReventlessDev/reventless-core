@@ -3,34 +3,34 @@
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as StateViewSliceFixtures$ReventlessLocal from "./StateViewSliceFixtures.res.mjs";
 
-describe("StateViewSlice E2E", () => {
-  beforeAll(async () => {
+globalThis.describe("StateViewSlice E2E", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(StateViewSliceFixtures$ReventlessLocal.ItemsViewMaker.operations(StateViewSliceFixtures$ReventlessLocal.sv));
     await TestRunner$ReventlessLocal.resolve(StateViewSliceFixtures$ReventlessLocal.dcbEventTopicResource.name);
   });
-  test("ItemAdded event projects to QueryDb state", async () => {
+  globalThis.test("ItemAdded event projects to QueryDb state", async () => {
     await StateViewSliceFixtures$ReventlessLocal.appendEvent({
       TAG: "ItemAdded",
       id: "item-1",
       name: "Widget"
     });
     let states = await StateViewSliceFixtures$ReventlessLocal.loadState("item-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let s = states[0];
-    expect(s.name).toBe("Widget");
+    globalThis.expect(s.name).toBe("Widget");
   });
-  test("ItemRenamed event updates existing state", async () => {
+  globalThis.test("ItemRenamed event updates existing state", async () => {
     await StateViewSliceFixtures$ReventlessLocal.appendEvent({
       TAG: "ItemRenamed",
       id: "item-1",
       name: "SuperWidget"
     });
     let states = await StateViewSliceFixtures$ReventlessLocal.loadState("item-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let s = states[0];
-    expect(s.name).toBe("SuperWidget");
+    globalThis.expect(s.name).toBe("SuperWidget");
   });
-  test("multiple items projected independently", async () => {
+  globalThis.test("multiple items projected independently", async () => {
     await StateViewSliceFixtures$ReventlessLocal.appendEvent({
       TAG: "ItemAdded",
       id: "item-2",
@@ -43,14 +43,14 @@ describe("StateViewSlice E2E", () => {
     });
     let states2 = await StateViewSliceFixtures$ReventlessLocal.loadState("item-2");
     let states3 = await StateViewSliceFixtures$ReventlessLocal.loadState("item-3");
-    expect(states2.length).toBe(1);
-    expect(states3.length).toBe(1);
+    globalThis.expect(states2.length).toBe(1);
+    globalThis.expect(states3.length).toBe(1);
     let s2 = states2[0];
     let s3 = states3[0];
-    expect(s2.name).toBe("Gadget");
-    expect(s3.name).toBe("Doohickey");
+    globalThis.expect(s2.name).toBe("Gadget");
+    globalThis.expect(s3.name).toBe("Doohickey");
   });
-  test("ItemRemoved event deletes state from QueryDb", async () => {
+  globalThis.test("ItemRemoved event deletes state from QueryDb", async () => {
     await StateViewSliceFixtures$ReventlessLocal.appendEvent({
       TAG: "ItemAdded",
       id: "item-4",
@@ -61,11 +61,11 @@ describe("StateViewSlice E2E", () => {
       id: "item-4"
     });
     let states = await StateViewSliceFixtures$ReventlessLocal.loadState("item-4");
-    expect(states.length).toBe(0);
+    globalThis.expect(states.length).toBe(0);
   });
-  test("query for unknown ID returns empty", async () => {
+  globalThis.test("query for unknown ID returns empty", async () => {
     let states = await StateViewSliceFixtures$ReventlessLocal.loadState("no-such-item");
-    expect(states.length).toBe(0);
+    globalThis.expect(states.length).toBe(0);
   });
 });
 

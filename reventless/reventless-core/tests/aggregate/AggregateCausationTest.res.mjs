@@ -4,40 +4,40 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as AggregateFixtures$ReventlessCore from "./AggregateFixtures.res.mjs";
 
-beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
+globalThis.beforeEach(() => AggregateFixtures$ReventlessCore.mock.reset());
 
-describe("Aggregate_Callback causation propagation:", () => {
-  test("event.meta.causationId = command.meta.msgId", async () => {
+globalThis.describe("Aggregate_Callback causation propagation:", () => {
+  globalThis.test("event.meta.causationId = command.meta.msgId", async () => {
     await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
         TAG: "Create",
         name: "Widget"
       })])));
     let stored = AggregateFixtures$ReventlessCore.mock.getAll()[0];
-    expect(stored.meta.causationId).toEqual(AggregateFixtures$ReventlessCore.testMeta.msgId);
+    globalThis.expect(stored.meta.causationId).toEqual(AggregateFixtures$ReventlessCore.testMeta.msgId);
   });
-  test("event.meta.correlationId = command.meta.correlationId (chain root stable)", async () => {
+  globalThis.test("event.meta.correlationId = command.meta.correlationId (chain root stable)", async () => {
     await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
         TAG: "Create",
         name: "Widget"
       })])));
     let stored = AggregateFixtures$ReventlessCore.mock.getAll()[0];
-    expect(stored.meta.correlationId).toBe(AggregateFixtures$ReventlessCore.testMeta.correlationId);
+    globalThis.expect(stored.meta.correlationId).toBe(AggregateFixtures$ReventlessCore.testMeta.correlationId);
   });
-  test("event has a fresh msgId distinct from the command's msgId", async () => {
+  globalThis.test("event has a fresh msgId distinct from the command's msgId", async () => {
     await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
         TAG: "Create",
         name: "Widget"
       })])));
     let stored = AggregateFixtures$ReventlessCore.mock.getAll()[0];
-    expect(stored.meta.msgId === AggregateFixtures$ReventlessCore.testMeta.msgId).toBe(false);
+    globalThis.expect(stored.meta.msgId === AggregateFixtures$ReventlessCore.testMeta.msgId).toBe(false);
   });
-  test("event inherits ip / user / service from the command's meta", async () => {
+  globalThis.test("event inherits ip / user / service from the command's meta", async () => {
     await Effect.runPromise(AggregateFixtures$ReventlessCore.TestHandler.handleCommands(Stream.fromIterable([AggregateFixtures$ReventlessCore.makeTopicItem(undefined, "ref-1", {
         TAG: "Create",
         name: "Widget"
       })])));
     let stored = AggregateFixtures$ReventlessCore.mock.getAll()[0];
-    expect(stored.meta.service).toBe(AggregateFixtures$ReventlessCore.testMeta.service);
+    globalThis.expect(stored.meta.service).toBe(AggregateFixtures$ReventlessCore.testMeta.service);
   });
 });
 

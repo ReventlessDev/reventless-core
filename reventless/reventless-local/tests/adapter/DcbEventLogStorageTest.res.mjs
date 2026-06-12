@@ -27,37 +27,37 @@ function makeEvent(eventType, data, tagsOpt) {
   };
 }
 
-describe("DcbEventLogStorage_InMemory", () => {
-  describe("append", () => {
-    test("stores events and returns incrementing position", async () => {
+globalThis.describe("DcbEventLogStorage_InMemory", () => {
+  globalThis.describe("append", () => {
+    globalThis.test("stores events and returns incrementing position", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       let result1 = await ops.append([makeEvent("ItemCreated", null, undefined)], undefined);
       let result2 = await ops.append([makeEvent("ItemUpdated", null, undefined)], undefined);
-      expect(result1).toEqual({
+      globalThis.expect(result1).toEqual({
         TAG: "Ok",
         _0: "1"
       });
-      expect(result2).toEqual({
+      globalThis.expect(result2).toEqual({
         TAG: "Ok",
         _0: "2"
       });
     });
-    test("appending multiple events at once returns position of last event", async () => {
+    globalThis.test("appending multiple events at once returns position of last event", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       let result = await ops.append([
         makeEvent("A", null, undefined),
         makeEvent("B", null, undefined)
       ], undefined);
-      expect(result).toEqual({
+      globalThis.expect(result).toEqual({
         TAG: "Ok",
         _0: "2"
       });
     });
   });
-  describe("read", () => {
-    test("empty query returns all events", async () => {
+  globalThis.describe("read", () => {
+    globalThis.test("empty query returns all events", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([
@@ -65,9 +65,9 @@ describe("DcbEventLogStorage_InMemory", () => {
         makeEvent("Evt2", null, undefined)
       ], undefined);
       let result = await ops.read([], undefined);
-      expect(result.events.length).toBe(2);
+      globalThis.expect(result.events.length).toBe(2);
     });
-    test("filters by eventType", async () => {
+    globalThis.test("filters by eventType", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([
@@ -78,11 +78,11 @@ describe("DcbEventLogStorage_InMemory", () => {
       let result = await ops.read([{
           eventTypes: ["Created"]
         }], undefined);
-      expect(result.events.length).toBe(2);
+      globalThis.expect(result.events.length).toBe(2);
       let firstEvent = result.events[0];
-      expect(firstEvent.eventType).toBe("Created");
+      globalThis.expect(firstEvent.eventType).toBe("Created");
     });
-    test("filters by tags", async () => {
+    globalThis.test("filters by tags", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([
@@ -98,11 +98,11 @@ describe("DcbEventLogStorage_InMemory", () => {
               value: "acme"
             }]
         }], undefined);
-      expect(result.events.length).toBe(1);
+      globalThis.expect(result.events.length).toBe(1);
       let firstEvent = result.events[0];
-      expect(firstEvent.tags.length).toBe(1);
+      globalThis.expect(firstEvent.tags.length).toBe(1);
     });
-    test("after parameter skips events at or before that position", async () => {
+    globalThis.test("after parameter skips events at or before that position", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([
@@ -111,13 +111,13 @@ describe("DcbEventLogStorage_InMemory", () => {
         makeEvent("E3", null, undefined)
       ], undefined);
       let result = await ops.read([], "1");
-      expect(result.events.length).toBe(2);
+      globalThis.expect(result.events.length).toBe(2);
       let firstEvent = result.events[0];
-      expect(firstEvent.eventType).toBe("E2");
+      globalThis.expect(firstEvent.eventType).toBe("E2");
     });
   });
-  describe("headPosition", () => {
-    test("equals the position of the last appended event", async () => {
+  globalThis.describe("headPosition", () => {
+    globalThis.test("equals the position of the last appended event", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([
@@ -125,17 +125,17 @@ describe("DcbEventLogStorage_InMemory", () => {
         makeEvent("E2", null, undefined)
       ], undefined);
       let result = await ops.read([], undefined);
-      expect(result.headPosition).toEqual("2");
+      globalThis.expect(result.headPosition).toEqual("2");
     });
-    test("headPosition is absent when no events have been stored", async () => {
+    globalThis.test("headPosition is absent when no events have been stored", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       let result = await ops.read([], undefined);
-      expect(result.headPosition).toEqual(undefined);
+      globalThis.expect(result.headPosition).toEqual(undefined);
     });
   });
-  describe("conditional append", () => {
-    test("append with matching condition query returns Error (conflict)", async () => {
+  globalThis.describe("conditional append", () => {
+    globalThis.test("append with matching condition query returns Error (conflict)", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([makeEvent("ItemCreated", null, undefined)], undefined);
@@ -148,9 +148,9 @@ describe("DcbEventLogStorage_InMemory", () => {
       let result = await ops.append([makeEvent("ItemUpdated", null, undefined)], condition);
       let tmp;
       tmp = result.TAG !== "Ok";
-      expect(tmp).toBe(true);
+      globalThis.expect(tmp).toBe(true);
     });
-    test("append with condition that matches no events succeeds", async () => {
+    globalThis.test("append with condition that matches no events succeeds", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([makeEvent("OtherEvent", null, undefined)], undefined);
@@ -161,12 +161,12 @@ describe("DcbEventLogStorage_InMemory", () => {
         query: condition_query
       };
       let result = await ops.append([makeEvent("ItemCreated", null, undefined)], condition);
-      expect(result).toEqual({
+      globalThis.expect(result).toEqual({
         TAG: "Ok",
         _0: "2"
       });
     });
-    test("condition with after only checks events after that position", async () => {
+    globalThis.test("condition with after only checks events after that position", async () => {
       let storage = makeStorage();
       let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
       await ops.append([makeEvent("ItemCreated", null, undefined)], undefined);
@@ -179,7 +179,7 @@ describe("DcbEventLogStorage_InMemory", () => {
         after: condition_after
       };
       let result = await ops.append([makeEvent("ItemUpdated", null, undefined)], condition);
-      expect(result).toEqual({
+      globalThis.expect(result).toEqual({
         TAG: "Ok",
         _0: "2"
       });

@@ -5,8 +5,7 @@
 // the codegen golden fixtures rely on (they ship compiled `*_GWT.res.mjs` on
 // disk that must never surface as live tests).
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 @module("node:os") external tmpdir: unit => string = "tmpdir"
 @module("node:path") external join: (string, string) => string = "join"

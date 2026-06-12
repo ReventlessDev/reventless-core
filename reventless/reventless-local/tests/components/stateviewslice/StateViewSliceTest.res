@@ -1,8 +1,7 @@
 // E2E tests for StateViewSlice_Builder.
 // Verifies the full DcbEventLog.append → event topic → EventCollector → projection → QueryDb pipeline.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open StateViewSliceFixtures
 
 describe("StateViewSlice E2E", () => {

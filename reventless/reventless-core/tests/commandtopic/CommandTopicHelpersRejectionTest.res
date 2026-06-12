@@ -1,8 +1,7 @@
 // Tests for CommandTopic_Helpers.runInlineAndCollect — verifies the precedence rules
 // for the rejected/accepted side-channels and the synthesized "Conflict" Error result.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 let metaWithMsgId = (msgId): Reventless.Message.meta => {
   service: "TestService",

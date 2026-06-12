@@ -2,7 +2,7 @@
 // Uses LocalHeartbeatRunner and fake timers to verify the handler fires on schedule.
 
 open TestFixtures
-open ReventlessGwt.AsyncTest
+open JestGlobals
 
 // Activate Pulumi mock mode (must be called before any Component.make)
 let _ = TestRunner.setup()

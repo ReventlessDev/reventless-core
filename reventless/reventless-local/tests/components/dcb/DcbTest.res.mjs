@@ -4,51 +4,51 @@ import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Mess
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as DcbFixtures$ReventlessLocal from "./DcbFixtures.res.mjs";
 
-describe("DcbEventLog E2E", () => {
-  beforeAll(async () => {
+globalThis.describe("DcbEventLog E2E", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(DcbFixtures$ReventlessLocal.ItemEventLogMaker.operations(DcbFixtures$ReventlessLocal.eventLog));
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     DcbFixtures$ReventlessLocal.capturedEventCount.contents = 0;
   });
-  test("AddItem command publishes 1 event to event topic", async () => {
+  globalThis.test("AddItem command publishes 1 event to event topic", async () => {
     let cmd = Message$ReventlessCore.encode({
       TAG: "AddItem",
       id: "item-1",
       name: "Widget"
     }, DcbFixtures$ReventlessLocal.AddItemSpec.commandSchema);
     await DcbFixtures$ReventlessLocal.dispatch(cmd, "item-1");
-    expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
+    globalThis.expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
   });
-  test("duplicate AddItem produces 0 events (ItemAlreadyExists)", async () => {
+  globalThis.test("duplicate AddItem produces 0 events (ItemAlreadyExists)", async () => {
     let cmd = Message$ReventlessCore.encode({
       TAG: "AddItem",
       id: "item-1",
       name: "Widget"
     }, DcbFixtures$ReventlessLocal.AddItemSpec.commandSchema);
     await DcbFixtures$ReventlessLocal.dispatch(cmd, "item-1");
-    expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(0);
+    globalThis.expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(0);
   });
-  test("AddItem for new id produces 1 event", async () => {
+  globalThis.test("AddItem for new id produces 1 event", async () => {
     let cmd = Message$ReventlessCore.encode({
       TAG: "AddItem",
       id: "item-2",
       name: "Gadget"
     }, DcbFixtures$ReventlessLocal.AddItemSpec.commandSchema);
     await DcbFixtures$ReventlessLocal.dispatch(cmd, "item-2");
-    expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
+    globalThis.expect(DcbFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
   });
-  test("direct read of DcbEventLog returns appended events", async () => {
+  globalThis.test("direct read of DcbEventLog returns appended events", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(DcbFixtures$ReventlessLocal.ItemEventLogMaker.operations(DcbFixtures$ReventlessLocal.eventLog));
     let result = await ops.read([], undefined);
-    expect(result.events.length !== 0).toBe(true);
+    globalThis.expect(result.events.length !== 0).toBe(true);
   });
-  test("direct read with eventTypes filter returns matching events", async () => {
+  globalThis.test("direct read with eventTypes filter returns matching events", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(DcbFixtures$ReventlessLocal.ItemEventLogMaker.operations(DcbFixtures$ReventlessLocal.eventLog));
     let result = await ops.read([{
         eventTypes: ["ItemAdded"]
       }], undefined);
-    expect(result.events.length !== 0).toBe(true);
+    globalThis.expect(result.events.length !== 0).toBe(true);
   });
 });
 

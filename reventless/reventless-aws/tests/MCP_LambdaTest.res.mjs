@@ -3,53 +3,53 @@
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as MCP_Lambda$ReventlessAws from "../src/adapter/Mcp/MCP_Lambda.res.mjs";
 
-describe("MCP_Lambda.generateAdminConfig", () => {
-  test("produces tools from admin mutation entries (no cloner)", () => {
+globalThis.describe("MCP_Lambda.generateAdminConfig", () => {
+  globalThis.test("produces tools from admin mutation entries (no cloner)", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", false, undefined, undefined);
-    expect(config.tools).toHaveLength(2);
+    globalThis.expect(config.tools).toHaveLength(2);
   });
-  test("produces additional clone tool when cloner=true", () => {
+  globalThis.test("produces additional clone tool when cloner=true", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", true, undefined, undefined);
-    expect(config.tools).toHaveLength(3);
+    globalThis.expect(config.tools).toHaveLength(3);
   });
-  test("produces resources from admin query entries", () => {
+  globalThis.test("produces resources from admin query entries", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", undefined, undefined, undefined);
-    expect(config.resources.length).toBeGreaterThan(0);
+    globalThis.expect(config.resources.length).toBeGreaterThan(0);
   });
-  test("server name has -admin suffix", () => {
+  globalThis.test("server name has -admin suffix", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("my-platform", "2.0.0", undefined, undefined, undefined);
-    expect(config.serverName).toBe("my-platform-admin");
+    globalThis.expect(config.serverName).toBe("my-platform-admin");
   });
-  test("server version is passed through", () => {
+  globalThis.test("server version is passed through", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "3.1.4", undefined, undefined, undefined);
-    expect(config.serverVersion).toBe("3.1.4");
+    globalThis.expect(config.serverVersion).toBe("3.1.4");
   });
-  test("tools have non-empty names and descriptions", () => {
+  globalThis.test("tools have non-empty names and descriptions", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", true, undefined, undefined);
     config.tools.forEach(tool => {
-      expect(tool.name.length).toBeGreaterThan(0);
-      expect(tool.description.length).toBeGreaterThan(0);
+      globalThis.expect(tool.name.length).toBeGreaterThan(0);
+      globalThis.expect(tool.description.length).toBeGreaterThan(0);
     });
   });
-  test("resources have non-empty names and URI templates", () => {
+  globalThis.test("resources have non-empty names and URI templates", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", undefined, undefined, undefined);
     config.resources.forEach(resource => {
-      expect(resource.name.length).toBeGreaterThan(0);
-      expect(resource.uriTemplate.length).toBeGreaterThan(0);
+      globalThis.expect(resource.name.length).toBeGreaterThan(0);
+      globalThis.expect(resource.uriTemplate.length).toBeGreaterThan(0);
     });
   });
-  test("commandTopicArns are mapped to tools", () => {
+  globalThis.test("commandTopicArns are mapped to tools", () => {
     let arns = {};
     let firstEntry = AdminApi$ReventlessCore.mutationEntries(false)[0];
     let firstFieldName = firstEntry.fieldNames[0];
     arns[firstFieldName] = "arn:aws:sqs:us-east-1:123:queue";
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", undefined, arns, undefined);
     config.tools.some(tool => tool.commandTopicArn.length > 0);
-    expect(config.tools.length).toBeGreaterThan(0);
+    globalThis.expect(config.tools.length).toBeGreaterThan(0);
   });
-  test("event history resources default to empty", () => {
+  globalThis.test("event history resources default to empty", () => {
     let config = MCP_Lambda$ReventlessAws.generateAdminConfig("test", "1.0.0", undefined, undefined, undefined);
-    expect(config.eventHistoryResources).toHaveLength(0);
+    globalThis.expect(config.eventHistoryResources).toHaveLength(0);
   });
 });
 

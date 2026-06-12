@@ -6,12 +6,12 @@ import * as Deferred from "effect/Deferred";
 import * as HeartbeatFixtures$ReventlessLocal from "./HeartbeatFixtures.res.mjs";
 import * as LocalHeartbeatRunner$ReventlessLocal from "../../../src/adapter/Heartbeat/LocalHeartbeatRunner.res.mjs";
 
-describe("Heartbeat_Builder.Make:", () => {
-  beforeEach(() => {
+globalThis.describe("Heartbeat_Builder.Make:", () => {
+  globalThis.beforeEach(() => {
     HeartbeatFixtures$ReventlessLocal.capturedCount.contents = 0;
   });
-  describe("makeHandler + connect:", () => {
-    test("handler fires once after 1-minute interval", async () => {
+  globalThis.describe("makeHandler + connect:", () => {
+    globalThis.test("handler fires once after 1-minute interval", async () => {
       let handler = HeartbeatFixtures$ReventlessLocal.resolvedHandler.contents;
       let heartbeat = HeartbeatFixtures$ReventlessLocal.HeartbeatMaker.make("hb-test-1", undefined);
       let handlerDeferred = Effect.runSync(Deferred.make());
@@ -28,10 +28,10 @@ describe("Heartbeat_Builder.Make:", () => {
       HeartbeatFixtures$ReventlessLocal.HeartbeatMaker.connect(runtime, undefined, 1, heartbeat);
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
-      expect(HeartbeatFixtures$ReventlessLocal.capturedCount.contents).toBe(1);
+      globalThis.expect(HeartbeatFixtures$ReventlessLocal.capturedCount.contents).toBe(1);
       return LocalHeartbeatRunner$ReventlessLocal.reset();
     });
-    test("handler fires twice after two interval advances", async () => {
+    globalThis.test("handler fires twice after two interval advances", async () => {
       let handler = HeartbeatFixtures$ReventlessLocal.resolvedHandler.contents;
       let heartbeat = HeartbeatFixtures$ReventlessLocal.HeartbeatMaker.make("hb-test-2", undefined);
       let handlerDeferred = Effect.runSync(Deferred.make());
@@ -50,14 +50,14 @@ describe("Heartbeat_Builder.Make:", () => {
       await Promise.resolve();
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
-      expect(HeartbeatFixtures$ReventlessLocal.capturedCount.contents).toBe(2);
+      globalThis.expect(HeartbeatFixtures$ReventlessLocal.capturedCount.contents).toBe(2);
       return LocalHeartbeatRunner$ReventlessLocal.reset();
     });
   });
-  describe("make:", () => {
-    test("creates a heartbeat component without throwing", async () => {
+  globalThis.describe("make:", () => {
+    globalThis.test("creates a heartbeat component without throwing", async () => {
       HeartbeatFixtures$ReventlessLocal.HeartbeatMaker.make("hb-make-smoke", undefined);
-      expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
     });
   });
 });

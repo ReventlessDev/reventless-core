@@ -189,22 +189,22 @@ async function buildFixture(name) {
   ];
 }
 
-describe("QueryDb list resolver — keyset pagination", () => {
-  beforeEach(() => DomainGraphQL_Server$ReventlessLocal.reset());
-  test("first: 2 over a 5-row fixture returns 2 edges and hasNextPage = true", async () => {
+globalThis.describe("QueryDb list resolver — keyset pagination", () => {
+  globalThis.beforeEach(() => DomainGraphQL_Server$ReventlessLocal.reset());
+  globalThis.test("first: 2 over a 5-row fixture returns 2 edges and hasNextPage = true", async () => {
     let match = await buildFixture("PageA");
     let response = await match[0](null, Object.fromEntries([[
         "first",
         2
       ]]), emptyCtx);
     let edges = getEdges(response);
-    expect(edges.length).toBe(2);
-    expect(pageInfoBool(response, "hasNextPage")).toBe(true);
-    expect(pageInfoBool(response, "hasPreviousPage")).toBe(false);
-    expect(edgeNodeField(edges[0], "productId")).toBe("p-1");
-    expect(edgeNodeField(edges[1], "productId")).toBe("p-2");
+    globalThis.expect(edges.length).toBe(2);
+    globalThis.expect(pageInfoBool(response, "hasNextPage")).toBe(true);
+    globalThis.expect(pageInfoBool(response, "hasPreviousPage")).toBe(false);
+    globalThis.expect(edgeNodeField(edges[0], "productId")).toBe("p-1");
+    globalThis.expect(edgeNodeField(edges[1], "productId")).toBe("p-2");
   });
-  test("after: <endCursor> walks forward without overlap", async () => {
+  globalThis.test("after: <endCursor> walks forward without overlap", async () => {
     let match = await buildFixture("PageB");
     let resolver = match[0];
     let page1 = await resolver(null, Object.fromEntries([[
@@ -223,10 +223,10 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let edges2 = getEdges(page2);
-    expect(edges2.length).toBe(2);
-    expect(edgeNodeField(edges2[0], "productId")).toBe("p-3");
-    expect(edgeNodeField(edges2[1], "productId")).toBe("p-4");
-    expect(pageInfoBool(page2, "hasNextPage")).toBe(true);
+    globalThis.expect(edges2.length).toBe(2);
+    globalThis.expect(edgeNodeField(edges2[0], "productId")).toBe("p-3");
+    globalThis.expect(edgeNodeField(edges2[1], "productId")).toBe("p-4");
+    globalThis.expect(pageInfoBool(page2, "hasNextPage")).toBe(true);
     let endCursor2 = Stdlib_Option.getOr(getString(pageInfo(page2), "endCursor"), "");
     let page3 = await resolver(null, Object.fromEntries([
       [
@@ -239,11 +239,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let edges3 = getEdges(page3);
-    expect(edges3.length).toBe(1);
-    expect(edgeNodeField(edges3[0], "productId")).toBe("p-5");
-    expect(pageInfoBool(page3, "hasNextPage")).toBe(false);
+    globalThis.expect(edges3.length).toBe(1);
+    globalThis.expect(edgeNodeField(edges3[0], "productId")).toBe("p-5");
+    globalThis.expect(pageInfoBool(page3, "hasNextPage")).toBe(false);
   });
-  test("last + before walks backward and flips hasPreviousPage", async () => {
+  globalThis.test("last + before walks backward and flips hasPreviousPage", async () => {
     let match = await buildFixture("PageC");
     let resolver = match[0];
     let page1 = await resolver(null, Object.fromEntries([[
@@ -284,11 +284,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let backEdges = getEdges(backPage);
-    expect(backEdges.length).toBe(2);
-    expect(edgeNodeField(backEdges[0], "productId")).toBe("p-3");
-    expect(edgeNodeField(backEdges[1], "productId")).toBe("p-4");
-    expect(pageInfoBool(backPage, "hasPreviousPage")).toBe(true);
-    expect(pageInfoBool(backPage, "hasNextPage")).toBe(false);
+    globalThis.expect(backEdges.length).toBe(2);
+    globalThis.expect(edgeNodeField(backEdges[0], "productId")).toBe("p-3");
+    globalThis.expect(edgeNodeField(backEdges[1], "productId")).toBe("p-4");
+    globalThis.expect(pageInfoBool(backPage, "hasPreviousPage")).toBe(true);
+    globalThis.expect(pageInfoBool(backPage, "hasNextPage")).toBe(false);
     let backStart = Stdlib_Option.getOr(getString(pageInfo(backPage), "startCursor"), "");
     let firstPage = await resolver(null, Object.fromEntries([
       [
@@ -301,12 +301,12 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let firstEdges = getEdges(firstPage);
-    expect(firstEdges.length).toBe(2);
-    expect(edgeNodeField(firstEdges[0], "productId")).toBe("p-1");
-    expect(edgeNodeField(firstEdges[1], "productId")).toBe("p-2");
-    expect(pageInfoBool(firstPage, "hasPreviousPage")).toBe(false);
+    globalThis.expect(firstEdges.length).toBe(2);
+    globalThis.expect(edgeNodeField(firstEdges[0], "productId")).toBe("p-1");
+    globalThis.expect(edgeNodeField(firstEdges[1], "productId")).toBe("p-2");
+    globalThis.expect(pageInfoBool(firstPage, "hasPreviousPage")).toBe(false);
   });
-  test("filter.<field>Eq + first / after paginates only the narrowed subset", async () => {
+  globalThis.test("filter.<field>Eq + first / after paginates only the narrowed subset", async () => {
     let match = await buildFixture("PageD");
     let resolver = match[0];
     let activeFilter = Object.fromEntries([[
@@ -324,10 +324,10 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let edges1 = getEdges(page1);
-    expect(edges1.length).toBe(2);
-    expect(edgeNodeField(edges1[0], "productId")).toBe("p-1");
-    expect(edgeNodeField(edges1[1], "productId")).toBe("p-2");
-    expect(pageInfoBool(page1, "hasNextPage")).toBe(true);
+    globalThis.expect(edges1.length).toBe(2);
+    globalThis.expect(edgeNodeField(edges1[0], "productId")).toBe("p-1");
+    globalThis.expect(edgeNodeField(edges1[1], "productId")).toBe("p-2");
+    globalThis.expect(pageInfoBool(page1, "hasNextPage")).toBe(true);
     let endCursor1 = Stdlib_Option.getOr(getString(pageInfo(page1), "endCursor"), "");
     let page2 = await resolver(null, Object.fromEntries([
       [
@@ -344,11 +344,11 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let edges2 = getEdges(page2);
-    expect(edges2.length).toBe(1);
-    expect(edgeNodeField(edges2[0], "productId")).toBe("p-4");
-    expect(pageInfoBool(page2, "hasNextPage")).toBe(false);
+    globalThis.expect(edges2.length).toBe(1);
+    globalThis.expect(edgeNodeField(edges2[0], "productId")).toBe("p-4");
+    globalThis.expect(pageInfoBool(page2, "hasNextPage")).toBe(false);
   });
-  test("orderBy DESC + first / after paginates the reverse-sorted view", async () => {
+  globalThis.test("orderBy DESC + first / after paginates the reverse-sorted view", async () => {
     let match = await buildFixture("PageE");
     let resolver = match[0];
     let orderBy = Object.fromEntries([
@@ -372,10 +372,10 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let edges1 = getEdges(page1);
-    expect(edges1.length).toBe(2);
-    expect(edgeNodeField(edges1[0], "name")).toBe("Echo");
-    expect(edgeNodeField(edges1[1], "name")).toBe("Delta");
-    expect(pageInfoBool(page1, "hasNextPage")).toBe(true);
+    globalThis.expect(edges1.length).toBe(2);
+    globalThis.expect(edgeNodeField(edges1[0], "name")).toBe("Echo");
+    globalThis.expect(edgeNodeField(edges1[1], "name")).toBe("Delta");
+    globalThis.expect(pageInfoBool(page1, "hasNextPage")).toBe(true);
     let endCursor1 = Stdlib_Option.getOr(getString(pageInfo(page1), "endCursor"), "");
     let page2 = await resolver(null, Object.fromEntries([
       [
@@ -392,17 +392,17 @@ describe("QueryDb list resolver — keyset pagination", () => {
       ]
     ]), emptyCtx);
     let edges2 = getEdges(page2);
-    expect(edges2.length).toBe(2);
-    expect(edgeNodeField(edges2[0], "name")).toBe("Charlie");
-    expect(edgeNodeField(edges2[1], "name")).toBe("Bravo");
+    globalThis.expect(edges2.length).toBe(2);
+    globalThis.expect(edgeNodeField(edges2[0], "name")).toBe("Charlie");
+    globalThis.expect(edgeNodeField(edges2[1], "name")).toBe("Bravo");
   });
-  test("bare request (no first / after) returns a single bounded page", async () => {
+  globalThis.test("bare request (no first / after) returns a single bounded page", async () => {
     let match = await buildFixture("PageF");
     let response = await match[0](null, Object.fromEntries([]), emptyCtx);
     let edges = getEdges(response);
-    expect(edges.length).toBe(5);
-    expect(pageInfoBool(response, "hasNextPage")).toBe(false);
-    expect(pageInfoBool(response, "hasPreviousPage")).toBe(false);
+    globalThis.expect(edges.length).toBe(5);
+    globalThis.expect(pageInfoBool(response, "hasNextPage")).toBe(false);
+    globalThis.expect(pageInfoBool(response, "hasPreviousPage")).toBe(false);
   });
 });
 

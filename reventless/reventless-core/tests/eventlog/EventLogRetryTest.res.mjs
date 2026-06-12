@@ -69,65 +69,65 @@ let Ops = EventLog_Operations$ReventlessCore.Make({
   storage: EventLogFixtures$ReventlessCore.mockStorage
 });
 
-beforeEach(() => EventLogFixtures$ReventlessCore.reset());
+globalThis.beforeEach(() => EventLogFixtures$ReventlessCore.reset());
 
-describe("EventLog_Operations — retry:", () => {
-  describe("isTransient predicate:", () => {
-    test("ThrottlingException is transient", async () => {
-      expect(EventLog_Operations$ReventlessCore.isTransient("ThrottlingException: Rate exceeded")).toBe(true);
+globalThis.describe("EventLog_Operations — retry:", () => {
+  globalThis.describe("isTransient predicate:", () => {
+    globalThis.test("ThrottlingException is transient", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ThrottlingException: Rate exceeded")).toBe(true);
     });
-    test("ProvisionedThroughputExceededException is transient", async () => {
-      expect(EventLog_Operations$ReventlessCore.isTransient("ProvisionedThroughputExceededException")).toBe(true);
+    globalThis.test("ProvisionedThroughputExceededException is transient", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ProvisionedThroughputExceededException")).toBe(true);
     });
-    test("ServiceUnavailable is transient", async () => {
-      expect(EventLog_Operations$ReventlessCore.isTransient("ServiceUnavailable")).toBe(true);
+    globalThis.test("ServiceUnavailable is transient", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ServiceUnavailable")).toBe(true);
     });
-    test("RequestLimitExceeded is transient", async () => {
-      expect(EventLog_Operations$ReventlessCore.isTransient("RequestLimitExceeded")).toBe(true);
+    globalThis.test("RequestLimitExceeded is transient", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("RequestLimitExceeded")).toBe(true);
     });
-    test("InternalServerError is transient", async () => {
-      expect(EventLog_Operations$ReventlessCore.isTransient("InternalServerError: something went wrong")).toBe(true);
+    globalThis.test("InternalServerError is transient", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("InternalServerError: something went wrong")).toBe(true);
     });
-    test("ValidationException is not transient", async () => {
-      expect(EventLog_Operations$ReventlessCore.isTransient("ValidationException: invalid field")).toBe(false);
+    globalThis.test("ValidationException is not transient", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("ValidationException: invalid field")).toBe(false);
     });
-    test("generic mock storage failure is not transient", async () => {
-      expect(EventLog_Operations$ReventlessCore.isTransient("mock storage failure")).toBe(false);
+    globalThis.test("generic mock storage failure is not transient", async () => {
+      globalThis.expect(EventLog_Operations$ReventlessCore.isTransient("mock storage failure")).toBe(false);
     });
   });
-  describe("permanent storage failure:", () => {
-    test("returns Error immediately without retry", async () => {
+  globalThis.describe("permanent storage failure:", () => {
+    globalThis.test("returns Error immediately without retry", async () => {
       EventLogFixtures$ReventlessCore.failNextAppend.contents = true;
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       let result = await Ops.append(1, "item-1", [event$p]);
-      expect(Stdlib_Result.isError(result)).toBe(true);
-      expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(1);
+      globalThis.expect(Stdlib_Result.isError(result)).toBe(true);
+      globalThis.expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(1);
     });
-    test("does not publish events after permanent storage failure", async () => {
+    globalThis.test("does not publish events after permanent storage failure", async () => {
       EventLogFixtures$ReventlessCore.failNextAppend.contents = true;
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       await Ops.append(1, "item-1", [event$p]);
-      expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(0);
+      globalThis.expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(0);
     });
   });
-  describe("transient storage failure — retry:", () => {
-    test("1 transient failure retries and returns Ok", async () => {
+  globalThis.describe("transient storage failure — retry:", () => {
+    globalThis.test("1 transient failure retries and returns Ok", async () => {
       EventLogFixtures$ReventlessCore.failNextAppendsWithTransient.contents = 1;
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       let result = await Ops.append(1, "item-1", [event$p]);
-      expect(Stdlib_Result.isOk(result)).toBe(true);
-      expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(2);
+      globalThis.expect(Stdlib_Result.isOk(result)).toBe(true);
+      globalThis.expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(2);
     });
-    test("events are stored and published after successful retry", async () => {
+    globalThis.test("events are stored and published after successful retry", async () => {
       EventLogFixtures$ReventlessCore.failNextAppendsWithTransient.contents = 1;
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
@@ -135,31 +135,31 @@ describe("EventLog_Operations — retry:", () => {
       });
       await Ops.append(1, "item-1", [event$p]);
       let stored = Stdlib_Option.getOr(EventLogFixtures$ReventlessCore.storedEvents.contents["item-1"], []);
-      expect(stored.length).toBe(1);
-      expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(1);
+      globalThis.expect(stored.length).toBe(1);
+      globalThis.expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(1);
     });
-    test("2 transient failures retry twice and return Ok", async () => {
+    globalThis.test("2 transient failures retry twice and return Ok", async () => {
       EventLogFixtures$ReventlessCore.failNextAppendsWithTransient.contents = 2;
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       let result = await Ops.append(1, "item-1", [event$p]);
-      expect(Stdlib_Result.isOk(result)).toBe(true);
-      expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(3);
+      globalThis.expect(Stdlib_Result.isOk(result)).toBe(true);
+      globalThis.expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(3);
     });
   });
-  describe("retry exhaustion:", () => {
-    test("6 transient failures exhaust 5 retries and return Error", async () => {
+  globalThis.describe("retry exhaustion:", () => {
+    globalThis.test("6 transient failures exhaust 5 retries and return Error", async () => {
       EventLogFixtures$ReventlessCore.failNextAppendsWithTransient.contents = 6;
       let event$p = EventLogFixtures$ReventlessCore.makeEvent$p("item-1", {
         TAG: "ItemCreated",
         name: "Widget"
       });
       let result = await Ops.append(1, "item-1", [event$p]);
-      expect(Stdlib_Result.isError(result)).toBe(true);
-      expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(6);
-      expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(0);
+      globalThis.expect(Stdlib_Result.isError(result)).toBe(true);
+      globalThis.expect(EventLogFixtures$ReventlessCore.appendCallCount.contents).toBe(6);
+      globalThis.expect(EventLogFixtures$ReventlessCore.capturedPublishes.contents.length).toBe(0);
     }, 12000);
   });
 });

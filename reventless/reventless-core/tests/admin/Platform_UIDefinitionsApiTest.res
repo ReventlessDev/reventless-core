@@ -2,8 +2,7 @@
 // shared by both the in-memory and AWS adapters. If this test changes, every
 // console parsing the Platform_UIDefinitions response is affected.
 
-open Jest
-open Expect
+open JestGlobals
 open Reventless.Plugin
 
 let cmd: commandDef = {
@@ -81,7 +80,7 @@ let encoded = Platform_UIDefinitionsApi.encodePluginStructureEntry(
 let json = encoded->JSON.stringify
 
 describe("encodePluginStructureEntry", () => {
-  test("produces a JSON object with the expected top-level keys", () => {
+  testSync("produces a JSON object with the expected top-level keys", () => {
     let dict = encoded->JSON.Decode.object->Option.getOr(Dict.make())
     let keys = dict->Dict.keysToArray->Array.toSorted(String.compare)
     expect(keys)->toEqual([
@@ -97,39 +96,39 @@ describe("encodePluginStructureEntry", () => {
     ])
   })
 
-  test("encodes pluginId", () =>
+  testSync("encodes pluginId", () =>
     expect(json->String.includes("\"pluginId\":\"Catalog\""))->toEqual(true)
   )
 
-  test("encodes commandLevel as a literal string", () =>
+  testSync("encodes commandLevel as a literal string", () =>
     expect(json->String.includes("\"level\":\"Collection\""))->toEqual(true)
   )
 
-  test("encodes None aggregateIdField as null", () =>
+  testSync("encodes None aggregateIdField as null", () =>
     expect(json->String.includes("\"aggregateIdField\":null"))->toEqual(true)
   )
 
-  test("encodes None consistencyRead as null", () =>
+  testSync("encodes None consistencyRead as null", () =>
     expect(json->String.includes("\"consistencyRead\":null"))->toEqual(true)
   )
 
-  test("encodes Some plugin reference as its inner string", () =>
+  testSync("encodes Some plugin reference as its inner string", () =>
     expect(json->String.includes("\"plugin\":\"Catalog\""))->toEqual(true)
   )
 
-  test("includes the queryableDef name", () =>
+  testSync("includes the queryableDef name", () =>
     expect(json->String.includes("\"name\":\"Products\""))->toEqual(true)
   )
 
-  test("includes the automation slice name", () =>
+  testSync("includes the automation slice name", () =>
     expect(json->String.includes("\"name\":\"Restocker\""))->toEqual(true)
   )
 
-  test("encodes None allowedStates as null", () =>
+  testSync("encodes None allowedStates as null", () =>
     expect(json->String.includes("\"allowedStates\":null"))->toEqual(true)
   )
 
-  test("encodes None statusField as null", () =>
+  testSync("encodes None statusField as null", () =>
     expect(json->String.includes("\"statusField\":null"))->toEqual(true)
   )
 })
@@ -157,11 +156,11 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
   let mixedJson =
     Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId="Ordering", mixed)->JSON.stringify
 
-  test("excludes an Internal queryableDef from the encoded read-side", () =>
+  testSync("excludes an Internal queryableDef from the encoded read-side", () =>
     expect(mixedJson->String.includes("AvailableProducts"))->toEqual(false)
   )
 
-  test("keeps a Public queryableDef", () =>
+  testSync("keeps a Public queryableDef", () =>
     expect(mixedJson->String.includes("\"name\":\"Products\""))->toEqual(true)
   )
 })
@@ -215,11 +214,11 @@ describe("allowedStates + statusField populated", () => {
     ->Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId="Platform", _)
     ->JSON.stringify
 
-  test("encodes populated allowedStates as a JSON array", () =>
+  testSync("encodes populated allowedStates as a JSON array", () =>
     expect(json->String.includes("\"allowedStates\":[\"Inactive\"]"))->toEqual(true)
   )
 
-  test("encodes populated statusField as the field name string", () =>
+  testSync("encodes populated statusField as the field name string", () =>
     expect(json->String.includes("\"statusField\":\"status\""))->toEqual(true)
   )
 })

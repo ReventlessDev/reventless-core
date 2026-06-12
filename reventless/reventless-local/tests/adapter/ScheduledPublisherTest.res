@@ -1,8 +1,7 @@
 // Unit tests for LocalScheduledPublisher.
 // Uses fake timers to verify createSchedule, deleteSchedule, and reset.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 // ─────────────────────────────────────────────────────────────
 // Fake timer bindings

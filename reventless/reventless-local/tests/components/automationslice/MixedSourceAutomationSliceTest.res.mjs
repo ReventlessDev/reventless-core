@@ -4,18 +4,18 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as MixedSourceAutomationSliceFixtures$ReventlessLocal from "./MixedSourceAutomationSliceFixtures.res.mjs";
 
-describe("MixedSource AutomationSlice", () => {
-  beforeAll(async () => {
+globalThis.describe("MixedSource AutomationSlice", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(MixedSourceAutomationSliceFixtures$ReventlessLocal.slice));
     await TestRunner$ReventlessLocal.resolve(MixedSourceAutomationSliceFixtures$ReventlessLocal.aggregateResource.name);
     await TestRunner$ReventlessLocal.resolve(MixedSourceAutomationSliceFixtures$ReventlessLocal.dcbResource.name);
     await Promise.resolve();
     await Promise.resolve();
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents = [];
   });
-  test("Aggregate-source event creates a TODO and produces a command", async () => {
+  globalThis.test("Aggregate-source event creates a TODO and produces a command", async () => {
     MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents = [];
     await MixedSourceAutomationSliceFixtures$ReventlessLocal.publishAggregateEvent("env-a1", {
       TAG: "OrderShipped",
@@ -24,11 +24,11 @@ describe("MixedSource AutomationSlice", () => {
     });
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(MixedSourceAutomationSliceFixtures$ReventlessLocal.slice));
     await ops.processPending();
-    expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
+    globalThis.expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
     let cmd = MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents[0];
-    expect(cmd.id).toBe("o1:p1");
+    globalThis.expect(cmd.id).toBe("o1:p1");
   });
-  test("DCB-source StockReserved creates a TODO and produces a command", async () => {
+  globalThis.test("DCB-source StockReserved creates a TODO and produces a command", async () => {
     MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents = [];
     await MixedSourceAutomationSliceFixtures$ReventlessLocal.publishDcbEvent("env-d1", {
       TAG: "StockReserved",
@@ -37,11 +37,11 @@ describe("MixedSource AutomationSlice", () => {
     });
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(MixedSourceAutomationSliceFixtures$ReventlessLocal.slice));
     await ops.processPending();
-    expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
+    globalThis.expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
     let cmd = MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents[0];
-    expect(cmd.id).toBe("o2:p2");
+    globalThis.expect(cmd.id).toBe("o2:p2");
   });
-  test("DCB-source StockReleased after a Processing item is idempotent", async () => {
+  globalThis.test("DCB-source StockReleased after a Processing item is idempotent", async () => {
     MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents = [];
     await MixedSourceAutomationSliceFixtures$ReventlessLocal.publishDcbEvent("env-d2", {
       TAG: "StockReserved",
@@ -53,13 +53,13 @@ describe("MixedSource AutomationSlice", () => {
       orderId: "o3",
       productId: "p3"
     });
-    expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
+    globalThis.expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
     MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents = [];
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(MixedSourceAutomationSliceFixtures$ReventlessLocal.slice));
     await ops.processPending();
-    expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(0);
+    globalThis.expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(0);
   });
-  test("both sources can drive items into the same TODO list independently", async () => {
+  globalThis.test("both sources can drive items into the same TODO list independently", async () => {
     MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents = [];
     await MixedSourceAutomationSliceFixtures$ReventlessLocal.publishAggregateEvent("env-a2", {
       TAG: "OrderShipped",
@@ -73,12 +73,12 @@ describe("MixedSource AutomationSlice", () => {
     });
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(MixedSourceAutomationSliceFixtures$ReventlessLocal.slice));
     await ops.processPending();
-    expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(2);
+    globalThis.expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(2);
     let ids = MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.map(c => c.id);
-    expect(ids.includes("o4:p4")).toBe(true);
-    expect(ids.includes("o5:p5")).toBe(true);
+    globalThis.expect(ids.includes("o4:p4")).toBe(true);
+    globalThis.expect(ids.includes("o5:p5")).toBe(true);
   });
-  test("first-writer-wins idempotency across mappings sharing an ID", async () => {
+  globalThis.test("first-writer-wins idempotency across mappings sharing an ID", async () => {
     MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents = [];
     await MixedSourceAutomationSliceFixtures$ReventlessLocal.publishAggregateEvent("env-a3", {
       TAG: "OrderShipped",
@@ -92,7 +92,7 @@ describe("MixedSource AutomationSlice", () => {
     });
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(MixedSourceAutomationSliceFixtures$ReventlessLocal.slice));
     await ops.processPending();
-    expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
+    globalThis.expect(MixedSourceAutomationSliceFixtures$ReventlessLocal.publishedCommands.contents.length).toBe(1);
   });
 });
 

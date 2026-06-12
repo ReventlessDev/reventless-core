@@ -1,27 +1,26 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 // Duration constructors produce opaque values — verify they are truthy (not null/undefined)
 // and passable to Effect.sleep without type errors at runtime.
 describe("Duration — constructors", () => {
-  test("millis returns a truthy Duration.t", () => {
+  testSync("millis returns a truthy Duration.t", () => {
     let d = Duration.millis(100)
     expect(d->Obj.magic)->toBeTruthy
   })
 
-  test("seconds returns a truthy Duration.t", () => {
+  testSync("seconds returns a truthy Duration.t", () => {
     expect(Duration.seconds(1)->Obj.magic)->toBeTruthy
   })
 
-  test("minutes returns a truthy Duration.t", () => {
+  testSync("minutes returns a truthy Duration.t", () => {
     expect(Duration.minutes(1)->Obj.magic)->toBeTruthy
   })
 
-  test("hours returns a truthy Duration.t", () => {
+  testSync("hours returns a truthy Duration.t", () => {
     expect(Duration.hours(1)->Obj.magic)->toBeTruthy
   })
 
-  test("days returns a truthy Duration.t", () => {
+  testSync("days returns a truthy Duration.t", () => {
     expect(Duration.days(1)->Obj.magic)->toBeTruthy
   })
 

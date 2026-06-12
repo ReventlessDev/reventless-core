@@ -1,5 +1,4 @@
-open Jest
-open Expect
+open JestGlobals
 
 // Helpers
 
@@ -20,7 +19,7 @@ let emptyJsonObject: JSON.t = %raw(`{}`)
 
 describe("Compat.validateAndProject", () => {
   describe("required field validation", () => {
-    test("succeeds when all required fields are in the manifest", () => {
+    testSync("succeeds when all required fields are in the manifest", () => {
       let meta = makeMeta([("tasks", ["name", "bucketNames"])])
       let result = Compat.validateAndProject(
         ~stackName="org/plugin/prod",
@@ -33,7 +32,7 @@ describe("Compat.validateAndProject", () => {
       expect(result)->toEqual(Ok("ok"))
     })
 
-    test("succeeds when requiredFields is empty", () => {
+    testSync("succeeds when requiredFields is empty", () => {
       let meta = makeMeta([("tasks", [])])
       let result = Compat.validateAndProject(
         ~stackName="org/plugin/prod",
@@ -46,7 +45,7 @@ describe("Compat.validateAndProject", () => {
       expect(result)->toEqual(Ok("ok"))
     })
 
-    test("fails with MissingRequiredField when a required field is absent", () => {
+    testSync("fails with MissingRequiredField when a required field is absent", () => {
       let meta = makeMeta([("tasks", ["name"])])
       let result = Compat.validateAndProject(
         ~stackName="org/plugin/prod",
@@ -67,7 +66,7 @@ describe("Compat.validateAndProject", () => {
       )
     })
 
-    test("fails when manifest for outputName is absent entirely", () => {
+    testSync("fails when manifest for outputName is absent entirely", () => {
       // meta has no entry for "tasks" — treated as empty field list
       let meta = makeMeta([("plugin", ["id", "version"])])
       let result = Compat.validateAndProject(
@@ -89,7 +88,7 @@ describe("Compat.validateAndProject", () => {
       )
     })
 
-    test("includes the first missing field in the error (not all missing fields)", () => {
+    testSync("includes the first missing field in the error (not all missing fields)", () => {
       // Only the first missing field is reported — consumers fix one at a time
       let meta = makeMeta([("tasks", [])])
       let result = Compat.validateAndProject(
@@ -108,7 +107,7 @@ describe("Compat.validateAndProject", () => {
   })
 
   describe("fromJson decoding", () => {
-    test("calls fromJson when all required fields are present", () => {
+    testSync("calls fromJson when all required fields are present", () => {
       let meta = makeMeta([("tasks", ["name"])])
       let called = ref(false)
       let trackingFromJson = (json: JSON.t) => {
@@ -126,7 +125,7 @@ describe("Compat.validateAndProject", () => {
       expect(called.contents)->toBe(true)
     })
 
-    test("does not call fromJson when a required field is missing", () => {
+    testSync("does not call fromJson when a required field is missing", () => {
       let meta = makeMeta([("tasks", [])])
       let called = ref(false)
       let trackingFromJson = (json: JSON.t) => {
@@ -144,7 +143,7 @@ describe("Compat.validateAndProject", () => {
       expect(called.contents)->toBe(false)
     })
 
-    test("wraps fromJson error in DecodeFailed", () => {
+    testSync("wraps fromJson error in DecodeFailed", () => {
       let meta = makeMeta([("tasks", ["name"])])
       let result = Compat.validateAndProject(
         ~stackName="org/plugin/prod",
@@ -161,7 +160,7 @@ describe("Compat.validateAndProject", () => {
       )
     })
 
-    test("passes the raw JSON value to fromJson unchanged", () => {
+    testSync("passes the raw JSON value to fromJson unchanged", () => {
       let meta = makeMeta([("plugin", ["id"])])
       let jsonInput: JSON.t = %raw(`{"id": "test-plugin", "version": "1.0.0"}`)
       let capturedJson = ref(None)
@@ -182,7 +181,7 @@ describe("Compat.validateAndProject", () => {
   })
 
   describe("optional fields", () => {
-    test("does not require optional fields to be in the manifest", () => {
+    testSync("does not require optional fields to be in the manifest", () => {
       // Projection has optional fields; they are not validated against the manifest
       let meta = makeMeta([("tasks", ["name"])])
       let result = Compat.validateAndProject(
@@ -200,7 +199,7 @@ describe("Compat.validateAndProject", () => {
   })
 
   describe("stackName in errors", () => {
-    test("uses the provided stackName in MissingRequiredField error", () => {
+    testSync("uses the provided stackName in MissingRequiredField error", () => {
       let meta = makeMeta([("tasks", [])])
       let result = Compat.validateAndProject(
         ~stackName="myorg/my-plugin/staging",
@@ -217,7 +216,7 @@ describe("Compat.validateAndProject", () => {
       }
     })
 
-    test("uses the provided stackName in DecodeFailed error", () => {
+    testSync("uses the provided stackName in DecodeFailed error", () => {
       let meta = makeMeta([("tasks", ["name"])])
       let result = Compat.validateAndProject(
         ~stackName="myorg/my-plugin/staging",
@@ -236,7 +235,7 @@ describe("Compat.validateAndProject", () => {
   })
 
   describe("field manifest boundary cases", () => {
-    test("succeeds when manifest has more fields than required", () => {
+    testSync("succeeds when manifest has more fields than required", () => {
       // Publisher exports extra fields — consumer only requires a subset
       let meta = makeMeta([("tasks", ["name", "bucketNames", "sideEffectSources"])])
       let result = Compat.validateAndProject(
@@ -250,7 +249,7 @@ describe("Compat.validateAndProject", () => {
       expect(result)->toEqual(Ok("ok"))
     })
 
-    test("succeeds with empty required fields even when manifest is empty", () => {
+    testSync("succeeds with empty required fields even when manifest is empty", () => {
       let meta = makeMeta([("tasks", [])])
       let result = Compat.validateAndProject(
         ~stackName="org/plugin/prod",

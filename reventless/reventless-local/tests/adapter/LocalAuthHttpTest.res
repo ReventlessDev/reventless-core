@@ -4,8 +4,7 @@
 
 @@warning("-44")
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

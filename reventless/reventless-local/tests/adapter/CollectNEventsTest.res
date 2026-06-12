@@ -1,7 +1,6 @@
 // Tests for TestRunner.collectNEvents utility (Phase J of stream-handler-implementation plan).
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

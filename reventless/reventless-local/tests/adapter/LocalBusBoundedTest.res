@@ -6,8 +6,7 @@
 // (1 extra vs unbounded) because PubSub.publish runs inside Effect.runPromise
 // rather than Effect.runSync.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

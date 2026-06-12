@@ -33,7 +33,7 @@ function resetAll() {
   LocalAuth$ReventlessLocal.Login.setTokenSecret("test-secret-deterministic");
 }
 
-test("issue returns Ok(token) for valid credentials", async () => {
+globalThis.test("issue returns Ok(token) for valid credentials", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("alice", "alice-pw", alice);
   let result = await LocalAuth$ReventlessLocal.Login.issue("alice", "alice-pw");
@@ -41,10 +41,10 @@ test("issue returns Ok(token) for valid credentials", async () => {
     return Stdlib_JsError.throwWithMessage("unexpected Error: " + result._0);
   }
   let parts = result._0.split(".");
-  expect(parts.length).toEqual(2);
+  globalThis.expect(parts.length).toEqual(2);
 });
 
-test("issue returns Error for unknown username", async () => {
+globalThis.test("issue returns Error for unknown username", async () => {
   resetAll();
   let result = await LocalAuth$ReventlessLocal.Login.issue("ghost", "x");
   if (result.TAG === "Ok") {
@@ -52,7 +52,7 @@ test("issue returns Error for unknown username", async () => {
   }
 });
 
-test("issue returns Error for wrong password", async () => {
+globalThis.test("issue returns Error for wrong password", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("alice", "alice-pw", alice);
   let result = await LocalAuth$ReventlessLocal.Login.issue("alice", "WRONG");
@@ -61,7 +61,7 @@ test("issue returns Error for wrong password", async () => {
   }
 });
 
-test("verifyAndDecode round-trips the identity for a fresh token", async () => {
+globalThis.test("verifyAndDecode round-trips the identity for a fresh token", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("alice", "alice-pw", alice);
   let t = await LocalAuth$ReventlessLocal.Login.issue("alice", "alice-pw");
@@ -69,16 +69,16 @@ test("verifyAndDecode round-trips the identity for a fresh token", async () => {
   token = t.TAG === "Ok" ? t._0 : Stdlib_JsError.throwWithMessage("issue failed: " + t._0);
   let identity = LocalAuth$ReventlessLocal.Login.verifyAndDecode(token);
   if (identity !== undefined) {
-    expect(identity.username).toEqual("alice");
-    expect(identity.groups).toEqual(["Editor"]);
-    expect(identity.userId).toEqual("u-alice");
+    globalThis.expect(identity.username).toEqual("alice");
+    globalThis.expect(identity.groups).toEqual(["Editor"]);
+    globalThis.expect(identity.userId).toEqual("u-alice");
     return;
   } else {
     return Stdlib_JsError.throwWithMessage("verifyAndDecode returned None");
   }
 });
 
-test("verifyAndDecode rejects a tampered payload", async () => {
+globalThis.test("verifyAndDecode rejects a tampered payload", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("alice", "alice-pw", alice);
   let t = await LocalAuth$ReventlessLocal.Login.issue("alice", "alice-pw");
@@ -97,7 +97,7 @@ test("verifyAndDecode rejects a tampered payload", async () => {
   }
 });
 
-test("verifyAndDecode rejects a tampered signature", async () => {
+globalThis.test("verifyAndDecode rejects a tampered signature", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("alice", "alice-pw", alice);
   let t = await LocalAuth$ReventlessLocal.Login.issue("alice", "alice-pw");
@@ -109,7 +109,7 @@ test("verifyAndDecode rejects a tampered signature", async () => {
   }
 });
 
-test("verifyAndDecode rejects a malformed token (no dot)", async () => {
+globalThis.test("verifyAndDecode rejects a malformed token (no dot)", async () => {
   resetAll();
   let match = LocalAuth$ReventlessLocal.Login.verifyAndDecode("not-a-real-token");
   if (match !== undefined) {
@@ -117,7 +117,7 @@ test("verifyAndDecode rejects a malformed token (no dot)", async () => {
   }
 });
 
-test("authenticate accepts a valid Bearer token", async () => {
+globalThis.test("authenticate accepts a valid Bearer token", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("bob", "bob-pw", bob);
   let t = await LocalAuth$ReventlessLocal.Login.issue("bob", "bob-pw");
@@ -134,11 +134,11 @@ test("authenticate accepts a valid Bearer token", async () => {
     return Stdlib_JsError.throwWithMessage("expected Authenticated(bob)");
   }
   let identity = result._0;
-  expect(identity.username).toEqual("bob");
-  expect(identity.groups).toEqual(["Viewer"]);
+  globalThis.expect(identity.username).toEqual("bob");
+  globalThis.expect(identity.groups).toEqual(["Viewer"]);
 });
 
-test("authenticate rejects invalid Bearer even when X-User is present", async () => {
+globalThis.test("authenticate rejects invalid Bearer even when X-User is present", async () => {
   resetAll();
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([
     [
@@ -155,7 +155,7 @@ test("authenticate rejects invalid Bearer even when X-User is present", async ()
   }
 });
 
-test("Bearer outranks X-User when both present and Bearer is valid", async () => {
+globalThis.test("Bearer outranks X-User when both present and Bearer is valid", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("bob", "bob-pw", bob);
   let t = await LocalAuth$ReventlessLocal.Login.issue("bob", "bob-pw");
@@ -177,10 +177,10 @@ test("Bearer outranks X-User when both present and Bearer is valid", async () =>
   if (result.TAG !== "Authenticated") {
     return Stdlib_JsError.throwWithMessage("expected Bearer to outrank X-User");
   }
-  expect(result._0.username).toEqual("bob");
+  globalThis.expect(result._0.username).toEqual("bob");
 });
 
-test("setCredentials mirrors identity into the X-User registry", async () => {
+globalThis.test("setCredentials mirrors identity into the X-User registry", async () => {
   resetAll();
   LocalAuth$ReventlessLocal.Login.setCredentials("alice", "alice-pw", alice);
   let result = await LocalAuth$ReventlessLocal.authenticate(buildContext([[
@@ -194,8 +194,8 @@ test("setCredentials mirrors identity into the X-User registry", async () => {
     return Stdlib_JsError.throwWithMessage("expected Authenticated(alice) via X-User");
   }
   let identity = result._0;
-  expect(identity.userId).toEqual("u-alice");
-  expect(identity.groups).toEqual(["Editor"]);
+  globalThis.expect(identity.userId).toEqual("u-alice");
+  globalThis.expect(identity.groups).toEqual(["Editor"]);
 });
 
 export {

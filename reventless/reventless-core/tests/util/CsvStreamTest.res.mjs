@@ -19,28 +19,28 @@ function writeTempCsv(content) {
   return path;
 }
 
-describe("CsvStream.parseRows", () => {
-  test("parses all rows from a small CSV file", async () => {
+globalThis.describe("CsvStream.parseRows", () => {
+  globalThis.test("parses all rows from a small CSV file", async () => {
     let path = writeTempCsv("name,age\nAlice,30\nBob,25");
     let rows = await Effect.runPromise(Stream.runCollect(CsvStream$ReventlessCore.parseRows(path)));
-    expect(rows.length).toBe(2);
+    globalThis.expect(rows.length).toBe(2);
   });
-  test("emits rows in file order", async () => {
+  globalThis.test("emits rows in file order", async () => {
     let path = writeTempCsv("name\nfirst\nsecond\nthird");
     let first = await Effect.runPromise(Stream.runHead(CsvStream$ReventlessCore.parseRows(path)));
     let name = Stdlib_Option.flatMap(first, row => row["name"]);
-    expect(name).toEqual("first");
+    globalThis.expect(name).toEqual("first");
   });
-  test("take(2) returns only 2 rows", async () => {
+  globalThis.test("take(2) returns only 2 rows", async () => {
     let dataRows = Stdlib_Array.make(10, 0).map((i, param) => `row-` + i.toString()).join("\n");
     let path = writeTempCsv("name\n" + dataRows);
     let result = await Effect.runPromise(Stream.runCollect(Stream$1.take(CsvStream$ReventlessCore.parseRows(path), 2)));
-    expect(result.length).toBe(2);
+    globalThis.expect(result.length).toBe(2);
   });
-  test("empty CSV file (header only) returns empty stream", async () => {
+  globalThis.test("empty CSV file (header only) returns empty stream", async () => {
     let path = writeTempCsv("name");
     let rows = await Effect.runPromise(Stream.runCollect(CsvStream$ReventlessCore.parseRows(path)));
-    expect(rows.length).toBe(0);
+    globalThis.expect(rows.length).toBe(0);
   });
 });
 

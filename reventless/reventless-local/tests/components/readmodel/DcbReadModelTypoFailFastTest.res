@@ -2,8 +2,7 @@
 // match any key in `allEventTopics` fails plugin assembly (here: ReadModel
 // construction) with a clear error, instead of silently producing zero events.
 
-open Jest
-open Expect
+open JestGlobals
 open Reventless
 open Reventless.Projection
 
@@ -72,7 +71,7 @@ module ReadModelMaker = ReadModel_Builder.Make(Bus)
 module RmMaker = ReadModelMaker.Make(RmSpec, TypoMappings)
 
 describe("ReadModel source-name fail-fast:", () => {
-  test("constructing a ReadModel whose Mapping.sourceName is missing throws", () => {
+  testSync("constructing a ReadModel whose Mapping.sourceName is missing throws", () => {
     let threw = ref(false)
     let msg = ref("")
     try {

@@ -1,7 +1,6 @@
 // Unit tests for OutboundTranslationSlice_Callback — tests collect and translate phases directly.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open OutboundTranslationSliceFixtures
 
 module SendTrackingEmailTranslation = {

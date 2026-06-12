@@ -8,8 +8,8 @@ function delay(ms) {
   });
 }
 
-describe("BuildClassifier", () => {
-  test("emits onStart then onOk for a clean incremental compile", async () => {
+globalThis.describe("BuildClassifier", () => {
+  globalThis.test("emits onStart then onOk for a clean incremental compile", async () => {
     let starts = {
       contents: 0
     };
@@ -33,11 +33,11 @@ describe("BuildClassifier", () => {
     feed("Parsed 1 source files");
     feed("Compiled 1 modules");
     feed("Finished incremental compilation");
-    expect(starts.contents).toEqual(1);
-    expect(oks.contents).toEqual(1);
-    expect(fails.contents.length).toEqual(0);
+    globalThis.expect(starts.contents).toEqual(1);
+    globalThis.expect(oks.contents).toEqual(1);
+    globalThis.expect(fails.contents.length).toEqual(0);
   });
-  test("emits onFail with the error text after the output settles", async () => {
+  globalThis.test("emits onFail with the error text after the output settles", async () => {
     let oks = {
       contents: 0
     };
@@ -59,12 +59,12 @@ describe("BuildClassifier", () => {
     feed("This has type: string");
     feed("But it's expected to have type: int");
     await delay(550);
-    expect(oks.contents).toEqual(0);
-    expect(fails.contents.length).toEqual(1);
+    globalThis.expect(oks.contents).toEqual(0);
+    globalThis.expect(fails.contents.length).toEqual(1);
     let msg = fails.contents[0];
-    expect(msg.includes("This has type: string")).toEqual(true);
+    globalThis.expect(msg.includes("This has type: string")).toEqual(true);
   });
-  test("watchdog fails a build that starts but never terminates", async () => {
+  globalThis.test("watchdog fails a build that starts but never terminates", async () => {
     let oks = {
       contents: 0
     };
@@ -82,12 +82,12 @@ describe("BuildClassifier", () => {
     });
     feed("Parsed 1 source files");
     await delay(120);
-    expect(oks.contents).toEqual(0);
-    expect(fails.contents.length).toEqual(1);
+    globalThis.expect(oks.contents).toEqual(0);
+    globalThis.expect(fails.contents.length).toEqual(1);
     let msg = fails.contents[0];
-    expect(msg.includes("watchdog")).toEqual(true);
+    globalThis.expect(msg.includes("watchdog")).toEqual(true);
   });
-  test("watchdog does not fire once the build finishes", async () => {
+  globalThis.test("watchdog does not fire once the build finishes", async () => {
     let oks = {
       contents: 0
     };
@@ -106,10 +106,10 @@ describe("BuildClassifier", () => {
     feed("Parsed 1 source files");
     feed("Finished incremental compilation");
     await delay(120);
-    expect(oks.contents).toEqual(1);
-    expect(fails.contents.length).toEqual(0);
+    globalThis.expect(oks.contents).toEqual(1);
+    globalThis.expect(fails.contents.length).toEqual(0);
   });
-  test("strips ANSI colour codes before matching the finish line", async () => {
+  globalThis.test("strips ANSI colour codes before matching the finish line", async () => {
     let oks = {
       contents: 0
     };
@@ -122,7 +122,7 @@ describe("BuildClassifier", () => {
     });
     feed("Parsed 2 source files");
     feed("\x1b[1;32mFinished incremental compilation\x1b[0m");
-    expect(oks.contents).toEqual(1);
+    globalThis.expect(oks.contents).toEqual(1);
   });
 });
 

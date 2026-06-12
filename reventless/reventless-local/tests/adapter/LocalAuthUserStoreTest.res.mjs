@@ -20,7 +20,7 @@ function _writeYamlFile(contents) {
   return path;
 }
 
-test("parseString decodes a well-formed YAML document", async () => {
+globalThis.test("parseString decodes a well-formed YAML document", async () => {
   let entries = UserStore$ReventlessLocal.parseString(`
 - username: alice
   password: alice-pw
@@ -33,21 +33,21 @@ test("parseString decodes a well-formed YAML document", async () => {
     return Stdlib_JsError.throwWithMessage("parseString failed: " + entries._0);
   }
   let entries$1 = entries._0;
-  expect(entries$1.length).toEqual(2);
+  globalThis.expect(entries$1.length).toEqual(2);
   let first = entries$1[0];
-  expect(first.username).toEqual("alice");
-  expect(first.password).toEqual("alice-pw");
-  expect(first.groups).toEqual(["Editor"]);
+  globalThis.expect(first.username).toEqual("alice");
+  globalThis.expect(first.password).toEqual("alice-pw");
+  globalThis.expect(first.groups).toEqual(["Editor"]);
 });
 
-test("parseString rejects malformed YAML", async () => {
+globalThis.test("parseString rejects malformed YAML", async () => {
   let match = UserStore$ReventlessLocal.parseString("not: valid: yaml: at all: ::");
   if (match.TAG === "Ok") {
     return Stdlib_JsError.throwWithMessage("expected Error for malformed YAML");
   }
 });
 
-test("parseString rejects entries missing required fields", async () => {
+globalThis.test("parseString rejects entries missing required fields", async () => {
   let match = UserStore$ReventlessLocal.parseString(`
 - username: alice
   groups: [Editor]
@@ -57,7 +57,7 @@ test("parseString rejects entries missing required fields", async () => {
   }
 });
 
-test("load(~users) registers credentials and returns InlineUsers", async () => {
+globalThis.test("load(~users) registers credentials and returns InlineUsers", async () => {
   resetAll();
   let entries = [
     {
@@ -87,14 +87,14 @@ test("load(~users) registers credentials and returns InlineUsers", async () => {
   }
   let identity = LocalAuth$ReventlessLocal.lookupUser("bob");
   if (identity !== undefined) {
-    expect(identity.userId).toEqual("u-bob");
+    globalThis.expect(identity.userId).toEqual("u-bob");
     return;
   } else {
     return Stdlib_JsError.throwWithMessage("bob not in user registry");
   }
 });
 
-test("load(~usersFile) reads a YAML file from disk", async () => {
+globalThis.test("load(~usersFile) reads a YAML file from disk", async () => {
   resetAll();
   let path = _writeYamlFile(`
 - username: carol
@@ -107,7 +107,7 @@ test("load(~usersFile) reads a YAML file from disk", async () => {
     if (typeof p !== "object" || p.TAG !== "UsersFile") {
       Stdlib_JsError.throwWithMessage("expected UsersFile resolution");
     } else {
-      expect(p._0).toEqual(path);
+      globalThis.expect(p._0).toEqual(path);
     }
   } else {
     Stdlib_JsError.throwWithMessage("load failed: " + msg._0);
@@ -121,7 +121,7 @@ test("load(~usersFile) reads a YAML file from disk", async () => {
   });
 });
 
-test("load(~usersFile) returns Error when the file is missing", async () => {
+globalThis.test("load(~usersFile) returns Error when the file is missing", async () => {
   resetAll();
   let match = UserStore$ReventlessLocal.load(undefined, "/tmp/does-not-exist-reventless.yaml", undefined);
   if (match.TAG === "Ok") {
@@ -129,7 +129,7 @@ test("load(~usersFile) returns Error when the file is missing", async () => {
   }
 });
 
-test("load() with no args + no default file returns Empty", async () => {
+globalThis.test("load() with no args + no default file returns Empty", async () => {
   resetAll();
   let msg = UserStore$ReventlessLocal.load(undefined, undefined, undefined);
   if (msg.TAG !== "Ok") {
@@ -149,7 +149,7 @@ test("load() with no args + no default file returns Empty", async () => {
   }
 });
 
-test("inline users win over a file path", async () => {
+globalThis.test("inline users win over a file path", async () => {
   resetAll();
   let path = _writeYamlFile(`
 - username: file-user
@@ -185,7 +185,7 @@ test("inline users win over a file path", async () => {
   });
 });
 
-test("autoLoadOnce is a no-op after an explicit load", async () => {
+globalThis.test("autoLoadOnce is a no-op after an explicit load", async () => {
   resetAll();
   UserStore$ReventlessLocal.load([{
       username: "x",

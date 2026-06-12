@@ -1,8 +1,7 @@
 // Tests for GraphQL_SchemaInspector — verifies schema introspection at granular,
 // plugin-fragment, and platform levels.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

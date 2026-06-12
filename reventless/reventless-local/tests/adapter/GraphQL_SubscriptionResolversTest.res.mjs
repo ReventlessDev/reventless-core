@@ -44,10 +44,10 @@ let testMeta = {
   correlationId: "corr-1"
 };
 
-describe("LocalGraphQL_SubscriptionResolvers", () => {
-  beforeEach(() => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.reset());
-  describe("Source B — state-change bridge", () => {
-    test("Bus.publishStateChange → yoga PubSub subscriber receives descriptor", async () => {
+globalThis.describe("LocalGraphQL_SubscriptionResolvers", () => {
+  globalThis.beforeEach(() => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.reset());
+  globalThis.describe("Source B — state-change bridge", () => {
+    globalThis.test("Bus.publishStateChange → yoga PubSub subscriber receives descriptor", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       LocalGraphQL_SubscriptionResolvers$ReventlessLocal.bridgeSourceB(TestBus.subscribeToStateChanges, "Product", "CatalogProduct");
       let ps = LocalGraphQL_SubscriptionResolvers$ReventlessLocal.getPubSub();
@@ -72,12 +72,12 @@ describe("LocalGraphQL_SubscriptionResolvers", () => {
       TestBus.publishStateChange("Product", descriptor);
       let received = await consumerPromise;
       if (received !== null) {
-        expect(received).toEqual(descriptor);
+        globalThis.expect(received).toEqual(descriptor);
       } else {
-        expect("onCatalogProduct_stateChanged: timed out").toBe("received");
+        globalThis.expect("onCatalogProduct_stateChanged: timed out").toBe("received");
       }
     });
-    test("state change for unregistered ReadModel → no publish", async () => {
+    globalThis.test("state change for unregistered ReadModel → no publish", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       LocalGraphQL_SubscriptionResolvers$ReventlessLocal.bridgeSourceB(TestBus.subscribeToStateChanges, "Product", "CatalogProduct");
       let ps = LocalGraphQL_SubscriptionResolvers$ReventlessLocal.getPubSub();
@@ -90,11 +90,11 @@ describe("LocalGraphQL_SubscriptionResolvers", () => {
         ]]));
       TestBus.publishStateChange("Category", foreignDescriptor);
       let received = await consumerPromise;
-      expect(received === null ? undefined : Primitive_option.some(received)).toEqual(undefined);
+      globalThis.expect(received === null ? undefined : Primitive_option.some(received)).toEqual(undefined);
     });
   });
-  describe("Source A — event-stream bridge", () => {
-    test("Bus.publishEvent → yoga PubSub subscriber receives event", async () => {
+  globalThis.describe("Source A — event-stream bridge", () => {
+    globalThis.test("Bus.publishEvent → yoga PubSub subscriber receives event", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       LocalGraphQL_SubscriptionResolvers$ReventlessLocal.bridgeSourceA(TestBus.subscribeToEvents, "Catalog", "catalog-events");
       let ps = LocalGraphQL_SubscriptionResolvers$ReventlessLocal.getPubSub();
@@ -118,9 +118,9 @@ describe("LocalGraphQL_SubscriptionResolvers", () => {
       await TestBus.publishEvent("catalog-events", "svc", testMeta, event);
       let received = await consumerPromise;
       if (received !== null) {
-        expect(received).toEqual(event);
+        globalThis.expect(received).toEqual(event);
       } else {
-        expect("onCatalogEventLog_eventAppended: timed out").toBe("received");
+        globalThis.expect("onCatalogEventLog_eventAppended: timed out").toBe("received");
       }
     });
   });

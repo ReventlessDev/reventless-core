@@ -11,11 +11,11 @@ let HeartbeatMaker = Heartbeat_Builder$ReventlessCore.Make({
   make: LocalHeartbeatRunner$ReventlessLocal.make
 });
 
-beforeAll(() => {
+globalThis.beforeAll(() => {
   Globals.jest.useFakeTimers();
 });
 
-afterAll(() => {
+globalThis.afterAll(() => {
   LocalHeartbeatRunner$ReventlessLocal.reset();
   Globals.jest.useRealTimers();
 });
@@ -32,7 +32,7 @@ let resolvedHandler = {
   contents: undefined
 };
 
-beforeAll(async () => {
+globalThis.beforeAll(async () => {
   let h = await TestRunner$ReventlessLocal.resolve(HeartbeatMaker.makeHandler("hb-id-1", 1, mockPublish));
   resolvedHandler.contents = h;
 });

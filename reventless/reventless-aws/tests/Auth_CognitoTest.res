@@ -2,7 +2,7 @@
 // Deploy-time `make` (Pulumi UserPool + UserPoolClient construction) is
 // exercised by `pulumi up` in Stage C; not covered here.
 
-open TestHelpers
+open JestGlobals
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -117,14 +117,14 @@ describe("Auth_Cognito.authenticate", () => {
 // ── fromAppSyncIdentity (resolver-event path) ─────────────────────────────
 
 describe("Auth_Cognito.fromAppSyncIdentity", () => {
-  test("None → Anonymous", () => {
+  testSync("None → Anonymous", () => {
     switch Auth_Cognito.fromAppSyncIdentity(None) {
     | Anonymous => ()
     | _ => JsError.throwWithMessage("expected Anonymous")
     }
   })
 
-  test("Cognito identity: sub + claims.cognito:groups → Authenticated with Cognito provider", () => {
+  testSync("Cognito identity: sub + claims.cognito:groups → Authenticated with Cognito provider", () => {
     let claims = Dict.fromArray([
       ("cognito:username", JSON.Encode.string("alice@example.com")),
       (
@@ -150,7 +150,7 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
     }
   })
 
-  test("Cognito identity: missing claims.cognito:groups → empty groups", () => {
+  testSync("Cognito identity: missing claims.cognito:groups → empty groups", () => {
     let id: Auth_Cognito.appSyncIdentity = {
       sub: "user-no-groups",
       claims: Dict.make(),
@@ -164,7 +164,7 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
     }
   })
 
-  test("IAM identity: no sub but userArn present → Custom(\"aws-iam\") provider", () => {
+  testSync("IAM identity: no sub but userArn present → Custom(\"aws-iam\") provider", () => {
     let id: Auth_Cognito.appSyncIdentity = {
       userArn: "arn:aws:iam::123456789012:role/heartbeat-lambda",
       accountId: "123456789012",
@@ -183,7 +183,7 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
     }
   })
 
-  test("IAM identity: userArn alone (no username) → username falls back to ARN", () => {
+  testSync("IAM identity: userArn alone (no username) → username falls back to ARN", () => {
     let id: Auth_Cognito.appSyncIdentity = {
       userArn: "arn:aws:iam::123:role/x",
     }
@@ -193,7 +193,7 @@ describe("Auth_Cognito.fromAppSyncIdentity", () => {
     }
   })
 
-  test("Neither sub nor userArn → Anonymous", () => {
+  testSync("Neither sub nor userArn → Anonymous", () => {
     let id: Auth_Cognito.appSyncIdentity = {accountId: "123"}
     switch Auth_Cognito.fromAppSyncIdentity(Some(id)) {
     | Anonymous => ()

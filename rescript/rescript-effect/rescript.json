@@ -19,5 +19,7 @@
       "subdirs": true
     }
   ],
-  "dependencies": []
+  "dependencies": [
+    "@reventlessdev/rescript-jest"
+  ]
 }

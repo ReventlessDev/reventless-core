@@ -2,8 +2,7 @@
 // derivation behind the `component` field on file items and the `components`
 // inventory. No I/O; path strings only.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("ComponentMeta.componentOfTestFile", () => {
   testPromise("derives kind + name from a slice GWT test path", async () => {

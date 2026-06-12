@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("SynchronizedRef", () => {
   testPromise("make + get returns the initial value", async () => {

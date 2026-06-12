@@ -5,13 +5,13 @@ import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as LocalScheduledPublisher$ReventlessLocal from "../../src/adapter/Scheduler/LocalScheduledPublisher.res.mjs";
 
-beforeAll(() => {
+globalThis.beforeAll(() => {
   Globals.jest.useFakeTimers();
 });
 
 TestRunner$ReventlessLocal.setup();
 
-afterAll(() => {
+globalThis.afterAll(() => {
   Globals.jest.useRealTimers();
 });
 
@@ -30,9 +30,9 @@ function makeTopicResource(topicName) {
   };
 }
 
-describe("LocalScheduledPublisher", () => {
-  describe("createSchedule", () => {
-    test("single-shot schedule fires event after runAllTimers", async () => {
+globalThis.describe("LocalScheduledPublisher", () => {
+  globalThis.describe("createSchedule", () => {
+    globalThis.test("single-shot schedule fires event after runAllTimers", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let SP = LocalScheduledPublisher$ReventlessLocal.Make(TestBus);
       let count = {
@@ -58,10 +58,10 @@ describe("LocalScheduledPublisher", () => {
       Globals.jest.runAllTimers();
       await Promise.resolve();
       await Promise.resolve();
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
       return SP.reset();
     });
-    test("recurring schedule fires on each interval advance", async () => {
+    globalThis.test("recurring schedule fires on each interval advance", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let SP = LocalScheduledPublisher$ReventlessLocal.Make(TestBus);
       let count = {
@@ -86,12 +86,12 @@ describe("LocalScheduledPublisher", () => {
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
       await Promise.resolve();
-      expect(count.contents).toBe(2);
+      globalThis.expect(count.contents).toBe(2);
       return SP.reset();
     });
   });
-  describe("deleteSchedule", () => {
-    test("clears a named schedule; advancing timers does not fire it", async () => {
+  globalThis.describe("deleteSchedule", () => {
+    globalThis.test("clears a named schedule; advancing timers does not fire it", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let SP = LocalScheduledPublisher$ReventlessLocal.Make(TestBus);
       let count = {
@@ -112,12 +112,12 @@ describe("LocalScheduledPublisher", () => {
       });
       await ops.deleteSchedule([], "to-delete");
       Globals.jest.advanceTimersByTime(60000);
-      expect(count.contents).toBe(0);
+      globalThis.expect(count.contents).toBe(0);
       return SP.reset();
     });
   });
-  describe("reset", () => {
-    test("clears all active timers; subsequent advance does not fire", async () => {
+  globalThis.describe("reset", () => {
+    globalThis.test("clears all active timers; subsequent advance does not fire", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let SP = LocalScheduledPublisher$ReventlessLocal.Make(TestBus);
       let count = {
@@ -138,11 +138,11 @@ describe("LocalScheduledPublisher", () => {
       });
       SP.reset();
       Globals.jest.advanceTimersByTime(300000);
-      expect(count.contents).toBe(0);
+      globalThis.expect(count.contents).toBe(0);
     });
   });
-  describe("rateToMs", () => {
-    test("Minutes(n) fires after n minutes", async () => {
+  globalThis.describe("rateToMs", () => {
+    globalThis.test("Minutes(n) fires after n minutes", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let SP = LocalScheduledPublisher$ReventlessLocal.Make(TestBus);
       let count = {
@@ -162,14 +162,14 @@ describe("LocalScheduledPublisher", () => {
         payload: "{}"
       });
       Globals.jest.advanceTimersByTime(179999);
-      expect(count.contents).toBe(0);
+      globalThis.expect(count.contents).toBe(0);
       Globals.jest.advanceTimersByTime(1);
       await Promise.resolve();
       await Promise.resolve();
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
       return SP.reset();
     });
-    test("Hours(n) fires after n hours", async () => {
+    globalThis.test("Hours(n) fires after n hours", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let SP = LocalScheduledPublisher$ReventlessLocal.Make(TestBus);
       let count = {
@@ -191,7 +191,7 @@ describe("LocalScheduledPublisher", () => {
       Globals.jest.advanceTimersByTime(7200000);
       await Promise.resolve();
       await Promise.resolve();
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
       return SP.reset();
     });
   });

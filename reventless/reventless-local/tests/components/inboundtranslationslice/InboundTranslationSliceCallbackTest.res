@@ -1,7 +1,6 @@
 // Unit tests for InboundTranslationSlice_Callback — tests receive function directly.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open InboundTranslationSliceFixtures
 
 module PaymentWebhookTranslation = {

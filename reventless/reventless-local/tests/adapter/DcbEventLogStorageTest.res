@@ -1,8 +1,7 @@
 // Unit tests for DcbEventLogStorage_InMemory.
 // Covers append, read (with filtering), headPosition, and conditional append.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

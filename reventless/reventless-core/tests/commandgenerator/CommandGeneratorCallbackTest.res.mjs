@@ -5,17 +5,17 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as CommandGeneratorFixtures$ReventlessCore from "./CommandGeneratorFixtures.res.mjs";
 
-beforeEach(() => CommandGeneratorFixtures$ReventlessCore.reset());
+globalThis.beforeEach(() => CommandGeneratorFixtures$ReventlessCore.reset());
 
-describe("CommandGenerator_Callback.generateCommand:", () => {
-  describe("zero-param command", () => {
-    test("publishJsons called with plain string commandJson", async () => {
+globalThis.describe("CommandGenerator_Callback.generateCommand:", () => {
+  globalThis.describe("zero-param command", () => {
+    globalThis.test("publishJsons called with plain string commandJson", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-1", "Create");
       await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
-      expect(publishedCmd.commandJson).toEqual("Create");
+      globalThis.expect(publishedCmd.commandJson).toEqual("Create");
     });
-    test("returns a Pending outcome with non-empty msgId", async () => {
+    globalThis.test("returns a Pending outcome with non-empty msgId", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-1", "Create");
       let outcome = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
       let msgId;
@@ -28,15 +28,15 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
           msgId = outcome.msgId;
           break;
       }
-      expect(msgId.length > 0).toBe(true);
+      globalThis.expect(msgId.length > 0).toBe(true);
     });
-    test("meta.service equals AggregateSpec.name", async () => {
+    globalThis.test("meta.service equals AggregateSpec.name", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-1", "Create");
       await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
-      expect(publishedCmd.meta.service).toBe(CommandGeneratorFixtures$ReventlessCore.CmdGenAggSpec.name);
+      globalThis.expect(publishedCmd.meta.service).toBe(CommandGeneratorFixtures$ReventlessCore.CmdGenAggSpec.name);
     });
-    test("meta.msgId equals meta.correlationId", async () => {
+    globalThis.test("meta.msgId equals meta.correlationId", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-1", "Create");
       let outcome = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
@@ -50,7 +50,7 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
           msgId = outcome.msgId;
           break;
       }
-      expect([
+      globalThis.expect([
         publishedCmd.meta.msgId,
         publishedCmd.meta.correlationId
       ]).toEqual([
@@ -59,18 +59,18 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       ]);
     });
   });
-  describe("multi-param command", () => {
-    test("publishJsons called with object commandJson {TAG, param}", async () => {
+  globalThis.describe("multi-param command", () => {
+    globalThis.test("publishJsons called with object commandJson {TAG, param}", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeOneParamPayload("agg-1", "CreateWithName", "name", "Widget");
       await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
       let cmdObj = Stdlib_Option.getOrThrow(Stdlib_JSON.Decode.object(publishedCmd.commandJson), undefined);
-      expect(cmdObj["TAG"]).toEqual("CreateWithName");
-      expect(cmdObj["name"]).toEqual("Widget");
+      globalThis.expect(cmdObj["TAG"]).toEqual("CreateWithName");
+      globalThis.expect(cmdObj["name"]).toEqual("Widget");
     });
   });
-  describe("schema validation failure", () => {
-    test("invalid command name throws an error", async () => {
+  globalThis.describe("schema validation failure", () => {
+    globalThis.test("invalid command name throws an error", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-1", "NonExistentCommand");
       let threw = false;
       try {
@@ -78,11 +78,11 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       } catch (exn) {
         threw = true;
       }
-      expect(threw).toBe(true);
+      globalThis.expect(threw).toBe(true);
     });
   });
-  describe("StateChangeSlice envelope id derivation", () => {
-    test("single @partitionTag: id derived from tagged field when args have no id", async () => {
+  globalThis.describe("StateChangeSlice envelope id derivation", () => {
+    globalThis.test("single @partitionTag: id derived from tagged field when args have no id", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeSlicePayload("CreateItem", Object.fromEntries([
         [
           "itemId",
@@ -95,7 +95,7 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       ]));
       let outcome = await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.singleTagSliceGen(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
-      expect(publishedCmd.id).toBe("item-42");
+      globalThis.expect(publishedCmd.id).toBe("item-42");
       let msgId;
       switch (outcome.TAG) {
         case "Accepted" :
@@ -106,9 +106,9 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
           msgId = outcome.msgId;
           break;
       }
-      expect(msgId.length > 0).toBe(true);
+      globalThis.expect(msgId.length > 0).toBe(true);
     });
-    test("composite @compositePartitionTag: id is joined partition-key value", async () => {
+    globalThis.test("composite @compositePartitionTag: id is joined partition-key value", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeSlicePayload("DeployVersion", Object.fromEntries([
         [
           "environment",
@@ -125,9 +125,9 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       ]));
       await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.compositeTagSliceGen(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
-      expect(publishedCmd.id).toBe("prod-checkout");
+      globalThis.expect(publishedCmd.id).toBe("prod-checkout");
     });
-    test("explicit id in args wins over derivation (regression check)", async () => {
+    globalThis.test("explicit id in args wins over derivation (regression check)", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeSlicePayload("CreateItem", Object.fromEntries([
         [
           "id",
@@ -144,15 +144,15 @@ describe("CommandGenerator_Callback.generateCommand:", () => {
       ]));
       await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.singleTagSliceGen(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
-      expect(publishedCmd.id).toBe("explicit-id");
+      globalThis.expect(publishedCmd.id).toBe("explicit-id");
     });
   });
-  describe("Aggregate envelope id (regression)", () => {
-    test("explicit id in args is preserved unchanged", async () => {
+  globalThis.describe("Aggregate envelope id (regression)", () => {
+    globalThis.test("explicit id in args is preserved unchanged", async () => {
       let payload = CommandGeneratorFixtures$ReventlessCore.makeZeroParamPayload("agg-7", "Create");
       await Effect.runPromise(CommandGeneratorFixtures$ReventlessCore.TestGenerator.generateCommand(payload));
       let publishedCmd = CommandGeneratorFixtures$ReventlessCore.capturedCmds.contents[0];
-      expect(publishedCmd.id).toBe("agg-7");
+      globalThis.expect(publishedCmd.id).toBe("agg-7");
     });
   });
 });

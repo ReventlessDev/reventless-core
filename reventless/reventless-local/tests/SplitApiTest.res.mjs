@@ -7,61 +7,61 @@ let pluginMutationPrefix = "SplitTestPlugin_SplitTestItem_";
 
 let pluginQueryPrefix = "SplitTestPlugin_SplitTestItem";
 
-describe("Split API Mode — Schema Separation", () => {
-  describe("Plugin GraphQL singleton", () => {
-    test("contains plugin mutation fields", async () => {
+globalThis.describe("Split API Mode — Schema Separation", () => {
+  globalThis.describe("Plugin GraphQL singleton", () => {
+    globalThis.test("contains plugin mutation fields", async () => {
       let d = GraphQL_Server$ReventlessLocal.diagnostics();
       let hasPluginMutation = d.registeredMutationFields.some(f => f.startsWith(pluginMutationPrefix));
-      expect(hasPluginMutation).toBe(true);
+      globalThis.expect(hasPluginMutation).toBe(true);
     });
-    test("contains plugin query fields", async () => {
+    globalThis.test("contains plugin query fields", async () => {
       let d = GraphQL_Server$ReventlessLocal.diagnostics();
       let hasPluginQuery = d.registeredQueryFields.some(f => f.startsWith(pluginQueryPrefix));
-      expect(hasPluginQuery).toBe(true);
+      globalThis.expect(hasPluginQuery).toBe(true);
     });
-    test("does NOT contain admin mutation fields", async () => {
+    globalThis.test("does NOT contain admin mutation fields", async () => {
       let d = GraphQL_Server$ReventlessLocal.diagnostics();
       let hasAdminField = d.registeredMutationFields.some(f => SplitApiFixtures$ReventlessLocal.adminMutationFieldNames.includes(f));
-      expect(hasAdminField).toBe(false);
+      globalThis.expect(hasAdminField).toBe(false);
     });
-    test("does NOT contain admin query fields", async () => {
+    globalThis.test("does NOT contain admin query fields", async () => {
       let d = GraphQL_Server$ReventlessLocal.diagnostics();
       let hasAdminQuery = d.registeredQueryFields.some(f => SplitApiFixtures$ReventlessLocal.adminQueryFieldNames.includes(f));
-      expect(hasAdminQuery).toBe(false);
+      globalThis.expect(hasAdminQuery).toBe(false);
     });
   });
-  describe("Admin GraphQL instance", () => {
-    test("contains admin mutation fields", async () => {
+  globalThis.describe("Admin GraphQL instance", () => {
+    globalThis.test("contains admin mutation fields", async () => {
       let d = SplitApiFixtures$ReventlessLocal.adminGraphQL.diagnostics();
       SplitApiFixtures$ReventlessLocal.adminMutationFieldNames.forEach(field => {
         let hasField = d.registeredMutationFields.includes(field);
-        expect(hasField).toBe(true);
+        globalThis.expect(hasField).toBe(true);
       });
     });
-    test("contains admin query fields", async () => {
+    globalThis.test("contains admin query fields", async () => {
       let d = SplitApiFixtures$ReventlessLocal.adminGraphQL.diagnostics();
       SplitApiFixtures$ReventlessLocal.adminQueryFieldNames.forEach(field => {
         let hasField = d.registeredQueryFields.includes(field);
-        expect(hasField).toBe(true);
+        globalThis.expect(hasField).toBe(true);
       });
     });
-    test("does NOT contain plugin mutation fields", async () => {
+    globalThis.test("does NOT contain plugin mutation fields", async () => {
       let d = SplitApiFixtures$ReventlessLocal.adminGraphQL.diagnostics();
       let hasPluginMutation = d.registeredMutationFields.some(f => f.startsWith(pluginMutationPrefix));
-      expect(hasPluginMutation).toBe(false);
+      globalThis.expect(hasPluginMutation).toBe(false);
     });
-    test("does NOT contain plugin query fields", async () => {
+    globalThis.test("does NOT contain plugin query fields", async () => {
       let d = SplitApiFixtures$ReventlessLocal.adminGraphQL.diagnostics();
       let hasPluginQuery = d.registeredQueryFields.some(f => f.startsWith(pluginQueryPrefix));
-      expect(hasPluginQuery).toBe(false);
+      globalThis.expect(hasPluginQuery).toBe(false);
     });
-    test("has admin type definitions registered", async () => {
+    globalThis.test("has admin type definitions registered", async () => {
       let d = SplitApiFixtures$ReventlessLocal.adminGraphQL.diagnostics();
-      expect(d.typeCount > 0).toBe(true);
+      globalThis.expect(d.typeCount > 0).toBe(true);
     });
-    test("has no SDL mismatches", async () => {
+    globalThis.test("has no SDL mismatches", async () => {
       let d = SplitApiFixtures$ReventlessLocal.adminGraphQL.diagnostics();
-      expect(d.mismatches.length).toBe(0);
+      globalThis.expect(d.mismatches.length).toBe(0);
     });
   });
 });

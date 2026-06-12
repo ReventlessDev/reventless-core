@@ -24,7 +24,6 @@
   ],
   "dependencies": [
     "sury",
-    "@glennsl/rescript-jest",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-local",

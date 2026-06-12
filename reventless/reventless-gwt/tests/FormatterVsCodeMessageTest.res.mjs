@@ -16,23 +16,23 @@ function failingResult(mismatch) {
   };
 }
 
-describe("FormatterVsCode.messagePayload", () => {
-  test("includes the mismatch kind for an EventsMismatch", async () => {
+globalThis.describe("FormatterVsCode.messagePayload", () => {
+  globalThis.test("includes the mismatch kind for an EventsMismatch", async () => {
     let m = FormatterVsCode$ReventlessGwt.messagePayload(failingResult({
       TAG: "EventsMismatch",
       expected: [],
       actual: []
     }));
-    expect(m.kind).toEqual("EventsMismatch");
+    globalThis.expect(m.kind).toEqual("EventsMismatch");
   });
-  test("includes the mismatch kind for an ErrorMismatch", async () => {
+  globalThis.test("includes the mismatch kind for an ErrorMismatch", async () => {
     let m = FormatterVsCode$ReventlessGwt.messagePayload(failingResult({
       TAG: "ErrorMismatch",
       expected: "CategoryAlreadyExists",
       actual: undefined,
       actualEvents: []
     }));
-    expect(m.kind).toEqual("ErrorMismatch");
+    globalThis.expect(m.kind).toEqual("ErrorMismatch");
   });
 });
 

@@ -1,18 +1,17 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("Effect — construction", () => {
-  test("succeed runSync returns value", () => {
+  testSync("succeed runSync returns value", () => {
     let v = Effect.succeed(42)->Effect.runSync
     expect(v)->toBe(42)
   })
 
-  test("fail runSyncExit isFailure", () => {
+  testSync("fail runSyncExit isFailure", () => {
     let exit = Effect.fail("boom")->Effect.runSyncExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
 
-  test("sync wraps a computation", () => {
+  testSync("sync wraps a computation", () => {
     let v = Effect.sync(() => 1 + 1)->Effect.runSync
     expect(v)->toBe(2)
   })
@@ -37,24 +36,24 @@ describe("Effect — construction", () => {
     expect(exit->Exit.isFailure)->toBe(true)
   })
 
-  test("trySync succeeds when no throw", () => {
+  testSync("trySync succeeds when no throw", () => {
     let exit = Effect.trySync(~catch=_exn => "caught", () => 42)->Effect.runSyncExit
     expect(exit->Exit.isSuccess)->toBe(true)
   })
 
-  test("trySync returns computed value", () => {
+  testSync("trySync returns computed value", () => {
     let v = Effect.trySync(~catch=_exn => "caught", () => 1 + 1)->Effect.runSync
     expect(v)->toBe(2)
   })
 
-  test("trySync catches thrown exceptions", () => {
+  testSync("trySync catches thrown exceptions", () => {
     let exit =
       Effect.trySync(~catch=_exn => "caught", () => JSON.parseOrThrow("not json"))
       ->Effect.runSyncExit
     expect(exit->Exit.isFailure)->toBe(true)
   })
 
-  test("trySync maps caught exception to typed error catchable via catchAll", () => {
+  testSync("trySync maps caught exception to typed error catchable via catchAll", () => {
     let caught = ref("")
     Effect.trySync(~catch=_exn => "parse failed", () => JSON.parseOrThrow("not json"))
     ->Effect.catchAll(msg => {
@@ -68,19 +67,19 @@ describe("Effect — construction", () => {
 })
 
 describe("Effect — transformation", () => {
-  test("map transforms the success value", () => {
+  testSync("map transforms the success value", () => {
     let v = Effect.succeed(3)->Effect.map(n => n * 2)->Effect.runSync
     expect(v)->toBe(6)
   })
 
-  test("flatMap chains effects", () => {
+  testSync("flatMap chains effects", () => {
     let v = Effect.succeed(5)
       ->Effect.flatMap(n => Effect.succeed(n + 1))
       ->Effect.runSync
     expect(v)->toBe(6)
   })
 
-  test("tap runs side effect and passes value through", () => {
+  testSync("tap runs side effect and passes value through", () => {
     let sideEffect = ref(0)
     let v = Effect.succeed(10)
       ->Effect.tap(n => Effect.sync(() => { sideEffect := n }))
@@ -89,31 +88,31 @@ describe("Effect — transformation", () => {
     expect(sideEffect.contents)->toBe(10)
   })
 
-  test("zipRight returns the second value", () => {
+  testSync("zipRight returns the second value", () => {
     let v = Effect.succeed("a")->Effect.zipRight(Effect.succeed("b"))->Effect.runSync
     expect(v)->toBe("b")
   })
 
-  test("zipLeft returns the first value", () => {
+  testSync("zipLeft returns the first value", () => {
     let v = Effect.succeed("a")->Effect.zipLeft(Effect.succeed("b"))->Effect.runSync
     expect(v)->toBe("a")
   })
 })
 
 describe("Effect — error handling", () => {
-  test("catchAll recovers from failure", () => {
+  testSync("catchAll recovers from failure", () => {
     let v = Effect.fail("err")
       ->Effect.catchAll(_e => Effect.succeed("recovered"))
       ->Effect.runSync
     expect(v)->toBe("recovered")
   })
 
-  test("option converts success to Some", () => {
+  testSync("option converts success to Some", () => {
     let v = Effect.succeed(7)->Effect.option->Effect.runSync
     expect(v->Option.isSome)->toBe(true)
   })
 
-  test("option converts failure to None", () => {
+  testSync("option converts failure to None", () => {
     let v = Effect.fail("err")->Effect.option->Effect.runSync
     expect(v->Option.isNone)->toBe(true)
   })
@@ -145,7 +144,7 @@ describe("Effect — resource management", () => {
 })
 
 describe("Effect — running", () => {
-  test("runSyncExit success exit isSuccess", () => {
+  testSync("runSyncExit success exit isSuccess", () => {
     let exit = Effect.succeed("ok")->Effect.runSyncExit
     expect(exit->Exit.isSuccess)->toBe(true)
   })

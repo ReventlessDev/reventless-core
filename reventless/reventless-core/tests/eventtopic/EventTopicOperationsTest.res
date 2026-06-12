@@ -1,5 +1,4 @@
-open Jest
-open Expect
+open JestGlobals
 open EventTopicFixtures
 
 module Ops = EventTopic_Operations.Make(

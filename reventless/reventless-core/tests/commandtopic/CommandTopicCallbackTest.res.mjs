@@ -4,27 +4,27 @@ import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as CommandTopicCallbackFixtures$ReventlessCore from "./CommandTopicCallbackFixtures.res.mjs";
 
-beforeEach(() => CommandTopicCallbackFixtures$ReventlessCore.reset());
+globalThis.beforeEach(() => CommandTopicCallbackFixtures$ReventlessCore.reset());
 
-describe("CommandTopic_Callback.handleJsonCommands:", () => {
-  describe("valid command JSON", () => {
-    test("decoded command passed to commandsHandler", async () => {
+globalThis.describe("CommandTopic_Callback.handleJsonCommands:", () => {
+  globalThis.describe("valid command JSON", () => {
+    globalThis.test("decoded command passed to commandsHandler", async () => {
       let item = CommandTopicCallbackFixtures$ReventlessCore.makeTopicItem("agg-1", {
         TAG: "CreateItem",
         itemId: "item-1"
       });
       await Effect.runPromise(CommandTopicCallbackFixtures$ReventlessCore.TestHandler.handleJsonCommands(Stream.fromIterable([item])));
-      expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(1);
+      globalThis.expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(1);
       let captured = CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents[0];
-      expect(captured.reference).toBe("agg-1");
-      expect(captured.command).toEqual({
+      globalThis.expect(captured.reference).toBe("agg-1");
+      globalThis.expect(captured.command).toEqual({
         TAG: "CreateItem",
         itemId: "item-1"
       });
     });
   });
-  describe("results returned from commandsHandler", () => {
-    test("handler results propagated as return value", async () => {
+  globalThis.describe("results returned from commandsHandler", () => {
+    globalThis.test("handler results propagated as return value", async () => {
       CommandTopicCallbackFixtures$ReventlessCore.commandHandlerResults.contents = [
         {
           TAG: "Ok",
@@ -40,7 +40,7 @@ describe("CommandTopic_Callback.handleJsonCommands:", () => {
         itemId: "item-1"
       });
       let results = await Effect.runPromise(CommandTopicCallbackFixtures$ReventlessCore.TestHandler.handleJsonCommands(Stream.fromIterable([item])));
-      expect(results).toEqual([
+      globalThis.expect(results).toEqual([
         {
           TAG: "Ok",
           _0: "agg-1"
@@ -52,18 +52,18 @@ describe("CommandTopic_Callback.handleJsonCommands:", () => {
       ]);
     });
   });
-  describe("malformed command JSON", () => {
-    test("skipped gracefully — commandsHandler called with empty array", async () => {
+  globalThis.describe("malformed command JSON", () => {
+    globalThis.test("skipped gracefully — commandsHandler called with empty array", async () => {
       let invalidItem = {
         command: "not-a-command-object",
         reference: "ref-1"
       };
       await Effect.runPromise(CommandTopicCallbackFixtures$ReventlessCore.TestHandler.handleJsonCommands(Stream.fromIterable([invalidItem])));
-      expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(0);
+      globalThis.expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(0);
     });
   });
-  describe("multiple commands in batch", () => {
-    test("all decodable commands reach commandsHandler", async () => {
+  globalThis.describe("multiple commands in batch", () => {
+    globalThis.test("all decodable commands reach commandsHandler", async () => {
       let items = [
         CommandTopicCallbackFixtures$ReventlessCore.makeTopicItem("agg-1", {
           TAG: "CreateItem",
@@ -79,11 +79,11 @@ describe("CommandTopic_Callback.handleJsonCommands:", () => {
         })
       ];
       await Effect.runPromise(CommandTopicCallbackFixtures$ReventlessCore.TestHandler.handleJsonCommands(Stream.fromIterable(items)));
-      expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(3);
+      globalThis.expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(3);
     });
   });
-  describe("mixed valid and invalid commands", () => {
-    test("only valid commands reach commandsHandler", async () => {
+  globalThis.describe("mixed valid and invalid commands", () => {
+    globalThis.test("only valid commands reach commandsHandler", async () => {
       let validItem = CommandTopicCallbackFixtures$ReventlessCore.makeTopicItem("agg-1", {
         TAG: "CreateItem",
         itemId: "item-1"
@@ -97,8 +97,8 @@ describe("CommandTopic_Callback.handleJsonCommands:", () => {
         validItem,
         invalidItem
       ])));
-      expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(1);
-      expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents[0].reference).toBe("agg-1");
+      globalThis.expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents.length).toBe(1);
+      globalThis.expect(CommandTopicCallbackFixtures$ReventlessCore.capturedItems.contents[0].reference).toBe("agg-1");
     });
   });
 });

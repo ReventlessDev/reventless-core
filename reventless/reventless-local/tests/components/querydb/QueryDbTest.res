@@ -1,7 +1,6 @@
 // Integration tests for QueryDb_Builder with in-memory adapters.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open QueryDbFixtures
 
 describe("QueryDb (in-memory)", () => {

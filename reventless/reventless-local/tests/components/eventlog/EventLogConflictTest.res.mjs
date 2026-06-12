@@ -5,12 +5,12 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as EventLogFixtures$ReventlessLocal from "./EventLogFixtures.res.mjs";
 
-describe("EventLog — conflict detection (in-memory)", () => {
-  beforeAll(async () => {
+globalThis.describe("EventLog — conflict detection (in-memory)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
   });
-  beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
-  test("append with stale sequenceNr returns conflict error", async () => {
+  globalThis.beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
+  globalThis.test("append with stale sequenceNr returns conflict error", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     await ops.append(0, "conflict-1", [EventLogFixtures$ReventlessLocal.makeEvent$p("conflict-1", {
         TAG: "ItemCreated",
@@ -20,9 +20,9 @@ describe("EventLog — conflict detection (in-memory)", () => {
         TAG: "ItemCreated",
         name: "Duplicate"
       })]);
-    expect(Stdlib_Result.isError(result)).toBe(true);
+    globalThis.expect(Stdlib_Result.isError(result)).toBe(true);
   });
-  test("append with correct sequenceNr succeeds after prior append", async () => {
+  globalThis.test("append with correct sequenceNr succeeds after prior append", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     await ops.append(0, "conflict-2", [EventLogFixtures$ReventlessLocal.makeEvent$p("conflict-2", {
         TAG: "ItemCreated",
@@ -32,9 +32,9 @@ describe("EventLog — conflict detection (in-memory)", () => {
         TAG: "ItemDeleted",
         id: "conflict-2"
       })]);
-    expect(Stdlib_Result.isOk(result)).toBe(true);
+    globalThis.expect(Stdlib_Result.isOk(result)).toBe(true);
   });
-  test("conflict does not publish events to event topic", async () => {
+  globalThis.test("conflict does not publish events to event topic", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     await ops.append(0, "conflict-3", [EventLogFixtures$ReventlessLocal.makeEvent$p("conflict-3", {
         TAG: "ItemCreated",
@@ -45,9 +45,9 @@ describe("EventLog — conflict detection (in-memory)", () => {
         TAG: "ItemCreated",
         name: "Duplicate"
       })]);
-    expect(EventLogFixtures$ReventlessLocal.capturedTopicEventCount.contents).toBe(0);
+    globalThis.expect(EventLogFixtures$ReventlessLocal.capturedTopicEventCount.contents).toBe(0);
   });
-  test("conflict does not store events", async () => {
+  globalThis.test("conflict does not store events", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     await ops.append(0, "conflict-4", [EventLogFixtures$ReventlessLocal.makeEvent$p("conflict-4", {
         TAG: "ItemCreated",
@@ -58,9 +58,9 @@ describe("EventLog — conflict detection (in-memory)", () => {
         name: "Should not be stored"
       })]);
     let replayed = await ops.replay("conflict-4");
-    expect(replayed.length).toBe(1);
+    globalThis.expect(replayed.length).toBe(1);
   });
-  test("batch append with correct sequenceNr stores all events", async () => {
+  globalThis.test("batch append with correct sequenceNr stores all events", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     let result = await ops.append(0, "conflict-5", [
       EventLogFixtures$ReventlessLocal.makeEvent$p("conflict-5", {
@@ -72,9 +72,9 @@ describe("EventLog — conflict detection (in-memory)", () => {
         id: "e2"
       })
     ]);
-    expect(Stdlib_Result.isOk(result)).toBe(true);
+    globalThis.expect(Stdlib_Result.isOk(result)).toBe(true);
     let replayed = await ops.replay("conflict-5");
-    expect(replayed.length).toBe(2);
+    globalThis.expect(replayed.length).toBe(2);
   });
 });
 

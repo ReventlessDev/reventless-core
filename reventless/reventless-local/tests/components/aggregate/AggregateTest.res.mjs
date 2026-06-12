@@ -7,8 +7,8 @@ import * as TestFixtures$ReventlessLocal from "../../TestFixtures.res.mjs";
 import * as AggregateFixtures$ReventlessLocal from "./AggregateFixtures.res.mjs";
 import * as EventLogStorage_InMemory$ReventlessLocal from "../../../src/adapter/EventLog/EventLogStorage_InMemory.res.mjs";
 
-describe("LocalBus", () => {
-  test("publishes events to all subscribers", async () => {
+globalThis.describe("LocalBus", () => {
+  globalThis.test("publishes events to all subscribers", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let count = {
       contents: 0
@@ -20,9 +20,9 @@ describe("LocalBus", () => {
       count.contents = count.contents + 1 | 0;
     });
     await TestBus.publishEvent("t1", "memory:InMemory", TestFixtures$ReventlessLocal.testMeta, null);
-    expect(count.contents).toBe(2);
+    globalThis.expect(count.contents).toBe(2);
   });
-  test("dispatches commands to registered handler", async () => {
+  globalThis.test("dispatches commands to registered handler", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let received = {
       contents: undefined
@@ -33,9 +33,9 @@ describe("LocalBus", () => {
       received.contents = tmp;
     });
     await TestBus.dispatchCommand("cmd1", "hello");
-    expect(received.contents).toEqual("hello");
+    globalThis.expect(received.contents).toEqual("hello");
   });
-  test("reset clears all handlers and subscribers", async () => {
+  globalThis.test("reset clears all handlers and subscribers", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let count = {
       contents: 0
@@ -44,12 +44,12 @@ describe("LocalBus", () => {
       count.contents = count.contents + 1 | 0;
     });
     TestBus.reset();
-    expect(count.contents).toBe(0);
+    globalThis.expect(count.contents).toBe(0);
   });
 });
 
-describe("EventLogStorage_InMemory", () => {
-  test("append stores events and replay returns them", async () => {
+globalThis.describe("EventLogStorage_InMemory", () => {
+  globalThis.test("append stores events and replay returns them", async () => {
     let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log", {});
     let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
     await ops.append(0, "agg-1", [
@@ -57,15 +57,15 @@ describe("EventLogStorage_InMemory", () => {
       "e2"
     ]);
     let events = await ops.replay("agg-1");
-    expect(events.length).toBe(2);
+    globalThis.expect(events.length).toBe(2);
   });
-  test("replay returns empty array for unknown aggregate id", async () => {
+  globalThis.test("replay returns empty array for unknown aggregate id", async () => {
     let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log-2", {});
     let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
     let events = await ops.replay("unknown-id");
-    expect(events.length).toBe(0);
+    globalThis.expect(events.length).toBe(0);
   });
-  test("multiple appends accumulate events", async () => {
+  globalThis.test("multiple appends accumulate events", async () => {
     let storage = EventLogStorage_InMemory$ReventlessLocal.make("test-log-3", {});
     let ops = await TestRunner$ReventlessLocal.resolve(storage.operations);
     await ops.append(0, "agg-2", ["e1"]);
@@ -74,18 +74,18 @@ describe("EventLogStorage_InMemory", () => {
       "e3"
     ]);
     let events = await ops.replay("agg-2");
-    expect(events.length).toBe(3);
+    globalThis.expect(events.length).toBe(3);
   });
 });
 
-describe("Aggregate E2E", () => {
-  beforeAll(async () => {
+globalThis.describe("Aggregate E2E", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(AggregateFixtures$ReventlessLocal.ItemAgg.operations(AggregateFixtures$ReventlessLocal.agg));
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     AggregateFixtures$ReventlessLocal.capturedEventCount.contents = 0;
   });
-  test("CreateItem command produces ItemCreated event on event topic", async () => {
+  globalThis.test("CreateItem command produces ItemCreated event on event topic", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(AggregateFixtures$ReventlessLocal.ItemAgg.operations(AggregateFixtures$ReventlessLocal.agg));
     let commandJson = Message$ReventlessCore.encode({
       TAG: "CreateItem",
@@ -96,9 +96,9 @@ describe("Aggregate E2E", () => {
         meta: TestFixtures$ReventlessLocal.testMeta,
         commandJson: commandJson
       }]);
-    expect(AggregateFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
+    globalThis.expect(AggregateFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
   });
-  test("second CreateItem for same id produces no events (AlreadyExists)", async () => {
+  globalThis.test("second CreateItem for same id produces no events (AlreadyExists)", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(AggregateFixtures$ReventlessLocal.ItemAgg.operations(AggregateFixtures$ReventlessLocal.agg));
     let commandJson = Message$ReventlessCore.encode({
       TAG: "CreateItem",
@@ -109,9 +109,9 @@ describe("Aggregate E2E", () => {
         meta: TestFixtures$ReventlessLocal.testMeta,
         commandJson: commandJson
       }]);
-    expect(AggregateFixtures$ReventlessLocal.capturedEventCount.contents).toBe(0);
+    globalThis.expect(AggregateFixtures$ReventlessLocal.capturedEventCount.contents).toBe(0);
   });
-  test("CreateItem for new id produces event", async () => {
+  globalThis.test("CreateItem for new id produces event", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(AggregateFixtures$ReventlessLocal.ItemAgg.operations(AggregateFixtures$ReventlessLocal.agg));
     let commandJson = Message$ReventlessCore.encode({
       TAG: "CreateItem",
@@ -122,7 +122,7 @@ describe("Aggregate E2E", () => {
         meta: TestFixtures$ReventlessLocal.testMeta,
         commandJson: commandJson
       }]);
-    expect(AggregateFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
+    globalThis.expect(AggregateFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
   });
 });
 

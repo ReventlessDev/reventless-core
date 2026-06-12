@@ -85,7 +85,6 @@
     "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
-    "@glennsl/rescript-jest": "^0.13.1",
     "rescript": "^12.2.0",
     "sury-ppx": "^11.0.0-alpha.2"
   },
@@ -117,9 +116,6 @@
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-local",
     "@reventlessdev/{platform}-{plugin}-spec"
-  ],
-  "dev-dependencies": [
-    "@glennsl/rescript-jest"
   ],
   "compiler-flags": []
 }

@@ -1,17 +1,17 @@
-open TestHelpers
+open JestGlobals
 
 describe("AppSync_Adapter.sha256Hex", () => {
-  test("returns a 64-character hex string", () => {
+  testSync("returns a 64-character hex string", () => {
     let hash = AppSync_Adapter.sha256Hex("hello")
     expect(hash->String.length)->toBe(64)
   })
 
-  test("is stable — same input produces same digest", () => {
+  testSync("is stable — same input produces same digest", () => {
     let sdl = "type Query { ping: String }"
     expect(AppSync_Adapter.sha256Hex(sdl))->toBe(AppSync_Adapter.sha256Hex(sdl))
   })
 
-  test("differs for inputs that differ by one character", () => {
+  testSync("differs for inputs that differ by one character", () => {
     let sdlA = "type Query { ping: String }"
     let sdlB = "type Query { pong: String }"
     expect(AppSync_Adapter.sha256Hex(sdlA))->not_->toBe(AppSync_Adapter.sha256Hex(sdlB))
@@ -25,7 +25,7 @@ let decodeFragment = (fragment: Reventless.Plugin.apiSchemaFragment) =>
 describe("AppSync_Adapter.injectAwsAuthAll", () => {
   let baseFragment = ReventlessCore.AdminApi.baseFragment(~cloner=true)
 
-  test("adds @aws_auth directive to all mutation fields", () => {
+  testSync("adds @aws_auth directive to all mutation fields", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     parts.mutations->Array.forEach(field => {
@@ -33,7 +33,7 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
     })
   })
 
-  test("adds @aws_auth directive to all query fields", () => {
+  testSync("adds @aws_auth directive to all query fields", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     parts.queries->Array.forEach(field => {
@@ -41,14 +41,14 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
     })
   })
 
-  test("preserves type definitions unchanged", () => {
+  testSync("preserves type definitions unchanged", () => {
     let original = decodeFragment(baseFragment)
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     expect(parts.types)->toEqual(original.types)
   })
 
-  test("uses specified group name", () => {
+  testSync("uses specified group name", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="SuperAdmin")
     let parts = decodeFragment(augmented)
     parts.mutations->Array.forEach(field => {
@@ -62,7 +62,7 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
   // `Subscription.onPlatform_Plugin_Activate` (and Deactivate) with "Type not
   // found" at deploy time. The subscription fields must survive the round-trip
   // and pick up the same @aws_auth group as mutations/queries.
-  test("preserves subscription fields with @aws_auth directive", () => {
+  testSync("preserves subscription fields with @aws_auth directive", () => {
     let original = decodeFragment(baseFragment)
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
@@ -73,7 +73,7 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
     })
   })
 
-  test("admin Plugin aggregate subscription fields survive the round-trip", () => {
+  testSync("admin Plugin aggregate subscription fields survive the round-trip", () => {
     let augmented = AppSync_Adapter.injectAwsAuthAll(baseFragment, ~group="Admin")
     let parts = decodeFragment(augmented)
     let joined = parts.subscriptions->Array.join("\n")
@@ -83,7 +83,7 @@ describe("AppSync_Adapter.injectAwsAuthAll", () => {
 })
 
 describe("AppSync_Adapter.injectAwsAuth", () => {
-  test("injects auth only on entries with authorization", () => {
+  testSync("injects auth only on entries with authorization", () => {
     // Build a fragment with known entries
     let mutationEntries: array<ReventlessInfra.Api.mutationSchemaEntry> =
       ReventlessCore.AdminApi.mutationEntries(~cloner=false)
@@ -110,7 +110,7 @@ describe("AppSync_Adapter.injectAwsAuth", () => {
 })
 
 describe("AppSync_Adapter.generateFragment", () => {
-  test("produces fragment with auth directives from entries", () => {
+  testSync("produces fragment with auth directives from entries", () => {
     let mutationEntries = ReventlessCore.AdminApi.mutationEntries(~cloner=false)
     let queryEntries = ReventlessCore.PluginBaseFragment.queryEntries
 
@@ -164,7 +164,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     permission: ?permission,
   }
 
-  test("AllowGroups([\"Admin\"]) emits cognito_groups: [\"Admin\"] on mutation", () => {
+  testSync("AllowGroups([\"Admin\"]) emits cognito_groups: [\"Admin\"] on mutation", () => {
     let fp = Dict.fromArray([(
       "catalog_Category_Archive",
       Reventless.Authorization.AllowGroups(["Admin"]),
@@ -184,7 +184,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     expect(m)->toContain(`@aws_auth(cognito_groups: ["Admin"])`)
   })
 
-  test("AllowGroups multi-group emits comma-separated groups", () => {
+  testSync("AllowGroups multi-group emits comma-separated groups", () => {
     let fp = Dict.fromArray([(
       "p_X",
       Reventless.Authorization.AllowGroups(["Admin", "Editor"]),
@@ -202,7 +202,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     )
   })
 
-  test("AllowAuthenticated emits no directive", () => {
+  testSync("AllowAuthenticated emits no directive", () => {
     let fp = Dict.fromArray([(
       "p_Add",
       Reventless.Authorization.AllowAuthenticated,
@@ -218,7 +218,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     expect(parts.mutations->Array.getUnsafe(0))->not_->toContain("@aws_auth")
   })
 
-  test("DenyAll emits sentinel __deny_all__ group", () => {
+  testSync("DenyAll emits sentinel __deny_all__ group", () => {
     let fp = Dict.fromArray([("p_Hide", Reventless.Authorization.DenyAll)])
     let entry = mutationEntry(~fieldNames=["p_Hide"], ~fieldPermissions=fp)
     let frag = makeFragment(["p_Hide(id: ID!): String"], [])
@@ -231,7 +231,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     expect(parts.mutations->Array.getUnsafe(0))->toContain(`"__deny_all__"`)
   })
 
-  test("Per-field permissions: only annotated fields get directives", () => {
+  testSync("Per-field permissions: only annotated fields get directives", () => {
     let fp = Dict.fromArray([
       ("p_Archive", Reventless.Authorization.AllowGroups(["Admin"])),
       ("p_Add", Reventless.Authorization.AllowAuthenticated),
@@ -262,7 +262,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     }
   })
 
-  test("Query permission applies to BOTH single and list field names", () => {
+  testSync("Query permission applies to BOTH single and list field names", () => {
     let entry = queryEntry(
       ~single="p_Item",
       ~list="p_Items",
@@ -294,7 +294,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     }
   })
 
-  test("Spec-level permission wins over legacy authorization field", () => {
+  testSync("Spec-level permission wins over legacy authorization field", () => {
     // Legacy {tableName, group} says "Admin"; spec-level says "Manager".
     // Spec-level must win.
     let fp = Dict.fromArray([(
@@ -322,7 +322,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
     expect(m)->not_->toContain(`"Admin"`)
   })
 
-  test("AllowAuthenticated on a field overrides the legacy authorization (removes directive)", () => {
+  testSync("AllowAuthenticated on a field overrides the legacy authorization (removes directive)", () => {
     let fp = Dict.fromArray([(
       "p_X",
       Reventless.Authorization.AllowAuthenticated,
@@ -348,7 +348,7 @@ describe("AppSync_Adapter.injectAwsAuth — Stage E2 permission lifting", () => 
 })
 
 describe("Split mode — empty base fragment", () => {
-  test("empty stitcher encode produces fragment with no fields", () => {
+  testSync("empty stitcher encode produces fragment with no fields", () => {
     let emptyFragment = ReventlessCore.GraphQL_Stitcher.encode({
       types: [],
       mutations: [],
@@ -361,7 +361,7 @@ describe("Split mode — empty base fragment", () => {
     expect(parts.queries)->toHaveLength(0)
   })
 
-  test("stitching with empty base produces only plugin fields", () => {
+  testSync("stitching with empty base produces only plugin fields", () => {
     let emptyBase = ReventlessCore.GraphQL_Stitcher.encode({
       types: [],
       mutations: [],
@@ -385,7 +385,7 @@ describe("Split mode — empty base fragment", () => {
     expect(sdl)->not_->toContain("Platform_Plugin")
   })
 
-  test("stitching admin base without plugins produces only admin fields", () => {
+  testSync("stitching admin base without plugins produces only admin fields", () => {
     let adminBase = ReventlessCore.AdminApi.baseFragment(~cloner=false)
     let sdl = ReventlessCore.GraphQL_Stitcher.stitch(
       ~baseFragment=adminBase,

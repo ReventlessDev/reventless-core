@@ -4,8 +4,7 @@
 // path is debounced (no terminator in rescript's error output), so those tests
 // await past the 400ms settle window.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 @val external setTimeout: (unit => unit, int) => unit = "setTimeout"
 let delay = (ms: int): promise<unit> =>

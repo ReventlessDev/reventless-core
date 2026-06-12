@@ -1,7 +1,6 @@
 // Tests for optimistic locking conflict detection in EventLog (in-memory).
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open EventLogFixtures
 
 describe("EventLog — conflict detection (in-memory)", () => {

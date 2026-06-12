@@ -1,23 +1,23 @@
 # Jest ESM Mode Gotchas
 
-## testPromise Is Broken
+## Async Tests: Use JestGlobals, Not glennsl
 
-`@glennsl/rescript-jest`'s `testPromise` does NOT await the returned Promise. It wraps `callback()` in `() => { affirm(callback()); }` which discards the Promise, making Jest treat the test as synchronous. All `testPromise` tests in a describe block run concurrently.
+`@glennsl/rescript-jest`'s `testPromise` does NOT await the returned Promise — it wraps `callback()` in `() => { affirm(callback()); }`, discarding the Promise so Jest treats the test as synchronous and tests in a describe block race. Its `expect` is also deferred: only an assertion *returned* from the test body actually runs.
 
-**Fix:** Use native Jest binding:
+**Use `@reventlessdev/rescript-jest` (module `JestGlobals`) instead.** It binds Jest's globals directly with throwing `expect` and native async bodies:
 
 ```rescript
-type expectResult
-@val external jestTest: (string, unit => promise<unit>) => unit = "test"
-@val external nativeExpect: 'a => expectResult = "expect"
-@send external nativeToBe: (expectResult, 'a) => unit = "toBe"
-@send external nativeToEqual: (expectResult, 'a) => unit = "toEqual"
+open JestGlobals
 
-jestTest("my async test", async () => {
+testSync("sync test", () => expect(1 + 1)->toBe(2))
+
+testPromise("async test", async () => {
   let result = await someAsyncOp()
-  nativeExpect(result)->nativeToBe(expected)
+  expect(result)->toBe(expected)
 })
 ```
+
+`test` registers an async test; `testSync` a synchronous one. Matchers throw on mismatch and return `unit`, so every assertion runs at its line.
 
 ## jest Object in ESM Mode
 
@@ -64,17 +64,18 @@ let first = items->Array.getUnsafe(0)
 let name = first.name
 ```
 
-## AsyncTest Open Pattern
+## Test Bindings (open JestGlobals)
 
-For in-memory adapter tests:
+All hand-written tests use the shared bindings from `@reventlessdev/rescript-jest`:
 
 ```rescript
-open AsyncTest
-open AsyncTest.Expect
-// Do NOT open Jest alongside AsyncTest
+open JestGlobals
+// describe / test / testSync / testPromise / beforeAll / beforeAllAsync / ...
+// matchers (expect, toBe, toEqual, ...) are available flat after this open;
+// `module Expect` re-exports them for `open JestGlobals.Expect` if preferred.
 ```
 
-All tests use `testPromise`. `expect` from `AsyncTest.Expect` returns `unit` (not `Jest.assertion`), so no `->ignore` is needed on intermediate assertions.
+`expect(...)` matchers throw on mismatch and return `unit`, so every assertion in a body runs at its line — no `->ignore` on intermediate assertions, and no need to return a single assertion from the test.
 
 ## Fake Timer Test Isolation
 

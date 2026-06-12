@@ -20,8 +20,8 @@ function collect(stream) {
   return Effect.runPromise(Effect.catchAll(Stream.runCollect(stream), param => Effect.succeed([])));
 }
 
-describe("QueryDbStorage_Sqlite — GSI", () => {
-  test("declared indexes produce CREATE INDEX statements", async () => {
+globalThis.describe("QueryDbStorage_Sqlite — GSI", () => {
+  globalThis.test("declared indexes produce CREATE INDEX statements", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -53,8 +53,8 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
         return "";
       }
     });
-    expect(names.includes("idx_qdb_orders_ByOwner")).toBe(true);
-    expect(names.includes("idx_qdb_orders_ByOwnerCreated")).toBe(true);
+    globalThis.expect(names.includes("idx_qdb_orders_ByOwner")).toBe(true);
+    globalThis.expect(names.includes("idx_qdb_orders_ByOwnerCreated")).toBe(true);
     let row = rows.find(row => {
       let match = row["name"];
       return match === "idx_qdb_orders_ByOwner";
@@ -66,9 +66,9 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
     } else {
       firstSql = "";
     }
-    expect(firstSql.includes("json_extract(item, '$.ownerId')")).toBe(true);
+    globalThis.expect(firstSql.includes("json_extract(item, '$.ownerId')")).toBe(true);
   });
-  test("composite-key indexes use pk/sk concatenation expressions", async () => {
+  globalThis.test("composite-key indexes use pk/sk concatenation expressions", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -92,9 +92,9 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
     let row = Stdlib_Option.getOrThrow(SqliteDriver$ReventlessLocal.get(listSql, []), undefined);
     let match = row["sql"];
     let sql = typeof match === "string" ? match : "";
-    expect(sql.includes("json_extract(item, '$.tenantId') || '|' || json_extract(item, '$.ownerId')")).toBe(true);
+    globalThis.expect(sql.includes("json_extract(item, '$.tenantId') || '|' || json_extract(item, '$.ownerId')")).toBe(true);
   });
-  test("index name is sanitised — special characters in index name become underscores", async () => {
+  globalThis.test("index name is sanitised — special characters in index name become underscores", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -116,12 +116,12 @@ describe("QueryDbStorage_Sqlite — GSI", () => {
         return "";
       }
     });
-    expect(names.includes("idx_qdb_rm_by_thing_v2")).toBe(true);
+    globalThis.expect(names.includes("idx_qdb_rm_by_thing_v2")).toBe(true);
   });
 });
 
-describe("QueryDbStorage_Sqlite — TTL", () => {
-  test("save with TTL in the future returns the item", async () => {
+globalThis.describe("QueryDbStorage_Sqlite — TTL", () => {
+  globalThis.test("save with TTL in the future returns the item", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -133,9 +133,9 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     let oneHourFromNow = (Date.now() / 1000.0 | 0) + 3600 | 0;
     await ops.save("k", "alive", "Any", oneHourFromNow);
     let items = await collect(ops.loadStream("k"));
-    expect(items.length).toBe(1);
+    globalThis.expect(items.length).toBe(1);
   });
-  test("save with TTL already in the past hides the item from reads", async () => {
+  globalThis.test("save with TTL already in the past hides the item from reads", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -147,9 +147,9 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     let aMinuteAgo = (Date.now() / 1000.0 | 0) - 60 | 0;
     await ops.save("k", "expired", "Any", aMinuteAgo);
     let items = await collect(ops.loadStream("k"));
-    expect(items.length).toBe(0);
+    globalThis.expect(items.length).toBe(0);
   });
-  test("save without TTL is treated as never expiring", async () => {
+  globalThis.test("save without TTL is treated as never expiring", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -160,9 +160,9 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
     await ops.save("k", "forever", "Any", undefined);
     let items = await collect(ops.loadStream("k"));
-    expect(items.length).toBe(1);
+    globalThis.expect(items.length).toBe(1);
   });
-  test("scanAll skips expired rows", async () => {
+  globalThis.test("scanAll skips expired rows", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -176,12 +176,12 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     await ops.save("expired", "e", "Any", aMinuteAgo);
     let scan = TestBus.getQueryDbScan("scan-ttl");
     if (scan !== undefined) {
-      expect(scan().length).toBe(1);
+      globalThis.expect(scan().length).toBe(1);
     } else {
-      expect("scan registered").toBe("scan missing");
+      globalThis.expect("scan registered").toBe("scan missing");
     }
   });
-  test("overwriting an expired row with a non-expired one makes it visible again", async () => {
+  globalThis.test("overwriting an expired row with a non-expired one makes it visible again", async () => {
     let TestBus = LocalBus$ReventlessLocal.Make({});
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let DbProvider = {
@@ -193,11 +193,11 @@ describe("QueryDbStorage_Sqlite — TTL", () => {
     let aMinuteAgo = (Date.now() / 1000.0 | 0) - 60 | 0;
     await ops.save("k", "expired", "Any", aMinuteAgo);
     let items1 = await collect(ops.loadStream("k"));
-    expect(items1.length).toBe(0);
+    globalThis.expect(items1.length).toBe(0);
     await ops.save("k", "revived", "Any", undefined);
     let items2 = await collect(ops.loadStream("k"));
-    expect(items2.length).toBe(1);
-    expect(items2[0]).toEqual("revived");
+    globalThis.expect(items2.length).toBe(1);
+    globalThis.expect(items2[0]).toEqual("revived");
   });
 });
 

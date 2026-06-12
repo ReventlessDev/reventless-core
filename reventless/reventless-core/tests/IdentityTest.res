@@ -1,19 +1,18 @@
-open Jest
-open Expect
+open JestGlobals
 
 S.enableJson()
 
 describe("Identity", () => {
   describe("anonymous", () => {
-    test("has userId 'anonymous'", () => {
+    testSync("has userId 'anonymous'", () => {
       expect(Reventless.Identity.anonymous.userId)->toBe("anonymous")
     })
 
-    test("has empty groups", () => {
+    testSync("has empty groups", () => {
       expect(Reventless.Identity.anonymous.groups)->toEqual([])
     })
 
-    test("has InMemory provider", () => {
+    testSync("has InMemory provider", () => {
       expect(Reventless.Identity.anonymous.provider)->toEqual(Reventless.Identity.InMemory)
     })
   })
@@ -26,11 +25,11 @@ describe("Identity", () => {
       provider: Cognito,
     }
 
-    test("returns true when group is present", () => {
+    testSync("returns true when group is present", () => {
       expect(Reventless.Identity.hasGroup(identity, "admin"))->toBe(true)
     })
 
-    test("returns false when group is absent", () => {
+    testSync("returns false when group is absent", () => {
       expect(Reventless.Identity.hasGroup(identity, "viewers"))->toBe(false)
     })
   })
@@ -44,15 +43,15 @@ describe("Identity", () => {
       provider: InMemory,
     }
 
-    test("returns Some for existing claim", () => {
+    testSync("returns Some for existing claim", () => {
       expect(Reventless.Identity.getClaim(identity, "tenant"))->toEqual(Some("acme"))
     })
 
-    test("returns None for missing claim", () => {
+    testSync("returns None for missing claim", () => {
       expect(Reventless.Identity.getClaim(identity, "missing"))->toEqual(None)
     })
 
-    test("returns None when claims are absent", () => {
+    testSync("returns None when claims are absent", () => {
       let noClaims: Reventless.Identity.t = {
         userId: "user-2",
         username: "bob",
@@ -64,7 +63,7 @@ describe("Identity", () => {
   })
 
   describe("schema roundtrip", () => {
-    test("encode then decode preserves identity", () => {
+    testSync("encode then decode preserves identity", () => {
       let identity: Reventless.Identity.t = {
         userId: "user-1",
         username: "alice",
@@ -77,7 +76,7 @@ describe("Identity", () => {
       expect(decoded)->toEqual(identity)
     })
 
-    test("roundtrip with Custom provider", () => {
+    testSync("roundtrip with Custom provider", () => {
       let identity: Reventless.Identity.t = {
         userId: "ext-1",
         username: "external",
@@ -89,7 +88,7 @@ describe("Identity", () => {
       expect(decoded)->toEqual(identity)
     })
 
-    test("roundtrip without optional claims", () => {
+    testSync("roundtrip without optional claims", () => {
       let identity: Reventless.Identity.t = {
         userId: "user-3",
         username: "charlie",
@@ -106,12 +105,12 @@ describe("Identity", () => {
 
 describe("RequestContext", () => {
   describe("test() constructor", () => {
-    test("defaults to anonymous identity", () => {
+    testSync("defaults to anonymous identity", () => {
       let ctx = RequestContext.test()
       expect(ctx.identity.userId)->toBe("anonymous")
     })
 
-    test("accepts custom identity", () => {
+    testSync("accepts custom identity", () => {
       let identity: Reventless.Identity.t = {
         userId: "user-1",
         username: "alice",
@@ -122,32 +121,32 @@ describe("RequestContext", () => {
       expect(ctx.identity.userId)->toBe("user-1")
     })
 
-    test("defaults to empty claims", () => {
+    testSync("defaults to empty claims", () => {
       let ctx = RequestContext.test()
       expect(ctx.claims->Dict.keysToArray)->toEqual([])
     })
   })
 
   describe("getClaim", () => {
-    test("returns claim value when present", () => {
+    testSync("returns claim value when present", () => {
       let ctx = RequestContext.test(~claims=Dict.fromArray([("tenant", "acme")]))
       expect(RequestContext.getClaim(ctx, "tenant"))->toEqual(Some("acme"))
     })
 
-    test("returns None when absent", () => {
+    testSync("returns None when absent", () => {
       let ctx = RequestContext.test()
       expect(RequestContext.getClaim(ctx, "missing"))->toEqual(None)
     })
   })
 
   describe("withClaim", () => {
-    test("adds a claim to the context", () => {
+    testSync("adds a claim to the context", () => {
       let ctx = RequestContext.test()
       let updated = RequestContext.withClaim(ctx, "tenant", "acme")
       expect(RequestContext.getClaim(updated, "tenant"))->toEqual(Some("acme"))
     })
 
-    test("does not mutate the original context", () => {
+    testSync("does not mutate the original context", () => {
       let ctx = RequestContext.test()
       let _updated = RequestContext.withClaim(ctx, "tenant", "acme")
       expect(RequestContext.getClaim(ctx, "tenant"))->toEqual(None)

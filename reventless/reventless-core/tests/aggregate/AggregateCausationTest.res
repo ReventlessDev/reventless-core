@@ -5,8 +5,7 @@
 //   - service inherited from the command (parent's service)
 //   - fresh msgId distinct from the command's
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 open AggregateFixtures
 
 let _ = beforeEach(() => mock.reset())

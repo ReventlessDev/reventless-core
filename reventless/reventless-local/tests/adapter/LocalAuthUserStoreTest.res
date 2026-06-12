@@ -2,8 +2,7 @@
 
 @@warning("-44")
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 @module("node:fs") external _writeFileSync: (string, string, string) => unit = "writeFileSync"
 @module("node:fs") external _mkdtempSync: string => string = "mkdtempSync"

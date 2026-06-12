@@ -3,8 +3,7 @@
 // commands. Verifies per-source decode dispatch, context plumbing, and that
 // commands surface via publishJsons.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open MixedSourceAutomationSliceFixtures
 
 describe("MixedSource AutomationSlice", () => {

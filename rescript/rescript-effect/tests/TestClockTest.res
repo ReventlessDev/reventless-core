@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 // Key pattern: TestClock tests must run the sleeping fiber AND the clock adjustment
 // in the SAME Effect pipeline, provided with a SINGLE TestContext layer via

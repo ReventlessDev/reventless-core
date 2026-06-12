@@ -10,15 +10,18 @@
 // `~slice` is the slice/component name — each DSL threads `Spec.name` through
 // so failure hints read `Look at AddCategory.decide` rather than the generic
 // `<slice>.decide` fallback.
+//
+// The Jest arm binds directly to Jest's globals via @reventlessdev/rescript-jest
+// (module `JestGlobals`) with throwing semantics: a passing outcome is a no-op,
+// a failing one throws a JS Error whose message Jest reports. (Jest's built-in
+// `fail(msg)` was removed in Jest 27+ ESM mode — the mode these tests run under
+// — so throwing is the portable way to fail a test.)
 
-// Jest's built-in `fail(msg)` global was removed in Jest 27+ ESM mode, which
-// is the mode reventless-gwt's tests run under. Throwing a JS Error from the
-// test body is the portable way to mark a test as failed — Jest catches it
-// and reports the thrown message as the failure. `Jest.pass` still works
-// as-is because `affirm(Ok)` is a no-op.
-let toAssertion = (~slice=?, outcome: Outcome.outcome): Jest.assertion =>
+// Translate an outcome into Jest's throwing model: Ok is a no-op, Error throws
+// the formatted mismatch + hint so Jest reports it as the failure message.
+let assertOutcome = (~slice=?, outcome: Outcome.outcome): unit =>
   switch outcome {
-  | Ok() => Jest.pass
+  | Ok() => ()
   | Error(m) => {
       let hint = Hint.forMismatch(~slice?, m)
       JsError.throwWithMessage(`${Outcome.format(m)}\n\n${Hint.format(hint)}`)
@@ -29,7 +32,7 @@ let describe = (label: string, body: unit => unit) =>
   if Collector.isActive() {
     Collector.pushDescribe(label, body)
   } else {
-    Jest.describe(label, body)
+    JestGlobals.describe(label, body)
   }
 
 let test = (~slice=?, name: string, body: unit => Outcome.outcome) =>
@@ -37,7 +40,7 @@ let test = (~slice=?, name: string, body: unit => Outcome.outcome) =>
     let location = Collector.captureLocation(1)
     Collector.push(~slice?, ~location?, name, () => Promise.resolve(body()))
   } else {
-    Jest.test(name, () => body()->toAssertion(~slice?))
+    JestGlobals.testSync(name, () => assertOutcome(~slice?, body()))
   }
 
 let testPromise = (
@@ -50,5 +53,9 @@ let testPromise = (
     let location = Collector.captureLocation(1)
     Collector.push(~slice?, ~location?, name, body)
   } else {
-    Jest.testPromise(name, ~timeout?, async () => (await body())->toAssertion(~slice?))
+    switch timeout {
+    | Some(t) =>
+      JestGlobals.testWithTimeout(name, async () => assertOutcome(~slice?, await body()), t)
+    | None => JestGlobals.testPromise(name, async () => assertOutcome(~slice?, await body()))
+    }
   }

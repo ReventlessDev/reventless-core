@@ -8,8 +8,7 @@
 // Fixtures are a throwaway temp tree (same pattern as DiscoveryTest) so the test is
 // hermetic and doesn't depend on the example plugins being compiled.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 @module("node:os") external tmpdir: unit => string = "tmpdir"
 @module("node:path") external join: (string, string) => string = "join"

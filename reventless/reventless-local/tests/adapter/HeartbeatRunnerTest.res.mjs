@@ -5,11 +5,11 @@ import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
 import * as LocalHeartbeatRunner$ReventlessLocal from "../../src/adapter/Heartbeat/LocalHeartbeatRunner.res.mjs";
 
-beforeAll(() => {
+globalThis.beforeAll(() => {
   Globals.jest.useFakeTimers();
 });
 
-afterAll(() => {
+globalThis.afterAll(() => {
   LocalHeartbeatRunner$ReventlessLocal.reset();
   Globals.jest.useRealTimers();
 });
@@ -26,9 +26,9 @@ function makeRuntime(handler) {
   };
 }
 
-describe("LocalHeartbeatRunner", () => {
-  describe("make", () => {
-    test("after advanceTimersByTime(timeout * 60 * 1000), handler is called", async () => {
+globalThis.describe("LocalHeartbeatRunner", () => {
+  globalThis.describe("make", () => {
+    globalThis.test("after advanceTimersByTime(timeout * 60 * 1000), handler is called", async () => {
       let count = {
         contents: 0
       };
@@ -38,10 +38,10 @@ describe("LocalHeartbeatRunner", () => {
       LocalHeartbeatRunner$ReventlessLocal.make("hb-test", undefined, 1, runtime, {});
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
       return LocalHeartbeatRunner$ReventlessLocal.reset();
     });
-    test("handler fires again on each subsequent interval", async () => {
+    globalThis.test("handler fires again on each subsequent interval", async () => {
       let count = {
         contents: 0
       };
@@ -53,10 +53,10 @@ describe("LocalHeartbeatRunner", () => {
       await Promise.resolve();
       Globals.jest.advanceTimersByTime(120000);
       await Promise.resolve();
-      expect(count.contents).toBe(2);
+      globalThis.expect(count.contents).toBe(2);
       return LocalHeartbeatRunner$ReventlessLocal.reset();
     });
-    test("unresolved Deferred does not crash when interval fires", async () => {
+    globalThis.test("unresolved Deferred does not crash when interval fires", async () => {
       let handlerDeferred = Effect.runSync(Deferred.make());
       let runtime_parts = {
         handlerDeferred: handlerDeferred,
@@ -69,13 +69,13 @@ describe("LocalHeartbeatRunner", () => {
       };
       LocalHeartbeatRunner$ReventlessLocal.make("hb-no-handler", undefined, 1, runtime, {});
       Globals.jest.advanceTimersByTime(60000);
-      expect(true).toBe(true);
+      globalThis.expect(true).toBe(true);
       LocalHeartbeatRunner$ReventlessLocal.reset();
       Effect.runSync(Deferred.succeed(handlerDeferred, async (param, param$1) => {}));
     });
   });
-  describe("reset", () => {
-    test("clears all intervals; subsequent advance does not fire handler", async () => {
+  globalThis.describe("reset", () => {
+    globalThis.test("clears all intervals; subsequent advance does not fire handler", async () => {
       let count = {
         contents: 0
       };
@@ -85,7 +85,7 @@ describe("LocalHeartbeatRunner", () => {
       LocalHeartbeatRunner$ReventlessLocal.make("hb-reset", undefined, 1, runtime, {});
       LocalHeartbeatRunner$ReventlessLocal.reset();
       Globals.jest.advanceTimersByTime(60000);
-      expect(count.contents).toBe(0);
+      globalThis.expect(count.contents).toBe(0);
     });
   });
 });

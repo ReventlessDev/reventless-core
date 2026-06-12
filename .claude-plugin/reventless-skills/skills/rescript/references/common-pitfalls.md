@@ -304,20 +304,20 @@ npx rescript clean && npm run build
 
 Root `rescript.json` controls output format (`"module": "esmodule"`, `"suffix": ".res.mjs"`). Per-package `rescript.json` files have no `package-specs` — they inherit from root when built from root.
 
-### testPromise Is Broken
+### Async tests: use JestGlobals
 
-`@glennsl/rescript-jest`'s `testPromise` does NOT await the returned Promise — tests run concurrently, causing race conditions on shared mutable state.
-
-**Fix:** Use native Jest binding:
+`@glennsl/rescript-jest` (removed from this repo) had a `testPromise` that did NOT await the returned Promise, so tests ran concurrently and raced on shared mutable state. Use `@reventlessdev/rescript-jest` (module `JestGlobals`), which binds Jest's globals directly with throwing `expect` and native async bodies:
 
 ```rescript
-@val external jestTest: (string, unit => promise<unit>) => unit = "test"
+open JestGlobals
 
-jestTest("my async test", async () => {
+testPromise("my async test", async () => {
   let result = await someAsyncOp()
   expect(result)->toBe(expected)
 })
 ```
+
+`test` registers an async test; `testSync` a synchronous one. Matchers throw on mismatch and return `unit`, so every assertion runs at its line.
 
 ### jest Object in ESM Mode
 

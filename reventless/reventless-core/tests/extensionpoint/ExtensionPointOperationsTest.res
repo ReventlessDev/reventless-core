@@ -1,8 +1,7 @@
 // Unit tests for ExtensionPoint_Operations.Make.
 // Tests outgoingJsonEventsHandler which maps aggregate events to EP actions.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 S.enableJson()
 

@@ -1,7 +1,6 @@
 open MomentRe
 open MomentRe_Helpers
-open Jest
-open ExpectJs
+open JestGlobals
 
 let isJsDateValid: Date.t => bool = %raw(`
   function(date) {
@@ -11,8 +10,8 @@ let isJsDateValid: Date.t => bool = %raw(`
 
 /* note that this is an interops test, not tests for moment.js itself, i.e. test comprehensiveness is not the goal */
 describe("moment", () => {
-  test("#clone", () => expect(moment("2017-01-01")->Moment.clone->Moment.isValid)->toBe(true))
-  test("#mutableSubtract", () =>
+  testSync("#clone", () => expect(moment("2017-01-01")->Moment.clone->Moment.isValid)->toBe(true))
+  testSync("#mutableSubtract", () =>
     expect(
       Moment.isSame(
         moment("2016-01-01"),
@@ -24,7 +23,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#subtract", () =>
+  testSync("#subtract", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01"),
@@ -34,22 +33,22 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#sameDay with granularity by day", () =>
+  testSync("#sameDay with granularity by day", () =>
     expect(Moment.isSameWithGranularity(moment("2017-01-01"), moment("2017-01-04"), #day))->toBe(
       false,
     )
   )
-  test("#sameDay with granularity by month", () =>
+  testSync("#sameDay with granularity by month", () =>
     expect(Moment.isSameWithGranularity(moment("2017-01-01"), moment("2017-01-04"), #month))->toBe(
       true,
     )
   )
-  test("#sameDay with granularity by year", () =>
+  testSync("#sameDay with granularity by year", () =>
     expect(Moment.isSameWithGranularity(moment("2017-01-01"), moment("2017-01-04"), #year))->toBe(
       true,
     )
   )
-  test("#mutableAdd", () =>
+  testSync("#mutableAdd", () =>
     expect(
       Moment.isSame(
         moment("2017-01-04"),
@@ -61,7 +60,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#add", () =>
+  testSync("#add", () =>
     expect(
       Moment.isSame(
         moment("2017-01-04"),
@@ -71,7 +70,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetMillisecond", () =>
+  testSync("#mutableSetMillisecond", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 02:25:05.100"),
@@ -83,7 +82,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setMillisecond", () =>
+  testSync("#setMillisecond", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 02:25:05.100"),
@@ -93,7 +92,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetSecond", () =>
+  testSync("#mutableSetSecond", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 02:25:30.100"),
@@ -105,7 +104,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setSecond", () =>
+  testSync("#setSecond", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 02:25:30.100"),
@@ -113,7 +112,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetMinute", () =>
+  testSync("#mutableSetMinute", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 02:25:30.100"),
@@ -125,7 +124,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setMinute", () =>
+  testSync("#setMinute", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 02:25:30.100"),
@@ -133,7 +132,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetHour", () =>
+  testSync("#mutableSetHour", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 00:25:05.000"),
@@ -145,7 +144,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setHour", () =>
+  testSync("#setHour", () =>
     expect(
       Moment.isSame(
         moment("2017-01-01 00:25:05.000"),
@@ -153,7 +152,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetDate", () =>
+  testSync("#mutableSetDate", () =>
     expect(
       Moment.isSame(
         moment("2017-01-04"),
@@ -165,7 +164,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setDate", () =>
+  testSync("#setDate", () =>
     expect(
       Moment.isSame(
         moment("2017-01-04"),
@@ -173,7 +172,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetDay", () =>
+  testSync("#mutableSetDay", () =>
     expect(
       Moment.isSame(
         moment("2018-05-01"),
@@ -185,12 +184,12 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setDay", () =>
+  testSync("#setDay", () =>
     expect(
       Moment.isSame(moment("2018-05-01"), moment("2018-05-05")->Moment.setDay(3)->Moment.setDay(2)),
     )->toBe(true)
   )
-  test("#mutableSetWeekday", () =>
+  testSync("#mutableSetWeekday", () =>
     expect(
       Moment.isSame(
         moment("2018-05-01"),
@@ -202,7 +201,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setWeekday", () =>
+  testSync("#setWeekday", () =>
     expect(
       Moment.isSame(
         moment("2018-05-01"),
@@ -210,7 +209,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetIsoWeekday", () =>
+  testSync("#mutableSetIsoWeekday", () =>
     expect(
       Moment.isSame(
         moment("2018-05-01"),
@@ -222,7 +221,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setIsoWeekday", () =>
+  testSync("#setIsoWeekday", () =>
     expect(
       Moment.isSame(
         moment("2018-05-01"),
@@ -230,7 +229,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetDayOfYear", () =>
+  testSync("#mutableSetDayOfYear", () =>
     expect(
       Moment.isSame(
         moment("2018-01-01"),
@@ -242,7 +241,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setDayOfYear", () =>
+  testSync("#setDayOfYear", () =>
     expect(
       Moment.isSame(
         moment("2018-01-01"),
@@ -250,7 +249,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetWeek", () =>
+  testSync("#mutableSetWeek", () =>
     expect(
       Moment.isSame(
         moment("2018-01-17"),
@@ -262,7 +261,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setWeek", () =>
+  testSync("#setWeek", () =>
     expect(
       Moment.isSame(
         moment("2018-01-17"),
@@ -270,7 +269,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetIsoWeek", () =>
+  testSync("#mutableSetIsoWeek", () =>
     expect(
       Moment.isSame(
         moment("2018-01-17"),
@@ -282,7 +281,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setIsoWeek", () =>
+  testSync("#setIsoWeek", () =>
     expect(
       Moment.isSame(
         moment("2018-01-17"),
@@ -290,7 +289,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetMonth", () =>
+  testSync("#mutableSetMonth", () =>
     expect(
       Moment.isSame(
         moment("2017-04-01"),
@@ -302,7 +301,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setMonth", () =>
+  testSync("#setMonth", () =>
     expect(
       Moment.isSame(
         moment("2017-04-01"),
@@ -310,7 +309,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetQuarter", () =>
+  testSync("#mutableSetQuarter", () =>
     expect(
       Moment.isSame(
         moment("2013-04-01T00:00:00.000"),
@@ -322,7 +321,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setQuarter", () =>
+  testSync("#setQuarter", () =>
     expect(
       Moment.isSame(
         moment("2013-04-01T00:00:00.000"),
@@ -330,7 +329,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetYear", () =>
+  testSync("#mutableSetYear", () =>
     expect(
       Moment.isSame(
         moment("2019-01-01"),
@@ -342,7 +341,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setYear", () =>
+  testSync("#setYear", () =>
     expect(
       Moment.isSame(
         moment("2019-01-01"),
@@ -350,7 +349,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetWeekYear", () =>
+  testSync("#mutableSetWeekYear", () =>
     expect(
       Moment.isSame(
         moment("2018-01-05"),
@@ -362,7 +361,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setWeekYear", () =>
+  testSync("#setWeekYear", () =>
     expect(
       Moment.isSame(
         moment("2018-01-05"),
@@ -370,7 +369,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#mutableSetIsoWeekYear", () =>
+  testSync("#mutableSetIsoWeekYear", () =>
     expect(
       Moment.isSame(
         moment("2018-01-05"),
@@ -382,7 +381,7 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#setIsoWeekYear", () =>
+  testSync("#setIsoWeekYear", () =>
     expect(
       Moment.isSame(
         moment("2018-01-05"),
@@ -390,18 +389,18 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("#isValid", () => expect(moment("2017-01-01")->Moment.isValid)->toBe(true))
-  test("not #isValid", () => expect(moment("")->Moment.isValid)->toBe(false))
-  test("#isDST", () => expect(moment("2016-01-01T00:00:00")->Moment.isDST)->toBe(false))
-  test("leap year", () => expect(moment("2016-01-01")->Moment.isLeapYear)->toBe(true))
-  test("not leap year", () => expect(moment("1900-01-01")->Moment.isLeapYear)->toBe(false))
-  test("instantiation", () =>
+  testSync("#isValid", () => expect(moment("2017-01-01")->Moment.isValid)->toBe(true))
+  testSync("not #isValid", () => expect(moment("")->Moment.isValid)->toBe(false))
+  testSync("#isDST", () => expect(moment("2016-01-01T00:00:00")->Moment.isDST)->toBe(false))
+  testSync("leap year", () => expect(moment("2016-01-01")->Moment.isLeapYear)->toBe(true))
+  testSync("not leap year", () => expect(moment("1900-01-01")->Moment.isLeapYear)->toBe(false))
+  testSync("instantiation", () =>
     expect(Moment.isSame(moment("2017-04-01"), moment("2017-04-01")))->toBe(true)
   )
-  test("instantiation with format", () =>
+  testSync("instantiation with format", () =>
     expect(Moment.isSame(moment("2017-04-01"), moment("2017-04-01")))->toBe(true)
   )
-  test("instantiation with date", () =>
+  testSync("instantiation with date", () =>
     expect(
       Moment.isSame(
         momentWithDate(Date.fromString("6 Mar 2017 21:22:23 GMT")),
@@ -409,38 +408,38 @@ describe("moment", () => {
       ),
     )->toBe(true)
   )
-  test("instantiation momentWithTimestampMS (float)", () =>
+  testSync("instantiation momentWithTimestampMS (float)", () =>
     expect(
       Moment.isSame(moment("2017-06-12T18:30:00+02:00"), momentWithTimestampMS(1497285000000.0)),
     )->toBe(true)
   )
-  test("instantiation momentWithUnix (int)", () =>
+  testSync("instantiation momentWithUnix (int)", () =>
     expect(Moment.isSame(moment("6 Mar 2017 21:22:23 GMT"), momentWithUnix(1488835343)))->toBe(true)
   )
-  test(".now", () => expect(momentNow()->Moment.isValid)->toBe(true))
-  test("#isSame", () =>
+  testSync(".now", () => expect(momentNow()->Moment.isValid)->toBe(true))
+  testSync("#isSame", () =>
     expect(Moment.isSame(moment("2016-01-01"), moment("2016-01-01")))->toBe(true)
   )
-  test("#isBefore", () =>
+  testSync("#isBefore", () =>
     expect(Moment.isBefore(moment("2016-01-01"), moment("2016-01-02")))->toBe(true)
   )
-  test("#isSameOrBefore", () =>
+  testSync("#isSameOrBefore", () =>
     expect(Moment.isSameOrBefore(moment("2016-01-01"), moment("2016-01-02")))->toBe(true)
   )
 
-  test("#isSameOrBeforeWithGranularity", () => {
-    expect(Moment.isSameOrBeforeWithGranularity(moment("2016-01-01"), moment("2016-01-02"), #day))
-    ->toBe(false)
-    ->ignore
+  testSync("#isSameOrBeforeWithGranularity", () => {
+    expect(
+      Moment.isSameOrBeforeWithGranularity(moment("2016-01-01"), moment("2016-01-02"), #day),
+    )->toBe(true)
 
     expect(
       Moment.isSameOrBeforeWithGranularity(moment("2016-01-01"), moment("2016-01-01"), #day),
     )->toBe(true)
   })
-  test("#isAfter", () =>
+  testSync("#isAfter", () =>
     expect(Moment.isAfter(moment("2016-01-02"), moment("2016-01-01")))->toBe(true)
   )
-  test("#isAfterWithGranularity", () => {
+  testSync("#isAfterWithGranularity", () => {
     expect(Moment.isAfterWithGranularity(moment("2016-01-02"), moment("2016-01-01"), #day))
     ->toBe(true)
     ->ignore
@@ -454,54 +453,54 @@ describe("moment", () => {
       true,
     )
   })
-  test("#isSameOrAfter", () =>
+  testSync("#isSameOrAfter", () =>
     expect(Moment.isSameOrAfter(moment("2016-01-02"), moment("2016-01-01")))->toBe(true)
   )
-  test("#isBetween", () =>
+  testSync("#isBetween", () =>
     expect(
       Moment.isBetween(moment("2016-01-02"), moment("2016-01-01"), moment("2016-01-03")),
     )->toBe(true)
   )
-  test("#format", () =>
+  testSync("#format", () =>
     expect(moment("2016-01-01")->Moment.format("YYYY-MM-DD"))->toBe("2016-01-01")
   )
-  test(
+  testSync(
     /* TODO: test this time-zone independently */
     "#defaultFormat",
-    () => expect(moment("2016-01-01")->Moment.defaultFormat)->toContainString("2016-01-01"),
+    () => expect(moment("2016-01-01")->Moment.defaultFormat)->toContain("2016-01-01"),
   )
-  test("#utc", () =>
+  testSync("#utc", () =>
     expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true)
   )
-  test("#defaultUtc", () =>
+  testSync("#defaultUtc", () =>
     expect(momentUtc("2018-01-22")->Moment.isValid)->toBe(true)
   )
-  test("#locale", () =>
+  testSync("#locale", () =>
     expect(
       moment("2018-01-01 00:00:00Z")->Moment.locale("da_DK")->Moment.format("MMMM Do YYYY"),
     )->toBe("januar 1. 2018")
   )
-  test("#valueOf" /* TODO: float? */, () =>
+  testSync("#valueOf" /* TODO: float? */, () =>
     expect(moment("2016-01-01 00:00:00Z")->Moment.valueOf)->toBeCloseTo(1451606400000.)
   )
   describe("#toJSON", () => {
-    test(
+    testSync(
       "valid",
-      () => expect(moment("2016-01-01")->Moment.toJSON->Option.getOrThrow)->toContainString("000Z"),
+      () => expect(moment("2016-01-01")->Moment.toJSON->Option.getOrThrow)->toContain("000Z"),
     )
-    test("invalid", () => expect(moment("9999-99-99")->Moment.toJSON)->toBe(None))
+    testSync("invalid", () => expect(moment("9999-99-99")->Moment.toJSON)->toBe(None))
   })
-  test("#toDate", () => expect(isJsDateValid(moment("2016-01-01")->Moment.toDate))->toBe(true))
-  test("#toUnix", () => expect(moment("6 Mar 2017 21:22:23 GMT")->Moment.toUnix)->toBe(1488835343))
+  testSync("#toDate", () => expect(isJsDateValid(moment("2016-01-01")->Moment.toDate))->toBe(true))
+  testSync("#toUnix", () => expect(moment("6 Mar 2017 21:22:23 GMT")->Moment.toUnix)->toBe(1488835343))
   describe("#toISOString", () => {
-    test(
+    testSync(
       "default",
       () =>
         expect(moment("6 Mar 2017 21:22:23 GMT")->Moment.toISOString)->toBe(
           "2017-03-06T21:22:23.000Z",
         ),
     )
-    test(
+    testSync(
       "keepOffset",
       () =>
         moment("6 Mar 2017 21:22:23 GMT")
@@ -511,68 +510,68 @@ describe("moment", () => {
         ->toBe(false),
     )
   })
-  test("#get", () => expect(moment("2017-01-02 03:04:05.678")->Moment.get(#day))->toBe(1))
-  test("#second", () => expect(moment("2017-01-02 03:04:05.678")->Moment.second)->toBe(5))
-  test("#minute", () => expect(moment("2017-01-02 03:04:05.678")->Moment.minute)->toBe(4))
-  test("#hour", () => expect(moment("2017-01-02 03:04:05.678")->Moment.hour)->toBe(3))
-  test("#day", () => expect(moment("2017-01-02 03:04:05.678")->Moment.day)->toBe(1))
-  test("#date", () => expect(moment("2017-01-02 03:04:05.678")->Moment.date)->toBe(2))
-  test("#week", () => expect(moment("2017-01-02 03:04:05.678")->Moment.week)->toBe(1))
-  test("#month", () => expect(moment("2017-01-02 03:04:05.678")->Moment.month)->toBe(0))
-  test("#year", () => expect(moment("2017-01-02 03:04:05.678")->Moment.year)->toBe(2017))
-  test("#weekday", () => expect(moment("2017-01-02 03:04:05.678")->Moment.weekday)->toBe(1))
-  test("#startOf week", () => {
+  testSync("#get", () => expect(moment("2017-01-02 03:04:05.678")->Moment.get(#day))->toBe(1))
+  testSync("#second", () => expect(moment("2017-01-02 03:04:05.678")->Moment.second)->toBe(5))
+  testSync("#minute", () => expect(moment("2017-01-02 03:04:05.678")->Moment.minute)->toBe(4))
+  testSync("#hour", () => expect(moment("2017-01-02 03:04:05.678")->Moment.hour)->toBe(3))
+  testSync("#day", () => expect(moment("2017-01-02 03:04:05.678")->Moment.day)->toBe(1))
+  testSync("#date", () => expect(moment("2017-01-02 03:04:05.678")->Moment.date)->toBe(2))
+  testSync("#week", () => expect(moment("2017-01-02 03:04:05.678")->Moment.week)->toBe(1))
+  testSync("#month", () => expect(moment("2017-01-02 03:04:05.678")->Moment.month)->toBe(0))
+  testSync("#year", () => expect(moment("2017-01-02 03:04:05.678")->Moment.year)->toBe(2017))
+  testSync("#weekday", () => expect(moment("2017-01-02 03:04:05.678")->Moment.weekday)->toBe(1))
+  testSync("#startOf week", () => {
     let inputDate = moment("2017-01-10 03:04:05.678")
     let expected = moment("2017-01-08T00:00:00.000")
 
     expect(Moment.isSame(expected, Moment.startOf(inputDate, #week)))->toBe(true)
   })
-  test("#startOf isoWeek", () => {
+  testSync("#startOf isoWeek", () => {
     let inputDate = moment("2017-01-10 03:04:05.678")
     let expected = moment("2017-01-09T00:00:00.000")
 
     expect(Moment.isSame(expected, Moment.startOf(inputDate, #isoWeek)))->toBe(true)
   })
-  test("#endOf week", () => {
+  testSync("#endOf week", () => {
     let inputDate = moment("2017-01-10 03:04:05.678")
     let expected = moment("2017-01-14T23:59:59.999")
 
     expect(Moment.isSame(expected, Moment.endOf(inputDate, #week)))->toBe(true)
   })
-  test("#endOf isoWeek", () => {
+  testSync("#endOf isoWeek", () => {
     let inputDate = moment("2017-01-10 03:04:05.678")
     let expected = moment("2017-01-15T23:59:59.999")
 
     expect(Moment.isSame(expected, Moment.endOf(inputDate, #isoWeek)))->toBe(true)
   })
 
-  test("#moment (format defined)", () => {
+  testSync("#moment (format defined)", () => {
     let format = "DD-MM-YYYY HH : ss"
     let dateStr = "10-01-2017 03 : 04"
 
     expect(moment(~format=[format], dateStr)->Moment.format(format))->toBe(dateStr)
   })
 
-  test("#momentUtc Z (default format)", () => {
+  testSync("#momentUtc Z (default format)", () => {
     let dateStr = "2017-01-10T03:04"
 
     expect(momentUtc(dateStr ++ "Z")->Moment.format("YYYY-MM-DDTHH:mm"))->toBe(dateStr)
   })
 
-  test("#momentUtc no Z (default format)", () => {
+  testSync("#momentUtc no Z (default format)", () => {
     let dateStr = "2017-01-10T03:04"
 
     expect(momentUtc(dateStr)->Moment.format("YYYY-MM-DDTHH:mm"))->toBe(dateStr)
   })
 
-  test("#momentUtc Z (format defined)", () => {
+  testSync("#momentUtc Z (format defined)", () => {
     let format = "DD-MM-YYYY HH : ss"
     let dateStr = "10-01-2017 03 : 04"
 
     expect(momentUtc(~format=[format], dateStr ++ "Z")->Moment.format(format))->toBe(dateStr)
   })
 
-  test("#momentUtc no Z (format defined)", () => {
+  testSync("#momentUtc no Z (format defined)", () => {
     let format = "DD-MM-YYYY HH : ss"
     let dateStr = "10-01-2017 03 : 04"
 
@@ -581,45 +580,45 @@ describe("moment", () => {
 })
 
 describe("moment duration", () => {
-  test("get duration", () => expect(duration(2., #days))->toBeTruthy)
-  test("get duration millis", () => expect(durationMillis(2.0))->toBeTruthy)
-  test("get duration format", () => expect(durationFormat("P2D")->Duration.toJSON)->toBe("P2D"))
-  test("#milliseconds", () => expect(duration(2., #milliseconds)->Duration.milliseconds)->toBe(2))
-  test("#seconds", () => expect(duration(2., #seconds)->Duration.seconds)->toBe(2))
-  test("#asSeconds", () => expect(duration(2., #seconds)->Duration.asSeconds)->toBe(2.))
-  test("#minutes", () => expect(duration(2., #minutes)->Duration.minutes)->toBe(2))
-  test("#asMinutes", () => expect(duration(2., #minutes)->Duration.asMinutes)->toBe(2.))
-  test("#hours", () => expect(duration(2., #hours)->Duration.hours)->toBe(2))
-  test("#asHours", () => expect(duration(2., #hours)->Duration.asHours)->toBe(2.))
-  test("#days", () => expect(duration(2., #days)->Duration.days)->toBe(2))
-  test("#asDays", () => expect(duration(2., #days)->Duration.asDays)->toBe(2.))
-  test("#weeks", () => expect(duration(2., #weeks)->Duration.weeks)->toBe(2))
-  test("#asWeeks", () => expect(duration(2., #weeks)->Duration.asWeeks)->toBe(2.))
-  test("#months", () => expect(duration(2., #months)->Duration.months)->toBe(2))
-  test("#asMonths", () => expect(duration(2., #months)->Duration.asMonths)->toBe(2.))
-  test("#years", () => expect(duration(2., #years)->Duration.years)->toBe(2))
-  test("#asYears", () => expect(duration(2., #years)->Duration.asYears)->toBe(2.))
-  test("#as", () => expect(duration(2., #days)->Duration.asUnitOfTime(#days))->toBe(2.))
-  test("#toJSON", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
-  test("#toISOString", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
-  test("#humanize", () => expect(duration(2., #days)->Duration.humanize)->toBe("2 days"))
+  testSync("get duration", () => expect(duration(2., #days))->toBeTruthy)
+  testSync("get duration millis", () => expect(durationMillis(2.0))->toBeTruthy)
+  testSync("get duration format", () => expect(durationFormat("P2D")->Duration.toJSON)->toBe("P2D"))
+  testSync("#milliseconds", () => expect(duration(2., #milliseconds)->Duration.milliseconds)->toBe(2))
+  testSync("#seconds", () => expect(duration(2., #seconds)->Duration.seconds)->toBe(2))
+  testSync("#asSeconds", () => expect(duration(2., #seconds)->Duration.asSeconds)->toBe(2.))
+  testSync("#minutes", () => expect(duration(2., #minutes)->Duration.minutes)->toBe(2))
+  testSync("#asMinutes", () => expect(duration(2., #minutes)->Duration.asMinutes)->toBe(2.))
+  testSync("#hours", () => expect(duration(2., #hours)->Duration.hours)->toBe(2))
+  testSync("#asHours", () => expect(duration(2., #hours)->Duration.asHours)->toBe(2.))
+  testSync("#days", () => expect(duration(2., #days)->Duration.days)->toBe(2))
+  testSync("#asDays", () => expect(duration(2., #days)->Duration.asDays)->toBe(2.))
+  testSync("#weeks", () => expect(duration(2., #weeks)->Duration.weeks)->toBe(2))
+  testSync("#asWeeks", () => expect(duration(2., #weeks)->Duration.asWeeks)->toBe(2.))
+  testSync("#months", () => expect(duration(2., #months)->Duration.months)->toBe(2))
+  testSync("#asMonths", () => expect(duration(2., #months)->Duration.asMonths)->toBe(2.))
+  testSync("#years", () => expect(duration(2., #years)->Duration.years)->toBe(2))
+  testSync("#asYears", () => expect(duration(2., #years)->Duration.asYears)->toBe(2.))
+  testSync("#as", () => expect(duration(2., #days)->Duration.asUnitOfTime(#days))->toBe(2.))
+  testSync("#toJSON", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
+  testSync("#toISOString", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
+  testSync("#humanize", () => expect(duration(2., #days)->Duration.humanize)->toBe("2 days"))
 })
 
 describe("moment diff", () => {
-  test("should return correct difference of moments in days", () =>
+  testSync("should return correct difference of moments in days", () =>
     expect(diff(moment("2017-01-02"), moment("2017-01-01"), #days))->toBe(1.)
   )
-  test("should return correct difference of moments in hours", () =>
+  testSync("should return correct difference of moments in hours", () =>
     expect(
       diff(moment("2017-01-01 02:00:00.000"), moment("2017-01-01 00:00:00.000"), #hours),
     )->toBe(2.)
   )
-  test("should be able to handle negative difference of moments", () =>
+  testSync("should be able to handle negative difference of moments", () =>
     expect(
       diff(moment("2017-01-01 00:00:00.000"), moment("2017-01-01 02:00:00.000"), #hours),
     )->toBe(-2.)
   )
-  test("should return correct difference of moments in hours", () =>
+  testSync("should return correct difference of moments in hours", () =>
     expect(
       diff(moment("2017-01-01 00:25:05.000"), moment("2017-01-01 00:00:00.000"), #minutes),
     )->toBe(25.)

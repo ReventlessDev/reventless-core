@@ -44,7 +44,7 @@ test bodies.
 | # | Question | Decision |
 |---|----------|----------|
 | 1 | Where does the shared binding live? | **New package under `rescript/`** (bindings for a JS lib → `rescript/`, per repo placement rules). Bottom of the dependency graph, no deps of its own — the only placement that `rescript/*` packages (e.g. rescript-effect), framework packages, codegen, and plugins can all legally depend on. Putting it in `reventless-gwt` was rejected: `rescript/*` test suites must not depend on a framework package (layering inversion). |
-| 2 | Package name | **OPEN — decide before Phase 0.** Candidates: `@reventlessdev/rescript-jest` (matches the repo's bind-the-lib naming: rescript-uuid, rescript-mcp-sdk; shadows the upstream name only under our scope) vs `@reventlessdev/rescript-jest-globals` (collision-proof, blander). |
+| 2 | Package name | **RESOLVED: `@reventlessdev/rescript-jest`** (matches the repo's bind-the-lib naming). Module name is `JestGlobals` (the package is `namespace: false`); `Jest`/`JestBind`/`AsyncTest`/`TestHelpers` were all unavailable as the global module name (collisions). |
 | 3 | Binding style | **Direct bindings to Jest globals with throwing `expect`** — the JestBind/AsyncTest style, NOT glennsl's deferred-assertion model. Surface = superset of the five modules: `describe`, `test` (async `unit => promise<unit>`), `testSync`, `testWithTimeout`, `testSkipWithTimeout`, `only` variants, `beforeAll`/`afterAll`/`beforeEach`/`afterEach` (+ async aliases `beforeAllAsync` etc. for AsyncTest compat), `expect` + the matcher set actually used (`toBe`, `toEqual`, `toBeTruthy`, `toBeFalsy`, `toContain`, plus whatever the aws/core module survey turns up). |
 | 4 | Migration mechanics | **`include`-shim first, rename-opens later.** Each local module's body collapses to `include <SharedModule>` (+ genuinely local helpers, e.g. parts of aws `TestHelpers`): de-duplication lands immediately with a few-line diff per package and zero churn in ~50 test files. Deleting the shims (rewriting `open AsyncTest` → the shared open) is a separate mechanical pass per package. Exception: codegen skips the shim — 12 files, one rename pass, delete `JestBind.res` outright. |
 | 5 | `reventless-gwt/src/JestBind.res` (Collector router) | **Out of scope as duplication — it stays.** It is runner infrastructure (routes describe/test to Jest or the gwt CLI Collector). Its jest-mode arm is rebuilt on the shared package only in Phase 3. |
@@ -131,3 +131,63 @@ package.json/rescript.json returns nothing.
 | Phase 3 functor changes ripple into every plugin's GWT tests | Phase 3 is its own effort with full-workspace verification; Phases 0–2 land independently and first. |
 | Golden fixtures churn when the scaffold emitter changes | Regenerate via the existing ForwardGoldenTest flow; review the byte-diff; goldens are already normalized for comparison. |
 | Name collision confusion with upstream `@glennsl/rescript-jest` | Decision 2 resolves before Phase 0; scope prefix disambiguates in either case. |
+
+---
+
+## Outcome (completed 2026-06-12)
+
+All four phases shipped. `@glennsl/rescript-jest` is gone repo-wide (0 refs in any
+`package.json` / `rescript.json` / `pnpm-lock.yaml`). Whole monorepo builds with
+zero warnings; every suite green — codegen 90 (+1 gated skip), core 411, gwt 108,
+aws 114, effect 141, interop 31, moment 116, local 446, all six example plugins,
+goldens byte-clean, and a freshly-`forward`-generated plugin runs its GWT via both
+`jest` and `reventless-gwt run`.
+
+Deviations and discoveries beyond the written plan:
+
+- **Module name `JestGlobals`, not a `Jest`/`JestBind` shim name** — those collide
+  with existing global modules. Package is `namespace: false`.
+- **Surface is `module Runner` + `module Expect`, re-exported flat at the top
+  level** — a plain `include <Shared>` (Decision 4) caused a warning-44 `toBe`
+  shadow in every file that pairs `open X` with `open X.Expect` (core/gwt/effect/
+  local, ~90 files). The split lets the AsyncTest re-exports expose `Runner` flat +
+  `Expect` as a submodule (no shadow), while flat users (codegen, aws) open the
+  whole module. The warning even crashed rescript v12's build orchestrator
+  (Utf8Error on the box-drawing chars), so it was a hard blocker, not cosmetic.
+- **All `@val` externals are bound via `@scope("globalThis")`.** gwt's `JestBind`
+  defines its own `let test`; a bare `test`/`expect` emitted by the externals
+  resolved to that local binding at runtime (`testPromise` called the wrong
+  `test`, "first argument must be a string"). Scoping to `globalThis` makes the
+  bindings immune to any local shadow. This regenerated ~143 in-source `.res.mjs`
+  (`test(` → `globalThis.test(`) — output-only, no semantic change.
+- **`expect` stayed opaque (`expectResult`), not typed like glennsl's
+  `expect<'a>`.** Typing it would have re-validated every already-green
+  opaque-era assertion (codegen/aws/effect/local). The one file that relied on
+  glennsl's typed `expect` to disambiguate constructors — `DcbDecodeTest`, which
+  defines four types all named `ItemCreated`/`ItemArchived` — got local
+  `let expected: option<...> = …` annotations instead.
+- **Cross-package consumer reality differed from the plan's note:** the heavy
+  consumer was `ReventlessGwt.AsyncTest` (~61 reventless-local files), plus
+  effect's bare `AsyncTest` (the 4 `LocalAuth*` files). `rescript-jest` had to be
+  added to `reventless-local`, `reventless-interop`, and `rescript-moment` too.
+- **Matcher surface grew past the plan's list:** added `toHaveLength`,
+  `toBeGreaterThan`, `toBeGreaterThanOrEqual`, `toBeCloseTo`, `not_`, and a
+  throwing `fail` (Jest 27 ESM removed the global `fail`).
+- **Naming convention `test` = async / `testSync` = sync** (seeded from codegen,
+  matches Jest's idiom that the unmarked `test` accepts async; `testPromise` /
+  `testAsync` are async aliases). This is the *opposite* of glennsl's
+  `test` = sync — deliberate, and irrelevant to reversibility since the
+  throwing-vs-deferred assertion model already makes a swap back impossible.
+- **Two test fixes the migration surfaced:**
+  - `MomentTest #isSameOrBeforeWithGranularity` — glennsl's deferred model had
+    masked a wrong assertion (`->ignore`d, never run). The throwing model exposed
+    it; the expected value was corrected to match reality.
+  - `ManifestVisibilityTest` "Plugin_Structure.make" block — a pre-existing red
+    (unrelated to bindings): commit `ff65d0c2c` filtered Internal read models out
+    of `pluginStructure`, but `6a6e5e466` ("show Internal components in the dev
+    graph") reversed that to *carry + tag* and left the assertion stale. Updated
+    to assert the current carry-and-tag contract (length 2, Internal tagged
+    `Some("Internal")`).
+- **Effect's `arrayFrom` helper** (a Chunk→array util, not a Jest binding) moved
+  to a local `rescript-effect/tests/ChunkHelpers.res` rather than into the shared
+  package.

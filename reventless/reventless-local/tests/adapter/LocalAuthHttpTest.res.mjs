@@ -112,7 +112,7 @@ function getString(j, k) {
   return Stdlib_Option.getOr(Stdlib_Option.flatMap(getJsonField(j, k), Stdlib_JSON.Decode.string), "");
 }
 
-beforeAll(async () => {
+globalThis.beforeAll(async () => {
   LocalAuth$ReventlessLocal.resetUsers();
   LocalAuth$ReventlessLocal.Login.resetStore();
   LocalAuth$ReventlessLocal.Login.setTokenSecret("http-test-secret");
@@ -129,9 +129,9 @@ beforeAll(async () => {
   });
 });
 
-afterAll(() => DomainGraphQL_Server$ReventlessLocal.stop());
+globalThis.afterAll(() => DomainGraphQL_Server$ReventlessLocal.stop());
 
-test("POST /__inmemory/login returns {token, identity} for valid credentials", async () => {
+globalThis.test("POST /__inmemory/login returns {token, identity} for valid credentials", async () => {
   let match = await postJson("/__inmemory/login", Object.fromEntries([
     [
       "username",
@@ -143,20 +143,20 @@ test("POST /__inmemory/login returns {token, identity} for valid credentials", a
     ]
   ]));
   let body = match[1];
-  expect(match[0]).toEqual(200);
+  globalThis.expect(match[0]).toEqual(200);
   let token = getString(body, "token");
-  expect(token.length > 0).toEqual(true);
-  expect(token.includes(".")).toEqual(true);
+  globalThis.expect(token.length > 0).toEqual(true);
+  globalThis.expect(token.includes(".")).toEqual(true);
   let idJson = getJsonField(body, "identity");
   if (idJson === undefined) {
     return Stdlib_JsError.throwWithMessage("response missing identity field");
   }
   let id = S.parseJsonOrThrow(idJson, Identity$Reventless.schema);
-  expect(id.username).toEqual("alice");
-  expect(id.groups).toEqual(["Editor"]);
+  globalThis.expect(id.username).toEqual("alice");
+  globalThis.expect(id.groups).toEqual(["Editor"]);
 });
 
-test("POST /__inmemory/login returns 401 for wrong password", async () => {
+globalThis.test("POST /__inmemory/login returns 401 for wrong password", async () => {
   let match = await postJson("/__inmemory/login", Object.fromEntries([
     [
       "username",
@@ -167,11 +167,11 @@ test("POST /__inmemory/login returns 401 for wrong password", async () => {
       "WRONG"
     ]
   ]));
-  expect(match[0]).toEqual(401);
-  expect(getString(match[1], "error").length > 0).toEqual(true);
+  globalThis.expect(match[0]).toEqual(401);
+  globalThis.expect(getString(match[1], "error").length > 0).toEqual(true);
 });
 
-test("POST /__inmemory/login returns 401 for missing user", async () => {
+globalThis.test("POST /__inmemory/login returns 401 for missing user", async () => {
   let match = await postJson("/__inmemory/login", Object.fromEntries([
     [
       "username",
@@ -182,20 +182,20 @@ test("POST /__inmemory/login returns 401 for missing user", async () => {
       "x"
     ]
   ]));
-  expect(match[0]).toEqual(401);
+  globalThis.expect(match[0]).toEqual(401);
 });
 
-test("POST /__inmemory/login returns 401 for malformed JSON body", async () => {
+globalThis.test("POST /__inmemory/login returns 401 for malformed JSON body", async () => {
   let status = await postRaw("/__inmemory/login", "not-json");
-  expect(status).toEqual(401);
+  globalThis.expect(status).toEqual(401);
 });
 
-test("POST /__inmemory/logout always returns 204", async () => {
+globalThis.test("POST /__inmemory/logout always returns 204", async () => {
   let status = await postEmpty("/__inmemory/logout");
-  expect(status).toEqual(204);
+  globalThis.expect(status).toEqual(204);
 });
 
-test("Bearer token issued via HTTP round-trips through authenticate", async () => {
+globalThis.test("Bearer token issued via HTTP round-trips through authenticate", async () => {
   let match = await postJson("/__inmemory/login", Object.fromEntries([
     [
       "username",
@@ -220,8 +220,8 @@ test("Bearer token issued via HTTP round-trips through authenticate", async () =
     return Stdlib_JsError.throwWithMessage("expected Authenticated(alice) from issued token");
   }
   let identity = result._0;
-  expect(identity.username).toEqual("alice");
-  expect(identity.groups).toEqual(["Editor"]);
+  globalThis.expect(identity.username).toEqual("alice");
+  globalThis.expect(identity.groups).toEqual(["Editor"]);
 });
 
 let port = 4321;

@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("Fiber", () => {
   testPromise("join waits for fiber and returns its result", async () => {

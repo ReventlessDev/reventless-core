@@ -6,8 +6,7 @@
 // the bus blocks waiting for that same fiber to dequeue Shipped. The wall-clock
 // timeout below catches that.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open AutomationSliceSelfDeadlockFixtures
 
 describe("AutomationSlice self-deadlock regression:", () => {

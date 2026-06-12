@@ -5,15 +5,15 @@ import * as Message$Reventless from "@reventlessdev/reventless-spec/src/types/Me
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as ExtensionPointFixtures$ReventlessLocal from "./ExtensionPointFixtures.res.mjs";
 
-beforeAll(async () => {
+globalThis.beforeAll(async () => {
   let epOutputs = ExtensionPointFixtures$ReventlessLocal.TestEP.outputs(ExtensionPointFixtures$ReventlessLocal.ep);
   await TestRunner$ReventlessLocal.resolve(epOutputs.commandTopic);
   await TestRunner$ReventlessLocal.resolve(epOutputs.eventTopic);
 });
 
-describe("ExtensionPoint (in-memory)", () => {
-  beforeEach(() => ExtensionPointFixtures$ReventlessLocal.resetMocks());
-  test("dispatching Forward command calls publishToAggregates with Execute command", async () => {
+globalThis.describe("ExtensionPoint (in-memory)", () => {
+  globalThis.beforeEach(() => ExtensionPointFixtures$ReventlessLocal.resetMocks());
+  globalThis.test("dispatching Forward command calls publishToAggregates with Execute command", async () => {
     let forwardCmdJson = S.reverseConvertToJsonOrThrow({
       TAG: "Forward",
       targetId: "target-1"
@@ -33,22 +33,22 @@ describe("ExtensionPoint (in-memory)", () => {
       ]
     ]);
     await ExtensionPointFixtures$ReventlessLocal.Bus.dispatchCommand("TestEPExtPointCmdTopic", body);
-    expect(ExtensionPointFixtures$ReventlessLocal.capturedCmds.contents.length).toBe(1);
+    globalThis.expect(ExtensionPointFixtures$ReventlessLocal.capturedCmds.contents.length).toBe(1);
     let cmd = ExtensionPointFixtures$ReventlessLocal.capturedCmds.contents[0];
-    expect(cmd.id).toBe("target-1");
+    globalThis.expect(cmd.id).toBe("target-1");
     let decoded = S.parseJsonOrThrow(cmd.commandJson, ExtensionPointFixtures$ReventlessLocal.DelegateAggSpec.commandSchema);
-    expect(decoded).toEqual({
+    globalThis.expect(decoded).toEqual({
       TAG: "Execute",
       targetId: "target-1"
     });
   });
-  test("unknown channel dispatch does not throw or call publishToAggregates", async () => {
+  globalThis.test("unknown channel dispatch does not throw or call publishToAggregates", async () => {
     let body = Object.fromEntries([[
         "id",
         "x"
       ]]);
     await ExtensionPointFixtures$ReventlessLocal.Bus.dispatchCommand("UnknownChannel", body);
-    expect(ExtensionPointFixtures$ReventlessLocal.capturedCmds.contents.length).toBe(0);
+    globalThis.expect(ExtensionPointFixtures$ReventlessLocal.capturedCmds.contents.length).toBe(0);
   });
 });
 

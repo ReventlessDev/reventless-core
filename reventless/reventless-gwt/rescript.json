@@ -25,7 +25,7 @@
   "dependencies": [
     "@reventlessdev/reventless-vscode-protocol",
     "sury",
-    "@glennsl/rescript-jest",
+    "@reventlessdev/rescript-jest",
     "@reventlessdev/rescript-effect",
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",

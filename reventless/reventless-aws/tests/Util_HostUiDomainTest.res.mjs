@@ -2,48 +2,48 @@
 
 import * as Util_HostUiDomain$ReventlessAws from "../src/util/Util_HostUiDomain.res.mjs";
 
-describe("Util_HostUiDomain.deriveFqdn", () => {
-  test("non-prod stack keeps the stack suffix", () => {
-    expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("online-shop-hybrid-platform", "alpha", "app.reventless.dev", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("online-shop-hybrid-platform-alpha.app.reventless.dev");
+globalThis.describe("Util_HostUiDomain.deriveFqdn", () => {
+  globalThis.test("non-prod stack keeps the stack suffix", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("online-shop-hybrid-platform", "alpha", "app.reventless.dev", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("online-shop-hybrid-platform-alpha.app.reventless.dev");
   });
-  test("default prod stack 'main' drops the stack suffix", () => {
-    expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("online-shop-hybrid-platform", "main", "app.reventless.dev", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("online-shop-hybrid-platform.app.reventless.dev");
+  globalThis.test("default prod stack 'main' drops the stack suffix", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("online-shop-hybrid-platform", "main", "app.reventless.dev", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("online-shop-hybrid-platform.app.reventless.dev");
   });
-  test("default prod stack 'prod' drops the stack suffix", () => {
-    expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("p", "prod", "d", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("p.d");
+  globalThis.test("default prod stack 'prod' drops the stack suffix", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("p", "prod", "d", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("p.d");
   });
-  test("custom prod-stack name strips the suffix", () => {
-    expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("p", "production", "d", ["production"])).toBe("p.d");
+  globalThis.test("custom prod-stack name strips the suffix", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("p", "production", "d", ["production"])).toBe("p.d");
   });
-  test("non-prod with default prodStacks keeps the suffix", () => {
-    expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("p", "alpha", "d", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("p-alpha.d");
+  globalThis.test("non-prod with default prodStacks keeps the suffix", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("p", "alpha", "d", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("p-alpha.d");
   });
-  test("baseName override produces a shorter URL", () => {
-    expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("online-shop-hybrid", "alpha", "app.reventless.dev", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("online-shop-hybrid-alpha.app.reventless.dev");
+  globalThis.test("baseName override produces a shorter URL", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.deriveFqdn("online-shop-hybrid", "alpha", "app.reventless.dev", Util_HostUiDomain$ReventlessAws.defaultProdStacks)).toBe("online-shop-hybrid-alpha.app.reventless.dev");
   });
 });
 
-describe("Util_HostUiDomain.parseProdStacks", () => {
-  test("splits a simple CSV", () => {
-    expect(Util_HostUiDomain$ReventlessAws.parseProdStacks("prod,main")).toEqual([
+globalThis.describe("Util_HostUiDomain.parseProdStacks", () => {
+  globalThis.test("splits a simple CSV", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.parseProdStacks("prod,main")).toEqual([
       "prod",
       "main"
     ]);
   });
-  test("trims whitespace around entries", () => {
-    expect(Util_HostUiDomain$ReventlessAws.parseProdStacks(" production , live ")).toEqual([
+  globalThis.test("trims whitespace around entries", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.parseProdStacks(" production , live ")).toEqual([
       "production",
       "live"
     ]);
   });
-  test("drops empty entries from trailing commas", () => {
-    expect(Util_HostUiDomain$ReventlessAws.parseProdStacks("prod,,main,")).toEqual([
+  globalThis.test("drops empty entries from trailing commas", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.parseProdStacks("prod,,main,")).toEqual([
       "prod",
       "main"
     ]);
   });
-  test("single entry without comma", () => {
-    expect(Util_HostUiDomain$ReventlessAws.parseProdStacks("production")).toEqual(["production"]);
+  globalThis.test("single entry without comma", () => {
+    globalThis.expect(Util_HostUiDomain$ReventlessAws.parseProdStacks("production")).toEqual(["production"]);
   });
 });
 

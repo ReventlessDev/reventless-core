@@ -26,8 +26,8 @@ function cmdJson(msgId) {
   };
 }
 
-describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
-  test("Rejected from rejectedResultChannel beats Accepted from acceptedResultChannel", async () => {
+globalThis.describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
+  globalThis.test("Rejected from rejectedResultChannel beats Accepted from acceptedResultChannel", async () => {
     let handler = stream => Effect.map(Stream.runCollect(stream), items => {
       items.forEach(item => {
         CommandTopic_Helpers$ReventlessCore.reportAccepted(item.reference, {
@@ -45,21 +45,21 @@ describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
       }));
     });
     let outcomes = await CommandTopic_Helpers$ReventlessCore.runInlineAndCollect([cmdJson("msg-1")], handler);
-    expect(outcomes.length).toBe(1);
+    globalThis.expect(outcomes.length).toBe(1);
     let match = outcomes[0];
     switch (match.TAG) {
       case "Rejected" :
-        expect(match.msgId).toEqual("msg-1");
-        expect(match.errorCode).toEqual("AlreadyExists");
-        expect(match.errorDetail).toEqual(undefined);
+        globalThis.expect(match.msgId).toEqual("msg-1");
+        globalThis.expect(match.errorCode).toEqual("AlreadyExists");
+        globalThis.expect(match.errorDetail).toEqual(undefined);
         return;
       case "Accepted" :
       case "Pending" :
-        expect("expected Rejected").toEqual("got other");
+        globalThis.expect("expected Rejected").toEqual("got other");
         return;
     }
   });
-  test("Rejected from rejectedResultChannel beats Error result (synthesized Conflict)", async () => {
+  globalThis.test("Rejected from rejectedResultChannel beats Error result (synthesized Conflict)", async () => {
     let handler = stream => Effect.map(Stream.runCollect(stream), items => {
       items.forEach(item => CommandTopic_Helpers$ReventlessCore.reportRejected(item.reference, {
         errorCode: "BusinessRuleViolated",
@@ -74,16 +74,16 @@ describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
     let match = outcomes[0];
     switch (match.TAG) {
       case "Rejected" :
-        expect(match.errorCode).toEqual("BusinessRuleViolated");
-        expect(match.errorDetail).toEqual("{\"reason\":\"x\"}");
+        globalThis.expect(match.errorCode).toEqual("BusinessRuleViolated");
+        globalThis.expect(match.errorDetail).toEqual("{\"reason\":\"x\"}");
         return;
       case "Accepted" :
       case "Pending" :
-        expect("expected Rejected").toEqual("got other");
+        globalThis.expect("expected Rejected").toEqual("got other");
         return;
     }
   });
-  test("Error result without rejectedChannel still synthesizes Conflict", async () => {
+  globalThis.test("Error result without rejectedChannel still synthesizes Conflict", async () => {
     let handler = stream => Effect.map(Stream.runCollect(stream), items => items.map(item => ({
       TAG: "Error",
       _0: item.reference
@@ -92,11 +92,11 @@ describe("CommandTopic_Helpers.runInlineAndCollect:", () => {
     let match = outcomes[0];
     switch (match.TAG) {
       case "Rejected" :
-        expect(match.errorCode).toEqual("Conflict");
+        globalThis.expect(match.errorCode).toEqual("Conflict");
         return;
       case "Accepted" :
       case "Pending" :
-        expect("expected Rejected(Conflict)").toEqual("got other");
+        globalThis.expect("expected Rejected(Conflict)").toEqual("got other");
         return;
     }
   });

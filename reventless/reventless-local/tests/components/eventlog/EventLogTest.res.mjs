@@ -4,12 +4,12 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as EventLogFixtures$ReventlessLocal from "./EventLogFixtures.res.mjs";
 
-describe("EventLog (in-memory)", () => {
-  beforeAll(async () => {
+globalThis.describe("EventLog (in-memory)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
   });
-  beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
-  test("append stores events and replay returns them", async () => {
+  globalThis.beforeEach(() => EventLogFixtures$ReventlessLocal.reset());
+  globalThis.test("append stores events and replay returns them", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     let event = {
       TAG: "ItemCreated",
@@ -18,25 +18,25 @@ describe("EventLog (in-memory)", () => {
     let event$p = EventLogFixtures$ReventlessLocal.makeEvent$p("item-1", event);
     await ops.append(0, "item-1", [event$p]);
     let replayed = await ops.replay("item-1");
-    expect(replayed.length).toBe(1);
+    globalThis.expect(replayed.length).toBe(1);
     let first = replayed[0];
-    expect(first).toEqual(event);
+    globalThis.expect(first).toEqual(event);
   });
-  test("append publishes event to event topic", async () => {
+  globalThis.test("append publishes event to event topic", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     let event$p = EventLogFixtures$ReventlessLocal.makeEvent$p("pub-1", {
       TAG: "ItemCreated",
       name: "Widget"
     });
     await ops.append(0, "pub-1", [event$p]);
-    expect(EventLogFixtures$ReventlessLocal.capturedTopicEventCount.contents).toBe(1);
+    globalThis.expect(EventLogFixtures$ReventlessLocal.capturedTopicEventCount.contents).toBe(1);
   });
-  test("replay returns empty array for unknown id", async () => {
+  globalThis.test("replay returns empty array for unknown id", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     let events = await ops.replay("unknown-id");
-    expect(events.length).toBe(0);
+    globalThis.expect(events.length).toBe(0);
   });
-  test("multiple appends accumulate events", async () => {
+  globalThis.test("multiple appends accumulate events", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     await ops.append(0, "agg-1", [EventLogFixtures$ReventlessLocal.makeEvent$p("agg-1", {
         TAG: "ItemCreated",
@@ -47,9 +47,9 @@ describe("EventLog (in-memory)", () => {
         id: "agg-1"
       })]);
     let replayed = await ops.replay("agg-1");
-    expect(replayed.length).toBe(2);
+    globalThis.expect(replayed.length).toBe(2);
   });
-  test("separate aggregates have independent event logs", async () => {
+  globalThis.test("separate aggregates have independent event logs", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventLogFixtures$ReventlessLocal.eventLog));
     await ops.append(0, "agg-A", [EventLogFixtures$ReventlessLocal.makeEvent$p("agg-A", {
         TAG: "ItemCreated",
@@ -61,7 +61,7 @@ describe("EventLog (in-memory)", () => {
       })]);
     let eventsA = await ops.replay("agg-A");
     let eventsB = await ops.replay("agg-B");
-    expect([
+    globalThis.expect([
       eventsA.length,
       eventsB.length
     ]).toEqual([

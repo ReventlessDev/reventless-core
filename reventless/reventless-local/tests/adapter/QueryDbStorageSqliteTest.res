@@ -1,7 +1,6 @@
 // Round-trip test for QueryDbStorage_Sqlite.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}

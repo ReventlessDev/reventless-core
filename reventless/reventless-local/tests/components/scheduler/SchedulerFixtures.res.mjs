@@ -34,11 +34,11 @@ function makeTopicResource(name) {
   };
 }
 
-beforeAll(() => {
+globalThis.beforeAll(() => {
   Globals.jest.useFakeTimers();
 });
 
-afterAll(() => {
+globalThis.afterAll(() => {
   SP.reset();
   Globals.jest.useRealTimers();
 });
@@ -47,7 +47,7 @@ let schedulerOps = {
   contents: undefined
 };
 
-beforeAll(async () => {
+globalThis.beforeAll(async () => {
   let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(scheduler));
   schedulerOps.contents = ops;
 });

@@ -1,8 +1,7 @@
 // E2E tests for DcbEventLog and StateChangeSlice builders.
 // Verifies the full command → DcbEventLog → event topic pipeline.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open DcbFixtures
 
 describe("DcbEventLog E2E", () => {

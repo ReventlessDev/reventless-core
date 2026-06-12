@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 open QueryDbFixtures
 
 module Ops = QueryDb_Operations.Make(

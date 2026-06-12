@@ -1,7 +1,6 @@
 // Integration tests for EventTopic_Builder with in-memory publisher.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open EventTopicFixtures
 
 describe("EventTopic (in-memory)", () => {

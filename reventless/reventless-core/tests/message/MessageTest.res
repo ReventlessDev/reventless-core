@@ -1,17 +1,16 @@
-open Jest
-open Expect
+open JestGlobals
 open Message
 
 type event = event'<string, PluginSpec.event>
 
 describe("Message should", () => {
-  test("create a valid sequenceNr", () => {
+  testSync("create a valid sequenceNr", () => {
     let now = 123456789.
     let hrtime = (1, 1)
     expect(hrtimeToString(~hrtime, ~now))->toBe("123456789-000000001")
   })
 
-  test("get variant name of json without payload", () => {
+  testSync("get variant name of json without payload", () => {
     let variant = PluginSpec.Heartbeat
     let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)
@@ -19,7 +18,7 @@ describe("Message should", () => {
     expect(variantName)->toBe("Heartbeat")
   })
 
-  test("get variant name of json with payload", () => {
+  testSync("get variant name of json with payload", () => {
     let variant = PluginSpec.Connect({
       id: "id",
       name: "testName",
@@ -54,7 +53,7 @@ describe("Message should", () => {
     expect(variantName)->toBe(expected)
   })
 
-  test("get event name of eventJson'", () => {
+  testSync("get event name of eventJson'", () => {
     open PluginSpec
     let event' = {
       id: "testId",
@@ -74,7 +73,7 @@ describe("Message should", () => {
     expect(eventName)->toBe("UnknownPluginDetected")
   })
 
-  test("get id of eventJson'", () => {
+  testSync("get id of eventJson'", () => {
     open PluginSpec
     let event' = {
       id: "testId",

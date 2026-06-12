@@ -1,8 +1,7 @@
 // Round-trip test for the SqliteDriver wrapper.
 // Uses an in-memory database (`:memory:`) so no filesystem cleanup is needed.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 describe("SqliteDriver", () => {
   testPromise("open / exec / prepare / run / get / all / iterate / close round-trip", async () => {

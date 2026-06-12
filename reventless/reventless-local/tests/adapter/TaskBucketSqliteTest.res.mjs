@@ -3,36 +3,36 @@
 import * as SqliteDriver$ReventlessLocal from "../../src/adapter/SqliteDriver.res.mjs";
 import * as TaskBucket_Sqlite$ReventlessLocal from "../../src/adapter/Task/TaskBucket_Sqlite.res.mjs";
 
-describe("TaskBucket_Sqlite", () => {
-  test("put then get returns the stored body", async () => {
+globalThis.describe("TaskBucket_Sqlite", () => {
+  globalThis.test("put then get returns the stored body", async () => {
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     TaskBucket_Sqlite$ReventlessLocal.put(db, "b1", "k1", "hello world");
     let got = TaskBucket_Sqlite$ReventlessLocal.get(db, "b1", "k1");
-    expect(got).toEqual("hello world");
+    globalThis.expect(got).toEqual("hello world");
     return SqliteDriver$ReventlessLocal.close(db);
   });
-  test("put overwrites existing body at same (bucket, key)", async () => {
+  globalThis.test("put overwrites existing body at same (bucket, key)", async () => {
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     TaskBucket_Sqlite$ReventlessLocal.put(db, "b1", "k", "one");
     TaskBucket_Sqlite$ReventlessLocal.put(db, "b1", "k", "two");
     let got = TaskBucket_Sqlite$ReventlessLocal.get(db, "b1", "k");
-    expect(got).toEqual("two");
+    globalThis.expect(got).toEqual("two");
     return SqliteDriver$ReventlessLocal.close(db);
   });
-  test("get returns None for missing key", async () => {
+  globalThis.test("get returns None for missing key", async () => {
     let db = SqliteDriver$ReventlessLocal.openDb(":memory:");
     let got = TaskBucket_Sqlite$ReventlessLocal.get(db, "empty", "nope");
-    expect(got).toEqual(undefined);
+    globalThis.expect(got).toEqual(undefined);
     return SqliteDriver$ReventlessLocal.close(db);
   });
-  test("body persists across a file reopen", async () => {
+  globalThis.test("body persists across a file reopen", async () => {
     let path = `/tmp/reventless-test-task-` + Date.now().toString() + `.db`;
     let db = SqliteDriver$ReventlessLocal.openDb(path);
     TaskBucket_Sqlite$ReventlessLocal.put(db, "audit", "42", "payload");
     SqliteDriver$ReventlessLocal.close(db);
     let db2 = SqliteDriver$ReventlessLocal.openDb(path);
     let got = TaskBucket_Sqlite$ReventlessLocal.get(db2, "audit", "42");
-    expect(got).toEqual("payload");
+    globalThis.expect(got).toEqual("payload");
     return SqliteDriver$ReventlessLocal.close(db2);
   });
 });

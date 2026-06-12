@@ -9,53 +9,53 @@ function mkErr(name, message) {
   };
 }
 
-describe("AppSync_Resolver_Retrying.isFieldNotFoundError", () => {
-  describe("returns true", () => {
-    test("NotFoundException with 'No field named' message", () => {
+globalThis.describe("AppSync_Resolver_Retrying.isFieldNotFoundError", () => {
+  globalThis.describe("returns true", () => {
+    globalThis.test("NotFoundException with 'No field named' message", () => {
       let err = {
         name: "NotFoundException",
         message: "No field named createFoo found on type Mutation"
       };
-      expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(true);
+      globalThis.expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(true);
     });
-    test("NotFoundException with 'No field named' on Query type", () => {
+    globalThis.test("NotFoundException with 'No field named' on Query type", () => {
       let err = {
         name: "NotFoundException",
         message: "No field named bar found on type Query"
       };
-      expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(true);
+      globalThis.expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(true);
     });
   });
-  describe("returns false", () => {
-    test("NotFoundException with 'No resolver found' (delete-path — must not retry)", () => {
+  globalThis.describe("returns false", () => {
+    globalThis.test("NotFoundException with 'No resolver found' (delete-path — must not retry)", () => {
       let err = {
         name: "NotFoundException",
         message: "No resolver found for type Query field foo"
       };
-      expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(false);
+      globalThis.expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(false);
     });
-    test("ThrottlingException", () => {
+    globalThis.test("ThrottlingException", () => {
       let err = {
         name: "ThrottlingException",
         message: "Rate exceeded"
       };
-      expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(false);
+      globalThis.expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(false);
     });
-    test("NotFoundException with unrelated message", () => {
+    globalThis.test("NotFoundException with unrelated message", () => {
       let err = {
         name: "NotFoundException",
         message: "API not found"
       };
-      expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(false);
+      globalThis.expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(err)).toBe(false);
     });
-    test("non-exception value (integer)", () => {
-      expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(42)).toBe(false);
+    globalThis.test("non-exception value (integer)", () => {
+      globalThis.expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(42)).toBe(false);
     });
-    test("non-exception value (plain object without name)", () => {
+    globalThis.test("non-exception value (plain object without name)", () => {
       let notErr = {
         message: "something went wrong"
       };
-      expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(notErr)).toBe(false);
+      globalThis.expect(AppSync_Resolver_Retrying$ReventlessAws.isFieldNotFoundError(notErr)).toBe(false);
     });
   });
 });

@@ -6,14 +6,14 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as CommandTopicStreamFixtures$ReventlessLocal from "./CommandTopicStreamFixtures.res.mjs";
 
-describe("CommandTopic.publishJsonsStream", () => {
-  beforeAll(async () => {
+globalThis.describe("CommandTopic.publishJsonsStream", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(CommandTopicStreamFixtures$ReventlessLocal.cmdTopic));
   });
-  beforeEach(() => {
+  globalThis.beforeEach(() => {
     CommandTopicStreamFixtures$ReventlessLocal.captured.contents = [];
   });
-  test("streams 3 commands to the bus in order", async () => {
+  globalThis.test("streams 3 commands to the bus in order", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(CommandTopicStreamFixtures$ReventlessLocal.cmdTopic));
     let stream = Stream.fromIterable([
       CommandTopicStreamFixtures$ReventlessLocal.makeJson("cmd-1"),
@@ -22,13 +22,13 @@ describe("CommandTopic.publishJsonsStream", () => {
     ]);
     await Effect.runPromise(ops.publishJsonsStream(stream));
     await Promise.resolve();
-    expect(CommandTopicStreamFixtures$ReventlessLocal.captured.contents.length).toBe(3);
+    globalThis.expect(CommandTopicStreamFixtures$ReventlessLocal.captured.contents.length).toBe(3);
   });
-  test("empty stream dispatches nothing", async () => {
+  globalThis.test("empty stream dispatches nothing", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(CommandTopicStreamFixtures$ReventlessLocal.cmdTopic));
     await Effect.runPromise(ops.publishJsonsStream(Stream.empty));
     await Promise.resolve();
-    expect(CommandTopicStreamFixtures$ReventlessLocal.captured.contents.length).toBe(0);
+    globalThis.expect(CommandTopicStreamFixtures$ReventlessLocal.captured.contents.length).toBe(0);
   });
 });
 

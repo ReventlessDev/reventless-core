@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 open AggregateFixtures
 
 let _ = beforeEach(() => mock.reset())

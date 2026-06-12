@@ -91,8 +91,8 @@ function nodeKind(g, id) {
   return Stdlib_Option.map(g.nodes.find(n => n.id === id), n => n.kind);
 }
 
-describe("DomainGraph.build", () => {
-  test("Command → Aggregate → Event → ReadModel (DCB consumedEventTypes)", async () => {
+globalThis.describe("DomainGraph.build", () => {
+  globalThis.test("Command → Aggregate → Event → ReadModel (DCB consumedEventTypes)", async () => {
     let shop = structure([writable("Order", [{
           name: "Place",
           schema: "",
@@ -106,24 +106,24 @@ describe("DomainGraph.build", () => {
         "Shop",
         shop
       ]], []);
-    expect(nodeKind(g, "Shop_Order_Place")).toEqual("Command");
-    expect(nodeKind(g, "Shop:Order")).toEqual("Aggregate");
-    expect(nodeKind(g, "Shop.Placed")).toEqual("Event");
-    expect(nodeKind(g, "Shop:OrderView")).toEqual("StateViewSlice");
-    expect(hasEdge(g, "Shop_Order_Place", "Shop:Order", "handles")).toBe(true);
-    expect(hasEdge(g, "Shop:Order", "Shop.Placed", "emits")).toBe(true);
-    expect(hasEdge(g, "Shop.Placed", "Shop:OrderView", "projects")).toBe(true);
+    globalThis.expect(nodeKind(g, "Shop_Order_Place")).toEqual("Command");
+    globalThis.expect(nodeKind(g, "Shop:Order")).toEqual("Aggregate");
+    globalThis.expect(nodeKind(g, "Shop.Placed")).toEqual("Event");
+    globalThis.expect(nodeKind(g, "Shop:OrderView")).toEqual("StateViewSlice");
+    globalThis.expect(hasEdge(g, "Shop_Order_Place", "Shop:Order", "handles")).toBe(true);
+    globalThis.expect(hasEdge(g, "Shop:Order", "Shop.Placed", "emits")).toBe(true);
+    globalThis.expect(hasEdge(g, "Shop.Placed", "Shop:OrderView", "projects")).toBe(true);
   });
-  test("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {
+  globalThis.test("an Internal StateViewSlice still gets a node + projects edge (dev graph shows it)", async () => {
     let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined)], undefined, [queryable("AvailableView", ["Shop.Placed"], "Internal")], undefined, undefined, undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
       ]], []);
-    expect(nodeKind(g, "Shop:AvailableView")).toEqual("StateViewSlice");
-    expect(hasEdge(g, "Shop.Placed", "Shop:AvailableView", "projects")).toBe(true);
+    globalThis.expect(nodeKind(g, "Shop:AvailableView")).toEqual("StateViewSlice");
+    globalThis.expect(hasEdge(g, "Shop.Placed", "Shop:AvailableView", "projects")).toBe(true);
   });
-  test("classic linkedViews draws each produced event into the linked read model", async () => {
+  globalThis.test("classic linkedViews draws each produced event into the linked read model", async () => {
     let shop = structure([writable("Order", undefined, [
         "Shop.Placed",
         "Shop.Shipped"
@@ -132,19 +132,19 @@ describe("DomainGraph.build", () => {
         "Shop",
         shop
       ]], []);
-    expect(hasEdge(g, "Shop.Placed", "Shop:Orders", "projects")).toBe(true);
-    expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", "projects")).toBe(true);
+    globalThis.expect(hasEdge(g, "Shop.Placed", "Shop:Orders", "projects")).toBe(true);
+    globalThis.expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", "projects")).toBe(true);
   });
-  test("automation slices are triggered by their consumed events", async () => {
+  globalThis.test("automation slices are triggered by their consumed events", async () => {
     let shop = structure([writable("Order", undefined, ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined, [automation("Notify", ["Shop.Placed"])], undefined);
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
       ]], []);
-    expect(nodeKind(g, "Shop:Notify")).toEqual("AutomationSlice");
-    expect(hasEdge(g, "Shop.Placed", "Shop:Notify", "triggers")).toBe(true);
+    globalThis.expect(nodeKind(g, "Shop:Notify")).toEqual("AutomationSlice");
+    globalThis.expect(hasEdge(g, "Shop.Placed", "Shop:Notify", "triggers")).toBe(true);
   });
-  test("an event produced by two write-sides is one node with two emit edges", async () => {
+  globalThis.test("an event produced by two write-sides is one node with two emit edges", async () => {
     let shop = structure([
       writable("A", undefined, ["Shop.Touched"], undefined, undefined),
       writable("B", undefined, ["Shop.Touched"], undefined, undefined)
@@ -153,11 +153,11 @@ describe("DomainGraph.build", () => {
         "Shop",
         shop
       ]], []);
-    expect(g.nodes.filter(n => n.id === "Shop.Touched").length).toBe(1);
-    expect(hasEdge(g, "Shop:A", "Shop.Touched", "emits")).toBe(true);
-    expect(hasEdge(g, "Shop:B", "Shop.Touched", "emits")).toBe(true);
+    globalThis.expect(g.nodes.filter(n => n.id === "Shop.Touched").length).toBe(1);
+    globalThis.expect(hasEdge(g, "Shop:A", "Shop.Touched", "emits")).toBe(true);
+    globalThis.expect(hasEdge(g, "Shop:B", "Shop.Touched", "emits")).toBe(true);
   });
-  test("non-Extension computeEdges become graph edges with synthesized endpoints", async () => {
+  globalThis.test("non-Extension computeEdges become graph edges with synthesized endpoints", async () => {
     let edge_source = {
       pluginName: "Shop",
       componentName: "Order",
@@ -177,9 +177,9 @@ describe("DomainGraph.build", () => {
       implicit: false
     };
     let g = DomainGraph$ReventlessGwt.build([], [edge]);
-    expect(hasEdge(g, "Shop:Order", "Analytics:OrderStats", "EventTypeMatch")).toBe(true);
+    globalThis.expect(hasEdge(g, "Shop:Order", "Analytics:OrderStats", "EventTypeMatch")).toBe(true);
   });
-  test("an extension renders the cross-plugin event flow EP→event→Extension→delegate", async () => {
+  globalThis.test("an extension renders the cross-plugin event flow EP→event→Extension→delegate", async () => {
     let extension_delegateNames = ["ProductDemand"];
     let extension_eventTypes = ["Ordering.Orders.ItemOrdered"];
     let extension_commandTypes = [];
@@ -214,16 +214,16 @@ describe("DomainGraph.build", () => {
         "Catalog",
         catalog
       ]], []);
-    expect(nodeKind(g, "Ordering:ep:Ordering.Orders")).toEqual("ExtensionPoint");
-    expect(hasEdge(g, "Ordering:ep:Ordering.Orders", "Ordering.Orders.ItemOrdered", "publishes")).toBe(true);
-    expect(hasEdge(g, "Ordering.Orders.ItemOrdered", "Catalog:ext:Ordering.Orders", "consumes")).toBe(true);
-    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo")).toBe(true);
+    globalThis.expect(nodeKind(g, "Ordering:ep:Ordering.Orders")).toEqual("ExtensionPoint");
+    globalThis.expect(hasEdge(g, "Ordering:ep:Ordering.Orders", "Ordering.Orders.ItemOrdered", "publishes")).toBe(true);
+    globalThis.expect(hasEdge(g, "Ordering.Orders.ItemOrdered", "Catalog:ext:Ordering.Orders", "consumes")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo")).toBe(true);
     let protoEvent = Stdlib_Option.getOrThrow(g.nodes.find(n => n.id === "Ordering.Orders.ItemOrdered"), undefined);
-    expect(protoEvent.plugin).toBe("");
+    globalThis.expect(protoEvent.plugin).toBe("");
     let ext = Stdlib_Option.getOrThrow(g.nodes.find(n => n.id === "Catalog:ext:Ordering.Orders"), undefined);
-    expect(ext.label).toBe("Ordering.Orders.Catalog");
+    globalThis.expect(ext.label).toBe("Ordering.Orders.Catalog");
   });
-  test("an owned extension point is fed by the producers of its source events", async () => {
+  globalThis.test("an owned extension point is fed by the producers of its source events", async () => {
     let ep_delegateNames = ["CatalogDcbEventLog"];
     let ep_sourceEventTypes = ["Catalog.ProductAdded"];
     let ep = {
@@ -244,9 +244,9 @@ describe("DomainGraph.build", () => {
         "Catalog",
         catalog
       ]], []);
-    expect(nodeKind(g, "Catalog:ep:Catalog.Products")).toEqual("ExtensionPoint");
-    expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits")).toBe(true);
-    expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds")).toBe(true);
+    globalThis.expect(nodeKind(g, "Catalog:ep:Catalog.Products")).toEqual("ExtensionPoint");
+    globalThis.expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds")).toBe(true);
   });
 });
 

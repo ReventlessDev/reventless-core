@@ -14,9 +14,9 @@ let defaultMeta = {
   correlationId: ""
 };
 
-describe("LocalBus PubSub (Phase F)", () => {
-  describe("publishEvent timing", () => {
-    test("resolves after exactly 2 microtask ticks", async () => {
+globalThis.describe("LocalBus PubSub (Phase F)", () => {
+  globalThis.describe("publishEvent timing", () => {
+    globalThis.test("resolves after exactly 2 microtask ticks", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let delivered = {
         contents: false
@@ -25,19 +25,19 @@ describe("LocalBus PubSub (Phase F)", () => {
         delivered.contents = true;
       });
       let pubPromise = TestBus.publishEvent("T", "svc", defaultMeta, JSON.parse("{}"));
-      expect(delivered.contents).toBe(false);
+      globalThis.expect(delivered.contents).toBe(false);
       await Promise.resolve();
       await Promise.resolve();
       await pubPromise;
-      expect(delivered.contents).toBe(true);
+      globalThis.expect(delivered.contents).toBe(true);
     });
-    test("publishEvent with no subscribers returns immediately", async () => {
+    globalThis.test("publishEvent with no subscribers returns immediately", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       return await TestBus.publishEvent("empty-topic", "svc", defaultMeta, null);
     });
   });
-  describe("fan-out", () => {
-    test("delivers to all subscribers on the same topic", async () => {
+  globalThis.describe("fan-out", () => {
+    globalThis.test("delivers to all subscribers on the same topic", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let count = {
         contents: 0
@@ -52,9 +52,9 @@ describe("LocalBus PubSub (Phase F)", () => {
         count.contents = count.contents + 1 | 0;
       });
       await TestBus.publishEvent("T", "svc", defaultMeta, JSON.parse("{}"));
-      expect(count.contents).toBe(3);
+      globalThis.expect(count.contents).toBe(3);
     });
-    test("publishing to topic-a does not reach topic-b subscribers", async () => {
+    globalThis.test("publishing to topic-a does not reach topic-b subscribers", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let countA = {
         contents: 0
@@ -69,8 +69,8 @@ describe("LocalBus PubSub (Phase F)", () => {
         countB.contents = countB.contents + 1 | 0;
       });
       await TestBus.publishEvent("topic-a", "svc", defaultMeta, null);
-      expect(countA.contents).toBe(1);
-      expect(countB.contents).toBe(0);
+      globalThis.expect(countA.contents).toBe(1);
+      globalThis.expect(countB.contents).toBe(0);
     });
   });
 });

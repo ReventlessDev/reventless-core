@@ -1,8 +1,7 @@
 // Phase 5 — GSI fidelity (CREATE INDEX statements) and TTL filtering
 // for QueryDbStorage_Sqlite.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 let opts: Pulumi.CustomResourceOptions.t = {}

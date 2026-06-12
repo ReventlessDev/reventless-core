@@ -11,27 +11,27 @@ TestRunner$ReventlessLocal.setup();
 
 let opts = {};
 
-describe("QueryDbStorage_InMemory", () => {
-  describe("save and load", () => {
-    test("save stores state; loadStream retrieves it by id", async () => {
+globalThis.describe("QueryDbStorage_InMemory", () => {
+  globalThis.describe("save and load", () => {
+    globalThis.test("save stores state; loadStream retrieves it by id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm1", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       await ops.save("id1", "value1", "Any", undefined);
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("id1")), param => Effect.succeed([])));
-      expect(items.length).toBe(1);
-      expect(items[0]).toEqual("value1");
+      globalThis.expect(items.length).toBe(1);
+      globalThis.expect(items[0]).toEqual("value1");
     });
-    test("loadStream returns empty for unknown id", async () => {
+    globalThis.test("loadStream returns empty for unknown id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm2", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("unknown")), param => Effect.succeed([])));
-      expect(items.length).toBe(0);
+      globalThis.expect(items.length).toBe(0);
     });
-    test("save overwrites previous state for same id", async () => {
+    globalThis.test("save overwrites previous state for same id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm3", [], undefined, undefined, undefined, undefined, opts);
@@ -39,10 +39,10 @@ describe("QueryDbStorage_InMemory", () => {
       await ops.save("id1", "old", "Any", undefined);
       await ops.save("id1", "new", "Any", undefined);
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("id1")), param => Effect.succeed([])));
-      expect(items.length).toBe(1);
-      expect(items[0]).toEqual("new");
+      globalThis.expect(items.length).toBe(1);
+      globalThis.expect(items[0]).toEqual("new");
     });
-    test("load delegates to loadStream (backward-compat)", async () => {
+    globalThis.test("load delegates to loadStream (backward-compat)", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("load-compat", [], undefined, undefined, undefined, undefined, opts);
@@ -50,14 +50,14 @@ describe("QueryDbStorage_InMemory", () => {
       await ops.save("compat-id", "compat-val", "Any", undefined);
       let streamed = await Effect.runPromise(Stream.runCollect(ops.loadStream("compat-id")));
       let loaded = await ops.load("compat-id");
-      expect(loaded).toEqual({
+      globalThis.expect(loaded).toEqual({
         TAG: "Ok",
         _0: streamed
       });
     });
   });
-  describe("saveBatch", () => {
-    test("stores multiple items; loadStream retrieves each by id", async () => {
+  globalThis.describe("saveBatch", () => {
+    globalThis.test("stores multiple items; loadStream retrieves each by id", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm4", [], undefined, undefined, undefined, undefined, opts);
@@ -76,25 +76,25 @@ describe("QueryDbStorage_InMemory", () => {
       ]);
       let itemsA = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("a")), param => Effect.succeed([])));
       let itemsB = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("b")), param => Effect.succeed([])));
-      expect(itemsA[0]).toEqual("val-a");
-      expect(itemsB[0]).toEqual("val-b");
+      globalThis.expect(itemsA[0]).toEqual("val-a");
+      globalThis.expect(itemsB[0]).toEqual("val-b");
     });
   });
-  describe("count", () => {
-    test("returns the increment value (no real counting semantics)", async () => {
+  globalThis.describe("count", () => {
+    globalThis.test("returns the increment value (no real counting semantics)", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm5", [], undefined, undefined, undefined, undefined, opts);
       let ops = await TestRunner$ReventlessLocal.resolve(s.operations);
       let result = await ops.count("id1", "field", 5);
-      expect(result).toEqual({
+      globalThis.expect(result).toEqual({
         TAG: "Ok",
         _0: 5
       });
     });
   });
-  describe("delete", () => {
-    test("removes item; loadStream returns empty", async () => {
+  globalThis.describe("delete", () => {
+    globalThis.test("removes item; loadStream returns empty", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm6", [], undefined, undefined, undefined, undefined, opts);
@@ -102,9 +102,9 @@ describe("QueryDbStorage_InMemory", () => {
       await ops.save("del-id", "v", "Any", undefined);
       await ops.delete("del-id", undefined);
       let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("del-id")), param => Effect.succeed([])));
-      expect(items.length).toBe(0);
+      globalThis.expect(items.length).toBe(0);
     });
-    test("deleteBatch removes multiple items", async () => {
+    globalThis.test("deleteBatch removes multiple items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("rm7", [], undefined, undefined, undefined, undefined, opts);
@@ -133,12 +133,12 @@ describe("QueryDbStorage_InMemory", () => {
       ]);
       let rx = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("x")), param => Effect.succeed([])));
       let ry = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream("y")), param => Effect.succeed([])));
-      expect(rx.length).toBe(0);
-      expect(ry.length).toBe(0);
+      globalThis.expect(rx.length).toBe(0);
+      globalThis.expect(ry.length).toBe(0);
     });
   });
-  describe("scan registration", () => {
-    test("after save, scan function returns all stored items", async () => {
+  globalThis.describe("scan registration", () => {
+    globalThis.test("after save, scan function returns all stored items", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("scan-rm", [], undefined, undefined, undefined, undefined, opts);
@@ -147,9 +147,9 @@ describe("QueryDbStorage_InMemory", () => {
       await ops.save("s2", "item2", "Any", undefined);
       let scanFn = Stdlib_Option.getOr(TestBus.getQueryDbScan("scan-rm"), () => []);
       let all = scanFn();
-      expect(all.length).toBe(2);
+      globalThis.expect(all.length).toBe(2);
     });
-    test("after delete, scan function excludes deleted item", async () => {
+    globalThis.test("after delete, scan function excludes deleted item", async () => {
       let TestBus = LocalBus$ReventlessLocal.Make({});
       let Storage = QueryDbStorage_InMemory$ReventlessLocal.Make(TestBus);
       let s = Storage.make("scan-rm2", [], undefined, undefined, undefined, undefined, opts);
@@ -159,7 +159,7 @@ describe("QueryDbStorage_InMemory", () => {
       await ops.delete("gone", undefined);
       let scanFn = Stdlib_Option.getOr(TestBus.getQueryDbScan("scan-rm2"), () => []);
       let all = scanFn();
-      expect(all.length).toBe(1);
+      globalThis.expect(all.length).toBe(1);
     });
   });
 });

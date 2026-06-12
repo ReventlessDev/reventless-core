@@ -1,8 +1,7 @@
 // Unit tests for LocalHeartbeatRunner.
 // Uses fake timers to verify that the heartbeat interval fires the runtime handler.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 // ─────────────────────────────────────────────────────────────
 // Fake timer bindings

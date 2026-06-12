@@ -10,13 +10,13 @@ let Callback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtu
 
 let SkipCallback = AutomationSlice_Callback$ReventlessCore.Make(AutomationSliceFixtures$ReventlessLocal.SkipProcessSpec)(AutomationSliceFixtures$ReventlessLocal.SkipProcessAutomation);
 
-describe("AutomationSlice Callback (mixed-source)", () => {
-  beforeEach(() => {
+globalThis.describe("AutomationSlice Callback (mixed-source)", () => {
+  globalThis.beforeEach(() => {
     Object.keys(Callback.todoItems).forEach(k => Stdlib_Dict.$$delete(Callback.todoItems, k));
     Object.keys(SkipCallback.todoItems).forEach(k => Stdlib_Dict.$$delete(SkipCallback.todoItems, k));
   });
-  describe("Phase 1 — collect", () => {
-    test("OrderPlaced JSON creates a pending TODO item", async () => {
+  globalThis.describe("Phase 1 — collect", () => {
+    globalThis.test("OrderPlaced JSON creates a pending TODO item", async () => {
       let json = AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
         TAG: "OrderPlaced",
         orderId: "ord-1",
@@ -24,12 +24,12 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       });
       Callback.phase1([json], AutomationSliceFixtures$ReventlessLocal.testContext);
       let items = Callback.todoItems;
-      expect(Object.entries(items).length).toBe(1);
+      globalThis.expect(Object.entries(items).length).toBe(1);
       let row = Stdlib_Option.getOrThrow(items["ord-1"], undefined);
-      expect(row.status).toBe("Pending");
-      expect(row.retryCount).toBe(0);
+      globalThis.expect(row.status).toBe("Pending");
+      globalThis.expect(row.retryCount).toBe(0);
     });
-    test("duplicate OrderPlaced is idempotent", async () => {
+    globalThis.test("duplicate OrderPlaced is idempotent", async () => {
       let j1 = AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
         TAG: "OrderPlaced",
         orderId: "ord-1",
@@ -42,9 +42,9 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       });
       Callback.phase1([j1], AutomationSliceFixtures$ReventlessLocal.testContext);
       Callback.phase1([j2], AutomationSliceFixtures$ReventlessLocal.testContext);
-      expect(Object.entries(Callback.todoItems).length).toBe(1);
+      globalThis.expect(Object.entries(Callback.todoItems).length).toBe(1);
     });
-    test("multiple OrderPlaced events create multiple TODO items", async () => {
+    globalThis.test("multiple OrderPlaced events create multiple TODO items", async () => {
       let j1 = AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
         TAG: "OrderPlaced",
         orderId: "ord-1",
@@ -59,19 +59,19 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         j1,
         j2
       ], AutomationSliceFixtures$ReventlessLocal.testContext);
-      expect(Object.entries(Callback.todoItems).length).toBe(2);
+      globalThis.expect(Object.entries(Callback.todoItems).length).toBe(2);
     });
-    test("ShipmentCreated does not create a TODO item", async () => {
+    globalThis.test("ShipmentCreated does not create a TODO item", async () => {
       let json = AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
         TAG: "ShipmentCreated",
         orderId: "ord-1"
       });
       Callback.phase1([json], AutomationSliceFixtures$ReventlessLocal.testContext);
-      expect(Object.entries(Callback.todoItems).length).toBe(0);
+      globalThis.expect(Object.entries(Callback.todoItems).length).toBe(0);
     });
   });
-  describe("Phase 1 — resolve", () => {
-    test("ShipmentCreated marks pending TODO item as completed", async () => {
+  globalThis.describe("Phase 1 — resolve", () => {
+    globalThis.test("ShipmentCreated marks pending TODO item as completed", async () => {
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
@@ -82,18 +82,18 @@ describe("AutomationSlice Callback (mixed-source)", () => {
           orderId: "ord-1"
         })], AutomationSliceFixtures$ReventlessLocal.testContext);
       let row = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
-      expect(row.status).toBe("Completed");
+      globalThis.expect(row.status).toBe("Completed");
     });
-    test("ShipmentCreated for unknown id is a no-op", async () => {
+    globalThis.test("ShipmentCreated for unknown id is a no-op", async () => {
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "ShipmentCreated",
           orderId: "unknown"
         })], AutomationSliceFixtures$ReventlessLocal.testContext);
-      expect(Object.entries(Callback.todoItems).length).toBe(0);
+      globalThis.expect(Object.entries(Callback.todoItems).length).toBe(0);
     });
   });
-  describe("Phase 2 — process", () => {
-    test("pending items produce commands via publishJsons", async () => {
+  globalThis.describe("Phase 2 — process", () => {
+    globalThis.test("pending items produce commands via publishJsons", async () => {
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
@@ -106,13 +106,13 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         publishedCommands.contents = cmds;
       };
       await Callback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(1);
+      globalThis.expect(publishedCommands.contents.length).toBe(1);
       let cmd = publishedCommands.contents[0];
-      expect(cmd.id).toBe("ord-1");
+      globalThis.expect(cmd.id).toBe("ord-1");
       let row = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
-      expect(row.status).toBe("Processing");
+      globalThis.expect(row.status).toBe("Processing");
     });
-    test("completed items are not processed", async () => {
+    globalThis.test("completed items are not processed", async () => {
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
@@ -129,9 +129,9 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         publishedCommands.contents = cmds;
       };
       await Callback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
     });
-    test("items where process returns None are skipped", async () => {
+    globalThis.test("items where process returns None are skipped", async () => {
       let json = AutomationSliceFixtures$ReventlessLocal.encodeSkipProcessEvent({
         TAG: "OrderPlaced",
         orderId: "ord-1"
@@ -144,11 +144,11 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         publishedCommands.contents = cmds;
       };
       await SkipCallback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
       let row = Stdlib_Option.getOrThrow(SkipCallback.todoItems["ord-1"], undefined);
-      expect(row.status).toBe("Pending");
+      globalThis.expect(row.status).toBe("Pending");
     });
-    test("empty TODO list produces no commands", async () => {
+    globalThis.test("empty TODO list produces no commands", async () => {
       let publishedCommands = {
         contents: []
       };
@@ -156,9 +156,9 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         publishedCommands.contents = cmds;
       };
       await Callback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
     });
-    test("publishJsons failure marks items as Failed", async () => {
+    globalThis.test("publishJsons failure marks items as Failed", async () => {
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
@@ -167,10 +167,10 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let failingPublish = async _cmds => Stdlib_JsError.throwWithMessage("publish failed");
       await Callback.phase2(failingPublish);
       let row = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
-      expect(row.status).toBe("Failed");
-      expect(row.retryCount).toBe(1);
+      globalThis.expect(row.status).toBe("Failed");
+      globalThis.expect(row.retryCount).toBe(1);
     });
-    test("failed items with retryCount < maxRetries are retried", async () => {
+    globalThis.test("failed items with retryCount < maxRetries are retried", async () => {
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
@@ -179,7 +179,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
       let failingPublish = async _cmds => Stdlib_JsError.throwWithMessage("publish failed");
       await Callback.phase2(failingPublish);
       let row1 = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
-      expect(row1.retryCount).toBe(1);
+      globalThis.expect(row1.retryCount).toBe(1);
       let publishedCommands = {
         contents: []
       };
@@ -187,19 +187,19 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         publishedCommands.contents = cmds;
       };
       await Callback.phase2(successPublish);
-      expect(publishedCommands.contents.length).toBe(1);
+      globalThis.expect(publishedCommands.contents.length).toBe(1);
       let row2 = Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined);
-      expect(row2.status).toBe("Processing");
+      globalThis.expect(row2.status).toBe("Processing");
     });
   });
-  describe("full lifecycle", () => {
-    test("collect → process → resolve completes the TODO item", async () => {
+  globalThis.describe("full lifecycle", () => {
+    globalThis.test("collect → process → resolve completes the TODO item", async () => {
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "OrderPlaced",
           orderId: "ord-1",
           address: "123 Main St"
         })], AutomationSliceFixtures$ReventlessLocal.testContext);
-      expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Pending");
+      globalThis.expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Pending");
       let publishedCommands = {
         contents: []
       };
@@ -207,13 +207,13 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         publishedCommands.contents = cmds;
       };
       await Callback.phase2(mockPublish);
-      expect(publishedCommands.contents.length).toBe(1);
-      expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Processing");
+      globalThis.expect(publishedCommands.contents.length).toBe(1);
+      globalThis.expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Processing");
       Callback.phase1([AutomationSliceFixtures$ReventlessLocal.encodeShipOrderEvent({
           TAG: "ShipmentCreated",
           orderId: "ord-1"
         })], AutomationSliceFixtures$ReventlessLocal.testContext);
-      expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Completed");
+      globalThis.expect(Stdlib_Option.getOrThrow(Callback.todoItems["ord-1"], undefined).status).toBe("Completed");
       let publishedCommands2 = {
         contents: []
       };
@@ -221,7 +221,7 @@ describe("AutomationSlice Callback (mixed-source)", () => {
         publishedCommands2.contents = cmds;
       };
       await Callback.phase2(mockPublish2);
-      expect(publishedCommands2.contents.length).toBe(0);
+      globalThis.expect(publishedCommands2.contents.length).toBe(0);
     });
   });
 });

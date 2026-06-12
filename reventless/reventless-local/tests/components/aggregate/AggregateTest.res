@@ -2,8 +2,7 @@
 // Verifies the full aggregate command → event flow using the in-memory bus.
 
 open TestFixtures
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open AggregateFixtures
 
 describe("LocalBus", () => {

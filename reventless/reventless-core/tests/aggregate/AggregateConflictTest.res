@@ -1,8 +1,7 @@
 // Tests for Aggregate_Callback conflict retry logic.
 // Verifies that on optimistic locking conflict, the callback re-replays and re-processes.
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 S.enableJson()
 

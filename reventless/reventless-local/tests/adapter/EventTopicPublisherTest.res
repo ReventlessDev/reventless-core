@@ -2,8 +2,7 @@
 // Verifies that make returns a correctly-named resource and that publishJson
 // routes events to the correct bus topic subscribers.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

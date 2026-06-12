@@ -1,11 +1,12 @@
-// Verifies that ReadModel.Spec.visibility flows through PPX injection and that
-// the same filter predicate used by Plugin_Builder.makeAutoUIManifest excludes
-// Internal entries while leaving Public ones intact. Does NOT instantiate the
-// full Plugin_Builder.Make functor — the filter is a pure switch on a Spec field
-// and is therefore testable in isolation via stubbed ReadModel.T modules.
+// Verifies that ReadModel.Spec.visibility flows through PPX injection, that the
+// filter predicate used by Plugin_Builder.makeAutoUIManifest excludes Internal
+// entries while leaving Public ones intact, and that Plugin_Structure.make
+// CARRIES Internal entries but tags them via `queryableDef.visibility` (the
+// dev-graph contract). Does NOT instantiate the full Plugin_Builder.Make functor
+// — the filter is a pure switch on a Spec field and is therefore testable in
+// isolation via stubbed ReadModel.T modules.
 
-open Jest
-open Expect
+open JestGlobals
 
 // Public ReadModel — no @@reventless.visibility attribute, PPX defaults to Public.
 module PublicSpec = {
@@ -80,44 +81,54 @@ let readModels: array<
 > = [module(PublicReadModel), module(InternalReadModel)]
 
 describe("ReadModel visibility filter", () => {
-  test("PPX defaults visibility to Public when no attribute is present", () => {
+  testSync("PPX defaults visibility to Public when no attribute is present", () => {
     expect(PublicSpec.visibility)->toEqual(Reventless.Visibility.Public)
   })
 
-  test("Internal spec retains Internal value", () => {
+  testSync("Internal spec retains Internal value", () => {
     expect(InternalSpec.visibility)->toEqual(Reventless.Visibility.Internal)
   })
 
-  test("filter predicate excludes Internal", () => {
+  testSync("filter predicate excludes Internal", () => {
     let visible = readModels->Array.filter(isVisible)
     expect(visible->Array.length)->toBe(1)
   })
 
-  test("filter predicate retains Public name", () => {
+  testSync("filter predicate retains Public name", () => {
     let visible = readModels->Array.filter(isVisible)
     let first = visible->Array.getUnsafe(0)
     let module(R) = first
     expect(R.Spec.name)->toEqual("PublicView")
   })
 
-  test("unfiltered list still contains both entries (no over-filtering)", () => {
+  testSync("unfiltered list still contains both entries (no over-filtering)", () => {
     expect(readModels->Array.length)->toBe(2)
   })
 })
 
-describe("Plugin_Structure.make — visibility filter", () => {
+describe("Plugin_Structure.make — visibility tagging", () => {
+  // pluginStructure CARRIES Internal read models (so the dev graph / dead-code
+  // tools can see them) and tags each via `queryableDef.visibility`
+  // (`None` = Public, `Some("Internal")` = Internal). The deployed AutoUI
+  // consumers re-filter on that tag — visibility does not remove entries from
+  // pluginStructure itself. See Plugin_Structure.res / Visibility.res.
   let structure = Plugin_Structure.make(~name="VisibilityPlugin", ~readModels)
 
-  test("readModels excludes Internal entries", () => {
-    expect(structure.readModels->Array.length)->toBe(1)
+  testSync("readModels carries both Public and Internal entries", () => {
+    expect(structure.readModels->Array.length)->toBe(2)
   })
 
-  test("readModels retains the Public entry by name", () => {
-    let first = structure.readModels->Array.getUnsafe(0)
-    expect(first.name)->toEqual("PublicView")
+  testSync("the Public entry is tagged visibility = None", () => {
+    let public = structure.readModels->Array.find(d => d.name == "PublicView")
+    expect(public->Option.map(d => d.visibility))->toEqual(Some(None))
   })
 
-  test("aggregates / stateViewSlices stay empty when none are passed (sanity)", () => {
+  testSync("the Internal entry is carried and tagged visibility = Some(\"Internal\")", () => {
+    let internal = structure.readModels->Array.find(d => d.name == "InternalView")
+    expect(internal->Option.map(d => d.visibility))->toEqual(Some(Some("Internal")))
+  })
+
+  testSync("aggregates / stateViewSlices stay empty when none are passed (sanity)", () => {
     expect((
       structure.aggregates->Array.length,
       structure.stateViewSlices->Array.length,

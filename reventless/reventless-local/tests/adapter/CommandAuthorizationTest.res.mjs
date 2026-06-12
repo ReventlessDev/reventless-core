@@ -117,62 +117,62 @@ function buildFixture(namespace) {
   ];
 }
 
-describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", () => {
-  beforeEach(() => DomainGraphQL_Server$ReventlessLocal.asInterface.reset());
-  test("admin invoking payload-less Archive succeeds", async () => {
+globalThis.describe("CommandGeneratorResolvers_GraphQL — per-constructor authorization", () => {
+  globalThis.beforeEach(() => DomainGraphQL_Server$ReventlessLocal.asInterface.reset());
+  globalThis.test("admin invoking payload-less Archive succeeds", async () => {
     let match = buildFixture("Cat1");
     let response = await match[2](null, {}, ctxFor(adminIdentity));
-    expect(getTypename(response)).toEqual("CommandAccepted");
-    expect(match[3].contents).toEqual(["Archive"]);
+    globalThis.expect(getTypename(response)).toEqual("CommandAccepted");
+    globalThis.expect(match[3].contents).toEqual(["Archive"]);
   });
-  test("regular user invoking Archive is rejected with Forbidden", async () => {
+  globalThis.test("regular user invoking Archive is rejected with Forbidden", async () => {
     let match = buildFixture("Cat2");
     let response = await match[2](null, {}, ctxFor(userIdentity));
-    expect(getTypename(response)).toEqual("CommandRejected");
-    expect(getErrorCode(response)).toEqual("Forbidden");
-    expect(match[3].contents).toEqual([]);
+    globalThis.expect(getTypename(response)).toEqual("CommandRejected");
+    globalThis.expect(getErrorCode(response)).toEqual("Forbidden");
+    globalThis.expect(match[3].contents).toEqual([]);
   });
-  test("anonymous invoking Archive is rejected with Forbidden", async () => {
+  globalThis.test("anonymous invoking Archive is rejected with Forbidden", async () => {
     let match = buildFixture("Cat3");
     let response = await match[2](null, {}, anonymousCtx);
-    expect(getTypename(response)).toEqual("CommandRejected");
-    expect(getErrorCode(response)).toEqual("Forbidden");
-    expect(match[3].contents).toEqual([]);
+    globalThis.expect(getTypename(response)).toEqual("CommandRejected");
+    globalThis.expect(getErrorCode(response)).toEqual("Forbidden");
+    globalThis.expect(match[3].contents).toEqual([]);
   });
-  test("regular user invoking Add (default AllowAuthenticated) succeeds", async () => {
+  globalThis.test("regular user invoking Add (default AllowAuthenticated) succeeds", async () => {
     let match = buildFixture("Cat4");
     let response = await match[0](null, Object.fromEntries([[
         "name",
         "Books"
       ]]), ctxFor(userIdentity));
-    expect(getTypename(response)).toEqual("CommandAccepted");
-    expect(match[3].contents).toEqual(["Add"]);
+    globalThis.expect(getTypename(response)).toEqual("CommandAccepted");
+    globalThis.expect(match[3].contents).toEqual(["Add"]);
   });
-  test("anonymous invoking Add is rejected (AllowAuthenticated default)", async () => {
+  globalThis.test("anonymous invoking Add is rejected (AllowAuthenticated default)", async () => {
     let match = buildFixture("Cat5");
     let response = await match[0](null, Object.fromEntries([[
         "name",
         "Books"
       ]]), anonymousCtx);
-    expect(getTypename(response)).toEqual("CommandRejected");
-    expect(getErrorCode(response)).toEqual("Forbidden");
-    expect(match[3].contents).toEqual([]);
+    globalThis.expect(getTypename(response)).toEqual("CommandRejected");
+    globalThis.expect(getErrorCode(response)).toEqual("Forbidden");
+    globalThis.expect(match[3].contents).toEqual([]);
   });
-  test("admin invoking Add also succeeds (admin has User group too)", async () => {
+  globalThis.test("admin invoking Add also succeeds (admin has User group too)", async () => {
     let match = buildFixture("Cat6");
     let response = await match[0](null, Object.fromEntries([[
         "name",
         "Books"
       ]]), ctxFor(adminIdentity));
-    expect(getTypename(response)).toEqual("CommandAccepted");
-    expect(match[3].contents).toEqual(["Add"]);
+    globalThis.expect(getTypename(response)).toEqual("CommandAccepted");
+    globalThis.expect(match[3].contents).toEqual(["Add"]);
   });
-  test("payload-less Archive registered as a GraphQL mutation field (no longer filtered)", async () => {
+  globalThis.test("payload-less Archive registered as a GraphQL mutation field (no longer filtered)", async () => {
     buildFixture("Cat7");
     let sdl = DomainGraphQL_Server$ReventlessLocal.asInterface.buildSdl();
-    expect(sdl.includes("Cat7_Add")).toEqual(true);
-    expect(sdl.includes("Cat7_Rename")).toEqual(true);
-    expect(sdl.includes("Cat7_Archive")).toEqual(true);
+    globalThis.expect(sdl.includes("Cat7_Add")).toEqual(true);
+    globalThis.expect(sdl.includes("Cat7_Rename")).toEqual(true);
+    globalThis.expect(sdl.includes("Cat7_Archive")).toEqual(true);
   });
 });
 

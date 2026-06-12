@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("Stm.TRef", () => {
   testPromise("make + get returns the initial value", async () => {
@@ -40,17 +39,17 @@ describe("Stm.TRef", () => {
 })
 
 describe("Stm — STM operations", () => {
-  test("succeed + commit produces the value", () => {
+  testSync("succeed + commit produces the value", () => {
     let v = Stm.succeed(42)->Stm.commit->Effect.runSync
     expect(v)->toBe(42)
   })
 
-  test("map transforms the value", () => {
+  testSync("map transforms the value", () => {
     let v = Stm.succeed(3)->Stm.map(n => n * 2)->Stm.commit->Effect.runSync
     expect(v)->toBe(6)
   })
 
-  test("flatMap chains transactions", () => {
+  testSync("flatMap chains transactions", () => {
     let v = Stm.succeed(4)
       ->Stm.flatMap(n => Stm.succeed(n + 1))
       ->Stm.commit
@@ -58,7 +57,7 @@ describe("Stm — STM operations", () => {
     expect(v)->toBe(5)
   })
 
-  test("zipRight returns the second value", () => {
+  testSync("zipRight returns the second value", () => {
     let v = Stm.succeed("a")
       ->Stm.zipRight(Stm.succeed("b"))
       ->Stm.commit
@@ -66,7 +65,7 @@ describe("Stm — STM operations", () => {
     expect(v)->toBe("b")
   })
 
-  test("fail + commit + runSyncExit is a failure", () => {
+  testSync("fail + commit + runSyncExit is a failure", () => {
     let exit = Stm.fail("oops")->Stm.commit->Effect.runSyncExit
     expect(exit->Exit.isFailure)->toBe(true)
   })

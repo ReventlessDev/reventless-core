@@ -1,4 +1,4 @@
-open TestHelpers
+open JestGlobals
 
 module Runtime = EventLogStorage_DynamoDb_Runtime
 
@@ -26,7 +26,7 @@ describe("Runtime.append", () => {
 })
 
 describe("Runtime.buildTransactItems", () => {
-  test("builds one Put per event with attribute_not_exists(#p) condition", () => {
+  testSync("builds one Put per event with attribute_not_exists(#p) condition", () => {
     let jsons = Array.fromInitializer(~length=2, mkJson)
     let items = Runtime.buildTransactItems(table.name, jsons)
     expect(items->Array.length)->toBe(2)
@@ -44,13 +44,13 @@ describe("Runtime.buildTransactItems", () => {
     }
   })
 
-  test("scales to 100 items (TransactWriteItems hard limit)", () => {
+  testSync("scales to 100 items (TransactWriteItems hard limit)", () => {
     let jsons = Array.fromInitializer(~length=100, mkJson)
     let items = Runtime.buildTransactItems(table.name, jsons)
     expect(items->Array.length)->toBe(100)
   })
 
-  test("returns empty array for empty input", () => {
+  testSync("returns empty array for empty input", () => {
     let items = Runtime.buildTransactItems(table.name, [])
     expect(items->Array.length)->toBe(0)
   })

@@ -1,8 +1,7 @@
 // E2E tests for Counter_Builder.
 // Verifies addToCounterTarget deduplication and count persistence.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open CounterFixtures
 
 describe("Counter E2E", () => {

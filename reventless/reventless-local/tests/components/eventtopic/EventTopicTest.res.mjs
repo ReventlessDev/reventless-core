@@ -4,21 +4,21 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as EventTopicFixtures$ReventlessLocal from "./EventTopicFixtures.res.mjs";
 
-describe("EventTopic (in-memory)", () => {
-  beforeAll(async () => {
+globalThis.describe("EventTopic (in-memory)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventTopicFixtures$ReventlessLocal.eventTopic));
   });
-  beforeEach(() => EventTopicFixtures$ReventlessLocal.reset());
-  test("publish sends event to bus subscribers", async () => {
+  globalThis.beforeEach(() => EventTopicFixtures$ReventlessLocal.reset());
+  globalThis.test("publish sends event to bus subscribers", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventTopicFixtures$ReventlessLocal.eventTopic));
     let event$p = EventTopicFixtures$ReventlessLocal.makeEvent$p("item-1", {
       TAG: "ItemPublished",
       name: "Widget"
     });
     await ops.publish([event$p]);
-    expect(EventTopicFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
+    globalThis.expect(EventTopicFixtures$ReventlessLocal.capturedEventCount.contents).toBe(1);
   });
-  test("publish multiple events notifies subscribers for each", async () => {
+  globalThis.test("publish multiple events notifies subscribers for each", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventTopicFixtures$ReventlessLocal.eventTopic));
     let events = [
       EventTopicFixtures$ReventlessLocal.makeEvent$p("item-1", {
@@ -31,12 +31,12 @@ describe("EventTopic (in-memory)", () => {
       })
     ];
     await ops.publish(events);
-    expect(EventTopicFixtures$ReventlessLocal.capturedEventCount.contents).toBe(2);
+    globalThis.expect(EventTopicFixtures$ReventlessLocal.capturedEventCount.contents).toBe(2);
   });
-  test("publish empty array does not notify subscribers", async () => {
+  globalThis.test("publish empty array does not notify subscribers", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(EventTopicFixtures$ReventlessLocal.eventTopic));
     await ops.publish([]);
-    expect(EventTopicFixtures$ReventlessLocal.capturedEventCount.contents).toBe(0);
+    globalThis.expect(EventTopicFixtures$ReventlessLocal.capturedEventCount.contents).toBe(0);
   });
 });
 

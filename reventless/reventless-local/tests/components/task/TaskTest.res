@@ -4,8 +4,7 @@
 // Low-level handler extraction is covered in adapter/TaskBucketTest.res.
 
 open TestFixtures
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open TaskFixtures
 
 describe("Task_Builder.Make:", () => {

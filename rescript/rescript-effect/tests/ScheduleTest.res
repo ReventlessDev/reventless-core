@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 describe("Schedule", () => {
   describe("recurs — count-based repetition", () => {

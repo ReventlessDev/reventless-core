@@ -25,12 +25,12 @@ let Callback = InboundTranslationSlice_Callback$ReventlessCore.Make({
   commandAuthorization: InboundTranslationSliceFixtures$ReventlessLocal.PaymentWebhookSpec.commandAuthorization
 })(PaymentWebhookTranslation);
 
-describe("InboundTranslationSlice Callback", () => {
-  beforeEach(() => {
+globalThis.describe("InboundTranslationSlice Callback", () => {
+  globalThis.beforeEach(() => {
     Object.keys(Callback.auditLog).forEach(k => Stdlib_Dict.$$delete(Callback.auditLog, k));
   });
-  describe("receive", () => {
-    test("valid input with completed status publishes command and returns Ok", async () => {
+  globalThis.describe("receive", () => {
+    globalThis.test("valid input with completed status publishes command and returns Ok", async () => {
       let publishedCommands = {
         contents: []
       };
@@ -45,22 +45,22 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await Callback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
         let targetIds = result._0;
-        expect(targetIds.length).toBe(1);
-        expect(targetIds[0]).toBe("ord-1");
+        globalThis.expect(targetIds.length).toBe(1);
+        globalThis.expect(targetIds[0]).toBe("ord-1");
       } else {
-        expect(true).toBe(false);
+        globalThis.expect(true).toBe(false);
       }
-      expect(publishedCommands.contents.length).toBe(1);
+      globalThis.expect(publishedCommands.contents.length).toBe(1);
       let cmd = publishedCommands.contents[0];
-      expect(cmd.id).toBe("ord-1");
+      globalThis.expect(cmd.id).toBe("ord-1");
       let auditEntries = Object.entries(Callback.auditLog);
-      expect(auditEntries.length).toBe(1);
+      globalThis.expect(auditEntries.length).toBe(1);
       let match = auditEntries[0];
       let auditRow = match[1];
-      expect(auditRow.status).toBe("Success");
-      expect(auditRow.commandCount).toBe(1);
+      globalThis.expect(auditRow.status).toBe("Success");
+      globalThis.expect(auditRow.commandCount).toBe(1);
     });
-    test("translate returns Error — no command published, audit logged", async () => {
+    globalThis.test("translate returns Error — no command published, audit logged", async () => {
       let publishedCommands = {
         contents: []
       };
@@ -74,33 +74,33 @@ describe("InboundTranslationSlice Callback", () => {
       };
       let result = await Callback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
-        expect(true).toBe(false);
+        globalThis.expect(true).toBe(false);
       } else {
-        expect(result._0).toBe("Unknown payment status: pending");
+        globalThis.expect(result._0).toBe("Unknown payment status: pending");
       }
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
       let auditEntries = Object.entries(Callback.auditLog);
-      expect(auditEntries.length).toBe(1);
+      globalThis.expect(auditEntries.length).toBe(1);
       let match = auditEntries[0];
-      expect(match[1].status).toBe("Failure");
+      globalThis.expect(match[1].status).toBe("Failure");
     });
-    test("invalid JSON input returns Error and audit logged", async () => {
+    globalThis.test("invalid JSON input returns Error and audit logged", async () => {
       let mockPublish = async _cmds => {};
       let inputJson = {
         unexpected: "data"
       };
       let result = await Callback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
-        expect(true).toBe(false);
+        globalThis.expect(true).toBe(false);
       } else {
-        expect(true).toBe(true);
+        globalThis.expect(true).toBe(true);
       }
       let auditEntries = Object.entries(Callback.auditLog);
-      expect(auditEntries.length).toBe(1);
+      globalThis.expect(auditEntries.length).toBe(1);
       let match = auditEntries[0];
-      expect(match[1].status).toBe("Failure");
+      globalThis.expect(match[1].status).toBe("Failure");
     });
-    test("publishJsons failure returns Error and audit logged", async () => {
+    globalThis.test("publishJsons failure returns Error and audit logged", async () => {
       let failingPublish = async _cmds => Stdlib_JsError.throwWithMessage("publish failed");
       let inputJson = {
         paymentId: "pay-123",
@@ -109,18 +109,18 @@ describe("InboundTranslationSlice Callback", () => {
       };
       let result = await Callback.receive(failingPublish, inputJson);
       if (result.TAG === "Ok") {
-        expect(true).toBe(false);
+        globalThis.expect(true).toBe(false);
       } else {
-        expect(result._0).toBe("publish failed");
+        globalThis.expect(result._0).toBe("publish failed");
       }
       let auditEntries = Object.entries(Callback.auditLog);
-      expect(auditEntries.length).toBe(1);
+      globalThis.expect(auditEntries.length).toBe(1);
       let match = auditEntries[0];
-      expect(match[1].status).toBe("Failure");
+      globalThis.expect(match[1].status).toBe("Failure");
     });
   });
-  describe("multi-command", () => {
-    test("translate returning multiple pairs publishes all commands", async () => {
+  globalThis.describe("multi-command", () => {
+    globalThis.test("translate returning multiple pairs publishes all commands", async () => {
       let moduleUrl = import.meta.url;
       let externalInputSchema = S.schema(s => ({
         orderId: s.m(S.string),
@@ -172,20 +172,20 @@ describe("InboundTranslationSlice Callback", () => {
       let result = await MultiCallback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
         let targetIds = result._0;
-        expect(targetIds.length).toBe(3);
-        expect(targetIds[0]).toBe("ord-1");
+        globalThis.expect(targetIds.length).toBe(3);
+        globalThis.expect(targetIds[0]).toBe("ord-1");
       } else {
-        expect(true).toBe(false);
+        globalThis.expect(true).toBe(false);
       }
-      expect(publishedCommands.contents.length).toBe(3);
+      globalThis.expect(publishedCommands.contents.length).toBe(3);
       let auditEntries = Object.entries(MultiCallback.auditLog);
-      expect(auditEntries.length).toBe(1);
+      globalThis.expect(auditEntries.length).toBe(1);
       let match = auditEntries[0];
       let auditRow = match[1];
-      expect(auditRow.status).toBe("Success");
-      expect(auditRow.commandCount).toBe(3);
+      globalThis.expect(auditRow.status).toBe("Success");
+      globalThis.expect(auditRow.commandCount).toBe(3);
     });
-    test("translate returning empty array publishes nothing", async () => {
+    globalThis.test("translate returning empty array publishes nothing", async () => {
       let moduleUrl = import.meta.url;
       let externalInputSchema = S.schema(s => ({
         orderId: s.m(S.string)
@@ -223,11 +223,11 @@ describe("InboundTranslationSlice Callback", () => {
       };
       let result = await EmptyCallback.receive(mockPublish, inputJson);
       if (result.TAG === "Ok") {
-        expect(result._0.length).toBe(0);
+        globalThis.expect(result._0.length).toBe(0);
       } else {
-        expect(true).toBe(false);
+        globalThis.expect(true).toBe(false);
       }
-      expect(publishedCommands.contents.length).toBe(0);
+      globalThis.expect(publishedCommands.contents.length).toBe(0);
     });
   });
 });

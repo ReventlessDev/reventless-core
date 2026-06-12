@@ -1,5 +1,5 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
+open ChunkHelpers
 
 describe("PubSub", () => {
   testPromise("unbounded pubsub: publish + subscribe + Queue.take delivers message", async () => {

@@ -1,8 +1,7 @@
 // Unit tests for QueryDbStorage_InMemory.
 // Covers save, loadStream, saveBatch, count, delete, deleteBatch, and scan registration.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 let _ = TestRunner.setup()
 

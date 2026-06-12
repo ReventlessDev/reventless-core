@@ -2,8 +2,7 @@
 // a package.json + presence of src/Main.res.mjs make a launchable reventless-local
 // platform package, and which serve script to prefer (features plan Phase 9).
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 
 let pkgJson = (~deps=`{}`, ~scripts=`{}`) =>
   `{"name":"@app/platform-local","dependencies":${deps},"scripts":${scripts}}`

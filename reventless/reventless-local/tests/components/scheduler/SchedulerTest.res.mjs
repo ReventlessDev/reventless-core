@@ -3,10 +3,10 @@
 import * as Globals from "@jest/globals";
 import * as SchedulerFixtures$ReventlessLocal from "./SchedulerFixtures.res.mjs";
 
-describe("Scheduler_Builder.Make:", () => {
-  afterEach(() => SchedulerFixtures$ReventlessLocal.SP.reset());
-  describe("createSchedule:", () => {
-    test("recurring schedule fires event on each interval advance", async () => {
+globalThis.describe("Scheduler_Builder.Make:", () => {
+  globalThis.afterEach(() => SchedulerFixtures$ReventlessLocal.SP.reset());
+  globalThis.describe("createSchedule:", () => {
+    globalThis.test("recurring schedule fires event on each interval advance", async () => {
       let ops = SchedulerFixtures$ReventlessLocal.schedulerOps.contents;
       let count = {
         contents: 0
@@ -25,13 +25,13 @@ describe("Scheduler_Builder.Make:", () => {
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
       await Promise.resolve();
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
       Globals.jest.advanceTimersByTime(60000);
       await Promise.resolve();
       await Promise.resolve();
-      expect(count.contents).toBe(2);
+      globalThis.expect(count.contents).toBe(2);
     });
-    test("single-shot schedule fires once then stops", async () => {
+    globalThis.test("single-shot schedule fires once then stops", async () => {
       let ops = SchedulerFixtures$ReventlessLocal.schedulerOps.contents;
       let count = {
         contents: 0
@@ -54,13 +54,13 @@ describe("Scheduler_Builder.Make:", () => {
       Globals.jest.advanceTimersByTime(0);
       await Promise.resolve();
       await Promise.resolve();
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
       Globals.jest.advanceTimersByTime(60000);
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
     });
   });
-  describe("deleteSchedule:", () => {
-    test("deleted schedule does not fire after deletion", async () => {
+  globalThis.describe("deleteSchedule:", () => {
+    globalThis.test("deleted schedule does not fire after deletion", async () => {
       let ops = SchedulerFixtures$ReventlessLocal.schedulerOps.contents;
       let count = {
         contents: 0
@@ -78,7 +78,7 @@ describe("Scheduler_Builder.Make:", () => {
       });
       ops.deleteSchedule([], "test-delete");
       Globals.jest.advanceTimersByTime(120000);
-      expect(count.contents).toBe(0);
+      globalThis.expect(count.contents).toBe(0);
     });
   });
 });

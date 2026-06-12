@@ -4,8 +4,7 @@
 //   2. Return Ok(reference) so async (SQS) consumers delete the message — domain rejections don't redeliver
 //   3. Don't cancel surviving commands inside the same batch
 
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 open AggregateFixtures
 
 let _ = beforeEach(() => mock.reset())

@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 open CommandGeneratorFixtures
 
 let _ = beforeEach(() => reset())

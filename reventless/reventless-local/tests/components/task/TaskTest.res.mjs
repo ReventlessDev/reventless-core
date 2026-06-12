@@ -6,39 +6,39 @@ import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mj
 import * as TaskFixtures$ReventlessLocal from "./TaskFixtures.res.mjs";
 import * as TestFixtures$ReventlessLocal from "../../TestFixtures.res.mjs";
 
-describe("Task_Builder.Make:", () => {
-  beforeEach(() => TaskFixtures$ReventlessLocal.resetCaptures());
-  describe("make — no buckets:", () => {
-    test("creates component with correct output name", async () => {
+globalThis.describe("Task_Builder.Make:", () => {
+  globalThis.beforeEach(() => TaskFixtures$ReventlessLocal.resetCaptures());
+  globalThis.describe("make — no buckets:", () => {
+    globalThis.test("creates component with correct output name", async () => {
       let task = TaskFixtures$ReventlessLocal.NoBucketsMaker.make(TaskFixtures$ReventlessLocal.mockQueryBucketName, TestFixtures$ReventlessLocal.mockScheduler, Pulumi.output(""), TaskFixtures$ReventlessLocal.mockPublishToAggregates, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockResourceNaming, {}, undefined);
       let outputs = TaskFixtures$ReventlessLocal.NoBucketsMaker.outputs(task);
-      expect(outputs.name).toBe("NoBucketsTask");
+      globalThis.expect(outputs.name).toBe("NoBucketsTask");
     });
-    test("task with no buckets has no bucketNames in outputs", async () => {
+    globalThis.test("task with no buckets has no bucketNames in outputs", async () => {
       let task = TaskFixtures$ReventlessLocal.NoBucketsMaker.make(TaskFixtures$ReventlessLocal.mockQueryBucketName, TestFixtures$ReventlessLocal.mockScheduler, Pulumi.output(""), TaskFixtures$ReventlessLocal.mockPublishToAggregates, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockResourceNaming, {}, undefined);
       let outputs = TaskFixtures$ReventlessLocal.NoBucketsMaker.outputs(task);
-      expect(Stdlib_Option.isSome(outputs.bucketNames)).toBe(false);
+      globalThis.expect(Stdlib_Option.isSome(outputs.bucketNames)).toBe(false);
     });
   });
-  describe("make — one named bucket with callback:", () => {
-    test("creates component with correct output name", async () => {
+  globalThis.describe("make — one named bucket with callback:", () => {
+    globalThis.test("creates component with correct output name", async () => {
       let task = TaskFixtures$ReventlessLocal.OneBucketMaker.make(TaskFixtures$ReventlessLocal.mockQueryBucketName, TestFixtures$ReventlessLocal.mockScheduler, Pulumi.output(""), TaskFixtures$ReventlessLocal.mockPublishToAggregates, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockResourceNaming, {}, undefined);
       let outputs = TaskFixtures$ReventlessLocal.OneBucketMaker.outputs(task);
-      expect(outputs.name).toBe("OneBucketTask");
+      globalThis.expect(outputs.name).toBe("OneBucketTask");
     });
-    test("bucketNames dict contains the named bucket key", async () => {
+    globalThis.test("bucketNames dict contains the named bucket key", async () => {
       let task = TaskFixtures$ReventlessLocal.OneBucketMaker.make(TaskFixtures$ReventlessLocal.mockQueryBucketName, TestFixtures$ReventlessLocal.mockScheduler, Pulumi.output(""), TaskFixtures$ReventlessLocal.mockPublishToAggregates, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockResourceNaming, {}, undefined);
       let outputs = TaskFixtures$ReventlessLocal.OneBucketMaker.outputs(task);
       let bucketNames = outputs.bucketNames;
-      expect(Object.keys(bucketNames)).toEqual(["Reports"]);
+      globalThis.expect(Object.keys(bucketNames)).toEqual(["Reports"]);
     });
-    test("bucket id resolves to the bucket name (in-memory dummy resource)", async () => {
+    globalThis.test("bucket id resolves to the bucket name (in-memory dummy resource)", async () => {
       let task = TaskFixtures$ReventlessLocal.OneBucketMaker.make(TaskFixtures$ReventlessLocal.mockQueryBucketName, TestFixtures$ReventlessLocal.mockScheduler, Pulumi.output(""), TaskFixtures$ReventlessLocal.mockPublishToAggregates, TestFixtures$ReventlessLocal.mockQueryEngine, TestFixtures$ReventlessLocal.mockResourceNaming, {}, undefined);
       let outputs = TaskFixtures$ReventlessLocal.OneBucketMaker.outputs(task);
       let bucketNames = outputs.bucketNames;
       let idOutput = bucketNames["Reports"];
       let id = await TestRunner$ReventlessLocal.resolve(idOutput);
-      expect(id).toBe("OneBucketTaskReportsBucket");
+      globalThis.expect(id).toBe("OneBucketTaskReportsBucket");
     });
   });
 });

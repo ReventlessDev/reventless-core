@@ -7,16 +7,16 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as QueryDbFixtures$ReventlessLocal from "./QueryDbFixtures.res.mjs";
 
-describe("QueryDb (in-memory)", () => {
-  beforeAll(async () => {
+globalThis.describe("QueryDb (in-memory)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
   });
-  test("loadStream returns empty for unknown id", async () => {
+  globalThis.test("loadStream returns empty for unknown id", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
     let result = await Effect.runPromise(Stream.runCollect(ops.loadStream("unknown-id")));
-    expect(result).toEqual([]);
+    globalThis.expect(result).toEqual([]);
   });
-  test("save and loadStream round-trip", async () => {
+  globalThis.test("save and loadStream round-trip", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
     await ops.save("item-1", {
       name: "Widget",
@@ -24,11 +24,11 @@ describe("QueryDb (in-memory)", () => {
     }, "Init", undefined);
     let result = await Effect.runPromise(Stream.runCollect(ops.loadStream("item-1")));
     if (result.length !== 1) {
-      expect("Expected [state]").toEqual("but got different result");
+      globalThis.expect("Expected [state]").toEqual("but got different result");
       return;
     }
     let s = result[0];
-    expect([
+    globalThis.expect([
       s.name,
       s.count
     ]).toEqual([
@@ -36,7 +36,7 @@ describe("QueryDb (in-memory)", () => {
       5
     ]);
   });
-  test("save overwrites previous state", async () => {
+  globalThis.test("save overwrites previous state", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
     await ops.save("item-2", {
       name: "Old",
@@ -48,13 +48,13 @@ describe("QueryDb (in-memory)", () => {
     }, "Overwrite", undefined);
     let result = await Effect.runPromise(Stream.runCollect(ops.loadStream("item-2")));
     if (result.length !== 1) {
-      expect("Expected [state]").toEqual("but got different result");
+      globalThis.expect("Expected [state]").toEqual("but got different result");
       return;
     }
     let s = result[0];
-    expect(s.name).toBe("New");
+    globalThis.expect(s.name).toBe("New");
   });
-  test("saveBatch saves multiple states", async () => {
+  globalThis.test("saveBatch saves multiple states", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
     let batch = [
       [
@@ -77,7 +77,7 @@ describe("QueryDb (in-memory)", () => {
     await ops.saveBatch(batch);
     let r1 = await Effect.runPromise(Stream.runCollect(ops.loadStream("batch-1")));
     let r2 = await Effect.runPromise(Stream.runCollect(ops.loadStream("batch-2")));
-    expect([
+    globalThis.expect([
       r1.length !== 0,
       r2.length !== 0
     ]).toEqual([
@@ -85,7 +85,7 @@ describe("QueryDb (in-memory)", () => {
       true
     ]);
   });
-  test("delete removes state", async () => {
+  globalThis.test("delete removes state", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
     await ops.save("item-del", {
       name: "ToDelete",
@@ -93,18 +93,18 @@ describe("QueryDb (in-memory)", () => {
     }, "Init", undefined);
     await ops.delete("item-del", undefined);
     let result = await Effect.runPromise(Stream.runCollect(ops.loadStream("item-del")));
-    expect(result).toEqual([]);
+    globalThis.expect(result).toEqual([]);
   });
-  test("loadStream emits saved states", async () => {
+  globalThis.test("loadStream emits saved states", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
     await ops.save("stream-item", {
       name: "Streamed",
       count: 42
     }, "Init", undefined);
     let arr = await Effect.runPromise(Stream.runCollect(ops.loadStream("stream-item")));
-    expect(arr.length).toBe(1);
+    globalThis.expect(arr.length).toBe(1);
     let s = arr[0];
-    expect([
+    globalThis.expect([
       s.name,
       s.count
     ]).toEqual([
@@ -112,14 +112,14 @@ describe("QueryDb (in-memory)", () => {
       42
     ]);
   });
-  test("loadStream returns empty for unknown id", async () => {
+  globalThis.test("loadStream returns empty for unknown id", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(QueryDbFixtures$ReventlessLocal.queryDb));
     let arr = await Effect.runPromise(Stream.runCollect(ops.loadStream("no-such-id")));
-    expect(arr.length).toBe(0);
+    globalThis.expect(arr.length).toBe(0);
   });
-  test("registered in bus by component name", async () => {
+  globalThis.test("registered in bus by component name", async () => {
     let db = QueryDbFixtures$ReventlessLocal.Bus.getQueryDb("TestItemQueryDb");
-    expect(Stdlib_Option.isSome(db)).toBe(true);
+    globalThis.expect(Stdlib_Option.isSome(db)).toBe(true);
   });
 });
 

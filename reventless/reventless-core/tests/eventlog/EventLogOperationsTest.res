@@ -1,5 +1,4 @@
-open AsyncTest
-open AsyncTest.Expect
+open JestGlobals
 open EventLogFixtures
 
 // Wire up EventLog_Operations with mock storage and mock EventTopic

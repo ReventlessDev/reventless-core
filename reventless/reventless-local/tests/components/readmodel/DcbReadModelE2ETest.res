@@ -6,8 +6,7 @@
 // (meta.service = `<name>DcbEventLog`) ever regresses, so it doubles as a
 // regression vehicle for that fix.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 open DcbReadModelE2EFixtures
 
 describe("DCB → ReadModel E2E:", () => {

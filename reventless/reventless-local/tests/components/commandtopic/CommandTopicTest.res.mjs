@@ -6,11 +6,11 @@ import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mj
 import * as TestFixtures$ReventlessLocal from "../../TestFixtures.res.mjs";
 import * as CommandTopicFixtures$ReventlessLocal from "./CommandTopicFixtures.res.mjs";
 
-describe("CommandTopic (in-memory)", () => {
-  beforeAll(async () => {
+globalThis.describe("CommandTopic (in-memory)", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(CommandTopicFixtures$ReventlessLocal.cmdTopic));
   });
-  test("publishJsons succeeds without throwing", async () => {
+  globalThis.test("publishJsons succeeds without throwing", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(CommandTopicFixtures$ReventlessLocal.cmdTopic));
     let commandJson = Message$ReventlessCore.encode({
       TAG: "CreateItem",
@@ -26,9 +26,9 @@ describe("CommandTopic (in-memory)", () => {
     } catch (exn) {
       didThrow = true;
     }
-    expect(didThrow).toBe(false);
+    globalThis.expect(didThrow).toBe(false);
   });
-  test("publishJsons with empty array succeeds", async () => {
+  globalThis.test("publishJsons with empty array succeeds", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(CommandTopicFixtures$ReventlessLocal.cmdTopic));
     let didThrow = false;
     try {
@@ -36,9 +36,9 @@ describe("CommandTopic (in-memory)", () => {
     } catch (exn) {
       didThrow = true;
     }
-    expect(didThrow).toBe(false);
+    globalThis.expect(didThrow).toBe(false);
   });
-  test("publishJsons dispatches to bus channel (TestCommandTopicCmdTopic)", async () => {
+  globalThis.test("publishJsons dispatches to bus channel (TestCommandTopicCmdTopic)", async () => {
     let ops = await TestRunner$ReventlessLocal.resolve(Component$ReventlessCore.operations(CommandTopicFixtures$ReventlessLocal.cmdTopic));
     let received = {
       contents: false
@@ -55,7 +55,7 @@ describe("CommandTopic (in-memory)", () => {
         meta: TestFixtures$ReventlessLocal.testMeta,
         commandJson: commandJson
       }]);
-    expect(received.contents).toBe(true);
+    globalThis.expect(received.contents).toBe(true);
   });
 });
 

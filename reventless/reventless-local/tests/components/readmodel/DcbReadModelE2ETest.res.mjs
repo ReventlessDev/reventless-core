@@ -3,34 +3,34 @@
 import * as TestRunner$ReventlessLocal from "../../../src/test/TestRunner.res.mjs";
 import * as DcbReadModelE2EFixtures$ReventlessLocal from "./DcbReadModelE2EFixtures.res.mjs";
 
-describe("DCB → ReadModel E2E:", () => {
-  beforeAll(async () => {
+globalThis.describe("DCB → ReadModel E2E:", () => {
+  globalThis.beforeAll(async () => {
     await TestRunner$ReventlessLocal.resolve(DcbReadModelE2EFixtures$ReventlessLocal.DcbLogMaker.operations(DcbReadModelE2EFixtures$ReventlessLocal.dcbEventLog));
     await TestRunner$ReventlessLocal.resolve(DcbReadModelE2EFixtures$ReventlessLocal.ProductsReadModel.operations(DcbReadModelE2EFixtures$ReventlessLocal.rm));
     let resource = DcbReadModelE2EFixtures$ReventlessLocal.dcbTopicOutputs.resources[0];
     await TestRunner$ReventlessLocal.resolve(resource.name);
   });
-  test("AddProduct command updates the ReadModel state", async () => {
+  globalThis.test("AddProduct command updates the ReadModel state", async () => {
     await DcbReadModelE2EFixtures$ReventlessLocal.dispatch(DcbReadModelE2EFixtures$ReventlessLocal.addProductCmd("prod-1", "Laptop"), "prod-1");
     let states = await DcbReadModelE2EFixtures$ReventlessLocal.loadState("prod-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.productId).toBe("prod-1");
-    expect(state.name).toBe("Laptop");
+    globalThis.expect(state.productId).toBe("prod-1");
+    globalThis.expect(state.name).toBe("Laptop");
   });
-  test("second AddProduct for the same id is a no-op (decide returns Error)", async () => {
+  globalThis.test("second AddProduct for the same id is a no-op (decide returns Error)", async () => {
     await DcbReadModelE2EFixtures$ReventlessLocal.dispatch(DcbReadModelE2EFixtures$ReventlessLocal.addProductCmd("prod-1", "Different name"), "prod-1");
     let states = await DcbReadModelE2EFixtures$ReventlessLocal.loadState("prod-1");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.name).toBe("Laptop");
+    globalThis.expect(state.name).toBe("Laptop");
   });
-  test("a different product id gets its own entry", async () => {
+  globalThis.test("a different product id gets its own entry", async () => {
     await DcbReadModelE2EFixtures$ReventlessLocal.dispatch(DcbReadModelE2EFixtures$ReventlessLocal.addProductCmd("prod-2", "Headphones"), "prod-2");
     let states = await DcbReadModelE2EFixtures$ReventlessLocal.loadState("prod-2");
-    expect(states.length).toBe(1);
+    globalThis.expect(states.length).toBe(1);
     let state = states[0];
-    expect(state.name).toBe("Headphones");
+    globalThis.expect(state.name).toBe("Headphones");
   });
 });
 

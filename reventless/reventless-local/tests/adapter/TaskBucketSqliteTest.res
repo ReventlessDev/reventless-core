@@ -1,7 +1,6 @@
 // Round-trip test for TaskBucket_Sqlite put/get helpers.
 
-open ReventlessGwt.AsyncTest
-open ReventlessGwt.AsyncTest.Expect
+open JestGlobals
 
 describe("TaskBucket_Sqlite", () => {
   testPromise("put then get returns the stored body", async () => {

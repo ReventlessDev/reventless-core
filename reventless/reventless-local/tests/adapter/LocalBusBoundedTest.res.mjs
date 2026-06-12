@@ -16,9 +16,9 @@ let defaultMeta = {
   correlationId: ""
 };
 
-describe("LocalBus bounded PubSub (Phase G)", () => {
-  describe("basic delivery", () => {
-    test("delivers a message to a subscriber in bounded mode", async () => {
+globalThis.describe("LocalBus bounded PubSub (Phase G)", () => {
+  globalThis.describe("basic delivery", () => {
+    globalThis.test("delivers a message to a subscriber in bounded mode", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 10
       });
@@ -29,15 +29,15 @@ describe("LocalBus bounded PubSub (Phase G)", () => {
         delivered.contents = true;
       });
       await TestBus.publishEvent("T", "svc", defaultMeta, null);
-      expect(delivered.contents).toBe(true);
+      globalThis.expect(delivered.contents).toBe(true);
     });
-    test("bounded mode with no subscribers returns immediately", async () => {
+    globalThis.test("bounded mode with no subscribers returns immediately", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 5
       });
       return await TestBus.publishEvent("empty-topic", "svc", defaultMeta, null);
     });
-    test("passes service, meta, and json to the subscriber handler", async () => {
+    globalThis.test("passes service, meta, and json to the subscriber handler", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 10
       });
@@ -53,12 +53,12 @@ describe("LocalBus bounded PubSub (Phase G)", () => {
       });
       let payload = JSON.parse("{\"x\":42}");
       await TestBus.publishEvent("T", "my-service", defaultMeta, payload);
-      expect(capturedService.contents).toBe("my-service");
-      expect(capturedJson.contents).toEqual(payload);
+      globalThis.expect(capturedService.contents).toBe("my-service");
+      globalThis.expect(capturedJson.contents).toEqual(payload);
     });
   });
-  describe("fan-out", () => {
-    test("delivers to all subscribers on the same topic", async () => {
+  globalThis.describe("fan-out", () => {
+    globalThis.test("delivers to all subscribers on the same topic", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 10
       });
@@ -75,9 +75,9 @@ describe("LocalBus bounded PubSub (Phase G)", () => {
         count.contents = count.contents + 1 | 0;
       });
       await TestBus.publishEvent("T", "svc", defaultMeta, null);
-      expect(count.contents).toBe(3);
+      globalThis.expect(count.contents).toBe(3);
     });
-    test("topic isolation preserved in bounded mode", async () => {
+    globalThis.test("topic isolation preserved in bounded mode", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 10
       });
@@ -94,12 +94,12 @@ describe("LocalBus bounded PubSub (Phase G)", () => {
         countB.contents = countB.contents + 1 | 0;
       });
       await TestBus.publishEvent("topic-a", "svc", defaultMeta, null);
-      expect(countA.contents).toBe(1);
-      expect(countB.contents).toBe(0);
+      globalThis.expect(countA.contents).toBe(1);
+      globalThis.expect(countB.contents).toBe(0);
     });
   });
-  describe("backpressure", () => {
-    test("publisher suspends when subscriber queue is full (capacity=1)", async () => {
+  globalThis.describe("backpressure", () => {
+    globalThis.test("publisher suspends when subscriber queue is full (capacity=1)", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 1
       });
@@ -115,16 +115,16 @@ describe("LocalBus bounded PubSub (Phase G)", () => {
       let p2 = TestBus.publishEvent("T", "svc", defaultMeta, null);
       let p3 = TestBus.publishEvent("T", "svc", defaultMeta, null);
       await Promise.resolve();
-      expect(processedCount.contents).toBe(0);
+      globalThis.expect(processedCount.contents).toBe(0);
       Effect.runSync(Deferred.succeed(gate, undefined));
       await p1;
       await p2;
       await p3;
-      expect(processedCount.contents).toBe(3);
+      globalThis.expect(processedCount.contents).toBe(3);
     });
   });
-  describe("timing", () => {
-    test("bounded mode completes within 3 microtask ticks", async () => {
+  globalThis.describe("timing", () => {
+    globalThis.test("bounded mode completes within 3 microtask ticks", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 10
       });
@@ -135,16 +135,16 @@ describe("LocalBus bounded PubSub (Phase G)", () => {
         delivered.contents = true;
       });
       let pubPromise = TestBus.publishEvent("T", "svc", defaultMeta, null);
-      expect(delivered.contents).toBe(false);
+      globalThis.expect(delivered.contents).toBe(false);
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
       await pubPromise;
-      expect(delivered.contents).toBe(true);
+      globalThis.expect(delivered.contents).toBe(true);
     });
   });
-  describe("reset", () => {
-    test("reset shuts down bounded hubs cleanly", async () => {
+  globalThis.describe("reset", () => {
+    globalThis.test("reset shuts down bounded hubs cleanly", async () => {
       let TestBus = LocalBus$ReventlessLocal.MakeBounded({
         capacity: 5
       });
@@ -155,9 +155,9 @@ describe("LocalBus bounded PubSub (Phase G)", () => {
         count.contents = count.contents + 1 | 0;
       });
       await TestBus.publishEvent("T", "svc", defaultMeta, null);
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
       TestBus.reset();
-      expect(count.contents).toBe(1);
+      globalThis.expect(count.contents).toBe(1);
     });
   });
 });
