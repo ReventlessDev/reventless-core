@@ -437,6 +437,13 @@ let emitDomainAnalysis = async (pkgs: array<PackageScan.pkg>): unit =>
           DomainDeadCode.analyze(~structures=loaded.structures, ~edges=loaded.edges),
         )
         FormatterVsCode.graph(DomainGraph.build(~structures=loaded.structures, ~edges=loaded.edges))
+        // Field schemas for command/event/read-side state (Phase 6.3): the same
+        // per-plugin entry the Platform_ComponentDefinitions GraphQL query returns.
+        FormatterVsCode.definitions(
+          loaded.structures->Array.map(((pluginId, s)) =>
+            ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, s)
+          ),
+        )
       } catch {
       | _ => ()
       }

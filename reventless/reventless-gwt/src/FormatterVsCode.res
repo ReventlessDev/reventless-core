@@ -266,6 +266,11 @@ let graph = (g: DomainGraph.graph) =>
     }),
   )
 
+// Component definitions (Phase 6.3) — one `encodePluginStructureEntry` JSON object
+// per plugin (commands/events with field schemas, read-side state schemas), used by
+// the extension to render field rows.
+let definitions = (entries: array<JSON.t>) => emit(Definitions({entries: entries}))
+
 // ─── Build status (watch mode) ──────────────────────────────────────────────
 
 let buildStart = (pkg: string) => emit(BuildStart({package: pkg}))

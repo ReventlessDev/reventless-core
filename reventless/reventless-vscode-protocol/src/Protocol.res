@@ -89,6 +89,11 @@ type streamEvent =
   | @as("runEnd") RunEnd({passed: int, failed: int, skipped: int, durationMs: float})
   | @as("deadCode") DeadCode({findings: array<deadCodeFinding>})
   | @as("graph") Graph({nodes: array<graphNode>, edges: array<graphEdge>})
+  // Component definitions (Phase 6.3) — one `encodePluginStructureEntry` JSON object
+  // per plugin (commands/events with field schemas + read-side state schemas), used
+  // to render field rows. Opaque JSON entries (same shape the
+  // Platform_ComponentDefinitions GraphQL query returns).
+  | @as("definitions") Definitions({entries: array<JSON.t>})
   | @as("platformStart")
   PlatformStart({package: string, dir: string, domainPort: int, platformPort: int})
   | @as("platformReady") PlatformReady({domainEndpoint: string})
@@ -99,7 +104,8 @@ type streamEvent =
 // Bumped whenever the contract changes (new events, renamed fields). Single source —
 // the CLI's `hello` emission and the extension's protocol check both read this.
 // v7: local platform runner events (platformStart/Ready/Log/Stop + domainEvent).
-let protocolVersion = 7
+// v8: component definitions event (field schemas for command/event/read-side state).
+let protocolVersion = 8
 
 // Decode + validate one NDJSON line. `None` for a malformed line or an unknown event
 // (a version-skewed CLI degrades gracefully — same effect as the old "ignore unknown").

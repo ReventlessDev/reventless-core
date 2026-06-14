@@ -302,6 +302,14 @@ function graph(g) {
   process.stdout.write(s + "\n");
 }
 
+function definitions(entries) {
+  let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
+    event: "definitions",
+    entries: entries
+  });
+  process.stdout.write(s + "\n");
+}
+
 function buildStart(pkg) {
   let s = Protocol$ReventlessVscodeProtocol.toJsonLine({
     event: "buildStart",
@@ -535,6 +543,7 @@ export {
   components,
   deadCode,
   graph,
+  definitions,
   buildStart,
   buildOk,
   buildFail,

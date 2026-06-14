@@ -26,6 +26,7 @@ import * as PlatformRunner$ReventlessGwt from "./PlatformRunner.res.mjs";
 import * as ProcessManager$ReventlessGwt from "./ProcessManager.res.mjs";
 import * as BuildClassifier$ReventlessGwt from "./BuildClassifier.res.mjs";
 import * as FormatterVsCode$ReventlessGwt from "./FormatterVsCode.res.mjs";
+import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 
 let toolVersion = "0.1.0";
 
@@ -517,7 +518,8 @@ async function emitDomainAnalysis(pkgs) {
   try {
     let loaded = await LocalHost$ReventlessGwt.loadGraph(platformModulePath, plugins);
     FormatterVsCode$ReventlessGwt.deadCode(DomainDeadCode$ReventlessGwt.analyze(loaded.structures, loaded.edges));
-    return FormatterVsCode$ReventlessGwt.graph(DomainGraph$ReventlessGwt.build(loaded.structures, loaded.edges));
+    FormatterVsCode$ReventlessGwt.graph(DomainGraph$ReventlessGwt.build(loaded.structures, loaded.edges));
+    return FormatterVsCode$ReventlessGwt.definitions(loaded.structures.map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1])));
   } catch (exn) {
     return;
   }

@@ -159,6 +159,10 @@ let streamEventSchema = S.union([
     edges: s.m(S.array(graphEdgeSchema))
   })),
   S.schema(s => ({
+    event: "definitions",
+    entries: s.m(S.array(S.json))
+  })),
+  S.schema(s => ({
     event: "platformStart",
     package: s.m(S.string),
     dir: s.m(S.string),
@@ -201,7 +205,7 @@ function toJsonLine(e) {
   return Stdlib_Option.getOr(JSON.stringify(S.reverseConvertOrThrow(e, streamEventSchema)), "");
 }
 
-let protocolVersion = 7;
+let protocolVersion = 8;
 
 export {
   positionSchema,
