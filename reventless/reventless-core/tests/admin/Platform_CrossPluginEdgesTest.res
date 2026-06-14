@@ -29,6 +29,7 @@ let writable = (
   consumedEventTypes,
   linkedViews,
   consistencyRead: None,
+  events: [],
 }
 
 let queryable = (~name, ~consumedEventTypes=[]): queryableDef => {

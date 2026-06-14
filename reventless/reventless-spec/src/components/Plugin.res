@@ -191,6 +191,21 @@ type queryableDef = {
   visibility: @s.matches(stringOptionSchema) option<string>,
 }
 
+/**
+One emitted event of a write side, with its field schema. Mirrors `commandDef`
+but for the past-tense facts a write side produces: `name` is the event variant
+name (e.g. `OrderPlaced`), `schema` is the JSON Schema of that variant's payload
+(same `S.toJSONSchema` serialization as `commandDef.schema`, incl. `x-reventless-*`
+extensions and the `TAG` const), `references` its cross-entity field links.
+Carried so developer tools (the `reventless-dev` / VSCode domain graph) can show
+event field rows — AutoUI ignores it. */
+@schema
+type eventDef = {
+  name: string,
+  schema: string,
+  references: array<fieldReference>,
+}
+
 @schema
 type writableDef = {
   name: string,
@@ -199,6 +214,10 @@ type writableDef = {
   consumedEventTypes: array<string>,
   linkedViews: array<string>,
   consistencyRead: @s.matches(stringOptionSchema) option<string>,
+  /** Emitted-event field schemas (Phase 6.3). Required like the other write-side
+  arrays; `[]` when there are none. The structure is re-derived on every build/
+  deploy, so no persisted-data back-compat shim is needed. */
+  events: array<eventDef>,
 }
 
 @schema

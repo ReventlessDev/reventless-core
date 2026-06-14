@@ -7,7 +7,8 @@ import * as Plugin$ReventlessCore from "../components/Plugin/Plugin.res.mjs";
 let sdlTypes = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
   `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n}`,
-  `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
+  `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
+  `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n}`,
   `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  statusField: String\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
@@ -114,6 +115,23 @@ function encodeQueryableDef(r) {
   ]);
 }
 
+function encodeEventDef(e) {
+  return Object.fromEntries([
+    [
+      "name",
+      e.name
+    ],
+    [
+      "schema",
+      e.schema
+    ],
+    [
+      "references",
+      e.references.map(encodeFieldReference)
+    ]
+  ]);
+}
+
 function encodeWritableDef(w) {
   return Object.fromEntries([
     [
@@ -139,6 +157,10 @@ function encodeWritableDef(w) {
     [
       "consumedEventTypes",
       w.consumedEventTypes.map(prim => prim)
+    ],
+    [
+      "events",
+      w.events.map(encodeEventDef)
     ]
   ]);
 }
@@ -262,6 +284,7 @@ export {
   encodeCommandDef,
   isPublicQueryable,
   encodeQueryableDef,
+  encodeEventDef,
   encodeWritableDef,
   encodeAutomationSliceDef,
   encodeOutboundTranslationSliceDef,

@@ -36,6 +36,7 @@ let wbl: writableDef = {
   consistencyRead: None,
   producedEventTypes: ["ProductAdded"],
   consumedEventTypes: [],
+  events: [{name: "ProductAdded", schema: "{}", references: []}],
 }
 
 let structure: pluginStructure = {
@@ -131,6 +132,11 @@ describe("encodePluginStructureEntry", () => {
   testSync("encodes None statusField as null", () =>
     expect(json->String.includes("\"statusField\":null"))->toEqual(true)
   )
+
+  // Phase 6.3: write-side emitted-event field schemas.
+  testSync("encodes writableDef events", () =>
+    expect(json->String.includes("\"events\":[{\"name\":\"ProductAdded\""))->toEqual(true)
+  )
 })
 
 describe("visibility filtering (deployed AutoUI hides Internal)", () => {
@@ -195,6 +201,7 @@ describe("allowedStates + statusField populated", () => {
     consistencyRead: None,
     producedEventTypes: [],
     consumedEventTypes: [],
+    events: [],
   }
 
   let structureWithStates: pluginStructure = {

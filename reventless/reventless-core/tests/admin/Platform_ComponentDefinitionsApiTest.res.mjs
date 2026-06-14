@@ -47,13 +47,20 @@ let wbl_consumedEventTypes = [];
 
 let wbl_linkedViews = ["Products"];
 
+let wbl_events = [{
+    name: "ProductAdded",
+    schema: "{}",
+    references: []
+  }];
+
 let wbl = {
   name: "Product",
   commands: wbl_commands,
   producedEventTypes: wbl_producedEventTypes,
   consumedEventTypes: wbl_consumedEventTypes,
   linkedViews: wbl_linkedViews,
-  consistencyRead: undefined
+  consistencyRead: undefined,
+  events: wbl_events
 };
 
 let structure_readModels = [qbl];
@@ -150,6 +157,9 @@ globalThis.describe("encodePluginStructureEntry", () => {
   globalThis.test("encodes None statusField as null", () => {
     globalThis.expect(json.includes("\"statusField\":null")).toEqual(true);
   });
+  globalThis.test("encodes writableDef events", () => {
+    globalThis.expect(json.includes("\"events\":[{\"name\":\"ProductAdded\"")).toEqual(true);
+  });
 });
 
 globalThis.describe("visibility filtering (deployed AutoUI hides Internal)", () => {
@@ -231,13 +241,15 @@ globalThis.describe("allowedStates + statusField populated", () => {
   let wblWithStates_producedEventTypes = [];
   let wblWithStates_consumedEventTypes = [];
   let wblWithStates_linkedViews = ["Plugin"];
+  let wblWithStates_events = [];
   let wblWithStates = {
     name: "Plugin",
     commands: wblWithStates_commands,
     producedEventTypes: wblWithStates_producedEventTypes,
     consumedEventTypes: wblWithStates_consumedEventTypes,
     linkedViews: wblWithStates_linkedViews,
-    consistencyRead: undefined
+    consistencyRead: undefined,
+    events: wblWithStates_events
   };
   let structureWithStates_readModels = [qblWithStatus];
   let structureWithStates_stateViewSlices = [];

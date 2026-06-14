@@ -102,13 +102,20 @@ let queryableDefSchema = S.schema(s => ({
   visibility: s.m(stringOptionSchema)
 }));
 
+let eventDefSchema = S.schema(s => ({
+  name: s.m(S.string),
+  schema: s.m(S.string),
+  references: s.m(S.array(fieldReferenceSchema))
+}));
+
 let writableDefSchema = S.schema(s => ({
   name: s.m(S.string),
   commands: s.m(S.array(commandDefSchema)),
   producedEventTypes: s.m(S.array(S.string)),
   consumedEventTypes: s.m(S.array(S.string)),
   linkedViews: s.m(S.array(S.string)),
-  consistencyRead: s.m(stringOptionSchema)
+  consistencyRead: s.m(stringOptionSchema),
+  events: s.m(S.array(eventDefSchema))
 }));
 
 let automationSliceDefSchema = S.schema(s => ({
@@ -219,6 +226,7 @@ export {
   fieldReferenceSchema,
   commandDefSchema,
   queryableDefSchema,
+  eventDefSchema,
   writableDefSchema,
   automationSliceDefSchema,
   outboundTranslationSliceDefSchema,

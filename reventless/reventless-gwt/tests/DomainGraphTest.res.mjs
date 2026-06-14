@@ -27,7 +27,8 @@ function writable(name, commandsOpt, producesOpt, consumesOpt, linkedViewsOpt) {
     producedEventTypes: produces,
     consumedEventTypes: consumes,
     linkedViews: linkedViews,
-    consistencyRead: undefined
+    consistencyRead: undefined,
+    events: []
   };
 }
 

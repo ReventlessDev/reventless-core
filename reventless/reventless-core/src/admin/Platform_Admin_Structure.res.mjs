@@ -96,13 +96,16 @@ let pluginAggregate_consumedEventTypes = [];
 
 let pluginAggregate_linkedViews = ["Plugins"];
 
+let pluginAggregate_events = [];
+
 let pluginAggregate = {
   name: "Plugin",
   commands: pluginAggregate_commands,
   producedEventTypes: pluginAggregate_producedEventTypes,
   consumedEventTypes: pluginAggregate_consumedEventTypes,
   linkedViews: pluginAggregate_linkedViews,
-  consistencyRead: undefined
+  consistencyRead: undefined,
+  events: pluginAggregate_events
 };
 
 let pluginReadModel_queryField = Api_Naming$ReventlessCore.adminField("Plugins");

@@ -9,7 +9,8 @@ open Reventless.Plugin
 let sdlTypes: array<string> = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
   `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n}`,
-  `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
+  `type Platform_EventDef {\n  name: String!\n  schema: String!\n  references: [Platform_FieldReference!]!\n}`,
+  `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n  events: [Platform_EventDef!]!\n}`,
   `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  statusField: String\n}`,
   `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
   `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
@@ -72,6 +73,13 @@ let encodeQueryableDef = (r: queryableDef): JSON.t =>
     ("statusField", r.statusField->Option.mapOr(JSON.Encode.null, JSON.Encode.string)),
   ])->JSON.Encode.object
 
+let encodeEventDef = (e: eventDef): JSON.t =>
+  Dict.fromArray([
+    ("name", JSON.Encode.string(e.name)),
+    ("schema", JSON.Encode.string(e.schema)),
+    ("references", e.references->Array.map(encodeFieldReference)->JSON.Encode.array),
+  ])->JSON.Encode.object
+
 let encodeWritableDef = (w: writableDef): JSON.t =>
   Dict.fromArray([
     ("name", JSON.Encode.string(w.name)),
@@ -83,6 +91,8 @@ let encodeWritableDef = (w: writableDef): JSON.t =>
     ),
     ("producedEventTypes", encodeStrings(w.producedEventTypes)),
     ("consumedEventTypes", encodeStrings(w.consumedEventTypes)),
+    // Phase 6.3: emitted-event field schemas (None → [] on the wire).
+    ("events", w.events->Array.map(encodeEventDef)->JSON.Encode.array),
   ])->JSON.Encode.object
 
 let encodeAutomationSliceDef = (a: automationSliceDef): JSON.t =>

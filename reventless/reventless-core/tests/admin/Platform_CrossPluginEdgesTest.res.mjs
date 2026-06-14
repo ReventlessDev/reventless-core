@@ -40,7 +40,8 @@ function writable(name, producedEventTypesOpt, consumedEventTypesOpt, linkedView
     producedEventTypes: producedEventTypes,
     consumedEventTypes: consumedEventTypes,
     linkedViews: linkedViews,
-    consistencyRead: undefined
+    consistencyRead: undefined,
+    events: []
   };
 }
 

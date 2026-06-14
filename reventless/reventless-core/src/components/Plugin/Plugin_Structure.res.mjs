@@ -174,6 +174,41 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       return Stdlib_Option.mapOr(toCommandDef(isAggregate, mutationFieldFor, commandSchema, commandSchema), [], def => [def]);
     }
   };
+  let toEventDef = v => {
+    if (v.type !== "object") {
+      return;
+    }
+    let properties = v.properties;
+    return Stdlib_Option.flatMap(properties["TAG"], tagSchema => {
+      if (tagSchema.type !== "string") {
+        return;
+      }
+      let variantName = tagSchema.const;
+      if (variantName === undefined) {
+        return;
+      }
+      let references = Stdlib_Array.filterMap(Object.entries(properties), param => {
+        let fieldName = param[0];
+        return Stdlib_Option.map(Reference$Reventless.getTarget(param[1]), target => ({
+          fieldName: fieldName,
+          entity: target.entity,
+          plugin: target.plugin
+        }));
+      });
+      return {
+        name: variantName,
+        schema: JSON.stringify(S.toJSONSchema(v)),
+        references: references
+      };
+    });
+  };
+  let extractEventDefs = eventSchema => {
+    if (eventSchema.type === "union") {
+      return Stdlib_Array.filterMap(eventSchema.anyOf, toEventDef);
+    } else {
+      return Stdlib_Option.mapOr(toEventDef(eventSchema), [], def => [def]);
+    }
+  };
   let scsProduced = stateChangeSlices.map(SCS => [
     SCS.Spec.name,
     qualify(name, DcbTag$Reventless.extractVariantNames(SCS.Spec.eventSchema))
@@ -300,7 +335,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       producedEventTypes: produced,
       consumedEventTypes: consumed,
       linkedViews: linkedSvsFor(produced),
-      consistencyRead: consistencyReadFor(consumed)
+      consistencyRead: consistencyReadFor(consumed),
+      events: extractEventDefs(SCS.Spec.eventSchema)
     };
   });
   let aggregateDefs = aggregates.map((A, i) => {
@@ -312,7 +348,8 @@ function make(name, aggregatesOpt, readModelsOpt, stateViewSlicesOpt, stateChang
       producedEventTypes: produced,
       consumedEventTypes: [],
       linkedViews: linkedSvsFor(produced).concat(linkedReadModelsFor(A.Spec.name)),
-      consistencyRead: undefined
+      consistencyRead: undefined,
+      events: extractEventDefs(A.Spec.eventSchema)
     };
   });
   let automationSliceDefs = automationSlices.map(AS => {

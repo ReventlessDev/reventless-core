@@ -125,6 +125,8 @@ let commandDefSchema = Plugin$Reventless.commandDefSchema;
 
 let queryableDefSchema = Plugin$Reventless.queryableDefSchema;
 
+let eventDefSchema = Plugin$Reventless.eventDefSchema;
+
 let writableDefSchema = Plugin$Reventless.writableDefSchema;
 
 let automationSliceDefSchema = Plugin$Reventless.automationSliceDefSchema;
@@ -175,6 +177,7 @@ export {
   fieldReferenceSchema,
   commandDefSchema,
   queryableDefSchema,
+  eventDefSchema,
   writableDefSchema,
   automationSliceDefSchema,
   outboundTranslationSliceDefSchema,

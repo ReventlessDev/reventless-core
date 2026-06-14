@@ -93,6 +93,7 @@ let pluginAggregate: writableDef = {
   consumedEventTypes: [],
   linkedViews: ["Plugins"],
   consistencyRead: None,
+  events: [],
 }
 
 let pluginReadModel: queryableDef = {

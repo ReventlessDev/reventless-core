@@ -22,6 +22,7 @@ let writable = (~name, ~commands=[], ~produces=[], ~consumes=[], ~linkedViews=[]
   consumedEventTypes: consumes,
   linkedViews,
   consistencyRead: None,
+  events: [],
 }
 
 let queryable = (~name, ~consumes=[], ~visibility=None): Reventless.Plugin.queryableDef => {

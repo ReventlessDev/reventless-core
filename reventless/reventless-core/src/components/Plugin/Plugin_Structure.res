@@ -199,6 +199,48 @@ let make = (
       ->Option.mapOr([], def => [def])
     }
 
+  // ── Per-variant event field extraction (Phase 6.3) ─────────────────────────
+  // Mirrors toCommandDef/extractCommandDefs for emitted events: name (TAG const),
+  // payload JSON Schema, and cross-entity references.
+
+  let toEventDef = (v: S.t<unknown>): option<Reventless.Plugin.eventDef> =>
+    switch v {
+    | Object({properties}) =>
+      properties
+      ->Dict.get("TAG")
+      ->Option.flatMap(tagSchema =>
+        switch tagSchema {
+        | String({const: ?Some(variantName)}) => {
+            let references =
+              properties
+              ->Dict.toArray
+              ->Array.filterMap(((fieldName, fieldSchema)) =>
+                Reventless.Reference.getTarget(fieldSchema)->Option.map(target => (
+                  {
+                    Reventless.Plugin.fieldName,
+                    entity: target.entity,
+                    plugin: target.plugin,
+                  }: Reventless.Plugin.fieldReference
+                ))
+              )
+            Some({
+              Reventless.Plugin.name: variantName,
+              schema: (v->S.toJSONSchema->Obj.magic: JSON.t)->JSON.stringify,
+              references,
+            })
+          }
+        | _ => None
+        }
+      )
+    | _ => None
+    }
+
+  let extractEventDefs = (eventSchema: S.t<unknown>): array<Reventless.Plugin.eventDef> =>
+    switch eventSchema {
+    | Union({anyOf}) => anyOf->Array.filterMap(toEventDef)
+    | _ => toEventDef(eventSchema)->Option.mapOr([], def => [def])
+    }
+
   // ── Per-component event type extraction ────────────────────────────────────
 
   let scsProduced =
@@ -375,6 +417,7 @@ let make = (
         consumedEventTypes: consumed,
         linkedViews: linkedSvsFor(produced),
         consistencyRead: consistencyReadFor(consumed),
+        events: extractEventDefs(SCS.Spec.eventSchema->S.castToUnknown),
       }: Reventless.Plugin.writableDef)
     })
 
@@ -395,6 +438,7 @@ let make = (
         consumedEventTypes: [],
         linkedViews: Array.concat(linkedSvsFor(produced), linkedReadModelsFor(A.Spec.name)),
         consistencyRead: None,
+        events: extractEventDefs(A.Spec.eventSchema->S.castToUnknown),
       }: Reventless.Plugin.writableDef)
     })
 
