@@ -15,7 +15,7 @@ A Reventless plugin's schema (aggregates, commands, events, read models) is alre
 
 | Query | Returns |
 |---|---|
-| `Platform_UIDefinitions` | Per-plugin metadata: command shapes, read-model schemas, linked entities, search/label fields. |
+| `Platform_ComponentDefinitions` | Per-plugin metadata: command shapes, read-model schemas, linked entities, search/label fields. |
 | `Platform_UIFragments`   | Per-plugin manifest of which `fragmentId`s the plugin contributes, plus an optional `remoteEntryUrl` for federation. |
 
 The host shell (a static SPA shipped from the `reventless-ui` workspace) queries both at boot, then renders a list, detail, or panel view for each fragment **generically** — using the schemas alone. No plugin code touches the browser unless the plugin explicitly opts into a custom UI bundle.
@@ -49,7 +49,7 @@ The host shell reads these strings and decides which rendered view goes where. T
 │ vite dev           │ ◀────── │ Auto UI components │
 │ (host shell SPA)   │         │ from reventless-ui │
 └─────────┬──────────┘         └────────────────────┘
-          │ GraphQL: Platform_UIFragments + Platform_UIDefinitions
+          │ GraphQL: Platform_UIFragments + Platform_ComponentDefinitions
           ▼
 ┌────────────────────┐
 │ local platform │

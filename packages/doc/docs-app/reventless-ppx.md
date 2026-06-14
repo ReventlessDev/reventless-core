@@ -327,7 +327,7 @@ type command =
 | (no annotation) | A single command variant | Variant is always shown (back-compat default) |
 | `@allowedStates([])` | A single command variant | Variant is never shown (defensive "never available" form) |
 
-The PPX extracts each constructor's leaf identifier as a string and emits `let commandSchema = ReventlessInfra.Api.markAllowedStates(commandSchema, [|("Ship", [|"Placed"|]); …|])` attaching the per-variant map to the schema metadata. The wire format on `Platform_UIDefinitions` is `commandDef.allowedStates: option<array<string>>` — `None` means "always show", `Some([…])` means "filter".
+The PPX extracts each constructor's leaf identifier as a string and emits `let commandSchema = ReventlessInfra.Api.markAllowedStates(commandSchema, [|("Ship", [|"Placed"|]); …|])` attaching the per-variant map to the schema metadata. The wire format on `Platform_ComponentDefinitions` is `commandDef.allowedStates: option<array<string>>` — `None` means "always show", `Some([…])` means "filter".
 
 **Supports payloadless and payload variants uniformly.** The PPX walks the attribute payload as syntactic AST and extracts the leaf identifier; it works for `Submitted` (payloadless), `OrdersStatus.Submitted` (qualified payloadless), `Shipped({trackingNumber})` (payload), and any combination. AutoUI's filter compares against the row's serialised status tag — sury emits payloadless variants as bare JSON strings and payload variants as `{TAG: …, …}` objects, both surfacing the constructor name.
 

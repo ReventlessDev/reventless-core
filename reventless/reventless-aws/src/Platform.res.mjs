@@ -69,7 +69,6 @@ import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platfo
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
-import * as Platform_UIDefinitions_Lambda$ReventlessAws from "./adapter/Api/Platform_UIDefinitions_Lambda.res.mjs";
 import * as Plugin_ExtensionPoint_Builder$ReventlessAws from "./core/Plugin_ExtensionPoint_Builder.res.mjs";
 import * as QueryDbStorage_DynamoDbStream$ReventlessAws from "./adapter/QueryDb/QueryDbStorage_DynamoDbStream.res.mjs";
 import * as StateViewSlice_Builder_Stream$ReventlessAws from "./components/StateViewSlice_Builder_Stream.res.mjs";
@@ -87,6 +86,7 @@ import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "./adapter/Eve
 import * as InboundTranslationResolvers_AppSync$ReventlessAws from "./adapter/CommandGenerator/InboundTranslationResolvers_AppSync.res.mjs";
 import * as PluginExtensionPointRuntime_Builder$ReventlessAws from "./adapter/Runtime/PluginExtensionPointRuntime_Builder.res.mjs";
 import * as ReadModel_Builder_NoResolver_Stream$ReventlessAws from "./components/ReadModel_Builder_NoResolver_Stream.res.mjs";
+import * as Platform_ComponentDefinitions_Lambda$ReventlessAws from "./adapter/Api/Platform_ComponentDefinitions_Lambda.res.mjs";
 import * as StateViewSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/StateViewSliceRuntime_Builder_Single.res.mjs";
 import * as AggregateRuntime_Builder_Single_Async$ReventlessAws from "./adapter/Runtime/AggregateRuntime_Builder_Single_Async.res.mjs";
 import * as AutomationSliceRuntime_Builder_Single$ReventlessAws from "./adapter/Runtime/AutomationSliceRuntime_Builder_Single.res.mjs";
@@ -948,7 +948,7 @@ function MakeWithConfig(Config) {
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
       if (r !== undefined) {
-        Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
+        Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
         AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(r.name);
       }
     }
@@ -1075,7 +1075,7 @@ function MakeWithConfig(Config) {
     PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, Config.cloner, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
-      Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
+      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
     }
     let rm = admin.readModelsOutputs["UIFragmentRegistry"];
     if (rm !== undefined) {
@@ -2122,7 +2122,7 @@ function Make($star) {
     if (pluginRm !== undefined) {
       let r = pluginRm.queryDb.resources[0];
       if (r !== undefined) {
-        Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
+        Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, r.name, {});
         AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(r.name);
       }
     }
@@ -2237,7 +2237,7 @@ function Make($star) {
     PluginRuntime_Builder$ReventlessAws.registerConfig(pluginEpEventTopicArn, pluginReadModelTableName, pluginSchemaPersistenceTable.name, hooks_schedulerRoleUrn.contents, undefined, undefined, domainApiId, false, undefined);
     if (pluginReadModelTableName !== undefined) {
       AggregateRuntime_Builder_Single$ReventlessAws.setPluginReadModelTable(pluginReadModelTableName);
-      Platform_UIDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
+      Platform_ComponentDefinitions_Lambda$ReventlessAws.make(platformApi, pluginReadModelTableName, {});
     }
     let rm = admin.readModelsOutputs["UIFragmentRegistry"];
     if (rm !== undefined) {

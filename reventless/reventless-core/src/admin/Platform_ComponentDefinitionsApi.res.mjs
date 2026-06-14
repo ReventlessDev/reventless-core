@@ -5,15 +5,15 @@ import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js
 import * as Plugin$ReventlessCore from "../components/Plugin/Plugin.res.mjs";
 
 let sdlTypes = [
-  `type Platform_UIFieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
-  `type Platform_UICommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_UIFieldReference!]!\n  allowedStates: [String!]\n}`,
-  `type Platform_UIWriteSideDef {\n  name: String!\n  commands: [Platform_UICommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
-  `type Platform_UIReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  statusField: String\n}`,
-  `type Platform_UIAutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
-  `type Platform_UIOutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
-  `type Platform_UIInboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
-  `type Platform_UIExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
-  `type Platform_UIDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_UIReadSideDef!]!\n  stateViewSlices: [Platform_UIReadSideDef!]!\n  stateChangeSlices: [Platform_UIWriteSideDef!]!\n  aggregates: [Platform_UIWriteSideDef!]!\n  automationSlices: [Platform_UIAutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_UIOutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_UIInboundTranslationSliceDef!]!\n  extensions: [Platform_UIExtensionDef!]!\n}`
+  `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,
+  `type Platform_CommandDef {\n  name: String!\n  schema: String!\n  level: String!\n  aggregateIdField: String\n  mutationField: String!\n  references: [Platform_FieldReference!]!\n  allowedStates: [String!]\n}`,
+  `type Platform_WriteSideDef {\n  name: String!\n  commands: [Platform_CommandDef!]!\n  linkedViews: [String!]!\n  consistencyRead: String\n  producedEventTypes: [String!]!\n  consumedEventTypes: [String!]!\n}`,
+  `type Platform_ReadSideDef {\n  name: String!\n  queryField: String!\n  schema: String!\n  consumedEventTypes: [String!]!\n  linkedWriteSide: [String!]!\n  labelField: String!\n  searchableFields: [String!]!\n  statusField: String\n}`,
+  `type Platform_AutomationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  producedCommandTypes: [String!]!\n}`,
+  `type Platform_OutboundTranslationSliceDef {\n  name: String!\n  consumedEventTypes: [String!]!\n  inboundCommandTypes: [String!]!\n}`,
+  `type Platform_InboundTranslationSliceDef {\n  name: String!\n  commandTypes: [String!]!\n}`,
+  `type Platform_ExtensionDef {\n  name: String!\n  delegateNames: [String!]!\n  eventTypes: [String!]!\n  commandTypes: [String!]!\n}`,
+  `type Platform_ComponentDefinitionEntry {\n  pluginId: String!\n  readModels: [Platform_ReadSideDef!]!\n  stateViewSlices: [Platform_ReadSideDef!]!\n  stateChangeSlices: [Platform_WriteSideDef!]!\n  aggregates: [Platform_WriteSideDef!]!\n  automationSlices: [Platform_AutomationSliceDef!]!\n  outboundTranslationSlices: [Platform_OutboundTranslationSliceDef!]!\n  inboundTranslationSlices: [Platform_InboundTranslationSliceDef!]!\n  extensions: [Platform_ExtensionDef!]!\n}`
 ];
 
 function encodeStrings(ss) {
@@ -252,7 +252,7 @@ function encodePluginStructureEntry(pluginId, def) {
   ]);
 }
 
-let sdlQueryField = `  Platform_UIDefinitions: [Platform_UIDefinitionEntry!]!`;
+let sdlQueryField = `  Platform_ComponentDefinitions: [Platform_ComponentDefinitionEntry!]!`;
 
 export {
   sdlTypes,

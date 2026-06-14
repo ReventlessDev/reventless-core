@@ -1483,17 +1483,17 @@ module MakeWithConfig = (
       },
     )
 
-    // Platform_UIDefinitions resolver — SDL is already stitched into baseParts via
+    // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
     // AdminApi.baseFragment so we register only the resolver here. Encoder is shared
     // with the AWS adapter so responses are byte-identical.
     //
     // Filter by plugin lifecycle status to mirror the AWS DynamoDB filter in
-    // Platform_UIDefinitions_Lambda.res (`contains(#status, :connected)`). Plugins
+    // Platform_ComponentDefinitions_Lambda.res (`contains(#status, :connected)`). Plugins
     // whose Plugin RM row is not Connected are hidden until reactivated. The built-in
     // Platform_Admin entry has no Plugin RM row — include it unconditionally since
     // it can't be deactivated.
     queryResolvers->Dict.set(
-      "Platform_UIDefinitions",
+      "Platform_ComponentDefinitions",
       async (_root, _args, _ctx): JSON.t => {
         let pluginStatusById = {
           let dict = Dict.make()
@@ -1522,7 +1522,7 @@ module MakeWithConfig = (
             }
         )
         ->Array.map(((pluginId, def)) =>
-          ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+          ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
         )
         ->JSON.Encode.array
       },
@@ -2131,17 +2131,17 @@ module MakeWithConfig = (
           connectionResponse(items)
         },
       )
-      // Platform_UIDefinitions resolver — SDL is already stitched into baseParts via
+      // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
       // AdminApi.baseFragment so we register only the resolver here. Uses the shared
       // encoder so the dynamic-plugin admin server emits the same canonical shape as
       // the main platform server (and as AWS).
       queryResolvers->Dict.set(
-        "Platform_UIDefinitions",
+        "Platform_ComponentDefinitions",
         async (_root, _args, _ctx): JSON.t =>
           pluginStructuresStore.contents
           ->Dict.toArray
           ->Array.map(((pluginId, def)) =>
-            ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
+            ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
           )
           ->JSON.Encode.array,
       )

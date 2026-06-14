@@ -1,7 +1,7 @@
 // Read per-variant `allowedStates` metadata that the reventless-ppx
 // `@allowedStates([…])` attribute attaches to a command schema. Consumed by
 // `Plugin_Structure.toCommandDef` when building the `commandDef` records that
-// land in `Platform_UIDefinitions` so AutoUI can filter the per-row command
+// land in `Platform_ComponentDefinitions` so AutoUI can filter the per-row command
 // menu by the row's status.
 
 open ReventlessInfra.Api

@@ -26,7 +26,7 @@ type state = {
   // "Platform" → excluded from DomainApi runtime schema stitching in updateApiSchema.
   apiTarget?: string,
   uiFragments: @s.matches(Reventless.Plugin.uiFragmentManifestOptionSchema) option<Reventless.Plugin.uiFragmentManifest>,
-  // Plugin structure (component metadata) — surfaced via Platform_UIDefinitions.
+  // Plugin structure (component metadata) — surfaced via Platform_ComponentDefinitions.
   // None for older plugins whose protocol version did not carry the field.
   structure: @s.matches(Reventless.Plugin.pluginStructureOptionSchema) option<Reventless.Plugin.pluginStructure>,
   // DCB EventLog definition for plugins that bundle a DcbEventLog component.

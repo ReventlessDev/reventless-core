@@ -14,7 +14,7 @@ import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as Util_Pulumi$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_Pulumi.res.mjs";
 import * as AppSync_Resolver_Native$ReventlessAws from "./AppSync_Resolver_Native.res.mjs";
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
-import * as Platform_UIDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIDefinitionsApi.res.mjs";
+import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 
 function makeHandlerCode(param, adminEntryJson) {
   return `
@@ -27,7 +27,7 @@ const ADMIN_ENTRY = ` + adminEntryJson + `;
 
 export async function handler() {
   if (!TABLE) {
-    console.error("Platform_UIDefinitions: PLUGIN_RM_TABLE env var not set");
+    console.error("Platform_ComponentDefinitions: PLUGIN_RM_TABLE env var not set");
     return [ADMIN_ENTRY];
   }
   const items = [];
@@ -90,7 +90,7 @@ function make(api, pluginReadModelTableName, opts) {
       role: lambdaRole.id
     }, opts$1);
   });
-  let adminEntryJson = JSON.stringify(Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.structure));
+  let adminEntryJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(Platform_Admin_Structure$ReventlessCore.pluginId, Platform_Admin_Structure$ReventlessCore.structure));
   let archiveContents = {};
   let handlerCodeStub = makeHandlerCode("", adminEntryJson);
   archiveContents["index.mjs"] = new (Pulumi.asset.StringAsset)(handlerCodeStub);
@@ -143,7 +143,7 @@ function make(api, pluginReadModelTableName, opts) {
     },
     serviceRoleArn: dataSourceRole.arn
   }, opts$1);
-  AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Resolver", api, dataSource.name, "Query", "Platform_UIDefinitions", resolverCode, opts$1);
+  AppSync_Resolver_Native$ReventlessAws.makeUnitJsResolver(name + "Resolver", api, dataSource.name, "Query", "Platform_ComponentDefinitions", resolverCode, opts$1);
 }
 
 export {

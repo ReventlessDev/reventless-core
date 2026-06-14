@@ -1,6 +1,6 @@
 // Asserts the canonical JSON shape produced by encodePluginStructureEntry —
 // shared by both the in-memory and AWS adapters. If this test changes, every
-// console parsing the Platform_UIDefinitions response is affected.
+// console parsing the Platform_ComponentDefinitions response is affected.
 
 open JestGlobals
 open Reventless.Plugin
@@ -73,7 +73,7 @@ let structure: pluginStructure = {
   extensionPoints: None,
 }
 
-let encoded = Platform_UIDefinitionsApi.encodePluginStructureEntry(
+let encoded = Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
   ~pluginId="Catalog",
   structure,
 )
@@ -154,7 +154,7 @@ describe("visibility filtering (deployed AutoUI hides Internal)", () => {
     stateViewSlices: [internalQbl],
   }
   let mixedJson =
-    Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId="Ordering", mixed)->JSON.stringify
+    Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Ordering", mixed)->JSON.stringify
 
   testSync("excludes an Internal queryableDef from the encoded read-side", () =>
     expect(mixedJson->String.includes("AvailableProducts"))->toEqual(false)
@@ -211,7 +211,7 @@ describe("allowedStates + statusField populated", () => {
 
   let json =
     structureWithStates
-    ->Platform_UIDefinitionsApi.encodePluginStructureEntry(~pluginId="Platform", _)
+    ->Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId="Platform", _)
     ->JSON.stringify
 
   testSync("encodes populated allowedStates as a JSON array", () =>

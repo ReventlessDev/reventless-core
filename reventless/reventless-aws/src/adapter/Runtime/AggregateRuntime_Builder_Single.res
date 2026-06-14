@@ -41,7 +41,7 @@ let registerAggregate = (
 // the gate is disabled (AggregateEntryPoint.mjs falls through to the handler).
 // The ARN is derived from the table name with region/account wildcards
 // (`arn:aws:dynamodb:*:*:table/<name>`) — same pattern as
-// `Platform_UIDefinitions_Lambda`.
+// `Platform_ComponentDefinitions_Lambda`.
 let pluginRmTableName: ref<option<Pulumi.Output.t<string>>> = ref(None)
 
 let setPluginReadModelTable = (~name: Pulumi.Output.t<string>) => {
@@ -288,7 +288,7 @@ let finish = () =>
         // can read plugin status at command-dispatch time. Skipped if the platform
         // didn't register a Plugin RM table — gate is then a no-op. ARN is built
         // from the table name with region/account wildcards (mirrors the pattern
-        // in Platform_UIDefinitions_Lambda).
+        // in Platform_ComponentDefinitions_Lambda).
         switch pluginRmTableName.contents {
         | Some(tableName) =>
           let _ =

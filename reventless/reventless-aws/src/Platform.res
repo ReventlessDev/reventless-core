@@ -1351,7 +1351,7 @@ module MakeWithConfig = (
       ~inboundTranslationSlices=[],
     )
 
-    // Mount the Platform_UIDefinitions Lambda resolver on the Platform API
+    // Mount the Platform_ComponentDefinitions Lambda resolver on the Platform API
     // (split mode) or Domain API (unified mode — platformApi == domainApi above).
     // Also register the Plugin RM table with the AllAggregates Lambda runtime
     // so its in-Lambda plugin status gate can read plugin status at command
@@ -1360,7 +1360,7 @@ module MakeWithConfig = (
     | Some(pluginRm) =>
       switch pluginRm.queryDb.resources->Array.get(0) {
       | Some(r) =>
-        Platform_UIDefinitions_Lambda.make(
+        Platform_ComponentDefinitions_Lambda.make(
           ~api=platformApi,
           ~pluginReadModelTableName=r.name,
           ~opts={},
@@ -1629,7 +1629,7 @@ module MakeWithConfig = (
       (),
     )
 
-    // Mount the Platform_UIDefinitions Lambda resolver on the Platform API
+    // Mount the Platform_ComponentDefinitions Lambda resolver on the Platform API
     // (split mode) or Domain API (unified mode — platformApi == domainApi above).
     // Also register the Plugin RM table with the AllAggregates Lambda runtime
     // so its in-Lambda plugin status gate can read plugin status at command
@@ -1637,7 +1637,7 @@ module MakeWithConfig = (
     switch pluginReadModelTableName {
     | Some(tableName) =>
       AggregateRuntime_Builder_Single.setPluginReadModelTable(~name=tableName)
-      Platform_UIDefinitions_Lambda.make(
+      Platform_ComponentDefinitions_Lambda.make(
         ~api=platformApi,
         ~pluginReadModelTableName=tableName,
         ~opts={},

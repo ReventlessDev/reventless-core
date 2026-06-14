@@ -64,7 +64,6 @@ import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventl
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
 import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
-import * as Platform_UIDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIDefinitionsApi.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
@@ -72,6 +71,7 @@ import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reve
 import * as DcbEventLogStorage_InMemory$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryReadModelSpec.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
+import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 import * as Platform_EventGraphReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessLocal from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_GraphQL$ReventlessLocal from "./adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res.mjs";
@@ -1397,7 +1397,7 @@ function MakeWithConfig(Config) {
       let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
-    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
+    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {
       let dict = {};
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
@@ -1419,7 +1419,7 @@ function MakeWithConfig(Config) {
         }
         let match = dict[pluginId];
         return match === "Connected";
-      }).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      }).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
@@ -1815,7 +1815,7 @@ function MakeWithConfig(Config) {
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
         return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
-      queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
@@ -3242,7 +3242,7 @@ function Make($star) {
       let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
-    queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => {
+    queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {
       let dict = {};
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
       if (scanAll !== undefined) {
@@ -3264,7 +3264,7 @@ function Make($star) {
         }
         let match = dict[pluginId];
         return match === "Connected";
-      }).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      }).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
@@ -3651,7 +3651,7 @@ function Make($star) {
         let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
         return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
-      queryResolvers["Platform_UIDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);

@@ -7,7 +7,7 @@ open Ppxlib
    The PPX:
      (a) extracts each constructor's leaf identifier as a string for the
          metadata payload that codegen ultimately surfaces via
-         `Platform_UIDefinitions`;
+         `Platform_ComponentDefinitions`;
      (b) emits a synthetic `let _ = Module.Constructor` witness binding at
          the structure top so the OCaml compiler errors at the original
          site if a constructor is misspelled, renamed, or removed.

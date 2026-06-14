@@ -7,7 +7,7 @@ let adminAuth: Reventless.ReadModel.authorization = {
 
 // Fields present on `PluginsReadModelSpec.state` for projection/storage purposes
 // but intentionally absent from the public GraphQL surface. Shared with
-// `Platform_Admin_Structure` so the schema announced via `Platform_UIDefinitions`
+// `Platform_Admin_Structure` so the schema announced via `Platform_ComponentDefinitions`
 // stays aligned with the SDL — otherwise AutoUI generates list-view queries
 // for fields the server doesn't expose and every Plugin row fails to load.
 let pluginExcludeFields: array<string> = [
@@ -20,7 +20,7 @@ let pluginExcludeFields: array<string> = [
 // surface — they're option-of-nested-object types (e.g. apiSchemaFragment,
 // uiFragments, structure) which AutoUI currently renders as scalar columns
 // and queries without a sub-selection, failing schema validation. Other
-// callers (host-shell's Platform_UIDefinitions / Platform_UIFragments /
+// callers (host-shell's Platform_ComponentDefinitions / Platform_UIFragments /
 // Platform_PlatformEventGraphs) keep querying them via dedicated fields
 // and resolver paths.
 let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat([

@@ -73,11 +73,11 @@ let baseFragment = (~cloner: bool) => {
     types: parts.types
     ->Array.concat(uiFragmentSubscriptionTypes)
     ->Array.concat(pluginStatusSubscriptionTypes)
-    ->Array.concat(Platform_UIDefinitionsApi.sdlTypes)
+    ->Array.concat(Platform_ComponentDefinitionsApi.sdlTypes)
     ->Array.concat(Platform_UIFragmentsApi.sdlTypes),
     queries: Array.concat(
       parts.queries,
-      [Platform_UIDefinitionsApi.sdlQueryField, Platform_UIFragmentsApi.sdlQueryField],
+      [Platform_ComponentDefinitionsApi.sdlQueryField, Platform_UIFragmentsApi.sdlQueryField],
     ),
     mutations: parts.mutations
     ->Array.concat(uiFragmentMutationFields)

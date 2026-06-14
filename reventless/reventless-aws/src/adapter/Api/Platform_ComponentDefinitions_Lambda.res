@@ -1,9 +1,9 @@
-// AWS resolver for the `Platform_UIDefinitions` admin GraphQL query.
+// AWS resolver for the `Platform_ComponentDefinitions` admin GraphQL query.
 //
 // Backed by a Lambda DataSource that scans the Plugin read model and emits
 // one entry per Connected plugin whose persisted state carries a `structure`
 // field. The persisted structure is sury-encoded with the exact same shape
-// the in-memory adapter's `Platform_UIDefinitionsApi.encodePluginStructureEntry`
+// the in-memory adapter's `Platform_ComponentDefinitionsApi.encodePluginStructureEntry`
 // produces (literal-string `commandLevel`, `null`-encoded options), so the
 // handler simply wraps each persisted structure with `pluginId` — no decoding
 // or re-encoding needed.
@@ -26,7 +26,7 @@ const ADMIN_ENTRY = ${adminEntryJson};
 
 export async function handler() {
   if (!TABLE) {
-    console.error("Platform_UIDefinitions: PLUGIN_RM_TABLE env var not set");
+    console.error("Platform_ComponentDefinitions: PLUGIN_RM_TABLE env var not set");
     return [ADMIN_ENTRY];
   }
   const items = [];
@@ -111,7 +111,7 @@ let make = (
     })
 
   let adminEntryJson =
-    ReventlessCore.Platform_UIDefinitionsApi.encodePluginStructureEntry(
+    ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(
       ~pluginId=ReventlessCore.Platform_Admin_Structure.pluginId,
       ReventlessCore.Platform_Admin_Structure.structure,
     )->JSON.stringify
@@ -206,7 +206,7 @@ let make = (
     ~api,
     ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
     ~type_="Query"->Pulumi.Input.make,
-    ~field="Platform_UIDefinitions"->Pulumi.Input.make,
+    ~field="Platform_ComponentDefinitions"->Pulumi.Input.make,
     ~code=resolverCode,
     ~opts,
   )

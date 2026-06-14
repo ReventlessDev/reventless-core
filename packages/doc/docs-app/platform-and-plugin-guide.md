@@ -1698,7 +1698,7 @@ You never call `makeAutoUIManifest` by hand. The generator regenerates `Plugin.r
 
 ### Annotations that shape Auto UI
 
-A handful of PPX annotations on aggregate / read-model / state-view spec files steer how AutoUI renders. None of them require any UI-side wiring — the generator threads them through `Platform_UIDefinitions` and the host shell's AutoUI consumes them directly. See [the PPX guide](reventless-ppx.md) for per-annotation detail.
+A handful of PPX annotations on aggregate / read-model / state-view spec files steer how AutoUI renders. None of them require any UI-side wiring — the generator threads them through `Platform_ComponentDefinitions` and the host shell's AutoUI consumes them directly. See [the PPX guide](reventless-ppx.md) for per-annotation detail.
 
 | Annotation | Placed on | What AutoUI does with it |
 |---|---|---|

@@ -22,7 +22,7 @@ let encodeSchema = (schema: S.t<unknown>): string =>
 
 // Strip the named fields from a derived JSON schema's `properties` map and
 // `required` list. Used so Plugin read model metadata announced via
-// `Platform_UIDefinitions` matches the SDL — fields excluded from the GraphQL
+// `Platform_ComponentDefinitions` matches the SDL — fields excluded from the GraphQL
 // schema in `PluginBaseFragment` must also disappear from the schema string
 // AutoUI consumes, or list-view queries will reference non-existent fields.
 let encodeSchemaExcluding = (schema: S.t<unknown>, ~excludeFields: array<string>): string => {

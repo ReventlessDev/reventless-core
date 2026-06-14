@@ -3,7 +3,7 @@
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
-import * as Platform_UIDefinitionsApi$ReventlessCore from "../../src/admin/Platform_UIDefinitionsApi.res.mjs";
+import * as Platform_ComponentDefinitionsApi$ReventlessCore from "../../src/admin/Platform_ComponentDefinitionsApi.res.mjs";
 
 let cmd_references = [{
     fieldName: "categoryId",
@@ -103,7 +103,7 @@ let structure = {
   extensionPoints: undefined
 };
 
-let encoded = Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Catalog", structure);
+let encoded = Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Catalog", structure);
 
 let json = JSON.stringify(encoded);
 
@@ -190,7 +190,7 @@ globalThis.describe("visibility filtering (deployed AutoUI hides Internal)", () 
     extensions: mixed_extensions,
     extensionPoints: undefined
   };
-  let mixedJson = JSON.stringify(Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Ordering", mixed));
+  let mixedJson = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Ordering", mixed));
   globalThis.test("excludes an Internal queryableDef from the encoded read-side", () => {
     globalThis.expect(mixedJson.includes("AvailableProducts")).toEqual(false);
   });
@@ -258,7 +258,7 @@ globalThis.describe("allowedStates + statusField populated", () => {
     extensions: structureWithStates_extensions,
     extensionPoints: undefined
   };
-  let json = JSON.stringify(Platform_UIDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Platform", structureWithStates));
+  let json = JSON.stringify(Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry("Platform", structureWithStates));
   globalThis.test("encodes populated allowedStates as a JSON array", () => {
     globalThis.expect(json.includes("\"allowedStates\":[\"Inactive\"]")).toEqual(true);
   });
