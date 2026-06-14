@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Thin launcher for the reventless-gwt CLI. The heavy lifting lives in
+// Thin launcher for the reventless-dev CLI (formerly reventless-gwt). The heavy lifting lives in
 // Cli.res — this file only resolves the compiled module and exits with the
 // code Cli.main returns.
 //

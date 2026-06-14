@@ -50,14 +50,14 @@ let parseFormat = (s: string) =>
 // multi-package workspace (e.g. an example root) with no roots configured.
 let defaultRoots = () => ["."]
 
-let help = () => `reventless-gwt — Given/When/Then runner for Reventless slices
+let help = () => `reventless-dev — Reventless dev CLI: GWT runner, domain graph, components, platform runner
 
 USAGE:
-  reventless-gwt run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
-  reventless-gwt discover [--format=vscode] [path...]
-  reventless-gwt watch [--format=<fmt>] [--filter=<id>] [path...]
-  reventless-gwt platform [--format=vscode] [--backend=<b>] [path...]
-  reventless-gwt platform --list [path...]
+  reventless-dev run [--format=<fmt>] [--filter=<id>] [--stream] [--watch] [path...]
+  reventless-dev discover [--format=vscode] [path...]
+  reventless-dev watch [--format=<fmt>] [--filter=<id>] [path...]
+  reventless-dev platform [--format=vscode] [--backend=<b>] [path...]
+  reventless-dev platform --list [path...]
 
 FORMATS:
   human   ANSI-coloured terminal output (default)

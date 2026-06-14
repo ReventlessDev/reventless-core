@@ -4,7 +4,8 @@
   "description": "Given-When-Then DSLs and CLI runner for Reventless slice testing",
   "license": "Apache-2.0",
   "bin": {
-    "reventless-gwt": "./bin/reventless-gwt.mjs"
+    "reventless-dev": "./bin/reventless-dev.mjs",
+    "reventless-gwt": "./bin/reventless-dev.mjs"
   },
   "scripts": {
     "build": "rescript build",
