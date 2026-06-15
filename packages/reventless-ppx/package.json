@@ -6,6 +6,9 @@
   "files": [
     "bin"
   ],
+  "bin": {
+    "reventless-ppx": "bin"
+  },
   "scripts": {
     "build:ppx": "cd src && opam exec -- dune build",
     "clean:ppx": "cd src && opam exec -- dune clean",
@@ -13,8 +16,8 @@
     "test": "./test/run.sh"
   },
   "optionalDependencies": {
-    "@reventlessdev/reventless-ppx-darwin-arm64": "1.0.0-alpha.38",
-    "@reventlessdev/reventless-ppx-linux-x64": "1.0.0-alpha.38"
+    "@reventlessdev/reventless-ppx-darwin-arm64": "^1.0.0-alpha.38",
+    "@reventlessdev/reventless-ppx-linux-x64": "^1.0.0-alpha.38"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

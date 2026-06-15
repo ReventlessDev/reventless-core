@@ -35,13 +35,13 @@
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
-    "@reventlessdev/reventless-spec": "workspace:*"
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "^11.0.0-alpha.4",
+    "@reventlessdev/reventless-gwt": "workspace:*"
   },
   "devDependencies": {
-    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.3.0",
-    "sury": "^11.0.0-alpha.4",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {

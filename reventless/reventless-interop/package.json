@@ -23,10 +23,10 @@
   "dependencies": {
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "sury": "11.0.0-alpha.4",
-    "sury-ppx": "11.0.0-alpha.2"
+    "sury-ppx": "11.0.0-alpha.2",
+    "@reventlessdev/rescript-jest": "workspace:*"
   },
   "devDependencies": {
-    "@reventlessdev/rescript-jest": "workspace:*",
     "rescript": "^12.3.0"
   },
   "peerDependencies": {

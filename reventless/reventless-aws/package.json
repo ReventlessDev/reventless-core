@@ -29,12 +29,12 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "sury": "11.0.0-alpha.4",
+    "@reventlessdev/rescript-jest": "workspace:*"
   },
   "devDependencies": {
-    "@reventlessdev/rescript-jest": "workspace:*",
     "rescript": "^12.3.0",
-    "sury": "11.0.0-alpha.4",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {

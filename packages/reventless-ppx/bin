@@ -30,7 +30,10 @@ for CAND in \
   "$DIR/../reventless-ppx-$PKG/ppx.exe" \
   "$DIR/node_modules/@reventlessdev/reventless-ppx-$PKG/ppx.exe" \
   "$DIR/$LOCAL"; do
-  if [ -x "$CAND" ]; then exec "$CAND" "$@"; fi
+  # `-f` (exists), not `-x`: npm/pnpm normalize file modes to 0644 when installing
+  # from a published tarball (only package.json `bin` targets are guaranteed +x),
+  # so the native binary often arrives non-executable. Restore +x, then exec.
+  if [ -f "$CAND" ]; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
 done
 
 # (1c) Walk up ancestor directories looking for a node_modules with the matching
@@ -40,7 +43,7 @@ ANCESTOR="$DIR"
 while [ "$ANCESTOR" != "/" ] && [ -n "$ANCESTOR" ]; do
   ANCESTOR="$(dirname "$ANCESTOR")"
   CAND="$ANCESTOR/node_modules/@reventlessdev/reventless-ppx-$PKG/ppx.exe"
-  if [ -x "$CAND" ]; then exec "$CAND" "$@"; fi
+  if [ -f "$CAND" ]; then chmod u+x "$CAND" 2>/dev/null; exec "$CAND" "$@"; fi
 done
 
 echo "reventless-ppx: no binary found for $(uname -s)-$(uname -m)." >&2

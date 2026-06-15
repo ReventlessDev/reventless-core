@@ -43,14 +43,14 @@
     "graphql": "^16.13.2",
     "graphql-ws": "^5.16.0",
     "graphql-yoga": "^5.21.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "sury": "11.0.0-alpha.4",
+    "@reventlessdev/rescript-jest": "workspace:*",
+    "@reventlessdev/reventless-gwt": "workspace:*"
   },
   "devDependencies": {
-    "@reventlessdev/rescript-jest": "workspace:*",
-    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.3.0",
-    "sury": "11.0.0-alpha.4",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {

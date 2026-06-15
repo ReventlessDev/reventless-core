@@ -48,13 +48,13 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4"
+    "sury": "^11.0.0-alpha.4",
+    "@reventlessdev/reventless-gwt": "workspace:*"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
   "devDependencies": {
-    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-ppx": "workspace:*",
     "sury-ppx": "11.0.0-alpha.2"
   }

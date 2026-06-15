@@ -21,11 +21,11 @@
     ]
   },
   "dependencies": {
-    "effect": "3.21.2"
+    "effect": "3.21.2",
+    "@reventlessdev/rescript-jest": "workspace:*"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
-    "@reventlessdev/rescript-jest": "workspace:*",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",
     "rescript": "^12.3.0"

@@ -29,12 +29,12 @@
     "@pulumi/aws": "~7.19.0",
     "@pulumi/aws-native": "^1.62.0",
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
-    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*"
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "sury": "11.0.0-alpha.4"
   },
   "devDependencies": {
     "esbuild": "^0.25.12",
     "rescript": "^12.3.0",
-    "sury": "11.0.0-alpha.4",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {

@@ -109,6 +109,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -122,9 +125,6 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -165,6 +165,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -178,9 +181,6 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -258,6 +258,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -267,19 +270,16 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -314,6 +314,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -323,19 +326,16 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -385,6 +385,9 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -392,9 +395,6 @@ importers:
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: ^11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -410,6 +410,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -423,9 +426,6 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -503,6 +503,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -516,9 +519,6 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -633,6 +633,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -646,9 +649,6 @@ importers:
         specifier: ^11.0.0-alpha.4
         version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../../packages/reventless-ppx
@@ -715,10 +715,10 @@ importers:
   packages/reventless-ppx:
     optionalDependencies:
       '@reventlessdev/reventless-ppx-darwin-arm64':
-        specifier: 1.0.0-alpha.38
+        specifier: ^1.0.0-alpha.38
         version: 1.0.0-alpha.38
       '@reventlessdev/reventless-ppx-linux-x64':
-        specifier: 1.0.0-alpha.38
+        specifier: ^1.0.0-alpha.38
         version: 1.0.0-alpha.38
 
   rescript/rescript-anthropic:
@@ -788,6 +788,9 @@ importers:
 
   rescript/rescript-effect:
     dependencies:
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../rescript-jest
       effect:
         specifier: 3.21.2
         version: 3.21.2
@@ -795,9 +798,6 @@ importers:
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
-      '@reventlessdev/rescript-jest':
-        specifier: workspace:*
-        version: link:../rescript-jest
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@22.19.17)(babel-plugin-macros@3.1.0)
@@ -864,10 +864,11 @@ importers:
         version: 12.3.0
 
   rescript/rescript-moment:
-    devDependencies:
+    dependencies:
       '@reventlessdev/rescript-jest':
         specifier: workspace:*
         version: link:../rescript-jest
+    devDependencies:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -911,6 +912,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../rescript-pulumi-pulumi
+      sury:
+        specifier: 11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       esbuild:
         specifier: ^0.25.12
@@ -918,9 +922,6 @@ importers:
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -975,6 +976,9 @@ importers:
       '@reventlessdev/rescript-effect':
         specifier: workspace:*
         version: link:../../rescript/rescript-effect
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/rescript-jest
       '@reventlessdev/rescript-pulumi-aws':
         specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-aws
@@ -996,19 +1000,16 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../reventless-spec
+      sury:
+        specifier: 11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
     devDependencies:
-      '@reventlessdev/rescript-jest':
-        specifier: workspace:*
-        version: link:../../rescript/rescript-jest
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -1026,6 +1027,9 @@ importers:
       '@reventlessdev/rescript-hash-object':
         specifier: workspace:*
         version: link:../../rescript/rescript-hash-object
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/rescript-jest
       '@reventlessdev/rescript-node-streams':
         specifier: workspace:*
         version: link:../../rescript/rescript-node-streams
@@ -1047,22 +1051,19 @@ importers:
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../reventless-spec
+      sury:
+        specifier: 11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
     devDependencies:
-      '@reventlessdev/rescript-jest':
-        specifier: workspace:*
-        version: link:../../rescript/rescript-jest
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../packages/reventless-ppx
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -1093,6 +1094,9 @@ importers:
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
+      sury:
+        specifier: 11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
     devDependencies:
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
@@ -1100,9 +1104,6 @@ importers:
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
@@ -1137,6 +1138,9 @@ importers:
 
   reventless/reventless-interop:
     dependencies:
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/rescript-jest
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../rescript/rescript-pulumi-pulumi
@@ -1147,9 +1151,6 @@ importers:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
     devDependencies:
-      '@reventlessdev/rescript-jest':
-        specifier: workspace:*
-        version: link:../../rescript/rescript-jest
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
@@ -1187,6 +1188,9 @@ importers:
       '@reventlessdev/rescript-graphql-yoga':
         specifier: workspace:*
         version: link:../../rescript/rescript-graphql-yoga
+      '@reventlessdev/rescript-jest':
+        specifier: workspace:*
+        version: link:../../rescript/rescript-jest
       '@reventlessdev/rescript-mcp-sdk':
         specifier: workspace:*
         version: link:../../rescript/rescript-mcp-sdk
@@ -1196,6 +1200,9 @@ importers:
       '@reventlessdev/reventless-core':
         specifier: workspace:*
         version: link:../reventless-core
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../reventless-infra
@@ -1211,25 +1218,19 @@ importers:
       graphql-yoga:
         specifier: ^5.21.0
         version: 5.21.0(graphql@16.13.2)
+      sury:
+        specifier: 11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
       ws:
         specifier: ^8.18.0
         version: 8.20.0
     devDependencies:
-      '@reventlessdev/rescript-jest':
-        specifier: workspace:*
-        version: link:../../rescript/rescript-jest
-      '@reventlessdev/reventless-gwt':
-        specifier: workspace:*
-        version: link:../reventless-gwt
       '@reventlessdev/reventless-ppx':
         specifier: workspace:*
         version: link:../../packages/reventless-ppx
       rescript:
         specifier: ^12.3.0
         version: 12.3.0
-      sury:
-        specifier: 11.0.0-alpha.4
-        version: 11.0.0-alpha.4(rescript@12.3.0)
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))

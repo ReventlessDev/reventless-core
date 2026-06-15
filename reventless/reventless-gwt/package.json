@@ -32,12 +32,12 @@
     "@reventlessdev/reventless-spec": "workspace:*",
     "@reventlessdev/reventless-vscode-protocol": "workspace:*",
     "chokidar": "^3.6.0",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "sury": "11.0.0-alpha.4"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",
     "rescript": "^12.3.0",
-    "sury": "11.0.0-alpha.4",
     "sury-ppx": "11.0.0-alpha.2"
   },
   "peerDependencies": {
