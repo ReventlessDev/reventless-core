@@ -35,37 +35,54 @@ import * as Plugin_SubscriptionSchema$ReventlessCore from "./Plugin_Subscription
 
 function Make(Spec) {
   return ApiSpec => (FragmentProvider => (RuntimeEnvironment => (EventCollectorChannel => (QueryEngineAdapter => (PluginExtensionPointRemoteChannel => (HeartbeatRunner => (PluginRuntimeBuilder => (DcbEventLogStorage => (DcbEventTopicPublisher => (DcbCommandTopicChannel => (DcbCommandTopicChannelAsync => {
-    let makeAutoUIManifest = (remoteEntryUrl, name, aggregates, readModels, readModelPositionsOpt, aggregatePositionsOpt) => {
+    let makeAutoUIManifest = (remoteEntryUrl, name, pluginStructure, readModelPositionsOpt, aggregatePositionsOpt) => {
       let readModelPositions = readModelPositionsOpt !== undefined ? readModelPositionsOpt : [];
       let aggregatePositions = aggregatePositionsOpt !== undefined ? aggregatePositionsOpt : [];
-      let visibleReadModels = readModels.filter(R => {
-        let match = R.Spec.visibility;
-        return match === "Public";
-      });
-      let panels = visibleReadModels.map(R => ({
-        fragmentId: name + "." + R.Spec.name + ".list",
-        title: R.Spec.name,
+      let isVisibleQueryable = q => {
+        let match = q.visibility;
+        if (match !== undefined) {
+          return match !== "Internal";
+        } else {
+          return true;
+        }
+      };
+      let visibleReadModels = pluginStructure.readModels.filter(isVisibleQueryable);
+      let visibleStateViewSlices = pluginStructure.stateViewSlices.filter(isVisibleQueryable);
+      let listPanel = q => ({
+        fragmentId: name + "." + q.name + ".list",
+        title: q.name,
         description: "",
         positions: readModelPositions,
         requiredAccess: undefined
-      })).concat(aggregates.map(M => ({
-        fragmentId: name + "." + M.Spec.name + ".detail",
-        title: M.Spec.name,
+      });
+      let detailPanel = w => ({
+        fragmentId: name + "." + w.name + ".detail",
+        title: w.name,
         description: "",
         positions: aggregatePositions,
         requiredAccess: undefined
-      })));
-      let pages = visibleReadModels.map(R => ({
-        fragmentId: name + "." + R.Spec.name + ".list",
-        title: R.Spec.name,
+      });
+      let listPage = q => ({
+        fragmentId: name + "." + q.name + ".list",
+        title: q.name,
         menuEntry: {
-          label: R.Spec.name,
+          label: q.name,
           icon: undefined,
           group: undefined,
           sortOrder: 0
         },
         requiredAccess: undefined
-      }));
+      });
+      let panels = [
+        visibleReadModels.map(listPanel),
+        visibleStateViewSlices.map(listPanel),
+        pluginStructure.aggregates.map(detailPanel),
+        pluginStructure.stateChangeSlices.map(detailPanel)
+      ].flat();
+      let pages = [
+        visibleReadModels.map(listPage),
+        visibleStateViewSlices.map(listPage)
+      ].flat();
       return {
         remoteEntryUrl: remoteEntryUrl,
         panels: panels,

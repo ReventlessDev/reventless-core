@@ -269,7 +269,7 @@ function Make(Platform) {
       mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
       mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
     }]);
-  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [CategoryAggregate], [
+  let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [CategoryAggregate], [
     CatalogActivityReadModel,
     CategoriesReadModel
   ], [ImportProductsTask], [
@@ -281,10 +281,7 @@ function Make(Platform) {
   ], [
     ProductDemandStreamSlice,
     ProductsStreamSlice
-  ], undefined, undefined, [ImportProductSlice], Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", [CategoryAggregate], [
-    CatalogActivityReadModel,
-    CategoriesReadModel
-  ], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], undefined, undefined, [ImportProductSlice], Stdlib_Option.map(process.env.CATALOG_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     AddProductSlice: AddProductSlice,
     ChangeProductDescriptionSlice: ChangeProductDescriptionSlice,

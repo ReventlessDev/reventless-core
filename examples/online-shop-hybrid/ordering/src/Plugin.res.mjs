@@ -263,7 +263,7 @@ function Make(Platform) {
       mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
       mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
     }]);
-  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
+  let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [CustomerAggregate], [CustomersReadModel], undefined, [
     CancelOrderSlice,
     PlaceOrderSlice,
     RefundOrderSlice,
@@ -272,7 +272,7 @@ function Make(Platform) {
   ], [
     AvailableProductsStreamSlice,
     OrdersStreamSlice
-  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", [CustomerAggregate], [CustomersReadModel], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [AutoShipOrderSlice], [SendOrderConfirmationSlice], undefined, Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CancelOrderSlice: CancelOrderSlice,
     PlaceOrderSlice: PlaceOrderSlice,

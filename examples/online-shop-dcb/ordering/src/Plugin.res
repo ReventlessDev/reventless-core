@@ -1,4 +1,7 @@
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+
+@val external uiBundleUrl: option<string> = "process.env.ORDERING_UI_BUNDLE_URL"
+
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module CancelOrderSlice = Platform.StateChangeSlice.Make(CancelOrder, CancelOrder_Behavior)
@@ -48,5 +51,14 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~automationSlices=[module(AutoShipOrderSlice)],
       ~outboundTranslationSlices=[module(SendOrderConfirmationSlice)],
       ~pluginStructure=pluginStructure,
+      ~uiFragments=?uiBundleUrl->Option.map(url =>
+        Platform.Plugin.makeAutoUIManifest(
+          ~remoteEntryUrl=url,
+          ~name="Ordering",
+          ~pluginStructure,
+          ~readModelPositions=["platform-summary"],
+          ~aggregatePositions=["resource-detail"],
+        )
+      ),
     )
 }

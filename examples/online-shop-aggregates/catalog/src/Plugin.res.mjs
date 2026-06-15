@@ -192,7 +192,7 @@ function Make(Platform) {
       mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
       mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
     }]);
-  let make = uiBundleUrl => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [
+  let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], [
     CategoryAggregate,
     ProductAggregate,
     ProductDemandAggregate
@@ -200,15 +200,7 @@ function Make(Platform) {
     CategoriesReadModel,
     ProductDemandsReadModel,
     ProductsReadModel
-  ], [ImportProductsTask], undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", [
-    CategoryAggregate,
-    ProductAggregate,
-    ProductDemandAggregate
-  ], [
-    CategoriesReadModel,
-    ProductDemandsReadModel,
-    ProductsReadModel
-  ], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [ImportProductsTask], undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(process.env.CATALOG_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Catalog", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CategoryAggregate: CategoryAggregate,
     ProductAggregate: ProductAggregate,

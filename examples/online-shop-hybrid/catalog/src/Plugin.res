@@ -1,4 +1,7 @@
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+
+@val external uiBundleUrl: option<string> = "process.env.CATALOG_UI_BUNDLE_URL"
+
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // StateChangeSlices
   module AddProductSlice = Platform.StateChangeSlice.Make(AddProduct, AddProduct_Behavior)
@@ -45,7 +48,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~extensionPoints=[module(Products_ExtensionPointMapping)],
   )
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=5,
@@ -62,8 +65,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,
           ~name="Catalog",
-          ~aggregates=[module(CategoryAggregate)],
-          ~readModels=[module(CatalogActivityReadModel), module(CategoriesReadModel)],
+          ~pluginStructure,
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )

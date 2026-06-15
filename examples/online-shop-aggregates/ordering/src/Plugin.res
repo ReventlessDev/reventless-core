@@ -1,4 +1,7 @@
 // AUTO-GENERATED — do not edit. Run `npm run generate` to update.
+
+@val external uiBundleUrl: option<string> = "process.env.ORDERING_UI_BUNDLE_URL"
+
 module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Aggregates
   module CatalogProductAggregate = Platform.Aggregate.Make(
@@ -39,7 +42,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
     ~extensionPoints=[module(Orders_ExtensionPointMapping)],
   )
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Ordering",
       ~heartbeatInterval=5,
@@ -53,8 +56,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,
           ~name="Ordering",
-          ~aggregates=[module(CatalogProductAggregate), module(CustomerAggregate), module(OrderAggregate)],
-          ~readModels=[module(AvailableProductsReadModel), module(CustomersReadModel), module(OrdersReadModel)],
+          ~pluginStructure,
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )

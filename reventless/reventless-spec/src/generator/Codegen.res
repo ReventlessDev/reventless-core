@@ -458,16 +458,10 @@ let renderMain = (~config: Config.config): string => {
 }
 
 // ── Aws-variant render ───────────────────────────────────────────────────────
-// The AWS Plugin.res just delegates to the source plugin's `Plugin.Make`
-// functor; all slice/aggregate/readmodel declarations live in the standard
-// variant. The eta-expanded `make = () => Composition.make(...)` is required because
-// the standard `make`'s `(~uiBundleUrl: string=?, unit) => component` does not
-// match `PluginMaker.make: unit => component` for first-class module packing.
-//
-// When the standard variant has UI components (aggregates or readmodels), AWS
-// reads `<PLUGIN_NAME_SNAKE>_UI_BUNDLE_URL` from process.env and forwards it,
-// matching the platform-local convention so the same env var works in both
-// deploy paths.
+// The AWS Plugin.res delegates to the source plugin's `Plugin.Make` functor;
+// all slice/aggregate/readmodel declarations and the federation override
+// env-var read live in the Composition variant. The wrapper just retypes the
+// Platform constraint and re-exports `make` for the AWS deploy path.
 
 // Convert a PascalCase plugin name to SCREAMING_SNAKE_CASE for env var naming.
 // "Ordering" → "ORDERING"; "OnlineShop" → "ONLINE_SHOP".
@@ -481,22 +475,9 @@ let pluginNameToEnvBase = (name: string): string =>
   ->Array.join("")
   ->String.toUpperCase
 
-let renderAwsWrapper = (
-  ~name: string,
-  ~compositionNamespace: string,
-  ~hasUiComponents: bool,
-): string => {
-  let header = ["// AUTO-GENERATED — do not edit. Run `npm run generate` to update."]
-  let externLines = if hasUiComponents {
-    let envVar = pluginNameToEnvBase(name) ++ "_UI_BUNDLE_URL"
-    [
-      "",
-      "@val external uiBundleUrl: option<string> = \"process.env." ++ envVar ++ "\"",
-    ]
-  } else {
-    []
-  }
-  let functorLines = [
+let renderAwsWrapper = (~compositionNamespace: string): string => {
+  [
+    "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
     "",
     "module Make = (",
     "  Platform: ReventlessInfra.Platform.T",
@@ -504,12 +485,10 @@ let renderAwsWrapper = (
     "    and type role = ReventlessAws.Types.AppSync.role,",
     ") => {",
     "  module Composition = " ++ compositionNamespace ++ ".Plugin.Make(Platform)",
-  ]
-  let makeLines = hasUiComponents
-    ? ["  let make = () => Composition.make(~uiBundleUrl?)"]
-    : ["  let make = () => Composition.make()"]
-  let footer = ["}", ""]
-  Array.flat([header, externLines, functorLines, makeLines, footer])->Array.join("\n")
+    "  let make = () => Composition.make()",
+    "}",
+    "",
+  ]->Array.join("\n")
 }
 
 // ── Composition-variant render ───────────────────────────────────────────────
@@ -519,6 +498,15 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
 
   // Header
   lines->Array.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.")
+  // Federation override URL — empty/unset means Auto UI renders every fragment.
+  // Read once at module init; same env var is honoured by the AWS wrapper.
+  lines->Array.push("")
+  lines->Array.push(
+    "@val external uiBundleUrl: option<string> = \"process.env." ++
+    pluginNameToEnvBase(config.name) ++
+    "_UI_BUNDLE_URL\"",
+  )
+  lines->Array.push("")
   lines->Array.push("module Make = (Platform: ReventlessInfra.Platform.T) => {")
 
   let push = (sectionLines: array<string>) => {
@@ -638,37 +626,23 @@ let renderComposition = (~config: Config.config, ~resolved: Pairing.resolved): s
   }
 
   // make() call — Composition variant only (Aws variant uses renderAwsWrapper).
-  // uiBundleUrl is only meaningful when the plugin has aggregates or read
-  // models, since makeAutoUIManifest derives panels/pages from those kinds.
-  let hasUiComponents = resolved.aggregates->Array.length > 0 || resolved.readModels->Array.length > 0
-  let makeSig = hasUiComponents ? "  let make = (~uiBundleUrl=?) =>" : "  let make = () =>"
-  lines->Array.push(makeSig)
+  // Auto UI is always derived from pluginStructure by the host-shell. The
+  // uiFragments manifest is purely a federation-override map: empty
+  // remoteEntryUrl ⇒ Auto UI renders the fragment. The wiring is emitted
+  // whenever pluginStructure exists, so any plugin (aggregate/DCB/hybrid)
+  // can opt into a custom React bundle via the env var.
+  lines->Array.push("  let make = () =>")
   lines->Array.push("    Platform.Plugin.make(")
   lines->Array.push("      ~name=\"" ++ config.name ++ "\",")
   lines->Array.push("      ~heartbeatInterval=" ++ config.heartbeatInterval->Int.toString ++ ",")
 
-  let uiFragmentsParam = if hasUiComponents {
-    let aggEntries =
-      resolved.aggregates->Array.map(({spec}) => "module(" ++ spec ++ "Aggregate)")
-    let rmEntries =
-      resolved.readModels->Array.map(({readModel}) => {
-        // Mirror the wrapper-name choice in [renderReadModels] / [renderReadModelMakeParam]:
-        // post-Phase-3.3 specs are bare plurals (`Categories`), so the
-        // wrapping module appends `ReadModel` to disambiguate.
-        let wrapperName = if readModel->String.endsWith("ReadModel") {
-          readModel
-        } else {
-          readModel ++ "ReadModel"
-        }
-        "module(" ++ wrapperName ++ ")"
-      })
+  let uiFragmentsParam = if hasPluginStructure {
     let ls: array<string> = []
     ls->Array.push("      ~uiFragments=?uiBundleUrl->Option.map(url =>")
     ls->Array.push("        Platform.Plugin.makeAutoUIManifest(")
     ls->Array.push("          ~remoteEntryUrl=url,")
     ls->Array.push("          ~name=\"" ++ config.name ++ "\",")
-    ls->Array.push("          ~aggregates=[" ++ aggEntries->Array.join(", ") ++ "],")
-    ls->Array.push("          ~readModels=[" ++ rmEntries->Array.join(", ") ++ "],")
+    ls->Array.push("          ~pluginStructure,")
     ls->Array.push("          ~readModelPositions=[\"platform-summary\"],")
     ls->Array.push("          ~aggregatePositions=[\"resource-detail\"],")
     ls->Array.push("        )")
@@ -723,10 +697,7 @@ let render = (
   validateUniqueSpecStems(~discovered)
   validateSliceTargets(~resolved)
   switch config.variant {
-  | Aws({compositionNamespace}) =>
-    let hasUiComponents =
-      resolved.aggregates->Array.length > 0 || resolved.readModels->Array.length > 0
-    renderAwsWrapper(~name=config.name, ~compositionNamespace, ~hasUiComponents)
+  | Aws({compositionNamespace}) => renderAwsWrapper(~compositionNamespace)
   | Composition => renderComposition(~config, ~resolved)
   }
 }

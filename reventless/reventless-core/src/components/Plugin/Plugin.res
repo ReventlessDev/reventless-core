@@ -30,8 +30,7 @@ module type T = {
   let makeAutoUIManifest: (
     ~remoteEntryUrl: string,
     ~name: string,
-    ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>,
+    ~pluginStructure: Reventless.Plugin.pluginStructure,
     ~readModelPositions: array<string>=?,
     ~aggregatePositions: array<string>=?,
   ) => Reventless.Plugin.uiFragmentManifest

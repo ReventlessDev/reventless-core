@@ -700,7 +700,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Tasks
   module ImportProductsTask = Platform.Task.Make(ImportProducts)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
@@ -709,12 +709,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
       ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), ...],
       ~tasks=[module(ImportProductsTask)],
+      ~pluginStructure=pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,
           ~name="Catalog",
-          ~aggregates=[module(CategoryAggregate), module(ProductAggregate), module(ProductDemandAggregate)],
-          ~readModels=[module(CategoriesReadModel), module(ProductDemandsReadModel), ...],
+          ~pluginStructure,
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )
@@ -1001,7 +1001,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // Extensions
   module Orders_Extension = Platform.Extension.Make(Orders_Extension.Mapping)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
@@ -1229,7 +1229,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   module ProductsStreamSlice = Platform.StateViewSliceStream.Make(Products, Products_Projection)
   module ProductDemandStreamSlice = Platform.StateViewSliceStream.Make(ProductDemand, ProductDemand_Projection)
 
-  let make = (~uiBundleUrl=?) =>
+  let make = () =>
     Platform.Plugin.make(
       ~name="Catalog",
       ~heartbeatInterval=60,
@@ -1243,12 +1243,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
         module(ProductsStreamSlice),
         module(ProductDemandStreamSlice),
       ],
+      ~pluginStructure=pluginStructure,
       ~uiFragments=?uiBundleUrl->Option.map(url =>
         Platform.Plugin.makeAutoUIManifest(
           ~remoteEntryUrl=url,
           ~name="Catalog",
-          ~aggregates=[module(CategoryAggregate)],
-          ~readModels=[module(CategoriesReadModel)],
+          ~pluginStructure,
           ~readModelPositions=["platform-summary"],
           ~aggregatePositions=["resource-detail"],
         )
@@ -1616,66 +1616,61 @@ These aggregates:
 
 ## AutoUI
 
-AutoUI publishes a runtime UI manifest from plugin metadata so the platform's UI shell can mount the plugin's React components without any hardcoded imports. The plugin packages its UI as a Module-Federation remote bundle; the platform asks each connected plugin for the bundle URL and the list of components to mount.
+Auto UI renders every plugin's panels and pages from `pluginStructure` alone — no plugin React code is needed. The host shell reads each plugin's component metadata at boot and derives list/detail views for queryables and command forms for write-sides. The optional `~uiBundleUrl` env var is an *override*: a Module-Federation bundle that replaces specific Auto UI fragments by id. Leaving it unset means every fragment renders via Auto UI.
 
-### How it's enabled
+### How it's wired
 
-When a plugin has at least one aggregate or read model, the `generate-plugin` code generator emits an optional `~uiBundleUrl=?` parameter on the plugin's `make` and wires the conditional manifest:
-
-```rescript
-let make = (~uiBundleUrl=?) =>
-  Platform.Plugin.make(
-    ~name="Catalog",
-    ~heartbeatInterval=60,
-    ~aggregates=[module(CategoryAggregate)],
-    ~readModels=[module(CategoriesReadModel)],
-    // ... other params ...
-    ~uiFragments=?uiBundleUrl->Option.map(url =>
-      Platform.Plugin.makeAutoUIManifest(
-        ~remoteEntryUrl=url,
-        ~name="Catalog",
-        ~aggregates=[module(CategoryAggregate)],
-        ~readModels=[module(CategoriesReadModel)],
-        ~readModelPositions=["platform-summary"],
-        ~aggregatePositions=["resource-detail"],
-      )
-    ),
-  )
-```
-
-When `uiBundleUrl` is `None` (the default), `~uiFragments` is `None` and the plugin connects without a UI manifest — the platform shell shows nothing for it. When set, `makeAutoUIManifest` builds a `uiFragmentManifest` with the bundle's remote-entry URL and the list of components to mount in each shell slot. Plugins with neither aggregates nor read models get a plain `make = ()` with no UI parameter.
-
-### Supplying `uiBundleUrl` per deployment
-
-The bundle URL is deployment configuration, not plugin code. Both deploy paths read it from the same env var: `<PLUGIN>_UI_BUNDLE_URL` (PascalCase plugin name → SCREAMING_SNAKE_CASE — e.g., `Catalog` → `CATALOG_UI_BUNDLE_URL`, `OnlineShop` → `ONLINE_SHOP_UI_BUNDLE_URL`).
-
-**Local (`platform-local/src/Main.res`)** — the composition root reads env explicitly and forwards:
-
-```rescript
-@val external processEnv: dict<string> = "process.env"
-
-module CatalogMaker = {
-  let make = () =>
-    Catalog.make(~uiBundleUrl=?processEnv->Dict.get("CATALOG_UI_BUNDLE_URL"))
-}
-```
-
-**AWS (`catalog-aws/src/Plugin.res`)** — the generator emits the env-var read directly. The deployer calls `make()` (no args) per the `PluginMaker.make: unit => component` contract:
+Every plugin (aggregate, DCB, or hybrid) gets the same `make = ()` signature with the override door open. The `generate-plugin` code generator emits the env-var read at the top of `Plugin.res` and the conditional manifest inside the `make` call:
 
 ```rescript
 @val external uiBundleUrl: option<string> = "process.env.CATALOG_UI_BUNDLE_URL"
 
-module Make = (
-  Platform: ReventlessInfra.Platform.T
-    with type api = ReventlessAws.Types.AppSync.api
-    and type role = ReventlessAws.Types.AppSync.role,
-) => {
-  module Composition = CatalogPlugin.Plugin.Make(Platform)
-  let make = () => Composition.make(~uiBundleUrl?)
+module Make = (Platform: ReventlessInfra.Platform.T) => {
+  // ... component declarations ...
+
+  let pluginStructure = Platform.Plugin.makePluginDefinition(
+    ~name="Catalog",
+    // ... all kinds ...
+  )
+
+  let make = () =>
+    Platform.Plugin.make(
+      ~name="Catalog",
+      ~heartbeatInterval=60,
+      // ... other params ...
+      ~pluginStructure=pluginStructure,
+      ~uiFragments=?uiBundleUrl->Option.map(url =>
+        Platform.Plugin.makeAutoUIManifest(
+          ~remoteEntryUrl=url,
+          ~name="Catalog",
+          ~pluginStructure,
+          ~readModelPositions=["platform-summary"],
+          ~aggregatePositions=["resource-detail"],
+        )
+      ),
+    )
 }
 ```
 
-For local dev: `CATALOG_UI_BUNDLE_URL=http://localhost:5001 pnpm dev`. For AWS: set the env var on the Pulumi stack to a CloudFront URL pointing at the uploaded bundle.
+When `uiBundleUrl` is `None` (the default), `~uiFragments` is `None` — Auto UI handles every fragment via the host shell's built-in renderers, driven entirely by `pluginStructure`. When set, `makeAutoUIManifest` derives the list of fragment ids from `pluginStructure` and points each at the federation bundle; the host shell uses the bundle to override only those fragments.
+
+### Supplying `uiBundleUrl` per deployment
+
+The bundle URL is deployment configuration. Both deploy paths read it from the same env var: `<PLUGIN>_UI_BUNDLE_URL` (PascalCase plugin name → SCREAMING_SNAKE_CASE — e.g., `Catalog` → `CATALOG_UI_BUNDLE_URL`, `OnlineShop` → `ONLINE_SHOP_UI_BUNDLE_URL`). The generator emits the `@val external` declaration at the top of the Composition `Plugin.res`; both local and AWS deploys honour the same variable.
+
+For local dev: `CATALOG_UI_BUNDLE_URL=http://localhost:5001 pnpm dev`. For AWS: set the env var on the Pulumi stack to a CloudFront URL pointing at the uploaded bundle. The platform composition root passes plugins through bare — no wrapper module is needed:
+
+```rescript
+module Catalog = CatalogPlugin.Plugin.Make(Platform)
+module Ordering = OrderingPlugin.Plugin.Make(Platform)
+
+Platform.makePlatform(
+  ~version=Reventless.PackageVersion.fromCwd(),
+  ~plugins=[module(Catalog), module(Ordering)],
+)
+```
+
+The AWS variant's `Plugin.res` is a thin retypecast over the Composition variant — `let make = () => Composition.make()` — and forwards to the same env-var read.
 
 ### Component → AutoUI role
 
@@ -1683,18 +1678,19 @@ For local dev: `CATALOG_UI_BUNDLE_URL=http://localhost:5001 pnpm dev`. For AWS: 
 |---|---|
 | `Aggregate` | Commands — write-side; state is internal, not queryable |
 | `ReadModel` | List / detail view — aggregate-style queryable projection |
+| `StateChangeSlice` | Commands — DCB write-side; independent, not linked to any specific view |
 | `StateViewSlice` | List / detail view — DCB equivalent of ReadModel |
-| `StateChangeSlice` | Commands — independent; not linked to any specific view |
+| `StateViewSliceStream` | List / detail view — live-updating DCB view |
 
-Aggregates and StateChangeSlices provide command forms; ReadModels and StateViewSlices provide the queryable views those forms act on. The UI resolves linkage between them at render time — there is no automatic coupling at the manifest level.
+Aggregates and StateChangeSlices provide command forms; ReadModels and StateViewSlices (incl. their Stream variant) provide the queryable views those forms act on. The UI resolves linkage between them at render time — there is no automatic coupling at the manifest level.
 
 ### Accessing the manifest at runtime
 
-When a plugin connects with `Some(manifest)`, the platform's admin handler emits a `UIFragmentRegistered` event and writes the manifest into the `Plugin` admin read model. The shell observes the read model and the `Platform_UIFragmentRegistered/Updated/Deregistered` subscription to mount and unmount components.
+When a plugin connects with `Some(manifest)`, the platform's admin handler emits a `UIFragmentRegistered` event and writes the manifest into the `Plugin` admin read model. The shell observes the read model and the `Platform_UIFragmentRegistered/Updated/Deregistered` subscription to mount and unmount the overridden fragments. Auto UI fragments without an override mount directly from `Platform_ComponentDefinitions` at boot.
 
 ### No manual steps
 
-You never call `makeAutoUIManifest` by hand. The generator regenerates `Plugin.res` on every `pnpm run build`; new aggregates and read models appear in the manifest automatically. Toggle UI on per deployment by setting or unsetting the env var.
+You never call `makeAutoUIManifest` by hand. The generator regenerates `Plugin.res` on every `pnpm run build`; new components appear in `pluginStructure` (and therefore in any override manifest) automatically. Toggle the federation override per deployment by setting or unsetting the env var.
 
 ### Annotations that shape Auto UI
 

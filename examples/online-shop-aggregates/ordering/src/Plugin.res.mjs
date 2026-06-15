@@ -193,7 +193,7 @@ function Make(Platform) {
       mapIncomingCommand: Orders_ExtensionPointMapping$OrderingPlugin.mapIncomingCommand,
       mapOutgoingEvent: Orders_ExtensionPointMapping$OrderingPlugin.mapOutgoingEvent
     }]);
-  let make = uiBundleUrl => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [
+  let make = () => Platform.Plugin.make("Ordering", 5, [Orders_ExtensionPoint], [Products_Extension], [
     CatalogProductAggregate,
     CustomerAggregate,
     OrderAggregate
@@ -201,15 +201,7 @@ function Make(Platform) {
     AvailableProductsReadModel,
     CustomersReadModel,
     OrdersReadModel
-  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(uiBundleUrl, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", [
-    CatalogProductAggregate,
-    CustomerAggregate,
-    OrderAggregate
-  ], [
-    AvailableProductsReadModel,
-    CustomersReadModel,
-    OrdersReadModel
-  ], ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
+  ], [OrderNotificationsTask], undefined, undefined, undefined, undefined, undefined, Stdlib_Option.map(process.env.ORDERING_UI_BUNDLE_URL, url => Platform.Plugin.makeAutoUIManifest(url, "Ordering", pluginStructure, ["platform-summary"], ["resource-detail"])), pluginStructure, undefined);
   return {
     CatalogProductAggregate: CatalogProductAggregate,
     CustomerAggregate: CustomerAggregate,

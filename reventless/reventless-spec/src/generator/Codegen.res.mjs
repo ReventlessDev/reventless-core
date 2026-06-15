@@ -316,44 +316,28 @@ function pluginNameToEnvBase(name) {
   }).join("").toUpperCase();
 }
 
-function renderAwsWrapper(name, compositionNamespace, hasUiComponents) {
-  let header = ["// AUTO-GENERATED — do not edit. Run `npm run generate` to update."];
-  let externLines;
-  if (hasUiComponents) {
-    let envVar = pluginNameToEnvBase(name) + "_UI_BUNDLE_URL";
-    externLines = [
-      "",
-      "@val external uiBundleUrl: option<string> = \"process.env." + envVar + "\""
-    ];
-  } else {
-    externLines = [];
-  }
-  let functorLines = [
+function renderAwsWrapper(compositionNamespace) {
+  return [
+    "// AUTO-GENERATED — do not edit. Run `npm run generate` to update.",
     "",
     "module Make = (",
     "  Platform: ReventlessInfra.Platform.T",
     "    with type api = ReventlessAws.Types.AppSync.api",
     "    and type role = ReventlessAws.Types.AppSync.role,",
     ") => {",
-    "  module Composition = " + compositionNamespace + ".Plugin.Make(Platform)"
-  ];
-  let makeLines = hasUiComponents ? ["  let make = () => Composition.make(~uiBundleUrl?)"] : ["  let make = () => Composition.make()"];
-  let footer = [
+    "  module Composition = " + compositionNamespace + ".Plugin.Make(Platform)",
+    "  let make = () => Composition.make()",
     "}",
     ""
-  ];
-  return [
-    header,
-    externLines,
-    functorLines,
-    makeLines,
-    footer
-  ].flat().join("\n");
+  ].join("\n");
 }
 
 function renderComposition(config, resolved) {
   let lines = [];
   lines.push("// AUTO-GENERATED — do not edit. Run `npm run generate` to update.");
+  lines.push("");
+  lines.push("@val external uiBundleUrl: option<string> = \"process.env." + pluginNameToEnvBase(config.name) + "_UI_BUNDLE_URL\"");
+  lines.push("");
   lines.push("module Make = (Platform: ReventlessInfra.Platform.T) => {");
   let push = sectionLines => {
     sectionLines.forEach(l => {
@@ -413,27 +397,18 @@ function renderComposition(config, resolved) {
     });
     lines.push("");
   }
-  let hasUiComponents = resolved.aggregates.length !== 0 || resolved.readModels.length !== 0;
-  let makeSig = hasUiComponents ? "  let make = (~uiBundleUrl=?) =>" : "  let make = () =>";
-  lines.push(makeSig);
+  lines.push("  let make = () =>");
   lines.push("    Platform.Plugin.make(");
   lines.push("      ~name=\"" + config.name + "\",");
   lines.push("      ~heartbeatInterval=" + config.heartbeatInterval.toString() + ",");
   let uiFragmentsParam;
-  if (hasUiComponents) {
-    let aggEntries = resolved.aggregates.map(param => "module(" + param.spec + "Aggregate)");
-    let rmEntries = resolved.readModels.map(param => {
-      let readModel = param.readModel;
-      let wrapperName = readModel.endsWith("ReadModel") ? readModel : readModel + "ReadModel";
-      return "module(" + wrapperName + ")";
-    });
+  if (hasPluginStructure) {
     let ls = [];
     ls.push("      ~uiFragments=?uiBundleUrl->Option.map(url =>");
     ls.push("        Platform.Plugin.makeAutoUIManifest(");
     ls.push("          ~remoteEntryUrl=url,");
     ls.push("          ~name=\"" + config.name + "\",");
-    ls.push("          ~aggregates=[" + aggEntries.join(", ") + "],");
-    ls.push("          ~readModels=[" + rmEntries.join(", ") + "],");
+    ls.push("          ~pluginStructure,");
     ls.push("          ~readModelPositions=[\"platform-summary\"],");
     ls.push("          ~aggregatePositions=[\"resource-detail\"],");
     ls.push("        )");
@@ -475,9 +450,9 @@ function render(config, resolved, discovered) {
   let match = config.variant;
   if (typeof match !== "object") {
     return renderComposition(config, resolved);
+  } else {
+    return renderAwsWrapper(match.compositionNamespace);
   }
-  let hasUiComponents = resolved.aggregates.length !== 0 || resolved.readModels.length !== 0;
-  return renderAwsWrapper(config.name, match.compositionNamespace, hasUiComponents);
 }
 
 export {

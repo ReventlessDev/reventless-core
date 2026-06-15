@@ -11,25 +11,13 @@ let Catalog = Plugin$CatalogPlugin.Make(Platform);
 
 let Ordering = Plugin$OrderingPlugin.Make(Platform);
 
-function make() {
-  return Catalog.make(process.env["CATALOG_UI_BUNDLE_URL"]);
-}
-
-let CatalogMaker = {
-  make: make
-};
-
-function make$1() {
-  return Ordering.make(process.env["ORDERING_UI_BUNDLE_URL"]);
-}
-
-let OrderingMaker = {
-  make: make$1
-};
-
 Platform.makePlatform(PackageVersion$Reventless.fromCwd(), [
-  CatalogMaker,
-  OrderingMaker
+  {
+    make: Catalog.make
+  },
+  {
+    make: Ordering.make
+  }
 ]);
 
 Platform.startServers();
@@ -38,7 +26,5 @@ export {
   Platform,
   Catalog,
   Ordering,
-  CatalogMaker,
-  OrderingMaker,
 }
 /* Platform Not a pure module */

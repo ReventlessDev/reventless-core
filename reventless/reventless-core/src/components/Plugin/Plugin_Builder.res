@@ -831,64 +831,51 @@ module Make = (
   let makeAutoUIManifest = (
     ~remoteEntryUrl: string,
     ~name: string,
-    ~aggregates: array<module(ReventlessInfra.Aggregate.T with type api = api)>,
-    ~readModels: array<module(ReventlessInfra.ReadModel.T with type api = api and type role = role)>,
+    ~pluginStructure: Reventless.Plugin.pluginStructure,
     ~readModelPositions: array<string>=[],
     ~aggregatePositions: array<string>=[],
   ): Reventless.Plugin.uiFragmentManifest => {
-    // Internal ReadModels are hidden from the AutoUI manifest. They remain
-    // fully wired (resolvers, GraphQL schema, queryable defs, authorization)
-    // — visibility is a UX hint, not a security boundary. See
+    // Internal queryable components are hidden from the AutoUI manifest. They
+    // remain fully wired (resolvers, GraphQL schema, queryable defs,
+    // authorization) — visibility is a UX hint, not a security boundary. See
     // docs/plans/done/component-visibility-annotations.md
-    let visibleReadModels =
-      readModels->Array.filter((
-        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-      ) =>
-        switch R.Spec.visibility {
-        | Public => true
-        | Internal => false
-        }
-      )
-    let panels =
-      Array.concat(
-        visibleReadModels->Array.map((
-          module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-        ) =>
-          (
-            {
-              fragmentId: name ++ "." ++ R.Spec.name ++ ".list",
-              title: R.Spec.name,
-              description: "",
-              positions: readModelPositions,
-              requiredAccess: None,
-            }: Reventless.Plugin.panelManifestEntry
-          )
-        ),
-        aggregates->Array.map((module(M: ReventlessInfra.Aggregate.T with type api = api)) =>
-          (
-            {
-              fragmentId: name ++ "." ++ M.Spec.name ++ ".detail",
-              title: M.Spec.name,
-              description: "",
-              positions: aggregatePositions,
-              requiredAccess: None,
-            }: Reventless.Plugin.panelManifestEntry
-          )
-        ),
-      )
-    let pages =
-      visibleReadModels->Array.map((
-        module(R: ReventlessInfra.ReadModel.T with type api = api and type role = role),
-      ) =>
-        (
-          {
-            fragmentId: name ++ "." ++ R.Spec.name ++ ".list",
-            title: R.Spec.name,
-            menuEntry: {label: R.Spec.name, icon: None, group: None, sortOrder: 0},
-            requiredAccess: None,
-          }: Reventless.Plugin.pageManifestEntry
-        )
-      )
+    let isVisibleQueryable = (q: Reventless.Plugin.queryableDef) =>
+      switch q.visibility {
+      | Some("Internal") => false
+      | _ => true
+      }
+    let visibleReadModels = pluginStructure.readModels->Array.filter(isVisibleQueryable)
+    let visibleStateViewSlices = pluginStructure.stateViewSlices->Array.filter(isVisibleQueryable)
+    let listPanel = (q: Reventless.Plugin.queryableDef): Reventless.Plugin.panelManifestEntry => {
+      fragmentId: name ++ "." ++ q.name ++ ".list",
+      title: q.name,
+      description: "",
+      positions: readModelPositions,
+      requiredAccess: None,
+    }
+    let detailPanel = (w: Reventless.Plugin.writableDef): Reventless.Plugin.panelManifestEntry => {
+      fragmentId: name ++ "." ++ w.name ++ ".detail",
+      title: w.name,
+      description: "",
+      positions: aggregatePositions,
+      requiredAccess: None,
+    }
+    let listPage = (q: Reventless.Plugin.queryableDef): Reventless.Plugin.pageManifestEntry => {
+      fragmentId: name ++ "." ++ q.name ++ ".list",
+      title: q.name,
+      menuEntry: {label: q.name, icon: None, group: None, sortOrder: 0},
+      requiredAccess: None,
+    }
+    let panels = Array.flat([
+      visibleReadModels->Array.map(listPanel),
+      visibleStateViewSlices->Array.map(listPanel),
+      pluginStructure.aggregates->Array.map(detailPanel),
+      pluginStructure.stateChangeSlices->Array.map(detailPanel),
+    ])
+    let pages = Array.flat([
+      visibleReadModels->Array.map(listPage),
+      visibleStateViewSlices->Array.map(listPage),
+    ])
     {remoteEntryUrl, panels, pages}
   }
 
