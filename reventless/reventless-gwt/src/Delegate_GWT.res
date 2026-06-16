@@ -63,6 +63,10 @@ module type T = {
   let whenInput: inbound => promise<array<JSON.t>>
   let thenPublishedJson: (promise<array<JSON.t>>, array<JSON.t>) => promise<Outcome.outcome>
   let thenPublishesNothing: promise<array<JSON.t>> => promise<Outcome.outcome>
+  // Assert the SET of HANDLED DIRECTIVES (HandleDirective actions, encoded by the
+  // EP/Extension directive schema). Disjoint from thenPublishedJson — published
+  // events/commands and handled directives are separate channels.
+  let thenHandlesDirectivesJson: (promise<array<JSON.t>>, array<JSON.t>) => promise<Outcome.outcome>
 }
 
 module Make = (D: Delegate): (T with type inbound = D.inbound) => {
@@ -81,8 +85,21 @@ module Make = (D: Delegate): (T with type inbound = D.inbound) => {
   let sortJson = (arr: array<JSON.t>) =>
     arr->Array.toSorted((a, b) => String.compare(JSON.stringify(a), JSON.stringify(b)))
 
+  // Handled directives ride the same normalised array tagged `target:"directive"`
+  // so a single mapping run carries both channels; the publish/directive verbs
+  // each project to their own. (Published actions never use that target — EP/Ext
+  // events and commands route to an id, a component name, or `<ep>:<id>`.)
+  let targetOf = (j: JSON.t): string =>
+    j
+    ->JSON.Decode.object
+    ->Option.flatMap(d => d->Dict.get("target"))
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.getOr("")
+  let dropDirectives = arr => arr->Array.filter(j => targetOf(j) != "directive")
+  let onlyDirectives = arr => arr->Array.filter(j => targetOf(j) == "directive")
+
   let thenPublishedJson = async (actionsP, expected) => {
-    let actual = await actionsP
+    let actual = (await actionsP)->dropDirectives
     if sortJson(actual) == sortJson(expected) {
       Outcome.pass
     } else {
@@ -91,6 +108,15 @@ module Make = (D: Delegate): (T with type inbound = D.inbound) => {
   }
 
   let thenPublishesNothing = actionsP => thenPublishedJson(actionsP, [])
+
+  let thenHandlesDirectivesJson = async (actionsP, expected) => {
+    let actual = (await actionsP)->onlyDirectives
+    if sortJson(actual) == sortJson(expected) {
+      Outcome.pass
+    } else {
+      Outcome.fail(PublishedActionsMismatch({expected, actual}))
+    }
+  }
 }
 
 // -- FromExtensionPoint: an EP mapping (both directions) ---------------------
@@ -98,6 +124,8 @@ module Make = (D: Delegate): (T with type inbound = D.inbound) => {
 module FromExtensionPoint = (M: EPMapping.Mapping) => {
   let encEvent = (e: M.ExtensionPoint.event) => e->Message.encode(M.ExtensionPoint.eventSchema)
   let encCommand = (c: M.Delegate.command) => c->Message.encode(M.Delegate.commandSchema)
+  let encDirective = (d: M.ExtensionPoint.directive) =>
+    encPublished(~target="directive", d->Message.encode(M.ExtensionPoint.directiveSchema))
 
   // Internal delegate event → outgoing extension-point events (`mapOutgoingEvent`).
   module EvCore = Make({
@@ -115,7 +143,7 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
             | EPMapping.PublishEventAsync(p) =>
               let (id, ev) = await p
               [encPublished(~target=id, encEvent(ev))]
-            | EPMapping.HandleDirective(_, _) => []
+            | EPMapping.HandleDirective(_, dir) => [encDirective(dir)]
             }
           )
           ->Promise.all
@@ -131,7 +159,7 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
       M.mapIncomingCommand("gwt-id", command, StubRuntime.meta)->Array.filterMap(action =>
         switch action {
         | EPMapping.PublishCommand(id, cmd) => Some(encPublished(~target=id, encCommand(cmd)))
-        | EPMapping.HandleDirective(_, _) => None
+        | EPMapping.HandleDirective(_, dir) => Some(encDirective(dir))
         }
       )
   })
@@ -162,6 +190,14 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
       actionsP,
       pairs->Array.map(((id, cmd)) => encPublished(~target=id, encCommand(cmd))),
     )
+
+  // Handled directives — usable after either `when`; both cores tag directives on
+  // the same channel, so this projects them out regardless of direction.
+  let thenHandlesDirective = (actionsP, directive: M.ExtensionPoint.directive) =>
+    EvCore.thenHandlesDirectivesJson(actionsP, [encDirective(directive)])
+  let thenHandlesDirectives = (actionsP, directives: array<M.ExtensionPoint.directive>) =>
+    EvCore.thenHandlesDirectivesJson(actionsP, directives->Array.map(encDirective))
+  let thenHandlesNoDirective = actionsP => EvCore.thenHandlesDirectivesJson(actionsP, [])
 }
 
 // -- FromExtension: an Extension delegate (both directions) ------------------
@@ -169,6 +205,8 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
 module FromExtension = (M: ExtMapping.Mapping) => {
   let encCmd = (c: M.Delegate.command) => c->Message.encode(M.Delegate.commandSchema)
   let encEpCmd = (c: M.ExtensionPoint.command) => c->Message.encode(M.ExtensionPoint.commandSchema)
+  let encDirective = (d: M.ExtensionPoint.directive) =>
+    encPublished(~target="directive", d->Message.encode(M.ExtensionPoint.directiveSchema))
 
   // Incoming extension-point event → delegate commands (`mapIncomingEvent`).
   module EvCore = Make({
@@ -205,7 +243,7 @@ module FromExtension = (M: ExtMapping.Mapping) => {
           | ExtMapping.ForwardCommand({extensionPointName, id, commandJson}) => [
               encPublished(~target=`${extensionPointName}:${id}`, commandJson),
             ]
-          | ExtMapping.HandleDirective(_, _) => []
+          | ExtMapping.HandleDirective(_, dir) => [encDirective(dir)]
           }
         )
         ->Promise.all
@@ -227,7 +265,7 @@ module FromExtension = (M: ExtMapping.Mapping) => {
             Some(encPublished(~target=id, encEpCmd(cmd)))
           | ExtMapping.ForwardCommand({extensionPointName, id, commandJson}) =>
             Some(encPublished(~target=`${extensionPointName}:${id}`, commandJson))
-          | ExtMapping.HandleDirective(_, _) => None
+          | ExtMapping.HandleDirective(_, dir) => Some(encDirective(dir))
           }
         )
       }
@@ -254,4 +292,12 @@ module FromExtension = (M: ExtMapping.Mapping) => {
   let whenDelegateEvent = OutCore.whenInput
   let thenPublishesExtensionPointCommand = (actionsP, id, cmd: M.ExtensionPoint.command) =>
     OutCore.thenPublishedJson(actionsP, [encPublished(~target=id, encEpCmd(cmd))])
+
+  // Handled directives — usable after either `when` (both cores tag directives on
+  // the same channel).
+  let thenHandlesDirective = (actionsP, directive: M.ExtensionPoint.directive) =>
+    EvCore.thenHandlesDirectivesJson(actionsP, [encDirective(directive)])
+  let thenHandlesDirectives = (actionsP, directives: array<M.ExtensionPoint.directive>) =>
+    EvCore.thenHandlesDirectivesJson(actionsP, directives->Array.map(encDirective))
+  let thenHandlesNoDirective = actionsP => EvCore.thenHandlesDirectivesJson(actionsP, [])
 }

@@ -147,16 +147,15 @@ module OrdersEpMapping = {
     (_id, event: OrderDelegate.event, _meta, _queryEngine) =>
       switch event {
       | OrderPlaced({orderId, customerId, productIds}) =>
-        productIds->Array.map(pid =>
-          EPM.PublishEvent(
-            pid,
-            OrdersEpSpec.ItemOrdered({productId: pid, orderId, customerId}),
-          )
-        )
+        productIds->Array.map(pid => EPM.PublishEvent(
+          pid,
+          OrdersEpSpec.ItemOrdered({productId: pid, orderId, customerId}),
+        ))
       | OrderCancelled({orderId, productIds}) =>
-        productIds->Array.map(pid =>
-          EPM.PublishEvent(pid, OrdersEpSpec.ItemOrderCancelled({productId: pid, orderId}))
-        )
+        productIds->Array.map(pid => EPM.PublishEvent(
+          pid,
+          OrdersEpSpec.ItemOrderCancelled({productId: pid, orderId}),
+        ))
       },
   )
 }
@@ -370,6 +369,119 @@ FeedbackExtGwt.describe("Feedback Extension delegate — outgoing command", () =
     )->FeedbackExtGwt.thenPublishesExtensionPointCommand(
       "gwt-id",
       FeedbackEpSpec.AckProduct({productId: "p1"}),
+    )
+  )
+})
+
+// ---------------------------------------------------------------------------
+// Directives — a `HandleDirective` action carries a typed directive on its own
+// channel: asserted via `thenHandlesDirective`, disjoint from published events
+// (an arm can do both), and `thenHandlesNoDirective` confirms an arm raises none.
+// ---------------------------------------------------------------------------
+
+module NotifyEpSpec = {
+  let name = "Catalog.Notify"
+  let moduleUrl = ""
+
+  @schema
+  type command = NoCommand
+
+  @schema
+  type event = Pinged({productId: string})
+
+  @schema
+  type directive =
+    | NotifyOps({channel: string})
+    | FlushCache
+}
+
+module NotifyEpMapping = {
+  module ExtensionPoint = NotifyEpSpec
+  module Delegate = ProductDelegate
+
+  let moduleUrl = "test:DelegateGwtTest:NotifyEpMapping"
+
+  let handleDirective: EPM.directiveHandler<NotifyEpSpec.directive> = (_c, _d, _q, _dir) =>
+    Promise.resolve()
+
+  let mapIncomingCommand = (_id, _command, _meta) => []
+
+  // ProductAdded both PUBLISHES an event and HANDLES a directive; ProductPriceChanged
+  // publishes only — so `thenHandlesNoDirective` holds for it.
+  let mapOutgoingEvent = Some(
+    (_id, event: ProductDelegate.event, _meta, _queryEngine) =>
+      switch event {
+      | ProductAdded({productId}) => [
+          EPM.PublishEvent(productId, NotifyEpSpec.Pinged({productId: productId})),
+          EPM.HandleDirective(handleDirective, NotifyEpSpec.NotifyOps({channel: "ops"})),
+        ]
+      | ProductPriceChanged({productId}) => [
+          EPM.PublishEvent(productId, NotifyEpSpec.Pinged({productId: productId})),
+        ]
+      },
+  )
+}
+
+module NotifyEpGwt = Delegate_GWT.FromExtensionPoint(NotifyEpMapping)
+
+NotifyEpGwt.describe("Notify ExtensionPoint mapping — directives", () => {
+  NotifyEpGwt.test("ProductAdded handles the NotifyOps directive", () =>
+    NotifyEpGwt.whenDelegateEvent(
+      ProductDelegate.ProductAdded({productId: "p1", name: "Book", price: 9.99}),
+    )->NotifyEpGwt.thenHandlesDirective(NotifyEpSpec.NotifyOps({channel: "ops"}))
+  )
+
+  // The directive does NOT leak into the published-event channel.
+  NotifyEpGwt.test("ProductAdded still publishes only the Pinged event", () =>
+    NotifyEpGwt.whenDelegateEvent(
+      ProductDelegate.ProductAdded({productId: "p1", name: "Book", price: 9.99}),
+    )->NotifyEpGwt.thenPublishesEvent("p1", NotifyEpSpec.Pinged({productId: "p1"}))
+  )
+
+  NotifyEpGwt.test("ProductPriceChanged raises no directive", () =>
+    NotifyEpGwt.whenDelegateEvent(
+      ProductDelegate.ProductPriceChanged({productId: "p1", price: 7.5}),
+    )->NotifyEpGwt.thenHandlesNoDirective
+  )
+})
+
+module NotifyExtMapping = {
+  module ExtensionPoint = NotifyEpSpec
+  module Delegate = SyncDelegate
+
+  let moduleUrl = ""
+  let delegateModuleUrl = ""
+
+  // An Extension directive handler is a bare `Reventless.Handler.handler` (no
+  // Schedule/QueryEngine args — extensions are user code).
+  let handleDirective: Reventless.Handler.handler<NotifyEpSpec.directive> = _dir =>
+    Promise.resolve()
+
+  let mapIncomingEvent = (_id, event: NotifyEpSpec.event, _meta, _pluginDef, _queryEngine) =>
+    switch event {
+    | Pinged({productId}) => [
+        EM.PublishStateChangeSliceCommand(SyncDelegate.ChangeSyncedPrice({productId, price: 0.0})),
+        EM.HandleDirective(handleDirective, NotifyEpSpec.FlushCache),
+      ]
+    }
+
+  let mapOutgoingEvent = None
+}
+
+module NotifyExtGwt = Delegate_GWT.FromExtension(NotifyExtMapping)
+
+NotifyExtGwt.describe("Notify Extension delegate — directives", () => {
+  NotifyExtGwt.test("Pinged handles the FlushCache directive", () =>
+    NotifyExtGwt.whenIncomingEvent(
+      NotifyEpSpec.Pinged({productId: "p1"}),
+    )->NotifyExtGwt.thenHandlesDirective(NotifyEpSpec.FlushCache)
+  )
+
+  NotifyExtGwt.test("Pinged still publishes only the ChangeSyncedPrice command", () =>
+    NotifyExtGwt.whenIncomingEvent(
+      NotifyEpSpec.Pinged({productId: "p1"}),
+    )->NotifyExtGwt.thenPublishesCommand(
+      SyncDelegate.ChangeSyncedPrice({productId: "p1", price: 0.0}),
     )
   )
 })

@@ -654,6 +654,208 @@ FeedbackExtGwt.describe("Feedback Extension delegate — outgoing command", () =
   productId: "p1"
 })));
 
+let commandSchema$9 = S.literal("NoCommand");
+
+let eventSchema$9 = S.schema(s => ({
+  TAG: "Pinged",
+  productId: s.m(S.string)
+}));
+
+let directiveSchema$4 = S.union([
+  S.schema(s => ({
+    TAG: "NotifyOps",
+    channel: s.m(S.string)
+  })),
+  S.literal("FlushCache")
+]);
+
+function commandAuthorization$9(param) {
+  return "AllowAuthenticated";
+}
+
+let NotifyEpSpec = {
+  name: "Catalog.Notify",
+  moduleUrl: "",
+  commandSchema: commandSchema$9,
+  eventSchema: eventSchema$9,
+  directiveSchema: directiveSchema$4,
+  commandAuthorization: commandAuthorization$9
+};
+
+let moduleUrl$10 = "test:DelegateGwtTest:NotifyEpMapping";
+
+function handleDirective(_c, _d, _q, _dir) {
+  return Promise.resolve();
+}
+
+function mapIncomingCommand$3(_id, _command, _meta) {
+  return [];
+}
+
+let mapOutgoingEvent$3 = (_id, event, _meta, _queryEngine) => {
+  if (event.TAG === "ProductAdded") {
+    let productId = event.productId;
+    return [
+      {
+        TAG: "PublishEvent",
+        _0: productId,
+        _1: {
+          TAG: "Pinged",
+          productId: productId
+        }
+      },
+      {
+        TAG: "HandleDirective",
+        _0: handleDirective,
+        _1: {
+          TAG: "NotifyOps",
+          channel: "ops"
+        }
+      }
+    ];
+  }
+  let productId$1 = event.productId;
+  return [{
+      TAG: "PublishEvent",
+      _0: productId$1,
+      _1: {
+        TAG: "Pinged",
+        productId: productId$1
+      }
+    }];
+};
+
+let NotifyEpMapping = {
+  ExtensionPoint: undefined,
+  Delegate: undefined,
+  moduleUrl: moduleUrl$10,
+  handleDirective: handleDirective,
+  mapIncomingCommand: mapIncomingCommand$3,
+  mapOutgoingEvent: mapOutgoingEvent$3
+};
+
+let NotifyEpGwt = Delegate_GWT$ReventlessGwt.FromExtensionPoint({
+  ExtensionPoint: NotifyEpSpec,
+  Delegate: {
+    Id: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
+    name: name,
+    eventSchema: eventSchema$1,
+    errorSchema: errorSchema,
+    commandSchema: commandSchema$1,
+    moduleUrl: moduleUrl,
+    commandAuthorization: commandAuthorization$1
+  },
+  moduleUrl: moduleUrl$10,
+  mapIncomingCommand: mapIncomingCommand$3,
+  mapOutgoingEvent: mapOutgoingEvent$3
+});
+
+NotifyEpGwt.describe("Notify ExtensionPoint mapping — directives", () => {
+  NotifyEpGwt.test("ProductAdded handles the NotifyOps directive", undefined, () => NotifyEpGwt.thenHandlesDirective(NotifyEpGwt.whenDelegateEvent({
+    TAG: "ProductAdded",
+    productId: "p1",
+    name: "Book",
+    price: 9.99
+  }), {
+    TAG: "NotifyOps",
+    channel: "ops"
+  }));
+  NotifyEpGwt.test("ProductAdded still publishes only the Pinged event", undefined, () => NotifyEpGwt.thenPublishesEvent(NotifyEpGwt.whenDelegateEvent({
+    TAG: "ProductAdded",
+    productId: "p1",
+    name: "Book",
+    price: 9.99
+  }), "p1", {
+    TAG: "Pinged",
+    productId: "p1"
+  }));
+  NotifyEpGwt.test("ProductPriceChanged raises no directive", undefined, () => NotifyEpGwt.thenHandlesNoDirective(NotifyEpGwt.whenDelegateEvent({
+    TAG: "ProductPriceChanged",
+    productId: "p1",
+    price: 7.5
+  })));
+});
+
+let moduleUrl$11 = "";
+
+let delegateModuleUrl$2 = "";
+
+function handleDirective$1(_dir) {
+  return Promise.resolve();
+}
+
+function mapIncomingEvent$2(_id, event, _meta, _pluginDef, _queryEngine) {
+  return [
+    {
+      TAG: "PublishStateChangeSliceCommand",
+      _0: {
+        TAG: "ChangeSyncedPrice",
+        productId: event.productId,
+        price: 0.0
+      }
+    },
+    {
+      TAG: "HandleDirective",
+      _0: handleDirective$1,
+      _1: "FlushCache"
+    }
+  ];
+}
+
+let NotifyExtMapping = {
+  ExtensionPoint: undefined,
+  Delegate: undefined,
+  moduleUrl: moduleUrl$11,
+  delegateModuleUrl: delegateModuleUrl$2,
+  handleDirective: handleDirective$1,
+  mapIncomingEvent: mapIncomingEvent$2,
+  mapOutgoingEvent: undefined
+};
+
+let NotifyExtGwt = Delegate_GWT$ReventlessGwt.FromExtension({
+  ExtensionPoint: NotifyEpSpec,
+  Delegate: {
+    Id: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
+    name: name$2,
+    eventSchema: eventSchema$4,
+    errorSchema: errorSchema$2,
+    commandSchema: commandSchema$4,
+    moduleUrl: moduleUrl$4,
+    commandAuthorization: commandAuthorization$4
+  },
+  moduleUrl: moduleUrl$11,
+  delegateModuleUrl: delegateModuleUrl$2,
+  mapIncomingEvent: mapIncomingEvent$2,
+  mapOutgoingEvent: undefined
+});
+
+NotifyExtGwt.describe("Notify Extension delegate — directives", () => {
+  NotifyExtGwt.test("Pinged handles the FlushCache directive", undefined, () => NotifyExtGwt.thenHandlesDirective(NotifyExtGwt.whenIncomingEvent({
+    TAG: "Pinged",
+    productId: "p1"
+  }), "FlushCache"));
+  NotifyExtGwt.test("Pinged still publishes only the ChangeSyncedPrice command", undefined, () => NotifyExtGwt.thenPublishesCommand(NotifyExtGwt.whenIncomingEvent({
+    TAG: "Pinged",
+    productId: "p1"
+  }), {
+    TAG: "ChangeSyncedPrice",
+    productId: "p1",
+    price: 0.0
+  }));
+});
+
 let EPM;
 
 let EM;
@@ -680,5 +882,10 @@ export {
   SyncedDelegate,
   FeedbackExtMapping,
   FeedbackExtGwt,
+  NotifyEpSpec,
+  NotifyEpMapping,
+  NotifyEpGwt,
+  NotifyExtMapping,
+  NotifyExtGwt,
 }
 /*  Not a pure module */
