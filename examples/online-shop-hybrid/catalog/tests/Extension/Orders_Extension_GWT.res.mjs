@@ -37,6 +37,8 @@ let whenIncomingEvent = include.whenIncomingEvent;
 
 let thenPublishesCommand = include.thenPublishesCommand;
 
+let thenHandlesDirective = include.thenHandlesDirective;
+
 describe("Orders Extension delegate", () => {
   test("ItemOrdered records demand for the product", undefined, () => thenPublishesCommand(whenIncomingEvent({
     TAG: "ItemOrdered",
@@ -45,6 +47,16 @@ describe("Orders Extension delegate", () => {
     customerId: "c1"
   }), {
     TAG: "RecordDemand",
+    productId: "p1",
+    orderId: "o1"
+  }));
+  test("ItemOrdered fires an order-recorded telemetry directive", undefined, () => thenHandlesDirective(whenIncomingEvent({
+    TAG: "ItemOrdered",
+    productId: "p1",
+    orderId: "o1",
+    customerId: "c1"
+  }), {
+    TAG: "EmitOrderRecordedTelemetry",
     productId: "p1",
     orderId: "o1"
   }));
@@ -57,11 +69,22 @@ describe("Orders Extension delegate", () => {
     productId: "p1",
     orderId: "o1"
   }));
+  test("ItemOrderCancelled fires an order-cancelled telemetry directive", undefined, () => thenHandlesDirective(whenIncomingEvent({
+    TAG: "ItemOrderCancelled",
+    productId: "p1",
+    orderId: "o1"
+  }), {
+    TAG: "EmitOrderCancelledTelemetry",
+    productId: "p1",
+    orderId: "o1"
+  }));
 });
 
 let encCmd = include.encCmd;
 
 let encEpCmd = include.encEpCmd;
+
+let encDirective = include.encDirective;
 
 let EvCore = include.EvCore;
 
@@ -77,9 +100,14 @@ let whenDelegateEvent = include.whenDelegateEvent;
 
 let thenPublishesExtensionPointCommand = include.thenPublishesExtensionPointCommand;
 
+let thenHandlesDirectives = include.thenHandlesDirectives;
+
+let thenHandlesNoDirective = include.thenHandlesNoDirective;
+
 export {
   encCmd,
   encEpCmd,
+  encDirective,
   EvCore,
   OutCore,
   describe,
@@ -91,5 +119,8 @@ export {
   thenPublishesAggregateCommand,
   whenDelegateEvent,
   thenPublishesExtensionPointCommand,
+  thenHandlesDirective,
+  thenHandlesDirectives,
+  thenHandlesNoDirective,
 }
 /* include Not a pure module */

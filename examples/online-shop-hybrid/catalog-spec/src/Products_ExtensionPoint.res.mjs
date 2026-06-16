@@ -16,11 +16,15 @@ let eventSchema = S.union([
   }))
 ]);
 
+let directiveSchema = S.schema(s => ({
+  TAG: "EmitPricingUpdate",
+  productId: s.m(S.string),
+  price: s.m(S.float)
+}));
+
 let name = "Catalog.Products";
 
 let commandSchema = S.unit;
-
-let directiveSchema = S.unit;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-catalog-spec/src/Products_ExtensionPoint.res.mjs";
 

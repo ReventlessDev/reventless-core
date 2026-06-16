@@ -103,6 +103,10 @@ type event =
   | CustomerUpdated({customerId: string, name: string, email: string})
   | CustomerDeleted({customerId: string})
 
+// Side effects this ExtensionPoint's mapping can fire from `mapOutgoingEvent` /
+// `mapIncomingCommand`. Defaults to `unit` (no side effects). For a typed
+// example, see `EmitPricingUpdate` in the hybrid online-shop example at
+// `examples/online-shop-hybrid/catalog-spec/src/Products_ExtensionPoint.res`.
 @schema
 type directive = unit
 ```

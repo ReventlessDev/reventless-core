@@ -64,6 +64,8 @@ let encCmd = include.encCmd;
 
 let encEpCmd = include.encEpCmd;
 
+let encDirective = include.encDirective;
+
 let EvCore = include.EvCore;
 
 let OutCore = include.OutCore;
@@ -78,9 +80,16 @@ let whenDelegateEvent = include.whenDelegateEvent;
 
 let thenPublishesExtensionPointCommand = include.thenPublishesExtensionPointCommand;
 
+let thenHandlesDirective = include.thenHandlesDirective;
+
+let thenHandlesDirectives = include.thenHandlesDirectives;
+
+let thenHandlesNoDirective = include.thenHandlesNoDirective;
+
 export {
   encCmd,
   encEpCmd,
+  encDirective,
   EvCore,
   OutCore,
   describe,
@@ -92,5 +101,8 @@ export {
   thenPublishesAggregateCommand,
   whenDelegateEvent,
   thenPublishesExtensionPointCommand,
+  thenHandlesDirective,
+  thenHandlesDirectives,
+  thenHandlesNoDirective,
 }
 /* include Not a pure module */

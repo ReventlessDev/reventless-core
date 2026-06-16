@@ -2,31 +2,65 @@
 
 import * as RecordProductDemand$CatalogPlugin from "../ProductDemand/StateChangeSlice/RecordProductDemand.res.mjs";
 
+async function directiveHandler(directive) {
+  if (directive.TAG === "EmitOrderRecordedTelemetry") {
+    console.log(`[Catalog.OrdersExtension] telemetry: order recorded product=` + directive.productId + ` order=` + directive.orderId);
+    return;
+  }
+  console.log(`[Catalog.OrdersExtension] telemetry: order cancelled product=` + directive.productId + ` order=` + directive.orderId);
+}
+
 function mapIncomingEvent(_id, event, _meta, _pluginDef, _queryEngine) {
   if (event.TAG === "ItemOrdered") {
-    return [{
+    let orderId = event.orderId;
+    let productId = event.productId;
+    return [
+      {
         TAG: "PublishStateChangeSliceCommand",
         _0: {
           TAG: "RecordDemand",
-          productId: event.productId,
-          orderId: event.orderId
+          productId: productId,
+          orderId: orderId
         }
-      }];
-  } else {
-    return [{
-        TAG: "PublishStateChangeSliceCommand",
-        _0: {
-          TAG: "RevokeDemand",
-          productId: event.productId,
-          orderId: event.orderId
+      },
+      {
+        TAG: "HandleDirective",
+        _0: directiveHandler,
+        _1: {
+          TAG: "EmitOrderRecordedTelemetry",
+          productId: productId,
+          orderId: orderId
         }
-      }];
+      }
+    ];
   }
+  let orderId$1 = event.orderId;
+  let productId$1 = event.productId;
+  return [
+    {
+      TAG: "PublishStateChangeSliceCommand",
+      _0: {
+        TAG: "RevokeDemand",
+        productId: productId$1,
+        orderId: orderId$1
+      }
+    },
+    {
+      TAG: "HandleDirective",
+      _0: directiveHandler,
+      _1: {
+        TAG: "EmitOrderCancelledTelemetry",
+        productId: productId$1,
+        orderId: orderId$1
+      }
+    }
+  ];
 }
 
 let Mapping = {
   ExtensionPoint: undefined,
   Delegate: undefined,
+  directiveHandler: directiveHandler,
   mapIncomingEvent: mapIncomingEvent,
   mapOutgoingEvent: undefined,
   delegateModuleUrl: RecordProductDemand$CatalogPlugin.moduleUrl,

@@ -16,11 +16,22 @@ let eventSchema = S.union([
   }))
 ]);
 
+let directiveSchema = S.union([
+  S.schema(s => ({
+    TAG: "EmitOrderRecordedTelemetry",
+    productId: s.m(S.string),
+    orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "EmitOrderCancelledTelemetry",
+    productId: s.m(S.string),
+    orderId: s.m(S.string)
+  }))
+]);
+
 let name = "Ordering.Orders";
 
 let commandSchema = S.unit;
-
-let directiveSchema = S.unit;
 
 let moduleUrl = "@reventlessdev/online-shop-hybrid-ordering-spec/src/Orders_ExtensionPoint.res.mjs";
 

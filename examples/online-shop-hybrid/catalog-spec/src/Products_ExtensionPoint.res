@@ -11,5 +11,9 @@ type event =
   | ProductBecameAvailable({productId: string, name: string, price: float})
   | ProductPriceChanged({productId: string, price: float})
 
+// Non-domain side effects an EP-side mapping can fire alongside its events.
+// Fired from the publishing side; not durable, not replayable, not routed to
+// subscribers. See `catalog/src/ExtensionPoint/Products_ExtensionPointMapping.res`.
 @schema
-type directive = unit
+type directive =
+  | EmitPricingUpdate({productId: string, price: float})

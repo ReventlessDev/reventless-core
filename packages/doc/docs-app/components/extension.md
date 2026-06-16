@@ -264,6 +264,12 @@ type event =
   | CustomerUpdated({customerId: string, name: string, email: string})
   | CustomerDeleted({customerId: string})
 
+// Side effects an Extension subscribing to this EP can fire from
+// `mapIncomingEvent`. Defaults to `unit`. For a typed example with two
+// constructors (`EmitOrderRecordedTelemetry` / `EmitOrderCancelledTelemetry`)
+// fired from a subscriber alongside its state-change commands, see
+// `examples/online-shop-hybrid/ordering-spec/src/Orders_ExtensionPoint.res`
+// and `examples/online-shop-hybrid/catalog/src/Extension/Orders_Extension.res`.
 @schema
 type directive = unit
 ```

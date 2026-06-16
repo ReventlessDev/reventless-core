@@ -36,6 +36,10 @@ function mapIncomingCommand(_id, _command, _meta) {
   return [];
 }
 
+async function directiveHandler(_createSchedule, _deleteSchedule, _queryEngine, directive) {
+  console.log(`[Catalog.ProductsExtensionPoint] telemetry: pricing update product=` + directive.productId + ` price=` + directive.price.toString());
+}
+
 let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   if (event.TAG === "ProductAdded") {
     let productId = event.productId;
@@ -50,16 +54,28 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
         }
       }];
   }
+  let price = event.price;
   let productId$1 = event.productId;
-  return [{
+  return [
+    {
       TAG: "PublishEvent",
       _0: productId$1,
       _1: {
         TAG: "ProductPriceChanged",
         productId: productId$1,
-        price: event.price
+        price: price
       }
-    }];
+    },
+    {
+      TAG: "HandleDirective",
+      _0: directiveHandler,
+      _1: {
+        TAG: "EmitPricingUpdate",
+        productId: productId$1,
+        price: price
+      }
+    }
+  ];
 };
 
 let name = "Products";
@@ -76,6 +92,7 @@ export {
   ExtensionPoint,
   Delegate,
   mapIncomingCommand,
+  directiveHandler,
   mapOutgoingEvent,
   moduleUrl,
 }

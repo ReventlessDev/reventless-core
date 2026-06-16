@@ -487,5 +487,94 @@ the sweep surfaces stale `Call`/`callHandler` references.
 
 ## Outcome
 
-(Filled in on completion: list of touched files, validation results, any
-GWT touch-points the audit missed, doc pages updated.)
+### Touched files (8)
+
+Specs:
+
+- `examples/online-shop-hybrid/catalog-spec/src/Products_ExtensionPoint.res` —
+  `type directive = unit` → single `EmitPricingUpdate({productId, price})`
+  constructor + boundary comment.
+- `examples/online-shop-hybrid/ordering-spec/src/Orders_ExtensionPoint.res` —
+  `type directive = unit` → two constructors
+  (`EmitOrderRecordedTelemetry` / `EmitOrderCancelledTelemetry`).
+
+Source:
+
+- `examples/online-shop-hybrid/catalog/src/ExtensionPoint/Products_ExtensionPointMapping.res` —
+  added `directiveHandler` (Schedule / QueryEngine intentionally `_`) and a
+  `HandleDirective` alongside `PublishEvent` on `ProductPriceChanged`.
+- `examples/online-shop-hybrid/catalog/src/Extension/Orders_Extension.res` —
+  added an Extension-side `directiveHandler` (pure `'directive => promise<unit>`)
+  and a `HandleDirective` alongside the existing `PublishStateChangeSliceCommand`
+  on both `ItemOrdered` and `ItemOrderCancelled`.
+
+Tests:
+
+- `examples/online-shop-hybrid/catalog/tests/ExtensionPoint/Products_ExtensionPointMapping_GWT.res` —
+  4 tests (per-channel split): two for `ProductAdded` (event + no-directive),
+  two for `ProductPriceChanged` (event + directive).
+- `examples/online-shop-hybrid/catalog/tests/Extension/Orders_Extension_GWT.res` —
+  4 tests (per-channel split): two each for `ItemOrdered` / `ItemOrderCancelled`
+  asserting the state-change command and the telemetry directive separately.
+
+Docs:
+
+- `packages/doc/docs-app/components/extensionpoint.md` — added a forward-link
+  comment alongside the `type directive = unit` example pointing at the hybrid
+  `EmitPricingUpdate` directive.
+- `packages/doc/docs-app/components/extension.md` — same, pointing at the
+  hybrid `EmitOrderRecordedTelemetry` / `EmitOrderCancelledTelemetry`
+  directives and their subscriber.
+
+The framework-rename pass had already converted `Call(...)`/`callHandler` →
+`HandleDirective`/`directiveHandler` across the doc site; no further textual
+substitution was required. Re-sweep of
+`docs/guides/platform-and-plugin-guide.md` found zero `Call(`/`callHandler`
+hits.
+
+### Validation
+
+- `pnpm run build` (root) — clean. Per-package summary:
+  - reventless framework + AWS: 574 modules compiled.
+  - online-shop-aggregates platform-local: 406 modules compiled.
+  - online-shop-dcb platform-local: 479 modules compiled.
+  - online-shop-hybrid platform-local: 427 modules compiled (incremental, no
+    re-clean needed beyond the changed surfaces).
+  - Zero warnings, zero errors (`pnpm run build 2>&1 | grep -E "Warning|warning|error|Error"` is empty).
+- `pnpm test` (root) — **195 suites, 1510 tests, all passing.**
+- Hybrid catalog package tests in isolation: 13 suites / 53 tests pass,
+  including the new directive assertions on
+  `Products_ExtensionPointMapping_GWT` and `Orders_Extension_GWT`.
+
+### Deviations from the plan
+
+1. **Per-channel test split instead of chained assertion.** The plan suggested
+   chains like
+   `whenDelegateEvent(…)->thenPublishesEvent(…)->thenHandlesDirective(…)`.
+   These do not type-check: `thenPublishesEvent` returns
+   `promise<Outcome.outcome>`, while `thenHandlesDirective` consumes
+   `promise<array<JSON.t>>`. The canonical pattern in
+   `reventless-gwt/tests/DelegateGwtTest.res` is per-channel `test` blocks
+   that each project to one channel and assert independently. The new GWT
+   tests follow that pattern. The plan's stated cross-plugin sweep target of
+   "exactly four HandleDirective hits in source" is also a miscount: there
+   are three, because `ProductAdded` intentionally raises no directive — the
+   plan tracked Products at 2 instead of 1.
+2. **`Console.log` instead of `EffectLogger.logInfo(...)->Effect.runSync`.**
+   The plan's snippet uses `EffectLogger`, which lives in
+   `@reventlessdev/reventless-core`. The hybrid `catalog` package does not
+   depend on `reventless-core` (only on `reventless-infra`, `reventless-local`,
+   `reventless-spec`, and `reventless-gwt`). Wiring a structured logger only
+   to print one demo line would have meant adding a heavy dependency for no
+   functional gain. The other example plugins
+   (`online-shop-aggregates/catalog/src/Task/ImportProducts.res`,
+   `online-shop-dcb/ordering/src/Service/EmailService.res`) already use bare
+   `Console.log` for the same purpose, so the directive demo follows that
+   precedent and keeps the EP-side comment pointing at
+   `PluginExtensionPoint_Plugin.res` for a real Schedule/QueryEngine handler.
+
+### Audit follow-ups
+
+- None surfaced. The compiler flagged exactly the files the plan predicted (two
+  specs, the EP mapping, the Extension, the two GWT tests); no other module
+  needed touching.

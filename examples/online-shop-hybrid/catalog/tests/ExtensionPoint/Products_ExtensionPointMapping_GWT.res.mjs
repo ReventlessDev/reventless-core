@@ -35,8 +35,12 @@ let whenDelegateEvent = include.whenDelegateEvent;
 
 let thenPublishesEvent = include.thenPublishesEvent;
 
+let thenHandlesDirective = include.thenHandlesDirective;
+
+let thenHandlesNoDirective = include.thenHandlesNoDirective;
+
 describe("Products ExtensionPoint mapping", () => {
-  test("ProductAdded becomes the public ProductBecameAvailable", undefined, () => thenPublishesEvent(whenDelegateEvent({
+  test("ProductAdded publishes ProductBecameAvailable", undefined, () => thenPublishesEvent(whenDelegateEvent({
     TAG: "ProductAdded",
     productId: "p1",
     name: "Book",
@@ -48,6 +52,13 @@ describe("Products ExtensionPoint mapping", () => {
     name: "Book",
     price: 9.99
   }));
+  test("ProductAdded raises no directive", undefined, () => thenHandlesNoDirective(whenDelegateEvent({
+    TAG: "ProductAdded",
+    productId: "p1",
+    name: "Book",
+    description: "A good book",
+    price: 9.99
+  })));
   test("ProductPriceChanged is forwarded to the extension point", undefined, () => thenPublishesEvent(whenDelegateEvent({
     TAG: "ProductPriceChanged",
     productId: "p1",
@@ -57,11 +68,22 @@ describe("Products ExtensionPoint mapping", () => {
     productId: "p1",
     price: 7.5
   }));
+  test("ProductPriceChanged also fires a pricing-update directive", undefined, () => thenHandlesDirective(whenDelegateEvent({
+    TAG: "ProductPriceChanged",
+    productId: "p1",
+    price: 7.5
+  }), {
+    TAG: "EmitPricingUpdate",
+    productId: "p1",
+    price: 7.5
+  }));
 });
 
 let encEvent = include.encEvent;
 
 let encCommand = include.encCommand;
+
+let encDirective = include.encDirective;
 
 let EvCore = include.EvCore;
 
@@ -77,9 +99,12 @@ let thenPublishesCommand = include.thenPublishesCommand;
 
 let thenPublishesCommands = include.thenPublishesCommands;
 
+let thenHandlesDirectives = include.thenHandlesDirectives;
+
 export {
   encEvent,
   encCommand,
+  encDirective,
   EvCore,
   CmdCore,
   describe,
@@ -91,5 +116,8 @@ export {
   whenIncomingCommand,
   thenPublishesCommand,
   thenPublishesCommands,
+  thenHandlesDirective,
+  thenHandlesDirectives,
+  thenHandlesNoDirective,
 }
 /* include Not a pure module */
