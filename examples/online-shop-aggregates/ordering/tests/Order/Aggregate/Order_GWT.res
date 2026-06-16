@@ -81,4 +81,41 @@ describe("Order Behavior", () => {
     ->whenCmd(Cancel)
     ->thenNoEvent
   )
+
+  test("Refund on non-existent order returns OrderNotFound", () =>
+    givenEvents([])
+    ->whenCmd(Refund({reason: "lost-in-transit"}))
+    ->thenError(OrderNotFound)
+  )
+
+  test("Refund on placed order returns OrderNotCancelled", () =>
+    givenEvents([Placed({customerId: "cust-1", productIds: ["prod-1"]})])
+    ->whenCmd(Refund({reason: "customer-changed-mind"}))
+    ->thenError(OrderNotCancelled)
+  )
+
+  test("Refund on shipped order returns OrderNotCancelled", () =>
+    givenEvents([Placed({customerId: "cust-1", productIds: ["prod-1"]}), Shipped])
+    ->whenCmd(Refund({reason: "delivered-damaged"}))
+    ->thenError(OrderNotCancelled)
+  )
+
+  test("Refund on cancelled order produces Refunded", () =>
+    givenEvents([
+      Placed({customerId: "cust-1", productIds: ["prod-1"]}),
+      Cancelled({productIds: ["prod-1"]}),
+    ])
+    ->whenCmd(Refund({reason: "customer-changed-mind"}))
+    ->thenEvent(Refunded({reason: "customer-changed-mind"}))
+  )
+
+  test("Refund on already-refunded order produces no events (idempotent)", () =>
+    givenEvents([
+      Placed({customerId: "cust-1", productIds: ["prod-1"]}),
+      Cancelled({productIds: ["prod-1"]}),
+      Refunded({reason: "customer-changed-mind"}),
+    ])
+    ->whenCmd(Refund({reason: "customer-changed-mind"}))
+    ->thenNoEvent
+  )
 })

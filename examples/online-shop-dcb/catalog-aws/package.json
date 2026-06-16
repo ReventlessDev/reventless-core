@@ -1,0 +1,30 @@
+{
+  "name": "@reventlessdev/online-shop-dcb-catalog-aws",
+  "private": true,
+  "version": "1.0.0-alpha.0",
+  "description": "Online Shop DCB — Catalog plugin AWS deployment",
+  "license": "Apache-2.0",
+  "scripts": {
+    "generate": "generate-plugin --aws CatalogPlugin ../catalog/src/",
+    "prebuild": "pnpm run generate",
+    "build": "rescript build"
+  },
+  "dependencies": {
+    "@reventlessdev/online-shop-dcb-catalog": "workspace:*",
+    "@reventlessdev/online-shop-dcb-catalog-spec": "workspace:*",
+    "@reventlessdev/online-shop-dcb-ordering-spec": "workspace:*",
+    "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-aws": "workspace:*",
+    "@reventlessdev/reventless-infra": "workspace:*",
+    "@reventlessdev/reventless-spec": "workspace:*",
+    "sury": "^11.0.0-alpha.4"
+  },
+  "devDependencies": {
+    "@reventlessdev/reventless-ppx": "workspace:*",
+    "rescript": "^12.3.0",
+    "sury-ppx": "11.0.0-alpha.2"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

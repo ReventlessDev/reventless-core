@@ -9,28 +9,32 @@ let mapOutgoingEvent = (_id, event, _meta, _queryEngine) => {
   if (typeof event !== "object") {
     return [];
   }
-  if (event.TAG !== "Placed") {
-    return event.productIds.map(productId => ({
-      TAG: "PublishEvent",
-      _0: productId,
-      _1: {
-        TAG: "ItemOrderCancelled",
-        productId: productId,
-        orderId: _id
-      }
-    }));
+  switch (event.TAG) {
+    case "Placed" :
+      let customerId = event.customerId;
+      return event.productIds.map(productId => ({
+        TAG: "PublishEvent",
+        _0: productId,
+        _1: {
+          TAG: "ItemOrdered",
+          productId: productId,
+          orderId: _id,
+          customerId: customerId
+        }
+      }));
+    case "Cancelled" :
+      return event.productIds.map(productId => ({
+        TAG: "PublishEvent",
+        _0: productId,
+        _1: {
+          TAG: "ItemOrderCancelled",
+          productId: productId,
+          orderId: _id
+        }
+      }));
+    case "Refunded" :
+      return [];
   }
-  let customerId = event.customerId;
-  return event.productIds.map(productId => ({
-    TAG: "PublishEvent",
-    _0: productId,
-    _1: {
-      TAG: "ItemOrdered",
-      productId: productId,
-      orderId: _id,
-      customerId: customerId
-    }
-  }));
 };
 
 let name = "Orders";

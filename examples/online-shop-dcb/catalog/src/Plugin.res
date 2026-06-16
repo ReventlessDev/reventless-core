@@ -21,6 +21,12 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
   // InboundTranslationSlices
   module ImportProductSlice = Platform.InboundTranslationSlice.Make(ImportProduct, ImportProduct_Translation)
 
+  // ReadModels
+  module CategoryActivityReadModel = Platform.ReadModel.Make(CategoryActivity, CategoryActivity_Projections)
+
+  // Tasks
+  module ImportProductsTask = Platform.Task.Make(ImportProducts)
+
   // ExtensionPoints
   module Products_ExtensionPoint = Platform.ExtensionPoint.Make(Products_ExtensionPointMapping)
 
@@ -29,6 +35,7 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
 
   let pluginStructure = Platform.Plugin.makePluginDefinition(
     ~name="Catalog",
+    ~readModels=[module(CategoryActivityReadModel)],
     ~stateViewSlices=[module(CategoriesSlice), module(ProductDemandSlice), module(ProductsSlice)],
     ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
     ~inboundTranslationSlices=[module(ImportProductSlice)],
@@ -42,6 +49,8 @@ module Make = (Platform: ReventlessInfra.Platform.T) => {
       ~heartbeatInterval=5,
       ~extensionPoints=[module(Products_ExtensionPoint)],
       ~extensions=[module(Orders_Extension)],
+      ~readModels=[module(CategoryActivityReadModel)],
+      ~tasks=[module(ImportProductsTask)],
       ~stateChangeSlices=[module(AddCategorySlice), module(AddProductSlice), module(ArchiveCategorySlice), module(ChangeProductDescriptionSlice), module(ChangeProductNameSlice), module(ChangeProductPriceSlice), module(RecordProductDemandSlice), module(RenameCategorySlice)],
       ~stateViewSlices=[module(CategoriesSlice), module(ProductDemandSlice), module(ProductsSlice)],
       ~inboundTranslationSlices=[module(ImportProductSlice)],

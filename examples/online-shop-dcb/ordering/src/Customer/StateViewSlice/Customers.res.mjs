@@ -3,13 +3,20 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
 
 let stateSchema = S.schema(s => ({
   customerId: s.m(S.string),
   email: s.m(S.string),
   address: s.m(S.string),
-  deactivated: s.m(S.bool)
+  deactivated: s.m(S.bool),
+  displayName: s.m(S.option(S.string))
 }));
+
+let stateSchema$1 = S.Metadata.set(stateSchema, DisplayName$Reventless.displayNameId, {
+  fields: ["email"],
+  separator: " "
+});
 
 let consumedEventSchema = S.union([
   S.schema(s => ({
@@ -51,7 +58,7 @@ let visibility = "Public";
 export {
   name,
   Id,
-  stateSchema,
+  stateSchema$1 as stateSchema,
   consumedEventSchema,
   config,
   subIdConfig,

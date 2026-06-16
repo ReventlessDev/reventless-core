@@ -1,0 +1,4 @@
+name: online-shop-dcb-ordering-aws
+runtime: nodejs
+main: src/Main.res.mjs
+description: Online Shop DCB — Ordering plugin stack

@@ -22,6 +22,8 @@ module OrderMapping = Mapping.Make(
         Update(id, state => {...state, status: (Shipped: Orders.status)})
       | Cancelled(_) =>
         Update(id, state => {...state, status: (Cancelled: Orders.status)})
+      | Refunded(_) =>
+        Update(id, state => {...state, status: (Refunded: Orders.status)})
       }
   },
 )

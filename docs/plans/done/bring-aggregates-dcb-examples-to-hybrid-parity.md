@@ -7,12 +7,56 @@
 - No README or onboarding instructions.
 - No AWS deploy story (no `*-aws/` packages, no `deploy-manifest.yaml`, no Pulumi stacks).
 - No host-shell local dev (no `serve`/`dev:full` scripts, no seeded `users.yaml`, no sqlite backend).
-- Older pre-OutboundTranslationSlice patterns (`SideEffect/` + `Task/OrderNotifications` in aggregates).
+- Missing GWT coverage for the existing `SideEffect/` + `Task/OrderNotifications` egress (note: framework gap — no `SideEffect_GWT` helper exists yet).
 - Missing example coverage of common framework features (Tasks, multi-source projections, cross-slice Flow tests, Extension/ExtensionPoint GWTs, per-command authorization).
 
 This plan brings both to full structural and pattern parity with hybrid — while preserving each example's single-style identity (aggregates stays aggregate-only; DCB stays DCB-only).
 
 > **Out of scope:** turning aggregates or DCB into hybrids. The mixed-style content unique to hybrid (`CatalogActivity` multi-source projection feeding both an Aggregate and a DCB source, hybrid plugin composition) remains hybrid-only. Each example demonstrates its style cleanly.
+
+## Style-purity audit (added mid-execution)
+
+When work on Section 2 began, two of the originally-planned aggregate-side
+steps were caught violating single-style purity — they prescribed DCB-only
+framework features for the aggregate example. Both are now marked SKIPPED
+in this plan, with the framework gaps that block them filed as separate
+backlog plans:
+
+| Step | Original ask | Why it can't be done style-pure |
+|---|---|---|
+| 2.1 | Replace `SideEffect/` + `Task/OrderNotifications` with `OutboundTranslationSlice` | `OutboundTranslationSlice_Builder` is hardwired to a DCB event log; aggregate per-aggregate EventTopics never reach it. There is no aggregate-side OTS variant. `SideEffect.T` (`reventless-spec/src/types/SideEffect.res`) is the canonical aggregate egress and stays. Test-side gap (no `SideEffect_GWT`) tracked in [docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md). |
+| 2.3 | Cross-plugin Flow test (`platform-local/tests/Flow/AggregatesFlow_GWT.res`) | `Flow_GWT.CommandStep` takes `Behavior_GWT.BehaviorSpec` — the DCB slice shape with `consumedEvent`. Aggregate specs don't expose `consumedEvent`, and Flow_GWT has no `AggregateCommandStep`. Adding one is a framework-side change; a separate plan should track it. Hybrid's existing `HybridFlow_GWT` uses only StateChangeSlices, never aggregates — same constraint. |
+
+The remaining Section 2 steps (2.2, 2.4, 2.5, 2.6) and all of Section 3 are
+style-pure as written:
+
+- 2.2 Refund command on Order aggregate — aggregate-style.
+- 2.4 EP/Extension GWTs — `Mapping_GWT` is style-neutral; the only adjustment is `module Delegate = <Aggregate>` instead of a DCB source module.
+- 2.5 `@authorize` on a Category aggregate command — hybrid already applies the same annotation to its Category aggregate, so the pattern is style-portable.
+- 2.6 Comment drift fix — trivial.
+- 3.1 Task — `Task` is style-neutral (hybrid catalog has one too); driving it into an `InboundTranslationSlice` is DCB-native here.
+- 3.2 Multi-source ReadModel projection — `ReadModel` is style-neutral; sources are all DCB StateChangeSlice events, so the example stays DCB-only.
+- 3.3 `@@reventless.visibility(Internal)` on a StateViewSlice — style-neutral annotation on a DCB-native slice.
+- 3.4 `@authorize` on a StateChangeSlice command — DCB-native.
+- 3.5 Cross-plugin Flow test in DCB — Flow_GWT's native style.
+- 3.6 EP/Extension GWTs — style-neutral, same as 2.4.
+- 3.7 `@displayName` — style-neutral annotation.
+
+### Resumption order (after this plan's current pass finishes)
+
+1. Land [docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md) →
+   unblocks Step 2.1.
+2. Land [docs/plans/Backlog/flow-gwt-aggregate-step.md](Backlog/flow-gwt-aggregate-step.md) →
+   unblocks Step 2.3 (also benefits from sideeffect-gwt if the flow's
+   tail extends through the SideEffect).
+3. Re-open this plan from `docs/plans/done/` (move back with `git mv` per
+   the [plan-management convention](../../CLAUDE.md)), execute the
+   DEFERRED steps, then move back to `done/` as a separate completion
+   commit.
+
+The current pass closes Steps 1, 2.2, 2.4–2.6, all of Step 3, Step 4, and
+Step 5. The two DEFERRED steps account for ~1h 45min of follow-up work
+once the framework gaps are closed.
 
 ## Gap Summary
 
@@ -94,24 +138,30 @@ Append the three new `*-aws/` packages from each example to the root `rescript.j
 
 The aggregate example stays aggregate-only. The work is replacing outdated patterns and filling missing demonstrations.
 
-### 2.1 Replace the old `SideEffect/` + `Task/OrderNotifications` pattern with `OutboundTranslationSlice`
+### 2.1 Add `SideEffect_GWT` coverage to `Order_EmailNotification` — DEFERRED
 
-Currently:
-- `ordering/src/Order/SideEffect/Order_EmailNotification.res`
-- `ordering/src/Task/OrderNotifications.res` — wires the SideEffect
+**Original step** (replace `SideEffect/` + `Task/OrderNotifications` with
+`OutboundTranslationSlice`) was a style violation — see the
+[audit table](#style-purity-audit-added-mid-execution) above.
 
-This is the pre-OutboundTranslationSlice pattern and conflicts with current framework guidance (PPX has `@@reventless.translation`, and OutboundTranslationSlice is the canonical egress mechanism).
+**Replacement step** (post-framework-gap): once
+[docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md) lands,
+resume work here:
 
-Actions:
-- Delete `Order/SideEffect/Order_EmailNotification.res`.
-- Delete `Task/OrderNotifications.res`.
-- Create `ordering/src/Order/OutboundTranslationSlice/SendOrderConfirmation/`:
-  - `SendOrderConfirmation.res` — `@@reventless.spec` with `collect` matching the Order placed event.
-  - `SendOrderConfirmation_Translation.res` — `@@reventless.translation` with async `translate` calling `EmailService` and returning `Result<option<unit>, string>`.
-- Adapt the existing GWT (`Order_EmailNotification_GWT.res` or equivalent) into `SendOrderConfirmation_GWT.res`.
-- Update `ordering/src/Plugin.res` will regenerate via the prebuild hook; no manual edit needed.
+- Runtime files stay as-is — `Order/SideEffect/Order_EmailNotification.res` +
+  `Task/OrderNotifications.res` are already the canonical aggregate-style
+  egress.
+- Add `Service/EmailService_Mock.res` per the per-service mock convention
+  from the `SideEffect_GWT` plan.
+- Add `Order/SideEffect/Order_EmailNotification_GWT.res` covering:
+  - `Placed` triggers `EmailService_Mock.SendOrderConfirmation` with the
+    customer email + order id.
+  - `Shipped`, `Cancelled` are no-ops.
+- Wire `ordering/rescript.json` `tests/` sub-tree if needed so the new
+  `SideEffect/` tests folder is picked up.
 
-> **Note:** the aggregate-style example *does* use OutboundTranslationSlice here — the slice still applies on top of an Aggregate-driven plugin; OutboundTranslationSlice is style-neutral. This change is correctly within style purity.
+**Blocked by:** `SideEffect_GWT.Make` in `reventless-gwt`.
+**Effort estimate (post-unblock):** ~45 min.
 
 ### 2.2 Add `Refund` command to Order
 
@@ -121,9 +171,40 @@ Hybrid has 5 Order commands (Place/Cancel/Ship/Refund + one more); aggregates cu
 - Add a `Refund_GWT.res` test mirroring the others.
 - Update behavior in `Order_Behavior.res`.
 
-### 2.3 Add cross-plugin Flow test
+### 2.3 Add cross-plugin Flow test — DEFERRED
 
-- Create `platform-local/tests/Flow/AggregatesFlow_GWT.res` exercising Customer → Place Order → Ship Order → side-effect translation. Use the multi-spec `@@reventless.gwt` form already documented in conventions.
+**Original step** (`Customer → Place Order → Ship Order → side-effect
+translation`) is blocked: `Flow_GWT.CommandStep` is DCB-shape and there is
+no `AggregateCommandStep`. The "side-effect translation" tail also depends
+on `SideEffect_GWT`. See the [audit table](#style-purity-audit-added-mid-execution).
+
+**Replacement step** (post-framework-gap): once
+[docs/plans/Backlog/flow-gwt-aggregate-step.md](Backlog/flow-gwt-aggregate-step.md)
+and [docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md) both
+land, resume here:
+
+- Create `platform-local/tests/Flow/AggregatesFlow_GWT.res` composing
+  `Flow_GWT.AggregateCommandStep` (per the aggregate plan) with
+  `ExtensionPointStep` / `ExtensionStep` (already style-neutral) to cross
+  the plugin boundary.
+- Cover the canonical sweep: `RegisterCustomer → PlaceOrder → ShipOrder`,
+  plus on the catalog side an EP fan-out reaching back into Catalog via
+  the `Orders` extension.
+- Optionally extend with the SideEffect tail once `SideEffect_GWT`
+  exposes a Flow step kind (e.g. `Flow_GWT.SideEffectStep`) — that wiring
+  is itself a follow-up to the SideEffect_GWT plan.
+
+**Blocked by:**
+- `Flow_GWT.AggregateCommandStep` in `reventless-gwt` (required).
+- `SideEffect_GWT` in `reventless-gwt` (optional — only needed if the
+  flow extends through the SideEffect tail).
+
+**Existing coverage today:** per-aggregate `*_GWT.res` files under
+`ordering/tests/*/Aggregate/` exercise each aggregate in isolation via
+`Behavior_GWT.MakeFromAggregate`. That's the aggregate-style unit-test
+equivalent — what's missing is only the *cross-plugin* flow.
+
+**Effort estimate (post-unblock):** ~1h.
 
 ### 2.4 Add ExtensionPoint/Extension GWTs
 
@@ -213,9 +294,9 @@ After parity lands, update:
 | 1.1 README + deploy-manifest + scripts | ~30 min | ~30 min | Mostly copy-paste with sed |
 | 1.2 platform-local modernization | ~45 min | ~45 min | Includes users.yaml + scripts + mock |
 | 1.3 AWS packages (3 each) | ~2h | ~2h | Risk: Pulumi config typos |
-| 2.1 OutboundTranslationSlice migration | ~1.5h | — | Touches 3+ files, needs test rewrite |
+| 2.1 OutboundTranslationSlice migration | ~~~1.5h~~ skipped | — | OTS is DCB-only; SideEffect+Task stays |
 | 2.2 Refund command | ~45 min | — | |
-| 2.3 Flow test | ~1h | — | |
+| 2.3 Flow test | ~~~1h~~ skipped | — | Flow_GWT.CommandStep is DCB-only |
 | 2.4 EP/Extension GWTs | ~45 min | — | |
 | 2.5 @authorize | ~30 min | — | |
 | 2.6 comment drift | ~5 min | — | |
@@ -235,7 +316,6 @@ After parity lands, update:
 - Commit per step (so a step can be reverted independently if it surfaces problems).
 - Commit message style:
   - `chore(examples/aggregates): port platform-local dev scripts + users.yaml`
-  - `feat(examples/aggregates): replace SideEffect with OutboundTranslationSlice`
   - `feat(examples/dcb): add multi-source CategoryActivity ReadModel projection`
   - `chore(examples/aggregates): add AWS packages (catalog-aws, ordering-aws, platform-aws)`
 - Per the user's commit-confirmation memory, surface each commit message before running `git commit`.

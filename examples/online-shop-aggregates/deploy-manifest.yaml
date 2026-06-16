@@ -1,0 +1,17 @@
+# Per-plugin deployment manifest for online-shop-aggregates.
+# Used by the reusable GitHub Actions workflow to determine deployment order.
+
+region: eu-west-1
+
+platform:
+  path: platform-aws
+  name: online-shop-aggregates-platform
+
+plugins:
+  - name: catalog
+    path: catalog-aws
+    depends-on: []
+
+  - name: ordering
+    path: ordering-aws
+    depends-on: []

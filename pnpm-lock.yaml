@@ -13,6 +13,12 @@ importers:
 
   .:
     devDependencies:
+      '@reventlessdev/online-shop-aggregates-platform-aws':
+        specifier: workspace:*
+        version: link:examples/online-shop-aggregates/platform-aws
+      '@reventlessdev/online-shop-dcb-platform-aws':
+        specifier: workspace:*
+        version: link:examples/online-shop-dcb/platform-aws
       '@reventlessdev/online-shop-hybrid-platform-aws':
         specifier: workspace:*
         version: link:examples/online-shop-hybrid/platform-aws
@@ -135,6 +141,43 @@ importers:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
+  examples/online-shop-aggregates/catalog-aws:
+    dependencies:
+      '@reventlessdev/online-shop-aggregates-catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@reventlessdev/online-shop-aggregates-catalog-spec':
+        specifier: workspace:*
+        version: link:../catalog-spec
+      '@reventlessdev/online-shop-aggregates-ordering-spec':
+        specifier: workspace:*
+        version: link:../ordering-spec
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-aws
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-infra
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+      sury-ppx:
+        specifier: 11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+
   examples/online-shop-aggregates/catalog-spec:
     dependencies:
       '@reventlessdev/reventless-spec':
@@ -191,8 +234,76 @@ importers:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
+  examples/online-shop-aggregates/ordering-aws:
+    dependencies:
+      '@reventlessdev/online-shop-aggregates-catalog-spec':
+        specifier: workspace:*
+        version: link:../catalog-spec
+      '@reventlessdev/online-shop-aggregates-ordering':
+        specifier: workspace:*
+        version: link:../ordering
+      '@reventlessdev/online-shop-aggregates-ordering-spec':
+        specifier: workspace:*
+        version: link:../ordering-spec
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-aws
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-infra
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+      sury-ppx:
+        specifier: 11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+
   examples/online-shop-aggregates/ordering-spec:
     dependencies:
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+      sury-ppx:
+        specifier: 11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+
+  examples/online-shop-aggregates/platform-aws:
+    dependencies:
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-aws
+      '@reventlessdev/reventless-host-shell':
+        specifier: 3.0.0-alpha.28
+        version: 3.0.0-alpha.28(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/reventless-spec
@@ -227,6 +338,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -246,6 +360,10 @@ importers:
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+    optionalDependencies:
+      '@reventlessdev/reventless-host-shell':
+        specifier: 3.0.0-alpha.28
+        version: 3.0.0-alpha.28(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-dcb/catalog:
     dependencies:
@@ -267,6 +385,43 @@ importers:
       '@reventlessdev/reventless-local':
         specifier: workspace:*
         version: link:../../../reventless/reventless-local
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+      sury-ppx:
+        specifier: 11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+
+  examples/online-shop-dcb/catalog-aws:
+    dependencies:
+      '@reventlessdev/online-shop-dcb-catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@reventlessdev/online-shop-dcb-catalog-spec':
+        specifier: workspace:*
+        version: link:../catalog-spec
+      '@reventlessdev/online-shop-dcb-ordering-spec':
+        specifier: workspace:*
+        version: link:../ordering-spec
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-aws
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/reventless-spec
@@ -340,8 +495,76 @@ importers:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
 
+  examples/online-shop-dcb/ordering-aws:
+    dependencies:
+      '@reventlessdev/online-shop-dcb-catalog-spec':
+        specifier: workspace:*
+        version: link:../catalog-spec
+      '@reventlessdev/online-shop-dcb-ordering':
+        specifier: workspace:*
+        version: link:../ordering
+      '@reventlessdev/online-shop-dcb-ordering-spec':
+        specifier: workspace:*
+        version: link:../ordering-spec
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-aws
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-infra
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+      sury-ppx:
+        specifier: 11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+
   examples/online-shop-dcb/ordering-spec:
     dependencies:
+      '@reventlessdev/reventless-spec':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-spec
+      sury:
+        specifier: ^11.0.0-alpha.4
+        version: 11.0.0-alpha.4(rescript@12.3.0)
+    devDependencies:
+      '@reventlessdev/reventless-ppx':
+        specifier: workspace:*
+        version: link:../../../packages/reventless-ppx
+      rescript:
+        specifier: ^12.3.0
+        version: 12.3.0
+      sury-ppx:
+        specifier: 11.0.0-alpha.2
+        version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+
+  examples/online-shop-dcb/platform-aws:
+    dependencies:
+      '@reventlessdev/rescript-pulumi-pulumi':
+        specifier: workspace:*
+        version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-aws':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-aws
+      '@reventlessdev/reventless-host-shell':
+        specifier: 3.0.0-alpha.28
+        version: 3.0.0-alpha.28(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
+      '@reventlessdev/reventless-infra':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-infra
       '@reventlessdev/reventless-spec':
         specifier: workspace:*
         version: link:../../../reventless/reventless-spec
@@ -376,6 +599,9 @@ importers:
       '@reventlessdev/rescript-pulumi-pulumi':
         specifier: workspace:*
         version: link:../../../rescript/rescript-pulumi-pulumi
+      '@reventlessdev/reventless-gwt':
+        specifier: workspace:*
+        version: link:../../../reventless/reventless-gwt
       '@reventlessdev/reventless-infra':
         specifier: workspace:*
         version: link:../../../reventless/reventless-infra
@@ -398,6 +624,10 @@ importers:
       sury-ppx:
         specifier: 11.0.0-alpha.2
         version: 11.0.0-alpha.2(sury@11.0.0-alpha.4(rescript@12.3.0))
+    optionalDependencies:
+      '@reventlessdev/reventless-host-shell':
+        specifier: 3.0.0-alpha.28
+        version: 3.0.0-alpha.28(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@types/react@19.2.14)(react@18.3.1))(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@types/node@25.6.0)(@types/react@19.2.14)(dayjs@1.11.20)(encoding@0.1.13)(graphql@16.13.2)(jiti@1.21.7)(luxon@3.7.2)(node-fetch@2.7.0(encoding@0.1.13))(react-native@0.85.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@18.3.1))(relay-runtime@20.1.1(encoding@0.1.13))(rescript@12.3.0)(terser@5.46.1)(typescript@5.9.3)(yaml@2.8.3)
 
   examples/online-shop-hybrid/catalog:
     dependencies:
@@ -20286,7 +20516,7 @@ snapshots:
 
   '@types/node-fetch@2.6.4':
     dependencies:
-      '@types/node': 22.19.17
+      '@types/node': 25.6.0
       form-data: 3.0.4
 
   '@types/node@17.0.45': {}

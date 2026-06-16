@@ -10,37 +10,57 @@ let stateSchema = S.union([
     productIds: s.m(S.array(S.string))
   })),
   S.literal("Shipped"),
-  S.literal("Cancelled")
+  S.literal("Cancelled"),
+  S.literal("Refunded")
 ]);
 
 function evolve(state, event) {
-  if (typeof state === "object") {
+  if (typeof state !== "object") {
+    switch (state) {
+      case "NotCreated" :
+        if (typeof event !== "object" || event.TAG !== "Placed") {
+          return state;
+        } else {
+          return {
+            TAG: "Placed",
+            customerId: event.customerId,
+            productIds: event.productIds
+          };
+        }
+      case "Cancelled" :
+        if (typeof event !== "object" || event.TAG !== "Refunded") {
+          return state;
+        } else {
+          return "Refunded";
+        }
+      case "Shipped" :
+      case "Refunded" :
+        return state;
+    }
+  } else {
     if (typeof event !== "object") {
       return "Shipped";
-    } else if (event.TAG === "Placed") {
-      return {
-        TAG: "Placed",
-        customerId: event.customerId,
-        productIds: event.productIds
-      };
-    } else {
-      return "Cancelled";
     }
-  }
-  switch (state) {
-    case "NotCreated" :
-      if (typeof event !== "object" || event.TAG !== "Placed") {
-        return state;
-      } else {
+    switch (event.TAG) {
+      case "Placed" :
         return {
           TAG: "Placed",
           customerId: event.customerId,
           productIds: event.productIds
         };
-      }
-    case "Shipped" :
-    case "Cancelled" :
-      return state;
+      case "Cancelled" :
+        return "Cancelled";
+      case "Refunded" :
+        throw {
+          RE_EXN_ID: "Match_failure",
+          _1: [
+            "Order_Behavior.res",
+            17,
+            2
+          ],
+          Error: new Error()
+        };
+    }
   }
 }
 
@@ -61,16 +81,21 @@ function decide(state, command) {
             }]
         };
       }
-    } else {
+    } else if (command.TAG === "Place") {
       return {
         TAG: "Error",
         _0: "OrderAlreadyPlaced"
+      };
+    } else {
+      return {
+        TAG: "Error",
+        _0: "OrderNotCancelled"
       };
     }
   }
   switch (state) {
     case "NotCreated" :
-      if (typeof command !== "object") {
+      if (typeof command !== "object" || command.TAG !== "Place") {
         return {
           TAG: "Error",
           _0: "OrderNotFound"
@@ -86,27 +111,66 @@ function decide(state, command) {
         };
       }
     case "Shipped" :
-      if (typeof command !== "object" && command === "Ship") {
-        return {
-          TAG: "Ok",
-          _0: []
-        };
-      } else {
+      if (typeof command !== "object") {
+        if (command === "Ship") {
+          return {
+            TAG: "Ok",
+            _0: []
+          };
+        } else {
+          return {
+            TAG: "Error",
+            _0: "OrderAlreadyShipped"
+          };
+        }
+      } else if (command.TAG === "Place") {
         return {
           TAG: "Error",
           _0: "OrderAlreadyShipped"
         };
-      }
-    case "Cancelled" :
-      if (typeof command !== "object" && command !== "Ship") {
-        return {
-          TAG: "Ok",
-          _0: []
-        };
       } else {
         return {
           TAG: "Error",
+          _0: "OrderNotCancelled"
+        };
+      }
+    case "Cancelled" :
+      if (typeof command !== "object") {
+        if (command === "Ship") {
+          return {
+            TAG: "Error",
+            _0: "OrderAlreadyCancelled"
+          };
+        } else {
+          return {
+            TAG: "Ok",
+            _0: []
+          };
+        }
+      } else if (command.TAG === "Place") {
+        return {
+          TAG: "Error",
           _0: "OrderAlreadyCancelled"
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: [{
+              TAG: "Refunded",
+              reason: command.reason
+            }]
+        };
+      }
+    case "Refunded" :
+      if (typeof command !== "object" || command.TAG !== "Refund") {
+        return {
+          TAG: "Error",
+          _0: "OrderAlreadyRefunded"
+        };
+      } else {
+        return {
+          TAG: "Ok",
+          _0: []
         };
       }
   }

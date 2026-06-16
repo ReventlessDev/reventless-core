@@ -52,6 +52,24 @@ describe("Orders ReadModel ← Order", () => {
     productIds: ["prod-1"],
     status: "Cancelled"
   }));
+  test("Refunded updates status", undefined, () => thenState(whenEvent(givenEvents([
+    {
+      TAG: "Placed",
+      customerId: "cust-1",
+      productIds: ["prod-1"]
+    },
+    {
+      TAG: "Cancelled",
+      productIds: ["prod-1"]
+    }
+  ]), {
+    TAG: "Refunded",
+    reason: "customer-changed-mind"
+  }), {
+    customerId: "cust-1",
+    productIds: ["prod-1"],
+    status: "Refunded"
+  }));
 });
 
 let describeWithId = include.describeWithId;

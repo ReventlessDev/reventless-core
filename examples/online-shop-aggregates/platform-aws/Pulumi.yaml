@@ -1,0 +1,4 @@
+name: online-shop-aggregates-platform-aws
+runtime: nodejs
+main: src/Main.res.mjs
+description: Online Shop Aggregates — platform stack (admin, scheduler, shared API)

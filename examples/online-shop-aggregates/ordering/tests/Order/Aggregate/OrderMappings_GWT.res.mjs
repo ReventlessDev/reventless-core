@@ -107,6 +107,25 @@ describe("Order auto-ship mapping (Placed → Ship)", () => {
       "order-1",
       [placedEvent]
     ]]), "order-1", "Cancel")));
+  test("Refund command does not fire the mapping (only Placed events do)", undefined, () => thenNoTargetEvent(whenSourceCmd(andTargetEvents(givenSourceEvents([
+    placedEvent,
+    {
+      TAG: "Cancelled",
+      productIds: ["prod-1"]
+    }
+  ]), [[
+      "order-1",
+      [
+        placedEvent,
+        {
+          TAG: "Cancelled",
+          productIds: ["prod-1"]
+        }
+      ]
+    ]]), "order-1", {
+    TAG: "Refund",
+    reason: "customer-changed-mind"
+  })));
 });
 
 let Source = include.Source;

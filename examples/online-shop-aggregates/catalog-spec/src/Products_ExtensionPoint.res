@@ -1,4 +1,6 @@
-// ProductsExtensionPoint spec — stable public API from Catalog
+// Products_ExtensionPoint spec — stable public API from Catalog to Ordering.
+// Extensions subscribing to this EP receive product availability events.
+
 @@reventless.spec
 
 @schema

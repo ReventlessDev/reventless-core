@@ -8,6 +8,7 @@ type status =
   | Placed
   | Shipped
   | Cancelled
+  | Refunded
 
 @schema
 type state = {

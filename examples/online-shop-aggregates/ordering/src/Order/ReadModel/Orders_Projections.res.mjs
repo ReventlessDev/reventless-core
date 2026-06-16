@@ -25,26 +25,38 @@ function project(param) {
         status: "Shipped"
       })
     };
-  } else if (event.TAG === "Placed") {
-    return {
-      TAG: "Set",
-      _0: id,
-      _1: {
-        customerId: event.customerId,
-        productIds: event.productIds,
-        status: "Placed"
-      }
-    };
-  } else {
-    return {
-      TAG: "Update",
-      _0: id,
-      _1: state => ({
-        customerId: state.customerId,
-        productIds: state.productIds,
-        status: "Cancelled"
-      })
-    };
+  }
+  switch (event.TAG) {
+    case "Placed" :
+      return {
+        TAG: "Set",
+        _0: id,
+        _1: {
+          customerId: event.customerId,
+          productIds: event.productIds,
+          status: "Placed"
+        }
+      };
+    case "Cancelled" :
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => ({
+          customerId: state.customerId,
+          productIds: state.productIds,
+          status: "Cancelled"
+        })
+      };
+    case "Refunded" :
+      return {
+        TAG: "Update",
+        _0: id,
+        _1: state => ({
+          customerId: state.customerId,
+          productIds: state.productIds,
+          status: "Refunded"
+        })
+      };
   }
 }
 

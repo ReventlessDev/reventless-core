@@ -1,0 +1,25 @@
+{
+  "name": "@reventlessdev/online-shop-dcb-platform-aws",
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": false
+    }
+  ],
+  "dependencies": [
+    "sury",
+    "@reventlessdev/reventless-aws",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/rescript-pulumi-pulumi"
+  ],
+  "ppx-flags": [
+    "@reventlessdev/reventless-ppx/bin",
+    "sury-ppx/bin"
+  ],
+  "suffix": ".res.mjs"
+}

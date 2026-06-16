@@ -8,8 +8,10 @@ import * as Categories$CatalogPlugin from "./Category/StateViewSlice/Categories.
 import * as AddCategory$CatalogPlugin from "./Category/StateChangeSlice/AddCategory.res.mjs";
 import * as ImportProduct$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct.res.mjs";
 import * as ProductDemand$CatalogPlugin from "./Product/StateViewSlice/ProductDemand.res.mjs";
+import * as ImportProducts$CatalogPlugin from "./Task/ImportProducts.res.mjs";
 import * as RenameCategory$CatalogPlugin from "./Category/StateChangeSlice/RenameCategory.res.mjs";
 import * as ArchiveCategory$CatalogPlugin from "./Category/StateChangeSlice/ArchiveCategory.res.mjs";
+import * as CategoryActivity$CatalogPlugin from "./CategoryActivity/ReadModel/CategoryActivity.res.mjs";
 import * as Orders_Extension$CatalogPlugin from "./Extension/Orders_Extension.res.mjs";
 import * as ChangeProductName$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName.res.mjs";
 import * as ChangeProductPrice$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice.res.mjs";
@@ -27,6 +29,7 @@ import * as ProductDemand_Projection$CatalogPlugin from "./Product/StateViewSlic
 import * as ImportProduct_Translation$CatalogPlugin from "./Product/InboundTranslationSlice/ImportProduct_Translation.res.mjs";
 import * as ChangeProductName_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductName_Behavior.res.mjs";
 import * as ChangeProductPrice_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductPrice_Behavior.res.mjs";
+import * as CategoryActivity_Projections$CatalogPlugin from "./CategoryActivity/ReadModel/CategoryActivity_Projections.res.mjs";
 import * as RecordProductDemand_Behavior$CatalogPlugin from "./Product/StateChangeSlice/RecordProductDemand_Behavior.res.mjs";
 import * as Products_ExtensionPointMapping$CatalogPlugin from "./ExtensionPoint/Products_ExtensionPointMapping.res.mjs";
 import * as ChangeProductDescription_Behavior$CatalogPlugin from "./Product/StateChangeSlice/ChangeProductDescription_Behavior.res.mjs";
@@ -202,6 +205,24 @@ function Make(Platform) {
     translate: ImportProduct_Translation$CatalogPlugin.translate,
     moduleUrl: ImportProduct_Translation$CatalogPlugin.moduleUrl
   });
+  let CategoryActivityReadModel = Platform.ReadModel.Make({
+    Id: Id$Reventless.$$String,
+    name: CategoryActivity$CatalogPlugin.name,
+    moduleUrl: CategoryActivity$CatalogPlugin.moduleUrl,
+    stateSchema: CategoryActivity$CatalogPlugin.stateSchema,
+    config: CategoryActivity$CatalogPlugin.config,
+    subIdConfig: undefined,
+    authorization: CategoryActivity$CatalogPlugin.authorization,
+    visibility: CategoryActivity$CatalogPlugin.visibility
+  })({
+    moduleUrl: CategoryActivity_Projections$CatalogPlugin.moduleUrl,
+    mappings: CategoryActivity_Projections$CatalogPlugin.mappings
+  });
+  let ImportProductsTask = Platform.Task.Make({
+    name: ImportProducts$CatalogPlugin.name,
+    moduleUrl: ImportProducts$CatalogPlugin.moduleUrl,
+    setup: ImportProducts$CatalogPlugin.setup
+  });
   let Products_ExtensionPoint = Platform.ExtensionPoint.Make({
     ExtensionPoint: {
       name: Products_ExtensionPoint$CatalogSpec.name,
@@ -245,7 +266,7 @@ function Make(Platform) {
     mapIncomingEvent: Orders_Extension$CatalogPlugin.Mapping.mapIncomingEvent,
     mapOutgoingEvent: Orders_Extension$CatalogPlugin.Mapping.mapOutgoingEvent
   });
-  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", undefined, undefined, [
+  let pluginStructure = Platform.Plugin.makePluginDefinition("Catalog", undefined, [CategoryActivityReadModel], [
     CategoriesSlice,
     ProductDemandSlice,
     ProductsSlice
@@ -279,7 +300,7 @@ function Make(Platform) {
       mapIncomingCommand: Products_ExtensionPointMapping$CatalogPlugin.mapIncomingCommand,
       mapOutgoingEvent: Products_ExtensionPointMapping$CatalogPlugin.mapOutgoingEvent
     }]);
-  let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, undefined, undefined, [
+  let make = () => Platform.Plugin.make("Catalog", 5, [Products_ExtensionPoint], [Orders_Extension], undefined, [CategoryActivityReadModel], [ImportProductsTask], [
     AddCategorySlice,
     AddProductSlice,
     ArchiveCategorySlice,
@@ -306,6 +327,8 @@ function Make(Platform) {
     ProductDemandSlice: ProductDemandSlice,
     ProductsSlice: ProductsSlice,
     ImportProductSlice: ImportProductSlice,
+    CategoryActivityReadModel: CategoryActivityReadModel,
+    ImportProductsTask: ImportProductsTask,
     Products_ExtensionPoint: Products_ExtensionPoint,
     Orders_Extension: Orders_Extension,
     pluginStructure: pluginStructure,

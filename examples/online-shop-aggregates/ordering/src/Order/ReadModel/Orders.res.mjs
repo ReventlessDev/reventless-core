@@ -7,7 +7,8 @@ import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src
 let statusSchema = S.union([
   S.literal("Placed"),
   S.literal("Shipped"),
-  S.literal("Cancelled")
+  S.literal("Cancelled"),
+  S.literal("Refunded")
 ]);
 
 let stateSchema = S.schema(s => ({

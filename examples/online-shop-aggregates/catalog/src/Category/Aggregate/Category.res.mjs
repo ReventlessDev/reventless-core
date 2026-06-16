@@ -32,8 +32,15 @@ let errorSchema = S.union([
   S.literal("CategoryAlreadyArchived")
 ]);
 
-function commandAuthorization(param) {
-  return "AllowAuthenticated";
+function commandAuthorization(command) {
+  if (typeof command !== "object") {
+    return {
+      TAG: "AllowGroups",
+      _0: ["Admin"]
+    };
+  } else {
+    return "AllowAuthenticated";
+  }
 }
 
 let name = "Category";

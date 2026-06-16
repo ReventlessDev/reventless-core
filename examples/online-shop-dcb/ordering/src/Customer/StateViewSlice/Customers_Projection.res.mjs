@@ -20,35 +20,32 @@ function project(event) {
       return [{
           TAG: "Update",
           _0: event.customerId,
-          _1: state => ({
-            customerId: state.customerId,
-            email: email,
-            address: state.address,
-            deactivated: state.deactivated
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.email = email;
+            return newrecord;
+          }
         }];
     case "AddressChanged" :
       let address = event.address;
       return [{
           TAG: "Update",
           _0: event.customerId,
-          _1: state => ({
-            customerId: state.customerId,
-            email: state.email,
-            address: address,
-            deactivated: state.deactivated
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.address = address;
+            return newrecord;
+          }
         }];
     case "CustomerDeactivated" :
       return [{
           TAG: "Update",
           _0: event.customerId,
-          _1: state => ({
-            customerId: state.customerId,
-            email: state.email,
-            address: state.address,
-            deactivated: true
-          })
+          _1: state => {
+            let newrecord = {...state};
+            newrecord.deactivated = true;
+            return newrecord;
+          }
         }];
   }
 }

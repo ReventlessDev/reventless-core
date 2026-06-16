@@ -1,0 +1,6 @@
+config:
+  aws:region: eu-west-1
+  platform:stack: reventless/online-shop-aggregates-platform-aws/alpha
+  interstack:
+    dependencies:
+      - reventless/online-shop-aggregates-catalog-aws/alpha

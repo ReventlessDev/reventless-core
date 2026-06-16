@@ -1,0 +1,4 @@
+name: online-shop-aggregates-ordering-aws
+runtime: nodejs
+main: src/Main.res.mjs
+description: Online Shop Aggregates — Ordering plugin stack

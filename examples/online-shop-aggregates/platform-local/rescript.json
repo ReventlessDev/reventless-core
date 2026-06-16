@@ -16,18 +16,24 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true
     }
   ],
   "dependencies": [
     "sury",
-    "@reventlessdev/rescript-pulumi-pulumi",
-    "@reventlessdev/reventless-spec",
-    "@reventlessdev/reventless-infra",
-    "@reventlessdev/reventless-local",
     "@reventlessdev/online-shop-aggregates-catalog-spec",
     "@reventlessdev/online-shop-aggregates-ordering-spec",
     "@reventlessdev/online-shop-aggregates-catalog",
-    "@reventlessdev/online-shop-aggregates-ordering"
+    "@reventlessdev/online-shop-aggregates-ordering",
+    "@reventlessdev/reventless-infra",
+    "@reventlessdev/reventless-spec",
+    "@reventlessdev/reventless-local",
+    "@reventlessdev/reventless-gwt",
+    "@reventlessdev/rescript-pulumi-pulumi"
   ],
+  "compiler-flags": [],
   "suffix": ".res.mjs"
 }

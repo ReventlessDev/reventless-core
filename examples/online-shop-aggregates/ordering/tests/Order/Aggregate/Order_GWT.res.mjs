@@ -141,6 +141,64 @@ describe("Order Behavior", () => {
       productIds: ["prod-1"]
     }
   ]), "Cancel")));
+  test("Refund on non-existent order returns OrderNotFound", () => thenError(whenCmd(givenEvents([]), {
+    TAG: "Refund",
+    reason: "lost-in-transit"
+  }), "OrderNotFound"));
+  test("Refund on placed order returns OrderNotCancelled", () => thenError(whenCmd(givenEvents([{
+      TAG: "Placed",
+      customerId: "cust-1",
+      productIds: ["prod-1"]
+    }]), {
+    TAG: "Refund",
+    reason: "customer-changed-mind"
+  }), "OrderNotCancelled"));
+  test("Refund on shipped order returns OrderNotCancelled", () => thenError(whenCmd(givenEvents([
+    {
+      TAG: "Placed",
+      customerId: "cust-1",
+      productIds: ["prod-1"]
+    },
+    "Shipped"
+  ]), {
+    TAG: "Refund",
+    reason: "delivered-damaged"
+  }), "OrderNotCancelled"));
+  test("Refund on cancelled order produces Refunded", () => thenEvent(whenCmd(givenEvents([
+    {
+      TAG: "Placed",
+      customerId: "cust-1",
+      productIds: ["prod-1"]
+    },
+    {
+      TAG: "Cancelled",
+      productIds: ["prod-1"]
+    }
+  ]), {
+    TAG: "Refund",
+    reason: "customer-changed-mind"
+  }), {
+    TAG: "Refunded",
+    reason: "customer-changed-mind"
+  }));
+  test("Refund on already-refunded order produces no events (idempotent)", () => thenNoEvent(whenCmd(givenEvents([
+    {
+      TAG: "Placed",
+      customerId: "cust-1",
+      productIds: ["prod-1"]
+    },
+    {
+      TAG: "Cancelled",
+      productIds: ["prod-1"]
+    },
+    {
+      TAG: "Refunded",
+      reason: "customer-changed-mind"
+    }
+  ]), {
+    TAG: "Refund",
+    reason: "customer-changed-mind"
+  })));
 });
 
 let Spec = include.Spec;

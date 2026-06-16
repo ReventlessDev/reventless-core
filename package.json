@@ -35,6 +35,8 @@
     "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-aws": "workspace:*",
+    "@reventlessdev/online-shop-aggregates-platform-aws": "workspace:*",
+    "@reventlessdev/online-shop-dcb-platform-aws": "workspace:*",
     "@reventlessdev/online-shop-hybrid-platform-aws": "workspace:*",
     "lerna": "^8.2.4",
     "rescript": "^12.3.0",

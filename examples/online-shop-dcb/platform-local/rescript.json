@@ -16,6 +16,10 @@
     {
       "dir": "src",
       "subdirs": true
+    },
+    {
+      "dir": "tests",
+      "subdirs": true
     }
   ],
   "dependencies": [
@@ -27,6 +31,7 @@
     "@reventlessdev/reventless-infra",
     "@reventlessdev/reventless-spec",
     "@reventlessdev/reventless-local",
+    "@reventlessdev/reventless-gwt",
     "@reventlessdev/rescript-pulumi-pulumi"
   ],
   "compiler-flags": [],

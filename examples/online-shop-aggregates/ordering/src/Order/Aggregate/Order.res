@@ -8,12 +8,14 @@ type command =
   | Place({customerId: string, productIds: array<string>})
   | @allowedStates([Orders.Placed]) Ship
   | @allowedStates([Orders.Placed]) Cancel
+  | @allowedStates([Orders.Cancelled]) Refund({reason: string})
 
 @schema
 type event =
   | Placed({customerId: string, productIds: array<string>})
   | Shipped
   | Cancelled({productIds: array<string>})
+  | Refunded({reason: string})
 
 @schema
 type error =
@@ -21,3 +23,5 @@ type error =
   | OrderNotFound
   | OrderAlreadyShipped
   | OrderAlreadyCancelled
+  | OrderNotCancelled
+  | OrderAlreadyRefunded

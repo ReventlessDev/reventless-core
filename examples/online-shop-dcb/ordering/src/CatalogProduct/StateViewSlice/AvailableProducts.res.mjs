@@ -3,6 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
+import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
 
 let stateSchema = S.schema(s => ({
   productId: s.m(S.string),
@@ -26,6 +27,23 @@ let consumedEventSchema = S.union([
 
 let config = ReadModel$Reventless.config(undefined, undefined, undefined);
 
+let stateSchema$1 = S.Metadata.set(stateSchema, StateAnnotations$Reventless.stateAnnotationsId, {
+  ids: [],
+  compositeIds: [],
+  subIds: [],
+  compositeSubIds: [],
+  indexes: [],
+  hidden: [],
+  summary: [],
+  drillTargets: [],
+  drillTargetKeys: [],
+  collapsed: [],
+  scan: [],
+  scanSort: [],
+  status: undefined,
+  visibility: "Internal"
+});
+
 let name = "AvailableProducts";
 
 let Id;
@@ -36,15 +54,15 @@ let moduleUrl = "@reventlessdev/online-shop-dcb-ordering/src/CatalogProduct/Stat
 
 let authorization = "AllowAuthenticated";
 
-let visibility = "Public";
+let visibility = "Internal";
 
 export {
   name,
   Id,
-  stateSchema,
   consumedEventSchema,
   config,
   subIdConfig,
+  stateSchema$1 as stateSchema,
   moduleUrl,
   authorization,
   visibility,

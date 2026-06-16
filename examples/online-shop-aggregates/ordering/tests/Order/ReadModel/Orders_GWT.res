@@ -30,4 +30,17 @@ describe("Orders ReadModel ← Order", () => {
       status: Cancelled,
     })
   )
+
+  test("Refunded updates status", () =>
+    givenEvents([
+      Order.Placed({customerId: "cust-1", productIds: ["prod-1"]}),
+      Order.Cancelled({productIds: ["prod-1"]}),
+    ])
+    ->whenEvent(Order.Refunded({reason: "customer-changed-mind"}))
+    ->thenState({
+      Orders.customerId: "cust-1",
+      productIds: ["prod-1"],
+      status: Refunded,
+    })
+  )
 })

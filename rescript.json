@@ -26,6 +26,8 @@
     "@reventlessdev/reventless-gwt",
     "@reventlessdev/reventless-local",
     "@reventlessdev/reventless-aws",
+    "@reventlessdev/online-shop-aggregates-platform-aws",
+    "@reventlessdev/online-shop-dcb-platform-aws",
     "@reventlessdev/online-shop-hybrid-platform-aws"
   ],
   "sources": [],

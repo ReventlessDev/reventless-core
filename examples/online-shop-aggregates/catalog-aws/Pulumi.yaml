@@ -1,0 +1,4 @@
+name: online-shop-aggregates-catalog-aws
+runtime: nodejs
+main: src/Main.res.mjs
+description: Online Shop Aggregates — Catalog plugin stack

@@ -3,7 +3,12 @@
 @@reventless.spec
 
 @schema
-type state = {customerId: string, email: string, address: string, deactivated: bool}
+type state = {
+  customerId: string,
+  @displayName email: string,
+  address: string,
+  deactivated: bool,
+}
 
 @schema
 type consumedEvent =

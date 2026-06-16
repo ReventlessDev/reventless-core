@@ -10,7 +10,11 @@ let commandSchema = S.union([
     productIds: s.m(S.array(S.string))
   })),
   S.literal("Ship"),
-  S.literal("Cancel")
+  S.literal("Cancel"),
+  S.schema(s => ({
+    TAG: "Refund",
+    reason: s.m(S.string)
+  }))
 ]);
 
 let eventSchema = S.union([
@@ -23,6 +27,10 @@ let eventSchema = S.union([
   S.schema(s => ({
     TAG: "Cancelled",
     productIds: s.m(S.array(S.string))
+  })),
+  S.schema(s => ({
+    TAG: "Refunded",
+    reason: s.m(S.string)
   }))
 ]);
 
@@ -30,7 +38,9 @@ let errorSchema = S.union([
   S.literal("OrderAlreadyPlaced"),
   S.literal("OrderNotFound"),
   S.literal("OrderAlreadyShipped"),
-  S.literal("OrderAlreadyCancelled")
+  S.literal("OrderAlreadyCancelled"),
+  S.literal("OrderNotCancelled"),
+  S.literal("OrderAlreadyRefunded")
 ]);
 
 let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [
@@ -41,6 +51,10 @@ let commandSchema$1 = Api$ReventlessInfra.markAllowedStates(commandSchema, [
   [
     "Cancel",
     ["Placed"]
+  ],
+  [
+    "Refund",
+    ["Cancelled"]
   ]
 ]);
 

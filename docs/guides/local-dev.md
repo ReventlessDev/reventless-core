@@ -21,7 +21,10 @@ The UI dev server (Vite) proxies all `/graphql` requests to `http://localhost:40
 
 ## Quick start — one command
 
-From `examples/online-shop-hybrid/platform-local/` in **reventless-core**:
+From `examples/online-shop-hybrid/platform-local/` in **reventless-core**
+(the same scripts work in `examples/online-shop-aggregates/platform-local/`
+and `examples/online-shop-dcb/platform-local/` — see each example's README
+for the style-specific overview):
 
 ```bash
 # Build first (once, or after source changes)
