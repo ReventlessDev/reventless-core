@@ -42,10 +42,10 @@ globalThis.describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
       globalThis.expect(allOk).toBe(true);
     });
   });
-  globalThis.describe("AbstractCall handler succeeds", () => {
+  globalThis.describe("AbstractHandleDirective handler succeeds", () => {
     globalThis.test("handler called, returns Ok(reference)", async () => {
       let results = await Effect.runPromise(ExtensionPointFixtures$ReventlessCore.TestHandler.handleIncomingCommands(Stream.fromIterable([ExtensionPointFixtures$ReventlessCore.makeTopicItem("ref-1", {
-          TAG: "CallHandler",
+          TAG: "TriggerDirective",
           value: "test"
         })])));
       globalThis.expect([
@@ -61,14 +61,14 @@ globalThis.describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
     });
   });
   globalThis.describe("mixed actions", () => {
-    globalThis.test("AbstractPublishCommand and AbstractCall both resolved", async () => {
+    globalThis.test("AbstractPublishCommand and AbstractHandleDirective both resolved", async () => {
       let results = await Effect.runPromise(ExtensionPointFixtures$ReventlessCore.TestHandler.handleIncomingCommands(Stream.fromIterable([
         ExtensionPointFixtures$ReventlessCore.makeTopicItem("ref-pub", {
           TAG: "RouteToAgg",
           aggId: "agg-1"
         }),
         ExtensionPointFixtures$ReventlessCore.makeTopicItem("ref-call", {
-          TAG: "CallHandler",
+          TAG: "TriggerDirective",
           value: "v"
         })
       ])));

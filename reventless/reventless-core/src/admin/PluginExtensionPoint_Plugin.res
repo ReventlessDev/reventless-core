@@ -82,7 +82,7 @@ module Make = (Spec: Spec) => {
       }
     }
 
-  let callHandler = async (
+  let directiveHandler = async (
     createSchedule: Reventless.Schedule.create,
     deleteSchedule: Reventless.Schedule.delete,
     queryEngine: Reventless.QueryEngine.operations,
@@ -140,7 +140,7 @@ module Make = (Spec: Spec) => {
           // Re-create timeout (+2 minute to avoid toggling)
           // 1 minute because Schedules can only be created by minute
           // 1 additional minute to allow additional latency
-          Call(callHandler, CreateDisconnectSchedule(id, interval + 2)),
+          HandleDirective(directiveHandler, CreateDisconnectSchedule(id, interval + 2)),
         ]
       | ConnectPlugin(pluginDefinition) =>
         // Validate protocol versions declared by the connecting plugin.
@@ -169,9 +169,9 @@ module Make = (Spec: Spec) => {
         Array.concat([PublishCommand(id, Delegate.Connect(pluginDefinition))], reportAction)
       | DisconnectPlugin => [
           PublishCommand(id, Disconnect),
-          Call(callHandler, DeleteDisconnectSchedule(id)),
+          HandleDirective(directiveHandler, DeleteDisconnectSchedule(id)),
         ]
-      | ForwardCommand(forwardCommand) => [Call(callHandler, ForwardCommand(forwardCommand))]
+      | ForwardCommand(forwardCommand) => [HandleDirective(directiveHandler, ForwardCommand(forwardCommand))]
       }
 
     let mapOutgoingEvent = Some(
@@ -182,24 +182,24 @@ module Make = (Spec: Spec) => {
           ]
         | Connected(pluginDefinition) => [
             PublishEvent(id, PluginConnected(pluginDefinition)),
-            Call(callHandler, DoConnectPlugin(pluginDefinition)),
+            HandleDirective(directiveHandler, DoConnectPlugin(pluginDefinition)),
           ]
         | Reconnected(pluginDefinition) => [
             PublishEvent(id, PluginReconnected(pluginDefinition)),
-            Call(callHandler, DoConnectPlugin(pluginDefinition)),
+            HandleDirective(directiveHandler, DoConnectPlugin(pluginDefinition)),
           ]
         | Disconnected(pluginDefinition) => [
             PublishEvent(id, PluginDisconnected(pluginDefinition)),
-            Call(callHandler, DoDisconnectPlugin(pluginDefinition)),
+            HandleDirective(directiveHandler, DoDisconnectPlugin(pluginDefinition)),
           ]
         | Deactivated(pluginDefinition) => [
             PublishEvent(id, PluginDeactivated(pluginDefinition)),
-            Call(callHandler, DoDisconnectPlugin(pluginDefinition)),
+            HandleDirective(directiveHandler, DoDisconnectPlugin(pluginDefinition)),
           ]
         | Activated(pluginDefinition) => [PublishEvent(id, PluginActivated(pluginDefinition))]
         | Retired(pluginDefinition) => [
             PublishEvent(id, PluginRetired(pluginDefinition)),
-            Call(callHandler, DoDisconnectPlugin(pluginDefinition)),
+            HandleDirective(directiveHandler, DoDisconnectPlugin(pluginDefinition)),
           ]
         | IncompatiblePluginDetected(pluginDefinition) => [
             PublishEvent(id, IncompatiblePlugin(pluginDefinition)),

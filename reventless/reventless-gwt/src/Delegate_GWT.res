@@ -115,7 +115,7 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
             | EPMapping.PublishEventAsync(p) =>
               let (id, ev) = await p
               [encPublished(~target=id, encEvent(ev))]
-            | EPMapping.Call(_, _) => []
+            | EPMapping.HandleDirective(_, _) => []
             }
           )
           ->Promise.all
@@ -131,7 +131,7 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
       M.mapIncomingCommand("gwt-id", command, StubRuntime.meta)->Array.filterMap(action =>
         switch action {
         | EPMapping.PublishCommand(id, cmd) => Some(encPublished(~target=id, encCommand(cmd)))
-        | EPMapping.Call(_, _) => None
+        | EPMapping.HandleDirective(_, _) => None
         }
       )
   })
@@ -205,7 +205,7 @@ module FromExtension = (M: ExtMapping.Mapping) => {
           | ExtMapping.ForwardCommand({extensionPointName, id, commandJson}) => [
               encPublished(~target=`${extensionPointName}:${id}`, commandJson),
             ]
-          | ExtMapping.Call(_, _) => []
+          | ExtMapping.HandleDirective(_, _) => []
           }
         )
         ->Promise.all
@@ -227,7 +227,7 @@ module FromExtension = (M: ExtMapping.Mapping) => {
             Some(encPublished(~target=id, encEpCmd(cmd)))
           | ExtMapping.ForwardCommand({extensionPointName, id, commandJson}) =>
             Some(encPublished(~target=`${extensionPointName}:${id}`, commandJson))
-          | ExtMapping.Call(_, _) => None
+          | ExtMapping.HandleDirective(_, _) => None
           }
         )
       }

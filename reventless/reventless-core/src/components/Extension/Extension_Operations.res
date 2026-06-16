@@ -105,11 +105,11 @@ module Make = (
     })
   }
 
-  let handle = async handler =>
+  let handleDirective = async handler =>
     try await handler() catch {
     | err =>
       let errMsg = err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-      EffectLogger.logError(~comp, `Error on calling handler: ${errMsg}`)->Effect.runSync
+      EffectLogger.logError(~comp, `Error on handling directive: ${errMsg}`)->Effect.runSync
     }
 
   let applyIncomingCommandAction = async action =>
@@ -138,7 +138,7 @@ module Make = (
         publishPluginExtensionPointCommand(commandJson)
       | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
-      | AbstractCall(handler) => handler->handle
+      | AbstractHandleDirective(handler) => handler->handleDirective
       }
     )
 
@@ -148,7 +148,7 @@ module Make = (
       publishPluginExtensionPointCommand(commandJson)
     | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
       forwardCommand(extensionPointName, commandJson)
-    | AbstractCall(handler) => handler->handle
+    | AbstractHandleDirective(handler) => handler->handleDirective
     }
 
   let incomingJsonEventsHandler = async (eventJson', pluginDef) => {

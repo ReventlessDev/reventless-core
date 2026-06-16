@@ -1,14 +1,15 @@
 type extensionPointName = string
 
 /**
-An async handler that may call the scheduler or query engine as a side effect.
-Used as the `'msg` callback in `commandAction` and `eventAction`.
+An async handler for a typed extension-point directive. May call the scheduler
+or query engine as a side effect. Used as the handler argument in `HandleDirective`
+on both `commandAction` and `eventAction`.
 */
-type callHandler<'msg> = (
+type directiveHandler<'directive> = (
   Reventless.Schedule.create,
   Reventless.Schedule.delete,
   Reventless.QueryEngine.operations,
-  'msg,
+  'directive,
 ) => promise<unit>
 
 /**
@@ -16,12 +17,13 @@ Actions returned by `mapIncomingCommand` — what to do when the extension point
 receives a command from an extension.
 
 - `PublishCommand(id, cmd)` — publish a command to the wrapped aggregate
-- `Call(handler, msg)` — invoke an async side-effect handler
+- `HandleDirective(handler, directive)` — invoke an async handler for an
+  extension-point-defined directive
 */
 /* these actions are needed for Mapping */
-type commandAction<'command, 'msg> =
+type commandAction<'command, 'directive> =
   | PublishCommand(string, 'command)
-  | Call(callHandler<'msg>, 'msg)
+  | HandleDirective(directiveHandler<'directive>, 'directive)
 
 /**
 Actions returned by `mapOutgoingEvent` — what to do when the wrapped aggregate
@@ -29,12 +31,13 @@ emits an event that should be reflected through the extension point.
 
 - `PublishEvent(id, event)` — synchronously emit an extension point event
 - `PublishEventAsync(promise)` — resolve a promise and emit the resulting event
-- `Call(handler, msg)` — invoke an async side-effect handler
+- `HandleDirective(handler, directive)` — invoke an async handler for an
+  extension-point-defined directive
 */
-type eventAction<'event, 'msg> =
+type eventAction<'event, 'directive> =
   | PublishEvent(string, 'event)
   | PublishEventAsync(promise<(string, 'event)>)
-  | Call(callHandler<'msg>, 'msg)
+  | HandleDirective(directiveHandler<'directive>, 'directive)
 
 /**
 The extension point protocol — defines the command, event, and directive types
@@ -115,13 +118,13 @@ module type Mapping = {
 /** Internal runtime action produced after pre-encoding a `commandAction`. Not for direct use. */
 type abstractCommandAction =
   | AbstractPublishCommand(string, string, Reventless.Message.commandJson)
-  | AbstractCall(string, unit => promise<unit>)
+  | AbstractHandleDirective(string, unit => promise<unit>)
 
 /** Internal runtime action produced after pre-encoding an `eventAction`. Not for direct use. */
 type abstractEventAction<'extensionPointEvent> =
   | AbstractPublishEvent(string, Reventless.Message.meta, JSON.t)
   | AbstractPublishEventAsync(promise<(string, Reventless.Message.meta, JSON.t)>)
-  | AbstractCall(unit => promise<unit>)
+  | AbstractHandleDirective(unit => promise<unit>)
 
 /**
 A pre-compiled mapping module produced by `ExtensionPointMapping.Make(Spec, Mapping)`.
@@ -216,10 +219,10 @@ module Make = (MappingImpl: Mapping): (
               commandJson: targetCmd->Reventless.Message.encode(Delegate.commandSchema),
             },
           )
-        | Call(handler, directive) =>
-          compLog(`ExtensionPoint(${extensionPointName})`, "incoming Call directive")
+        | HandleDirective(handler, directive) =>
+          compLog(`ExtensionPoint(${extensionPointName})`, "incoming directive")
 
-          AbstractCall(
+          AbstractHandleDirective(
             reference,
             () => handler(createSchedule, deleteSchedule, queryEngine, directive),
           )
@@ -282,10 +285,12 @@ module Make = (MappingImpl: Mapping): (
             (id, meta, eventJson')
           }
           AbstractPublishEventAsync(promise->toEvent')
-        | Call(handler, directive) =>
-          compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → Call directive`)
+        | HandleDirective(handler, directive) =>
+          compLog(`ExtensionPoint(${extensionPointName})`, `mapped ${delegateName} → directive`)
 
-          AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, directive))
+          AbstractHandleDirective(() =>
+            handler(createSchedule, deleteSchedule, queryEngine, directive)
+          )
         }
       )
     }

@@ -33,12 +33,12 @@ let describe = include.describe;
 
 let test = include.test;
 
-let whenInboundEvent = include.whenInboundEvent;
+let whenIncomingEvent = include.whenIncomingEvent;
 
 let thenPublishesCommand = include.thenPublishesCommand;
 
 describe("Products Extension delegate", () => {
-  test("ProductBecameAvailable issues SyncNewProduct", undefined, () => thenPublishesCommand(whenInboundEvent({
+  test("ProductBecameAvailable issues SyncNewProduct", undefined, () => thenPublishesCommand(whenIncomingEvent({
     TAG: "ProductBecameAvailable",
     productId: "p1",
     name: "Book",
@@ -49,7 +49,7 @@ describe("Products Extension delegate", () => {
     name: "Book",
     price: 9.99
   }));
-  test("ProductPriceChanged issues ChangeSyncedPrice", undefined, () => thenPublishesCommand(whenInboundEvent({
+  test("ProductPriceChanged issues ChangeSyncedPrice", undefined, () => thenPublishesCommand(whenIncomingEvent({
     TAG: "ProductPriceChanged",
     productId: "p1",
     price: 7.5
@@ -64,7 +64,9 @@ let encCmd = include.encCmd;
 
 let encEpCmd = include.encEpCmd;
 
-let Core = include.Core;
+let EvCore = include.EvCore;
+
+let OutCore = include.OutCore;
 
 let thenPublishesNothing = include.thenPublishesNothing;
 
@@ -72,16 +74,23 @@ let thenPublishesCommands = include.thenPublishesCommands;
 
 let thenPublishesAggregateCommand = include.thenPublishesAggregateCommand;
 
+let whenDelegateEvent = include.whenDelegateEvent;
+
+let thenPublishesExtensionPointCommand = include.thenPublishesExtensionPointCommand;
+
 export {
   encCmd,
   encEpCmd,
-  Core,
+  EvCore,
+  OutCore,
   describe,
   test,
-  whenInboundEvent,
   thenPublishesNothing,
+  whenIncomingEvent,
   thenPublishesCommand,
   thenPublishesCommands,
   thenPublishesAggregateCommand,
+  whenDelegateEvent,
+  thenPublishesExtensionPointCommand,
 }
 /* include Not a pure module */

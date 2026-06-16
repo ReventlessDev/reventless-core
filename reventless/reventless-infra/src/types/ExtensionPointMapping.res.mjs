@@ -42,9 +42,9 @@ function Make(MappingImpl) {
         }
         let directive = x._1;
         let handler = x._0;
-        compLog(`ExtensionPoint(` + extensionPointName + `)`, "incoming Call directive");
+        compLog(`ExtensionPoint(` + extensionPointName + `)`, "incoming directive");
         return {
-          TAG: "AbstractCall",
+          TAG: "AbstractHandleDirective",
           _0: reference,
           _1: () => handler(extra$1, extra$2, extra$3, directive)
         };
@@ -92,12 +92,12 @@ function Make(MappingImpl) {
             TAG: "AbstractPublishEventAsync",
             _0: toEvent$p(eventAction._0)
           };
-        case "Call" :
+        case "HandleDirective" :
           let directive = eventAction._1;
           let handler = eventAction._0;
-          compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → Call directive`);
+          compLog(`ExtensionPoint(` + extensionPointName + `)`, `mapped ` + delegateName + ` → directive`);
           return {
-            TAG: "AbstractCall",
+            TAG: "AbstractHandleDirective",
             _0: () => handler(extra$1, extra$2, extra$3, directive)
           };
       }

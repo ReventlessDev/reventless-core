@@ -43,10 +43,12 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
     })
   })
 
-  describe("AbstractCall handler succeeds", () => {
+  describe("AbstractHandleDirective handler succeeds", () => {
     testPromise("handler called, returns Ok(reference)", async () => {
       let results =
-        await Stream.fromIterable([makeTopicItem("ref-1", TestEPSpec.CallHandler({value: "test"}))])
+        await Stream.fromIterable([
+          makeTopicItem("ref-1", TestEPSpec.TriggerDirective({value: "test"})),
+        ])
         ->TestHandler.handleIncomingCommands
         ->Effect.runPromise
       expect((results, capturedCallCount.contents))->toEqual(([Ok("ref-1")], 1))
@@ -54,11 +56,11 @@ describe("ExtensionPoint_Callback.handleIncomingCommands:", () => {
   })
 
   describe("mixed actions", () => {
-    testPromise("AbstractPublishCommand and AbstractCall both resolved", async () => {
+    testPromise("AbstractPublishCommand and AbstractHandleDirective both resolved", async () => {
       let results =
         await Stream.fromIterable([
           makeTopicItem("ref-pub", TestEPSpec.RouteToAgg({aggId: "agg-1"})),
-          makeTopicItem("ref-call", TestEPSpec.CallHandler({value: "v"})),
+          makeTopicItem("ref-call", TestEPSpec.TriggerDirective({value: "v"})),
         ])
         ->TestHandler.handleIncomingCommands
         ->Effect.runPromise

@@ -12,7 +12,7 @@ module TestEPSpec = {
   @schema
   type command =
     | RouteToAgg({aggId: string})
-    | CallHandler({value: string})
+    | TriggerDirective({value: string})
 
   @schema
   type event = | Done({result: string})
@@ -59,8 +59,8 @@ module TestMapping = {
             },
           ),
         ]
-      | TestEPSpec.CallHandler(_) => [
-          ReventlessInfra.ExtensionPointMapping.AbstractCall(
+      | TestEPSpec.TriggerDirective(_) => [
+          ReventlessInfra.ExtensionPointMapping.AbstractHandleDirective(
             topicItem.reference,
             async () => {
               capturedCallCount := capturedCallCount.contents + 1

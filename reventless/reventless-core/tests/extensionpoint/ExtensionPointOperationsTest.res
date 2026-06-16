@@ -65,7 +65,7 @@ module TestPublishMapping = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Mapping 2: returns AbstractCall (source agg = "CallAgg")
+// Mapping 2: returns AbstractHandleDirective (source agg = "CallAgg")
 // ─────────────────────────────────────────────────────────────
 
 module TestCallMapping = {
@@ -82,7 +82,7 @@ module TestCallMapping = {
   let mapOutgoingEvent = Some(
     (_eventJson, _createSchedule, _deleteSchedule, _queryEngine) => {
       [
-        ReventlessInfra.ExtensionPointMapping.AbstractCall(async () => {
+        ReventlessInfra.ExtensionPointMapping.AbstractHandleDirective(async () => {
           capturedCallCount := capturedCallCount.contents + 1
         }),
       ]
@@ -226,8 +226,8 @@ describe("ExtensionPoint_Operations.Make:", () => {
     })
   })
 
-  describe("outgoingJsonEventsHandler — AbstractCall:", () => {
-    testPromise("known aggregate with AbstractCall invokes the handler", async () => {
+  describe("outgoingJsonEventsHandler — AbstractHandleDirective:", () => {
+    testPromise("known aggregate with AbstractHandleDirective invokes the handler", async () => {
       let eventJson = makeEventJsonForAgg("CallAgg")
       await EpOps.outgoingJsonEventsHandler(eventJson, ())
       expect(capturedCallCount.contents)->toBe(1)

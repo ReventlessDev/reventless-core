@@ -118,12 +118,12 @@ module Make = (
     | ReventlessInfra.ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
       let (id, meta, eventJson) = await promise
       await publishWithHooks(id, meta, eventJson)
-    | AbstractCall(handler) =>
+    | AbstractHandleDirective(handler) =>
       try await handler() catch {
       | err =>
         let errMsg =
           err->JsExn.fromException->Option.flatMap(JsExn.message)->Option.getOr("unknown")
-        EffectLogger.logError(~comp=`ExtensionPoint(${MappingSpec.name})`, `Error on calling handler: ${errMsg}`)->Effect.runSync
+        EffectLogger.logError(~comp=`ExtensionPoint(${MappingSpec.name})`, `Error on handling directive: ${errMsg}`)->Effect.runSync
       }
     }
 

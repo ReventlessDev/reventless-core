@@ -357,7 +357,7 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
           | EPMapping.PublishEventAsync(p) =>
             let (_id, e) = await p
             [e]
-          | EPMapping.Call(_, _) => []
+          | EPMapping.HandleDirective(_, _) => []
           }
         )
         ->Promise.all
@@ -442,7 +442,7 @@ module ExtensionStep = (M: ExtMapping.Mapping) => {
           (await p)->Array.map(((_id, cmd)) => encCmd(cmd))
         | ExtMapping.PublishExtensionPointCommand(_, _)
         | ExtMapping.ForwardCommand(_)
-        | ExtMapping.Call(_, _) => []
+        | ExtMapping.HandleDirective(_, _) => []
         }
       )
       ->Promise.all

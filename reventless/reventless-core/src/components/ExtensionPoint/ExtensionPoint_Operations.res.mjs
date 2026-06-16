@@ -91,13 +91,13 @@ function Make(MappingSpec) {
         case "AbstractPublishEventAsync" :
           let match = await action._0;
           return await publishWithHooks(match[0], match[1], match[2]);
-        case "AbstractCall" :
+        case "AbstractHandleDirective" :
           try {
             return await action._0();
           } catch (raw_err) {
             let err = Primitive_exceptions.internalToException(raw_err);
             let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-            return Effect.runSync(EffectLogger$ReventlessCore.logError(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `Error on calling handler: ` + errMsg));
+            return Effect.runSync(EffectLogger$ReventlessCore.logError(`ExtensionPoint(` + MappingSpec.name + `)`, undefined, `Error on handling directive: ` + errMsg));
           }
       }
     };

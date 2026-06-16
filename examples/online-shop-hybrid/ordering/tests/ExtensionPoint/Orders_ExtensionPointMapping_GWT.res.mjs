@@ -31,12 +31,12 @@ let describe = include.describe;
 
 let test = include.test;
 
-let whenInboundEvent = include.whenInboundEvent;
+let whenDelegateEvent = include.whenDelegateEvent;
 
 let thenPublishesEvents = include.thenPublishesEvents;
 
 describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
-  test("OrderPlaced fans out to one ItemOrdered per product", undefined, () => thenPublishesEvents(whenInboundEvent({
+  test("OrderPlaced fans out to one ItemOrdered per product", undefined, () => thenPublishesEvents(whenDelegateEvent({
     TAG: "OrderPlaced",
     orderId: "o1",
     customerId: "c1",
@@ -64,7 +64,7 @@ describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
       }
     ]
   ]));
-  test("OrderCancelled fans out to one ItemOrderCancelled per product", undefined, () => thenPublishesEvents(whenInboundEvent({
+  test("OrderCancelled fans out to one ItemOrderCancelled per product", undefined, () => thenPublishesEvents(whenDelegateEvent({
     TAG: "OrderCancelled",
     orderId: "o1",
     productIds: [
@@ -93,20 +93,35 @@ describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
 
 let encEvent = include.encEvent;
 
-let Core = include.Core;
+let encCommand = include.encCommand;
+
+let EvCore = include.EvCore;
+
+let CmdCore = include.CmdCore;
 
 let thenPublishesNothing = include.thenPublishesNothing;
 
 let thenPublishesEvent = include.thenPublishesEvent;
 
+let whenIncomingCommand = include.whenIncomingCommand;
+
+let thenPublishesCommand = include.thenPublishesCommand;
+
+let thenPublishesCommands = include.thenPublishesCommands;
+
 export {
   encEvent,
-  Core,
+  encCommand,
+  EvCore,
+  CmdCore,
   describe,
   test,
-  whenInboundEvent,
   thenPublishesNothing,
+  whenDelegateEvent,
   thenPublishesEvent,
   thenPublishesEvents,
+  whenIncomingCommand,
+  thenPublishesCommand,
+  thenPublishesCommands,
 }
 /* include Not a pure module */

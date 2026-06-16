@@ -31,12 +31,12 @@ let describe = include.describe;
 
 let test = include.test;
 
-let whenInboundEvent = include.whenInboundEvent;
+let whenDelegateEvent = include.whenDelegateEvent;
 
 let thenPublishesEvent = include.thenPublishesEvent;
 
 describe("Products ExtensionPoint mapping", () => {
-  test("ProductAdded becomes the public ProductBecameAvailable", undefined, () => thenPublishesEvent(whenInboundEvent({
+  test("ProductAdded becomes the public ProductBecameAvailable", undefined, () => thenPublishesEvent(whenDelegateEvent({
     TAG: "ProductAdded",
     productId: "p1",
     name: "Book",
@@ -48,7 +48,7 @@ describe("Products ExtensionPoint mapping", () => {
     name: "Book",
     price: 9.99
   }));
-  test("ProductPriceChanged is forwarded to the extension point", undefined, () => thenPublishesEvent(whenInboundEvent({
+  test("ProductPriceChanged is forwarded to the extension point", undefined, () => thenPublishesEvent(whenDelegateEvent({
     TAG: "ProductPriceChanged",
     productId: "p1",
     price: 7.5
@@ -61,20 +61,35 @@ describe("Products ExtensionPoint mapping", () => {
 
 let encEvent = include.encEvent;
 
-let Core = include.Core;
+let encCommand = include.encCommand;
+
+let EvCore = include.EvCore;
+
+let CmdCore = include.CmdCore;
 
 let thenPublishesNothing = include.thenPublishesNothing;
 
 let thenPublishesEvents = include.thenPublishesEvents;
 
+let whenIncomingCommand = include.whenIncomingCommand;
+
+let thenPublishesCommand = include.thenPublishesCommand;
+
+let thenPublishesCommands = include.thenPublishesCommands;
+
 export {
   encEvent,
-  Core,
+  encCommand,
+  EvCore,
+  CmdCore,
   describe,
   test,
-  whenInboundEvent,
   thenPublishesNothing,
+  whenDelegateEvent,
   thenPublishesEvent,
   thenPublishesEvents,
+  whenIncomingCommand,
+  thenPublishesCommand,
+  thenPublishesCommands,
 }
 /* include Not a pure module */

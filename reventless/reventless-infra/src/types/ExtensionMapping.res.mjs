@@ -174,12 +174,12 @@ function Make(MappingImpl) {
             _0: extensionPointName$1,
             _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
           };
-        case "Call" :
+        case "HandleDirective" :
           let directive = x._1;
           let handler = x._0;
-          compLog(`Extension(` + extensionPointName + `)`, "incoming Call directive");
+          compLog(`Extension(` + extensionPointName + `)`, "incoming directive");
           return {
-            TAG: "AbstractCall",
+            TAG: "AbstractHandleDirective",
             _0: () => handler(directive)
           };
       }
@@ -227,12 +227,12 @@ function Make(MappingImpl) {
             _0: extensionPointName$1,
             _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
           };
-        case "Call" :
+        case "HandleDirective" :
           let directive = x._1;
           let handler = x._0;
-          compLog(`Extension(` + delegateName + `)`, "outgoing Call directive");
+          compLog(`Extension(` + delegateName + `)`, "outgoing directive");
           return {
-            TAG: "AbstractCall",
+            TAG: "AbstractHandleDirective",
             _0: () => handler(directive)
           };
       }

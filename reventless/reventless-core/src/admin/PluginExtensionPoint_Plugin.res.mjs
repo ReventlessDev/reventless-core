@@ -70,7 +70,7 @@ function Make(Spec) {
       }
     }
   };
-  let callHandler = async (createSchedule, deleteSchedule, queryEngine, directive) => {
+  let directiveHandler = async (createSchedule, deleteSchedule, queryEngine, directive) => {
     switch (directive.TAG) {
       case "CreateDisconnectSchedule" :
         let id = directive._0;
@@ -122,8 +122,8 @@ function Make(Spec) {
           _1: "Disconnect"
         },
         {
-          TAG: "Call",
-          _0: callHandler,
+          TAG: "HandleDirective",
+          _0: directiveHandler,
           _1: {
             TAG: "DeleteDisconnectSchedule",
             _0: id
@@ -140,8 +140,8 @@ function Make(Spec) {
             _1: "Heartbeat"
           },
           {
-            TAG: "Call",
-            _0: callHandler,
+            TAG: "HandleDirective",
+            _0: directiveHandler,
             _1: {
               TAG: "CreateDisconnectSchedule",
               _0: id,
@@ -170,8 +170,8 @@ function Make(Spec) {
           }].concat(reportAction);
       case "ForwardCommand" :
         return [{
-            TAG: "Call",
-            _0: callHandler,
+            TAG: "HandleDirective",
+            _0: directiveHandler,
             _1: {
               TAG: "ForwardCommand",
               _0: cmd._0
@@ -200,8 +200,8 @@ function Make(Spec) {
             }
           },
           {
-            TAG: "Call",
-            _0: callHandler,
+            TAG: "HandleDirective",
+            _0: directiveHandler,
             _1: {
               TAG: "DoConnectPlugin",
               _0: pluginDefinition
@@ -220,8 +220,8 @@ function Make(Spec) {
             }
           },
           {
-            TAG: "Call",
-            _0: callHandler,
+            TAG: "HandleDirective",
+            _0: directiveHandler,
             _1: {
               TAG: "DoConnectPlugin",
               _0: pluginDefinition$1
@@ -240,8 +240,8 @@ function Make(Spec) {
             }
           },
           {
-            TAG: "Call",
-            _0: callHandler,
+            TAG: "HandleDirective",
+            _0: directiveHandler,
             _1: {
               TAG: "DoDisconnectPlugin",
               _0: pluginDefinition$2
@@ -269,8 +269,8 @@ function Make(Spec) {
             }
           },
           {
-            TAG: "Call",
-            _0: callHandler,
+            TAG: "HandleDirective",
+            _0: directiveHandler,
             _1: {
               TAG: "DoDisconnectPlugin",
               _0: pluginDefinition$3
@@ -289,8 +289,8 @@ function Make(Spec) {
             }
           },
           {
-            TAG: "Call",
-            _0: callHandler,
+            TAG: "HandleDirective",
+            _0: directiveHandler,
             _1: {
               TAG: "DoDisconnectPlugin",
               _0: pluginDefinition$4
@@ -340,7 +340,7 @@ function Make(Spec) {
   });
   return {
     forwardCommand: forwardCommand,
-    callHandler: callHandler,
+    directiveHandler: directiveHandler,
     PluginMapping: PluginMapping,
     Mapping: Mapping
   };

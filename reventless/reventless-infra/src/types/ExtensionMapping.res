@@ -21,9 +21,9 @@ When an extension point emits an event, the extension's mapping can:
   `@partitionTag` (or `@compositePartitionTag`) field.
 - publish a command back to the extension point (`PublishExtensionPointCommand`)
 - forward a command to another extension point opaquely (`ForwardCommand`)
-- invoke an arbitrary async callback (`Call`)
+- handle an extension-point-defined directive via an async handler (`HandleDirective`)
 */
-type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'msg> =
+type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'directive> =
   | PublishAggregateCommand(id, 'aggregateCommand)
   | PublishAggregateCommandAsync(promise<(id, 'aggregateCommand)>)
   | PublishAggregateCommandsAsync(promise<array<(id, 'aggregateCommand)>>)
@@ -32,7 +32,7 @@ type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'msg> =
   | PublishStateChangeSliceCommandsAsync(promise<array<'aggregateCommand>>)
   | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
-  | Call('msg => promise<unit>, 'msg)
+  | HandleDirective(Reventless.Handler.handler<'directive>, 'directive)
 
 /**
 Actions returned by an extension's `mapOutgoingEvent` function.
@@ -40,12 +40,12 @@ Actions returned by an extension's `mapOutgoingEvent` function.
 When the wrapped aggregate emits an event, the extension can:
 - publish a command to the extension point (`PublishExtensionPointCommand`)
 - forward a command to another extension point opaquely (`ForwardCommand`)
-- invoke an arbitrary async callback (`Call`)
+- handle an extension-point-defined directive via an async handler (`HandleDirective`)
 */
-type outgoingCommandAction<'extensionPointCommand, 'msg> =
+type outgoingCommandAction<'extensionPointCommand, 'directive> =
   | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
-  | Call('msg => promise<unit>, 'msg)
+  | HandleDirective(Reventless.Handler.handler<'directive>, 'directive)
 
 /**
 Maps an extension point event to actions on the wrapped aggregate or extension point.
@@ -181,12 +181,12 @@ type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommandsAsync(promise<array<(string, Reventless.Message.commandJson)>>)
   | AbstractPublishPluginExtensionPointCommand(Reventless.Message.commandJson)
   | AbstractPublishExtensionPointCommand(extensionPointName, Reventless.Message.commandJson)
-  | AbstractCall(Reventless.Handler.handler<unit>)
+  | AbstractHandleDirective(Reventless.Handler.handler<unit>)
 
 type abstractOutgoingCommandAction =
   | AbstractPublishPluginExtensionPointCommand(Reventless.Message.commandJson)
   | AbstractPublishExtensionPointCommand(extensionPointName, Reventless.Message.commandJson)
-  | AbstractCall(Reventless.Handler.handler<unit>)
+  | AbstractHandleDirective(Reventless.Handler.handler<unit>)
 
 module type T = {
   module ExtensionPoint: Spec
@@ -360,9 +360,9 @@ module Make = (MappingImpl: Mapping): (
             ~action="Forward ExtensionPoint command",
           ),
         )
-      | Call(handler, directive) =>
-        compLog(`Extension(${extensionPointName})`, "incoming Call directive")
-        AbstractCall(() => handler(directive))
+      | HandleDirective(handler, directive) =>
+        compLog(`Extension(${extensionPointName})`, "incoming directive")
+        AbstractHandleDirective(() => handler(directive))
       }
     )
   }
@@ -433,9 +433,9 @@ module Make = (MappingImpl: Mapping): (
               ~action="Forward ExtensionPoint command",
             ),
           )
-        | Call(handler, directive) =>
-          compLog(`Extension(${delegateName})`, "outgoing Call directive")
-          AbstractCall(() => handler(directive))
+        | HandleDirective(handler, directive) =>
+          compLog(`Extension(${delegateName})`, "outgoing directive")
+          AbstractHandleDirective(() => handler(directive))
         }
       )
     }

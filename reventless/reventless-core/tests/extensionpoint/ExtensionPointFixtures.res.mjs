@@ -14,7 +14,7 @@ let commandSchema = S.union([
     aggId: s.m(S.string)
   })),
   S.schema(s => ({
-    TAG: "CallHandler",
+    TAG: "TriggerDirective",
     value: s.m(S.string)
   }))
 ]);
@@ -67,7 +67,7 @@ function mapIncomingCommands(topicItems, _createSchedule, _deleteSchedule, _quer
         }];
     } else {
       return [{
-          TAG: "AbstractCall",
+          TAG: "AbstractHandleDirective",
           _0: topicItem.reference,
           _1: async () => {
             capturedCallCount.contents = capturedCallCount.contents + 1 | 0;

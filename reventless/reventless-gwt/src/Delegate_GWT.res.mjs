@@ -57,7 +57,7 @@ function FromExtensionPoint(M) {
           case "PublishEventAsync" :
             let match = await action._0;
             return [encPublished(match[0], Message$ReventlessCore.encode(match[1], M.ExtensionPoint.eventSchema))];
-          case "Call" :
+          case "HandleDirective" :
             return [];
         }
       }))).flat();
@@ -165,7 +165,7 @@ function FromExtension(M) {
       case "ForwardCommand" :
         let match$1 = action._0;
         return [encPublished(match$1.extensionPointName + `:` + match$1.id, match$1.commandJson)];
-      case "Call" :
+      case "HandleDirective" :
         return [];
     }
   }))).flat();
@@ -204,7 +204,7 @@ function FromExtension(M) {
           case "ForwardCommand" :
             let match = action._0;
             return encPublished(match.extensionPointName + `:` + match.id, match.commandJson);
-          case "Call" :
+          case "HandleDirective" :
             return;
         }
       });

@@ -47,7 +47,7 @@ function Make(Spec) {
             TAG: "Error",
             _0: reference$1
           },
-          `ExtensionPoint: Error on calling handler: ` + errMsg
+          `ExtensionPoint: Error on handling directive: ` + errMsg
         ];
       }, () => handler()), () => ({
         TAG: "Ok",

@@ -66,13 +66,13 @@ function Make(MappingSpec) {
         commandJson: Message$ReventlessCore.encode(command, PluginExtensionPointSpec$ReventlessInfra.commandSchema)
       });
     };
-    let handle = async handler => {
+    let handleDirective = async handler => {
       try {
         return await handler();
       } catch (raw_err) {
         let err = Primitive_exceptions.internalToException(raw_err);
         let errMsg = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(err), Stdlib_JsExn.message), "unknown");
-        return Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `Error on calling handler: ` + errMsg));
+        return Effect.runSync(EffectLogger$ReventlessCore.logError(comp, undefined, `Error on handling directive: ` + errMsg));
       }
     };
     let applyIncomingCommandAction = async action => {
@@ -95,8 +95,8 @@ function Make(MappingSpec) {
         case "AbstractPublishExtensionPointCommand" :
           tmp = forwardCommand(action._0, action._1);
           break;
-        case "AbstractCall" :
-          tmp = handle(action._0);
+        case "AbstractHandleDirective" :
+          tmp = handleDirective(action._0);
           break;
       }
       return await tmp;
@@ -107,8 +107,8 @@ function Make(MappingSpec) {
           return publishPluginExtensionPointCommand(action._0);
         case "AbstractPublishExtensionPointCommand" :
           return forwardCommand(action._0, action._1);
-        case "AbstractCall" :
-          return handle(action._0);
+        case "AbstractHandleDirective" :
+          return handleDirective(action._0);
       }
     };
     let incomingJsonEventsHandler = async (eventJson$p, pluginDef) => {

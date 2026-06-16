@@ -79,7 +79,7 @@ function mapIncomingCommands$1(_topicItems, _createSchedule, _deleteSchedule, _q
 }
 
 let mapOutgoingEvent$1 = (_eventJson, _createSchedule, _deleteSchedule, _queryEngine) => [{
-    TAG: "AbstractCall",
+    TAG: "AbstractHandleDirective",
     _0: async () => {
       capturedCallCount.contents = capturedCallCount.contents + 1 | 0;
     }
@@ -256,8 +256,8 @@ globalThis.describe("ExtensionPoint_Operations.Make:", () => {
       globalThis.expect(item[2]).toEqual(eventJson);
     });
   });
-  globalThis.describe("outgoingJsonEventsHandler — AbstractCall:", () => {
-    globalThis.test("known aggregate with AbstractCall invokes the handler", async () => {
+  globalThis.describe("outgoingJsonEventsHandler — AbstractHandleDirective:", () => {
+    globalThis.test("known aggregate with AbstractHandleDirective invokes the handler", async () => {
       let eventJson = makeEventJsonForAgg("CallAgg");
       await EpOps.outgoingJsonEventsHandler(eventJson, undefined);
       globalThis.expect(capturedCallCount.contents).toBe(1);

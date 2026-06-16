@@ -74,11 +74,11 @@ module Make = (
       ->Effect.catchAll(((errorResult, errMsg)) =>
         EffectLogger.logError(~comp="ExtensionPoint", errMsg)->Effect.map(_ => errorResult)
       )
-    | AbstractCall(reference, handler) =>
+    | AbstractHandleDirective(reference, handler) =>
       Effect.tryPromise(
         ~catch=err => {
           let errMsg = Util.Error.messageFromUnknown(err, "unknown")
-          (Error(reference), `ExtensionPoint: Error on calling handler: ${errMsg}`)
+          (Error(reference), `ExtensionPoint: Error on handling directive: ${errMsg}`)
         },
         () => handler(),
       )

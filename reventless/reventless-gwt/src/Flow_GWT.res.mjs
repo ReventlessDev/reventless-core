@@ -309,7 +309,7 @@ function ExtensionPointStep(M) {
         case "PublishEventAsync" :
           let match = await action._0;
           return [match[1]];
-        case "Call" :
+        case "HandleDirective" :
           return [];
       }
     }))).flat();
