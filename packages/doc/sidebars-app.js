@@ -24,6 +24,7 @@ const sidebars = {
       label: 'Concepts',
       items: [
         'concepts/aggregate-extension-connection',
+        'concepts/directives',
         'concepts/dcb',
         'concepts/statechangeslice-usage',
         'concepts/stateviewslice-usage',

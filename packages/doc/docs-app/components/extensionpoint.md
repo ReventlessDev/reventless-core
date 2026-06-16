@@ -59,7 +59,7 @@ Admin.PEP -> PluginA.EP.CT: command { class: cross-plugin }
 
 ## ExtensionPoint Spec
 
-An ExtensionPoint Spec defines the contract for cross-Plugin communication. It specifies the commands that can be received, events that will be published, and side-effect commands that can be triggered.
+An ExtensionPoint Spec defines the contract for cross-Plugin communication. It specifies the commands that can be received, events that will be published, and directives (side effects) that can be triggered.
 
 ### Spec Structure
 
@@ -74,7 +74,7 @@ module type Spec = {
   type event                 // Events that will be published to Extensions
   
   @schema
-  type callCommand           // Side-effect commands (for async operations)
+  type directive             // Side effects the mapping can trigger (see Directives)
 }
 ```
 
@@ -128,12 +128,12 @@ module type Impl = {
   let mapIncomingCommand: mapIncomingCommand<
     ExtensionPoint.command,
     Aggregate.command,
-    ExtensionPoint.callCommand,
+    ExtensionPoint.directive,
   >
   
   // Map outgoing Aggregate events to ExtensionPoint events (optional)
   let mapOutgoingEvent: option<
-    mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.callCommand>,
+    mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.directive>,
   >
 }
 ```
@@ -145,11 +145,11 @@ module type Impl = {
 Maps commands received from Extensions to internal Aggregate commands:
 
 ```rescript
-type mapIncomingCommand<'extensionPointCommand, 'aggregateCommand, 'callCommand> = (
+type mapIncomingCommand<'extensionPointCommand, 'aggregateCommand, 'directive> = (
   string,                    // Aggregate ID
   'extensionPointCommand,    // Incoming ExtensionPoint command
   Message.meta,              // Message metadata
-) => array<commandAction<'aggregateCommand, 'callCommand>>
+) => array<commandAction<'aggregateCommand, 'directive>>
 ```
 
 #### mapOutgoingEvent
@@ -157,12 +157,12 @@ type mapIncomingCommand<'extensionPointCommand, 'aggregateCommand, 'callCommand>
 Maps internal Aggregate events to ExtensionPoint events for publication:
 
 ```rescript
-type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'callCommand> = (
+type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'directive> = (
   string,                    // Aggregate ID
   'aggregateEvent,           // Internal Aggregate event
   Message.meta,              // Message metadata
   QueryEngine.operations,    // Query engine for lookups
-) => array<eventAction<'extensionPointEvent, 'callCommand>>
+) => array<eventAction<'extensionPointEvent, 'directive>>
 ```
 
 ### Command Actions
@@ -170,9 +170,9 @@ type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'callCommand> = (
 When mapping incoming commands, you can return these actions:
 
 ```rescript
-type commandAction<'command, 'msg> =
-  | PublishCommand(string, 'command)     // Publish command to Aggregate
-  | Call(callHandler<'msg>, 'msg)        // Execute side-effect
+type commandAction<'command, 'directive> =
+  | PublishCommand(string, 'command)                          // Publish command to Aggregate
+  | HandleDirective(directiveHandler<'directive>, 'directive) // Run a directive side-effect
 ```
 
 ### Event Actions
@@ -180,10 +180,10 @@ type commandAction<'command, 'msg> =
 When mapping outgoing events, you can return these actions:
 
 ```rescript
-type eventAction<'event, 'msg> =
-  | PublishEvent(string, 'event)                    // Publish event to Extensions
-  | PublishEventAsync(Js.Promise.t<(string, 'event)>) // Async event publication
-  | Call(callHandler<'msg>, 'msg)                   // Execute side-effect
+type eventAction<'event, 'directive> =
+  | PublishEvent(string, 'event)                              // Publish event to Extensions
+  | PublishEventAsync(promise<(string, 'event)>)              // Async event publication
+  | HandleDirective(directiveHandler<'directive>, 'directive) // Run a directive side-effect
 ```
 
 ### Example Mapping
@@ -192,8 +192,8 @@ The mapping file is `<Name>_ExtensionPointMapping.res`, annotated with
 `@@reventless.spec`. It references the EP spec via `module ExtensionPoint` and
 declares a `module Delegate` — the local source (an Aggregate spec, or a DCB
 adapter whose `name` is `<pluginName>DcbEventLog`). The action constructors
-(`PublishEvent`, `PublishCommand`, `PublishEventAsync`, `Call`) are injected by
-the PPX — never `open` them manually:
+(`PublishEvent`, `PublishCommand`, `PublishEventAsync`, `HandleDirective`) are
+injected by the PPX — never `open` them manually:
 
 ```rescript title="Customer_ExtensionPointMapping.res" showLineNumbers
 @@reventless.spec
@@ -307,42 +307,68 @@ EPMapping -> AggCommandTopic: "publishCommand(mappedCommand)"
 AggCommandTopic -> Aggregate: command
 ```
 
-## Side Effects (callCommand)
+## Directives (side effects)
 
-ExtensionPoints can trigger side effects using the `callCommand` type and `Call` action:
+Besides publishing events and commands — which stay inside the event-sourced
+system — an ExtensionPoint mapping can perform **side effects** that reach outside
+it (call an external API, send a notification, create a schedule). These are
+modelled as **directives**: the `directive` `@schema` type on the Spec, returned
+from a mapping as a `HandleDirective(handler, directive)` action. The runtime then
+calls `handler(directive)` as a fire-and-forget side effect — nothing is
+published, logged to the event store, or replayed.
+
+For the full picture — including the difference between ExtensionPoint and
+Extension directives and when to prefer a translation slice — see the
+[Directives concept guide](../concepts/directives.md).
 
 ```rescript
-// In the Spec
+// In the Spec — directives are a variant type, like events
 @schema
-type callCommand =
-  | SendNotification(string, string)
-  | CallExternalAPI(string)
+type directive =
+  | SendNotification({email: string, message: string})
+  | CallExternalAPI({url: string})
 
-// In the Mapping
+// In the Mapping — a handler closing over the injected Schedule/QueryEngine,
+// returned via HandleDirective alongside the published event
+let handleDirective: directiveHandler<ExtensionPoint.directive> = async (
+  _createSchedule, _deleteSchedule, _queryEngine, directive,
+) =>
+  switch directive {
+  | SendNotification({email, message}) => let _ = await ExternalAPI.notify(email, message)
+  | CallExternalAPI({url}) => let _ = await ExternalAPI.get(url)
+  }
+
 let mapOutgoingEvent = Some((_id, event, _meta, _queryEngine) =>
   switch event {
   | Delegate.Created({customerId, name, email}) => [
       PublishEvent(customerId, ExtensionPoint.CustomerCreated({customerId, name, email})),
-      Call(async (_create, _delete, _queryEngine, msg) => {
-        // Send notification to external system
-        let _ = await ExternalAPI.notify(msg)
-      }, SendNotification(email, "Welcome!")),
+      HandleDirective(handleDirective, SendNotification({email, message: "Welcome!"})),
     ]
   | _ => []
   }
 )
 ```
 
-### Call Handler Signature
+### Directive Handler Signature
+
+An ExtensionPoint runs on the provider plugin's command/event-dispatch path, which
+the framework already wires with a scheduler and query engine — so the EP component
+threads them into the directive handler:
 
 ```rescript
-type callHandler<'msg> = (
+type directiveHandler<'directive> = (
   Schedule.create,           // Create scheduled tasks
   Schedule.delete,           // Delete scheduled tasks
   QueryEngine.operations,    // Query read models
-  'msg,                      // The callCommand message
-) => Js.Promise.t<unit>
+  'directive,                // The directive payload
+) => promise<unit>
 ```
+
+This is why the ExtensionPoint side is the practical place for infra-bound effects
+such as scheduling. (An [Extension](./extension.md) directive handler is a bare
+`'directive => promise<unit>` with no scheduler — not because extensions are "less
+trusted," but because the consumer's EventCollector path isn't wired with one. See
+the [concept guide](../concepts/directives.md).)
 
 ## Component Outputs
 

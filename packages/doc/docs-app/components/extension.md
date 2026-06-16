@@ -84,7 +84,7 @@ module type Spec = {
   type event                 // Events received from the ExtensionPoint
   
   @schema
-  type callCommand           // Side-effect commands
+  type directive             // Directives (side effects) — mirrored from the ExtensionPoint
 }
 ```
 
@@ -100,12 +100,12 @@ module type Impl = {
     ExtensionPoint.event,
     Aggregate.command,
     ExtensionPoint.command,
-    ExtensionPoint.callCommand,
+    ExtensionPoint.directive,
   >
   
   // Map outgoing Aggregate events to ExtensionPoint commands (optional)
   let mapOutgoingEvent: option<
-    mapOutgoingEvent<Aggregate.event, ExtensionPoint.command, ExtensionPoint.callCommand>,
+    mapOutgoingEvent<Aggregate.event, ExtensionPoint.command, ExtensionPoint.directive>,
   >
 }
 ```
@@ -117,13 +117,13 @@ module type Impl = {
 Maps events received from the ExtensionPoint to commands for local Aggregates:
 
 ```rescript
-type mapIncomingEvent<'epEvent, 'aggCommand, 'epCommand, 'callCommand> = (
+type mapIncomingEvent<'epEvent, 'aggCommand, 'epCommand, 'directive> = (
   string,                              // Event ID
   'epEvent,                            // Incoming ExtensionPoint event
   Message.meta,                        // Message metadata
   PluginExtensionPointSpec.pluginDefinition,  // Plugin definition for routing
   QueryEngine.operations,              // Query engine for lookups
-) => array<incomingCommandAction<'aggCommand, 'epCommand, 'callCommand>>
+) => array<incomingCommandAction<'aggCommand, 'epCommand, 'directive>>
 ```
 
 #### mapOutgoingEvent
@@ -131,12 +131,12 @@ type mapIncomingEvent<'epEvent, 'aggCommand, 'epCommand, 'callCommand> = (
 Maps local Aggregate events to commands for the ExtensionPoint:
 
 ```rescript
-type mapOutgoingEvent<'aggEvent, 'epCommand, 'callCommand> = (
+type mapOutgoingEvent<'aggEvent, 'epCommand, 'directive> = (
   string,                              // Event ID
   'aggEvent,                           // Local Aggregate event
   Message.meta,                        // Message metadata
   PluginExtensionPointSpec.pluginDefinition,  // Plugin definition for routing
-) => array<outgoingCommandAction<'epCommand, 'callCommand>>
+) => array<outgoingCommandAction<'epCommand, 'directive>>
 ```
 
 ### Incoming Command Actions
@@ -144,16 +144,16 @@ type mapOutgoingEvent<'aggEvent, 'epCommand, 'callCommand> = (
 When mapping incoming events, you can return these actions:
 
 ```rescript
-type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'msg> =
+type incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'directive> =
   | PublishAggregateCommand(id, 'aggregateCommand)           // Send command to local Aggregate
-  | PublishAggregateCommandAsync(Js.Promise.t<(id, 'aggregateCommand)>)
-  | PublishAggregateCommandsAsync(Js.Promise.t<array<(id, 'aggregateCommand)>>)
+  | PublishAggregateCommandAsync(promise<(id, 'aggregateCommand)>)
+  | PublishAggregateCommandsAsync(promise<array<(id, 'aggregateCommand)>>)
   | PublishStateChangeSliceCommand('aggregateCommand)        // Send command to local StateChangeSlice
-  | PublishStateChangeSliceCommandAsync(Js.Promise.t<'aggregateCommand>)
-  | PublishStateChangeSliceCommandsAsync(Js.Promise.t<array<'aggregateCommand>>)
+  | PublishStateChangeSliceCommandAsync(promise<'aggregateCommand>)
+  | PublishStateChangeSliceCommandsAsync(promise<array<'aggregateCommand>>)
   | PublishExtensionPointCommand(id, 'extensionPointCommand) // Send command back to ExtensionPoint
   | ForwardCommand(forwardCommand)                           // Forward to another ExtensionPoint
-  | Call('msg => Js.Promise.t<unit>, 'msg)                   // Execute side-effect
+  | HandleDirective(Reventless.Handler.handler<'directive>, 'directive) // Run a directive side-effect
 ```
 
 Use `PublishAggregateCommand(id, …)` when the `Delegate` is an `Aggregate` — the
@@ -167,10 +167,10 @@ derives the FIFO grouping id from the command's `@partitionTag` (or
 When mapping outgoing events, you can return these actions:
 
 ```rescript
-type outgoingCommandAction<'extensionPointCommand, 'msg> =
+type outgoingCommandAction<'extensionPointCommand, 'directive> =
   | PublishExtensionPointCommand(id, 'extensionPointCommand) // Send command to ExtensionPoint
   | ForwardCommand(forwardCommand)                           // Forward to another ExtensionPoint
-  | Call('msg => Js.Promise.t<unit>, 'msg)                   // Execute side-effect
+  | HandleDirective(Reventless.Handler.handler<'directive>, 'directive) // Run a directive side-effect
 ```
 
 ### Forward Command
@@ -184,6 +184,41 @@ type forwardCommand = {
   commandJson: Js.Json.t,        // Serialized command
 }
 ```
+
+### Directives (side effects)
+
+Both `mapIncomingEvent` and `mapOutgoingEvent` can return a
+`HandleDirective(handler, directive)` action to perform a **side effect** outside
+the event-sourced flow (call an external API, send a notification). The directive
+type is mirrored from the ExtensionPoint. Unlike an ExtensionPoint directive
+handler, an Extension's is a **bare** function — no scheduler, no query-engine
+argument. That is a wiring difference (the extension runs on the consumer's
+EventCollector path, which the framework doesn't wire a scheduler into), not a
+statement about who owns the code — extension mappings are app code just like
+ExtensionPoint mappings:
+
+```rescript
+// Reventless.Handler.handler
+type handler<'directive> = 'directive => promise<unit>
+
+let handleDirective: Reventless.Handler.handler<ExtensionPoint.directive> = directive =>
+  switch directive {
+  | NotifyDownstream({url}) => ExternalAPI.notify(url)
+  }
+
+let mapIncomingEvent = (_id, event, _meta, _pluginDef, _queryEngine) =>
+  switch event {
+  | CustomerCreated({customerId, email}) => [
+      PublishStateChangeSliceCommand(SyncCustomer({customerId, email})),
+      HandleDirective(handleDirective, NotifyDownstream({url: "https://…"})),
+    ]
+  }
+```
+
+If you need a *schedule* you cannot create it here (extensions are never handed a
+scheduler) — route to a local command or declare the directive on the
+ExtensionPoint side instead. See the
+[Directives concept guide](../concepts/directives.md) for the full comparison.
 
 ## Example Extension
 
