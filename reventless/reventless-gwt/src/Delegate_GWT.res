@@ -3,21 +3,28 @@ open ReventlessCore
 // Delegate_GWT — GWT for ExtensionPoint mappings and Extension delegates.
 //
 // Both are pure input → published-actions translations and form the one
-// cross-plugin behavioural seam (per `.claude/rules/app-developer.md`):
+// cross-plugin behavioural seam (per `.claude/rules/app-developer.md`). Each
+// mapping has TWO directions, and each adapter drives both:
 //
-//   * an ExtensionPoint mapping turns an internal aggregate/DCB event into
-//     public extension-point EVENTS (via `mapOutgoingEvent`);
-//   * an Extension delegate turns an extension-point event into delegate
-//     COMMANDS (via `mapIncomingEvent`).
+//   * an ExtensionPoint mapping turns an internal `Delegate` event into public
+//     extension-point EVENTS (`mapOutgoingEvent`), and an incoming protocol
+//     COMMAND into a wrapped-aggregate command (`mapIncomingCommand`);
+//   * an Extension delegate turns an incoming extension-point EVENT into delegate
+//     COMMANDS (`mapIncomingEvent`), and an internal `Delegate` event into an
+//     outgoing protocol COMMAND (`mapOutgoingEvent`).
+//
+// The stimulus you inject names what arrives at the mapping, NOT what it emits:
+//   * `whenDelegateEvent`  — an internal delegate event occurs (both adapters'
+//     `mapOutgoingEvent`);
+//   * `whenIncomingEvent`  — a protocol event arrives (Extension `mapIncomingEvent`);
+//   * `whenIncomingCommand`— a protocol command arrives (EP `mapIncomingCommand`).
 //
 // This DSL drives the user-level mapping function with the inert `StubRuntime`
 // handles and asserts the SET of published actions — including one-to-many
 // fan-out (e.g. `OrderPlaced{productIds:[…]}` → N × `ItemOrdered`).
 //
 // `FromExtensionPoint(M)` / `FromExtension(M)` mirror the From* adapter pattern
-// of `Mapping_GWT` / `Query_GWT`: one comparison core, two ways to feed it.
-// `whenInboundEvent` returns the normalised published-action JSON, so the
-// cross-plugin `Flow_GWT` boundary steps reuse these adapters directly.
+// of `Mapping_GWT` / `Query_GWT`: one comparison core per direction.
 //
 // See `docs/plans/done/gwt-flow-and-extension-test-kinds.md` Phase 1.
 
@@ -50,7 +57,10 @@ module type T = {
   let describe: (string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => promise<Outcome.outcome>) => unit
 
-  let whenInboundEvent: inbound => promise<array<JSON.t>>
+  // Feed the stimulus into the mapping; returns the normalised published actions.
+  // The adapters re-export this under direction-specific names (whenDelegateEvent
+  // / whenIncomingEvent / whenIncomingCommand).
+  let whenInput: inbound => promise<array<JSON.t>>
   let thenPublishedJson: (promise<array<JSON.t>>, array<JSON.t>) => promise<Outcome.outcome>
   let thenPublishesNothing: promise<array<JSON.t>> => promise<Outcome.outcome>
 }
@@ -64,7 +74,7 @@ module Make = (D: Delegate): (T with type inbound = D.inbound) => {
   let test = (name, ~timeout=?, body) =>
     JestBind.testPromise(~slice=D.name, name, ~timeout?, body)
 
-  let whenInboundEvent = ev => D.run(ev)
+  let whenInput = ev => D.run(ev)
 
   // Published actions form a SET — fan-out order is non-deterministic, so the
   // comparison sorts by stringified JSON before comparing.
@@ -83,12 +93,14 @@ module Make = (D: Delegate): (T with type inbound = D.inbound) => {
   let thenPublishesNothing = actionsP => thenPublishedJson(actionsP, [])
 }
 
-// -- FromExtensionPoint: an EP mapping's `mapOutgoingEvent` ------------------
+// -- FromExtensionPoint: an EP mapping (both directions) ---------------------
 
 module FromExtensionPoint = (M: EPMapping.Mapping) => {
   let encEvent = (e: M.ExtensionPoint.event) => e->Message.encode(M.ExtensionPoint.eventSchema)
+  let encCommand = (c: M.Delegate.command) => c->Message.encode(M.Delegate.commandSchema)
 
-  module Core = Make({
+  // Internal delegate event → outgoing extension-point events (`mapOutgoingEvent`).
+  module EvCore = Make({
     let name = M.ExtensionPoint.name
     type inbound = M.Delegate.event
     let run = async (event: M.Delegate.event) =>
@@ -111,29 +123,55 @@ module FromExtensionPoint = (M: EPMapping.Mapping) => {
       }
   })
 
+  // Incoming extension-point command → wrapped-aggregate commands (`mapIncomingCommand`).
+  module CmdCore = Make({
+    let name = M.ExtensionPoint.name
+    type inbound = M.ExtensionPoint.command
+    let run = async (command: M.ExtensionPoint.command) =>
+      M.mapIncomingCommand("gwt-id", command, StubRuntime.meta)->Array.filterMap(action =>
+        switch action {
+        | EPMapping.PublishCommand(id, cmd) => Some(encPublished(~target=id, encCommand(cmd)))
+        | EPMapping.Call(_, _) => None
+        }
+      )
+  })
+
   type inbound = M.Delegate.event
-  let describe = Core.describe
-  let test = Core.test
-  let whenInboundEvent = Core.whenInboundEvent
-  let thenPublishesNothing = Core.thenPublishesNothing
+  let describe = EvCore.describe
+  let test = EvCore.test
+  // `thenPublishesNothing` is direction-agnostic (compares to []), usable after
+  // either `whenDelegateEvent` or `whenIncomingCommand`.
+  let thenPublishesNothing = EvCore.thenPublishesNothing
 
+  // Delegate event → outgoing protocol events.
+  let whenDelegateEvent = EvCore.whenInput
   let thenPublishesEvent = (actionsP, id, event: M.ExtensionPoint.event) =>
-    Core.thenPublishedJson(actionsP, [encPublished(~target=id, encEvent(event))])
-
+    EvCore.thenPublishedJson(actionsP, [encPublished(~target=id, encEvent(event))])
   let thenPublishesEvents = (actionsP, pairs: array<(string, M.ExtensionPoint.event)>) =>
-    Core.thenPublishedJson(
+    EvCore.thenPublishedJson(
       actionsP,
       pairs->Array.map(((id, ev)) => encPublished(~target=id, encEvent(ev))),
     )
+
+  // Incoming protocol command → wrapped-aggregate commands.
+  let whenIncomingCommand = CmdCore.whenInput
+  let thenPublishesCommand = (actionsP, id, cmd: M.Delegate.command) =>
+    CmdCore.thenPublishedJson(actionsP, [encPublished(~target=id, encCommand(cmd))])
+  let thenPublishesCommands = (actionsP, pairs: array<(string, M.Delegate.command)>) =>
+    CmdCore.thenPublishedJson(
+      actionsP,
+      pairs->Array.map(((id, cmd)) => encPublished(~target=id, encCommand(cmd))),
+    )
 }
 
-// -- FromExtension: an Extension delegate's `mapIncomingEvent` ---------------
+// -- FromExtension: an Extension delegate (both directions) ------------------
 
 module FromExtension = (M: ExtMapping.Mapping) => {
   let encCmd = (c: M.Delegate.command) => c->Message.encode(M.Delegate.commandSchema)
   let encEpCmd = (c: M.ExtensionPoint.command) => c->Message.encode(M.ExtensionPoint.commandSchema)
 
-  module Core = Make({
+  // Incoming extension-point event → delegate commands (`mapIncomingEvent`).
+  module EvCore = Make({
     let name = M.Delegate.name
     type inbound = M.ExtensionPoint.event
     let run = async (event: M.ExtensionPoint.event) => {
@@ -175,21 +213,45 @@ module FromExtension = (M: ExtMapping.Mapping) => {
     }
   })
 
+  // Internal delegate event → outgoing protocol commands (`mapOutgoingEvent`, optional).
+  module OutCore = Make({
+    let name = M.Delegate.name
+    type inbound = M.Delegate.event
+    let run = async (event: M.Delegate.event) =>
+      switch M.mapOutgoingEvent {
+      | None => []
+      | Some(f) =>
+        f("gwt-id", event, StubRuntime.meta, StubRuntime.pluginDefinition)->Array.filterMap(action =>
+          switch action {
+          | ExtMapping.PublishExtensionPointCommand(id, cmd) =>
+            Some(encPublished(~target=id, encEpCmd(cmd)))
+          | ExtMapping.ForwardCommand({extensionPointName, id, commandJson}) =>
+            Some(encPublished(~target=`${extensionPointName}:${id}`, commandJson))
+          | ExtMapping.Call(_, _) => None
+          }
+        )
+      }
+  })
+
   type inbound = M.ExtensionPoint.event
-  let describe = Core.describe
-  let test = Core.test
-  let whenInboundEvent = Core.whenInboundEvent
-  let thenPublishesNothing = Core.thenPublishesNothing
+  let describe = EvCore.describe
+  let test = EvCore.test
+  let thenPublishesNothing = EvCore.thenPublishesNothing
 
+  // Incoming protocol event → delegate commands.
+  let whenIncomingEvent = EvCore.whenInput
   let thenPublishesCommand = (actionsP, cmd: M.Delegate.command) =>
-    Core.thenPublishedJson(actionsP, [encPublished(~target=M.Delegate.name, encCmd(cmd))])
-
+    EvCore.thenPublishedJson(actionsP, [encPublished(~target=M.Delegate.name, encCmd(cmd))])
   let thenPublishesCommands = (actionsP, cmds: array<M.Delegate.command>) =>
-    Core.thenPublishedJson(
+    EvCore.thenPublishedJson(
       actionsP,
       cmds->Array.map(cmd => encPublished(~target=M.Delegate.name, encCmd(cmd))),
     )
-
   let thenPublishesAggregateCommand = (actionsP, id, cmd: M.Delegate.command) =>
-    Core.thenPublishedJson(actionsP, [encPublished(~target=id, encCmd(cmd))])
+    EvCore.thenPublishedJson(actionsP, [encPublished(~target=id, encCmd(cmd))])
+
+  // Internal delegate event → outgoing protocol commands.
+  let whenDelegateEvent = OutCore.whenInput
+  let thenPublishesExtensionPointCommand = (actionsP, id, cmd: M.ExtensionPoint.command) =>
+    OutCore.thenPublishedJson(actionsP, [encPublished(~target=id, encEpCmd(cmd))])
 }

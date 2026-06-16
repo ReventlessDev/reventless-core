@@ -78,7 +78,7 @@ module ProductsEpGwt = Delegate_GWT.FromExtensionPoint(ProductsEpMapping)
 
 ProductsEpGwt.describe("Products ExtensionPoint mapping (FromExtensionPoint)", () => {
   ProductsEpGwt.test("ProductAdded publishes ProductBecameAvailable", () =>
-    ProductsEpGwt.whenInboundEvent(
+    ProductsEpGwt.whenDelegateEvent(
       ProductDelegate.ProductAdded({productId: "p1", name: "Book", price: 9.99}),
     )->ProductsEpGwt.thenPublishesEvent(
       "p1",
@@ -87,7 +87,7 @@ ProductsEpGwt.describe("Products ExtensionPoint mapping (FromExtensionPoint)", (
   )
 
   ProductsEpGwt.test("ProductPriceChanged publishes ProductPriceChanged", () =>
-    ProductsEpGwt.whenInboundEvent(
+    ProductsEpGwt.whenDelegateEvent(
       ProductDelegate.ProductPriceChanged({productId: "p1", price: 7.5}),
     )->ProductsEpGwt.thenPublishesEvent(
       "p1",
@@ -165,7 +165,7 @@ module OrdersEpGwt = Delegate_GWT.FromExtensionPoint(OrdersEpMapping)
 
 OrdersEpGwt.describe("Orders ExtensionPoint mapping — fan-out", () => {
   OrdersEpGwt.test("OrderPlaced fans out to one ItemOrdered per product", () =>
-    OrdersEpGwt.whenInboundEvent(
+    OrdersEpGwt.whenDelegateEvent(
       OrderDelegate.OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1", "p2"]}),
     )->OrdersEpGwt.thenPublishesEvents([
       ("p1", OrdersEpSpec.ItemOrdered({productId: "p1", orderId: "o1", customerId: "c1"})),
@@ -174,7 +174,7 @@ OrdersEpGwt.describe("Orders ExtensionPoint mapping — fan-out", () => {
   )
 
   OrdersEpGwt.test("OrderPlaced with no products publishes nothing", () =>
-    OrdersEpGwt.whenInboundEvent(
+    OrdersEpGwt.whenDelegateEvent(
       OrderDelegate.OrderPlaced({orderId: "o2", customerId: "c1", productIds: []}),
     )->OrdersEpGwt.thenPublishesNothing
   )
@@ -227,7 +227,7 @@ module ProductsExtGwt = Delegate_GWT.FromExtension(ProductsExtMapping)
 
 ProductsExtGwt.describe("Products Extension delegate (FromExtension)", () => {
   ProductsExtGwt.test("ProductBecameAvailable issues SyncNewProduct", () =>
-    ProductsExtGwt.whenInboundEvent(
+    ProductsExtGwt.whenIncomingEvent(
       ProductsEpSpec.ProductBecameAvailable({productId: "p1", name: "Book", price: 9.99}),
     )->ProductsExtGwt.thenPublishesCommand(
       SyncDelegate.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}),
@@ -235,10 +235,141 @@ ProductsExtGwt.describe("Products Extension delegate (FromExtension)", () => {
   )
 
   ProductsExtGwt.test("ProductPriceChanged issues ChangeSyncedPrice", () =>
-    ProductsExtGwt.whenInboundEvent(
+    ProductsExtGwt.whenIncomingEvent(
       ProductsEpSpec.ProductPriceChanged({productId: "p1", price: 7.5}),
     )->ProductsExtGwt.thenPublishesCommand(
       SyncDelegate.ChangeSyncedPrice({productId: "p1", price: 7.5}),
+    )
+  )
+})
+
+// ---------------------------------------------------------------------------
+// EP `mapIncomingCommand` — an incoming protocol command routed to the wrapped
+// aggregate (the other EP direction: `whenIncomingCommand`).
+// ---------------------------------------------------------------------------
+
+module InventoryEpSpec = {
+  let name = "Catalog.Inventory"
+  let moduleUrl = ""
+
+  @schema
+  type command = Restock({sku: string, qty: int})
+
+  @schema
+  type event = NoEvent
+
+  @schema
+  type directive = NoDirective
+}
+
+module StockDelegate = {
+  module Id = Reventless.Id.StringPure
+  let name = "Stock"
+
+  @schema
+  type command = Restock({sku: string, qty: int})
+
+  @schema
+  type event = NoEvent
+
+  @schema
+  type error = NoError
+
+  let moduleUrl = ""
+  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+}
+
+module InventoryEpMapping = {
+  module ExtensionPoint = InventoryEpSpec
+  module Delegate = StockDelegate
+
+  let moduleUrl = "test:DelegateGwtTest:InventoryEpMapping"
+
+  let mapIncomingCommand = (id, command: InventoryEpSpec.command, _meta) =>
+    switch command {
+    | Restock({sku, qty}) => [EPM.PublishCommand(id, StockDelegate.Restock({sku, qty}))]
+    }
+
+  let mapOutgoingEvent = None
+}
+
+module InventoryEpGwt = Delegate_GWT.FromExtensionPoint(InventoryEpMapping)
+
+InventoryEpGwt.describe("Inventory ExtensionPoint mapping — incoming command", () => {
+  InventoryEpGwt.test("Restock protocol command routes to the Stock delegate", () =>
+    InventoryEpGwt.whenIncomingCommand(
+      InventoryEpSpec.Restock({sku: "s1", qty: 5}),
+    )->InventoryEpGwt.thenPublishesCommand("gwt-id", StockDelegate.Restock({sku: "s1", qty: 5}))
+  )
+})
+
+// ---------------------------------------------------------------------------
+// Extension `mapOutgoingEvent` — an internal delegate event published back as a
+// protocol command (the other Extension direction: `whenDelegateEvent`).
+// ---------------------------------------------------------------------------
+
+module FeedbackEpSpec = {
+  let name = "Ordering.Feedback"
+  let moduleUrl = ""
+
+  @schema
+  type command = AckProduct({productId: string})
+
+  @schema
+  type event = NoEvent
+
+  @schema
+  type directive = NoDirective
+}
+
+module SyncedDelegate = {
+  module Id = Reventless.Id.StringPure
+  let name = "SyncedProduct"
+
+  @schema
+  type command = NoCommand
+
+  @schema
+  type event = ProductSynced({productId: string})
+
+  @schema
+  type error = NoError
+
+  let moduleUrl = ""
+  let commandAuthorization = (_: command): Reventless.Authorization.permission => AllowAuthenticated
+}
+
+module FeedbackExtMapping = {
+  module ExtensionPoint = FeedbackEpSpec
+  module Delegate = SyncedDelegate
+
+  let moduleUrl = ""
+  let delegateModuleUrl = ""
+
+  let mapIncomingEvent = (_id, event: FeedbackEpSpec.event, _meta, _pluginDef, _queryEngine) =>
+    switch event {
+    | NoEvent => []
+    }
+
+  let mapOutgoingEvent = Some(
+    (id, event: SyncedDelegate.event, _meta, _pluginDef) =>
+      switch event {
+      | ProductSynced({productId}) => [
+          EM.PublishExtensionPointCommand(id, FeedbackEpSpec.AckProduct({productId: productId})),
+        ]
+      },
+  )
+}
+
+module FeedbackExtGwt = Delegate_GWT.FromExtension(FeedbackExtMapping)
+
+FeedbackExtGwt.describe("Feedback Extension delegate — outgoing command", () => {
+  FeedbackExtGwt.test("ProductSynced publishes the AckProduct protocol command", () =>
+    FeedbackExtGwt.whenDelegateEvent(
+      SyncedDelegate.ProductSynced({productId: "p1"}),
+    )->FeedbackExtGwt.thenPublishesExtensionPointCommand(
+      "gwt-id",
+      FeedbackEpSpec.AckProduct({productId: "p1"}),
     )
   )
 })

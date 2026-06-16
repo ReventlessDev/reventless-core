@@ -4,7 +4,7 @@
 
 describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
   test("OrderPlaced fans out to one ItemOrdered per product", () =>
-    whenInboundEvent(
+    whenDelegateEvent(
       Delegate.OrderPlaced({orderId: "o1", customerId: "c1", productIds: ["p1", "p2"]}),
     )->thenPublishesEvents([
       ("p1", ExtensionPoint.ItemOrdered({productId: "p1", orderId: "o1", customerId: "c1"})),
@@ -13,7 +13,7 @@ describe("Orders ExtensionPoint mapping — per-product fan-out", () => {
   )
 
   test("OrderCancelled fans out to one ItemOrderCancelled per product", () =>
-    whenInboundEvent(
+    whenDelegateEvent(
       Delegate.OrderCancelled({orderId: "o1", productIds: ["p1", "p2"]}),
     )->thenPublishesEvents([
       ("p1", ExtensionPoint.ItemOrderCancelled({productId: "p1", orderId: "o1"})),

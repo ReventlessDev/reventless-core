@@ -4,7 +4,7 @@
 
 describe("Products ExtensionPoint mapping", () => {
   test("ProductAdded becomes the public ProductBecameAvailable", () =>
-    whenInboundEvent(
+    whenDelegateEvent(
       Delegate.ProductAdded({productId: "p1", name: "Book", description: "A good book", price: 9.99}),
     )->thenPublishesEvent(
       "p1",
@@ -13,7 +13,7 @@ describe("Products ExtensionPoint mapping", () => {
   )
 
   test("ProductPriceChanged is forwarded to the extension point", () =>
-    whenInboundEvent(Delegate.ProductPriceChanged({productId: "p1", price: 7.5}))->thenPublishesEvent(
+    whenDelegateEvent(Delegate.ProductPriceChanged({productId: "p1", price: 7.5}))->thenPublishesEvent(
       "p1",
       ExtensionPoint.ProductPriceChanged({productId: "p1", price: 7.5}),
     )

@@ -8,7 +8,7 @@ open Mapping
 
 describe("Products Extension delegate", () => {
   test("ProductBecameAvailable issues SyncNewProduct", () =>
-    whenInboundEvent(
+    whenIncomingEvent(
       ExtensionPoint.ProductBecameAvailable({productId: "p1", name: "Book", price: 9.99}),
     )->thenPublishesCommand(
       Delegate.SyncNewProduct({productId: "p1", name: "Book", price: 9.99}),
@@ -16,7 +16,7 @@ describe("Products Extension delegate", () => {
   )
 
   test("ProductPriceChanged issues ChangeSyncedPrice", () =>
-    whenInboundEvent(
+    whenIncomingEvent(
       ExtensionPoint.ProductPriceChanged({productId: "p1", price: 7.5}),
     )->thenPublishesCommand(Delegate.ChangeSyncedPrice({productId: "p1", price: 7.5}))
   )

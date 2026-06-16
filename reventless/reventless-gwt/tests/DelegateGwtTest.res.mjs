@@ -136,7 +136,7 @@ let ProductsEpGwt = Delegate_GWT$ReventlessGwt.FromExtensionPoint({
 });
 
 ProductsEpGwt.describe("Products ExtensionPoint mapping (FromExtensionPoint)", () => {
-  ProductsEpGwt.test("ProductAdded publishes ProductBecameAvailable", undefined, () => ProductsEpGwt.thenPublishesEvent(ProductsEpGwt.whenInboundEvent({
+  ProductsEpGwt.test("ProductAdded publishes ProductBecameAvailable", undefined, () => ProductsEpGwt.thenPublishesEvent(ProductsEpGwt.whenDelegateEvent({
     TAG: "ProductAdded",
     productId: "p1",
     name: "Book",
@@ -147,7 +147,7 @@ ProductsEpGwt.describe("Products ExtensionPoint mapping (FromExtensionPoint)", (
     name: "Book",
     price: 9.99
   }));
-  ProductsEpGwt.test("ProductPriceChanged publishes ProductPriceChanged", undefined, () => ProductsEpGwt.thenPublishesEvent(ProductsEpGwt.whenInboundEvent({
+  ProductsEpGwt.test("ProductPriceChanged publishes ProductPriceChanged", undefined, () => ProductsEpGwt.thenPublishesEvent(ProductsEpGwt.whenDelegateEvent({
     TAG: "ProductPriceChanged",
     productId: "p1",
     price: 7.5
@@ -289,7 +289,7 @@ let OrdersEpGwt = Delegate_GWT$ReventlessGwt.FromExtensionPoint({
 });
 
 OrdersEpGwt.describe("Orders ExtensionPoint mapping — fan-out", () => {
-  OrdersEpGwt.test("OrderPlaced fans out to one ItemOrdered per product", undefined, () => OrdersEpGwt.thenPublishesEvents(OrdersEpGwt.whenInboundEvent({
+  OrdersEpGwt.test("OrderPlaced fans out to one ItemOrdered per product", undefined, () => OrdersEpGwt.thenPublishesEvents(OrdersEpGwt.whenDelegateEvent({
     TAG: "OrderPlaced",
     orderId: "o1",
     customerId: "c1",
@@ -317,7 +317,7 @@ OrdersEpGwt.describe("Orders ExtensionPoint mapping — fan-out", () => {
       }
     ]
   ]));
-  OrdersEpGwt.test("OrderPlaced with no products publishes nothing", undefined, () => OrdersEpGwt.thenPublishesNothing(OrdersEpGwt.whenInboundEvent({
+  OrdersEpGwt.test("OrderPlaced with no products publishes nothing", undefined, () => OrdersEpGwt.thenPublishesNothing(OrdersEpGwt.whenDelegateEvent({
     TAG: "OrderPlaced",
     orderId: "o2",
     customerId: "c1",
@@ -421,7 +421,7 @@ let ProductsExtGwt = Delegate_GWT$ReventlessGwt.FromExtension({
 });
 
 ProductsExtGwt.describe("Products Extension delegate (FromExtension)", () => {
-  ProductsExtGwt.test("ProductBecameAvailable issues SyncNewProduct", undefined, () => ProductsExtGwt.thenPublishesCommand(ProductsExtGwt.whenInboundEvent({
+  ProductsExtGwt.test("ProductBecameAvailable issues SyncNewProduct", undefined, () => ProductsExtGwt.thenPublishesCommand(ProductsExtGwt.whenIncomingEvent({
     TAG: "ProductBecameAvailable",
     productId: "p1",
     name: "Book",
@@ -432,7 +432,7 @@ ProductsExtGwt.describe("Products Extension delegate (FromExtension)", () => {
     name: "Book",
     price: 9.99
   }));
-  ProductsExtGwt.test("ProductPriceChanged issues ChangeSyncedPrice", undefined, () => ProductsExtGwt.thenPublishesCommand(ProductsExtGwt.whenInboundEvent({
+  ProductsExtGwt.test("ProductPriceChanged issues ChangeSyncedPrice", undefined, () => ProductsExtGwt.thenPublishesCommand(ProductsExtGwt.whenIncomingEvent({
     TAG: "ProductPriceChanged",
     productId: "p1",
     price: 7.5
@@ -442,6 +442,217 @@ ProductsExtGwt.describe("Products Extension delegate (FromExtension)", () => {
     price: 7.5
   }));
 });
+
+let commandSchema$5 = S.schema(s => ({
+  TAG: "Restock",
+  sku: s.m(S.string),
+  qty: s.m(S.int)
+}));
+
+let eventSchema$5 = S.literal("NoEvent");
+
+let directiveSchema$2 = S.literal("NoDirective");
+
+function commandAuthorization$5(param) {
+  return "AllowAuthenticated";
+}
+
+let InventoryEpSpec = {
+  name: "Catalog.Inventory",
+  moduleUrl: "",
+  commandSchema: commandSchema$5,
+  eventSchema: eventSchema$5,
+  directiveSchema: directiveSchema$2,
+  commandAuthorization: commandAuthorization$5
+};
+
+let name$3 = "Stock";
+
+let commandSchema$6 = S.schema(s => ({
+  TAG: "Restock",
+  sku: s.m(S.string),
+  qty: s.m(S.int)
+}));
+
+let eventSchema$6 = S.literal("NoEvent");
+
+let errorSchema$3 = S.literal("NoError");
+
+let moduleUrl$6 = "";
+
+function commandAuthorization$6(param) {
+  return "AllowAuthenticated";
+}
+
+let StockDelegate = {
+  Id: undefined,
+  name: name$3,
+  commandSchema: commandSchema$6,
+  eventSchema: eventSchema$6,
+  errorSchema: errorSchema$3,
+  moduleUrl: moduleUrl$6,
+  commandAuthorization: commandAuthorization$6
+};
+
+let moduleUrl$7 = "test:DelegateGwtTest:InventoryEpMapping";
+
+function mapIncomingCommand$2(id, command, _meta) {
+  return [{
+      TAG: "PublishCommand",
+      _0: id,
+      _1: {
+        TAG: "Restock",
+        sku: command.sku,
+        qty: command.qty
+      }
+    }];
+}
+
+let InventoryEpMapping = {
+  ExtensionPoint: undefined,
+  Delegate: undefined,
+  moduleUrl: moduleUrl$7,
+  mapIncomingCommand: mapIncomingCommand$2,
+  mapOutgoingEvent: undefined
+};
+
+let InventoryEpGwt = Delegate_GWT$ReventlessGwt.FromExtensionPoint({
+  ExtensionPoint: InventoryEpSpec,
+  Delegate: {
+    Id: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
+    name: name$3,
+    eventSchema: eventSchema$6,
+    errorSchema: errorSchema$3,
+    commandSchema: commandSchema$6,
+    moduleUrl: moduleUrl$6,
+    commandAuthorization: commandAuthorization$6
+  },
+  moduleUrl: moduleUrl$7,
+  mapIncomingCommand: mapIncomingCommand$2,
+  mapOutgoingEvent: undefined
+});
+
+InventoryEpGwt.describe("Inventory ExtensionPoint mapping — incoming command", () => InventoryEpGwt.test("Restock protocol command routes to the Stock delegate", undefined, () => InventoryEpGwt.thenPublishesCommand(InventoryEpGwt.whenIncomingCommand({
+  TAG: "Restock",
+  sku: "s1",
+  qty: 5
+}), "gwt-id", {
+  TAG: "Restock",
+  sku: "s1",
+  qty: 5
+})));
+
+let commandSchema$7 = S.schema(s => ({
+  TAG: "AckProduct",
+  productId: s.m(S.string)
+}));
+
+let eventSchema$7 = S.literal("NoEvent");
+
+let directiveSchema$3 = S.literal("NoDirective");
+
+function commandAuthorization$7(param) {
+  return "AllowAuthenticated";
+}
+
+let FeedbackEpSpec = {
+  name: "Ordering.Feedback",
+  moduleUrl: "",
+  commandSchema: commandSchema$7,
+  eventSchema: eventSchema$7,
+  directiveSchema: directiveSchema$3,
+  commandAuthorization: commandAuthorization$7
+};
+
+let name$4 = "SyncedProduct";
+
+let commandSchema$8 = S.literal("NoCommand");
+
+let eventSchema$8 = S.schema(s => ({
+  TAG: "ProductSynced",
+  productId: s.m(S.string)
+}));
+
+let errorSchema$4 = S.literal("NoError");
+
+let moduleUrl$8 = "";
+
+function commandAuthorization$8(param) {
+  return "AllowAuthenticated";
+}
+
+let SyncedDelegate = {
+  Id: undefined,
+  name: name$4,
+  commandSchema: commandSchema$8,
+  eventSchema: eventSchema$8,
+  errorSchema: errorSchema$4,
+  moduleUrl: moduleUrl$8,
+  commandAuthorization: commandAuthorization$8
+};
+
+let moduleUrl$9 = "";
+
+let delegateModuleUrl$1 = "";
+
+function mapIncomingEvent$1(_id, event, _meta, _pluginDef, _queryEngine) {
+  return [];
+}
+
+let mapOutgoingEvent$2 = (id, event, _meta, _pluginDef) => [{
+    TAG: "PublishExtensionPointCommand",
+    _0: id,
+    _1: {
+      TAG: "AckProduct",
+      productId: event.productId
+    }
+  }];
+
+let FeedbackExtMapping = {
+  ExtensionPoint: undefined,
+  Delegate: undefined,
+  moduleUrl: moduleUrl$9,
+  delegateModuleUrl: delegateModuleUrl$1,
+  mapIncomingEvent: mapIncomingEvent$1,
+  mapOutgoingEvent: mapOutgoingEvent$2
+};
+
+let FeedbackExtGwt = Delegate_GWT$ReventlessGwt.FromExtension({
+  ExtensionPoint: FeedbackEpSpec,
+  Delegate: {
+    Id: {
+      schema: Id$Reventless.StringPure.schema,
+      make: prim => prim,
+      makeFromString: prim => prim,
+      toString: prim => prim,
+      cmp: Id$Reventless.StringPure.cmp
+    },
+    name: name$4,
+    eventSchema: eventSchema$8,
+    errorSchema: errorSchema$4,
+    commandSchema: commandSchema$8,
+    moduleUrl: moduleUrl$8,
+    commandAuthorization: commandAuthorization$8
+  },
+  moduleUrl: moduleUrl$9,
+  delegateModuleUrl: delegateModuleUrl$1,
+  mapIncomingEvent: mapIncomingEvent$1,
+  mapOutgoingEvent: mapOutgoingEvent$2
+});
+
+FeedbackExtGwt.describe("Feedback Extension delegate — outgoing command", () => FeedbackExtGwt.test("ProductSynced publishes the AckProduct protocol command", undefined, () => FeedbackExtGwt.thenPublishesExtensionPointCommand(FeedbackExtGwt.whenDelegateEvent({
+  TAG: "ProductSynced",
+  productId: "p1"
+}), "gwt-id", {
+  TAG: "AckProduct",
+  productId: "p1"
+})));
 
 let EPM;
 
@@ -461,5 +672,13 @@ export {
   SyncDelegate,
   ProductsExtMapping,
   ProductsExtGwt,
+  InventoryEpSpec,
+  StockDelegate,
+  InventoryEpMapping,
+  InventoryEpGwt,
+  FeedbackEpSpec,
+  SyncedDelegate,
+  FeedbackExtMapping,
+  FeedbackExtGwt,
 }
 /*  Not a pure module */
