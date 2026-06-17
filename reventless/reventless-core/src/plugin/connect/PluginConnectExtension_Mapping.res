@@ -13,6 +13,8 @@
 // UnknownPluginDetected event referencing this plugin's id. No subscribe /
 // unsubscribe directives are emitted any more.
 
+@@reventless.spec
+
 module PluginExtensionPointSpec = ReventlessInfra.PluginExtensionPointSpec
 module ExtensionMapping = ReventlessInfra.ExtensionMapping
 
@@ -26,12 +28,11 @@ module Make = (Spec: Spec) => {
       module ExtensionPoint = PluginExtensionPointSpec
       module Delegate = ReventlessInfra.ExtensionMapping.NoDelegate
 
-      // npm specifier matches Plugin_Helpers.pluginConnectExtensionMappingsModule;
-      // this is the URL the bundled Plugin EventCollector entry point would
-      // dynamic-import to reach this mapping (currently hand-wired in the entry
-      // point, but kept consistent with the type contract).
-      let moduleUrl =
-        "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs"
+      // Unused by ExtensionMapping.Make (it reads Delegate.moduleUrl, not the
+      // arg's); present only to satisfy the input module type. The actually
+      // dynamic-imported specifier is the file-level `moduleUrl` (@@reventless.spec
+      // injected, move-safe) referenced from Plugin_Helpers.
+      let moduleUrl = PluginExtensionPointSpec.moduleUrl
 
       let delegateModuleUrl = Delegate.moduleUrl
 

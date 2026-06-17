@@ -49,7 +49,7 @@ function Make(Spec) {
       moduleUrl: ExtensionMapping$ReventlessInfra.NoDelegate.moduleUrl,
       commandAuthorization: ExtensionMapping$ReventlessInfra.NoDelegate.commandAuthorization
     },
-    moduleUrl: "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs",
+    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     delegateModuleUrl: delegateModuleUrl,
     mapIncomingEvent: mapIncomingEvent,
     mapOutgoingEvent: undefined
@@ -68,13 +68,22 @@ function Make(Spec) {
   };
 }
 
+let name = "PluginConnectExtension_Mapping";
+
+let Id;
+
 let PluginExtensionPointSpec;
 
 let ExtensionMapping;
 
+let moduleUrl = "@reventlessdev/reventless-core/src/plugin/connect/PluginConnectExtension_Mapping.res.mjs";
+
 export {
+  name,
+  Id,
   PluginExtensionPointSpec,
   ExtensionMapping,
   Make,
+  moduleUrl,
 }
 /* ExtensionMapping-ReventlessInfra Not a pure module */

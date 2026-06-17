@@ -54,7 +54,9 @@ import * as OutboundTranslationSlice$ReventlessCore from "../../components/Outbo
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as InboundTranslationSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/InboundTranslationSlice.res.mjs";
 import * as OutboundTranslationSlice$ReventlessInterop from "@reventlessdev/reventless-interop/src/components/OutboundTranslationSlice.res.mjs";
+import * as PluginExtensionPoint_Plugin$ReventlessCore from "../connect/PluginExtensionPoint_Plugin.res.mjs";
 import * as PluginConnectExtension_Builder$ReventlessCore from "../connect/PluginConnectExtension_Builder.res.mjs";
+import * as PluginConnectExtension_Mapping$ReventlessCore from "../connect/PluginConnectExtension_Mapping.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 
@@ -109,8 +111,6 @@ function registerEventCollectorContext(componentName, context) {
 }
 
 let adminPluginExtensionPointSpecModule = "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
-
-let pluginConnectExtensionMappingsModule = "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs";
 
 function getIncomingJsonEventsHandler(jsonEventsHandlers) {
   return jsonEventsHandlers.incoming;
@@ -323,7 +323,7 @@ function MakeEventCollectorHelper(RuntimeEnvironment) {
         }
         let connectExtension = connectExtData !== undefined ? ({
             specModule: adminPluginExtensionPointSpecModule,
-            mappingsModule: pluginConnectExtensionMappingsModule,
+            mappingsModule: PluginConnectExtension_Mapping$ReventlessCore.moduleUrl,
             extensionPointName: PluginExtensionPointSpec$ReventlessInfra.name
           }) : undefined;
         let extensions = extensionsOutputs.length === extensionRegistryInfos.length ? extensionsOutputs.map((output, i) => {
@@ -882,7 +882,9 @@ function exportPluginOutputs(pluginOutputs) {
   Pulumi$Pulumi.$$export("_pluginDeployedSync", hookOutput);
 }
 
-let adminPluginExtensionPointMappingsModule = "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs";
+let adminPluginExtensionPointMappingsModule = PluginExtensionPoint_Plugin$ReventlessCore.moduleUrl;
+
+let pluginConnectExtensionMappingsModule = PluginConnectExtension_Mapping$ReventlessCore.moduleUrl;
 
 let addEventMapperFns = Builder_Helpers$ReventlessCore.addEventMapperFns;
 

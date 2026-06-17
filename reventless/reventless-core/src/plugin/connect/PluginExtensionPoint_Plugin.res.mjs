@@ -112,7 +112,6 @@ function Make(Spec) {
         return await forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
     }
   };
-  let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs";
   let mapIncomingCommand = (id, cmd, _meta) => {
     if (typeof cmd !== "object") {
       return [
@@ -313,7 +312,7 @@ function Make(Spec) {
   let PluginMapping = {
     ExtensionPoint: undefined,
     Delegate: undefined,
-    moduleUrl: moduleUrl,
+    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent
   };
@@ -334,7 +333,7 @@ function Make(Spec) {
       moduleUrl: PluginSpec$ReventlessCore.moduleUrl,
       commandAuthorization: PluginSpec$ReventlessCore.commandAuthorization
     },
-    moduleUrl: moduleUrl,
+    moduleUrl: PluginExtensionPointSpec$ReventlessInfra.moduleUrl,
     mapIncomingCommand: mapIncomingCommand,
     mapOutgoingEvent: mapOutgoingEvent
   });
@@ -346,10 +345,19 @@ function Make(Spec) {
   };
 }
 
+let name = "PluginExtensionPoint";
+
+let Id;
+
 let PluginExtensionPointSpec;
 
+let moduleUrl = "@reventlessdev/reventless-core/src/plugin/connect/PluginExtensionPoint_Plugin.res.mjs";
+
 export {
+  name,
+  Id,
   PluginExtensionPointSpec,
   Make,
+  moduleUrl,
 }
 /* S Not a pure module */

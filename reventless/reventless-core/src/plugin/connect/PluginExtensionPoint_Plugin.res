@@ -1,3 +1,5 @@
+@@reventless.spec
+
 open ReventlessInfra.ExtensionPointMapping
 open Reventless.Plugin
 
@@ -128,10 +130,11 @@ module Make = (Spec: Spec) => {
     module ExtensionPoint = PluginExtensionPointSpec
     module Delegate = PluginSpec
 
-    // Framework-internal mapping — moduleUrl points at the file shipping
-    // this `PluginMapping`. The EventCollector runtime dynamic-imports it
-    // when wiring the admin Plugin extension point.
-    let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs"
+    // Unused by ExtensionPointMapping.Make (it reads name/Delegate/map* only);
+    // present solely to satisfy the input module type. The actually-consumed
+    // dynamic-import specifier is the file-level `moduleUrl` (@@reventless.spec
+    // injected, move-safe) referenced from Plugin_Helpers.
+    let moduleUrl = PluginExtensionPointSpec.moduleUrl
 
     let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
       switch cmd {

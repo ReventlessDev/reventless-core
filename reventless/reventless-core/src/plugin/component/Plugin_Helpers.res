@@ -176,17 +176,21 @@ let eventCollectorContextRef: ref<dict<eventCollectorContext>> = ref(Dict.make()
 let registerEventCollectorContext = (~componentName: string, ~context: eventCollectorContext) =>
   eventCollectorContextRef.contents->Dict.set(componentName, context)
 
-// Framework-internal module URLs — hardcoded for the auto-Connect path.
+// Framework-internal module URLs for the auto-Connect path — package specifiers
+// the bundled EventCollector resolves (NOT file URLs). The two mapping specifiers
+// are sourced from each module's `@@reventless.spec`-injected `moduleUrl`
+// (derived from the file path, so they survive folder moves) rather than
+// hardcoded. The spec specifier lives in reventless-infra (whose own `moduleUrl`
+// is an `import.meta.url` file URL, the wrong form here), so it stays an explicit
+// package specifier.
 // User-declared extensions will eventually need to propagate their own URLs
 // via createExtensions; this scope only covers the built-in Plugin EP + Connect.
 let adminPluginExtensionPointSpecModule =
   "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs"
-let adminPluginExtensionPointMappingsModule =
-  "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs"
+let adminPluginExtensionPointMappingsModule = PluginExtensionPoint_Plugin.moduleUrl
 // Runtime-safe mapping module (not the `_Builder` variant, which the Lambda layer
 // strips because it pulls Pulumi via `include Extension_Builder.Make(...)`).
-let pluginConnectExtensionMappingsModule =
-  "@reventlessdev/reventless-core/src/admin/PluginConnectExtension_Mapping.res.mjs"
+let pluginConnectExtensionMappingsModule = PluginConnectExtension_Mapping.moduleUrl
 
 type jsonEventsHandler = Plugin_Callback.jsonEventsHandler
 type jsonEventsHandlers = {
