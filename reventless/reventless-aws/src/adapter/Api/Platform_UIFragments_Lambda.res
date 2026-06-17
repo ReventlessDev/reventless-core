@@ -33,20 +33,46 @@ export async function handler() {
     exclusiveStartKey = out.LastEvaluatedKey;
   } while (exclusiveStartKey);
 
-  return items.flatMap(item => {
-    if (!item || !item.pluginId || !item.remoteEntryUrl) return [];
-    return [{
-      // Platform invariant: one version per plugin at a time, so the UI sees
-      // just the bare plugin name. Mirrors ReventlessCore.Plugin.name on the
-      // ReScript side.
-      pluginId: String(item.pluginId).split("@")[0],
-      remoteEntryUrl: item.remoteEntryUrl,
-      panels: item.panels || [],
-      pages: item.pages || [],
-      registeredAt: item.registeredAt || "",
-      updatedAt: item.updatedAt || "",
-    }];
-  });
+  // Platform invariant: one version per plugin at a time, so the UI sees just
+  // the bare plugin name (mirrors ReventlessCore.Plugin.name). UIFragmentRegistry
+  // accumulates one row per deployed plugin version and carries no lifecycle
+  // status of its own, so without deduping a redeployed federation plugin would
+  // surface duplicate fragments. Collapse to the highest version per plugin name
+  // (mirrors ReventlessCore.Plugin.compareVersions).
+  const cmpVer = (a, b) => {
+    const pa = String(a).replace(/[-+]/g, ".").split(".");
+    const pb = String(b).replace(/[-+]/g, ".").split(".");
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const sa = pa[i] ?? "", sb = pb[i] ?? "";
+      const na = Number(sa), nb = Number(sb);
+      const bothNum = sa !== "" && sb !== "" && !Number.isNaN(na) && !Number.isNaN(nb);
+      if (bothNum) { if (na !== nb) return na > nb ? 1 : -1; }
+      else if (sa !== sb) return sa > sb ? 1 : -1;
+    }
+    return 0;
+  };
+  const latestByName = new Map();
+  for (const item of items) {
+    if (!item || !item.pluginId || !item.remoteEntryUrl) continue;
+    const name = String(item.pluginId).split("@")[0];
+    const version = String(item.pluginId).split("@")[1] ?? "";
+    const prev = latestByName.get(name);
+    if (!prev || cmpVer(version, prev.version) > 0) {
+      latestByName.set(name, {
+        version,
+        entry: {
+          pluginId: name,
+          remoteEntryUrl: item.remoteEntryUrl,
+          panels: item.panels || [],
+          pages: item.pages || [],
+          registeredAt: item.registeredAt || "",
+          updatedAt: item.updatedAt || "",
+        },
+      });
+    }
+  }
+  return [...latestByName.values()].map(v => v.entry);
 }
 `
 

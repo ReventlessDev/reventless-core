@@ -1412,27 +1412,66 @@ function MakeWithConfig(Config) {
           dict[id] = state.status;
         });
       }
-      return Object.entries(pluginStructuresStore.contents).filter(param => {
+      let latestByName = {};
+      Object.entries(pluginStructuresStore.contents).forEach(param => {
+        let def = param[1];
         let pluginId = param[0];
-        if (pluginId === Platform_Admin_Structure$ReventlessCore.pluginId) {
-          return true;
+        let connected = true;
+        if (pluginId !== Platform_Admin_Structure$ReventlessCore.pluginId) {
+          let match = dict[pluginId];
+          let tmp;
+          tmp = match === "Connected";
+          connected = tmp;
         }
-        let match = dict[pluginId];
-        return match === "Connected";
-      }).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+        if (!connected) {
+          return;
+        }
+        let name = Plugin$ReventlessCore.name(pluginId);
+        let version = Plugin$ReventlessCore.version(pluginId);
+        let match$1 = latestByName[name];
+        if (match$1 !== undefined && Plugin$ReventlessCore.compareVersions(version, match$1[0]) <= 0) {
+          return;
+        } else {
+          latestByName[name] = [
+            version,
+            [
+              pluginId,
+              def
+            ]
+          ];
+          return;
+        }
+      });
+      return Object.values(latestByName).map(param => {
+        let match = param[1];
+        return Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(match[0], match[1]);
+      });
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
-      return Stdlib_Array.filterMap(items, item => {
+      let latestByName = {};
+      items.forEach(item => {
         let state;
         try {
           state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
         } catch (exn) {
           return;
         }
-        return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
+        let name = Plugin$ReventlessCore.name(state.pluginId);
+        let version = Plugin$ReventlessCore.version(state.pluginId);
+        let match = latestByName[name];
+        if (match !== undefined && Plugin$ReventlessCore.compareVersions(version, match[0]) <= 0) {
+          return;
+        } else {
+          latestByName[name] = [
+            version,
+            state
+          ];
+          return;
+        }
       });
+      return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {
@@ -3257,27 +3296,66 @@ function Make($star) {
           dict[id] = state.status;
         });
       }
-      return Object.entries(pluginStructuresStore.contents).filter(param => {
+      let latestByName = {};
+      Object.entries(pluginStructuresStore.contents).forEach(param => {
+        let def = param[1];
         let pluginId = param[0];
-        if (pluginId === Platform_Admin_Structure$ReventlessCore.pluginId) {
-          return true;
+        let connected = true;
+        if (pluginId !== Platform_Admin_Structure$ReventlessCore.pluginId) {
+          let match = dict[pluginId];
+          let tmp;
+          tmp = match === "Connected";
+          connected = tmp;
         }
-        let match = dict[pluginId];
-        return match === "Connected";
-      }).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+        if (!connected) {
+          return;
+        }
+        let name = Plugin$ReventlessCore.name(pluginId);
+        let version = Plugin$ReventlessCore.version(pluginId);
+        let match$1 = latestByName[name];
+        if (match$1 !== undefined && Plugin$ReventlessCore.compareVersions(version, match$1[0]) <= 0) {
+          return;
+        } else {
+          latestByName[name] = [
+            version,
+            [
+              pluginId,
+              def
+            ]
+          ];
+          return;
+        }
+      });
+      return Object.values(latestByName).map(param => {
+        let match = param[1];
+        return Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(match[0], match[1]);
+      });
     };
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name);
       let items = scanAll !== undefined ? scanAll() : [];
-      return Stdlib_Array.filterMap(items, item => {
+      let latestByName = {};
+      items.forEach(item => {
         let state;
         try {
           state = S.parseOrThrow(item, UIFragmentRegistryReadModelSpec$ReventlessCore.stateSchema);
         } catch (exn) {
           return;
         }
-        return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
+        let name = Plugin$ReventlessCore.name(state.pluginId);
+        let version = Plugin$ReventlessCore.version(state.pluginId);
+        let match = latestByName[name];
+        if (match !== undefined && Plugin$ReventlessCore.compareVersions(version, match[0]) <= 0) {
+          return;
+        } else {
+          latestByName[name] = [
+            version,
+            state
+          ];
+          return;
+        }
       });
+      return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let statusToString = s => {

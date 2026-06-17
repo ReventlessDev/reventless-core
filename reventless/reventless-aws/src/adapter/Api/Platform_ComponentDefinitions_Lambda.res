@@ -44,12 +44,37 @@ export async function handler() {
     exclusiveStartKey = out.LastEvaluatedKey;
   } while (exclusiveStartKey);
 
-  const userEntries = items.flatMap(item => {
-    if (!item || !item.structure) return [];
-    // Platform invariant: one version per plugin at a time, so the UI sees
-    // just the bare plugin name (mirrors ReventlessCore.Plugin.name).
-    return [{ pluginId: String(item.name).split("@")[0], ...item.structure }];
-  });
+  // Platform invariant: one version per plugin at a time, so the UI sees just
+  // the bare plugin name (mirrors ReventlessCore.Plugin.name). The Connected
+  // filter above does not enforce single-version: during a rolling deploy or a
+  // missed retire, several versions of the same plugin sit in Connected at once
+  // and each would otherwise emit a full duplicate set of AutoUI menu entries.
+  // Collapse to the highest version per plugin name (mirrors
+  // ReventlessCore.Plugin.compareVersions).
+  const cmpVer = (a, b) => {
+    const pa = String(a).replace(/[-+]/g, ".").split(".");
+    const pb = String(b).replace(/[-+]/g, ".").split(".");
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const sa = pa[i] ?? "", sb = pb[i] ?? "";
+      const na = Number(sa), nb = Number(sb);
+      const bothNum = sa !== "" && sb !== "" && !Number.isNaN(na) && !Number.isNaN(nb);
+      if (bothNum) { if (na !== nb) return na > nb ? 1 : -1; }
+      else if (sa !== sb) return sa > sb ? 1 : -1;
+    }
+    return 0;
+  };
+  const latestByName = new Map();
+  for (const item of items) {
+    if (!item || !item.structure) continue;
+    const name = String(item.name).split("@")[0];
+    const version = String(item.name).split("@")[1] ?? "";
+    const prev = latestByName.get(name);
+    if (!prev || cmpVer(version, prev.version) > 0) {
+      latestByName.set(name, { version, entry: { pluginId: name, ...item.structure } });
+    }
+  }
+  const userEntries = [...latestByName.values()].map(v => v.entry);
   return [ADMIN_ENTRY, ...userEntries];
 }
 `

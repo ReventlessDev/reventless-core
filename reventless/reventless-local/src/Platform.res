@@ -1512,16 +1512,36 @@ module MakeWithConfig = (
           dict
         }
         let adminPluginId = ReventlessCore.Platform_Admin_Structure.pluginId
+        // One entry per plugin name: among Connected versions keep the highest
+        // version, enforcing the deploy-time one-version-per-plugin invariant.
+        // Without this, a lingering Connected older version (rolling deploy or a
+        // missed retire) surfaces a full duplicate set of AutoUI menu entries —
+        // mirrors the dedup in Platform_ComponentDefinitions_Lambda.res.
+        let latestByName = Dict.make()
         pluginStructuresStore.contents
         ->Dict.toArray
-        ->Array.filter(((pluginId, _)) =>
-          pluginId === adminPluginId ||
-            switch pluginStatusById->Dict.get(pluginId) {
-            | Some(Connected) => true
-            | _ => false
+        ->Array.forEach(((pluginId, def)) => {
+          let connected =
+            pluginId === adminPluginId ||
+              switch pluginStatusById->Dict.get(pluginId) {
+              | Some(Connected) => true
+              | _ => false
+              }
+          if connected {
+            let name = ReventlessCore.Plugin.name(pluginId)
+            let version = ReventlessCore.Plugin.version(pluginId)
+            switch latestByName->Dict.get(name) {
+            | Some((prevVersion, _)) =>
+              if ReventlessCore.Plugin.compareVersions(version, prevVersion) > 0 {
+                latestByName->Dict.set(name, (version, (pluginId, def)))
+              }
+            | None => latestByName->Dict.set(name, (version, (pluginId, def)))
             }
-        )
-        ->Array.map(((pluginId, def)) =>
+          }
+        })
+        latestByName
+        ->Dict.valuesToArray
+        ->Array.map(((_, (pluginId, def))) =>
           ReventlessCore.Platform_ComponentDefinitionsApi.encodePluginStructureEntry(~pluginId, def)
         )
         ->JSON.Encode.array
@@ -1539,14 +1559,32 @@ module MakeWithConfig = (
         | Some(scanAll) => scanAll()
         | None => []
         }
-        items
-        ->Array.filterMap(item =>
+        // Collapse to one entry per plugin name (highest version). UIFragmentRegistry
+        // accumulates a row per deployed version and has no lifecycle status of its
+        // own, so without this a redeployed federation plugin surfaces duplicate
+        // fragments — mirrors the dedup in Platform_UIFragments_Lambda.res.
+        let latestByName = Dict.make()
+        items->Array.forEach(item =>
           switch item->S.parseOrThrow(
             ReventlessCore.UIFragmentRegistryReadModelSpec.stateSchema,
           ) {
-          | state => Some(ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state))
-          | exception _ => None
+          | state =>
+            let name = ReventlessCore.Plugin.name(state.pluginId)
+            let version = ReventlessCore.Plugin.version(state.pluginId)
+            switch latestByName->Dict.get(name) {
+            | Some((prevVersion, _)) =>
+              if ReventlessCore.Plugin.compareVersions(version, prevVersion) > 0 {
+                latestByName->Dict.set(name, (version, state))
+              }
+            | None => latestByName->Dict.set(name, (version, state))
+            }
+          | exception _ => ()
           }
+        )
+        latestByName
+        ->Dict.valuesToArray
+        ->Array.map(((_, state)) =>
+          ReventlessCore.Platform_UIFragmentsApi.encodeUIFragmentEntry(state)
         )
         ->JSON.Encode.array
       },
