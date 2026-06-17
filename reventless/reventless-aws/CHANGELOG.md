@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.151 (2026-06-17)
+
+### Bug Fixes
+
+* **admin:** dedup plugin versions in UI manifest queries ([7a21ca3](https://github.com/ReventlessDev/reventless-core/commit/7a21ca30461622287a9d3f42fe54579fbdb75eb2))
+
+
 # 3.0.0-alpha.150 (2026-06-17)
 
 ### Bug Fixes
