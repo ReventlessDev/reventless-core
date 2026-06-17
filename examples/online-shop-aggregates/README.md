@@ -89,3 +89,4 @@ Cognito + host-shell settings.
 | Task | `ordering/src/Task/` — hosts the SideEffect |
 | `@authorize` | one Category command annotated for the `Admin` group |
 | Per-aggregate Behavior GWTs | `ordering/tests/*/Aggregate/*_GWT.res` (cross-plugin `Flow_GWT` is DCB-only today — see the hybrid example for a cross-plugin flow) |
+| SideEffect GWT | `ordering/tests/Order/SideEffect/Order_EmailNotification_GWT.res` + sibling `EmailService_Mock.res` (Option C: ref-backed `EmailService.backend` swap; mock records calls, GWT asserts them) |

@@ -50,7 +50,12 @@ open Ppxlib
                                        [Extension/] folder or a [*_Extension]
                                        stem → [Delegate_GWT.FromExtension(
                                        <Stem>.Mapping)], applied to the
-                                       extension file's inner [Mapping].)}}
+                                       extension file's inner [Mapping].)}
+      {- [SideEffect]                 (Aggregate-style egress. [SideEffect/]
+                                       folder or a filename containing
+                                       [SideEffect] → [SideEffect_GWT.Make(<SE>)],
+                                       applied to the SE module derived from the
+                                       filename stem.)}}
 
     Folder segments match on the short base form ("StateChange"), the long
     form ("StateChangeSlice"), or the plural form ("StateChangeSlices"), as
@@ -308,9 +313,10 @@ let kinds_list_for_error () =
    `Slice` / `Slices` suffix — e.g. Automation, Automations, \
    AutomationSlice, AutomationSlices); the Aggregate-pattern folders \
    Aggregate / ReadModel (plural also accepted); the cross-plugin boundary \
-   folders ExtensionPoint / Extension (Delegate kind); the cross-slice Flow \
+   folders ExtensionPoint / Extension (Delegate kind); the Aggregate-style \
+   egress folder SideEffect (SideEffect kind); the cross-slice Flow \
    folder (Flow kind); or a filename / folder containing `Projection`, \
-   `Behavior`, `ExtensionPoint`, `Extension`, or `Flow`"
+   `Behavior`, `ExtensionPoint`, `Extension`, `SideEffect`, or `Flow`"
 
 (** Detect a companion [<Stem>_Fixtures.res] next to the GWT file.
     Returns the module name if the sibling file exists, else [None].

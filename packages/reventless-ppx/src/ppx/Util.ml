@@ -210,6 +210,11 @@ let dsl_kind_of_segment part : string option =
   else if part = "ExtensionPoint" || part = "ExtensionPoints" then Some "Delegate"
   else if part = "Extension" || part = "Extensions" then Some "Delegate"
   else if part = "Delegate" || part = "Delegates" then Some "Delegate"
+  (* Aggregate-style egress: a SideEffect.T module tested via the SideEffect
+     GWT DSL. Same handling rationale as ExtensionPoint / Extension — kept out
+     of [known_slice_bases] so [is_in_slice_folder] doesn't claim the folder
+     and corrupt suffix-stripping. *)
+  else if part = "SideEffect" || part = "SideEffects" then Some "SideEffect"
   (* Cross-slice / cross-plugin flow tests. The Flow kind is functor-less —
      GwtInference injects only `open Flow_GWT`. *)
   else if part = "Flow" || part = "Flows" then Some "Flow"
@@ -246,6 +251,7 @@ let dsl_kind_of_segment part : string option =
        filename stems like "Products_ExtensionPointMapping" / "Orders_Extension". *)
     else if contains_substring part "ExtensionPoint" then Some "Delegate"
     else if contains_substring part "Extension" then Some "Delegate"
+    else if contains_substring part "SideEffect" then Some "SideEffect"
     else if contains_substring part "Flow" then Some "Flow"
     else None
 
