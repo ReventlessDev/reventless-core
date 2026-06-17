@@ -5164,7 +5164,7 @@ packages:
     os: [win32]
 
   '@reventlessdev/rescript-moment@0.10.0-alpha.7':
-    resolution: {integrity: sha512-jTM8k6hogCTbYlVg8+2Z1qumyX3T4HuWpgp05Nb+dkiekyAP28c2g5yD9rZQWP4MHJrW2WvT7s7hmpn6WBou2A==, tarball: https://npm.pkg.github.com/download/@reventlessdev/rescript-moment/0.10.0-alpha.7/e51c946e944aa780ff98bb671ba08953f456fa8c}
+    resolution: {integrity: sha512-P/KYuVY7e2mKwWrV2ADyILndIXjNS5FHBXPBbsI38NDNlM+GP2xXEtBBD3btHsgy9C7zvXHfVqu+WT8ycvaGvg==, tarball: https://npm.pkg.github.com/download/@reventlessdev/rescript-moment/0.10.0-alpha.7/84fee0e570244719f7d7963148e87015ce89a18d}
     peerDependencies:
       moment: ^2.30.1
       rescript: ^12.2.0
