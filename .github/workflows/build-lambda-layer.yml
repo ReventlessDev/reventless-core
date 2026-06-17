@@ -3,6 +3,11 @@ name: Build Lambda Layer
 # Registered with the GitHub Actions index so release.yml can dispatch it via
 # `gh workflow run build-lambda-layer.yml` (the API resolves filenames through
 # that index, not the git tree).
+#
+# NOTE (2026-06-17): this file existed in git but was never indexed by GitHub
+# Actions, so `gh workflow run` returned 404 and release.yml's layer-build step
+# failed. A push that modifies the workflow file forces (re-)indexing — keep that
+# in mind if it ever drops out of the index again.
 
 on:
   push:
