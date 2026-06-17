@@ -1152,6 +1152,24 @@ module MakeWithConfig = (
     UIFragmentRegistryReadModelMappings,
   )
 
+  // Admin-internal PluginHistory read model — the per-version lifecycle timeline
+  // (one row per transition, composite key name + version#transitionAt#kind).
+  // Internal visibility, no AppSync resolver: the admin reads it by scanning the
+  // QueryDb table (same pattern as UIFragmentRegistry / PlatformEventGraph).
+  module PluginHistoryReadModelMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.PluginHistoryReadModelSpec = {
+    module M = ReventlessCore.PluginHistoryProjection.Mappings
+    module type Mapping = M.Mapping
+    // See PluginReadModelMappings.moduleUrl note above.
+    let moduleUrl: string = ReventlessCore.PluginHistoryProjection.moduleUrl
+    let mappings: array<module(Mapping)> = ReventlessCore.PluginHistoryProjection.mappings
+  }
+
+  module PluginHistoryReadModel = ReadModel_Builder_NoResolver_Stream.Make(
+    ReventlessCore.PluginHistoryReadModelSpec,
+    PluginHistoryReadModelMappings,
+  )
+
   module type PluginMaker = {
     let make: unit => Plugin.component
   }
@@ -1214,6 +1232,7 @@ module MakeWithConfig = (
         module(PluginReadModel),
         module(PlatformEventGraphReadModel),
         module(UIFragmentRegistryReadModel),
+        module(PluginHistoryReadModel),
       ],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
@@ -1425,6 +1444,7 @@ module MakeWithConfig = (
         module(PluginReadModel),
         module(PlatformEventGraphReadModel),
         module(UIFragmentRegistryReadModel),
+        module(PluginHistoryReadModel),
       ],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,

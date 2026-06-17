@@ -6,6 +6,34 @@
 
 ---
 
+## Progress (2026-06-18)
+
+| Step | Status | Commit / notes |
+|---|---|---|
+| Part 1 — folder consolidation into `src/plugin/` | ✅ done | `92deffb` |
+| moduleUrl specifiers via `@@reventless.spec` (move-safety) | ✅ done | `5bc47cb` — not in the original plan; surfaced as a Part 1 regression |
+| Part 2 core — name-keyed aggregate + current view + EP translation | ✅ done | `c6720d0` — GWT-verified; core 418 + local 416 tests pass |
+| Part 2 — delete deploy-time retire hook | ✅ done | `3322841` — incl. `pluginAggrCmdTopicUrl` export/stack-ref removal |
+| **Bug fix (duplicate menu) — structurally resolved** | ✅ | one row per name + write-side supersession + hook gone |
+| Part 2 — `PluginHistory` view (core + AWS) | ✅ done | core spec/projection + 8 GWT tests; AWS `ReadModel_Builder_NoResolver_Stream` (composite-key, internal, no resolver). Local population folded into F1 refactor below |
+| Part 2 — F1 local Connect-flow refactor (decision ii) | ⬜ todo | interim: local seed is name-keyed direct-write; full refactor pending. **Now also owns local `PluginHistory` QueryDb population** (routing through the aggregate feeds both projections — no throwaway interim seed) |
+| Part 2 — AWS version-arg admin path | ⬜ verify | `Activate`/`Deactivate`/`Retire(version)` mutations (deploy-path, not test-covered) |
+| Part 3 — zero-downtime synthetic heartbeat + deploy contract | ⬜ todo | |
+
+**Decisions locked in during implementation:**
+- **Version carried by EP-boundary translation (Approach 1)** — §2.2.
+- **`Plugin_Builder` is NOT re-keyed** — PLUGIN_ID stays `name@version` (transport);
+  the re-key is purely at the admin aggregate via the EP mapping. (The plan's
+  earlier "Plugin_Builder id → name" step is therefore void.)
+- **Current view uses a compact `knownStatuses` map** (not a full fat state) to
+  recompute current on drop-out / rollback; `Superseded` is *derived* (Connected
+  && ≠ current), not an aggregate status — §2.4.
+- **Manual `Retire` = Option A** (API mutation + un-retire via `Activate`) — §2.5.
+- Part 2 landed as a **green checkpoint** (core) + follow-ups, since core + local
+  + GWT tests are too coupled for independent green sub-commits.
+
+---
+
 ## Goal
 
 Two intertwined deliverables, sequenced so each commits independently:
@@ -138,17 +166,23 @@ the aggregate (re-keyed from `name@version`), it decides supersession
 synchronously, and it emits one ordered, intentful stream. Both read views fold
 that stream; the deploy-time retire hook disappears. Analysis §5.2, §6, §8.
 
-### 2.1 Re-key the aggregate `name@version → name`
+### 2.1 Re-key the admin Plugin aggregate `name@version → name` ✅
 
-- `Plugin.makeId` (`Plugin.res:51`) and the aggregate instance id
-  (`Plugin_Builder.res:127`) become the bare plugin **name**.
-- Aggregate state: `{ current, known: dict<version, {definition, status,
-  lastHeartbeatAt}> }`. `Retired` is a **per-version sub-state inside `known`**,
-  not a terminal state of the whole aggregate (analysis §6.2.6) — the name keeps
-  accepting and promoting new versions while old versions sit `Retired`.
-- **Wipe** the Plugin EventLog + Plugins QueryDb (plugins re-register via
-  heartbeat; migration is not a concern — analysis §8, MEMORY: wipe alpha over
-  migration).
+- The **admin Plugin aggregate** instance id becomes the bare plugin **name**.
+  This is achieved entirely at the **EP-mapping boundary** (§2.2): the aggregate
+  is keyed by whatever id the incoming command carries, and the EP now sends
+  `Plugin.name(id)`. **`Plugin.makeId` / `Plugin_Builder` are unchanged** — the
+  plugin *component* identity and `PLUGIN_ID` stay `name@version` (the transport
+  id), per Approach 1. (Supersedes the earlier "`Plugin_Builder.res:127` becomes
+  name" wording.)
+- Aggregate state: `{ current, known: dict<version, {definition, status}> }`
+  (no `lastHeartbeatAt` — liveness is scheduler-driven, not time-in-aggregate).
+  `Retired` is a **per-version sub-state inside `known`**, not a terminal state
+  of the whole aggregate (analysis §6.2.6) — the name keeps accepting and
+  promoting new versions while old versions sit `Retired`.
+- **Wipe** the Plugin EventLog + Plugins QueryDb on deploy (plugins re-register
+  via heartbeat; migration is not a concern — analysis §8, MEMORY: wipe alpha
+  over migration).
 
 ### 2.2 Carry the version by translating at the EP boundary (Approach 1)
 
@@ -281,17 +315,21 @@ Replace the local **direct-write bypass** so local mirrors AWS:
 - Verify the enforced invariant "exactly one current"; history is a faithful
   fold (zero inference). Build green, zero warnings.
 
-### 2.10 Staged commits
+### 2.10 Staged commits — actual
 
-1. **2a** core aggregate — `PluginSpec`/`PluginBehavior`/`PluginsReadModelSpec`/
-   `PluginsProjection` + `PluginHistory`, name-keyed; un-retire. GWT-verified.
-2. **2b** EP-boundary translation + `Plugin_Builder` id → name.
-3. **2c** AWS admin path (§2.7) + wire `Retire` (§2.5).
-4. **2d** local adapter F1 refactor (§2.8).
-5. **2e** delete retire hook + repoint manifest/forwardCommand (§2.6).
+See the **Progress** table at the top for live status. As built (core + local +
+GWT tests proved too coupled for independent green sub-commits, so the core
+landed as one checkpoint):
 
-**Final commit message:** `feat(admin): name-keyed plugin lifecycle aggregate + current/history views`
-(staged sub-commits land incrementally; each builds green).
+1. ✅ core aggregate + current view + EP translation + GWT tests (`c6720d0`).
+2. ✅ delete retire hook (`3322841`).
+3. ✅ `PluginHistory` view (§2.4) — core spec/projection/GWT + AWS read model
+   (`ReadModel_Builder_NoResolver_Stream`, composite-key timeline, internal, no
+   AppSync resolver — scan-consumed like UIFragmentRegistry). Local QueryDb
+   population deferred to step 4 (it routes through the aggregate, feeding both
+   `PluginsProjection` and `PluginHistoryProjection` — no interim direct-write).
+4. ⬜ local F1 refactor (§2.8) — also populates the local `PluginHistory` QueryDb.
+5. ⬜ AWS version-arg admin-path verification (§2.7).
 
 ---
 

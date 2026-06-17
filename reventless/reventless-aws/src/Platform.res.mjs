@@ -54,6 +54,7 @@ import * as AutomationSlice_Builder$ReventlessAws from "./components/AutomationS
 import * as EventTopicPublisher_SNS$ReventlessAws from "./adapter/EventTopic/EventTopicPublisher_SNS.res.mjs";
 import * as ExtensionPointMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
 import * as Aggregate_Builder_Single$ReventlessAws from "./components/Aggregate_Builder_Single.res.mjs";
+import * as PluginHistoryProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginHistoryProjection.res.mjs";
 import * as ReadModel_Builder_Single$ReventlessAws from "./components/ReadModel_Builder_Single.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessAws from "./components/StateChangeSlice_Builder.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "./adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
@@ -61,6 +62,7 @@ import * as RuntimeEnvironment_Lambda$ReventlessAws from "./adapter/Runtime/Runt
 import * as PluginExtensionPointSpec$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "./adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as Platform_UIFragments_Lambda$ReventlessAws from "./adapter/Api/Platform_UIFragments_Lambda.res.mjs";
+import * as PluginHistoryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginHistoryReadModelSpec.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as EventLogSubscription_AppSync$ReventlessAws from "./adapter/EventLogSubscription/EventLogSubscription_AppSync.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "./adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
@@ -793,6 +795,20 @@ function MakeWithConfig(Config) {
     authorization: UIFragmentRegistryReadModelSpec$ReventlessCore.authorization,
     visibility: UIFragmentRegistryReadModelSpec$ReventlessCore.visibility
   })(UIFragmentRegistryReadModelMappings);
+  let PluginHistoryReadModelMappings = {
+    moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
+    mappings: PluginHistoryProjection$ReventlessCore.mappings
+  };
+  let PluginHistoryReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginHistoryReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginHistoryReadModelSpec$ReventlessCore.config,
+    subIdConfig: PluginHistoryReadModelSpec$ReventlessCore.subIdConfig,
+    authorization: PluginHistoryReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginHistoryReadModelSpec$ReventlessCore.visibility
+  })(PluginHistoryReadModelMappings);
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);
     let outputs = Component$ReventlessCore.outputs(component);
@@ -829,7 +845,8 @@ function MakeWithConfig(Config) {
     let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
       PlatformEventGraphReadModel,
-      UIFragmentRegistryReadModel
+      UIFragmentRegistryReadModel,
+      PluginHistoryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     if (pluginRm !== undefined) {
@@ -929,7 +946,8 @@ function MakeWithConfig(Config) {
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,
       PlatformEventGraphReadModel,
-      UIFragmentRegistryReadModel
+      UIFragmentRegistryReadModel,
+      PluginHistoryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     let pluginReadModelTableName;
@@ -1852,6 +1870,20 @@ function Make($star) {
     authorization: UIFragmentRegistryReadModelSpec$ReventlessCore.authorization,
     visibility: UIFragmentRegistryReadModelSpec$ReventlessCore.visibility
   })(UIFragmentRegistryReadModelMappings);
+  let PluginHistoryReadModelMappings = {
+    moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
+    mappings: PluginHistoryProjection$ReventlessCore.mappings
+  };
+  let PluginHistoryReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
+    Id: Id$Reventless.$$String,
+    name: PluginHistoryReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginHistoryReadModelSpec$ReventlessCore.config,
+    subIdConfig: PluginHistoryReadModelSpec$ReventlessCore.subIdConfig,
+    authorization: PluginHistoryReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginHistoryReadModelSpec$ReventlessCore.visibility
+  })(PluginHistoryReadModelMappings);
   let makeScheduler = () => {
     let component = Scheduler$ReventlessAws.make(undefined);
     let outputs = Component$ReventlessCore.outputs(component);
@@ -1883,7 +1915,8 @@ function Make($star) {
     let admin = Admin.construct(version, [], [PluginAggregate], [
       PluginReadModel,
       PlatformEventGraphReadModel,
-      UIFragmentRegistryReadModel
+      UIFragmentRegistryReadModel,
+      PluginHistoryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     if (pluginRm !== undefined) {
@@ -1971,7 +2004,8 @@ function Make($star) {
     let admin = Admin.construct(version, [PluginExtensionPoint], [PluginAggregate], [
       PluginReadModel,
       PlatformEventGraphReadModel,
-      UIFragmentRegistryReadModel
+      UIFragmentRegistryReadModel,
+      PluginHistoryReadModel
     ], scheduler, Util_ResourceNaming$ReventlessAws.operations, platformApi, platformApiRole, [], [], [], [], []);
     let pluginRm = admin.readModelsOutputs["Plugins"];
     let pluginReadModelTableName;
