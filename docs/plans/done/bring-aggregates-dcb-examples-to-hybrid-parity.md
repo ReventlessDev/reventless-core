@@ -14,18 +14,18 @@ This plan brings both to full structural and pattern parity with hybrid — whil
 
 > **Out of scope:** turning aggregates or DCB into hybrids. The mixed-style content unique to hybrid (`CatalogActivity` multi-source projection feeding both an Aggregate and a DCB source, hybrid plugin composition) remains hybrid-only. Each example demonstrates its style cleanly.
 
-## Style-purity audit (added mid-execution)
+## Style-purity audit (added mid-execution; both gaps now closed)
 
 When work on Section 2 began, two of the originally-planned aggregate-side
 steps were caught violating single-style purity — they prescribed DCB-only
-framework features for the aggregate example. Both are now marked SKIPPED
-in this plan, with the framework gaps that block them filed as separate
-backlog plans:
+framework features for the aggregate example. Both gaps have since been
+closed by dedicated framework plans; the corresponding Section 2 steps are
+now marked DONE below.
 
-| Step | Original ask | Why it can't be done style-pure |
-|---|---|---|
-| 2.1 | Replace `SideEffect/` + `Task/OrderNotifications` with `OutboundTranslationSlice` | `OutboundTranslationSlice_Builder` is hardwired to a DCB event log; aggregate per-aggregate EventTopics never reach it. There is no aggregate-side OTS variant. `SideEffect.T` (`reventless-spec/src/types/SideEffect.res`) is the canonical aggregate egress and stays. Test-side gap (no `SideEffect_GWT`) tracked in [docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md). |
-| 2.3 | Cross-plugin Flow test (`platform-local/tests/Flow/AggregatesFlow_GWT.res`) | `Flow_GWT.CommandStep` takes `Behavior_GWT.BehaviorSpec` — the DCB slice shape with `consumedEvent`. Aggregate specs don't expose `consumedEvent`, and Flow_GWT has no `AggregateCommandStep`. Adding one is a framework-side change; a separate plan should track it. Hybrid's existing `HybridFlow_GWT` uses only StateChangeSlices, never aggregates — same constraint. |
+| Step | Original ask | Original blocker | Resolution |
+|---|---|---|---|
+| 2.1 | Replace `SideEffect/` + `Task/OrderNotifications` with `OutboundTranslationSlice` | `OutboundTranslationSlice_Builder` is hardwired to a DCB event log; aggregate per-aggregate EventTopics never reach it. There is no aggregate-side OTS variant. `SideEffect.T` (`reventless-spec/src/types/SideEffect.res`) is the canonical aggregate egress and stays. Test-side gap: no `SideEffect_GWT`. | [docs/plans/done/sideeffect-gwt.md](done/sideeffect-gwt.md) shipped `SideEffect_GWT` plus the per-service mock convention; the example wires `Order_EmailNotification_GWT` against `EmailService_Mock`. |
+| 2.3 | Cross-plugin Flow test (`platform-local/tests/Flow/AggregatesFlow_GWT.res`) | `Flow_GWT.CommandStep` takes `Behavior_GWT.BehaviorSpec` — the DCB slice shape with `consumedEvent`. Aggregate specs don't expose `consumedEvent`, and Flow_GWT had no `AggregateCommandStep`. | [docs/plans/done/flow-gwt-aggregate-step.md](done/flow-gwt-aggregate-step.md) shipped `Flow_GWT.AggregateCommandStep` + `logEntry.aggregateId`; this plan's resumption pass added the `lastAggregateId` plumbing through `ExtensionPointStep` so aggregate-side EP mappings receive the real source ID. |
 
 The remaining Section 2 steps (2.2, 2.4, 2.5, 2.6) and all of Section 3 are
 style-pure as written:
@@ -42,21 +42,16 @@ style-pure as written:
 - 3.6 EP/Extension GWTs — style-neutral, same as 2.4.
 - 3.7 `@displayName` — style-neutral annotation.
 
-### Resumption order (after this plan's current pass finishes)
+### Resumption history
 
-1. Land [docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md) →
-   unblocks Step 2.1.
-2. Land [docs/plans/Backlog/flow-gwt-aggregate-step.md](Backlog/flow-gwt-aggregate-step.md) →
-   unblocks Step 2.3 (also benefits from sideeffect-gwt if the flow's
-   tail extends through the SideEffect).
-3. Re-open this plan from `docs/plans/done/` (move back with `git mv` per
-   the [plan-management convention](../../CLAUDE.md)), execute the
-   DEFERRED steps, then move back to `done/` as a separate completion
-   commit.
-
-The current pass closes Steps 1, 2.2, 2.4–2.6, all of Step 3, Step 4, and
-Step 5. The two DEFERRED steps account for ~1h 45min of follow-up work
-once the framework gaps are closed.
+1. [sideeffect-gwt.md](done/sideeffect-gwt.md) landed → unblocked Step 2.1.
+2. [flow-gwt-aggregate-step.md](done/flow-gwt-aggregate-step.md) landed →
+   unblocked Step 2.3.
+3. This plan was re-opened from `docs/plans/done/`, Steps 2.1 + 2.3 were
+   executed, and the plan moved back to `done/`. The cross-plugin pass
+   also required threading `lastAggregateId` through `ExtensionPointStep`
+   — a small follow-up to the flow-aggregate-step plan, captured in the
+   audit table above.
 
 ## Gap Summary
 
@@ -138,30 +133,24 @@ Append the three new `*-aws/` packages from each example to the root `rescript.j
 
 The aggregate example stays aggregate-only. The work is replacing outdated patterns and filling missing demonstrations.
 
-### 2.1 Add `SideEffect_GWT` coverage to `Order_EmailNotification` — DEFERRED
+### 2.1 Add `SideEffect_GWT` coverage to `Order_EmailNotification` — DONE
 
-**Original step** (replace `SideEffect/` + `Task/OrderNotifications` with
-`OutboundTranslationSlice`) was a style violation — see the
-[audit table](#style-purity-audit-added-mid-execution) above.
+Closed by the [sideeffect-gwt plan](done/sideeffect-gwt.md). The example
+ships:
 
-**Replacement step** (post-framework-gap): once
-[docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md) lands,
-resume work here:
+- Runtime files unchanged (`Order/SideEffect/Order_EmailNotification.res` +
+  `Task/OrderNotifications.res` remain the canonical aggregate-style egress).
+- `src/Service/EmailService.res` was switched to a ref-backed `backend` so
+  tests can swap in a recording mock without changing the SE itself.
+- `tests/Order/SideEffect/EmailService_Mock.res` records every call into a
+  ref and exposes `mock: SideEffect_GWT.mock<call>` for the GWT.
+- `tests/Order/SideEffect/Order_EmailNotification_GWT.res` covers `Placed`
+  (triggers `SendOrderConfirmation`), `Shipped` (no-op), and `Cancelled`
+  (no-op).
 
-- Runtime files stay as-is — `Order/SideEffect/Order_EmailNotification.res` +
-  `Task/OrderNotifications.res` are already the canonical aggregate-style
-  egress.
-- Add `Service/EmailService_Mock.res` per the per-service mock convention
-  from the `SideEffect_GWT` plan.
-- Add `Order/SideEffect/Order_EmailNotification_GWT.res` covering:
-  - `Placed` triggers `EmailService_Mock.SendOrderConfirmation` with the
-    customer email + order id.
-  - `Shipped`, `Cancelled` are no-ops.
-- Wire `ordering/rescript.json` `tests/` sub-tree if needed so the new
-  `SideEffect/` tests folder is picked up.
-
-**Blocked by:** `SideEffect_GWT.Make` in `reventless-gwt`.
-**Effort estimate (post-unblock):** ~45 min.
+The mock module lives next to the GWT (`tests/Order/SideEffect/`) rather
+than under `src/Service/` as originally sketched — `_Mock.res` belongs in
+the test tree, not the publish surface.
 
 ### 2.2 Add `Refund` command to Order
 
@@ -171,40 +160,32 @@ Hybrid has 5 Order commands (Place/Cancel/Ship/Refund + one more); aggregates cu
 - Add a `Refund_GWT.res` test mirroring the others.
 - Update behavior in `Order_Behavior.res`.
 
-### 2.3 Add cross-plugin Flow test — DEFERRED
+### 2.3 Add cross-plugin Flow test — DONE
 
-**Original step** (`Customer → Place Order → Ship Order → side-effect
-translation`) is blocked: `Flow_GWT.CommandStep` is DCB-shape and there is
-no `AggregateCommandStep`. The "side-effect translation" tail also depends
-on `SideEffect_GWT`. See the [audit table](#style-purity-audit-added-mid-execution).
+Closed by the [flow-gwt-aggregate-step plan](done/flow-gwt-aggregate-step.md)
+plus a small follow-up to `ExtensionPointStep`. The example ships
+`platform-local/tests/Flow/AggregatesFlow_GWT.res` covering two describes:
 
-**Replacement step** (post-framework-gap): once
-[docs/plans/Backlog/flow-gwt-aggregate-step.md](Backlog/flow-gwt-aggregate-step.md)
-and [docs/plans/Backlog/sideeffect-gwt.md](Backlog/sideeffect-gwt.md) both
-land, resume here:
+- **Single-plugin** sweeps inside Ordering: `CatalogProduct sync → Order.Place
+  → Order.Ship`, `~id` isolation, error paths, and `givenEvents` seeding.
+- **Cross-plugin** sweeps: `Catalog.Product.Add → Products_ExtensionPoint
+  → Products_Extension → Ordering.CatalogProduct.Sync`, and the return
+  trip `Ordering.Order.Place → Orders_ExtensionPoint (fan-out) →
+  Orders_Extension → Catalog.ProductDemand.Record`.
 
-- Create `platform-local/tests/Flow/AggregatesFlow_GWT.res` composing
-  `Flow_GWT.AggregateCommandStep` (per the aggregate plan) with
-  `ExtensionPointStep` / `ExtensionStep` (already style-neutral) to cross
-  the plugin boundary.
-- Cover the canonical sweep: `RegisterCustomer → PlaceOrder → ShipOrder`,
-  plus on the catalog side an EP fan-out reaching back into Catalog via
-  the `Orders` extension.
-- Optionally extend with the SideEffect tail once `SideEffect_GWT`
-  exposes a Flow step kind (e.g. `Flow_GWT.SideEffectStep`) — that wiring
-  is itself a follow-up to the SideEffect_GWT plan.
+Required one new piece of framework plumbing: `flowState.lastAggregateId`
+threads the producing aggregate's ID into `ExtensionPointStep` so the EP
+mapping's `mapOutgoingEvent(id, ...)` receives the real aggregate-ID
+instead of the previous hard-coded `"gwt-id"` literal. DCB upstreams leave
+the field `None` and the EP step falls back to the literal — the existing
+hybrid + DCB Flow tests still pass unchanged.
 
-**Blocked by:**
-- `Flow_GWT.AggregateCommandStep` in `reventless-gwt` (required).
-- `SideEffect_GWT` in `reventless-gwt` (optional — only needed if the
-  flow extends through the SideEffect tail).
-
-**Existing coverage today:** per-aggregate `*_GWT.res` files under
-`ordering/tests/*/Aggregate/` exercise each aggregate in isolation via
-`Behavior_GWT.MakeFromAggregate`. That's the aggregate-style unit-test
-equivalent — what's missing is only the *cross-plugin* flow.
-
-**Effort estimate (post-unblock):** ~1h.
+The SideEffect tail (`Order_EmailNotification`) is not part of the flow:
+`SideEffect_GWT` exists as a per-component DSL but there is no
+`Flow_GWT.SideEffectStep` yet, and the SE is already covered in isolation
+by `Order_EmailNotification_GWT`. Adding a flow step kind for it is a
+separate follow-up if a real cross-plugin flow ever needs to assert on
+SE-fired calls.
 
 ### 2.4 Add ExtensionPoint/Extension GWTs
 
@@ -294,9 +275,9 @@ After parity lands, update:
 | 1.1 README + deploy-manifest + scripts | ~30 min | ~30 min | Mostly copy-paste with sed |
 | 1.2 platform-local modernization | ~45 min | ~45 min | Includes users.yaml + scripts + mock |
 | 1.3 AWS packages (3 each) | ~2h | ~2h | Risk: Pulumi config typos |
-| 2.1 OutboundTranslationSlice migration | ~~~1.5h~~ skipped | — | OTS is DCB-only; SideEffect+Task stays |
+| 2.1 SideEffect_GWT coverage | ~45 min (resumed) | — | shipped after sideeffect-gwt landed |
 | 2.2 Refund command | ~45 min | — | |
-| 2.3 Flow test | ~~~1h~~ skipped | — | Flow_GWT.CommandStep is DCB-only |
+| 2.3 Cross-plugin Flow test | ~1h (resumed) | — | shipped after flow-gwt-aggregate-step landed + lastAggregateId follow-up |
 | 2.4 EP/Extension GWTs | ~45 min | — | |
 | 2.5 @authorize | ~30 min | — | |
 | 2.6 comment drift | ~5 min | — | |

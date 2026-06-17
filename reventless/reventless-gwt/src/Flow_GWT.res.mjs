@@ -30,7 +30,8 @@ let emptyState = {
   lastEvents: emptyState_lastEvents,
   lastError: undefined,
   lastCommands: emptyState_lastCommands,
-  lastPublic: emptyState_lastPublic
+  lastPublic: emptyState_lastPublic,
+  lastAggregateId: undefined
 };
 
 let start = Promise.resolve(emptyState);
@@ -44,7 +45,8 @@ function recordOutcome(s, o) {
       lastEvents: s.lastEvents,
       lastError: s.lastError,
       lastCommands: s.lastCommands,
-      lastPublic: s.lastPublic
+      lastPublic: s.lastPublic,
+      lastAggregateId: s.lastAggregateId
     };
   } else {
     return s;
@@ -143,7 +145,8 @@ function CommandStep(Spec) {
         lastEvents: s.lastEvents,
         lastError: s.lastError,
         lastCommands: s.lastCommands,
-        lastPublic: s.lastPublic
+        lastPublic: s.lastPublic,
+        lastAggregateId: s.lastAggregateId
       };
     };
     let whenCommand = async (flowP, command) => {
@@ -159,7 +162,8 @@ function CommandStep(Spec) {
           lastEvents: [],
           lastError: Message$ReventlessCore.encode(events._0, Spec.errorSchema),
           lastCommands: s.lastCommands,
-          lastPublic: s.lastPublic
+          lastPublic: s.lastPublic,
+          lastAggregateId: undefined
         };
       }
       let events$1 = events._0;
@@ -169,7 +173,8 @@ function CommandStep(Spec) {
         lastEvents: events$1.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema)),
         lastError: undefined,
         lastCommands: s.lastCommands,
-        lastPublic: s.lastPublic
+        lastPublic: s.lastPublic,
+        lastAggregateId: undefined
       };
     };
     let thenEvents = async (flowP, expected) => {
@@ -233,7 +238,8 @@ function AggregateCommandStep(Spec) {
         lastEvents: s.lastEvents,
         lastError: s.lastError,
         lastCommands: s.lastCommands,
-        lastPublic: s.lastPublic
+        lastPublic: s.lastPublic,
+        lastAggregateId: s.lastAggregateId
       };
     };
     let whenCommand = async (flowP, id, command) => {
@@ -248,7 +254,8 @@ function AggregateCommandStep(Spec) {
           lastEvents: [],
           lastError: Message$ReventlessCore.encode(events._0, Spec.errorSchema),
           lastCommands: s.lastCommands,
-          lastPublic: s.lastPublic
+          lastPublic: s.lastPublic,
+          lastAggregateId: id
         };
       }
       let events$1 = events._0;
@@ -258,7 +265,8 @@ function AggregateCommandStep(Spec) {
         lastEvents: events$1.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema)),
         lastError: undefined,
         lastCommands: s.lastCommands,
-        lastPublic: s.lastPublic
+        lastPublic: s.lastPublic,
+        lastAggregateId: id
       };
     };
     let thenEvents = async (flowP, expected) => {
@@ -342,7 +350,8 @@ function AutomationStep(Spec) {
       lastEvents: s.lastEvents,
       lastError: s.lastError,
       lastCommands: commands.map(param => Message$ReventlessCore.encode(param[1], Spec.commandSchema)),
-      lastPublic: s.lastPublic
+      lastPublic: s.lastPublic,
+      lastAggregateId: s.lastAggregateId
     };
   };
   let thenIssuesCommands = async (flowP, expected) => {
@@ -430,12 +439,12 @@ function sortJson(arr) {
 
 function ExtensionPointStep(M) {
   let delegateDecoder = DcbDecode$Reventless.makeDecoder(M.Delegate.eventSchema);
-  let runMapping = async events => {
+  let runMapping = async (sourceId, events) => {
     let f = M.mapOutgoingEvent;
     if (f === undefined) {
       return [];
     }
-    let actions = events.map(ev => f("gwt-id", ev, StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.queryEngine)).flat();
+    let actions = events.map(ev => f(sourceId, ev, StubRuntime$ReventlessGwt.meta, StubRuntime$ReventlessGwt.queryEngine)).flat();
     return (await Promise.all(actions.map(async action => {
       switch (action.TAG) {
         case "PublishEvent" :
@@ -455,14 +464,16 @@ function ExtensionPointStep(M) {
       data = typeof json === "object" && json !== null && !Array.isArray(json) ? json : ({});
       return delegateDecoder.decode(Message$Reventless.variantNameOfJson(json), data);
     });
-    let publicEvents = await runMapping(delegateEvents);
+    let sourceId = Stdlib_Option.getOr(s.lastAggregateId, "gwt-id");
+    let publicEvents = await runMapping(sourceId, delegateEvents);
     return {
       log: appendEvents(s.log, publicEvents, M.ExtensionPoint.eventSchema),
       outcome: s.outcome,
       lastEvents: s.lastEvents,
       lastError: s.lastError,
       lastCommands: s.lastCommands,
-      lastPublic: publicEvents.map(e => Message$ReventlessCore.encode(e, M.ExtensionPoint.eventSchema))
+      lastPublic: publicEvents.map(e => Message$ReventlessCore.encode(e, M.ExtensionPoint.eventSchema)),
+      lastAggregateId: s.lastAggregateId
     };
   };
   let thenPublicEvents = async (flowP, expected) => {
@@ -522,7 +533,8 @@ function ExtensionStep(M) {
       lastEvents: s.lastEvents,
       lastError: s.lastError,
       lastCommands: nested.flat(),
-      lastPublic: s.lastPublic
+      lastPublic: s.lastPublic,
+      lastAggregateId: s.lastAggregateId
     };
   };
   let thenIssuesCommands = async (flowP, expected) => {

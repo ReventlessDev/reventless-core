@@ -69,6 +69,14 @@ type flowState = {
   lastError: option<JSON.t>, // encoded error from the last command step
   lastCommands: array<JSON.t>, // encoded commands from the last automation / extension reaction
   lastPublic: array<JSON.t>, // encoded public EP events from the last ExtensionPoint step
+  // The producing aggregate-ID for `lastEvents`, when the producer was an
+  // `AggregateCommandStep`. Aggregate-style EP mappings reference the source
+  // aggregate-ID inside `mapOutgoingEvent` (e.g. the catalog Product EP uses
+  // it as `productId`); the next `ExtensionPointStep` reads this field and
+  // threads it through. DCB `CommandStep` events leave it `None` and the EP
+  // step falls back to the synthetic `gwt-id` so the existing DCB Flow tests
+  // are unchanged.
+  lastAggregateId: option<string>,
 }
 
 type flow = promise<flowState>
@@ -82,6 +90,7 @@ let emptyState = {
   lastError: None,
   lastCommands: [],
   lastPublic: [],
+  lastAggregateId: None,
 }
 
 // Entry point for a chain — an empty flow with no prior history.
@@ -242,11 +251,13 @@ module CommandStep = (
         log: s.log->appendEvents(events, Spec.eventSchema),
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
+        lastAggregateId: None,
       }
     | Error(error) => {
         ...s,
         lastEvents: [],
         lastError: Some(error->Message.encode(Spec.errorSchema)),
+        lastAggregateId: None,
       }
     }
   }
@@ -327,11 +338,13 @@ module AggregateCommandStep = (
         log: s.log->appendAggregateEvents(~id, events, Spec.eventSchema),
         lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
         lastError: None,
+        lastAggregateId: Some(id),
       }
     | Error(error) => {
         ...s,
         lastEvents: [],
         lastError: Some(error->Message.encode(Spec.errorSchema)),
+        lastAggregateId: Some(id),
       }
     }
   }
@@ -494,13 +507,20 @@ let sortJson = (arr: array<JSON.t>) =>
 module ExtensionPointStep = (M: EPMapping.Mapping) => {
   let delegateDecoder = Reventless.DcbDecode.makeDecoder(M.Delegate.eventSchema)
 
-  let runMapping = async (events: array<M.Delegate.event>): array<M.ExtensionPoint.event> =>
+  // Aggregate-style EP mappings address the source aggregate's identity via
+  // the first arg (e.g. catalog Product → ProductBecameAvailable uses it as
+  // `productId`). DCB upstreams don't set `lastAggregateId` and fall back to
+  // the synthetic `gwt-id` so existing DCB Flow tests keep their behaviour.
+  let runMapping = async (
+    sourceId: string,
+    events: array<M.Delegate.event>,
+  ): array<M.ExtensionPoint.event> =>
     switch M.mapOutgoingEvent {
     | None => []
     | Some(f) =>
       let actions =
         events
-        ->Array.map(ev => f("gwt-id", ev, StubRuntime.meta, StubRuntime.queryEngine))
+        ->Array.map(ev => f(sourceId, ev, StubRuntime.meta, StubRuntime.queryEngine))
         ->Array.flat
       let nested =
         await actions
@@ -527,7 +547,8 @@ module ExtensionPointStep = (M: EPMapping.Mapping) => {
         }
         delegateDecoder.decode(~eventType=json->Reventless.Message.variantNameOfJson, ~data)
       })
-    let publicEvents = await runMapping(delegateEvents)
+    let sourceId = s.lastAggregateId->Option.getOr("gwt-id")
+    let publicEvents = await runMapping(sourceId, delegateEvents)
     {
       ...s,
       log: s.log->appendEvents(publicEvents, M.ExtensionPoint.eventSchema),
