@@ -178,6 +178,54 @@ describe("DomainGraph.build", () => {
     expect(ext.label)->toBe("Ordering.Orders.Catalog")
   })
 
+  testPromise("an extension wires to the command(s) it creates, not straight to the delegate", async () => {
+    // The extension issues the delegate's RecordDemand command (its own commandTypes are
+    // empty — the commands belong to the delegate), so the arrow lands on the command
+    // node, which the ProductDemand slice handles — not straight on the slice.
+    let extension: Reventless.Plugin.extensionDef = {
+      name: "Ordering.Orders",
+      delegateNames: ["ProductDemand"],
+      eventTypes: ["Ordering.Orders.ItemOrdered"],
+      commandTypes: [],
+    }
+    let catalog = {
+      ...structure(
+        ~stateChangeSlices=[
+          writable(
+            ~name="ProductDemand",
+            ~commands=[command(~name="RecordDemand", ~mutationField="Catalog_ProductDemand_RecordDemand")],
+            ~produces=["Catalog.Recorded"],
+          ),
+        ],
+      ),
+      extensions: [extension],
+    }
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)], ~edges=[])
+    // Extension → the command it creates …
+    expect(
+      hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog_ProductDemand_RecordDemand", "delegatesTo"),
+    )->toBe(true)
+    // … the command is handled by the slice (so the full path is Extension → Command → slice) …
+    expect(hasEdge(g, "Catalog_ProductDemand_RecordDemand", "Catalog:ProductDemand", "handles"))->toBe(true)
+    // … and the extension no longer points straight at the slice.
+    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo"))->toBe(false)
+  })
+
+  testPromise("an extension with no commands falls back to delegating to the write-side", async () => {
+    let extension: Reventless.Plugin.extensionDef = {
+      name: "Ordering.Orders",
+      delegateNames: ["ProductDemand"],
+      eventTypes: ["Ordering.Orders.ItemOrdered"],
+      commandTypes: [],
+    }
+    let catalog = {
+      ...structure(~aggregates=[writable(~name="ProductDemand", ~produces=["Catalog.Recorded"])]),
+      extensions: [extension],
+    }
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)], ~edges=[])
+    expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo"))->toBe(true)
+  })
+
   testPromise("an owned extension point is fed by the producers of its source events", async () => {
     // Catalog owns the Catalog.Products EP; its source events are the internal
     // Catalog events produced by AddProduct, so the producing write-side feeds

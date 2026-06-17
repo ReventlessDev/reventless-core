@@ -224,6 +224,90 @@ globalThis.describe("DomainGraph.build", () => {
     let ext = Stdlib_Option.getOrThrow(g.nodes.find(n => n.id === "Catalog:ext:Ordering.Orders"), undefined);
     globalThis.expect(ext.label).toBe("Ordering.Orders.Catalog");
   });
+  globalThis.test("an extension wires to the command(s) it creates, not straight to the delegate", async () => {
+    let extension_delegateNames = ["ProductDemand"];
+    let extension_eventTypes = ["Ordering.Orders.ItemOrdered"];
+    let extension_commandTypes = [];
+    let extension = {
+      name: "Ordering.Orders",
+      delegateNames: extension_delegateNames,
+      eventTypes: extension_eventTypes,
+      commandTypes: extension_commandTypes
+    };
+    let init = structure(undefined, undefined, undefined, [writable("ProductDemand", [{
+          name: "RecordDemand",
+          schema: "",
+          level: "Instance",
+          aggregateIdField: undefined,
+          mutationField: "Catalog_ProductDemand_RecordDemand",
+          references: [],
+          allowedStates: undefined
+        }], ["Catalog.Recorded"], undefined, undefined)], undefined, undefined);
+    let catalog_readModels = init.readModels;
+    let catalog_stateViewSlices = init.stateViewSlices;
+    let catalog_stateChangeSlices = init.stateChangeSlices;
+    let catalog_aggregates = init.aggregates;
+    let catalog_automationSlices = init.automationSlices;
+    let catalog_outboundTranslationSlices = init.outboundTranslationSlices;
+    let catalog_inboundTranslationSlices = init.inboundTranslationSlices;
+    let catalog_extensions = [extension];
+    let catalog_extensionPoints = init.extensionPoints;
+    let catalog = {
+      readModels: catalog_readModels,
+      stateViewSlices: catalog_stateViewSlices,
+      stateChangeSlices: catalog_stateChangeSlices,
+      aggregates: catalog_aggregates,
+      automationSlices: catalog_automationSlices,
+      outboundTranslationSlices: catalog_outboundTranslationSlices,
+      inboundTranslationSlices: catalog_inboundTranslationSlices,
+      extensions: catalog_extensions,
+      extensionPoints: catalog_extensionPoints
+    };
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Catalog",
+        catalog
+      ]], []);
+    globalThis.expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog_ProductDemand_RecordDemand", "delegatesTo")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog_ProductDemand_RecordDemand", "Catalog:ProductDemand", "handles")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo")).toBe(false);
+  });
+  globalThis.test("an extension with no commands falls back to delegating to the write-side", async () => {
+    let extension_delegateNames = ["ProductDemand"];
+    let extension_eventTypes = ["Ordering.Orders.ItemOrdered"];
+    let extension_commandTypes = [];
+    let extension = {
+      name: "Ordering.Orders",
+      delegateNames: extension_delegateNames,
+      eventTypes: extension_eventTypes,
+      commandTypes: extension_commandTypes
+    };
+    let init = structure([writable("ProductDemand", undefined, ["Catalog.Recorded"], undefined, undefined)], undefined, undefined, undefined, undefined, undefined);
+    let catalog_readModels = init.readModels;
+    let catalog_stateViewSlices = init.stateViewSlices;
+    let catalog_stateChangeSlices = init.stateChangeSlices;
+    let catalog_aggregates = init.aggregates;
+    let catalog_automationSlices = init.automationSlices;
+    let catalog_outboundTranslationSlices = init.outboundTranslationSlices;
+    let catalog_inboundTranslationSlices = init.inboundTranslationSlices;
+    let catalog_extensions = [extension];
+    let catalog_extensionPoints = init.extensionPoints;
+    let catalog = {
+      readModels: catalog_readModels,
+      stateViewSlices: catalog_stateViewSlices,
+      stateChangeSlices: catalog_stateChangeSlices,
+      aggregates: catalog_aggregates,
+      automationSlices: catalog_automationSlices,
+      outboundTranslationSlices: catalog_outboundTranslationSlices,
+      inboundTranslationSlices: catalog_inboundTranslationSlices,
+      extensions: catalog_extensions,
+      extensionPoints: catalog_extensionPoints
+    };
+    let g = DomainGraph$ReventlessGwt.build([[
+        "Catalog",
+        catalog
+      ]], []);
+    globalThis.expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo")).toBe(true);
+  });
   globalThis.test("an owned extension point is fed by the producers of its source events", async () => {
     let ep_delegateNames = ["CatalogDcbEventLog"];
     let ep_sourceEventTypes = ["Catalog.ProductAdded"];
