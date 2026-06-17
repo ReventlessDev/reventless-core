@@ -103,7 +103,7 @@ let name = "Plugin";
 
 let Id;
 
-let moduleUrl = "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
+let moduleUrl = "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 
 export {
   name,

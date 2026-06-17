@@ -9,10 +9,10 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Reference$Reventless from "@reventlessdev/reventless-spec/src/components/Reference.res.mjs";
 import * as Logger$ReventlessCore from "../../util/Logger.res.mjs";
 import * as DisplayName$Reventless from "@reventlessdev/reventless-spec/src/components/DisplayName.res.mjs";
-import * as Api_Naming$ReventlessCore from "../Api/Api_Naming.res.mjs";
+import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
-import * as SuryToJsonSchema$ReventlessCore from "../Api/SuryToJsonSchema.res.mjs";
-import * as ApiAllowedStatesHelpers$ReventlessCore from "../Api/ApiAllowedStatesHelpers.res.mjs";
+import * as SuryToJsonSchema$ReventlessCore from "../../components/Api/SuryToJsonSchema.res.mjs";
+import * as ApiAllowedStatesHelpers$ReventlessCore from "../../components/Api/ApiAllowedStatesHelpers.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 

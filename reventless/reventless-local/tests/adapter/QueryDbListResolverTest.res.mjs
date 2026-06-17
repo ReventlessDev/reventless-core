@@ -13,7 +13,7 @@ import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/co
 import * as LocalBus$ReventlessLocal from "../../src/adapter/LocalBus.res.mjs";
 import * as TestRunner$ReventlessLocal from "../../src/test/TestRunner.res.mjs";
 import * as StateAnnotations$Reventless from "@reventlessdev/reventless-spec/src/components/StateAnnotations.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as QueryDb_Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Adapter.res.mjs";
 import * as QueryDb_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Builder.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../../src/adapter/DomainGraphQL_Server.res.mjs";

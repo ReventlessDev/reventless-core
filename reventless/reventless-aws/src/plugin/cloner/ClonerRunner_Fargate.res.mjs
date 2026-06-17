@@ -7,16 +7,16 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as AWS$ReventlessAws from "../../adapter/AWS.res.mjs";
 import * as Cloner$ReventlessCore from "@reventlessdev/reventless-core/src/components/Cloner.res.mjs";
-import * as AWS_Tags$ReventlessAws from "../AWS_Tags.res.mjs";
+import * as AWS_Tags$ReventlessAws from "../../adapter/AWS_Tags.res.mjs";
 import * as Util_Vpc$ReventlessAws from "../../util/Util_Vpc.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as GetSecretVersion$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/SecretsManager/GetSecretVersion.res.mjs";
 import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
-import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";
+import * as AppSync_Resolver_Retrying$ReventlessAws from "../../adapter/Api/AppSync_Resolver_Retrying.res.mjs";
 
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {
   let cluster = new (Aws.ecs.Cluster)(name, undefined, opts !== undefined ? Primitive_option.valFromOption(opts) : undefined);

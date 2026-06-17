@@ -10,7 +10,7 @@ import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as ClientCloudfront from "@aws-sdk/client-cloudfront";
-import * as Util_StaticBundle$ReventlessAws from "./util/Util_StaticBundle.res.mjs";
+import * as Util_StaticBundle$ReventlessAws from "../../util/Util_StaticBundle.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 

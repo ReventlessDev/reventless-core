@@ -3,10 +3,10 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "./PluginBaseFragment.res.mjs";
+import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "./Platform_UIFragmentsApi.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
-import * as Plugin_SubscriptionSchema$ReventlessCore from "../components/Plugin/Plugin_SubscriptionSchema.res.mjs";
+import * as Plugin_SubscriptionSchema$ReventlessCore from "../plugin/component/Plugin_SubscriptionSchema.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "./Platform_ComponentDefinitionsApi.res.mjs";
 
 let cloneArgsSchema = S.schema(s => ({

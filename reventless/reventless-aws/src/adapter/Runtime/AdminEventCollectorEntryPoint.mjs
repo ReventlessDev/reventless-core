@@ -68,14 +68,14 @@ import { pathToFileURL } from "node:url";
 import * as Effect from "effect/Effect";
 import { patchSpecId, makeQueueRef, scanByTableName, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { subscribeQueueToTopic, unsubscribeQueueFromTopic } from "@reventlessdev/rescript-aws-sdk/src/SNS_Helpers.res.mjs";
-import { sendMessage } from "@reventlessdev/reventless-aws/src/util/Util_PluginMessage_Runtime.res.mjs";
+import { sendMessage } from "@reventlessdev/reventless-aws/src/plugin/runtime/Util_PluginMessage_Runtime.res.mjs";
 import { publish as snsPublish } from "@reventlessdev/reventless-aws/src/adapter/EventTopic/EventTopicPublisher_SNS_Runtime.res.mjs";
 import { publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";
 import { Make as extensionPointOperationsMake } from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Operations.res.mjs";
 import { Make as extensionOperationsMake } from "@reventlessdev/reventless-core/src/components/Extension/Extension_Operations.res.mjs";
 import { Make as extensionMappingMake } from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import { Make as extensionPointMappingMake } from "@reventlessdev/reventless-infra/src/types/ExtensionPointMapping.res.mjs";
-import { Make as pluginCallbackMake } from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Callback.res.mjs";
+import { Make as pluginCallbackMake } from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Callback.res.mjs";
 import { handleDynamoDbOrSqsEvent } from "@reventlessdev/reventless-aws/src/adapter/EventCollector/EventCollectorChannel_SQS_Runtime.res.mjs";
 import { createSchedule as cwCreateSchedule, deleteSchedule as cwDeleteSchedule } from "@reventlessdev/reventless-aws/src/adapter/ScheduledPublisher/ScheduledPublisher_CloudWatchEvents_Runtime.res.mjs";
 import {

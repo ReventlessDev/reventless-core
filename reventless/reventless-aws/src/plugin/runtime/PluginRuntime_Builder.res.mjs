@@ -10,13 +10,13 @@ import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Heartbeat$ReventlessCore from "@reventlessdev/reventless-core/src/components/Heartbeat/Heartbeat.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";
-import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginSpec.res.mjs";
+import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
 import * as ComponentType$ReventlessCore from "@reventlessdev/reventless-core/src/ComponentType.res.mjs";
 import * as EventCollector$ReventlessCore from "@reventlessdev/reventless-core/src/components/EventCollector/EventCollector.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
-import * as CommandTopicChannel_SQS$ReventlessAws from "../CommandTopic/CommandTopicChannel_SQS.res.mjs";
-import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_Lambda.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
+import * as CommandTopicChannel_SQS$ReventlessAws from "../../adapter/CommandTopic/CommandTopicChannel_SQS.res.mjs";
+import * as RuntimeEnvironment_Lambda$ReventlessAws from "../../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
 

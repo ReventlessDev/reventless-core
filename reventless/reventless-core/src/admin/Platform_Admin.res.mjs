@@ -12,10 +12,10 @@ import * as Component$ReventlessCore from "../components/Component.res.mjs";
 import * as ReadModel$ReventlessCore from "../components/ReadModel/ReadModel.res.mjs";
 import * as Dcb_Builder$ReventlessCore from "../components/Dcb/Dcb_Builder.res.mjs";
 import * as Admin_Callback$ReventlessCore from "./Admin_Callback.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "../components/Plugin/Plugin_Helpers.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "../plugin/component/Plugin_Helpers.res.mjs";
 import * as Builder_Helpers$ReventlessCore from "../components/Builder_Helpers.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "../components/Api/GraphQL_Stitcher.res.mjs";
-import * as Plugin_Structure$ReventlessCore from "../components/Plugin/Plugin_Structure.res.mjs";
+import * as Plugin_Structure$ReventlessCore from "../plugin/component/Plugin_Structure.res.mjs";
 import * as EventCollector_Builder$ReventlessCore from "../components/EventCollector/EventCollector_Builder.res.mjs";
 import * as GraphQL_FragmentGenerator$ReventlessCore from "../components/Api/GraphQL_FragmentGenerator.res.mjs";
 

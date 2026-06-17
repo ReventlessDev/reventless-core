@@ -10,7 +10,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
-import * as Plugin_ResolverError$ReventlessCore from "../Plugin/Plugin_ResolverError.res.mjs";
+import * as Plugin_ResolverError$ReventlessCore from "../../plugin/component/Plugin_ResolverError.res.mjs";
 
 let commandInterceptorHook = {
   contents: undefined

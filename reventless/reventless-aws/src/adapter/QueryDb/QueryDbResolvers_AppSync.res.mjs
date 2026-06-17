@@ -10,7 +10,7 @@ import * as Util_AppSync$ReventlessAws from "../../util/Util_AppSync.res.mjs";
 import * as Util_DynamoDb$ReventlessAws from "../../util/Util_DynamoDb.res.mjs";
 import * as Util_QueryDb$ReventlessCore from "@reventlessdev/reventless-core/src/util/Util_QueryDb.res.mjs";
 import * as AppSync_DataSource$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_DataSource.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as NodeResolver_AppSync$ReventlessAws from "./NodeResolver_AppSync.res.mjs";
 import * as AppSync_Resolver_Functions$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/AppSync/AppSync_Resolver_Functions.res.mjs";
 import * as AppSync_Resolver_Retrying$ReventlessAws from "../Api/AppSync_Resolver_Retrying.res.mjs";

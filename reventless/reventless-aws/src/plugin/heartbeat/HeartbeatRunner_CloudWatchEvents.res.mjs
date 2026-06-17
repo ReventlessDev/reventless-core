@@ -5,7 +5,7 @@ import * as Output$Pulumi from "@reventlessdev/rescript-pulumi-pulumi/src/Output
 import * as Pulumi from "@pulumi/pulumi";
 import * as Lambda$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/Lambda/Lambda.res.mjs";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
-import * as AWS$ReventlessAws from "../AWS.res.mjs";
+import * as AWS$ReventlessAws from "../../adapter/AWS.res.mjs";
 import * as Adapter$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Adapter.res.mjs";
 import * as Util_SQS$ReventlessAws from "../../util/Util_SQS.res.mjs";
 import * as PolicyDocument$PulumiAws from "@reventlessdev/rescript-pulumi-aws/src/IAM/PolicyDocument.res.mjs";

@@ -8,8 +8,8 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs";
 import * as SuryToJsonSchema$ReventlessCore from "../components/Api/SuryToJsonSchema.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "./PluginBaseFragment.res.mjs";
-import * as PluginsReadModelSpec$ReventlessCore from "./PluginsReadModelSpec.res.mjs";
+import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
+import * as PluginsReadModelSpec$ReventlessCore from "../plugin/lifecycle/PluginsReadModelSpec.res.mjs";
 import * as Platform_EventGraphReadModelSpec$ReventlessCore from "./Platform_EventGraphReadModelSpec.res.mjs";
 
 let pluginId = "Platform";

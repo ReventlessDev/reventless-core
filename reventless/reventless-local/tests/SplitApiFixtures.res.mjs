@@ -5,7 +5,7 @@ import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/adm
 import * as TestRunner$ReventlessLocal from "../src/test/TestRunner.res.mjs";
 import * as GraphQL_Server$ReventlessLocal from "../src/adapter/GraphQL_Server.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
+import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as GraphQL_ServerInstance$ReventlessLocal from "../src/adapter/GraphQL_ServerInstance.res.mjs";
 
 TestRunner$ReventlessLocal.setup();

@@ -3,7 +3,7 @@
 import * as Effect from "@reventlessdev/rescript-effect/src/Effect.res.mjs";
 import * as Effect$1 from "effect/Effect";
 import * as SQS_Helpers$AwsSdk from "@reventlessdev/rescript-aws-sdk/src/SQS_Helpers.res.mjs";
-import * as SQS_Error$ReventlessAws from "../errors/SQS_Error.res.mjs";
+import * as SQS_Error$ReventlessAws from "../../errors/SQS_Error.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 
 function sendMessage(channelId, messageBody) {

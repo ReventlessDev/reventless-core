@@ -12,7 +12,7 @@ import * as AWS$ReventlessAws from "../AWS.res.mjs";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as DynamoDb_Error$ReventlessAws from "../../errors/DynamoDb_Error.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
+import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 import * as MCP_SchemaGenerator$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/MCP_SchemaGenerator.res.mjs";
 import * as Util_DynamoDb_Runtime$ReventlessAws from "../../util/Util_DynamoDb_Runtime.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";

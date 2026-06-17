@@ -2,7 +2,7 @@
 
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
-import * as Plugin$ReventlessCore from "../components/Plugin/Plugin.res.mjs";
+import * as Plugin$ReventlessCore from "../plugin/component/Plugin.res.mjs";
 
 let sdlTypes = [
   `type Platform_FieldReference {\n  fieldName: String!\n  entity: String!\n  plugin: String\n}`,

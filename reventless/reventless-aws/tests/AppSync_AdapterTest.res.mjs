@@ -6,7 +6,7 @@ import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
 import * as AdminApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/AdminApi.res.mjs";
 import * as AppSync_Adapter$ReventlessAws from "../src/components/Api/AppSync_Adapter.res.mjs";
 import * as GraphQL_Stitcher$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/GraphQL_Stitcher.res.mjs";
-import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/admin/PluginBaseFragment.res.mjs";
+import * as PluginBaseFragment$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/api/PluginBaseFragment.res.mjs";
 
 globalThis.describe("AppSync_Adapter.sha256Hex", () => {
   globalThis.test("returns a 64-character hex string", () => {

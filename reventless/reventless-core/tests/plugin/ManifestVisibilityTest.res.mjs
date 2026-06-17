@@ -5,7 +5,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_option from "@rescript/runtime/lib/es6/Primitive_option.js";
 import * as ReadModel$Reventless from "@reventlessdev/reventless-spec/src/components/ReadModel.res.mjs";
-import * as Plugin_Structure$ReventlessCore from "../../src/components/Plugin/Plugin_Structure.res.mjs";
+import * as Plugin_Structure$ReventlessCore from "../../src/plugin/component/Plugin_Structure.res.mjs";
 
 let name = "PublicView";
 

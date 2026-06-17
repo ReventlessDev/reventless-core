@@ -5,7 +5,7 @@ import * as Pulumi from "@pulumi/pulumi";
 import * as Aggregate$ReventlessCore from "./Aggregate.res.mjs";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "../../plugin/component/Plugin_Helpers.res.mjs";
 import * as EventLog_Builder$ReventlessCore from "../EventLog/EventLog_Builder.res.mjs";
 import * as Aggregate_Callback$ReventlessCore from "./Aggregate_Callback.res.mjs";
 import * as EventMapper_Builder$ReventlessCore from "../EventMapper/EventMapper_Builder.res.mjs";

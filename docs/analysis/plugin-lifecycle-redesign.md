@@ -82,6 +82,15 @@ heartbeat handshake: heartbeat → `UnknownPluginDetected` →
 Each heartbeat also (re)creates a per-version timeout that fires `Disconnect`
 when heartbeats stop ([line 143](../../reventless/reventless-core/src/admin/PluginExtensionPoint_Plugin.res#L143)).
 
+> **The heartbeat carries only the `name@version` id — not the
+> `pluginDefinition`.** The definition (structure, schema fragment, UI fragments,
+> extension points/protocols) is delivered by the **`Connect` handshake**, which
+> the plugin's own EventCollector answers. **A new version therefore must re-run
+> the handshake to deliver its current details — they may differ from the
+> previous version, and are never inherited.** Any redesign must keep this: a
+> heartbeat for a not-yet-connected version *triggers a fresh connect*, it does
+> not by itself make that version current.
+
 ### 2.3 The projection is per **version**
 
 `PluginsProjection` keys rows by the aggregate id (`name@version`):
@@ -162,10 +171,12 @@ deploys as a single Pulumi stack, and that stack's resources are named by plugin
 | `Retired + Heartbeat → Reconnected` | A stray/late heartbeat from a superseded version un-retires it |
 
 The committed query-side dedup (`7a21ca304`) masks rows 3–4. This document
-removes the *causes*: row 2 (delete the deploy-time RM scan) and row 3 (a
-name-keyed "current" projection), which together also neutralise row 4. Row 1
-(per-version aggregate) is **kept** under the recommended option — it is not the
-bug itself, only the reason "current version" had no owner.
+removes the *causes*. Under the recommended **Option B** all four collapse into a
+single name-level owner: one aggregate keyed by `name` (addresses row 1), which
+decides supersession on the write side (rows 2 and 4) and projects one
+authoritative `current` row per name (row 3). The minimal **Option A** instead
+keeps row 1 (per-version aggregate) and addresses rows 2–4 via the deleted hook +
+the name-keyed `current` projection.
 
 ## 4. The key realisation
 
@@ -207,7 +218,7 @@ decision** and **how each plugin version is modelled**.
 > write-side richness, modelling fidelity, invariant strength, and rework — not
 > logistics. §8 records what each entails for completeness.
 
-### Option A — read-model differentiation (per-version aggregate, supersession *inferred*)
+### Option A — read-model differentiation (supersession *inferred*; baseline)
 
 Treat **a plugin version as the entity** (as today; aggregate keyed by
 `name@version`). Move only "which version is current" to the **read side**: a
@@ -217,123 +228,119 @@ fall back to the next-highest connected → rollback). It carries a small per-na
 `{version → status}` map to compute that.
 
 - **Supersession is *inferred* in the projection** — there is no `Superseded`
-  event.
+  event. The projection promotes a version only on its **`Connected` event**
+  (which carries the fresh definition from the handshake — §2.2), so a new
+  version's heartbeat alone never makes it current; its post-handshake `Connected`
+  does. Changed details are captured automatically.
 - **Pro:** least rework; robust even if a heartbeat timeout misfires (a stale
-  lower version is never the highest connected, so it never surfaces); the
+  lower version is never the highest connected, so never surfaces); the
   stray-heartbeat-revival race is harmless for the same reason.
 - **Con:** no first-class supersession event → only a *thin*, reconstructed audit
-  history and **no clean migration hook** (§6.2.3). This is the **baseline**, and
-  the first increment of A′ — not a destination once rich history is wanted.
+  history and **no clean migration hook** (§6.2.3). This is the **baseline / first
+  increment** — not a destination once a rich history is wanted.
 
-### Option A′ — per-version aggregates **+ a name-level supersession decider** (recommended)
+### Option B — a single name-level lifecycle owner (recommended)
 
-Option A **plus an explicit write-side owner of supersession.** Keep the
-per-version aggregates exactly as they are — each version still owns its
-`Connect` / `Heartbeat` / `Disconnect` / `Deactivate` / **manual `Retire`** (this
-is already true today). Add **one new admin component keyed by `name`** — a
-`PluginRegistry` aggregate or an automation slice — that:
+**One** component owns a plugin's whole lifecycle for a name — connect, heartbeat,
+supersede, disconnect, manual retire — deciding **synchronously** and emitting one
+ordered stream of intentful events (`VersionConnected`, `VersionSuperseded(from,
+to)`, `VersionPromoted`, `Disconnected`, `Retired`, …). The `current` view **and**
+the rich `PluginHistory` (§6) are then faithful folds of that one stream.
 
-1. consumes the per-version `Connected` / `Disconnected` events,
-2. decides the current version (`Plugin.compareVersions`), and
-3. **emits intentful lifecycle events**: `VersionConnected`,
-   `VersionSuperseded(from, to)`, `VersionPromoted` (rollback).
+- **Pro:** one decider, one consistency boundary (the plugin name), **one linear
+  audit stream** → "exactly one current" is an **enforced invariant** and the rich
+  history is clean — no inference, no cross-component seam. Best fit for the
+  rich-history goal (§6.2).
+- **Cost:** heartbeats route to the `name` id (version carried in payload) — modest
+  rewiring; per-version lifecycle logic lives in the one owner. (Migration of
+  existing streams is not a concern — §5 preamble.)
 
-Both projections (§6) fold *these* events, so the `current` view **and** the rich
-`PluginHistory` are faithful, not reconstructed.
+**Two implementations of the single owner:**
 
-- **Pro:** supersession/rollback are **decided and recorded on the write side** —
-  delivering the rich, queryable history and the migration-automation hook the
-  requirements call for (§6.2) — while **keeping the existing per-version model**
-  (no aggregate re-keying, no heartbeat rewiring). It is the **least rework that
-  still puts supersession on the write side** (literally Option A + one
-  component).
-- **Con:** the supersession decider is a **second write-side component**, so
-  "current" is decided **eventually-consistently** w.r.t. the per-version events
-  it reacts to — a strongly-consistent *intent*, not a single-aggregate invariant.
+- **B-agg — aggregate keyed by `name` (default, recommended).** The boundary is
+  exactly one plugin name: a static, self-contained aggregate root — the textbook
+  aggregate. State `{ current, known: dict<version, {definition, status,
+  lastHeartbeatAt}> }`. Because a heartbeat carries only the id, not the
+  definition (§2.2):
+  - `Heartbeat(V)` for a **not-yet-connected** version → emit `VersionDetected(V)`
+    and run the **same `ConnectPlugin` handshake as today**; the plugin replies
+    `Connect(V, definition)` → `VersionConnected(V, def)`, and if `V > current`
+    also `VersionSuperseded(prev)` with `current := V`. **The new version's
+    (possibly changed) definition is re-delivered here, never inherited.**
+  - `Heartbeat(V == a connected version)` → keep-alive (refresh
+    `lastHeartbeatAt`); no event.
+  - `Heartbeat(V)` from a stale **lower** version → ignored (liveness only).
+  - timeout on `current` → promote the highest still-live **connected** version
+    (rollback), reusing *its* stored definition.
+  Simplest correct choice for per-name lifecycle. (Note: the detection→connect
+  arc, trivial in today's per-version model, must be explicit here — see §9.)
+- **B-dcb — DCB `StateChangeSlice` in the admin `DcbEventLog`, tagged
+  `pluginName`.** Same single-name boundary expressed via tags; for *pure*
+  per-name lifecycle it buys nothing over B-agg. Choose it **only if** lifecycle
+  decisions must also read **across names** — reject connect when another
+  connected plugin already owns an extension-point name, enforce dependency sets
+  (Appendix A, case I). Then one slice tagged `pluginName` + `extensionPointName`
+  enforces single-name lifecycle *and* those cross-name invariants. **This
+  subsumes what earlier drafts called "Option C".**
 
-### Option B — single aggregate keyed by **name** (one owner, enforced invariant)
+### Option A′ — per-version aggregates + a name-level reactor (variant; *not* recommended)
 
-Treat **the plugin (name) as the entity**; versions become internal state. **One**
-aggregate keyed by `name` receives every version's heartbeat/connect and decides
-the *entire* lifecycle — connect, supersede, disconnect, retire — **synchronously
-in one place**, emitting the same `VersionConnected` / `VersionSuperseded` / …
-events. State: `{ current, live: dict<version, {definition, status,
-lastHeartbeatAt}> }`; `Heartbeat(V>current)` → connect+supersede, `V==current` →
-keep-alive, `V<current` → ignored, timeout on current → recompute highest live.
+A two-component variant of B that **keeps the existing per-version aggregates**
+(`name@version`) and adds a separate name-level reactor consuming their
+`Connected` / `Disconnected` events and emitting the supersession events. Its only
+advantage is **avoiding the aggregate re-key / heartbeat rewiring**.
 
-- **Pro:** **one decider, one stream, one source of truth.** "Exactly one current
-  version" is an **enforced invariant** (impossible to violate); the audit history
-  is a single linear stream with no cross-component seam.
-- **Con:** most rework — re-key the aggregate, **re-route heartbeats** to the
-  `name` id (version in payload), and fold all per-version lifecycle logic into the
-  one aggregate. Models N independent runtimes as sub-states of one boundary
-  (faithful-enough: heartbeats emit no events at `V == current`).
+Since **migration is not a constraint here**, that advantage is moot — and the
+split costs: two write-side deciders for one concept, an **eventual-consistency
+seam** (the reactor lags the per-version events), and a history assembled from N
+per-version streams **plus** the reactor's stream instead of one. Pick A′ **only**
+if you are forced to keep the `name@version` aggregate identity (you are not).
 
-### Option C — admin-level DCB / `PluginRegistry` for cross-*name* invariants
+### 5.1 Contrast
 
-Out of scope for single-name lifecycle (see Appendix A). Relevant only if
-cross-*plugin-name* invariants (EP-name uniqueness, dependency sets) become hard
-requirements — and even then it is an *admin-store* mechanism, never
-business-plugin DCB.
+Migration omitted (not a deciding factor); "rework" is code change, not data
+migration. B's implementation (B-agg vs B-dcb) is a sub-choice below the table.
 
-### 5.1 Contrast: A vs A′ vs B
-
-Option C is set aside (different problem — Appendix A). Migration is omitted as a
-row (not a deciding factor); rework reflects code change, not data migration.
-
-| Dimension | **Option A** | **Option A′** *(recommended)* | **Option B** |
+| Dimension | **Option A** | **Option B** *(recommended)* | **Option A′** *(variant)* |
 |---|---|---|---|
-| Each version modelled as | own aggregate (`name@version`) | own aggregate (`name@version`) | sub-state of one `name` aggregate |
-| Supersession decided | **read-side, inferred** | **write-side — a name-level reactor** | **write-side — the name aggregate** |
-| `VersionSuperseded` event | none | **yes** | **yes** |
-| Rich audit history / migration hook | thin (reconstructed) | **strong** | **strong** |
-| "Exactly one current" | eventual *view* | eventual *intent* (2 components) | **enforced invariant** |
-| Consistency model | — | eventual: version events → decider | synchronous in one aggregate |
-| Write-side components | per-version aggregates | per-version aggregates **+ 1** | one `name` aggregate |
-| Heartbeat routing | unchanged | unchanged | **re-route to `name`** |
-| Per-version runtime fidelity | high | high | merged into one boundary |
-| Rework | lowest | low (add one component) | highest |
+| Supersession decided | read-side, **inferred** | **write-side, one owner** | write-side, a separate reactor |
+| `VersionSuperseded` event | none | **yes** | yes |
+| Rich audit history | thin (reconstructed) | **one faithful stream** | faithful, but from 2+ streams |
+| "Exactly one current" | eventual *view* | **enforced invariant** | eventual *intent* (2 components) |
+| Write-side components | per-version aggregates | **one** (`name` owner) | per-version aggregates **+ 1** |
+| Heartbeat routing | unchanged | re-route to `name` | unchanged |
+| When to pick | minimal bug fix only | **default** | only if `name@version` identity must stay |
 
 ### 5.2 Recommendation
 
-**Option A′.** With migration no longer a cost, the decision is purely how much
-lifecycle richness you want and how it is modelled — and A′ is the sweet spot:
+**Option B, as a name-keyed aggregate (B-agg).** With migration not a factor, the
+cleanest design is a *single* owner of the plugin lifecycle: one decider, one
+consistency boundary, **one linear audit stream** — which is exactly what makes
+the rich history (§6.2) and the enforced single-current invariant fall out for
+free. The two-component split (A′) only ever existed to dodge the aggregate
+re-key; with an alpha wipe acceptable, that economy is gone and the split just
+adds an eventual-consistency seam and a multi-stream history.
 
-- It delivers the **rich, write-side lifecycle** the requirements ask for —
-  `VersionSuperseded` / `VersionPromoted` as real events, a faithful
-  `PluginHistory`, and a clean migration-automation hook (§6.2.4) — **without**
-  re-keying the aggregate or rewiring heartbeats.
-- It **keeps the existing per-version model** (each deployed version is its own
-  runtime and its own aggregate), making it the **least rework that still puts
-  supersession on the write side**. Option A is literally its first increment:
-  ship A's name-keyed projection + hook deletion, then add the decider.
+- Reach for **B-dcb** (a DCB slice tagged `pluginName` [+ `extensionPointName`])
+  **only if** cross-*name* lifecycle invariants (Appendix A) are on the roadmap;
+  otherwise the aggregate is simpler.
+- **Option A** remains the minimal duplicate-menu fix and a sensible **first
+  increment** (ship the name-keyed current projection + hook deletion), with B
+  layered on when the rich-lifecycle/history work begins.
+- **Option A′** is documented as a variant for the migration-constrained case
+  only — which this is not.
 
-**Choose Option B over A′** only if "exactly one current version" must be a
-**single-aggregate enforced invariant** rather than a strongly-consistent intent
-across two components — i.e. you want one linear lifecycle stream and accept the
-larger rework (re-key + heartbeat rerouting). Now that migration is moot, B is a
-legitimate close second; the real question reduces to **"per-version aggregates +
-a supersession reactor (A′)"** vs **"one unified `name` aggregate (B)"**. A′ wins
-on rework and runtime fidelity; B wins on a single linear audit stream and a hard
-single-current invariant.
-
-**Option A** stays only as the minimal duplicate-menu fix / first increment of
-A′ — not a destination, since its thin inferred history is exactly what the
-rich-history requirement rules out. **Option C** is reserved for a future
-cross-*name* invariant (Appendix A).
-
-Actionable steps: §8. Bug-level recap: §7.
+Steps: §8. Bug recap: §7.
 
 ## 6. Read-model / state-view design (two projections)
 
-Both projections consume the Plugin lifecycle events. Under **Option A** those
-are the *existing* per-version events (`Connected` / `Reconnected` /
-`Disconnected` / `Deactivated` / manual `Retire`, each carrying its `name@version`
-and `pluginDefinition`) — no new event types, but supersession is inferred
-(§6.2.3). Under **Option A′ / B** there is additionally an explicit
-`VersionSuperseded` (and `VersionPromoted`) event — emitted by the name-level
-decider (A′) or the name aggregate (B) — which is what makes the rich history in
-§6.2 faithful rather than reconstructed.
+Both projections consume the Plugin lifecycle events. Under **Option B
+(recommended)** the name-level owner emits one ordered stream including the
+explicit `VersionSuperseded` / `VersionPromoted` events — this is what makes the
+rich history in §6.2 a faithful fold. Under **Option A** there are only the
+existing per-version events (`Connected` / `Disconnected` / `Deactivated` / manual
+`Retire`), and supersession is *inferred* in the projection (§6.2.3). (The A′
+variant emits the same events as B but from a separate reactor.)
 
 ### 6.1 `Plugins` — current view (one row per name) — **the direct fix**
 
@@ -357,40 +364,55 @@ direct fix the requirement calls out.
 #### 6.2.1 A richer lifecycle: automatic vs manual transitions
 
 A faithful history needs the lifecycle to record *why* a version changed state.
-The states should separate **automatic** from **manual (admin)** transitions:
+States are **per-version** (`name@version`) and separate **automatic** from
+**manual (admin)** transitions. *"In active view?"* means the AutoUI nav + the
+live-plugins listing — **`PluginHistory` always retains every state** (it is the
+immutable audit trail; see below).
 
-| State | Trigger | Kind | Still listed? | Revivable? |
+| State | Trigger | Kind | In active view? | Auto-revivable by its own heartbeat? |
 |---|---|---|---|---|
 | `Connected` | heartbeat handshake | auto | yes (current if highest) | — |
-| `Disconnected` | heartbeat **timed out** | auto | **yes** (shown, unavailable) | yes — reconnects on next heartbeat |
-| `Superseded` | a **newer version connected** | auto (deploy) | yes (not current) | yes (rollback) |
-| `Inactive` | admin **Deactivate** | manual | yes | admin Activate |
-| `Retired` | admin **explicitly retires** it | **manual** | **no** (archived) | no (terminal) |
+| `Disconnected` | heartbeat **timed out** | auto | yes (shown, unavailable) | **yes** — reconnects on next heartbeat |
+| `Superseded` | a **newer version connected** | auto (deploy) | yes (not current) | yes (rollback / re-promotion) |
+| `Inactive` | admin **Deactivate** | manual | yes | no — admin `Activate` |
+| `Retired` | admin **explicitly retires that version** | **manual** | no (archived) | **no** — admin un-retire, *or just deploy a different version* |
 
-Two corrections to earlier drafts:
+Clarifications (correcting earlier drafts):
 
 - **`Disconnected` ≠ gone.** A timed-out version stays in the system (listed,
-  greyed) — it just isn't reachable, and reconnects if it heartbeats again. It is
-  *not* removed.
-- **`Retired` is a deliberate admin act, not a deploy artifact.** Today's code
-  overloads `Retired` to mean "auto-superseded by a newer version"; that
-  automatic concept should be renamed **`Superseded`**, freeing `Retired` for the
-  manual "this is really gone — archive it" decision. (An earlier draft suggested
-  *dropping* `Retired` — wrong; it should be **kept and promoted** to a
-  first-class manual transition.)
+  greyed) and reconnects if it heartbeats again. Not removed.
+- **`Retired` is a deliberate, per-*version* admin act, not a deploy artifact.**
+  Today's code overloads `Retired` to mean "auto-superseded by a newer version";
+  that automatic concept is renamed **`Superseded`**, freeing `Retired` for the
+  manual "archive this specific version" decision. (An earlier draft suggested
+  *dropping* `Retired` — wrong; keep and promote it.)
+- **A retired version is still in `PluginHistory`.** Retirement is *itself* a
+  recorded event, so the version is *more* represented in the audit trail, not
+  less. "Archived" means hidden from the **active view**, never erased from
+  history.
+- **Retirement never blocks the plugin name.** Because `Retired` is keyed to one
+  `name@version`, a **new version is a fresh identity**: its heartbeat runs the
+  normal connect handshake (§2.2) and becomes current regardless of any older
+  version being retired. "Not auto-revivable" applies only to the *exact* retired
+  version — a stray heartbeat *for that version* is ignored (the deliberate
+  contrast with `Disconnected`). So the plugin is never permanently bricked: ship
+  a new version, or admin-un-retire the old one. See §6.2.6.
 
-This is what makes the lifecycle genuinely rich: an admin reviews the
-`Disconnected` / `Superseded` old versions and *chooses* to `Retire` (archive)
-them — a manual cleanup step, recorded as an intentful event.
+This is what makes the lifecycle rich: an admin reviews the `Disconnected` /
+`Superseded` old versions and *chooses* to `Retire` (archive) the dead ones — a
+manual cleanup step, recorded as an intentful event.
 
 #### 6.2.2 Two consumers, two views
 
 - **AutoUI nav manifest** (§6.1): only the **current `Connected`** version per
   name. `Disconnected` / `Superseded` / `Inactive` / `Retired` never appear in
   navigation — this is the duplicate-menu fix.
-- **Admin plugin-lifecycle view** (`PluginHistory`): **all** versions, **all**
-  states, plus the transition timeline — where an admin sees what is disconnected
-  and decides what to retire.
+- **Admin plugin-lifecycle view** (`PluginHistory`): **all** versions in **all**
+  states — `Connected` / `Disconnected` / `Superseded` / `Inactive` **and
+  `Retired`** — plus the transition timeline. Retired versions remain here
+  permanently (the audit trail); the admin uses this view to see what is
+  disconnected/superseded and decide what to retire, and to read the full history
+  of a since-retired version.
 
 #### 6.2.3 Which option gives a faithful history
 
@@ -410,16 +432,17 @@ options diverge:
   superseded whom, exactly when) is **reconstructed on the read side** — fragile
   under out-of-order events / flapping, with no first-class record for migration
   logic to hook.
-- **Options A′ and B** *decide* supersession on the write side and emit an
-  intentful **`VersionSuperseded(from: v72, to: v73, at: T)`** (carrying both
-  definitions). History becomes a faithful fold — zero inference — and that event
-  is the natural migration trigger (§6.2.4). A′ emits it from the name-level
-  decider; B from the name aggregate (see §5 for the full definitions and the A′
-  vs B trade).
+- **Option B** *decides* supersession on the write side and emits an intentful
+  **`VersionSuperseded(from: v72, to: v73, at: T)`** (carrying both definitions)
+  into **one ordered stream**. History becomes a faithful fold — zero inference —
+  and that event is the natural migration trigger (§6.2.4). (The A′ variant emits
+  the same event but from a separate reactor, so the history is assembled from two
+  streams; see §5.)
 
 **Verdict:** a rich, queryable, migration-driving history requires supersession
-to be a *decided* event — i.e. **Option A′ (recommended) or B**, not Option A.
-You can only faithfully project events you actually decide on the write side.
+to be a *decided* event — i.e. **Option B (recommended)**, not Option A. You can
+only faithfully project events you actually decide on the write side, and B's
+single stream is the cleanest source for it.
 
 #### 6.2.4 Opportunities a rich plugin history unlocks
 
@@ -448,12 +471,42 @@ trail); an optional `name` + `version` **inventory** view sits alongside for
 "latest state per version". Never feeds the manifest; internal visibility
 (`@@reventless.visibility(Internal)`).
 
+#### 6.2.6 Retirement & re-admission semantics
+
+Retirement is **per-version**; the plugin **name** is never permanently blocked.
+
+- **Retire `Catalog@v72`** (admin) → v72 → `Retired`: gone from the active view,
+  still in `PluginHistory`. A stray *v72* heartbeat is **ignored** (the
+  deliberate contrast with `Disconnected`, which auto-reconnects) — so a
+  superseded zombie can't resurrect itself.
+- **Heartbeat for a *new* version (`Catalog@v75`)** → `v75` is a distinct
+  identity, unaffected by v72's retirement: it runs the normal detect→connect
+  handshake (§2.2), delivers its own definition, and becomes current. **The
+  plugin is never bricked** — to re-introduce it you simply deploy a (new or
+  higher) version.
+- **Re-introducing the *exact* retired version (`v72`)** is the only case that
+  needs intent: a deliberate **admin un-retire** (or treat a fresh `Connect` —
+  not a bare heartbeat — as re-admission). Stray heartbeats alone won't do it.
+
+What this implies for the owner (Option B): `Retired` is a **per-version
+sub-state inside the name-keyed aggregate's `known` map**, *not* a terminal state
+of the whole aggregate. The name aggregate keeps accepting and promoting new
+versions while individual old versions sit `Retired`. (In A / A′, `Retired` is
+naturally a state of the per-version `name@version` instance, with the same
+effect.)
+
+> **Decommissioning a whole plugin name** (rare: "remove Catalog entirely, reject
+> even new versions") is a *separate* admin operation, deliberately out of scope
+> here. If added, it must carry an explicit **re-admit** path — never a permanent
+> brick. Tracked as an open question (§9).
+
 ### 6.3 ReadModel vs StateViewSlice
 
 - Under **Options A / A′ / B (aggregate-based)**, both views are **ReadModels** —
   the idiomatic projection for an aggregate, queryable over GraphQL.
-- Under **Option C (DCB)**, the equivalents are **StateViewSlices** (the
-  DCB-world projection). The two views map cleanly either way.
+- Under **B-dcb (the DCB-slice implementation of Option B)**, the equivalents are
+  **StateViewSlices** (the DCB-world projection). The two views map cleanly either
+  way.
 
 **Naming:** repo convention is *plural nouns* for read models
 (`.claude/rules/app-developer.md`). The current view stays `Plugins`. The
@@ -504,22 +557,24 @@ target, not a later step of A′.
   (auto timeout) and `Inactive` (admin suspend) distinct.
 - Keep the committed manifest dedup (`7a21ca304`) as defence-in-depth.
 
-**Step 2 — Option A′ (recommended target) — additive on top of Step 1.**
-- Add the **name-level supersession decider** (`PluginRegistry` aggregate or an
-  automation slice keyed by `name`, in the admin) that reacts to per-version
-  `Connected` / `Disconnected` events and emits `VersionSuperseded` /
-  `VersionPromoted`.
-- Point `PluginHistory` and the `current` view at those events — faithful,
-  inference-free. No aggregate re-keying, no heartbeat rewiring.
+**Step 2 — Option B (recommended target): the single name-level owner.**
+- Implement the lifecycle owner as a **name-keyed aggregate (B-agg)**: re-key
+  `name@version → name`, **wipe** the Plugin EventLog + Plugins QueryDb (plugins
+  re-register via heartbeat — migration is not a concern here), and **re-route
+  heartbeats** to the `name` id (version in payload) in `PluginRuntime_Builder` /
+  `Plugin_Builder`.
+- The aggregate decides the whole lifecycle and emits one ordered stream
+  (`VersionConnected` / `VersionSuperseded` / `VersionPromoted` / `Disconnected` /
+  `Retired`). Point both `current` and `PluginHistory` (§6) at that stream.
+- **B-dcb instead** only if cross-*name* invariants are wanted: implement the
+  owner as a DCB `StateChangeSlice` in the admin `DcbEventLog` tagged `pluginName`
+  (+ `extensionPointName`) — see Appendix A.
 
-**Alternative — Option B (instead of A′).**
-- Re-key the Plugin aggregate `name@version → name`; **wipe** the Plugin EventLog
-  + Plugins QueryDb (plugins re-register via heartbeat).
-- **Re-route heartbeats** from `name@version` to `name` (`PLUGIN_ID` env + command
-  id) in `PluginRuntime_Builder` / `Plugin_Builder`; fold per-version lifecycle
-  logic into the one aggregate.
-- Pick this over A′ only for the single-aggregate enforced-invariant / single
-  linear audit stream (§5.2).
+**Variant — Option A′ (only if the `name@version` identity must be kept).**
+- Skip the re-key/rewiring: keep the per-version aggregates and add a name-level
+  reactor that consumes their `Connected` / `Disconnected` events and emits
+  `VersionSuperseded` / `VersionPromoted`. Accept the eventual-consistency seam and
+  the multi-stream history. Not recommended here (no identity constraint).
 
 ## 9. Open questions
 
@@ -543,35 +598,52 @@ target, not a later step of A′.
    show only the **current `Connected`** version while the admin view must show
    `Disconnected` / `Superseded` too (§6.2.2). Confirms the auto/manual split is
    wired end-to-end.
-6. **A′ supersession decider — aggregate or automation slice?** The name-level
-   decider reacts to per-version events; decide whether it is a `PluginRegistry`
-   aggregate (commanded) or an automation slice (event-reactive), and accept its
-   eventual consistency w.r.t. the version events.
+6. **B implementation — aggregate (B-agg) or DCB slice (B-dcb)?** Default to the
+   name-keyed aggregate; choose the admin DCB slice only to fold in cross-*name*
+   invariants (Appendix A). (Only if the `name@version` identity must be kept does
+   the A′ reactor — aggregate vs automation slice — come into play.)
 7. **Manual `Retire` UX & authority.** Where does the admin `Retire` command live
    (per-version aggregate, today), and what gates it (admin authz)? Define the
    archive semantics (`Retired` removed from listings, not auto-revivable).
-8. **Cross-name consistency on the horizon?** If EP-name uniqueness / dependency
-   sets (Appendix A) become hard requirements, revisit Option C / a
-   `PluginRegistry` aggregate.
+8. **Per-version detection→connect arc inside the name owner (B).** A heartbeat
+   carries no definition (§2.2), so the name-keyed aggregate must, on a heartbeat
+   for an unconnected version, run the `ConnectPlugin` handshake to fetch *that
+   version's* definition before promoting it. Confirm how that handshake routes
+   to a `name`-keyed instance (today it keys on `name@version`) and that the new
+   version is not surfaced as current until its `Connect` lands. (A′ keeps this
+   trivial — each version is still its own per-version aggregate.)
+9. **Cross-name consistency on the horizon?** If EP-name uniqueness / dependency
+   sets (Appendix A) become hard requirements, implement Option B as **B-dcb** (a
+   DCB slice tagged `pluginName` + `extensionPointName`) rather than B-agg.
+10. **Whole-name decommission (§6.2.6)?** Do we need an admin op to retire a
+    plugin *name* (reject even new versions), distinct from per-version `Retire`?
+    If yes, it must carry an explicit **re-admit** path (never a permanent brick),
+    and the name owner needs a "decommissioned, ignore heartbeats until re-admit"
+    state. Default for now: *no* — per-version `Retire` + "new version always
+    connects" covers the real cases.
 
 ## 10. TL;DR
 
-- **Decision: Option A′.** Keep the per-version aggregates; add a **name-keyed
-  `Plugins` "current" projection**, **delete** the deploy-time RM-scan retire
-  hook (that much is Option A, the minimal fix), **and** add a **name-level
-  supersession decider** that emits explicit `VersionSuperseded` / `VersionPromoted`
-  events — giving a faithful, write-side rich history with the least rework.
-  Migration is not a deciding factor. Escalate to full **Option B** (one
-  `name` aggregate) only for a single-aggregate *enforced* single-current
-  invariant. Contrast: §5.1; reasoning: §5.2; steps: §8.
+- **Decision: Option B — a single name-level lifecycle owner, as a name-keyed
+  aggregate.** It owns the whole lifecycle and emits one ordered stream including
+  explicit `VersionSuperseded` / `VersionPromoted`, so the `current` view and the
+  rich `PluginHistory` are faithful folds and "one current version" is an enforced
+  invariant. Use a **DCB slice (B-dcb)** instead only if cross-*name* invariants
+  are wanted (Appendix A). **Option A** (read-side inferred supersession) is the
+  minimal duplicate-menu fix / first increment; **A′** (per-version aggregates +
+  reactor) is a variant only for the migration-constrained case — which this is
+  not. Migration is not a deciding factor. Contrast: §5.1; reasoning: §5.2; steps:
+  §8.
 - **Why it works:** "which version is current" stops being inferred at query time
   from a pile of per-version `Connected` rows and becomes one authoritative row
   per plugin — duplicate menus impossible by construction; supersession is a
   recorded event, not a read-side guess.
 - **Lifecycle:** distinguish auto `Disconnected` (heartbeat timeout, still listed)
   from auto `Superseded` (newer version) from manual `Retired` (admin "really
-  gone", terminal) — §6.2.1. This richer model is the reason A′/B (supersession as
-  a decided event) beats inferring it read-side.
+  gone", per-version, archived-from-active-but-kept-in-history) — §6.2.1.
+  Retirement is per-*version*: a new version always connects, so the plugin name
+  is never bricked (§6.2.6). This richer model is the reason a write-side owner
+  (B) — supersession as a decided event — beats inferring it read-side.
 - **Boundaries:** one *active* version per plugin (§11); near-zero-downtime
   handover, remaining gap closeable by a deploy-time heartbeat (§12); cross-*name*
   invariants are out of scope and not a business-plugin DCB problem (Appendix A).
@@ -652,19 +724,21 @@ the v1→v2 handover continuous at the manifest layer.**
 | DynamoDB EventLog/QueryDb (name-keyed, persistent) | in-place; **new GSIs backfill async** | **Window** if v2 immediately queries a GSI still backfilling |
 | AppSync schema (`preResolversSchemaHook` → `startSchemaCreation` + `waitForSchemaActive`) | schema replace, then resolvers | **Window** during schema propagation; mismatched queries can transiently fail |
 | Cross-plugin protocol (extension points) | declared on connect, validated eventually | **Eventual** — `ReportIncompatibility` is detection, "connection still proceeds" |
-| Lifecycle/manifest (Plugin aggregate + current view) | v1 stays current until v2's first heartbeat | **No gap** — see 12.2 |
+| Lifecycle/manifest (Plugin aggregate + current view) | v1 stays current until v2's connect handshake completes | **No gap** — see 12.2 |
 
 ### 12.2 The lifecycle handover is *continuous* (and the redesign keeps it so)
 
-Because v2 becomes `Connected` only on its **first heartbeat** and v1 remains
-`Connected` until its **timeout**, there is a natural overlap during which the
-"current" view can always serve a working plugin definition:
+Because v2 becomes `Connected` only after its **first heartbeat triggers the
+connect handshake** (which re-delivers v2's possibly-changed definition — §2.2)
+and v1 remains `Connected` until its **timeout**, there is a natural overlap
+during which the "current" view always serves a working plugin definition:
 
-- **Before v2's first heartbeat:** current = v1 (its code is being replaced, but
+- **Before v2's connect completes:** current = v1 (its code is being replaced, but
   its lifecycle row and manifest entry are intact). The SPA keeps rendering v1's
   UI/schema.
-- **After v2 connects:** current flips to v2 (newest connected). v1's row later
-  `Disconnected`s on timeout.
+- **After v2's `Connect` lands:** current flips to v2, and the manifest now serves
+  **v2's fresh definition** (new UI/schema). v1's row later `Disconnected`s on
+  timeout.
 
 So the manifest never shows *nothing*; it transitions v1 → v2. **Option A's
 "newest connected wins" projection preserves exactly this** (and the discarded
@@ -704,7 +778,8 @@ expand/contract discipline documented as a deploy contract.
 
 ## Appendix A — Cross-plugin consistency: when DCB earns its place
 
-§5 parks DCB (Option C) "for a future cross-plugin consistency need." This
+§5 defers cross-*name* invariants to **B-dcb** (the DCB-slice implementation of
+the single name-level owner) "for a future cross-plugin consistency need." This
 appendix makes that concrete — and states the hard limit of what DCB can span.
 
 ### A.1 What "cross-plugin consistency" means
@@ -817,7 +892,7 @@ enforceable) or **(II)** domain-data (cross-log, *not* atomically enforceable).
 
 | Invariant scope | Where the events live | Mechanism |
 |---|---|---|
-| Within one plugin **name** (current version, connect/disconnect/retire/rollback) | admin store | **The §5 lifecycle redesign** — Options A / A′ (recommended) / B. *Today's requirement.* |
+| Within one plugin **name** (current version, connect/disconnect/retire/rollback) | admin store | **The §5 lifecycle redesign** — Option B (recommended; A is the minimal baseline, A′ a variant). *Today's requirement.* |
 | Across plugin **names**, but only over **lifecycle/registration** state, atomic | admin store, many streams in **one** log | **Admin-side**: single `PluginRegistry` aggregate, **or** admin-level DCB slice (if the admin hosts a `DcbEventLog`) tagged `pluginName`/`extensionPointName`. **Not** business-plugin DCB. |
 | Across plugins' **domain data** (live events in different plugins) | **separate** `DcbEventLog`s | **No atomic option** — DCB cannot span logs. Eventual: automation slice / policy / denormalised read-side. |
 
@@ -829,7 +904,9 @@ plugins' logs.
 
 The current requirement — "one current version per plugin name, no duplicate
 menus" — is wholly **within a single plugin name** → the §5 lifecycle redesign
-(**Option A′**, recommended) is the correct choice. No DCB, no cross-log anything.
+(**Option B**, recommended) is the correct choice. No DCB, no cross-log anything
+*unless* cross-name invariants are wanted, in which case B's DCB implementation
+(B-dcb) is exactly the admin-side slice described here.
 
 If a **case-(I)** cross-name invariant later becomes a hard requirement (most
 plausibly Example 2's EP-name uniqueness, or Example 3's dependency set), the

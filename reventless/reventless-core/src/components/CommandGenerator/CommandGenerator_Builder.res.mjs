@@ -4,7 +4,7 @@ import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Component$ReventlessCore from "../Component.res.mjs";
 import * as ComponentType$ReventlessCore from "../../ComponentType.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "../Plugin/Plugin_Helpers.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "../../plugin/component/Plugin_Helpers.res.mjs";
 import * as CommandGenerator$ReventlessCore from "./CommandGenerator.res.mjs";
 import * as CommandGenerator_Callback$ReventlessCore from "./CommandGenerator_Callback.res.mjs";
 

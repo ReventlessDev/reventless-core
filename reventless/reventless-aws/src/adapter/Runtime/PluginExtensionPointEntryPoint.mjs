@@ -5,9 +5,9 @@
 import * as Effect from "effect/Effect";
 import { patchSpecId, makeQueueRef, scanByTableName, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
-import { sendMessage } from "@reventlessdev/reventless-aws/src/util/Util_PluginMessage_Runtime.res.mjs";
+import { sendMessage } from "@reventlessdev/reventless-aws/src/plugin/runtime/Util_PluginMessage_Runtime.res.mjs";
 import * as PluginExtensionPointSpec from "@reventlessdev/reventless-infra/src/types/PluginExtensionPointSpec.res.mjs";
-import { Make as pluginEPPluginMake } from "@reventlessdev/reventless-core/src/admin/PluginExtensionPoint_Plugin.res.mjs";
+import { Make as pluginEPPluginMake } from "@reventlessdev/reventless-core/src/plugin/connect/PluginExtensionPoint_Plugin.res.mjs";
 import { Make as extensionPointCallbackMake } from "@reventlessdev/reventless-core/src/components/ExtensionPoint/ExtensionPoint_Callback.res.mjs";
 import { Make as commandTopicCallbackMake } from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic_Callback.res.mjs";
 import { handleQueueEvent, publishJsons as sqsPublishJsons } from "@reventlessdev/reventless-aws/src/adapter/CommandTopic/CommandTopicChannel_SQS_Runtime.res.mjs";

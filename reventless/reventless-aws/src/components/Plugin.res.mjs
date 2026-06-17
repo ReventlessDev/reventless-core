@@ -3,18 +3,18 @@
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as AppSync_Adapter$ReventlessAws from "./Api/AppSync_Adapter.res.mjs";
-import * as Plugin_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Builder.res.mjs";
+import * as Plugin_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Builder.res.mjs";
 import * as Util_ResourceNaming$ReventlessAws from "../util/Util_ResourceNaming.res.mjs";
 import * as QueryEngine_DynamoDb$ReventlessAws from "../adapter/QueryEngine/QueryEngine_DynamoDb.res.mjs";
-import * as PluginRuntime_Builder$ReventlessAws from "../adapter/Runtime/PluginRuntime_Builder.res.mjs";
-import * as PluginRuntimeOperations$ReventlessAws from "../util/PluginRuntimeOperations.res.mjs";
+import * as PluginRuntime_Builder$ReventlessAws from "../plugin/runtime/PluginRuntime_Builder.res.mjs";
+import * as PluginRuntimeOperations$ReventlessAws from "../plugin/runtime/PluginRuntimeOperations.res.mjs";
 import * as EventCollectorChannel_SQS$ReventlessAws from "../adapter/EventCollector/EventCollectorChannel_SQS.res.mjs";
 import * as RuntimeEnvironment_Lambda$ReventlessAws from "../adapter/Runtime/RuntimeEnvironment_Lambda.res.mjs";
 import * as DcbEventLogStorage_DynamoDb$ReventlessAws from "../adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res.mjs";
 import * as CommandTopicChannel_SQS_Sync$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Sync.res.mjs";
 import * as CommandTopicChannel_SQS_Async$ReventlessAws from "../adapter/CommandTopic/CommandTopicChannel_SQS_Async.res.mjs";
 import * as CommandTopicRemoteChannel_SQS$ReventlessAws from "../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.mjs";
-import * as HeartbeatRunner_CloudWatchEvents$ReventlessAws from "../adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res.mjs";
+import * as HeartbeatRunner_CloudWatchEvents$ReventlessAws from "../plugin/heartbeat/HeartbeatRunner_CloudWatchEvents.res.mjs";
 import * as EventTopicPublisher_DynamoDbStream$ReventlessAws from "../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.mjs";
 
 function Make(HooksConfig) {

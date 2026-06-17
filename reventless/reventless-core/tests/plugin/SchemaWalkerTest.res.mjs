@@ -3,7 +3,7 @@
 import * as S from "sury/src/S.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Primitive_string from "@rescript/runtime/lib/es6/Primitive_string.js";
-import * as SchemaWalker$ReventlessCore from "../../src/components/Plugin/SchemaWalker.res.mjs";
+import * as SchemaWalker$ReventlessCore from "../../src/plugin/component/SchemaWalker.res.mjs";
 
 S.enableJson();
 

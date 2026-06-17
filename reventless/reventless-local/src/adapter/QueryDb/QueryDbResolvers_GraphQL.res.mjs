@@ -9,7 +9,7 @@ import * as Stdlib_Nullable from "@rescript/runtime/lib/es6/Stdlib_Nullable.js";
 import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Identity$Reventless from "@reventlessdev/reventless-spec/src/types/Identity.res.mjs";
 import * as Authorization$Reventless from "@reventlessdev/reventless-spec/src/types/Authorization.res.mjs";
-import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/components/Plugin/Plugin_Helpers.res.mjs";
+import * as Plugin_Helpers$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin_Helpers.res.mjs";
 import * as SortKey_Filter$ReventlessLocal from "./SortKey_Filter.res.mjs";
 import * as QueryDb_Callback$ReventlessCore from "@reventlessdev/reventless-core/src/components/QueryDb/QueryDb_Callback.res.mjs";
 import * as DomainGraphQL_Server$ReventlessLocal from "../DomainGraphQL_Server.res.mjs";

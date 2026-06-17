@@ -8,7 +8,7 @@ import * as PsOrdersView$ReventlessCore from "./StateViewSlice/PsOrdersView.res.
 import * as PsPlaceOrder$ReventlessCore from "./StateChangeSlice/PsPlaceOrder.res.mjs";
 import * as PsAnnotatedView$ReventlessCore from "./StateViewSlice/PsAnnotatedView.res.mjs";
 import * as PsCustomersView$ReventlessCore from "./StateViewSlice/PsCustomersView.res.mjs";
-import * as Plugin_Structure$ReventlessCore from "../../src/components/Plugin/Plugin_Structure.res.mjs";
+import * as Plugin_Structure$ReventlessCore from "../../src/plugin/component/Plugin_Structure.res.mjs";
 import * as PsAvailableProductsView$ReventlessCore from "./StateViewSlice/PsAvailableProductsView.res.mjs";
 
 let Behavior = {

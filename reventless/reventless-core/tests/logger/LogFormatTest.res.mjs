@@ -11,7 +11,7 @@ import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_excep
 import * as Logger$ReventlessCore from "../../src/util/Logger.res.mjs";
 import * as Message$ReventlessCore from "../../src/Message.res.mjs";
 import * as LogFormat$ReventlessCore from "../../src/util/LogFormat.res.mjs";
-import * as PluginSpec$ReventlessCore from "../../src/admin/PluginSpec.res.mjs";
+import * as PluginSpec$ReventlessCore from "../../src/plugin/lifecycle/PluginSpec.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../src/util/EffectLogger.res.mjs";
 
 S.enableJson();
