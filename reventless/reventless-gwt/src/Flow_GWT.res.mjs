@@ -81,7 +81,20 @@ function appendEvents(log, events, schema) {
     return {
       eventType: Message$Reventless.variantNameOfJson(json),
       tags: DcbTag$Reventless.extractTagsExpanded(schema, ev),
-      json: json
+      json: json,
+      aggregateId: undefined
+    };
+  }));
+}
+
+function appendAggregateEvents(log, id, events, schema) {
+  return log.concat(events.map(ev => {
+    let json = Message$ReventlessCore.encode(ev, schema);
+    return {
+      eventType: Message$Reventless.variantNameOfJson(json),
+      tags: DcbTag$Reventless.extractTagsExpanded(schema, ev),
+      json: json,
+      aggregateId: id
     };
   }));
 }
@@ -89,6 +102,22 @@ function appendEvents(log, events, schema) {
 function decodeMatching(log, decoder, query) {
   return Stdlib_Array.filterMap(log, entry => {
     if (!entryMatchesQuery(entry, query)) {
+      return;
+    }
+    let d = entry.json;
+    let data;
+    data = typeof d === "object" && d !== null && !Array.isArray(d) ? d : ({});
+    return decoder.decode(entry.eventType, data);
+  });
+}
+
+function decodeAggregateMatching(log, id, decoder) {
+  return Stdlib_Array.filterMap(log, entry => {
+    let eid = entry.aggregateId;
+    if (eid === undefined) {
+      return;
+    }
+    if (eid !== id) {
       return;
     }
     let d = entry.json;
@@ -188,6 +217,111 @@ function CommandStep(Spec) {
       whenCommand: whenCommand,
       thenEvents: thenEvents,
       thenEvent: thenEvent,
+      thenError: thenError
+    };
+  };
+}
+
+function AggregateCommandStep(Spec) {
+  return Behavior => {
+    let aggregateDecoder = DcbDecode$Reventless.makeDecoder(Spec.eventSchema);
+    let givenEvents = async (flowP, id, events) => {
+      let s = await flowP;
+      return {
+        log: appendAggregateEvents(s.log, id, events, Spec.eventSchema),
+        outcome: s.outcome,
+        lastEvents: s.lastEvents,
+        lastError: s.lastError,
+        lastCommands: s.lastCommands,
+        lastPublic: s.lastPublic
+      };
+    };
+    let whenCommand = async (flowP, id, command) => {
+      let s = await flowP;
+      let history = decodeAggregateMatching(s.log, id, aggregateDecoder);
+      let state = Stdlib_Array.reduce(history, Behavior.initialState, Behavior.evolve);
+      let events = Behavior.decide(state, command);
+      if (events.TAG !== "Ok") {
+        return {
+          log: s.log,
+          outcome: s.outcome,
+          lastEvents: [],
+          lastError: Message$ReventlessCore.encode(events._0, Spec.errorSchema),
+          lastCommands: s.lastCommands,
+          lastPublic: s.lastPublic
+        };
+      }
+      let events$1 = events._0;
+      return {
+        log: appendAggregateEvents(s.log, id, events$1, Spec.eventSchema),
+        outcome: s.outcome,
+        lastEvents: events$1.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema)),
+        lastError: undefined,
+        lastCommands: s.lastCommands,
+        lastPublic: s.lastPublic
+      };
+    };
+    let thenEvents = async (flowP, expected) => {
+      let s = await flowP;
+      let expectedJson = expected.map(e => Message$ReventlessCore.encode(e, Spec.eventSchema));
+      let err = s.lastError;
+      let o = err !== undefined ? Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: null,
+          actual: err,
+          actualEvents: s.lastEvents
+        }) : (
+          Primitive_object.equal(s.lastEvents, expectedJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+              TAG: "EventsMismatch",
+              expected: expectedJson,
+              actual: s.lastEvents
+            })
+        );
+      return recordOutcome(s, o);
+    };
+    let thenEvent = (flowP, event) => thenEvents(flowP, [event]);
+    let thenNoEvent = async flowP => {
+      let s = await flowP;
+      let err = s.lastError;
+      let o = err !== undefined ? Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: null,
+          actual: err,
+          actualEvents: s.lastEvents
+        }) : (
+          s.lastEvents.length === 0 ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+              TAG: "NoEventExpected",
+              actual: s.lastEvents
+            })
+        );
+      return recordOutcome(s, o);
+    };
+    let thenError = async (flowP, expected) => {
+      let s = await flowP;
+      let expJson = Message$ReventlessCore.encode(expected, Spec.errorSchema);
+      let actual = s.lastError;
+      let o = actual !== undefined ? (
+          Primitive_object.equal(actual, expJson) ? Outcome$ReventlessGwt.pass : Outcome$ReventlessGwt.fail({
+              TAG: "ErrorMismatch",
+              expected: expJson,
+              actual: actual,
+              actualEvents: s.lastEvents
+            })
+        ) : Outcome$ReventlessGwt.fail({
+          TAG: "ErrorMismatch",
+          expected: expJson,
+          actual: undefined,
+          actualEvents: s.lastEvents
+        });
+      return recordOutcome(s, o);
+    };
+    return {
+      aggregateDecoder: aggregateDecoder,
+      givenEvents: givenEvents,
+      whenCommand: whenCommand,
+      thenEvents: thenEvents,
+      thenEvent: thenEvent,
+      thenNoEvent: thenNoEvent,
       thenError: thenError
     };
   };
@@ -427,10 +561,13 @@ export {
   recordOutcome,
   entryMatchesQuery,
   appendEvents,
+  appendAggregateEvents,
   decodeMatching,
+  decodeAggregateMatching,
   describe,
   test,
   CommandStep,
+  AggregateCommandStep,
   AutomationStep,
   ViewStep,
   OutboundStep,

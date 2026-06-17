@@ -45,11 +45,18 @@ module ExtMapping = ReventlessInfra.ExtensionMapping
 
 // One JSON-erased entry on the shared log: the variant name, the DCB tags
 // extracted from the producing schema (so downstream tag filtering matches the
-// runtime), and the encoded event JSON.
+// runtime), the encoded event JSON, and — for events emitted by an aggregate
+// step — the producing aggregate-ID. DCB step entries leave `aggregateId` as
+// `None`; aggregate step entries set it to `Some(id)` so the matching
+// `AggregateCommandStep` can rebuild per-aggregate history without DCB tag
+// inference. Filtering by `aggregateId` and filtering by DCB tags are mutually
+// exclusive: DCB queries look only at `eventType` + `tags`, and the aggregate
+// decoder looks only at `aggregateId` + `eventType`.
 type logEntry = {
   eventType: string,
   tags: array<Reventless.DcbTag.tag>,
   json: JSON.t,
+  aggregateId: option<string>,
 }
 
 // The flow state threaded through every step. `outcome` accumulates assertions
@@ -121,6 +128,31 @@ let appendEvents = (log: array<logEntry>, events: array<'e>, schema: S.t<'e>): a
         eventType: json->Reventless.Message.variantNameOfJson,
         tags: Reventless.DcbTag.extractTagsExpanded(schema, ev),
         json,
+        aggregateId: None,
+      }
+    }),
+  )
+
+// Aggregate-style append: encode + tag with the producing aggregate-ID so
+// `decodeAggregateMatching` can rebuild that aggregate's history later. DCB
+// tags are intentionally still extracted (cheap and lets a downstream DCB
+// step pick the events up if any are tagged), but the `aggregateId` is the
+// authoritative filter for aggregate consumers.
+let appendAggregateEvents = (
+  log: array<logEntry>,
+  ~id: string,
+  events: array<'e>,
+  schema: S.t<'e>,
+): array<logEntry> =>
+  Array.concat(
+    log,
+    events->Array.map(ev => {
+      let json = ev->Message.encode(schema)
+      {
+        eventType: json->Reventless.Message.variantNameOfJson,
+        tags: Reventless.DcbTag.extractTagsExpanded(schema, ev),
+        json,
+        aggregateId: Some(id),
       }
     }),
   )
@@ -142,6 +174,27 @@ let decodeMatching = (
       decoder.decode(~eventType=entry.eventType, ~data)
     } else {
       None
+    }
+  )
+
+// Aggregate-style decode: filter the log to entries this aggregate-step
+// emitted for `id`, then decode them with the aggregate's event schema. No
+// DCB tag inference — partitioning is by `aggregateId` only, matching the
+// way `Reventless.Aggregate` folds events at runtime.
+let decodeAggregateMatching = (
+  log: array<logEntry>,
+  ~id: string,
+  decoder: Reventless.DcbDecode.makeDecoderResult<'c>,
+): array<'c> =>
+  log->Array.filterMap(entry =>
+    switch entry.aggregateId {
+    | Some(eid) if eid == id =>
+      let data = switch entry.json {
+      | Object(d) => d
+      | _ => Dict.make()
+      }
+      decoder.decode(~eventType=entry.eventType, ~data)
+    | _ => None
     }
   )
 
@@ -215,6 +268,106 @@ module CommandStep = (
   }
 
   let thenEvent = (flowP, event) => thenEvents(flowP, [event])
+
+  let thenError = async (flowP: flow, expected: Spec.error) => {
+    let s = await flowP
+    let expJson = expected->Message.encode(Spec.errorSchema)
+    let o = switch s.lastError {
+    | None =>
+      Outcome.fail(ErrorMismatch({expected: expJson, actual: None, actualEvents: s.lastEvents}))
+    | Some(actual) =>
+      actual == expJson
+        ? Outcome.pass
+        : Outcome.fail(
+            ErrorMismatch({expected: expJson, actual: Some(actual), actualEvents: s.lastEvents}),
+          )
+    }
+    s->recordOutcome(o)
+  }
+}
+
+// -- AggregateCommandStep: an Aggregate decider partitioned by aggregate-ID --
+//
+// Mirror of `CommandStep` for `Reventless.Behavior.T` (the aggregate-flavor
+// behavior). Differences from the slice form:
+//   * No `consumedEvent` distinction — aggregates fold their own `event`
+//     stream; the decoder uses `Spec.eventSchema`.
+//   * No DCB tag inference — `~id` partitions the history. `givenEvents` and
+//     `whenCommand` both take `~id`, and the emitted events are stamped with
+//     the same `id` on the shared log so a subsequent step can read them
+//     back.
+//
+// Sequencing two aggregate steps for the same `~id` rebuilds the running
+// state across the chain; sequencing them for different `~id` keeps their
+// histories isolated (a `Place` on `o2` does not see the events of `o1`).
+
+module AggregateCommandStep = (
+  Spec: Behavior_GWT.AggregateSpec,
+  Behavior: Reventless.Behavior.T with module Spec = Spec,
+) => {
+  let aggregateDecoder = Reventless.DcbDecode.makeDecoder(Spec.eventSchema)
+
+  // Seed `id`'s history before the first `whenCommand`. Useful when a flow
+  // starts mid-stream (e.g. the order is already Placed when the test begins).
+  let givenEvents = async (flowP: flow, ~id: string, events: array<Spec.event>) => {
+    let s = await flowP
+    {...s, log: s.log->appendAggregateEvents(~id, events, Spec.eventSchema)}
+  }
+
+  // Rebuild `id`'s state from the log, run `decide`, then either append the
+  // emitted events (still tagged with `~id`) or remember the error for the
+  // next `thenError`.
+  let whenCommand = async (flowP: flow, ~id: string, command: Spec.command) => {
+    let s = await flowP
+    let history = decodeAggregateMatching(s.log, ~id, aggregateDecoder)
+    let state = history->Array.reduce(Behavior.initialState, Behavior.evolve)
+    switch Behavior.decide(state, command) {
+    | Ok(events) => {
+        ...s,
+        log: s.log->appendAggregateEvents(~id, events, Spec.eventSchema),
+        lastEvents: events->Array.map(e => e->Message.encode(Spec.eventSchema)),
+        lastError: None,
+      }
+    | Error(error) => {
+        ...s,
+        lastEvents: [],
+        lastError: Some(error->Message.encode(Spec.errorSchema)),
+      }
+    }
+  }
+
+  let thenEvents = async (flowP: flow, expected: array<Spec.event>) => {
+    let s = await flowP
+    let expectedJson = expected->Array.map(e => e->Message.encode(Spec.eventSchema))
+    let o = switch s.lastError {
+    | Some(err) =>
+      Outcome.fail(
+        ErrorMismatch({expected: JSON.Encode.null, actual: Some(err), actualEvents: s.lastEvents}),
+      )
+    | None =>
+      s.lastEvents == expectedJson
+        ? Outcome.pass
+        : Outcome.fail(EventsMismatch({expected: expectedJson, actual: s.lastEvents}))
+    }
+    s->recordOutcome(o)
+  }
+
+  let thenEvent = (flowP, event) => thenEvents(flowP, [event])
+
+  let thenNoEvent = async (flowP: flow) => {
+    let s = await flowP
+    let o = switch s.lastError {
+    | Some(err) =>
+      Outcome.fail(
+        ErrorMismatch({expected: JSON.Encode.null, actual: Some(err), actualEvents: s.lastEvents}),
+      )
+    | None =>
+      s.lastEvents->Array.length == 0
+        ? Outcome.pass
+        : Outcome.fail(NoEventExpected({actual: s.lastEvents}))
+    }
+    s->recordOutcome(o)
+  }
 
   let thenError = async (flowP: flow, expected: Spec.error) => {
     let s = await flowP
