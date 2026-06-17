@@ -9,6 +9,51 @@ module Util = {
   let extractExtensionNames = Array.map(_, (extension: Reventless.Plugin.extensionDefinition) =>
     extension.extensionPointName
   )
+
+  // Highest version (compareVersions) whose status string is "Connected".
+  let highestConnected = (knownStatuses: dict<string>): option<string> =>
+    knownStatuses
+    ->Dict.toArray
+    ->Array.reduce(None, (acc, (v, status)) =>
+      if status == "Connected" {
+        switch acc {
+        | None => Some(v)
+        | Some(cur) => Plugin.compareVersions(v, cur) > 0 ? Some(v) : acc
+        }
+      } else {
+        acc
+      }
+    )
+}
+
+// Build the flattened current-version row from a definition + status + the
+// updated knownStatuses map.
+let displayState = (
+  def: Reventless.Plugin.pluginDefinition,
+  status: PluginsReadModelSpec.status,
+  statusChange,
+  knownStatuses,
+): PluginsReadModelSpec.state => {
+  let base: PluginsReadModelSpec.state = {
+    name: def.name,
+    version: def.version,
+    eventCollector: def.eventCollector,
+    extensionPoints: def.extensionPoints,
+    extensionPointNames: def.extensionPoints->Util.extractExtensionPointNames,
+    extensionNames: def.extensions->Util.extractExtensionNames,
+    extensions: def.extensions,
+    status,
+    statusChange,
+    apiSchemaFragment: def.apiSchemaFragment,
+    uiFragments: def.uiFragments,
+    structure: def.structure,
+    dcbEventLog: def.dcbEventLog,
+    knownStatuses,
+  }
+  switch def.apiTarget {
+  | Some(target) => {...base, apiTarget: target}
+  | None => base
+  }
 }
 
 module PluginMapping = Reventless.Projection.Mapping.Make(
@@ -16,174 +61,89 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
   PluginsReadModelSpec,
   {
     let project = ({event, id, meta: {time, user: ?user}}) => {
-      let statusChange = {
-        at: time,
-        by: user->Option.getOr(""),
+      let statusChange = {at: time, by: user->Option.getOr("")}
+      let singleton = (v, status) => {
+        let d = Dict.make()
+        d->Dict.set(v, status)
+        d
       }
       switch event {
-      | PluginSpec.UnknownPluginDetected
+      // Handshake trigger, supersession record, incompatibility and UI-fragment
+      // events do not change which version is current.
+      | PluginSpec.VersionDetected(_)
+      | VersionSuperseded(_)
       | IncompatiblePluginDetected(_)
       | UIFragmentRegistered(_)
       | UIFragmentUpdated(_)
-      | UIFragmentDeregistered(_) => Reventless.Projection.Ignore
-      | Connected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        let base: PluginsReadModelSpec.state = {
-          name,
-          version,
-          eventCollector,
-          extensionPoints,
-          extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
-          extensionNames: extensions->Util.extractExtensionNames,
-          extensions,
-          status: Connected,
-          statusChange,
-          apiSchemaFragment: None,
-          uiFragments: None,
-          structure: None,
-          dcbEventLog: pluginDef.dcbEventLog,
-        }
-        let withFrag = switch pluginDef.apiSchemaFragment {
-        | Some(frag) => {...base, apiSchemaFragment: Some(frag)}
-        | None => base
-        }
-        let withUi = switch pluginDef.uiFragments {
-        | Some(ui) => {...withFrag, uiFragments: Some(ui)}
-        | None => withFrag
-        }
-        let withStructure = switch pluginDef.structure {
-        | Some(s) => {...withUi, structure: Some(s)}
-        | None => withUi
-        }
-        let state = switch pluginDef.apiTarget {
-        | Some(target) => {...withStructure, apiTarget: target}
-        | None => withStructure
-        }
-        Set(id, state)
-      | Reconnected({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        let applyFragAndTarget = (s: PluginsReadModelSpec.state) => {
-          let withFrag = switch pluginDef.apiSchemaFragment {
-          | Some(frag) => {...s, apiSchemaFragment: Some(frag)}
-          | None => s
-          }
-          let withUi = switch pluginDef.uiFragments {
-          | Some(ui) => {...withFrag, uiFragments: Some(ui)}
-          | None => withFrag
-          }
-          let withStructure = switch pluginDef.structure {
-          | Some(struct) => {...withUi, structure: Some(struct)}
-          | None => withUi
-          }
-          switch pluginDef.apiTarget {
-          | Some(target) => {...withStructure, apiTarget: target}
-          | None => withStructure
-          }
-        }
-        let defaultState = applyFragAndTarget({
-          name,
-          version,
-          eventCollector,
-          extensionPoints,
-          extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
-          extensionNames: extensions->Util.extractExtensionNames,
-          extensions,
-          status: Connected,
-          statusChange,
-          apiSchemaFragment: None,
-          uiFragments: None,
-          structure: None,
-          dcbEventLog: pluginDef.dcbEventLog,
-        })
-        // dcbEventLog is immutable per plugin version — preserve whatever the
-        // Connected event set and only refresh on Reconnected if the field
-        // changed (a redeploy with new ARN).
-        UpdateWithDefault(
+      | UIFragmentDeregistered(_) =>
+        Reventless.Projection.Ignore
+
+      // A version became live. It becomes current iff it is the highest
+      // Connected version; otherwise just record its status (a higher version
+      // stays current).
+      | VersionConnected(def) | VersionActivated(def) =>
+        Reventless.Projection.UpdateWithDefault(
           id,
-          defaultState,
-          state =>
-            applyFragAndTarget({
-              ...state,
-              status: Connected,
-              statusChange,
-              dcbEventLog: switch pluginDef.dcbEventLog {
-              | Some(_) as some => some
-              | None => state.dcbEventLog
-              },
-            }),
-        )
-      | Disconnected({name, version, eventCollector, extensionPoints, extensions} as pluginDef)
-      | Activated({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        UpdateWithDefault(
-          id,
-          {
-            PluginsReadModelSpec.name,
-            version,
-            eventCollector,
-            extensionPoints,
-            extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
-            extensionNames: extensions->Util.extractExtensionNames,
-            extensions,
-            status: Disconnected,
-            statusChange,
-            apiSchemaFragment: None,
-            uiFragments: None,
-            structure: None,
-            dcbEventLog: pluginDef.dcbEventLog,
-          },
+          displayState(def, Connected, statusChange, singleton(def.version, "Connected")),
           state => {
-            ...state,
-            status: Disconnected,
-            statusChange,
+            let known = state.knownStatuses->Dict.copy
+            known->Dict.set(def.version, "Connected")
+            switch Util.highestConnected(known) {
+            | Some(hc) if hc == def.version => displayState(def, Connected, statusChange, known)
+            | _ => {...state, knownStatuses: known}
+            }
           },
         )
-      | Deactivated({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        UpdateWithDefault(
+
+      // Rollback: this (possibly lower) version is explicitly promoted to current.
+      | VersionPromoted(def) =>
+        Reventless.Projection.UpdateWithDefault(
           id,
-          {
-            PluginsReadModelSpec.name,
-            version,
-            eventCollector,
-            extensionPoints,
-            extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
-            extensionNames: extensions->Util.extractExtensionNames,
-            extensions,
-            status: Inactive,
-            statusChange,
-            apiSchemaFragment: None,
-            uiFragments: None,
-            structure: None,
-            dcbEventLog: pluginDef.dcbEventLog,
-          },
+          displayState(def, Connected, statusChange, singleton(def.version, "Connected")),
           state => {
-            ...state,
-            status: Inactive,
-            statusChange,
+            let known = state.knownStatuses->Dict.copy
+            known->Dict.set(def.version, "Connected")
+            displayState(def, Connected, statusChange, known)
           },
         )
-      | Retired({name, version, eventCollector, extensionPoints, extensions} as pluginDef) =>
-        // Deploy-superseded version. Distinct status: Retired (vs Inactive for
-        // admin Deactivate) — both are filtered from the manifest, but Retired
-        // marks "obsoleted by a newer version", not "admin-suspended".
-        UpdateWithDefault(
+
+      // A version dropped out. Only touches the displayed status when the
+      // dropped version IS the current row; a VersionPromoted (if any) follows
+      // and overwrites the display with the rolled-back version.
+      | VersionDisconnected(def) =>
+        Reventless.Projection.UpdateWithDefault(
           id,
-          {
-            PluginsReadModelSpec.name,
-            version,
-            eventCollector,
-            extensionPoints,
-            extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
-            extensionNames: extensions->Util.extractExtensionNames,
-            extensions,
-            status: Retired,
-            statusChange,
-            apiSchemaFragment: None,
-            uiFragments: None,
-            structure: None,
-            dcbEventLog: pluginDef.dcbEventLog,
-          },
+          displayState(def, Disconnected, statusChange, singleton(def.version, "Disconnected")),
           state => {
-            ...state,
-            status: Retired,
-            statusChange,
+            let known = state.knownStatuses->Dict.copy
+            known->Dict.set(def.version, "Disconnected")
+            state.version == def.version
+              ? {...state, status: Disconnected, statusChange, knownStatuses: known}
+              : {...state, knownStatuses: known}
+          },
+        )
+      | VersionDeactivated(def) =>
+        Reventless.Projection.UpdateWithDefault(
+          id,
+          displayState(def, Inactive, statusChange, singleton(def.version, "Inactive")),
+          state => {
+            let known = state.knownStatuses->Dict.copy
+            known->Dict.set(def.version, "Inactive")
+            state.version == def.version
+              ? {...state, status: Inactive, statusChange, knownStatuses: known}
+              : {...state, knownStatuses: known}
+          },
+        )
+      | VersionRetired(def) =>
+        Reventless.Projection.UpdateWithDefault(
+          id,
+          displayState(def, Retired, statusChange, singleton(def.version, "Retired")),
+          state => {
+            let known = state.knownStatuses->Dict.copy
+            known->Dict.set(def.version, "Retired")
+            state.version == def.version
+              ? {...state, status: Retired, statusChange, knownStatuses: known}
+              : {...state, knownStatuses: known}
           },
         )
       }
@@ -192,7 +152,5 @@ module PluginMapping = Reventless.Projection.Mapping.Make(
 )
 
 module Mappings = Reventless.Projection.Mappings.Make(PluginsReadModelSpec)
-//module type Mapping = Reventless.Projection.Mapping
-//with type targetState := PluginsReadModelSpec.state
 
 let mappings: array<module(Mappings.Mapping)> = [module(PluginMapping)]

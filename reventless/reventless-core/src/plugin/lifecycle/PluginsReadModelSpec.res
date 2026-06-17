@@ -1,13 +1,17 @@
 @@reventless.spec("Plugins")
 
+// Current view — one row per plugin **name**, holding the currently-active
+// version's definition. Keyed by the aggregate id (= plugin name). The status
+// here is the *current* version's status; "Superseded" is not represented (a
+// superseded version is simply no longer the current row — see PluginHistory
+// for the per-version timeline incl. Superseded).
 @schema
 type status =
   | Connected
   | Disconnected
+  // Admin suspend (Deactivate).
   | Inactive
-  // Deploy-driven supersession by a newer version of the same plugin.
-  // Distinct from Inactive (admin suspend): hidden from the manifest like
-  // Inactive, but revivable only by the version's own Heartbeat.
+  // Manual admin retirement (archive) of the current version.
   | Retired
 
 @schema
@@ -34,6 +38,12 @@ type state = {
   // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None
   // for pure-aggregate plugins or for plugins persisted before Phase 4.
   dcbEventLog: @s.matches(Reventless.Plugin.dcbEventLogOptionSchema) option<Reventless.Plugin.dcbEventLogDefinition>,
+  // Internal bookkeeping: every known version of this name → its status string
+  // ("Connected" | "Disconnected" | "Inactive" | "Retired"). Lets the projection
+  // recompute which version is current (highest Connected) when one drops out —
+  // including rollback to a lower still-connected version. Not surfaced to the
+  // manifest (which reads the flattened current-version fields above).
+  knownStatuses: dict<string>,
 }
 
 type queryResult = {

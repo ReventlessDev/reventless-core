@@ -2,19 +2,25 @@
 
 open Reventless.Plugin
 
+// The Plugin aggregate is keyed by plugin **name** (not name@version). One
+// instance owns the whole lifecycle of every version of that name, deciding
+// supersession synchronously. Version-scoped commands carry the `version`
+// the transition targets; the ExtensionPoint→Plugin mapping supplies it
+// (translated from the transport-level `name@version` id — Approach 1).
 @schema
 type command =
-  | @noApi Heartbeat
+  | @noApi Heartbeat(version)
   | @noApi Connect(pluginDefinition)
-  | @noApi Disconnect
-  | Activate
-  | Deactivate
-  // Records a protocol-version incompatibility without changing plugin connection state.
+  | @noApi Disconnect(version)
+  // Admin lifecycle commands — API-exposed (auto-derived admin mutations,
+  // Cognito @aws_auth gated). `version` selects which known version to act on.
+  | Activate(version)
+  | Deactivate(version)
+  // Records a protocol-version incompatibility without changing connection state.
   | @noApi ReportIncompatibility(pluginDefinition)
-  // Emitted by the platform deploy hook when a newer plugin version
-  // supersedes this one. Distinguishes deploy-driven retirement from
-  // user-driven Deactivate in the EventLog and projection branches.
-  | @noApi Retire
+  // Manual admin retirement of a specific version (archive). Distinct from the
+  // automatic `Superseded` transition (which is decided, not commanded).
+  | Retire(version)
 
 @schema
 type uiFragmentRegisteredData = {pluginId: string, manifest: uiFragmentManifest}
@@ -29,19 +35,40 @@ type uiFragmentUpdatedData = {
 @schema
 type uiFragmentDeregisteredData = {pluginId: string}
 
+// Carries both the superseded and the superseding version's full definition —
+// a deterministic trigger for version-to-version schema/data migrations
+// (analysis §6.2.4) and the source for `PluginHistory`'s supersession edges.
+@schema
+type versionSupersededData = {
+  supersededVersion: version,
+  supersededDefinition: pluginDefinition,
+  newVersion: version,
+  newDefinition: pluginDefinition,
+}
+
 @schema
 type event =
-  | UnknownPluginDetected
-  | Connected(pluginDefinition)
-  | Reconnected(pluginDefinition)
-  | Disconnected(pluginDefinition)
-  | Activated(pluginDefinition)
-  | Deactivated(pluginDefinition)
-  // Emitted on Retire — deploy-driven retirement of a superseded plugin version.
-  | Retired(pluginDefinition)
-  // Emitted when ReportIncompatibility is processed; carries the connecting plugin definition.
+  // A heartbeat arrived for a version the aggregate has not yet connected —
+  // triggers the ConnectPlugin handshake (replaces UnknownPluginDetected). The
+  // version lets the EP rebuild the `name@version` id for the handshake.
+  | VersionDetected(version)
+  // A version completed the connect handshake (replaces Connected/Reconnected).
+  | VersionConnected(pluginDefinition)
+  // A newer version connected and took over as current.
+  | VersionSuperseded(versionSupersededData)
+  // An older still-live version became current again (rollback): the current
+  // version disconnected/deactivated/retired and a lower live version was promoted.
+  | VersionPromoted(pluginDefinition)
+  // A version's heartbeats timed out (EP disconnect schedule).
+  | VersionDisconnected(pluginDefinition)
+  // Admin transitions.
+  | VersionActivated(pluginDefinition)
+  | VersionDeactivated(pluginDefinition)
+  // Manual admin retirement (archive) of a specific version.
+  | VersionRetired(pluginDefinition)
+  // Protocol incompatibility recorded at connect; connection still proceeds.
   | IncompatiblePluginDetected(pluginDefinition)
-  // UI fragment lifecycle events — emitted alongside Connected/Reconnected/Disconnected/Deactivated
+  // UI fragment lifecycle events — emitted alongside connect/disconnect/(de)activate
   // when the plugin's pluginDefinition.uiFragments is set.
   | UIFragmentRegistered(uiFragmentRegisteredData)
   | UIFragmentUpdated(uiFragmentUpdatedData)
@@ -49,11 +76,9 @@ type event =
 
 @schema
 type error =
-  | NotExisting
+  // Targeted version is unknown to this plugin name.
+  | UnknownVersion
+  // Admin command targets a version not in the state the command requires.
   | AlreadyConnected
   | IsDisconnected
   | IsInactive
-  // Returned when an admin command targets a retired (deploy-superseded)
-  // version. Retired versions revive only via their own Heartbeat, never
-  // via admin Activate.
-  | IsRetired

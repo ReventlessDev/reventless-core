@@ -986,9 +986,9 @@ function MakeWithConfig(Config) {
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
+        let version = param[1];
         let id = param[0];
-        let state_name = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state_version = param[1];
+        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state_eventCollector = param[2].name;
         let state_extensionPoints = Object.entries(extensionPoints).map(param => {
           let epName = param[0];
@@ -1015,9 +1015,13 @@ function MakeWithConfig(Config) {
         let state_apiSchemaFragment = param[5];
         let state_uiFragments = param[6];
         let state_structure = param[7];
+        let state_knownStatuses = Object.fromEntries([[
+            version,
+            "Connected"
+          ]]);
         let state = {
-          name: state_name,
-          version: state_version,
+          name: pluginName,
+          version: version,
           eventCollector: state_eventCollector,
           extensionPoints: state_extensionPoints,
           extensionPointNames: state_extensionPointNames,
@@ -1028,10 +1032,11 @@ function MakeWithConfig(Config) {
           apiSchemaFragment: state_apiSchemaFragment,
           uiFragments: state_uiFragments,
           structure: state_structure,
-          dcbEventLog: undefined
+          dcbEventLog: undefined,
+          knownStatuses: state_knownStatuses
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginsReadModelSpec$ReventlessCore.stateSchema);
-        pluginOps.save(id, entry, "Any", undefined);
+        pluginOps.save(pluginName, entry, "Any", undefined);
       });
     });
   };
@@ -2875,9 +2880,9 @@ function Make($star) {
       ]).apply(param => {
         let extensions = param[4];
         let extensionPoints = param[3];
+        let version = param[1];
         let id = param[0];
-        let state_name = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state_version = param[1];
+        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
         let state_eventCollector = param[2].name;
         let state_extensionPoints = Object.entries(extensionPoints).map(param => {
           let epName = param[0];
@@ -2904,9 +2909,13 @@ function Make($star) {
         let state_apiSchemaFragment = param[5];
         let state_uiFragments = param[6];
         let state_structure = param[7];
+        let state_knownStatuses = Object.fromEntries([[
+            version,
+            "Connected"
+          ]]);
         let state = {
-          name: state_name,
-          version: state_version,
+          name: pluginName,
+          version: version,
           eventCollector: state_eventCollector,
           extensionPoints: state_extensionPoints,
           extensionPointNames: state_extensionPointNames,
@@ -2917,10 +2926,11 @@ function Make($star) {
           apiSchemaFragment: state_apiSchemaFragment,
           uiFragments: state_uiFragments,
           structure: state_structure,
-          dcbEventLog: undefined
+          dcbEventLog: undefined,
+          knownStatuses: state_knownStatuses
         };
         let entry = S.reverseConvertToJsonOrThrow(state, PluginsReadModelSpec$ReventlessCore.stateSchema);
-        pluginOps.save(id, entry, "Any", undefined);
+        pluginOps.save(pluginName, entry, "Any", undefined);
       });
     });
   };

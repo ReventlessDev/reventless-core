@@ -4,144 +4,97 @@ open Plugin_Fixtures
 module PluginsProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(PluginsProjection.PluginMapping)
 open PluginsProjectionTest
 
+// Current view (one row per plugin name). The displayed row tracks the current
+// version (highest Connected); `knownStatuses` is the per-version bookkeeping
+// used to recompute current on drop-out / rollback.
+
+let supersededV1ByV2 = VersionSuperseded({
+  supersededVersion: "1",
+  supersededDefinition: pluginDefinition,
+  newVersion: "2",
+  newDefinition: pluginDefinitionV2,
+})
+
 describe("PluginsProjection:", () => {
-  test("UnknownPluginDetected", () =>
-    givenEvents([])->whenEvent(UnknownPluginDetected)->thenNoState
+  test("VersionDetected does not create a row", () =>
+    givenEvents([])->whenEvent(VersionDetected("1"))->thenNoState
   )
 
-  test("UnknownPluginDetected (already detected)", () =>
-    givenEvents([UnknownPluginDetected])->whenEvent(UnknownPluginDetected)->thenNoState
-  )
-
-  test("Connected", () =>
-    givenEvents([UnknownPluginDetected])
-    ->whenEvent(Connected(pluginDefinition))
-    ->thenState({...state, status: Connected})
-  )
-
-  test("Connected (not detected before)", () =>
+  test("VersionConnected writes the current row", () =>
     givenEvents([])
-    ->whenEvent(Connected(pluginDefinition))
-    ->thenState({...state, status: Connected})
+    ->whenEvent(VersionConnected(pluginDefinition))
+    ->thenState(state)
   )
 
-  test("Disconnected", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenEvent(Disconnected(pluginDefinition))
-    ->thenState({...state, status: Disconnected})
-  )
-
-  test("Disconnected (not connected before)", () =>
-    givenEvents([])
-    ->whenEvent(Disconnected(pluginDefinition))
-    ->thenState({...state, status: Disconnected})
-  )
-
-  test("Deactivated", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenEvent(Deactivated(pluginDefinition))
-    ->thenState({...state, status: Inactive})
-  )
-
-  test("Deactivated (not connected before)", () =>
-    givenEvents([])
-    ->whenEvent(Deactivated(pluginDefinition))
-    ->thenState({...state, status: Inactive})
-  )
-
-  test("Activated", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Deactivated(pluginDefinition)])
-    ->whenEvent(Activated(pluginDefinition))
-    ->thenState({...state, status: Disconnected})
-  )
-
-  test("Activated (not deactivated before)", () =>
-    givenEvents([])
-    ->whenEvent(Activated(pluginDefinition))
-    ->thenState({...state, status: Disconnected})
-  )
-
-  test("Reconnected (after activated)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Deactivated(pluginDefinition),
-      Activated(pluginDefinition),
-    ])
-    ->whenEvent(Reconnected(pluginDefinition))
-    ->thenState({...state, status: Connected})
-  )
-
-  test("Reconnected (not disconnected before)", () =>
-    givenEvents([])
-    ->whenEvent(Reconnected(pluginDefinition))
-    ->thenState({...state, status: Connected})
-  )
-
-  test("UIFragmentRegistered is ignored by plugin read model", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenEvent(
-      UIFragmentRegistered({pluginId: pluginDefinition.id, manifest: uiManifest}),
+  test("A higher VersionConnected becomes the current row (supersession)", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenEvent(VersionConnected(pluginDefinitionV2))
+    ->thenState(
+      display(pluginDefinitionV2, Connected, known([("1", "Connected"), ("2", "Connected")])),
     )
-    ->thenState({...state, status: Connected})
   )
 
-  test("UIFragmentDeregistered is ignored by plugin read model", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+  test("A lower VersionConnected records status but keeps the higher current", () =>
+    givenEvents([VersionConnected(pluginDefinitionV2)])
+    ->whenEvent(VersionConnected(pluginDefinition))
+    ->thenState(
+      display(pluginDefinitionV2, Connected, known([("2", "Connected"), ("1", "Connected")])),
+    )
+  )
+
+  test("VersionSuperseded itself does not change the row", () =>
+    givenEvents([VersionConnected(pluginDefinition)])->whenEvent(supersededV1ByV2)->thenState(state)
+  )
+
+  test("VersionDisconnected of the current flips its status", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenEvent(VersionDisconnected(pluginDefinition))
+    ->thenState(display(pluginDefinition, Disconnected, known([("1", "Disconnected")])))
+  )
+
+  test("VersionPromoted rolls the current back to a lower live version", () =>
+    givenEvents([
+      VersionConnected(pluginDefinition),
+      VersionConnected(pluginDefinitionV2),
+      VersionDisconnected(pluginDefinitionV2),
+    ])
+    ->whenEvent(VersionPromoted(pluginDefinition))
+    ->thenState(
+      display(pluginDefinition, Connected, known([("1", "Connected"), ("2", "Disconnected")])),
+    )
+  )
+
+  test("VersionDeactivated of the current yields status Inactive", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenEvent(VersionDeactivated(pluginDefinition))
+    ->thenState(display(pluginDefinition, Inactive, known([("1", "Inactive")])))
+  )
+
+  test("VersionRetired of the current yields status Retired", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenEvent(VersionRetired(pluginDefinition))
+    ->thenState(display(pluginDefinition, Retired, known([("1", "Retired")])))
+  )
+
+  test("UIFragmentRegistered is ignored by the current view", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenEvent(UIFragmentRegistered({pluginId: pluginDefinition.id, manifest: uiManifest}))
+    ->thenState(state)
+  )
+
+  test("UIFragmentDeregistered is ignored by the current view", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(UIFragmentDeregistered({pluginId: pluginDefinition.id}))
-    ->thenState({...state, status: Connected})
+    ->thenState(state)
   )
 
-  // ── Retired — deploy-driven supersession of an older plugin version ──────
-  //
-  // Issued by the platform deploy hook (publishRetireForOlderPluginVersions).
-  // Maps to status: Retired — distinct from Inactive (admin Deactivate). Both
-  // are filtered from the manifest, but Retired means "obsoleted by a newer
-  // version" and is revivable only by the version's own Heartbeat.
-
-  test("Retired on a Connected row yields status: Retired", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenEvent(Retired(pluginDefinition))
-    ->thenState({...state, status: Retired})
-  )
-
-  test("Retired on a Disconnected row also yields status: Retired", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Disconnected(pluginDefinition),
-    ])
-    ->whenEvent(Retired(pluginDefinition))
-    ->thenState({...state, status: Retired})
-  )
-
-  test("Retired with no prior row creates one at status: Retired", () =>
-    givenEvents([])
-    ->whenEvent(Retired(pluginDefinition))
-    ->thenState({...state, status: Retired})
-  )
-
-  test("Reconnected after Retired yields status: Connected (heartbeat revival)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Retired(pluginDefinition),
-    ])
-    ->whenEvent(Reconnected(pluginDefinition))
-    ->thenState({...state, status: Connected})
-  )
-
-  // ── IncompatiblePluginDetected — observation only, no status change ──────
-
-  test("IncompatiblePluginDetected leaves a Connected row unchanged", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+  test("IncompatiblePluginDetected leaves a connected row unchanged", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(IncompatiblePluginDetected(pluginDefinition))
-    ->thenState({...state, status: Connected})
+    ->thenState(state)
   )
 
-  test("IncompatiblePluginDetected on a never-seen plugin does not create a row", () =>
-    givenEvents([])
-    ->whenEvent(IncompatiblePluginDetected(pluginDefinition))
-    ->thenNoState
+  test("IncompatiblePluginDetected on a never-seen plugin creates no row", () =>
+    givenEvents([])->whenEvent(IncompatiblePluginDetected(pluginDefinition))->thenNoState
   )
 })

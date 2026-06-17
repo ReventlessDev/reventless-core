@@ -6,214 +6,144 @@ import * as MultiSourceProjection_GWT$ReventlessGwt from "@reventlessdev/reventl
 
 let PluginsProjectionTest = MultiSourceProjection_GWT$ReventlessGwt.Make(PluginsProjection$ReventlessCore.PluginMapping);
 
+let supersededV1ByV2 = {
+  TAG: "VersionSuperseded",
+  _0: {
+    supersededVersion: "1",
+    supersededDefinition: Plugin_Fixtures$ReventlessLocal.pluginDefinition,
+    newVersion: "2",
+    newDefinition: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+  }
+};
+
 PluginsProjectionTest.describe("PluginsProjection:", () => {
-  PluginsProjectionTest.test("UnknownPluginDetected", undefined, () => PluginsProjectionTest.thenNoState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), "UnknownPluginDetected")));
-  PluginsProjectionTest.test("UnknownPluginDetected (already detected)", undefined, () => PluginsProjectionTest.thenNoState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents(["UnknownPluginDetected"]), "UnknownPluginDetected")));
-  PluginsProjectionTest.test("Connected", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents(["UnknownPluginDetected"]), {
-      TAG: "Connected",
+  PluginsProjectionTest.test("VersionDetected does not create a row", undefined, () => PluginsProjectionTest.thenNoState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
+    TAG: "VersionDetected",
+    _0: "1"
+  })));
+  PluginsProjectionTest.test("VersionConnected writes the current row", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
+    TAG: "VersionConnected",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), Plugin_Fixtures$ReventlessLocal.state));
+  PluginsProjectionTest.test("A higher VersionConnected becomes the current row (supersession)", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("Connected (not detected before)", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
-      TAG: "Connected",
+    }]), {
+    TAG: "VersionConnected",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2, "Connected", Plugin_Fixtures$ReventlessLocal.known([
+    [
+      "1",
+      "Connected"
+    ],
+    [
+      "2",
+      "Connected"
+    ]
+  ]))));
+  PluginsProjectionTest.test("A lower VersionConnected records status but keeps the higher current", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+    }]), {
+    TAG: "VersionConnected",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2, "Connected", Plugin_Fixtures$ReventlessLocal.known([
+    [
+      "2",
+      "Connected"
+    ],
+    [
+      "1",
+      "Connected"
+    ]
+  ]))));
+  PluginsProjectionTest.test("VersionSuperseded itself does not change the row", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("Disconnected", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "Disconnected",
+    }]), supersededV1ByV2), Plugin_Fixtures$ReventlessLocal.state));
+  PluginsProjectionTest.test("VersionDisconnected of the current flips its status", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Disconnected", newrecord));
-  });
-  PluginsProjectionTest.test("Disconnected (not connected before)", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
-      TAG: "Disconnected",
+    }]), {
+    TAG: "VersionDisconnected",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Disconnected", Plugin_Fixtures$ReventlessLocal.known([[
+      "1",
+      "Disconnected"
+    ]]))));
+  PluginsProjectionTest.test("VersionPromoted rolls the current back to a lower live version", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
+    {
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Disconnected", newrecord));
-  });
-  PluginsProjectionTest.test("Deactivated", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "Deactivated",
+    },
+    {
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+    },
+    {
+      TAG: "VersionDisconnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+    }
+  ]), {
+    TAG: "VersionPromoted",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Connected", Plugin_Fixtures$ReventlessLocal.known([
+    [
+      "1",
+      "Connected"
+    ],
+    [
+      "2",
+      "Disconnected"
+    ]
+  ]))));
+  PluginsProjectionTest.test("VersionDeactivated of the current yields status Inactive", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Inactive", newrecord));
-  });
-  PluginsProjectionTest.test("Deactivated (not connected before)", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
-      TAG: "Deactivated",
+    }]), {
+    TAG: "VersionDeactivated",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Inactive", Plugin_Fixtures$ReventlessLocal.known([[
+      "1",
+      "Inactive"
+    ]]))));
+  PluginsProjectionTest.test("VersionRetired of the current yields status Retired", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Inactive", newrecord));
-  });
-  PluginsProjectionTest.test("Activated", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      },
-      {
-        TAG: "Deactivated",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "Activated",
+    }]), {
+    TAG: "VersionRetired",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Retired", Plugin_Fixtures$ReventlessLocal.known([[
+      "1",
+      "Retired"
+    ]]))));
+  PluginsProjectionTest.test("UIFragmentRegistered is ignored by the current view", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Disconnected", newrecord));
-  });
-  PluginsProjectionTest.test("Activated (not deactivated before)", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
-      TAG: "Activated",
+    }]), {
+    TAG: "UIFragmentRegistered",
+    _0: {
+      pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id,
+      manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
+    }
+  }), Plugin_Fixtures$ReventlessLocal.state));
+  PluginsProjectionTest.test("UIFragmentDeregistered is ignored by the current view", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Disconnected", newrecord));
-  });
-  PluginsProjectionTest.test("Reconnected (after activated)", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      },
-      {
-        TAG: "Deactivated",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      },
-      {
-        TAG: "Activated",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "Reconnected",
+    }]), {
+    TAG: "UIFragmentDeregistered",
+    _0: {
+      pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id
+    }
+  }), Plugin_Fixtures$ReventlessLocal.state));
+  PluginsProjectionTest.test("IncompatiblePluginDetected leaves a connected row unchanged", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("Reconnected (not disconnected before)", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
-      TAG: "Reconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("UIFragmentRegistered is ignored by plugin read model", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "UIFragmentRegistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id,
-        manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
-      }
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("UIFragmentDeregistered is ignored by plugin read model", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "UIFragmentDeregistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id
-      }
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("Retired on a Connected row yields status: Retired", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Retired", newrecord));
-  });
-  PluginsProjectionTest.test("Retired on a Disconnected row also yields status: Retired", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      },
-      {
-        TAG: "Disconnected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Retired", newrecord));
-  });
-  PluginsProjectionTest.test("Retired with no prior row creates one at status: Retired", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Retired", newrecord));
-  });
-  PluginsProjectionTest.test("Reconnected after Retired yields status: Connected (heartbeat revival)", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      },
-      {
-        TAG: "Retired",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "Reconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("IncompatiblePluginDetected leaves a Connected row unchanged", undefined, () => {
-    let newrecord = {...Plugin_Fixtures$ReventlessLocal.state};
-    return PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
-      "UnknownPluginDetected",
-      {
-        TAG: "Connected",
-        _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-      }
-    ]), {
-      TAG: "IncompatiblePluginDetected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }), (newrecord.status = "Connected", newrecord));
-  });
-  PluginsProjectionTest.test("IncompatiblePluginDetected on a never-seen plugin does not create a row", undefined, () => PluginsProjectionTest.thenNoState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
+    }]), {
+    TAG: "IncompatiblePluginDetected",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), Plugin_Fixtures$ReventlessLocal.state));
+  PluginsProjectionTest.test("IncompatiblePluginDetected on a never-seen plugin creates no row", undefined, () => PluginsProjectionTest.thenNoState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([]), {
     TAG: "IncompatiblePluginDetected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
   })));
@@ -221,5 +151,6 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
 
 export {
   PluginsProjectionTest,
+  supersededV1ByV2,
 }
 /* PluginsProjectionTest Not a pure module */

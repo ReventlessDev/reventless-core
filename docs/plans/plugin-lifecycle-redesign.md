@@ -150,27 +150,47 @@ that stream; the deploy-time retire hook disappears. Analysis §5.2, §6, §8.
   heartbeat; migration is not a concern — analysis §8, MEMORY: wipe alpha over
   migration).
 
-### 2.2 Re-route heartbeats to the `name` id (version in payload)
+### 2.2 Carry the version by translating at the EP boundary (Approach 1)
 
-- `PluginRuntime_Builder.res:714-717` — `PLUGIN_ID` env var is currently
-  `name@version`; carry `name` as the id and `version` in the heartbeat payload.
-- Decision logic in the name aggregate:
-  - `Heartbeat(V)` for a not-yet-connected version → emit `VersionDetected(V)` +
-    run the **existing `ConnectPlugin` handshake** (the new version's
-    possibly-changed definition is re-delivered, never inherited — analysis §2.2).
-    Reply `Connect(V, def)` → `VersionConnected(V, def)`; if `V > current` also
-    `VersionSuperseded(prev → V)` with `current := V`.
-  - `Heartbeat(V == connected)` → keep-alive, refresh `lastHeartbeatAt`, no event.
-  - `Heartbeat` from a stale lower version → ignored (liveness only).
-  - timeout on `current` → promote the highest still-live connected version
-    (rollback), reusing its stored definition (`VersionPromoted`).
-  - stray heartbeat for a `Retired` version → ignored (the deliberate contrast
-    with `Disconnected`, analysis §6.2.6).
-- Confirm how the connect handshake routes to a `name`-keyed instance (today it
-  keys `name@version`) and that a new version is not surfaced as current until
-  its `Connect` lands — Open Q (analysis §9.8).
-- `compareVersions` already exists (`Plugin.res:73-100`) for the `>`/highest
-  comparisons.
+**Resolved (§9.8):** the version is carried by *translating at the
+ExtensionPoint→Plugin mapping boundary*, **not** by changing the heartbeat
+transport. The heartbeat Lambda, `PLUGIN_ID` env (`name@version`),
+`HeartbeatEntryPoint.mjs`, the EP `Heartbeat` command and its schema are all
+**unchanged**. Only `PluginExtensionPoint_Plugin`'s mapping converts the EP-level
+`name@version` id into a **`name`** id for the Plugin (Delegate) aggregate, with
+`version` placed into the Delegate command:
+- `mapIncomingCommand`: `Heartbeat` → `PublishCommand(name(id), Delegate.Heartbeat(version(id)))`;
+  `DisconnectPlugin` → `Disconnect(version(id))`; `ConnectPlugin(def)` carries the
+  version inside `def` already.
+- `mapOutgoingEvent`: Plugin events route back out keyed by `name` (the EP keeps
+  its own per-version transport id for scheduling).
+
+**Liveness stays scheduler-driven.** The EP keeps its per-version
+`CreateDisconnectSchedule` (`PluginExtensionPoint_Plugin.res:143`); when a
+version stops heartbeating, the schedule fires `Disconnect(version)` to the
+name-keyed aggregate. **The aggregate never reads wall-clock time** — it decides
+purely from event-driven status in `known`, preserving deterministic replay.
+
+Decision logic in the name aggregate (state `{current, known: dict<version,
+{definition, status}>}`):
+- `Heartbeat(V)` for a not-yet-`Connected` version → emit `VersionDetected(V)`;
+  the **existing `ConnectPlugin` handshake** then delivers the (possibly-changed)
+  definition (analysis §2.2), replying `Connect(V, def)` → `VersionConnected(V,
+  def)`; if `compareVersions(V, current) > 0` also `VersionSuperseded(prev → V)`,
+  `current := V`.
+- `Heartbeat(V == a Connected version)` → keep-alive, no event.
+- `Heartbeat` from a stale lower version → ignored (the EP still tracks its
+  liveness; the aggregate emits nothing).
+- `Disconnect(V)` (from the EP timeout) → mark V `Disconnected` in `known`; if V
+  was `current`, emit `VersionPromoted(W)` for the highest still-`Connected` W in
+  `known` (rollback), reusing its stored definition.
+- stray heartbeat for a `Retired` version → ignored (the deliberate contrast
+  with `Disconnected`, analysis §6.2.6).
+- `compareVersions` already exists (`Plugin.res:73-100`).
+
+This meets every goal of the redesign (name-keyed owner, write-side supersession,
+single-current invariant, faithful history) with the transport and liveness
+mechanisms unchanged — the smaller, ES-cleaner of the two mechanisms evaluated.
 
 ### 2.3 The lifecycle states — rename, don't drop (analysis §6.2.1)
 
@@ -202,7 +222,18 @@ to, at)` · `VersionPromoted` · `Disconnected` · `Retired`.
   the projection model can carry the per-name fat state needed and converges
   under out-of-order events — Open Q (analysis §9.1).
 
-### 2.5 Repoint consumers and delete the retire hook
+### 2.5 Manual admin `Retire` — wired fully (Option A, resolved §9.7)
+
+- `Retire(version)` is **API-exposed** (drop `@noApi`) → auto-derived
+  `Plugin_Retire` admin mutation (same path as `Plugin_Activate`/`Deactivate`,
+  via `Plugin_Helpers.registerAdminAggregateMutations`). Admin-authz gated.
+- **Un-retire pairs with it:** `Activate(version)` on a `Retired` version is
+  allowed (emits `VersionActivated`) instead of `Error(IsRetired)` — closes the
+  brick risk (a retired exact version is re-admittable; a *new* version always
+  connects anyway, §6.2.6).
+- Admin `PluginHistory` view surfaces a Retire action per non-current version.
+
+### 2.6 Repoint consumers and delete the retire hook
 
 - Repoint manifest queries (`Platform_ComponentDefinitions`,
   `Platform_UIFragments`) and runtime routing `forwardCommand`
@@ -214,16 +245,53 @@ to, at)` · `VersionPromoted` · `Disconnected` · `Retired`.
   gate, and the `pluginAggrCmdTopicUrl` export. **Audit** whether the
   `pluginRmTableName` export is still needed for the runtime status gate.
 
-### 2.6 Tests + verification
+### 2.7 AWS admin path (version-arg commands)
+
+The re-key makes the aggregate id `name`, so admin commands carry `version`:
+- `Activate`/`Deactivate`/`Retire` mutation inputs gain a `version` field
+  (auto-derived from the command schema); resolver routes to instance `name`.
+- The **resolver status gate** (`AggregateEntryPoint.mjs::checkPluginStatus`,
+  scans Plugin RM by status) and the `PluginStatus` enum + `onPluginStatusChange`
+  subscription in `AdminApi` gain the `Superseded` status.
+- MCP tools `Plugin_Activate`/`Deactivate` (+ new `Plugin_Retire`) gain the
+  `version` arg.
+
+### 2.8 Local adapter — route through the aggregate (F1, decision (ii))
+
+Replace the local **direct-write bypass** so local mirrors AWS:
+- Subscribe `PluginsProjection` + the new `PluginHistory` projection to the
+  `PluginAggrEventTopic`; the projection builds the Plugin QueryDb.
+- `seedPluginQueryDb` (`reventless-local/src/Platform.res:933`) dispatches a
+  synthetic `Connect(pluginDefinition)` per plugin through `LocalPluginAggregate`
+  instead of writing the row directly (resolve the Output chain before tests run
+  — the DCB-E2E async-handler-registration pattern).
+- **Delete** the hand-written `Plugin_Activate`/`Deactivate` resolvers
+  (`Platform.res:1681-1687`); the auto-derived `Activate`/`Deactivate`/`Retire`
+  mutations dispatch real commands through the aggregate; the projection updates
+  the read side. Preserve `onPluginStatusChange` / `onUIFragmentChange` emission.
+
+### 2.9 Tests + verification
 
 - GWT coverage for: detect→connect arc, supersession on higher-version connect,
   rollback on current-timeout, stray-heartbeat-from-`Retired` ignored,
-  new-version-after-retire connects (analysis §6.2.6, §7).
-- Update `PluginsProjection_GWT.res` for the name-keyed fold.
+  new-version-after-retire connects, manual `Retire` + un-retire via `Activate`
+  (analysis §6.2.6, §7).
+- Update `PluginsProjection_GWT.res` for the name-keyed fold; local E2E now
+  exercises the aggregate (decision (ii)).
 - Verify the enforced invariant "exactly one current"; history is a faithful
   fold (zero inference). Build green, zero warnings.
 
-**Commit:** `feat(admin): name-keyed plugin lifecycle aggregate + current/history views`.
+### 2.10 Staged commits
+
+1. **2a** core aggregate — `PluginSpec`/`PluginBehavior`/`PluginsReadModelSpec`/
+   `PluginsProjection` + `PluginHistory`, name-keyed; un-retire. GWT-verified.
+2. **2b** EP-boundary translation + `Plugin_Builder` id → name.
+3. **2c** AWS admin path (§2.7) + wire `Retire` (§2.5).
+4. **2d** local adapter F1 refactor (§2.8).
+5. **2e** delete retire hook + repoint manifest/forwardCommand (§2.6).
+
+**Final commit message:** `feat(admin): name-keyed plugin lifecycle aggregate + current/history views`
+(staged sub-commits land incrementally; each builds green).
 
 ---
 
@@ -296,9 +364,14 @@ Follow MEMORY workflow: show commit message and get approval; do not push.
 4. **History naming:** `PluginHistory` vs `PluginVersions` (§9.4).
 5. **State rename audit** — every `status` reader wired for auto `Superseded` vs
    manual `Retired` (§9.5).
-6. **Manual `Retire` UX & authority** — where the command lives, admin authz
-   gate, archive semantics (§9.7).
-7. **Detection→connect arc routing** to a `name`-keyed instance (§9.8).
+6. ~~**Manual `Retire` UX & authority** (§9.7).~~ **Resolved: Option A** — wire
+   `Retire(version)` as an admin-authz'd API mutation (auto-derived, like
+   Activate/Deactivate), surfaced in the `PluginHistory` view; un-retire =
+   `Activate` on a `Retired` version. See §2.5.
+7. ~~**Detection→connect arc routing** to a `name`-keyed instance (§9.8).~~
+   **Resolved:** translate at the EP boundary (§2.2, Approach 1) — the EP keeps
+   its `name@version` transport id and per-version liveness; the mapping converts
+   to a `name` id with `version` in the Delegate command.
 8. **Whole-name decommission** — out of scope; default no (§9.10).
 9. **Cross-*name* invariants** (EP-name uniqueness, dependency sets — Appendix A)
    are out of scope. If they ever become hard requirements, the aggregate would

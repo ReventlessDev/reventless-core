@@ -5,19 +5,34 @@ import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Api$ReventlessInfra from "@reventlessdev/reventless-infra/src/components/Api.res.mjs";
 
 let commandSchema = S.union([
-  S.literal("Heartbeat"),
+  S.schema(s => ({
+    TAG: "Heartbeat",
+    _0: s.m(Plugin$Reventless.versionSchema)
+  })),
   S.schema(s => ({
     TAG: "Connect",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
-  S.literal("Disconnect"),
-  S.literal("Activate"),
-  S.literal("Deactivate"),
+  S.schema(s => ({
+    TAG: "Disconnect",
+    _0: s.m(Plugin$Reventless.versionSchema)
+  })),
+  S.schema(s => ({
+    TAG: "Activate",
+    _0: s.m(Plugin$Reventless.versionSchema)
+  })),
+  S.schema(s => ({
+    TAG: "Deactivate",
+    _0: s.m(Plugin$Reventless.versionSchema)
+  })),
   S.schema(s => ({
     TAG: "ReportIncompatibility",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
-  S.literal("Retire")
+  S.schema(s => ({
+    TAG: "Retire",
+    _0: s.m(Plugin$Reventless.versionSchema)
+  }))
 ]);
 
 let uiFragmentRegisteredDataSchema = S.schema(s => ({
@@ -35,30 +50,44 @@ let uiFragmentDeregisteredDataSchema = S.schema(s => ({
   pluginId: s.m(S.string)
 }));
 
+let versionSupersededDataSchema = S.schema(s => ({
+  supersededVersion: s.m(Plugin$Reventless.versionSchema),
+  supersededDefinition: s.m(Plugin$Reventless.pluginDefinitionSchema),
+  newVersion: s.m(Plugin$Reventless.versionSchema),
+  newDefinition: s.m(Plugin$Reventless.pluginDefinitionSchema)
+}));
+
 let eventSchema = S.union([
-  S.literal("UnknownPluginDetected"),
   S.schema(s => ({
-    TAG: "Connected",
+    TAG: "VersionDetected",
+    _0: s.m(Plugin$Reventless.versionSchema)
+  })),
+  S.schema(s => ({
+    TAG: "VersionConnected",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   S.schema(s => ({
-    TAG: "Reconnected",
+    TAG: "VersionSuperseded",
+    _0: s.m(versionSupersededDataSchema)
+  })),
+  S.schema(s => ({
+    TAG: "VersionPromoted",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   S.schema(s => ({
-    TAG: "Disconnected",
+    TAG: "VersionDisconnected",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   S.schema(s => ({
-    TAG: "Activated",
+    TAG: "VersionActivated",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   S.schema(s => ({
-    TAG: "Deactivated",
+    TAG: "VersionDeactivated",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   S.schema(s => ({
-    TAG: "Retired",
+    TAG: "VersionRetired",
     _0: s.m(Plugin$Reventless.pluginDefinitionSchema)
   })),
   S.schema(s => ({
@@ -80,19 +109,17 @@ let eventSchema = S.union([
 ]);
 
 let errorSchema = S.union([
-  S.literal("NotExisting"),
+  S.literal("UnknownVersion"),
   S.literal("AlreadyConnected"),
   S.literal("IsDisconnected"),
-  S.literal("IsInactive"),
-  S.literal("IsRetired")
+  S.literal("IsInactive")
 ]);
 
 let commandSchema$1 = Api$ReventlessInfra.markNoApiVariants(commandSchema, [
   "Heartbeat",
   "Connect",
   "Disconnect",
-  "ReportIncompatibility",
-  "Retire"
+  "ReportIncompatibility"
 ]);
 
 function commandAuthorization(param) {
@@ -111,6 +138,7 @@ export {
   uiFragmentRegisteredDataSchema,
   uiFragmentUpdatedDataSchema,
   uiFragmentDeregisteredDataSchema,
+  versionSupersededDataSchema,
   eventSchema,
   errorSchema,
   commandSchema$1 as commandSchema,

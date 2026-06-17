@@ -4,7 +4,7 @@ import * as TestFixtures$ReventlessGwt from "@reventlessdev/reventless-gwt/src/T
 import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 
 let pluginDefinition = {
-  id: "id@1",
+  id: "name@1",
   name: "name",
   version: "1",
   extensionPoints: [],
@@ -22,35 +22,33 @@ let pluginDefinition = {
   dcbEventLog: undefined
 };
 
-let state_name = pluginDefinition.name;
-
-let state_version = pluginDefinition.version;
-
-let state_eventCollector = pluginDefinition.eventCollector;
-
-let state_extensionPoints = pluginDefinition.extensionPoints;
-
-let state_extensionPointNames = PluginsProjection$ReventlessCore.Util.extractExtensionPointNames(pluginDefinition.extensionPoints);
-
-let state_extensionNames = PluginsProjection$ReventlessCore.Util.extractExtensionNames(pluginDefinition.extensions);
-
-let state_extensions = pluginDefinition.extensions;
-
-let state = {
-  name: state_name,
-  version: state_version,
-  eventCollector: state_eventCollector,
-  extensionPoints: state_extensionPoints,
-  extensionPointNames: state_extensionPointNames,
-  extensionNames: state_extensionNames,
-  extensions: state_extensions,
-  status: "Connected",
-  statusChange: TestFixtures$ReventlessGwt.statusChange,
-  apiSchemaFragment: undefined,
-  uiFragments: undefined,
-  structure: undefined,
-  dcbEventLog: undefined
+let pluginDefinitionV2 = {
+  id: "name@2",
+  name: pluginDefinition.name,
+  version: "2",
+  extensionPoints: pluginDefinition.extensionPoints,
+  extensions: pluginDefinition.extensions,
+  eventCollector: pluginDefinition.eventCollector,
+  extensionProtocols: pluginDefinition.extensionProtocols,
+  apiSchemaFragment: pluginDefinition.apiSchemaFragment,
+  apiTarget: pluginDefinition.apiTarget,
+  uiFragments: pluginDefinition.uiFragments,
+  structure: pluginDefinition.structure,
+  dcbEventLog: pluginDefinition.dcbEventLog
 };
+
+function known(arr) {
+  return Object.fromEntries(arr);
+}
+
+function display(def, status, knownStatuses) {
+  return PluginsProjection$ReventlessCore.displayState(def, status, TestFixtures$ReventlessGwt.statusChange, knownStatuses);
+}
+
+let state = display(pluginDefinition, "Connected", Object.fromEntries([[
+    "1",
+    "Connected"
+  ]]));
 
 let uiManifest_panels = [];
 
@@ -80,7 +78,7 @@ let pluginDefinitionWithUI = {
 let extensionPointNames2 = ["Test.Test"];
 
 let pluginDefinition2 = {
-  id: "id2@1",
+  id: "name2@1",
   name: "name2",
   version: "1",
   extensionPoints: extensionPointNames2.map((name, idx) => ({
@@ -98,8 +96,14 @@ let pluginDefinition2 = {
   dcbEventLog: undefined
 };
 
+let sc = TestFixtures$ReventlessGwt.statusChange;
+
 export {
+  sc,
   pluginDefinition,
+  pluginDefinitionV2,
+  known,
+  display,
   state,
   uiManifest,
   pluginDefinitionWithUI,

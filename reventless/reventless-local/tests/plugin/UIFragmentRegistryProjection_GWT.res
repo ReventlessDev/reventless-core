@@ -52,21 +52,21 @@ describe("UIFragmentRegistryProjection:", () => {
     ->thenNoState
   )
 
-  test("Connected is ignored", () =>
+  test("VersionConnected is ignored", () =>
     givenEvents([UIFragmentRegistered({pluginId: pluginDefinition.id, manifest: uiManifest})])
-    ->whenEvent(Connected(pluginDefinition))
+    ->whenEvent(VersionConnected(pluginDefinition))
     ->thenState(registeredState)
   )
 
-  test("Disconnected is ignored", () =>
+  test("VersionDisconnected is ignored", () =>
     givenEvents([UIFragmentRegistered({pluginId: pluginDefinition.id, manifest: uiManifest})])
-    ->whenEvent(Disconnected(pluginDefinition))
+    ->whenEvent(VersionDisconnected(pluginDefinition))
     ->thenState(registeredState)
   )
 
-  test("UnknownPluginDetected is ignored", () =>
+  test("VersionDetected is ignored", () =>
     givenEvents([UIFragmentRegistered({pluginId: pluginDefinition.id, manifest: uiManifest})])
-    ->whenEvent(UnknownPluginDetected)
+    ->whenEvent(VersionDetected("1"))
     ->thenState(registeredState)
   )
 })

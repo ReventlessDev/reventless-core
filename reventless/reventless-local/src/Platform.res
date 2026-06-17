@@ -956,8 +956,9 @@ module MakeWithConfig = (
           uiFragments,
           pluginStructure,
         )) => {
+          let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
           let state: ReventlessCore.PluginsReadModelSpec.state = {
-            name: id->String.split("@")->Array.get(0)->Option.getOr(id),
+            name: pluginName,
             version,
             eventCollector: eventCollector.name,
             extensionPoints: extensionPoints
@@ -986,10 +987,12 @@ module MakeWithConfig = (
             uiFragments,
             structure: pluginStructure,
             dcbEventLog: None,
+            knownStatuses: Dict.fromArray([(version, "Connected")]),
           }
           let entry =
             state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
-          let _ = pluginOps.save(id, entry, Any, None)
+          // Current view is keyed by plugin name (one row per name).
+          let _ = pluginOps.save(pluginName, entry, Any, None)
         })
     })
   }

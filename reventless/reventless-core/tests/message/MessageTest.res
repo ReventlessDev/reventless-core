@@ -11,7 +11,7 @@ describe("Message should", () => {
   })
 
   testSync("get variant name of json without payload", () => {
-    let variant = PluginSpec.Heartbeat
+    let variant = PluginSpec.Heartbeat("0.0.0")
     let variantJson = variant->Message.encode(PluginSpec.commandSchema)
     let variantName = variantNameOfJson(variantJson)
 
@@ -65,12 +65,12 @@ describe("Message should", () => {
         msgId: "testMsgId",
         correlationId: "testCorrelationId",
       },
-      event: UnknownPluginDetected,
+      event: VersionDetected("0.0.0"),
     }
     let eventJson' = event'->Message.encodeEvent'(S.string, PluginSpec.eventSchema)
     let eventName = eventJson'->eventNameOfEvent'Json
 
-    expect(eventName)->toBe("UnknownPluginDetected")
+    expect(eventName)->toBe("VersionDetected")
   })
 
   testSync("get id of eventJson'", () => {
@@ -85,7 +85,7 @@ describe("Message should", () => {
         msgId: "testMsgId",
         correlationId: "testCorrelationId",
       },
-      event: UnknownPluginDetected,
+      event: VersionDetected("0.0.0"),
     }
     let eventJson' = event'->Message.encodeEvent'(S.string, PluginSpec.eventSchema)
     let eventId = idOfEvent'Json(eventJson')->Option.getOrThrow

@@ -14,11 +14,8 @@ function project(param) {
   let name;
   let structure;
   let name$1;
-  if (typeof event !== "object") {
-    return "Ignore";
-  }
   switch (event.TAG) {
-    case "Connected" :
+    case "VersionConnected" :
       let match = event._0;
       let name$2 = match.name;
       let structure$1 = match.structure;
@@ -31,7 +28,7 @@ function project(param) {
         exit = 2;
       }
       break;
-    case "Reconnected" :
+    case "VersionPromoted" :
       let match$1 = event._0;
       let name$3 = match$1.name;
       let structure$2 = match$1.structure;
@@ -44,7 +41,7 @@ function project(param) {
         exit = 2;
       }
       break;
-    case "Activated" :
+    case "VersionActivated" :
       let match$2 = event._0;
       let name$4 = match$2.name;
       let structure$3 = match$2.structure;
@@ -57,13 +54,6 @@ function project(param) {
         exit = 2;
       }
       break;
-    case "Disconnected" :
-    case "Deactivated" :
-    case "Retired" :
-      return {
-        TAG: "Delete",
-        _0: id
-      };
     default:
       return "Ignore";
   }

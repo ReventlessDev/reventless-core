@@ -23,204 +23,227 @@ let PluginTest = Behavior_GWT$ReventlessGwt.MakeFromAggregate({
   moduleUrl: PluginBehavior$ReventlessCore.moduleUrl
 });
 
+let supersededV1ByV2 = {
+  TAG: "VersionSuperseded",
+  _0: {
+    supersededVersion: "1",
+    supersededDefinition: Plugin_Fixtures$ReventlessLocal.pluginDefinition,
+    newVersion: "2",
+    newDefinition: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+  }
+};
+
 PluginTest.describe("PluginBehavior:", () => {
-  PluginTest.test("Heartbeat (first)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([]), "Heartbeat"), ["UnknownPluginDetected"]));
-  PluginTest.test("Heartbeat (again)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents(["UnknownPluginDetected"]), "Heartbeat"), ["UnknownPluginDetected"]));
-  PluginTest.test("Heartbeat (connected)", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Heartbeat")));
-  PluginTest.test("Heartbeat (inactive)", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Heartbeat")));
-  PluginTest.test("Connect", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents(["UnknownPluginDetected"]), {
+  PluginTest.test("Heartbeat for an unknown version triggers detection", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([]), {
+    TAG: "Heartbeat",
+    _0: "1"
+  }), [{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]));
+  PluginTest.test("Heartbeat again while still only detected re-triggers detection", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]), {
+    TAG: "Heartbeat",
+    _0: "1"
+  }), [{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]));
+  PluginTest.test("Connect completes the handshake", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]), {
     TAG: "Connect",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
   }), [{
-      TAG: "Connected",
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]));
-  PluginTest.test("Connect (after multiple Heartbeats)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    "UnknownPluginDetected"
+  PluginTest.test("Connect is idempotent for an already-connected version", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Connect",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  })));
+  PluginTest.test("Heartbeat for a connected version is a keep-alive no-op", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Heartbeat",
+    _0: "1"
+  })));
+  PluginTest.test("Disconnect of the current version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Disconnect",
+    _0: "1"
+  }), [{
+      TAG: "VersionDisconnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]));
+  PluginTest.test("Heartbeat reconnects a disconnected version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    {
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    },
+    {
+      TAG: "VersionDisconnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }
   ]), {
+    TAG: "Heartbeat",
+    _0: "1"
+  }), [{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]));
+  PluginTest.test("A higher version connecting supersedes the current one", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Connect",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+  }), [
+    {
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+    },
+    supersededV1ByV2
+  ]));
+  PluginTest.test("A lower version connecting does not supersede the current one", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+    }]), {
     TAG: "Connect",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
   }), [{
-      TAG: "Connected",
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]));
-  PluginTest.test("Connect (again)", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
+  PluginTest.test("Disconnecting the current version promotes the highest live lower version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
     {
-      TAG: "Connected",
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    },
+    {
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+    }
+  ]), {
+    TAG: "Disconnect",
+    _0: "2"
+  }), [
+    {
+      TAG: "VersionDisconnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
+    },
+    {
+      TAG: "VersionPromoted",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }
+  ]));
+  PluginTest.test("Disconnecting the current with no other live version promotes nothing", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Disconnect",
+    _0: "1"
+  }), [{
+      TAG: "VersionDisconnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]));
+  PluginTest.test("Deactivate the current version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Deactivate",
+    _0: "1"
+  }), [{
+      TAG: "VersionDeactivated",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]));
+  PluginTest.test("Activate a deactivated version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
+    {
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    },
+    {
+      TAG: "VersionDeactivated",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }
   ]), {
-    TAG: "Connect",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), "AlreadyConnected"));
-  PluginTest.test("Disconnect", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Disconnect"), [{
-      TAG: "Disconnected",
+    TAG: "Activate",
+    _0: "1"
+  }), [{
+      TAG: "VersionActivated",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]));
-  PluginTest.test("Heartbeat (re-connect)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
+  PluginTest.test("Activate an unknown version errors", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), {
+    TAG: "Activate",
+    _0: "9"
+  }), "UnknownVersion"));
+  PluginTest.test("Retire the current version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]), {
+    TAG: "Retire",
+    _0: "1"
+  }), [{
+      TAG: "VersionRetired",
+      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+    }]));
+  PluginTest.test("Heartbeat does NOT revive a retired version (contrast with Disconnected)", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([
     {
-      TAG: "Connected",
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     },
     {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Heartbeat"), [{
-      TAG: "Reconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("Connect (disconnected)", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Disconnected",
+      TAG: "VersionRetired",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }
   ]), {
-    TAG: "Connect",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), "IsDisconnected"));
-  PluginTest.test("Deactivate", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
+    TAG: "Heartbeat",
+    _0: "1"
+  })));
+  PluginTest.test("Un-retire: admin Activate revives a retired version", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
     {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Deactivate"), [{
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("Deactivate (disconnected)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     },
     {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Deactivate"), [{
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("Activate (deactivated, disconnected)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Activate"), [{
-      TAG: "Activated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("Connect (inactive)", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
+      TAG: "VersionRetired",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }
   ]), {
-    TAG: "Connect",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), "IsInactive"));
-  PluginTest.test("Activate again", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Activate"), [{
-      TAG: "Activated",
+    TAG: "Activate",
+    _0: "1"
+  }), [{
+      TAG: "VersionActivated",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]));
-  PluginTest.test("Heartbeat (re-connected after re-activated)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
+  PluginTest.test("ReportIncompatibility records an event without changing state", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Activated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Heartbeat"), [{
-      TAG: "Reconnected",
+    }]), {
+    TAG: "ReportIncompatibility",
+    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
+  }), [{
+      TAG: "IncompatiblePluginDetected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]));
-  PluginTest.test("Connect (re-activated)", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Activated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), {
-    TAG: "Connect",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), "IsDisconnected"));
-  PluginTest.test("Connect (with UI fragments) emits UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents(["UnknownPluginDetected"]), {
+  PluginTest.test("Connect with UI fragments emits UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionDetected",
+      _0: "1"
+    }]), {
     TAG: "Connect",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
   }), [
     {
-      TAG: "Connected",
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
     },
     {
@@ -231,33 +254,15 @@ PluginTest.describe("PluginBehavior:", () => {
       }
     }
   ]));
-  PluginTest.test("Disconnect (with UI fragments) emits UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
+  PluginTest.test("Disconnect with UI fragments emits UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([{
+      TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }
-  ]), "Disconnect"), [
+    }]), {
+    TAG: "Disconnect",
+    _0: "1"
+  }), [
     {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "UIFragmentDeregistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI.id
-      }
-    }
-  ]));
-  PluginTest.test("Deactivate (connected, with UI fragments) emits UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }
-  ]), "Deactivate"), [
-    {
-      TAG: "Deactivated",
+      TAG: "VersionDisconnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
     },
     {
@@ -267,253 +272,10 @@ PluginTest.describe("PluginBehavior:", () => {
       }
     }
   ]));
-  PluginTest.test("Heartbeat (re-connect with UI fragments) emits UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }
-  ]), "Heartbeat"), [
-    {
-      TAG: "Reconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "UIFragmentRegistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI.id,
-        manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
-      }
-    }
-  ]));
-  PluginTest.test("Deactivate (disconnected, with UI fragments) emits no UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }
-  ]), "Deactivate"), [{
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }]));
-  PluginTest.test("Retire (connected)", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Retire"), [{
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("Retire (connected, with UI fragments) emits UIFragmentDeregistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }
-  ]), "Retire"), [
-    {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "UIFragmentDeregistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI.id
-      }
-    }
-  ]));
-  PluginTest.test("Retire (disconnected) emits Retired without UI fragment events", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }
-  ]), "Retire"), [{
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }]));
-  PluginTest.test("Retire (inactive/admin-suspended) supersedes via Retired", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Retire"), [{
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("Retire (retired) is idempotent", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Retire")));
-  PluginTest.test("Retire (detected) is a no-op (no events to register yet)", () => PluginTest.thenNoEvent(PluginTest.whenCmd(PluginTest.givenEvents(["UnknownPluginDetected"]), "Retire")));
-  PluginTest.test("Retire on a never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), "Retire"), "NotExisting"));
-  PluginTest.test("Activate (retired) is rejected — superseded versions are not admin-reactivatable", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Activate"), "IsRetired"));
-  PluginTest.test("Deactivate (retired) is rejected", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Deactivate"), "IsRetired"));
-  PluginTest.test("Connect (retired) is rejected", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), {
-    TAG: "Connect",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), "IsRetired"));
-  PluginTest.test("Heartbeat (retired) revives via Reconnected", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), "Heartbeat"), [{
-      TAG: "Reconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("Heartbeat (retired, with UI fragments) emits Reconnected + UIFragmentRegistered", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "Retired",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    }
-  ]), "Heartbeat"), [
-    {
-      TAG: "Reconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI
-    },
-    {
-      TAG: "UIFragmentRegistered",
-      _0: {
-        pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinitionWithUI.id,
-        manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
-      }
-    }
-  ]));
-  PluginTest.test("Connect on never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), {
-    TAG: "Connect",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), "NotExisting"));
-  PluginTest.test("Disconnect on never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), "Disconnect"), "NotExisting"));
-  PluginTest.test("Activate on never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), "Activate"), "NotExisting"));
-  PluginTest.test("Deactivate on never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), "Deactivate"), "NotExisting"));
-  PluginTest.test("ReportIncompatibility on never-detected plugin returns NotExisting", () => PluginTest.thenError(PluginTest.whenCmd(PluginTest.givenEvents([]), {
-    TAG: "ReportIncompatibility",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), "NotExisting"));
-  PluginTest.test("ReportIncompatibility (detected) records IncompatiblePluginDetected", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents(["UnknownPluginDetected"]), {
-    TAG: "ReportIncompatibility",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), [{
-      TAG: "IncompatiblePluginDetected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("ReportIncompatibility (connected) records IncompatiblePluginDetected", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), {
-    TAG: "ReportIncompatibility",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), [{
-      TAG: "IncompatiblePluginDetected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("ReportIncompatibility (disconnected) records IncompatiblePluginDetected", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Disconnected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), {
-    TAG: "ReportIncompatibility",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), [{
-      TAG: "IncompatiblePluginDetected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
-  PluginTest.test("ReportIncompatibility (inactive) records IncompatiblePluginDetected", () => PluginTest.thenEvents(PluginTest.whenCmd(PluginTest.givenEvents([
-    "UnknownPluginDetected",
-    {
-      TAG: "Connected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    },
-    {
-      TAG: "Deactivated",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }
-  ]), {
-    TAG: "ReportIncompatibility",
-    _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), [{
-      TAG: "IncompatiblePluginDetected",
-      _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-    }]));
 });
 
 export {
   PluginTest,
+  supersededV1ByV2,
 }
 /* PluginTest Not a pure module */

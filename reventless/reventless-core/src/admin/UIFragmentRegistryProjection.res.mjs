@@ -11,9 +11,6 @@ function project(param) {
   let event = param.event;
   let time = param.meta.time;
   let id = param.id;
-  if (typeof event !== "object") {
-    return "Ignore";
-  }
   switch (event.TAG) {
     case "UIFragmentRegistered" :
       let manifest = event._0.manifest;

@@ -4,352 +4,143 @@ open Plugin_Fixtures
 module PluginTest = ReventlessGwt.Behavior_GWT.MakeFromAggregate(PluginSpec, PluginBehavior)
 open PluginTest
 
+// Name-keyed lifecycle aggregate. Commands carry the version; the aggregate
+// decides supersession / promotion from event-driven status in `known` and
+// never reads wall-clock time.
+
+let supersededV1ByV2 = VersionSuperseded({
+  supersededVersion: "1",
+  supersededDefinition: pluginDefinition,
+  newVersion: "2",
+  newDefinition: pluginDefinitionV2,
+})
+
 describe("PluginBehavior:", () => {
-  test("Heartbeat (first)", () =>
-    givenEvents([])->whenCmd(Heartbeat)->thenEvents([UnknownPluginDetected])
+  // ── Detection → connect handshake ──────────────────────────────────────────
+  test("Heartbeat for an unknown version triggers detection", () =>
+    givenEvents([])->whenCmd(Heartbeat("1"))->thenEvents([VersionDetected("1")])
   )
 
-  test("Heartbeat (again)", () =>
-    givenEvents([UnknownPluginDetected])->whenCmd(Heartbeat)->thenEvents([UnknownPluginDetected])
+  test("Heartbeat again while still only detected re-triggers detection", () =>
+    // VersionDetected does not add the version to `known`, so a repeat heartbeat
+    // re-emits it (idempotent handshake trigger).
+    givenEvents([VersionDetected("1")])->whenCmd(Heartbeat("1"))->thenEvents([VersionDetected("1")])
   )
 
-  test("Heartbeat (connected)", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenCmd(Heartbeat)
+  test("Connect completes the handshake", () =>
+    givenEvents([VersionDetected("1")])
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenEvents([VersionConnected(pluginDefinition)])
+  )
+
+  test("Connect is idempotent for an already-connected version", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Connect(pluginDefinition))
     ->thenNoEvent
   )
 
-  test("Heartbeat (inactive)", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Deactivated(pluginDefinition)])
-    ->whenCmd(Heartbeat)
+  test("Heartbeat for a connected version is a keep-alive no-op", () =>
+    givenEvents([VersionConnected(pluginDefinition)])->whenCmd(Heartbeat("1"))->thenNoEvent
+  )
+
+  // ── Disconnect / reconnect ─────────────────────────────────────────────────
+  test("Disconnect of the current version", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Disconnect("1"))
+    ->thenEvents([VersionDisconnected(pluginDefinition)])
+  )
+
+  test("Heartbeat reconnects a disconnected version", () =>
+    givenEvents([VersionConnected(pluginDefinition), VersionDisconnected(pluginDefinition)])
+    ->whenCmd(Heartbeat("1"))
+    ->thenEvents([VersionConnected(pluginDefinition)])
+  )
+
+  // ── Supersession (newer version takes over) ────────────────────────────────
+  test("A higher version connecting supersedes the current one", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Connect(pluginDefinitionV2))
+    ->thenEvents([VersionConnected(pluginDefinitionV2), supersededV1ByV2])
+  )
+
+  test("A lower version connecting does not supersede the current one", () =>
+    givenEvents([VersionConnected(pluginDefinitionV2)])
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenEvents([VersionConnected(pluginDefinition)])
+  )
+
+  // ── Rollback (promote highest still-live on current loss) ───────────────────
+  test("Disconnecting the current version promotes the highest live lower version", () =>
+    givenEvents([VersionConnected(pluginDefinition), VersionConnected(pluginDefinitionV2)])
+    ->whenCmd(Disconnect("2"))
+    ->thenEvents([VersionDisconnected(pluginDefinitionV2), VersionPromoted(pluginDefinition)])
+  )
+
+  test("Disconnecting the current with no other live version promotes nothing", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Disconnect("1"))
+    ->thenEvents([VersionDisconnected(pluginDefinition)])
+  )
+
+  // ── Admin deactivate / activate ─────────────────────────────────────────────
+  test("Deactivate the current version", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Deactivate("1"))
+    ->thenEvents([VersionDeactivated(pluginDefinition)])
+  )
+
+  test("Activate a deactivated version", () =>
+    givenEvents([VersionConnected(pluginDefinition), VersionDeactivated(pluginDefinition)])
+    ->whenCmd(Activate("1"))
+    ->thenEvents([VersionActivated(pluginDefinition)])
+  )
+
+  test("Activate an unknown version errors", () =>
+    givenEvents([])->whenCmd(Activate("9"))->thenError(UnknownVersion)
+  )
+
+  // ── Manual retire + un-retire (decision A) ─────────────────────────────────
+  test("Retire the current version", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(Retire("1"))
+    ->thenEvents([VersionRetired(pluginDefinition)])
+  )
+
+  test("Heartbeat does NOT revive a retired version (contrast with Disconnected)", () =>
+    givenEvents([VersionConnected(pluginDefinition), VersionRetired(pluginDefinition)])
+    ->whenCmd(Heartbeat("1"))
     ->thenNoEvent
   )
 
-  test("Connect", () =>
-    givenEvents([UnknownPluginDetected])
-    ->whenCmd(Connect(pluginDefinition))
-    ->thenEvents([Connected(pluginDefinition)])
+  test("Un-retire: admin Activate revives a retired version", () =>
+    givenEvents([VersionConnected(pluginDefinition), VersionRetired(pluginDefinition)])
+    ->whenCmd(Activate("1"))
+    ->thenEvents([VersionActivated(pluginDefinition)])
   )
 
-  test("Connect (after multiple Heartbeats)", () =>
-    givenEvents([UnknownPluginDetected, UnknownPluginDetected])
-    ->whenCmd(Connect(pluginDefinition))
-    ->thenEvents([Connected(pluginDefinition)])
+  // ── Incompatibility (observation only) ─────────────────────────────────────
+  test("ReportIncompatibility records an event without changing state", () =>
+    givenEvents([VersionConnected(pluginDefinition)])
+    ->whenCmd(ReportIncompatibility(pluginDefinition))
+    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
   )
 
-  test("Connect (again)", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenCmd(Connect(pluginDefinition))
-    ->thenError(AlreadyConnected)
-  )
-
-  test("Disconnect", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenCmd(Disconnect)
-    ->thenEvents([Disconnected(pluginDefinition)])
-  )
-
-  test("Heartbeat (re-connect)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Disconnected(pluginDefinition),
-    ])
-    ->whenCmd(Heartbeat)
-    ->thenEvents([Reconnected(pluginDefinition)])
-  )
-
-  test("Connect (disconnected)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Disconnected(pluginDefinition),
-    ])
-    ->whenCmd(Connect(pluginDefinition))
-    ->thenError(IsDisconnected)
-  )
-
-  test("Deactivate", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenCmd(Deactivate)
-    ->thenEvents([Deactivated(pluginDefinition)])
-  )
-
-  test("Deactivate (disconnected)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Disconnected(pluginDefinition),
-    ])
-    ->whenCmd(Deactivate)
-    ->thenEvents([Deactivated(pluginDefinition)])
-  )
-
-  test("Activate (deactivated, disconnected)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Disconnected(pluginDefinition),
-      Deactivated(pluginDefinition),
-    ])
-    ->whenCmd(Activate)
-    ->thenEvents([Activated(pluginDefinition)])
-  )
-
-  test("Connect (inactive)", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Deactivated(pluginDefinition)])
-    ->whenCmd(Connect(pluginDefinition))
-    ->thenError(IsInactive)
-  )
-
-  test("Activate again", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Deactivated(pluginDefinition)])
-    ->whenCmd(Activate)
-    ->thenEvents([Activated(pluginDefinition)])
-  )
-
-  test("Heartbeat (re-connected after re-activated)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Deactivated(pluginDefinition),
-      Activated(pluginDefinition),
-    ])
-    ->whenCmd(Heartbeat)
-    ->thenEvents([Reconnected(pluginDefinition)])
-  )
-
-  test("Connect (re-activated)", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Deactivated(pluginDefinition),
-      Activated(pluginDefinition),
-    ])
-    ->whenCmd(Connect(pluginDefinition))
-    ->thenError(IsDisconnected)
-  )
-
-  test("Connect (with UI fragments) emits UIFragmentRegistered", () =>
-    givenEvents([UnknownPluginDetected])
+  // ── UI fragments ────────────────────────────────────────────────────────────
+  test("Connect with UI fragments emits UIFragmentRegistered", () =>
+    givenEvents([VersionDetected("1")])
     ->whenCmd(Connect(pluginDefinitionWithUI))
     ->thenEvents([
-      Connected(pluginDefinitionWithUI),
+      VersionConnected(pluginDefinitionWithUI),
       UIFragmentRegistered({pluginId: pluginDefinitionWithUI.id, manifest: uiManifest}),
     ])
   )
 
-  test("Disconnect (with UI fragments) emits UIFragmentDeregistered", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinitionWithUI)])
-    ->whenCmd(Disconnect)
+  test("Disconnect with UI fragments emits UIFragmentDeregistered", () =>
+    givenEvents([VersionConnected(pluginDefinitionWithUI)])
+    ->whenCmd(Disconnect("1"))
     ->thenEvents([
-      Disconnected(pluginDefinitionWithUI),
+      VersionDisconnected(pluginDefinitionWithUI),
       UIFragmentDeregistered({pluginId: pluginDefinitionWithUI.id}),
     ])
-  )
-
-  test("Deactivate (connected, with UI fragments) emits UIFragmentDeregistered", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinitionWithUI)])
-    ->whenCmd(Deactivate)
-    ->thenEvents([
-      Deactivated(pluginDefinitionWithUI),
-      UIFragmentDeregistered({pluginId: pluginDefinitionWithUI.id}),
-    ])
-  )
-
-  test("Heartbeat (re-connect with UI fragments) emits UIFragmentRegistered", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinitionWithUI),
-      Disconnected(pluginDefinitionWithUI),
-    ])
-    ->whenCmd(Heartbeat)
-    ->thenEvents([
-      Reconnected(pluginDefinitionWithUI),
-      UIFragmentRegistered({pluginId: pluginDefinitionWithUI.id, manifest: uiManifest}),
-    ])
-  )
-
-  test("Deactivate (disconnected, with UI fragments) emits no UIFragmentDeregistered", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinitionWithUI),
-      Disconnected(pluginDefinitionWithUI),
-    ])
-    ->whenCmd(Deactivate)
-    ->thenEvents([Deactivated(pluginDefinitionWithUI)])
-  )
-
-  // ── Retire — deploy-driven supersession of an older plugin version ───────
-  //
-  // Issued by the platform deploy hook (publishRetireForOlderPluginVersions).
-  // Lands in the Retired state — distinct from Inactive (admin Deactivate):
-  // an admin cannot Activate it back, but the version's own Heartbeat
-  // (rollback / redeploy) revives it through Reconnected.
-
-  test("Retire (connected)", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenCmd(Retire)
-    ->thenEvents([Retired(pluginDefinition)])
-  )
-
-  test("Retire (connected, with UI fragments) emits UIFragmentDeregistered", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinitionWithUI)])
-    ->whenCmd(Retire)
-    ->thenEvents([
-      Retired(pluginDefinitionWithUI),
-      UIFragmentDeregistered({pluginId: pluginDefinitionWithUI.id}),
-    ])
-  )
-
-  test("Retire (disconnected) emits Retired without UI fragment events", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinitionWithUI),
-      Disconnected(pluginDefinitionWithUI),
-    ])
-    ->whenCmd(Retire)
-    ->thenEvents([Retired(pluginDefinitionWithUI)])
-  )
-
-  test("Retire (inactive/admin-suspended) supersedes via Retired", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Deactivated(pluginDefinition),
-    ])
-    ->whenCmd(Retire)
-    ->thenEvents([Retired(pluginDefinition)])
-  )
-
-  test("Retire (retired) is idempotent", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Retired(pluginDefinition),
-    ])
-    ->whenCmd(Retire)
-    ->thenNoEvent
-  )
-
-  test("Retire (detected) is a no-op (no events to register yet)", () =>
-    givenEvents([UnknownPluginDetected])
-    ->whenCmd(Retire)
-    ->thenNoEvent
-  )
-
-  test("Retire on a never-detected plugin returns NotExisting", () =>
-    givenEvents([])
-    ->whenCmd(Retire)
-    ->thenError(NotExisting)
-  )
-
-  test("Activate (retired) is rejected — superseded versions are not admin-reactivatable", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Retired(pluginDefinition),
-    ])
-    ->whenCmd(Activate)
-    ->thenError(IsRetired)
-  )
-
-  test("Deactivate (retired) is rejected", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Retired(pluginDefinition)])
-    ->whenCmd(Deactivate)
-    ->thenError(IsRetired)
-  )
-
-  test("Connect (retired) is rejected", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Retired(pluginDefinition)])
-    ->whenCmd(Connect(pluginDefinition))
-    ->thenError(IsRetired)
-  )
-
-  test("Heartbeat (retired) revives via Reconnected", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Retired(pluginDefinition),
-    ])
-    ->whenCmd(Heartbeat)
-    ->thenEvents([Reconnected(pluginDefinition)])
-  )
-
-  test("Heartbeat (retired, with UI fragments) emits Reconnected + UIFragmentRegistered", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinitionWithUI),
-      Retired(pluginDefinitionWithUI),
-    ])
-    ->whenCmd(Heartbeat)
-    ->thenEvents([
-      Reconnected(pluginDefinitionWithUI),
-      UIFragmentRegistered({pluginId: pluginDefinitionWithUI.id, manifest: uiManifest}),
-    ])
-  )
-
-  // ── NotConnected / Detected exhaustive negative-case coverage ────────────
-  //
-  // Surfaces the NotExisting error path so accidental relaxations show up
-  // immediately rather than failing at runtime.
-
-  test("Connect on never-detected plugin returns NotExisting", () =>
-    givenEvents([])->whenCmd(Connect(pluginDefinition))->thenError(NotExisting)
-  )
-
-  test("Disconnect on never-detected plugin returns NotExisting", () =>
-    givenEvents([])->whenCmd(Disconnect)->thenError(NotExisting)
-  )
-
-  test("Activate on never-detected plugin returns NotExisting", () =>
-    givenEvents([])->whenCmd(Activate)->thenError(NotExisting)
-  )
-
-  test("Deactivate on never-detected plugin returns NotExisting", () =>
-    givenEvents([])->whenCmd(Deactivate)->thenError(NotExisting)
-  )
-
-  test("ReportIncompatibility on never-detected plugin returns NotExisting", () =>
-    givenEvents([])
-    ->whenCmd(ReportIncompatibility(pluginDefinition))
-    ->thenError(NotExisting)
-  )
-
-  // ── ReportIncompatibility — protocol-version drift observability ─────────
-  //
-  // ReportIncompatibility never changes connection state — it only records an
-  // IncompatiblePluginDetected event for operator visibility.
-
-  test("ReportIncompatibility (detected) records IncompatiblePluginDetected", () =>
-    givenEvents([UnknownPluginDetected])
-    ->whenCmd(ReportIncompatibility(pluginDefinition))
-    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
-  )
-
-  test("ReportIncompatibility (connected) records IncompatiblePluginDetected", () =>
-    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    ->whenCmd(ReportIncompatibility(pluginDefinition))
-    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
-  )
-
-  test("ReportIncompatibility (disconnected) records IncompatiblePluginDetected", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Disconnected(pluginDefinition),
-    ])
-    ->whenCmd(ReportIncompatibility(pluginDefinition))
-    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
-  )
-
-  test("ReportIncompatibility (inactive) records IncompatiblePluginDetected", () =>
-    givenEvents([
-      UnknownPluginDetected,
-      Connected(pluginDefinition),
-      Deactivated(pluginDefinition),
-    ])
-    ->whenCmd(ReportIncompatibility(pluginDefinition))
-    ->thenEvents([IncompatiblePluginDetected(pluginDefinition)])
   )
 })

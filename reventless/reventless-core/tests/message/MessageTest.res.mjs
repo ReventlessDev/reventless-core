@@ -13,7 +13,10 @@ globalThis.describe("Message should", () => {
     ], 123456789)).toBe("123456789-000000001");
   });
   globalThis.test("get variant name of json without payload", () => {
-    let variantJson = Message$ReventlessCore.encode("Heartbeat", PluginSpec$ReventlessCore.commandSchema);
+    let variantJson = Message$ReventlessCore.encode({
+      TAG: "Heartbeat",
+      _0: "0.0.0"
+    }, PluginSpec$ReventlessCore.commandSchema);
     let variantName = Message$ReventlessCore.variantNameOfJson(variantJson);
     globalThis.expect(variantName).toBe("Heartbeat");
   });
@@ -58,10 +61,13 @@ globalThis.describe("Message should", () => {
         msgId: "testMsgId",
         correlationId: "testCorrelationId"
       },
-      event: "UnknownPluginDetected"
+      event: {
+        TAG: "VersionDetected",
+        _0: "0.0.0"
+      }
     }, S.string, PluginSpec$ReventlessCore.eventSchema);
     let eventName = Message$ReventlessCore.eventNameOfEvent$pJson(eventJson$p);
-    globalThis.expect(eventName).toBe("UnknownPluginDetected");
+    globalThis.expect(eventName).toBe("VersionDetected");
   });
   globalThis.test("get id of eventJson'", () => {
     let eventJson$p = Message$ReventlessCore.encodeEvent$p({
@@ -74,7 +80,10 @@ globalThis.describe("Message should", () => {
         msgId: "testMsgId",
         correlationId: "testCorrelationId"
       },
-      event: "UnknownPluginDetected"
+      event: {
+        TAG: "VersionDetected",
+        _0: "0.0.0"
+      }
     }, S.string, PluginSpec$ReventlessCore.eventSchema);
     let eventId = Stdlib_Option.getOrThrow(Message$ReventlessCore.idOfEvent$pJson(eventJson$p), undefined);
     globalThis.expect(eventId).toBe("testId");

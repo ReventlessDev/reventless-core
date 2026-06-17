@@ -27,7 +27,10 @@ globalThis.describe("LogFormat", () => {
       globalThis.expect(LogFormat$ReventlessCore.commandJsonsToLogMessages(arr)).toEqual([]);
     });
     globalThis.test("simple", () => {
-      let commands = ["Heartbeat"];
+      let commands = [{
+          TAG: "Heartbeat",
+          _0: "0.0.0"
+        }];
       let meta = {
         service: "testService",
         time: "testTime",
@@ -42,12 +45,15 @@ globalThis.describe("LogFormat", () => {
         meta: meta,
         commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
-      let expected = `1/1: \x1b[1mHeartbeat\x1b[0m(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":"0"}`;
+      let expected = `1/1: \x1b[1mHeartbeat\x1b[0m(0): {"command":{"TAG":"Heartbeat","_0":"0.0.0"},"meta":` + metaStr + `,"id":"0"}`;
       globalThis.expect(LogFormat$ReventlessCore.commandJsonsToLogMessages(arr)).toEqual([expected]);
     });
     globalThis.test("complex", () => {
       let commands = [
-        "Heartbeat",
+        {
+          TAG: "Heartbeat",
+          _0: "0.0.0"
+        },
         {
           TAG: "Connect",
           _0: {
@@ -88,7 +94,7 @@ globalThis.describe("LogFormat", () => {
         meta: meta,
         commandJson: Message$ReventlessCore.encode(command, PluginSpec$ReventlessCore.commandSchema)
       }));
-      let expected1 = `1/2: \x1b[1mHeartbeat\x1b[0m(0): {"command":"Heartbeat","meta":` + metaStr + `,"id":"0"}`;
+      let expected1 = `1/2: \x1b[1mHeartbeat\x1b[0m(0): {"command":{"TAG":"Heartbeat","_0":"0.0.0"},"meta":` + metaStr + `,"id":"0"}`;
       let expected2 = `2/2: \x1b[1mConnect\x1b[0m(1): {"command":{"TAG":"Connect","_0":{"id":"id","name":"testName","version":"testVersion","extensionPoints":[{"name":"testExtensionPoint","commandTopic":"testCommandTopic","eventTopic":"testEventTopic"}],"extensions":[{"name":"testExtension","extensionPointName":"testExtensionPoint","dcbSources":[]}],"eventCollector":"testEventCollector","extensionProtocols":[],"apiSchemaFragment":null,"apiTarget":null,"uiFragments":null,"structure":null,"dcbEventLog":null}},"meta":` + metaStr + `,"id":"1"}`;
       globalThis.expect(LogFormat$ReventlessCore.commandJsonsToLogMessages(arr)).toEqual([
         expected1,
@@ -108,10 +114,13 @@ globalThis.describe("LogFormat", () => {
           msgId: "testMsgId",
           correlationId: "testCorrelationId"
         },
-        event: "UnknownPluginDetected"
+        event: {
+          TAG: "VersionDetected",
+          _0: "0.0.0"
+        }
       }, S.string, PluginSpec$ReventlessCore.eventSchema);
       let msg = LogFormat$ReventlessCore.event$pJsonToLogMessage(eventJson$p);
-      globalThis.expect(msg).toEqual(`\x1b[1mUnknownPluginDetected\x1b[0m(testId): {"event":"UnknownPluginDetected","meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`);
+      globalThis.expect(msg).toEqual(`\x1b[1mVersionDetected\x1b[0m(testId): {"event":{"TAG":"VersionDetected","_0":"0.0.0"},"meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`);
     });
   });
 });
@@ -276,7 +285,10 @@ globalThis.describe("JSON sink", () => {
       msgId: "testMsgId",
       correlationId: "testCorrelationId"
     };
-    let cmd_commandJson = Message$ReventlessCore.encode("Heartbeat", PluginSpec$ReventlessCore.commandSchema);
+    let cmd_commandJson = Message$ReventlessCore.encode({
+      TAG: "Heartbeat",
+      _0: "0.0.0"
+    }, PluginSpec$ReventlessCore.commandSchema);
     let cmd = {
       id: "0",
       meta: cmd_meta,

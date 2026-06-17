@@ -136,10 +136,15 @@ module Make = (Spec: Spec) => {
     // injected, move-safe) referenced from Plugin_Helpers.
     let moduleUrl = PluginExtensionPointSpec.moduleUrl
 
+    // The Plugin aggregate is keyed by plugin **name**; the EP transport id is
+    // `name@version` (Approach 1). Translate at this boundary: route Delegate
+    // commands to `Plugin.name(id)` and carry the version (from the id) in the
+    // command. The EP keeps its per-version disconnect schedule keyed by the
+    // full `id` — liveness stays scheduler-driven, the aggregate never reads time.
     let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
       switch cmd {
       | PluginExtensionPointSpec.Heartbeat(interval) => [
-          PublishCommand(id, Delegate.Heartbeat),
+          PublishCommand(Plugin.name(id), Delegate.Heartbeat(Plugin.version(id))),
           // Re-create timeout (+2 minute to avoid toggling)
           // 1 minute because Schedules can only be created by minute
           // 1 additional minute to allow additional latency
@@ -165,13 +170,16 @@ module Make = (Spec: Spec) => {
               ->JSON.stringifyAny
               ->Option.getOr("[]")}`,
           )->Effect.runSync
-          [PublishCommand(id, Delegate.ReportIncompatibility(pluginDefinition))]
+          [PublishCommand(Plugin.name(id), Delegate.ReportIncompatibility(pluginDefinition))]
         } else {
           []
         }
-        Array.concat([PublishCommand(id, Delegate.Connect(pluginDefinition))], reportAction)
+        Array.concat(
+          [PublishCommand(Plugin.name(id), Delegate.Connect(pluginDefinition))],
+          reportAction,
+        )
       | DisconnectPlugin => [
-          PublishCommand(id, Disconnect),
+          PublishCommand(Plugin.name(id), Delegate.Disconnect(Plugin.version(id))),
           HandleDirective(directiveHandler, DeleteDisconnectSchedule(id)),
         ]
       | ForwardCommand(forwardCommand) => [HandleDirective(directiveHandler, ForwardCommand(forwardCommand))]
@@ -180,32 +188,39 @@ module Make = (Spec: Spec) => {
     let mapOutgoingEvent = Some(
       (id, event, _meta, _queryEngine) =>
         switch event {
-        | Delegate.UnknownPluginDetected => [
-            PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
+        // `id` is the Plugin aggregate id (= name). VersionDetected re-builds the
+        // `name@version` id so the matching version's ConnectExtension (which keys
+        // on its own pluginDefinition.id) answers the handshake. Events carrying a
+        // definition publish with `def.id` (= name@version), preserving the prior
+        // cross-plugin wire id.
+        | Delegate.VersionDetected(version) => [
+            PublishEvent(Plugin.makeId(id, version), PluginExtensionPointSpec.UnknownPluginDetected),
           ]
-        | Connected(pluginDefinition) => [
-            PublishEvent(id, PluginConnected(pluginDefinition)),
+        | VersionConnected(pluginDefinition)
+        | VersionPromoted(pluginDefinition) => [
+            PublishEvent(pluginDefinition.id, PluginConnected(pluginDefinition)),
             HandleDirective(directiveHandler, DoConnectPlugin(pluginDefinition)),
           ]
-        | Reconnected(pluginDefinition) => [
-            PublishEvent(id, PluginReconnected(pluginDefinition)),
-            HandleDirective(directiveHandler, DoConnectPlugin(pluginDefinition)),
-          ]
-        | Disconnected(pluginDefinition) => [
-            PublishEvent(id, PluginDisconnected(pluginDefinition)),
+        // Supersession shares the name-keyed infra with the new current version
+        // (whose VersionConnected already re-stitched the schema); no EP action.
+        | VersionSuperseded(_) => []
+        | VersionDisconnected(pluginDefinition) => [
+            PublishEvent(pluginDefinition.id, PluginDisconnected(pluginDefinition)),
             HandleDirective(directiveHandler, DoDisconnectPlugin(pluginDefinition)),
           ]
-        | Deactivated(pluginDefinition) => [
-            PublishEvent(id, PluginDeactivated(pluginDefinition)),
+        | VersionDeactivated(pluginDefinition) => [
+            PublishEvent(pluginDefinition.id, PluginDeactivated(pluginDefinition)),
             HandleDirective(directiveHandler, DoDisconnectPlugin(pluginDefinition)),
           ]
-        | Activated(pluginDefinition) => [PublishEvent(id, PluginActivated(pluginDefinition))]
-        | Retired(pluginDefinition) => [
-            PublishEvent(id, PluginRetired(pluginDefinition)),
+        | VersionActivated(pluginDefinition) => [
+            PublishEvent(pluginDefinition.id, PluginActivated(pluginDefinition)),
+          ]
+        | VersionRetired(pluginDefinition) => [
+            PublishEvent(pluginDefinition.id, PluginRetired(pluginDefinition)),
             HandleDirective(directiveHandler, DoDisconnectPlugin(pluginDefinition)),
           ]
         | IncompatiblePluginDetected(pluginDefinition) => [
-            PublishEvent(id, IncompatiblePlugin(pluginDefinition)),
+            PublishEvent(pluginDefinition.id, IncompatiblePlugin(pluginDefinition)),
           ]
         | UIFragmentRegistered(_) | UIFragmentUpdated(_) | UIFragmentDeregistered(_) => []
         },

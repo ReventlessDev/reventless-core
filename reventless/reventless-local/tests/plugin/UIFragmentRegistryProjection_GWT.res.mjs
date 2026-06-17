@@ -77,33 +77,36 @@ UIFragmentRegistryProjectionTest.describe("UIFragmentRegistryProjection:", () =>
       pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id
     }
   })));
-  UIFragmentRegistryProjectionTest.test("Connected is ignored", undefined, () => UIFragmentRegistryProjectionTest.thenState(UIFragmentRegistryProjectionTest.whenEvent(UIFragmentRegistryProjectionTest.givenEvents([{
+  UIFragmentRegistryProjectionTest.test("VersionConnected is ignored", undefined, () => UIFragmentRegistryProjectionTest.thenState(UIFragmentRegistryProjectionTest.whenEvent(UIFragmentRegistryProjectionTest.givenEvents([{
       TAG: "UIFragmentRegistered",
       _0: {
         pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id,
         manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
       }
     }]), {
-    TAG: "Connected",
+    TAG: "VersionConnected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
   }), registeredState));
-  UIFragmentRegistryProjectionTest.test("Disconnected is ignored", undefined, () => UIFragmentRegistryProjectionTest.thenState(UIFragmentRegistryProjectionTest.whenEvent(UIFragmentRegistryProjectionTest.givenEvents([{
+  UIFragmentRegistryProjectionTest.test("VersionDisconnected is ignored", undefined, () => UIFragmentRegistryProjectionTest.thenState(UIFragmentRegistryProjectionTest.whenEvent(UIFragmentRegistryProjectionTest.givenEvents([{
       TAG: "UIFragmentRegistered",
       _0: {
         pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id,
         manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
       }
     }]), {
-    TAG: "Disconnected",
+    TAG: "VersionDisconnected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
   }), registeredState));
-  UIFragmentRegistryProjectionTest.test("UnknownPluginDetected is ignored", undefined, () => UIFragmentRegistryProjectionTest.thenState(UIFragmentRegistryProjectionTest.whenEvent(UIFragmentRegistryProjectionTest.givenEvents([{
+  UIFragmentRegistryProjectionTest.test("VersionDetected is ignored", undefined, () => UIFragmentRegistryProjectionTest.thenState(UIFragmentRegistryProjectionTest.whenEvent(UIFragmentRegistryProjectionTest.givenEvents([{
       TAG: "UIFragmentRegistered",
       _0: {
         pluginId: Plugin_Fixtures$ReventlessLocal.pluginDefinition.id,
         manifest: Plugin_Fixtures$ReventlessLocal.uiManifest
       }
-    }]), "UnknownPluginDetected"), registeredState));
+    }]), {
+    TAG: "VersionDetected",
+    _0: "1"
+  }), registeredState));
 });
 
 export {

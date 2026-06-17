@@ -6,6 +6,7 @@ import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Plugin$ReventlessCore from "../component/Plugin.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
 import * as Compat$ReventlessInterop from "@reventlessdev/reventless-interop/src/Compat.res.mjs";
 import * as PluginSpec$ReventlessCore from "../lifecycle/PluginSpec.res.mjs";
@@ -117,8 +118,11 @@ function Make(Spec) {
       return [
         {
           TAG: "PublishCommand",
-          _0: id,
-          _1: "Disconnect"
+          _0: Plugin$ReventlessCore.name(id),
+          _1: {
+            TAG: "Disconnect",
+            _0: Plugin$ReventlessCore.version(id)
+          }
         },
         {
           TAG: "HandleDirective",
@@ -135,8 +139,11 @@ function Make(Spec) {
         return [
           {
             TAG: "PublishCommand",
-            _0: id,
-            _1: "Heartbeat"
+            _0: Plugin$ReventlessCore.name(id),
+            _1: {
+              TAG: "Heartbeat",
+              _0: Plugin$ReventlessCore.version(id)
+            }
           },
           {
             TAG: "HandleDirective",
@@ -153,7 +160,7 @@ function Make(Spec) {
         let protocolErrors = pluginDefinition.extensionProtocols.flatMap(proto => Compat$ReventlessInterop.validateProtocol(CompatMatrix$ReventlessInterop.corePlugin, proto.extensionPointName, proto.commandVersion, proto.eventVersion));
         let reportAction = protocolErrors.length !== 0 ? (Effect.runSync(EffectLogger$ReventlessCore.logWarn("Core.Plugin", undefined, `Protocol version mismatch for plugin ` + pluginDefinition.id + `: ` + Stdlib_Option.getOr(JSON.stringify(protocolErrors), "[]"))), [{
               TAG: "PublishCommand",
-              _0: id,
+              _0: Plugin$ReventlessCore.name(id),
               _1: {
                 TAG: "ReportIncompatibility",
                 _0: pluginDefinition
@@ -161,7 +168,7 @@ function Make(Spec) {
             }]) : [];
         return [{
             TAG: "PublishCommand",
-            _0: id,
+            _0: Plugin$ReventlessCore.name(id),
             _1: {
               TAG: "Connect",
               _0: pluginDefinition
@@ -179,22 +186,24 @@ function Make(Spec) {
     }
   };
   let mapOutgoingEvent = (id, event, _meta, _queryEngine) => {
-    if (typeof event !== "object") {
-      return [{
-          TAG: "PublishEvent",
-          _0: id,
-          _1: "UnknownPluginDetected"
-        }];
-    }
     switch (event.TAG) {
-      case "Connected" :
+      case "VersionDetected" :
+        return [{
+            TAG: "PublishEvent",
+            _0: Plugin$ReventlessCore.makeId(id, event._0),
+            _1: "UnknownPluginDetected"
+          }];
+      case "VersionConnected" :
+      case "VersionPromoted" :
+        break;
+      case "VersionDisconnected" :
         let pluginDefinition = event._0;
         return [
           {
             TAG: "PublishEvent",
-            _0: id,
+            _0: pluginDefinition.id,
             _1: {
-              TAG: "PluginConnected",
+              TAG: "PluginDisconnected",
               _0: pluginDefinition
             }
           },
@@ -202,39 +211,29 @@ function Make(Spec) {
             TAG: "HandleDirective",
             _0: directiveHandler,
             _1: {
-              TAG: "DoConnectPlugin",
+              TAG: "DoDisconnectPlugin",
               _0: pluginDefinition
             }
           }
         ];
-      case "Reconnected" :
+      case "VersionActivated" :
         let pluginDefinition$1 = event._0;
-        return [
-          {
+        return [{
             TAG: "PublishEvent",
-            _0: id,
+            _0: pluginDefinition$1.id,
             _1: {
-              TAG: "PluginReconnected",
+              TAG: "PluginActivated",
               _0: pluginDefinition$1
             }
-          },
-          {
-            TAG: "HandleDirective",
-            _0: directiveHandler,
-            _1: {
-              TAG: "DoConnectPlugin",
-              _0: pluginDefinition$1
-            }
-          }
-        ];
-      case "Disconnected" :
+          }];
+      case "VersionDeactivated" :
         let pluginDefinition$2 = event._0;
         return [
           {
             TAG: "PublishEvent",
-            _0: id,
+            _0: pluginDefinition$2.id,
             _1: {
-              TAG: "PluginDisconnected",
+              TAG: "PluginDeactivated",
               _0: pluginDefinition$2
             }
           },
@@ -247,44 +246,15 @@ function Make(Spec) {
             }
           }
         ];
-      case "Activated" :
-        return [{
-            TAG: "PublishEvent",
-            _0: id,
-            _1: {
-              TAG: "PluginActivated",
-              _0: event._0
-            }
-          }];
-      case "Deactivated" :
+      case "VersionRetired" :
         let pluginDefinition$3 = event._0;
         return [
           {
             TAG: "PublishEvent",
-            _0: id,
-            _1: {
-              TAG: "PluginDeactivated",
-              _0: pluginDefinition$3
-            }
-          },
-          {
-            TAG: "HandleDirective",
-            _0: directiveHandler,
-            _1: {
-              TAG: "DoDisconnectPlugin",
-              _0: pluginDefinition$3
-            }
-          }
-        ];
-      case "Retired" :
-        let pluginDefinition$4 = event._0;
-        return [
-          {
-            TAG: "PublishEvent",
-            _0: id,
+            _0: pluginDefinition$3.id,
             _1: {
               TAG: "PluginRetired",
-              _0: pluginDefinition$4
+              _0: pluginDefinition$3
             }
           },
           {
@@ -292,22 +262,42 @@ function Make(Spec) {
             _0: directiveHandler,
             _1: {
               TAG: "DoDisconnectPlugin",
-              _0: pluginDefinition$4
+              _0: pluginDefinition$3
             }
           }
         ];
       case "IncompatiblePluginDetected" :
+        let pluginDefinition$4 = event._0;
         return [{
             TAG: "PublishEvent",
-            _0: id,
+            _0: pluginDefinition$4.id,
             _1: {
               TAG: "IncompatiblePlugin",
-              _0: event._0
+              _0: pluginDefinition$4
             }
           }];
       default:
         return [];
     }
+    let pluginDefinition$5 = event._0;
+    return [
+      {
+        TAG: "PublishEvent",
+        _0: pluginDefinition$5.id,
+        _1: {
+          TAG: "PluginConnected",
+          _0: pluginDefinition$5
+        }
+      },
+      {
+        TAG: "HandleDirective",
+        _0: directiveHandler,
+        _1: {
+          TAG: "DoConnectPlugin",
+          _0: pluginDefinition$5
+        }
+      }
+    ];
   };
   let PluginMapping = {
     ExtensionPoint: undefined,
