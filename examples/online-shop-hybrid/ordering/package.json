@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/online-shop-hybrid-ordering",
-  "version": "1.0.0-alpha.83",
+  "version": "1.0.0-alpha.84",
   "description": "Online Shop Hybrid example — Ordering plugin (Customer aggregate + Order/CatalogProduct DCB)",
   "license": "Apache-2.0",
   "scripts": {
@@ -32,11 +32,11 @@
     "@reventlessdev/online-shop-hybrid-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-hybrid-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4",
-    "@reventlessdev/reventless-gwt": "workspace:*"
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",

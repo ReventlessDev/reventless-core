@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-catalog",
   "private": true,
-  "version": "3.0.0-alpha.85",
+  "version": "3.0.0-alpha.86",
   "description": "Online Shop example — Catalog plugin (Product & Category aggregates)",
   "license": "Apache-2.0",
   "scripts": {
@@ -33,11 +33,11 @@
     "@reventlessdev/online-shop-aggregates-catalog-spec": "workspace:*",
     "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4",
-    "@reventlessdev/reventless-gwt": "workspace:*"
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",

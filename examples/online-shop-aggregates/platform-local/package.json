@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-aggregates-platform-local",
   "private": true,
-  "version": "1.0.0-alpha.79",
+  "version": "1.0.0-alpha.80",
   "description": "Online Shop Aggregates example — full platform with Catalog + Ordering plugins (in-memory)",
   "license": "Apache-2.0",
   "scripts": {
@@ -45,11 +45,11 @@
     "@reventlessdev/online-shop-aggregates-ordering": "workspace:*",
     "@reventlessdev/online-shop-aggregates-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4",
-    "@reventlessdev/reventless-gwt": "workspace:*"
+    "sury": "^11.0.0-alpha.4"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

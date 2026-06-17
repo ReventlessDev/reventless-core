@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.6 (2026-06-17)
+
+### Features
+
+* **reventless-dev:** emit component definitions over the NDJSON protocol (Phase 6.3) ([a327084](https://github.com/ReventlessDev/reventless-core/commit/a327084d247d1600c4f9e92624f2b59e856913f7))
+* **vscode-protocol:** publish @reventlessdev/reventless-vscode-protocol ([0bdfa4a](https://github.com/ReventlessDev/reventless-core/commit/0bdfa4a7c408e6a58a5a22995f4cfe0cc604500f))
+
+
 # 1.0.0-alpha.5 (2026-06-10)
 
 ### Bug Fixes

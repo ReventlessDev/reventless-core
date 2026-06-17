@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.56 (2026-06-17)
+
+* feat!: harmonize plugin make() across aggregate/DCB/hybrid; AutoUI default-on ([6f3b95e](https://github.com/ReventlessDev/reventless-core/commit/6f3b95e6aa8a136c6e837346c41a3a4dff0f9405))
+### Features
+
+* **core:** carry emitted-event field schemas in pluginStructure (Phase 6.3) ([693d452](https://github.com/ReventlessDev/reventless-core/commit/693d4529ee4c66a2a4a4b0d4d7efb104cf94bcab))
+
+### BREAKING CHANGES
+
+* makeAutoUIManifest signature dropped ~aggregates and
+~readModels; replaced with ~pluginStructure. Hand-written Plugin.res files
+that pass ~uiBundleUrl to plugin.make must drop the arg and rely on the
+generator-emitted env var read.
+
+
+
 # 3.0.0-alpha.55 (2026-06-12)
 
 ### Features

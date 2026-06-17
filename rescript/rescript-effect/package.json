@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/rescript-effect",
-  "version": "0.1.0-alpha.20",
+  "version": "0.1.0-alpha.21",
   "description": "ReScript bindings for the Effect TypeScript library",
   "license": "Apache-2.0",
   "scripts": {
@@ -21,8 +21,8 @@
     ]
   },
   "dependencies": {
-    "effect": "3.21.2",
-    "@reventlessdev/rescript-jest": "workspace:*"
+    "@reventlessdev/rescript-jest": "workspace:*",
+    "effect": "3.21.2"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

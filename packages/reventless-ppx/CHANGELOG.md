@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.41 (2026-06-17)
+
+### Bug Fixes
+
+* **packaging:** executable ppx binaries + promote phantom deps for standalone installs ([9b6bea2](https://github.com/ReventlessDev/reventless-core/commit/9b6bea24570b0b0654c825d560ef781c0295512a))
+* **ppx:** republish PPX binaries at alpha.40 for SideEffect_GWT kind inference ([d5247bd](https://github.com/ReventlessDev/reventless-core/commit/d5247bd1001e24baa9f58ec41aef49b29fa6d89c))
+### Features
+
+* **gwt:** add SideEffect_GWT for aggregate-style egress ([cb6e88d](https://github.com/ReventlessDev/reventless-core/commit/cb6e88dfa73c7772f7519b6fece9cd10771ff30a))
+
+
 # 1.0.0-alpha.39 (2026-06-12)
 
 ### Bug Fixes

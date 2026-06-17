@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.59 (2026-06-17)
+
+### Bug Fixes
+
+* **packaging:** executable ppx binaries + promote phantom deps for standalone installs ([9b6bea2](https://github.com/ReventlessDev/reventless-core/commit/9b6bea24570b0b0654c825d560ef781c0295512a))
+* feat!: rename Call directive to HandleDirective for naming consistency ([3fdf84a](https://github.com/ReventlessDev/reventless-core/commit/3fdf84a503b8ee9b07d0774e34c911f5d90d45d0))
+### Features
+
+* **core:** carry emitted-event field schemas in pluginStructure (Phase 6.3) ([693d452](https://github.com/ReventlessDev/reventless-core/commit/693d4529ee4c66a2a4a4b0d4d7efb104cf94bcab))
+* **gwt:** add Flow_GWT.AggregateCommandStep ([3be5afe](https://github.com/ReventlessDev/reventless-core/commit/3be5afe19458dbdf4a37b680f18870e2abc8bda5))
+* **gwt:** add SideEffect_GWT for aggregate-style egress ([cb6e88d](https://github.com/ReventlessDev/reventless-core/commit/cb6e88dfa73c7772f7519b6fece9cd10771ff30a))
+* **gwt:** assert handled directives in Delegate_GWT ([b4ca27e](https://github.com/ReventlessDev/reventless-core/commit/b4ca27e3aa0e2588610aefc62ad927da935a6a08))
+* **gwt:** bidirectional Delegate_GWT drivers with direction-named verbs ([bb5de9e](https://github.com/ReventlessDev/reventless-core/commit/bb5de9eff2b06cedd72bc6c70747c8159937044e))
+* **gwt:** cross-plugin AggregatesFlow_GWT + close hybrid-parity plan ([e223566](https://github.com/ReventlessDev/reventless-core/commit/e223566c54938ed6dcb8d8bd4570e0fd0f30ca07))
+* **reventless-dev:** emit component definitions over the NDJSON protocol (Phase 6.3) ([a327084](https://github.com/ReventlessDev/reventless-core/commit/a327084d247d1600c4f9e92624f2b59e856913f7))
+
+### BREAKING CHANGES
+
+* out-of-tree plugins emitting Call(handler, msg) from
+commandAction / eventAction / incomingCommandAction / outgoingCommandAction
+must rename to HandleDirective(handler, directive). The callHandler<'msg>
+type alias is now directiveHandler<'directive>.
+
+Plan: docs/plans/done/directive-naming-consistency.md
+
+
+
 # 1.0.0-alpha.58 (2026-06-12)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

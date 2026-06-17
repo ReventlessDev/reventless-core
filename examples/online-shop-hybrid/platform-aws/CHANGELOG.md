@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.96 (2026-06-17)
+
+### Bug Fixes
+
+* **deps:** pin ppx alpha.40 binaries and bump reventless-host-shell to alpha.29 ([57d5b99](https://github.com/ReventlessDev/reventless-core/commit/57d5b993090f482326769c97a282c4cba2d32041))
+
+
 # 1.0.0-alpha.95 (2026-06-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-platform-aws

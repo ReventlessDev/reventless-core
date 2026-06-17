@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-aws",
-  "version": "3.0.0-alpha.149",
+  "version": "3.0.0-alpha.150",
   "description": "AWS adapters for Reventless",
   "license": "Apache-2.0",
   "scripts": {
@@ -22,6 +22,7 @@
     "@aws-sdk/client-cloudfront": "3.970.0",
     "@reventlessdev/rescript-aws-sdk": "workspace:*",
     "@reventlessdev/rescript-effect": "workspace:*",
+    "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/rescript-pulumi-aws": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-uuid": "workspace:*",
@@ -29,9 +30,8 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "uuid": "^13.0.0",
     "sury": "11.0.0-alpha.4",
-    "@reventlessdev/rescript-jest": "workspace:*"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "rescript": "^12.3.0",

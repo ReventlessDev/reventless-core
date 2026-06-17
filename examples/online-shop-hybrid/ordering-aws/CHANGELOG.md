@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.106 (2026-06-17)
+
+* feat!: harmonize plugin make() across aggregate/DCB/hybrid; AutoUI default-on ([6f3b95e](https://github.com/ReventlessDev/reventless-core/commit/6f3b95e6aa8a136c6e837346c41a3a4dff0f9405))
+
+### BREAKING CHANGES
+
+* makeAutoUIManifest signature dropped ~aggregates and
+~readModels; replaced with ~pluginStructure. Hand-written Plugin.res files
+that pass ~uiBundleUrl to plugin.make must drop the arg and rely on the
+generator-emitted env var read.
+
+
+
 # 1.0.0-alpha.105 (2026-06-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering-aws

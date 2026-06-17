@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-platform-local",
   "private": true,
-  "version": "1.0.0-alpha.78",
+  "version": "1.0.0-alpha.79",
   "description": "Online Shop DCB example — full platform with Catalog + Ordering plugins (in-memory)",
   "license": "Apache-2.0",
   "scripts": {
@@ -45,11 +45,11 @@
     "@reventlessdev/online-shop-dcb-ordering": "workspace:*",
     "@reventlessdev/online-shop-dcb-ordering-spec": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
+    "@reventlessdev/reventless-gwt": "workspace:*",
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-local": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "sury": "^11.0.0-alpha.4",
-    "@reventlessdev/reventless-gwt": "workspace:*"
+    "sury": "^11.0.0-alpha.4"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",

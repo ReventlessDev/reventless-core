@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.48 (2026-06-17)
+
+* feat(example)!: type the directive channel in the hybrid example ([7ee7527](https://github.com/ReventlessDev/reventless-core/commit/7ee75275a01808c83df3e5c4f309c1be851bcffb))
+
+### BREAKING CHANGES
+
+* `Products_ExtensionPoint.directive` and
+`Orders_ExtensionPoint.directive` are no longer `unit`. Out-of-tree
+consumers that declared `type directive = unit` and then referenced it
+in code need a one-line rename. In-repo callers are updated.
+
+
+
 # 1.0.0-alpha.47 (2026-06-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-catalog-spec

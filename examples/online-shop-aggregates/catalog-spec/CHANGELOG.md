@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.52 (2026-06-17)
+
+### Features
+
+* **examples:** bring aggregates and dcb examples to hybrid parity ([dcf797a](https://github.com/ReventlessDev/reventless-core/commit/dcf797a73693a0dca2b2021486a15df8fc69d1e0))
+
+
 # 3.0.0-alpha.51 (2026-06-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-catalog-spec

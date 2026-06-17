@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.86 (2026-06-17)
+
+### Bug Fixes
+
+* **packaging:** executable ppx binaries + promote phantom deps for standalone installs ([9b6bea2](https://github.com/ReventlessDev/reventless-core/commit/9b6bea24570b0b0654c825d560ef781c0295512a))
+* feat!: harmonize plugin make() across aggregate/DCB/hybrid; AutoUI default-on ([6f3b95e](https://github.com/ReventlessDev/reventless-core/commit/6f3b95e6aa8a136c6e837346c41a3a4dff0f9405))
+### Features
+
+* **examples:** bring aggregates and dcb examples to hybrid parity ([dcf797a](https://github.com/ReventlessDev/reventless-core/commit/dcf797a73693a0dca2b2021486a15df8fc69d1e0))
+* **gwt:** add SideEffect_GWT for aggregate-style egress ([cb6e88d](https://github.com/ReventlessDev/reventless-core/commit/cb6e88dfa73c7772f7519b6fece9cd10771ff30a))
+
+### BREAKING CHANGES
+
+* makeAutoUIManifest signature dropped ~aggregates and
+~readModels; replaced with ~pluginStructure. Hand-written Plugin.res files
+that pass ~uiBundleUrl to plugin.make must drop the arg and rely on the
+generator-emitted env var read.
+
+
+
 # 3.0.0-alpha.85 (2026-06-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-ordering

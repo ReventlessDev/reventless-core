@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.80 (2026-06-17)
+
+### Bug Fixes
+
+* **deps:** pin ppx alpha.40 binaries and bump reventless-host-shell to alpha.29 ([57d5b99](https://github.com/ReventlessDev/reventless-core/commit/57d5b993090f482326769c97a282c4cba2d32041))
+* feat!: harmonize plugin make() across aggregate/DCB/hybrid; AutoUI default-on ([6f3b95e](https://github.com/ReventlessDev/reventless-core/commit/6f3b95e6aa8a136c6e837346c41a3a4dff0f9405))
+### Features
+
+* **examples:** bring aggregates and dcb examples to hybrid parity ([dcf797a](https://github.com/ReventlessDev/reventless-core/commit/dcf797a73693a0dca2b2021486a15df8fc69d1e0))
+* **gwt:** add Flow_GWT.AggregateCommandStep ([3be5afe](https://github.com/ReventlessDev/reventless-core/commit/3be5afe19458dbdf4a37b680f18870e2abc8bda5))
+* **gwt:** cross-plugin AggregatesFlow_GWT + close hybrid-parity plan ([e223566](https://github.com/ReventlessDev/reventless-core/commit/e223566c54938ed6dcb8d8bd4570e0fd0f30ca07))
+
+### BREAKING CHANGES
+
+* makeAutoUIManifest signature dropped ~aggregates and
+~readModels; replaced with ~pluginStructure. Hand-written Plugin.res files
+that pass ~uiBundleUrl to plugin.make must drop the arg and rely on the
+generator-emitted env var read.
+
+
+
 # 1.0.0-alpha.79 (2026-06-12)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-aggregates-platform-local

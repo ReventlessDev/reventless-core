@@ -1,6 +1,6 @@
 {
   "name": "@reventlessdev/reventless-core",
-  "version": "3.0.0-alpha.118",
+  "version": "3.0.0-alpha.119",
   "description": "Core package for Reventless framework",
   "license": "Apache-2.0",
   "jest": {
@@ -42,6 +42,7 @@
     "@reventlessdev/rescript-effect": "workspace:*",
     "@reventlessdev/rescript-fast-csv": "workspace:*",
     "@reventlessdev/rescript-hash-object": "workspace:*",
+    "@reventlessdev/rescript-jest": "workspace:*",
     "@reventlessdev/rescript-node-streams": "workspace:*",
     "@reventlessdev/rescript-pulumi-pulumi": "workspace:*",
     "@reventlessdev/rescript-ssh2": "workspace:*",
@@ -49,9 +50,8 @@
     "@reventlessdev/reventless-infra": "workspace:*",
     "@reventlessdev/reventless-interop": "workspace:*",
     "@reventlessdev/reventless-spec": "workspace:*",
-    "uuid": "^13.0.0",
     "sury": "11.0.0-alpha.4",
-    "@reventlessdev/rescript-jest": "workspace:*"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@reventlessdev/reventless-ppx": "workspace:*",

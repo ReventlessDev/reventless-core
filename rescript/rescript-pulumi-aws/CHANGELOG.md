@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.41 (2026-06-17)
+
+### Bug Fixes
+
+* **packaging:** executable ppx binaries + promote phantom deps for standalone installs ([9b6bea2](https://github.com/ReventlessDev/reventless-core/commit/9b6bea24570b0b0654c825d560ef781c0295512a))
+
+
 # 2.4.0-alpha.40 (2026-06-10)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws
