@@ -48,7 +48,10 @@ async function buildAllHandlers() {
     const noOpQueryEngine = { scan: async () => [], query: async () => [] };
     const callback = sideEffectHandlerCallbackMake({ sideEffects: sideEffectModules, queryEngine: noOpQueryEngine });
     const handler = (event, context) => handleStreamEvent(callback.handleJsonEvents, event, context);
-    handlers[h.sourceUrn] = handler;
+    // Multiple side-effect handlers can share one source stream. Accumulate all
+    // per source ARN; a plain assignment collapses them to one (Promise.all
+    // race), silently dropping the rest.
+    (handlers[h.sourceUrn] ||= []).push(handler);
   }));
 
   return handlers;
@@ -63,10 +66,12 @@ export async function handler(event, context) {
   const grouped = groupBySource(records);
 
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
-    const streamHandler = handlers[arn];
-    if (streamHandler !== undefined) {
-      log.debug("found handler for " + arn, { comp: "SideEffectRuntime" });
-      await runEffect(undefined, streamHandler({ Records: subRecords }, context));
+    const streamHandlers = handlers[arn];
+    if (streamHandlers !== undefined && streamHandlers.length > 0) {
+      log.debug("found " + streamHandlers.length + " handler(s) for " + arn, { comp: "SideEffectRuntime" });
+      await Promise.all(streamHandlers.map(h =>
+        runEffect(undefined, h({ Records: subRecords }, context))
+      ));
     } else {
       log.warn("no handler found: " + arn, { comp: "SideEffectRuntime" });
     }

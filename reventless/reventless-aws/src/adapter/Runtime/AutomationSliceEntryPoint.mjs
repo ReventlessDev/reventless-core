@@ -91,7 +91,12 @@ async function buildAllHandlers() {
     const callbackMake = h.callbackType === "outbound"
       ? prim => outboundTranslationSliceCallbackMake(prim)
       : prim => automationSliceCallbackMake(prim);
-    handlers[h.sourceUrn] = buildHandler(specModule, callbackMake, h.queryDbTableName, h.dcbQueueUrl);
+    const handler = buildHandler(specModule, callbackMake, h.queryDbTableName, h.dcbQueueUrl);
+    // Multiple slices can share one source stream (e.g. several automation
+    // slices reacting to the same DcbEventLog). Accumulate all handlers per
+    // source ARN; a plain assignment collapses them to one (Promise.all race),
+    // silently dropping the rest.
+    (handlers[h.sourceUrn] ||= []).push(handler);
   }));
   return handlers;
 }
@@ -105,10 +110,12 @@ export async function handler(event, context) {
   const grouped = groupBySource(records);
 
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
-    const streamHandler = handlers[arn];
-    if (streamHandler !== undefined) {
-      log.debug("found handler for " + arn, { comp: "AutomationSliceRuntime" });
-      await runEffect(undefined, streamHandler({ Records: subRecords }, context));
+    const streamHandlers = handlers[arn];
+    if (streamHandlers !== undefined && streamHandlers.length > 0) {
+      log.debug("found " + streamHandlers.length + " handler(s) for " + arn, { comp: "AutomationSliceRuntime" });
+      await Promise.all(streamHandlers.map(h =>
+        runEffect(undefined, h({ Records: subRecords }, context))
+      ));
     } else {
       log.warn("no handler found: " + arn, { comp: "AutomationSliceRuntime" });
     }

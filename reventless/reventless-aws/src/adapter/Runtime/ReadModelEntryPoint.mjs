@@ -103,7 +103,13 @@ async function buildAllHandlers() {
     const specModule = await dynamicImport(h.specModule);
     const mappingsModule = await dynamicImport(h.mappingsModule);
     const handler = buildReadModelHandler(specModule, mappingsModule, h.queryDbTableName);
-    handlers[h.sourceUrn] = handler;
+    // Multiple read models can share one source stream — e.g. every admin read
+    // model (Plugins, PluginHistory, PlatformEventGraph, UIFragmentRegistry)
+    // projects the Plugin aggregate's EventLog stream. Accumulate ALL handlers
+    // per source ARN; a plain `handlers[urn] = handler` collapses them to one
+    // (whichever async builder wins the Promise.all race), silently dropping the
+    // rest — which leaves their QueryDbs empty.
+    (handlers[h.sourceUrn] ||= []).push(handler);
   }));
 
   return handlers;
@@ -118,10 +124,16 @@ export async function handler(event, context) {
   const grouped = groupBySource(records);
 
   await Promise.all(Object.entries(grouped).map(async ([arn, subRecords]) => {
-    const streamHandler = handlers[arn];
-    if (streamHandler !== undefined) {
-      log.debug("found handler for " + arn, { comp: "ReadModelRuntime" });
-      await runEffect(undefined, streamHandler({ Records: subRecords }, context));
+    const streamHandlers = handlers[arn];
+    if (streamHandlers !== undefined && streamHandlers.length > 0) {
+      log.debug("found " + streamHandlers.length + " handler(s) for " + arn, { comp: "ReadModelRuntime" });
+      // Run every read model registered for this source stream (independent
+      // QueryDbs, so concurrent is safe).
+      await Promise.all(
+        streamHandlers.map(streamHandler =>
+          runEffect(undefined, streamHandler({ Records: subRecords }, context))
+        )
+      );
     } else {
       log.warn("no handler found: " + arn, { comp: "ReadModelRuntime" });
     }
