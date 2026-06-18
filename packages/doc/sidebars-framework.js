@@ -31,6 +31,7 @@ const sidebars = {
         'internals/serialization',
         'internals/resources',
         'internals/runtime',
+        'internals/plugin-lifecycle',
         'internals/pulumi',
         'internals/component-structure-pattern',
         'internals/mcp',

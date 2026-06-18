@@ -347,6 +347,11 @@ Heartbeat -> Admin: "heartbeat signal (every heartbeatInterval)"
 Admin -> Admin: Update plugin health status
 ```
 
+For how a plugin **version** moves between `Connected` / `Disconnected` / `Inactive` /
+`Retired` at runtime — heartbeat-driven liveness, the deploy overlap window, version
+supersession and failover, and how it's surfaced in the admin UI — see
+[Plugin Lifecycle](/framework/internals/plugin-lifecycle).
+
 ## Best Practices
 
 ### Plugin Design
