@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.101 (2026-06-18)
+
+### Features
+
+* **admin:** expose PluginHistory as a visible admin read model ([8a1d86e](https://github.com/ReventlessDev/reventless-core/commit/8a1d86ee30eddefe9a363eaf041e853c1d4e4af6))
+
+
 # 3.0.0-alpha.100 (2026-06-18)
 
 ### Features

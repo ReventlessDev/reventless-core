@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.153 (2026-06-18)
+
+### Bug Fixes
+
+* **aws:** run all runtime handlers sharing one source stream ([8a9546b](https://github.com/ReventlessDev/reventless-core/commit/8a9546b03156f50df309cc5ee935228b32581713))
+### Features
+
+* **admin:** expose PluginHistory as a visible admin read model ([8a1d86e](https://github.com/ReventlessDev/reventless-core/commit/8a1d86ee30eddefe9a363eaf041e853c1d4e4af6))
+
+
 # 3.0.0-alpha.152 (2026-06-18)
 
 ### Bug Fixes
