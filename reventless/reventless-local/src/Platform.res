@@ -665,6 +665,38 @@ module MakeWithConfig = (
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
   )
 
+  // Admin Plugin read models — driven by LocalPluginAggregate's event topic via
+  // the real projection subscriptions (same path as AWS). PluginsReadModel is the
+  // name-keyed current view ("Plugins"); PluginHistoryReadModel is the composite
+  // sub-id timeline ("PluginHistory"). The projection modules re-export `mappings`
+  // and an inner `Mappings` submodule but don't satisfy
+  // `Reventless.Projection.Mappings` at the top level (the `Mapping` type lives in
+  // the submodule), so we flatten them into wrapper modules — mirrors the AWS
+  // Platform.res PluginReadModelMappings / PluginHistoryReadModelMappings wrappers.
+  module PluginsReadModelMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.PluginsReadModelSpec = {
+    module M = ReventlessCore.PluginsProjection.Mappings
+    module type Mapping = M.Mapping
+    let moduleUrl: string = ReventlessCore.PluginsProjection.moduleUrl
+    let mappings: array<module(Mapping)> = ReventlessCore.PluginsProjection.mappings
+  }
+  module PluginsReadModel = ReadModelMaker.MakeNoResolver(
+    ReventlessCore.PluginsReadModelSpec,
+    PluginsReadModelMappings,
+  )
+
+  module PluginHistoryReadModelMappings: Reventless.Projection.Mappings
+    with module Target := ReventlessCore.PluginHistoryReadModelSpec = {
+    module M = ReventlessCore.PluginHistoryProjection.Mappings
+    module type Mapping = M.Mapping
+    let moduleUrl: string = ReventlessCore.PluginHistoryProjection.moduleUrl
+    let mappings: array<module(Mapping)> = ReventlessCore.PluginHistoryProjection.mappings
+  }
+  module PluginHistoryReadModel = ReadModelMaker.MakeNoResolver(
+    ReventlessCore.PluginHistoryReadModelSpec,
+    PluginHistoryReadModelMappings,
+  )
+
   module Admin = ReventlessCore.Platform_Admin.Make(
     LocalRuntimeEnvironment,
     EventCollectorChannel,
@@ -718,71 +750,13 @@ module MakeWithConfig = (
   // Shared helpers — used by both makePlatform and deployPlugin.
   // ---------------------------------------------------------------------------
 
-  // Plugin QueryDb store ops — initialized lazily on first seedPluginQueryDb call.
-  let pluginQueryDbOpsRef: ref<option<ReventlessCore.QueryDb_Adapter.operations>> = ref(None)
-
-  // Ensure the Plugin QueryDb store is registered in the Bus. Returns the ops handle.
-  let ensurePluginQueryDbStore = () => {
-    switch pluginQueryDbOpsRef.contents {
-    | Some(ops) => ops
-    | None =>
-      let pluginQueryDbName = ReventlessCore.PluginsReadModelSpec.name
-      let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
-      let allItems: ref<array<JSON.t>> = ref([])
-      let syncAll = () => {
-        allItems.contents =
-          store.contents
-          ->Dict.toArray
-          ->Array.flatMap(((id, items)) =>
-            items->Array.map(item => {
-              let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-              if !(obj->Dict.get("id")->Option.isSome) {
-                let copy = Dict.make()
-                obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
-                copy->Dict.set("id", JSON.Encode.string(id))
-                JSON.Encode.object(copy)
-              } else {
-                item
-              }
-            })
-          )
-      }
-      let pluginOps: ReventlessCore.QueryDb_Adapter.operations = {
-        load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
-        loadStream: id =>
-          store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
-        save: async (id, state, _, _) => {
-          store.contents->Dict.set(id, [state])
-          syncAll()
-          Ok()
-        },
-        saveBatch: async batch => {
-          batch->Array.forEach(((id, state, _)) => store.contents->Dict.set(id, [state]))
-          syncAll()
-          Ok()
-        },
-        count: async (_, _, inc) => Ok(inc),
-        delete: async (id, _) => {
-          store.contents->Dict.delete(id)
-          syncAll()
-          Ok()
-        },
-        deleteBatch: async ids => {
-          ids->Array.forEach(((id, _)) => store.contents->Dict.delete(id))
-          syncAll()
-          Ok()
-        },
-      }
-      Bus.registerQueryDb(pluginQueryDbName, pluginOps)
-      Bus.registerQueryDbScan(pluginQueryDbName, () => allItems.contents)
-      Bus.registerQueryDbStream(
-        pluginQueryDbName,
-        () => allItems.contents->Stream.fromIterable,
-      )
-      pluginQueryDbOpsRef := Some(pluginOps)
-      pluginOps
-    }
-  }
+  // The Plugin QueryDb store ("Plugins") is now owned by the real PluginsReadModel
+  // projection (wired into Admin.construct ~readModels). QueryDbStorage_InMemory
+  // registers it in the Bus under PluginsReadModelSpec.name, so the admin query
+  // resolvers / status gate that scan `Bus.getQueryDbScan(pluginQueryDbName)` pick
+  // it up automatically — no hand-rolled seed store here anymore. The same applies
+  // to the PluginHistory timeline ("PluginHistory"). Rows are produced by dispatching
+  // a synthetic `Connect(pluginDefinition)` to LocalPluginAggregate (see connectPlugin).
 
   // UIFragmentRegistry QueryDb store ops — initialized lazily on first seed call.
   let uiFragmentQueryDbOpsRef: ref<option<ReventlessCore.QueryDb_Adapter.operations>> = ref(None)
@@ -928,10 +902,114 @@ module MakeWithConfig = (
     })
   }
 
-  // Seed the Plugin QueryDb from constructed plugin component outputs.
-  // Uses real output values serialized via PluginsReadModelSpec.stateSchema.
-  let seedPluginQueryDb = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
-    let pluginOps = ensurePluginQueryDbStore()
+  // Bus keys for the admin Plugin aggregate (name-keyed). ComponentType.toName maps
+  // CommandTopic → "CmdTopic" and EventTopic → "EventTopic".
+  let pluginCmdTopicKey = ReventlessCore.PluginSpec.name ++ "Aggr" ++ "CmdTopic" // "PluginAggrCmdTopic"
+  let pluginEventTopicKey =
+    ReventlessCore.PluginSpec.name ++ "Aggr" ++ "EventTopic" // "PluginAggrEventTopic"
+
+  // Dispatch a Plugin aggregate command in-process via the Bus command topic. The
+  // body is the {id, meta, command} shape LocalCommandTopicChannel produces; the
+  // aggregate id is the plugin NAME. dispatchCommand parks the command until the
+  // aggregate's handler is registered (LocalBus pending-queue), so call-before-wire
+  // is safe.
+  let dispatchPluginCommand = (~pluginName: string, ~command: ReventlessCore.PluginSpec.command) => {
+    let cmdJson: Reventless.Message.commandJson = {
+      id: pluginName,
+      meta: ReventlessCore.Message.generateMeta(~service=ReventlessCore.PluginSpec.name),
+      commandJson: command->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginSpec.commandSchema),
+    }
+    Bus.dispatchCommand(pluginCmdTopicKey, ReventlessCore.CommandTopic.encodeCommandJson(cmdJson))
+  }
+
+  // Subscription topics for the admin live-update channels.
+  let pluginStatusSubTopic = "onPluginStatusChange"
+  let uiFragmentSubTopic = "onUIFragmentChange"
+
+  // Relocated Source-C emission: subscribe to the Plugin aggregate's event topic and
+  // fan each lifecycle event out to the matching GraphQL subscription. Status now
+  // flows from folding aggregate events (Connect / Activate / Deactivate / Retire),
+  // not from direct QueryDb writes, so the subscription emission lives here rather
+  // than inside the mutation resolvers. Idempotent: registered once per platform
+  // instance (guarded by pluginEventsSubscribed). Subscribe BEFORE any Connect
+  // dispatch — LocalBus drops events with no subscribers.
+  let pluginEventsSubscribed = ref(false)
+  let subscribeToPluginEvents = () =>
+    if !pluginEventsSubscribed.contents {
+      pluginEventsSubscribed := true
+      let publishStatus = (~name, ~status) =>
+        LocalGraphQL_SubscriptionResolvers.publish(
+          pluginStatusSubTopic,
+          JSON.Encode.object(
+            Dict.fromArray([
+              ("pluginId", JSON.Encode.string(name)),
+              ("status", JSON.Encode.string(status)),
+            ]),
+          ),
+        )
+      let publishUIFragment = (~name, ~changeKind, ~manifest) =>
+        LocalGraphQL_SubscriptionResolvers.publish(
+          uiFragmentSubTopic,
+          JSON.Encode.object(
+            Dict.fromArray([
+              ("pluginId", JSON.Encode.string(name)),
+              ("changeKind", JSON.Encode.string(changeKind)),
+              ("manifest", manifest),
+            ]),
+          ),
+        )
+      let manifestJson = (m: Reventless.Plugin.uiFragmentManifest) =>
+        m->S.reverseConvertToJsonOrThrow(Reventless.Plugin.uiFragmentManifestSchema)
+      Bus.subscribeToEvents(pluginEventTopicKey, async (_service, _meta, eventJson) => {
+        switch eventJson->S.convertOrThrow(ReventlessCore.PluginSpec.eventSchema) {
+        | VersionConnected(def)
+        | VersionActivated(def)
+        | VersionPromoted(def) =>
+          publishStatus(~name=def.name, ~status="Connected")
+        | VersionDisconnected(def) => publishStatus(~name=def.name, ~status="Disconnected")
+        | VersionDeactivated(def) => publishStatus(~name=def.name, ~status="Inactive")
+        | VersionRetired(def) => publishStatus(~name=def.name, ~status="Retired")
+        | UIFragmentRegistered(data) =>
+          publishUIFragment(
+            ~name=ReventlessCore.Plugin.name(data.pluginId),
+            ~changeKind="Registered",
+            ~manifest=manifestJson(data.manifest),
+          )
+        | UIFragmentUpdated(data) =>
+          publishUIFragment(
+            ~name=ReventlessCore.Plugin.name(data.pluginId),
+            ~changeKind="Updated",
+            ~manifest=manifestJson(data.newManifest),
+          )
+        | UIFragmentDeregistered(data) =>
+          publishUIFragment(
+            ~name=ReventlessCore.Plugin.name(data.pluginId),
+            ~changeKind="Deregistered",
+            ~manifest=JSON.Encode.null,
+          )
+        | VersionDetected(_)
+        | VersionSuperseded(_)
+        | IncompatiblePluginDetected(_) => ()
+        | exception _ => ()
+        }
+      })
+    }
+
+  // Drive the admin Plugin read models the same way AWS does: build a
+  // `pluginDefinition` from the constructed plugin component outputs and dispatch a
+  // synthetic `Connect(def)` to LocalPluginAggregate, keyed by the plugin NAME (the
+  // Plugin aggregate is name-keyed). The Plugin aggregate emits `VersionConnected`
+  // (+ `UIFragmentRegistered` / `VersionSuperseded`) on its event topic; the real
+  // PluginsProjection / PluginHistoryProjection subscriptions (registered by
+  // Admin.construct ~readModels) fold those events into the "Plugins" current view
+  // and the "PluginHistory" timeline QueryDb stores. This replaces the previous
+  // direct-write seed.
+  //
+  // dispatchCommand parks the command until LocalPluginAggregate's handler is
+  // registered (LocalBus pending-queue), so ordering against async wiring is safe.
+  // The aggregate's emitted events feed the read-model EventCollectors via the bus;
+  // by the time projection handlers are live the parked command drains.
+  let connectPlugin = (~pluginComponents: array<ReventlessCore.Plugin.component>) => {
     pluginComponents->Array.forEach(plugin => {
       let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
       let _ =
@@ -957,7 +1035,8 @@ module MakeWithConfig = (
           pluginStructure,
         )) => {
           let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
-          let state: ReventlessCore.PluginsReadModelSpec.state = {
+          let pluginDefinition: Reventless.Plugin.pluginDefinition = {
+            id,
             name: pluginName,
             version,
             eventCollector: eventCollector.name,
@@ -970,8 +1049,6 @@ module MakeWithConfig = (
                 eventTopic: ep.name,
               },
             ),
-            extensionPointNames: extensionPoints->Dict.keysToArray,
-            extensionNames: extensions->Dict.keysToArray,
             extensions: extensions
             ->Dict.toArray
             ->Array.map(
@@ -981,18 +1058,18 @@ module MakeWithConfig = (
                 dcbSources: [],
               },
             ),
-            status: Connected,
-            statusChange: {at: Date.make()->Date.toISOString, by: "local"},
+            extensionProtocols: [],
             apiSchemaFragment,
+            apiTarget: None,
             uiFragments,
             structure: pluginStructure,
             dcbEventLog: None,
-            knownStatuses: Dict.fromArray([(version, "Connected")]),
           }
-          let entry =
-            state->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
-          // Current view is keyed by plugin name (one row per name).
-          let _ = pluginOps.save(pluginName, entry, Any, None)
+          // Dispatch Connect(def) to the Plugin aggregate (id = plugin NAME).
+          let _ = dispatchPluginCommand(
+            ~pluginName,
+            ~command=ReventlessCore.PluginSpec.Connect(pluginDefinition),
+          )
         })
     })
   }
@@ -1262,7 +1339,7 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[],
       ~aggregates=[module(LocalPluginAggregate)],
-      ~readModels=[],
+      ~readModels=[module(PluginsReadModel), module(PluginHistoryReadModel)],
       ~scheduler,
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
@@ -1335,9 +1412,14 @@ module MakeWithConfig = (
       adminResources: [],
     })
 
-    // Seed the Plugin QueryDb from constructed plugin component outputs.
-    // Initializes the store on first call and serializes via PluginsReadModelSpec.stateSchema.
-    seedPluginQueryDb(~pluginComponents=plugins)
+    // Subscribe to the Plugin aggregate event topic (Source-C live-update emission)
+    // BEFORE dispatching Connect — LocalBus drops events with no subscribers.
+    subscribeToPluginEvents()
+    // Drive the admin Plugin read models via synthetic Connect dispatch through
+    // LocalPluginAggregate (replaces the old direct-write seed). The real
+    // PluginsProjection / PluginHistoryProjection folds the emitted events into
+    // the "Plugins" + "PluginHistory" QueryDb stores.
+    connectPlugin(~pluginComponents=plugins)
     seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
     seedPluginStructuresStore(~pluginComponents=plugins)
     seedPlatformEventGraphQueryDb(~pluginComponents=plugins)
@@ -1595,98 +1677,74 @@ module MakeWithConfig = (
 
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
-    // Helper: extract plugin id from mutation args, load state, apply status change, save.
-    let statusToString = (s: ReventlessCore.PluginsReadModelSpec.status) =>
-      switch s {
-      | Connected => "Connected"
-      | Disconnected => "Disconnected"
-      | Inactive => "Inactive"
-      | Retired => "Retired"
+    // Admin Plugin lifecycle mutations (Activate / Deactivate / Retire) now flow
+    // through the LocalPluginAggregate, mirroring AWS. The resolver looks up the
+    // plugin's current version from the "Plugins" read model (the aggregate is
+    // name-keyed but Activate/Deactivate/Retire target a specific version), then
+    // dispatches the matching command. The aggregate emits VersionActivated /
+    // VersionDeactivated / VersionRetired; PluginsProjection folds the new status
+    // into the store and subscribeToPluginEvents fans onPluginStatusChange out to
+    // live subscribers — so no direct QueryDb write or inline publish here.
+    let argId = (args: JSON.t) =>
+      args
+      ->JSON.Decode.object
+      ->Option.flatMap(d => d->Dict.get("id"))
+      ->Option.flatMap(JSON.Decode.string)
+      ->Option.getOr("")
+    // Resolve the plugin's current version from its Plugins read-model row.
+    let currentVersionOf = (pluginName: string): option<string> =>
+      switch Bus.getQueryDbScan(pluginQueryDbName) {
+      | Some(scanAll) =>
+        scanAll()->Array.findMap(json =>
+          switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
+          | state if state.name == pluginName => Some(state.version)
+          | _ => None
+          | exception _ => None
+          }
+        )
+      | None => None
       }
-    let pluginStatusSubTopic = "onPluginStatusChange"
-    let publishPluginStatusChange = (~pluginId, ~status) =>
-      LocalGraphQL_SubscriptionResolvers.publish(
-        pluginStatusSubTopic,
-        JSON.Encode.object(
-          Dict.fromArray([
-            ("pluginId", JSON.Encode.string(ReventlessCore.Plugin.name(pluginId))),
-            ("status", JSON.Encode.string(status)),
-          ]),
-        ),
-      )
-
-    let updatePluginStatus = async (
+    // The admin Plugin lifecycle SDL is `<field>(id: ID!, _0: String!)` — `id` is the
+    // plugin name (aggregate id) and `_0` is the target version (the command payload,
+    // e.g. `Activate(version)`). Use the caller-supplied `_0` when present; fall back
+    // to the plugin's current version from the Plugins read model for callers that
+    // omit it.
+    let argVersion = (args: JSON.t) =>
+      args
+      ->JSON.Decode.object
+      ->Option.flatMap(d => d->Dict.get("_0"))
+      ->Option.flatMap(JSON.Decode.string)
+    let dispatchLifecycle = (
       ~field: string,
       args: JSON.t,
-      newStatus: ReventlessCore.PluginsReadModelSpec.status,
-    ) => {
+      makeCommand: string => ReventlessCore.PluginSpec.command,
+    ): JSON.t => {
       let msgId = ReventlessCore.Message.uuid()
-      let id =
-        args
-        ->JSON.Decode.object
-        ->Option.flatMap(d => d->Dict.get("id"))
-        ->Option.flatMap(JSON.Decode.string)
-        ->Option.getOr("")
-      log.info(~comp="Admin", `${field}(${id}): received command (msgId: ${msgId})`)
-      switch Bus.getQueryDb(pluginQueryDbName) {
-      | Some(ops) =>
-        let items = await ops.loadStream(id)
-        ->Stream.runCollect
-        ->Effect.catchAll(_ => Effect.succeed([]))
-        ->Effect.runPromise
-        switch items->Array.get(0) {
-        | Some(json) =>
-          switch json->S.convertOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema) {
-          | state =>
-            let previousStatus = state.status->statusToString
-            let updated = {
-              ...state,
-              status: newStatus,
-              statusChange: {at: Date.make()->Date.toISOString, by: "local"},
-            }
-            let entry =
-              updated->S.reverseConvertToJsonOrThrow(ReventlessCore.PluginsReadModelSpec.stateSchema)
-            let _ = await ops.save(id, entry, Any, None)
-            log.info(~comp="Admin", `${field}(${id}): ${previousStatus} → ${newStatus->statusToString}`)
-            // Source C: fan the new status out to live onPluginStatusChange subscribers.
-            publishPluginStatusChange(~pluginId=id, ~status=newStatus->statusToString)
-          | exception e =>
-            log.error(
-              ~comp="Admin",
-              `${field}(${id}): failed to decode plugin state: ${e
-                ->JsExn.fromException
-                ->Option.flatMap(JsExn.message)
-                ->Option.getOr("unknown error")}`,
-            )
-          }
-        | None => log.warn(~comp="Admin", `${field}(${id}): plugin not found`)
-        }
-      | None => log.warn(~comp="Admin", `${field}(${id}): Plugin QueryDb not registered`)
+      let pluginName = argId(args)
+      let version = switch argVersion(args) {
+      | Some(v) if v != "" => Some(v)
+      | _ => currentVersionOf(pluginName)
       }
-      commandAccepted(~msgId, ~entityId=id)
+      switch version {
+      | Some(version) =>
+        log.info(~comp="Admin", `${field}(${pluginName}@${version}): dispatching to aggregate`)
+        let _ = dispatchPluginCommand(~pluginName, ~command=makeCommand(version))
+      | None => log.warn(~comp="Admin", `${field}(${pluginName}): plugin not found`)
+      }
+      commandAccepted(~msgId, ~entityId=pluginName)
     }
-
-    // Real resolvers for admin mutations — update plugin state in QueryDb.
-    //
-    // Activate replays the AWS event flow as two sequential writes, mirroring
-    // `PluginsProjection.res`:
-    //   1. `Activated` event → status Disconnected
-    //   2. Plugin reconnects → `Reconnected` event → status Connected
-    // In Lambda the second step is driven by the plugin process noticing the
-    // status flip and emitting `Reconnect`; in-memory plugins are loaded in
-    // the same process and have nothing to "reconnect", so the resolver
-    // synthesises both transitions back-to-back. Both fire onPluginStatusChange
-    // subscription events, matching what subscribers would see against
-    // AppSync.
     let activateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Activate")
     let deactivateField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Deactivate")
+    let retireField = ReventlessCore.Api_Naming.adminField(~name="Plugin_Retire")
     let mutationResolvers = Dict.make()
-    mutationResolvers->Dict.set(activateField, async (_root, args, _ctx): JSON.t => {
-      let _ = await updatePluginStatus(~field=activateField, args, Disconnected)
-      await updatePluginStatus(~field=activateField, args, Connected)
-    })
+    mutationResolvers->Dict.set(activateField, async (_root, args, _ctx): JSON.t =>
+      dispatchLifecycle(~field=activateField, args, v => ReventlessCore.PluginSpec.Activate(v))
+    )
     mutationResolvers->Dict.set(deactivateField, async (_root, args, _ctx): JSON.t =>
-      await updatePluginStatus(~field=deactivateField, args, Inactive)
+      dispatchLifecycle(~field=deactivateField, args, v => ReventlessCore.PluginSpec.Deactivate(v))
+    )
+    mutationResolvers->Dict.set(retireField, async (_root, args, _ctx): JSON.t =>
+      dispatchLifecycle(~field=retireField, args, v => ReventlessCore.PluginSpec.Retire(v))
     )
     // Remaining admin mutations (e.g., Clone) are no-ops in-memory.
     adminMutationFieldNames->Array.forEach(field =>
@@ -1696,8 +1754,9 @@ module MakeWithConfig = (
         )
       }
     )
-    // UIFragment Source C mutations — publish to PubSub so onUIFragmentChange fires.
-    let uiFragmentSubTopic = "onUIFragmentChange"
+    // UIFragment admin mutations — explicit admin-triggered fragment changes still
+    // publish onUIFragmentChange directly (aggregate-driven fragment changes are
+    // emitted by subscribeToPluginEvents). uiFragmentSubTopic is the shared topic.
     let makeUIEvent = (~pluginId, ~changeKind, ~manifest) =>
       JSON.Encode.object(
         Dict.fromArray([
@@ -1729,7 +1788,10 @@ module MakeWithConfig = (
       "Deregistered",
     )
     CommandGeneratorResolvers_GraphQL.ensureCommandResultTypes(platformGraphQL)
-    platformGraphQL.registerMutations(~sdlFields=adminMutationSdl(baseParts.mutations), ~resolvers=mutationResolvers)
+    platformGraphQL.registerMutations(
+      ~sdlFields=adminMutationSdl(baseParts.mutations),
+      ~resolvers=mutationResolvers,
+    )
     adminRegisteredServers.contents->Array.push(platformGraphQL)
     // Register onUIFragmentChange + onPluginStatusChange subscriptions (Source C).
     platformGraphQL.registerSubscriptions(
@@ -2055,7 +2117,7 @@ module MakeWithConfig = (
       ~version="",
       ~extensionPoints=[],
       ~aggregates=[module(LocalPluginAggregate)],
-      ~readModels=[],
+      ~readModels=[module(PluginsReadModel), module(PluginHistoryReadModel)],
       ~scheduler,
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
@@ -2275,8 +2337,11 @@ module MakeWithConfig = (
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server.asInterface
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = Some(domainRelaySupport)
 
-    // Seed the Plugin, UIFragmentRegistry, and UIDefinitions stores so this plugin appears in queries.
-    seedPluginQueryDb(~pluginComponents=[pluginComponent])
+    // Subscribe to the Plugin aggregate event topic before dispatching Connect.
+    subscribeToPluginEvents()
+    // Drive the admin Plugin read models via synthetic Connect dispatch through
+    // LocalPluginAggregate (replaces the old direct-write seed).
+    connectPlugin(~pluginComponents=[pluginComponent])
     seedUIFragmentRegistryQueryDb(~pluginComponents=[pluginComponent])
     seedPluginStructuresStore(~pluginComponents=[pluginComponent])
 

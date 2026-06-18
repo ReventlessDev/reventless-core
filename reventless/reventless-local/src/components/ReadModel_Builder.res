@@ -23,4 +23,25 @@ module Make = (Bus: LocalBus.T) => {
       EventCollectorChannel,
       EventCollectorRuntimeBuilder,
     )
+
+  // Resolver-free variant: registers the QueryDb store in the Bus and wires the
+  // EventCollector subscription, but does NOT register GraphQL query resolvers.
+  // Used for admin read models whose query resolvers are hand-registered onto the
+  // platform server by Platform.res (the auto resolvers would otherwise register
+  // admin-typed fields onto the domain server and break its schema). Mirrors the
+  // AWS NoResolver builder + core QueryDb_Adapter.NoResolvers.
+  module NoResolvers = ReventlessCore.QueryDb_Adapter.NoResolvers(QueryDbStorage)
+  module MakeNoResolver = (
+    Spec: Reventless.ReadModel.Spec,
+    Mappings: Reventless.Projection.Mappings with module Target := Spec,
+  ) =>
+    ReventlessCore.ReadModel_Builder.Make(
+      Spec,
+      Mappings,
+      RuntimeEnvironment,
+      QueryDbStorage,
+      NoResolvers,
+      EventCollectorChannel,
+      EventCollectorRuntimeBuilder,
+    )
 }

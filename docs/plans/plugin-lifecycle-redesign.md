@@ -15,8 +15,8 @@
 | Part 2 core — name-keyed aggregate + current view + EP translation | ✅ done | `c6720d0` — GWT-verified; core 418 + local 416 tests pass |
 | Part 2 — delete deploy-time retire hook | ✅ done | `3322841` — incl. `pluginAggrCmdTopicUrl` export/stack-ref removal |
 | **Bug fix (duplicate menu) — structurally resolved** | ✅ | one row per name + write-side supersession + hook gone |
-| Part 2 — `PluginHistory` view (core + AWS) | ✅ done | core spec/projection + 8 GWT tests; AWS `ReadModel_Builder_NoResolver_Stream` (composite-key, internal, no resolver). Local population folded into F1 refactor below |
-| Part 2 — F1 local Connect-flow refactor (decision ii) | ⬜ todo | interim: local seed is name-keyed direct-write; full refactor pending. **Now also owns local `PluginHistory` QueryDb population** (routing through the aggregate feeds both projections — no throwaway interim seed) |
+| Part 2 — `PluginHistory` view (core + AWS) | ✅ done | core spec/projection + 8 GWT tests; AWS `ReadModel_Builder_NoResolver_Stream` (composite-key, internal, no resolver). Local population landed with F1 refactor below |
+| Part 2 — F1 local Connect-flow refactor (decision ii) | ✅ done | local now routes through `LocalPluginAggregate`: real `PluginsReadModel` + `PluginHistoryReadModel` (NoResolver) wired into both `Admin.construct` sites; `seedPluginQueryDb` direct-write → synthetic `Connect(def)` dispatch; hand-written Activate/Deactivate resolvers → aggregate-dispatched `Activate`/`Deactivate`/`Retire`; `onPluginStatusChange`/`onUIFragmentChange` relocated to a Plugin-event-topic bus subscription. Verified at runtime (Platform_Plugins read; Deactivate→Inactive→Activate→Connected→Retire; PluginHistory timeline folds). core 418 + local 424 green |
 | Part 2 — AWS version-arg admin path | ⬜ verify | `Activate`/`Deactivate`/`Retire(version)` mutations (deploy-path, not test-covered) |
 | Part 3 — zero-downtime synthetic heartbeat + deploy contract | ⬜ todo | |
 
@@ -328,7 +328,11 @@ landed as one checkpoint):
    AppSync resolver — scan-consumed like UIFragmentRegistry). Local QueryDb
    population deferred to step 4 (it routes through the aggregate, feeding both
    `PluginsProjection` and `PluginHistoryProjection` — no interim direct-write).
-4. ⬜ local F1 refactor (§2.8) — also populates the local `PluginHistory` QueryDb.
+4. ✅ local F1 refactor (§2.8) — local routes through `LocalPluginAggregate`;
+   real `PluginsReadModel` + `PluginHistoryReadModel` projections own the QueryDb
+   stores; synthetic `Connect(def)` seed; aggregate-dispatched admin lifecycle
+   mutations; subscription emission relocated to a bus subscription. Runtime-
+   verified end-to-end. (Local `PluginHistory` QueryDb is populated here.)
 5. ⬜ AWS version-arg admin-path verification (§2.7).
 
 ---

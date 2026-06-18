@@ -7,13 +7,12 @@ import * as Stdlib_Bool from "@rescript/runtime/lib/es6/Stdlib_Bool.js";
 import * as Stdlib_Dict from "@rescript/runtime/lib/es6/Stdlib_Dict.js";
 import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
-import * as Stdlib_JsExn from "@rescript/runtime/lib/es6/Stdlib_JsExn.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
-import * as Primitive_exceptions from "@rescript/runtime/lib/es6/Primitive_exceptions.js";
+import * as Plugin$Reventless from "@reventlessdev/reventless-spec/src/components/Plugin.res.mjs";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Plugin$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/component/Plugin.res.mjs";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
@@ -26,6 +25,7 @@ import * as PluginSpec$ReventlessCore from "@reventlessdev/reventless-core/src/p
 import * as UserStore$ReventlessLocal from "./adapter/Auth/UserStore.res.mjs";
 import * as Api_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Api/Api_Builder.res.mjs";
 import * as TestRunner$ReventlessLocal from "./test/TestRunner.res.mjs";
+import * as CommandTopic$ReventlessCore from "@reventlessdev/reventless-core/src/components/CommandTopic/CommandTopic.res.mjs";
 import * as EffectLogger$ReventlessCore from "@reventlessdev/reventless-core/src/util/EffectLogger.res.mjs";
 import * as BackendState$ReventlessLocal from "./adapter/BackendState.res.mjs";
 import * as SqliteDriver$ReventlessLocal from "./adapter/SqliteDriver.res.mjs";
@@ -41,6 +41,7 @@ import * as NoEventMappings$ReventlessInfra from "@reventlessdev/reventless-infr
 import * as DomainMCP_Server$ReventlessLocal from "./adapter/DomainMCP_Server.res.mjs";
 import * as ExtensionMapping$ReventlessInfra from "@reventlessdev/reventless-infra/src/types/ExtensionMapping.res.mjs";
 import * as LocalQueryEngine$ReventlessLocal from "./adapter/QueryEngine/LocalQueryEngine.res.mjs";
+import * as PluginsProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginsProjection.res.mjs";
 import * as Scheduler_Builder$ReventlessCore from "@reventlessdev/reventless-core/src/components/Scheduler/Scheduler_Builder.res.mjs";
 import * as Aggregate_Builder$ReventlessLocal from "./components/Aggregate_Builder.res.mjs";
 import * as LocalClonerRunner$ReventlessLocal from "./adapter/Cloner/LocalClonerRunner.res.mjs";
@@ -56,6 +57,7 @@ import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/Even
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraphQL_Server.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
+import * as PluginHistoryProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginHistoryProjection.res.mjs";
 import * as StateViewSlice_Builder$ReventlessLocal from "./components/StateViewSlice_Builder.res.mjs";
 import * as AutomationSlice_Builder$ReventlessLocal from "./components/AutomationSlice_Builder.res.mjs";
 import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
@@ -66,6 +68,7 @@ import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/
 import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
+import * as PluginHistoryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginHistoryReadModelSpec.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as DcbEventLogStorage_InMemory$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
@@ -646,6 +649,34 @@ function MakeWithConfig(Config) {
     operations: LocalPluginAggregate_operations,
     finish: LocalPluginAggregate_finish
   };
+  let PluginsReadModelMappings = {
+    moduleUrl: PluginsProjection$ReventlessCore.moduleUrl,
+    mappings: PluginsProjection$ReventlessCore.mappings
+  };
+  let PluginsReadModel = ReadModelMaker.MakeNoResolver({
+    Id: Id$Reventless.$$String,
+    name: PluginsReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginsReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginsReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: PluginsReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginsReadModelSpec$ReventlessCore.visibility
+  })(PluginsReadModelMappings);
+  let PluginHistoryReadModelMappings = {
+    moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
+    mappings: PluginHistoryProjection$ReventlessCore.mappings
+  };
+  let PluginHistoryReadModel = ReadModelMaker.MakeNoResolver({
+    Id: Id$Reventless.$$String,
+    name: PluginHistoryReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginHistoryReadModelSpec$ReventlessCore.config,
+    subIdConfig: PluginHistoryReadModelSpec$ReventlessCore.subIdConfig,
+    authorization: PluginHistoryReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginHistoryReadModelSpec$ReventlessCore.visibility
+  })(PluginHistoryReadModelMappings);
   let $$let$1 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let $$let$2 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
@@ -685,95 +716,6 @@ function MakeWithConfig(Config) {
   let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
   let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
   let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
-  let pluginQueryDbOpsRef = {
-    contents: undefined
-  };
-  let ensurePluginQueryDbStore = () => {
-    let ops = pluginQueryDbOpsRef.contents;
-    if (ops !== undefined) {
-      return ops;
-    }
-    let store = {
-      contents: {}
-    };
-    let allItems = {
-      contents: []
-    };
-    let syncAll = () => {
-      allItems.contents = Object.entries(store.contents).flatMap(param => {
-        let id = param[0];
-        return param[1].map(item => {
-          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-          if (Stdlib_Option.isSome(obj["id"])) {
-            return item;
-          }
-          let copy = {};
-          Object.entries(obj).forEach(param => {
-            copy[param[0]] = param[1];
-          });
-          copy["id"] = id;
-          return copy;
-        });
-      });
-    };
-    let pluginOps_load = async id => ({
-      TAG: "Ok",
-      _0: Stdlib_Option.getOr(store.contents[id], [])
-    });
-    let pluginOps_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
-    let pluginOps_save = async (id, state, param, param$1) => {
-      store.contents[id] = [state];
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps_saveBatch = async batch => {
-      batch.forEach(param => {
-        store.contents[param[0]] = [param[1]];
-      });
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps_count = async (param, param$1, inc) => ({
-      TAG: "Ok",
-      _0: inc
-    });
-    let pluginOps_delete = async (id, param) => {
-      Stdlib_Dict.$$delete(store.contents, id);
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps_deleteBatch = async ids => {
-      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps = {
-      load: pluginOps_load,
-      loadStream: pluginOps_loadStream,
-      save: pluginOps_save,
-      saveBatch: pluginOps_saveBatch,
-      count: pluginOps_count,
-      delete: pluginOps_delete,
-      deleteBatch: pluginOps_deleteBatch
-    };
-    Bus.registerQueryDb(PluginsReadModelSpec$ReventlessCore.name, pluginOps);
-    Bus.registerQueryDbScan(PluginsReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(PluginsReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
-    pluginQueryDbOpsRef.contents = pluginOps;
-    return pluginOps;
-  };
   let uiFragmentQueryDbOpsRef = {
     contents: undefined
   };
@@ -970,8 +912,84 @@ function MakeWithConfig(Config) {
       });
     });
   };
-  let seedPluginQueryDb = pluginComponents => {
-    let pluginOps = ensurePluginQueryDbStore();
+  let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
+  let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
+  let dispatchPluginCommand = (pluginName, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginSpec$ReventlessCore.commandSchema);
+    let cmdJson = {
+      id: pluginName,
+      meta: cmdJson_meta,
+      commandJson: cmdJson_commandJson
+    };
+    return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+  };
+  let pluginStatusSubTopic = "onPluginStatusChange";
+  let uiFragmentSubTopic = "onUIFragmentChange";
+  let pluginEventsSubscribed = {
+    contents: false
+  };
+  let subscribeToPluginEvents = () => {
+    if (pluginEventsSubscribed.contents) {
+      return;
+    }
+    pluginEventsSubscribed.contents = true;
+    let publishStatus = (name, status) => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.publish(pluginStatusSubTopic, Object.fromEntries([
+      [
+        "pluginId",
+        name
+      ],
+      [
+        "status",
+        status
+      ]
+    ]));
+    let publishUIFragment = (name, changeKind, manifest) => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.publish(uiFragmentSubTopic, Object.fromEntries([
+      [
+        "pluginId",
+        name
+      ],
+      [
+        "changeKind",
+        changeKind
+      ],
+      [
+        "manifest",
+        manifest
+      ]
+    ]));
+    Bus.subscribeToEvents(pluginEventTopicKey, async (_service, _meta, eventJson) => {
+      let def;
+      try {
+        def = S.convertOrThrow(eventJson, PluginSpec$ReventlessCore.eventSchema);
+      } catch (exn) {
+        return;
+      }
+      switch (def.TAG) {
+        case "VersionDisconnected" :
+          return publishStatus(def._0.name, "Disconnected");
+        case "VersionDeactivated" :
+          return publishStatus(def._0.name, "Inactive");
+        case "VersionRetired" :
+          return publishStatus(def._0.name, "Retired");
+        case "VersionDetected" :
+        case "VersionSuperseded" :
+        case "IncompatiblePluginDetected" :
+          return;
+        case "UIFragmentRegistered" :
+          let data = def._0;
+          return publishUIFragment(Plugin$ReventlessCore.name(data.pluginId), "Registered", S.reverseConvertToJsonOrThrow(data.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UIFragmentUpdated" :
+          let data$1 = def._0;
+          return publishUIFragment(Plugin$ReventlessCore.name(data$1.pluginId), "Updated", S.reverseConvertToJsonOrThrow(data$1.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UIFragmentDeregistered" :
+          return publishUIFragment(Plugin$ReventlessCore.name(def._0.pluginId), "Deregistered", null);
+        default:
+          return publishStatus(def._0.name, "Connected");
+      }
+    });
+  };
+  let connectPlugin = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
@@ -984,59 +1002,40 @@ function MakeWithConfig(Config) {
         outputs.uiFragments,
         outputs.pluginStructure
       ]).apply(param => {
-        let extensions = param[4];
-        let extensionPoints = param[3];
-        let version = param[1];
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state_eventCollector = param[2].name;
-        let state_extensionPoints = Object.entries(extensionPoints).map(param => {
-          let epName = param[0];
-          return {
-            name: epName,
-            commandTopic: epName,
-            eventTopic: param[1].name
-          };
-        });
-        let state_extensionPointNames = Object.keys(extensionPoints);
-        let state_extensionNames = Object.keys(extensions);
-        let state_extensions = Object.entries(extensions).map(param => {
-          let ext = param[1];
-          return {
-            name: ext.name,
-            extensionPointName: ext.extensionPointName,
-            dcbSources: []
-          };
-        });
-        let state_statusChange = {
-          at: new Date().toISOString(),
-          by: "local"
-        };
-        let state_apiSchemaFragment = param[5];
-        let state_uiFragments = param[6];
-        let state_structure = param[7];
-        let state_knownStatuses = Object.fromEntries([[
-            version,
-            "Connected"
-          ]]);
-        let state = {
+        let pluginDefinition = {
+          id: id,
           name: pluginName,
-          version: version,
-          eventCollector: state_eventCollector,
-          extensionPoints: state_extensionPoints,
-          extensionPointNames: state_extensionPointNames,
-          extensionNames: state_extensionNames,
-          extensions: state_extensions,
-          status: "Connected",
-          statusChange: state_statusChange,
-          apiSchemaFragment: state_apiSchemaFragment,
-          uiFragments: state_uiFragments,
-          structure: state_structure,
-          dcbEventLog: undefined,
-          knownStatuses: state_knownStatuses
+          version: param[1],
+          extensionPoints: Object.entries(param[3]).map(param => {
+            let epName = param[0];
+            return {
+              name: epName,
+              commandTopic: epName,
+              eventTopic: param[1].name
+            };
+          }),
+          extensions: Object.entries(param[4]).map(param => {
+            let ext = param[1];
+            return {
+              name: ext.name,
+              extensionPointName: ext.extensionPointName,
+              dcbSources: []
+            };
+          }),
+          eventCollector: param[2].name,
+          extensionProtocols: [],
+          apiSchemaFragment: param[5],
+          apiTarget: undefined,
+          uiFragments: param[6],
+          structure: param[7],
+          dcbEventLog: undefined
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, PluginsReadModelSpec$ReventlessCore.stateSchema);
-        pluginOps.save(pluginName, entry, "Any", undefined);
+        dispatchPluginCommand(pluginName, {
+          TAG: "Connect",
+          _0: pluginDefinition
+        });
       });
     });
   };
@@ -1264,7 +1263,24 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [LocalPluginAggregate], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [LocalPluginAggregate], [
+      {
+        Spec: PluginsReadModel.Spec,
+        sourceNames: PluginsReadModel.sourceNames,
+        make: PluginsReadModel.make,
+        outputs: PluginsReadModel.outputs,
+        operations: PluginsReadModel.operations,
+        finish: PluginsReadModel.finish
+      },
+      {
+        Spec: PluginHistoryReadModel.Spec,
+        sourceNames: PluginHistoryReadModel.sourceNames,
+        make: PluginHistoryReadModel.make,
+        outputs: PluginHistoryReadModel.outputs,
+        operations: PluginHistoryReadModel.operations,
+        finish: PluginHistoryReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1305,7 +1321,8 @@ function MakeWithConfig(Config) {
       platformApiRoleArn: "local",
       adminResources: []
     });
-    seedPluginQueryDb(plugins$1);
+    subscribeToPluginEvents();
+    connectPlugin(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
     seedPlatformEventGraphQueryDb(plugins$1);
@@ -1479,83 +1496,59 @@ function MakeWithConfig(Config) {
       return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    let statusToString = s => {
-      switch (s) {
-        case "Connected" :
-          return "Connected";
-        case "Disconnected" :
-          return "Disconnected";
-        case "Inactive" :
-          return "Inactive";
-        case "Retired" :
-          return "Retired";
-      }
-    };
-    let pluginStatusSubTopic = "onPluginStatusChange";
-    let publishPluginStatusChange = (pluginId, status) => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.publish(pluginStatusSubTopic, Object.fromEntries([
-      [
-        "pluginId",
-        Plugin$ReventlessCore.name(pluginId)
-      ],
-      [
-        "status",
-        status
-      ]
-    ]));
-    let updatePluginStatus = async (field, args, newStatus) => {
-      let msgId = Message$ReventlessCore.uuid();
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      log.info("Admin", undefined, field + `(` + id + `): received command (msgId: ` + msgId + `)`);
-      let ops = Bus.getQueryDb(PluginsReadModelSpec$ReventlessCore.name);
-      if (ops !== undefined) {
-        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-        let json = items[0];
-        if (json !== undefined) {
-          let exit = 0;
+    let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+    let currentVersionOf = pluginName => {
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
+      if (scanAll !== undefined) {
+        return Stdlib_Array.findMap(scanAll(), json => {
           let state;
           try {
             state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
-            exit = 1;
-          } catch (raw_e) {
-            let e = Primitive_exceptions.internalToException(raw_e);
-            log.error("Admin", undefined, field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
+          } catch (exn) {
+            return;
           }
-          if (exit === 1) {
-            let previousStatus = statusToString(state.status);
-            let newrecord = {...state};
-            newrecord.statusChange = {
-              at: new Date().toISOString(),
-              by: "local"
-            };
-            newrecord.status = newStatus;
-            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginsReadModelSpec$ReventlessCore.stateSchema);
-            await ops.save(id, entry, "Any", undefined);
-            log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
-            publishPluginStatusChange(id, statusToString(newStatus));
+          if (state.name === pluginName) {
+            return state.version;
           }
-        } else {
-          log.warn("Admin", undefined, field + `(` + id + `): plugin not found`);
-        }
-      } else {
-        log.warn("Admin", undefined, field + `(` + id + `): Plugin QueryDb not registered`);
+        });
       }
-      return commandAccepted(msgId, id);
+    };
+    let argVersion = args => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["_0"]), Stdlib_JSON.Decode.string);
+    let dispatchLifecycle = (field, args, makeCommand) => {
+      let msgId = Message$ReventlessCore.uuid();
+      let pluginName = argId(args);
+      let v = argVersion(args);
+      let version = v !== undefined && v !== "" ? v : currentVersionOf(pluginName);
+      if (version !== undefined) {
+        log.info("Admin", undefined, field + `(` + pluginName + `@` + version + `): dispatching to aggregate`);
+        dispatchPluginCommand(pluginName, makeCommand(version));
+      } else {
+        log.warn("Admin", undefined, field + `(` + pluginName + `): plugin not found`);
+      }
+      return commandAccepted(msgId, pluginName);
     };
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
+    let retireField = Api_Naming$ReventlessCore.adminField("Plugin_Retire");
     let mutationResolvers = {};
-    mutationResolvers[activateField] = async (_root, args, _ctx) => {
-      await updatePluginStatus(activateField, args, "Disconnected");
-      return await updatePluginStatus(activateField, args, "Connected");
-    };
-    mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
+    mutationResolvers[activateField] = async (_root, args, _ctx) => dispatchLifecycle(activateField, args, v => ({
+      TAG: "Activate",
+      _0: v
+    }));
+    mutationResolvers[deactivateField] = async (_root, args, _ctx) => dispatchLifecycle(deactivateField, args, v => ({
+      TAG: "Deactivate",
+      _0: v
+    }));
+    mutationResolvers[retireField] = async (_root, args, _ctx) => dispatchLifecycle(retireField, args, v => ({
+      TAG: "Retire",
+      _0: v
+    }));
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
         mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
         return;
       }
     });
-    let uiFragmentSubTopic = "onUIFragmentChange";
     let makeUIEvent = (pluginId, changeKind, manifest) => Object.fromEntries([
       [
         "pluginId",
@@ -1806,7 +1799,24 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct("", [], [LocalPluginAggregate], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct("", [], [LocalPluginAggregate], [
+      {
+        Spec: PluginsReadModel.Spec,
+        sourceNames: PluginsReadModel.sourceNames,
+        make: PluginsReadModel.make,
+        outputs: PluginsReadModel.outputs,
+        operations: PluginsReadModel.operations,
+        finish: PluginsReadModel.finish
+      },
+      {
+        Spec: PluginHistoryReadModel.Spec,
+        sourceNames: PluginHistoryReadModel.sourceNames,
+        make: PluginHistoryReadModel.make,
+        outputs: PluginHistoryReadModel.outputs,
+        operations: PluginHistoryReadModel.operations,
+        finish: PluginHistoryReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1948,7 +1958,8 @@ function MakeWithConfig(Config) {
     currentDeployTarget.contents = "Domain";
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server$ReventlessLocal.asInterface;
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
-    seedPluginQueryDb([pluginComponent]);
+    subscribeToPluginEvents();
+    connectPlugin([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
     seedPluginStructuresStore([pluginComponent]);
     let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
@@ -2540,6 +2551,34 @@ function Make($star) {
     operations: LocalPluginAggregate_operations,
     finish: LocalPluginAggregate_finish
   };
+  let PluginsReadModelMappings = {
+    moduleUrl: PluginsProjection$ReventlessCore.moduleUrl,
+    mappings: PluginsProjection$ReventlessCore.mappings
+  };
+  let PluginsReadModel = ReadModelMaker.MakeNoResolver({
+    Id: Id$Reventless.$$String,
+    name: PluginsReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginsReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginsReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginsReadModelSpec$ReventlessCore.config,
+    subIdConfig: undefined,
+    authorization: PluginsReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginsReadModelSpec$ReventlessCore.visibility
+  })(PluginsReadModelMappings);
+  let PluginHistoryReadModelMappings = {
+    moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
+    mappings: PluginHistoryProjection$ReventlessCore.mappings
+  };
+  let PluginHistoryReadModel = ReadModelMaker.MakeNoResolver({
+    Id: Id$Reventless.$$String,
+    name: PluginHistoryReadModelSpec$ReventlessCore.name,
+    moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,
+    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
+    config: PluginHistoryReadModelSpec$ReventlessCore.config,
+    subIdConfig: PluginHistoryReadModelSpec$ReventlessCore.subIdConfig,
+    authorization: PluginHistoryReadModelSpec$ReventlessCore.authorization,
+    visibility: PluginHistoryReadModelSpec$ReventlessCore.visibility
+  })(PluginHistoryReadModelMappings);
   let $$let$1 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let $$let$2 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
@@ -2579,95 +2618,6 @@ function Make($star) {
   let domainMcpPort = resolvePort("REVENTLESS_DOMAIN_MCP_PORT", 3001);
   let platformPort = resolvePort("REVENTLESS_PLATFORM_PORT", 4001);
   let platformMcpPort = resolvePort("REVENTLESS_PLATFORM_MCP_PORT", 3002);
-  let pluginQueryDbOpsRef = {
-    contents: undefined
-  };
-  let ensurePluginQueryDbStore = () => {
-    let ops = pluginQueryDbOpsRef.contents;
-    if (ops !== undefined) {
-      return ops;
-    }
-    let store = {
-      contents: {}
-    };
-    let allItems = {
-      contents: []
-    };
-    let syncAll = () => {
-      allItems.contents = Object.entries(store.contents).flatMap(param => {
-        let id = param[0];
-        return param[1].map(item => {
-          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-          if (Stdlib_Option.isSome(obj["id"])) {
-            return item;
-          }
-          let copy = {};
-          Object.entries(obj).forEach(param => {
-            copy[param[0]] = param[1];
-          });
-          copy["id"] = id;
-          return copy;
-        });
-      });
-    };
-    let pluginOps_load = async id => ({
-      TAG: "Ok",
-      _0: Stdlib_Option.getOr(store.contents[id], [])
-    });
-    let pluginOps_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
-    let pluginOps_save = async (id, state, param, param$1) => {
-      store.contents[id] = [state];
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps_saveBatch = async batch => {
-      batch.forEach(param => {
-        store.contents[param[0]] = [param[1]];
-      });
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps_count = async (param, param$1, inc) => ({
-      TAG: "Ok",
-      _0: inc
-    });
-    let pluginOps_delete = async (id, param) => {
-      Stdlib_Dict.$$delete(store.contents, id);
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps_deleteBatch = async ids => {
-      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let pluginOps = {
-      load: pluginOps_load,
-      loadStream: pluginOps_loadStream,
-      save: pluginOps_save,
-      saveBatch: pluginOps_saveBatch,
-      count: pluginOps_count,
-      delete: pluginOps_delete,
-      deleteBatch: pluginOps_deleteBatch
-    };
-    Bus.registerQueryDb(PluginsReadModelSpec$ReventlessCore.name, pluginOps);
-    Bus.registerQueryDbScan(PluginsReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(PluginsReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
-    pluginQueryDbOpsRef.contents = pluginOps;
-    return pluginOps;
-  };
   let uiFragmentQueryDbOpsRef = {
     contents: undefined
   };
@@ -2864,8 +2814,84 @@ function Make($star) {
       });
     });
   };
-  let seedPluginQueryDb = pluginComponents => {
-    let pluginOps = ensurePluginQueryDbStore();
+  let pluginCmdTopicKey = PluginSpec$ReventlessCore.name + "AggrCmdTopic";
+  let pluginEventTopicKey = PluginSpec$ReventlessCore.name + "AggrEventTopic";
+  let dispatchPluginCommand = (pluginName, command) => {
+    let cmdJson_meta = Message$ReventlessCore.generateMeta(PluginSpec$ReventlessCore.name, undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+    let cmdJson_commandJson = S.reverseConvertToJsonOrThrow(command, PluginSpec$ReventlessCore.commandSchema);
+    let cmdJson = {
+      id: pluginName,
+      meta: cmdJson_meta,
+      commandJson: cmdJson_commandJson
+    };
+    return Bus.dispatchCommand(pluginCmdTopicKey, CommandTopic$ReventlessCore.encodeCommandJson(cmdJson));
+  };
+  let pluginStatusSubTopic = "onPluginStatusChange";
+  let uiFragmentSubTopic = "onUIFragmentChange";
+  let pluginEventsSubscribed = {
+    contents: false
+  };
+  let subscribeToPluginEvents = () => {
+    if (pluginEventsSubscribed.contents) {
+      return;
+    }
+    pluginEventsSubscribed.contents = true;
+    let publishStatus = (name, status) => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.publish(pluginStatusSubTopic, Object.fromEntries([
+      [
+        "pluginId",
+        name
+      ],
+      [
+        "status",
+        status
+      ]
+    ]));
+    let publishUIFragment = (name, changeKind, manifest) => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.publish(uiFragmentSubTopic, Object.fromEntries([
+      [
+        "pluginId",
+        name
+      ],
+      [
+        "changeKind",
+        changeKind
+      ],
+      [
+        "manifest",
+        manifest
+      ]
+    ]));
+    Bus.subscribeToEvents(pluginEventTopicKey, async (_service, _meta, eventJson) => {
+      let def;
+      try {
+        def = S.convertOrThrow(eventJson, PluginSpec$ReventlessCore.eventSchema);
+      } catch (exn) {
+        return;
+      }
+      switch (def.TAG) {
+        case "VersionDisconnected" :
+          return publishStatus(def._0.name, "Disconnected");
+        case "VersionDeactivated" :
+          return publishStatus(def._0.name, "Inactive");
+        case "VersionRetired" :
+          return publishStatus(def._0.name, "Retired");
+        case "VersionDetected" :
+        case "VersionSuperseded" :
+        case "IncompatiblePluginDetected" :
+          return;
+        case "UIFragmentRegistered" :
+          let data = def._0;
+          return publishUIFragment(Plugin$ReventlessCore.name(data.pluginId), "Registered", S.reverseConvertToJsonOrThrow(data.manifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UIFragmentUpdated" :
+          let data$1 = def._0;
+          return publishUIFragment(Plugin$ReventlessCore.name(data$1.pluginId), "Updated", S.reverseConvertToJsonOrThrow(data$1.newManifest, Plugin$Reventless.uiFragmentManifestSchema));
+        case "UIFragmentDeregistered" :
+          return publishUIFragment(Plugin$ReventlessCore.name(def._0.pluginId), "Deregistered", null);
+        default:
+          return publishStatus(def._0.name, "Connected");
+      }
+    });
+  };
+  let connectPlugin = pluginComponents => {
     pluginComponents.forEach(plugin => {
       let outputs = Component$ReventlessCore.outputs(plugin);
       Pulumi.all([
@@ -2878,59 +2904,40 @@ function Make($star) {
         outputs.uiFragments,
         outputs.pluginStructure
       ]).apply(param => {
-        let extensions = param[4];
-        let extensionPoints = param[3];
-        let version = param[1];
         let id = param[0];
         let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state_eventCollector = param[2].name;
-        let state_extensionPoints = Object.entries(extensionPoints).map(param => {
-          let epName = param[0];
-          return {
-            name: epName,
-            commandTopic: epName,
-            eventTopic: param[1].name
-          };
-        });
-        let state_extensionPointNames = Object.keys(extensionPoints);
-        let state_extensionNames = Object.keys(extensions);
-        let state_extensions = Object.entries(extensions).map(param => {
-          let ext = param[1];
-          return {
-            name: ext.name,
-            extensionPointName: ext.extensionPointName,
-            dcbSources: []
-          };
-        });
-        let state_statusChange = {
-          at: new Date().toISOString(),
-          by: "local"
-        };
-        let state_apiSchemaFragment = param[5];
-        let state_uiFragments = param[6];
-        let state_structure = param[7];
-        let state_knownStatuses = Object.fromEntries([[
-            version,
-            "Connected"
-          ]]);
-        let state = {
+        let pluginDefinition = {
+          id: id,
           name: pluginName,
-          version: version,
-          eventCollector: state_eventCollector,
-          extensionPoints: state_extensionPoints,
-          extensionPointNames: state_extensionPointNames,
-          extensionNames: state_extensionNames,
-          extensions: state_extensions,
-          status: "Connected",
-          statusChange: state_statusChange,
-          apiSchemaFragment: state_apiSchemaFragment,
-          uiFragments: state_uiFragments,
-          structure: state_structure,
-          dcbEventLog: undefined,
-          knownStatuses: state_knownStatuses
+          version: param[1],
+          extensionPoints: Object.entries(param[3]).map(param => {
+            let epName = param[0];
+            return {
+              name: epName,
+              commandTopic: epName,
+              eventTopic: param[1].name
+            };
+          }),
+          extensions: Object.entries(param[4]).map(param => {
+            let ext = param[1];
+            return {
+              name: ext.name,
+              extensionPointName: ext.extensionPointName,
+              dcbSources: []
+            };
+          }),
+          eventCollector: param[2].name,
+          extensionProtocols: [],
+          apiSchemaFragment: param[5],
+          apiTarget: undefined,
+          uiFragments: param[6],
+          structure: param[7],
+          dcbEventLog: undefined
         };
-        let entry = S.reverseConvertToJsonOrThrow(state, PluginsReadModelSpec$ReventlessCore.stateSchema);
-        pluginOps.save(pluginName, entry, "Any", undefined);
+        dispatchPluginCommand(pluginName, {
+          TAG: "Connect",
+          _0: pluginDefinition
+        });
       });
     });
   };
@@ -3153,7 +3160,24 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [LocalPluginAggregate], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct(version, [], [LocalPluginAggregate], [
+      {
+        Spec: PluginsReadModel.Spec,
+        sourceNames: PluginsReadModel.sourceNames,
+        make: PluginsReadModel.make,
+        outputs: PluginsReadModel.outputs,
+        operations: PluginsReadModel.operations,
+        finish: PluginsReadModel.finish
+      },
+      {
+        Spec: PluginHistoryReadModel.Spec,
+        sourceNames: PluginHistoryReadModel.sourceNames,
+        make: PluginHistoryReadModel.make,
+        outputs: PluginHistoryReadModel.outputs,
+        operations: PluginHistoryReadModel.operations,
+        finish: PluginHistoryReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -3194,7 +3218,8 @@ function Make($star) {
       platformApiRoleArn: "local",
       adminResources: []
     });
-    seedPluginQueryDb(plugins$1);
+    subscribeToPluginEvents();
+    connectPlugin(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
     seedPlatformEventGraphQueryDb(plugins$1);
@@ -3368,83 +3393,59 @@ function Make($star) {
       return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
-    let statusToString = s => {
-      switch (s) {
-        case "Connected" :
-          return "Connected";
-        case "Disconnected" :
-          return "Disconnected";
-        case "Inactive" :
-          return "Inactive";
-        case "Retired" :
-          return "Retired";
-      }
-    };
-    let pluginStatusSubTopic = "onPluginStatusChange";
-    let publishPluginStatusChange = (pluginId, status) => LocalGraphQL_SubscriptionResolvers$ReventlessLocal.publish(pluginStatusSubTopic, Object.fromEntries([
-      [
-        "pluginId",
-        Plugin$ReventlessCore.name(pluginId)
-      ],
-      [
-        "status",
-        status
-      ]
-    ]));
-    let updatePluginStatus = async (field, args, newStatus) => {
-      let msgId = Message$ReventlessCore.uuid();
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      log.info("Admin", undefined, field + `(` + id + `): received command (msgId: ` + msgId + `)`);
-      let ops = Bus.getQueryDb(PluginsReadModelSpec$ReventlessCore.name);
-      if (ops !== undefined) {
-        let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-        let json = items[0];
-        if (json !== undefined) {
-          let exit = 0;
+    let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+    let currentVersionOf = pluginName => {
+      let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
+      if (scanAll !== undefined) {
+        return Stdlib_Array.findMap(scanAll(), json => {
           let state;
           try {
             state = S.convertOrThrow(json, PluginsReadModelSpec$ReventlessCore.stateSchema);
-            exit = 1;
-          } catch (raw_e) {
-            let e = Primitive_exceptions.internalToException(raw_e);
-            log.error("Admin", undefined, field + `(` + id + `): failed to decode plugin state: ` + Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_JsExn.fromException(e), Stdlib_JsExn.message), "unknown error"));
+          } catch (exn) {
+            return;
           }
-          if (exit === 1) {
-            let previousStatus = statusToString(state.status);
-            let newrecord = {...state};
-            newrecord.statusChange = {
-              at: new Date().toISOString(),
-              by: "local"
-            };
-            newrecord.status = newStatus;
-            let entry = S.reverseConvertToJsonOrThrow(newrecord, PluginsReadModelSpec$ReventlessCore.stateSchema);
-            await ops.save(id, entry, "Any", undefined);
-            log.info("Admin", undefined, field + `(` + id + `): ` + previousStatus + ` → ` + statusToString(newStatus));
-            publishPluginStatusChange(id, statusToString(newStatus));
+          if (state.name === pluginName) {
+            return state.version;
           }
-        } else {
-          log.warn("Admin", undefined, field + `(` + id + `): plugin not found`);
-        }
-      } else {
-        log.warn("Admin", undefined, field + `(` + id + `): Plugin QueryDb not registered`);
+        });
       }
-      return commandAccepted(msgId, id);
+    };
+    let argVersion = args => Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["_0"]), Stdlib_JSON.Decode.string);
+    let dispatchLifecycle = (field, args, makeCommand) => {
+      let msgId = Message$ReventlessCore.uuid();
+      let pluginName = argId(args);
+      let v = argVersion(args);
+      let version = v !== undefined && v !== "" ? v : currentVersionOf(pluginName);
+      if (version !== undefined) {
+        log.info("Admin", undefined, field + `(` + pluginName + `@` + version + `): dispatching to aggregate`);
+        dispatchPluginCommand(pluginName, makeCommand(version));
+      } else {
+        log.warn("Admin", undefined, field + `(` + pluginName + `): plugin not found`);
+      }
+      return commandAccepted(msgId, pluginName);
     };
     let activateField = Api_Naming$ReventlessCore.adminField("Plugin_Activate");
     let deactivateField = Api_Naming$ReventlessCore.adminField("Plugin_Deactivate");
+    let retireField = Api_Naming$ReventlessCore.adminField("Plugin_Retire");
     let mutationResolvers = {};
-    mutationResolvers[activateField] = async (_root, args, _ctx) => {
-      await updatePluginStatus(activateField, args, "Disconnected");
-      return await updatePluginStatus(activateField, args, "Connected");
-    };
-    mutationResolvers[deactivateField] = async (_root, args, _ctx) => await updatePluginStatus(deactivateField, args, "Inactive");
+    mutationResolvers[activateField] = async (_root, args, _ctx) => dispatchLifecycle(activateField, args, v => ({
+      TAG: "Activate",
+      _0: v
+    }));
+    mutationResolvers[deactivateField] = async (_root, args, _ctx) => dispatchLifecycle(deactivateField, args, v => ({
+      TAG: "Deactivate",
+      _0: v
+    }));
+    mutationResolvers[retireField] = async (_root, args, _ctx) => dispatchLifecycle(retireField, args, v => ({
+      TAG: "Retire",
+      _0: v
+    }));
     adminMutationFieldNames.forEach(field => {
       if (Stdlib_Option.isNone(mutationResolvers[field])) {
         mutationResolvers[field] = async (_root, _args, _ctx) => commandAccepted(Message$ReventlessCore.uuid(), undefined);
         return;
       }
     });
-    let uiFragmentSubTopic = "onUIFragmentChange";
     let makeUIEvent = (pluginId, changeKind, manifest) => Object.fromEntries([
       [
         "pluginId",
@@ -3686,7 +3687,24 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct("", [], [LocalPluginAggregate], [], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+    let admin = Admin.construct("", [], [LocalPluginAggregate], [
+      {
+        Spec: PluginsReadModel.Spec,
+        sourceNames: PluginsReadModel.sourceNames,
+        make: PluginsReadModel.make,
+        outputs: PluginsReadModel.outputs,
+        operations: PluginsReadModel.operations,
+        finish: PluginsReadModel.finish
+      },
+      {
+        Spec: PluginHistoryReadModel.Spec,
+        sourceNames: PluginHistoryReadModel.sourceNames,
+        make: PluginHistoryReadModel.make,
+        outputs: PluginHistoryReadModel.outputs,
+        operations: PluginHistoryReadModel.operations,
+        finish: PluginHistoryReadModel.finish
+      }
+    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -3828,7 +3846,8 @@ function Make($star) {
     currentDeployTarget.contents = "Domain";
     StateViewSliceMaker.QueryDbResolvers.serverRef.contents = DomainGraphQL_Server$ReventlessLocal.asInterface;
     StateViewSliceMaker.QueryDbResolvers.relayRef.contents = domainRelaySupport;
-    seedPluginQueryDb([pluginComponent]);
+    subscribeToPluginEvents();
+    connectPlugin([pluginComponent]);
     seedUIFragmentRegistryQueryDb([pluginComponent]);
     seedPluginStructuresStore([pluginComponent]);
     let deployedPluginOutputs = [Component$ReventlessCore.outputs(pluginComponent)];
