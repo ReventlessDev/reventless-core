@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.64 (2026-06-18)
+
+### Features
+
+* **domain-graph:** extension point routes to its delegate's commands ([8226b4b](https://github.com/ReventlessDev/reventless-core/commit/8226b4bbfb98a066cfc2fe200c890916af2306a3))
+* **gwt:** clean-rebuild a package when a source module is relocated (Phase 12) ([e6a4843](https://github.com/ReventlessDev/reventless-core/commit/e6a4843af036f900f50ca4f16c82616cff06298f))
+
+
 # 1.0.0-alpha.63 (2026-06-18)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt
