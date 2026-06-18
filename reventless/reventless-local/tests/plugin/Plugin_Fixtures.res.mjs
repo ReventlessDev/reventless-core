@@ -37,18 +37,11 @@ let pluginDefinitionV2 = {
   dcbEventLog: pluginDefinition.dcbEventLog
 };
 
-function known(arr) {
-  return Object.fromEntries(arr);
+function display(def, status, otherConnectedVersions) {
+  return PluginsProjection$ReventlessCore.displayState(def, status, TestFixtures$ReventlessGwt.statusChange, otherConnectedVersions);
 }
 
-function display(def, status, knownStatuses) {
-  return PluginsProjection$ReventlessCore.displayState(def, status, TestFixtures$ReventlessGwt.statusChange, knownStatuses);
-}
-
-let state = display(pluginDefinition, "Connected", Object.fromEntries([[
-    "1",
-    "Connected"
-  ]]));
+let state = display(pluginDefinition, "Connected", []);
 
 let uiManifest_panels = [];
 
@@ -102,7 +95,6 @@ export {
   sc,
   pluginDefinition,
   pluginDefinitionV2,
-  known,
   display,
   state,
   uiManifest,

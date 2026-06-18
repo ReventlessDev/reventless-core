@@ -5,8 +5,9 @@ module PluginsProjectionTest = ReventlessGwt.MultiSourceProjection_GWT.Make(Plug
 open PluginsProjectionTest
 
 // Current view (one row per plugin name). The displayed row tracks the current
-// version (highest Connected); `knownStatuses` is the per-version bookkeeping
-// used to recompute current on drop-out / rollback.
+// version (highest Connected); `otherConnectedVersions` lists the OTHER versions
+// currently Connected (own version excluded) — used to recompute current during a
+// deploy overlap, pruned the moment a version stops being Connected.
 
 let supersededV1ByV2 = VersionSuperseded({
   supersededVersion: "1",
@@ -29,17 +30,13 @@ describe("PluginsProjection:", () => {
   test("A higher VersionConnected becomes the current row (supersession)", () =>
     givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(VersionConnected(pluginDefinitionV2))
-    ->thenState(
-      display(pluginDefinitionV2, Connected, known([("1", "Connected"), ("2", "Connected")])),
-    )
+    ->thenState(display(pluginDefinitionV2, Connected, ["1"]))
   )
 
   test("A lower VersionConnected records status but keeps the higher current", () =>
     givenEvents([VersionConnected(pluginDefinitionV2)])
     ->whenEvent(VersionConnected(pluginDefinition))
-    ->thenState(
-      display(pluginDefinitionV2, Connected, known([("2", "Connected"), ("1", "Connected")])),
-    )
+    ->thenState(display(pluginDefinitionV2, Connected, ["1"]))
   )
 
   test("VersionSuperseded itself does not change the row", () =>
@@ -49,7 +46,7 @@ describe("PluginsProjection:", () => {
   test("VersionDisconnected of the current flips its status", () =>
     givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(VersionDisconnected(pluginDefinition))
-    ->thenState(display(pluginDefinition, Disconnected, known([("1", "Disconnected")])))
+    ->thenState(display(pluginDefinition, Disconnected, []))
   )
 
   test("VersionPromoted rolls the current back to a lower live version", () =>
@@ -59,21 +56,19 @@ describe("PluginsProjection:", () => {
       VersionDisconnected(pluginDefinitionV2),
     ])
     ->whenEvent(VersionPromoted(pluginDefinition))
-    ->thenState(
-      display(pluginDefinition, Connected, known([("1", "Connected"), ("2", "Disconnected")])),
-    )
+    ->thenState(display(pluginDefinition, Connected, []))
   )
 
   test("VersionDeactivated of the current yields status Inactive", () =>
     givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(VersionDeactivated(pluginDefinition))
-    ->thenState(display(pluginDefinition, Inactive, known([("1", "Inactive")])))
+    ->thenState(display(pluginDefinition, Inactive, []))
   )
 
   test("VersionRetired of the current yields status Retired", () =>
     givenEvents([VersionConnected(pluginDefinition)])
     ->whenEvent(VersionRetired(pluginDefinition))
-    ->thenState(display(pluginDefinition, Retired, known([("1", "Retired")])))
+    ->thenState(display(pluginDefinition, Retired, []))
   )
 
   test("UIFragmentRegistered is ignored by the current view", () =>

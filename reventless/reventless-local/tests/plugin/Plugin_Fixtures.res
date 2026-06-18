@@ -20,19 +20,14 @@ let pluginDefinition: Reventless.Plugin.pluginDefinition = {
 // A higher version of the SAME plugin name — for supersession / rollback tests.
 let pluginDefinitionV2 = {...pluginDefinition, id: "name@2", version: "2"}
 
-let known = arr => Dict.fromArray(arr)
+// Expected current-view row for a def + status + the OTHER currently-connected
+// versions (own version excluded). Reuses the projection's own builder so
+// assertions match the projection output exactly.
+let display = (def, status, otherConnectedVersions): PluginsReadModelSpec.state =>
+  PluginsProjection.displayState(def, status, sc, otherConnectedVersions)
 
-// Expected current-view row for a def + status + known-statuses map. Reuses the
-// projection's own builder so assertions match the projection output exactly.
-let display = (def, status, knownStatuses): PluginsReadModelSpec.state =>
-  PluginsProjection.displayState(def, status, sc, knownStatuses)
-
-// Canonical v1 Connected current-view row.
-let state: PluginsReadModelSpec.state = display(
-  pluginDefinition,
-  Connected,
-  known([("1", "Connected")]),
-)
+// Canonical v1 Connected current-view row — no other versions live.
+let state: PluginsReadModelSpec.state = display(pluginDefinition, Connected, [])
 
 let uiManifest: Reventless.Plugin.uiFragmentManifest = {
   remoteEntryUrl: "https://cdn.example.com/plugin@1.0/remoteEntry.js",

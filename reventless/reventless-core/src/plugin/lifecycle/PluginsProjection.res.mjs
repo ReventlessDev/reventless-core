@@ -18,12 +18,32 @@ function extractExtensionNames(__x) {
   return __x.map(extension => extension.extensionPointName);
 }
 
-function highestConnected(knownStatuses) {
-  return Stdlib_Array.reduce(Object.entries(knownStatuses), undefined, (acc, param) => {
-    if (param[1] !== "Connected") {
-      return acc;
-    }
-    let v = param[0];
+function isConnected(status) {
+  return status === "Connected";
+}
+
+function without(versions, v) {
+  return versions.filter(x => x !== v);
+}
+
+function withVersion(versions, v) {
+  if (versions.includes(v)) {
+    return versions;
+  } else {
+    return versions.concat([v]);
+  }
+}
+
+function connectedVersions(state) {
+  if (isConnected(state.status)) {
+    return withVersion(state.otherConnectedVersions, state.version);
+  } else {
+    return state.otherConnectedVersions;
+  }
+}
+
+function highest(versions) {
+  return Stdlib_Array.reduce(versions, undefined, (acc, v) => {
     if (acc !== undefined && Plugin$ReventlessCore.compareVersions(v, acc) <= 0) {
       return acc;
     } else {
@@ -35,10 +55,14 @@ function highestConnected(knownStatuses) {
 let Util = {
   extractExtensionPointNames: extractExtensionPointNames,
   extractExtensionNames: extractExtensionNames,
-  highestConnected: highestConnected
+  isConnected: isConnected,
+  without: without,
+  withVersion: withVersion,
+  connectedVersions: connectedVersions,
+  highest: highest
 };
 
-function displayState(def, status, statusChange, knownStatuses) {
+function displayState(def, status, statusChange, otherConnectedVersions) {
   let base_name = def.name;
   let base_version = def.version;
   let base_eventCollector = def.eventCollector;
@@ -50,6 +74,7 @@ function displayState(def, status, statusChange, knownStatuses) {
   let base_uiFragments = def.uiFragments;
   let base_structure = def.structure;
   let base_dcbEventLog = def.dcbEventLog;
+  let base_otherConnectedVersions = without(otherConnectedVersions, def.version);
   let base = {
     name: base_name,
     version: base_version,
@@ -64,7 +89,7 @@ function displayState(def, status, statusChange, knownStatuses) {
     uiFragments: base_uiFragments,
     structure: base_structure,
     dcbEventLog: base_dcbEventLog,
-    knownStatuses: knownStatuses
+    otherConnectedVersions: base_otherConnectedVersions
   };
   let target = def.apiTarget;
   if (target === undefined) {
@@ -85,42 +110,30 @@ function project(param) {
     at: statusChange_at,
     by: statusChange_by
   };
-  let singleton = (v, status) => {
-    let d = {};
-    d[v] = status;
-    return d;
-  };
   switch (event.TAG) {
     case "VersionPromoted" :
       let def = event._0;
       return {
         TAG: "UpdateWithDefault",
         _0: id,
-        _1: displayState(def, "Connected", statusChange, singleton(def.version, "Connected")),
-        _2: state => {
-          let known = Object.assign({}, state.knownStatuses);
-          known[def.version] = "Connected";
-          return displayState(def, "Connected", statusChange, known);
-        }
+        _1: displayState(def, "Connected", statusChange, []),
+        _2: state => displayState(def, "Connected", statusChange, state.otherConnectedVersions)
       };
     case "VersionDisconnected" :
       let def$1 = event._0;
       return {
         TAG: "UpdateWithDefault",
         _0: id,
-        _1: displayState(def$1, "Disconnected", statusChange, singleton(def$1.version, "Disconnected")),
+        _1: displayState(def$1, "Disconnected", statusChange, []),
         _2: state => {
-          let known = Object.assign({}, state.knownStatuses);
-          known[def$1.version] = "Disconnected";
           if (state.version === def$1.version) {
             let newrecord = {...state};
-            newrecord.knownStatuses = known;
             newrecord.statusChange = statusChange;
             newrecord.status = "Disconnected";
             return newrecord;
           }
           let newrecord$1 = {...state};
-          newrecord$1.knownStatuses = known;
+          newrecord$1.otherConnectedVersions = without(state.otherConnectedVersions, def$1.version);
           return newrecord$1;
         }
       };
@@ -132,19 +145,16 @@ function project(param) {
       return {
         TAG: "UpdateWithDefault",
         _0: id,
-        _1: displayState(def$2, "Inactive", statusChange, singleton(def$2.version, "Inactive")),
+        _1: displayState(def$2, "Inactive", statusChange, []),
         _2: state => {
-          let known = Object.assign({}, state.knownStatuses);
-          known[def$2.version] = "Inactive";
           if (state.version === def$2.version) {
             let newrecord = {...state};
-            newrecord.knownStatuses = known;
             newrecord.statusChange = statusChange;
             newrecord.status = "Inactive";
             return newrecord;
           }
           let newrecord$1 = {...state};
-          newrecord$1.knownStatuses = known;
+          newrecord$1.otherConnectedVersions = without(state.otherConnectedVersions, def$2.version);
           return newrecord$1;
         }
       };
@@ -153,19 +163,16 @@ function project(param) {
       return {
         TAG: "UpdateWithDefault",
         _0: id,
-        _1: displayState(def$3, "Retired", statusChange, singleton(def$3.version, "Retired")),
+        _1: displayState(def$3, "Retired", statusChange, []),
         _2: state => {
-          let known = Object.assign({}, state.knownStatuses);
-          known[def$3.version] = "Retired";
           if (state.version === def$3.version) {
             let newrecord = {...state};
-            newrecord.knownStatuses = known;
             newrecord.statusChange = statusChange;
             newrecord.status = "Retired";
             return newrecord;
           }
           let newrecord$1 = {...state};
-          newrecord$1.knownStatuses = known;
+          newrecord$1.otherConnectedVersions = without(state.otherConnectedVersions, def$3.version);
           return newrecord$1;
         }
       };
@@ -176,16 +183,15 @@ function project(param) {
   return {
     TAG: "UpdateWithDefault",
     _0: id,
-    _1: displayState(def$4, "Connected", statusChange, singleton(def$4.version, "Connected")),
+    _1: displayState(def$4, "Connected", statusChange, []),
     _2: state => {
-      let known = Object.assign({}, state.knownStatuses);
-      known[def$4.version] = "Connected";
-      let hc = highestConnected(known);
+      let connectedNow = withVersion(connectedVersions(state), def$4.version);
+      let hc = highest(connectedNow);
       if (hc !== undefined && hc === def$4.version) {
-        return displayState(def$4, "Connected", statusChange, known);
+        return displayState(def$4, "Connected", statusChange, connectedNow);
       }
       let newrecord = {...state};
-      newrecord.knownStatuses = known;
+      newrecord.otherConnectedVersions = withVersion(state.otherConnectedVersions, def$4.version);
       return newrecord;
     }
   };

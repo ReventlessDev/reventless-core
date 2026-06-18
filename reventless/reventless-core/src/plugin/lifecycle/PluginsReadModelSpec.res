@@ -38,12 +38,13 @@ type state = {
   // from this plugin's DCB topic → peer EventCollectors (and vice-versa). None
   // for pure-aggregate plugins or for plugins persisted before Phase 4.
   dcbEventLog: @s.matches(Reventless.Plugin.dcbEventLogOptionSchema) option<Reventless.Plugin.dcbEventLogDefinition>,
-  // Internal bookkeeping: every known version of this name → its status string
-  // ("Connected" | "Disconnected" | "Inactive" | "Retired"). Lets the projection
-  // recompute which version is current (highest Connected) when one drops out —
-  // including rollback to a lower still-connected version. Not surfaced to the
-  // manifest (which reads the flattened current-version fields above).
-  knownStatuses: dict<string>,
+  // Other versions of this name that are currently **Connected** — excludes this
+  // row's own `version` (whose status is the `status` field above). Lets the
+  // projection recompute which version is current (highest Connected) during a
+  // deploy overlap, and is pruned the moment a version stops being Connected. So
+  // it is empty in steady state and holds at most the one-or-two concurrently-live
+  // versions of a rolling deploy — never the full history (that is PluginHistory).
+  otherConnectedVersions: array<Reventless.Plugin.version>,
 }
 
 type queryResult = {

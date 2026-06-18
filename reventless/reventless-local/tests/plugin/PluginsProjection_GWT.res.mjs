@@ -31,32 +31,14 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
     }]), {
     TAG: "VersionConnected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
-  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2, "Connected", Plugin_Fixtures$ReventlessLocal.known([
-    [
-      "1",
-      "Connected"
-    ],
-    [
-      "2",
-      "Connected"
-    ]
-  ]))));
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2, "Connected", ["1"])));
   PluginsProjectionTest.test("A lower VersionConnected records status but keeps the higher current", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2
     }]), {
     TAG: "VersionConnected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2, "Connected", Plugin_Fixtures$ReventlessLocal.known([
-    [
-      "2",
-      "Connected"
-    ],
-    [
-      "1",
-      "Connected"
-    ]
-  ]))));
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinitionV2, "Connected", ["1"])));
   PluginsProjectionTest.test("VersionSuperseded itself does not change the row", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
@@ -67,10 +49,7 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
     }]), {
     TAG: "VersionDisconnected",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Disconnected", Plugin_Fixtures$ReventlessLocal.known([[
-      "1",
-      "Disconnected"
-    ]]))));
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Disconnected", [])));
   PluginsProjectionTest.test("VersionPromoted rolls the current back to a lower live version", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([
     {
       TAG: "VersionConnected",
@@ -87,36 +66,21 @@ PluginsProjectionTest.describe("PluginsProjection:", () => {
   ]), {
     TAG: "VersionPromoted",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Connected", Plugin_Fixtures$ReventlessLocal.known([
-    [
-      "1",
-      "Connected"
-    ],
-    [
-      "2",
-      "Disconnected"
-    ]
-  ]))));
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Connected", [])));
   PluginsProjectionTest.test("VersionDeactivated of the current yields status Inactive", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]), {
     TAG: "VersionDeactivated",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Inactive", Plugin_Fixtures$ReventlessLocal.known([[
-      "1",
-      "Inactive"
-    ]]))));
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Inactive", [])));
   PluginsProjectionTest.test("VersionRetired of the current yields status Retired", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
     }]), {
     TAG: "VersionRetired",
     _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
-  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Retired", Plugin_Fixtures$ReventlessLocal.known([[
-      "1",
-      "Retired"
-    ]]))));
+  }), Plugin_Fixtures$ReventlessLocal.display(Plugin_Fixtures$ReventlessLocal.pluginDefinition, "Retired", [])));
   PluginsProjectionTest.test("UIFragmentRegistered is ignored by the current view", undefined, () => PluginsProjectionTest.thenState(PluginsProjectionTest.whenEvent(PluginsProjectionTest.givenEvents([{
       TAG: "VersionConnected",
       _0: Plugin_Fixtures$ReventlessLocal.pluginDefinition
