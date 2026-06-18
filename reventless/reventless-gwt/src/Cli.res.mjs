@@ -609,8 +609,28 @@ async function runWatch(opts) {
     }
   };
   await run();
-  Watch$ReventlessGwt.start(roots, _path => {
-    run();
+  Watch$ReventlessGwt.start(roots, (event, path) => {
+    if (opts.format === "VsCode" && Watch$ReventlessGwt.isStructuralSource(event, path)) {
+      let pkg = PackageScan$ReventlessGwt.findOwning(path);
+      if (pkg !== undefined) {
+        let t0 = Date.now();
+        FormatterVsCode$ReventlessGwt.buildStart(pkg.dir);
+        let feed = BuildClassifier$ReventlessGwt.make(undefined, {
+          onStart: () => {},
+          onOk: _ms => {},
+          onFail: msg => FormatterVsCode$ReventlessGwt.buildFail(pkg.dir, msg)
+        });
+        return ProcessManager$ReventlessGwt.cleanRebuild(pkg, (_dir, line) => feed(line), () => {
+          FormatterVsCode$ReventlessGwt.buildOk(pkg.dir, Date.now() - t0);
+          run();
+        });
+      }
+      run();
+      return;
+    } else {
+      run();
+      return;
+    }
   });
   await new Promise((resolve, _reject) => Cancellation$ReventlessGwt.onCancel(() => resolve()));
   return 0;

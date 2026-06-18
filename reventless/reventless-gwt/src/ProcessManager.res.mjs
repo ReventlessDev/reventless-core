@@ -25,6 +25,40 @@ function spawnWatcher(pkg, onStdout) {
   };
 }
 
+function stop(dir) {
+  let m = running[dir];
+  if (m !== undefined) {
+    ChildProcess$ReventlessGwt.killTree(m.proc, "SIGTERM");
+    Stdlib_Dict.$$delete(running, dir);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function cleanRebuild(pkg, onStdout, onDone) {
+  let wasManaged = stop(pkg.dir);
+  let step = (cmd, args, next) => {
+    let proc = ChildProcess$ReventlessGwt.spawn(cmd, args, pkg.dir, undefined);
+    ChildProcess$ReventlessGwt.onStdoutLine(proc, line => onStdout(pkg.dir, line));
+    ChildProcess$ReventlessGwt.onClose(proc, param => next());
+  };
+  step("pnpm", [
+    "exec",
+    "rescript",
+    "clean"
+  ], () => step("pnpm", [
+    "exec",
+    "rescript",
+    "build"
+  ], () => {
+    if (wasManaged) {
+      spawnWatcher(pkg, onStdout);
+    }
+    onDone();
+  }));
+}
+
 function killAll() {
   Object.values(running).forEach(m => ChildProcess$ReventlessGwt.killTree(m.proc, "SIGTERM"));
   Object.keys(running).forEach(k => Stdlib_Dict.$$delete(running, k));
@@ -38,6 +72,8 @@ export {
   running,
   isManaging,
   spawnWatcher,
+  stop,
+  cleanRebuild,
   killAll,
   managedCount,
 }

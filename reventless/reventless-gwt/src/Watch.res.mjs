@@ -2,22 +2,61 @@
 
 import * as Chokidar from "chokidar";
 
+function rank(event, path) {
+  switch (event) {
+    case "Add" :
+      return 1;
+    case "Change" :
+      return 0;
+    case "Unlink" :
+      if (path.endsWith(".res")) {
+        return 2;
+      } else {
+        return 1;
+      }
+  }
+}
+
+function isStructuralSource(event, path) {
+  if (event === "Unlink") {
+    return path.endsWith(".res");
+  } else {
+    return false;
+  }
+}
+
 function debounce(wait, fn) {
   let pending = {
     contents: undefined
   };
-  let lastPath = {
+  let bestRank = {
+    contents: -1
+  };
+  let bestEvent = {
+    contents: "Change"
+  };
+  let bestPath = {
     contents: ""
   };
-  return path => {
-    lastPath.contents = path;
+  return (event, path) => {
+    let r = rank(event, path);
+    if (r >= bestRank.contents) {
+      bestRank.contents = r;
+      bestEvent.contents = event;
+      bestPath.contents = path;
+    }
     let t = pending.contents;
     if (t !== undefined) {
       clearTimeout(t);
     }
     pending.contents = setTimeout(() => {
       pending.contents = undefined;
-      fn(lastPath.contents);
+      let e = bestEvent.contents;
+      let p = bestPath.contents;
+      bestRank.contents = -1;
+      bestEvent.contents = "Change";
+      bestPath.contents = "";
+      fn(e, p);
     }, wait);
   };
 }
@@ -32,10 +71,12 @@ function start(roots, onChange) {
     ]
   });
   let debounced = debounce(120, onChange);
-  return w.on("add", debounced).on("change", debounced).on("unlink", debounced);
+  return w.on("add", p => debounced("Add", p)).on("change", p => debounced("Change", p)).on("unlink", p => debounced("Unlink", p));
 }
 
 export {
+  rank,
+  isStructuralSource,
   debounce,
   start,
 }

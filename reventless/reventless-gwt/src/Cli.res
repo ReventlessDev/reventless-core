@@ -538,9 +538,49 @@ let runWatch = async (opts: options): int => {
     }
   }
   let _ = await run()
-  let _watcher = Watch.start(roots, _path => {
-    ignore(run())
-  })
+  // A *relocation* (a module moved to another directory — a chapter rename /
+  // ungroup / move-to-chapter in the extension, or a terminal `mv`) leaves
+  // dependents' emitted `.res.mjs` pointing at the old path: incremental
+  // compilation never marks them dirty (their source + the moved module's
+  // interface hash are unchanged), so the live watcher and a restart both skip
+  // them and the stale import surfaces as a `<file-load-error>`. The only
+  // reliable repair is a `rescript clean` of the owning package. Detect the
+  // structural signal — an `unlink` of a source `.res` (a module left a
+  // directory) — and clean-rebuild that package, gating the re-run on build
+  // completion. Edits and adds stay on the lean incremental re-run. VS Code
+  // only: a human terminal `watch` keeps the re-run-only loop (it doesn't own
+  // the builds, so there's nothing to clean-rebuild).
+  let structuralRebuild = (path: string): unit =>
+    switch PackageScan.findOwning(path) {
+    | None => ignore(run())
+    | Some(pkg) =>
+      let t0 = Date.now()
+      FormatterVsCode.buildStart(pkg.dir)
+      // Surface a compile error during the rebuild (the clean/build stream is
+      // classified for the error marker); the re-run is gated on completion
+      // below, not on the classifier, since a one-shot `rescript build` has no
+      // "Finished … compilation" terminator.
+      let feed = BuildClassifier.make({
+        onStart: () => (),
+        onOk: _ms => (),
+        onFail: msg => FormatterVsCode.buildFail(pkg.dir, msg),
+      })
+      ProcessManager.cleanRebuild(
+        pkg,
+        ~onStdout=(_dir, line) => feed(line),
+        ~onDone=() => {
+          FormatterVsCode.buildOk(pkg.dir, Date.now() -. t0)
+          ignore(run())
+        },
+      )
+    }
+  let _watcher = Watch.start(roots, (event, path) =>
+    if opts.format == VsCode && Watch.isStructuralSource(event, path) {
+      structuralRebuild(path)
+    } else {
+      ignore(run())
+    }
+  )
   // Keep the process alive until cancelled. Awaiting here (rather than letting
   // runWatch return) is essential: the bin wrapper calls `process.exit` on the
   // resolved code, so a returning runWatch would tear down chokidar and the
