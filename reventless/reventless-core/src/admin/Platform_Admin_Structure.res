@@ -122,8 +122,22 @@ let eventGraphReadModel: queryableDef = {
   visibility: None,
 }
 
+let pluginHistoryReadModel: queryableDef = {
+  name: "PluginHistory",
+  queryField: Api_Naming.adminField(~name="PluginHistory"),
+  schema: PluginHistoryReadModelSpec.stateSchema->S.castToUnknown->encodeSchema,
+  consumedEventTypes: [],
+  linkedWriteSide: ["Plugin"],
+  labelField: "name",
+  searchableFields: ["name", "version", "transition"],
+  // `transition` is the per-row lifecycle event kind (Connected / Superseded /
+  // Retired / …) — surface it as the status column so the AutoUI colour-codes it.
+  statusField: Some("transition"),
+  visibility: None,
+}
+
 let structure: pluginStructure = {
-  readModels: [pluginReadModel, eventGraphReadModel],
+  readModels: [pluginReadModel, eventGraphReadModel, pluginHistoryReadModel],
   stateViewSlices: [],
   stateChangeSlices: [],
   aggregates: [pluginAggregate],

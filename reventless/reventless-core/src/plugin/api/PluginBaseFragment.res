@@ -59,6 +59,18 @@ let queryEntries: array<querySchemaEntry> = [
     authorization: Some(adminAuth),
     excludeFields: [],
   },
+  {
+    // Composite-key timeline read model (partition = plugin name, sort =
+    // transitionKey). The list field returns the whole audit trail; the resolver
+    // layer handles the sub-id automatically (QueryDbResolvers_AppSync ~subIdField).
+    specName: PluginHistoryReadModelSpec.name,
+    singleFieldName: Api_Naming.adminField(~name="PluginHistoryEntry"),
+    listFieldName: Api_Naming.adminField(~name="PluginHistory"),
+    returnTypeName: Api_Naming.adminField(~name="PluginHistoryEntry"),
+    stateSchema: PluginHistoryReadModelSpec.stateSchema->S.castToUnknown,
+    authorization: Some(adminAuth),
+    excludeFields: [],
+  },
 ]
 
 // Plugin aggregate admin mutations — derived statically from PluginSpec.command,

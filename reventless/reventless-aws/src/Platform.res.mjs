@@ -802,7 +802,7 @@ function MakeWithConfig(Config) {
     moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
     mappings: PluginHistoryProjection$ReventlessCore.mappings
   };
-  let PluginHistoryReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
+  let PluginHistoryReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginHistoryReadModelSpec$ReventlessCore.name,
     moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,
@@ -1910,7 +1910,7 @@ function Make($star) {
     moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
     mappings: PluginHistoryProjection$ReventlessCore.mappings
   };
-  let PluginHistoryReadModel = ReadModel_Builder_NoResolver_Stream$ReventlessAws.Make({
+  let PluginHistoryReadModel = ReadModel_Builder_Single_Stream$ReventlessAws.Make({
     Id: Id$Reventless.$$String,
     name: PluginHistoryReadModelSpec$ReventlessCore.name,
     moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,

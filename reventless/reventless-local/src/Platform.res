@@ -1568,6 +1568,45 @@ module MakeWithConfig = (
       },
     )
 
+    // PluginHistory (queryEntries[2]) — the per-version lifecycle timeline. The
+    // list field returns the whole audit trail (scan); the single field is a
+    // best-effort first-row-by-id (composite key, rarely used in the AutoUI which
+    // drives the list). Store registered in the Bus under "PluginHistory" by the
+    // MakeNoResolver read model's QueryDbStorage_InMemory.
+    let pluginHistoryQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
+    let pluginHistoryQueryDbName = ReventlessCore.PluginHistoryReadModelSpec.name
+    queryResolvers->Dict.set(
+      pluginHistoryQueryEntry.singleFieldName,
+      async (_root, args, _ctx): JSON.t => {
+        let id =
+          args
+          ->JSON.Decode.object
+          ->Option.flatMap(d => d->Dict.get("id"))
+          ->Option.flatMap(JSON.Decode.string)
+          ->Option.getOr("")
+        switch Bus.getQueryDb(pluginHistoryQueryDbName) {
+        | Some(ops) =>
+          let items =
+            await ops.loadStream(id)
+            ->Stream.runCollect
+            ->Effect.catchAll(_ => Effect.succeed([]))
+            ->Effect.runPromise
+          items->Array.get(0)->Option.getOr(JSON.Encode.null)
+        | None => JSON.Encode.null
+        }
+      },
+    )
+    queryResolvers->Dict.set(
+      pluginHistoryQueryEntry.listFieldName,
+      async (_root, _args, _ctx): JSON.t => {
+        let items = switch Bus.getQueryDbScan(pluginHistoryQueryDbName) {
+        | Some(scanAll) => scanAll()
+        | None => []
+        }
+        connectionResponse(items)
+      },
+    )
+
     // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
     // AdminApi.baseFragment so we register only the resolver here. Encoder is shared
     // with the AWS adapter so responses are byte-identical.

@@ -1152,10 +1152,11 @@ module MakeWithConfig = (
     UIFragmentRegistryReadModelMappings,
   )
 
-  // Admin-internal PluginHistory read model — the per-version lifecycle timeline
-  // (one row per transition, composite key name + version#transitionAt#kind).
-  // Internal visibility, no AppSync resolver: the admin reads it by scanning the
-  // QueryDb table (same pattern as UIFragmentRegistry / PlatformEventGraph).
+  // Admin PluginHistory read model — the per-version lifecycle timeline (one row
+  // per transition, composite key name + version#transitionAt#kind). Public admin
+  // view: ReadModel_Builder_Single_Stream attaches AppSync resolvers (the resolver
+  // layer handles the composite sub-id), so the AutoUI renders the timeline. The
+  // admin-prefixed SDL fields are declared in PluginBaseFragment.queryEntries.
   module PluginHistoryReadModelMappings: Reventless.Projection.Mappings
     with module Target := ReventlessCore.PluginHistoryReadModelSpec = {
     module M = ReventlessCore.PluginHistoryProjection.Mappings
@@ -1165,7 +1166,7 @@ module MakeWithConfig = (
     let mappings: array<module(Mapping)> = ReventlessCore.PluginHistoryProjection.mappings
   }
 
-  module PluginHistoryReadModel = ReadModel_Builder_NoResolver_Stream.Make(
+  module PluginHistoryReadModel = ReadModel_Builder_Single_Stream.Make(
     ReventlessCore.PluginHistoryReadModelSpec,
     PluginHistoryReadModelMappings,
   )

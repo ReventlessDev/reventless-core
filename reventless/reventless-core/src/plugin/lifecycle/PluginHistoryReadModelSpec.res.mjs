@@ -41,7 +41,7 @@ let moduleUrl = "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginHisto
 
 let authorization = "AllowAuthenticated";
 
-let visibility = "Internal";
+let visibility = "Public";
 
 export {
   name,

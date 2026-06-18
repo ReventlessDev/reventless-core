@@ -1419,6 +1419,20 @@ function MakeWithConfig(Config) {
       let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
+    let pluginHistoryQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[2];
+    queryResolvers[pluginHistoryQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      let ops = Bus.getQueryDb(PluginHistoryReadModelSpec$ReventlessCore.name);
+      if (ops === undefined) {
+        return null;
+      }
+      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+      return Stdlib_Option.getOr(items[0], null);
+    };
+    queryResolvers[pluginHistoryQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
+      let scanAll = Bus.getQueryDbScan(PluginHistoryReadModelSpec$ReventlessCore.name);
+      return connectionResponse(scanAll !== undefined ? scanAll() : []);
+    };
     queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {
       let dict = {};
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
@@ -3314,6 +3328,20 @@ function Make($star) {
     };
     queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
+      return connectionResponse(scanAll !== undefined ? scanAll() : []);
+    };
+    let pluginHistoryQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[2];
+    queryResolvers[pluginHistoryQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
+      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+      let ops = Bus.getQueryDb(PluginHistoryReadModelSpec$ReventlessCore.name);
+      if (ops === undefined) {
+        return null;
+      }
+      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
+      return Stdlib_Option.getOr(items[0], null);
+    };
+    queryResolvers[pluginHistoryQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
+      let scanAll = Bus.getQueryDbScan(PluginHistoryReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {

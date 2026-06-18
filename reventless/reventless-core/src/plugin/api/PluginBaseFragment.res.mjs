@@ -5,6 +5,7 @@ import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.
 import * as PluginSpec$ReventlessCore from "../lifecycle/PluginSpec.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../lifecycle/PluginsReadModelSpec.res.mjs";
+import * as PluginHistoryReadModelSpec$ReventlessCore from "../lifecycle/PluginHistoryReadModelSpec.res.mjs";
 import * as Platform_EventGraphReadModelSpec$ReventlessCore from "../../admin/Platform_EventGraphReadModelSpec.res.mjs";
 
 let adminAuth = {
@@ -40,6 +41,15 @@ let queryEntries = [
     returnTypeName: Api_Naming$ReventlessCore.adminField("PlatformEventGraph"),
     stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
     specName: Platform_EventGraphReadModelSpec$ReventlessCore.name,
+    authorization: adminAuth,
+    excludeFields: []
+  },
+  {
+    singleFieldName: Api_Naming$ReventlessCore.adminField("PluginHistoryEntry"),
+    listFieldName: Api_Naming$ReventlessCore.adminField("PluginHistory"),
+    returnTypeName: Api_Naming$ReventlessCore.adminField("PluginHistoryEntry"),
+    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
+    specName: PluginHistoryReadModelSpec$ReventlessCore.name,
     authorization: adminAuth,
     excludeFields: []
   }

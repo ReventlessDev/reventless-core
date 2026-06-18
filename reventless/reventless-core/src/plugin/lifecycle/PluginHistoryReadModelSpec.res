@@ -1,13 +1,13 @@
 @@reventless.spec("PluginHistory")
-@@reventless.visibility(Internal)
 
 // Rich audit view — the full per-version lifecycle timeline (analysis §6.2).
 // One row per *transition*: partition key = plugin **name** (the aggregate id),
 // sort key = `version#transitionAt#transition`. A faithful fold of the Plugin
-// aggregate's event stream — zero inference. Never feeds the AutoUI manifest
-// (`@@reventless.visibility(Internal)`); the admin plugin-lifecycle page reads it
-// to show every version in every state (Connected / Disconnected / Superseded /
-// Inactive / Retired) plus the transition timeline.
+// aggregate's event stream — zero inference. Surfaced as a Public admin read
+// model (declared in `Platform_Admin_Structure` + `PluginBaseFragment`, resolver
+// via `ReadModel_Builder_Single_Stream`), so the AutoUI renders the plugin
+// lifecycle timeline — every version in every state (Connected / Disconnected /
+// Superseded / Inactive / Retired) plus the transition history.
 
 // Each lifecycle transition recorded in the audit trail. `Superseded` and
 // `Promoted` are first-class here (decided write-side, §6.2.3) — the current
