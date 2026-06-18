@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.102 (2026-06-18)
+
+### Features
+
+* **admin:** generate admin read-model query SDL from spec (parity) ([1545f77](https://github.com/ReventlessDev/reventless-core/commit/1545f77beec495cd8564be94a510fcf01903d28b))
+
+
 # 3.0.0-alpha.101 (2026-06-18)
 
 ### Features
