@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.61 (2026-06-18)
+
+### Bug Fixes
+
+* **graph:** route extension edges to the commands they create ([31c8d50](https://github.com/ReventlessDev/reventless-core/commit/31c8d5031c87258d68af20e738d091f7011836b3))
+
+
 # 1.0.0-alpha.60 (2026-06-17)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

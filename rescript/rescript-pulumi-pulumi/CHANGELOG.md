@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.3.0-alpha.13 (2026-06-18)
+
+### Features
+
+* **aws:** deploy-time synthetic heartbeat for zero-downtime plugin handover ([347b14f](https://github.com/ReventlessDev/reventless-core/commit/347b14fc702f5ddb690ee9624519abf36d9a93b8))
+
+
 # 2.3.0-alpha.12 (2026-06-10)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-pulumi

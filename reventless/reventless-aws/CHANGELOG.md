@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.152 (2026-06-18)
+
+### Bug Fixes
+
+* **aws:** reject mutations on Retired plugins in the runtime status gate ([0e9afdd](https://github.com/ReventlessDev/reventless-core/commit/0e9afdd30d15f537b54c9404ddc37a78d2219ee4))
+### Features
+
+* **admin:** PluginHistory lifecycle audit view (core + AWS) ([00402ca](https://github.com/ReventlessDev/reventless-core/commit/00402ca010e3e404928e9df5ed15f6a419924d46))
+* **aws:** deploy-time synthetic heartbeat for zero-downtime plugin handover ([347b14f](https://github.com/ReventlessDev/reventless-core/commit/347b14fc702f5ddb690ee9624519abf36d9a93b8))
+
+
 # 3.0.0-alpha.151 (2026-06-17)
 
 ### Bug Fixes

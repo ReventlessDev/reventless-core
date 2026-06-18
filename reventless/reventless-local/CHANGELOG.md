@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.100 (2026-06-18)
+
+### Features
+
+* **admin:** name-keyed plugin lifecycle aggregate + current view ([c6720d0](https://github.com/ReventlessDev/reventless-core/commit/c6720d089b71393803183600fde61dfa32d780b5))
+* **admin:** PluginHistory lifecycle audit view (core + AWS) ([00402ca](https://github.com/ReventlessDev/reventless-core/commit/00402ca010e3e404928e9df5ed15f6a419924d46))
+* **local:** route admin Plugin lifecycle through the aggregate (F1) ([1193fb2](https://github.com/ReventlessDev/reventless-core/commit/1193fb26a54b897bcd40f7aceed2a5e1de21c52d))
+
+
 # 3.0.0-alpha.99 (2026-06-17)
 
 ### Bug Fixes

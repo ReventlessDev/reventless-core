@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.45 (2026-06-18)
+
+### Features
+
+* **aws:** deploy-time synthetic heartbeat for zero-downtime plugin handover ([347b14f](https://github.com/ReventlessDev/reventless-core/commit/347b14fc702f5ddb690ee9624519abf36d9a93b8))
+
+
 # 1.0.0-alpha.44 (2026-06-17)
 
 * feat(example)!: type the directive channel in the hybrid example ([7ee7527](https://github.com/ReventlessDev/reventless-core/commit/7ee75275a01808c83df3e5c4f309c1be851bcffb))

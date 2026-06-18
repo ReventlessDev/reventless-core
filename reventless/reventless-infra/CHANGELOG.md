@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.73 (2026-06-18)
+
+**Note:** Version bump only for package @reventlessdev/reventless-infra
+
+
+
+
+
 # 3.0.0-alpha.72 (2026-06-17)
 
 * feat!: rename Call directive to HandleDirective for naming consistency ([3fdf84a](https://github.com/ReventlessDev/reventless-core/commit/3fdf84a503b8ee9b07d0774e34c911f5d90d45d0))

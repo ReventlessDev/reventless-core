@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.121 (2026-06-18)
+
+### Bug Fixes
+
+* **aws:** reject mutations on Retired plugins in the runtime status gate ([0e9afdd](https://github.com/ReventlessDev/reventless-core/commit/0e9afdd30d15f537b54c9404ddc37a78d2219ee4))
+* **core:** derive plugin module specifiers from @[@reventless](https://github.com/reventless).spec moduleUrl ([5bc47cb](https://github.com/ReventlessDev/reventless-core/commit/5bc47cbbcc83b7cb1bb8c2a3812a57c4d05b7fbb))
+### Features
+
+* **admin:** name-keyed plugin lifecycle aggregate + current view ([c6720d0](https://github.com/ReventlessDev/reventless-core/commit/c6720d089b71393803183600fde61dfa32d780b5))
+* **admin:** PluginHistory lifecycle audit view (core + AWS) ([00402ca](https://github.com/ReventlessDev/reventless-core/commit/00402ca010e3e404928e9df5ed15f6a419924d46))
+
+
 # 3.0.0-alpha.120 (2026-06-17)
 
 ### Bug Fixes
