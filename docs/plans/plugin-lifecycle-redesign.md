@@ -17,7 +17,7 @@
 | **Bug fix (duplicate menu) — structurally resolved** | ✅ | one row per name + write-side supersession + hook gone |
 | Part 2 — `PluginHistory` view (core + AWS) | ✅ done | core spec/projection + 8 GWT tests; AWS `ReadModel_Builder_NoResolver_Stream` (composite-key, internal, no resolver). Local population landed with F1 refactor below |
 | Part 2 — F1 local Connect-flow refactor (decision ii) | ✅ done | local now routes through `LocalPluginAggregate`: real `PluginsReadModel` + `PluginHistoryReadModel` (NoResolver) wired into both `Admin.construct` sites; `seedPluginQueryDb` direct-write → synthetic `Connect(def)` dispatch; hand-written Activate/Deactivate resolvers → aggregate-dispatched `Activate`/`Deactivate`/`Retire`; `onPluginStatusChange`/`onUIFragmentChange` relocated to a Plugin-event-topic bus subscription. Verified at runtime (Platform_Plugins read; Deactivate→Inactive→Activate→Connected→Retire; PluginHistory timeline folds). core 418 + local 424 green |
-| Part 2 — AWS version-arg admin path | ⬜ verify | `Activate`/`Deactivate`/`Retire(version)` mutations (deploy-path, not test-covered) |
+| Part 2 — AWS version-arg admin path | ✅ verified | `Activate`/`Deactivate`/`Retire(version)` mutations + MCP tools are schema-driven from `PluginSpec.command` (`PluginBaseFragment.pluginAggregateMutationEntries`) — version arg + `Retire` come for free; local proved the same derivation end-to-end. `PluginStatus` enum already correct (Superseded is *derived*, never a status). **Fix:** AWS `AggregateEntryPoint.mjs::checkPluginStatus` was missing `Retired` → added `Retired → PluginRetired` to match the (exhaustive) local gate |
 | Part 3 — zero-downtime synthetic heartbeat + deploy contract | ⬜ todo | |
 
 **Decisions locked in during implementation:**
@@ -284,9 +284,14 @@ to, at)` · `VersionPromoted` · `Disconnected` · `Retired`.
 The re-key makes the aggregate id `name`, so admin commands carry `version`:
 - `Activate`/`Deactivate`/`Retire` mutation inputs gain a `version` field
   (auto-derived from the command schema); resolver routes to instance `name`.
-- The **resolver status gate** (`AggregateEntryPoint.mjs::checkPluginStatus`,
-  scans Plugin RM by status) and the `PluginStatus` enum + `onPluginStatusChange`
-  subscription in `AdminApi` gain the `Superseded` status.
+- **Resolved during impl:** `Superseded` is *derived* (Connected && ≠ current),
+  never a read-model/aggregate status, so the `PluginStatus` enum +
+  `onPluginStatusChange` subscription do **not** change — the enum is already the
+  correct four (`Connected`/`Disconnected`/`Inactive`/`Retired`). The only gate
+  change was completing the **resolver status gate**
+  (`AggregateEntryPoint.mjs::checkPluginStatus`): it was missing the `Retired`
+  case (fell through to allow) — added `Retired → PluginRetired`, matching the
+  compiler-exhaustive local gate.
 - MCP tools `Plugin_Activate`/`Deactivate` (+ new `Plugin_Retire`) gain the
   `version` arg.
 
@@ -333,7 +338,9 @@ landed as one checkpoint):
    stores; synthetic `Connect(def)` seed; aggregate-dispatched admin lifecycle
    mutations; subscription emission relocated to a bus subscription. Runtime-
    verified end-to-end. (Local `PluginHistory` QueryDb is populated here.)
-5. ⬜ AWS version-arg admin-path verification (§2.7).
+5. ✅ AWS version-arg admin-path verification (§2.7) — schema-driven mutations +
+   MCP tools carry the version arg + `Retire`; enum already correct; added the
+   missing `Retired` case to the AWS runtime status gate.
 
 ---
 

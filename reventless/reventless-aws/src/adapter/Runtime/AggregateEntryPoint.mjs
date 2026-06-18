@@ -24,6 +24,7 @@ const dynamicImport = (specifier) => import('/var/task/node_modules/' + specifie
 // returning the split error codes from docs/analysis/plugin-lifecycle-tiers.md:
 //   Disconnected → PluginUnavailable (tier 1, retryable)
 //   Inactive     → PluginInactive    (tier 2, admin-controlled)
+//   Retired      → PluginRetired     (tier 2, admin-archived version)
 // Platform_* admin mutations bypass the gate. Disabled silently if
 // PLUGIN_RM_TABLE_NAME env var is not set.
 // ---------------------------------------------------------------------------
@@ -106,6 +107,8 @@ async function checkPluginStatus(event) {
       return pluginRejection(msgId, "PluginUnavailable", `${detailPrefix}: plugin is disconnected`);
     case "Inactive":
       return pluginRejection(msgId, "PluginInactive", `${detailPrefix}: plugin is inactive`);
+    case "Retired":
+      return pluginRejection(msgId, "PluginRetired", `${detailPrefix}: plugin version has been retired`);
     default:
       return null;
   }

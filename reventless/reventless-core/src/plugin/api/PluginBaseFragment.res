@@ -61,11 +61,17 @@ let queryEntries: array<querySchemaEntry> = [
   },
 ]
 
-// Plugin aggregate admin mutations — derived statically from PluginSpec.command
-// so the generated SDL contains `Platform_Plugin_Activate(id: ID!): CommandResult!`
-// and `Platform_Plugin_Deactivate(id: ID!): CommandResult!`. Internal-protocol
-// variants (`Heartbeat`, `Connect`, `Disconnect`, `ReportIncompatibility`) carry
-// `@noApi` and are filtered out by `ApiNoApiHelpers.filterNoApiVariants`.
+// Plugin aggregate admin mutations — derived statically from PluginSpec.command,
+// so the generated SDL contains one field per non-`@noApi` variant carrying that
+// variant's command fields as args. Since the admin commands are name-keyed and
+// version-scoped (`Activate(version)` / `Deactivate(version)` / `Retire(version)`),
+// the fields are e.g. `Platform_Plugin_Activate(id: ID!, _0: String!): CommandResult!`
+// (`id` = plugin name = aggregate instance; `_0` = target version). `Retire` is
+// API-exposed (manual archive, §2.5). Internal-protocol variants (`Heartbeat`,
+// `Connect`, `Disconnect`, `ReportIncompatibility`) carry `@noApi` and are filtered
+// out by `ApiNoApiHelpers.filterNoApiVariants`. The same `commandSchema`-driven
+// entry feeds the MCP tool generator, so the MCP tools gain the version arg and
+// the `Plugin_Retire` tool automatically.
 //
 // The matching resolver wiring (registry population + `mutationResolverHook` /
 // `mutationBindHook` firing for the in-memory and AWS auto-flow) lives in
