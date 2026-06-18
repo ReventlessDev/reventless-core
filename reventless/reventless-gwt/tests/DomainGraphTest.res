@@ -251,5 +251,9 @@ describe("DomainGraph.build", () => {
     expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits"))->toBe(true)
     // …which feeds the extension point — so EP focus reaches the producer.
     expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds"))->toBe(true)
+    // …and the producer's command is the one the EP routes inward — EP → Command,
+    // the same command node the write-side handles (no Extension required).
+    expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo"))->toBe(true)
+    expect(hasEdge(g, "Catalog_AddProduct", "Catalog:AddProduct", "handles"))->toBe(true)
   })
 })

@@ -332,6 +332,8 @@ globalThis.describe("DomainGraph.build", () => {
     globalThis.expect(nodeKind(g, "Catalog:ep:Catalog.Products")).toEqual("ExtensionPoint");
     globalThis.expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits")).toBe(true);
     globalThis.expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog:ep:Catalog.Products", "Catalog_AddProduct", "routesTo")).toBe(true);
+    globalThis.expect(hasEdge(g, "Catalog_AddProduct", "Catalog:AddProduct", "handles")).toBe(true);
   });
 });
 
