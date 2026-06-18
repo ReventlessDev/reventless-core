@@ -1315,6 +1315,66 @@ module MakeWithConfig = (
     ])->JSON.Encode.object
   }
 
+  // Generic admin composite-key / index query resolvers. `GraphQL_FragmentGenerator`
+  // now emits `<single>Items` (sub-id) and `<single>By<Index>` (GSI) query fields
+  // for any admin read model whose spec declares a `subIdConfig` / `config.indexes`
+  // (see PluginBaseFragment.res — closing the admin/ordinary parity gap). Register
+  // the matching resolvers here, driven off the same `PluginBaseFragment.queryEntries`
+  // the SDL is generated from, so the local GraphQL surface stays in lockstep with
+  // the SDL instead of positional hand-wiring. Purely additive — `single` / `list`
+  // keep their per-entry handling registered above. `~live` toggles real partition
+  // loads (plugin path) vs empty stubs (platform-only path with no QueryDb seeded).
+  let registerAdminItemsAndIndexResolvers = (~queryResolvers, ~live: bool) =>
+    ReventlessCore.PluginBaseFragment.queryEntries->Array.forEach(entry => {
+      let queryDbName = entry.specName->Option.getOr(entry.returnTypeName)
+      // `<single>Items(id, …)` — all rows under one partition (composite key).
+      switch entry.subIdField {
+      | Some(_) =>
+        queryResolvers->Dict.set(
+          entry.singleFieldName ++ "Items",
+          async (_root, args, _ctx): JSON.t =>
+            if !live {
+              connectionResponse([])
+            } else {
+              let id =
+                args
+                ->JSON.Decode.object
+                ->Option.flatMap(d => d->Dict.get("id"))
+                ->Option.flatMap(JSON.Decode.string)
+                ->Option.getOr("")
+              let items = switch Bus.getQueryDb(queryDbName) {
+              | Some(ops) =>
+                await ops.loadStream(id)
+                ->Stream.runCollect
+                ->Effect.catchAll(_ => Effect.succeed([]))
+                ->Effect.runPromise
+              | None => []
+              }
+              connectionResponse(items)
+            },
+        )
+      | None => ()
+      }
+      // `<single>By<Index>` — no admin read model declares an `@index` yet, so this
+      // branch is currently inert. The empty-connection resolver keeps the SDL field
+      // (when the first admin GSI is added, Part 2b) from being resolver-less; the
+      // indexed scan is fleshed out together with that first concrete index.
+      switch entry.indexQueries {
+      | Some(indexes) =>
+        indexes->Array.forEach((ic: Reventless.ReadModel.indexConfig) => {
+          let stripped =
+            ic.index->String.startsWith("by") && ic.index->String.length > 2
+              ? ic.index->String.slice(~start=2, ~end=ic.index->String.length)
+              : ic.index
+          let fieldName = entry.singleFieldName ++ "By" ++ stripped->String.capitalize
+          queryResolvers->Dict.set(fieldName, async (_root, _args, _ctx): JSON.t =>
+            connectionResponse([])
+          )
+        })
+      | None => ()
+      }
+    })
+
   let makePlatform = (~version, ~plugins: array<module(PluginMaker)>) => {
     log.info(~comp="Platform", `v${version}`)
     log.info(
@@ -1714,6 +1774,10 @@ module MakeWithConfig = (
       },
     )
 
+    // Composite-key / index admin query fields (e.g. Platform_PluginHistoryEntryItems
+    // — the per-plugin lifecycle timeline). Live loads from the seeded QueryDb stores.
+    registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=true)
+
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     // Admin Plugin lifecycle mutations (Activate / Deactivate / Retire) now flow
@@ -2031,6 +2095,9 @@ module MakeWithConfig = (
       "Platform_UIFragments",
       async (_root, _args, _ctx): JSON.t => JSON.Encode.array([]),
     )
+    // Composite-key / index admin query fields — empty stubs in the platform-only
+    // path (no plugins connected → no QueryDb seeded).
+    registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=false)
     adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
     let mutationResolvers = Dict.make()
@@ -2287,6 +2354,9 @@ module MakeWithConfig = (
           )
           ->JSON.Encode.array,
       )
+      // Composite-key / index admin query fields (e.g. Platform_PluginHistoryEntryItems).
+      // Live loads from the seeded QueryDb stores (empty when not yet seeded).
+      registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=true)
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
 
       let mutationResolvers = Dict.make()

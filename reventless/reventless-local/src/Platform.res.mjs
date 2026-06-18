@@ -9,6 +9,7 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Id$Reventless from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Stdlib_String from "@rescript/runtime/lib/es6/Stdlib_String.js";
 import * as Effect from "effect/Effect";
 import * as Stream$1 from "effect/Stream";
 import * as Pulumi from "@pulumi/pulumi";
@@ -1246,6 +1247,31 @@ function MakeWithConfig(Config) {
       ]
     ]);
   };
+  let registerAdminItemsAndIndexResolvers = (queryResolvers, live) => {
+    PluginBaseFragment$ReventlessCore.queryEntries.forEach(entry => {
+      let queryDbName = Stdlib_Option.getOr(entry.specName, entry.returnTypeName);
+      let match = entry.subIdField;
+      if (match !== undefined) {
+        queryResolvers[entry.singleFieldName + "Items"] = async (_root, args, _ctx) => {
+          if (!live) {
+            return connectionResponse([]);
+          }
+          let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+          let ops = Bus.getQueryDb(queryDbName);
+          return connectionResponse(ops !== undefined ? await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([]))) : []);
+        };
+      }
+      let indexes = entry.indexQueries;
+      if (indexes !== undefined) {
+        indexes.forEach(ic => {
+          let stripped = ic.index.startsWith("by") && ic.index.length > 2 ? ic.index.slice(2, ic.index.length) : ic.index;
+          let fieldName = entry.singleFieldName + "By" + Stdlib_String.capitalize(stripped);
+          queryResolvers[fieldName] = async (_root, _args, _ctx) => connectionResponse([]);
+        });
+        return;
+      }
+    });
+  };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(Config.silent) + `, splitApi: ` + Stdlib_Bool.toString(Config.splitApi) + `, cloner: ` + Stdlib_Bool.toString(Config.cloner));
@@ -1509,6 +1535,7 @@ function MakeWithConfig(Config) {
       });
       return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
+    registerAdminItemsAndIndexResolvers(queryResolvers, true);
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
     let currentVersionOf = pluginName => {
@@ -1727,6 +1754,7 @@ function MakeWithConfig(Config) {
     queryResolvers[eventGraphQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[eventGraphQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
+    registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
@@ -1884,6 +1912,7 @@ function MakeWithConfig(Config) {
         return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
       queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(Config.cloner);
@@ -3158,6 +3187,31 @@ function Make($star) {
       ]
     ]);
   };
+  let registerAdminItemsAndIndexResolvers = (queryResolvers, live) => {
+    PluginBaseFragment$ReventlessCore.queryEntries.forEach(entry => {
+      let queryDbName = Stdlib_Option.getOr(entry.specName, entry.returnTypeName);
+      let match = entry.subIdField;
+      if (match !== undefined) {
+        queryResolvers[entry.singleFieldName + "Items"] = async (_root, args, _ctx) => {
+          if (!live) {
+            return connectionResponse([]);
+          }
+          let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
+          let ops = Bus.getQueryDb(queryDbName);
+          return connectionResponse(ops !== undefined ? await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([]))) : []);
+        };
+      }
+      let indexes = entry.indexQueries;
+      if (indexes !== undefined) {
+        indexes.forEach(ic => {
+          let stripped = ic.index.startsWith("by") && ic.index.length > 2 ? ic.index.slice(2, ic.index.length) : ic.index;
+          let fieldName = entry.singleFieldName + "By" + Stdlib_String.capitalize(stripped);
+          queryResolvers[fieldName] = async (_root, _args, _ctx) => connectionResponse([]);
+        });
+        return;
+      }
+    });
+  };
   let makePlatform = (version, plugins) => {
     log.info("Platform", undefined, `v` + version);
     log.info("Platform", undefined, `silent: ` + Stdlib_Bool.toString(false) + `, splitApi: ` + Stdlib_Bool.toString(true) + `, cloner: ` + Stdlib_Bool.toString(false));
@@ -3420,6 +3474,7 @@ function Make($star) {
       });
       return Object.values(latestByName).map(param => Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(param[1]));
     };
+    registerAdminItemsAndIndexResolvers(queryResolvers, true);
     platformGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let argId = args => Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
     let currentVersionOf = pluginName => {
@@ -3631,6 +3686,7 @@ function Make($star) {
     queryResolvers[eventGraphQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[eventGraphQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
+    registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
     let mutationResolvers = {};
     let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);
@@ -3786,6 +3842,7 @@ function Make($star) {
         return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
       }));
       queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
+      registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
       let mutationResolvers = {};
       let adminMutationEntries = AdminApi$ReventlessCore.mutationEntries(false);

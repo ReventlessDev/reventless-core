@@ -29,6 +29,18 @@ let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat
   "structure",
 ])
 
+// Admin read-model query entries are generated from each spec the same way
+// ordinary read models are (Plugin_Builder.res): `subIdField` flows from the
+// spec's `subIdConfig` and `indexQueries` from `config.indexes`, so
+// `GraphQL_FragmentGenerator` emits the matching `<single>Items` (composite key)
+// and `<single>By<Index>` (GSI) fields automatically — in lockstep with the
+// shared resolver layer (`QueryDbResolvers_{AppSync,GraphQL}`). This closes the
+// admin/ordinary parity gap: an admin read model that declares a sub-id or an
+// `@index` now gets the same auto-generated GraphQL surface ordinary read models
+// do, instead of just `single` + `list`.
+let indexQueriesOfConfig = (config: Reventless.ReadModel.config) =>
+  config.indexes->Array.length > 0 ? Some(config.indexes) : None
+
 // The UIFragmentRegistry read model is queried exclusively via the explicit
 // flat `Platform_UIFragments: [Platform_UIFragmentEntry!]!` field declared in
 // `Platform_UIFragmentsApi.res` (and resolved by `Platform_UIFragments_Lambda.res`
@@ -49,6 +61,8 @@ let queryEntries: array<querySchemaEntry> = [
     stateSchema: PluginsReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
     excludeFields: pluginExcludeFields,
+    subIdField: ?PluginsReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
+    indexQueries: ?indexQueriesOfConfig(PluginsReadModelSpec.config),
   },
   {
     specName: Platform_EventGraphReadModelSpec.name,
@@ -58,11 +72,15 @@ let queryEntries: array<querySchemaEntry> = [
     stateSchema: Platform_EventGraphReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
     excludeFields: [],
+    subIdField: ?Platform_EventGraphReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
+    indexQueries: ?indexQueriesOfConfig(Platform_EventGraphReadModelSpec.config),
   },
   {
     // Composite-key timeline read model (partition = plugin name, sort =
     // transitionKey). The list field returns the whole audit trail; the resolver
     // layer handles the sub-id automatically (QueryDbResolvers_AppSync ~subIdField).
+    // `subIdField` (from `subIdConfig`) makes the generator emit the
+    // `Platform_PluginHistoryEntryItems` per-plugin timeline field.
     specName: PluginHistoryReadModelSpec.name,
     singleFieldName: Api_Naming.adminField(~name="PluginHistoryEntry"),
     listFieldName: Api_Naming.adminField(~name="PluginHistory"),
@@ -70,6 +88,8 @@ let queryEntries: array<querySchemaEntry> = [
     stateSchema: PluginHistoryReadModelSpec.stateSchema->S.castToUnknown,
     authorization: Some(adminAuth),
     excludeFields: [],
+    subIdField: ?PluginHistoryReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
+    indexQueries: ?indexQueriesOfConfig(PluginHistoryReadModelSpec.config),
   },
 ]
 
