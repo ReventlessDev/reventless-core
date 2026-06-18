@@ -192,32 +192,72 @@ entirely — a possible future simplification, not done here.)
 
 ---
 
-## 6. Rollback semantics — the honest version
+## 6. Rollback — stepping back to a previous version
 
-Promotion (`VersionPromoted`) is **failover to a concurrently-live version, not
-time-travel to a historical one.** The objection *"an old version in the history doesn't
-mean its infrastructure is still deployed, so you can't roll back to it"* is correct —
-and the design already honours it:
+When an admin decides a newly-deployed version is misbehaving, rolling back means making
+an **earlier** version current again. There is no dedicated `Rollback` command — rollback
+is expressed through the existing admin commands plus the automatic promotion the
+aggregate performs when the current version leaves `Connected`.
 
-- `highestConnectedExcluding` only ever targets a version whose status is **`Connected`**
-  right now. `Disconnected` / `Inactive` / `Retired` versions are excluded.
-- Because `Connected ⟺ alive` (§3), a promotion target is by construction a version
-  whose Lambdas/resolvers are **still deployed and serving** — i.e. you are inside a
-  rolling-deploy overlap window where both versions are up.
-- If no other version is `Connected`, `promoteEvents` returns `[]` and the row simply
-  goes `Disconnected`. The aggregate **cannot and does not resurrect** torn-down infra.
+### How it works
 
-So as a general "rollback to a previous release" feature, this is marginal — it only
-fires for a *bad deploy whose new version dies while the old stack is still live*
-(canary failover). That is genuinely useful, but it is **not** the reason
-`otherConnectedVersions` exists (§5 is).
+`current` is always the **highest `Connected` version** (§2), so a lower version cannot be
+current while a higher one is still `Connected`. Rolling back therefore means taking the
+bad (higher) version *out* of the `Connected` set, with one command on the current version:
 
-**The real weakness** is staleness of the `Connected` flag. Inside the heartbeat-timeout
-lag — or if a disconnect/retire transition never lands (§7) — a version can *read*
-`Connected` after its infra is already gone. In that window `highestConnectedExcluding`
-could promote a **phantom**: a version that won't actually serve. The rollback model is
-sound *only as far as the `Connected` invariant is fresh*; tightening that freshness
-(heartbeat-timeout latency, reliable disconnect/retire) is what makes it trustworthy.
+- **`Deactivate(badVersion)`** — suspends it (`→ Inactive`); reversible later with `Activate`.
+- **`Retire(badVersion)`** — archives it (`→ Retired`); terminal.
+
+When either command targets the current version, the aggregate automatically appends a
+**`VersionPromoted`** for the next-highest version that is *still* `Connected`
+(`promoteEvents` → `highestConnectedExcluding`). So a single command both removes the bad
+version and steps the current pointer back.
+
+Worked example — current is `alpha.88`, the previous `alpha.86` is still `Connected`:
+
+```
+Deactivate(alpha.88)
+  ├─ VersionDeactivated(alpha.88)   // alpha.88 → Inactive, leaves the Connected set
+  └─ VersionPromoted(alpha.86)      // alpha.86 = highest remaining Connected → current
+```
+
+The `Plugins` read model flips the `alpha.88` row to `Inactive`, then `VersionPromoted`
+makes `alpha.86` the current row; `PluginHistory` records both transitions
+(`Deactivated`, `Promoted`).
+
+### Stepping to a lower version number is fine
+
+"Highest version wins" is about the highest **`Connected`** version, not the highest that
+ever existed. Once `alpha.88` is `Inactive`, the highest `Connected` version *is*
+`alpha.86`, so promoting it doesn't violate the rule — `VersionPromoted` just records the
+explicit step-down. `Activate(alpha.88)` later is the inverse: it re-enters `Connected`,
+and being the higher version, supersedes `alpha.86` again.
+
+### Do you have to wait for the new version's heartbeat to stop?
+
+**No, if the admin actively deactivates/retires it.** `Deactivate`/`Retire` emit the
+`VersionPromoted` in the *same* command, so the switch to `alpha.86` is immediate — no
+heartbeat-timeout is on that path. The still-running `alpha.88` keeps heartbeating, but a
+`Heartbeat` for an `Inactive`/`Retired` version is ignored (not heartbeat-revivable), so
+it does not flip back.
+
+You only wait for the timeout in the **passive** case — if, instead of issuing a command,
+you just stop the new version. Then nothing changes until the Scheduler times out its
+missing heartbeats and issues `Disconnect(alpha.88)`, which triggers the same
+`promoteEvents` failover. That path is bounded by the heartbeat-timeout window (§3).
+
+### The one precondition: the target must still be `Connected`
+
+Promotion can only pick a version that is *currently* `Connected` — still deployed and
+heartbeating:
+
+- **During the deploy overlap window (§7)** the previous version is still up, so rollback
+  is instant.
+- **After the old stack has been torn down** the previous version is `Disconnected`, so
+  `promoteEvents` finds nothing to promote: `Deactivate(alpha.88)` then leaves the plugin
+  with **no current version** until something reconnects. To roll back at that point you
+  must first **redeploy the previous version** (so it reconnects and is `Connected`
+  again), then deactivate/retire the bad one.
 
 ---
 
