@@ -5,6 +5,11 @@ external getStackName: unit => string = "getStack"
 @module("@pulumi/pulumi")
 external getProjectName: unit => string = "getProject"
 
+// True during `pulumi preview` (dry run). Guard deploy-time side effects (e.g.
+// one-shot SQS sends inside Output.apply) so they only run on a real `pulumi up`.
+@module("@pulumi/pulumi/runtime/index.js")
+external isDryRun: unit => bool = "isDryRun"
+
 // Pulumi captures ALL top-level ESM named exports as stack outputs. ReScript
 // hoists module bindings (Platform, Catalog) as named exports, leaking internal
 // data (sury schemas, Spec modules) into `pulumi stack output`.

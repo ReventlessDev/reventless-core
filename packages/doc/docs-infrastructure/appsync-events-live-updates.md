@@ -376,6 +376,67 @@ host-shell dependency is bumped + redeployed.
 
 ---
 
+## Zero-downtime version handover
+
+Deploying a new plugin version (`Catalog@v2` over `Catalog@v1`) must not blink the
+AutoUI nav or briefly show two `Catalog` entries. Three mechanisms guarantee this.
+
+**1. The manifest is one-row-per-name.** The `Plugins` current view is keyed by
+plugin **name**, not `name@version` — it holds only the *current* connected
+version's definition. The nav manifest can therefore only ever emit one entry per
+plugin (this is the structural fix for the historic duplicate-menu bug). `v1` stays
+current until `v2` completes its connect handshake; the flip is a single-row
+overwrite, never an add-then-remove. The per-version timeline (Connected /
+Disconnected / **Superseded** / Inactive / Retired transitions) lives in the
+internal `PluginHistory` audit view, not the manifest.
+
+**2. Deploy-time synthetic heartbeat (closes the handover lag).** At the end of
+`deployPlugin` ([`Platform.res`](https://github.com/ReventlessDev/reventless-core/blob/main/reventless/reventless-aws/src/Platform.res)),
+the platform publishes **one synthetic heartbeat** for the just-deployed plugin —
+a `Heartbeat(timeout)` command (`id = name@version`) onto the Core Plugin
+ExtensionPoint's FIFO command queue, the exact path the runtime CloudWatch
+heartbeat Lambda uses (`HeartbeatEntryPoint.mjs`). Without it, a freshly deployed
+version would not run its connect handshake until the heartbeat rule's first
+natural tick — up to a full `heartbeatTimeout` interval (default 10 min) of the old
+version staying current. The synthetic tick drops that to seconds. It is guarded by
+`Pulumi.isDryRun()` (no side effect on `pulumi preview`) and is best-effort: if the
+send fails, handover still completes on the next natural heartbeat (graceful
+degradation).
+
+**3. Fast rollback (closes the rollback lag).** Supersession and rollback are
+decided **write-side** by the name-keyed Plugin aggregate, not inferred. When the
+current version stops heartbeating (`Disconnect` from the EP timeout) the aggregate
+re-promotes the highest still-connected lower version (`VersionPromoted`, reusing
+its stored definition). So a rollback redeploy of `v1` reconnects on its synthetic
+heartbeat, and once the bad `v2` times out, `v1` is automatically re-promoted to
+current — no manual intervention, no manifest gap.
+
+### Expand/contract contract for schema/GSI-changing deploys
+
+The one class the framework **cannot** fully auto-guarantee is a version whose new
+code depends on a **new DynamoDB index / GSI or a changed table schema**. A GSI
+backfills asynchronously after creation; if `v2`'s code queries an index that does
+not yet exist (or is still backfilling), its first requests fail even though the
+handover itself was clean.
+
+Sequence such deploys **expand → migrate → contract**:
+
+1. **Expand** — deploy the new index/GSI/attribute *first*, in a release whose code
+   does **not** yet read from it. Let the GSI finish backfilling (watch the table's
+   index status reach `ACTIVE`).
+2. **Migrate / cut over** — deploy the version whose code reads the new
+   index/schema. Its synthetic heartbeat makes it current within seconds, now that
+   the index it depends on is live.
+3. **Contract** — in a later release, remove the old index/attribute once no
+   running version reads it.
+
+Collapsing expand and cut-over into a single deploy is the failure mode: the new
+code can become current (and start serving traffic) before its index is queryable.
+For pure code/logic version bumps with no schema or GSI change, no special
+sequencing is needed — the synthetic heartbeat + single-row manifest handle it.
+
+---
+
 ## Debugging checklist
 
 Symptom: an AutoUI list does not refresh after a command (refreshes only on full

@@ -1862,6 +1862,49 @@ module MakeWithConfig = (
     let pluginOutputs = pluginComponent->ReventlessCore.Component.outputs
     ReventlessCore.Plugin_Helpers.exportPluginOutputs(pluginOutputs)
 
+    // Zero-downtime handover (Part 3.1): fire ONE synthetic heartbeat for the
+    // just-deployed plugin so its new version runs the connect handshake within
+    // seconds instead of waiting for the CloudWatch heartbeat rule's first
+    // natural tick (up to `heartbeatTimeout` minutes). Routes through the exact
+    // runtime heartbeat path — a `Heartbeat(timeout)` command (id = name@version)
+    // onto the EP FIFO command-topic queue — mirroring HeartbeatEntryPoint.mjs and
+    // reusing CommandTopicChannel_SQS_Runtime.publishJsons (correct FIFO
+    // message-group handling). If it no-ops (config missing / send fails) the
+    // handover still completes on the next natural heartbeat — graceful degradation.
+    // heartbeatConfigRef holds the just-built plugin's config (deployPlugin builds
+    // exactly one plugin per call, and registerHeartbeatConfig ran during P.make()).
+    let hbConfig = PluginRuntime_Builder.heartbeatConfigRef.contents
+    switch (Pulumi.Pulumi.isDryRun(), hbConfig.epQueueUrl) {
+    | (true, _) => () // `pulumi preview` — no deploy-time side effects
+    | (false, Some(epQueueUrl)) =>
+      let _ = epQueueUrl->Pulumi.Output.apply(async url => {
+        let queue: Util_SQS_Runtime.resolvedQueue = {id: url, name: "", arn: ""}
+        let publishHeartbeat = queue->CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO)
+        let message: ReventlessCore.Message.commandJson = {
+          id: hbConfig.pluginId,
+          meta: ReventlessCore.Message.generateMeta(
+            ~service=ReventlessInfra.PluginExtensionPointSpec.name,
+            ~user="DeployHeartbeat",
+          ),
+          commandJson: ReventlessInfra.PluginExtensionPointSpec.Heartbeat(
+            hbConfig.heartbeatTimeout,
+          )->S.reverseConvertToJsonOrThrow(ReventlessInfra.PluginExtensionPointSpec.commandSchema),
+        }
+        try await publishHeartbeat([message]) catch {
+        | _ =>
+          log.warn(
+            ~comp="Platform:deployPlugin",
+            `synthetic heartbeat failed for ${hbConfig.pluginId} (handover falls back to the next natural heartbeat)`,
+          )
+        }
+      })
+    | (false, None) =>
+      log.warn(
+        ~comp="Platform:deployPlugin",
+        "synthetic heartbeat skipped: no EP queue URL in heartbeat config",
+      )
+    }
+
     Pulumi.Pulumi.getOutputs()
   }
 }
