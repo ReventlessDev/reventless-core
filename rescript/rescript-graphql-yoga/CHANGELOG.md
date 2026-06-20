@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.16 (2026-06-20)
+
+### Bug Fixes
+
+* **packaging:** publish rescript packages source-only via .npmignore ([e831c37](https://github.com/ReventlessDev/reventless-core/commit/e831c372b6347d997da1e876c12b6770414f5f41))
+
+
 # 1.0.0-alpha.15 (2026-06-10)
 
 * refactor(reventless-local)!: rename reventless-in-memory to reventless-local ([f36e17c](https://github.com/ReventlessDev/reventless-core/commit/f36e17c407714ab9740393fac96865d6a5c143c9))

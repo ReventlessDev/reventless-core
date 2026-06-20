@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.75 (2026-06-20)
+
+### Bug Fixes
+
+* **packaging:** publish rescript packages source-only via .npmignore ([e831c37](https://github.com/ReventlessDev/reventless-core/commit/e831c372b6347d997da1e876c12b6770414f5f41))
+
+
 # 3.0.0-alpha.74 (2026-06-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-infra
