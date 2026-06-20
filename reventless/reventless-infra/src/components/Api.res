@@ -65,8 +65,8 @@ type querySchemaEntry = {
       `QueryDbResolvers_{AppSync,GraphQL}.make` looks up by the same key
       (`Spec.name`). When unset, the admin populator falls back to the
       singular form derived from `returnTypeName` — kept for backward compat
-      with read-model specs whose `Spec.name` matches the entity type name
-      (e.g. `PlatformEventGraph`). Must be set when the read model uses a
+      with read-model specs whose `Spec.name` matches the entity type name.
+      Must be set when the read model uses a
       plural `Spec.name` (e.g. `Plugins`) so the registry key still matches. */
   specName?: string,
   authorization: option<Reventless.ReadModel.authorization>,

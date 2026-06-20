@@ -7,7 +7,6 @@ import * as Stdlib_JSON from "@rescript/runtime/lib/es6/Stdlib_JSON.js";
 import * as Nodemodule from "node:module";
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
-import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
 
 let dynamicImport = ((u) => import(u));
 
@@ -108,8 +107,7 @@ async function loadGraph(platformModulePath, plugins) {
     ]);
   }
   return {
-    structures: structures,
-    edges: Platform_CrossPluginEdges$ReventlessCore.computeEdges(structures)
+    structures: structures
   };
 }
 

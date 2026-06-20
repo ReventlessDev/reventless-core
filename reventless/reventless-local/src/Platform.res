@@ -665,14 +665,13 @@ module MakeWithConfig = (
     ReventlessInfra.NoEventMappings.Make(ReventlessCore.PluginSpec),
   )
 
-  // Admin Plugin read models — driven by LocalPluginAggregate's event topic via
+  // Admin Plugin read model — driven by LocalPluginAggregate's event topic via
   // the real projection subscriptions (same path as AWS). PluginsReadModel is the
-  // name-keyed current view ("Plugins"); PluginHistoryReadModel is the composite
-  // sub-id timeline ("PluginHistory"). The projection modules re-export `mappings`
-  // and an inner `Mappings` submodule but don't satisfy
+  // name-keyed current view ("Plugins"). The projection module re-exports `mappings`
+  // and an inner `Mappings` submodule but doesn't satisfy
   // `Reventless.Projection.Mappings` at the top level (the `Mapping` type lives in
-  // the submodule), so we flatten them into wrapper modules — mirrors the AWS
-  // Platform.res PluginReadModelMappings / PluginHistoryReadModelMappings wrappers.
+  // the submodule), so we flatten it into a wrapper module — mirrors the AWS
+  // Platform.res PluginReadModelMappings wrapper.
   module PluginsReadModelMappings: Reventless.Projection.Mappings
     with module Target := ReventlessCore.PluginsReadModelSpec = {
     module M = ReventlessCore.PluginsProjection.Mappings
@@ -685,17 +684,6 @@ module MakeWithConfig = (
     PluginsReadModelMappings,
   )
 
-  module PluginHistoryReadModelMappings: Reventless.Projection.Mappings
-    with module Target := ReventlessCore.PluginHistoryReadModelSpec = {
-    module M = ReventlessCore.PluginHistoryProjection.Mappings
-    module type Mapping = M.Mapping
-    let moduleUrl: string = ReventlessCore.PluginHistoryProjection.moduleUrl
-    let mappings: array<module(Mapping)> = ReventlessCore.PluginHistoryProjection.mappings
-  }
-  module PluginHistoryReadModel = ReadModelMaker.MakeNoResolver(
-    ReventlessCore.PluginHistoryReadModelSpec,
-    PluginHistoryReadModelMappings,
-  )
 
   module Admin = ReventlessCore.Platform_Admin.Make(
     LocalRuntimeEnvironment,
@@ -754,9 +742,9 @@ module MakeWithConfig = (
   // projection (wired into Admin.construct ~readModels). QueryDbStorage_InMemory
   // registers it in the Bus under PluginsReadModelSpec.name, so the admin query
   // resolvers / status gate that scan `Bus.getQueryDbScan(pluginQueryDbName)` pick
-  // it up automatically — no hand-rolled seed store here anymore. The same applies
-  // to the PluginHistory timeline ("PluginHistory"). Rows are produced by dispatching
-  // a synthetic `Connect(pluginDefinition)` to LocalPluginAggregate (see connectPlugin).
+  // it up automatically — no hand-rolled seed store here anymore. Rows are produced
+  // by dispatching a synthetic `Connect(pluginDefinition)` to LocalPluginAggregate
+  // (see connectPlugin).
 
   // UIFragmentRegistry QueryDb store ops — initialized lazily on first seed call.
   let uiFragmentQueryDbOpsRef: ref<option<ReventlessCore.QueryDb_Adapter.operations>> = ref(None)
@@ -816,70 +804,6 @@ module MakeWithConfig = (
       Bus.registerQueryDbScan(name, () => allItems.contents)
       Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
       uiFragmentQueryDbOpsRef := Some(ops)
-      ops
-    }
-  }
-
-  // PlatformEventGraph QueryDb store ops — initialized lazily on first seed call.
-  let platformEventGraphQueryDbOpsRef: ref<
-    option<ReventlessCore.QueryDb_Adapter.operations>,
-  > = ref(None)
-
-  let ensurePlatformEventGraphQueryDbStore = () => {
-    switch platformEventGraphQueryDbOpsRef.contents {
-    | Some(ops) => ops
-    | None =>
-      let name = ReventlessCore.Platform_EventGraphReadModelSpec.name
-      let store: ref<dict<array<JSON.t>>> = ref(Dict.make())
-      let allItems: ref<array<JSON.t>> = ref([])
-      let syncAll = () => {
-        allItems.contents =
-          store.contents
-          ->Dict.toArray
-          ->Array.flatMap(((id, items)) =>
-            items->Array.map(item => {
-              let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-              if !(obj->Dict.get("id")->Option.isSome) {
-                let copy = Dict.make()
-                obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
-                copy->Dict.set("id", JSON.Encode.string(id))
-                JSON.Encode.object(copy)
-              } else {
-                item
-              }
-            })
-          )
-      }
-      let ops: ReventlessCore.QueryDb_Adapter.operations = {
-        load: async id => Ok(store.contents->Dict.get(id)->Option.getOr([])),
-        loadStream: id =>
-          store.contents->Dict.get(id)->Option.getOr([])->Stream.fromIterable,
-        save: async (id, state, _, _) => {
-          store.contents->Dict.set(id, [state])
-          syncAll()
-          Ok()
-        },
-        saveBatch: async batch => {
-          batch->Array.forEach(((id, state, _)) => store.contents->Dict.set(id, [state]))
-          syncAll()
-          Ok()
-        },
-        count: async (_, _, inc) => Ok(inc),
-        delete: async (id, _) => {
-          store.contents->Dict.delete(id)
-          syncAll()
-          Ok()
-        },
-        deleteBatch: async ids => {
-          ids->Array.forEach(((id, _)) => store.contents->Dict.delete(id))
-          syncAll()
-          Ok()
-        },
-      }
-      Bus.registerQueryDb(name, ops)
-      Bus.registerQueryDbScan(name, () => allItems.contents)
-      Bus.registerQueryDbStream(name, () => allItems.contents->Stream.fromIterable)
-      platformEventGraphQueryDbOpsRef := Some(ops)
       ops
     }
   }
@@ -1000,9 +924,9 @@ module MakeWithConfig = (
   // synthetic `Connect(def)` to LocalPluginAggregate, keyed by the plugin NAME (the
   // Plugin aggregate is name-keyed). The Plugin aggregate emits `VersionConnected`
   // (+ `UIFragmentRegistered` / `VersionSuperseded`) on its event topic; the real
-  // PluginsProjection / PluginHistoryProjection subscriptions (registered by
-  // Admin.construct ~readModels) fold those events into the "Plugins" current view
-  // and the "PluginHistory" timeline QueryDb stores. This replaces the previous
+  // PluginsProjection subscription (registered by
+  // Admin.construct ~readModels) folds those events into the "Plugins" current view
+  // QueryDb store. This replaces the previous
   // direct-write seed.
   //
   // dispatchCommand parks the command until LocalPluginAggregate's handler is
@@ -1102,55 +1026,6 @@ module MakeWithConfig = (
           }
         })
     })
-  }
-
-  // Seed the PlatformEventGraph QueryDb from plugin structures (one row per plugin).
-  // Mirrors the AWS-side PlatformEventGraphReadModel projection: derives nodes and edges
-  // from the plugin structure via Platform_EventGraphReadModelSpec.buildEntry.
-  let seedPlatformEventGraphQueryDb = (
-    ~pluginComponents: array<ReventlessCore.Plugin.component>,
-  ) => {
-    let ops = ensurePlatformEventGraphQueryDbStore()
-    pluginComponents->Array.forEach(plugin => {
-      let outputs: ReventlessInfra.Plugin.outputs = plugin->ReventlessCore.Component.outputs
-      let _ =
-        (outputs.id, outputs.pluginStructure)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((id, ps)) => {
-          switch ps {
-          | Some(structure) =>
-            let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
-            let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
-              ~pluginName,
-              structure,
-            )
-            let entry =
-              state->S.reverseConvertToJsonOrThrow(
-                ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
-              )
-            let _ = ops.save(id, entry, Any, None)
-          | None => ()
-          }
-        })
-    })
-  }
-
-  // Seed the synthetic admin plugin's event-graph entry. Admin.construct does not
-  // flow through pluginStructure outputs, so we register the row manually — same
-  // pattern as the pluginStructuresStore admin entry.
-  let seedAdminPlatformEventGraphEntry = () => {
-    let ops = ensurePlatformEventGraphQueryDbStore()
-    let adminId = ReventlessCore.Platform_Admin_Structure.pluginId
-    let adminName = adminId->String.split("@")->Array.get(0)->Option.getOr(adminId)
-    let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
-      ~pluginName=adminName,
-      ReventlessCore.Platform_Admin_Structure.structure,
-    )
-    let entry =
-      state->S.reverseConvertToJsonOrThrow(
-        ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
-      )
-    let _ = ops.save(adminId, entry, Any, None)
   }
 
   // Extract extension wiring metadata from a plugin's outputs.
@@ -1399,7 +1274,7 @@ module MakeWithConfig = (
       ~version,
       ~extensionPoints=[],
       ~aggregates=[module(LocalPluginAggregate)],
-      ~readModels=[module(PluginsReadModel), module(PluginHistoryReadModel)],
+      ~readModels=[module(PluginsReadModel)],
       ~scheduler,
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
@@ -1477,22 +1352,19 @@ module MakeWithConfig = (
     subscribeToPluginEvents()
     // Drive the admin Plugin read models via synthetic Connect dispatch through
     // LocalPluginAggregate (replaces the old direct-write seed). The real
-    // PluginsProjection / PluginHistoryProjection folds the emitted events into
-    // the "Plugins" + "PluginHistory" QueryDb stores.
+    // PluginsProjection folds the emitted events into the "Plugins" QueryDb store.
     connectPlugin(~pluginComponents=plugins)
     seedUIFragmentRegistryQueryDb(~pluginComponents=plugins)
     seedPluginStructuresStore(~pluginComponents=plugins)
-    seedPlatformEventGraphQueryDb(~pluginComponents=plugins)
 
     // Seed the built-in admin plugin's structure so its Auto UI (Plugin list with
-    // Activate/Deactivate buttons, PlatformEventGraph view) renders alongside the
-    // user plugins. Admin.construct does not flow through pluginStructure outputs,
-    // so we register the synthetic structure manually.
+    // Activate/Deactivate buttons) renders alongside the user plugins. Admin.construct
+    // does not flow through pluginStructure outputs, so we register the synthetic
+    // structure manually.
     pluginStructuresStore.contents->Dict.set(
       ReventlessCore.Platform_Admin_Structure.pluginId,
       ReventlessCore.Platform_Admin_Structure.structure,
     )
-    seedAdminPlatformEventGraphEntry()
 
     let pluginQueryDbName = ReventlessCore.PluginsReadModelSpec.name
     let uiFragmentQueryDbName = ReventlessCore.UIFragmentRegistryReadModelSpec.name
@@ -1580,93 +1452,6 @@ module MakeWithConfig = (
       }
       connectionResponse(items)
     })
-    // Platform_PlatformEventGraph[s] — backed by the PlatformEventGraph QueryDb
-    // seeded from plugin structures (mirrors AWS PlatformEventGraphReadModel projection).
-    // The QueryDb scan auto-injects `id` from the store key, satisfying the GraphQL
-    // Node interface requirement on edges[].node.id.
-    let eventGraphQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
-    let platformEventGraphQueryDbName = ReventlessCore.Platform_EventGraphReadModelSpec.name
-    queryResolvers->Dict.set(
-      eventGraphQueryEntry.singleFieldName,
-      async (_root, args, _ctx): JSON.t => {
-        let id =
-          args
-          ->JSON.Decode.object
-          ->Option.flatMap(d => d->Dict.get("id"))
-          ->Option.flatMap(JSON.Decode.string)
-          ->Option.getOr("")
-        switch Bus.getQueryDb(platformEventGraphQueryDbName) {
-        | Some(ops) =>
-          let items =
-            await ops.loadStream(id)
-            ->Stream.runCollect
-            ->Effect.catchAll(_ => Effect.succeed([]))
-            ->Effect.runPromise
-          // loadStream returns the raw stored entry without id — inject it here
-          // so node.id resolves (the list resolver gets this for free via scanAll).
-          switch items->Array.get(0) {
-          | Some(item) =>
-            let obj = item->JSON.Decode.object->Option.getOr(Dict.make())
-            let copy = Dict.make()
-            obj->Dict.toArray->Array.forEach(((k, v)) => copy->Dict.set(k, v))
-            copy->Dict.set("id", JSON.Encode.string(id))
-            JSON.Encode.object(copy)
-          | None => JSON.Encode.null
-          }
-        | None => JSON.Encode.null
-        }
-      },
-    )
-    queryResolvers->Dict.set(
-      eventGraphQueryEntry.listFieldName,
-      async (_root, _args, _ctx): JSON.t => {
-        let items = switch Bus.getQueryDbScan(platformEventGraphQueryDbName) {
-        | Some(scanAll) => scanAll()
-        | None => []
-        }
-        connectionResponse(items)
-      },
-    )
-
-    // PluginHistory (queryEntries[2]) — the per-version lifecycle timeline. The
-    // list field returns the whole audit trail (scan); the single field is a
-    // best-effort first-row-by-id (composite key, rarely used in the AutoUI which
-    // drives the list). Store registered in the Bus under "PluginHistory" by the
-    // MakeNoResolver read model's QueryDbStorage_InMemory.
-    let pluginHistoryQueryEntry = ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(2)
-    let pluginHistoryQueryDbName = ReventlessCore.PluginHistoryReadModelSpec.name
-    queryResolvers->Dict.set(
-      pluginHistoryQueryEntry.singleFieldName,
-      async (_root, args, _ctx): JSON.t => {
-        let id =
-          args
-          ->JSON.Decode.object
-          ->Option.flatMap(d => d->Dict.get("id"))
-          ->Option.flatMap(JSON.Decode.string)
-          ->Option.getOr("")
-        switch Bus.getQueryDb(pluginHistoryQueryDbName) {
-        | Some(ops) =>
-          let items =
-            await ops.loadStream(id)
-            ->Stream.runCollect
-            ->Effect.catchAll(_ => Effect.succeed([]))
-            ->Effect.runPromise
-          items->Array.get(0)->Option.getOr(JSON.Encode.null)
-        | None => JSON.Encode.null
-        }
-      },
-    )
-    queryResolvers->Dict.set(
-      pluginHistoryQueryEntry.listFieldName,
-      async (_root, _args, _ctx): JSON.t => {
-        let items = switch Bus.getQueryDbScan(pluginHistoryQueryDbName) {
-        | Some(scanAll) => scanAll()
-        | None => []
-        }
-        connectionResponse(items)
-      },
-    )
-
     // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
     // AdminApi.baseFragment so we register only the resolver here. Encoder is shared
     // with the AWS adapter so responses are byte-identical.
@@ -1774,8 +1559,7 @@ module MakeWithConfig = (
       },
     )
 
-    // Composite-key / index admin query fields (e.g. Platform_PluginHistoryEntryItems
-    // — the per-plugin lifecycle timeline). Live loads from the seeded QueryDb stores.
+    // Composite-key / index admin query fields. Live loads from the seeded QueryDb stores.
     registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=true)
 
     platformGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
@@ -1968,38 +1752,6 @@ module MakeWithConfig = (
       },
     )
 
-    // Register platformCrossPluginEdges query — reads from pluginStructuresStore at query time.
-    platformGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_CrossPluginEdges.sdlTypes)
-    platformGraphQL.registerQueries(
-      ~sdlFields=[ReventlessCore.Platform_CrossPluginEdges.sdlQueryField],
-      ~resolvers=Dict.fromArray([
-        (
-          "platformCrossPluginEdges",
-          async (_root, _args, _ctx): JSON.t => {
-            let encodeNode = (n: Reventless.Plugin.graphNode) =>
-              Dict.fromArray([
-                ("pluginName", JSON.Encode.string(n.pluginName)),
-                ("componentName", JSON.Encode.string(n.componentName)),
-                ("kind", JSON.Encode.string(n.kind)),
-              ])->JSON.Encode.object
-            let encodeEdge = (e: Reventless.Plugin.graphEdge) =>
-              Dict.fromArray([
-                ("source", encodeNode(e.source)),
-                ("target", encodeNode(e.target)),
-                ("mechanism", JSON.Encode.string(e.mechanism)),
-                ("viaEvents", e.viaEvents->Array.map(JSON.Encode.string)->JSON.Encode.array),
-                ("implicit", JSON.Encode.bool(e.implicit)),
-              ])->JSON.Encode.object
-            pluginStructuresStore.contents
-            ->Dict.toArray
-            ->ReventlessCore.Platform_CrossPluginEdges.computeEdges
-            ->Array.map(encodeEdge)
-            ->JSON.Encode.array
-          },
-        ),
-      ]),
-    )
-
     // Always inject Relay base types (Node interface, PageInfo) and the node
     // query field into the domain GraphQL server so that:
     // 1. `type X implements Node { ... }` fragments compile (Node interface must exist)
@@ -2077,16 +1829,6 @@ module MakeWithConfig = (
     )
     queryResolvers->Dict.set(adminQueryEntry.listFieldName, async (_root, _args, _ctx): JSON.t =>
       connectionResponse([])
-    )
-    let eventGraphQueryEntry2 =
-      ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
-    queryResolvers->Dict.set(
-      eventGraphQueryEntry2.singleFieldName,
-      async (_root, _args, _ctx): JSON.t => JSON.Encode.null,
-    )
-    queryResolvers->Dict.set(
-      eventGraphQueryEntry2.listFieldName,
-      async (_root, _args, _ctx): JSON.t => connectionResponse([]),
     )
     // Platform_UIFragments — empty in the platform-only path (no plugins
     // connected → no UI fragments registered). The SDL declares it as a
@@ -2223,7 +1965,7 @@ module MakeWithConfig = (
       ~version="",
       ~extensionPoints=[],
       ~aggregates=[module(LocalPluginAggregate)],
-      ~readModels=[module(PluginsReadModel), module(PluginHistoryReadModel)],
+      ~readModels=[module(PluginsReadModel)],
       ~scheduler,
       ~resourceNaming=LocalPluginSpec.resourceNaming,
       ~api=(),
@@ -2294,52 +2036,6 @@ module MakeWithConfig = (
           ->JSON.Encode.array
         },
       )
-      let eventGraphQueryEntry3 =
-        ReventlessCore.PluginBaseFragment.queryEntries->Array.getUnsafe(1)
-      // Single-plugin path: derive the entry on-demand from pluginStructuresStore
-      // (seeded after this resolver block runs, but resolvers are called at query time).
-      queryResolvers->Dict.set(
-        eventGraphQueryEntry3.singleFieldName,
-        async (_root, args, _ctx): JSON.t => {
-          let id =
-            args
-            ->JSON.Decode.object
-            ->Option.flatMap(d => d->Dict.get("id"))
-            ->Option.flatMap(JSON.Decode.string)
-            ->Option.getOr("")
-          switch pluginStructuresStore.contents->Dict.get(id) {
-          | Some(structure) =>
-            let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
-            let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
-              ~pluginName,
-              structure,
-            )
-            state->S.reverseConvertToJsonOrThrow(
-              ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
-            )
-          | None => JSON.Encode.null
-          }
-        },
-      )
-      queryResolvers->Dict.set(
-        eventGraphQueryEntry3.listFieldName,
-        async (_root, _args, _ctx): JSON.t => {
-          let items =
-            pluginStructuresStore.contents
-            ->Dict.toArray
-            ->Array.map(((id, structure)) => {
-              let pluginName = id->String.split("@")->Array.get(0)->Option.getOr(id)
-              let state = ReventlessCore.Platform_EventGraphReadModelSpec.buildEntry(
-                ~pluginName,
-                structure,
-              )
-              state->S.reverseConvertToJsonOrThrow(
-                ReventlessCore.Platform_EventGraphReadModelSpec.stateSchema,
-              )
-            })
-          connectionResponse(items)
-        },
-      )
       // Platform_ComponentDefinitions resolver — SDL is already stitched into baseParts via
       // AdminApi.baseFragment so we register only the resolver here. Uses the shared
       // encoder so the dynamic-plugin admin server emits the same canonical shape as
@@ -2354,7 +2050,7 @@ module MakeWithConfig = (
           )
           ->JSON.Encode.array,
       )
-      // Composite-key / index admin query fields (e.g. Platform_PluginHistoryEntryItems).
+      // Composite-key / index admin query fields.
       // Live loads from the seeded QueryDb stores (empty when not yet seeded).
       registerAdminItemsAndIndexResolvers(~queryResolvers, ~live=true)
       adminGraphQL.registerQueries(~sdlFields=baseParts.queries, ~resolvers=queryResolvers)
@@ -2404,37 +2100,6 @@ module MakeWithConfig = (
           (
             "onUIFragmentChange",
             LocalGraphQL_SubscriptionResolvers.makeFieldResolver(dpSubTopic2),
-          ),
-        ]),
-      )
-      // Register platformCrossPluginEdges query.
-      adminGraphQL.registerTypes(~sdlTypes=ReventlessCore.Platform_CrossPluginEdges.sdlTypes)
-      adminGraphQL.registerQueries(
-        ~sdlFields=[ReventlessCore.Platform_CrossPluginEdges.sdlQueryField],
-        ~resolvers=Dict.fromArray([
-          (
-            "platformCrossPluginEdges",
-            async (_root, _args, _ctx): JSON.t => {
-              let encodeNode = (n: Reventless.Plugin.graphNode) =>
-                Dict.fromArray([
-                  ("pluginName", JSON.Encode.string(n.pluginName)),
-                  ("componentName", JSON.Encode.string(n.componentName)),
-                  ("kind", JSON.Encode.string(n.kind)),
-                ])->JSON.Encode.object
-              let encodeEdge = (e: Reventless.Plugin.graphEdge) =>
-                Dict.fromArray([
-                  ("source", encodeNode(e.source)),
-                  ("target", encodeNode(e.target)),
-                  ("mechanism", JSON.Encode.string(e.mechanism)),
-                  ("viaEvents", e.viaEvents->Array.map(JSON.Encode.string)->JSON.Encode.array),
-                  ("implicit", JSON.Encode.bool(e.implicit)),
-                ])->JSON.Encode.object
-              pluginStructuresStore.contents
-              ->Dict.toArray
-              ->ReventlessCore.Platform_CrossPluginEdges.computeEdges
-              ->Array.map(encodeEdge)
-              ->JSON.Encode.array
-            },
           ),
         ]),
       )

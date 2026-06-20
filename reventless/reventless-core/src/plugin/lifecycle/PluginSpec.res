@@ -37,7 +37,7 @@ type uiFragmentDeregisteredData = {pluginId: string}
 
 // Carries both the superseded and the superseding version's full definition —
 // a deterministic trigger for version-to-version schema/data migrations
-// (analysis §6.2.4) and the source for `PluginHistory`'s supersession edges.
+// (analysis §6.2.4).
 @schema
 type versionSupersededData = {
   supersededVersion: version,

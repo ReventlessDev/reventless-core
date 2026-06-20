@@ -3,8 +3,7 @@
 // Current view — one row per plugin **name**, holding the currently-active
 // version's definition. Keyed by the aggregate id (= plugin name). The status
 // here is the *current* version's status; "Superseded" is not represented (a
-// superseded version is simply no longer the current row — see PluginHistory
-// for the per-version timeline incl. Superseded).
+// superseded version is simply no longer the current row).
 @schema
 type status =
   | Connected
@@ -43,7 +42,7 @@ type state = {
   // projection recompute which version is current (highest Connected) during a
   // deploy overlap, and is pruned the moment a version stops being Connected. So
   // it is empty in steady state and holds at most the one-or-two concurrently-live
-  // versions of a rolling deploy — never the full history (that is PluginHistory).
+  // versions of a rolling deploy — never the full history.
   otherConnectedVersions: array<Reventless.Plugin.version>,
 }
 

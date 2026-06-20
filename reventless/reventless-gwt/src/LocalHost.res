@@ -2,8 +2,7 @@
 // the Phase 9 runner). Reflects the framework's own domain graph WITHOUT parsing
 // .res: instantiate reventless-local's `Platform.Make()` once, build each compiled
 // `Plugin.res.mjs` against it, read the resolved `pluginStructure` (a plain record
-// — no Pulumi Output), and run reventless-core's
-// `Platform_CrossPluginEdges.computeEdges` over the collected structures.
+// — no Pulumi Output), and collect the per-plugin structures.
 //
 // Proven cold (docs/analysis/reventless-vscode-domain-graph-design.md "Spike
 // result"): `Make()` and `Plugin.Make(plat)` open no ports and start no timers —
@@ -43,7 +42,6 @@ type pluginRef = {name: string, modulePath: string, packageDir: string}
 
 type graph = {
   structures: array<(string, Reventless.Plugin.pluginStructure)>,
-  edges: array<Reventless.Plugin.graphEdge>,
 }
 
 // Dynamic-import shapes. Untyped at the boundary; reventless-local's Platform and
@@ -122,7 +120,7 @@ let resolveLocalPlatform = (~fromPackageDir: string): option<string> =>
   }
 
 // Cold-load: instantiate the local platform once, build each plugin against it,
-// read its (already-resolved) pluginStructure, and compute cross-plugin edges.
+// and read its (already-resolved) pluginStructure.
 let loadGraph = async (~platformModulePath: string, ~plugins: array<pluginRef>): graph => {
   let platMod: localPlatformExports = await dynamicImport(bustedUrl(platformModulePath))
   let plat = platMod["Make"]()
@@ -133,5 +131,5 @@ let loadGraph = async (~platformModulePath: string, ~plugins: array<pluginRef>):
     let built = pluginMod["Make"](plat)
     structures->Array.push((plugin.name, built["pluginStructure"]))
   }
-  {structures, edges: ReventlessCore.Platform_CrossPluginEdges.computeEdges(structures)}
+  {structures: structures}
 }

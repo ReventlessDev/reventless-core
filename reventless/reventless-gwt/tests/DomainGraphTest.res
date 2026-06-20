@@ -80,7 +80,7 @@ describe("DomainGraph.build", () => {
       ],
       ~stateViewSlices=[queryable(~name="OrderView", ~consumes=["Shop.Placed"])],
     )
-    let g = DomainGraph.build(~structures=[("Shop", shop)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(nodeKind(g, "Shop_Order_Place"))->toEqual(Some("Command"))
     expect(nodeKind(g, "Shop:Order"))->toEqual(Some("Aggregate"))
     expect(nodeKind(g, "Shop.Placed"))->toEqual(Some("Event"))
@@ -100,7 +100,7 @@ describe("DomainGraph.build", () => {
         queryable(~name="AvailableView", ~consumes=["Shop.Placed"], ~visibility=Some("Internal")),
       ],
     )
-    let g = DomainGraph.build(~structures=[("Shop", shop)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(nodeKind(g, "Shop:AvailableView"))->toEqual(Some("StateViewSlice"))
     expect(hasEdge(g, "Shop.Placed", "Shop:AvailableView", "projects"))->toBe(true)
   })
@@ -110,7 +110,7 @@ describe("DomainGraph.build", () => {
       ~aggregates=[writable(~name="Order", ~produces=["Shop.Placed", "Shop.Shipped"], ~linkedViews=["Orders"])],
       ~readModels=[queryable(~name="Orders")],
     )
-    let g = DomainGraph.build(~structures=[("Shop", shop)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(hasEdge(g, "Shop.Placed", "Shop:Orders", "projects"))->toBe(true)
     expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", "projects"))->toBe(true)
   })
@@ -120,7 +120,7 @@ describe("DomainGraph.build", () => {
       ~aggregates=[writable(~name="Order", ~produces=["Shop.Placed"])],
       ~automationSlices=[automation(~name="Notify", ~consumes=["Shop.Placed"])],
     )
-    let g = DomainGraph.build(~structures=[("Shop", shop)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(nodeKind(g, "Shop:Notify"))->toEqual(Some("AutomationSlice"))
     expect(hasEdge(g, "Shop.Placed", "Shop:Notify", "triggers"))->toBe(true)
   })
@@ -132,22 +132,10 @@ describe("DomainGraph.build", () => {
         writable(~name="B", ~produces=["Shop.Touched"]),
       ],
     )
-    let g = DomainGraph.build(~structures=[("Shop", shop)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Shop", shop)])
     expect(g.nodes->Array.filter(n => n.id == "Shop.Touched")->Array.length)->toBe(1)
     expect(hasEdge(g, "Shop:A", "Shop.Touched", "emits"))->toBe(true)
     expect(hasEdge(g, "Shop:B", "Shop.Touched", "emits"))->toBe(true)
-  })
-
-  testPromise("non-Extension computeEdges become graph edges with synthesized endpoints", async () => {
-    let edge: Reventless.Plugin.graphEdge = {
-      source: {pluginName: "Shop", componentName: "Order", kind: "Aggregate"},
-      target: {pluginName: "Analytics", componentName: "OrderStats", kind: "StateViewSlice"},
-      mechanism: "EventTypeMatch",
-      viaEvents: ["Shop.Placed"],
-      implicit: false,
-    }
-    let g = DomainGraph.build(~structures=[], ~edges=[edge])
-    expect(hasEdge(g, "Shop:Order", "Analytics:OrderStats", "EventTypeMatch"))->toBe(true)
   })
 
   testPromise("an extension renders the cross-plugin event flow EP→event→Extension→delegate", async () => {
@@ -162,7 +150,7 @@ describe("DomainGraph.build", () => {
       ...structure(~aggregates=[writable(~name="ProductDemand", ~produces=["Catalog.Recorded"])]),
       extensions: [extension],
     }
-    let g = DomainGraph.build(~structures=[("Catalog", catalog)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)])
     // EP (owned by Ordering) publishes its event; the Catalog extension consumes it…
     expect(nodeKind(g, "Ordering:ep:Ordering.Orders"))->toEqual(Some("ExtensionPoint"))
     expect(hasEdge(g, "Ordering:ep:Ordering.Orders", "Ordering.Orders.ItemOrdered", "publishes"))->toBe(true)
@@ -200,7 +188,7 @@ describe("DomainGraph.build", () => {
       ),
       extensions: [extension],
     }
-    let g = DomainGraph.build(~structures=[("Catalog", catalog)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)])
     // Extension → the command it creates …
     expect(
       hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog_ProductDemand_RecordDemand", "delegatesTo"),
@@ -222,7 +210,7 @@ describe("DomainGraph.build", () => {
       ...structure(~aggregates=[writable(~name="ProductDemand", ~produces=["Catalog.Recorded"])]),
       extensions: [extension],
     }
-    let g = DomainGraph.build(~structures=[("Catalog", catalog)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)])
     expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo"))->toBe(true)
   })
 
@@ -245,7 +233,7 @@ describe("DomainGraph.build", () => {
       ],
       ~extensionPoints=[ep],
     )
-    let g = DomainGraph.build(~structures=[("Catalog", catalog)], ~edges=[])
+    let g = DomainGraph.build(~structures=[("Catalog", catalog)])
     expect(nodeKind(g, "Catalog:ep:Catalog.Products"))->toEqual(Some("ExtensionPoint"))
     // The producing write-side emits the source event…
     expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits"))->toBe(true)

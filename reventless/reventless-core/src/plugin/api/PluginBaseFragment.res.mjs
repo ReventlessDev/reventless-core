@@ -6,8 +6,6 @@ import * as Api_Naming$ReventlessCore from "../../components/Api/Api_Naming.res.
 import * as PluginSpec$ReventlessCore from "../lifecycle/PluginSpec.res.mjs";
 import * as ApiNoApiHelpers$ReventlessCore from "../../components/Api/ApiNoApiHelpers.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../lifecycle/PluginsReadModelSpec.res.mjs";
-import * as PluginHistoryReadModelSpec$ReventlessCore from "../lifecycle/PluginHistoryReadModelSpec.res.mjs";
-import * as Platform_EventGraphReadModelSpec$ReventlessCore from "../../admin/Platform_EventGraphReadModelSpec.res.mjs";
 
 let adminAuth = {
   tableName: "Plugin",
@@ -32,8 +30,7 @@ function indexQueriesOfConfig(config) {
   }
 }
 
-let queryEntries = [
-  {
+let queryEntries = [{
     singleFieldName: Api_Naming$ReventlessCore.adminField("Plugin"),
     listFieldName: Api_Naming$ReventlessCore.adminField("Plugins"),
     returnTypeName: Api_Naming$ReventlessCore.adminField("Plugin"),
@@ -43,30 +40,7 @@ let queryEntries = [
     excludeFields: pluginExcludeFields,
     subIdField: Stdlib_Option.map(undefined, c => c.subIdField),
     indexQueries: indexQueriesOfConfig(PluginsReadModelSpec$ReventlessCore.config)
-  },
-  {
-    singleFieldName: Api_Naming$ReventlessCore.adminField("PlatformEventGraph"),
-    listFieldName: Api_Naming$ReventlessCore.adminField("PlatformEventGraphs"),
-    returnTypeName: Api_Naming$ReventlessCore.adminField("PlatformEventGraph"),
-    stateSchema: Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema,
-    specName: Platform_EventGraphReadModelSpec$ReventlessCore.name,
-    authorization: adminAuth,
-    excludeFields: [],
-    subIdField: Stdlib_Option.map(undefined, c => c.subIdField),
-    indexQueries: indexQueriesOfConfig(Platform_EventGraphReadModelSpec$ReventlessCore.config)
-  },
-  {
-    singleFieldName: Api_Naming$ReventlessCore.adminField("PluginHistoryEntry"),
-    listFieldName: Api_Naming$ReventlessCore.adminField("PluginHistory"),
-    returnTypeName: Api_Naming$ReventlessCore.adminField("PluginHistoryEntry"),
-    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
-    specName: PluginHistoryReadModelSpec$ReventlessCore.name,
-    authorization: adminAuth,
-    excludeFields: [],
-    subIdField: Stdlib_Option.map(PluginHistoryReadModelSpec$ReventlessCore.subIdConfig, c => c.subIdField),
-    indexQueries: indexQueriesOfConfig(PluginHistoryReadModelSpec$ReventlessCore.config)
-  }
-];
+  }];
 
 let constructorNames = DcbTag$Reventless.extractAllVariantNames(PluginSpec$ReventlessCore.commandSchema);
 

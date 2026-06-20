@@ -58,7 +58,6 @@ import * as EventLogStorage_Sqlite$ReventlessLocal from "./adapter/EventLog/Even
 import * as ExtensionPoint_Builder$ReventlessLocal from "./components/ExtensionPoint_Builder.res.mjs";
 import * as PlatformGraphQL_Server$ReventlessLocal from "./adapter/PlatformGraphQL_Server.res.mjs";
 import * as Platform_UIFragmentsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_UIFragmentsApi.res.mjs";
-import * as PluginHistoryProjection$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginHistoryProjection.res.mjs";
 import * as StateViewSlice_Builder$ReventlessLocal from "./components/StateViewSlice_Builder.res.mjs";
 import * as AutomationSlice_Builder$ReventlessLocal from "./components/AutomationSlice_Builder.res.mjs";
 import * as LocalRuntimeEnvironment$ReventlessLocal from "./adapter/Runtime/LocalRuntimeEnvironment.res.mjs";
@@ -66,17 +65,14 @@ import * as LocalScheduledPublisher$ReventlessLocal from "./adapter/Scheduler/Lo
 import * as Platform_Admin_Structure$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_Admin_Structure.res.mjs";
 import * as LocalCommandTopicChannel$ReventlessLocal from "./adapter/CommandTopic/LocalCommandTopicChannel.res.mjs";
 import * as LocalEventTopicPublisher$ReventlessLocal from "./adapter/EventTopic/LocalEventTopicPublisher.res.mjs";
-import * as Platform_CrossPluginEdges$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_CrossPluginEdges.res.mjs";
 import * as StateChangeSlice_Builder$ReventlessLocal from "./components/StateChangeSlice_Builder.res.mjs";
 import * as DcbEventLogStorage_Sqlite$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res.mjs";
-import * as PluginHistoryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/plugin/lifecycle/PluginHistoryReadModelSpec.res.mjs";
 import * as LocalEventCollectorChannel$ReventlessLocal from "./adapter/EventCollector/LocalEventCollectorChannel.res.mjs";
 import * as PluginRuntime_Builder_Micro$ReventlessCore from "@reventlessdev/reventless-core/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.mjs";
 import * as DcbEventLogStorage_InMemory$ReventlessLocal from "./adapter/DcbEventLog/DcbEventLogStorage_InMemory.res.mjs";
 import * as UIFragmentRegistryReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/UIFragmentRegistryReadModelSpec.res.mjs";
 import * as InboundTranslationSlice_Builder$ReventlessLocal from "./components/InboundTranslationSlice_Builder.res.mjs";
 import * as Platform_ComponentDefinitionsApi$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_ComponentDefinitionsApi.res.mjs";
-import * as Platform_EventGraphReadModelSpec$ReventlessCore from "@reventlessdev/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res.mjs";
 import * as OutboundTranslationSlice_Builder$ReventlessLocal from "./components/OutboundTranslationSlice_Builder.res.mjs";
 import * as CommandGeneratorResolvers_GraphQL$ReventlessLocal from "./adapter/CommandGenerator/CommandGeneratorResolvers_GraphQL.res.mjs";
 import * as LocalGraphQL_SubscriptionResolvers$ReventlessLocal from "./adapter/Api/LocalGraphQL_SubscriptionResolvers.res.mjs";
@@ -664,20 +660,6 @@ function MakeWithConfig(Config) {
     authorization: PluginsReadModelSpec$ReventlessCore.authorization,
     visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginsReadModelMappings);
-  let PluginHistoryReadModelMappings = {
-    moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
-    mappings: PluginHistoryProjection$ReventlessCore.mappings
-  };
-  let PluginHistoryReadModel = ReadModelMaker.MakeNoResolver({
-    Id: Id$Reventless.$$String,
-    name: PluginHistoryReadModelSpec$ReventlessCore.name,
-    moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,
-    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
-    config: PluginHistoryReadModelSpec$ReventlessCore.config,
-    subIdConfig: PluginHistoryReadModelSpec$ReventlessCore.subIdConfig,
-    authorization: PluginHistoryReadModelSpec$ReventlessCore.authorization,
-    visibility: PluginHistoryReadModelSpec$ReventlessCore.visibility
-  })(PluginHistoryReadModelMappings);
   let $$let$1 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let $$let$2 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
@@ -804,95 +786,6 @@ function MakeWithConfig(Config) {
     Bus.registerQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => allItems.contents);
     Bus.registerQueryDbStream(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     uiFragmentQueryDbOpsRef.contents = ops$1;
-    return ops$1;
-  };
-  let platformEventGraphQueryDbOpsRef = {
-    contents: undefined
-  };
-  let ensurePlatformEventGraphQueryDbStore = () => {
-    let ops = platformEventGraphQueryDbOpsRef.contents;
-    if (ops !== undefined) {
-      return ops;
-    }
-    let store = {
-      contents: {}
-    };
-    let allItems = {
-      contents: []
-    };
-    let syncAll = () => {
-      allItems.contents = Object.entries(store.contents).flatMap(param => {
-        let id = param[0];
-        return param[1].map(item => {
-          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-          if (Stdlib_Option.isSome(obj["id"])) {
-            return item;
-          }
-          let copy = {};
-          Object.entries(obj).forEach(param => {
-            copy[param[0]] = param[1];
-          });
-          copy["id"] = id;
-          return copy;
-        });
-      });
-    };
-    let ops_load = async id => ({
-      TAG: "Ok",
-      _0: Stdlib_Option.getOr(store.contents[id], [])
-    });
-    let ops_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
-    let ops_save = async (id, state, param, param$1) => {
-      store.contents[id] = [state];
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_saveBatch = async batch => {
-      batch.forEach(param => {
-        store.contents[param[0]] = [param[1]];
-      });
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_count = async (param, param$1, inc) => ({
-      TAG: "Ok",
-      _0: inc
-    });
-    let ops_delete = async (id, param) => {
-      Stdlib_Dict.$$delete(store.contents, id);
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_deleteBatch = async ids => {
-      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops$1 = {
-      load: ops_load,
-      loadStream: ops_loadStream,
-      save: ops_save,
-      saveBatch: ops_saveBatch,
-      count: ops_count,
-      delete: ops_delete,
-      deleteBatch: ops_deleteBatch
-    };
-    Bus.registerQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name, ops$1);
-    Bus.registerQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
-    platformEventGraphQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };
   let pluginStructuresStore = {
@@ -1070,33 +963,6 @@ function MakeWithConfig(Config) {
         uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
-  };
-  let seedPlatformEventGraphQueryDb = pluginComponents => {
-    let ops = ensurePlatformEventGraphQueryDbStore();
-    pluginComponents.forEach(plugin => {
-      let outputs = Component$ReventlessCore.outputs(plugin);
-      Pulumi.all([
-        outputs.id,
-        outputs.pluginStructure
-      ]).apply(param => {
-        let ps = param[1];
-        if (ps === undefined) {
-          return;
-        }
-        let id = param[0];
-        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, ps);
-        let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-        ops.save(id, entry, "Any", undefined);
-      });
-    });
-  };
-  let seedAdminPlatformEventGraphEntry = () => {
-    let ops = ensurePlatformEventGraphQueryDbStore();
-    let adminName = Stdlib_Option.getOr(Platform_Admin_Structure$ReventlessCore.pluginId.split("@")[0], Platform_Admin_Structure$ReventlessCore.pluginId);
-    let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(adminName, Platform_Admin_Structure$ReventlessCore.structure);
-    let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-    ops.save(Platform_Admin_Structure$ReventlessCore.pluginId, entry, "Any", undefined);
   };
   let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
     let providerPlugin = ext.extensionPointName.split(".")[0];
@@ -1289,24 +1155,14 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [LocalPluginAggregate], [
-      {
+    let admin = Admin.construct(version, [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      },
-      {
-        Spec: PluginHistoryReadModel.Spec,
-        sourceNames: PluginHistoryReadModel.sourceNames,
-        make: PluginHistoryReadModel.make,
-        outputs: PluginHistoryReadModel.outputs,
-        operations: PluginHistoryReadModel.operations,
-        finish: PluginHistoryReadModel.finish
-      }
-    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1351,9 +1207,7 @@ function MakeWithConfig(Config) {
     connectPlugin(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
-    seedPlatformEventGraphQueryDb(plugins$1);
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
-    seedAdminPlatformEventGraphEntry();
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
       let parts = field.split("_");
       let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
@@ -1419,44 +1273,6 @@ function MakeWithConfig(Config) {
     };
     queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
-      return connectionResponse(scanAll !== undefined ? scanAll() : []);
-    };
-    let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    queryResolvers[eventGraphQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name);
-      if (ops === undefined) {
-        return null;
-      }
-      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-      let item = items[0];
-      if (item === undefined) {
-        return null;
-      }
-      let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-      let copy = {};
-      Object.entries(obj).forEach(param => {
-        copy[param[0]] = param[1];
-      });
-      copy["id"] = id;
-      return copy;
-    };
-    queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
-      return connectionResponse(scanAll !== undefined ? scanAll() : []);
-    };
-    let pluginHistoryQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[2];
-    queryResolvers[pluginHistoryQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(PluginHistoryReadModelSpec$ReventlessCore.name);
-      if (ops === undefined) {
-        return null;
-      }
-      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-      return Stdlib_Option.getOr(items[0], null);
-    };
-    queryResolvers[pluginHistoryQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(PluginHistoryReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {
@@ -1675,49 +1491,6 @@ function MakeWithConfig(Config) {
         return JSON.stringify(result);
       }
     });
-    platformGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
-    platformGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
-        "platformCrossPluginEdges",
-        async (_root, _args, _ctx) => {
-          let encodeNode = n => Object.fromEntries([
-            [
-              "pluginName",
-              n.pluginName
-            ],
-            [
-              "componentName",
-              n.componentName
-            ],
-            [
-              "kind",
-              n.kind
-            ]
-          ]);
-          let encodeEdge = e => Object.fromEntries([
-            [
-              "source",
-              encodeNode(e.source)
-            ],
-            [
-              "target",
-              encodeNode(e.target)
-            ],
-            [
-              "mechanism",
-              e.mechanism
-            ],
-            [
-              "viaEvents",
-              e.viaEvents.map(prim => prim)
-            ],
-            [
-              "implicit",
-              e.implicit
-            ]
-          ]);
-          return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
-        }
-      ]]));
     DomainGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessLocal.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     if (Config.splitApi) {
@@ -1750,9 +1523,6 @@ function MakeWithConfig(Config) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-    let eventGraphQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    queryResolvers[eventGraphQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[eventGraphQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
     registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
@@ -1841,24 +1611,14 @@ function MakeWithConfig(Config) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct("", [], [LocalPluginAggregate], [
-      {
+    let admin = Admin.construct("", [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      },
-      {
-        Spec: PluginHistoryReadModel.Spec,
-        sourceNames: PluginHistoryReadModel.sourceNames,
-        make: PluginHistoryReadModel.make,
-        outputs: PluginHistoryReadModel.outputs,
-        operations: PluginHistoryReadModel.operations,
-        finish: PluginHistoryReadModel.finish
-      }
-    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -1894,23 +1654,6 @@ function MakeWithConfig(Config) {
           return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
         });
       };
-      let eventGraphQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-      queryResolvers[eventGraphQueryEntry3.singleFieldName] = async (_root, args, _ctx) => {
-        let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-        let structure = pluginStructuresStore.contents[id];
-        if (structure === undefined) {
-          return null;
-        }
-        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, structure);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-      };
-      queryResolvers[eventGraphQueryEntry3.listFieldName] = async (_root, _args, _ctx) => connectionResponse(Object.entries(pluginStructuresStore.contents).map(param => {
-        let id = param[0];
-        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-      }));
       queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
@@ -1952,49 +1695,6 @@ function MakeWithConfig(Config) {
       adminGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
           "onUIFragmentChange",
           LocalGraphQL_SubscriptionResolvers$ReventlessLocal.makeFieldResolver(dpSubTopic2)
-        ]]));
-      adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
-      adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
-          "platformCrossPluginEdges",
-          async (_root, _args, _ctx) => {
-            let encodeNode = n => Object.fromEntries([
-              [
-                "pluginName",
-                n.pluginName
-              ],
-              [
-                "componentName",
-                n.componentName
-              ],
-              [
-                "kind",
-                n.kind
-              ]
-            ]);
-            let encodeEdge = e => Object.fromEntries([
-              [
-                "source",
-                encodeNode(e.source)
-              ],
-              [
-                "target",
-                encodeNode(e.target)
-              ],
-              [
-                "mechanism",
-                e.mechanism
-              ],
-              [
-                "viaEvents",
-                e.viaEvents.map(prim => prim)
-              ],
-              [
-                "implicit",
-                e.implicit
-              ]
-            ]);
-            return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
-          }
         ]]));
       adminRegisteredServers.contents.push(adminGraphQL);
     }
@@ -2608,20 +2308,6 @@ function Make($star) {
     authorization: PluginsReadModelSpec$ReventlessCore.authorization,
     visibility: PluginsReadModelSpec$ReventlessCore.visibility
   })(PluginsReadModelMappings);
-  let PluginHistoryReadModelMappings = {
-    moduleUrl: PluginHistoryProjection$ReventlessCore.moduleUrl,
-    mappings: PluginHistoryProjection$ReventlessCore.mappings
-  };
-  let PluginHistoryReadModel = ReadModelMaker.MakeNoResolver({
-    Id: Id$Reventless.$$String,
-    name: PluginHistoryReadModelSpec$ReventlessCore.name,
-    moduleUrl: PluginHistoryReadModelSpec$ReventlessCore.moduleUrl,
-    stateSchema: PluginHistoryReadModelSpec$ReventlessCore.stateSchema,
-    config: PluginHistoryReadModelSpec$ReventlessCore.config,
-    subIdConfig: PluginHistoryReadModelSpec$ReventlessCore.subIdConfig,
-    authorization: PluginHistoryReadModelSpec$ReventlessCore.authorization,
-    visibility: PluginHistoryReadModelSpec$ReventlessCore.visibility
-  })(PluginHistoryReadModelMappings);
   let $$let$1 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let $$let$2 = LocalCommandTopicChannel$ReventlessLocal.Make(Bus);
   let Admin = Platform_Admin$ReventlessCore.Make({
@@ -2748,95 +2434,6 @@ function Make($star) {
     Bus.registerQueryDbScan(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => allItems.contents);
     Bus.registerQueryDbStream(UIFragmentRegistryReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
     uiFragmentQueryDbOpsRef.contents = ops$1;
-    return ops$1;
-  };
-  let platformEventGraphQueryDbOpsRef = {
-    contents: undefined
-  };
-  let ensurePlatformEventGraphQueryDbStore = () => {
-    let ops = platformEventGraphQueryDbOpsRef.contents;
-    if (ops !== undefined) {
-      return ops;
-    }
-    let store = {
-      contents: {}
-    };
-    let allItems = {
-      contents: []
-    };
-    let syncAll = () => {
-      allItems.contents = Object.entries(store.contents).flatMap(param => {
-        let id = param[0];
-        return param[1].map(item => {
-          let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-          if (Stdlib_Option.isSome(obj["id"])) {
-            return item;
-          }
-          let copy = {};
-          Object.entries(obj).forEach(param => {
-            copy[param[0]] = param[1];
-          });
-          copy["id"] = id;
-          return copy;
-        });
-      });
-    };
-    let ops_load = async id => ({
-      TAG: "Ok",
-      _0: Stdlib_Option.getOr(store.contents[id], [])
-    });
-    let ops_loadStream = id => Stream$1.fromIterable(Stdlib_Option.getOr(store.contents[id], []));
-    let ops_save = async (id, state, param, param$1) => {
-      store.contents[id] = [state];
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_saveBatch = async batch => {
-      batch.forEach(param => {
-        store.contents[param[0]] = [param[1]];
-      });
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_count = async (param, param$1, inc) => ({
-      TAG: "Ok",
-      _0: inc
-    });
-    let ops_delete = async (id, param) => {
-      Stdlib_Dict.$$delete(store.contents, id);
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops_deleteBatch = async ids => {
-      ids.forEach(param => Stdlib_Dict.$$delete(store.contents, param[0]));
-      syncAll();
-      return {
-        TAG: "Ok",
-        _0: undefined
-      };
-    };
-    let ops$1 = {
-      load: ops_load,
-      loadStream: ops_loadStream,
-      save: ops_save,
-      saveBatch: ops_saveBatch,
-      count: ops_count,
-      delete: ops_delete,
-      deleteBatch: ops_deleteBatch
-    };
-    Bus.registerQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name, ops$1);
-    Bus.registerQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => allItems.contents);
-    Bus.registerQueryDbStream(Platform_EventGraphReadModelSpec$ReventlessCore.name, () => Stream$1.fromIterable(allItems.contents));
-    platformEventGraphQueryDbOpsRef.contents = ops$1;
     return ops$1;
   };
   let pluginStructuresStore = {
@@ -3014,33 +2611,6 @@ function Make($star) {
         uiFragmentOps.save(id, entry, "Any", undefined);
       });
     });
-  };
-  let seedPlatformEventGraphQueryDb = pluginComponents => {
-    let ops = ensurePlatformEventGraphQueryDbStore();
-    pluginComponents.forEach(plugin => {
-      let outputs = Component$ReventlessCore.outputs(plugin);
-      Pulumi.all([
-        outputs.id,
-        outputs.pluginStructure
-      ]).apply(param => {
-        let ps = param[1];
-        if (ps === undefined) {
-          return;
-        }
-        let id = param[0];
-        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, ps);
-        let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-        ops.save(id, entry, "Any", undefined);
-      });
-    });
-  };
-  let seedAdminPlatformEventGraphEntry = () => {
-    let ops = ensurePlatformEventGraphQueryDbStore();
-    let adminName = Stdlib_Option.getOr(Platform_Admin_Structure$ReventlessCore.pluginId.split("@")[0], Platform_Admin_Structure$ReventlessCore.pluginId);
-    let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(adminName, Platform_Admin_Structure$ReventlessCore.structure);
-    let entry = S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-    ops.save(Platform_Admin_Structure$ReventlessCore.pluginId, entry, "Any", undefined);
   };
   let extractExtensionWirings = (pluginName, pluginVersion, pluginOutputs) => pluginOutputs.extensions.apply(exts => Object.values(exts).map(ext => {
     let providerPlugin = ext.extensionPointName.split(".")[0];
@@ -3228,24 +2798,14 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct(version, [], [LocalPluginAggregate], [
-      {
+    let admin = Admin.construct(version, [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      },
-      {
-        Spec: PluginHistoryReadModel.Spec,
-        sourceNames: PluginHistoryReadModel.sourceNames,
-        make: PluginHistoryReadModel.make,
-        outputs: PluginHistoryReadModel.outputs,
-        operations: PluginHistoryReadModel.operations,
-        finish: PluginHistoryReadModel.finish
-      }
-    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -3290,9 +2850,7 @@ function Make($star) {
     connectPlugin(plugins$1);
     seedUIFragmentRegistryQueryDb(plugins$1);
     seedPluginStructuresStore(plugins$1);
-    seedPlatformEventGraphQueryDb(plugins$1);
     pluginStructuresStore.contents[Platform_Admin_Structure$ReventlessCore.pluginId] = Platform_Admin_Structure$ReventlessCore.structure;
-    seedAdminPlatformEventGraphEntry();
     CommandGeneratorResolvers_GraphQL$ReventlessLocal.setPluginStatusGate(field => {
       let parts = field.split("_");
       let pluginPrefix = Stdlib_Option.getOr(parts[0], "");
@@ -3358,44 +2916,6 @@ function Make($star) {
     };
     queryResolvers[listQueryField] = async (_root, _args, _ctx) => {
       let scanAll = Bus.getQueryDbScan(PluginsReadModelSpec$ReventlessCore.name);
-      return connectionResponse(scanAll !== undefined ? scanAll() : []);
-    };
-    let eventGraphQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    queryResolvers[eventGraphQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(Platform_EventGraphReadModelSpec$ReventlessCore.name);
-      if (ops === undefined) {
-        return null;
-      }
-      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-      let item = items[0];
-      if (item === undefined) {
-        return null;
-      }
-      let obj = Stdlib_Option.getOr(Stdlib_JSON.Decode.object(item), {});
-      let copy = {};
-      Object.entries(obj).forEach(param => {
-        copy[param[0]] = param[1];
-      });
-      copy["id"] = id;
-      return copy;
-    };
-    queryResolvers[eventGraphQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(Platform_EventGraphReadModelSpec$ReventlessCore.name);
-      return connectionResponse(scanAll !== undefined ? scanAll() : []);
-    };
-    let pluginHistoryQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[2];
-    queryResolvers[pluginHistoryQueryEntry.singleFieldName] = async (_root, args, _ctx) => {
-      let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-      let ops = Bus.getQueryDb(PluginHistoryReadModelSpec$ReventlessCore.name);
-      if (ops === undefined) {
-        return null;
-      }
-      let items = await Effect.runPromise(Effect.catchAll(Stream.runCollect(ops.loadStream(id)), param => Effect.succeed([])));
-      return Stdlib_Option.getOr(items[0], null);
-    };
-    queryResolvers[pluginHistoryQueryEntry.listFieldName] = async (_root, _args, _ctx) => {
-      let scanAll = Bus.getQueryDbScan(PluginHistoryReadModelSpec$ReventlessCore.name);
       return connectionResponse(scanAll !== undefined ? scanAll() : []);
     };
     queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => {
@@ -3614,49 +3134,6 @@ function Make($star) {
         return JSON.stringify(result);
       }
     });
-    platformGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
-    platformGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
-        "platformCrossPluginEdges",
-        async (_root, _args, _ctx) => {
-          let encodeNode = n => Object.fromEntries([
-            [
-              "pluginName",
-              n.pluginName
-            ],
-            [
-              "componentName",
-              n.componentName
-            ],
-            [
-              "kind",
-              n.kind
-            ]
-          ]);
-          let encodeEdge = e => Object.fromEntries([
-            [
-              "source",
-              encodeNode(e.source)
-            ],
-            [
-              "target",
-              encodeNode(e.target)
-            ],
-            [
-              "mechanism",
-              e.mechanism
-            ],
-            [
-              "viaEvents",
-              e.viaEvents.map(prim => prim)
-            ],
-            [
-              "implicit",
-              e.implicit
-            ]
-          ]);
-          return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
-        }
-      ]]));
     DomainGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
     DomainGraphQL_Server$ReventlessLocal.registerQueries(GraphQL_Stitcher$ReventlessCore.relayBaseQueries, {});
     PlatformGraphQL_Server$ReventlessLocal.registerTypes(GraphQL_Stitcher$ReventlessCore.relayBaseTypes);
@@ -3682,9 +3159,6 @@ function Make($star) {
     let adminQueryEntry = PluginBaseFragment$ReventlessCore.queryEntries[0];
     queryResolvers[adminQueryEntry.singleFieldName] = async (_root, _args, _ctx) => null;
     queryResolvers[adminQueryEntry.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
-    let eventGraphQueryEntry2 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-    queryResolvers[eventGraphQueryEntry2.singleFieldName] = async (_root, _args, _ctx) => null;
-    queryResolvers[eventGraphQueryEntry2.listFieldName] = async (_root, _args, _ctx) => connectionResponse([]);
     queryResolvers["Platform_UIFragments"] = async (_root, _args, _ctx) => [];
     registerAdminItemsAndIndexResolvers(queryResolvers, false);
     adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
@@ -3771,24 +3245,14 @@ function Make($star) {
     hooks_apiRole.contents = {
       val: undefined
     };
-    let admin = Admin.construct("", [], [LocalPluginAggregate], [
-      {
+    let admin = Admin.construct("", [], [LocalPluginAggregate], [{
         Spec: PluginsReadModel.Spec,
         sourceNames: PluginsReadModel.sourceNames,
         make: PluginsReadModel.make,
         outputs: PluginsReadModel.outputs,
         operations: PluginsReadModel.operations,
         finish: PluginsReadModel.finish
-      },
-      {
-        Spec: PluginHistoryReadModel.Spec,
-        sourceNames: PluginHistoryReadModel.sourceNames,
-        make: PluginHistoryReadModel.make,
-        outputs: PluginHistoryReadModel.outputs,
-        operations: PluginHistoryReadModel.operations,
-        finish: PluginHistoryReadModel.finish
-      }
-    ], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
+      }], scheduler, LocalPluginSpec$ReventlessLocal.resourceNaming, undefined, undefined, [], [], [], [], []);
     hooks_adminExtensionPoints.contents = admin.extensionPointsOutputs.apply(eps => Object.fromEntries(eps.map(ep => [
       ep.name,
       ep
@@ -3824,23 +3288,6 @@ function Make($star) {
           return Platform_UIFragmentsApi$ReventlessCore.encodeUIFragmentEntry(state);
         });
       };
-      let eventGraphQueryEntry3 = PluginBaseFragment$ReventlessCore.queryEntries[1];
-      queryResolvers[eventGraphQueryEntry3.singleFieldName] = async (_root, args, _ctx) => {
-        let id = Stdlib_Option.getOr(Stdlib_Option.flatMap(Stdlib_Option.flatMap(Stdlib_JSON.Decode.object(args), d => d["id"]), Stdlib_JSON.Decode.string), "");
-        let structure = pluginStructuresStore.contents[id];
-        if (structure === undefined) {
-          return null;
-        }
-        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, structure);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-      };
-      queryResolvers[eventGraphQueryEntry3.listFieldName] = async (_root, _args, _ctx) => connectionResponse(Object.entries(pluginStructuresStore.contents).map(param => {
-        let id = param[0];
-        let pluginName = Stdlib_Option.getOr(id.split("@")[0], id);
-        let state = Platform_EventGraphReadModelSpec$ReventlessCore.buildEntry(pluginName, param[1]);
-        return S.reverseConvertToJsonOrThrow(state, Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-      }));
       queryResolvers["Platform_ComponentDefinitions"] = async (_root, _args, _ctx) => Object.entries(pluginStructuresStore.contents).map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1]));
       registerAdminItemsAndIndexResolvers(queryResolvers, true);
       adminGraphQL.registerQueries(baseParts.queries, queryResolvers);
@@ -3882,49 +3329,6 @@ function Make($star) {
       adminGraphQL.registerSubscriptions(["  onUIFragmentChange: UIFragmentChangeEvent"], Object.fromEntries([[
           "onUIFragmentChange",
           LocalGraphQL_SubscriptionResolvers$ReventlessLocal.makeFieldResolver(dpSubTopic2)
-        ]]));
-      adminGraphQL.registerTypes(Platform_CrossPluginEdges$ReventlessCore.sdlTypes);
-      adminGraphQL.registerQueries([Platform_CrossPluginEdges$ReventlessCore.sdlQueryField], Object.fromEntries([[
-          "platformCrossPluginEdges",
-          async (_root, _args, _ctx) => {
-            let encodeNode = n => Object.fromEntries([
-              [
-                "pluginName",
-                n.pluginName
-              ],
-              [
-                "componentName",
-                n.componentName
-              ],
-              [
-                "kind",
-                n.kind
-              ]
-            ]);
-            let encodeEdge = e => Object.fromEntries([
-              [
-                "source",
-                encodeNode(e.source)
-              ],
-              [
-                "target",
-                encodeNode(e.target)
-              ],
-              [
-                "mechanism",
-                e.mechanism
-              ],
-              [
-                "viaEvents",
-                e.viaEvents.map(prim => prim)
-              ],
-              [
-                "implicit",
-                e.implicit
-              ]
-            ]);
-            return Platform_CrossPluginEdges$ReventlessCore.computeEdges(Object.entries(pluginStructuresStore.contents)).map(encodeEdge);
-          }
         ]]));
       adminRegisteredServers.contents.push(adminGraphQL);
     }

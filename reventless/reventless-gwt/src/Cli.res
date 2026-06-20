@@ -433,10 +433,8 @@ let emitDomainAnalysis = async (pkgs: array<PackageScan.pkg>): unit =>
     | Some(platformModulePath) =>
       try {
         let loaded = await LocalHost.loadGraph(~platformModulePath, ~plugins)
-        FormatterVsCode.deadCode(
-          DomainDeadCode.analyze(~structures=loaded.structures, ~edges=loaded.edges),
-        )
-        FormatterVsCode.graph(DomainGraph.build(~structures=loaded.structures, ~edges=loaded.edges))
+        FormatterVsCode.deadCode(DomainDeadCode.analyze(~structures=loaded.structures))
+        FormatterVsCode.graph(DomainGraph.build(~structures=loaded.structures))
         // Field schemas for command/event/read-side state (Phase 6.3): the same
         // per-plugin entry the Platform_ComponentDefinitions GraphQL query returns.
         FormatterVsCode.definitions(

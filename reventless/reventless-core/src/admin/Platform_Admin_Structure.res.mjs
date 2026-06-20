@@ -10,8 +10,6 @@ import * as Api_Naming$ReventlessCore from "../components/Api/Api_Naming.res.mjs
 import * as SuryToJsonSchema$ReventlessCore from "../components/Api/SuryToJsonSchema.res.mjs";
 import * as PluginBaseFragment$ReventlessCore from "../plugin/api/PluginBaseFragment.res.mjs";
 import * as PluginsReadModelSpec$ReventlessCore from "../plugin/lifecycle/PluginsReadModelSpec.res.mjs";
-import * as PluginHistoryReadModelSpec$ReventlessCore from "../plugin/lifecycle/PluginHistoryReadModelSpec.res.mjs";
-import * as Platform_EventGraphReadModelSpec$ReventlessCore from "./Platform_EventGraphReadModelSpec.res.mjs";
 
 let pluginId = "Platform";
 
@@ -133,61 +131,7 @@ let pluginReadModel = {
   visibility: undefined
 };
 
-let eventGraphReadModel_queryField = Api_Naming$ReventlessCore.adminField("PlatformEventGraphs");
-
-let eventGraphReadModel_schema = encodeSchema(Platform_EventGraphReadModelSpec$ReventlessCore.stateSchema);
-
-let eventGraphReadModel_consumedEventTypes = [];
-
-let eventGraphReadModel_linkedWriteSide = [];
-
-let eventGraphReadModel_searchableFields = ["pluginName"];
-
-let eventGraphReadModel = {
-  name: "PlatformEventGraph",
-  queryField: eventGraphReadModel_queryField,
-  schema: eventGraphReadModel_schema,
-  consumedEventTypes: eventGraphReadModel_consumedEventTypes,
-  linkedWriteSide: eventGraphReadModel_linkedWriteSide,
-  labelField: "pluginName",
-  searchableFields: eventGraphReadModel_searchableFields,
-  statusField: undefined,
-  visibility: undefined
-};
-
-let pluginHistoryReadModel_queryField = Api_Naming$ReventlessCore.adminField("PluginHistory");
-
-let pluginHistoryReadModel_schema = encodeSchema(PluginHistoryReadModelSpec$ReventlessCore.stateSchema);
-
-let pluginHistoryReadModel_consumedEventTypes = [];
-
-let pluginHistoryReadModel_linkedWriteSide = ["Plugin"];
-
-let pluginHistoryReadModel_searchableFields = [
-  "name",
-  "version",
-  "transition"
-];
-
-let pluginHistoryReadModel_statusField = "transition";
-
-let pluginHistoryReadModel = {
-  name: "PluginHistory",
-  queryField: pluginHistoryReadModel_queryField,
-  schema: pluginHistoryReadModel_schema,
-  consumedEventTypes: pluginHistoryReadModel_consumedEventTypes,
-  linkedWriteSide: pluginHistoryReadModel_linkedWriteSide,
-  labelField: "name",
-  searchableFields: pluginHistoryReadModel_searchableFields,
-  statusField: pluginHistoryReadModel_statusField,
-  visibility: undefined
-};
-
-let structure_readModels = [
-  pluginReadModel,
-  eventGraphReadModel,
-  pluginHistoryReadModel
-];
+let structure_readModels = [pluginReadModel];
 
 let structure_stateViewSlices = [];
 
@@ -227,8 +171,6 @@ export {
   deactivateCommand,
   pluginAggregate,
   pluginReadModel,
-  eventGraphReadModel,
-  pluginHistoryReadModel,
   structure,
 }
 /* idArgsSchema Not a pure module */

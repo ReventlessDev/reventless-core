@@ -31,10 +31,7 @@ let platformPath = join([repoRoot, "reventless", "reventless-local", "src", "Pla
 let structureFor = (g: LocalHost.graph, name) =>
   g.structures->Array.find(((n, _)) => n == name)->Option.map(((_, s)) => s)
 
-let edgeKey = (e: Reventless.Plugin.graphEdge) =>
-  `${e.mechanism}:${e.source.pluginName}.${e.source.componentName}->${e.target.pluginName}.${e.target.componentName}`
-
-test("loadGraph cold-loads structures + cross-plugin edges from the real plugins", async () => {
+test("loadGraph cold-loads structures from the real plugins", async () => {
   let plugins = LocalHost.discover(~packageDirs=[catalogDir, orderingDir])
   let g = await LocalHost.loadGraph(~platformModulePath=platformPath, ~plugins)
 
@@ -62,17 +59,6 @@ test("loadGraph cold-loads structures + cross-plugin edges from the real plugins
   )
   let product = catalog.aggregates->Array.find((a: Reventless.Plugin.writableDef) => a.name == "Product")->Option.getOrThrow
   ok(productsEp.sourceEventTypes->Array.every(e => product.producedEventTypes->Array.includes(e)))
-
-  // edges: the two bidirectional Extension↔ExtensionPoint links.
-  let keys = g.edges->Array.map(edgeKey)
-  ok(
-    keys->Array.includes("Extension:Ordering.Ordering.Orders->Catalog.Ordering.Orders"),
-    ~message=keys->Array.join(" | "),
-  )
-  ok(
-    keys->Array.includes("Extension:Catalog.Catalog.Products->Ordering.Catalog.Products"),
-    ~message=keys->Array.join(" | "),
-  )
 })
 
 test("loadGraph is cold — a second call in the same process succeeds (cache-busting works)", async () => {

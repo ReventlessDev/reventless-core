@@ -517,8 +517,8 @@ async function emitDomainAnalysis(pkgs) {
   }
   try {
     let loaded = await LocalHost$ReventlessGwt.loadGraph(platformModulePath, plugins);
-    FormatterVsCode$ReventlessGwt.deadCode(DomainDeadCode$ReventlessGwt.analyze(loaded.structures, loaded.edges));
-    FormatterVsCode$ReventlessGwt.graph(DomainGraph$ReventlessGwt.build(loaded.structures, loaded.edges));
+    FormatterVsCode$ReventlessGwt.deadCode(DomainDeadCode$ReventlessGwt.analyze(loaded.structures));
+    FormatterVsCode$ReventlessGwt.graph(DomainGraph$ReventlessGwt.build(loaded.structures));
     return FormatterVsCode$ReventlessGwt.definitions(loaded.structures.map(param => Platform_ComponentDefinitionsApi$ReventlessCore.encodePluginStructureEntry(param[0], param[1])));
   } catch (exn) {
     return;

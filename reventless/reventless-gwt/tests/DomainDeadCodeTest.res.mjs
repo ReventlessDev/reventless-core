@@ -72,7 +72,7 @@ globalThis.describe("DomainDeadCode.analyze — orphan events", () => {
     let findings = DomainDeadCode$ReventlessGwt.analyze([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(findings.map(f => f.detail)).toEqual(["Shop.Archived"]);
     let f = findings[0];
     globalThis.expect([
@@ -97,7 +97,7 @@ globalThis.describe("DomainDeadCode.analyze — orphan events", () => {
         "Analytics",
         analytics
       ]
-    ], []);
+    ]);
     globalThis.expect(findings.length).toBe(0);
   });
   globalThis.test("consumption via a state-view slice and a state-change DCB read both count", async () => {
@@ -108,33 +108,7 @@ globalThis.describe("DomainDeadCode.analyze — orphan events", () => {
     let findings = DomainDeadCode$ReventlessGwt.analyze([[
         "Shop",
         s
-      ]], []);
-    globalThis.expect(findings.length).toBe(0);
-  });
-  globalThis.test("edge viaEvents marks an event consumed (reachability over the graph)", async () => {
-    let shop = structure([writable("Order", ["Shop.Placed"], undefined, undefined)], undefined, undefined, undefined, undefined, undefined, undefined);
-    let edge_source = {
-      pluginName: "Shop",
-      componentName: "Order",
-      kind: "Aggregate"
-    };
-    let edge_target = {
-      pluginName: "Other",
-      componentName: "X",
-      kind: "StateViewSlice"
-    };
-    let edge_viaEvents = ["Shop.Placed"];
-    let edge = {
-      source: edge_source,
-      target: edge_target,
-      mechanism: "EventTypeMatch",
-      viaEvents: edge_viaEvents,
-      implicit: false
-    };
-    let findings = DomainDeadCode$ReventlessGwt.analyze([[
-        "Shop",
-        shop
-      ]], [edge]);
+      ]]);
     globalThis.expect(findings.length).toBe(0);
   });
   globalThis.test("a linked classic read model clears all the aggregate's events (rule 2)", async () => {
@@ -145,7 +119,7 @@ globalThis.describe("DomainDeadCode.analyze — orphan events", () => {
     let findings = DomainDeadCode$ReventlessGwt.analyze([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(findings.length).toBe(0);
   });
   globalThis.test("an aggregate with no view and no consumer is fully orphaned", async () => {
@@ -153,7 +127,7 @@ globalThis.describe("DomainDeadCode.analyze — orphan events", () => {
     let findings = DomainDeadCode$ReventlessGwt.analyze([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(findings.map(f => f.detail)).toEqual(["Shop.Logged"]);
   });
   globalThis.test("state-change slices are scanned as producers too", async () => {
@@ -161,7 +135,7 @@ globalThis.describe("DomainDeadCode.analyze — orphan events", () => {
     let findings = DomainDeadCode$ReventlessGwt.analyze([[
         "Shop",
         s
-      ]], []);
+      ]]);
     globalThis.expect(findings.map(f => [
       f.componentName,
       f.detail

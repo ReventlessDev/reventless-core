@@ -20,9 +20,8 @@ let pluginExcludeFields: array<string> = [
 // surface — they're option-of-nested-object types (e.g. apiSchemaFragment,
 // uiFragments, structure) which AutoUI currently renders as scalar columns
 // and queries without a sub-selection, failing schema validation. Other
-// callers (host-shell's Platform_ComponentDefinitions / Platform_UIFragments /
-// Platform_PlatformEventGraphs) keep querying them via dedicated fields
-// and resolver paths.
+// callers (host-shell's Platform_ComponentDefinitions / Platform_UIFragments)
+// keep querying them via dedicated fields and resolver paths.
 let pluginUIOnlyExcludeFields: array<string> = pluginExcludeFields->Array.concat([
   "apiSchemaFragment",
   "uiFragments",
@@ -63,33 +62,6 @@ let queryEntries: array<querySchemaEntry> = [
     excludeFields: pluginExcludeFields,
     subIdField: ?PluginsReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
     indexQueries: ?indexQueriesOfConfig(PluginsReadModelSpec.config),
-  },
-  {
-    specName: Platform_EventGraphReadModelSpec.name,
-    singleFieldName: Api_Naming.adminField(~name="PlatformEventGraph"),
-    listFieldName: Api_Naming.adminField(~name="PlatformEventGraphs"),
-    returnTypeName: Api_Naming.adminField(~name="PlatformEventGraph"),
-    stateSchema: Platform_EventGraphReadModelSpec.stateSchema->S.castToUnknown,
-    authorization: Some(adminAuth),
-    excludeFields: [],
-    subIdField: ?Platform_EventGraphReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
-    indexQueries: ?indexQueriesOfConfig(Platform_EventGraphReadModelSpec.config),
-  },
-  {
-    // Composite-key timeline read model (partition = plugin name, sort =
-    // transitionKey). The list field returns the whole audit trail; the resolver
-    // layer handles the sub-id automatically (QueryDbResolvers_AppSync ~subIdField).
-    // `subIdField` (from `subIdConfig`) makes the generator emit the
-    // `Platform_PluginHistoryEntryItems` per-plugin timeline field.
-    specName: PluginHistoryReadModelSpec.name,
-    singleFieldName: Api_Naming.adminField(~name="PluginHistoryEntry"),
-    listFieldName: Api_Naming.adminField(~name="PluginHistory"),
-    returnTypeName: Api_Naming.adminField(~name="PluginHistoryEntry"),
-    stateSchema: PluginHistoryReadModelSpec.stateSchema->S.castToUnknown,
-    authorization: Some(adminAuth),
-    excludeFields: [],
-    subIdField: ?PluginHistoryReadModelSpec.subIdConfig->Option.map((c: Reventless.ReadModel.subIdConfig<_>) => c.subIdField),
-    indexQueries: ?indexQueriesOfConfig(PluginHistoryReadModelSpec.config),
   },
 ]
 

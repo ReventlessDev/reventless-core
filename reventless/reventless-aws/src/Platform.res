@@ -1119,22 +1119,6 @@ module MakeWithConfig = (
     PluginReadModelMappings,
   )
 
-  // Admin-internal PlatformEventGraph read model — subscribes to Plugin aggregate events
-  // and projects per-plugin component graphs (nodes + edges) into a QueryDb table.
-  module PlatformEventGraphMappings: Reventless.Projection.Mappings
-    with module Target := ReventlessCore.Platform_EventGraphReadModelSpec = {
-    module M = ReventlessCore.Platform_EventGraphProjection.Mappings
-    module type Mapping = M.Mapping
-    // See PluginReadModelMappings.moduleUrl note above.
-    let moduleUrl: string = ReventlessCore.Platform_EventGraphProjection.moduleUrl
-    let mappings: array<module(Mapping)> = ReventlessCore.Platform_EventGraphProjection.mappings
-  }
-
-  module PlatformEventGraphReadModel = ReadModel_Builder_Single_Stream.Make(
-    ReventlessCore.Platform_EventGraphReadModelSpec,
-    PlatformEventGraphMappings,
-  )
-
   // Admin-internal UIFragmentRegistry read model — projects UIFragmentRegistered/
   // Updated/Deregistered events from the Plugin aggregate into a DynamoDB table the
   // Platform_UIFragments admin query Lambda scans.
@@ -1150,25 +1134,6 @@ module MakeWithConfig = (
   module UIFragmentRegistryReadModel = ReadModel_Builder_NoResolver_Stream.Make(
     ReventlessCore.UIFragmentRegistryReadModelSpec,
     UIFragmentRegistryReadModelMappings,
-  )
-
-  // Admin PluginHistory read model — the per-version lifecycle timeline (one row
-  // per transition, composite key name + version#transitionAt#kind). Public admin
-  // view: ReadModel_Builder_Single_Stream attaches AppSync resolvers (the resolver
-  // layer handles the composite sub-id), so the AutoUI renders the timeline. The
-  // admin-prefixed SDL fields are declared in PluginBaseFragment.queryEntries.
-  module PluginHistoryReadModelMappings: Reventless.Projection.Mappings
-    with module Target := ReventlessCore.PluginHistoryReadModelSpec = {
-    module M = ReventlessCore.PluginHistoryProjection.Mappings
-    module type Mapping = M.Mapping
-    // See PluginReadModelMappings.moduleUrl note above.
-    let moduleUrl: string = ReventlessCore.PluginHistoryProjection.moduleUrl
-    let mappings: array<module(Mapping)> = ReventlessCore.PluginHistoryProjection.mappings
-  }
-
-  module PluginHistoryReadModel = ReadModel_Builder_Single_Stream.Make(
-    ReventlessCore.PluginHistoryReadModelSpec,
-    PluginHistoryReadModelMappings,
   )
 
   module type PluginMaker = {
@@ -1231,9 +1196,7 @@ module MakeWithConfig = (
       ~aggregates=[module(PluginAggregate)],
       ~readModels=[
         module(PluginReadModel),
-        module(PlatformEventGraphReadModel),
         module(UIFragmentRegistryReadModel),
-        module(PluginHistoryReadModel),
       ],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,
@@ -1443,9 +1406,7 @@ module MakeWithConfig = (
       ~aggregates=[module(PluginAggregate)],
       ~readModels=[
         module(PluginReadModel),
-        module(PlatformEventGraphReadModel),
         module(UIFragmentRegistryReadModel),
-        module(PluginHistoryReadModel),
       ],
       ~scheduler,
       ~resourceNaming=Util_ResourceNaming.operations,

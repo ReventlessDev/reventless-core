@@ -214,7 +214,7 @@ module Make = (
       // `~name` argument). Prefer `entry.specName` when provided; fall back
       // to the singular form derived from `returnTypeName` for backward
       // compatibility with entries whose Spec.name equals the singular
-      // entity name (e.g. `PlatformEventGraph`). Without this alignment,
+      // entity name (a read model whose `Spec.name` is already singular). Without this alignment,
       // plural-named read models (e.g. `Plugins`) miss the registry and
       // fall through to `name->uncapitalize` / `name ++ "s"` field names
       // (`plugins`, `Pluginss`, `PluginssByIds`) that don't exist in the
@@ -271,7 +271,7 @@ module Make = (
 
     // Invoke each QueryDb's deferred resolversMaker so AppSync resolvers are
     // actually attached to the admin-prefixed Connection fields (Platform_Plugins,
-    // Platform_PlatformEventGraphs, …). Without this, ReadModel_Builder_Single
+    // …). Without this, ReadModel_Builder_Single
     // produces the resolverMaker closure but it is never called, and AppSync
     // returns "Cannot return null for non-nullable type" for the Connection field.
     //

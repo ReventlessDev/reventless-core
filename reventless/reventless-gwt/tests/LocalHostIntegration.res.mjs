@@ -21,11 +21,7 @@ function structureFor(g, name) {
   return Stdlib_Option.map(g.structures.find(param => param[0] === name), param => param[1]);
 }
 
-function edgeKey(e) {
-  return e.mechanism + `:` + e.source.pluginName + `.` + e.source.componentName + `->` + e.target.pluginName + `.` + e.target.componentName;
-}
-
-Nodetest.test("loadGraph cold-loads structures + cross-plugin edges from the real plugins", async () => {
+Nodetest.test("loadGraph cold-loads structures from the real plugins", async () => {
   let plugins = LocalHost$ReventlessGwt.discover([
     catalogDir,
     orderingDir
@@ -47,9 +43,6 @@ Nodetest.test("loadGraph cold-loads structures + cross-plugin edges from the rea
   Strict.ok(productsEp.sourceEventTypes.includes("Catalog.Added"), productsEp.sourceEventTypes.join(","));
   let product = Stdlib_Option.getOrThrow(catalog.aggregates.find(a => a.name === "Product"), undefined);
   Strict.ok(productsEp.sourceEventTypes.every(e => product.producedEventTypes.includes(e)));
-  let keys = g.edges.map(edgeKey);
-  Strict.ok(keys.includes("Extension:Ordering.Ordering.Orders->Catalog.Ordering.Orders"), keys.join(" | "));
-  Strict.ok(keys.includes("Extension:Catalog.Catalog.Products->Ordering.Catalog.Products"), keys.join(" | "));
 });
 
 Nodetest.test("loadGraph is cold — a second call in the same process succeeds (cache-busting works)", async () => {
@@ -67,6 +60,5 @@ export {
   orderingDir,
   platformPath,
   structureFor,
-  edgeKey,
 }
 /* here Not a pure module */

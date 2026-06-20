@@ -345,9 +345,8 @@ let make = (
   // are CARRIED in pluginStructure, tagged via `queryableDef.visibility` (`None` = Public,
   // `Some("Internal")` = Internal). Developer tools — the `reventless-gwt` / VSCode domain
   // graph and dead-code analysis — read them so an Internal view still shows up there. The
-  // deployed AutoUI's consumers (Platform_ComponentDefinitionsApi menu/pages, Platform_EventGraph
-  // web nodes, Platform_CrossPluginEdges) re-filter on the tag so the live UI keeps hiding
-  // them — see Visibility.res, which documents this contract.
+  // deployed AutoUI's consumers (Platform_ComponentDefinitionsApi menu/pages) re-filter on
+  // the tag so the live UI keeps hiding them — see Visibility.res, which documents this contract.
   let visibilityTag = (v: Reventless.Visibility.t): option<string> =>
     switch v {
     | Public => None

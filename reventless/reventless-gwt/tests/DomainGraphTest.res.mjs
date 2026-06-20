@@ -106,7 +106,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(nodeKind(g, "Shop_Order_Place")).toEqual("Command");
     globalThis.expect(nodeKind(g, "Shop:Order")).toEqual("Aggregate");
     globalThis.expect(nodeKind(g, "Shop.Placed")).toEqual("Event");
@@ -120,7 +120,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(nodeKind(g, "Shop:AvailableView")).toEqual("StateViewSlice");
     globalThis.expect(hasEdge(g, "Shop.Placed", "Shop:AvailableView", "projects")).toBe(true);
   });
@@ -132,7 +132,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(hasEdge(g, "Shop.Placed", "Shop:Orders", "projects")).toBe(true);
     globalThis.expect(hasEdge(g, "Shop.Shipped", "Shop:Orders", "projects")).toBe(true);
   });
@@ -141,7 +141,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(nodeKind(g, "Shop:Notify")).toEqual("AutomationSlice");
     globalThis.expect(hasEdge(g, "Shop.Placed", "Shop:Notify", "triggers")).toBe(true);
   });
@@ -153,32 +153,10 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Shop",
         shop
-      ]], []);
+      ]]);
     globalThis.expect(g.nodes.filter(n => n.id === "Shop.Touched").length).toBe(1);
     globalThis.expect(hasEdge(g, "Shop:A", "Shop.Touched", "emits")).toBe(true);
     globalThis.expect(hasEdge(g, "Shop:B", "Shop.Touched", "emits")).toBe(true);
-  });
-  globalThis.test("non-Extension computeEdges become graph edges with synthesized endpoints", async () => {
-    let edge_source = {
-      pluginName: "Shop",
-      componentName: "Order",
-      kind: "Aggregate"
-    };
-    let edge_target = {
-      pluginName: "Analytics",
-      componentName: "OrderStats",
-      kind: "StateViewSlice"
-    };
-    let edge_viaEvents = ["Shop.Placed"];
-    let edge = {
-      source: edge_source,
-      target: edge_target,
-      mechanism: "EventTypeMatch",
-      viaEvents: edge_viaEvents,
-      implicit: false
-    };
-    let g = DomainGraph$ReventlessGwt.build([], [edge]);
-    globalThis.expect(hasEdge(g, "Shop:Order", "Analytics:OrderStats", "EventTypeMatch")).toBe(true);
   });
   globalThis.test("an extension renders the cross-plugin event flow EP→event→Extension→delegate", async () => {
     let extension_delegateNames = ["ProductDemand"];
@@ -214,7 +192,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog
-      ]], []);
+      ]]);
     globalThis.expect(nodeKind(g, "Ordering:ep:Ordering.Orders")).toEqual("ExtensionPoint");
     globalThis.expect(hasEdge(g, "Ordering:ep:Ordering.Orders", "Ordering.Orders.ItemOrdered", "publishes")).toBe(true);
     globalThis.expect(hasEdge(g, "Ordering.Orders.ItemOrdered", "Catalog:ext:Ordering.Orders", "consumes")).toBe(true);
@@ -266,7 +244,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog
-      ]], []);
+      ]]);
     globalThis.expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog_ProductDemand_RecordDemand", "delegatesTo")).toBe(true);
     globalThis.expect(hasEdge(g, "Catalog_ProductDemand_RecordDemand", "Catalog:ProductDemand", "handles")).toBe(true);
     globalThis.expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo")).toBe(false);
@@ -305,7 +283,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog
-      ]], []);
+      ]]);
     globalThis.expect(hasEdge(g, "Catalog:ext:Ordering.Orders", "Catalog:ProductDemand", "delegatesTo")).toBe(true);
   });
   globalThis.test("an owned extension point is fed by the producers of its source events", async () => {
@@ -328,7 +306,7 @@ globalThis.describe("DomainGraph.build", () => {
     let g = DomainGraph$ReventlessGwt.build([[
         "Catalog",
         catalog
-      ]], []);
+      ]]);
     globalThis.expect(nodeKind(g, "Catalog:ep:Catalog.Products")).toEqual("ExtensionPoint");
     globalThis.expect(hasEdge(g, "Catalog:AddProduct", "Catalog.ProductAdded", "emits")).toBe(true);
     globalThis.expect(hasEdge(g, "Catalog.ProductAdded", "Catalog:ep:Catalog.Products", "feeds")).toBe(true);

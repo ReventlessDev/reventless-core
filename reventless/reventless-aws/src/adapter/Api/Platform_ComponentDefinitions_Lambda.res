@@ -11,8 +11,8 @@
 open PulumiAws
 
 // `adminEntryJson` is the JSON-stringified entry for the built-in Platform_Admin
-// plugin (Plugin aggregate with Activate/Deactivate, Plugin/PlatformEventGraph
-// read models). The admin never `Connect`s to itself, so its structure never
+// plugin (Plugin aggregate with Activate/Deactivate, Plugin read model).
+// The admin never `Connect`s to itself, so its structure never
 // enters the Plugin read model — we inject it at deploy time so the host shell
 // renders Auto UI for it alongside user plugins.
 let makeHandlerCode = (~tableName as _: string, ~adminEntryJson: string): string =>

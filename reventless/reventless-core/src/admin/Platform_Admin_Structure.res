@@ -1,6 +1,6 @@
 // Synthetic pluginStructure for the built-in Platform_Admin plugin.
 //
-// The admin's Plugin aggregate + Plugin/PlatformEventGraph read models are
+// The admin's Plugin aggregate + Plugin read model are
 // wired into the GraphQL schema via PluginBaseFragment, not through the
 // regular ~aggregates / ~readModels arrays passed to Admin.construct. As a
 // result, Plugin_Structure.make never sees them, and the in-memory Platform
@@ -110,34 +110,8 @@ let pluginReadModel: queryableDef = {
   visibility: None,
 }
 
-let eventGraphReadModel: queryableDef = {
-  name: "PlatformEventGraph",
-  queryField: Api_Naming.adminField(~name="PlatformEventGraphs"),
-  schema: Platform_EventGraphReadModelSpec.stateSchema->S.castToUnknown->encodeSchema,
-  consumedEventTypes: [],
-  linkedWriteSide: [],
-  labelField: "pluginName",
-  searchableFields: ["pluginName"],
-  statusField: None,
-  visibility: None,
-}
-
-let pluginHistoryReadModel: queryableDef = {
-  name: "PluginHistory",
-  queryField: Api_Naming.adminField(~name="PluginHistory"),
-  schema: PluginHistoryReadModelSpec.stateSchema->S.castToUnknown->encodeSchema,
-  consumedEventTypes: [],
-  linkedWriteSide: ["Plugin"],
-  labelField: "name",
-  searchableFields: ["name", "version", "transition"],
-  // `transition` is the per-row lifecycle event kind (Connected / Superseded /
-  // Retired / …) — surface it as the status column so the AutoUI colour-codes it.
-  statusField: Some("transition"),
-  visibility: None,
-}
-
 let structure: pluginStructure = {
-  readModels: [pluginReadModel, eventGraphReadModel, pluginHistoryReadModel],
+  readModels: [pluginReadModel],
   stateViewSlices: [],
   stateChangeSlices: [],
   aggregates: [pluginAggregate],

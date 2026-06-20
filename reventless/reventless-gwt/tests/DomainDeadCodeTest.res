@@ -62,7 +62,7 @@ describe("DomainDeadCode.analyze — orphan events", () => {
       ~aggregates=[writable(~name="Order", ~produces=["Shop.Placed", "Shop.Archived"])],
       ~readModels=[queryable(~name="Orders", ~consumes=["Shop.Placed"])],
     )
-    let findings = DomainDeadCode.analyze(~structures=[("Shop", shop)], ~edges=[])
+    let findings = DomainDeadCode.analyze(~structures=[("Shop", shop)])
     expect(findings->Array.map(f => f.detail))->toEqual(["Shop.Archived"])
     let f = findings->Array.getUnsafe(0)
     expect((f.kind, f.pluginName, f.componentName))->toEqual(("OrphanEvent", "Shop", "Order"))
@@ -72,8 +72,7 @@ describe("DomainDeadCode.analyze — orphan events", () => {
     let shop = structure(~aggregates=[writable(~name="Order", ~produces=["Shop.Placed"])])
     let analytics = structure(~automationSlices=[automation(~name="OnPlaced", ~consumes=["Shop.Placed"])])
     let findings = DomainDeadCode.analyze(
-      ~structures=[("Shop", shop), ("Analytics", analytics)],
-      ~edges=[],
+      ~structures=[("Shop", shop), ("Analytics", analytics)]
     )
     expect(findings->Array.length)->toBe(0)
   })
@@ -84,20 +83,7 @@ describe("DomainDeadCode.analyze — orphan events", () => {
       ~stateViewSlices=[queryable(~name="OrderView", ~consumes=["Shop.Placed"])],
       ~stateChangeSlices=[writable(~name="Ship", ~consumes=["Shop.Shipped"])],
     )
-    let findings = DomainDeadCode.analyze(~structures=[("Shop", s)], ~edges=[])
-    expect(findings->Array.length)->toBe(0)
-  })
-
-  testPromise("edge viaEvents marks an event consumed (reachability over the graph)", async () => {
-    let shop = structure(~aggregates=[writable(~name="Order", ~produces=["Shop.Placed"])])
-    let edge: Reventless.Plugin.graphEdge = {
-      source: {pluginName: "Shop", componentName: "Order", kind: "Aggregate"},
-      target: {pluginName: "Other", componentName: "X", kind: "StateViewSlice"},
-      mechanism: "EventTypeMatch",
-      viaEvents: ["Shop.Placed"],
-      implicit: false,
-    }
-    let findings = DomainDeadCode.analyze(~structures=[("Shop", shop)], ~edges=[edge])
+    let findings = DomainDeadCode.analyze(~structures=[("Shop", s)])
     expect(findings->Array.length)->toBe(0)
   })
 
@@ -110,13 +96,13 @@ describe("DomainDeadCode.analyze — orphan events", () => {
       ],
       ~readModels=[queryable(~name="Orders")],
     )
-    let findings = DomainDeadCode.analyze(~structures=[("Shop", shop)], ~edges=[])
+    let findings = DomainDeadCode.analyze(~structures=[("Shop", shop)])
     expect(findings->Array.length)->toBe(0)
   })
 
   testPromise("an aggregate with no view and no consumer is fully orphaned", async () => {
     let shop = structure(~aggregates=[writable(~name="Audit", ~produces=["Shop.Logged"])])
-    let findings = DomainDeadCode.analyze(~structures=[("Shop", shop)], ~edges=[])
+    let findings = DomainDeadCode.analyze(~structures=[("Shop", shop)])
     expect(findings->Array.map(f => f.detail))->toEqual(["Shop.Logged"])
   })
 
@@ -124,7 +110,7 @@ describe("DomainDeadCode.analyze — orphan events", () => {
     let s = structure(
       ~stateChangeSlices=[writable(~name="Reserve", ~produces=["Shop.Reserved"])],
     )
-    let findings = DomainDeadCode.analyze(~structures=[("Shop", s)], ~edges=[])
+    let findings = DomainDeadCode.analyze(~structures=[("Shop", s)])
     expect(findings->Array.map(f => (f.componentName, f.detail)))->toEqual([("Reserve", "Shop.Reserved")])
   })
 })

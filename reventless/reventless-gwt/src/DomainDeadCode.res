@@ -1,5 +1,5 @@
 // Domain-level dead-code analysis (Phase 5). Pure reflection over the loaded
-// pluginStructures + cross-plugin edges (LocalHost.loadGraph): finds produced event
+// pluginStructures (LocalHost.loadGraph): finds produced event
 // types that no component consumes — the event-sourcing counterpart to reactive
 // dead code, the domain layer the language LSP cannot see.
 //
@@ -13,9 +13,7 @@
 //      `consumedEventTypes` is empty; it projects the aggregate's whole stream). This
 //      is event-opaque, so a write-side with at least one linked view is treated as
 //      fully consumed — see the precision caveat below.
-//   3. It appears in an edge's `viaEvents` (redundant with (1), kept so the
-//      "reachability over the graph" input is explicit).
-// A produced event matched by none of these is reported as an orphan, anchored on
+// A produced event matched by neither of these is reported as an orphan, anchored on
 // the producing write-side declaration.
 //
 // Precision caveat: because classic read models carry no per-event consumption, rule
@@ -37,7 +35,6 @@ type finding = {
 
 let analyze = (
   ~structures: array<(string, Reventless.Plugin.pluginStructure)>,
-  ~edges: array<Reventless.Plugin.graphEdge>,
 ): array<finding> => {
   // Every event type consumed anywhere becomes a key in `consumed`.
   let consumed = Dict.make()
@@ -65,7 +62,6 @@ let analyze = (
       e.eventTypes->Array.forEach(mark)
     )
   })
-  edges->Array.forEach((e: Reventless.Plugin.graphEdge) => e.viaEvents->Array.forEach(mark))
 
   // Produced events with no consumer, reported per producing write-side. A write-side
   // with a linked view is treated as fully consumed (rule 2 above).
