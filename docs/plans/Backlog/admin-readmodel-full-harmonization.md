@@ -7,7 +7,7 @@
 effort, deliberately deferred because it carries cross-repo consumer impact.
 
 **Analysis:** [plugin-aggregate-readmodel-vs-normal-harmonization.md](../../analysis/plugin-aggregate-readmodel-vs-normal-harmonization.md),
-[plugin-history-view-design.md](../../analysis/plugin-history-view-design.md) (§3.3, §7, §8).
+[plugin-history-view-design.md](../../analysis/done/plugin-history-view-design.md) (§3.3, §7, §8).
 
 ---
 

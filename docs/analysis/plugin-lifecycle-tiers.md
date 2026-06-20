@@ -22,7 +22,7 @@ the admin tier is [docs/plans/aws-plugin-activate-deactivate-resolver.md](../pla
 - **Trigger**: liveness timeout — the platform stops receiving the
   plugin's `Heartbeat`.
 - **Aggregate state**: `Disconnected(pluginDefinition)`
-  ([PluginBehavior.res:10](../../reventless/reventless-core/src/admin/PluginBehavior.res#L10)).
+  ([PluginBehavior.res](../../reventless/reventless-core/src/plugin/lifecycle/PluginBehavior.res)).
 - **Recovery**: automatic. The next `Heartbeat` from the plugin moves it
   back through `Reconnected` to `Connected`. No human action.
 - **Cardinality**: expected, frequent. Network blips, Lambda cold-starts,
@@ -32,9 +32,9 @@ the admin tier is [docs/plans/aws-plugin-activate-deactivate-resolver.md](../pla
 
 - **Trigger**: explicit `Deactivate` admin command (Cognito Admin group;
   see `Platform_Plugin_Deactivate` in
-  [PluginBaseFragment.res:33-50](../../reventless/reventless-core/src/admin/PluginBaseFragment.res#L33-L50)).
+  [PluginBaseFragment.res](../../reventless/reventless-core/src/plugin/api/PluginBaseFragment.res)).
 - **Aggregate state**: `Inactive(pluginDefinition)`
-  ([PluginBehavior.res:11](../../reventless/reventless-core/src/admin/PluginBehavior.res#L11)).
+  ([PluginBehavior.res](../../reventless/reventless-core/src/plugin/lifecycle/PluginBehavior.res)).
 - **Recovery**: explicit `Activate` admin command (also admin-gated).
   Heartbeats arriving while `Inactive` do not auto-restore; the plugin
   stays suspended until an admin acts.
@@ -54,7 +54,7 @@ the admin tier is [docs/plans/aws-plugin-activate-deactivate-resolver.md](../pla
 - **Cardinality**: very rare. Driven by a deliberate decision to retire
   the plugin from the platform.
 - **Status**: this tier is not yet modeled. The gap is acknowledged in
-  [event-graph-linking.md:237](event-graph-linking.md#L237): "requires a
+  [event-graph-linking.md:237](done/event-graph-linking.md#L237): "requires a
   `PluginDeregistered` (or `PluginDeprecated`) event to tombstone the
   fragment. This event is not currently modelled in the platform spec
   and would need to be added if formal deregistration is required."
@@ -70,7 +70,7 @@ superseded version row is affected — so it is neither an admin action
 (tier 2) nor a catalog/membership change (tier 3).
 
 - **Aggregate state**: `Retired(pluginDefinition)`
-  ([PluginBehavior.res](../../reventless/reventless-core/src/admin/PluginBehavior.res)).
+  ([PluginBehavior.res](../../reventless/reventless-core/src/plugin/lifecycle/PluginBehavior.res)).
 - **Trigger**: deploy-time `Retire`, one per superseded `name@version`.
 - **Recovery**: the version's **own** `Heartbeat` (a rollback / redeploy of
   that exact version) revives it through `Reconnected → Connected`. An admin
@@ -193,15 +193,15 @@ GraphQL "unknown field" error.
 ## Implementation pointers
 
 - **Behaviour**:
-  [PluginBehavior.res](../../reventless/reventless-core/src/admin/PluginBehavior.res)
+  [PluginBehavior.res](../../reventless/reventless-core/src/plugin/lifecycle/PluginBehavior.res)
   — defines the `Detected` / `Connected` / `Disconnected` / `Inactive`
   states and the transitions between them.
-- **Spec**: [PluginSpec.res](../../reventless/reventless-core/src/admin/PluginSpec.res)
+- **Spec**: [PluginSpec.res](../../reventless/reventless-core/src/plugin/lifecycle/PluginSpec.res)
   — six commands: four `@noApi` internal-protocol (`Heartbeat`,
   `Connect`, `Disconnect`, `ReportIncompatibility`) plus two admin
   (`Activate`, `Deactivate`).
 - **Projection**:
-  [PluginProjection.res](../../reventless/reventless-core/src/admin/PluginProjection.res)
+  [PluginsProjection.res](../../reventless/reventless-core/src/plugin/lifecycle/PluginsProjection.res)
   — preserves `apiSchemaFragment` / `uiFragments` across status
   transitions via `UpdateWithDefault`.
 - **Admin tier workstream**:
@@ -213,7 +213,7 @@ GraphQL "unknown field" error.
   drive the `UIFragmentRegistry` and `Platform_UIDefinitions` rows in
   the matrix.
 - **Tier 3 gap**:
-  [docs/analysis/event-graph-linking.md:237](event-graph-linking.md#L237)
+  [docs/analysis/event-graph-linking.md:237](done/event-graph-linking.md#L237)
   — flags the missing `PluginDeregistered` / `PluginDeprecated` event
   for the event-graph context.
 

@@ -1,6 +1,8 @@
 # Plan: Event Graph Linking
 
-Implements the design in [event-graph-linking.md](../analysis/event-graph-linking.md).
+**Status:** ✅ Done. Phases 1–6c shipped (the `pluginStructure` extraction, namespacing, and intra-plugin graph that core keeps). Phase 6d was retired — see the note below: the deployed cross-plugin graph read model and its resolver were removed from OSS core (commit `0de749a7b`) and re-homed to the commercial `platform-inspector` as StateViewSlices, which dissolves the AWS-resolver problem 6d described. Remaining cross-plugin work (AutomationSlice / InboundTranslation edges) is tracked in the business repo plan `event-graph-automation-inbound-edges-followup.md`.
+
+Implements the design in [event-graph-linking.md](../../analysis/done/event-graph-linking.md).
 
 An event-sourced system is already a directed graph — write-side components produce events, read-side components consume them — and that graph is latent in every `@schema type event` and `@schema type consumedEvent` declaration. The analysis shows the information needed to materialise the full intra-plugin and cross-plugin graph is almost entirely present today; what is missing is a small amount of extraction wiring, a rename that frees the plugin self-description from its original "Auto UI" framing, and one narrow Spec addition (`targetName`) for slices whose destination is currently opaque. This plan stages the work so each phase ships and is validated independently.
 
@@ -23,7 +25,7 @@ All planned fields were populated:
 - `queryableDef` gains `consumedEventTypes` and `linkedWriteSide`
 - `writableDef` gains `producedEventTypes`, `consumedEventTypes`, `linkedViews`, `consistencyRead`
 
-**Extra: `Plugin_Structure.res` extraction.** The extraction logic was pulled out of `Plugin_Builder.Make` into a standalone [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) pure function (polymorphic over `api`/`role` phantom types via ReScript locally-abstract-type syntax `let make = (type api role, ...)`). `Plugin_Builder.makePluginDefinition` now delegates to it. This allows direct unit testing without spinning up a Platform.
+**Extra: `Plugin_Structure.res` extraction.** The extraction logic was pulled out of `Plugin_Builder.Make` into a standalone [Plugin_Structure.res](../../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) pure function (polymorphic over `api`/`role` phantom types via ReScript locally-abstract-type syntax `let make = (type api role, ...)`). `Plugin_Builder.makePluginDefinition` now delegates to it. This allows direct unit testing without spinning up a Platform.
 
 **Bug fix: single-variant command schemas.** A `@schema type command = Foo({...})` with only one variant compiles to a bare `Object` schema in sury — not a `Union`. The original `extractCommandDefs` only matched `Union({anyOf})` and produced empty `commands` arrays for almost every aggregate and SCS. Fixed with a fallback case:
 ```rescript
@@ -34,7 +36,7 @@ All planned fields were populated:
 
 **Level/aggregateIdField heuristic.** For aggregates: always `Instance`, `aggregateIdField: None`. For SCS commands: inspect the command variant's properties for any field (other than TAG) where `DcbTag.isTagged` or `DcbTag.isTaggedArray` returns true → `Instance` with that field name; if none found → `Collection`.
 
-**Tests.** 16 unit tests in [PluginStructureTest.res](../../reventless/reventless-core/tests/plugin/PluginStructureTest.res) covering all graph fields directly against `Plugin_Structure.make` (no Platform needed). Inline stub T modules use `Obj.magic(0)` for the `make` body.
+**Tests.** 16 unit tests in [PluginStructureTest.res](../../../reventless/reventless-core/tests/plugin/PluginStructureTest.res) covering all graph fields directly against `Plugin_Structure.make` (no Platform needed). Inline stub T modules use `Obj.magic(0)` for the `make` body.
 
 ---
 
@@ -64,9 +66,9 @@ Added `let targetName` to all three Spec module types:
 - `OutboundTranslationSlice.Spec` — `let targetName: option<string>` (None = fire-and-forget)
 - `InboundTranslationSlice.Spec` — `let targetName: string` (required)
 
-`automationSliceDef`, `outboundTranslationSliceDef`, and `inboundTranslationSliceDef` in [Plugin.res](../../reventless/reventless-spec/src/components/Plugin.res) gained the `targetName` field. [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) surfaces `Spec.targetName` into each def.
+`automationSliceDef`, `outboundTranslationSliceDef`, and `inboundTranslationSliceDef` in [Plugin.res](../../../reventless/reventless-spec/src/components/Plugin.res) gained the `targetName` field. [Plugin_Structure.res](../../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) surfaces `Spec.targetName` into each def.
 
-[Pairing.res](../../reventless/reventless-spec/src/generator/Pairing.res) parses `let targetName = "..."` from each slice file using `extractTargetName` and stores results in three new `Dict.t<option<string>>` fields on `resolved`. [Codegen.res](../../reventless/reventless-spec/src/generator/Codegen.res) calls `validateSliceTargets` at render time; it throws with a descriptive error if a declared `targetName` is not among the plugin's known aggregates + StateChangeSlices, or if a required `targetName` is absent.
+[Pairing.res](../../../reventless/reventless-spec/src/generator/Pairing.res) parses `let targetName = "..."` from each slice file using `extractTargetName` and stores results in three new `Dict.t<option<string>>` fields on `resolved`. [Codegen.res](../../../reventless/reventless-spec/src/generator/Codegen.res) calls `validateSliceTargets` at render time; it throws with a descriptive error if a declared `targetName` is not among the plugin's known aggregates + StateChangeSlices, or if a required `targetName` is absent.
 
 All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderConfirmation → None`, `ImportProduct → "AddProduct"`. Test fixture specs in `reventless-local` also updated. Build: zero warnings, 1034 tests pass.
 
@@ -77,9 +79,9 @@ All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderCon
 **Goal.** Qualify every event and command name in `pluginDefinition` with its plugin (for DCB events/commands) or spec-package (for Extension Point events), making cross-plugin matching collision-proof.
 
 **Files to change.**
-- [Plugin_Builder.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res) — change every `extractVariantNames` call in `makePluginDefinition` to prepend the fully-qualified prefix.
-- Small helper in [DcbTag.res](../../reventless/reventless-spec/src/components/DcbTag.res) OR a new `Plugin_Naming.res` — `let qualify = (~prefix, variantNames) => variantNames->Array.map(n => prefix ++ "." ++ n)`. A new file is cleaner since `DcbTag` is already crowded.
-- [Plugin.res](../../reventless/reventless-spec/src/components/Plugin.res) — document on every `*EventTypes: array<string>` field that the values are qualified.
+- [Plugin_Builder.res](../../../reventless/reventless-core/src/components/Plugin/Plugin_Builder.res) — change every `extractVariantNames` call in `makePluginDefinition` to prepend the fully-qualified prefix.
+- Small helper in [DcbTag.res](../../../reventless/reventless-spec/src/components/DcbTag.res) OR a new `Plugin_Naming.res` — `let qualify = (~prefix, variantNames) => variantNames->Array.map(n => prefix ++ "." ++ n)`. A new file is cleaner since `DcbTag` is already crowded.
+- [Plugin.res](../../../reventless/reventless-spec/src/components/Plugin.res) — document on every `*EventTypes: array<string>` field that the values are qualified.
 
 **Concrete steps.**
 1. Introduce `Plugin_Naming.qualify(~prefix, names)` (or inline the one-liner in `Plugin_Builder` if that reads cleaner).
@@ -93,13 +95,13 @@ All 6 example spec files updated: `AutoShipOrder → "ShipOrder"`, `SendOrderCon
 
 **What landed.**
 
-Added `let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)` in [Plugin_Structure.res](../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) and applied it to every `variantNames(...)` call:
+Added `let qualify = (~prefix, names) => names->Array.map(n => prefix ++ "." ++ n)` in [Plugin_Structure.res](../../../reventless/reventless-core/src/components/Plugin/Plugin_Structure.res) and applied it to every `variantNames(...)` call:
 - DCB types (SCS/aggregate produced, SCS/SVS consumed, AutomationSlice consumed+produced, OutboundTranslationSlice consumed+inbound, InboundTranslationSlice commands): prefix = `name` (plugin name)
 - Extension types (EP eventTypes, commandTypes): prefix = `E.Spec.name` (extension point dotted name, e.g., `"Catalog.Products"`)
 
 Cross-reference helpers (`linkedViewsFor`, `linkedWriteSideFor`, `consistencyReadFor`) work correctly because both `svsConsumed`/`allWritableProduced` and the per-component arrays are qualified with the same plugin prefix — intersection keys match. Component names returned by those helpers remain short/unqualified.
 
-[PluginStructureTest.res](../../reventless/reventless-core/tests/plugin/PluginStructureTest.res) updated to expect `"TestPlugin.*"` qualified names. Build: zero warnings, 327 + 279 tests pass.
+[PluginStructureTest.res](../../../reventless/reventless-core/tests/plugin/PluginStructureTest.res) updated to expect `"TestPlugin.*"` qualified names. Build: zero warnings, 327 + 279 tests pass.
 
 **Commit message.**
 `feat!: qualify event and command names in pluginDefinition with plugin / spec-package prefix`
@@ -114,12 +116,12 @@ Added `structure: option<pluginStructure>` to `pluginDefinition` so the wire-lev
 
 `Plugin_Builder.res` now sets `structure: pluginStructure` when constructing the `pluginDefinition` output, so every connected plugin's component graph is embedded in the heartbeat event.
 
-**`Platform_EventGraph` ReadModel** ([src/admin/Platform_EventGraphReadModelSpec.res](../../reventless/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res) + [Platform_EventGraphProjection.res](../../reventless/reventless-core/src/admin/Platform_EventGraphProjection.res)). Note: shipped as a ReadModel rather than the StateViewSlice originally proposed — adapter ownership in `Platform_Admin.construct` made the ReadModel route simpler, and the projection logic is identical.
+**`Platform_EventGraph` ReadModel** ([src/admin/Platform_EventGraphReadModelSpec.res](../../../reventless/reventless-core/src/admin/Platform_EventGraphReadModelSpec.res) + [Platform_EventGraphProjection.res](../../../reventless/reventless-core/src/admin/Platform_EventGraphProjection.res)). Note: shipped as a ReadModel rather than the StateViewSlice originally proposed — adapter ownership in `Platform_Admin.construct` made the ReadModel route simpler, and the projection logic is identical.
 - `consumedEvent` = subset of PluginSpec events: `Connected | Reconnected | Disconnected | Activated | Deactivated`
 - `state` = `{pluginName: string, nodes: array<graphNode>, edges: array<graphEdge>}` keyed by plugin name
 - `project`: Connected/Reconnected/Activated → `Set(pd.name, entry)` building nodes for all component types and intra-plugin edges (write-side→StateViewSlice via EventTypeMatch, AutomationSlice→target, InboundTranslation→target, Extension→delegates); Disconnected/Deactivated → `Delete(pd.name)`
 
-**Cross-plugin resolver** ([src/admin/Platform_CrossPluginEdges.res](../../reventless/reventless-core/src/admin/Platform_CrossPluginEdges.res)). Pure query-time computation over all plugins' `pluginStructure` entries. Currently emits two mechanisms only — `EventTypeMatch` (write-side → cross-plugin SVS) and `Extension` (dotted EP-name prefix). Exposed as the `platformCrossPluginEdges` GraphQL query.
+**Cross-plugin resolver** ([src/admin/Platform_CrossPluginEdges.res](../../../reventless/reventless-core/src/admin/Platform_CrossPluginEdges.res)). Pure query-time computation over all plugins' `pluginStructure` entries. Currently emits two mechanisms only — `EventTypeMatch` (write-side → cross-plugin SVS) and `Extension` (dotted EP-name prefix). Exposed as the `platformCrossPluginEdges` GraphQL query.
 
 **Deferred from original plan.**
 - Cross-plugin edge computation for the remaining mechanisms (`AutomationSlice`, `InboundTranslation`, plus EventTypeMatch into AutomationSlice/OutboundTranslationSlice consumers) — see Phase 6b.
@@ -134,7 +136,7 @@ Build: zero warnings, 1034 tests pass.
 
 **What landed.**
 
-Extended `Platform_CrossPluginEdges.computeEdges` ([src/admin/Platform_CrossPluginEdges.res](../../reventless/reventless-core/src/admin/Platform_CrossPluginEdges.res)) with three additional emission passes:
+Extended `Platform_CrossPluginEdges.computeEdges` ([src/admin/Platform_CrossPluginEdges.res](../../../reventless/reventless-core/src/admin/Platform_CrossPluginEdges.res)) with three additional emission passes:
 
 1. **Broadened `EventTypeMatch`.** The consumer set now unions `stateViewSlices`, `automationSlices`, and `outboundTranslationSlices`. A cross-plugin write-side → AutomationSlice or OutboundTranslationSlice event-flow now surfaces as an `EventTypeMatch` edge with the appropriate `target.kind` (`"AutomationSlice"` / `"OutboundTranslationSlice"`).
 2. **`AutomationSlice` mechanism.** Every `automationSlice` whose `targetName` resolves to a writable (`aggregate` or `stateChangeSlice`) in another plugin produces an `AutomationSlice` edge with `viaEvents = producedCommandTypes` (the field is overloaded as command names — documented in the SDL comment).
@@ -144,7 +146,7 @@ A small `findWritableOwner(~name)` helper inside `computeEdges` shares the writa
 
 **OutboundTranslation mechanism deferred.** The `outboundTranslationSlice.targetName` field is `option<string>` and no current example uses `Some(_)`. Adding this case is a one-line addition once a fixture exercises it; left as a forward-compat hook for now.
 
-**Tests.** [tests/admin/Platform_CrossPluginEdgesTest.res](../../reventless/reventless-core/tests/admin/Platform_CrossPluginEdgesTest.res) — 10 unit tests covering each new mechanism with two-plugin fixtures (cross-plugin and same-plugin variants), plus a regression test for the existing `Extension` mechanism. Build: zero warnings, 322 tests pass.
+**Tests.** [tests/admin/Platform_CrossPluginEdgesTest.res](../../../reventless/reventless-core/tests/admin/Platform_CrossPluginEdgesTest.res) — 10 unit tests covering each new mechanism with two-plugin fixtures (cross-plugin and same-plugin variants), plus a regression test for the existing `Extension` mechanism. Build: zero warnings, 322 tests pass.
 
 **Commit message.** `feat(admin): emit AutomationSlice, InboundTranslation, and broader EventTypeMatch cross-plugin edges`
 
@@ -154,7 +156,7 @@ A small `findWritableOwner(~name)` helper inside `computeEdges` shares the writa
 
 **What landed.**
 
-Wired the local equivalent of the AWS `PlatformEventGraphReadModel` into all three admin GraphQL registration sites in [reventless-local/src/Platform.res](../../reventless/reventless-local/src/Platform.res). The implementation departs from the original "instantiate `PlatformEventGraphReadModel` and add to `Admin.construct(~readModels=…)`" plan because the local platform deliberately bypasses event-driven projection wiring for admin read models — instead, it seeds synchronous in-memory stores and registers GraphQL resolvers directly. Mirroring this pattern for the event graph turned out to be a 1:1 copy of the existing `pluginStructuresStore`-backed `platformCrossPluginEdges` registration, just for a different field.
+Wired the local equivalent of the AWS `PlatformEventGraphReadModel` into all three admin GraphQL registration sites in [reventless-local/src/Platform.res](../../../reventless/reventless-local/src/Platform.res). The implementation departs from the original "instantiate `PlatformEventGraphReadModel` and add to `Admin.construct(~readModels=…)`" plan because the local platform deliberately bypasses event-driven projection wiring for admin read models — instead, it seeds synchronous in-memory stores and registers GraphQL resolvers directly. Mirroring this pattern for the event graph turned out to be a 1:1 copy of the existing `pluginStructuresStore`-backed `platformCrossPluginEdges` registration, just for a different field.
 
 Three registration sites now expose `Platform_PlatformEventGraph` (single by id) and `Platform_PlatformEventGraphs` (list, Connection-shaped):
 
@@ -162,7 +164,7 @@ Three registration sites now expose `Platform_PlatformEventGraph` (single by id)
 2. **`deployPlatform` (bare platform)** — stub resolvers (single returns null, list returns empty Connection) since no plugins are registered.
 3. **`deployPlugin` (single plugin)** — same on-demand computation as `makePlatform`, populated from `pluginStructuresStore` after `seedPluginStructuresStore`.
 
-The `Platform_PlatformEventGraph` SDL types are auto-generated by `PluginBaseFragment.fragment` from the third entry in `queryEntries` (already declared in [PluginBaseFragment.res:25-32](../../reventless/reventless-core/src/admin/PluginBaseFragment.res)), so no SDL additions were needed — only resolver wiring.
+The `Platform_PlatformEventGraph` SDL types are auto-generated by `PluginBaseFragment.fragment` from the third entry in `queryEntries` (already declared in [PluginBaseFragment.res:25-32](../../../reventless/reventless-core/src/admin/PluginBaseFragment.res)), so no SDL additions were needed — only resolver wiring.
 
 **Why this approach over a true ReadModel.** Wiring a real `PlatformEventGraphReadModel` through the local `LocalBus` would require: (a) Plugin aggregate events to actually flow through Bus's EventCollector pipeline (not the case today — Plugin state is seeded synchronously), (b) async projection settling before the first query, (c) duplicating the QueryDb infrastructure for a read-only derived view. The on-demand resolver pattern is consistent with `platformCrossPluginEdges` and the existing `Platform_UIDefinitions` query, which all read from `pluginStructuresStore` at request time.
 
@@ -172,21 +174,13 @@ The `Platform_PlatformEventGraph` SDL types are auto-generated by `PluginBaseFra
 
 ---
 
-## Phase 6d — AWS cross-plugin edges resolver (deferred)
+## Phase 6d — AWS cross-plugin edges resolver (retired, not built)
 
-**Status.** Deferred. The local side ships under Phase 6c above. The AWS-side resolver is still missing and is intentionally out of scope for this plan — it requires design choices that go beyond mechanical wiring.
+**Status.** Retired — obsoleted by the commercial extraction, never implemented in core.
 
-**Why deferred.** AWS pushes a static AppSync SDL via `startSchemaCreation` (see [Platform.res:1029-1041](../../reventless/reventless-aws/src/Platform.res)) with managed resolvers backed by Lambda or pipeline JS. The local `platformCrossPluginEdges` resolver pattern (`registerQueries` against an in-memory dict) does not map onto AppSync without designing:
+**Why it no longer applies.** 6d existed only because the OSS design served cross-plugin edges through a custom `platformCrossPluginEdges` resolver backed by an in-memory dict (`registerQueries`) locally, which has no AppSync analogue — hence the deferred AWS work. Commit `0de749a7b` removed the deployed `Platform_EventGraph` read model, the `Platform_CrossPluginEdges.computeEdges` inference, the per-plugin graph query, and the admin UI from OSS core, re-homing them to `@reventlesslab/platform-inspector` (backend) + `@reventlesslab/console-web` (UI). In that design the graph is built from **standard StateViewSlices** (`EventFlow`, `ExtensionWiring`, `PluginHistory`) that get the framework's auto-generated GraphQL surface and resolvers on local **and** AWS identically — and the EventTypeMatch edges are joined **client-side** in the console. There is no custom cross-plugin resolver left to port, so the AWS gap this phase described is closed by construction rather than deferred.
 
-1. **Schema fragment.** Extend the admin base fragment with `Platform_GraphNode`, `Platform_GraphEdge` types and the `platformCrossPluginEdges` query field — `AdminApi.baseFragment` would need a hook for cross-plugin SDL contributions.
-2. **Data source.** The `PlatformEventGraphReadModel` projection landed in Phase 6 stores `{pluginName, nodes, edges}` per plugin — sufficient for the per-plugin admin query but **missing** the raw `producedEventTypes`/`consumedEventTypes`/`targetName` fields the cross-plugin matcher needs. Two options:
-   - (a) Extend `Platform_EventGraphReadModelSpec.state` to embed the source `pluginStructure` (or just the matchable subset) so the resolver can operate against DDB items directly.
-   - (b) Build a separate Lambda that, on query, reads the Plugin aggregate's `pluginDefinition.structure` from the Plugin DDB table.
-3. **Resolver implementation.** Either an AppSync JS resolver scanning DDB, or a Lambda data source that calls `Platform_CrossPluginEdges.computeEdges`.
-
-**Recommendation if/when picked up.** Take option (a): widen the projection's state to include the matchable subset of `pluginStructure` (`producedEventTypes`, `consumedEventTypes`, `targetName`, `commandTypes`, `producedCommandTypes`, `delegateNames`). This keeps the resolver pure (`computeEdges` already exists) and avoids a second DDB-reading Lambda. The schema widening is additive — no migration of existing entries needed.
-
-**What's unblocked without this.** Local development (`pnpm run dev:full`), AutoUI demo, and all unit tests work today. The gap only matters for production AWS deployments that also want the cross-plugin Event Graph view.
+**Where the remaining work lives.** The only still-open cross-plugin mechanisms (AutomationSlice / InboundTranslation routing edges, which need each slice's `targetName` synced) are tracked in the business repo: `event-graph-automation-inbound-edges-followup.md`. None of it requires a custom AWS resolver — it extends the inspector sync + a StateViewSlice.
 
 ---
 

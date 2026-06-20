@@ -1,12 +1,32 @@
 # Plugin History View — Storage, Visibility & the Admin Read-Model Parity Gap
 
-**Status:** Analysis / proposal (no code changed by this document)
+> **⚠️ Superseded / historical (2026-06-20).** The `PluginHistory` view this document
+> designs was removed from OSS core (commit `0de749a7b`) and re-homed to the
+> commercial `@reventlesslab/platform-inspector` as a normal `StateViewSlice`. That
+> dissolves the central problem here: a StateViewSlice gets composite keys, GSIs, and
+> the full `single`/`list`/`<single>Items`/`By<Index>` surface automatically, so the
+> "admin read-model parity gap" framing (§3) and the resulting option matrix (§4–§7)
+> **do not apply** to the business view — it already is the recommended end state
+> (composite key + GSIs) by construction. Treat the sections below as a record of how
+> the decision was reached, not as live guidance.
+>
+> What remains live and core:
+> - **The parity gap itself (§3)** is a genuine OSS framework concern — it still
+>   affects the remaining `Plugins` admin read model — and is tracked in
+>   [plugin-history-parity-gap.md](../../plans/plugin-history-parity-gap.md) (Part 1, done).
+> - **The forward-looking GSI/dashboard design (option D)** now lives in the business
+>   repo as `plugin-history-indices-and-dashboards.md`.
+>
+> Nothing here should be moved to business: the parity-gap premise is OSS-specific and
+> doesn't transfer to the slice architecture.
+
+**Status:** Superseded — historical analysis (no code changed by this document)
 **Date:** 2026-06-18
 **Author:** Martin Lorenz (with Claude)
-**Related:** [plugin-lifecycle-redesign.md](plugin-lifecycle-redesign.md) (§6.2 — the
-`PluginHistory` view), [plugin-aggregate-readmodel-vs-normal-harmonization.md](plugin-aggregate-readmodel-vs-normal-harmonization.md)
-(the admin-vs-normal divergence this builds on), [done/plugin-lifecycle-redesign.md](../plans/done/plugin-lifecycle-redesign.md),
-[clearing-aws-eventlog-querydb-tables.md](clearing-aws-eventlog-querydb-tables.md).
+**Related:** [plugin-lifecycle-redesign.md](../plugin-lifecycle-redesign.md) (§6.2 — the
+`PluginHistory` view), [plugin-aggregate-readmodel-vs-normal-harmonization.md](../plugin-aggregate-readmodel-vs-normal-harmonization.md)
+(the admin-vs-normal divergence this builds on), [done/plugin-lifecycle-redesign.md](../../plans/done/plugin-lifecycle-redesign.md),
+[clearing-aws-eventlog-querydb-tables.md](../clearing-aws-eventlog-querydb-tables.md).
 
 **Scope:** how the `PluginHistory` admin read model (the per-version plugin
 lifecycle timeline) should be **stored** and **exposed**. Triggered by a deploy
@@ -72,12 +92,12 @@ Ordinary (user-plugin) read models and admin read models reach GraphQL by
   **from the spec schema** (keys, sub-ids, indexes, filterable/sortable fields).
 - **Admin read models** (`Plugins`, `PlatformEventGraph`, `UIFragmentRegistry`,
   `PluginHistory`) → a **hand-rolled** fragment in
-  [`PluginBaseFragment.queryEntries`](../../reventless/reventless-core/src/plugin/api/PluginBaseFragment.res)
+  [`PluginBaseFragment.queryEntries`](../../../reventless/reventless-core/src/plugin/api/PluginBaseFragment.res)
   → `AdminApi.baseFragment`, which emits **only** the `single` + `list` fields.
 
 Both then share the **same** resolver layer (`QueryDbResolvers_{AppSync,GraphQL}`).
 This divergence is already documented in
-[plugin-aggregate-readmodel-vs-normal-harmonization.md](plugin-aggregate-readmodel-vs-normal-harmonization.md)
+[plugin-aggregate-readmodel-vs-normal-harmonization.md](../plugin-aggregate-readmodel-vs-normal-harmonization.md)
 (§1: "The Plugin read model's GraphQL surface is hand-rolled rather than generated
 from the spec"). The present document quantifies the *functional* cost of that
 divergence and makes closing it a prerequisite.
@@ -91,8 +111,8 @@ with the resolver layer**:
 |---|---|---|---|
 | `single` (get by id) | ✅ | ✅ | ✅ |
 | `list` (Connection + **filter/sort**) | ✅ | ✅ | ✅ |
-| `<single>Items(id, filter, …): Connection!` (sub-id list under one partition) | ✅ `deriveItemsQueryField` ([L298](../../reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res#L298)) | ✅ `resolverByIdMultiple` ([QueryDbResolvers_AppSync L174](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L174)) | ❌ |
-| `…By<Index>` (per `@index` GSI) | ✅ (`spec.indexes`, [L220](../../reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res#L220)) | ✅ `resolversByIndex` ([QueryDbResolvers_AppSync L234](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L234)) | ❌ |
+| `<single>Items(id, filter, …): Connection!` (sub-id list under one partition) | ✅ `deriveItemsQueryField` ([L298](../../../reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res#L298)) | ✅ `resolverByIdMultiple` ([QueryDbResolvers_AppSync L174](../../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L174)) | ❌ |
+| `…By<Index>` (per `@index` GSI) | ✅ (`spec.indexes`, [L220](../../../reventless/reventless-core/src/components/Api/GraphQL_FragmentGenerator.res#L220)) | ✅ `resolversByIndex` ([QueryDbResolvers_AppSync L234](../../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L234)) | ❌ |
 
 So an ordinary read model can use composite keys **and** GSIs **and** filter/sort
 through the standard auto-generated surface. An admin read model gets only the two
@@ -102,8 +122,8 @@ would recur the moment a `@index` is added.
 
 > Note: the standard **`list`** field already carries server-side **filter + sort**
 > (derived via `deriveServerCapability` → `filterFields` / `sortFields`,
-> [QueryDbResolvers_AppSync L195](../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L195);
-> see [autoui-list-ordering-and-filtering.md](autoui-list-ordering-and-filtering.md)).
+> [QueryDbResolvers_AppSync L195](../../../reventless/reventless-aws/src/adapter/QueryDb/QueryDbResolvers_AppSync.res#L195);
+> see [autoui-list-ordering-and-filtering.md](../autoui-list-ordering-and-filtering.md)).
 > Even a *single-key* admin read model can be filtered by `name`/`transition` and
 > ordered by `transitionAt` today — no GSI, no sub-id, no Lambda.
 
@@ -287,7 +307,7 @@ once and benefits all admin read models, and only on that foundation is the
 1. **Scope of step 1.** Minimal (just emit `<single>Items` + `By<Index>` for admin
    fragments) vs. full harmonization (route admin read models entirely through the
    ordinary component pipeline, per
-   [plugin-aggregate-readmodel-vs-normal-harmonization.md](plugin-aggregate-readmodel-vs-normal-harmonization.md))?
+   [plugin-aggregate-readmodel-vs-normal-harmonization.md](../plugin-aggregate-readmodel-vs-normal-harmonization.md))?
    The latter also subsumes the hand-written `allowedStates` divergence.
 2. **Retention / TTL.** Every transition is permanent; do we cap (last K per name /
    N days) or keep a full immutable trail for compliance?

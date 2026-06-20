@@ -22,7 +22,7 @@ component:
 aggregate-style counterpart — labelled "SideEffect (aggregate approach only)"
 in `docs/analysis/reventless-markdown-spec-conversion.md` §2.15, and described
 alongside `OutboundTranslationSlice.translate` in
-`docs/analysis/event-graph-linking.md` as the two parallel external-call
+`docs/analysis/done/event-graph-linking.md` as the two parallel external-call
 mechanisms. The aggregate-style egress has no test DSL today.
 
 Concretely: `examples/online-shop-aggregates/ordering/src/Order/SideEffect/Order_EmailNotification.res`

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-18
 
-**Analysis:** [docs/analysis/plugin-history-view-design.md](../analysis/plugin-history-view-design.md)
+**Analysis:** [docs/analysis/plugin-history-view-design.md](../analysis/done/plugin-history-view-design.md)
 (see also [plugin-aggregate-readmodel-vs-normal-harmonization.md](../analysis/plugin-aggregate-readmodel-vs-normal-harmonization.md))
 
 ---

@@ -582,7 +582,7 @@ Tearing down the SDL on a routine admin toggle would be the wrong contract.
   than availability. See
   [docs/analysis/plugin-lifecycle-tiers.md](../analysis/plugin-lifecycle-tiers.md)
   ("Open: decommission tier") and
-  [docs/analysis/event-graph-linking.md:237](../analysis/event-graph-linking.md#L237).
+  [docs/analysis/event-graph-linking.md:237](../analysis/done/event-graph-linking.md#L237).
 
 ## Why this instead of a one-off Lambda for resolver wiring
 
