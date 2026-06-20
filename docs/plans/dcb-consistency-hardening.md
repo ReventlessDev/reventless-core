@@ -14,7 +14,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 2 | `after=None` create-race | Issue 2 | Correctness | **yes** | — (detailed below) |
 | 3 | Drop unused per-tag GSIs | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
 | 4 | Decision-model cache | Perf/cost lever #2 | Cost | **core done** | [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md) |
-| 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **yes** | — (detailed below) |
+| 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **5,12 done; 4,6,9 open** | — (detailed below) |
 | 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **done** | — (Phase 5 below) |
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
 | 6 | Hot-tag sharding / selective bump | Issue 10 | Throughput | no | [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) |
@@ -115,7 +115,7 @@ Per [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md
 Small, mostly independent items; land opportunistically.
 
 - **Opt-in strong consistency (cost lever #3)** — add a per-slice flag (default eventually-consistent, rely on fence-retry for the rare stale read; opt into `consistentRead` only for high-contention slices). Halves decision-read RCU on the common path. Files: `executeQueryItemStream` / `readStream` already thread `~strongConsistency`; expose it up through the slice config. **Net-new.**
-- **Issue 5 — composite exact-match guard.** Build-time assertion (or doc warning) that a multi-tag event's tag set exactly matches any composite query that reads it; adding a tag silently breaks composite reads today. **Net-new.**
+- **Issue 5 — composite exact-match guard. — DONE (2026-06-20).** Added `DcbValidation.validateCompositeReads`, run in `Dcb_Builder` against the producer `tagKeysByEventType` map. For each slice that builds a composite read (all-scalar command, ≥2 tags), it warns (`log.warn`, non-fatal) when a consumed type's *produced* tag set is a strict superset of the query tags — the silent-miss case (composite reads match the exact full tag set only). Array commands (per-element OR) are skipped; the strict-subset direction is already handled by Issue 14 narrowing. Tests: 5 in `DcbValidationTest.res` (core suite green at 428); no false positives on the example slices. Was net-new.
 - **Issue 4 — per-(tag, event-type) over-serialization.** Document the entity-level serialization semantics; only pursue per-type fences if a real slice suffers (also unblocks Phase 2 option B). Mostly docs.
 - **Issue 6 — per-tag `after`.** Note as a deeper design item; each fence checked against the head observed for *its* partition rather than the global head. Defer unless a multi-clause slice shows false conflicts.
 - **Issue 9 — `appendUnconditional` bumps all tags.** Align with the partition-scope invariant if/when a composite-fence design (option A) lands; today it is seeding-only and benign.
@@ -150,5 +150,5 @@ Already planned, run on evidence:
 2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
 3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. **On hold**: its form (full-remove vs `KEYS_ONLY`/keep) is gated by the Phase 7 decision below.
 4. ~~**Phase 4** (decision-model cache) — biggest read-cost win.~~ — **core done 2026-06-20** (Steps 1–3 + docs); per-slice capacity knob + metrics deferred.
-5. **Phase 5** items opportunistically — Issue 14 vacuous-clause cleanup and Issue 12 fence-scan hardening are **done (2026-06-20)**; remaining items (opt-in strong reads, Issues 4/5/6/9) land opportunistically. **Phase 6** on profiling evidence.
+5. **Phase 5** items opportunistically — Issue 14 (vacuous-clause cleanup), Issue 12 (fence-scan hardening), and Issue 5 (composite exact-match guard) are **done (2026-06-20)**; remaining items (opt-in strong reads, Issues 4/6/9) land opportunistically. **Phase 6** on profiling evidence.
 6. **Phase 7** (cross-partition reads) — only when a real slice needs it; making that call first unblocks Phase 3.

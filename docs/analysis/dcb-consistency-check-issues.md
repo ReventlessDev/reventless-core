@@ -119,9 +119,11 @@ For same-entity lifecycles (`OrderPlaced`/`Shipped`/`Cancelled` on one `orderId`
 
 ---
 
-## Issue 5 — Composite (GSI) read requires an exact full-tag-set match
+## Issue 5 — Composite (GSI) read requires an exact full-tag-set match — **FIXED (2026-06-20, build-time warning)**
 
 `tag_composite` is `compositeTagKey(`*all*` event tags)`, and a composite query builds its key from *its* tags. So a query `{A,B}` matches only events tagged **exactly** `{A,B}` — an event that also carries a `C` tag is silently missed by the read, while its per-tag fences still move. Any future change that adds a tag to a multi-tag event would quietly break composite-read slices. Works today only because `RecordProductDemand`'s event tags equal its query tags. Worth a build-time assertion or a doc warning on multi-tag events.
+
+**Fix (shipped 2026-06-20).** Added `DcbValidation.validateCompositeReads`, run in `Dcb_Builder` against the producer tag-key map (the same `tagKeysByEventType` built for Issue 14). For each slice whose command builds a composite read (all-scalar, ≥2 tags — array commands read per-element OR, so they're skipped), it warns when a consumed type's *produced* tag set is a **strict superset** of the query tags — exactly the silent-miss case (the composite read finds only exact-match events). Non-fatal `log.warn` (today's slices are aligned, so nothing fires; it catches a tag added to a multi-tag event later). Tests: 5 in `DcbValidationTest.res` (superset → warn, exact-match → no warn, single-tag/array/empty → no warn). Core suite green (428). The strict-subset direction is handled by Issue 14 narrowing (the type is dropped from the clause, not read).
 
 ---
 

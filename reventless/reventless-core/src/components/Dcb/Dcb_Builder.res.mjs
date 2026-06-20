@@ -126,6 +126,11 @@ function Make(DcbEventLogStorage) {
       let indexes$1 = indexes.length > 1 ? indexes.concat(["tag_composite"]) : indexes;
       let partitionTag = DcbTag$Reventless.derivePartitionTag(producedNamed);
       let tagKeysByEventType = DcbTag$Reventless.mergeTagKeysByEventType(producedSchemas.map(DcbTag$Reventless.extractTagKeysByEventType));
+      DcbValidation$Reventless.validateCompositeReads(stateChangeSlices.map(Sc => [
+        Sc.Spec.name,
+        Sc.Spec.commandSchema,
+        Sc.Spec.consumedEventSchema
+      ]), tagKeysByEventType).forEach(w => log.warn("Dcb_Builder", undefined, `DCB composite-read warning (` + w.sliceName + `): ` + w.message));
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));

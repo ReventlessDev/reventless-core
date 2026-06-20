@@ -86,9 +86,55 @@ let consumedBadTypeSchema = S.schema(s => ({
   name: s.m(S.float)
 }));
 
+let recordDemandCommandSchema = S.schema(s => ({
+  TAG: "RecordDemand",
+  productId: s.m(DcbTag$Reventless.string),
+  orderId: s.m(DcbTag$Reventless.string)
+}));
+
+let touchDemandCommandSchema = S.schema(s => ({
+  TAG: "TouchDemand",
+  productId: s.m(DcbTag$Reventless.string)
+}));
+
+let placeOrderCommandSchema = S.schema(s => ({
+  TAG: "PlaceOrder",
+  orderId: s.m(DcbTag$Reventless.string),
+  productIds: s.m(S.array(DcbTag$Reventless.stringForKey("productId")))
+}));
+
+let demandConsumedSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductDemandRecorded",
+    productId: s.m(S.string),
+    orderId: s.m(S.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRevoked",
+    productId: s.m(S.string),
+    orderId: s.m(S.string)
+  }))
+]);
+
+let demandProducedSchema = S.union([
+  S.schema(s => ({
+    TAG: "ProductDemandRecorded",
+    productId: s.m(DcbTag$Reventless.string),
+    orderId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "ProductDemandRevoked",
+    productId: s.m(DcbTag$Reventless.string),
+    orderId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.string)
+  }))
+]);
+
 function u(prim) {
   return prim;
 }
+
+let producedTagKeys = DcbTag$Reventless.extractTagKeysByEventType(demandProducedSchema);
 
 globalThis.describe("DcbValidation:", () => {
   globalThis.describe("validateProducedAndConsumed", () => {
@@ -302,6 +348,47 @@ globalThis.describe("DcbValidation:", () => {
       globalThis.expect(result._0.length).toBeGreaterThanOrEqual(2);
     });
   });
+  globalThis.describe("validateCompositeReads (Issue 5)", () => {
+    globalThis.test("warns when a composite read's consumed type carries an extra tag", () => {
+      let warnings = DcbValidation$Reventless.validateCompositeReads([[
+          "RecordDemand",
+          recordDemandCommandSchema,
+          demandConsumedSchema
+        ]], producedTagKeys);
+      globalThis.expect(warnings.length).toBe(1);
+      let w = warnings[0];
+      globalThis.expect(w.sliceName).toBe("RecordDemand");
+      globalThis.expect(w.message.includes("ProductDemandRevoked")).toBe(true);
+      globalThis.expect(w.message.includes("customerId")).toBe(true);
+    });
+    globalThis.test("does not warn for an exact-match consumed type", () => {
+      let warnings = DcbValidation$Reventless.validateCompositeReads([[
+          "RecordDemand",
+          recordDemandCommandSchema,
+          demandConsumedSchema
+        ]], producedTagKeys);
+      globalThis.expect(warnings.some(w => w.message.includes("ProductDemandRecorded"))).toBe(false);
+    });
+    globalThis.test("ignores single-tag commands (partition read, not composite)", () => {
+      let warnings = DcbValidation$Reventless.validateCompositeReads([[
+          "TouchDemand",
+          touchDemandCommandSchema,
+          demandConsumedSchema
+        ]], producedTagKeys);
+      globalThis.expect(warnings).toEqual([]);
+    });
+    globalThis.test("ignores tagged-array commands (per-element OR, not composite)", () => {
+      let warnings = DcbValidation$Reventless.validateCompositeReads([[
+          "PlaceOrder",
+          placeOrderCommandSchema,
+          demandConsumedSchema
+        ]], producedTagKeys);
+      globalThis.expect(warnings).toEqual([]);
+    });
+    globalThis.test("no warnings when nothing reads compositely", () => {
+      globalThis.expect(DcbValidation$Reventless.validateCompositeReads([], producedTagKeys)).toEqual([]);
+    });
+  });
 });
 
 let validate = DcbValidation$Reventless.validateProducedAndConsumed;
@@ -319,7 +406,13 @@ export {
   consumedDanglingSchema,
   consumedBadFieldSchema,
   consumedBadTypeSchema,
+  recordDemandCommandSchema,
+  touchDemandCommandSchema,
+  placeOrderCommandSchema,
+  demandConsumedSchema,
+  demandProducedSchema,
   validate,
   u,
+  producedTagKeys,
 }
 /* producedASchema Not a pure module */

@@ -62,8 +62,52 @@ type consumedBadField =
 type consumedBadType =
   | ItemCreated({itemId: string, name: float})
 
+// --- Composite-read (Issue 5) fixtures ---
+
+// All-scalar two-tag command → composite (tag_composite) decision read.
+@schema
+type recordDemandCommand =
+  | RecordDemand({
+      productId: @s.matches(Reventless.DcbTag.string) string,
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+    })
+
+// Single-tag command → partition read, never composite.
+@schema
+type touchDemandCommand =
+  | TouchDemand({productId: @s.matches(Reventless.DcbTag.string) string})
+
+// Tagged-array command → per-element OR (single-tag) clauses, never composite.
+@schema
+type placeOrderCommand =
+  | PlaceOrder({
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+      productIds: array<@s.matches(Reventless.DcbTag.stringForKey(~key="productId")) string>,
+    })
+
+// Consumed shape — names only matter; tags may be under-declared on consumers.
+@schema
+type demandConsumed =
+  | ProductDemandRecorded({productId: string, orderId: string})
+  | ProductDemandRevoked({productId: string, orderId: string})
+
+// Produced event-log schema: ProductDemandRecorded carries exactly the query's
+// tags; ProductDemandRevoked carries an EXTRA customerId tag (strict superset).
+@schema
+type demandProduced =
+  | ProductDemandRecorded({
+      productId: @s.matches(Reventless.DcbTag.string) string,
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+    })
+  | ProductDemandRevoked({
+      productId: @s.matches(Reventless.DcbTag.string) string,
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+      customerId: @s.matches(Reventless.DcbTag.string) string,
+    })
+
 let validate = Reventless.DcbValidation.validateProducedAndConsumed
 let u = S.castToUnknown
+let producedTagKeys = Reventless.DcbTag.extractTagKeysByEventType(demandProducedSchema)
 
 describe("DcbValidation:", () => {
   describe("validateProducedAndConsumed", () => {
@@ -208,6 +252,43 @@ describe("DcbValidation:", () => {
       | Error(errors) => expect(errors->Array.length)->toBeGreaterThanOrEqual(2)
       | Ok() => fail("Expected validation errors")
       }
+    })
+  })
+
+  describe("validateCompositeReads (Issue 5)", () => {
+    let check = slices =>
+      Reventless.DcbValidation.validateCompositeReads(~slices, ~producedTagKeys)
+
+    testSync("warns when a composite read's consumed type carries an extra tag", () => {
+      let warnings = check([("RecordDemand", recordDemandCommandSchema->u, demandConsumedSchema->u)])
+      // ProductDemandRevoked carries customerId beyond [productId, orderId] → missed.
+      expect(warnings->Array.length)->toBe(1)
+      let w = warnings->Array.getUnsafe(0)
+      expect(w.sliceName)->toBe("RecordDemand")
+      expect(w.message->String.includes("ProductDemandRevoked"))->toBe(true)
+      expect(w.message->String.includes("customerId"))->toBe(true)
+    })
+
+    testSync("does not warn for an exact-match consumed type", () => {
+      // ProductDemandRecorded carries exactly [productId, orderId] — read finds it.
+      let warnings = check([("RecordDemand", recordDemandCommandSchema->u, demandConsumedSchema->u)])
+      expect(warnings->Array.some(w => w.message->String.includes("ProductDemandRecorded")))->toBe(
+        false,
+      )
+    })
+
+    testSync("ignores single-tag commands (partition read, not composite)", () => {
+      let warnings = check([("TouchDemand", touchDemandCommandSchema->u, demandConsumedSchema->u)])
+      expect(warnings)->toEqual([])
+    })
+
+    testSync("ignores tagged-array commands (per-element OR, not composite)", () => {
+      let warnings = check([("PlaceOrder", placeOrderCommandSchema->u, demandConsumedSchema->u)])
+      expect(warnings)->toEqual([])
+    })
+
+    testSync("no warnings when nothing reads compositely", () => {
+      expect(check([]))->toEqual([])
     })
   })
 })

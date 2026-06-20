@@ -166,6 +166,21 @@ module Make = (
           ->Array.map(schema => Reventless.DcbTag.extractTagKeysByEventType(schema))
           ->Reventless.DcbTag.mergeTagKeysByEventType
 
+        // Warn on composite (multi-tag) decision reads that would silently miss an
+        // event carrying extra tags (the tag_composite key is the event's full tag
+        // set, so composite reads are exact-match). Non-fatal — today's slices are
+        // aligned; the guard catches a tag added to a multi-tag event later.
+        Reventless.DcbValidation.validateCompositeReads(
+          ~slices=stateChangeSlices->Array.map((module(Sc: StateChangeSlice.T)) => (
+            Sc.Spec.name,
+            Sc.Spec.commandSchema->S.castToUnknown,
+            Sc.Spec.consumedEventSchema->S.castToUnknown,
+          )),
+          ~producedTagKeys=tagKeysByEventType,
+        )->Array.forEach(w =>
+          log.warn(~comp="Dcb_Builder", `DCB composite-read warning (${w.sliceName}): ${w.message}`)
+        )
+
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,
           DcbEventTopicPublisher,

@@ -91,6 +91,78 @@ type producerEntry = {
   variant: variantInfo,
 }
 
+let dedupeKeys = (keys: array<string>): array<string> => {
+  let seen = Set.make()
+  keys->Array.filter(k =>
+    if seen->Set.has(k) {
+      false
+    } else {
+      seen->Set.add(k)
+      true
+    }
+  )
+}
+
+/**
+Warns when a slice issues a **composite** (multi-tag) decision read for an event
+type whose *produced* tag set is a strict superset of the query's tags.
+
+The `tag_composite` GSI key is built from **all** of an event's tags, so a
+composite query matches only events tagged *exactly* its query set. An event that
+also carries an extra tag is therefore silently missed by the composite read,
+while its per-tag fences still move (Issue 5). This commonly bites when a tag is
+later added to a multi-tag event without updating the reading slice.
+
+Only all-scalar multi-tag commands build composite reads: a command carrying a
+tagged array reads via per-element OR (single-tag) clauses, which cannot hit the
+exact-match trap. Returns one `validationError` (warning) per offending
+(slice, consumed type) pair.
+
+@param slices `(sliceName, commandSchema, consumedEventSchema)` per consumer.
+@param producedTagKeys event type → its produced tag-key set (from the event-log schema).
+*/
+let validateCompositeReads = (
+  ~slices: array<(string, S.t<unknown>, S.t<unknown>)>,
+  ~producedTagKeys: dict<array<string>>,
+): array<validationError> => {
+  let warnings: array<validationError> = []
+  slices->Array.forEach(((sliceName, commandSchema, consumedSchema)) =>
+    if !DcbTag.hasTaggedArrayFields(commandSchema) {
+      let commandTagKeysByVariant = DcbTag.extractTagKeysByEventType(commandSchema)
+      let consumedTypes = DcbTag.extractVariantNames(consumedSchema)
+      commandTagKeysByVariant
+      ->Dict.valuesToArray
+      ->Array.forEach(cmdKeys => {
+        let querySet = dedupeKeys(cmdKeys)
+        if querySet->Array.length >= 2 {
+          consumedTypes->Array.forEach(consumedType =>
+            switch producedTagKeys->Dict.get(consumedType) {
+            | None => ()
+            | Some(producedKeys) =>
+              let producedSet = dedupeKeys(producedKeys)
+              let isSuperset = querySet->Array.every(k => producedSet->Array.includes(k))
+              if isSuperset && producedSet->Array.length > querySet->Array.length {
+                let extra = producedSet->Array.filter(k => !(querySet->Array.includes(k)))
+                let _ = warnings->Array.push({
+                  sliceName,
+                  message: `composite read on tags [${querySet->Array.join(
+                      ", ",
+                    )}] will silently miss '${consumedType}', which also carries [${extra->Array.join(
+                      ", ",
+                    )}] — the tag_composite key includes ALL of an event's tags, so a composite query matches only events tagged exactly [${querySet->Array.join(
+                      ", ",
+                    )}]. Align the event's tag set with the query, or read '${consumedType}' via a single-tag clause.`,
+                })
+              }
+            }
+          )
+        }
+      })
+    }
+  )
+  warnings
+}
+
 let validateProducedAndConsumed = (
   ~produced: array<(string, S.t<unknown>)>,
   ~consumed: array<(string, S.t<unknown>)>,

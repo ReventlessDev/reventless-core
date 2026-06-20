@@ -128,6 +128,54 @@ function schemaTypeName(schema) {
   }
 }
 
+function dedupeKeys(keys) {
+  let seen = new Set();
+  return keys.filter(k => {
+    if (seen.has(k)) {
+      return false;
+    } else {
+      seen.add(k);
+      return true;
+    }
+  });
+}
+
+function validateCompositeReads(slices, producedTagKeys) {
+  let warnings = [];
+  slices.forEach(param => {
+    let commandSchema = param[1];
+    let sliceName = param[0];
+    if (DcbTag$Reventless.hasTaggedArrayFields(commandSchema)) {
+      return;
+    }
+    let commandTagKeysByVariant = DcbTag$Reventless.extractTagKeysByEventType(commandSchema);
+    let consumedTypes = DcbTag$Reventless.extractVariantNames(param[2]);
+    Object.values(commandTagKeysByVariant).forEach(cmdKeys => {
+      let querySet = dedupeKeys(cmdKeys);
+      if (querySet.length >= 2) {
+        consumedTypes.forEach(consumedType => {
+          let producedKeys = producedTagKeys[consumedType];
+          if (producedKeys === undefined) {
+            return;
+          }
+          let producedSet = dedupeKeys(producedKeys);
+          let isSuperset = querySet.every(k => producedSet.includes(k));
+          if (!(isSuperset && producedSet.length > querySet.length)) {
+            return;
+          }
+          let extra = producedSet.filter(k => !querySet.includes(k));
+          warnings.push({
+            sliceName: sliceName,
+            message: `composite read on tags [` + querySet.join(", ") + `] will silently miss '` + consumedType + `', which also carries [` + extra.join(", ") + `] — the tag_composite key includes ALL of an event's tags, so a composite query matches only events tagged exactly [` + querySet.join(", ") + `]. Align the event's tag set with the query, or read '` + consumedType + `' via a single-tag clause.`
+          });
+        });
+        return;
+      }
+    });
+  });
+  return warnings;
+}
+
 function validateProducedAndConsumed(produced, consumed) {
   let errors = [];
   let producerMap = {};
@@ -262,6 +310,8 @@ export {
   isPayloadLess,
   schemasAreCompatible,
   schemaTypeName,
+  dedupeKeys,
+  validateCompositeReads,
   validateProducedAndConsumed,
 }
 /* DcbTag-Reventless Not a pure module */
