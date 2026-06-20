@@ -24,6 +24,8 @@ A `StateChangeSlice` reads its decision model via `dcbEventLog.readStream(~query
 | 10 | Hot-tag fence ceiling; 3-retry exhaustion surfaces as `Conflict` | Med (load) | Tracked (`dcb-hot-tag-fence-contention`) |
 | 11 | 100-item `TransactWriteItems` cap is a hard cliff | Low | Known |
 | 12 | Tagless scan read can choke on fence items | Low | Latent / low-confidence |
+| 13 | No single-tag **cross-partition** (secondary-tag) read | Capability gap | Future — design sketched below |
+| 14 | Query clauses carry the full consumed-type list (incl. types that can't carry the tag) | Low–Med | Open — drop vacuous (type,tag) combos; residual over-match = Issue 13 |
 
 ---
 
@@ -94,7 +96,7 @@ The partition-tag `attribute_not_exists` variant above was **rejected** because 
 - Because the guard is **keyed by event type**, it never collides with a different type already on the partition — the subset-event-type slice gets its own guard and is not false-conflicted (sidesteps Issue 4). Verified by a dedicated integration scenario.
 - `create#` is a distinct id prefix from event partition keys (`<key>:<value>`) and `fence#` sentinels, so event reads and fence checks never observe guards. Files: `DcbEventLogStorage_DynamoDb_Runtime.res` (`buildCreateGuardUpdate` + the `after=None` branch of `buildConditionalTransactItems`). Tests: unit shape in `DcbEventLogStorage_DynamoDb_RuntimeTest.res`, behavioural (two concurrent first-writers → one wins; subset-type → no false conflict) in the Phase 1 integration suite.
 
-Scope note: `appendUnconditional` (seeding/import/replay) deliberately does **not** write create guards — it is the no-OCC path. Async slices were already serialized upstream by the FIFO command topic (`messageGroupId = entity id`); the guard closes the hole for the **default sync** path, which has no upstream serialization.
+Scope note: `appendUnconditional` (seeding/import/replay) deliberately does **not** write create guards — it is the no-OCC path (**OCC = optimistic concurrency control**: read the decision model, decide, then append *conditionally* — only if nothing has changed since the read — rather than holding a lock; the per-tag fences are exactly this conditional check). Async slices were already serialized upstream by the FIFO command topic (`messageGroupId = entity id`); the guard closes the hole for the **default sync** path, which has no upstream serialization.
 
 ---
 
@@ -162,6 +164,142 @@ A command touching very many distinct tag values (e.g. an order with ~99+ produc
 ## Issue 12 — Tagless scan read can choke on fence items (low-confidence)
 
 `scanWithFilter` with no `eventTypes` returns **all** table items, including `fence#…` sentinels (which have no `event`/`data` attributes); `fromItem` would throw on them. The `eventTypes` filter normally excludes fences (they lack the `event` attribute), and `appendConditional` rejects tagless *conditions* — but a tagless *read* path exists. Needs confirmation of whether any slice can issue a tagless, type-less read; if so, fence items should be filtered out in the scan path.
+
+---
+
+## Issue 13 — No single-tag cross-partition (secondary-tag) read (capability gap)
+
+### The limitation
+
+After [primary-tag partitioning](../plans/done/dcb-eventlog-primary-tag-partitioning.md), `executeQueryItemStream` maps a single-tag clause to a **base-table partition lookup**:
+
+```
+| Some([tag]) => queryByPartitionKeyStream(table, `${tag.key}:${tag.value}`, …)
+```
+
+That returns only events whose **primary/partition** tag is `tag` (the events physically stored under `id="<key>:<value>"`). An event carrying `tag` as a **secondary** tag lives in a *different* partition (keyed by *its* primary tag) and is **not** returned. So a single-tag clause cannot read "every event tagged `T`" — only "every event *partitioned by* `T`". The per-tag `tag_<key>` GSIs that could answer the cross-partition form were disconnected by the partitioning change (`queryBySingleTag`/`queryBySingleTagStream` now have zero callers — see Perf lever #1 / [`dcb-consistency-hardening`](../plans/dcb-consistency-hardening.md) Phase 3) and the framework exposes no other path to it.
+
+This is currently *intentional*: single-tag reads being partition-scoped is exactly what keeps **read-scope = fence-scope** (Issue 1). But it blocks a class of DCB decisions that is not exotic — it's the **canonical** DCB shape.
+
+### Worked example — course subscription (why it's needed)
+
+The textbook DCB example. A `StudentSubscribed` event carries two tags and enforces two invariants on subscribe:
+
+```
+@schema type event = StudentSubscribed({ studentId: string, courseId: string })
+
+// SubscribeStudent(S1, C1) must check:
+//   (a) course C1 is not full          → count StudentSubscribed where courseId = C1
+//   (b) student S1 is not over-enrolled → count StudentSubscribed where studentId = S1
+```
+
+`StudentSubscribed` can be partitioned by only **one** of its tags. Say `courseId` (primary):
+
+- **(a) read by `courseId:C1`** → base-table partition query → returns all subscriptions for the course. ✓
+- **(b) read by `studentId:S1`** → base-table partition query on `studentId:S1` → that partition is **empty** (these events live in `courseId:*` partitions), so the over-enrolment check sees **zero** subscriptions and always passes. ✗ — the invariant silently doesn't hold.
+
+Flipping the partition to `studentId` just swaps which check breaks. Any event that ties **two entities** in an M:N relationship (subscription, reservation, assignment, membership, transfer) has this shape: the decision must read by *both* tags, but the event can be partitioned by only one — so **one of the two reads is inherently a cross-partition secondary-tag read.** Composite (`tag_composite`) does not help: `{studentId:S1, courseId:C1}` matches the *single* exact pair, not "all of student S1's subscriptions" (and exact-match only — Issue 5).
+
+A read model / projection keyed by `studentId` is eventually consistent and lives outside the append transaction, so it cannot back an OCC decision model — it's a query-side convenience, not a substitute.
+
+### Solution sketch
+
+The capability and its consistency story must move together. Three coupled parts:
+
+**1. Per-tag scope declaration.** Let a tag opt into cross-partition semantics at the schema level — e.g. `@dcbTag(~scope=#CrossPartition)` (the natural sibling of the `@dcbTag(~consistencyMode=…)` idea in [`dcb-hot-tag-fence-contention`](../plans/Backlog/dcb-hot-tag-fence-contention.md)). Default stays `#PartitionScoped` (today's behaviour). The scope is a property of the *tag key* and must agree across every event type that carries it, or the fence scope below is ambiguous.
+
+**2. Read routing.** A single-tag clause on a `#CrossPartition` tag routes to the per-tag `tag_<key>` GSI (which indexes the tag across *all* partitions) instead of the base-table partition query. This **requires the GSI to exist** — directly in tension with Phase 3's full removal, and the reason that phase is on hold. Projection choice is a cost knob: `ALL` returns full items in one query (cheaper reads, costlier writes/storage); `KEYS_ONLY` halves storage/write amplification but needs a follow-up `BatchGetItem` to fold state.
+
+**3. Fence scope must match read scope.** This is the subtle part. Issue 1's fix made `fence#T` be bumped **only** by events *partitioned by* `T`. If a slice now reads `T` cross-partition, it sees events for which `fence#T` is *not* maintained → OCC would miss a concurrent secondary-`T` writer (no conflict raised). So for a `#CrossPartition` tag the fence must again be bumped by **every** event carrying it (primary *or* secondary) — the broad pre-Issue-1 behaviour, but now applied *only* to tags declared cross-partition. Partition-scoped tags keep the narrow Issue 1 rule. In short: **fence-bump scope is driven by the same per-tag scope flag as read routing**, so read-scope = fence-scope is preserved per tag rather than globally.
+
+**Consistency note.** GSI reads are eventually consistent (a fundamental DynamoDB constraint — Issue 8), so a cross-partition decision read can be stale. That is acceptable: the strongly-consistent fence check at append time catches any conflict the stale read missed, costing at most a retry — identical to how composite reads behave today.
+
+**Cost / risk.** A `#CrossPartition` tag is bumped by every carrier, so its fence is hotter (Issue 10) — pairs naturally with fence sharding. It also reintroduces the per-(tag, event-type) over-serialization of Issue 4 on that tag (every carrier bumps it), which for an M:N tag is usually the *desired* serialization. The migration cost is a GSI/table change, so it should be sequenced with (or instead of) Phase 3 rather than after a removal.
+
+**Bottom line:** the cleanest realisation re-uses precisely the `tag_<key>` GSI infrastructure Phase 3 would otherwise drop. If cross-partition secondary-tag reads are on the roadmap, Phase 3 should down-project to `KEYS_ONLY` (or keep `ALL`) rather than remove — and the read/fence routing above is the work that turns the retained index into a real capability.
+
+### Performance & cost
+
+Cross-partition reads are not just *another* tag read — they change the cost shape, because an M:N event pays the cost on **both** of its tags and the read is unbounded in the entity's *degree* (how many partners it relates to). Ranked, against the same billing multipliers as the §Performance-analysis section below (transactional write = 2×, strong read = 2×, `ALL` GSI = +1 full-item write + 1× storage per carrier, storage never shrinks):
+
+1. **Unbounded cross-partition decision read — the headline cost, now paid twice.** A `#CrossPartition` clause folds *every* event with that tag value across all partitions: for course subscription, "all of student S1's subscriptions" is O(courses S1 is in) and "all of course C1's subscriptions" is O(students in C1). A single `SubscribeStudent` pays **both** (it reads by `studentId` *and* `courseId`), each O(degree), each per command, each **eventually consistent** (GSI — cannot opt into strong reads, so cost-lever #3 doesn't apply to these clauses) and **uncached**. For a hot entity (a 300-student course) this read alone dwarfs the write. This is the same "unbounded read" term as the partition-scoped case, but one M:N command incurs it on two high-cardinality axes instead of one small partition.
+2. **GSI storage multiplier — now a *needed* GSI, so the projection choice is the real $ knob.** The cross-partition tag's `tag_<key>` GSI must exist; with `ALL` it re-stores the **entire event history forever** (append-only, never shrinks) for every carrier of that tag. This is the same multiplier as Perf lever #1 — except here it buys a capability rather than being waste, so the lever becomes `ALL` vs `KEYS_ONLY` rather than keep-vs-drop. `KEYS_ONLY` stores only `(id, position, tag key)` — typically a small fraction of a full event — cutting the durable storage bill and the large-item write replication, at the price of a second read phase (below).
+3. **Cross-partition fencing — more WCU and a hotter fence.** Reverting Issue 1's narrowing for a `#CrossPartition` tag means **every** carrier bumps `fence#<tag>` (transactional, 2× WCU), not just events partitioned by it. An M:N write therefore drives **two** fences (e.g. `fence#studentId:S1` *and* `fence#courseId:C1`), each contended by *all* writers touching that student or that course → each is a candidate for the ~500-transactions/sec/fence ceiling (Issue 10). Popular entities (a trending course) make their fence a write bottleneck; pairs naturally with fence **sharding** (which lifts the ceiling at +N× WCU). It also re-introduces Issue 4's per-(tag, event-type) over-serialization on that tag — but for an M:N invariant that serialization is usually *desired* (it's what the invariant needs).
+4. **Transaction size.** Each `#CrossPartition` tag adds one fence op to the append's `TransactWriteItems`; an M:N event adds two, pushing sooner against the 100-item cap (Issue 11) for high-tag-count commands.
+5. **`ALL` vs `KEYS_ONLY` read/write trade-off.** `ALL`: one GSI Query returns full items → cheapest *reads* (single eventually-consistent pass at 0.5 RCU/4 KB) but the costliest *writes/storage* (full-item replication of all history). `KEYS_ONLY`: cheap writes/storage, but each decision read is GSI-Query-for-keys **+** `BatchGetItem` against the base table (extra round trips and RCU). The crossover is set by the read:write ratio and event size — `KEYS_ONLY` wins for write-heavy / large-event tags, `ALL` for read-heavy / small-event tags.
+
+**Worked example — one `SubscribeStudent` (`StudentSubscribed` tagged `studentId`+`courseId`, both `#CrossPartition`, ~1 KB event), with `ALL` GSIs:**
+
+| Component | Units (≈) |
+|---|---|
+| `StudentSubscribed` base put — transactional | 2 WRU |
+| → GSI propagation: `tag_studentId`, `tag_courseId` (`ALL`, ~1 KB each) | 2 WRU |
+| `fence#studentId:S1` + `fence#courseId:C1` conditional Updates (transactional, <1 KB) | 4 WRU |
+| **Total write** | **≈ 8 WRU** |
+| Decision read — fold S1's subscriptions (deg ≈ 5) + C1's subscriptions (deg ≈ 300), eventually consistent, ~1 KB items | ≈ **150 RRU** |
+
+The write is bounded and modest; the **read dominates and scales with course size**. (Per-write WRU is similar under `KEYS_ONLY` for ~1 KB events — the GSI item is still <1 KB → 1 WRU — so `KEYS_ONLY`'s win here is **storage** and large-event writes, not small-event WRU. The read, conversely, gets a `BatchGetItem` tax under `KEYS_ONLY`.)
+
+**Mitigations specific to Issue 13:**
+
+- **Bounded existence/count reads for capacity invariants.** Most M:N rules are thresholds ("≤ 10 courses", "≤ 30 students"). The decision needs a *count*, not the full fold — a `Limit: N+1` Query ("is there an (N+1)-th?") caps the read at N+1 keys regardless of true degree. Combined with `KEYS_ONLY`, a capacity check becomes O(threshold), not O(degree) — the single biggest read-cost lever for this pattern, and it turns item #1 from unbounded into bounded.
+- **Decision-model cache (Phase 4) has outsized value here.** Because the read is O(degree) and grows, caching the fold at `(query, headPosition)` and reading only the delta is a larger win than for partition-scoped slices. Strong synergy.
+- **`KEYS_ONLY` projection** for the durable storage bill (item #2), accepting the BatchGet read tax — or skip it where the bounded count read (above) already removes the need for full items.
+- **Fence sharding** (Issue 10) for the hot M:N fences (item #3), profile-gated.
+
+**Net:** the *capability* cost is dominated by an unbounded, twice-paid, eventually-consistent, uncached read — so it is mostly a **read-cost** problem, and the highest-leverage mitigations are framework-level (bounded count reads + the decision-model cache), not infra. The infra knob is `ALL`-vs-`KEYS_ONLY`, which trades storage/write against read round-trips. None of this changes the slice contract — but it does mean a naive cross-partition slice on a high-degree entity can be expensive, and should be steered toward count-bounded reads.
+
+---
+
+## Issue 14 — Query clauses carry the full consumed-type list (tags not paired to their event types)
+
+### Symptom
+
+`DcbTag.buildQueryFromCommand` attaches the slice's **entire** consumed-event-type list to **every** clause it builds — it never pairs a tag with the specific event types that actually carry it ([`DcbTag.res` `buildQueryFromCommand`](../../reventless/reventless-spec/src/components/DcbTag.res)). So `PlaceOrder` (consumed `OrderPlaced({orderId})` | `CatalogProductSynced({productId})`) produces:
+
+```
+[ { eventTypes: [OrderPlaced, CatalogProductSynced], tags: [orderId:ord-1]   },
+  { eventTypes: [OrderPlaced, CatalogProductSynced], tags: [productId:prod-1] },
+  { eventTypes: [OrderPlaced, CatalogProductSynced], tags: [productId:prod-2] } ]
+```
+
+The first clause asks for a `CatalogProductSynced` tagged `orderId` — an event that by construction never carries an `orderId` tag.
+
+### Mechanism
+
+A clause matches an event when *its type is in `eventTypes`* **AND** *the event carries all the clause's tags* (literally `event_type IN (…) AND EXISTS(tag…)` in the local backend, [`DcbEventLogStorage_Sqlite.res:93-115`](../../reventless/reventless-local/src/adapter/DcbEventLog/DcbEventLogStorage_Sqlite.res#L93)). Two consequences fall out of the over-broad type list:
+
+1. **Vacuous combinations (harmless).** `CatalogProductSynced` never carries `orderId`, so the `orderId` clause can only ever match `OrderPlaced` — the `CatalogProductSynced` entry is dead weight, never producing wrong results.
+2. **Active over-match (has teeth).** The symmetric case is not vacuous: the `productId` clauses also list `OrderPlaced`, and `OrderPlaced` **does** carry `productId` as a secondary tag. So on a backend that evaluates the query literally, a `productId` clause also returns *sibling orders'* `OrderPlaced` events. `PlaceOrder_Behavior` documents and defends against exactly this (its `placedOrderIds` tracks every returned `OrderPlaced` so `decide` can ask about *this* order specifically).
+
+### Backend divergence
+
+This is where it bites (cf. Issue 3): the two backends evaluate the same query differently.
+
+- **Local (in-memory / SQLite)** — evaluates the clause literally, so the `productId` clauses **do** return sibling `OrderPlaced` events.
+- **DynamoDB** — a single-tag clause is a base-table *partition* read on `id="productId:prod-1"`; `OrderPlaced` lives in `orderId` partitions, so it is **never** returned, and `eventTypes` is ignored entirely for tag reads.
+
+Same query, different result sets — masked only because the behaviour is written to tolerate the larger (local) set. So this is **not a correctness bug** (decisions come out right: vacuous clauses match nothing, the live over-match is defended in the behaviour and partition-scoped away on DynamoDB), but it is a real imprecision: it over-specifies the query, leans on tag-matching + behaviour defensiveness to stay correct, and widens the local/AWS gap. Adjacent to Issue 4 (per-tag vs per-(tag, event-type)) and the architecture doc's "query covers the full event schema" open item.
+
+### Solution sketch — drop only the vacuous combinations; the rest is Issue 13
+
+A first instinct is to narrow each clause to the types the *decision* needs — restricting clause `K` to consumed types whose **consumed-schema variant** declares a field tagged `K`. **This is unsound.** Omitting a tag from a consumed variant states what `evolve` needs as *data*, not which tags the slice queries by. A slice can legitimately read a type by a tag without ever touching that tag's value in the fold — e.g. "≤ 5 orders per product" counts `OrderPlaced` per `productId` with `evolve: | OrderPlaced(_) => count + 1`, so its consumed `OrderPlaced` declares no `productId` even though the `productId` clause **must** read `OrderPlaced` to count it. Consumed-field narrowing would silently drop that read. (Credit: this hole was caught in review.)
+
+The sound, minimal fix drops only the **vacuous** combinations — a (type, tag) pairing where the type *cannot* carry the tag. Include a consumed type in clause `K` iff that type's **full produced tag set** — looked up in the shared event-log event schema, which the framework already knows — contains `K`:
+
+```
+[ { eventTypes: [OrderPlaced],                      tags: [orderId:ord-1]   },
+  { eventTypes: [OrderPlaced, CatalogProductSynced], tags: [productId:prod-1] },
+  { eventTypes: [OrderPlaced, CatalogProductSynced], tags: [productId:prod-2] } ]
+```
+
+Clause 1 loses `CatalogProductSynced` (it can never carry `orderId`), but clause 2 **keeps** `OrderPlaced` — the stored `OrderPlaced` does carry `productId`. This removes pure noise without ever dropping a read a slice might want; since vacuous clauses match nothing, results cannot change.
+
+**What this does and doesn't resolve.** It eliminates the vacuous combinations (safe, unambiguous). It does **not** eliminate the *active* over-match: clause 2 still asks to read `OrderPlaced` by `productId`. But that residual is not an imprecision to be narrowed away — it is a **legitimate cross-partition secondary-tag read**, i.e. exactly Issue 13. Once the vacuous combinations are gone, every remaining (type, tag) where the type carries the tag as a *secondary* is a cross-partition read request, and the local/AWS divergence on it (local returns sibling `OrderPlaced`; DynamoDB partition-scoping does not) is the Issue 13 gap — to be solved there (serve it via the per-tag GSI + cross-partition fencing), not by contorting query construction.
+
+Until Issue 13 lands, a slice that does **not** want those cross-partition reads — like `PlaceOrder`, which only checks availability — must keep tolerating the over-read in its behaviour; `PlaceOrder_Behavior` already does (its `placedOrderIds` ignores sibling orders). That tolerance is a behaviour responsibility, not a query bug. There is no way, from types and tags alone, to tell "I want this cross-partition read" (the order-cap slice) from "I tolerate it" (`PlaceOrder`) — distinguishing them needs the per-tag scope flag of Issue 13.
+
+**Risk**: low. Dropping vacuous clauses cannot change results. The builder needs each consumed type's full produced tag set (today `buildQueryFromCommand` gets only the consumed type *names* + the command's tags), so the shared event schema must be threaded in. Red→green test: assert no built clause lists a type whose produced tag set lacks the clause's tag (e.g. no `CatalogProductSynced` under an `orderId` clause), and that `OrderPlaced` is **retained** under a `productId` clause.
 
 ---
 

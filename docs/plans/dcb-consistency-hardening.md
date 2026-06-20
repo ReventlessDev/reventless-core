@@ -14,10 +14,12 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 2 | `after=None` create-race | Issue 2 | Correctness | **yes** | — (detailed below) |
 | 3 | Drop unused per-tag GSIs | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
 | 4 | Decision-model cache | Perf/cost lever #2 | Cost | no | [dcb-decision-model-projection-cache](Backlog/dcb-decision-model-projection-cache.md) |
-| 5 | Robustness guards | Issues 4, 5, 6, 9 | Robustness | **yes** | — (detailed below) |
+| 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **yes** | — (detailed below) |
+| 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **yes** | — (Phase 5 below) |
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
 | 6 | Hot-tag sharding / selective bump | Issue 10 | Throughput | no | [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) |
 | 6 | Monotonic positions | Issue 7 | Cleanup | no | [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) |
+| 7 | Cross-partition secondary-tag reads | Issue 13 | Capability (future) | **yes** | — (detailed below) |
 
 ---
 
@@ -73,7 +75,14 @@ Action taken: documented the async/FIFO guarantee here and in analysis Issue 2. 
 
 **Risk**: medium — touches the idempotency fallback. Guard with the subset-event-type integration case explicitly.
 
-## Phase 3 — Drop / down-project the unused per-tag GSIs (cost lever #1) — **net new**
+## Phase 3 — Drop / down-project the unused per-tag GSIs (cost lever #1) — **ON HOLD (2026-06-20)**
+
+**Held pending a decision on cross-partition secondary-tag queries.** Prerequisite verified — `queryBySingleTag`/`queryBySingleTagStream` have zero callers and no `tag_*` index name is referenced outside the adapter (the per-tag GSIs were orphaned by `fc4c1f493` "primary-tag partitioning", which switched single-tag reads to base-table partition queries). But the choice between **full removal** and **`KEYS_ONLY` down-projection** turns on whether a *single non-partition (secondary) tag* read will ever be wanted:
+
+- Today a single-tag read is a **base-table partition query** — it returns only events whose *primary/partition* tag is that tag. An event carrying the tag as a *secondary* tag lives in another partition and is **not** returned; there is no query path for a cross-partition secondary-tag read (the per-tag GSIs were the old mechanism, now disconnected). This is also load-bearing for Issue 1: single-tag reads being partition-scoped is what keeps read-scope = fence-scope. A cross-partition secondary-tag read would reintroduce that mismatch.
+- **Full removal** forecloses re-adding such a read without a GSI rebuild *and* a fence-model reconciliation. **`KEYS_ONLY`** keeps the index (queryable via keys + `BatchGetItem`) while still cutting most of the write/storage cost.
+
+Decision deferred — revisit once secondary-tag query needs are clear. The capability, a canonical worked example (course subscription) and a solution sketch that re-uses the per-tag GSI are in [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap). The full-removal plan below remains the reference if that path is chosen.
 
 **Goal**: cut ~30–60% of per-write WCU and the permanent storage multiplier on the event log.
 
@@ -105,6 +114,8 @@ Small, mostly independent items; land opportunistically.
 - **Issue 6 — per-tag `after`.** Note as a deeper design item; each fence checked against the head observed for *its* partition rather than the global head. Defer unless a multi-clause slice shows false conflicts.
 - **Issue 9 — `appendUnconditional` bumps all tags.** Align with the partition-scope invariant if/when a composite-fence design (option A) lands; today it is seeding-only and benign.
 - **Issue 12 — tagless scan + fence items.** Confirm whether any tagless, type-less read can occur; if so, filter `fence#…` items in the scan path.
+- **Issue 14 — drop vacuous query-clause type combinations.** `buildQueryFromCommand` attaches the slice's full consumed-type list to every clause, so clauses pair a tag with types that can never carry it (e.g. `CatalogProductSynced` under an `orderId` clause). Include a consumed type in a tag clause only if that type's **full produced tag set** (from the shared event-log schema) carries the tag. Pure dead-clause removal — cannot change results (vacuous clauses match nothing); needs the event schema threaded into `buildQueryFromCommand`. **Do not** also drop a type that carries the tag as a *secondary* — that is a legitimate cross-partition read (Phase 7 / Issue 13), not narrowing. **Net-new.**
+  - **Docs follow-up (required on resolution):** update the published [internals/dcb-consistency-checks](../../packages/doc/docs-framework/internals/dcb-consistency-checks.md) page — its Stage 1 `PlaceOrder` query example currently shows the full consumed-type list on every clause (faithful to today's behaviour). Once the fix lands, the `orderId` clause must drop `CatalogProductSynced` (the `productId` clauses keep `OrderPlaced` — secondary tag, still queried). Adjust the example and add a one-line note that clauses list only types whose produced tag set carries the clause's tag.
 
 ## Phase 6 — Profile-gated throughput & cleanup
 
@@ -112,10 +123,26 @@ Already planned, run on evidence:
 - [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) — selective bumping (§2, cost-saver, can ship early) then sharding (§1, profile-gated).
 - [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) — half-day cleanup, land any time someone is in `Runtime.res`.
 
+## Phase 7 — Cross-partition secondary-tag reads (capability, future) — **net new**
+
+**Goal**: support reading a single tag *across* partitions — i.e. reading an event type by a tag it carries as a *secondary* (non-partition) tag. Today a single-tag read is partition-scoped, so this is impossible; it's the canonical DCB shape for any M:N decision (course-subscription capacity, "≤ N orders per product", reservations). Full motivation, worked example, solution sketch, and cost analysis: [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap).
+
+**Why it's its own (deferred) phase, and how it couples to Phase 3.** The clean realisation **re-uses the per-tag `tag_<key>` GSI that Phase 3 would otherwise drop** — so the two are entangled: pursuing Phase 7 means Phase 3 must down-project to `KEYS_ONLY` (or keep `ALL`), not remove. **The decision "is a cross-partition read ever wanted?" gates Phase 3's form.** That is exactly why Phase 3 is currently on hold.
+
+**Shape of the work** (three coupled parts, from the analysis):
+1. **Per-tag scope flag** (`@dcbTag(~scope=#CrossPartition)`, default `#PartitionScoped`) — the single control surface; also resolves the Issue 14 residual (it's what tells the builder a secondary-tag clause is *wanted*, not just tolerated).
+2. **Read routing** — a `#CrossPartition` single-tag clause reads the per-tag GSI instead of the base-table partition.
+3. **Fence scope follows read scope** — a `#CrossPartition` tag is fence-bumped by *every* carrier (not just events partitioned by it), or OCC misses concurrent secondary-tag writers; partition-scoped tags keep the narrow rule.
+
+**Cost note**: read-dominated and paid on *both* tags of an M:N event (O(entity degree), eventually-consistent, uncached). Highest-leverage mitigations are framework-level — `Limit:N+1` count-bounded reads for capacity invariants and the Phase 4 decision-model cache — not infra. See analysis Issue 13 § Performance & cost.
+
+**When to do it**: profile-/evidence-gated — only when a real slice needs a cross-partition read. Until then it stays a future capability, and slices that merely *tolerate* over-reads (e.g. `PlaceOrder`) handle it in their behaviour.
+
 ## Suggested execution order
 
 1. ~~**Phase 1** (verification harness + Phase 0 regression cases)~~ — **done 2026-06-20**.
 2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
-3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. ← next
+3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. **On hold**: its form (full-remove vs `KEYS_ONLY`/keep) is gated by the Phase 7 decision below.
 4. **Phase 4** (decision-model cache) — biggest read-cost win.
-5. **Phase 5** items opportunistically; **Phase 6** on profiling evidence.
+5. **Phase 5** items opportunistically — including the safe Issue 14 vacuous-clause cleanup; **Phase 6** on profiling evidence.
+6. **Phase 7** (cross-partition reads) — only when a real slice needs it; making that call first unblocks Phase 3.
