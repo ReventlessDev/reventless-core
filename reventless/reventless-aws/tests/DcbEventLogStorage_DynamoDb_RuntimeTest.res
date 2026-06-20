@@ -323,6 +323,60 @@ describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", (
   })
 })
 
+describe("Runtime.buildConditionalTransactItems — create guard (after=None)", () => {
+  let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+    eventType,
+    data: JSON.Object(Dict.make()),
+    tags,
+    meta: testMeta(),
+  }
+
+  let findById = (items: array<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem>, id) =>
+    items->Array.find(it =>
+      switch it.update {
+      | Some(u) => u.key->Dict.get("id") == Some(id->JSON.Encode.string)
+      | None => false
+      }
+    )
+
+  let orderCreated = event("OrderCreated", [tag("orderId", "o1")])
+  let partitionTag = Some(Reventless.DcbTag.Simple({key: "orderId"}))
+
+  describe("at after=None (first-writer)", () => {
+    let cond: Reventless.DcbTag.appendCondition = {query: [{tags: [tag("orderId", "o1")]}]}
+    let items = Runtime.buildConditionalTransactItems(table, [orderCreated], cond, "100", ~partitionTag?)
+
+    testSync("emits a create guard keyed by (eventType, partition value)", () => {
+      expect((findById(items, "create#OrderCreated#orderId:o1"))->Option.isSome)->toBe(true)
+    })
+
+    testSync("the create guard is gated on attribute_not_exists", () => {
+      let guard = findById(items, "create#OrderCreated#orderId:o1")->Option.flatMap(it => it.update)
+      expect(guard->Option.flatMap(u => u.conditionExpression))->toEqual(
+        Some("attribute_not_exists(lastPosition)"),
+      )
+    })
+
+    testSync("a second event type on the same partition gets its own guard (no over-serialization)", () => {
+      let note = event("NoteAdded", [tag("orderId", "o1")])
+      let items2 = Runtime.buildConditionalTransactItems(table, [note], cond, "100", ~partitionTag?)
+      // NoteAdded's guard is distinct from OrderCreated's — reading a subset of a
+      // partition's event types does not false-conflict (analysis Issue 4).
+      expect((findById(items2, "create#NoteAdded#orderId:o1"))->Option.isSome)->toBe(true)
+      expect((findById(items2, "create#OrderCreated#orderId:o1"))->Option.isSome)->toBe(false)
+    })
+  })
+
+  describe("at after=Some (entity exists)", () => {
+    let cond: Reventless.DcbTag.appendCondition = {query: [{tags: [tag("orderId", "o1")]}], after: "50"}
+    let items = Runtime.buildConditionalTransactItems(table, [orderCreated], cond, "100", ~partitionTag?)
+
+    testSync("emits no create guard (the partition fence enforces OCC)", () => {
+      expect((findById(items, "create#OrderCreated#orderId:o1"))->Option.isSome)->toBe(false)
+    })
+  })
+})
+
 describe("Runtime.appendConditional", () => {
   testAsync("rejects tagless conditions with a clear error", async () => {
     let cond: Reventless.DcbTag.appendCondition = {

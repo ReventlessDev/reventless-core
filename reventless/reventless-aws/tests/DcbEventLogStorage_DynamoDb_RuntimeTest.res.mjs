@@ -411,6 +411,78 @@ globalThis.describe("Runtime.buildConditionalTransactItems — fence-scope = rea
   });
 });
 
+globalThis.describe("Runtime.buildConditionalTransactItems — create guard (after=None)", () => {
+  let event = (eventType, tags) => ({
+    eventType: eventType,
+    data: {},
+    tags: tags,
+    meta: testMeta()
+  });
+  let findById = (items, id) => items.find(it => {
+    let u = it.Update;
+    if (u !== undefined) {
+      return Primitive_object.equal(u.Key["id"], id);
+    } else {
+      return false;
+    }
+  });
+  let orderCreated = event("OrderCreated", [{
+      key: "orderId",
+      value: "o1"
+    }]);
+  let partitionTag = {
+    TAG: "Simple",
+    _0: {
+      key: "orderId"
+    }
+  };
+  globalThis.describe("at after=None (first-writer)", () => {
+    let cond_query = [{
+        tags: [{
+            key: "orderId",
+            value: "o1"
+          }]
+      }];
+    let cond = {
+      query: cond_query
+    };
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [orderCreated], cond, "100", partitionTag);
+    globalThis.test("emits a create guard keyed by (eventType, partition value)", () => {
+      globalThis.expect(Stdlib_Option.isSome(findById(items, "create#OrderCreated#orderId:o1"))).toBe(true);
+    });
+    globalThis.test("the create guard is gated on attribute_not_exists", () => {
+      let guard = Stdlib_Option.flatMap(findById(items, "create#OrderCreated#orderId:o1"), it => it.Update);
+      globalThis.expect(Stdlib_Option.flatMap(guard, u => u.ConditionExpression)).toEqual("attribute_not_exists(lastPosition)");
+    });
+    globalThis.test("a second event type on the same partition gets its own guard (no over-serialization)", () => {
+      let note = event("NoteAdded", [{
+          key: "orderId",
+          value: "o1"
+        }]);
+      let items2 = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [note], cond, "100", partitionTag);
+      globalThis.expect(Stdlib_Option.isSome(findById(items2, "create#NoteAdded#orderId:o1"))).toBe(true);
+      globalThis.expect(Stdlib_Option.isSome(findById(items2, "create#OrderCreated#orderId:o1"))).toBe(false);
+    });
+  });
+  globalThis.describe("at after=Some (entity exists)", () => {
+    let cond_query = [{
+        tags: [{
+            key: "orderId",
+            value: "o1"
+          }]
+      }];
+    let cond_after = "50";
+    let cond = {
+      query: cond_query,
+      after: cond_after
+    };
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [orderCreated], cond, "100", partitionTag);
+    globalThis.test("emits no create guard (the partition fence enforces OCC)", () => {
+      globalThis.expect(Stdlib_Option.isSome(findById(items, "create#OrderCreated#orderId:o1"))).toBe(false);
+    });
+  });
+});
+
 globalThis.describe("Runtime.appendConditional", () => {
   globalThis.test("rejects tagless conditions with a clear error", async () => {
     let cond_query = [{

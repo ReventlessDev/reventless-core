@@ -13,7 +13,7 @@ A `StateChangeSlice` reads its decision model via `dcbEventLog.readStream(~query
 | # | Issue | Severity | Status |
 |---|-------|----------|--------|
 | 1 | Fence-scope broader than read-scope → false `ConditionalCheckFailed` | High (was live) | **Fixed 2026-06-20** (`2ecbd8599`) |
-| 2 | `after=None` performs no conflict check (create-race hole) | High | Open — fix proposed |
+| 2 | `after=None` performs no conflict check (create-race hole) | High | **Fixed 2026-06-20** (per-type create guard) |
 | 3 | Local backend ≠ AWS backend consistency semantics (test gap) | High | Open — needs integration test |
 | 4 | Fences are per-tag-value, not per-(tag, event-type) | Medium | Known / partial |
 | 5 | Composite (GSI) read requires an exact full-tag-set match | Medium | Latent |
@@ -82,7 +82,19 @@ The `after=None`→unconditional fallback was introduced deliberately to dodge a
 
 Today the hole is masked only when the command topic FIFO-serializes commands per entity; any slice whose same-entity commands aren't serialized upstream is exposed.
 
+**Confirmed 2026-06-20 (Phase 2A investigation):** only **async** DCB slices (`@@reventless.async`) are serialized — they route through `CommandTopicChannel_SQS_Async` (a FIFO queue) with `messageGroupId = safeGroupId(commandJson.id)`, and for DCB slice commands `commandJson.id` is the entity/partition id, so same-entity async creates can't run concurrently. The **default sync** slices route through `CommandTopicChannel_SQS_Sync`, a **standard (non-FIFO)** queue dispatched **inline** in the AppSync resolver Lambda — no per-entity serialization. So the create-race is **real on the default path**, and the `after=None` branch needs the code fix (Phase 2 option B / partition-tag `attribute_not_exists`), not just the FIFO guarantee.
+
 **Fix direction**: at `after=None`, emit `attribute_not_exists(lastPosition)` as a conditional `Update` on the partition tag(s); keep non-partition single-tag reads as read-only `ConditionCheck` (`attribute_not_exists`); keep composite as-is. Add a red→green unit test (two concurrent `after=None` appends to the same partition — second must fail).
+
+### Fix (shipped 2026-06-20 — Phase 2 of [dcb-consistency-hardening](../plans/dcb-consistency-hardening.md))
+
+The partition-tag `attribute_not_exists` variant above was **rejected** because it reintroduces Issue 4: a slice reading only a *subset* of a partition's event types sees `after=None`, but `fence#<key>` already exists (created by a different event type), so it would false-conflict. Shipped **option B** instead — a **per-(eventType, partition value) create guard**:
+
+- At `after=None` only, `buildConditionalTransactItems` emits one conditional `Update` per distinct `(event.eventType, partition tag value)`, on a sentinel `id="create#<eventType>#<key>:<value>", position="CREATE"`, gated on `attribute_not_exists(lastPosition)`. Two concurrent first-writers of the same entity collide on this guard → exactly one commits.
+- Because the guard is **keyed by event type**, it never collides with a different type already on the partition — the subset-event-type slice gets its own guard and is not false-conflicted (sidesteps Issue 4). Verified by a dedicated integration scenario.
+- `create#` is a distinct id prefix from event partition keys (`<key>:<value>`) and `fence#` sentinels, so event reads and fence checks never observe guards. Files: `DcbEventLogStorage_DynamoDb_Runtime.res` (`buildCreateGuardUpdate` + the `after=None` branch of `buildConditionalTransactItems`). Tests: unit shape in `DcbEventLogStorage_DynamoDb_RuntimeTest.res`, behavioural (two concurrent first-writers → one wins; subset-type → no false conflict) in the Phase 1 integration suite.
+
+Scope note: `appendUnconditional` (seeding/import/replay) deliberately does **not** write create guards — it is the no-OCC path. Async slices were already serialized upstream by the FIFO command topic (`messageGroupId = entity id`); the guard closes the hole for the **default sync** path, which has no upstream serialization.
 
 ---
 
@@ -233,7 +245,7 @@ Issue 1's fix swapped non-partition query tags from conditional `Update` → `Co
 
 ## Recommended next steps
 
-1. **Issue 2** — close the `after=None` create-race (now low-risk thanks to Issue 1's partition-scoped rule). Same red→green TDD flow.
+1. ~~**Issue 2** — close the `after=None` create-race.~~ **Done 2026-06-20** — per-type create guard (see Issue 2 § Fix).
 2. **Issue 3** — stand up the DynamoDB integration test; it's the only thing that exercises the fence path and gates trust in every other fix here.
 3. **Issues 4–6** — guard/assert and document; revisit a per-tag `after` and composite-fence design (option A) only if a real slice needs it.
 4. **Performance** — the two no-contract-change wins from §Performance analysis: the decision-model cache (read RCU) and removing the unused per-tag GSIs (write RCU). Verify GSI consumers first; batch the GSI change with a table migration.

@@ -194,6 +194,58 @@ describe("DCB DynamoDb integration — optimistic concurrency primitives", () =>
     expect(conflicts >= 1)->toBe(true)
   })
 
+  testAsync("two concurrent first-writers to the same entity — exactly one creates it (Issue 2)", async () => {
+    let table = await H.freshTable()
+    // Both writers read an empty decision model (after=None) and try to create
+    // the same order. The per-(eventType, partition) create guard must let only
+    // one through.
+    let create = () =>
+      Runtime.appendConditional(
+        table,
+        [event("OrderCreated", [tag("orderId", "O1")])],
+        {query: [{tags: [tag("orderId", "O1")]}], after: ?None},
+        ~partitionTag=simple("orderId"),
+      )
+
+    let results = await Promise.all([create(), create()])
+    let oks = results->Array.filter(isOk)->Array.length
+    // Safety: the two first-writers must NOT both create the entity. At most one
+    // commits; every non-winner surfaces a Conflict. (DynamoDB may cancel both
+    // with a mutual TransactionConflict — the slice callback's retry loop then
+    // makes exactly one win. Pre-fix this asserted-2: both committed = duplicate.)
+    expect(oks <= 1)->toBe(true)
+    expect(oks + results->Array.filter(isConflict)->Array.length)->toBe(2)
+
+    // No duplicate landed — persisted OrderCreated count matches the winners.
+    let readResult = await Runtime.read(table)(~query=[{tags: [tag("orderId", "O1")]}])
+    expect(readResult.events->Array.length)->toBe(oks)
+  })
+
+  testAsync("the create guard does not false-conflict a subset-event-type writer (Issue 4)", async () => {
+    let table = await H.freshTable()
+    // A productId partition already holds a ProductAdded (its own create guard +
+    // fence). A different slice reads only NameChanged on that partition, sees
+    // nothing (after=None), and appends the first NameChanged. Its guard is
+    // create#NameChanged#productId:P — distinct from ProductAdded's — so it must
+    // NOT conflict with the pre-existing partition state.
+    let productTag = tag("productId", "P")
+    let r1 = await Runtime.appendConditional(
+      table,
+      [event("ProductAdded", [productTag])],
+      {query: [{tags: [productTag]}], after: ?None},
+      ~partitionTag=simple("productId"),
+    )
+    expect(isOk(r1))->toBe(true)
+
+    let r2 = await Runtime.appendConditional(
+      table,
+      [event("NameChanged", [productTag])],
+      {query: [{tags: [productTag]}], after: ?None},
+      ~partitionTag=simple("productId"),
+    )
+    expect(isOk(r2))->toBe(true)
+  })
+
   testAsync("a chain of compatible commits all succeed", async () => {
     let table = await H.freshTable()
     let counterTag = tag("counterId", "K2")

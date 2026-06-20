@@ -629,6 +629,48 @@ let buildFenceConditionCheck = (
     }
   }
 
+// Create-guard sentinel: serializes concurrent first-writers of a given event
+// type for a given entity (partition value). At `after=None` the slice's
+// decision-model read saw zero matching events, so the partition fence alone
+// performs NO conflict check (the idempotent fallback) — two concurrent
+// first-writers to the same entity would both commit (analysis Issue 2). Gating
+// the partition *fence* on `attribute_not_exists` instead would false-conflict a
+// slice that reads only a SUBSET of a partition's event types: a different type
+// may already have created `fence#<key>`, even though no event of THIS slice's
+// type exists (analysis Issue 4). A guard keyed by (eventType, partition value)
+// sidesteps that — it is unique to this event type, so it never collides with
+// other types sharing the partition. The id prefix `create#` is distinct from
+// event partition keys (`<key>:<value>`) and `fence#` sentinels, so neither
+// event reads nor fence checks ever observe it.
+//
+// Assumption: `after=None` recurs for a (producedType, partition) only as a
+// genuine first-write. This holds for every current slice shape — create slices
+// consume their own produced type (so re-runs read `after=Some`), and transition
+// slices that produce a non-consumed type only fire when their prerequisite
+// exists (`after=Some`); at `after=None` their behavior rejects. A slice that
+// produces a type it never reads AND legitimately re-produces the same
+// (type, partition) with a perpetually-empty decision model would be wrongly
+// blocked on the second write — such a slice should consume its produced type.
+let createGuardSortKey = "CREATE"
+
+let createGuardId = (eventType: string, tag: Reventless.DcbTag.tag) =>
+  `create#${eventType}#${tag.key}:${tag.value}`
+
+let buildCreateGuardUpdate = (
+  tableName: string,
+  guardId: string,
+  ~newPosition: string,
+): TransactWriteCommand.update => {
+  TransactWriteCommand.key: Dict.fromArray([
+    ("id", guardId->JSON.Encode.string),
+    ("position", createGuardSortKey->JSON.Encode.string),
+  ]),
+  tableName,
+  updateExpression: "SET lastPosition = :new",
+  conditionExpression: "attribute_not_exists(lastPosition)",
+  expressionAttributeValues: Dict.fromArray([(":new", newPosition->JSON.Encode.string)]),
+}
+
 // `TransactWriteItems` is capped at 100 items per call. We surface a clear
 // error before calling AWS rather than leaking ValidationException upstream.
 let transactWriteItemsLimit = 100
@@ -852,6 +894,28 @@ let buildConditionalTransactItems = (
     }
   })
 
+  // Create-guards — emitted only at `after=None` (the create / first-writer
+  // case). One conditional `Update` per distinct (eventType, partition value),
+  // gated on `attribute_not_exists`, so two concurrent first-writers to the same
+  // entity cannot both commit. Empty at `after=Some`, where the partition fence
+  // already enforces OCC and the entity is known to exist.
+  let guardTags = switch cond.after {
+  | Some(_) => []
+  | None =>
+    let seen = Set.make()
+    let guards = []
+    events->Array.forEach(event =>
+      eventPartitionTags(event, ~partitionTag)->Array.forEach(pt => {
+        let guardId = createGuardId(event.eventType, pt)
+        if !(seen->Set.has(guardId)) {
+          seen->Set.add(guardId)
+          guards->Array.push(guardId)
+        }
+      })
+    )
+    guards
+  }
+
   let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
   let updateItems =
     conditionalUpdateTags->Array.map(tag => {
@@ -870,8 +934,15 @@ let buildConditionalTransactItems = (
     bumpTags->Array.map(tag => {
       TransactWriteCommand.update: buildUnconditionalFenceUpdate(table.name, tag, ~newPosition=basePosition),
     })
+  let guardItems =
+    guardTags->Array.map(guardId => {
+      TransactWriteCommand.update: buildCreateGuardUpdate(table.name, guardId, ~newPosition=basePosition),
+    })
 
-  Array.concat(putItems, Array.concat(updateItems, Array.concat(checkItems, bumpItems)))
+  Array.concat(
+    putItems,
+    Array.concat(updateItems, Array.concat(checkItems, Array.concat(bumpItems, guardItems))),
+  )
 }
 
 let appendConditional = async (

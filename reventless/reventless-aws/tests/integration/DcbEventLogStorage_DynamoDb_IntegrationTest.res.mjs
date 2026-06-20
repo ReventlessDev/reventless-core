@@ -273,6 +273,68 @@ globalThis.describe("DCB DynamoDb integration — optimistic concurrency primiti
     globalThis.expect(oks + conflicts | 0).toBe(2);
     globalThis.expect(conflicts >= 1).toBe(true);
   });
+  globalThis.test("two concurrent first-writers to the same entity — exactly one creates it (Issue 2)", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    let create = () => DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("OrderCreated", [{
+          key: "orderId",
+          value: "O1"
+        }])], {
+      query: [{
+          tags: [{
+              key: "orderId",
+              value: "O1"
+            }]
+        }]
+    }, {
+      TAG: "Simple",
+      _0: {
+        key: "orderId"
+      }
+    });
+    let results = await Promise.all([
+      create(),
+      create()
+    ]);
+    let oks = results.filter(isOk).length;
+    globalThis.expect(oks <= 1).toBe(true);
+    globalThis.expect(oks + results.filter(isConflict).length | 0).toBe(2);
+    let readResult = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.read(table)([{
+        tags: [{
+            key: "orderId",
+            value: "O1"
+          }]
+      }], undefined);
+    globalThis.expect(readResult.events.length).toBe(oks);
+  });
+  globalThis.test("the create guard does not false-conflict a subset-event-type writer (Issue 4)", async () => {
+    let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
+    let productTag = {
+      key: "productId",
+      value: "P"
+    };
+    let r1 = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("ProductAdded", [productTag])], {
+      query: [{
+          tags: [productTag]
+        }]
+    }, {
+      TAG: "Simple",
+      _0: {
+        key: "productId"
+      }
+    });
+    globalThis.expect(isOk(r1)).toBe(true);
+    let r2 = await DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.appendConditional(table, [event("NameChanged", [productTag])], {
+      query: [{
+          tags: [productTag]
+        }]
+    }, {
+      TAG: "Simple",
+      _0: {
+        key: "productId"
+      }
+    });
+    globalThis.expect(isOk(r2)).toBe(true);
+  });
   globalThis.test("a chain of compatible commits all succeed", async () => {
     let table = await DcbIntegrationHarness$ReventlessAws.freshTable();
     let counterTag = {

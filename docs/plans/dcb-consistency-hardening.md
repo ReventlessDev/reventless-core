@@ -45,7 +45,9 @@ Tagless-rejection and 100-item-limit round-trips are already covered by the unit
 
 Gate: Phases 2–3 must add their scenarios to this suite before merge.
 
-## Phase 2 — Close the `after=None` create-race (Issue 2) — **net new**
+## Phase 2 — Close the `after=None` create-race (Issue 2) — **DONE (2026-06-20)**
+
+Shipped **option B** (per-(eventType, partition) create guard). 2A investigation showed option A insufficient for the default sync path; B closes the hole there too and sidesteps Issue 4. Implementation in `DcbEventLogStorage_DynamoDb_Runtime.res` (`buildCreateGuardUpdate` + the `after=None` branch of `buildConditionalTransactItems`). Verified: unit shape tests (4) in `DcbEventLogStorage_DynamoDb_RuntimeTest.res`; integration scenarios (two concurrent first-writers → at most one wins, no duplicate persisted; subset-event-type writer → no false conflict) in the Phase 1 suite (10 cases, green). Full details in analysis Issue 2 § "Fix (shipped 2026-06-20)". The reference material below is retained for context.
 
 **Goal**: two concurrent first-writers to the same entity must not both succeed.
 
@@ -55,6 +57,13 @@ Gate: Phases 2–3 must add their scenarios to this suite before merge.
 
 - **A — Rely on upstream FIFO per-entity serialization, document + test.** If `StateChangeSlice` commands for the same entity share a FIFO `messageGroupId` (verify in `CommandTopic`/SQS wiring), two same-entity creates can never run concurrently, so the hole is theoretical. Action: confirm the grouping, document the guarantee at `appendConditional`'s `after=None` branch, and add an integration test that drives two same-entity creates and asserts serialization. **Cheapest; do this first and confirm whether it fully closes the hole.**
 - **B — Type-aware creation guard.** When the `after=None` writer's query restricts event types (the common case), emit a `ConditionCheck`/`Update` on a guard item keyed by the producing event type — e.g. `id="create#<eventType>#<key>:<value>"` gated on `attribute_not_exists` — so creation of *that* event type for *that* entity serializes without colliding with other types on the partition. Adds one item to first-writes only. Closes the hole even without FIFO, and sidesteps Issue 4.
+
+**Phase 2A investigation result (2026-06-20): Option A is insufficient — escalate to B (or the partition-tag `attribute_not_exists` variant).** The DCB command-topic wiring ([`reventless-aws/.../Plugin.res`](../../reventless/reventless-aws/src/components/Plugin.res) → `CommandTopicChannel.SQS_Sync` for `DcbCommandTopicChannel`, `SQS_Async` for `DcbCommandTopicChannelAsync`):
+
+- **Async slices** (`@@reventless.async`) → `CommandTopicChannel_SQS_Async`, a **FIFO** queue with `messageGroupId = safeGroupId(commandJson.id)` ([`Util_SQS_Runtime.res:43`](../../reventless/reventless-aws/src/util/Util_SQS_Runtime.res#L43)), and for DCB slice commands `commandJson.id` **is the entity/partition id** ([`StateChangeSlice_Callback.res:108`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res#L108)). So same-entity async creates **are** serialized — the hole is closed for them.
+- **Sync slices (the default)** → `CommandTopicChannel_SQS_Sync`, a **standard (non-FIFO)** queue whose `publishJsonsAndWait` runs the handler **inline** in the AppSync resolver invocation (Single strategy) or fire-and-forgets to standard SQS (PerAggregate). Neither serializes per entity. Two concurrent first-writers to the same entity therefore both read `after=None` and both append — **the create-race is real on the default path.**
+
+Action taken: documented the async/FIFO guarantee here and in analysis Issue 2. Remaining work = implement B (or partition-tag `attribute_not_exists`) with the red→green create-race integration test below, guarded by the subset-event-type false-conflict case.
 
 **Files**: `DcbEventLogStorage_DynamoDb_Runtime.res` (`buildConditionalTransactItems`, `after=None` branch).
 
@@ -105,8 +114,8 @@ Already planned, run on evidence:
 
 ## Suggested execution order
 
-1. **Phase 1** (verification harness + Phase 0 regression cases) — unblocks trust in everything else.
-2. **Phase 2A** (confirm FIFO, document, test) — cheapest correctness close; escalate to 2B only if the hole is real.
-3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change.
+1. ~~**Phase 1** (verification harness + Phase 0 regression cases)~~ — **done 2026-06-20**.
+2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
+3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. ← next
 4. **Phase 4** (decision-model cache) — biggest read-cost win.
 5. **Phase 5** items opportunistically; **Phase 6** on profiling evidence.

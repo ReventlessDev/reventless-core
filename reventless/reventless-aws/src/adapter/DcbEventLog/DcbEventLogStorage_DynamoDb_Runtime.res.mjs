@@ -479,6 +479,34 @@ function buildFenceConditionCheck(tableName, tag, after) {
   }
 }
 
+let createGuardSortKey = "CREATE";
+
+function createGuardId(eventType, tag) {
+  return `create#` + eventType + `#` + tag.key + `:` + tag.value;
+}
+
+function buildCreateGuardUpdate(tableName, guardId, newPosition) {
+  return {
+    Key: Object.fromEntries([
+      [
+        "id",
+        guardId
+      ],
+      [
+        "position",
+        createGuardSortKey
+      ]
+    ]),
+    TableName: tableName,
+    UpdateExpression: "SET lastPosition = :new",
+    ConditionExpression: "attribute_not_exists(lastPosition)",
+    ExpressionAttributeValues: Object.fromEntries([[
+        ":new",
+        newPosition
+      ]])
+  };
+}
+
 function buildEventPuts(table, events, basePosition, partitionTag) {
   return events.map((event, idx) => {
     let position = generatePositionForBatch(basePosition, idx);
@@ -666,6 +694,25 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
       return;
     }
   });
+  let match$2 = cond.after;
+  let guardTags;
+  if (match$2 !== undefined) {
+    guardTags = [];
+  } else {
+    let seen = new Set();
+    let guards = [];
+    events.forEach(event => {
+      eventPartitionTags(event, partitionTag).forEach(pt => {
+        let guardId = createGuardId(event.eventType, pt);
+        if (!seen.has(guardId)) {
+          seen.add(guardId);
+          guards.push(guardId);
+          return;
+        }
+      });
+    });
+    guardTags = guards;
+  }
   let putItems = buildEventPuts(table, events, basePosition, partitionTag);
   let updateItems = conditionalUpdateTags.map(tag => ({
     Update: buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after)
@@ -676,7 +723,10 @@ function buildConditionalTransactItems(table, events, cond, basePosition, partit
   let bumpItems = bumpTags.map(tag => ({
     Update: buildUnconditionalFenceUpdate(table.name, tag, basePosition)
   }));
-  return putItems.concat(updateItems.concat(checkItems.concat(bumpItems)));
+  let guardItems = guardTags.map(guardId => ({
+    Update: buildCreateGuardUpdate(table.name, guardId, basePosition)
+  }));
+  return putItems.concat(updateItems.concat(checkItems.concat(bumpItems.concat(guardItems))));
 }
 
 async function appendConditional(table, events, cond, partitionTag) {
@@ -941,6 +991,9 @@ export {
   buildConditionalFenceUpdate,
   buildUnconditionalFenceUpdate,
   buildFenceConditionCheck,
+  createGuardSortKey,
+  createGuardId,
+  buildCreateGuardUpdate,
   transactWriteItemsLimit,
   buildEventPuts,
   runTransactWrite,
