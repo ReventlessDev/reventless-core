@@ -2,7 +2,7 @@
 
 > **⚠️ Superseded / historical (2026-06-20).** The `PluginHistory` view this document
 > designs was removed from OSS core (commit `0de749a7b`) and re-homed to the
-> commercial `@reventlesslab/platform-inspector` as a normal `StateViewSlice`. That
+> commercial platform-inspector extension as a normal `StateViewSlice`. That
 > dissolves the central problem here: a StateViewSlice gets composite keys, GSIs, and
 > the full `single`/`list`/`<single>Items`/`By<Index>` surface automatically, so the
 > "admin read-model parity gap" framing (§3) and the resulting option matrix (§4–§7)
