@@ -7,8 +7,8 @@ describe("MCP_Lambda.generateAdminConfig", () => {
       ~serverVersion="1.0.0",
       ~cloner=false,
     )
-    // Admin has Plugin_Activate and Plugin_Deactivate mutations
-    expect(config.tools)->toHaveLength(2)
+    // Admin has Plugin_Activate, Plugin_Deactivate, Plugin_Retire mutations
+    expect(config.tools)->toHaveLength(3)
   })
 
   testSync("produces additional clone tool when cloner=true", () => {
@@ -17,8 +17,8 @@ describe("MCP_Lambda.generateAdminConfig", () => {
       ~serverVersion="1.0.0",
       ~cloner=true,
     )
-    // Plugin_Activate, Plugin_Deactivate, Clone
-    expect(config.tools)->toHaveLength(3)
+    // Plugin_Activate, Plugin_Deactivate, Plugin_Retire, Clone
+    expect(config.tools)->toHaveLength(4)
   })
 
   testSync("produces resources from admin query entries", () => {
