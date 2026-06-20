@@ -1,7 +1,7 @@
 # Plan: Align DCB Fence-Scope with Read-Scope
 
 **Status**: In progress — core fix implemented + unit-tested (2026-06-20), composite handling resolved as **option B**. Remaining: live DynamoDB integration test + alpha fence-row wipe on deploy.
-**Analysis**: [dcb-fence-scope-vs-read-scope-mismatch.md](../analysis/dcb-fence-scope-vs-read-scope-mismatch.md)
+**Analysis**: [dcb-consistency-check-issues.md](../analysis/dcb-consistency-check-issues.md)
 **Sibling plans**: [dcb-eventlog-primary-tag-partitioning.md](done/dcb-eventlog-primary-tag-partitioning.md), [dcb-strong-consistency-single-tag-reads.md](done/dcb-strong-consistency-single-tag-reads.md), [dcb-hot-tag-fence-contention.md](Backlog/dcb-hot-tag-fence-contention.md)
 
 ## Implemented (2026-06-20)

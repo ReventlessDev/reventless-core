@@ -609,7 +609,7 @@ let buildUnconditionalFenceUpdate = (
 // *partition* by — the read is partition-scoped, so bumping such a tag's fence
 // here would falsely conflict every later writer that merely shares the tag
 // value (e.g. a second order of the same product). See analysis
-// `docs/analysis/dcb-fence-scope-vs-read-scope-mismatch.md`.
+// `docs/analysis/dcb-consistency-check-issues.md`.
 let buildFenceConditionCheck = (
   tableName: string,
   tag: Reventless.DcbTag.tag,

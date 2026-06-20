@@ -41,7 +41,7 @@ module Make = (
     // event's partition tag, so emitting productId tags does NOT bump
     // `fence#productId:<x>` — that fence is owned by productId-partitioned events
     // (e.g. CatalogProductSynced). This keeps read-scope and fence-scope aligned;
-    // see `docs/analysis/dcb-fence-scope-vs-read-scope-mismatch.md`.
+    // see `docs/analysis/dcb-consistency-check-issues.md`.
     let tags =
       Reventless.DcbTag.extractTagsExpanded(Spec.eventSchema, event)->Array.concat([
         {Reventless.DcbTag.key: "originatorSlice", value: Spec.name},

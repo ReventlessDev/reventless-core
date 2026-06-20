@@ -6,6 +6,8 @@
 
 **Current verdict (2026-05-10)**: **correct** for the `StateChangeSlice` path. Atomicity is enforced via `TransactWriteItems` carrying per-tag fence sentinels alongside the event puts (landed 2026-05-08, `e95ae856b`). Single-tag base-table reads now use strong consistency (landed 2026-05-09, `89fe39121`). **Performance is acceptable for typical workloads but fragile under hot-tag contention** — per-tag fence partitions are the new throughput ceiling, and `TransactWriteItems` doubles WCU per item. A small set of footguns and follow-up items remain (see [§Current state](#current-state-2026-05-10) and [§Implementation timeline](#implementation-timeline)).
 
+**Update (2026-06-20)**: a fence-scope review found and fixed a class of false-positive `ConditionalCheckFailed` conflicts, and surfaced several further open issues. Both the fix and the full issue inventory live in [dcb-consistency-check-issues.md](dcb-consistency-check-issues.md).
+
 ---
 
 ## Current state (2026-05-10)
