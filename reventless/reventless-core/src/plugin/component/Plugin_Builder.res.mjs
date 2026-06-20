@@ -304,14 +304,45 @@ function Make(Spec) {
           kind: kind,
           schema: {}
         }));
+        let routingSchemas = {};
+        automationSlices.forEach(As => {
+          let consumedEventTypes = Belt_SetString.toArray(Belt_SetString.fromArray(As.Automation.mappings.flatMap(M => DcbTag$Reventless.extractVariantNames(M.sourceEventSchema))));
+          routingSchemas[As.Spec.name] = {
+            consumedEventTypes: consumedEventTypes,
+            producedCommandTypes: DcbTag$Reventless.extractAllVariantNames(As.Spec.commandSchema),
+            targetName: As.Spec.targetName
+          };
+        });
+        outboundTranslationSlices.forEach(Ots => {
+          routingSchemas[Ots.Spec.name] = {
+            commandTypes: DcbTag$Reventless.extractAllVariantNames(Ots.Spec.inboundCommandSchema),
+            consumedEventTypes: DcbTag$Reventless.extractVariantNames(Ots.Spec.consumedEventSchema),
+            targetName: Ots.Spec.targetName
+          };
+        });
+        inboundTranslationSlices.forEach(Its => {
+          routingSchemas[Its.Spec.name] = {
+            commandTypes: DcbTag$Reventless.extractAllVariantNames(Its.Spec.commandSchema),
+            targetName: Its.Spec.targetName
+          };
+        });
+        let routingComponents = (d, kind) => Object.keys(d).map(name => {
+          let schema = Stdlib_Option.getOr(routingSchemas[name], {});
+          Plugin_Helpers$ReventlessCore.componentSchemaRegistry[name] = schema;
+          return {
+            name: name,
+            kind: kind,
+            schema: schema
+          };
+        });
         let components = [
           aggregateComponents,
           readModelComponents,
           mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
           mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
-          mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
-          mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
-          mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice")
+          routingComponents(dcbResult.automationSlicesOutputs, "AutomationSlice"),
+          routingComponents(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
+          routingComponents(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice")
         ].flat();
         let hook = Plugin_Helpers$ReventlessCore.onPluginBuiltHook.contents;
         if (hook !== undefined) {

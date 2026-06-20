@@ -72,6 +72,9 @@ type pluginDeployedSchema = {
   queryFields?: array<string>,
   consumedEventTypes?: array<string>,
   producedCommandTypes?: array<string>,
+  /** For routing slices (automation / inbound + outbound translation): the name
+   of the writable component this slice routes its commands to. */
+  targetName?: string,
   sharedBy?: array<string>,
   extensionPointName?: string,
   providerPlugin?: string,

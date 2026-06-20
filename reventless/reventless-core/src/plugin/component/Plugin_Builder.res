@@ -404,14 +404,78 @@ module Make = (
           ({Plugin_Helpers.name, kind, schema}: Plugin_Helpers.pluginBuiltComponent)
         })
 
+      // Routing slices (automation / inbound + outbound translation) expose their
+      // command/event wiring and routing target on the hook surface, at parity
+      // with aggregates and read models — mirroring the metadata Plugin_Structure
+      // records on the static plugin def. Type strings stay unqualified to match
+      // the aggregate/read-model entries already on this same hook surface
+      // (Plugin_Structure additionally prefixes them with the plugin name).
+      let extractEventTypes = schema => Reventless.DcbTag.extractVariantNames(schema)
+      let routingSchemas: Dict.t<Plugin_Helpers.pluginDeployedSchema> = Dict.make()
+      automationSlices->Array.forEach((module(As: ReventlessInfra.AutomationSlice.T)) => {
+        // Union of source-event variants across every per-source mapping.
+        let consumedEventTypes =
+          As.Automation.mappings
+          ->Array.flatMap((module(M: As.Automation.Mapping)) =>
+            extractEventTypes(M.sourceEventSchema->S.castToUnknown)
+          )
+          ->Belt.Set.String.fromArray
+          ->Belt.Set.String.toArray
+        routingSchemas->Dict.set(
+          As.Spec.name,
+          {
+            consumedEventTypes,
+            producedCommandTypes: extractTypes(As.Spec.commandSchema),
+            targetName: As.Spec.targetName,
+          },
+        )
+      })
+      outboundTranslationSlices->Array.forEach((
+        module(Ots: ReventlessInfra.OutboundTranslationSlice.T),
+      ) =>
+        routingSchemas->Dict.set(
+          Ots.Spec.name,
+          {
+            consumedEventTypes: extractEventTypes(Ots.Spec.consumedEventSchema),
+            commandTypes: extractTypes(Ots.Spec.inboundCommandSchema),
+            // Outbound slices may have no target (option); pass it through.
+            targetName: ?Ots.Spec.targetName,
+          },
+        )
+      )
+      inboundTranslationSlices->Array.forEach((
+        module(Its: ReventlessInfra.InboundTranslationSlice.T),
+      ) =>
+        routingSchemas->Dict.set(
+          Its.Spec.name,
+          {
+            commandTypes: extractTypes(Its.Spec.commandSchema),
+            targetName: Its.Spec.targetName,
+          },
+        )
+      )
+
+      // Component set still derives from the DCB outputs dict (unchanged
+      // membership); enrich + register the schema where a matching spec module
+      // was found above, so the deployed hook surfaces it too (the built-hook
+      // components carry it inline).
+      let routingComponents = (d: dict<_>, kind: string) =>
+        d
+        ->Dict.keysToArray
+        ->Array.map(name => {
+          let schema = routingSchemas->Dict.get(name)->Option.getOr({})
+          Plugin_Helpers.componentSchemaRegistry->Dict.set(name, schema)
+          ({Plugin_Helpers.name, kind, schema}: Plugin_Helpers.pluginBuiltComponent)
+        })
+
       let components = Array.flat([
         aggregateComponents,
         readModelComponents,
         mapNames(dcbResult.stateChangeSlicesOutputs, "StateChangeSlice"),
         mapNames(dcbResult.stateViewSlicesOutputs, "StateViewSlice"),
-        mapNames(dcbResult.automationSlicesOutputs, "AutomationSlice"),
-        mapNames(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
-        mapNames(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice"),
+        routingComponents(dcbResult.automationSlicesOutputs, "AutomationSlice"),
+        routingComponents(dcbResult.outboundTranslationSlicesOutputs, "OutboundTranslationSlice"),
+        routingComponents(dcbResult.inboundTranslationSlicesOutputs, "InboundTranslationSlice"),
       ])
 
       switch Plugin_Helpers.onPluginBuiltHook.contents {
