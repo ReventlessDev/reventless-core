@@ -391,6 +391,19 @@ let singleTagCommandSchema = S.schema(s => ({
   name: s.m(S.string)
 }));
 
+let orderEventLogSchema = S.union([
+  S.schema(s => ({
+    TAG: "OrderPlaced",
+    orderId: s.m(DcbTag$Reventless.string),
+    customerId: s.m(DcbTag$Reventless.string),
+    productId: s.m(DcbTag$Reventless.string)
+  })),
+  S.schema(s => ({
+    TAG: "CatalogProductSynced",
+    productId: s.m(DcbTag$Reventless.string)
+  }))
+]);
+
 let singleProductEventSchema = S.schema(s => ({
   TAG: "CatalogProductSynced",
   productId: s.m(DcbTag$Reventless.string)
@@ -483,6 +496,7 @@ export {
   multiFieldEventSchema,
   crossEntityCommandSchema,
   singleTagCommandSchema,
+  orderEventLogSchema,
   singleProductEventSchema,
   multiProductCommandSchema,
   customKeyEventSchema,

@@ -155,6 +155,17 @@ module Make = (
 
         let partitionTag = Reventless.DcbTag.derivePartitionTag(producedNamed)
 
+        // Map each produced event type to its full produced tag-key set. Threaded
+        // into each StateChangeSlice so the decision-model query drops vacuous
+        // (type, tag) clause combinations (a type that can't carry the clause's
+        // tag) — pure dead-clause removal, results unchanged. Built from the
+        // producer schemas (not consumers' `consumedEventSchema`, which may
+        // under-declare tags a slice legitimately reads by).
+        let tagKeysByEventType =
+          producedSchemas
+          ->Array.map(schema => Reventless.DcbTag.extractTagKeysByEventType(schema))
+          ->Reventless.DcbTag.mergeTagKeysByEventType
+
         module DcbEventLog = DcbEventLog_Builder.Make(
           DcbEventLogStorage,
           DcbEventTopicPublisher,
@@ -211,7 +222,7 @@ module Make = (
         let stateChangeSlicesOutputs =
           syncSlices
           ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
-            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~opts)
+            let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons, ~tagKeysByEventType, ~opts)
             (StateChangeSlice.Spec.name, ch->Component.outputs)
           })
           ->Dict.fromArray
@@ -225,7 +236,7 @@ module Make = (
               asyncDcbCommandTopic->Component.operations->Pulumi.Output.apply(ops => ops.publishJsons)
             asyncSlices
             ->Array.map((module(StateChangeSlice: StateChangeSlice.T)) => {
-              let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons=asyncPublishJsons, ~opts)
+              let ch = StateChangeSlice.make(~dcbEventLog, ~publishJsons=asyncPublishJsons, ~tagKeysByEventType, ~opts)
               (StateChangeSlice.Spec.name, ch->Component.outputs)
             })
             ->Dict.fromArray

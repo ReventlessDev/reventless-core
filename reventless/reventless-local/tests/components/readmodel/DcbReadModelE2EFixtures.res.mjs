@@ -231,7 +231,7 @@ async function publishJsons(cmdJsons) {
 
 let publishJsonsOutput = Pulumi.output(publishJsons);
 
-let _addProductSlice = AddProductMaker.make(dcbEventLog, publishJsonsOutput, undefined);
+let _addProductSlice = AddProductMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined);
 
 let dcbTopicOutputs = Component$ReventlessInfra.outputs(dcbEventLog).eventTopic;
 

@@ -541,7 +541,7 @@ globalThis.describe("DcbTag:", () => {
         TAG: "CreateItem",
         itemId: "item-1",
         name: "Test"
-      })).toEqual([{
+      }, undefined)).toEqual([{
           eventTypes: eventTypes,
           tags: [{
               key: "itemId",
@@ -558,7 +558,7 @@ globalThis.describe("DcbTag:", () => {
           "prod-1",
           "prod-2"
         ]
-      })).toEqual([
+      }, undefined)).toEqual([
         {
           eventTypes: eventTypes,
           tags: [{
@@ -588,7 +588,7 @@ globalThis.describe("DcbTag:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productId: ["prod-1"]
-      })).toEqual([
+      }, undefined)).toEqual([
         {
           eventTypes: eventTypes,
           tags: [{
@@ -611,13 +611,107 @@ globalThis.describe("DcbTag:", () => {
         orderId: "ord-1",
         customerId: "cust-1",
         productId: []
-      })).toEqual([{
+      }, undefined)).toEqual([{
           eventTypes: eventTypes,
           tags: [{
               key: "orderId",
               value: "ord-1"
             }]
         }]);
+    });
+    let orderTagKeys = DcbTag$Reventless.extractTagKeysByEventType(DcbFixtures$ReventlessCore.orderEventLogSchema);
+    globalThis.test("extractTagKeysByEventType maps each event type to its produced tag keys", () => {
+      globalThis.expect(Object.entries(orderTagKeys).toSorted((param, param$1) => Primitive_string.compare(param[0], param$1[0]))).toEqual([
+        [
+          "CatalogProductSynced",
+          ["productId"]
+        ],
+        [
+          "OrderPlaced",
+          [
+            "orderId",
+            "customerId",
+            "productId"
+          ]
+        ]
+      ]);
+    });
+    globalThis.test("narrowing drops the vacuous (CatalogProductSynced, orderId) combination but keeps OrderPlaced under productId", () => {
+      globalThis.expect(DcbTag$Reventless.buildQueryFromCommand([
+        "OrderPlaced",
+        "CatalogProductSynced"
+      ], DcbFixtures$ReventlessCore.crossEntityCommandSchema, {
+        TAG: "PlaceOrder",
+        orderId: "ord-1",
+        customerId: "cust-1",
+        productId: ["prod-1"]
+      }, orderTagKeys)).toEqual([
+        {
+          eventTypes: ["OrderPlaced"],
+          tags: [{
+              key: "orderId",
+              value: "ord-1"
+            }]
+        },
+        {
+          eventTypes: [
+            "OrderPlaced",
+            "CatalogProductSynced"
+          ],
+          tags: [{
+              key: "productId",
+              value: "prod-1"
+            }]
+        }
+      ]);
+    });
+    globalThis.test("narrowing the single AND clause keeps only types carrying every clause tag", () => {
+      globalThis.expect(DcbTag$Reventless.buildQueryFromCommand([
+        "OrderPlaced",
+        "CatalogProductSynced"
+      ], DcbFixtures$ReventlessCore.singleTagCommandSchema, {
+        TAG: "CreateItem",
+        itemId: "item-1",
+        name: "Test"
+      }, orderTagKeys)).toEqual([{
+          eventTypes: [],
+          tags: [{
+              key: "itemId",
+              value: "item-1"
+            }]
+        }]);
+    });
+    globalThis.test("an empty map leaves all event types in place (no narrowing)", () => {
+      globalThis.expect(DcbTag$Reventless.buildQueryFromCommand([
+        "OrderPlaced",
+        "CatalogProductSynced"
+      ], DcbFixtures$ReventlessCore.crossEntityCommandSchema, {
+        TAG: "PlaceOrder",
+        orderId: "ord-1",
+        customerId: "cust-1",
+        productId: ["prod-1"]
+      }, {})).toEqual([
+        {
+          eventTypes: [
+            "OrderPlaced",
+            "CatalogProductSynced"
+          ],
+          tags: [{
+              key: "orderId",
+              value: "ord-1"
+            }]
+        },
+        {
+          eventTypes: [
+            "OrderPlaced",
+            "CatalogProductSynced"
+          ],
+          tags: [{
+              key: "productId",
+              value: "prod-1"
+            }]
+        }
+      ]);
     });
     globalThis.test("hasTaggedArrayFields detects tagged arrays", () => {
       globalThis.expect(DcbTag$Reventless.hasTaggedArrayFields(DcbFixtures$ReventlessCore.crossEntityCommandSchema)).toBe(true);
@@ -673,7 +767,7 @@ globalThis.describe("DcbTag:", () => {
           "prod-1",
           "prod-2"
         ]
-      })).toEqual([
+      }, undefined)).toEqual([
         {
           eventTypes: [
             "OrderPlaced",

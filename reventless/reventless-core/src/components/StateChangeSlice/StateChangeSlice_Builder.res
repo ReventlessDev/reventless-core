@@ -10,7 +10,7 @@ module Make = (
   type component = StateChangeSlice.component
   module Callback = StateChangeSlice_Callback.Make(Spec, Behavior)
 
-  let makeJsonHandler = (dcbEventLogOps: DcbEventLog.operations) => {
+  let makeJsonHandler = (~tagKeysByEventType, dcbEventLogOps: DcbEventLog.operations) => {
     let handler: CommandTopic.jsonCommandsHandler = stream => {
       let decodedStream =
         stream
@@ -35,7 +35,7 @@ module Make = (
           | None => Stream.empty
           }
         )
-      Callback.handleCommands(dcbEventLogOps, decodedStream)
+      Callback.handleCommands(~tagKeysByEventType, dcbEventLogOps, decodedStream)
     }
     handler
   }
@@ -43,6 +43,7 @@ module Make = (
   let construct = (
     ~dcbEventLog: DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~tagKeysByEventType,
     self,
     _name,
   ) => {
@@ -53,7 +54,7 @@ module Make = (
       dcbEventLog
       ->Component.operations
       ->Pulumi.Output.apply(dcbEventLogOps => {
-        let jsonHandler = makeJsonHandler(dcbEventLogOps)
+        let jsonHandler = makeJsonHandler(~tagKeysByEventType, dcbEventLogOps)
         CommandTopic.registerHandler(
           ~schema=commandSchema,
           ~handler=jsonHandler,
@@ -73,11 +74,11 @@ module Make = (
     self->Component.setOutputs(outputs)
   }
 
-  let make = (~dcbEventLog, ~publishJsons, ~opts=?): StateChangeSlice.component =>
+  let make = (~dcbEventLog, ~publishJsons, ~tagKeysByEventType=Dict.make(), ~opts=?): StateChangeSlice.component =>
     Component.make(
       ~componentType=StateChangeSlice.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~dcbEventLog, ~publishJsons, ...),
+      ~construct=construct(~dcbEventLog, ~publishJsons, ~tagKeysByEventType, ...),
       ~opts,
     )
 }

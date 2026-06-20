@@ -25,6 +25,9 @@ module type T = {
   let make: (
     ~dcbEventLog: DcbEventLog.component,
     ~publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
+    /** Produced event-log type→tag-key map, used to drop vacuous (type, tag)
+        clause combinations when building the decision-model query. */
+    ~tagKeysByEventType: Dict.t<array<string>>=?,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

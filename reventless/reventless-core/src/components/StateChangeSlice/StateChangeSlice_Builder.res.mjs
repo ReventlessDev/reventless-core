@@ -18,7 +18,7 @@ let log = Logger$ReventlessCore.fromEnv();
 function Make(Spec) {
   return Behavior => {
     let Callback = StateChangeSlice_Callback$ReventlessCore.Make(Spec)(Behavior);
-    let makeJsonHandler = dcbEventLogOps => (stream => {
+    let makeJsonHandler = (tagKeysByEventType, dcbEventLogOps) => (stream => {
       let decodedStream = Stream.flatMap(Stream.mapEffect(stream, param => {
         let reference = param.reference;
         let json = param.command;
@@ -44,23 +44,26 @@ function Make(Spec) {
           return Stream.empty;
         }
       });
-      return Callback.handleCommands(dcbEventLogOps, decodedStream);
+      return Callback.handleCommands(tagKeysByEventType, dcbEventLogOps, decodedStream);
     });
-    let make = (dcbEventLog, publishJsons, opts) => Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateChangeSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
-      let commandSchema = Spec.commandSchema;
-      let commandTypeNames = CommandTopic$ReventlessCore.extractTypeNamesFromSchema(commandSchema);
-      Component$ReventlessCore.operations(dcbEventLog).apply(dcbEventLogOps => {
-        let jsonHandler = makeJsonHandler(dcbEventLogOps);
-        CommandTopic$ReventlessCore.registerHandler(commandSchema, jsonHandler, commandTypeNames);
-      });
-      Component$ReventlessCore.setOperations(extra, publishJsons.apply(publishJsons => ({
-        publishJsons: publishJsons
-      })));
-      let outputs = {
-        resources: Component$ReventlessCore.outputs(dcbEventLog).resources
-      };
-      return Component$ReventlessCore.setOutputs(extra, outputs);
-    }, opts);
+    let make = (dcbEventLog, publishJsons, tagKeysByEventTypeOpt, opts) => {
+      let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
+      return Component$ReventlessCore.make(ComponentType$ReventlessCore.toString(StateChangeSlice$ReventlessCore.componentType), Spec.name, (extra, extra$1) => {
+        let commandSchema = Spec.commandSchema;
+        let commandTypeNames = CommandTopic$ReventlessCore.extractTypeNamesFromSchema(commandSchema);
+        Component$ReventlessCore.operations(dcbEventLog).apply(dcbEventLogOps => {
+          let jsonHandler = makeJsonHandler(tagKeysByEventType, dcbEventLogOps);
+          CommandTopic$ReventlessCore.registerHandler(commandSchema, jsonHandler, commandTypeNames);
+        });
+        Component$ReventlessCore.setOperations(extra, publishJsons.apply(publishJsons => ({
+          publishJsons: publishJsons
+        })));
+        let outputs = {
+          resources: Component$ReventlessCore.outputs(dcbEventLog).resources
+        };
+        return Component$ReventlessCore.setOutputs(extra, outputs);
+      }, opts);
+    };
     return {
       Spec: Spec,
       Behavior: Behavior,

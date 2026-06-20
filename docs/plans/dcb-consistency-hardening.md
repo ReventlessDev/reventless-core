@@ -15,7 +15,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 3 | Drop unused per-tag GSIs | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
 | 4 | Decision-model cache | Perf/cost lever #2 | Cost | **core done** | [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md) |
 | 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **yes** | — (detailed below) |
-| 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **yes** | — (Phase 5 below) |
+| 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **done** | — (Phase 5 below) |
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
 | 6 | Hot-tag sharding / selective bump | Issue 10 | Throughput | no | [dcb-hot-tag-fence-contention](Backlog/dcb-hot-tag-fence-contention.md) |
 | 6 | Monotonic positions | Issue 7 | Cleanup | no | [dcb-monotonic-position-generation](Backlog/dcb-monotonic-position-generation.md) |
@@ -120,8 +120,8 @@ Small, mostly independent items; land opportunistically.
 - **Issue 6 — per-tag `after`.** Note as a deeper design item; each fence checked against the head observed for *its* partition rather than the global head. Defer unless a multi-clause slice shows false conflicts.
 - **Issue 9 — `appendUnconditional` bumps all tags.** Align with the partition-scope invariant if/when a composite-fence design (option A) lands; today it is seeding-only and benign.
 - **Issue 12 — tagless scan + fence items.** Confirm whether any tagless, type-less read can occur; if so, filter `fence#…` items in the scan path.
-- **Issue 14 — drop vacuous query-clause type combinations.** `buildQueryFromCommand` attaches the slice's full consumed-type list to every clause, so clauses pair a tag with types that can never carry it (e.g. `CatalogProductSynced` under an `orderId` clause). Include a consumed type in a tag clause only if that type's **full produced tag set** (from the shared event-log schema) carries the tag. Pure dead-clause removal — cannot change results (vacuous clauses match nothing); needs the event schema threaded into `buildQueryFromCommand`. **Do not** also drop a type that carries the tag as a *secondary* — that is a legitimate cross-partition read (Phase 7 / Issue 13), not narrowing. **Net-new.**
-  - **Docs follow-up (required on resolution):** update the published [internals/dcb-consistency-checks](../../packages/doc/docs-framework/internals/dcb-consistency-checks.md) page — its Stage 1 `PlaceOrder` query example currently shows the full consumed-type list on every clause (faithful to today's behaviour). Once the fix lands, the `orderId` clause must drop `CatalogProductSynced` (the `productId` clauses keep `OrderPlaced` — secondary tag, still queried). Adjust the example and add a one-line note that clauses list only types whose produced tag set carries the clause's tag.
+- **Issue 14 — drop vacuous query-clause type combinations. — DONE (2026-06-20).** `buildQueryFromCommand` now takes an optional `~tagKeysByEventType` map (event type → produced tag-key set), threaded from `Dcb_Builder` (which knows every producer's `eventSchema`) through `StateChangeSlice.make` → `_Callback`. Each clause keeps a consumed type only if that type's **full produced tag set** carries the clause's tag(s) (`narrowEventTypesForTags`); the map is built via `DcbTag.extractTagKeysByEventType` + `mergeTagKeysByEventType` from the *producer* schemas, never a consumer's `consumedEventSchema`. Pure dead-clause removal — vacuous clauses match nothing, so results unchanged; a type carrying the tag as a *secondary* (e.g. `OrderPlaced` under `productId`) is **retained** (legitimate cross-partition read = Phase 7 / Issue 13). Tests: 4 in `DcbTagTest.res` (core suite green at 423; local + example builds green). Was net-new.
+  - **Docs follow-up — DONE.** Updated the published [internals/dcb-consistency-checks](../../packages/doc/docs-framework/internals/dcb-consistency-checks.md) Stage 1 `PlaceOrder` example: the `orderId` clause now lists only `OrderPlaced`; the `productId` clauses keep both types; added the note that clauses list only types whose produced tag set carries the clause's tag.
 
 ## Phase 6 — Profile-gated throughput & cleanup
 
@@ -150,5 +150,5 @@ Already planned, run on evidence:
 2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
 3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. **On hold**: its form (full-remove vs `KEYS_ONLY`/keep) is gated by the Phase 7 decision below.
 4. ~~**Phase 4** (decision-model cache) — biggest read-cost win.~~ — **core done 2026-06-20** (Steps 1–3 + docs); per-slice capacity knob + metrics deferred.
-5. **Phase 5** items opportunistically — including the safe Issue 14 vacuous-clause cleanup; **Phase 6** on profiling evidence.
+5. **Phase 5** items opportunistically — the safe Issue 14 vacuous-clause cleanup is **done (2026-06-20)**; remaining items (opt-in strong reads, Issues 4/5/6/9/12) land opportunistically. **Phase 6** on profiling evidence.
 6. **Phase 7** (cross-partition reads) — only when a real slice needs it; making that call first unblocks Phase 3.

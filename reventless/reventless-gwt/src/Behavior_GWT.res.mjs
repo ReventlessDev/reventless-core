@@ -64,7 +64,7 @@ function Make(Spec) {
     let whenCmd = (history, cmd) => {
       errors.contents = [];
       appendConditionFailure.contents = undefined;
-      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd);
+      let query = DcbTag$Reventless.buildQueryFromCommand(consumedEventTypes, Spec.commandSchema, cmd, undefined);
       let condition = {
         query: query
       };

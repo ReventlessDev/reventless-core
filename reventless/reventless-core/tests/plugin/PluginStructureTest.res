@@ -27,7 +27,7 @@ module PsPlaceOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   }
   let isAsync = false
   type component = scsComponent
-  let make = (~dcbEventLog as _, ~publishJsons as _, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   module Spec = PsShipOrder
@@ -40,7 +40,7 @@ module PsShipOrderSlice: ReventlessInfra.StateChangeSlice.T = {
   }
   let isAsync = false
   type component = scsComponent
-  let make = (~dcbEventLog as _, ~publishJsons as _, ~opts as _=?): component => Obj.magic(0)
+  let make = (~dcbEventLog as _, ~publishJsons as _, ~tagKeysByEventType as _=?, ~opts as _=?): component => Obj.magic(0)
 }
 module PsOrdersViewSlice: ReventlessInfra.StateViewSlice.T = {
   module Spec = PsOrdersView

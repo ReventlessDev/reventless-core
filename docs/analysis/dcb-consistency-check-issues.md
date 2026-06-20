@@ -253,6 +253,8 @@ The write is bounded and modest; the **read dominates and scales with course siz
 
 ## Issue 14 — Query clauses carry the full consumed-type list (tags not paired to their event types)
 
+**Status: FIXED (2026-06-20).** `buildQueryFromCommand` now takes an optional `~tagKeysByEventType` map (event type → its *produced* tag-key set), threaded from `Dcb_Builder` — which knows every producer's `eventSchema` — down through `StateChangeSlice.make` → `_Callback`. Each clause drops event types whose produced tag set cannot carry the clause's tag(s) (`narrowEventTypesForTags`); the map is built from the producer schemas (`DcbTag.extractTagKeysByEventType` + `mergeTagKeysByEventType`), never from a consumer's `consumedEventSchema`. Pure dead-clause removal — vacuous clauses match nothing, so results are unchanged; `OrderPlaced` is **retained** under a `productId` clause (legitimate secondary-tag carrier = Issue 13, not narrowed away). Tests: 4 in `DcbTagTest.res` (including the `(CatalogProductSynced, orderId)` drop + `OrderPlaced`-under-`productId` retention); full core suite green (423). Internals doc Stage 1 example updated. The reference material below is retained for context.
+
 ### Symptom
 
 `DcbTag.buildQueryFromCommand` attaches the slice's **entire** consumed-event-type list to **every** clause it builds — it never pairs a tag with the specific event types that actually carry it ([`DcbTag.res` `buildQueryFromCommand`](../../reventless/reventless-spec/src/components/DcbTag.res)). So `PlaceOrder` (consumed `OrderPlaced({orderId})` | `CatalogProductSynced({productId})`) produces:

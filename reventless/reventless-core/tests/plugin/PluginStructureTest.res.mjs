@@ -18,7 +18,7 @@ let Behavior = {
   moduleUrl: PsPlaceOrder$ReventlessCore.moduleUrl
 };
 
-function make(param, param$1, param$2) {
+function make(param, param$1, param$2, param$3) {
   return 0;
 }
 
@@ -47,7 +47,7 @@ let Behavior$1 = {
   moduleUrl: PsShipOrder$ReventlessCore.moduleUrl
 };
 
-function make$1(param, param$1, param$2) {
+function make$1(param, param$1, param$2, param$3) {
   return 0;
 }
 

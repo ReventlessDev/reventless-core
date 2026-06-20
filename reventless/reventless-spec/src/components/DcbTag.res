@@ -618,12 +618,105 @@ let hasTaggedArrayFields = (schema: S.t<'a>): bool =>
   }
 
 /**
+Collects the produced tag keys of one event-schema variant: the resolved tag key
+of every scalar tagged field plus the resolved (override-aware) tag key of every
+tagged-array field.
+*/
+let tagKeysOfProperties = (properties: dict<S.t<unknown>>): array<string> =>
+  properties
+  ->Dict.toArray
+  ->Array.filterMap(((fieldName, fieldSchema)) =>
+    if isTagged(fieldSchema) {
+      Some(resolveTagKey(fieldName, fieldSchema))
+    } else if isTaggedArray(fieldSchema) {
+      Some(resolveArrayTagKey(fieldName, fieldSchema))
+    } else {
+      None
+    }
+  )
+
+/**
+Maps each event-type (variant constructor name) to the set of DCB tag keys that
+type can carry, read from a *produced* event-log schema.
+
+This is the lookup the query builder uses to drop vacuous (type, tag) clause
+combinations: an event type is kept in a tag clause only if its produced tag set
+contains that tag. Built from the producer schema (not a consumer's
+`consumedEventSchema`, which may legitimately under-declare tags it reads by).
+
+For `CatalogEventLog.event` (`ProductAdded({productId})` | `CategoryAdded({categoryId})`)
+returns `{"ProductAdded": ["productId"], "CategoryAdded": ["categoryId"]}`.
+*/
+let extractTagKeysByEventType = (schema: S.t<'a>): dict<array<string>> => {
+  let result = Dict.make()
+  let addVariant = (variantSchema: S.t<unknown>) =>
+    switch variantSchema {
+    | Object({items, properties}) =>
+      items
+      ->Array.find(item => item.location == "TAG")
+      ->Option.flatMap(item =>
+        switch item.schema {
+        | String({const}) => Some(const)
+        | _ => None
+        }
+      )
+      ->Option.forEach(eventType => result->Dict.set(eventType, tagKeysOfProperties(properties)))
+    | _ => ()
+    }
+  switch schema->toUnknownSchema {
+  | Union({anyOf}) => anyOf->Array.forEach(addVariant)
+  | Object(_) as obj => addVariant(obj)
+  | _ => ()
+  }
+  result
+}
+
+/**
+Merges several per-event-type tag-key maps into one (later entries win on key
+collision, which is irrelevant here since a given event type is produced once).
+*/
+let mergeTagKeysByEventType = (maps: array<dict<array<string>>>): dict<array<string>> => {
+  let merged = Dict.make()
+  maps->Array.forEach(m =>
+    m->Dict.toArray->Array.forEach(((eventType, keys)) => merged->Dict.set(eventType, keys))
+  )
+  merged
+}
+
+/**
+Narrows a clause's event-type list to those types whose produced tag set can
+carry *all* of the clause's tags. A type absent from `tagKeysByEventType` is
+kept (we can't prove it vacuous). Removing a vacuous (type, tag) pairing cannot
+change query results — such a type can never satisfy the clause's tags anyway.
+*/
+let narrowEventTypesForTags = (
+  eventTypes: array<string>,
+  tags: array<tag>,
+  tagKeysByEventType: dict<array<string>>,
+): array<string> =>
+  eventTypes->Array.filter(eventType =>
+    switch tagKeysByEventType->Dict.get(eventType) {
+    | None => true
+    | Some(producedKeys) =>
+      tags->Array.every(tag => producedKeys->Array.includes(tag.key))
+    }
+  )
+
+/**
 Builds a DCB query from a command value and its schema.
 
 Automatically detects the query mode from the schema:
 - If the schema has tagged array fields → cross-entity mode: each tag becomes
   its own OR clause (per-element expansion for arrays).
 - Otherwise → single-entity mode: all tags go into one AND clause.
+
+When `~tagKeysByEventType` is supplied (the produced event-log schema's
+type→tag-key map), each clause drops event types whose produced tag set cannot
+carry the clause's tag(s) — e.g. a `CatalogProductSynced` type is removed from
+an `orderId` clause. This is pure dead-clause removal: a vacuous (type, tag)
+pairing matches nothing, so results are unchanged. A type that carries the tag
+as a *secondary* tag is retained (a legitimate cross-partition read), and a type
+absent from the map is kept (cannot be proven vacuous).
 
 @example
 ```rescript
@@ -646,13 +739,22 @@ let query = DcbTag.buildQueryFromCommand(
 //  {eventTypes: [...], tags: [{key: "productId", value: "p2"}]}]
 ```
 */
-let buildQueryFromCommand = (~eventTypes, ~schema: S.t<'a>, ~value: 'a): query => {
+let buildQueryFromCommand = (
+  ~eventTypes,
+  ~schema: S.t<'a>,
+  ~value: 'a,
+  ~tagKeysByEventType: dict<array<string>>=Dict.make(),
+): query => {
+  let typesForTags = clauseTags => narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType)
   if hasTaggedArrayFields(schema) {
     let tags = extractTagsExpanded(schema, value)
-    tags->Array.map(tag => {eventTypes, tags: [{key: tag.key, value: tag.value}]})
+    tags->Array.map(tag => {
+      let clauseTags = [{key: tag.key, value: tag.value}]
+      {eventTypes: typesForTags(clauseTags), tags: clauseTags}
+    })
   } else {
     let tags = extractTags(schema, value)
-    [{eventTypes, tags}]
+    [{eventTypes: typesForTags(tags), tags}]
   }
 }
 

@@ -2,6 +2,7 @@ module type T = {
   module Spec: Reventless.StateChangeSlice.Spec
   module Behavior: Reventless.StateChangeSlice.Behavior with module Spec := Spec
   let handleCommands: (
+    ~tagKeysByEventType: Dict.t<array<string>>=?,
     DcbEventLog.operations,
     Stream.t<
       CommandTopic.topicItem<Message.command'<Reventless.Id.String.t, Spec.command>>,
@@ -132,6 +133,7 @@ module Make = (
   //   4. Encodes produced events to raw and appends with a condition
   //   5. On conflict, retries from step 1 (up to maxRetries)
   let handleSingleCommand = (
+    ~tagKeysByEventType,
     dcbEventLog: DcbEventLog.operations,
     command': Message.command'<Reventless.Id.String.t, Spec.command>,
   ) => {
@@ -153,6 +155,7 @@ module Make = (
       ~eventTypes=queryEventTypes,
       ~schema=Spec.commandSchema,
       ~value=command'.command,
+      ~tagKeysByEventType,
     )
 
     // Log the DCB query parameters — the OR clauses (event types + tags) the
@@ -353,10 +356,10 @@ module Make = (
 
   // CommandTopic handler — processes each command sequentially through handleSingleCommand,
   // returning Ok(reference) or Error(reference) per command.
-  let handleCommands = (dcbEventLog, stream) =>
+  let handleCommands = (~tagKeysByEventType=Dict.make(), dcbEventLog, stream) =>
     stream
     ->Stream.mapEffect(({ReventlessInfra.CommandTopic.reference: reference, command}) =>
-      handleSingleCommand(dcbEventLog, command)->Effect.map(result =>
+      handleSingleCommand(~tagKeysByEventType, dcbEventLog, command)->Effect.map(result =>
         switch result {
         | Ok(_) => Ok(reference)
         | Error(_) => Error(reference)

@@ -58,10 +58,10 @@ function Make(Spec) {
     };
     let projectionCache = Lru$ReventlessCore.make(100);
     let resetCache = () => Lru$ReventlessCore.clear(projectionCache);
-    let handleSingleCommand = (dcbEventLog, command$p) => {
+    let handleSingleCommand = (tagKeysByEventType, dcbEventLog, command$p) => {
       let cmdJson = Message$ReventlessCore.commandJsonOfCommand$p(Id$Reventless.$$String.toString, Spec.commandSchema, command$p);
       Effect.runSync(EffectLogger$ReventlessCore.logInfo(comp, cmdJson.commandJson, `handling command: ` + LogFormat$ReventlessCore.cmdDetailNoId(cmdJson)));
-      let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command);
+      let query = DcbTag$Reventless.buildQueryFromCommand(queryEventTypes, Spec.commandSchema, command$p.command, tagKeysByEventType);
       let queryDetail = query.map(qi => {
         let ts = qi.eventTypes;
         let types = ts !== undefined ? ts.map(LogFormat$ReventlessCore.bold).join("|") : "*";
@@ -244,22 +244,25 @@ function Make(Spec) {
       };
       return attempt(3);
     };
-    let handleCommands = (dcbEventLog, stream) => Stream.runCollect(Stream$1.mapEffect(stream, param => {
-      let reference = param.reference;
-      return Effect.map(handleSingleCommand(dcbEventLog, param.command), result => {
-        if (result.TAG === "Ok") {
-          return {
-            TAG: "Ok",
-            _0: reference
-          };
-        } else {
-          return {
-            TAG: "Error",
-            _0: reference
-          };
-        }
-      });
-    }));
+    let handleCommands = (tagKeysByEventTypeOpt, dcbEventLog, stream) => {
+      let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
+      return Stream.runCollect(Stream$1.mapEffect(stream, param => {
+        let reference = param.reference;
+        return Effect.map(handleSingleCommand(tagKeysByEventType, dcbEventLog, param.command), result => {
+          if (result.TAG === "Ok") {
+            return {
+              TAG: "Ok",
+              _0: reference
+            };
+          } else {
+            return {
+              TAG: "Error",
+              _0: reference
+            };
+          }
+        });
+      }));
+    };
     return {
       Spec: Spec,
       handleCommands: handleCommands,

@@ -125,6 +125,7 @@ function Make(DcbEventLogStorage) {
       }).map(tagKey => `tag_` + tagKey);
       let indexes$1 = indexes.length > 1 ? indexes.concat(["tag_composite"]) : indexes;
       let partitionTag = DcbTag$Reventless.derivePartitionTag(producedNamed);
+      let tagKeysByEventType = DcbTag$Reventless.mergeTagKeysByEventType(producedSchemas.map(DcbTag$Reventless.extractTagKeysByEventType));
       let DcbEventLog = DcbEventLog_Builder$ReventlessCore.Make(DcbEventLogStorage)(DcbEventTopicPublisher);
       let dcbEventLog = DcbEventLog.make(name, indexes$1, partitionTag, opts);
       Stdlib_Option.forEach(HooksConfig.hooks.onDcbEventLogCreated, hook => hook(dcbEventLog));
@@ -151,7 +152,7 @@ function Make(DcbEventLogStorage) {
         asyncDcbCommandTopicOpt = undefined;
       }
       let stateChangeSlicesOutputs = Object.fromEntries(syncSlices.map(StateChangeSlice => {
-        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, opts);
+        let ch = StateChangeSlice.make(dcbEventLog, publishJsons, tagKeysByEventType, opts);
         return [
           StateChangeSlice.Spec.name,
           Component$ReventlessCore.outputs(ch)
@@ -161,7 +162,7 @@ function Make(DcbEventLogStorage) {
       if (asyncDcbCommandTopicOpt !== undefined) {
         let asyncPublishJsons = Component$ReventlessCore.operations(Primitive_option.valFromOption(asyncDcbCommandTopicOpt)).apply(ops => ops.publishJsons);
         asyncStateChangeSlicesOutputs = Object.fromEntries(asyncSlices.map(StateChangeSlice => {
-          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, opts);
+          let ch = StateChangeSlice.make(dcbEventLog, asyncPublishJsons, tagKeysByEventType, opts);
           return [
             StateChangeSlice.Spec.name,
             Component$ReventlessCore.outputs(ch)

@@ -733,6 +733,88 @@ describe("DcbTag:", () => {
         )->toEqual([{Reventless.DcbTag.eventTypes, tags: [{key: "orderId", value: "ord-1"}]}]),
     )
 
+    // --- Vacuous-clause narrowing (Issue 14) ---
+
+    let orderTagKeys = Reventless.DcbTag.extractTagKeysByEventType(DcbFixtures.orderEventLogSchema)
+
+    testSync(
+      "extractTagKeysByEventType maps each event type to its produced tag keys",
+      () =>
+        expect(
+          orderTagKeys
+          ->Dict.toArray
+          ->Array.toSorted(((a, _), (b, _)) => String.compare(a, b)),
+        )->toEqual([
+          ("CatalogProductSynced", ["productId"]),
+          ("OrderPlaced", ["orderId", "customerId", "productId"]),
+        ]),
+    )
+
+    testSync(
+      "narrowing drops the vacuous (CatalogProductSynced, orderId) combination but keeps OrderPlaced under productId",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["OrderPlaced", "CatalogProductSynced"],
+            ~schema=DcbFixtures.crossEntityCommandSchema,
+            ~value=DcbFixtures.PlaceOrder({
+              orderId: "ord-1",
+              customerId: "cust-1",
+              productId: ["prod-1"],
+            }),
+            ~tagKeysByEventType=orderTagKeys,
+          ),
+        )->toEqual([
+          {Reventless.DcbTag.eventTypes: ["OrderPlaced"], tags: [{key: "orderId", value: "ord-1"}]},
+          {
+            eventTypes: ["OrderPlaced", "CatalogProductSynced"],
+            tags: [{key: "productId", value: "prod-1"}],
+          },
+        ]),
+    )
+
+    testSync(
+      "narrowing the single AND clause keeps only types carrying every clause tag",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["OrderPlaced", "CatalogProductSynced"],
+            ~schema=DcbFixtures.singleTagCommandSchema,
+            ~value=DcbFixtures.CreateItem({itemId: "item-1", name: "Test"}),
+            ~tagKeysByEventType=orderTagKeys,
+          ),
+        )->toEqual([
+          // Neither produced type carries `itemId`, so both are vacuous → empty.
+          {Reventless.DcbTag.eventTypes: [], tags: [{key: "itemId", value: "item-1"}]},
+        ]),
+    )
+
+    testSync(
+      "an empty map leaves all event types in place (no narrowing)",
+      () =>
+        expect(
+          Reventless.DcbTag.buildQueryFromCommand(
+            ~eventTypes=["OrderPlaced", "CatalogProductSynced"],
+            ~schema=DcbFixtures.crossEntityCommandSchema,
+            ~value=DcbFixtures.PlaceOrder({
+              orderId: "ord-1",
+              customerId: "cust-1",
+              productId: ["prod-1"],
+            }),
+            ~tagKeysByEventType=Dict.make(),
+          ),
+        )->toEqual([
+          {
+            Reventless.DcbTag.eventTypes: ["OrderPlaced", "CatalogProductSynced"],
+            tags: [{key: "orderId", value: "ord-1"}],
+          },
+          {
+            eventTypes: ["OrderPlaced", "CatalogProductSynced"],
+            tags: [{key: "productId", value: "prod-1"}],
+          },
+        ]),
+    )
+
     testSync(
       "hasTaggedArrayFields detects tagged arrays",
       () => {

@@ -297,6 +297,20 @@ type crossEntityCommand =
 type singleTagCommand =
   CreateItem({itemId: @s.matches(Reventless.DcbTag.string) string, name: string})
 
+// --- Produced event-log schema for vacuous-clause narrowing (Issue 14) ---
+// Models the analysis example: OrderPlaced partitions by orderId but carries
+// productId as a *secondary* tag; CatalogProductSynced carries only productId.
+// extractTagKeysByEventType ⇒ {OrderPlaced: [orderId, customerId, productId],
+//                              CatalogProductSynced: [productId]}.
+@schema
+type orderEventLog =
+  | OrderPlaced({
+      orderId: @s.matches(Reventless.DcbTag.string) string,
+      customerId: @s.matches(Reventless.DcbTag.string) string,
+      productId: @s.matches(Reventless.DcbTag.string) string,
+    })
+  | CatalogProductSynced({productId: @s.matches(Reventless.DcbTag.string) string})
+
 // --- Tag-key override fixtures ---
 
 // Producer using the singular field name (the default convention).

@@ -339,7 +339,7 @@ let PlaceMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   moduleUrl: moduleUrl$1
 });
 
-let _placeSlice = PlaceMaker.make(dcbEventLog, publishJsonsOutput, undefined);
+let _placeSlice = PlaceMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined);
 
 let ShipMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   name: name$1,
@@ -357,7 +357,7 @@ let ShipMaker = StateChangeSlice_Builder$ReventlessLocal.Make({
   moduleUrl: moduleUrl$3
 });
 
-let _shipSlice = ShipMaker.make(dcbEventLog, publishJsonsOutput, undefined);
+let _shipSlice = ShipMaker.make(dcbEventLog, publishJsonsOutput, undefined, undefined);
 
 let dcbTopicOutputs = Component$ReventlessInfra.outputs(dcbEventLog).eventTopic;
 

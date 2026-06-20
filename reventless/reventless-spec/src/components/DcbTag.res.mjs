@@ -386,20 +386,90 @@ function hasTaggedArrayFields(schema) {
   }
 }
 
-function buildQueryFromCommand(eventTypes, schema, value) {
+function tagKeysOfProperties(properties) {
+  return Stdlib_Array.filterMap(Object.entries(properties), param => {
+    let fieldSchema = param[1];
+    let fieldName = param[0];
+    if (isTagged(fieldSchema)) {
+      return resolveTagKey(fieldName, fieldSchema);
+    } else if (isTaggedArray(fieldSchema)) {
+      return resolveArrayTagKey(fieldName, fieldSchema);
+    } else {
+      return;
+    }
+  });
+}
+
+function extractTagKeysByEventType(schema) {
+  let result = {};
+  let addVariant = variantSchema => {
+    if (variantSchema.type !== "object") {
+      return;
+    }
+    let properties = variantSchema.properties;
+    Stdlib_Option.forEach(Stdlib_Option.flatMap(variantSchema.items.find(item => item.location === "TAG"), item => {
+      let match = item.schema;
+      if (match.type !== "string") {
+        return;
+      }
+      let $$const = match.const;
+      if ($$const !== undefined) {
+        return $$const;
+      }
+    }), eventType => {
+      result[eventType] = tagKeysOfProperties(properties);
+    });
+  };
+  switch (schema.type) {
+    case "object" :
+      addVariant(schema);
+      break;
+    case "union" :
+      schema.anyOf.forEach(addVariant);
+      break;
+  }
+  return result;
+}
+
+function mergeTagKeysByEventType(maps) {
+  let merged = {};
+  maps.forEach(m => {
+    Object.entries(m).forEach(param => {
+      merged[param[0]] = param[1];
+    });
+  });
+  return merged;
+}
+
+function narrowEventTypesForTags(eventTypes, tags, tagKeysByEventType) {
+  return eventTypes.filter(eventType => {
+    let producedKeys = tagKeysByEventType[eventType];
+    if (producedKeys !== undefined) {
+      return tags.every(tag => producedKeys.includes(tag.key));
+    } else {
+      return true;
+    }
+  });
+}
+
+function buildQueryFromCommand(eventTypes, schema, value, tagKeysByEventTypeOpt) {
+  let tagKeysByEventType = tagKeysByEventTypeOpt !== undefined ? tagKeysByEventTypeOpt : ({});
   if (hasTaggedArrayFields(schema)) {
     let tags = extractTagsExpanded(schema, value);
-    return tags.map(tag => ({
-      eventTypes: eventTypes,
-      tags: [{
+    return tags.map(tag => {
+      let clauseTags = [{
           key: tag.key,
           value: tag.value
-        }]
-    }));
+        }];
+      return {
+        eventTypes: narrowEventTypesForTags(eventTypes, clauseTags, tagKeysByEventType),
+        tags: clauseTags
+      };
+    });
   }
   let tags$1 = extractTags(schema, value);
   return [{
-      eventTypes: eventTypes,
+      eventTypes: narrowEventTypesForTags(eventTypes, tags$1, tagKeysByEventType),
       tags: tags$1
     }];
 }
@@ -701,6 +771,10 @@ export {
   extractTagsFromJsonExpanded,
   extractTagsExpanded,
   hasTaggedArrayFields,
+  tagKeysOfProperties,
+  extractTagKeysByEventType,
+  mergeTagKeysByEventType,
+  narrowEventTypesForTags,
   buildQueryFromCommand,
   extractTaggedFields,
   extractPartitionTagFields,

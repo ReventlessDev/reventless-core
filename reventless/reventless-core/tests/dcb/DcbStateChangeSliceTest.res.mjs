@@ -82,7 +82,7 @@ globalThis.beforeEach(() => {
 globalThis.describe("StateChangeSlice_Callback:", () => {
   globalThis.describe("handleCommands - happy path", () => {
     globalThis.test("CreateItem on empty log succeeds", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -101,7 +101,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("stored event has correct tags", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -121,7 +121,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - decide returns Ok([])", () => {
     globalThis.test("NoOp returns Ok without storing events", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-noop", "NoOp")])));
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-noop", "NoOp")])));
       globalThis.expect([
         results,
         mock.getEvents().length
@@ -136,12 +136,12 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - decide returns Error", () => {
     globalThis.test("CreateItem when item exists returns Ok (business-rule violations ACK, not NACK)", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
         })])));
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Duplicate"
@@ -155,7 +155,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   globalThis.describe("handleCommands - retry on conflict", () => {
     globalThis.test("retries and succeeds after 1 append failure", async () => {
       mock.failNextAppends.contents = 1;
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -173,7 +173,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
     });
     globalThis.test("returns Error after retries exhausted (4 failures)", async () => {
       mock.failNextAppends.contents = 4;
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
@@ -192,12 +192,12 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - conditional append", () => {
     globalThis.test("RenameItem after CreateItem uses headPosition in condition", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Test"
         })])));
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-2", {
           TAG: "RenameItem",
           itemId: "item-1",
           newName: "Updated"
@@ -216,7 +216,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
   });
   globalThis.describe("handleCommands - batch", () => {
     globalThis.test("multiple successful commands", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([
         makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-1",
@@ -240,12 +240,12 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("mixed: new item succeeds, duplicate item ACKs as Ok (business-rule violation)", async () => {
-      await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-0", {
+      await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem("ref-0", {
           TAG: "CreateItem",
           itemId: "item-1",
           name: "Existing"
         })])));
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([
         makeTopicItem("ref-1", {
           TAG: "CreateItem",
           itemId: "item-2",
@@ -269,13 +269,13 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("empty batch returns empty array", async () => {
-      let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([])));
+      let results = await Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([])));
       globalThis.expect(results).toEqual([]);
     });
   });
   globalThis.describe("handleCommands - projection cache", () => {
     globalThis.test("a third same-entity command reads only the delta", async () => {
-      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
       await run("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
@@ -309,7 +309,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("a different entity does not hit another entity's cache (full read)", async () => {
-      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
       await run("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
@@ -326,7 +326,7 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
       ]);
     });
     globalThis.test("conflict re-seeds the cache so the retry reads the delta", async () => {
-      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(undefined, testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
       await run("ref-1", {
         TAG: "CreateItem",
         itemId: "item-1",
