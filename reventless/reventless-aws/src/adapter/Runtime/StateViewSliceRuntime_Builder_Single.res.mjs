@@ -5,6 +5,7 @@ import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
 import * as Pulumi from "@pulumi/pulumi";
 import * as Stdlib_JsError from "@rescript/runtime/lib/es6/Stdlib_JsError.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Logger$ReventlessCore from "@reventlessdev/reventless-core/src/util/Logger.res.mjs";
 import * as Component$ReventlessCore from "@reventlessdev/reventless-core/src/components/Component.res.mjs";
 import * as Util_Bundle$ReventlessAws from "../../util/Util_Bundle.res.mjs";
@@ -12,6 +13,21 @@ import * as RuntimeEnvironment_Lambda$ReventlessAws from "./RuntimeEnvironment_L
 import * as EventCollectorChannel_DynamoDbStream$ReventlessAws from "../EventCollector/EventCollectorChannel_DynamoDbStream.res.mjs";
 
 let log = Logger$ReventlessCore.fromEnv();
+
+function commonPrefix(strings) {
+  let first = strings[0];
+  if (first !== undefined) {
+    return Stdlib_Array.reduce(strings, first, (prefix, s) => {
+      let p = prefix;
+      while (p !== "" && !s.startsWith(p)) {
+        p = p.slice(0, p.length - 1 | 0);
+      };
+      return p;
+    });
+  } else {
+    return "";
+  }
+}
 
 let sliceInfos = {};
 
@@ -72,7 +88,30 @@ function buildLambda(parent, handlerOutputs, packageDirs, channelSpecs, memorySi
   let opts = {
     parent: opts_parent
   };
-  let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => `{"handlers":[` + handlers.join(",") + `]}`);
+  let handlerConfigOutput = Pulumi.all(handlerOutputs).apply(handlers => {
+    let paths = [];
+    handlers.forEach(h => {
+      paths.push(h.specModule);
+      paths.push(h.projectionModule);
+    });
+    let base = commonPrefix(paths);
+    let baseLen = base.length;
+    let firstUrn = Stdlib_Option.map(handlers[0], h => h.sourceUrn);
+    let sharedUrn = handlers.every(h => Primitive_object.equal(h.sourceUrn, firstUrn)) ? Stdlib_Option.getOr(firstUrn, "") : "";
+    let entries = handlers.map(h => {
+      let s = Stdlib_Option.getOr(JSON.stringify(h.specModule.slice(baseLen, h.specModule.length)), `""`);
+      let p = Stdlib_Option.getOr(JSON.stringify(h.projectionModule.slice(baseLen, h.projectionModule.length)), `""`);
+      let q = Stdlib_Option.getOr(JSON.stringify(h.queryDbTableName), `""`);
+      if (sharedUrn !== "") {
+        return `{"s":` + s + `,"p":` + p + `,"q":` + q + `}`;
+      }
+      let u = Stdlib_Option.getOr(JSON.stringify(h.sourceUrn), `""`);
+      return `{"s":` + s + `,"p":` + p + `,"q":` + q + `,"u":` + u + `}`;
+    }).join(",");
+    let baseJson = Stdlib_Option.getOr(JSON.stringify(base), `""`);
+    let urnJson = Stdlib_Option.getOr(JSON.stringify(sharedUrn), `""`);
+    return `{"v":2,"base":` + baseJson + `,"sourceUrn":` + urnJson + `,"handlers":[` + entries + `]}`;
+  });
   let envVars = {};
   envVars["HANDLER_CONFIG"] = handlerConfigOutput;
   packageDirs["@reventlessdev/reventless-aws"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-aws");
@@ -110,15 +149,18 @@ function finishWithDcbEventLog(dcbEventLog) {
         packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
         let projectionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.projectionModulePath);
         packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
-        let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-        let projectionModule = Stdlib_Option.getOr(JSON.stringify(info.projectionModulePath), `""`);
         let etResources = dcbOutputs.eventTopic.resources;
         let sourceUrn = etResources[0];
         let sourceUrn$1 = sourceUrn.urn;
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           sourceUrn$1
-        ]).apply(param => `{"specModule":` + specModule + `,"projectionModule":` + projectionModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + param[1] + `"}`);
+        ]).apply(param => ({
+          specModule: info.specModulePath,
+          projectionModule: info.projectionModulePath,
+          queryDbTableName: param[0],
+          sourceUrn: param[1]
+        }));
         handlerOutputs.push(handlerJson);
       });
       buildLambda(parent, handlerOutputs, packageDirs, [{
@@ -159,15 +201,15 @@ function finish() {
         packageDirs[specPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(specPkg);
         let projectionPkg = Util_Bundle$ReventlessAws.extractPackageName(info.projectionModulePath);
         packageDirs[projectionPkg] = Util_Bundle$ReventlessAws.resolvePackageRoot(projectionPkg);
-        let specModule = Stdlib_Option.getOr(JSON.stringify(info.specModulePath), `""`);
-        let projectionModule = Stdlib_Option.getOr(JSON.stringify(info.projectionModulePath), `""`);
         let handlerJson = Pulumi.all([
           info.queryDbTableName,
           spec.sourceUrns
-        ]).apply(param => {
-          let sourceUrn = param[1][0];
-          return `{"specModule":` + specModule + `,"projectionModule":` + projectionModule + `,"queryDbTableName":"` + param[0] + `","sourceUrn":"` + sourceUrn + `"}`;
-        });
+        ]).apply(param => ({
+          specModule: info.specModulePath,
+          projectionModule: info.projectionModulePath,
+          queryDbTableName: param[0],
+          sourceUrn: param[1][0]
+        }));
         handlerOutputs.push(handlerJson);
       });
       buildLambda(parent, handlerOutputs, packageDirs, storedSpecs.map(param => param.channelSpec), match[0], match[1]);
@@ -186,6 +228,7 @@ export {
   EventCollectorChannel,
   RuntimeEnvironment,
   log,
+  commonPrefix,
   sliceInfos,
   registerStateViewSlice,
   storedSpecs,

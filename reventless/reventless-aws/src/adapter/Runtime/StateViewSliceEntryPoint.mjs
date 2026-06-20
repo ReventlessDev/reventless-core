@@ -76,11 +76,30 @@ function buildJsonEventsHandler(specModule, projectionModule, queryDbTableName) 
   );
 }
 
+// HANDLER_CONFIG is emitted compact (StateViewSliceRuntime_Builder_Single) to
+// stay under AWS Lambda's 4KB env-var limit: a shared module-path `base` and a
+// shared `sourceUrn` are hoisted out, and per-handler keys are shortened to
+// s/p/q/u. Expand back to the full {specModule, projectionModule,
+// queryDbTableName, sourceUrn} shape. Legacy full-key entries pass through.
+function expandHandlers(config) {
+  const base = config.base || "";
+  const sharedUrn = config.sourceUrn || "";
+  return (config.handlers || []).map(h => {
+    if (h.specModule !== undefined) return h;
+    return {
+      specModule: base + h.s,
+      projectionModule: base + h.p,
+      queryDbTableName: h.q,
+      sourceUrn: h.u !== undefined ? h.u : sharedUrn,
+    };
+  });
+}
+
 async function buildAllHandlers() {
   const configStr = process.env["HANDLER_CONFIG"] || '{"handlers":[]}';
   const config = JSON.parse(configStr);
   const handlers = {};
-  await Promise.all(config.handlers.map(async h => {
+  await Promise.all(expandHandlers(config).map(async h => {
     const [specModule, projectionModule] = await Promise.all([
       dynamicImport(h.specModule),
       dynamicImport(h.projectionModule),

@@ -6,6 +6,31 @@ let log = ReventlessCore.Logger.fromEnv()
 type context = PulumiAws.Lambda.context
 type runtimeParts = Util.Lambda.runtimeParts
 
+// One StateViewSlice handler, carried structured (not pre-serialized) so
+// buildLambda can hoist shared fields before emitting HANDLER_CONFIG.
+type handlerEntry = {
+  specModule: string,
+  projectionModule: string,
+  queryDbTableName: string,
+  sourceUrn: string,
+}
+
+// Longest common prefix of a set of strings. Used to factor the shared
+// module-path prefix out of the per-handler config so the serialized
+// HANDLER_CONFIG stays under AWS Lambda's 4KB env-var ceiling.
+let commonPrefix = (strings: array<string>): string =>
+  switch strings->Array.get(0) {
+  | None => ""
+  | Some(first) =>
+    strings->Array.reduce(first, (prefix, s) => {
+      let p = ref(prefix)
+      while p.contents != "" && !(s->String.startsWith(p.contents)) {
+        p := p.contents->String.slice(~start=0, ~end=String.length(p.contents) - 1)
+      }
+      p.contents
+    })
+  }
+
 type sliceInfo = {
   specModulePath: string,
   projectionModulePath: string,
@@ -99,13 +124,59 @@ let forEventCollector: ReventlessCore.Runtime.forEventCollector<
 
 let finished = ref(false)
 
-let buildLambda = (~parent, ~handlerOutputs, ~packageDirs, ~channelSpecs, ~memorySize=1024, ~timeout=30) => {
+let buildLambda = (
+  ~parent,
+  ~handlerOutputs: array<Pulumi.Output.t<handlerEntry>>,
+  ~packageDirs,
+  ~channelSpecs,
+  ~memorySize=1024,
+  ~timeout=30,
+) => {
   let opts = {Pulumi.ComponentResource.parent: parent}
+  // Compress HANDLER_CONFIG to stay under AWS Lambda's 4KB env-var ceiling:
+  // hoist the common module-path prefix (`base`) and the shared DCB stream
+  // `sourceUrn` (identical across a plugin's slices) out of the per-handler
+  // entries, and use short keys (s/p/q/u). StateViewSliceEntryPoint re-expands
+  // these. Durable fix (externalize to S3/SSM) tracked in docs/plans.
   let handlerConfigOutput =
     Pulumi.Output.all(handlerOutputs)
-    ->Pulumi.Output.apply(handlers =>
-      `{"handlers":[${handlers->Array.join(",")}]}`
-    )
+    ->Pulumi.Output.apply(handlers => {
+      let paths = []
+      handlers->Array.forEach(h => {
+        paths->Array.push(h.specModule)->ignore
+        paths->Array.push(h.projectionModule)->ignore
+      })
+      let base = commonPrefix(paths)
+      let baseLen = String.length(base)
+      let firstUrn = handlers->Array.get(0)->Option.map(h => h.sourceUrn)
+      let sharedUrn =
+        handlers->Array.every(h => Some(h.sourceUrn) == firstUrn) ? firstUrn->Option.getOr("") : ""
+      let entries =
+        handlers
+        ->Array.map(h => {
+          let s =
+            h.specModule
+            ->String.slice(~start=baseLen, ~end=String.length(h.specModule))
+            ->JSON.stringifyAny
+            ->Option.getOr(`""`)
+          let p =
+            h.projectionModule
+            ->String.slice(~start=baseLen, ~end=String.length(h.projectionModule))
+            ->JSON.stringifyAny
+            ->Option.getOr(`""`)
+          let q = h.queryDbTableName->JSON.stringifyAny->Option.getOr(`""`)
+          if sharedUrn != "" {
+            `{"s":${s},"p":${p},"q":${q}}`
+          } else {
+            let u = h.sourceUrn->JSON.stringifyAny->Option.getOr(`""`)
+            `{"s":${s},"p":${p},"q":${q},"u":${u}}`
+          }
+        })
+        ->Array.join(",")
+      let baseJson = base->JSON.stringifyAny->Option.getOr(`""`)
+      let urnJson = sharedUrn->JSON.stringifyAny->Option.getOr(`""`)
+      `{"v":2,"base":${baseJson},"sourceUrn":${urnJson},"handlers":[${entries}]}`
+    })
 
   let envVars: dict<Pulumi.Input.t<string>> = Dict.make()
   envVars->Dict.set("HANDLER_CONFIG", handlerConfigOutput->Pulumi.Output.asInput)
@@ -165,7 +236,7 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           ~opts={Pulumi.ComponentResource.parent: parent},
         )
 
-        let handlerOutputs: array<Pulumi.Output.t<string>> = []
+        let handlerOutputs: array<Pulumi.Output.t<handlerEntry>> = []
         let packageDirs: dict<string> = Dict.make()
         let allQueryDbResources: array<ReventlessInfra.Adapter.resource> = []
 
@@ -176,9 +247,6 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           let projectionPkg = Util_Bundle.extractPackageName(info.projectionModulePath)
           packageDirs->Dict.set(projectionPkg, Util_Bundle.resolvePackageRoot(projectionPkg))
 
-          let specModule = info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-          let projectionModule =
-            info.projectionModulePath->JSON.stringifyAny->Option.getOr(`""`)
           let etResources: array<ReventlessInfra.Adapter.resource> = dcbOutputs.eventTopic.resources
           let sourceUrn = etResources->Array.getUnsafe(0)
           let sourceUrn = sourceUrn.urn
@@ -186,7 +254,13 @@ let finishWithDcbEventLog = (dcbEventLog: ReventlessCore.DcbEventLog.component) 
           let handlerJson =
             Pulumi.Output.all2((info.queryDbTableName, sourceUrn))
             ->Pulumi.Output.apply(((tableName, urn)) => {
-              `{"specModule":${specModule},"projectionModule":${projectionModule},"queryDbTableName":"${tableName}","sourceUrn":"${urn}"}`
+              let entry: handlerEntry = {
+                specModule: info.specModulePath,
+                projectionModule: info.projectionModulePath,
+                queryDbTableName: tableName,
+                sourceUrn: urn,
+              }
+              entry
             })
           let _ = handlerOutputs->Array.push(handlerJson)
         })
@@ -223,7 +297,7 @@ let finish = () =>
 
       switch grandParent.contents {
       | Some(parent) =>
-        let handlerOutputs: array<Pulumi.Output.t<string>> = []
+        let handlerOutputs: array<Pulumi.Output.t<handlerEntry>> = []
         let packageDirs: dict<string> = Dict.make()
 
         storedSpecs->Array.forEach(spec => {
@@ -234,16 +308,16 @@ let finish = () =>
             let projectionPkg = Util_Bundle.extractPackageName(info.projectionModulePath)
             packageDirs->Dict.set(projectionPkg, Util_Bundle.resolvePackageRoot(projectionPkg))
 
-            let specModule =
-              info.specModulePath->JSON.stringifyAny->Option.getOr(`""`)
-            let projectionModule =
-              info.projectionModulePath->JSON.stringifyAny->Option.getOr(`""`)
-
             let handlerJson =
               Pulumi.Output.all2((info.queryDbTableName, spec.sourceUrns))
               ->Pulumi.Output.apply(((tableName, urns)) => {
-                let sourceUrn = urns->Array.getUnsafe(0)
-                `{"specModule":${specModule},"projectionModule":${projectionModule},"queryDbTableName":"${tableName}","sourceUrn":"${sourceUrn}"}`
+                let entry: handlerEntry = {
+                  specModule: info.specModulePath,
+                  projectionModule: info.projectionModulePath,
+                  queryDbTableName: tableName,
+                  sourceUrn: urns->Array.getUnsafe(0),
+                }
+                entry
               })
             let _ = handlerOutputs->Array.push(handlerJson)
           | None =>
