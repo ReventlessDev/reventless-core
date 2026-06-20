@@ -161,9 +161,11 @@ A command touching very many distinct tag values (e.g. an order with ~99+ produc
 
 ---
 
-## Issue 12 — Tagless scan read can choke on fence items (low-confidence)
+## Issue 12 — Tagless scan read can choke on fence items (low-confidence) — **FIXED (2026-06-20)**
 
 `scanWithFilter` with no `eventTypes` returns **all** table items, including `fence#…` sentinels (which have no `event`/`data` attributes); `fromItem` would throw on them. The `eventTypes` filter normally excludes fences (they lack the `event` attribute), and `appendConditional` rejects tagless *conditions* — but a tagless *read* path exists. Needs confirmation of whether any slice can issue a tagless, type-less read; if so, fence items should be filtered out in the scan path.
+
+**Fix (shipped 2026-06-20).** Confirmed the read path is reachable (a clause with no tags falls back to scan; with no `eventTypes` the scan is unfiltered) though not exercised by current slices — DCB commands always carry the partition entity id as a tag, so scans route to partition/composite reads in practice; hence "low-confidence". Hardened defensively anyway: the filter-building was extracted into a pure `buildScanFilter` (shared by `scanWithFilter` and `scanWithFilterStream`) that **always** asserts `attribute_exists(event)`, so `fence#…` sentinels are never returned regardless of the event-type filter. This also fixes a latent degenerate case — an empty `eventTypes` list previously emitted a broken `()` group; it now yields just the fence guard. Tests: 3 in `DcbEventLogStorage_DynamoDb_RuntimeTest.res` (tagless guard, empty-list guard, type-filter AND-ed after the guard); AWS suite green (126).
 
 ---
 

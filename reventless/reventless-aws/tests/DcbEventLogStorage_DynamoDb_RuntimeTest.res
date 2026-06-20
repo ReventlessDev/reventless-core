@@ -210,6 +210,38 @@ describe("Runtime.buildQueryByPartitionKeyInput", () => {
   })
 })
 
+describe("Runtime.buildScanFilter — excludes fence sentinels (Issue 12)", () => {
+  testSync("tagless, type-less scan still guards against fence# items", () => {
+    let filter = Runtime.buildScanFilter()
+    // No event-type disjunction, but the fence guard is always present, so
+    // `fence#…` sentinels (which lack the `event` attribute) are never returned.
+    expect(filter.filterExpression)->toEqual(Some("attribute_exists(#evt)"))
+    expect(filter.expressionAttributeNames)->toEqual(Some(Dict.fromArray([("#evt", "event")])))
+    expect(filter.expressionAttributeValues)->toEqual(None)
+  })
+
+  testSync("an empty event-type list yields only the fence guard, not a degenerate ()", () => {
+    let filter = Runtime.buildScanFilter(~eventTypes=[])
+    expect(filter.filterExpression)->toEqual(Some("attribute_exists(#evt)"))
+    expect(filter.expressionAttributeValues)->toEqual(None)
+  })
+
+  testSync("an event-type filter is AND-ed after the fence guard", () => {
+    let filter = Runtime.buildScanFilter(~eventTypes=["OrderPlaced", "OrderShipped"])
+    expect(filter.filterExpression)->toEqual(
+      Some("attribute_exists(#evt) AND (#evt = :type0 OR #evt = :type1)"),
+    )
+    expect(filter.expressionAttributeValues)->toEqual(
+      Some(
+        Dict.fromArray([
+          (":type0", "OrderPlaced"->JSON.Encode.string),
+          (":type1", "OrderShipped"->JSON.Encode.string),
+        ]),
+      ),
+    )
+  })
+})
+
 describe("Runtime.buildEventPuts", () => {
   let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
     eventType,

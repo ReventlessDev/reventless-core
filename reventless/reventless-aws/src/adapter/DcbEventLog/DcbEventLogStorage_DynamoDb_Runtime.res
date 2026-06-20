@@ -222,44 +222,55 @@ let queryByCompositeTags = async (
   await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
 }
 
+// Filter clause shared by both scan paths.
+type scanFilter = {
+  filterExpression: option<string>,
+  expressionAttributeNames: option<Dict.t<string>>,
+  expressionAttributeValues: option<Dict.t<JSON.t>>,
+}
+
+// Builds the scan FilterExpression. Always asserts `attribute_exists(event)` so
+// `fence#…` sentinels — which carry no `event`/`data` attributes and would make
+// `fromItem` throw — are never returned, regardless of whether an event-type
+// filter is present (Issue 12). A non-empty `eventTypes` adds the usual type
+// disjunction on top; an absent or empty list leaves just the fence guard
+// (avoids emitting a degenerate empty `()` group).
+let buildScanFilter = (~eventTypes: option<array<string>>=?): scanFilter => {
+  let expressionAttributeValues = Dict.make()
+  let expressionAttributeNames = Dict.fromArray([("#evt", "event")])
+  let filterParts = ["attribute_exists(#evt)"]
+
+  switch eventTypes {
+  | None | Some([]) => ()
+  | Some(types) =>
+    let typeConditions = types->Array.mapWithIndex((typ, idx) => {
+      let placeholder = `:type${idx->Int.toString}`
+      expressionAttributeValues->Dict.set(placeholder, typ->JSON.Encode.string)
+      `#evt = ${placeholder}`
+    })
+    filterParts->Array.push(`(${typeConditions->Array.join(" OR ")})`)
+  }
+
+  let hasAttributeValues = expressionAttributeValues->Dict.keysToArray->Array.length > 0
+  {
+    filterExpression: Some(filterParts->Array.join(" AND ")),
+    expressionAttributeNames: Some(expressionAttributeNames),
+    expressionAttributeValues: hasAttributeValues ? Some(expressionAttributeValues) : None,
+  }
+}
+
 let scanWithFilter = async (
   table: resolvedTable,
   ~eventTypes: option<array<string>>=?,
   ~after: option<string>=?,
 ) => {
-  let expressionAttributeValues = Dict.make()
-  let expressionAttributeNames = Dict.make()
-
-  let filterParts = []
-
-  // Add event type filter
-  switch eventTypes {
-  | None => ()
-  | Some(types) => {
-      expressionAttributeNames->Dict.set("#evt", "event")
-      let typeConditions = types->Array.mapWithIndex((typ, idx) => {
-        let placeholder = `:type${idx->Int.toString}`
-        expressionAttributeValues->Dict.set(placeholder, typ->JSON.Encode.string)
-        `#evt = ${placeholder}`
-      })
-      filterParts->Array.push(`(${typeConditions->Array.join(" OR ")})`)
-    }
-  }
-
-  let filterExpression = if filterParts->Array.length > 0 {
-    Some(filterParts->Array.join(" AND "))
-  } else {
-    None
-  }
-
-  let hasAttributeValues = expressionAttributeValues->Dict.keysToArray->Array.length > 0
-  let hasAttributeNames = expressionAttributeNames->Dict.keysToArray->Array.length > 0
+  let filter = buildScanFilter(~eventTypes?)
 
   let scanParams: ScanCommand.input = {
     tableName: table.name,
-    ?filterExpression,
-    expressionAttributeValues: ?(hasAttributeValues ? Some(expressionAttributeValues) : None),
-    expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
+    filterExpression: ?filter.filterExpression,
+    expressionAttributeValues: ?filter.expressionAttributeValues,
+    expressionAttributeNames: ?filter.expressionAttributeNames,
   }
 
   // position cannot appear in FilterExpression (it is the table's sort key).
@@ -1107,37 +1118,13 @@ let scanWithFilterStream = (
   ~eventTypes: option<array<string>>=?,
   ~after: option<string>=?,
 ) => {
-  let expressionAttributeValues = Dict.make()
-  let expressionAttributeNames = Dict.make()
-  let filterParts = []
-
-  switch eventTypes {
-  | None => ()
-  | Some(types) => {
-      expressionAttributeNames->Dict.set("#evt", "event")
-      let typeConditions = types->Array.mapWithIndex((typ, idx) => {
-        let placeholder = `:type${idx->Int.toString}`
-        expressionAttributeValues->Dict.set(placeholder, typ->JSON.Encode.string)
-        `#evt = ${placeholder}`
-      })
-      filterParts->Array.push(`(${typeConditions->Array.join(" OR ")})`)
-    }
-  }
-
-  let filterExpression = if filterParts->Array.length > 0 {
-    Some(filterParts->Array.join(" AND "))
-  } else {
-    None
-  }
-
-  let hasAttributeValues = expressionAttributeValues->Dict.keysToArray->Array.length > 0
-  let hasAttributeNames = expressionAttributeNames->Dict.keysToArray->Array.length > 0
+  let filter = buildScanFilter(~eventTypes?)
 
   let baseParams: ScanCommand.input = {
     tableName: table.name,
-    ?filterExpression,
-    expressionAttributeValues: ?(hasAttributeValues ? Some(expressionAttributeValues) : None),
-    expressionAttributeNames: ?(hasAttributeNames ? Some(expressionAttributeNames) : None),
+    filterExpression: ?filter.filterExpression,
+    expressionAttributeValues: ?filter.expressionAttributeValues,
+    expressionAttributeNames: ?filter.expressionAttributeNames,
   }
 
   // position cannot appear in FilterExpression (it is the table's sort key).

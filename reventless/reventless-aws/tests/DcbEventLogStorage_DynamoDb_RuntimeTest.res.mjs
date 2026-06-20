@@ -242,6 +242,40 @@ globalThis.describe("Runtime.buildQueryByPartitionKeyInput", () => {
   });
 });
 
+globalThis.describe("Runtime.buildScanFilter — excludes fence sentinels (Issue 12)", () => {
+  globalThis.test("tagless, type-less scan still guards against fence# items", () => {
+    let filter = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildScanFilter(undefined);
+    globalThis.expect(filter.filterExpression).toEqual("attribute_exists(#evt)");
+    globalThis.expect(filter.expressionAttributeNames).toEqual(Object.fromEntries([[
+        "#evt",
+        "event"
+      ]]));
+    globalThis.expect(filter.expressionAttributeValues).toEqual(undefined);
+  });
+  globalThis.test("an empty event-type list yields only the fence guard, not a degenerate ()", () => {
+    let filter = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildScanFilter([]);
+    globalThis.expect(filter.filterExpression).toEqual("attribute_exists(#evt)");
+    globalThis.expect(filter.expressionAttributeValues).toEqual(undefined);
+  });
+  globalThis.test("an event-type filter is AND-ed after the fence guard", () => {
+    let filter = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildScanFilter([
+      "OrderPlaced",
+      "OrderShipped"
+    ]);
+    globalThis.expect(filter.filterExpression).toEqual("attribute_exists(#evt) AND (#evt = :type0 OR #evt = :type1)");
+    globalThis.expect(filter.expressionAttributeValues).toEqual(Object.fromEntries([
+      [
+        ":type0",
+        "OrderPlaced"
+      ],
+      [
+        ":type1",
+        "OrderShipped"
+      ]
+    ]));
+  });
+});
+
 globalThis.describe("Runtime.buildEventPuts", () => {
   let event = (eventType, tags) => ({
     eventType: eventType,

@@ -187,12 +187,14 @@ async function queryByCompositeTags(table, tags, after) {
   return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
-async function scanWithFilter(table, eventTypes, after) {
+function buildScanFilter(eventTypes) {
   let expressionAttributeValues = {};
-  let expressionAttributeNames = {};
-  let filterParts = [];
-  if (eventTypes !== undefined) {
-    expressionAttributeNames["#evt"] = "event";
+  let expressionAttributeNames = Object.fromEntries([[
+      "#evt",
+      "event"
+    ]]);
+  let filterParts = ["attribute_exists(#evt)"];
+  if (eventTypes !== undefined && eventTypes.length !== 0) {
     let typeConditions = eventTypes.map((typ, idx) => {
       let placeholder = `:type` + idx.toString();
       expressionAttributeValues[placeholder] = typ;
@@ -200,17 +202,25 @@ async function scanWithFilter(table, eventTypes, after) {
     });
     filterParts.push(`(` + typeConditions.join(" OR ") + `)`);
   }
-  let filterExpression = filterParts.length !== 0 ? filterParts.join(" AND ") : undefined;
   let hasAttributeValues = Object.keys(expressionAttributeValues).length !== 0;
-  let hasAttributeNames = Object.keys(expressionAttributeNames).length !== 0;
+  return {
+    filterExpression: filterParts.join(" AND "),
+    expressionAttributeNames: expressionAttributeNames,
+    expressionAttributeValues: hasAttributeValues ? expressionAttributeValues : undefined
+  };
+}
+
+async function scanWithFilter(table, eventTypes, after) {
+  let filter = buildScanFilter(eventTypes);
   let scanParams_TableName = table.name;
-  let scanParams_ExpressionAttributeNames = hasAttributeNames ? expressionAttributeNames : undefined;
-  let scanParams_ExpressionAttributeValues = hasAttributeValues ? expressionAttributeValues : undefined;
+  let scanParams_ExpressionAttributeNames = filter.expressionAttributeNames;
+  let scanParams_ExpressionAttributeValues = filter.expressionAttributeValues;
+  let scanParams_FilterExpression = filter.filterExpression;
   let scanParams = {
     TableName: scanParams_TableName,
     ExpressionAttributeNames: scanParams_ExpressionAttributeNames,
     ExpressionAttributeValues: scanParams_ExpressionAttributeValues,
-    FilterExpression: filterExpression
+    FilterExpression: scanParams_FilterExpression
   };
   let rawItems = await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.scanStream(scanParams)));
   if (after !== undefined) {
@@ -870,29 +880,16 @@ function queryByCompositeTagsStream(table, tags, after) {
 }
 
 function scanWithFilterStream(table, eventTypes, after) {
-  let expressionAttributeValues = {};
-  let expressionAttributeNames = {};
-  let filterParts = [];
-  if (eventTypes !== undefined) {
-    expressionAttributeNames["#evt"] = "event";
-    let typeConditions = eventTypes.map((typ, idx) => {
-      let placeholder = `:type` + idx.toString();
-      expressionAttributeValues[placeholder] = typ;
-      return `#evt = ` + placeholder;
-    });
-    filterParts.push(`(` + typeConditions.join(" OR ") + `)`);
-  }
-  let filterExpression = filterParts.length !== 0 ? filterParts.join(" AND ") : undefined;
-  let hasAttributeValues = Object.keys(expressionAttributeValues).length !== 0;
-  let hasAttributeNames = Object.keys(expressionAttributeNames).length !== 0;
+  let filter = buildScanFilter(eventTypes);
   let baseParams_TableName = table.name;
-  let baseParams_ExpressionAttributeNames = hasAttributeNames ? expressionAttributeNames : undefined;
-  let baseParams_ExpressionAttributeValues = hasAttributeValues ? expressionAttributeValues : undefined;
+  let baseParams_ExpressionAttributeNames = filter.expressionAttributeNames;
+  let baseParams_ExpressionAttributeValues = filter.expressionAttributeValues;
+  let baseParams_FilterExpression = filter.filterExpression;
   let baseParams = {
     TableName: baseParams_TableName,
     ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
     ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
-    FilterExpression: filterExpression
+    FilterExpression: baseParams_FilterExpression
   };
   let baseStream = Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
     let params;
@@ -973,6 +970,7 @@ export {
   fromItem,
   queryBySingleTag,
   queryByCompositeTags,
+  buildScanFilter,
   scanWithFilter,
   buildQueryByPartitionKeyInput,
   queryByPartitionKey,
