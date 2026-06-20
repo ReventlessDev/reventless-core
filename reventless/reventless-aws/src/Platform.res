@@ -13,6 +13,18 @@
 
 let log = ReventlessCore.Logger.fromEnv()
 
+// Deploy-time schema-push shrink-guard threshold (deploy-time analogue of the
+// runtime RUNTIME_SCHEMA_SHRINK_THRESHOLD in AdminEventCollectorEntryPoint.mjs).
+// A push whose stitched SDL has fewer than (threshold × live) root fields is
+// refused as a likely stale concurrent-deploy stitch. Default 0.5; override via
+// DEPLOY_SCHEMA_SHRINK_THRESHOLD; values outside (0, 1) fall back to the default.
+@val @scope("process") external processEnv: Dict.t<string> = "env"
+let deploySchemaShrinkThreshold: float =
+  switch processEnv->Dict.get("DEPLOY_SCHEMA_SHRINK_THRESHOLD")->Option.flatMap(Float.fromString) {
+  | Some(n) if n > 0. && n < 1. => n
+  | _ => 0.5
+  }
+
 // API config ref — populated during MakeWithConfig so slice builders
 // can access api/apiRole outside the functor constraint.
 //
@@ -866,6 +878,10 @@ module MakeWithConfig = (
               }
               let client = AppSync_Adapter.getClient()
 
+              // Introspect the live schema once — reused for the hash-match
+              // drift/repair check and the catastrophic-shrink guard on the push.
+              let liveSdl = await AppSync_Adapter.getIntrospectionSdl(client, apiId)
+
               // The stored hash records what the DEPLOY last pushed. A runtime
               // re-stitch (mkUpdateApiSchema) can clobber the live schema
               // out-of-band WITHOUT updating this hash, so a matching hash does
@@ -885,7 +901,6 @@ module MakeWithConfig = (
                 )
               let skipPush = switch storedHash {
               | Some(prev) if prev == currentHash =>
-                let liveSdl = await AppSync_Adapter.getIntrospectionSdl(client, apiId)
                 let expected = countRoots(sdl)
                 let live = countRoots(liveSdl)
                 if liveSdl == "" {
@@ -910,24 +925,54 @@ module MakeWithConfig = (
               | _ => false
               }
               if !skipPush {
-                log.info(
-                  ~comp="preResolversSchemaHook",
-                  `Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
-                )
-                await client->AppSync_Adapter.startSchemaCreationRetrying({
-                  apiId,
-                  definition: sdl,
-                })
-                log.info(
-                  ~comp="preResolversSchemaHook",
-                  "startSchemaCreation called, waiting for ACTIVE",
-                )
-                await AppSync_Adapter.waitForSchemaActive(client, apiId)
-                log.info(~comp="preResolversSchemaHook", "Schema is ACTIVE")
-                switch tableNameOpt {
-                | Some(tn) =>
-                  await writeSchemaHash(~tableName=tn, ~apiId, ~hash=currentHash)
-                | None => ()
+                // Shrink guard — deploy-time counterpart of the runtime
+                // mkUpdateApiSchema guard (AdminEventCollectorEntryPoint.mjs).
+                // Plugin/service stacks share one AppSync API and StartSchemaCreation
+                // REPLACES the whole schema. A concurrent peer that scanned the
+                // deploy-schema table before this stack wrote its fragment row
+                // stitches an SDL missing this stack's fields; pushing it would drop
+                // the live fields and orphan their resolvers (NotFoundException: No
+                // field named X). Refuse a push that would catastrophically shrink
+                // the live schema — the field-owner's own deploy (whose scan includes
+                // its freshly-written row) pushes the complete set.
+                // isCatastrophicSchemaShrink returns false when the live schema is
+                // empty (first deploy / introspection unavailable), so the initial
+                // push still proceeds.
+                if (
+                  ReventlessCore.GraphQL_Stitcher.isCatastrophicSchemaShrink(
+                    ~currentSdl=liveSdl,
+                    ~newSdl=sdl,
+                    ~threshold=deploySchemaShrinkThreshold,
+                  )
+                ) {
+                  log.error(
+                    ~comp="preResolversSchemaHook",
+                    `ABORTED schema push for ${apiId}: stitched SDL (${countRoots(
+                        sdl,
+                      )->Int.toString} root field(s)) would catastrophically shrink the live schema (${countRoots(
+                        liveSdl,
+                      )->Int.toString} root field(s), threshold ${deploySchemaShrinkThreshold->Float.toString}) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`,
+                  )
+                } else {
+                  log.info(
+                    ~comp="preResolversSchemaHook",
+                    `Pushing schema to API ${apiId} (${allPluginFragments->Array.length->Int.toString} plugin fragments, new hash: ${currentHash->String.slice(~start=0, ~end=12)}…)`,
+                  )
+                  await client->AppSync_Adapter.startSchemaCreationRetrying({
+                    apiId,
+                    definition: sdl,
+                  })
+                  log.info(
+                    ~comp="preResolversSchemaHook",
+                    "startSchemaCreation called, waiting for ACTIVE",
+                  )
+                  await AppSync_Adapter.waitForSchemaActive(client, apiId)
+                  log.info(~comp="preResolversSchemaHook", "Schema is ACTIVE")
+                  switch tableNameOpt {
+                  | Some(tn) =>
+                    await writeSchemaHash(~tableName=tn, ~apiId, ~hash=currentHash)
+                  | None => ()
+                  }
                 }
               }
 
