@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.49 (2026-06-20)
+
+### Bug Fixes
+
+* **packaging:** publish online-shop-hybrid examples source-only via .npmignore ([a2b3cbf](https://github.com/ReventlessDev/reventless-core/commit/a2b3cbf6067b006647aefee2bf1f4daf182c98e9))
+
+
 # 1.0.0-alpha.48 (2026-06-17)
 
 * feat(example)!: type the directive channel in the hybrid example ([7ee7527](https://github.com/ReventlessDev/reventless-core/commit/7ee75275a01808c83df3e5c4f309c1be851bcffb))

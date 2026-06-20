@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.93 (2026-06-20)
+
+### Bug Fixes
+
+* **dcb:** scope DynamoDB consistency fences to the partition tag ([2ecbd85](https://github.com/ReventlessDev/reventless-core/commit/2ecbd8599a6466c3a25299f4506dd5c5993367a8))
+* **packaging:** publish online-shop-hybrid examples source-only via .npmignore ([a2b3cbf](https://github.com/ReventlessDev/reventless-core/commit/a2b3cbf6067b006647aefee2bf1f4daf182c98e9))
+
+
 # 1.0.0-alpha.92 (2026-06-20)
 
 **Note:** Version bump only for package @reventlessdev/online-shop-hybrid-ordering

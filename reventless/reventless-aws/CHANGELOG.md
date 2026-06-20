@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.159 (2026-06-20)
+
+### Bug Fixes
+
+* **dcb:** close the after=None create-race with a per-type create guard ([e5a834b](https://github.com/ReventlessDev/reventless-core/commit/e5a834bbffd1cafdd16e2e691a5999dfd86f65b4))
+* **dcb:** scope DynamoDB consistency fences to the partition tag ([2ecbd85](https://github.com/ReventlessDev/reventless-core/commit/2ecbd8599a6466c3a25299f4506dd5c5993367a8))
+* **state-view-slice:** compress HANDLER_CONFIG under Lambda 4KB env limit ([c7aa606](https://github.com/ReventlessDev/reventless-core/commit/c7aa6064024de183def6ed73f453d6c5309aa63f))
+
+
 # 3.0.0-alpha.158 (2026-06-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-aws
