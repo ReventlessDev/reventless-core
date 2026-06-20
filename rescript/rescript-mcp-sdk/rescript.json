@@ -15,7 +15,8 @@
       "dir": "src",
       "subdirs": true,
       "public": [
-        "McpSdk"
+        "McpSdk",
+        "McpSdk_Helpers"
       ]
     }
   ],
