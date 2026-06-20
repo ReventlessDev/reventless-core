@@ -255,6 +255,74 @@ describe("Runtime.appendUnconditional", () => {
   })
 })
 
+describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", () => {
+  let event = (eventType, tags): ReventlessCore.DcbEventLog_Adapter.rawStoredEvent => {
+    eventType,
+    data: JSON.Object(Dict.make()),
+    tags,
+    meta: testMeta(),
+  }
+
+  // Locate the fence transact item (Update or ConditionCheck) targeting `fenceId`.
+  let findFence = (items: array<AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.transactWriteItem>, fenceId) =>
+    items->Array.find(it => {
+      let idOf = key => key->Dict.get("id") == Some(fenceId->JSON.Encode.string)
+      switch (it.update, it.conditionCheck) {
+      | (Some(u), _) => idOf(u.key)
+      | (_, Some(c)) => idOf(c.key)
+      | _ => false
+      }
+    })
+  let isUpdate = it => it->Option.flatMap(i => i.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.update)->Option.isSome
+  let isCheck = it => it->Option.flatMap(i => i.AwsSdk.DynamoDb.DocumentClient.TransactWriteCommand.conditionCheck)->Option.isSome
+
+  describe("PlaceOrder shape: OrderPlaced partitioned by orderId, reads orderId + productId", () => {
+    let orderPlaced = event(
+      "OrderPlaced",
+      [tag("orderId", "o1"), tag("customerId", "c1"), tag("productId", "p5")],
+    )
+    let partitionTag = Some(Reventless.DcbTag.Simple({key: "orderId"}))
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: [tag("orderId", "o1")]}, {tags: [tag("productId", "p5")]}],
+      after: "50",
+    }
+    let items = Runtime.buildConditionalTransactItems(table, [orderPlaced], cond, "100", ~partitionTag?)
+
+    testSync("partition tag (orderId) is a conditional Update that bumps the fence", () => {
+      expect(isUpdate(findFence(items, "fence#orderId:o1")))->toBe(true)
+    })
+
+    testSync("non-partition read tag (productId) is a ConditionCheck, not a bump", () => {
+      let it = findFence(items, "fence#productId:p5")
+      expect(isCheck(it))->toBe(true)
+      expect(isUpdate(it))->toBe(false)
+    })
+
+    testSync("secondary event tag (customerId) is not fenced at all", () => {
+      expect(findFence(items, "fence#customerId:c1")->Option.isSome)->toBe(false)
+    })
+  })
+
+  describe("composite (multi-tag) read keeps check+bump on all its tags", () => {
+    // RecordProductDemand-style: one multi-tag clause => composite GSI read.
+    let demand = event("ProductDemandRecorded", [tag("productId", "p1"), tag("orderId", "o1")])
+    let partitionTag = Some(Reventless.DcbTag.Simple({key: "productId"}))
+    let cond: Reventless.DcbTag.appendCondition = {
+      query: [{tags: [tag("productId", "p1"), tag("orderId", "o1")]}],
+      after: "50",
+    }
+    let items = Runtime.buildConditionalTransactItems(table, [demand], cond, "100", ~partitionTag?)
+
+    testSync("partition tag (productId) is a conditional Update", () => {
+      expect(isUpdate(findFence(items, "fence#productId:p1")))->toBe(true)
+    })
+
+    testSync("other composite tag (orderId) is also a conditional Update — OCC preserved", () => {
+      expect(isUpdate(findFence(items, "fence#orderId:o1")))->toBe(true)
+    })
+  })
+})
+
 describe("Runtime.appendConditional", () => {
   testAsync("rejects tagless conditions with a clear error", async () => {
     let cond: Reventless.DcbTag.appendCondition = {
@@ -269,10 +337,14 @@ describe("Runtime.appendConditional", () => {
   })
 
   testAsync("rejects appends exceeding 100 items with a clear error", async () => {
-    // 100 unique tag values + 1 event = 101 items, over the limit.
+    // 100 unique single-tag query clauses + 1 event = 101 items, over the limit.
+    // `after` is set so each clause yields a conditional fence item (Update for the
+    // partition tag, ConditionCheck for the rest) rather than the idempotent
+    // bump-only fallback.
     let manyTags = Array.fromInitializer(~length=100, i => tag("k", `v${i->Int.toString}`))
     let cond: Reventless.DcbTag.appendCondition = {
       query: manyTags->Array.map(t => {Reventless.DcbTag.tags: [t]}),
+      after: "0",
     }
     let event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent = {
       eventType: "Foo",

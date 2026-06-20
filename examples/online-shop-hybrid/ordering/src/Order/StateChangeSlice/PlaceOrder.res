@@ -10,23 +10,23 @@
 
 @@reventless.spec
 
-// `OrderPlaced` carries `orderId` (not partial) so the decision model can
-// discriminate placements across the multi-clause query. Without it,
-// OrderPlaced events from sibling orders that share a `productId` tag would
-// leak in and falsely set "this order exists".
+// `OrderPlaced` carries `orderId` so `evolve` can record THIS order's existence
+// (the `orderId` clause reads the order's own partition). `CatalogProductSynced`
+// is read by `productId` to confirm availability — a monotonic existence check,
+// not optimistic concurrency: the adapter fences `productId` only via
+// productId-partitioned events (CatalogProductSynced), so two orders of the same
+// product never conflict. See
+// `docs/analysis/dcb-fence-scope-vs-read-scope-mismatch.md`.
 @schema
 type consumedEvent =
   | OrderPlaced({orderId: string})
   | CatalogProductSynced({productId: string})
 
-// `customerId` is payload data, not a DCB consistency key: PlaceOrder reads
-// no events filtered by customerId, so adding it to the DCB query produces
-// false-positive ConditionalCheckFailed conflicts. The previous PlaceOrder's
-// customerId fence position is newer than this slice's `after`, so a
-// conditional `lastPosition <= :after` on the customerId fence rejects
-// every subsequent placement by the same customer. `@noDcbTag` keeps customerId
-// out of the query; the event still tags it (downstream consumers can index
-// by customer), but the slice no longer fences on it.
+// `customerId` is payload data, not a DCB consistency key. `@noDcbTag` keeps it
+// out of the query so PlaceOrder is not coupled to the customer event stream
+// (otherwise a concurrent customer change would conflict an unrelated order).
+// The event still tags `customerId` so downstream consumers can index by
+// customer; as a secondary (non-partition) tag it is never fenced.
 @schema
 type command =
   PlaceOrder({

@@ -32,13 +32,16 @@ module Make = (
     // Use `extractTagsExpanded` (not `extractTags`) so per-element tags on
     // `array<string>` fields are emitted — e.g. OrderPlaced's
     // `productIds: array<string>` produces one tag per productId rather than
-    // dropping the field entirely. Without expansion the stored event has no
-    // productId tag, so the next slice reading by productId can't see this
-    // event, while the query path (`buildQueryFromCommand`, which DOES use
-    // the expanded variant) still bumps `fence#productId:<x>`. Result:
-    // subsequent PlaceOrder for the same productId reads stale events,
-    // computes after < current fence, and conflicts. Expanding here keeps
-    // the two paths in sync.
+    // dropping the field entirely. The stored event then carries each productId
+    // as a GSI tag attribute, so composite/GSI readers and the per-productId
+    // partition (for events partitioned by productId) resolve correctly.
+    //
+    // Note: a productId here is a *secondary* tag on OrderPlaced (the partition
+    // tag is orderId). The DynamoDB adapter fences a tag only when it is the
+    // event's partition tag, so emitting productId tags does NOT bump
+    // `fence#productId:<x>` — that fence is owned by productId-partitioned events
+    // (e.g. CatalogProductSynced). This keeps read-scope and fence-scope aligned;
+    // see `docs/analysis/dcb-fence-scope-vs-read-scope-mismatch.md`.
     let tags =
       Reventless.DcbTag.extractTagsExpanded(Spec.eventSchema, event)->Array.concat([
         {Reventless.DcbTag.key: "originatorSlice", value: Spec.name},

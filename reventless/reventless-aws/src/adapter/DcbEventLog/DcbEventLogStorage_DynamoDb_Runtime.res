@@ -604,6 +604,31 @@ let buildUnconditionalFenceUpdate = (
   }
 }
 
+// Read-only fence assertion: verifies no writer bumped the fence past `after`
+// WITHOUT advancing it. Used for query tags the slice *reads* but does not
+// *partition* by — the read is partition-scoped, so bumping such a tag's fence
+// here would falsely conflict every later writer that merely shares the tag
+// value (e.g. a second order of the same product). See analysis
+// `docs/analysis/dcb-fence-scope-vs-read-scope-mismatch.md`.
+let buildFenceConditionCheck = (
+  tableName: string,
+  tag: Reventless.DcbTag.tag,
+  ~after: option<string>,
+): TransactWriteCommand.conditionCheck =>
+  switch after {
+  | None => {
+      TransactWriteCommand.key: fenceKey(tag),
+      tableName,
+      conditionExpression: "attribute_not_exists(lastPosition)",
+    }
+  | Some(pos) => {
+      TransactWriteCommand.key: fenceKey(tag),
+      tableName,
+      conditionExpression: "attribute_not_exists(lastPosition) OR lastPosition <= :after",
+      expressionAttributeValues: Dict.fromArray([(":after", pos->JSON.Encode.string)]),
+    }
+  }
+
 // `TransactWriteItems` is capped at 100 items per call. We surface a clear
 // error before calling AWS rather than leaking ValidationException upstream.
 let transactWriteItemsLimit = 100
@@ -679,6 +704,176 @@ let appendUnconditional = async (
   }
 }
 
+// The partition tag(s) of a written event — the ONLY fences an append may BUMP.
+// A tag's fence must track exactly the partition-scoped events a single-tag read
+// of that tag observes (events are stored under `id="<partitionKey>:<value>"`),
+// so only the partition tag may advance it. Mirrors `derivePartitionKey`.
+//
+// For a Composite partition tag there is no single fence key that represents the
+// partition, so we keep the historical behaviour (treat every tag as a partition
+// tag) rather than risk under-fencing composite-partition slices.
+let eventPartitionTags = (
+  event: ReventlessCore.DcbEventLog_Adapter.rawStoredEvent,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
+): array<Reventless.DcbTag.tag> =>
+  switch partitionTag {
+  | Some(Composite(_)) => event.tags
+  | Some(Simple(pt)) =>
+    switch event.tags->Array.find(t => t.key == pt.key) {
+    | Some(t) => [t]
+    | None => switch event.tags->Array.get(0) {
+      | Some(t) => [t]
+      | None => []
+      }
+    }
+  | None =>
+    switch event.tags->Array.get(0) {
+    | Some(t) => [t]
+    | None => []
+    }
+  }
+
+let collectEventPartitionTags = (
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>,
+): array<Reventless.DcbTag.tag> => {
+  let seen = Set.make()
+  let acc = []
+  events->Array.forEach(event =>
+    eventPartitionTags(event, ~partitionTag)->Array.forEach(tag => {
+      let k = `${tag.key}:${tag.value}`
+      if !(seen->Set.has(k)) {
+        seen->Set.add(k)
+        acc->Array.push(tag)
+      }
+    })
+  )
+  acc
+}
+
+// Builds the full ordered `TransactWriteItems` array for a conditional append:
+// event Puts, then fence Updates (check + bump), then fence ConditionChecks
+// (check only), then unconditional bumps. Pure — no IO — so the transaction shape
+// is unit-testable without DynamoDB.
+let buildConditionalTransactItems = (
+  table: resolvedTable,
+  events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
+  cond: Reventless.DcbTag.appendCondition,
+  basePosition: string,
+  ~partitionTag: option<Reventless.DcbTag.derivedPartitionTag>=?,
+): array<TransactWriteCommand.transactWriteItem> => {
+  // The partitions this append writes into — the only fences it may BUMP.
+  let partitionTags = collectEventPartitionTags(events, ~partitionTag)
+  let partitionKeySet = Set.make()
+  partitionTags->Array.forEach(t => partitionKeySet->Set.add(`${t.key}:${t.value}`))
+  let isPartition = (t: Reventless.DcbTag.tag) => partitionKeySet->Set.has(`${t.key}:${t.value}`)
+
+  // Distinct tags belonging to multi-tag (composite GSI) query clauses. A composite
+  // read can match cross-partition events, so its fences keep the historical
+  // check+bump treatment to stay correct.
+  let compositeKeySet = Set.make()
+  let compositeQueryTags = []
+  cond.query->Array.forEach(qi =>
+    switch qi.tags {
+    | Some(tags) if tags->Array.length > 1 =>
+      tags->Array.forEach(tag => {
+        let k = `${tag.key}:${tag.value}`
+        if !(compositeKeySet->Set.has(k)) {
+          compositeKeySet->Set.add(k)
+          compositeQueryTags->Array.push(tag)
+        }
+      })
+    | _ => ()
+    }
+  )
+  let isCompositeQueryTag = (t: Reventless.DcbTag.tag) =>
+    compositeKeySet->Set.has(`${t.key}:${t.value}`)
+
+  // Classify the conditional fence items per query clause.
+  let updateKeySet = Set.make()
+  let conditionalUpdateTags = []
+  let checkKeySet = Set.make()
+  let conditionCheckTags = []
+  let pushUpdate = (tag: Reventless.DcbTag.tag) => {
+    let k = `${tag.key}:${tag.value}`
+    if !(updateKeySet->Set.has(k)) {
+      updateKeySet->Set.add(k)
+      conditionalUpdateTags->Array.push(tag)
+    }
+  }
+  let pushCheck = (tag: Reventless.DcbTag.tag) => {
+    let k = `${tag.key}:${tag.value}`
+    if !(checkKeySet->Set.has(k)) {
+      checkKeySet->Set.add(k)
+      conditionCheckTags->Array.push(tag)
+    }
+  }
+
+  switch cond.after {
+  | Some(_) =>
+    cond.query->Array.forEach(qi =>
+      switch qi.tags {
+      // Single-tag clause = partition-scoped read. The read observes only events
+      // in this tag's partition, so its fence may be BUMPED only when this append
+      // writes into that partition (conditional Update); otherwise it is asserted
+      // read-only (ConditionCheck) so later writers sharing the tag value don't
+      // falsely conflict. (Composite-clause tags keep check+bump — see below.)
+      | Some([tag]) =>
+        if isPartition(tag) || isCompositeQueryTag(tag) {
+          pushUpdate(tag)
+        } else {
+          pushCheck(tag)
+        }
+      // Multi-tag clause = composite (GSI) read — keep check+bump on every tag.
+      | Some(tags) if tags->Array.length > 1 => tags->Array.forEach(pushUpdate)
+      | _ => ()
+      }
+    )
+  | None => () // idempotent fallback — no conditional checks; bumps only (below).
+  }
+
+  // Unconditional bumps. Advance fences for the partitions this append writes into
+  // (so future partition-scoped readers detect it) plus composite query tags (so
+  // composite readers detect it), minus anything a conditional Update already
+  // bumps. This NEVER bumps secondary (non-partition) event tags — doing so was
+  // the source of the cross-partition false conflicts.
+  let bumpSeen = Set.make()
+  conditionalUpdateTags->Array.forEach(t => bumpSeen->Set.add(`${t.key}:${t.value}`))
+  let bumpTags = []
+  let candidateBumps = switch cond.after {
+  | Some(_) => partitionTags
+  | None => Array.concat(partitionTags, compositeQueryTags)
+  }
+  candidateBumps->Array.forEach(tag => {
+    let k = `${tag.key}:${tag.value}`
+    if !(bumpSeen->Set.has(k)) {
+      bumpSeen->Set.add(k)
+      bumpTags->Array.push(tag)
+    }
+  })
+
+  let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
+  let updateItems =
+    conditionalUpdateTags->Array.map(tag => {
+      TransactWriteCommand.update: buildConditionalFenceUpdate(
+        table.name,
+        tag,
+        ~newPosition=basePosition,
+        ~after=cond.after,
+      ),
+    })
+  let checkItems =
+    conditionCheckTags->Array.map(tag => {
+      TransactWriteCommand.conditionCheck: buildFenceConditionCheck(table.name, tag, ~after=cond.after),
+    })
+  let bumpItems =
+    bumpTags->Array.map(tag => {
+      TransactWriteCommand.update: buildUnconditionalFenceUpdate(table.name, tag, ~newPosition=basePosition),
+    })
+
+  Array.concat(putItems, Array.concat(updateItems, Array.concat(checkItems, bumpItems)))
+}
+
 let appendConditional = async (
   table: resolvedTable,
   events: array<ReventlessCore.DcbEventLog_Adapter.rawStoredEvent>,
@@ -686,82 +881,23 @@ let appendConditional = async (
   ~partitionTag=?,
 ) => {
   let queryTags = collectQueryTags(cond.query)
-  let eventTags = collectEventTags(events)
-
-  // Tags present in new events but NOT already in the query — bump
-  // unconditionally so future readers querying these tags detect us.
-  let queryTagSet = Set.make()
-  queryTags->Array.forEach(t => queryTagSet->Set.add(`${t.key}:${t.value}`))
-  let extraEventTags =
-    eventTags->Array.filter(t => !(queryTagSet->Set.has(`${t.key}:${t.value}`)))
-
-  let totalItems = events->Array.length + queryTags->Array.length + extraEventTags->Array.length
 
   if queryTags->Array.length == 0 {
     Error(
       "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag",
     )
-  } else if totalItems > transactWriteItemsLimit {
-    Error(
-      `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
-    )
   } else {
     let basePosition = generatePosition()
-
-    // When `cond.after` is None the slice observed zero events of its query
-    // event-types on these tag streams. Earlier this turned into a strict
-    // `attribute_not_exists(lastPosition)` check — which rejects whenever a
-    // *different* slice has touched any of the same tags (different event
-    // type, same shared `*Id` tag like productId). For example: PlaceOrder
-    // appends OrderPlaced tagged productId, bumping `fence#productId:X`. The
-    // first RecordProductDemand for the same productId then reads 0 prior
-    // ProductDemandRecorded events, after=None, and fails the conditional
-    // because the productId fence already exists. DCB's per-tag fences are
-    // not per-(tag, event-type), so cross-slice writes on shared tags
-    // produce false-positive conflicts. Fall back to unconditional bumps
-    // when after=None — idempotent slices (which this overwhelmingly is when
-    // read returns nothing) rely on their own decide-time dedup; non-
-    // idempotent slices already pass `after=Some(pos)` because their read
-    // returned events.
-    let conditionalUpdates = switch cond.after {
-    | Some(_) =>
-      queryTags->Array.map(tag =>
-        buildConditionalFenceUpdate(
-          table.name,
-          tag,
-          ~newPosition=basePosition,
-          ~after=cond.after,
-        )
+    let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, ~partitionTag?)
+    let totalItems = transactItems->Array.length
+    if totalItems > transactWriteItemsLimit {
+      Error(
+        `DCB append: TransactWriteItems limit exceeded (${totalItems->Int.toString} > ${transactWriteItemsLimit->Int.toString}); reduce events or distinct tag values per command`,
       )
-    | None => []
+    } else {
+      let input: TransactWriteCommand.input = {transactItems: transactItems}
+      await runTransactWrite(input, basePosition, ~errorPrefix="DCB append failed")
     }
-    let bumpedTags = switch cond.after {
-    | Some(_) => extraEventTags
-    | None =>
-      // No conditional updates fired — bump every event tag AND every query
-      // tag unconditionally so future readers querying any of them still see
-      // the new position.
-      let queryUnique =
-        queryTags->Array.filter(qt =>
-          !(eventTags->Array.some(et => et.key == qt.key && et.value == qt.value))
-        )
-      Array.concat(eventTags, queryUnique)
-    }
-    let unconditionalUpdates =
-      bumpedTags->Array.map(tag =>
-        buildUnconditionalFenceUpdate(table.name, tag, ~newPosition=basePosition)
-      )
-
-    let putItems = buildEventPuts(table, events, basePosition, ~partitionTag?)
-    let updateItems =
-      Array.concat(conditionalUpdates, unconditionalUpdates)->Array.map(update => {
-        TransactWriteCommand.update: update,
-      })
-
-    let input: TransactWriteCommand.input = {
-      transactItems: Array.concat(putItems, updateItems),
-    }
-    await runTransactWrite(input, basePosition, ~errorPrefix="DCB append failed")
   }
 }
 

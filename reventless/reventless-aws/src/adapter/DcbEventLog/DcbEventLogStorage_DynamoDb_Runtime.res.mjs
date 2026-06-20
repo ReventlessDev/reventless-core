@@ -459,6 +459,26 @@ function buildUnconditionalFenceUpdate(tableName, tag, newPosition) {
   };
 }
 
+function buildFenceConditionCheck(tableName, tag, after) {
+  if (after !== undefined) {
+    return {
+      Key: fenceKey(tag),
+      TableName: tableName,
+      ConditionExpression: "attribute_not_exists(lastPosition) OR lastPosition <= :after",
+      ExpressionAttributeValues: Object.fromEntries([[
+          ":after",
+          after
+        ]])
+    };
+  } else {
+    return {
+      Key: fenceKey(tag),
+      TableName: tableName,
+      ConditionExpression: "attribute_not_exists(lastPosition)"
+    };
+  }
+}
+
 function buildEventPuts(table, events, basePosition, partitionTag) {
   return events.map((event, idx) => {
     let position = generatePositionForBatch(basePosition, idx);
@@ -524,52 +544,160 @@ async function appendUnconditional(table, events, partitionTag) {
   return await runTransactWrite(input, basePosition, "DCB append failed");
 }
 
+function eventPartitionTags(event, partitionTag) {
+  if (partitionTag !== undefined) {
+    if (partitionTag.TAG !== "Simple") {
+      return event.tags;
+    }
+    let pt = partitionTag._0;
+    let t = event.tags.find(t => t.key === pt.key);
+    if (t !== undefined) {
+      return [t];
+    }
+    let t$1 = event.tags[0];
+    if (t$1 !== undefined) {
+      return [t$1];
+    } else {
+      return [];
+    }
+  }
+  let t$2 = event.tags[0];
+  if (t$2 !== undefined) {
+    return [t$2];
+  } else {
+    return [];
+  }
+}
+
+function collectEventPartitionTags(events, partitionTag) {
+  let seen = new Set();
+  let acc = [];
+  events.forEach(event => {
+    eventPartitionTags(event, partitionTag).forEach(tag => {
+      let k = tag.key + `:` + tag.value;
+      if (!seen.has(k)) {
+        seen.add(k);
+        acc.push(tag);
+        return;
+      }
+    });
+  });
+  return acc;
+}
+
+function buildConditionalTransactItems(table, events, cond, basePosition, partitionTag) {
+  let partitionTags = collectEventPartitionTags(events, partitionTag);
+  let partitionKeySet = new Set();
+  partitionTags.forEach(t => {
+    partitionKeySet.add(t.key + `:` + t.value);
+  });
+  let isPartition = t => partitionKeySet.has(t.key + `:` + t.value);
+  let compositeKeySet = new Set();
+  let compositeQueryTags = [];
+  cond.query.forEach(qi => {
+    let tags = qi.tags;
+    if (tags !== undefined && tags.length > 1) {
+      tags.forEach(tag => {
+        let k = tag.key + `:` + tag.value;
+        if (!compositeKeySet.has(k)) {
+          compositeKeySet.add(k);
+          compositeQueryTags.push(tag);
+          return;
+        }
+      });
+      return;
+    }
+  });
+  let isCompositeQueryTag = t => compositeKeySet.has(t.key + `:` + t.value);
+  let updateKeySet = new Set();
+  let conditionalUpdateTags = [];
+  let checkKeySet = new Set();
+  let conditionCheckTags = [];
+  let pushUpdate = tag => {
+    let k = tag.key + `:` + tag.value;
+    if (!updateKeySet.has(k)) {
+      updateKeySet.add(k);
+      conditionalUpdateTags.push(tag);
+      return;
+    }
+  };
+  let match = cond.after;
+  if (match !== undefined) {
+    cond.query.forEach(qi => {
+      let tags = qi.tags;
+      if (tags === undefined) {
+        return;
+      }
+      if (tags.length !== 1) {
+        if (tags.length > 1) {
+          tags.forEach(pushUpdate);
+          return;
+        } else {
+          return;
+        }
+      }
+      let tag = tags[0];
+      if (isPartition(tag) || isCompositeQueryTag(tag)) {
+        return pushUpdate(tag);
+      } else {
+        let k = tag.key + `:` + tag.value;
+        if (!checkKeySet.has(k)) {
+          checkKeySet.add(k);
+          conditionCheckTags.push(tag);
+          return;
+        } else {
+          return;
+        }
+      }
+    });
+  }
+  let bumpSeen = new Set();
+  conditionalUpdateTags.forEach(t => {
+    bumpSeen.add(t.key + `:` + t.value);
+  });
+  let bumpTags = [];
+  let match$1 = cond.after;
+  let candidateBumps = match$1 !== undefined ? partitionTags : partitionTags.concat(compositeQueryTags);
+  candidateBumps.forEach(tag => {
+    let k = tag.key + `:` + tag.value;
+    if (!bumpSeen.has(k)) {
+      bumpSeen.add(k);
+      bumpTags.push(tag);
+      return;
+    }
+  });
+  let putItems = buildEventPuts(table, events, basePosition, partitionTag);
+  let updateItems = conditionalUpdateTags.map(tag => ({
+    Update: buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after)
+  }));
+  let checkItems = conditionCheckTags.map(tag => ({
+    ConditionCheck: buildFenceConditionCheck(table.name, tag, cond.after)
+  }));
+  let bumpItems = bumpTags.map(tag => ({
+    Update: buildUnconditionalFenceUpdate(table.name, tag, basePosition)
+  }));
+  return putItems.concat(updateItems.concat(checkItems.concat(bumpItems)));
+}
+
 async function appendConditional(table, events, cond, partitionTag) {
   let queryTags = collectQueryTags(cond.query);
-  let eventTags = collectEventTags(events);
-  let queryTagSet = new Set();
-  queryTags.forEach(t => {
-    queryTagSet.add(t.key + `:` + t.value);
-  });
-  let extraEventTags = eventTags.filter(t => !queryTagSet.has(t.key + `:` + t.value));
-  let totalItems = (events.length + queryTags.length | 0) + extraEventTags.length | 0;
   if (queryTags.length === 0) {
     return {
       TAG: "Error",
       _0: "DCB append: tagless conditions are not supported on DynamoDB — every queryItem must have at least one tag"
     };
   }
+  let basePosition = generatePosition();
+  let transactItems = buildConditionalTransactItems(table, events, cond, basePosition, partitionTag);
+  let totalItems = transactItems.length;
   if (totalItems > 100) {
     return {
       TAG: "Error",
       _0: `DCB append: TransactWriteItems limit exceeded (` + totalItems.toString() + ` > ` + (100).toString() + `); reduce events or distinct tag values per command`
     };
   }
-  let basePosition = generatePosition();
-  let match = cond.after;
-  let conditionalUpdates = match !== undefined ? queryTags.map(tag => buildConditionalFenceUpdate(table.name, tag, basePosition, cond.after)) : [];
-  let match$1 = cond.after;
-  let bumpedTags;
-  if (match$1 !== undefined) {
-    bumpedTags = extraEventTags;
-  } else {
-    let queryUnique = queryTags.filter(qt => !eventTags.some(et => {
-      if (et.key === qt.key) {
-        return et.value === qt.value;
-      } else {
-        return false;
-      }
-    }));
-    bumpedTags = eventTags.concat(queryUnique);
-  }
-  let unconditionalUpdates = bumpedTags.map(tag => buildUnconditionalFenceUpdate(table.name, tag, basePosition));
-  let putItems = buildEventPuts(table, events, basePosition, partitionTag);
-  let updateItems = conditionalUpdates.concat(unconditionalUpdates).map(update => ({
-    Update: update
-  }));
-  let input_TransactItems = putItems.concat(updateItems);
   let input = {
-    TransactItems: input_TransactItems
+    TransactItems: transactItems
   };
   return await runTransactWrite(input, basePosition, "DCB append failed");
 }
@@ -812,10 +940,14 @@ export {
   collectEventTags,
   buildConditionalFenceUpdate,
   buildUnconditionalFenceUpdate,
+  buildFenceConditionCheck,
   transactWriteItemsLimit,
   buildEventPuts,
   runTransactWrite,
   appendUnconditional,
+  eventPartitionTags,
+  collectEventPartitionTags,
+  buildConditionalTransactItems,
   appendConditional,
   append,
   queryByPartitionKeyStream,

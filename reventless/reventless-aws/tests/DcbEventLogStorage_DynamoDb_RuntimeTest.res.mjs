@@ -2,6 +2,7 @@
 
 import * as Stdlib_Array from "@rescript/runtime/lib/es6/Stdlib_Array.js";
 import * as Stdlib_Option from "@rescript/runtime/lib/es6/Stdlib_Option.js";
+import * as Primitive_object from "@rescript/runtime/lib/es6/Primitive_object.js";
 import * as Message$ReventlessCore from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import * as DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws from "../src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res.mjs";
 
@@ -294,6 +295,122 @@ globalThis.describe("Runtime.appendUnconditional", () => {
   });
 });
 
+globalThis.describe("Runtime.buildConditionalTransactItems — fence-scope = read-scope", () => {
+  let event = (eventType, tags) => ({
+    eventType: eventType,
+    data: {},
+    tags: tags,
+    meta: testMeta()
+  });
+  let findFence = (items, fenceId) => items.find(it => {
+    let idOf = key => Primitive_object.equal(key["id"], fenceId);
+    let match = it.Update;
+    let match$1 = it.ConditionCheck;
+    if (match !== undefined) {
+      return idOf(match.Key);
+    } else if (match$1 !== undefined) {
+      return idOf(match$1.Key);
+    } else {
+      return false;
+    }
+  });
+  let isUpdate = it => Stdlib_Option.isSome(Stdlib_Option.flatMap(it, i => i.Update));
+  let isCheck = it => Stdlib_Option.isSome(Stdlib_Option.flatMap(it, i => i.ConditionCheck));
+  globalThis.describe("PlaceOrder shape: OrderPlaced partitioned by orderId, reads orderId + productId", () => {
+    let orderPlaced = event("OrderPlaced", [
+      {
+        key: "orderId",
+        value: "o1"
+      },
+      {
+        key: "customerId",
+        value: "c1"
+      },
+      {
+        key: "productId",
+        value: "p5"
+      }
+    ]);
+    let cond_query = [
+      {
+        tags: [{
+            key: "orderId",
+            value: "o1"
+          }]
+      },
+      {
+        tags: [{
+            key: "productId",
+            value: "p5"
+          }]
+      }
+    ];
+    let cond_after = "50";
+    let cond = {
+      query: cond_query,
+      after: cond_after
+    };
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [orderPlaced], cond, "100", {
+      TAG: "Simple",
+      _0: {
+        key: "orderId"
+      }
+    });
+    globalThis.test("partition tag (orderId) is a conditional Update that bumps the fence", () => {
+      globalThis.expect(isUpdate(findFence(items, "fence#orderId:o1"))).toBe(true);
+    });
+    globalThis.test("non-partition read tag (productId) is a ConditionCheck, not a bump", () => {
+      let it = findFence(items, "fence#productId:p5");
+      globalThis.expect(isCheck(it)).toBe(true);
+      globalThis.expect(isUpdate(it)).toBe(false);
+    });
+    globalThis.test("secondary event tag (customerId) is not fenced at all", () => {
+      globalThis.expect(Stdlib_Option.isSome(findFence(items, "fence#customerId:c1"))).toBe(false);
+    });
+  });
+  globalThis.describe("composite (multi-tag) read keeps check+bump on all its tags", () => {
+    let demand = event("ProductDemandRecorded", [
+      {
+        key: "productId",
+        value: "p1"
+      },
+      {
+        key: "orderId",
+        value: "o1"
+      }
+    ]);
+    let cond_query = [{
+        tags: [
+          {
+            key: "productId",
+            value: "p1"
+          },
+          {
+            key: "orderId",
+            value: "o1"
+          }
+        ]
+      }];
+    let cond_after = "50";
+    let cond = {
+      query: cond_query,
+      after: cond_after
+    };
+    let items = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.buildConditionalTransactItems(table, [demand], cond, "100", {
+      TAG: "Simple",
+      _0: {
+        key: "productId"
+      }
+    });
+    globalThis.test("partition tag (productId) is a conditional Update", () => {
+      globalThis.expect(isUpdate(findFence(items, "fence#productId:p1"))).toBe(true);
+    });
+    globalThis.test("other composite tag (orderId) is also a conditional Update — OCC preserved", () => {
+      globalThis.expect(isUpdate(findFence(items, "fence#orderId:o1"))).toBe(true);
+    });
+  });
+});
+
 globalThis.describe("Runtime.appendConditional", () => {
   globalThis.test("rejects tagless conditions with a clear error", async () => {
     let cond_query = [{
@@ -317,8 +434,10 @@ globalThis.describe("Runtime.appendConditional", () => {
     let cond_query = manyTags.map(t => ({
       tags: [t]
     }));
+    let cond_after = "0";
     let cond = {
-      query: cond_query
+      query: cond_query,
+      after: cond_after
     };
     let event_data = {};
     let event_tags = [{
