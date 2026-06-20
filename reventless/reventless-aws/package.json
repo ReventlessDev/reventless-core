@@ -47,6 +47,10 @@
     "testMatch": [
       "<rootDir>/tests/**/*Test.res.mjs"
     ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/tests/integration/"
+    ],
     "moduleFileExtensions": [
       "js",
       "mjs"

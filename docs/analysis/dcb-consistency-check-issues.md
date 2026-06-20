@@ -93,7 +93,7 @@ Today the hole is masked only when the command topic FIFO-serializes commands pe
 - Every fence-shape bug (Issue 1, and any future one) is invisible to GWT / local / in-memory E2E — which is exactly why the deployed bug never showed in tests.
 - The two backends actively diverge on: `after=None` (local strict, AWS none — Issue 2), per-(tag,type) (AWS false-positives, local correct — Issue 4), and composite exact-match (Issue 5).
 
-**Mitigation**: a real-DynamoDB (or LocalStack) integration test exercising the fence path — already the **P0** item in the historical doc's open-items table ([`dcb-dynamodb-atomic-append-integration-test`](../plans/Backlog/dcb-dynamodb-atomic-append-integration-test.md)). Until it exists, the fence path has no behavioural coverage.
+**Mitigation**: a real-DynamoDB (or LocalStack) integration test exercising the fence path — **shipped 2026-06-20** ([`dcb-dynamodb-atomic-append-integration-test`](../plans/done/dcb-dynamodb-atomic-append-integration-test.md), Phase 1 of the hardening roadmap). DynamoDB Local via Docker; the fence path now has behavioural coverage including the Issue 1 regression and OCC primitives.
 
 ---
 

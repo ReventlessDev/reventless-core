@@ -148,6 +148,6 @@ Audit confirmed no direct callers of `appendUnconditional` outside the internal 
 
 ### Open follow-ups
 
-- **Integration test against real DynamoDB** — deferred to [`dcb-dynamodb-atomic-append-integration-test.md`](../Backlog/dcb-dynamodb-atomic-append-integration-test.md). Should add a scenario: after an unconditional append, a subsequent conditional append on the same tags is forced to use `lastPosition <= :after` instead of `attribute_not_exists`.
+- **Integration test against real DynamoDB** — deferred to [`dcb-dynamodb-atomic-append-integration-test.md`](dcb-dynamodb-atomic-append-integration-test.md). Should add a scenario: after an unconditional append, a subsequent conditional append on the same tags is forced to use `lastPosition <= :after` instead of `attribute_not_exists`.
 - **Multi-table fence semantics** — not actionable here; only relevant if a translation slice is configured to write events into a different table than the conditional writers read from. No such configuration exists in the repo today.
 - **Backwards compat with seed/import scripts** producing > 100 events per call — must chunk at the call site. None exist in the workspace today; document the requirement when one appears.

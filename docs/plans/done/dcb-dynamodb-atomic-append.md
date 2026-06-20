@@ -187,7 +187,7 @@ The **invariant violations** (the things that could silently corrupt state) — 
 
 Filed in `docs/plans/Backlog/`:
 
-- [`dcb-dynamodb-atomic-append-integration-test.md`](../Backlog/dcb-dynamodb-atomic-append-integration-test.md) — AWS integration test against DynamoDB Local proving atomicity end-to-end, not just shape.
+- [`dcb-dynamodb-atomic-append-integration-test.md`](dcb-dynamodb-atomic-append-integration-test.md) — AWS integration test against DynamoDB Local proving atomicity end-to-end, not just shape.
 - [`dynamodb-batchwriteitem-25-chunking.md`](../Backlog/dynamodb-batchwriteitem-25-chunking.md) — chunk `BatchWriteItem` payloads at 25 items in `Util_DynamoDb_Runtime`. Affects `appendUnconditional` and `QueryDb`.
 - [`dcb-strong-consistency-single-tag-reads.md`](../Backlog/dcb-strong-consistency-single-tag-reads.md) — `queryByPartitionKeyStream` could pass `consistentRead: true`. Reduces unnecessary fence-conflict retries on GSI lag.
 - [`dcb-monotonic-position-generation.md`](../Backlog/dcb-monotonic-position-generation.md) — replace `${ms}-${uuid}` with an HLC-style monotonic generator. Cosmetic under the new design but cleaner semantics.

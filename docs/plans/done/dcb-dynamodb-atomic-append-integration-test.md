@@ -1,6 +1,7 @@
 # Plan: AWS Integration Test for DCB Atomic Append
 
-**Parent plan**: [dcb-dynamodb-atomic-append.md](../done/dcb-dynamodb-atomic-append.md)
+**Status**: **Done (2026-06-20)** — implemented as Phase 1 of [dcb-consistency-hardening.md](../dcb-consistency-hardening.md); see that plan's Phase 1 section for the shipped artefacts and scenario coverage.
+**Parent plan**: [dcb-dynamodb-atomic-append.md](dcb-dynamodb-atomic-append.md)
 **Analysis**: [dcb-dynamodb-consistency-check.md](../../analysis/dcb-dynamodb-consistency-check.md)
 
 ## Problem
@@ -77,4 +78,9 @@ Update [parent plan's "Tests run" section](../done/dcb-dynamodb-atomic-append.md
 
 ## Status
 
-Not started.
+**Done (2026-06-20).** Implementation notes vs the original sketch above:
+
+- **Harness (Step 1)**: Docker — `amazon/dynamodb-local` via `docker compose` (Docker is already available on dev/CI; the JAR fallback was not needed). The runner **skips cleanly** when Docker is absent, so it's safe everywhere.
+- **Scaffolding (Step 2)**: `scripts/run-integration-tests.sh` (boot + wait + run + teardown) and `docker-compose.dynamodb-local.yml`. No `Util_DynamoDbLocal_Runtime` helper was needed — the AWS SDK v3 resolves the endpoint from `AWS_ENDPOINT_URL_DYNAMODB` (set in `jest.integration.setup.cjs`), so the production singleton client points at the local engine with **zero binding changes**. Table lifecycle (`CreateTable`/`DeleteTable`) lives in a test-only `DcbIntegrationHarness.res`.
+- **Tests (Step 3)**: written, plus the four fence-scope regression scenarios from the hardening roadmap. The two error-path cases (tagless rejection, 100-item limit) are already covered by the unit suite, so they were not duplicated. A `structuredClone` polyfill had to be added to `jest.setup.cjs` — without it the SDK's error deserializer masked real `TransactionCanceledException`s.
+- **CI (Step 4)**: no new job — CI already had a `pnpm run test:integration` step (continue-on-error); that script was made real. Default `pnpm test` stays engine-free via `testPathIgnorePatterns`.

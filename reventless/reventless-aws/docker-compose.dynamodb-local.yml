@@ -1,0 +1,12 @@
+# DynamoDB Local sidecar for the DCB integration suite.
+# Booted/torn down by scripts/run-integration-tests.sh.
+#
+# -inMemory keeps everything in RAM (no on-disk state to clean up); -sharedDb
+# makes every credential/region share one DB so the tests don't have to match
+# the harness's dummy credentials to a region-scoped store.
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:2.5.2
+    command: "-jar DynamoDBLocal.jar -inMemory -sharedDb"
+    ports:
+      - "8000:8000"

@@ -10,7 +10,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | Phase | Item | Analysis ref | Class | New work? | Existing plan |
 |---|---|---|---|---|---|
 | 0 | Fence-scope = read-scope | Issue 1 | Correctness | shipped | [dcb-fence-scope-alignment](dcb-fence-scope-alignment.md) |
-| 1 | DynamoDB integration test | Issue 3 | Verification | partly | [dcb-dynamodb-atomic-append-integration-test](Backlog/dcb-dynamodb-atomic-append-integration-test.md) |
+| 1 | DynamoDB integration test | Issue 3 | Verification | **done** | [dcb-dynamodb-atomic-append-integration-test](done/dcb-dynamodb-atomic-append-integration-test.md) |
 | 2 | `after=None` create-race | Issue 2 | Correctness | **yes** | — (detailed below) |
 | 3 | Drop unused per-tag GSIs | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
 | 4 | Decision-model cache | Perf/cost lever #2 | Cost | no | [dcb-decision-model-projection-cache](Backlog/dcb-decision-model-projection-cache.md) |
@@ -21,16 +21,29 @@ Order = correctness → verification harness → durable cost wins → robustnes
 
 ---
 
-## Phase 1 — DynamoDB integration test (Issue 3) — **prerequisite**
+## Phase 1 — DynamoDB integration test (Issue 3) — **DONE (2026-06-20)**
 
-Stand up the existing [dcb-dynamodb-atomic-append-integration-test](Backlog/dcb-dynamodb-atomic-append-integration-test.md) plan against real DynamoDB or LocalStack. Add the fence-scope regression scenarios as the first cases so Phase 0's fix is verified end-to-end and every later phase has a harness:
+Implemented per [dcb-dynamodb-atomic-append-integration-test](done/dcb-dynamodb-atomic-append-integration-test.md). The fence path now has end-to-end behavioural coverage against a real DynamoDB engine (DynamoDB Local via Docker), proving Phase 0's fix and giving every later phase a harness.
 
-1. Sync `P5`; order `O1[P5]` → Ok; order `O2[P5]` (diff customer + orderId) → **Ok** (Issue 1 regression).
-2. Same product, two concurrent orders → both Ok (no `productId` contention).
-3. Concurrent re-sync of `P5` between an order's read and append → conditional `productId` check **still conflicts** (OCC preserved).
-4. Place an order for customer `C`, then `ChangeEmail(C)` → Ok (customerId no longer poisons the customer slice).
+**What shipped**:
+- `reventless/reventless-aws/tests/integration/DcbEventLogStorage_DynamoDb_IntegrationTest.res` (+ `DcbIntegrationHarness.res` for `CreateTable`/`DeleteTable`/fence helpers).
+- `docker-compose.dynamodb-local.yml` + `scripts/run-integration-tests.sh` (boots the sidecar, waits, runs, tears down; **skips cleanly when Docker is absent** so it's safe in CI's existing continue-on-error step and on dev machines).
+- Root `jest.integration.config.js` + `jest.integration.setup.cjs` (points the SDK at the local engine via `AWS_ENDPOINT_URL_DYNAMODB` — **no binding changes**). Wired to the real `pnpm run test:integration`; default `pnpm test` stays engine-free (integration dir is `testPathIgnorePatterns`-excluded).
+- **Polyfill**: added `structuredClone` to `jest.setup.cjs` (mirrors the existing `crypto` polyfill). The AWS SDK's error-response deserializer calls it; without it a real `TransactionCanceledException` surfaced as `"structuredClone is not defined"` and masked the conflict — i.e. the fence path was untestable in Jest's VM sandbox until this was added.
 
-Gate: Phases 2–3 must add their scenarios here before merge.
+**Scenarios covered** (the four regression cases + OCC primitives):
+1. Sync `P5`; order `O1[P5]` → Ok; order `O2[P5]` (diff customer + orderId) → **Ok** (Issue 1 regression). ✓
+2. Same product, two concurrent orders → both Ok (no `productId` contention). ✓
+3. A concurrent re-sync of `P5` advancing the fence past the order's read → conditional `productId` check **still conflicts** (OCC preserved). ✓ *(uses a deterministic `setFence` rather than racing a second append — same-millisecond writers can tie on UUID order, analysis Issue 7).*
+4. Register customer `C`, place an order carrying `C` as a secondary tag, then `ChangeEmail(C)` → Ok (placing the order no longer poisons the customer slice). ✓
+5. Fresh first-writer (`after=None`) seeds the fence. ✓
+6. Two concurrent commits at the same `after` never both win (safety; raw layer may cancel both — the slice callback's 3-retry loop is what guarantees a single winner in prod). ✓
+7. A chain of compatible commits all succeed. ✓
+8. A failed fence condition aborts the whole multi-tag transaction (atomic rollback — the rejected event is not written). ✓
+
+Tagless-rejection and 100-item-limit round-trips are already covered by the unit suite (`DcbEventLogStorage_DynamoDb_RuntimeTest.res`), so they are not duplicated here.
+
+Gate: Phases 2–3 must add their scenarios to this suite before merge.
 
 ## Phase 2 — Close the `after=None` create-race (Issue 2) — **net new**
 
