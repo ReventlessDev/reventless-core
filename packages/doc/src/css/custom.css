@@ -145,3 +145,17 @@ a:hover {
 .header-github-link:hover::before {
   background-color: var(--ifm-color-primary);
 }
+
+/* D2 sequence diagrams (tagged `.sequence-diagram` by the rehype plugin) render
+   as SVGs that otherwise stretch to the full content width on wide screens —
+   blowing up the whole diagram and spreading the message arrows far apart.
+   Cap their width so they stay compact and scale DOWN (never up) on wide pages,
+   while still shrinking to fit narrow/mobile widths. Tune via the variable. */
+:root {
+  --seq-diagram-max-width: 460px;
+}
+img.sequence-diagram {
+  width: auto;
+  max-width: min(var(--seq-diagram-max-width), 100%);
+  height: auto;
+}

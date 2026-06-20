@@ -28,6 +28,7 @@ const sidebars = {
       items: [
         'internals/framework-internals',
         'internals/messages',
+        'internals/dcb-consistency-checks',
         'internals/serialization',
         'internals/resources',
         'internals/runtime',

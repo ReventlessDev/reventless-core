@@ -36,6 +36,49 @@ The shared styles file lives at `packages/doc/d2/reventless.d2`. That is the sin
 source of truth for all colors, shapes, and container styles. **Never put hex color
 values or shape overrides directly in a diagram.** Assign a class instead.
 
+### Diagram sizing on the built site
+
+Sequence diagrams (fenced `d2` blocks containing `shape: sequence_diagram`) are tagged
+with a `sequence-diagram` CSS class by a rehype plugin, and `src/css/custom.css` caps
+their rendered width (via `--seq-diagram-max-width`) so they don't stretch to the full
+content column — and balloon — on wide screens. This cap is **site CSS only**: it lives
+in the Docusaurus bundle and does not affect any editor preview (see below). Keep the
+diagram body compact (short actor labels, terse edge labels) so it reads well *before*
+that cap scales it down.
+
+---
+
+## Previewing diagrams while authoring (VS Code)
+
+A VS Code preview renders the **raw** `d2` code block — it does **not** run the
+Docusaurus pipeline. Two consequences trip people up:
+
+- **No theme colors.** The shared `reventless.d2` styles are prepended only at build
+  time, so previews render uncolored (this is expected — not an error).
+- **No site CSS.** The `sequence-diagram` width cap above lives in the site bundle, so a
+  preview will never apply it. The **built site is the source of truth** for final
+  colors and sizing; treat the editor preview as a quick structural check.
+
+If you want a closer-to-final preview, pick an extension by how it renders:
+
+| Extension | Renders into | Custom CSS / sizing |
+|---|---|---|
+| [D2 in Markdown](https://marketplace.visualstudio.com/items?itemName=brucermckay.d2-in-markdown) | VS Code's **built-in** markdown preview | Honors the standard `markdown.styles` setting — point it at a small local CSS file to cap width |
+| [Markdown Preview Enhanced](https://github.com/shd101wyy/vscode-markdown-preview-enhanced) | its **own** webview | Per-block options after the `d2` fence tag (e.g. `layout=elk theme=200 sketch`) plus its own "Customize CSS" (`style.less`) |
+| [Terrastruct D2](https://github.com/terrastruct/d2-vscode) | dedicated `.d2`-file preview | Primarily for standalone `.d2` files; rendering fenced `d2` blocks inside markdown preview is limited |
+
+**Gotcha — don't reuse the site selector.** The `sequence-diagram` class is injected by
+*our Docusaurus rehype plugin*, not by any extension. In an editor preview the diagram is
+just a plain `img`/`svg`, so a local cap must target a generic selector, e.g.:
+
+```css
+/* a local CSS file referenced from markdown.styles — NOT the site's custom.css */
+.markdown-body img { max-width: 460px; height: auto; }
+```
+
+These are per-machine editor preferences (VS Code settings / a local CSS file under the
+gitignored `.vscode/`), independent of the committed site CSS.
+
 ---
 
 ## Color system — Event Storming post-it mapping

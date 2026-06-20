@@ -377,6 +377,8 @@ let filteringHandler: jsonCommandsHandler = async jsonItems => {
 5. Appends with optimistic concurrency: `dcbEventLog.append(newEvents, ~condition={query, after: headPosition})`
 6. Retries up to 3 times on append conflict (position changed between read and write)
 
+For an end-to-end walkthrough of how the query is built from a command and how that condition becomes the per-tag consistency fences enforced atomically on DynamoDB — with worked `AddProduct` / `PlaceOrder` / `RecordProductDemand` examples — see [DCB Consistency Checks](../internals/dcb-consistency-checks.md).
+
 ### `StateViewSlice_Callback`: Projection Logic
 
 `StateViewSlice_Callback.Make(Spec)` produces a module whose `handleEvents` function processes events from the DcbEventLog and projects them into the QueryDb read model.
