@@ -167,4 +167,19 @@ Update [`docs/analysis/dcb-dynamodb-consistency-check.md`](../../analysis/dcb-dy
 
 ## Status
 
-Not started. Lower priority than the hot-tag contention plan — that one is a hard ceiling, this is an optimisation.
+**Core shipped — 2026-06-20** (roadmap Phase 4). Steps 1–3 and the Step 6 analysis-doc update are done; Steps 4 (per-slice capacity knob) and 5 (CloudWatch hit/miss metrics) are deferred follow-ups.
+
+**What shipped:**
+- **Step 1 — LRU primitive.** Hand-rolled, sealed `Lru` in [`reventless-core/src/util/Lru.res`](../../reventless/reventless-core/src/util/Lru.res) (+ `.resi`), recency via JS-Map insertion order, `capacity <= 0` disables. Unit-tested in [`tests/util/LruTest.res`](../../reventless/reventless-core/tests/util/LruTest.res) (get/put/overwrite/invalidate/eviction/LRU-recency/101-vs-100/disabled).
+- **Step 2 — wired into `StateChangeSlice_Callback`.** Module-level cache per functor instantiation (per slice, per warm Lambda), hardcoded capacity 100. On a cache hit the read is seeded `~after=cachedHead` (delta); on conflict the retry re-seeds from the just-read snapshot so each retry is also a delta read; terminal failure invalidates.
+- **Design change vs. the pseudocode below (important).** The cache stores the **decided-on state and the read head — NOT the produced events folded in, and NOT `append`'s returned position.** Two reasons the original "fold produced events into cached state, cache `append`'s position" sketch is unsafe: (1) `evolve` consumes `Spec.consumedEvent` but `decide` produces `Spec.event` — different ReScript types, no generic fold; (2) `append` returns the batch **base** position on DynamoDB but the batch **max** in-memory, so `~after=position` would re-read the batch tail on DynamoDB (multi-event append → double-count). Caching `(decisionState, readHead)` sidesteps both: the next command's delta read picks up our just-appended events (their position is always `> readHead` on both backends) and folds them itself. Correctness still rests entirely on the fence.
+- **Step 3 — tests.** `LruTest` (above) + three projection-cache scenarios in [`DcbStateChangeSliceTest.res`](../../reventless/reventless-core/tests/dcb/DcbStateChangeSliceTest.res): warm same-entity command reads only the delta (`readAfters == [None, None, Some("1")]`), a different entity stays a cold full read, and a forced conflict re-seeds so the retry reads the delta. The mock storage records each read's `~after`. `resetCache()` (added to the callback interface) is flushed in `beforeEach` since the mock storage is wiped out from under the persistent cache each test.
+- **Step 6 — docs.** `dcb-dynamodb-consistency-check.md` §Performance assessment + §4 bullets updated to mark the decision-model read cost addressed.
+
+**Deferred:**
+- **Step 4 — per-slice capacity knob.** Requires threading `projectionCacheCapacity` through `StateChangeSlice.Spec` (a module-type field → PPX auto-injection on every slice spec). Non-trivial surface; the hardcoded 100 is a sane default until a slice needs tuning or opt-out.
+- **Step 5 — CloudWatch hit/miss metrics.** Needs a runtime metrics-emission primitive in the slice callback. Land when operators need the hit-rate signal.
+
+---
+
+_Original plan (retained for reference; supersede the §Approach pseudocode with the shipped design noted above):_

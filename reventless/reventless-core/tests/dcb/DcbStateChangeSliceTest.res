@@ -41,7 +41,12 @@ let makeTopicItem = (reference, command): CommandTopic.topicItem<
   reference,
 }
 
-let _ = beforeEach(() => mock.reset())
+let _ = beforeEach(() => {
+  mock.reset()
+  // The projection cache is keyed on durable positions; the mock storage is wiped
+  // each test, so the cache must be flushed too or a prior test's snapshot leaks.
+  TestHandler.resetCache()
+})
 
 describe("StateChangeSlice_Callback:", () => {
   describe("handleCommands - happy path", () => {
@@ -199,6 +204,66 @@ describe("StateChangeSlice_Callback:", () => {
       )->Effect.runPromise
 
       expect(results)->toEqual([])
+    })
+  })
+
+  describe("handleCommands - projection cache", () => {
+    // The decision-model projection cache (StateChangeSlice_Callback) caches the
+    // `(decisionState, readHead)` per query. A warm same-entity command then reads
+    // only events after `readHead` — observable here via `mock.readAfters`
+    // (Some(_) = delta read, None = full read).
+    testPromise("a third same-entity command reads only the delta", async () => {
+      let run = (reference, command) =>
+        TestHandler.handleCommands(
+          testDcbEventLog,
+          Stream.fromIterable([makeTopicItem(reference, command)]),
+        )->Effect.runPromise
+
+      let _ = await run("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "A"}))
+      let _ = await run("ref-2", DcbFixtures.TestCommandSpec.RenameItem({itemId: "item-1", newName: "B"}))
+      let r3 = await run("ref-3", DcbFixtures.TestCommandSpec.RenameItem({itemId: "item-1", newName: "C"}))
+
+      // Read 1 (create, empty log) and read 2 (rename, head was None) are full
+      // reads; read 3 hits the cache primed by read 2 and reads after position "1".
+      expect((r3, mock.readAfters.contents, mock.getEvents()->Array.length))->toEqual((
+        [Ok("ref-3")],
+        [None, None, Some("1")],
+        3,
+      ))
+    })
+
+    testPromise("a different entity does not hit another entity's cache (full read)", async () => {
+      let run = (reference, command) =>
+        TestHandler.handleCommands(
+          testDcbEventLog,
+          Stream.fromIterable([makeTopicItem(reference, command)]),
+        )->Effect.runPromise
+
+      let _ = await run("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "A"}))
+      let _ = await run("ref-2", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-2", name: "B"}))
+
+      // item-2's query is a distinct cache key → cold full read (after=None).
+      expect(mock.readAfters.contents)->toEqual([None, None])
+    })
+
+    testPromise("conflict re-seeds the cache so the retry reads the delta", async () => {
+      let run = (reference, command) =>
+        TestHandler.handleCommands(
+          testDcbEventLog,
+          Stream.fromIterable([makeTopicItem(reference, command)]),
+        )->Effect.runPromise
+
+      let _ = await run("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "A"}))
+      // Force one append failure: the retry must re-seed from the just-read
+      // snapshot and read only the delta after position "1".
+      mock.failNextAppends := 1
+      let r2 = await run("ref-2", DcbFixtures.TestCommandSpec.RenameItem({itemId: "item-1", newName: "B"}))
+
+      expect((r2, mock.readAfters.contents, mock.getEvents()->Array.length))->toEqual((
+        [Ok("ref-2")],
+        [None, None, Some("1")],
+        2,
+      ))
     })
   })
 })

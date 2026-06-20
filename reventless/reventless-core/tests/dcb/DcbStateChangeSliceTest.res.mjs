@@ -74,7 +74,10 @@ function makeTopicItem(reference, command) {
   };
 }
 
-globalThis.beforeEach(() => mock.reset());
+globalThis.beforeEach(() => {
+  mock.reset();
+  TestHandler.resetCache();
+});
 
 globalThis.describe("StateChangeSlice_Callback:", () => {
   globalThis.describe("handleCommands - happy path", () => {
@@ -268,6 +271,89 @@ globalThis.describe("StateChangeSlice_Callback:", () => {
     globalThis.test("empty batch returns empty array", async () => {
       let results = await Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([])));
       globalThis.expect(results).toEqual([]);
+    });
+  });
+  globalThis.describe("handleCommands - projection cache", () => {
+    globalThis.test("a third same-entity command reads only the delta", async () => {
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      await run("ref-1", {
+        TAG: "CreateItem",
+        itemId: "item-1",
+        name: "A"
+      });
+      await run("ref-2", {
+        TAG: "RenameItem",
+        itemId: "item-1",
+        newName: "B"
+      });
+      let r3 = await run("ref-3", {
+        TAG: "RenameItem",
+        itemId: "item-1",
+        newName: "C"
+      });
+      globalThis.expect([
+        r3,
+        mock.readAfters.contents,
+        mock.getEvents().length
+      ]).toEqual([
+        [{
+            TAG: "Ok",
+            _0: "ref-3"
+          }],
+        [
+          undefined,
+          undefined,
+          "1"
+        ],
+        3
+      ]);
+    });
+    globalThis.test("a different entity does not hit another entity's cache (full read)", async () => {
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      await run("ref-1", {
+        TAG: "CreateItem",
+        itemId: "item-1",
+        name: "A"
+      });
+      await run("ref-2", {
+        TAG: "CreateItem",
+        itemId: "item-2",
+        name: "B"
+      });
+      globalThis.expect(mock.readAfters.contents).toEqual([
+        undefined,
+        undefined
+      ]);
+    });
+    globalThis.test("conflict re-seeds the cache so the retry reads the delta", async () => {
+      let run = (reference, command) => Effect.runPromise(TestHandler.handleCommands(testDcbEventLog, Stream.fromIterable([makeTopicItem(reference, command)])));
+      await run("ref-1", {
+        TAG: "CreateItem",
+        itemId: "item-1",
+        name: "A"
+      });
+      mock.failNextAppends.contents = 1;
+      let r2 = await run("ref-2", {
+        TAG: "RenameItem",
+        itemId: "item-1",
+        newName: "B"
+      });
+      globalThis.expect([
+        r2,
+        mock.readAfters.contents,
+        mock.getEvents().length
+      ]).toEqual([
+        [{
+            TAG: "Ok",
+            _0: "ref-2"
+          }],
+        [
+          undefined,
+          undefined,
+          "1"
+        ],
+        2
+      ]);
     });
   });
 });

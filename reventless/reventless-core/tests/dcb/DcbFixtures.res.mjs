@@ -194,6 +194,9 @@ function makeMockStorage() {
   let failNextAppendsRef = {
     contents: 0
   };
+  let readAftersRef = {
+    contents: []
+  };
   let matchesQuery = (event, query) => {
     if (query.length === 0) {
       return true;
@@ -218,6 +221,7 @@ function makeMockStorage() {
     }
   };
   let read = async (query, after) => {
+    readAftersRef.contents = readAftersRef.contents.concat([after]);
     let filtered = events.contents.filter(event => {
       let afterMatch = after !== undefined ? posToInt(event.position) > posToInt(after) : true;
       if (afterMatch) {
@@ -286,6 +290,7 @@ function makeMockStorage() {
     position.contents = 0;
     publishedEventsRef.contents = [];
     failNextAppendsRef.contents = 0;
+    readAftersRef.contents = [];
   };
   return {
     operations: {
@@ -297,6 +302,7 @@ function makeMockStorage() {
     publishedEvents: publishedEventsRef,
     mockPublishJson: mockPublishJson,
     failNextAppends: failNextAppendsRef,
+    readAfters: readAftersRef,
     reset: reset
   };
 }

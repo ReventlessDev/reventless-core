@@ -9,6 +9,10 @@ module type T = {
       unit,
     >,
   ) => Effect.t<array<result<string, string>>, string, unit>
+  /** Flushes this slice's in-process decision-model projection cache. The cache
+      is keyed on durable storage positions, so it must be cleared whenever the
+      backing store is reset out-of-band (test isolation; operational flush). */
+  let resetCache: unit => unit
 }
 
 module Make = (
@@ -90,8 +94,39 @@ module Make = (
 
   let maxRetries = 3
 
+  // In-process decision-model projection cache (per warm Lambda instance, per
+  // slice). Keyed on the serialised DCB query, it holds the
+  // `(decisionState, readHead)` the previous command for that query derived.
+  //
+  // On a hit, `handleSingleCommand` seeds the fold from the cached state and
+  // reads only events *after* `readHead` (the delta) instead of folding full
+  // history — O(delta) instead of O(history) per warm same-entity command.
+  //
+  // What is cached is deliberately the state the slice *decided on* and the head
+  // it *read up to* — NOT the events this command produced, and NOT the
+  // position `append` returned. The produced events are read back by the next
+  // command's delta read (their position is always > readHead on both the
+  // DynamoDB and in-memory backends), so the cache never needs to fold produced
+  // events (sidestepping the consumedEvent/event type split) nor trust the
+  // append position (which is the batch *base* on DynamoDB but the batch *max*
+  // in-memory). Correctness still rests entirely on the conditional append's
+  // fence: a stale cached state only changes the *decision*, and a stale
+  // decision conflicts at append time → retry → re-read refreshes the state.
+  //
+  // Capacity is fixed at 100 entries; a per-slice knob is a future refinement
+  // (see the plan's Step 4).
+  let projectionCacheCapacity = 100
+  let projectionCache: Lru.t<
+    string,
+    (Behavior.state, option<Reventless.DcbTag.sequencePosition>),
+  > = Lru.make(~capacity=projectionCacheCapacity)
+
+  let resetCache = () => projectionCache->Lru.clear
+
   // Processes one command against the DCB event log with optimistic concurrency:
-  //   1. Reads relevant events (filtered by command tags) to build the decision model
+  //   1. Reads relevant events (filtered by command tags) to build the decision
+  //      model — seeded from the projection cache when warm, so only events after
+  //      the cached head are read (delta), else the full history (cold)
   //   2. Decodes raw events using consumedEventSchema
   //   3. Calls Behavior.decide to produce new events
   //   4. Encodes produced events to raw and appends with a condition
@@ -147,8 +182,22 @@ module Make = (
       Some(Reventless.DcbTag.getCompositePartitionKeyValue(tags, spec))
     }
 
-    let rec attempt = (~retries) =>
-      dcbEventLog.readStream(~query)
+    let cacheKey = query->JSON.stringifyAny->Option.getOr("")
+
+    // Working seed across retries: the `(state, head)` the read folds from.
+    // Starts from the projection cache (warm) or empty (cold); the conflict
+    // branch re-seeds it with the just-read `(state, head)` so each retry reads
+    // only the delta the conflicting writer added rather than full history.
+    let seed = ref(Lru.get(projectionCache, cacheKey))
+
+    let rec attempt = (~retries) => {
+      let (baseState, afterPos) = switch seed.contents {
+      | Some((state, head)) => (state, head)
+      | None => (Behavior.initialState, None)
+      }
+      let cacheHit = seed.contents->Option.isSome
+
+      dcbEventLog.readStream(~query, ~after=?afterPos)
       ->Stream.map(raw => {
         let decoded = decoder.decode(
           ~eventType=raw.eventType,
@@ -162,7 +211,10 @@ module Make = (
         | None => Stream.empty
         }
       )
-      ->Stream.runFold((Behavior.initialState, None, []), (
+      // The head accumulator starts at `afterPos` (the seeded head), not `None`,
+      // so an empty delta read keeps the cached head — the append must condition
+      // on the head that actually exists, not assert "no events exist yet".
+      ->Stream.runFold((baseState, afterPos, []), (
         (dm, _pos, reads),
         (event, position, eventType, eventId),
       ) => (
@@ -178,7 +230,7 @@ module Make = (
       ->Effect.tap(((_, _, reads)) =>
         EffectLogger.logInfo(
           ~comp,
-          `read: ${reads->Array.length->Int.toString} event(s)${reads->Array.length == 0
+          `read${cacheHit ? " (cached, delta)" : ""}: ${reads->Array.length->Int.toString} event(s)${reads->Array.length == 0
               ? ""
               : ` [${reads->Array.join(", ")}]`}`,
         )
@@ -190,6 +242,8 @@ module Make = (
         )->Effect.flatMap(_ =>
           switch Behavior.decide(state, command'.command) {
           | Ok(newEvents) if newEvents->Array.length == 0 =>
+            // No append, but the read snapshot is valid — cache it for the next command.
+            Lru.put(projectionCache, cacheKey, (state, headPosition))
             CommandTopic_Helpers.reportAccepted(
               cmdJson.meta.msgId,
               switch entityId {
@@ -234,6 +288,10 @@ module Make = (
               appendResult =>
                 switch appendResult {
                 | Ok(_position) =>
+                  // Cache the decided-on state at the read head (NOT including the
+                  // events we just appended, and NOT the returned position): the
+                  // next command's delta read picks our events up from `headPosition`.
+                  Lru.put(projectionCache, cacheKey, (state, headPosition))
                   CommandTopic_Helpers.reportAccepted(
                     cmdJson.meta.msgId,
                     switch entityId {
@@ -246,12 +304,18 @@ module Make = (
                   )
                 | Error(err) =>
                   if retries > 0 {
+                    // Re-seed from the just-read snapshot so the retry reads only
+                    // the delta the conflicting writer added, not full history.
+                    seed := Some((state, headPosition))
                     EffectLogger.logWarn(
                       ~comp,
                       `append failed (retrying ${(maxRetries - retries + 1)
                           ->Int.toString}/${maxRetries->Int.toString}): ${err}`,
                     )->Effect.flatMap(_ => attempt(~retries=retries - 1))
                   } else {
+                    // Retries exhausted — drop any cached snapshot so the next
+                    // command for this entity takes the cold full-read path.
+                    Lru.invalidate(projectionCache, cacheKey)
                     let errorCode = err->String.startsWith("Conflict") ? "Conflict" : "AppendFailed"
                     CommandTopic_Helpers.reportRejected(
                       cmdJson.meta.msgId,
@@ -265,6 +329,8 @@ module Make = (
                 },
             )
           | Error(error) =>
+            // Business-rule rejection — no append, but the read snapshot is valid; cache it.
+            Lru.put(projectionCache, cacheKey, (state, headPosition))
             let errorJson = error->S.reverseConvertToJsonOrThrow(Spec.errorSchema)
             let errorCode = errorJson->Message.variantNameOfJson
             let (_, payloadDict) = errorJson->Message.splitMessage
@@ -280,6 +346,7 @@ module Make = (
           }
         )
       )
+    }
 
     attempt(~retries=maxRetries)
   }

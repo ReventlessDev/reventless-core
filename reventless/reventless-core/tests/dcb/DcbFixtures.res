@@ -101,6 +101,9 @@ type mockStorage = {
   publishedEvents: ref<array<publishedEvent>>,
   mockPublishJson: EventTopic.publishJson,
   failNextAppends: ref<int>,
+  // The `~after` cursor passed to each `read`/`readStream` call, in order.
+  // `Some(_)` marks a delta read (projection-cache hit); `None` a full read.
+  readAfters: ref<array<option<string>>>,
   reset: unit => unit,
 }
 
@@ -111,6 +114,7 @@ let makeMockStorage = (): mockStorage => {
   let position = ref(0)
   let publishedEventsRef: ref<array<publishedEvent>> = ref([])
   let failNextAppendsRef = ref(0)
+  let readAftersRef: ref<array<option<string>>> = ref([])
 
   let matchesQuery = (
     event: DcbEventLog_Adapter.rawSequencedEvent,
@@ -136,6 +140,7 @@ let makeMockStorage = (): mockStorage => {
     }
 
   let read = async (~query, ~after=?) => {
+    readAftersRef := readAftersRef.contents->Array.concat([after])
     let filtered = events.contents->Array.filter(event => {
       let afterMatch = switch after {
       | Some(afterPos) => event.position->posToInt > afterPos->posToInt
@@ -205,6 +210,7 @@ let makeMockStorage = (): mockStorage => {
     position := 0
     publishedEventsRef := []
     failNextAppendsRef := 0
+    readAftersRef := []
   }
 
   {
@@ -213,6 +219,7 @@ let makeMockStorage = (): mockStorage => {
     publishedEvents: publishedEventsRef,
     mockPublishJson,
     failNextAppends: failNextAppendsRef,
+    readAfters: readAftersRef,
     reset,
   }
 }

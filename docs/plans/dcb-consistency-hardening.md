@@ -13,7 +13,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 1 | DynamoDB integration test | Issue 3 | Verification | **done** | [dcb-dynamodb-atomic-append-integration-test](done/dcb-dynamodb-atomic-append-integration-test.md) |
 | 2 | `after=None` create-race | Issue 2 | Correctness | **yes** | — (detailed below) |
 | 3 | Drop unused per-tag GSIs | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
-| 4 | Decision-model cache | Perf/cost lever #2 | Cost | no | [dcb-decision-model-projection-cache](Backlog/dcb-decision-model-projection-cache.md) |
+| 4 | Decision-model cache | Perf/cost lever #2 | Cost | **core done** | [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md) |
 | 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **yes** | — (detailed below) |
 | 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **yes** | — (Phase 5 below) |
 | 5 | Opt-in strong reads | Perf/cost lever #3 | Cost | **yes** | — (detailed below) |
@@ -100,9 +100,15 @@ Decision deferred — revisit once secondary-tag query needs are clear. The capa
 
 **Optional softer variant**: if a future cross-partition secondary-tag read is anticipated, switch the per-tag GSIs to `KEYS_ONLY` instead of removing — still cuts most of the storage/WCU while retaining queryability.
 
-## Phase 4 — Decision-model cache (cost lever #2)
+## Phase 4 — Decision-model cache (cost lever #2) — **CORE DONE (2026-06-20)**
 
-Execute the existing [dcb-decision-model-projection-cache](Backlog/dcb-decision-model-projection-cache.md) plan: fold from a cached `(query, headPosition)` and read only events after the cached head → O(history) read cost becomes O(delta), and cuts the per-event `decode` CPU. Warm-Lambda reuse makes even an in-process LRU worthwhile. No slice-contract change.
+Per [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md): the slice now folds from a cached `(decisionState, readHead)` and reads only events after the cached head → O(history) read cost becomes O(delta), cutting the per-event `decode` CPU. No slice-contract change.
+
+**What shipped** (Steps 1–3 + Step 6 docs): a sealed in-process LRU ([`reventless-core/src/util/Lru.res`](../../reventless/reventless-core/src/util/Lru.res)) wired into `StateChangeSlice_Callback` (capacity 100, per slice, per warm Lambda). Cache hit → delta read; conflict → re-seed so each retry is also a delta read; terminal failure → invalidate. Tests: `tests/util/LruTest.res` + three projection-cache scenarios in `tests/dcb/DcbStateChangeSliceTest.res` (full reventless-core suite green at 419, local DCB suite green at 35).
+
+**Key design correction** over the plan's original pseudocode: the cache stores the *decided-on state and the read head* — **not** the produced events folded in, and **not** `append`'s returned position. Folding produced events is impossible (`evolve` takes `consumedEvent`, `decide` produces `event` — distinct types), and `append` returns the batch *base* on DynamoDB vs. the batch *max* in-memory (so `~after=position` would re-read the batch tail on DynamoDB). Caching `(decisionState, readHead)` sidesteps both — the next command's delta read picks up our just-appended events itself (their position is always `> readHead`). Correctness still rests entirely on the conditional-append fence.
+
+**Deferred follow-ups**: Step 4 (per-slice capacity knob — needs `projectionCacheCapacity` threaded through `StateChangeSlice.Spec` + PPX auto-injection) and Step 5 (CloudWatch hit/miss metrics). Hardcoded 100 is the interim default.
 
 ## Phase 5 — Robustness guards & opt-in strong reads
 
@@ -143,6 +149,6 @@ Already planned, run on evidence:
 1. ~~**Phase 1** (verification harness + Phase 0 regression cases)~~ — **done 2026-06-20**.
 2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
 3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. **On hold**: its form (full-remove vs `KEYS_ONLY`/keep) is gated by the Phase 7 decision below.
-4. **Phase 4** (decision-model cache) — biggest read-cost win.
+4. ~~**Phase 4** (decision-model cache) — biggest read-cost win.~~ — **core done 2026-06-20** (Steps 1–3 + docs); per-slice capacity knob + metrics deferred.
 5. **Phase 5** items opportunistically — including the safe Issue 14 vacuous-clause cleanup; **Phase 6** on profiling evidence.
 6. **Phase 7** (cross-partition reads) — only when a real slice needs it; making that call first unblocks Phase 3.
