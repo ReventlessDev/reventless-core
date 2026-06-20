@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.69 (2026-06-20)
+
+### Features
+
+* **dcb:** narrow query clauses to types that can carry each tag (Issue 14) ([6bceae6](https://github.com/ReventlessDev/reventless-core/commit/6bceae675b91154b5a1abf73a6aaca56533cbbe8))
+
+
 # 1.0.0-alpha.68 (2026-06-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-gwt

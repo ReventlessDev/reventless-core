@@ -1,7 +1,7 @@
 {
   "name": "@reventlessdev/online-shop-dcb-catalog-aws",
   "private": true,
-  "version": "1.0.0-alpha.10",
+  "version": "1.0.0-alpha.11",
   "description": "Online Shop DCB — Catalog plugin AWS deployment",
   "license": "Apache-2.0",
   "scripts": {

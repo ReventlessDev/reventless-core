@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.160 (2026-06-20)
+
+### Bug Fixes
+
+* **appsync:** shrink-guard the deploy-time schema push against concurrent clobber ([15473d7](https://github.com/ReventlessDev/reventless-core/commit/15473d7eff920385092ef2e37efece2c70b4a849))
+* **dcb:** always exclude fence sentinels from scan reads (Issue 12) ([80f7658](https://github.com/ReventlessDev/reventless-core/commit/80f7658015bf668e92c8c8e02ceb8f837f4c43f9))
+
+
 # 3.0.0-alpha.159 (2026-06-20)
 
 ### Bug Fixes

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.129 (2026-06-20)
+
+### Features
+
+* **dcb:** in-process decision-model projection cache for StateChangeSlice ([aaf1b62](https://github.com/ReventlessDev/reventless-core/commit/aaf1b62acea35d6caa2923b444a6f52ae77e902e))
+* **dcb:** narrow query clauses to types that can carry each tag (Issue 14) ([6bceae6](https://github.com/ReventlessDev/reventless-core/commit/6bceae675b91154b5a1abf73a6aaca56533cbbe8))
+
+
 # 3.0.0-alpha.128 (2026-06-20)
 
 ### Bug Fixes
