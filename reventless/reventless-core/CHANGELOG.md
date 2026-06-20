@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.126 (2026-06-20)
+
+### Features
+
+* **plugin:** expose command/event/target metadata for DCB routing slices on plugin hooks ([5a838fd](https://github.com/ReventlessDev/reventless-core/commit/5a838fd8de975e6bee4220916a374a91e5f77d20))
+
+
 # 3.0.0-alpha.125 (2026-06-20)
 
 **Note:** Version bump only for package @reventlessdev/reventless-core

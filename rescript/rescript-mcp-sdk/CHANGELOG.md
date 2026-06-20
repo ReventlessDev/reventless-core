@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.14 (2026-06-20)
+
+### Bug Fixes
+
+* **mcp-sdk:** expose McpSdk_Helpers in the package's public modules ([6e0aee1](https://github.com/ReventlessDev/reventless-core/commit/6e0aee18e0f60e2295b42a6b91cfd4d2e0d5ae90))
+
+
 # 1.0.0-alpha.13 (2026-06-10)
 
 **Note:** Version bump only for package @reventlessdev/rescript-mcp-sdk
