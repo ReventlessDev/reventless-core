@@ -82,9 +82,14 @@ function getIdStringSchema() {
   return IdString.schema;
 }
 
-async function buildHandler() {
-  const configStr = process.env["HANDLER_CONFIG"] || "{}";
-  const config = JSON.parse(configStr);
+// Exported for tests: build the [sqsHandler, cmdGenHandler] pair from an
+// already-parsed `HANDLER_CONFIG` shape, with an injectable module loader.
+// In production, `buildHandler` below wraps this with the env-config + the
+// Lambda's `/var/task/node_modules` dynamic-import; integration tests inject
+// their own loader that returns pre-imported spec/behavior modules so the test
+// can drive the real `cmdGenHandler` end-to-end against DynamoDB Local.
+export async function buildHandlersForConfig(config, opts = {}) {
+  const loadModule = opts.loadModule ?? dynamicImport;
   const resolvedTable = { name: config.dcbEventLogTableName };
   const rawStorageOps = {
     read: read(resolvedTable),
@@ -109,8 +114,8 @@ async function buildHandler() {
   // runtime slice callback receives the same values it would in-process.
   const loadedSlices = await Promise.all(
     config.stateChangeSliceModules.map(async ({ spec, behavior }) => {
-      const specModule = await dynamicImport(spec);
-      const behaviorModule = await dynamicImport(behavior);
+      const specModule = await loadModule(spec);
+      const behaviorModule = await loadModule(behavior);
       const patchedSpec = patchSpecId(specModule);
       return { patchedSpec, behaviorModule };
     })
@@ -225,6 +230,16 @@ async function buildHandler() {
   };
 
   return [sqsHandler, cmdGenHandler];
+}
+
+async function buildHandler() {
+  const configStr = process.env["HANDLER_CONFIG"];
+  // Importing this module without HANDLER_CONFIG (e.g. from a test that drives
+  // `buildHandlersForConfig` directly) must not crash module evaluation.
+  // Lambda always sets HANDLER_CONFIG; the production path is unchanged.
+  if (!configStr) return [null, null];
+  const config = JSON.parse(configStr);
+  return buildHandlersForConfig(config, { loadModule: dynamicImport });
 }
 
 const initPromise = buildHandler();
