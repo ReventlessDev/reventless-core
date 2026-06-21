@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 2.4.0-alpha.43 (2026-06-21)
+
+### Features
+
+* **dcb:** provision CloudWatch metric filters for retry/conflict signal (AWS) ([e9a1356](https://github.com/ReventlessDev/reventless-core/commit/e9a13567c3622c83cf3becb24a47fba36fd751f5))
+
+
 # 2.4.0-alpha.42 (2026-06-18)
 
 **Note:** Version bump only for package @reventlessdev/rescript-pulumi-aws

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.162 (2026-06-21)
+
+### Bug Fixes
+
+* **appsync:** use throw instead of deprecated raise ([6b9fd40](https://github.com/ReventlessDev/reventless-core/commit/6b9fd4080e90eac76b9abc6ec029f08a0734a607))
+### Features
+
+* **dcb:** eventual-first, strong-on-retry decision reads ([b920a66](https://github.com/ReventlessDev/reventless-core/commit/b920a663c1dbb3a13cb8bd27ecbfe0cfd8ec5d65))
+* **dcb:** provision CloudWatch metric filters for retry/conflict signal (AWS) ([e9a1356](https://github.com/ReventlessDev/reventless-core/commit/e9a13567c3622c83cf3becb24a47fba36fd751f5))
+
+
 # 3.0.0-alpha.161 (2026-06-21)
 
 ### Features

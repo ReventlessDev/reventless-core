@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.131 (2026-06-21)
+
+### Features
+
+* **dcb:** emit provider-neutral retry/conflict metric signal ([58a7a1e](https://github.com/ReventlessDev/reventless-core/commit/58a7a1efcb85af53784c5013a7f97f161a779a10))
+* **dcb:** eventual-first, strong-on-retry decision reads ([b920a66](https://github.com/ReventlessDev/reventless-core/commit/b920a663c1dbb3a13cb8bd27ecbfe0cfd8ec5d65))
+
+
 # 3.0.0-alpha.130 (2026-06-21)
 
 ### Features
