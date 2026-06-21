@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 1.0.0-alpha.44 (2026-06-21)
+
+### Features
+
+* **dcb:** cross-partition secondary-tag reads (Phase 7) ([9e1f8b3](https://github.com/ReventlessDev/reventless-core/commit/9e1f8b3595004b92148dd053aae380078baa42a3))
+* **dcb:** per-slice readConsistency override for StateChangeSlice decision reads ([65516f7](https://github.com/ReventlessDev/reventless-core/commit/65516f7fc62daaad51edef2c668cc7b362506364))
+
+
 # 1.0.0-alpha.41 (2026-06-17)
 
 ### Bug Fixes

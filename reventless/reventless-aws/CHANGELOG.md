@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.163 (2026-06-21)
+
+### Features
+
+* **dcb:** cross-partition secondary-tag reads (Phase 7) ([9e1f8b3](https://github.com/ReventlessDev/reventless-core/commit/9e1f8b3595004b92148dd053aae380078baa42a3))
+### Performance Improvements
+
+* **dcb:** down-project per-tag DCB GSIs to KEYS_ONLY ([ac9305b](https://github.com/ReventlessDev/reventless-core/commit/ac9305b3456ea7f9bd672c5863a79081dc1ac44f))
+
+
 # 3.0.0-alpha.162 (2026-06-21)
 
 ### Bug Fixes
