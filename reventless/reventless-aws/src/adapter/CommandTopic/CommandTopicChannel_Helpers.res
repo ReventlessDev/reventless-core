@@ -100,6 +100,11 @@ let createLambdaPolicy = (
                       "dynamodb:UpdateItem",
                       "dynamodb:DeleteItem",
                       "dynamodb:BatchWriteItem",
+                      // Phase 7 cross-partition fences emit read-only
+                      // `ConditionCheck` entries inside `TransactWriteItems`
+                      // when a write doesn't touch the cross-partition tag's
+                      // partition itself; this needs its own IAM action.
+                      "dynamodb:ConditionCheckItem",
                     ]),
                     resources: Resources(
                       resources

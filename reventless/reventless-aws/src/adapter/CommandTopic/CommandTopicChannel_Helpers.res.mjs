@@ -77,7 +77,8 @@ function createLambdaPolicy(lambdaRole, name, queue, resources, opts) {
             "dynamodb:PutItem",
             "dynamodb:UpdateItem",
             "dynamodb:DeleteItem",
-            "dynamodb:BatchWriteItem"
+            "dynamodb:BatchWriteItem",
+            "dynamodb:ConditionCheckItem"
           ],
           Resource: Adapter_Helpers$ReventlessAws.dynamoDbResources(resources).flatMap(dynamoDbResource => [
             dynamoDbResource.urn,

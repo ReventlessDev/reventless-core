@@ -9,7 +9,12 @@ import * as Stream from "effect/Stream";
 import { patchSpecId, makeQueueRef, log, pluginName } from "./HandlerFactoryHelpers.mjs";
 import { decodeCommand$p as decodeCommandPrime } from "@reventlessdev/reventless-core/src/Message.res.mjs";
 import { tag as requestContextTag } from "@reventlessdev/reventless-core/src/RequestContext.res.mjs";
-import { extractVariantNames } from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
+import {
+  extractVariantNames,
+  extractTagKeysByEventType,
+  mergeTagKeysByEventType,
+  extractCrossPartitionTagKeys,
+} from "@reventlessdev/reventless-spec/src/components/DcbTag.res.mjs";
 import { $$String as IdString } from "@reventlessdev/reventless-spec/src/types/Id.res.mjs";
 import { Make as dcbEventLogOperationsMake } from "@reventlessdev/reventless-core/src/components/DcbEventLog/DcbEventLog_Operations.res.mjs";
 import { Make as stateChangeSliceCallbackMake } from "@reventlessdev/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res.mjs";
@@ -98,10 +103,28 @@ async function buildHandler() {
     publishJson: async (_name, _meta, _json) => {},
   });
 
-  await Promise.all(config.stateChangeSliceModules.map(async ({ spec, behavior }) => {
-    const specModule = await dynamicImport(spec);
-    const behaviorModule = await dynamicImport(behavior);
-    const patchedSpec = patchSpecId(specModule);
+  // Load all spec/behavior pairs first, then derive the per-plugin
+  // tagKeysByEventType / crossPartitionTagKeys across the produced event
+  // schemas — mirroring Dcb_Builder.res's build-time derivation — so the
+  // runtime slice callback receives the same values it would in-process.
+  const loadedSlices = await Promise.all(
+    config.stateChangeSliceModules.map(async ({ spec, behavior }) => {
+      const specModule = await dynamicImport(spec);
+      const behaviorModule = await dynamicImport(behavior);
+      const patchedSpec = patchSpecId(specModule);
+      return { patchedSpec, behaviorModule };
+    })
+  );
+
+  const producedSchemas = loadedSlices.map(({ patchedSpec }) => patchedSpec.eventSchema);
+  const tagKeysByEventType = mergeTagKeysByEventType(
+    producedSchemas.map(s => extractTagKeysByEventType(s))
+  );
+  const crossPartitionTagKeys = Array.from(
+    new Set(producedSchemas.flatMap(s => extractCrossPartitionTagKeys(s)))
+  );
+
+  loadedSlices.forEach(({ patchedSpec, behaviorModule }) => {
     const sliceCallback = stateChangeSliceCallbackMake(patchedSpec)(behaviorModule);
     const commandSchema = patchedSpec.commandSchema;
     const typeNames = extractVariantNames(commandSchema);
@@ -118,13 +141,20 @@ async function buildHandler() {
         })),
         opt => opt.TAG === "Some" ? Stream.make(opt._0) : Stream.empty
       );
-      return sliceCallback.handleCommands(sharedDcbEventLogOps, decodedStream);
+      // Positional args match StateChangeSlice_Callback.res's compiled signature:
+      // (tagKeysByEventTypeOpt, crossPartitionTagKeysOpt, dcbEventLog, stream).
+      return sliceCallback.handleCommands(
+        tagKeysByEventType,
+        crossPartitionTagKeys,
+        sharedDcbEventLogOps,
+        decodedStream,
+      );
     };
 
     typeNames.forEach(typeName => {
       handlersByType[typeName] = jsonHandler;
     });
-  }));
+  });
 
   // Composite handler used by Route 2 (SQS event source) AND inline dispatch
   // for Route 1 sync mode. Routes each item to the slice handler matching its
