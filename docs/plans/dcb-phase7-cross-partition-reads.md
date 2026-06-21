@@ -1,0 +1,38 @@
+# Plan: DCB Phase 7 — Cross-partition secondary-tag reads
+
+**Status**: Proposed (2026-06-21). Parent: [dcb-consistency-hardening](dcb-consistency-hardening.md) Phase 7; design from [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap).
+
+## Goal
+
+Let a single-tag decision read return events that carry the tag as a **secondary** (non-partition) tag — i.e. read "every event tagged `T`" across all partitions, not just "every event *partitioned by* `T`". This is the canonical DCB shape for any M:N invariant (course-subscription capacity, "≤ N orders per product", reservations). Today single-tag reads are partition-scoped; the per-tag `tag_<key>` GSIs (kept `KEYS_ONLY` by Phase 3) are the mechanism.
+
+## Core design decision — scope is a static, per-tag-key config
+
+The scope (`PartitionScoped` default / `CrossPartition`) is a property of the **tag key** and **must agree across every event type that carries it** (analysis §3). So it is *not* threaded per-tag through every runtime `query` value. Instead it is **derived once at build time** from the producer schemas (where `Dcb_Builder` already computes `derivePartitionTag`, `extractTaggedFields`, `tagKeysByEventType`) into a `crossPartitionTagKeys` set, and passed **once** to the adapter. Both the read router and the fence builder consult that set. This keeps read-scope = fence-scope *per tag* and avoids polluting the stored `tag = {key,value}` shape.
+
+## The three coupled parts
+
+### Part 1 — Per-tag scope declaration (schema + PPX) — *release-coupled*
+- **Annotation surface (decided)**: a dedicated `@crossPartition` field attribute, mirroring `@partitionTag` — no arguments, no variant payload. Presence = cross-partition scope; absence = the default `PartitionScoped`. (Chosen over `@dcbTag(~scope=CrossPartition)` so the PPX needs no labeled-variant payload parsing and the surface reads alongside `@partitionTag` / `@compositePartitionTag`.)
+- **`DcbTag.res`**: new sury metadata id `dcbCrossPartitionId` and a `crossPartition: S.t<string>` matcher that sets both `dcbTagId` and `dcbCrossPartitionId` (exactly as `partition` sets `dcbTagId` + `dcbPartitionTagId`); an `extractCrossPartitionTagKeys(schema)` reader (mirrors `extractTaggedFields`, filtered by the new metadata).
+- **PPX** (`DcbTagInference.ml`): a `transform_cross_partition_tags` pass mirroring `transform_partition_tags` — strip the `@crossPartition` field attribute and emit `@s.matches(Reventless.DcbTag.crossPartition)`. No payload parsing. Auto-tagging of plain `*Id` fields stays `PartitionScoped`.
+- **Where the annotation goes** (same as `@partitionTag`): on the **command** (its tags build the read query) **and** the produced **`event`** (its tags drive partitioning, GSI indexing, and fence scope) — consistently. **Never** on `consumedEvent` (no tag annotations). `Dcb_Builder` validates that a key's scope agrees across every producer that carries it.
+- Release coupling: this adds a new PPX-emitted matcher → needs a reventless-ppx republish to reach CI, exactly like the `readConsistency` change (`feedback_ppx_linux_rebuild`). Stacks on that pending republish.
+
+### Part 2 — Query construction + read routing (core → adapter)
+- **Query construction** (`buildQueryFromCommand`): today two *scalar* command tags are AND'd into one **composite** clause (exact-pair match). A cross-partition scalar tag must instead fan out into its **own single-tag clause** — i.e. the partition tag and each `@crossPartition` tag each become a separate single-tag read (the way tagged *array* fields already fan out per element). Without this a 2-tag M:N command (`SubscribeStudent({courseId, studentId})`) yields a composite read of the exact `{course, student}` pair — neither "all of the course" nor "all of the student". `buildQueryFromCommand` already receives producer-derived maps (`tagKeysByEventType`); thread `crossPartitionTagKeys` in the same way so it can split.
+- `Dcb_Builder` derives `crossPartitionTagKeys` from the produced-event schemas and threads it into both query construction (above) and the storage maker + runtime ops (`read`/`readStream`).
+- `executeQueryItemStream` ([`DcbEventLogStorage_DynamoDb_Runtime.res:1100`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L1100)): a single-tag clause `Some([tag])` whose `tag.key ∈ crossPartitionTagKeys` routes to a **GSI query** on `tag_<key>` instead of `queryByPartitionKeyStream`. Because Phase 3 made these GSIs `KEYS_ONLY`, the path is `Query`(keys: id, position) → `BatchGetItem`(base table) → full events. Eventually consistent (GSI constraint) — acceptable; the fence catches staleness.
+
+### Part 3 — Fence scope follows read scope (adapter)
+- `appendConditional` fence classification ([`DcbEventLogStorage_DynamoDb_Runtime.res:789-864`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb_Runtime.res#L789-L864)): a query tag whose key ∈ `crossPartitionTagKeys` must be **bumped (conditional `Update`) by every carrier**, primary or secondary — reverting Issue 1's narrowing *for that tag only*. Partition-scoped tags keep the narrow rule (bump only when this append writes into that tag's partition; else read-only `ConditionCheck`). This is the subtle correctness core: without it OCC misses a concurrent secondary-`T` writer.
+
+## Validation — *decision below*
+Either a synthetic test-fixture slice (course-subscription shape) exercised by core `DcbTagTest` + an AWS integration scenario (two students, capacity check, cross-partition fence conflict), **or** a full worked example app. Test-fixture validation mirrors how `readConsistency` was validated and is proportionate.
+
+## Cost / non-goals
+- Cross-partition reads are O(entity degree), eventually consistent, uncached, and paid on *both* tags of an M:N event. The highest-leverage mitigation (count-bounded `Limit:N+1` reads for capacity invariants) is a **behaviour** concern, not part of this core capability; the Phase 4 decision cache has outsized value here. Fence sharding (Issue 10) for the hot M:N fences is profile-gated and out of scope.
+- No slice-contract change beyond the new field annotation.
+
+## Sequencing
+Part 1 (foundation) → Part 2 (reads) → Part 3 (fences), each built + tested. Parts 2–3 are not release-coupled (adapter/core only); Part 1 is. Whole feature can't pass CI until the ppx republish (shared with the `readConsistency` change).

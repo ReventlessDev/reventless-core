@@ -171,9 +171,9 @@ Already planned, run on evidence:
 **Why it's its own (deferred) phase, and how it couples to Phase 3.** The clean realisation **re-uses the per-tag `tag_<key>` GSI that Phase 3 down-projects to `KEYS_ONLY`** — so when Phase 7 lands, the cross-partition read path is a `Query → BatchGetItem` against keys-only, not a single `Query` against `ALL`. The extra round-trip is the price paid for keeping the per-write WCU + storage cost down while Phase 7 is still evidence-gated; bounded reads (`Limit:N+1`) and the Phase 4 cache keep that cost manageable in practice.
 
 **Shape of the work** (three coupled parts, from the analysis):
-1. **Per-tag scope flag** (`@dcbTag(~scope=#CrossPartition)`, default `#PartitionScoped`) — the single control surface; also resolves the Issue 14 residual (it's what tells the builder a secondary-tag clause is *wanted*, not just tolerated).
-2. **Read routing** — a `#CrossPartition` single-tag clause reads the per-tag GSI instead of the base-table partition.
-3. **Fence scope follows read scope** — a `#CrossPartition` tag is fence-bumped by *every* carrier (not just events partitioned by it), or OCC misses concurrent secondary-tag writers; partition-scoped tags keep the narrow rule.
+1. **Per-tag scope flag** (a dedicated `@crossPartition` field annotation mirroring `@partitionTag`; default `PartitionScoped` for un-annotated tags) — the single control surface; also resolves the Issue 14 residual (it's what tells the builder a secondary-tag clause is *wanted*, not just tolerated).
+2. **Read routing** — a `CrossPartition` single-tag clause reads the per-tag GSI instead of the base-table partition.
+3. **Fence scope follows read scope** — a `CrossPartition` tag is fence-bumped by *every* carrier (not just events partitioned by it), or OCC misses concurrent secondary-tag writers; partition-scoped tags keep the narrow rule.
 
 **Cost note**: read-dominated and paid on *both* tags of an M:N event (O(entity degree), eventually-consistent, uncached). Highest-leverage mitigations are framework-level — `Limit:N+1` count-bounded reads for capacity invariants and the Phase 4 decision-model cache — not infra. See analysis Issue 13 § Performance & cost.
 

@@ -187,38 +187,74 @@ This is currently *intentional*: single-tag reads being partition-scoped is exac
 
 ### Worked example — course subscription (why it's needed)
 
-The textbook DCB example. A `StudentSubscribed` event carries two tags and enforces two invariants on subscribe:
+The textbook DCB example. A `StudentSubscribed` event carries two tags and enforces two invariants on subscribe. The event can be partitioned by only **one** tag — say `courseId` — so the *other* tag (`studentId`) must be declared cross-partition to be readable across all the `courseId:*` partitions it lives in.
 
+The annotation lives on the **command** and the produced **`event`** (consistently — like `@partitionTag`), never on `consumedEvent` (which carries no tag annotations). The command's tags build the read query; the produced event's tags drive partitioning, GSI indexing, and fence scope:
+
+```rescript
+// command — its tagged fields build the read query
+@schema type command =
+  | SubscribeStudent({
+      @partitionTag courseId: string,      // → clause [courseId] — partition read
+      @crossPartition studentId: string,   // → clause [studentId] — cross-partition read
+    })
+
+// produced event — partitioning, GSI indexing, fence scope
+@schema type event =
+  | StudentSubscribed({
+      @partitionTag courseId: string,
+      @crossPartition studentId: string,
+    })
+
+// SubscribeStudent(S1, C1) builds its decision model from two single-tag clauses
+// (each tag fans out to its own clause — not AND'd into one composite pair):
+//   (a) course C1 is not full          → read StudentSubscribed where courseId  = C1
+//   (b) student S1 is not over-enrolled → read StudentSubscribed where studentId = S1
 ```
-@schema type event = StudentSubscribed({ studentId: string, courseId: string })
 
-// SubscribeStudent(S1, C1) must check:
-//   (a) course C1 is not full          → count StudentSubscribed where courseId = C1
-//   (b) student S1 is not over-enrolled → count StudentSubscribed where studentId = S1
-```
+How each clause resolves, and why the annotation is load-bearing:
 
-`StudentSubscribed` can be partitioned by only **one** of its tags. Say `courseId` (primary):
+- **(a) read by `courseId:C1`** — `courseId` is the partition tag, so this is a base-table partition query → returns all of the course's subscriptions. ✓ (No scope annotation needed: a tag read by its *own* partition is already partition-scoped.)
+- **(b) read by `studentId:S1`** — `studentId` is declared `@crossPartition`, so the read routes to the `tag_studentId` GSI, which indexes the tag across *every* `courseId` partition → returns all of the student's subscriptions. ✓
+- **Without the annotation** `studentId` defaults to `PartitionScoped`: read (b) hits the **empty** `studentId:S1` base-table partition (these events physically live under `courseId:*`), sees **zero** subscriptions, and the over-enrolment check silently always passes. ✗ The annotation is exactly what turns (b) from a silent no-op into a real invariant.
+- **Fence (the consistency half):** because `studentId` is cross-partition, *every* `StudentSubscribed` bumps `fence#studentId:S1` (not just events partitioned by `studentId`, of which there are none); `courseId` is the partition tag, so every write already bumps `fence#courseId:C1`. So a concurrent subscribe for the same student **or** the same course conflicts at append — read-scope = fence-scope on **both** axes. (See "Fence scope must match read scope" below for why this must follow the annotation.)
 
-- **(a) read by `courseId:C1`** → base-table partition query → returns all subscriptions for the course. ✓
-- **(b) read by `studentId:S1`** → base-table partition query on `studentId:S1` → that partition is **empty** (these events live in `courseId:*` partitions), so the over-enrolment check sees **zero** subscriptions and always passes. ✗ — the invariant silently doesn't hold.
-
-Flipping the partition to `studentId` just swaps which check breaks. Any event that ties **two entities** in an M:N relationship (subscription, reservation, assignment, membership, transfer) has this shape: the decision must read by *both* tags, but the event can be partitioned by only one — so **one of the two reads is inherently a cross-partition secondary-tag read.** Composite (`tag_composite`) does not help: `{studentId:S1, courseId:C1}` matches the *single* exact pair, not "all of student S1's subscriptions" (and exact-match only — Issue 5).
+Flipping the partition to `studentId` just swaps which tag needs the annotation. Any event that ties **two entities** in an M:N relationship (subscription, reservation, assignment, membership, transfer) has this shape: the decision must read by *both* tags, but the event can be partitioned by only one — so **one of the two reads is inherently a cross-partition secondary-tag read.** Composite (`tag_composite`) does not help: `{studentId:S1, courseId:C1}` matches the *single* exact pair, not "all of student S1's subscriptions" (and exact-match only — Issue 5).
 
 A read model / projection keyed by `studentId` is eventually consistent and lives outside the append transaction, so it cannot back an OCC decision model — it's a query-side convenience, not a substitute.
+
+### Why the scope must be declared, not inferred
+
+The natural objection: a secondary-tag read *is* inherently cross-partition, and the framework can already tell that a tag is not the partition tag of a given event type — so why not auto-promote any secondary-tag read to a cross-partition one instead of requiring `@crossPartition`?
+
+Because detecting "this tag isn't the partition tag" is not the same as knowing the slice *wants* cross-partition semantics — and guessing wrong is expensive and silent. The counterexample already lives in the example plugins: **`PlaceOrder`**.
+
+- `OrderPlaced` is partitioned by `orderId` and carries `productId` as a *secondary* tag; `CatalogProductSynced` is partitioned by `productId`.
+- `PlaceOrder` has a clause that reads by `productId` — to check availability from `CatalogProductSynced`, for which `productId` **is** the partition tag, so a partition-scoped read is exactly right.
+- `OrderPlaced` *also* carries `productId`, so "tag ≠ partition tag ⇒ cross-partition" would auto-promote it. But `PlaceOrder` does **not** want to fold in every other order for that product — `PlaceOrder_Behavior` deliberately ignores sibling orders; it *tolerates* the over-read, it doesn't want it.
+
+So the same tag key is "the partition tag I want" for one consumed type and "a secondary tag I'm ignoring" for another. From types and tags alone there is no way to distinguish *"I want this cross-partition fold"* (an order-cap slice) from *"I tolerate the over-read"* (`PlaceOrder`). That is an **intent**, not a fact the framework is missing.
+
+And the reads are the cheap half. The decisive reason is the **fence**, because read-scope and fence-scope must match (the Issue 1 fix):
+
+- Auto-promoting `productId` to cross-partition would force **every `OrderPlaced` append to bump `fence#productId`**. Every order for a popular product would then serialize on a single fence (≈ the 500-txn/s/fence ceiling, Issue 10) and pay extra transactional WCU — a catastrophic, silent write bottleneck on exactly the hottest entities, imposed on a slice that never asked for it.
+- Scope cannot be per-reader either: the fence is bumped by **writers**, not readers. If one slice wants `productId` cross-partition, *every* `productId` writer must broaden its fence — which changes contention for `PlaceOrder` too. So scope is necessarily a **global property of the tag key** (this is why it "must agree across every event type that carries it"), and declaring it opts the whole system's writers into the hotter fence.
+
+Hence the default is `PartitionScoped` — cheap, narrow fence, secure-by-default — and a tag opts **in** to `CrossPartition`, recording the intent *and* accepting the global fence-contention cost. Inverting the default (secondary ⇒ cross-partition, opt *out*) is the wrong cut: it would make the high-contention path the default and silently degrade existing slices like `PlaceOrder`. The annotation doesn't tell the framework something it can't compute; it records a cost trade-off the framework must not guess.
 
 ### Solution sketch
 
 The capability and its consistency story must move together. Three coupled parts:
 
-**1. Per-tag scope declaration.** Let a tag opt into cross-partition semantics at the schema level — e.g. `@dcbTag(~scope=#CrossPartition)` (the natural sibling of the `@dcbTag(~consistencyMode=…)` idea in [`dcb-hot-tag-fence-contention`](../plans/Backlog/dcb-hot-tag-fence-contention.md)). Default stays `#PartitionScoped` (today's behaviour). The scope is a property of the *tag key* and must agree across every event type that carries it, or the fence scope below is ambiguous.
+**1. Per-tag scope declaration.** Let a tag opt into cross-partition semantics at the schema level via a dedicated `@crossPartition` field annotation (mirroring `@partitionTag` — no arguments; the PPX emits a `DcbTag.crossPartition` matcher). Default stays `PartitionScoped` (today's behaviour, for tags carrying no such annotation). The scope is a property of the *tag key* and must agree across every event type that carries it, or the fence scope below is ambiguous.
 
-**2. Read routing.** A single-tag clause on a `#CrossPartition` tag routes to the per-tag `tag_<key>` GSI (which indexes the tag across *all* partitions) instead of the base-table partition query. This **requires the GSI to exist** — directly in tension with Phase 3's full removal, and the reason that phase is on hold. Projection choice is a cost knob: `ALL` returns full items in one query (cheaper reads, costlier writes/storage); `KEYS_ONLY` halves storage/write amplification but needs a follow-up `BatchGetItem` to fold state.
+**2. Read routing.** A single-tag clause on a `CrossPartition` tag routes to the per-tag `tag_<key>` GSI (which indexes the tag across *all* partitions) instead of the base-table partition query. This **requires the GSI to exist** — directly in tension with Phase 3's full removal, and the reason that phase is on hold. Projection choice is a cost knob: `ALL` returns full items in one query (cheaper reads, costlier writes/storage); `KEYS_ONLY` halves storage/write amplification but needs a follow-up `BatchGetItem` to fold state.
 
-**3. Fence scope must match read scope.** This is the subtle part. Issue 1's fix made `fence#T` be bumped **only** by events *partitioned by* `T`. If a slice now reads `T` cross-partition, it sees events for which `fence#T` is *not* maintained → OCC would miss a concurrent secondary-`T` writer (no conflict raised). So for a `#CrossPartition` tag the fence must again be bumped by **every** event carrying it (primary *or* secondary) — the broad pre-Issue-1 behaviour, but now applied *only* to tags declared cross-partition. Partition-scoped tags keep the narrow Issue 1 rule. In short: **fence-bump scope is driven by the same per-tag scope flag as read routing**, so read-scope = fence-scope is preserved per tag rather than globally.
+**3. Fence scope must match read scope.** This is the subtle part. Issue 1's fix made `fence#T` be bumped **only** by events *partitioned by* `T`. If a slice now reads `T` cross-partition, it sees events for which `fence#T` is *not* maintained → OCC would miss a concurrent secondary-`T` writer (no conflict raised). So for a `CrossPartition` tag the fence must again be bumped by **every** event carrying it (primary *or* secondary) — the broad pre-Issue-1 behaviour, but now applied *only* to tags declared cross-partition. Partition-scoped tags keep the narrow Issue 1 rule. In short: **fence-bump scope is driven by the same per-tag scope flag as read routing**, so read-scope = fence-scope is preserved per tag rather than globally.
 
 **Consistency note.** GSI reads are eventually consistent (a fundamental DynamoDB constraint — Issue 8), so a cross-partition decision read can be stale. That is acceptable: the strongly-consistent fence check at append time catches any conflict the stale read missed, costing at most a retry — identical to how composite reads behave today.
 
-**Cost / risk.** A `#CrossPartition` tag is bumped by every carrier, so its fence is hotter (Issue 10) — pairs naturally with fence sharding. It also reintroduces the per-(tag, event-type) over-serialization of Issue 4 on that tag (every carrier bumps it), which for an M:N tag is usually the *desired* serialization. The migration cost is a GSI/table change, so it should be sequenced with (or instead of) Phase 3 rather than after a removal.
+**Cost / risk.** A `CrossPartition` tag is bumped by every carrier, so its fence is hotter (Issue 10) — pairs naturally with fence sharding. It also reintroduces the per-(tag, event-type) over-serialization of Issue 4 on that tag (every carrier bumps it), which for an M:N tag is usually the *desired* serialization. The migration cost is a GSI/table change, so it should be sequenced with (or instead of) Phase 3 rather than after a removal.
 
 **Bottom line:** the cleanest realisation re-uses precisely the `tag_<key>` GSI infrastructure Phase 3 would otherwise drop. If cross-partition secondary-tag reads are on the roadmap, Phase 3 should down-project to `KEYS_ONLY` (or keep `ALL`) rather than remove — and the read/fence routing above is the work that turns the retained index into a real capability.
 
@@ -226,13 +262,13 @@ The capability and its consistency story must move together. Three coupled parts
 
 Cross-partition reads are not just *another* tag read — they change the cost shape, because an M:N event pays the cost on **both** of its tags and the read is unbounded in the entity's *degree* (how many partners it relates to). Ranked, against the same billing multipliers as the §Performance-analysis section below (transactional write = 2×, strong read = 2×, `ALL` GSI = +1 full-item write + 1× storage per carrier, storage never shrinks):
 
-1. **Unbounded cross-partition decision read — the headline cost, now paid twice.** A `#CrossPartition` clause folds *every* event with that tag value across all partitions: for course subscription, "all of student S1's subscriptions" is O(courses S1 is in) and "all of course C1's subscriptions" is O(students in C1). A single `SubscribeStudent` pays **both** (it reads by `studentId` *and* `courseId`), each O(degree), each per command, each **eventually consistent** (GSI — cannot opt into strong reads, so cost-lever #3 doesn't apply to these clauses) and **uncached**. For a hot entity (a 300-student course) this read alone dwarfs the write. This is the same "unbounded read" term as the partition-scoped case, but one M:N command incurs it on two high-cardinality axes instead of one small partition.
+1. **Unbounded cross-partition decision read — the headline cost, now paid twice.** A `CrossPartition` clause folds *every* event with that tag value across all partitions: for course subscription, "all of student S1's subscriptions" is O(courses S1 is in) and "all of course C1's subscriptions" is O(students in C1). A single `SubscribeStudent` pays **both** (it reads by `studentId` *and* `courseId`), each O(degree), each per command, each **eventually consistent** (GSI — cannot opt into strong reads, so cost-lever #3 doesn't apply to these clauses) and **uncached**. For a hot entity (a 300-student course) this read alone dwarfs the write. This is the same "unbounded read" term as the partition-scoped case, but one M:N command incurs it on two high-cardinality axes instead of one small partition.
 2. **GSI storage multiplier — now a *needed* GSI, so the projection choice is the real $ knob.** The cross-partition tag's `tag_<key>` GSI must exist; with `ALL` it re-stores the **entire event history forever** (append-only, never shrinks) for every carrier of that tag. This is the same multiplier as Perf lever #1 — except here it buys a capability rather than being waste, so the lever becomes `ALL` vs `KEYS_ONLY` rather than keep-vs-drop. `KEYS_ONLY` stores only `(id, position, tag key)` — typically a small fraction of a full event — cutting the durable storage bill and the large-item write replication, at the price of a second read phase (below).
-3. **Cross-partition fencing — more WCU and a hotter fence.** Reverting Issue 1's narrowing for a `#CrossPartition` tag means **every** carrier bumps `fence#<tag>` (transactional, 2× WCU), not just events partitioned by it. An M:N write therefore drives **two** fences (e.g. `fence#studentId:S1` *and* `fence#courseId:C1`), each contended by *all* writers touching that student or that course → each is a candidate for the ~500-transactions/sec/fence ceiling (Issue 10). Popular entities (a trending course) make their fence a write bottleneck; pairs naturally with fence **sharding** (which lifts the ceiling at +N× WCU). It also re-introduces Issue 4's per-(tag, event-type) over-serialization on that tag — but for an M:N invariant that serialization is usually *desired* (it's what the invariant needs).
-4. **Transaction size.** Each `#CrossPartition` tag adds one fence op to the append's `TransactWriteItems`; an M:N event adds two, pushing sooner against the 100-item cap (Issue 11) for high-tag-count commands.
+3. **Cross-partition fencing — more WCU and a hotter fence.** Reverting Issue 1's narrowing for a `CrossPartition` tag means **every** carrier bumps `fence#<tag>` (transactional, 2× WCU), not just events partitioned by it. An M:N write therefore drives **two** fences (e.g. `fence#studentId:S1` *and* `fence#courseId:C1`), each contended by *all* writers touching that student or that course → each is a candidate for the ~500-transactions/sec/fence ceiling (Issue 10). Popular entities (a trending course) make their fence a write bottleneck; pairs naturally with fence **sharding** (which lifts the ceiling at +N× WCU). It also re-introduces Issue 4's per-(tag, event-type) over-serialization on that tag — but for an M:N invariant that serialization is usually *desired* (it's what the invariant needs).
+4. **Transaction size.** Each `CrossPartition` tag adds one fence op to the append's `TransactWriteItems`; an M:N event adds two, pushing sooner against the 100-item cap (Issue 11) for high-tag-count commands.
 5. **`ALL` vs `KEYS_ONLY` read/write trade-off.** `ALL`: one GSI Query returns full items → cheapest *reads* (single eventually-consistent pass at 0.5 RCU/4 KB) but the costliest *writes/storage* (full-item replication of all history). `KEYS_ONLY`: cheap writes/storage, but each decision read is GSI-Query-for-keys **+** `BatchGetItem` against the base table (extra round trips and RCU). The crossover is set by the read:write ratio and event size — `KEYS_ONLY` wins for write-heavy / large-event tags, `ALL` for read-heavy / small-event tags.
 
-**Worked example — one `SubscribeStudent` (`StudentSubscribed` tagged `studentId`+`courseId`, both `#CrossPartition`, ~1 KB event), with `ALL` GSIs:**
+**Worked example — one `SubscribeStudent` (`StudentSubscribed` tagged `studentId`+`courseId`, both `CrossPartition`, ~1 KB event), with `ALL` GSIs:**
 
 | Component | Units (≈) |
 |---|---|

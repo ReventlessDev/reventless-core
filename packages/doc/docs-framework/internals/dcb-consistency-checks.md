@@ -46,6 +46,7 @@ A query is an array of **clauses** (`queryItem`s). Within a clause, tags are AND
 | Scalar tags only | one AND clause | `AddProduct` |
 | A tagged `array<string>` field | one OR clause per element | `PlaceOrder` |
 | Two or more scalar tags | one AND clause with multiple tags (composite) | `RecordProductDemand` |
+| A `@crossPartition` scalar tag | its own single-tag OR clause (cross-partition read) | `OrderProduct` *(planned)* |
 
 ### Single-entity — `AddProduct`
 
@@ -100,6 +101,55 @@ RecordDemand({ productId: "prod-1", orderId: "ord-1" })
       tags: [ productId:prod-1, orderId:ord-1 ] } ]
 ```
 
+### Cross-partition single-tag — `OrderProduct` (planned)
+
+:::info Planned capability
+`@crossPartition` and this slice are **not yet implemented** (planned — not yet shipped). The example is written *as if* it worked, so you can follow the intended end-to-end flow. None of the slices above use it; today every single-tag read is partition-scoped.
+:::
+
+Suppose a customer may order at most *N* units of a given product — **across all their orders, however many they place**. Enforcing that means aggregating one customer's purchases of one product, and a customer's orders are scattered across many `orderId` partitions. So the read keys on **`customerId`**, which a single order carries as a *secondary* tag — a cross-partition read:
+
+```rescript
+// PLANNED — @crossPartition is not implemented yet
+type command =
+  OrderProduct({
+    @partitionTag orderId: string,
+    @crossPartition customerId: string,   // read THIS customer's whole history, across partitions
+    productId: string,                     // payload — which product to cap (filtered in the fold)
+    quantity: int,                         // payload — units in this order (summed in the fold)
+  })
+type consumedEvent =
+  ProductOrdered({ productId: string, quantity: int })   // the fields evolve needs to sum the cap
+type event =
+  ProductOrdered({
+    @partitionTag orderId: string,
+    @crossPartition customerId: string,
+    productId: string,
+    quantity: int,
+  })
+```
+
+Only `orderId` and `customerId` are tags; `productId`/`quantity` are untagged payload. So the command builds **two single-tag clauses** (a `@crossPartition` tag fans out into its own clause, like the partition tag — not AND-ed into a composite):
+
+```
+OrderProduct({ orderId: "ord-7", customerId: "cust-9", productId: "prod-1", quantity: 3 })
+→ [ { eventTypes: ["ProductOrdered"], tags: [ orderId:ord-7    ] },   // partition read — already placed this order line?
+    { eventTypes: ["ProductOrdered"], tags: [ customerId:cust-9 ] } ]  // cross-partition read — all of cust-9's orders
+```
+
+The `customerId` clause is a single tag, but because `customerId` is `@crossPartition` it is **not** a partition lookup:
+
+- **Stage 2** routes it to the `tag_customerId` **GSI**, returning every `ProductOrdered` by `cust-9` across all `orderId` partitions. `evolve` keeps the ones with `productId == "prod-1"` and sums their `quantity`; `decide` rejects if that sum + `3 > N`. (A plain partition read would hit the empty `customerId:cust-9` partition, sum zero, and the cap would never fire.)
+- **Stage 3** advances `fence#customerId:cust-9` on **every** `ProductOrdered`, so two orders **by the same customer** racing against the cap conflict and one retries — the cap holds under concurrency. Crucially, the fence is on `customerId`, so only *that customer's* concurrent orders serialize; different customers never contend.
+
+See [Reading by a secondary tag](#reading-by-a-secondary-tag--cross-partition-reads) for the read-routing and fence detail.
+
+A few design points this example makes concrete:
+
+- **The product is narrowed in the fold, not the query.** Reading by the *pair* `{customerId, productId}` would be a composite **exact-set** match — keyed on the event's full tag set (including `orderId`, per the composite rule in Stage 2 above), so it can't express "all of `cust-9`'s events for `prod-1`". So you read by `customerId` cross-partition and filter the product in `evolve`. Not every constraint is a tag.
+- **Read the lower-degree side.** Reading `customerId` (a handful of orders per customer) and filtering the product is far cheaper than reading `productId` cross-partition (every order of a popular product) and filtering the customer — and it also puts the fence on the low-contention key.
+- **Contrast with `PlaceOrder` above**, where `customerId` is `@noDcbTag` (pure payload) and `productId` is read *partition-scoped*. A field that's untagged payload in one slice becomes a cross-partition read key in another when an invariant needs to aggregate by it. Because scope is a **global property of the tag key**, making `customerId` cross-partition applies to every producer of it — the global trade-off in [Why the opt-in must be explicit](#why-the-opt-in-must-be-explicit) (here a cheap one: same-customer concurrency is rare).
+
 ## Stage 2 — Reading the decision model
 
 The callback runs `dcbEventLog.readStream(~query)` and folds the events into a **decision model** with the slice's `evolve` function, starting from `initialState` — one `evolve(state, event)` call per event. It also records the **head position** (the latest position seen) as `after`. Only once the fold is complete is `decide(state, command)` called. Each clause maps to a physical read by its tag count:
@@ -122,6 +172,50 @@ For `PlaceOrder` the three clauses become three partition reads, folded together
 
 `decide` then returns `OrderAlreadyPlaced`, `ProductsNotAvailable`, or `Ok([OrderPlaced{…}])`.
 
+Note the `productId` reads here are deliberately **partition-scoped**: `PlaceOrder` wants `CatalogProductSynced` (partitioned by `productId`) and *tolerates* not seeing sibling `OrderPlaced` (which carry `productId` only as a secondary tag). So `productId` is **not** marked `@crossPartition` — `PlaceOrder` is exactly the counterexample for why cross-partition must be opt-in, not inferred (see [Reading by a secondary tag](#reading-by-a-secondary-tag--cross-partition-reads)).
+
+### Reading by a secondary tag — cross-partition reads
+
+:::info Planned capability
+The `@crossPartition` annotation described here is a **planned** capability, not yet shipped. Today every single-tag read is partition-scoped (the default `PartitionScoped` behaviour). This section documents the design and, importantly, *why the opt-in must be explicit*.
+:::
+
+A single-tag read being partition-scoped (above) blocks the **canonical M:N decision**. Take course subscription: a `StudentSubscribed` event ties two entities and must enforce two invariants on subscribe — *course not full* (read by `courseId`) and *student not over-enrolled* (read by `studentId`). The event can be partitioned by only one tag, so the other read is inherently cross-partition.
+
+The annotation goes on the **command** and the produced **`event`** — exactly where `@partitionTag` already lives, and consistently across both — never on `consumedEvent` (which carries no tag annotations):
+
+```rescript
+// command — its tagged fields build the read query
+@schema type command =
+  | SubscribeStudent({
+      @partitionTag courseId: string,      // → clause [courseId:C1] — partition read: course full?
+      @crossPartition studentId: string,   // → clause [studentId:S1] — cross-partition read: over-enrolled?
+    })
+
+// produced event — drives partitioning, GSI indexing, and fence scope
+@schema type event =
+  | StudentSubscribed({
+      @partitionTag courseId: string,
+      @crossPartition studentId: string,
+    })
+```
+
+Each tag becomes its **own single-tag clause** (the partition tag and each cross-partition tag fan out separately — they are *not* AND'd into one composite exact-pair clause):
+
+- Read by `courseId:C1` → base-table partition query (it *is* the partition tag) → all of the course's subscriptions. ✓
+- Read by `studentId:S1` → `studentId` is `@crossPartition`, so the read routes to the `tag_studentId` **GSI** (which indexes the tag across every `courseId` partition) → all of the student's subscriptions. ✓ Without the annotation, this read hits the empty `studentId:S1` base-table partition and the over-enrolment check silently always passes.
+
+Correspondingly, the fence (Stage 3) for a cross-partition tag must **advance on every carrier** (an `Update`, like a composite tag — not the `ConditionCheck` a partition-scoped secondary read gets), or OCC would miss a concurrent secondary-`studentId` writer. The annotation on the command drives the read routing; the same annotation on the produced event drives the fence scope — keeping fence-scope = read-scope per tag.
+
+#### Why the opt-in must be explicit
+
+The framework *can* tell that a tag isn't the partition tag of a given event type — so why not auto-promote every secondary-tag read to a cross-partition one? Because detecting "not the partition tag" is not the same as knowing the slice *wants* the cross-partition fold, and guessing wrong is expensive and silent:
+
+- **Intent isn't derivable.** `PlaceOrder` reads by `productId` to check availability from `CatalogProductSynced` (for which `productId` *is* the partition tag — a partition read is correct). `OrderPlaced` also carries `productId` as a secondary tag, but `PlaceOrder` deliberately *ignores* sibling orders — it tolerates the over-read, it doesn't want it. The same tag key is "the partition tag I want" for one type and "a secondary tag I ignore" for another; types and tags alone can't distinguish *want* from *tolerate*.
+- **The fence is global, so the cost is global.** Read-scope must equal fence-scope, so auto-promoting `productId` would force *every* `OrderPlaced` to advance `fence#productId` — serializing every order for a popular product on one fence and paying extra transactional WCU. The fence is advanced by **writers**, not readers, so scope can't be per-slice: opting one tag into cross-partition changes contention for every writer of it. That is a deliberate trade-off the developer must declare, which is why the scope "must agree across every event type that carries the tag".
+
+So the default is `PartitionScoped` (cheap, narrow fence, secure-by-default) and a tag opts **in** to `CrossPartition`. Inverting the default would make the high-contention path implicit and silently degrade slices like `PlaceOrder`.
+
 ## Stage 3 — The conditional append (consistency fences)
 
 If `decide` produces events, the callback appends them with `~condition={ query, after }`. The DynamoDB adapter turns that condition into **fence sentinels** carried on a single `TransactWriteItems` alongside the event writes — so the whole append is atomic.
@@ -141,7 +235,8 @@ The adapter classifies each tag of the condition. The guiding rule is **fence-sc
 | Tag role in the append | Fence item | Effect |
 |---|---|---|
 | The written event's **partition** tag | conditional `Update` | assert `≤ after` **and** advance the fence |
-| A **single-tag** clause that is *not* the partition tag (a secondary read) | `ConditionCheck` | assert `≤ after` only — never advance |
+| A **single-tag** clause that is *not* the partition tag (a partition-scoped secondary read) | `ConditionCheck` | assert `≤ after` only — never advance |
+| A **single-tag** clause on a `CrossPartition` tag (planned — see [above](#reading-by-a-secondary-tag--cross-partition-reads)) | conditional `Update` | assert `≤ after` **and** advance (read crosses partitions, so OCC needs the bump) |
 | A tag in a **multi-tag (composite)** clause | conditional `Update` | assert `≤ after` and advance (composite reads cross partitions, so OCC needs the bump) |
 | An untagged field (e.g. `@noDcbTag customerId`) | — | no fence at all |
 
