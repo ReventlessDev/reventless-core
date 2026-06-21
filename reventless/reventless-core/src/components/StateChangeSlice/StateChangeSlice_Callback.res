@@ -200,11 +200,20 @@ module Make = (
       }
       let cacheHit = seed.contents->Option.isSome
 
-      // Consistency: eventual on the first attempt (cheaper RCU; a stale read can
-      // only cost a rejected append, never a wrong write — the fence is always
-      // evaluated strongly), then strong on every retry so a replica-lag conflict
-      // self-heals deterministically rather than burning further retries.
-      let strongConsistency = retries < maxRetries
+      // Consistency: governed by the slice's build-time `readConsistency` mode
+      // (default `EscalateOnRetry`). Correctness is identical in every mode — the
+      // conditional append's fence is always evaluated strongly, so a stale read
+      // can only cost a rejected append (then a retry), never a wrong write. The
+      // mode is a per-slice RCU/latency lever against replica-lag conflicts.
+      //   EscalateOnRetry — eventual on the first attempt (cheaper RCU), then
+      //     strong on every retry so a replica-lag conflict self-heals.
+      //   AlwaysStrong    — strong every attempt (known-hot slices).
+      //   AlwaysEventual  — eventual every attempt (cost-sensitive, low-contention).
+      let strongConsistency = switch Spec.readConsistency {
+      | Reventless.ReadConsistency.EscalateOnRetry => retries < maxRetries
+      | AlwaysStrong => true
+      | AlwaysEventual => false
+      }
 
       dcbEventLog.readStream(~query, ~after=?afterPos, ~strongConsistency)
       ->Stream.map(raw => {

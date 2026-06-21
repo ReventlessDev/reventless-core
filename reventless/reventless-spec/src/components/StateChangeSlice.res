@@ -84,6 +84,15 @@ module type Spec = {
       `AllowAuthenticated`; override at the file/module level with
       `@@reventless.authorize(<rule>)`. */
   let commandAuthorization: command => Authorization.permission
+
+  /** Decision-read consistency mode for this slice's optimistic-concurrency
+      retry loop. Auto-injected by `@@reventless.spec` and on
+      structurally-detected inline spec modules — defaults to
+      `EscalateOnRetry` (eventual first, strong on retry); override at the
+      file/module level with `@@reventless.consistency(AlwaysStrong)` (or
+      `AlwaysEventual`). Affects RCU/latency only, never correctness — the
+      conditional append's fence is always evaluated strongly. */
+  let readConsistency: ReadConsistency.t
 }
 
 /**

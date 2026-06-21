@@ -12,7 +12,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 0 | Fence-scope = read-scope | Issue 1 | Correctness | shipped | [dcb-fence-scope-alignment](dcb-fence-scope-alignment.md) |
 | 1 | DynamoDB integration test | Issue 3 | Verification | **done** | [dcb-dynamodb-atomic-append-integration-test](done/dcb-dynamodb-atomic-append-integration-test.md) |
 | 2 | `after=None` create-race | Issue 2 | Correctness | **yes** | — (detailed below) |
-| 3 | Drop unused per-tag GSIs | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
+| 3 | Down-project per-tag GSIs to `KEYS_ONLY` | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
 | 4 | Decision-model cache | Perf/cost lever #2 | Cost | **core done** | [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md) |
 | 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **5,12 done; 4,6,9 open** | — (detailed below) |
 | 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **done** | — (Phase 5 below) |
@@ -75,30 +75,24 @@ Action taken: documented the async/FIFO guarantee here and in analysis Issue 2. 
 
 **Risk**: medium — touches the idempotency fallback. Guard with the subset-event-type integration case explicitly.
 
-## Phase 3 — Drop / down-project the unused per-tag GSIs (cost lever #1) — **ON HOLD (2026-06-20)**
+## Phase 3 — Down-project per-tag GSIs to `KEYS_ONLY` (cost lever #1) — **PENDING (decided 2026-06-21)**
 
-**Held pending a decision on cross-partition secondary-tag queries.** Prerequisite verified — `queryBySingleTag`/`queryBySingleTagStream` have zero callers and no `tag_*` index name is referenced outside the adapter (the per-tag GSIs were orphaned by `fc4c1f493` "primary-tag partitioning", which switched single-tag reads to base-table partition queries). But the choice between **full removal** and **`KEYS_ONLY` down-projection** turns on whether a *single non-partition (secondary) tag* read will ever be wanted:
+**Decision (2026-06-21): down-project to `KEYS_ONLY`, do not remove.** The per-tag GSIs (`tag_<key>` per tagged field) have zero readers today, but Phase 7 (cross-partition secondary-tag reads — [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap)) is now in scope as a future capability. Full removal would foreclose Phase 7 without a GSI rebuild *and* a fence-model reconciliation; `KEYS_ONLY` cuts the storage multiplier (no event payloads duplicated per GSI) and most of the per-write WCU, while leaving the index queryable via a `Query → BatchGetItem` round-trip when Phase 7's read path lands. Expected Phase 7 reads are bounded (`Limit:N+1` count-bounded reads for capacity invariants) and benefit from the Phase 4 decision-model cache, so the extra hop is acceptable.
 
-- Today a single-tag read is a **base-table partition query** — it returns only events whose *primary/partition* tag is that tag. An event carrying the tag as a *secondary* tag lives in another partition and is **not** returned; there is no query path for a cross-partition secondary-tag read (the per-tag GSIs were the old mechanism, now disconnected). This is also load-bearing for Issue 1: single-tag reads being partition-scoped is what keeps read-scope = fence-scope. A cross-partition secondary-tag read would reintroduce that mismatch.
-- **Full removal** forecloses re-adding such a read without a GSI rebuild *and* a fence-model reconciliation. **`KEYS_ONLY`** keeps the index (queryable via keys + `BatchGetItem`) while still cutting most of the write/storage cost.
+**Goal**: cut the storage multiplier and most of the per-write WCU on the per-tag GSIs while preserving Phase 7 optionality.
 
-Decision deferred — revisit once secondary-tag query needs are clear. The capability, a canonical worked example (course subscription) and a solution sketch that re-uses the per-tag GSI are in [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap). The full-removal plan below remains the reference if that path is chosen.
-
-**Goal**: cut ~30–60% of per-write WCU and the permanent storage multiplier on the event log.
-
-**Finding**: the table provisions one `tag_<key>` GSI **per tagged field** plus `tag_composite`, all `projectionType: ALL` ([`DcbEventLogStorage_DynamoDb.res:19-30`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res#L19-L30); index list built in [`Dcb_Builder.res:135-154`](../../reventless/reventless-core/src/components/Dcb/Dcb_Builder.res#L135-L154)). The single-tag read path uses the **base table** (`queryByPartitionKeyStream`); composite reads use `tag_composite`. The per-tag GSIs' only readers — `queryBySingleTag` / `queryBySingleTagStream` — have **zero callers**. So they are write-amplification + storage multiplier with no read benefit.
+**Finding**: the table provisions one `tag_<key>` GSI **per tagged field** plus `tag_composite`, all `projectionType: ALL` ([`DcbEventLogStorage_DynamoDb.res:19-30`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res#L19-L30); index list built in [`Dcb_Builder.res:135-154`](../../reventless/reventless-core/src/components/Dcb/Dcb_Builder.res#L135-L154)). Single-tag reads use the **base table** (`queryByPartitionKeyStream`); composite reads use `tag_composite`. The per-tag GSIs' only readers — `queryBySingleTag` / `queryBySingleTagStream` — have **zero callers** (orphaned by `fc4c1f493` "primary-tag partitioning"). So today they pay the full `ALL`-projection write/storage cost with no read benefit.
 
 **Steps**:
-1. **Verify no out-of-adapter consumer** queries `tag_<key>` GSIs: grep the whole repo (EventCollector, admin, MCP, QueryDb, debugging tooling) for `tag_`/index-name usage and direct `QueryCommand` with `indexName`. Confirm the EventTopic stream consumer reads the base-table stream, not a GSI.
-2. **Remove the per-tag GSIs** from the index list in `Dcb_Builder.res` — keep only `tag_composite` (still needed by composite reads). Equivalently, leave the *attributes* but stop creating the GSIs.
-3. Delete the now-dead `queryBySingleTag` / `queryBySingleTagStream` and the unused `tag_<key>` attribute writes in `toItem` if nothing else reads them (keep `tag_composite`).
-4. **Migration**: removing GSIs requires a table change → wipe+recreate the alpha DcbEventLog tables (prefer wipe over migration per repo convention; coordinate with the Phase 0 fence-row wipe).
+1. **Verify no out-of-adapter consumer** queries the per-tag GSIs: grep the whole repo (EventCollector, admin, MCP, QueryDb, debugging tooling) for `tag_<key>` index-name usage and direct `QueryCommand` with `indexName`. Confirm the EventTopic stream consumer reads the base-table stream, not a GSI.
+2. **Down-project the per-tag GSIs** in [`Dcb_Builder.res`](../../reventless/reventless-core/src/components/Dcb/Dcb_Builder.res#L135-L154) from `ALL` to `KEYS_ONLY`. Keep `tag_composite` at `ALL` — composite reads return events directly from that index.
+3. **Delete the now-orphaned `queryBySingleTag` / `queryBySingleTagStream`** in the adapter — they query the GSI directly and assume the full event payload (`ALL`). Phase 7 will reintroduce a `queryBySingleTagCrossPartition` variant that does `Query` (keys) → `BatchGetItem` (payloads, against the base table).
+4. **Keep the `tag_<key>` attribute writes in `toItem`** — they populate the index keys and are required for `KEYS_ONLY` to remain queryable.
+5. **Migration**: changing a GSI's projection type requires GSI recreation → wipe+recreate the alpha DcbEventLog tables (prefer wipe over migration per repo convention; coordinate with the Phase 0 fence-row wipe).
 
-**Tests**: unit-assert the generated `globalSecondaryIndexes` no longer include per-tag GSIs; integration smoke (Phase 1) that single-tag and composite reads still work post-change.
+**Tests**: unit-assert the generated `globalSecondaryIndexes` use `KEYS_ONLY` for per-tag GSIs and `ALL` for `tag_composite`; integration smoke (Phase 1) that single-tag (base-table partition) and composite reads still work post-change.
 
-**Risk**: low-medium — purely removing unused infra, but a table migration. Sequence after Phase 1 so reads are covered.
-
-**Optional softer variant**: if a future cross-partition secondary-tag read is anticipated, switch the per-tag GSIs to `KEYS_ONLY` instead of removing — still cuts most of the storage/WCU while retaining queryability.
+**Risk**: low — shrinking unused indexes and removing dead read paths; the migration is the only real risk surface.
 
 ## Phase 4 — Decision-model cache (cost lever #2) — **CORE DONE (2026-06-20)**
 
@@ -116,7 +110,23 @@ Small, mostly independent items; land opportunistically.
 
 ### Phase 5a — Opt-in strong reads + contention metric (cost lever #3) — **DONE (2026-06-21)**
 
-Shipped: eventual-first / strong-on-retry decision reads (core), a provider-neutral retry/conflict metric signal (core), and CloudWatch metric filters (AWS). Only the per-slice *force-strong/force-eventual* build-time override remains (PPX follow-up — see below); with escalate-on-retry as the default it is low-urgency.
+Shipped: eventual-first / strong-on-retry decision reads (core), a provider-neutral retry/conflict metric signal (core), and CloudWatch metric filters (AWS). The per-slice *force-strong/force-eventual* build-time override (PPX follow-up) is now **implemented (2026-06-21)** — see below.
+
+**Per-slice strong-read override — implemented (2026-06-21), pending PPX release.** A build-time `readConsistency` mode per StateChangeSlice, mirroring `authorization`/`visibility`:
+- New `Reventless.ReadConsistency.t` ([`reventless-spec/src/types/ReadConsistency.res`](../../reventless/reventless-spec/src/types/ReadConsistency.res)) with three cases: `EscalateOnRetry` (default — eventual first, strong on retry), `AlwaysStrong` (known-hot slices), `AlwaysEventual` (cost-sensitive, low-contention).
+- New required field `let readConsistency: ReadConsistency.t` on `StateChangeSlice.Spec`. The callback's `strongConsistency` is now `switch Spec.readConsistency { EscalateOnRetry => retries < maxRetries | AlwaysStrong => true | AlwaysEventual => false }` ([`StateChangeSlice_Callback.res`](../../reventless/reventless-core/src/components/StateChangeSlice/StateChangeSlice_Callback.res)). Correctness is mode-independent — the conditional-append fence is always strong; the mode only trades replica-lag-conflict suppression against RCU.
+- New PPX pass [`ReadConsistencyInjection.ml`](../../packages/reventless-ppx/src/ppx/ReadConsistencyInjection.ml) (mirrors `VisibilityInjection`): auto-injects the `EscalateOnRetry` default into StateChangeSlice spec files (folder-detected, plus the `@schema type consumedEvent` + `@schema type event` structural marker that distinguishes a slice from an aggregate/translation slice) and into inline slice specs (test fixtures); a file-level `@@reventless.consistency(AlwaysStrong)` (or `AlwaysEventual`) overrides it; rejected on non-StateChangeSlice files.
+- Tests: 3 mode-behaviour cases in `DcbStateChangeSliceTest.res` (438 core tests green) asserting the `readStrongConsistency` sequence for `AlwaysStrong` (`[true]`, `[true,true,true]`) and `AlwaysEventual` (`[false,false,false]`).
+
+**Release coupling (blocker for merge).** Adding a *required* field to `StateChangeSlice.Spec` that only the new PPX injects means every slice spec needs the new binary to compile. CI consumes the **published** `@reventlessdev/reventless-ppx-*` packages (it only builds the PPX from source when the published binary is absent — `ci.yml` `ppx_check`), and `--frozen-lockfile` installs the exact binary the lockfile pins. So this change cannot pass CI until reventless-ppx is **republished at a new version with the lockfile updated**. Verified locally via the dev fallback `ppx-osx.exe` (`pnpm run build:ppx` → `cp src/_build/default/bin/bin.exe ppx-osx.exe`): reventless-spec/core/aws build clean (zero warnings), the catalog example's real slice specs receive the field, and the PPX harness passes (203 cases incl. the new readConsistency injection/override/rejection tests).
+
+**Release sequence (republish-ready as of 2026-06-21):**
+1. Version bumped to `1.0.0-alpha.42` in lockstep — `packages/reventless-ppx/package.json` (`version` + both `optionalDependencies`) and all three `npm/{darwin-arm64,darwin-x64,linux-x64}/package.json`.
+2. Publish the per-platform binaries (each rebuilt from source → includes the new `.ml`): the `publish-ppx.yml` workflow builds & publishes `darwin-arm64` + `linux-x64`; **`darwin-x64` is published by hand** on an Intel Mac via `pnpm --filter @reventlessdev/reventless-ppx run publish:platform darwin-x64` (out of CI by design).
+3. `pnpm install` to repin the lockfile to alpha.42, commit `pnpm-lock.yaml`.
+4. Full root build to regenerate every slice `.res.mjs` (the injected `readConsistency` field) + the auth-fix output; commit the regenerated mjs with the source. (Binaries are **not** committed — `.gitignore` excludes `*.exe`.)
+
+**Auth-injection fix folded into the same PPX release — DONE.** The republish would otherwise expose a latent `this match case is unused` warning: `AuthorizationInjection` appended a wildcard `| _ =>` to the `commandAuthorization` switch even for a single-constructor `@authorize` command (e.g. catalog's `ArchiveCategory`). Fixed by tracking the command's total constructor count and omitting the wildcard when the per-constructor rules are **exhaustive** (`rules_are_exhaustive` → `gen_command_authorization_switch ~exhaustive`). Generated output for exhaustive commands is unchanged (ReScript already optimised the switch to a constant return); only the warning is gone. Catalog now builds warning-free.
 
 **Decision (2026-06-21): default eventually-consistent.** Single-tag decision reads stop forcing `consistentRead: true`; they go eventually-consistent by default and rely on the conditional-append fence + retry loop for correctness. This halves decision-read RCU on the common path. Correctness is unchanged in either mode: **DynamoDB conditional writes are always evaluated against the latest committed data**, so a stale read can only ever cause a *rejected* append (then a retry), never a wrong write. Strong reads were never a correctness feature — they only suppress the *replica-lag* class of conflicts, not genuine concurrent-writer conflicts (those serialize at the fence regardless).
 
@@ -150,7 +160,7 @@ Already planned, run on evidence:
 
 **Goal**: support reading a single tag *across* partitions — i.e. reading an event type by a tag it carries as a *secondary* (non-partition) tag. Today a single-tag read is partition-scoped, so this is impossible; it's the canonical DCB shape for any M:N decision (course-subscription capacity, "≤ N orders per product", reservations). Full motivation, worked example, solution sketch, and cost analysis: [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap).
 
-**Why it's its own (deferred) phase, and how it couples to Phase 3.** The clean realisation **re-uses the per-tag `tag_<key>` GSI that Phase 3 would otherwise drop** — so the two are entangled: pursuing Phase 7 means Phase 3 must down-project to `KEYS_ONLY` (or keep `ALL`), not remove. **The decision "is a cross-partition read ever wanted?" gates Phase 3's form.** That is exactly why Phase 3 is currently on hold.
+**Why it's its own (deferred) phase, and how it couples to Phase 3.** The clean realisation **re-uses the per-tag `tag_<key>` GSI that Phase 3 down-projects to `KEYS_ONLY`** — so when Phase 7 lands, the cross-partition read path is a `Query → BatchGetItem` against keys-only, not a single `Query` against `ALL`. The extra round-trip is the price paid for keeping the per-write WCU + storage cost down while Phase 7 is still evidence-gated; bounded reads (`Limit:N+1`) and the Phase 4 cache keep that cost manageable in practice.
 
 **Shape of the work** (three coupled parts, from the analysis):
 1. **Per-tag scope flag** (`@dcbTag(~scope=#CrossPartition)`, default `#PartitionScoped`) — the single control surface; also resolves the Issue 14 residual (it's what tells the builder a secondary-tag clause is *wanted*, not just tolerated).
@@ -165,7 +175,7 @@ Already planned, run on evidence:
 
 1. ~~**Phase 1** (verification harness + Phase 0 regression cases)~~ — **done 2026-06-20**.
 2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
-3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. **On hold**: its form (full-remove vs `KEYS_ONLY`/keep) is gated by the Phase 7 decision below.
+3. **Phase 3** (down-project per-tag GSIs to `KEYS_ONLY`) — biggest durable $ win, no contract change. Decided 2026-06-21 to preserve Phase 7 optionality; ready to ship.
 4. ~~**Phase 4** (decision-model cache) — biggest read-cost win.~~ — **core done 2026-06-20** (Steps 1–3 + docs); per-slice capacity knob + metrics deferred.
-5. **Phase 5** items opportunistically — Issue 14 (vacuous-clause cleanup), Issue 12 (fence-scan hardening), Issue 5 (composite exact-match guard) **done (2026-06-20)**, and Phase 5a (opt-in strong reads + contention metric) **done (2026-06-21)**; remaining items (Issues 4/6/9, the per-slice strong-read override PPX follow-up) land opportunistically. **Phase 6** on profiling evidence.
-6. **Phase 7** (cross-partition reads) — only when a real slice needs it; making that call first unblocks Phase 3.
+5. **Phase 5** items opportunistically — Issue 14 (vacuous-clause cleanup), Issue 12 (fence-scan hardening), Issue 5 (composite exact-match guard) **done (2026-06-20)**, and Phase 5a (opt-in strong reads + contention metric) **done (2026-06-21)**, including the per-slice strong-read override PPX follow-up **implemented (2026-06-21, pending a reventless-ppx republish to merge)**; remaining items (Issues 4/6/9) land opportunistically. **Phase 6** on profiling evidence.
+6. **Phase 7** (cross-partition reads) — only when a real slice needs it; reuses the per-tag `KEYS_ONLY` GSI Phase 3 leaves in place (`Query` → `BatchGetItem`).

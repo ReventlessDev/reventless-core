@@ -30,6 +30,20 @@ module TestHandler = StateChangeSlice_Callback.Make(
   TestCommandBehavior,
 )
 
+// Per-slice `readConsistency` overrides: same types/behavior as TestCommandSpec,
+// only the build-time consistency mode differs. The default (TestCommandSpec) is
+// `EscalateOnRetry`; these force strong / eventual on every attempt.
+module StrongSpec = {
+  include DcbFixtures.TestCommandSpec
+  let readConsistency = Reventless.ReadConsistency.AlwaysStrong
+}
+module EventualSpec = {
+  include DcbFixtures.TestCommandSpec
+  let readConsistency = Reventless.ReadConsistency.AlwaysEventual
+}
+module StrongHandler = StateChangeSlice_Callback.Make(StrongSpec, TestCommandBehavior)
+module EventualHandler = StateChangeSlice_Callback.Make(EventualSpec, TestCommandBehavior)
+
 let makeTopicItem = (reference, command): CommandTopic.topicItem<
   Message.command'<Reventless.Id.String.t, DcbFixtures.TestCommandSpec.command>,
 > => {
@@ -46,6 +60,8 @@ let _ = beforeEach(() => {
   // The projection cache is keyed on durable positions; the mock storage is wiped
   // each test, so the cache must be flushed too or a prior test's snapshot leaks.
   TestHandler.resetCache()
+  StrongHandler.resetCache()
+  EventualHandler.resetCache()
 })
 
 describe("StateChangeSlice_Callback:", () => {
@@ -175,6 +191,44 @@ describe("StateChangeSlice_Callback:", () => {
       )->Effect.runPromise
 
       expect(mock.readStrongConsistency.contents)->toEqual([false, true, true])
+    })
+  })
+
+  describe("handleCommands - read consistency (per-slice override)", () => {
+    testPromise("AlwaysStrong reads strong on the first attempt", async () => {
+      let _ = await StrongHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
+
+      // No escalation step — strong from the start.
+      expect(mock.readStrongConsistency.contents)->toEqual([true])
+    })
+
+    testPromise("AlwaysStrong stays strong across retries (2 failures)", async () => {
+      mock.failNextAppends := 2
+      let _ = await StrongHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
+
+      expect(mock.readStrongConsistency.contents)->toEqual([true, true, true])
+    })
+
+    testPromise("AlwaysEventual never reads strong, even on retry (2 failures)", async () => {
+      mock.failNextAppends := 2
+      let _ = await EventualHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
+
+      expect(mock.readStrongConsistency.contents)->toEqual([false, false, false])
     })
   })
 

@@ -305,6 +305,19 @@ type event = OrderPlaced({@partitionTag orderId: string, customerId: string})
 type error = unit
 EOF
 
+# readConsistency: @@reventless.consistency(AlwaysStrong) build-time override
+cat > "$DCB/src/StateChangeSlice/ConsistencyStrong.res" <<'EOF'
+@@reventless.spec
+@@reventless.consistency(AlwaysStrong)
+
+@schema
+type command = Bump({widgetId: string})
+@schema
+type event = Bumped({widgetId: string})
+@schema
+type error = unit
+EOF
+
 # @dcbTag: outside a slice folder (no dcbTags auto-enabled), non-*Id field name
 cat > "$DCB/src/SkuCatalog.res" <<'EOF'
 @@reventless.spec
@@ -1123,6 +1136,25 @@ JS="$DCB/src/StateChangeSlice/SyncPlugin.res.mjs"
 assert_js_contains "$JS" 'let name = "SyncPlugin"'  "Plugin suffix retained inside slice folder"
 
 echo ""
+echo "=== Test: readConsistency — StateChangeSlice default is EscalateOnRetry ==="
+JS="$DCB/src/StateChangeSlice/TransferItems.res.mjs"
+assert_js_contains "$JS" 'readConsistency'  "slice: readConsistency binding injected"
+assert_js_contains "$JS" 'EscalateOnRetry'  "slice: default readConsistency is EscalateOnRetry"
+
+echo ""
+echo "=== Test: readConsistency — @@reventless.consistency(AlwaysStrong) override ==="
+JS="$DCB/src/StateChangeSlice/ConsistencyStrong.res.mjs"
+assert_js_contains     "$JS" 'readConsistency'  "override: readConsistency binding present"
+assert_js_contains     "$JS" 'AlwaysStrong'     "override: AlwaysStrong emitted"
+assert_js_not_contains "$JS" 'EscalateOnRetry'  "override: default not emitted when overridden"
+assert_js_not_contains "$JS" 'consistency'      "override: @@reventless.consistency attribute stripped"
+
+echo ""
+echo "=== Test: readConsistency — NOT injected on an Aggregate (slice-only field) ==="
+assert_js_not_contains "$PLUGIN/src/Aggregate/Category.res.mjs" 'readConsistency' \
+  "aggregate: readConsistency absent (field is StateChangeSlice-only)"
+
+echo ""
 echo "=== Test: @partitionTag injects DcbTag.partition; @noTag suppresses auto-tag ==="
 JS="$DCB/src/StateChangeSlice/RecordDemand.res.mjs"
 assert_js_contains    "$JS" 'partition'  "@partitionTag: DcbTag.partition injected"
@@ -1662,6 +1694,33 @@ else
   fi
 fi
 rm -f "$ERROR/src/Aggregate/VisibilityOnAggregate.res"
+
+echo ""
+echo "=== Test: PPX error — @@reventless.consistency on an Aggregate ==="
+
+mkdir -p "$ERROR/src/Aggregate"
+cat > "$ERROR/src/Aggregate/ConsistencyOnAggregate.res" <<'EOF'
+@@reventless.spec
+@@reventless.consistency(AlwaysStrong)
+
+@schema
+type command = Create
+@schema
+type event = Created
+@schema
+type error = unit
+EOF
+
+if OUTPUT=$(cd "$ERROR" && npx rescript build 2>&1); then
+  fail "@@reventless.consistency on Aggregate" "expected compilation to fail but it succeeded"
+else
+  if echo "$OUTPUT" | grep -q "@@reventless.consistency is only supported on StateChangeSlice"; then
+    pass "@@reventless.consistency on Aggregate → correct compile error"
+  else
+    fail "@@reventless.consistency on Aggregate" "unexpected error output: $OUTPUT"
+  fi
+fi
+rm -f "$ERROR/src/Aggregate/ConsistencyOnAggregate.res"
 
 echo ""
 echo "=== Test: PPX error — @noTag (old name) produces deprecation error ==="

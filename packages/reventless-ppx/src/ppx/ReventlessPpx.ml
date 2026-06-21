@@ -656,6 +656,7 @@ let transform (str : structure) : structure =
      of @@reventless.spec mode. Cheap no-op when the file has no specs. *)
   let str = AuthorizationInjection.walk_inline_specs str in
   let str = VisibilityInjection.walk_inline_specs str in
+  let str = ReadConsistencyInjection.walk_inline_specs str in
   let initial_mode = detect_mode str in
   let has_mode = initial_mode <> None in
   let is_spec = match initial_mode with Some (Spec _, _) -> true | _ -> false in
@@ -782,8 +783,15 @@ let transform (str : structure) : structure =
       let (vis_prefix, body, vis_suffix) =
         VisibilityInjection.inject ~loc loc.loc_start.pos_fname body
       in
-      !prefix @ authz_prefix @ vis_prefix @ body
-        @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix
+      (* Read-consistency auto-injection (StateChangeSlice only). Consumes a
+         file-level @@reventless.consistency(<case>) attribute and falls back to
+         the framework default EscalateOnRetry. Idempotent on bodies already
+         declaring the binding. *)
+      let (rc_prefix, body, rc_suffix) =
+        ReadConsistencyInjection.inject ~loc loc.loc_start.pos_fname body
+      in
+      !prefix @ authz_prefix @ vis_prefix @ rc_prefix @ body
+        @ readmodel_suffix @ suffix @ authz_suffix @ vis_suffix @ rc_suffix
 
     | Implementation (kind, spec_name_opt) ->
       let fname = loc.loc_start.pos_fname in

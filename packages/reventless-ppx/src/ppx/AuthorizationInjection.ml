@@ -104,11 +104,15 @@ let gen_command_authorization ~loc rule =
 
 (* let commandAuthorization = command => switch command { … | _ => default }.
    Per-constructor rules become explicit cases; un-annotated constructors
-   fall through to the default. *)
+   fall through to the default. When [exhaustive] (every constructor of the
+   command type carries a rule), the wildcard default case is omitted — a
+   wildcard after an exhaustive set of explicit cases is unused and trips
+   ReScript's warning 11 (e.g. a single-constructor [@authorize] command). *)
 let gen_command_authorization_switch
     ~loc
     ~(per_constructor_rules : (string * bool * expression) list)
-    ~(default_rule : expression) =
+    ~(default_rule : expression)
+    ~(exhaustive : bool) =
   let cases =
     List.map (fun (name, has_payload, rule) ->
       let cstr_lid = { txt = Lident name; loc } in
@@ -120,12 +124,16 @@ let gen_command_authorization_switch
       { pc_lhs = lhs; pc_guard = None; pc_rhs = rule }
     ) per_constructor_rules
   in
-  let wildcard_case = {
-    pc_lhs = Ast_builder.Default.ppat_any ~loc;
-    pc_guard = None;
-    pc_rhs = default_rule;
-  } in
-  let cases = cases @ [wildcard_case] in
+  let cases =
+    if exhaustive then cases
+    else
+      let wildcard_case = {
+        pc_lhs = Ast_builder.Default.ppat_any ~loc;
+        pc_guard = None;
+        pc_rhs = default_rule;
+      } in
+      cases @ [wildcard_case]
+  in
   let cmd_var_pat = Ast_builder.Default.ppat_var ~loc { txt = "command"; loc } in
   let cmd_var_ident =
     Ast_builder.Default.pexp_ident ~loc { txt = Lident "command"; loc }
@@ -174,6 +182,34 @@ let extract_constructor_rules (body : structure) : (string * bool * expression) 
       ) decls
     | _ -> []
   ) body
+
+(* Total number of constructors in the `@schema type command` variant. Used to
+   decide whether the per-constructor rules are exhaustive (every constructor
+   annotated) and the switch can drop its wildcard default. Returns 0 when
+   `command` is absent or not a variant (record/abstract) — callers then keep
+   the wildcard. *)
+let count_command_constructors (body : structure) : int =
+  List.fold_left (fun acc (item : structure_item) ->
+    match item.pstr_desc with
+    | Pstr_type (_, decls) ->
+      List.fold_left (fun acc (td : type_declaration) ->
+        if String.equal td.ptype_name.txt "command"
+           && Util.has_attr "schema" td.ptype_attributes
+        then
+          match td.ptype_kind with
+          | Ptype_variant ctors -> acc + List.length ctors
+          | _ -> acc
+        else acc
+      ) acc decls
+    | _ -> acc
+  ) 0 body
+
+(* Per-constructor rules are exhaustive when every constructor of the command
+   variant carries one — then the switch needs no wildcard default. *)
+let rules_are_exhaustive (body : structure)
+    (per_constructor_rules : (string * bool * expression) list) : bool =
+  let total = count_command_constructors body in
+  total > 0 && List.length per_constructor_rules = total
 
 (* Strip `@authorize` from constructor declarations in the `command` type so
    sury-ppx (which runs after us) doesn't see an unknown attribute. *)
@@ -292,11 +328,12 @@ let inject ~loc fname (body : structure) : structure_item list * structure * str
     let body = strip_file_authorize_attrs body in
     let body = strip_authorize_attrs_from_command body in
     let (prefix, default_rule) = pick ~per_constructor_rules user_rule body in
+    let exhaustive = rules_are_exhaustive body per_constructor_rules in
     let suffix =
       if Util.has_let_binding "commandAuthorization" body
       then []
       else if List.length per_constructor_rules > 0
-      then [gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule]
+      then [gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule ~exhaustive]
       else [gen_command_authorization ~loc default_rule]
     in
     (prefix, body, suffix)
@@ -396,7 +433,9 @@ let inject_into_inner_module
       let injection =
         if is_command_carrier then
           if List.length per_constructor_rules > 0
-          then gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule
+          then
+            let exhaustive = rules_are_exhaustive body per_constructor_rules in
+            gen_command_authorization_switch ~loc ~per_constructor_rules ~default_rule ~exhaustive
           else gen_command_authorization ~loc default_rule
         else gen_authorization ~loc default_rule
       in
