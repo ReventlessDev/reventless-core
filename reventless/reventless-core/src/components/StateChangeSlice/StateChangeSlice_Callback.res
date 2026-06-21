@@ -316,6 +316,10 @@ module Make = (
                     // Re-seed from the just-read snapshot so the retry reads only
                     // the delta the conflicting writer added, not full history.
                     seed := Some((state, headPosition))
+                    // Per-slice CloudWatch counter: rising AppendRetry signals a
+                    // slice feeling contention (the metric to watch the eventual
+                    // default with — see dcb-high-contention-handling.md).
+                    Metrics.emitCount(~metric="AppendRetry", ~slice=Spec.name)
                     EffectLogger.logWarn(
                       ~comp,
                       `append failed (retrying ${(maxRetries - retries + 1)
@@ -326,6 +330,12 @@ module Make = (
                     // command for this entity takes the cold full-read path.
                     Lru.invalidate(projectionCache, cacheKey)
                     let errorCode = err->String.startsWith("Conflict") ? "Conflict" : "AppendFailed"
+                    // A surfaced Conflict means the 3-retry loop could not absorb
+                    // the contention — the operator signal for "this slice is hot"
+                    // (consider sharding / async — Issue 10, §4 of the analysis).
+                    if errorCode == "Conflict" {
+                      Metrics.emitCount(~metric="AppendConflict", ~slice=Spec.name)
+                    }
                     CommandTopic_Helpers.reportRejected(
                       cmdJson.meta.msgId,
                       {errorCode, errorDetail: err},

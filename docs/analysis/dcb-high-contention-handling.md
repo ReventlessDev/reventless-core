@@ -150,7 +150,7 @@ This best-effort treatment is **only safe because correctness does not depend on
 **Now (Phase 5a, this work):**
 - Default decision-read consistency = **eventual**; **per-slice build-time flag** to force strong (S1). *(Decided.)*
 - **Strongly consider making the default `EventualThenStrongOnRetry` (§5)** rather than plain eventual — same happy-path saving, deterministic lag-self-heal, no auto-tuning risk. **Open question for the owner.**
-- Ship the **per-slice retry/conflict CloudWatch metric** (EMF, sourced from the existing retry loop) — not deferred. Makes the flip observable and is the input to any future controller.
+- Ship the **per-slice retry/conflict metric**, split by the layering (§7): core emits a **provider-neutral** structured metric line (no `_aws`/EMF — that vocabulary must not live in core); `reventless-aws` turns it into a CloudWatch metric via a deploy-time `LogMetricFilter` on the command-handler log groups. Makes the eventual default observable and is the input to any future controller.
 
 **Next (cheap, high-value, not yet exploited):**
 - **K2 backoff + jitter** in the retry loop — directly attacks P2 by spreading contenders; today the loop retries immediately. Small, local, no contract change.

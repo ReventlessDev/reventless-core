@@ -12,6 +12,7 @@ import * as DcbTag$Reventless from "@reventlessdev/reventless-spec/src/component
 import * as Lru$ReventlessCore from "../../util/Lru.res.mjs";
 import * as DcbDecode$Reventless from "@reventlessdev/reventless-spec/src/components/DcbDecode.res.mjs";
 import * as Message$ReventlessCore from "../../Message.res.mjs";
+import * as Metrics$ReventlessCore from "../../util/Metrics.res.mjs";
 import * as LogFormat$ReventlessCore from "../../util/LogFormat.res.mjs";
 import * as EffectLogger$ReventlessCore from "../../util/EffectLogger.res.mjs";
 import * as CommandTopic_Helpers$ReventlessCore from "../CommandTopic/CommandTopic_Helpers.res.mjs";
@@ -209,10 +210,14 @@ function Make(Spec) {
                     state,
                     headPosition
                   ];
+                  Metrics$ReventlessCore.emitCount("AppendRetry", Spec.name, undefined);
                   return Effect.flatMap(EffectLogger$ReventlessCore.logWarn(comp, undefined, `append failed (retrying ` + ((3 - retries | 0) + 1 | 0).toString() + `/` + (3).toString() + `): ` + err), () => attempt(retries - 1 | 0));
                 }
                 Lru$ReventlessCore.invalidate(projectionCache, cacheKey);
                 let errorCode = err.startsWith("Conflict") ? "Conflict" : "AppendFailed";
+                if (errorCode === "Conflict") {
+                  Metrics$ReventlessCore.emitCount("AppendConflict", Spec.name, undefined);
+                }
                 CommandTopic_Helpers$ReventlessCore.reportRejected(cmdJson.meta.msgId, {
                   errorCode: errorCode,
                   errorDetail: err
