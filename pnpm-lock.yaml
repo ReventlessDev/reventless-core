@@ -946,11 +946,11 @@ importers:
   packages/reventless-ppx:
     optionalDependencies:
       '@reventlessdev/reventless-ppx-darwin-arm64':
-        specifier: ^1.0.0-alpha.40
-        version: 1.0.0-alpha.40
+        specifier: ^1.0.0-alpha.43
+        version: 1.0.0-alpha.43
       '@reventlessdev/reventless-ppx-linux-x64':
-        specifier: ^1.0.0-alpha.40
-        version: 1.0.0-alpha.40
+        specifier: ^1.0.0-alpha.43
+        version: 1.0.0-alpha.43
 
   rescript/rescript-anthropic:
     dependencies:
@@ -5168,13 +5168,13 @@ packages:
     resolution: {integrity: sha512-7J8gW/Km4S13QLFxc0CShvWnD6fjsx5Kst1EXqTmYH6kfOWh7STNXj26RbiQO0qOdmvRXfQvfV01ZB2riQAIBQ==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-host-shell/3.0.0-alpha.30/8a1609ad018b430e3f038baf2c0e9ed8f1108dd4}
     hasBin: true
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.40':
-    resolution: {integrity: sha512-0H+DX4cliWoS3Bf0G7oly0YpgmIYM7CH8/tbs1KROrdlujSgBC5aMD0dq3Hq9xAtb+cRUABA3VL8MXQsrYP8EQ==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-darwin-arm64/1.0.0-alpha.40/8b7379919204bb26fa2c06d2cee7b599bd971c22}
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.43':
+    resolution: {integrity: sha512-sAQC2AiVDjzSfQ5wh8MOBkEV4/0GIQzjKfc203J7S70JdNDdAXbhtjAQ/D88ote95dEGlrRI3w3VDdQ+jVJB6A==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-darwin-arm64/1.0.0-alpha.43/2095e0c04d9387cb8efefe3bf98b16b0feb3cf5a}
     cpu: [arm64]
     os: [darwin]
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.40':
-    resolution: {integrity: sha512-rwkK0rNk66pgIYCW4+/VOzXPsJ7p8ToHcwdZvYn4nJpGXuSnQiE8ZcORdwBmhX39b1IOm3F6axlA9qLXSBFzsA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-linux-x64/1.0.0-alpha.40/20328c1469fc3ef1ad747897a86bb80dab23530c}
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.43':
+    resolution: {integrity: sha512-N6ib2bFzfp6gTymKWSdgSMmPN6ySjTF/Q6nE7d7TQFNqCxtcKoxdoZ8xwlg0RjrVVcJlgyGroFND/S0m6WuwKA==, tarball: https://npm.pkg.github.com/download/@reventlessdev/reventless-ppx-linux-x64/1.0.0-alpha.43/d1e1a357b84a6ebd61d23fc6953f797617da1438}
     cpu: [x64]
     os: [linux]
 
@@ -20070,10 +20070,10 @@ snapshots:
       - vue-tsc
       - yaml
 
-  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.40':
+  '@reventlessdev/reventless-ppx-darwin-arm64@1.0.0-alpha.43':
     optional: true
 
-  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.40':
+  '@reventlessdev/reventless-ppx-linux-x64@1.0.0-alpha.43':
     optional: true
 
   '@reventlessdev/reventless-routes@3.0.0-alpha.7(@rescript/react@0.13.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rescript@12.3.0)':
