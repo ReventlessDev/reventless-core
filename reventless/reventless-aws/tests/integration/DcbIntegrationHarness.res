@@ -32,12 +32,18 @@ let attrDef = name =>
 let keyEl = (name, keyType) =>
   Dict.fromArray([("AttributeName", s(name)), ("KeyType", s(keyType))])->JSON.Encode.object
 
-let gsi = indexName =>
+// Mirror the production projection policy (Phase 3): `tag_composite` keeps a
+// full (ALL) projection; per-tag `tag_<key>` GSIs are KEYS_ONLY. Uses the same
+// predicate as the deploy-time `make` so the two never drift.
+let gsi = indexName => {
+  let projection =
+    DcbEventLogStorage_DynamoDb_Runtime.indexKeepsFullProjection(indexName) ? "ALL" : "KEYS_ONLY"
   Dict.fromArray([
     ("IndexName", s(indexName)),
     ("KeySchema", [keyEl(indexName, "HASH"), keyEl("position", "RANGE")]->JSON.Encode.array),
-    ("Projection", Dict.fromArray([("ProjectionType", s("ALL"))])->JSON.Encode.object),
+    ("Projection", Dict.fromArray([("ProjectionType", s(projection))])->JSON.Encode.object),
   ])->JSON.Encode.object
+}
 
 // Superset of tag GSIs used across the scenarios. GSIs are sparse, so an event
 // missing a given tag attribute is simply absent from that index — matching the

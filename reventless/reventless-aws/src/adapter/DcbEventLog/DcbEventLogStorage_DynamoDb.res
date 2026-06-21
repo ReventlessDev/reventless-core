@@ -15,15 +15,28 @@ let make: ReventlessCore.DcbEventLog_Adapter.storageMaker = (~name, ~indexes, ~p
     tagAttributes,
   )
 
-  // Build Global Secondary Indexes from index names
+  // Build Global Secondary Indexes from index names.
+  //
+  // Projection: `tag_composite` stays `ALL` — composite (multi-tag) decision
+  // reads resolve events directly from it. The per-tag `tag_<key>` GSIs are
+  // `KEYS_ONLY`: they have no reader today (single-tag reads use the base-table
+  // partition), and a future cross-partition secondary-tag read (Phase 7) goes
+  // `Query` (keys) → `BatchGetItem` (payloads against the base table). KEYS_ONLY
+  // drops the per-GSI event-payload storage multiplier and most of the per-write
+  // WCU while keeping the index queryable. See docs/plans/dcb-consistency-hardening.md
+  // Phase 3.
   let globalSecondaryIndexes =
     indexes
     ->Array.map(indexName => {
+      let projectionType =
+        DcbEventLogStorage_DynamoDb_Runtime.indexKeepsFullProjection(indexName)
+          ? PulumiAws.DynamoDb.Table.ALL
+          : PulumiAws.DynamoDb.Table.KEYS_ONLY
       {
         PulumiAws.DynamoDb.Table.name: indexName,
         hashKey: indexName,
         rangeKey: "position",
-        projectionType: PulumiAws.DynamoDb.Table.ALL,
+        projectionType,
         nonKeyAttributes: ?None,
       }->Pulumi.Input.make
     })

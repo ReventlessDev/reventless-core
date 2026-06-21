@@ -21,12 +21,15 @@ function make(name, indexes, partitionTag, opts) {
       type: "S"
     }
   ].concat(tagAttributes);
-  let globalSecondaryIndexes = indexes.map(indexName => ({
-    hashKey: indexName,
-    name: indexName,
-    projectionType: "ALL",
-    rangeKey: "position"
-  }));
+  let globalSecondaryIndexes = indexes.map(indexName => {
+    let projectionType = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.indexKeepsFullProjection(indexName) ? "ALL" : "KEYS_ONLY";
+    return {
+      hashKey: indexName,
+      name: indexName,
+      projectionType: projectionType,
+      rangeKey: "position"
+    };
+  });
   let tags = AWS_Tags$ReventlessAws.make(name, DcbEventLog$ReventlessCore.componentType);
   let table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, globalSecondaryIndexes, undefined, "position", "NEW_IMAGE", tags, opts, name);
   return {

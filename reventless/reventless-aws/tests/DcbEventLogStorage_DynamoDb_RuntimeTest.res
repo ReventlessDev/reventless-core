@@ -446,3 +446,18 @@ describe("Runtime.appendConditional", () => {
     }
   })
 })
+
+// Phase 3: the deploy-time `make` provisions `tag_composite` with a full (ALL)
+// projection and every per-tag `tag_<key>` GSI as KEYS_ONLY. This guards the
+// pure predicate that drives that decision (the Pulumi wiring itself is
+// type-checked by the build, not unit-tested).
+describe("Runtime.indexKeepsFullProjection", () => {
+  testSync("tag_composite keeps a full projection", () => {
+    expect(Runtime.indexKeepsFullProjection("tag_composite"))->toBe(true)
+  })
+  testSync("per-tag GSIs are KEYS_ONLY (no full projection)", () => {
+    expect(Runtime.indexKeepsFullProjection("tag_orderId"))->toBe(false)
+    expect(Runtime.indexKeepsFullProjection("tag_customerId"))->toBe(false)
+    expect(Runtime.indexKeepsFullProjection("tag_productId"))->toBe(false)
+  })
+})

@@ -38,6 +38,12 @@ function tagToAttributeName(tagKey) {
   return `tag_` + tagKey;
 }
 
+let compositeIndexName = "tag_composite";
+
+function indexKeepsFullProjection(indexName) {
+  return indexName === compositeIndexName;
+}
+
 function compositeTagKey(tags) {
   return tags.toSorted((a, b) => Primitive_string.compare(a.key, b.key)).map(t => t.key + `:` + t.value).join("#");
 }
@@ -123,37 +129,6 @@ function fromItem(item) {
     meta: meta,
     recordedAt: recordedAt
   };
-}
-
-async function queryBySingleTag(table, tagKey, tagValue, after) {
-  let indexName = tagToAttributeName(tagKey);
-  let expressionAttributeValues = Object.fromEntries([[
-      ":val",
-      tagValue
-    ]]);
-  let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      indexName + ` = :val AND #pos > :after`,
-      Object.fromEntries([[
-          "#pos",
-          "position"
-        ]])
-    ]) : [
-      indexName + ` = :val`,
-      undefined
-    ];
-  let queryParams_TableName = table.name;
-  let queryParams_ExpressionAttributeNames = match[1];
-  let queryParams_ExpressionAttributeValues = expressionAttributeValues;
-  let queryParams_IndexName = indexName;
-  let queryParams_KeyConditionExpression = match[0];
-  let queryParams = {
-    TableName: queryParams_TableName,
-    ExpressionAttributeNames: queryParams_ExpressionAttributeNames,
-    ExpressionAttributeValues: queryParams_ExpressionAttributeValues,
-    IndexName: queryParams_IndexName,
-    KeyConditionExpression: queryParams_KeyConditionExpression
-  };
-  return await Effect$1.runPromise(Stream.runCollect(Util_DynamoDb_Runtime$ReventlessAws.queryStream(queryParams)));
 }
 
 async function queryByCompositeTags(table, tags, after) {
@@ -791,50 +766,6 @@ function queryByPartitionKeyStream(table, partitionKey, after, strongConsistency
   ]));
 }
 
-function queryBySingleTagStream(table, tagKey, tagValue, after) {
-  let indexName = tagToAttributeName(tagKey);
-  let expressionAttributeValues = Object.fromEntries([[
-      ":val",
-      tagValue
-    ]]);
-  let match = after !== undefined ? (expressionAttributeValues[":after"] = after, [
-      indexName + ` = :val AND #pos > :after`,
-      Object.fromEntries([[
-          "#pos",
-          "position"
-        ]])
-    ]) : [
-      indexName + ` = :val`,
-      undefined
-    ];
-  let baseParams_TableName = table.name;
-  let baseParams_ExpressionAttributeNames = match[1];
-  let baseParams_ExpressionAttributeValues = expressionAttributeValues;
-  let baseParams_IndexName = indexName;
-  let baseParams_KeyConditionExpression = match[0];
-  let baseParams = {
-    TableName: baseParams_TableName,
-    ExpressionAttributeNames: baseParams_ExpressionAttributeNames,
-    ExpressionAttributeValues: baseParams_ExpressionAttributeValues,
-    IndexName: baseParams_IndexName,
-    KeyConditionExpression: baseParams_KeyConditionExpression
-  };
-  return Stream.paginateEffect(undefined, cursor => Effect$1.map(Effect$1.catchAll(Effect$1.retry(Effect.tryPromise(DynamoDb_Error$ReventlessAws.classify, () => {
-    let params;
-    if (cursor !== undefined) {
-      let newrecord = {...baseParams};
-      newrecord.ExclusiveStartKey = cursor;
-      params = newrecord;
-    } else {
-      params = baseParams;
-    }
-    return DynamoDb_DocumentClient$AwsSdk.QueryCommand.send(new LibDynamodb.QueryCommand(params));
-  }), DynamoDb_Error$ReventlessAws.retrySchedule), err => Effect$1.fail(DynamoDb_Error$ReventlessAws.message(err))), result => [
-    Stdlib_Option.getOr(result.Items, []),
-    Stdlib_Option.map(result.LastEvaluatedKey, key => key)
-  ]));
-}
-
 function queryByCompositeTagsStream(table, tags, after) {
   let composite = compositeTagKey(tags);
   let expressionAttributeValues = Object.fromEntries([[
@@ -966,11 +897,12 @@ export {
   generatePosition,
   generatePositionForBatch,
   tagToAttributeName,
+  compositeIndexName,
+  indexKeepsFullProjection,
   compositeTagKey,
   derivePartitionKey,
   toItem,
   fromItem,
-  queryBySingleTag,
   queryByCompositeTags,
   buildScanFilter,
   scanWithFilter,
@@ -1004,7 +936,6 @@ export {
   appendConditional,
   append,
   queryByPartitionKeyStream,
-  queryBySingleTagStream,
   queryByCompositeTagsStream,
   scanWithFilterStream,
   executeQueryItemStream,

@@ -12,7 +12,7 @@ Order = correctness → verification harness → durable cost wins → robustnes
 | 0 | Fence-scope = read-scope | Issue 1 | Correctness | shipped | [dcb-fence-scope-alignment](dcb-fence-scope-alignment.md) |
 | 1 | DynamoDB integration test | Issue 3 | Verification | **done** | [dcb-dynamodb-atomic-append-integration-test](done/dcb-dynamodb-atomic-append-integration-test.md) |
 | 2 | `after=None` create-race | Issue 2 | Correctness | **yes** | — (detailed below) |
-| 3 | Down-project per-tag GSIs to `KEYS_ONLY` | Perf/cost lever #1 | Cost | **yes** | — (detailed below) |
+| 3 | Down-project per-tag GSIs to `KEYS_ONLY` | Perf/cost lever #1 | Cost | **done** | — (detailed below) |
 | 4 | Decision-model cache | Perf/cost lever #2 | Cost | **core done** | [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md) |
 | 5 | Robustness guards | Issues 4, 5, 6, 9, 12 | Robustness | **5,12 done; 4,6,9 open** | — (detailed below) |
 | 5 | Drop vacuous query-clause type combos | Issue 14 | Cleanup | **done** | — (Phase 5 below) |
@@ -75,7 +75,15 @@ Action taken: documented the async/FIFO guarantee here and in analysis Issue 2. 
 
 **Risk**: medium — touches the idempotency fallback. Guard with the subset-event-type integration case explicitly.
 
-## Phase 3 — Down-project per-tag GSIs to `KEYS_ONLY` (cost lever #1) — **PENDING (decided 2026-06-21)**
+## Phase 3 — Down-project per-tag GSIs to `KEYS_ONLY` (cost lever #1) — **DONE (2026-06-21)**
+
+**Shipped (2026-06-21).** Per-tag `tag_<key>` GSIs are now provisioned `KEYS_ONLY`; `tag_composite` stays `ALL`. Changes:
+- The deploy-time GSI builder ([`DcbEventLogStorage_DynamoDb.res`](../../reventless/reventless-aws/src/adapter/DcbEventLog/DcbEventLogStorage_DynamoDb.res)) now picks the projection per index via a pure predicate `indexKeepsFullProjection` (only `tag_composite` → `ALL`, else `KEYS_ONLY`). The predicate lives in the runtime module so it is unit-testable without the Pulumi deploy layer. *(The projection type was always set in the AWS storage maker, not `Dcb_Builder.res` — that builder only assembles the index-name list, which is unchanged.)*
+- Deleted the orphaned `queryBySingleTag` / `queryBySingleTagStream` from the adapter runtime (zero callers; they assumed a full GSI projection). `tagToAttributeName` and the per-tag attribute writes in `toItem` are retained (they populate the `KEYS_ONLY` index keys). Phase 7's cross-partition read will reintroduce a `Query`(keys) → `BatchGetItem`(payloads) variant.
+- Tests: `Runtime.indexKeepsFullProjection` unit guard (2 cases; AWS suite green at **128**). The integration harness ([`DcbIntegrationHarness.res`](../../reventless/reventless-aws/tests/integration/DcbIntegrationHarness.res)) now creates per-tag GSIs `KEYS_ONLY` via the **same predicate**, so the Phase 1 scenarios (single-tag base-table reads + composite reads) exercise the production projection. Deploy-time Pulumi wiring is type-checked by the build, not unit-tested (same posture as the Phase 5a metric filter).
+- **Migration**: changing a GSI's projection type requires GSI recreation, so the alpha `DcbEventLog` tables must be **wiped + recreated** on next deploy (prefer wipe over migration per repo convention; coordinate with the Phase 0 fence-row wipe). No data-migration code — alpha event data is disposable.
+
+The reference material below is retained for context.
 
 **Decision (2026-06-21): down-project to `KEYS_ONLY`, do not remove.** The per-tag GSIs (`tag_<key>` per tagged field) have zero readers today, but Phase 7 (cross-partition secondary-tag reads — [analysis Issue 13](../analysis/dcb-consistency-check-issues.md#issue-13--no-single-tag-cross-partition-secondary-tag-read-capability-gap)) is now in scope as a future capability. Full removal would foreclose Phase 7 without a GSI rebuild *and* a fence-model reconciliation; `KEYS_ONLY` cuts the storage multiplier (no event payloads duplicated per GSI) and most of the per-write WCU, while leaving the index queryable via a `Query → BatchGetItem` round-trip when Phase 7's read path lands. Expected Phase 7 reads are bounded (`Limit:N+1` count-bounded reads for capacity invariants) and benefit from the Phase 4 decision-model cache, so the extra hop is acceptable.
 
@@ -175,7 +183,7 @@ Already planned, run on evidence:
 
 1. ~~**Phase 1** (verification harness + Phase 0 regression cases)~~ — **done 2026-06-20**.
 2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
-3. **Phase 3** (down-project per-tag GSIs to `KEYS_ONLY`) — biggest durable $ win, no contract change. Decided 2026-06-21 to preserve Phase 7 optionality; ready to ship.
+3. ~~**Phase 3** (down-project per-tag GSIs to `KEYS_ONLY`) — biggest durable $ win, no contract change.~~ — **done 2026-06-21** (preserves Phase 7 optionality; needs an alpha DcbEventLog table wipe on next deploy).
 4. ~~**Phase 4** (decision-model cache) — biggest read-cost win.~~ — **core done 2026-06-20** (Steps 1–3 + docs); per-slice capacity knob + metrics deferred.
 5. **Phase 5** items opportunistically — Issue 14 (vacuous-clause cleanup), Issue 12 (fence-scan hardening), Issue 5 (composite exact-match guard) **done (2026-06-20)**, and Phase 5a (opt-in strong reads + contention metric) **done (2026-06-21)**, including the per-slice strong-read override PPX follow-up **implemented (2026-06-21, pending a reventless-ppx republish to merge)**; remaining items (Issues 4/6/9) land opportunistically. **Phase 6** on profiling evidence.
 6. **Phase 7** (cross-partition reads) — only when a real slice needs it; reuses the per-tag `KEYS_ONLY` GSI Phase 3 leaves in place (`Query` → `BatchGetItem`).

@@ -566,6 +566,17 @@ globalThis.describe("Runtime.appendConditional", () => {
   });
 });
 
+globalThis.describe("Runtime.indexKeepsFullProjection", () => {
+  globalThis.test("tag_composite keeps a full projection", () => {
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.indexKeepsFullProjection("tag_composite")).toBe(true);
+  });
+  globalThis.test("per-tag GSIs are KEYS_ONLY (no full projection)", () => {
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.indexKeepsFullProjection("tag_orderId")).toBe(false);
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.indexKeepsFullProjection("tag_customerId")).toBe(false);
+    globalThis.expect(DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.indexKeepsFullProjection("tag_productId")).toBe(false);
+  });
+});
+
 let Runtime;
 
 export {

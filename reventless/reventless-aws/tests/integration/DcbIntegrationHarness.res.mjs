@@ -40,6 +40,7 @@ function keyEl(name, keyType) {
 }
 
 function gsi(indexName) {
+  let projection = DcbEventLogStorage_DynamoDb_Runtime$ReventlessAws.indexKeepsFullProjection(indexName) ? "ALL" : "KEYS_ONLY";
   return Object.fromEntries([
     [
       "IndexName",
@@ -56,7 +57,7 @@ function gsi(indexName) {
       "Projection",
       Object.fromEntries([[
           "ProjectionType",
-          "ALL"
+          projection
         ]])
     ]
   ]);

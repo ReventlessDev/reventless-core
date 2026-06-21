@@ -21,6 +21,15 @@ let generatePositionForBatch = (basePosition, index) => {
 
 let tagToAttributeName = (tagKey: string) => `tag_${tagKey}`
 
+// GSI projection policy (consumed by the deploy-time `make`): only the
+// composite-tag GSI keeps a full (`ALL`) projection, because composite decision
+// reads resolve events directly from it. The per-tag `tag_<key>` GSIs are
+// `KEYS_ONLY` — no reader today, and Phase 7's cross-partition read goes
+// `Query`(keys) → `BatchGetItem`(payloads). Pure predicate so it is unit-testable
+// without the Pulumi deploy layer. See docs/plans/dcb-consistency-hardening.md Phase 3.
+let compositeIndexName = "tag_composite"
+let indexKeepsFullProjection = (indexName: string): bool => indexName == compositeIndexName
+
 let compositeTagKey = (tags: array<Reventless.DcbTag.tag>) =>
   tags
   ->Array.toSorted((a, b) => String.compare(a.key, b.key))
@@ -159,37 +168,6 @@ let fromItem = (item: JSON.t): ReventlessCore.DcbEventLog_Adapter.rawSequencedEv
 }
 
 // --- Query Operations ---
-
-let queryBySingleTag = async (
-  table: resolvedTable,
-  tagKey: string,
-  tagValue: string,
-  ~after: option<string>=?,
-) => {
-  let indexName = tagToAttributeName(tagKey)
-
-  let expressionAttributeValues = Dict.fromArray([
-    (":val", tagValue->JSON.Encode.string),
-  ])
-
-  let (keyConditionExpression, expressionAttributeNames) = switch after {
-  | None => (`${indexName} = :val`, None)
-  | Some(afterPos) => {
-      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (`${indexName} = :val AND #pos > :after`, Some(Dict.fromArray([("#pos", "position")])))
-    }
-  }
-
-  let queryParams: QueryCommand.input = {
-    tableName: table.name,
-    indexName: indexName,
-    keyConditionExpression: keyConditionExpression,
-    expressionAttributeValues: expressionAttributeValues,
-    ?expressionAttributeNames,
-  }
-
-  await queryStream(queryParams)->Stream.runCollect->Effect.runPromise
-}
 
 let queryByCompositeTags = async (
   table: resolvedTable,
@@ -1008,48 +986,6 @@ let queryByPartitionKeyStream = (
     ~after?,
     ~strongConsistency,
   )
-  Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
-    Effect.tryPromise(
-      ~catch=DynamoDb_Error.classify,
-      () => {
-        let params = switch cursor {
-        | None => baseParams
-        | Some(key) => {...baseParams, exclusiveStartKey: key}
-        }
-        QueryCommand.send(params->QueryCommand.make)
-      },
-    )
-    ->Effect.retry(DynamoDb_Error.retrySchedule)
-    ->Effect.catchAll(err => Effect.fail(DynamoDb_Error.message(err)))
-    ->Effect.map(result => (
-      result.items->Option.getOr([]),
-      result.lastEvaluatedKey->Option.map(key => Some(key)),
-    ))
-  )
-}
-
-let queryBySingleTagStream = (
-  table: resolvedTable,
-  tagKey: string,
-  tagValue: string,
-  ~after: option<string>=?,
-) => {
-  let indexName = tagToAttributeName(tagKey)
-  let expressionAttributeValues = Dict.fromArray([(":val", tagValue->JSON.Encode.string)])
-  let (keyConditionExpression, expressionAttributeNames) = switch after {
-  | None => (`${indexName} = :val`, None)
-  | Some(afterPos) => {
-      expressionAttributeValues->Dict.set(":after", afterPos->JSON.Encode.string)
-      (`${indexName} = :val AND #pos > :after`, Some(Dict.fromArray([("#pos", "position")])))
-    }
-  }
-  let baseParams: QueryCommand.input = {
-    tableName: table.name,
-    indexName: indexName,
-    keyConditionExpression: keyConditionExpression,
-    expressionAttributeValues: expressionAttributeValues,
-    ?expressionAttributeNames,
-  }
   Stream.paginateEffect((None: option<dict<JSON.t>>), cursor =>
     Effect.tryPromise(
       ~catch=DynamoDb_Error.classify,
