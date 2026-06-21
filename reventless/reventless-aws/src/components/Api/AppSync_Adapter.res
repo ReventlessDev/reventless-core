@@ -233,7 +233,7 @@ let withSchemaPushLock = async (
   } catch {
   | exn =>
     let _ = await release()
-    raise(exn)
+    throw(exn)
   }
 }
 
