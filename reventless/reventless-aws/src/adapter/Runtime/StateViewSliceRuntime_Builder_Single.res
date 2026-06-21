@@ -185,7 +185,7 @@ let buildLambda = (
   // Lambda picks up local edits without waiting for a Lambda Layer rebuild
   // (the layer fetches @reventlessdev/reventless-* from GitHub Packages, not
   // the local pnpm workspace). Mirrors the DCB asset pattern in
-  // PluginRuntime_Builder.forDcbCommandTopic. Util_Bundle co-bundles `effect`
+  // StateChangeSliceRuntime_Builder_Single. Util_Bundle co-bundles `effect`
   // automatically when reventless-aws is present.
   packageDirs->Dict.set(
     "@reventlessdev/reventless-aws",
