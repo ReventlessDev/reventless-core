@@ -31,6 +31,7 @@ type operations = {
   readStream: (
     ~query: Reventless.DcbTag.query,
     ~after: Reventless.DcbTag.sequencePosition=?,
+    ~strongConsistency: bool=?,
   ) => Stream.t<rawSequencedEvent, string, unit>,
 }
 

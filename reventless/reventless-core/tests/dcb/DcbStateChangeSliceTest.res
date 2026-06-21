@@ -139,6 +139,45 @@ describe("StateChangeSlice_Callback:", () => {
     })
   })
 
+  describe("handleCommands - read consistency (eventual-first, strong-on-retry)", () => {
+    testPromise("a conflict-free command reads eventually-consistent (no strong read)", async () => {
+      let _ = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
+
+      // Single attempt → single read, eventual.
+      expect(mock.readStrongConsistency.contents)->toEqual([false])
+    })
+
+    testPromise("escalates to strong consistency on retry after a conflict", async () => {
+      mock.failNextAppends := 1
+      let _ = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
+
+      // First attempt eventual, retry strong.
+      expect(mock.readStrongConsistency.contents)->toEqual([false, true])
+    })
+
+    testPromise("every retry after the first is strong (2 failures)", async () => {
+      mock.failNextAppends := 2
+      let _ = await TestHandler.handleCommands(
+        testDcbEventLog,
+        Stream.fromIterable([
+          makeTopicItem("ref-1", DcbFixtures.TestCommandSpec.CreateItem({itemId: "item-1", name: "Test"})),
+        ]),
+      )->Effect.runPromise
+
+      expect(mock.readStrongConsistency.contents)->toEqual([false, true, true])
+    })
+  })
+
   describe("handleCommands - conditional append", () => {
     testPromise("RenameItem after CreateItem uses headPosition in condition", async () => {
       let _ = await TestHandler.handleCommands(

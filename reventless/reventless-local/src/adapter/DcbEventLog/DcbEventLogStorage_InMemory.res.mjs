@@ -94,7 +94,7 @@ function makeStorage(_name, param, param$1, param$2) {
       _0: position.contents.toString()
     };
   };
-  let readStream = (query, after) => Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
+  let readStream = (query, after, param) => Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
   return [
     _name,
     read,

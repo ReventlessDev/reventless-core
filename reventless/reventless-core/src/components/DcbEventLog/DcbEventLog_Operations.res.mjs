@@ -105,7 +105,7 @@ function Make(Ops) {
       headPosition: rawResult.headPosition
     };
   };
-  let readStream = (query, after) => Stream$1.map(Ops.storage.readStream(query, after), raw => raw);
+  let readStream = (query, after, strongConsistency) => Stream$1.map(Ops.storage.readStream(query, after, strongConsistency), raw => raw);
   let appendStream = (stream, condition) => Effect.flatMap(Stream.runCollect(Stream$1.map(stream, rawEvent => rawEvent)), rawEvents => Effect.promise(() => Ops.storage.append(rawEvents, condition)));
   return {
     read: read,

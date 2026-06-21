@@ -77,6 +77,11 @@ Use for large result sets that should not be loaded into memory at once.
 type readStream = (
   ~query: Reventless.DcbTag.query,
   ~after: Reventless.DcbTag.sequencePosition=?,
+  /** Opt into strongly-consistent single-tag reads. Defaults to eventually
+      consistent: a stale read can only cause a rejected append (then a retry),
+      never a wrong write, because the append fence is always evaluated strongly.
+      The slice callback sets this on retries (eventual-first, strong-on-retry). */
+  ~strongConsistency: bool=?,
 ) => Stream.t<rawSequencedEvent, string, unit>
 
 /**

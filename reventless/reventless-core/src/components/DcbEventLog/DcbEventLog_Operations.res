@@ -146,8 +146,8 @@ module Make = (Ops: Ops): T => {
     result
   }
 
-  let readStream: DcbEventLog.readStream = (~query, ~after=?) =>
-    Ops.storage.readStream(~query, ~after?)->Stream.map(raw => (raw->Obj.magic: DcbEventLog.rawSequencedEvent))
+  let readStream: DcbEventLog.readStream = (~query, ~after=?, ~strongConsistency=?) =>
+    Ops.storage.readStream(~query, ~after?, ~strongConsistency?)->Stream.map(raw => (raw->Obj.magic: DcbEventLog.rawSequencedEvent))
 
   // Streaming append — collects the stream into an array, then makes a single
   // storage.append call to preserve atomicity of the condition check.

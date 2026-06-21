@@ -111,7 +111,7 @@ function make(nameOpt, indexesOpt, optsOpt) {
         json: json
       }]);
   };
-  let readStream = (query, after) => Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
+  let readStream = (query, after, param) => Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
   let storage_resources = [];
   let storage_operations = Pulumi.output({
     read: read,

@@ -64,7 +64,7 @@ globalThis.describe("DcbEventLog.appendStream (in-memory adapter)", () => {
         id: "as-src",
         name: "Source"
       })], undefined);
-    let srcStream = Stream.map(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("as-src"), undefined), se => ({
+    let srcStream = Stream.map(ops.readStream(DcbFixtures$ReventlessLocal.tagQuery("as-src"), undefined, undefined), se => ({
       eventType: se.eventType,
       data: se.data,
       tags: se.tags,

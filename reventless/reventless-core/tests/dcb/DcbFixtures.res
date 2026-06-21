@@ -104,6 +104,9 @@ type mockStorage = {
   // The `~after` cursor passed to each `read`/`readStream` call, in order.
   // `Some(_)` marks a delta read (projection-cache hit); `None` a full read.
   readAfters: ref<array<option<string>>>,
+  // The `~strongConsistency` passed to each `readStream` call, in order
+  // (eventual-first, strong-on-retry).
+  readStrongConsistency: ref<array<bool>>,
   reset: unit => unit,
 }
 
@@ -115,6 +118,9 @@ let makeMockStorage = (): mockStorage => {
   let publishedEventsRef: ref<array<publishedEvent>> = ref([])
   let failNextAppendsRef = ref(0)
   let readAftersRef: ref<array<option<string>>> = ref([])
+  // Records the ~strongConsistency passed to each readStream call (one entry per
+  // attempt) so tests can assert eventual-first / strong-on-retry escalation.
+  let readStrongConsistencyRef: ref<array<bool>> = ref([])
 
   let matchesQuery = (
     event: DcbEventLog_Adapter.rawSequencedEvent,
@@ -195,11 +201,13 @@ let makeMockStorage = (): mockStorage => {
     }
   }
 
-  let readStream = (~query, ~after=?) =>
+  let readStream = (~query, ~after=?, ~strongConsistency=false) => {
+    readStrongConsistencyRef := readStrongConsistencyRef.contents->Array.concat([strongConsistency])
     Effect.promise(() => read(~query, ~after?))
     ->Effect.map(result => result.events)
     ->Stream.fromEffect
     ->Stream.flatMap(arr => Stream.fromIterable(arr))
+  }
 
   let mockPublishJson: EventTopic.publishJson = async (service, meta, json) => {
     publishedEventsRef := publishedEventsRef.contents->Array.concat([{service, meta, json}])
@@ -211,6 +219,7 @@ let makeMockStorage = (): mockStorage => {
     publishedEventsRef := []
     failNextAppendsRef := 0
     readAftersRef := []
+    readStrongConsistencyRef := []
   }
 
   {
@@ -220,6 +229,7 @@ let makeMockStorage = (): mockStorage => {
     mockPublishJson,
     failNextAppends: failNextAppendsRef,
     readAfters: readAftersRef,
+    readStrongConsistency: readStrongConsistencyRef,
     reset,
   }
 }

@@ -270,7 +270,7 @@ function makeStorage(db, bus, publishToTopic, name, param, param$1, param$2) {
       }
     }
   };
-  let readStream = (query, after) => Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
+  let readStream = (query, after, param) => Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
   return [
     name,
     read,

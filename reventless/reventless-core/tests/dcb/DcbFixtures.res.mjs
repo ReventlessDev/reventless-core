@@ -197,6 +197,9 @@ function makeMockStorage() {
   let readAftersRef = {
     contents: []
   };
+  let readStrongConsistencyRef = {
+    contents: []
+  };
   let matchesQuery = (event, query) => {
     if (query.length === 0) {
       return true;
@@ -277,7 +280,11 @@ function makeMockStorage() {
       _0: position.contents.toString()
     };
   };
-  let readStream = (query, after) => Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
+  let readStream = (query, after, strongConsistencyOpt) => {
+    let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
+    readStrongConsistencyRef.contents = readStrongConsistencyRef.contents.concat([strongConsistency]);
+    return Stream.flatMap(Stream.fromEffect(Effect.map(Effect.promise(() => read(query, after)), result => result.events)), arr => Stream.fromIterable(arr));
+  };
   let mockPublishJson = async (service, meta, json) => {
     publishedEventsRef.contents = publishedEventsRef.contents.concat([{
         service: service,
@@ -291,6 +298,7 @@ function makeMockStorage() {
     publishedEventsRef.contents = [];
     failNextAppendsRef.contents = 0;
     readAftersRef.contents = [];
+    readStrongConsistencyRef.contents = [];
   };
   return {
     operations: {
@@ -303,6 +311,7 @@ function makeMockStorage() {
     mockPublishJson: mockPublishJson,
     failNextAppends: failNextAppendsRef,
     readAfters: readAftersRef,
+    readStrongConsistency: readStrongConsistencyRef,
     reset: reset
   };
 }

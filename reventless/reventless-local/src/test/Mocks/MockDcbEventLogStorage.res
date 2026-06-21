@@ -107,7 +107,7 @@ let make = (~name="mock-dcb-log", ~indexes: array<string>=[], ~opts: Pulumi.Cust
     publishedEventsRef := publishedEventsRef.contents->Array.concat([{service, meta, json}])
   }
 
-  let readStream = (~query, ~after=?) =>
+  let readStream = (~query, ~after=?, ~strongConsistency as _=?) =>
     Effect.promise(() => read(~query, ~after?))
     ->Effect.map(result => result.events)
     ->Stream.fromEffect

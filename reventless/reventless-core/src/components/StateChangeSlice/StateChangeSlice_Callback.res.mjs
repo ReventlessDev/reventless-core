@@ -96,7 +96,8 @@ function Make(Spec) {
           ];
         let afterPos = match$1[1];
         let cacheHit = Stdlib_Option.isSome(seed.contents);
-        return Effect.flatMap(Effect.tap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, afterPos), raw => {
+        let strongConsistency = retries < 3;
+        return Effect.flatMap(Effect.tap(Stream$1.runFold(Stream$1.flatMap(Stream$1.map(dcbEventLog.readStream(query, afterPos, strongConsistency), raw => {
           let decoded = decoder.decode(raw.eventType, Stdlib_Option.getOr(Stdlib_JSON.Decode.object(raw.data), {}));
           return Stdlib_Option.map(decoded, event => [
             event,

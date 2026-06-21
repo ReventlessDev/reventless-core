@@ -1165,19 +1165,19 @@ let executeQueryItemStream = (
   table: resolvedTable,
   queryItem: Reventless.DcbTag.queryItem,
   ~after: option<string>=?,
+  ~strongConsistency: bool=false,
 ) => {
   switch queryItem.tags {
-  // Single tag: direct partition key lookup. Base-table reads support strong
-  // consistency, which the slice's decision-model read needs to avoid stale
-  // events that would otherwise force an avoidable fence-conflict retry.
-  // GSI-backed branches (composite, scan) cannot opt in — fundamental
-  // DynamoDB constraint — so they stay eventually consistent.
+  // Single tag: direct partition key lookup. Base-table reads can opt into
+  // strong consistency; the slice callback defaults to eventual and escalates to
+  // strong on retry. GSI-backed branches (composite, scan) cannot opt in —
+  // fundamental DynamoDB constraint — so they stay eventually consistent.
   | Some([tag]) =>
     queryByPartitionKeyStream(
       table,
       `${tag.key}:${tag.value}`,
       ~after?,
-      ~strongConsistency=true,
+      ~strongConsistency,
     )
 
   // Multiple tags: use composite GSI
@@ -1194,8 +1194,9 @@ let executeQueryItemStream = (
 }
 
 let readStream = (table: resolvedTable) =>
-  (~query: Reventless.DcbTag.query, ~after=?) => {
-    let streams = query->Array.map(qi => executeQueryItemStream(table, qi, ~after?))
+  (~query: Reventless.DcbTag.query, ~after=?, ~strongConsistency=false) => {
+    let streams =
+      query->Array.map(qi => executeQueryItemStream(table, qi, ~after?, ~strongConsistency))
     switch streams->Array.length {
     | 0 => Stream.empty
     | 1 => (streams->Array.getUnsafe(0))->Stream.map(fromItem)

@@ -312,7 +312,9 @@ let makeStorage = (
 
   let _ = headPositionStmt
 
-  let readStream = (~query: DcbTag.query, ~after=?) =>
+  // ~strongConsistency is a DynamoDB read-replica concept; the SQLite backend is
+  // always consistent, so it is accepted (interface parity) and ignored.
+  let readStream = (~query: DcbTag.query, ~after=?, ~strongConsistency as _=?) =>
     Effect.promise(() => read(~query, ~after?))
     ->Effect.map(result => result.events)
     ->Stream.fromEffect

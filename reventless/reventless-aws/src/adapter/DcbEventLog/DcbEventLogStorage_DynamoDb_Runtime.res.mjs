@@ -912,7 +912,8 @@ function scanWithFilterStream(table, eventTypes, after) {
   }
 }
 
-function executeQueryItemStream(table, queryItem, after) {
+function executeQueryItemStream(table, queryItem, after, strongConsistencyOpt) {
+  let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
   let tags = queryItem.tags;
   if (tags !== undefined) {
     if (tags.length !== 1) {
@@ -922,7 +923,7 @@ function executeQueryItemStream(table, queryItem, after) {
       tags.length !== 0;
     } else {
       let tag = tags[0];
-      return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after, true);
+      return queryByPartitionKeyStream(table, tag.key + `:` + tag.value, after, strongConsistency);
     }
   }
   let eventTypes = queryItem.eventTypes;
@@ -934,8 +935,9 @@ function executeQueryItemStream(table, queryItem, after) {
 }
 
 function readStream(table) {
-  return (query, after) => {
-    let streams = query.map(qi => executeQueryItemStream(table, qi, after));
+  return (query, after, strongConsistencyOpt) => {
+    let strongConsistency = strongConsistencyOpt !== undefined ? strongConsistencyOpt : false;
+    let streams = query.map(qi => executeQueryItemStream(table, qi, after, strongConsistency));
     let match = streams.length;
     if (match === 0) {
       return Stream$1.empty;

@@ -200,7 +200,13 @@ module Make = (
       }
       let cacheHit = seed.contents->Option.isSome
 
-      dcbEventLog.readStream(~query, ~after=?afterPos)
+      // Consistency: eventual on the first attempt (cheaper RCU; a stale read can
+      // only cost a rejected append, never a wrong write — the fence is always
+      // evaluated strongly), then strong on every retry so a replica-lag conflict
+      // self-heals deterministically rather than burning further retries.
+      let strongConsistency = retries < maxRetries
+
+      dcbEventLog.readStream(~query, ~after=?afterPos, ~strongConsistency)
       ->Stream.map(raw => {
         let decoded = decoder.decode(
           ~eventType=raw.eventType,

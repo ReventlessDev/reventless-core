@@ -80,7 +80,9 @@ let makeStorage = (~name as _name, ~indexes as _, ~partitionTag as _, ~opts as _
     }
   }
 
-  let readStream = (~query, ~after=?) =>
+  // ~strongConsistency is a DynamoDB read-replica concept; the in-memory backend
+  // is always consistent, so it is accepted (interface parity) and ignored.
+  let readStream = (~query, ~after=?, ~strongConsistency as _=?) =>
     Effect.promise(() => read(~query, ~after?))
     ->Effect.map(result => result.events)
     ->Stream.fromEffect
