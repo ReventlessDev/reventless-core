@@ -595,52 +595,59 @@ function MakeWithConfig(Config) {
         log.info("preResolversSchemaHook", undefined, "No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
-      return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
-        let baseFragment;
-        baseFragment = capturedDeployTarget === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
-        let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
-        let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
-        let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
-        let client = AppSync_Adapter$ReventlessAws.getClient();
-        let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
-        let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
-        let skipPush;
-        if (storedHash !== undefined && storedHash === currentHash) {
-          let expected = countRoots(sdl);
-          let live = countRoots(liveSdl);
-          if (liveSdl === "") {
-            log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
-            skipPush = false;
-          } else if (live < expected) {
-            log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
-            skipPush = false;
-          } else {
-            log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
-            skipPush = true;
-          }
-        } else {
-          skipPush = false;
-        }
-        if (!skipPush) {
-          if (GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(liveSdl, sdl, deploySchemaShrinkThreshold)) {
-            return log.error("preResolversSchemaHook", undefined, `ABORTED schema push for ` + apiId + `: stitched SDL (` + countRoots(sdl).toString() + ` root field(s)) would catastrophically shrink the live schema (` + countRoots(liveSdl).toString() + ` root field(s), threshold ` + deploySchemaShrinkThreshold.toString() + `) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`);
-          } else {
-            log.info("preResolversSchemaHook", undefined, `Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
-            await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-              apiId: apiId,
-              definition: sdl
-            });
-            log.info("preResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
-            await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-            log.info("preResolversSchemaHook", undefined, "Schema is ACTIVE");
-            if (tableNameOpt !== undefined) {
-              return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+      return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => {
+        let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
+          let baseFragment;
+          baseFragment = capturedDeployTarget === "Domain" && Config.splitApi ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(Config.cloner), "Admin");
+          let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
+          let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
+          let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
+          let client = AppSync_Adapter$ReventlessAws.getClient();
+          let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
+          let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
+          let skipPush;
+          if (storedHash !== undefined && storedHash === currentHash) {
+            let expected = countRoots(sdl);
+            let live = countRoots(liveSdl);
+            if (liveSdl === "") {
+              log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
+              skipPush = false;
+            } else if (live < expected) {
+              log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
+              skipPush = false;
             } else {
-              return;
+              log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
+              skipPush = true;
+            }
+          } else {
+            skipPush = false;
+          }
+          if (!skipPush) {
+            if (GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(liveSdl, sdl, deploySchemaShrinkThreshold)) {
+              return log.error("preResolversSchemaHook", undefined, `ABORTED schema push for ` + apiId + `: stitched SDL (` + countRoots(sdl).toString() + ` root field(s)) would catastrophically shrink the live schema (` + countRoots(liveSdl).toString() + ` root field(s), threshold ` + deploySchemaShrinkThreshold.toString() + `) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`);
+            } else {
+              log.info("preResolversSchemaHook", undefined, `Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
+              await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+                apiId: apiId,
+                definition: sdl
+              });
+              log.info("preResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
+              await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+              log.info("preResolversSchemaHook", undefined, "Schema is ACTIVE");
+              if (tableNameOpt !== undefined) {
+                return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+              } else {
+                return;
+              }
             }
           }
+        });
+        if (tableNameOpt !== undefined) {
+          return AppSync_Adapter$ReventlessAws.withSchemaPushLock(tableNameOpt, apiId, undefined, undefined, runSchemaPush);
+        } else {
+          return runSchemaPush();
         }
-      })));
+      }));
     });
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => {
@@ -1675,52 +1682,59 @@ function Make($star) {
         log.info("preResolversSchemaHook", undefined, "No pluginSchemaPersistenceTableName / pluginRmTableName — skipping fragment persistence");
         return Promise.resolve([pluginFragment]);
       };
-      return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => writeAndScanFragments().then(async allPluginFragments => {
-        let baseFragment;
-        baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
-        let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
-        let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
-        let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
-        let client = AppSync_Adapter$ReventlessAws.getClient();
-        let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
-        let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
-        let skipPush;
-        if (storedHash !== undefined && storedHash === currentHash) {
-          let expected = countRoots(sdl);
-          let live = countRoots(liveSdl);
-          if (liveSdl === "") {
-            log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
-            skipPush = false;
-          } else if (live < expected) {
-            log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
-            skipPush = false;
-          } else {
-            log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
-            skipPush = true;
-          }
-        } else {
-          skipPush = false;
-        }
-        if (!skipPush) {
-          if (GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(liveSdl, sdl, deploySchemaShrinkThreshold)) {
-            return log.error("preResolversSchemaHook", undefined, `ABORTED schema push for ` + apiId + `: stitched SDL (` + countRoots(sdl).toString() + ` root field(s)) would catastrophically shrink the live schema (` + countRoots(liveSdl).toString() + ` root field(s), threshold ` + deploySchemaShrinkThreshold.toString() + `) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`);
-          } else {
-            log.info("preResolversSchemaHook", undefined, `Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
-            await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
-              apiId: apiId,
-              definition: sdl
-            });
-            log.info("preResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
-            await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
-            log.info("preResolversSchemaHook", undefined, "Schema is ACTIVE");
-            if (tableNameOpt !== undefined) {
-              return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+      return Output$Pulumi.flatMap(targetApi, api => Output$Pulumi.flatMap(api.id, apiId => {
+        let runSchemaPush = () => writeAndScanFragments().then(async allPluginFragments => {
+          let baseFragment;
+          baseFragment = capturedDeployTarget === "Domain" ? emptyBaseFragment : AppSync_Adapter$ReventlessAws.injectAwsAuthAll(AdminApi$ReventlessCore.baseFragment(false), "Admin");
+          let sdl = GraphQL_Stitcher$ReventlessCore.stitch(baseFragment, allPluginFragments);
+          let currentHash = AppSync_Adapter$ReventlessAws.sha256Hex(sdl);
+          let storedHash = tableNameOpt !== undefined ? await readSchemaHash(tableNameOpt, apiId) : undefined;
+          let client = AppSync_Adapter$ReventlessAws.getClient();
+          let liveSdl = await AppSync_Adapter$ReventlessAws.getIntrospectionSdl(client, apiId);
+          let countRoots = s => (GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Mutation") + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Query") | 0) + GraphQL_Stitcher$ReventlessCore.countRootTypeFields(s, "Subscription") | 0;
+          let skipPush;
+          if (storedHash !== undefined && storedHash === currentHash) {
+            let expected = countRoots(sdl);
+            let live = countRoots(liveSdl);
+            if (liveSdl === "") {
+              log.info("preResolversSchemaHook", undefined, `hash matches but live schema could not be introspected — forcing repair push (check appsync:GetIntrospectionSchema permission)`);
+              skipPush = false;
+            } else if (live < expected) {
+              log.info("preResolversSchemaHook", undefined, `hash matches but live schema drifted (` + live.toString() + ` root field(s) live vs ` + expected.toString() + ` expected) — forcing repair push`);
+              skipPush = false;
             } else {
-              return;
+              log.info("preResolversSchemaHook", undefined, `SDL unchanged (hash ` + currentHash.slice(0, 12) + `…) and live schema intact (` + live.toString() + ` root fields); skipping push`);
+              skipPush = true;
+            }
+          } else {
+            skipPush = false;
+          }
+          if (!skipPush) {
+            if (GraphQL_Stitcher$ReventlessCore.isCatastrophicSchemaShrink(liveSdl, sdl, deploySchemaShrinkThreshold)) {
+              return log.error("preResolversSchemaHook", undefined, `ABORTED schema push for ` + apiId + `: stitched SDL (` + countRoots(sdl).toString() + ` root field(s)) would catastrophically shrink the live schema (` + countRoots(liveSdl).toString() + ` root field(s), threshold ` + deploySchemaShrinkThreshold.toString() + `) — refusing to clobber resolvers (likely a stale concurrent-deploy scan)`);
+            } else {
+              log.info("preResolversSchemaHook", undefined, `Pushing schema to API ` + apiId + ` (` + allPluginFragments.length.toString() + ` plugin fragments, new hash: ` + currentHash.slice(0, 12) + `…)`);
+              await AppSync_Adapter$ReventlessAws.startSchemaCreationRetrying(client, {
+                apiId: apiId,
+                definition: sdl
+              });
+              log.info("preResolversSchemaHook", undefined, "startSchemaCreation called, waiting for ACTIVE");
+              await AppSync_Adapter$ReventlessAws.waitForSchemaActive(client, apiId, undefined, undefined);
+              log.info("preResolversSchemaHook", undefined, "Schema is ACTIVE");
+              if (tableNameOpt !== undefined) {
+                return await writeSchemaHash(tableNameOpt, apiId, currentHash);
+              } else {
+                return;
+              }
             }
           }
+        });
+        if (tableNameOpt !== undefined) {
+          return AppSync_Adapter$ReventlessAws.withSchemaPushLock(tableNameOpt, apiId, undefined, undefined, runSchemaPush);
+        } else {
+          return runSchemaPush();
         }
-      })));
+      }));
     });
   };
   let hooks_preAdminResolversSchemaHook = adminBarrier => {

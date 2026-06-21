@@ -843,6 +843,10 @@ module MakeWithConfig = (
 
         targetApi->Pulumi.Output.flatMap(api =>
           api.id->Pulumi.Output.flatMap(apiId => {
+            // Serialise write-row → scan → stitch → push under the shared
+            // schema-push lease so a concurrent peer's stale scan can't clobber
+            // this stack's fields (see AppSync_Adapter.withSchemaPushLock).
+            let runSchemaPush = () => {
             writeAndScanFragments()
             ->Promise.then(async allPluginFragments => {
               // Base fragment selection:
@@ -981,7 +985,15 @@ module MakeWithConfig = (
               // version connects, so the manifest carries only the current
               // version without any RM-read-driven command.
             })
-            ->Pulumi.Output.fromPromise
+            }
+
+            (
+              switch tableNameOpt {
+              | Some(tableName) =>
+                AppSync_Adapter.withSchemaPushLock(~tableName, ~apiId, runSchemaPush)
+              | None => runSchemaPush()
+              }
+            )->Pulumi.Output.fromPromise
           })
         )
       })

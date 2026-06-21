@@ -146,6 +146,97 @@ let deploySchemaWithRetry = (
     () => startSchemaCreation(client, {apiId, definition})->Promise.then(_ => Promise.resolve()),
   )->Effect.retry(AppSync_Error.retrySchedule)
 
+// ── Schema-push serialization lock ──────────────────────────────────────────
+//
+// Plugin/service stacks share one AppSync API, and StartSchemaCreation REPLACES
+// the whole schema. When two stacks scan the deploy-schema table, stitch, and
+// push concurrently, a push built from a stale scan (missing a peer's not-yet-
+// written fragment) clobbers the peer's fields — orphaning their resolvers
+// (NotFoundException: No field named X). The shrink guard only catches
+// catastrophic (>threshold) drops, not a single dropped field.
+//
+// This lease serialises scan→stitch→push across stacks via a conditional-write
+// lock row in the shared PluginSchemaPersistence table. A push that holds the
+// lease always scans a table already containing every prior push's fragment, so
+// the last push is complete and nothing is clobbered. The lease carries a TTL so
+// a crashed holder cannot deadlock the table; if the lock cannot be acquired
+// within maxWaitMs we proceed best-effort rather than fail the deploy.
+
+@val external schemaLockSetTimeout: (unit => unit, int) => unit = "setTimeout"
+let schemaLockSleep = (ms: int): promise<unit> =>
+  Promise.make((resolve, _) => schemaLockSetTimeout(() => resolve(), ms))
+let _schemaLockCounter = ref(0)
+
+let withSchemaPushLock = async (
+  ~tableName: string,
+  ~apiId: string,
+  ~leaseMs: int=120000,
+  ~maxWaitMs: int=180000,
+  fn: unit => promise<'a>,
+): 'a => {
+  open AwsSdk.DynamoDb.DocumentClient
+  let lockId = `schema-push-lock:${apiId}`
+  _schemaLockCounter := _schemaLockCounter.contents + 1
+  let holder = `${apiId}#${Date.now()->Float.toString}#${_schemaLockCounter.contents->Int.toString}`
+
+  let acquire = async () => {
+    let deadline = Date.now() +. maxWaitMs->Int.toFloat
+    let acquired = ref(false)
+    while !acquired.contents {
+      let now = Date.now()
+      let ok =
+        await PutCommand.make({
+          PutCommand.tableName,
+          item: Dict.fromArray([
+            ("id", lockId->JSON.Encode.string),
+            ("holder", holder->JSON.Encode.string),
+            ("expiresAt", (now +. leaseMs->Int.toFloat)->JSON.Encode.float),
+          ])->JSON.Encode.object,
+          conditionExpression: "attribute_not_exists(id) OR expiresAt < :now",
+          expressionAttributeValues: Dict.fromArray([(":now", now->JSON.Encode.float)]),
+        })
+        ->PutCommand.send
+        ->Promise.thenResolve(_ => true)
+        ->Promise.catch(_ => Promise.resolve(false))
+      if ok {
+        acquired := true
+      } else if Date.now() > deadline {
+        log.warn(
+          ~comp="AppSync_Adapter",
+          `schema-push lock for ${apiId} not acquired within ${maxWaitMs->Int.toString}ms — proceeding best-effort`,
+        )
+        acquired := true
+      } else {
+        await schemaLockSleep(1000)
+      }
+    }
+  }
+
+  let release = async () => {
+    let _ =
+      await DeleteCommand.make({
+        DeleteCommand.tableName,
+        key: Dict.fromArray([("id", lockId->JSON.Encode.string)]),
+        conditionExpression: "holder = :holder",
+        expressionAttributeValues: Dict.fromArray([(":holder", holder->JSON.Encode.string)]),
+      })
+      ->DeleteCommand.send
+      ->Promise.thenResolve(_ => ())
+      ->Promise.catch(_ => Promise.resolve()) // expired lease stolen by a peer — leave theirs intact
+  }
+
+  await acquire()
+  try {
+    let r = await fn()
+    let _ = await release()
+    r
+  } catch {
+  | exn =>
+    let _ = await release()
+    raise(exn)
+  }
+}
+
 // Lazy singleton AppSync client (runtime only)
 let _client: ref<option<appSyncClient>> = ref(None)
 let getClient = () =>
