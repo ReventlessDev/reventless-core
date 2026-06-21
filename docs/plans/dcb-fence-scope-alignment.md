@@ -17,7 +17,10 @@ Composite decision: **option B**. Audit found one composite-query slice (`Record
 ## Remaining
 
 - **Live DynamoDB integration test** for the scenarios below — cannot run on local backends (they don't use fences); run against deployed/LocalStack DynamoDB.
-- **Alpha fence-row wipe** on next deploy: existing `fence#productId:*` rows still hold stale high positions from the old bump-all behaviour. New appends no longer bump them, but a pre-existing stale `fence#productId:P` would still gate the next order of P until cleared. Wipe `fence#*` rows (or the table) on deploy — prefer wipe over migration per repo convention.
+
+## Done after-the-fact
+
+- **Alpha fence-row wipe (2026-06-21)** — performed on `OrderingDcbEventLog-2a4f98f` only, after the Phase 7 entry-point + IAM fixes deployed (commit `8d29fc45c`) surfaced this gap on a manual PlaceOrder against `online-shop-hybrid-platform-aws-alpha`: the 2nd P1 order false-conflicted as predicted (CloudWatch logs showed `ConditionalCheckFailed` on a fence row bumped by the May-28 OrderPlaced for order `88bace…`, while the post-fix read could only reach the older `CatalogProductSynced` position). Wiped 15 `fence#*` rows via `BatchWriteItem`; immediate post-wipe retry returned `CommandAccepted`. **Catalog DCB tables not wiped yet** — `catalog-aws` still on the pre-fix Lambda code/IAM, so its DCB commands fail before reaching fences; wipe its `fence#*` rows immediately after the same `pulumi up` lands there.
 
 ## Problem
 
