@@ -116,7 +116,7 @@ function finish() {
       let envVars = {};
       envVars["HANDLER_CONFIG"] = handlerConfigOutput;
       let match$1 = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/AutomationSliceEntryPoint.mjs", packageDirs, undefined);
-      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, opts);
+      let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset("AllAutomationSlices", match$1.code, match$1.sourceCodeHash, envVars, match[0], match[1], undefined, undefined, undefined, undefined, opts);
       let channelSpecs = storedSpecs.map(param => param.channelSpec);
       EventCollectorChannel_DynamoDbStream$ReventlessAws.connect("AllAutomationSlices", channelSpecs, runtime, opts);
     } else {

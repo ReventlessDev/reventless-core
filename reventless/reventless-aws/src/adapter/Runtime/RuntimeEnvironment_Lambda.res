@@ -74,6 +74,10 @@ let makeFromCodeAsset: (
   ~reservedConcurrency: int=?,
   ~ephemeralStorageMb: int=?,
   ~logRetentionDays: int=?,
+  /** Provision the DCB append-retry/conflict CloudWatch metric filters on this
+      Lambda's log group (command-handler Lambdas only). Requires a managed log
+      group, so it only takes effect when `~logRetentionDays` is also set. */
+  ~dcbMetrics: bool=?,
   ~opts: Pulumi.ComponentResource.options=?,
 ) => ReventlessCore.Runtime.environment<parts> = (
   ~name,
@@ -85,6 +89,7 @@ let makeFromCodeAsset: (
   ~reservedConcurrency=?,
   ~ephemeralStorageMb=?,
   ~logRetentionDays=?,
+  ~dcbMetrics=false,
   ~opts=?,
 ) => {
   open PulumiAws
@@ -164,7 +169,7 @@ let makeFromCodeAsset: (
   // Optional CloudWatch log-group with explicit retention. When not set, Lambda
   // auto-creates a log group with no retention (logs accumulate indefinitely).
   logRetentionDays->Option.forEach(days => {
-    let _ = Cloudwatch.LogGroup.make(
+    let logGroup = Cloudwatch.LogGroup.make(
       ~name=`${name}LogGroup`,
       ~args={
         name: `/aws/lambda/${name}`->Pulumi.Input.make,
@@ -172,6 +177,32 @@ let makeFromCodeAsset: (
       },
       ~opts?,
     )
+
+    // DCB command-handler Lambdas: extract the provider-neutral metric lines
+    // emitted by StateChangeSlice_Callback (`{reventlessMetric, slice, value}`)
+    // into CloudWatch metrics. Attached to the managed log group above so there
+    // is no race against Lambda's lazy auto-created group. Namespace/dimension
+    // are CloudWatch-specific and live here, not in core (provider-neutral).
+    if dcbMetrics {
+      ["AppendRetry", "AppendConflict"]->Array.forEach(metricName => {
+        let _ = Cloudwatch.LogMetricFilter.make(
+          ~name=`${name}${metricName}Filter`,
+          ~args={
+            pattern: `{ $.reventlessMetric = "${metricName}" }`->Pulumi.Input.make,
+            logGroupName: logGroup.name->Pulumi.Output.asInput,
+            metricTransformation: ({
+              name: metricName->Pulumi.Input.make,
+              namespace: "Reventless/DCB"->Pulumi.Input.make,
+              value: "$.value"->Pulumi.Input.make,
+              defaultValue: "0"->Pulumi.Input.make,
+              unit: "Count"->Pulumi.Input.make,
+              dimensions: Dict.fromArray([("slice", "$.slice")])->Pulumi.Input.make,
+            }: Cloudwatch.LogMetricFilter.metricTransformation)->Pulumi.Input.make,
+          },
+          ~opts?,
+        )
+      })
+    }
   })
 
   {

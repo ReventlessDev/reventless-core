@@ -7,9 +7,12 @@ let EventTarget;
 
 let LogGroup;
 
+let LogMetricFilter;
+
 export {
   EventRule,
   EventTarget,
   LogGroup,
+  LogMetricFilter,
 }
 /* No side effect */

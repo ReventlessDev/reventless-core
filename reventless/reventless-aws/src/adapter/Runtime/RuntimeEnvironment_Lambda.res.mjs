@@ -41,10 +41,11 @@ function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   };
 }
 
-function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, opts) {
+function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt, timeoutOpt, reservedConcurrency, ephemeralStorageMb, logRetentionDays, dcbMetricsOpt, opts) {
   let envVars = envVarsOpt !== undefined ? envVarsOpt : ({});
   let memorySize = memorySizeOpt !== undefined ? memorySizeOpt : Runtime$ReventlessCore.CommandHandlerDefaults.memorySize;
   let timeout = timeoutOpt !== undefined ? timeoutOpt : Runtime$ReventlessCore.CommandHandlerDefaults.timeout;
+  let dcbMetrics = dcbMetricsOpt !== undefined ? dcbMetricsOpt : false;
   let opts$1 = Stdlib_Option.map(opts, Util_Pulumi$ReventlessCore.ComponentResourceOptions.toCustomResourceOptions);
   let lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
   additionalIamPolicies.forEach(param => {
@@ -93,10 +94,33 @@ function makeFromCodeAsset(name, code, sourceCodeHash, envVarsOpt, memorySizeOpt
     }))
   }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
   Stdlib_Option.forEach(logRetentionDays, days => {
-    new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
+    let logGroup = new (Aws.cloudwatch.LogGroup)(name + `LogGroup`, {
       name: `/aws/lambda/` + name,
       retentionInDays: days
     }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
+    if (dcbMetrics) {
+      [
+        "AppendRetry",
+        "AppendConflict"
+      ].forEach(metricName => {
+        new (Aws.cloudwatch.LogMetricFilter)(name + metricName + `Filter`, {
+          pattern: `{ $.reventlessMetric = "` + metricName + `" }`,
+          logGroupName: logGroup.name,
+          metricTransformation: {
+            name: metricName,
+            namespace: "Reventless/DCB",
+            value: "$.value",
+            defaultValue: "0",
+            unit: "Count",
+            dimensions: Object.fromEntries([[
+                "slice",
+                "$.slice"
+              ]])
+          }
+        }, opts$1 !== undefined ? Primitive_option.valFromOption(opts$1) : undefined);
+      });
+      return;
+    }
   });
   return {
     parts: {

@@ -864,6 +864,9 @@ module Make = (
         ~reservedConcurrency=?cfg.reservedConcurrency,
         ~ephemeralStorageMb=?cfg.ephemeralStorageMb,
         ~logRetentionDays=?cfg.logRetentionDays,
+        // This is the StateChangeSlice command handler — provision the DCB
+        // retry/conflict metric filters (takes effect when logRetentionDays is set).
+        ~dcbMetrics=true,
         ~opts,
       )
 

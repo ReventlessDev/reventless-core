@@ -301,7 +301,7 @@ function Make(EventCollectorChannel) {
     });
     let codeOutput = bundleOutput.apply(b => b.code);
     let sourceCodeHashOutput = bundleOutput.apply(b => b.sourceCodeHash);
-    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, codeOutput, sourceCodeHashOutput, envVars, memorySize, timeout, undefined, undefined, undefined, opts);
+    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, codeOutput, sourceCodeHashOutput, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, opts);
     EventCollectorChannel.connect(name, [{
         channel: eventCollector.channel,
         eventTopics: eventTopics,
@@ -423,7 +423,7 @@ function Make(EventCollectorChannel) {
     envVars["PLUGIN_ID"] = Pulumi.output(hbConfig.pluginId);
     envVars["HEARTBEAT_TIMEOUT"] = Pulumi.output(hbConfig.heartbeatTimeout.toString());
     let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/HeartbeatEntryPoint.mjs", {}, undefined);
-    connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, opts));
+    connect(RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, memorySize, timeout, undefined, undefined, undefined, undefined, opts));
   };
   let forDcbCommandTopic = (param, connect, $staropt$star, $staropt$star$1, dcbCommandTopic) => {
     $staropt$star !== undefined;
@@ -483,7 +483,7 @@ function Make(EventCollectorChannel) {
     packageDirs["@reventlessdev/reventless-core"] = Util_Bundle$ReventlessAws.resolvePackageRoot("@reventlessdev/reventless-core");
     let match = Util_Bundle$ReventlessAws.buildCodeArchive("@reventlessdev/reventless-aws/src/adapter/Runtime/DcbCommandTopicEntryPoint.mjs", packageDirs, undefined);
     Stdlib_Option.forEach(cfg.sqsBatchSize, CommandTopicChannel_SQS$ReventlessAws.setBatchSize);
-    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, opts);
+    let runtime = RuntimeEnvironment_Lambda$ReventlessAws.makeFromCodeAsset(name, match.code, match.sourceCodeHash, envVars, cfg.memorySize, cfg.timeout, cfg.reservedConcurrency, cfg.ephemeralStorageMb, cfg.logRetentionDays, true, opts);
     queue.arn.apply(queueArn => new (Aws.iam.RolePolicy)(name + `-sqsSend`, {
       policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + `-sqsSendPolicy`, [{
           Sid: "AllowSqsSend",
