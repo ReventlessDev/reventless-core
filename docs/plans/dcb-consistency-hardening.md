@@ -114,7 +114,9 @@ Per [dcb-decision-model-projection-cache](dcb-decision-model-projection-cache.md
 
 Small, mostly independent items; land opportunistically.
 
-### Phase 5a — Opt-in strong reads + contention metric (cost lever #3) — **net-new, in progress**
+### Phase 5a — Opt-in strong reads + contention metric (cost lever #3) — **DONE (2026-06-21)**
+
+Shipped: eventual-first / strong-on-retry decision reads (core), a provider-neutral retry/conflict metric signal (core), and CloudWatch metric filters (AWS). Only the per-slice *force-strong/force-eventual* build-time override remains (PPX follow-up — see below); with escalate-on-retry as the default it is low-urgency.
 
 **Decision (2026-06-21): default eventually-consistent.** Single-tag decision reads stop forcing `consistentRead: true`; they go eventually-consistent by default and rely on the conditional-append fence + retry loop for correctness. This halves decision-read RCU on the common path. Correctness is unchanged in either mode: **DynamoDB conditional writes are always evaluated against the latest committed data**, so a stale read can only ever cause a *rejected* append (then a retry), never a wrong write. Strong reads were never a correctness feature — they only suppress the *replica-lag* class of conflicts, not genuine concurrent-writer conflicts (those serialize at the fence regardless).
 
@@ -165,5 +167,5 @@ Already planned, run on evidence:
 2. ~~**Phase 2** (create-race close)~~ — **done 2026-06-20**. 2A confirmed the hole is real on the default sync path; shipped option B (per-type create guard).
 3. **Phase 3** (drop unused per-tag GSIs) — biggest durable $ win, no contract change. **On hold**: its form (full-remove vs `KEYS_ONLY`/keep) is gated by the Phase 7 decision below.
 4. ~~**Phase 4** (decision-model cache) — biggest read-cost win.~~ — **core done 2026-06-20** (Steps 1–3 + docs); per-slice capacity knob + metrics deferred.
-5. **Phase 5** items opportunistically — Issue 14 (vacuous-clause cleanup), Issue 12 (fence-scan hardening), and Issue 5 (composite exact-match guard) are **done (2026-06-20)**; remaining items (opt-in strong reads, Issues 4/6/9) land opportunistically. **Phase 6** on profiling evidence.
+5. **Phase 5** items opportunistically — Issue 14 (vacuous-clause cleanup), Issue 12 (fence-scan hardening), Issue 5 (composite exact-match guard) **done (2026-06-20)**, and Phase 5a (opt-in strong reads + contention metric) **done (2026-06-21)**; remaining items (Issues 4/6/9, the per-slice strong-read override PPX follow-up) land opportunistically. **Phase 6** on profiling evidence.
 6. **Phase 7** (cross-partition reads) — only when a real slice needs it; making that call first unblocks Phase 3.
