@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.161 (2026-06-21)
+
+### Features
+
+* **appsync:** serialize deploy-time schema pushes with a shared lease ([b7d8af0](https://github.com/ReventlessDev/reventless-core/commit/b7d8af076e0af594179b64142d894b8b6ce0ac7d))
+
+
 # 3.0.0-alpha.160 (2026-06-20)
 
 ### Bug Fixes

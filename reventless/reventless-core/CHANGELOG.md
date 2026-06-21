@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 3.0.0-alpha.130 (2026-06-21)
+
+### Features
+
+* **dcb:** warn on composite reads that silently miss extra-tagged events (Issue 5) ([9e14f68](https://github.com/ReventlessDev/reventless-core/commit/9e14f68c76b0e5acf95878d89693eec26e0e1760))
+
+
 # 3.0.0-alpha.129 (2026-06-20)
 
 ### Features
